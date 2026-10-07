@@ -1,5 +1,7 @@
 # Zigbee2MQTT Device Adoption Wizard — Implementation Plan
 
+> **Status:** Implemented — PR #604. Checkboxes below are not ticked retroactively.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a multi-device adoption wizard to the `devices-zigbee2mqtt` plugin, modeled on shelly-ng's wizard, with two-mode discovery (existing-unadopted + permit_join), auto-mapping, humanized friendly_names, and category overrides.

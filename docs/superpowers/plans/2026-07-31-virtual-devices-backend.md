@@ -1,5 +1,7 @@
 # Virtual Devices — Backend & Panel Implementation Plan (Plan A)
 
+> **Status:** Implemented — PR #628 (`devices-virtual` plugin, backend and panel); remaining leftovers are in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, epic #1336. Checkboxes below are not ticked retroactively.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship a `devices-virtual` backend plugin that lets a user build a device from properties of other devices — splitting one physical device into several, or composing one from several — controllable via REST/WebSocket and rendering on the panel.

@@ -5,7 +5,9 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: EPIC-EXTENSION-ACTIONS
-Status: planned
+Status: planned (not started)
+Tracking: #1303
+Issues: #1313
 
 ## 1. Business goal
 

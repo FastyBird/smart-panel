@@ -5,6 +5,8 @@ Scope: admin
 Size: medium
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
+Tracking: #1236
+Issues: #1240, #1241, #1248
 
 ## 1. Business goal
 

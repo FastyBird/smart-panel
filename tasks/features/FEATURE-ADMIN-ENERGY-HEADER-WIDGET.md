@@ -4,7 +4,9 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
+
+> **Shipped as `status_widgets`, not `header_widgets`.** The configuration landed as a `statusWidgets` column (`status_widgets` in the API) on `RoomSpaceEntity` (plugin `spaces-home-control`; the physical column lives on the shared spaces table). The admin `space-edit-form.vue` has a "Status widgets" section with an Energy widget card (enable toggle, range selector today/week/month, show-production toggle). The panel reads it in `status_widget.dart` / `room_overview.dart` and uses `EnergyRepository.refreshHeaderSummary`. The column is part of the squashed initial migration, so there is no separate migration file. The criteria below keep the original `header_widgets` wording and are ticked where the shipped `status_widgets` equivalent matches.
 
 ## 1. Business goal
 
@@ -49,17 +51,17 @@ Relevant files:
 
 ## 4. Acceptance criteria
 
-- [ ] SpaceEntity has a `header_widgets` JSON column (nullable, default null)
-- [ ] Create/Update Space DTOs accept `header_widgets` array
-- [ ] Database migration adds the column
-- [ ] Admin store ISpace interface includes `headerWidgets`
-- [ ] Admin Space edit form has "Header Widgets" section
-- [ ] Energy widget card has: enable toggle, range selector (today/week/month), show production toggle
-- [ ] Enabling energy widget sets defaults: range=today, showProduction=true
-- [ ] Saving space persists header_widgets config via API
-- [ ] Translations added for all new strings
-- [ ] Unit tests cover: add widget, update settings, remove widget, no-change regression
-- [ ] OpenAPI spec regenerated
+- [x] SpaceEntity has a `header_widgets` JSON column (nullable, default null) — shipped as `statusWidgets` (text/JSON, nullable) on `RoomSpaceEntity`
+- [x] Create/Update Space DTOs accept `header_widgets` array — as `status_widgets`
+- [x] Database migration adds the column — included in the squashed initial migration (`1000000000000-InitialSetup.ts`)
+- [x] Admin store ISpace interface includes `headerWidgets` — as `statusWidgets`
+- [x] Admin Space edit form has "Header Widgets" section — "Status widgets" section
+- [x] Energy widget card has: enable toggle, range selector (today/week/month), show production toggle
+- [x] Enabling energy widget sets defaults: range=today, showProduction=true (`ENERGY_WIDGET_DEFAULTS`)
+- [x] Saving space persists header_widgets config via API — as `status_widgets`
+- [x] Translations added for all new strings
+- [ ] Unit tests cover: add widget, update settings, remove widget, no-change regression (not verified; `spaces.transformers.spec.ts` covers `status_widgets` include/omit/null only)
+- [ ] OpenAPI spec regenerated (not verified)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

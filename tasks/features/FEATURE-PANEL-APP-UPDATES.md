@@ -6,6 +6,8 @@ Scope: backend, admin, panel
 Size: large
 Parent: (none)
 Status: planned
+Tracking: #1314
+Issues: #1315 platform/arch reporting, #1316 resolve assets per display, #1317 trigger/track updates over websocket, #1318 flutter-pi/eLinux self-update, #1319 Android APK install, #1320 admin per-display controls, #1321 panel settings update check
 
 ## 1. Business goal
 

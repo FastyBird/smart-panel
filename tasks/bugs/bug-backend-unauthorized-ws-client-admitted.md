@@ -4,7 +4,8 @@ Type: bug
 Scope: backend
 Size: tiny
 Parent: (none)
-Status: review
+Status: done
+Delivered: PR #610
 
 ## 1. Business goal
 

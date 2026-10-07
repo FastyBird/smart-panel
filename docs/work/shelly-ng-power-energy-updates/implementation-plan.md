@@ -1,6 +1,6 @@
 # Shelly NG: live power and energy updates — implementation plan
 
-Status: **approved 2026-09-07** (decisions in §16). Epic [#973](https://github.com/FastyBird/smart-panel/issues/973). No implementation has started.
+Status: **approved 2026-09-07** (decisions in §16). Epic [#973](https://github.com/FastyBird/smart-panel/issues/973). Delivered: #973 and #978 closed, PRs #980–#984, released in v1.1.0-alpha.3.
 
 ## 1. Goal and scope
 

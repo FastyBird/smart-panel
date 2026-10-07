@@ -1,5 +1,7 @@
 # Remote Access — Implementation Plan
 
+> **Status:** Delivered through RA-11; remaining work is tracked in `docs/superpowers/plans/2026-10-03-remote-access-completion.md`.
+
 **Goal:** Make a Smart Panel installation reachable from outside the LAN without a public IP address, through
 a core `remote-access` module and a family of provider plugins, starting with Tailscale.
 
@@ -471,7 +473,7 @@ Hardware acceptance matrix (Raspberry Pi, recorded in the epic task):
 - Reboot: node reconnects without interaction.
 - Disable plugin: node down, URLs disappear, re-enable reconnects.
 - Auth-key sign-in path on a second device.
-- Logout removes the device from the tailnet; factory reset leaves no `tailscaled.state` login.
+- Logout expires the current login (the node needs reauthentication; only ephemeral nodes are removed from the tailnet); factory reset leaves no `tailscaled.state` login.
 - Short-expiry auth key: `key-expiring` advisory appears; "Sign in again" recovers.
 - Docker compose deployment shows `unsupported` with the documentation link.
 

@@ -50,13 +50,13 @@ I want a standalone Energy screen in the deck navigation (like Security) and a c
 - [x] `EnergyScreen` shows: header with title/range selector, summary cards, timeseries chart, breakdown list
 - [x] Production UI hidden when `hasProduction` is false
 - [x] Energy deck item registered after Security in `deck_builder.dart`
-- [x] Energy item appears in bottom nav bar and more sheet — N/A: skipped, energy screen accessible via deck, nav integration deferred
+- [x] Energy item appears in bottom nav bar and more sheet (`deck_nav_tab_data.dart`, `deck_more_sheet.dart` handle `EnergyViewItem`)
 - [x] `buildDeckItemWidget` maps `EnergyViewItem` to `EnergyScreen(embedded: true)`
 - [x] Space header energy widget shows today consumption (and production if available)
 - [x] Header widget shows "—" on error, does not crash
 - [x] Energy screen hidden from deck when support detection returns unsupported
 - [x] Startup manager registers and unregisters `EnergyModuleService` and `EnergyRepository`
-- [x] At least one widget test for summary rendering — N/A: skipped, deferred to general panel test coverage pass
+- [ ] At least one widget test for summary rendering (still missing, tracked in #1357)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

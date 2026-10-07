@@ -5,6 +5,8 @@ Scope: panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
 Status: planned
+Tracking: #1287
+Issues: #1296
 
 ## 1. Business goal
 
@@ -15,6 +17,7 @@ I want to see available activity modes and activate them with a single tap.
 ## 2. Context
 
 ### Existing Code References
+- **Space plugin**: `apps/panel/lib/plugins/spaces-home-control/`
 - **Space page**: `apps/panel/lib/features/dashboard/presentation/spaces/`
 - **Quick actions**: `apps/panel/lib/features/dashboard/presentation/widgets/`
 - **Lighting modes**: Existing mode buttons in lighting section

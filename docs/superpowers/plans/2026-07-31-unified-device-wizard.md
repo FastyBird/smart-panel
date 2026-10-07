@@ -1,5 +1,7 @@
 # Unified Device Adoption Wizard Implementation Plan
 
+> **Status:** Implemented — PR #624. Checkboxes below are the original task list and are not ticked retroactively.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace three independently-written device adoption wizards (`devices-shelly-v1`, `devices-shelly-ng`, `devices-zigbee2mqtt`) with one generic wizard owned by the devices module, driven by a per-plugin adapter.

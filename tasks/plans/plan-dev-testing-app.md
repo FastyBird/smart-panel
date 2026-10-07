@@ -1,5 +1,7 @@
 # Dev Testing App Implementation Plan
 
+**Status:** Implemented in PR #462; redesigned in #487 (dynamic device configuration) and #490 (light theme with Element Plus styling); extended for hardware-input conformance in #1097. The dark theme and predefined device list in this plan are superseded.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a reusable React testing app at `apps/testing/` that lets testers configure their hardware setup, then track pass/fail/skip results per test, per device, per orientation.

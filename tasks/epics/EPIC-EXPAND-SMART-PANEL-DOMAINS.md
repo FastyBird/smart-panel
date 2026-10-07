@@ -5,6 +5,7 @@ Scope: backend, admin, panel
 Size: large
 Parent: (none)
 Status: in-progress
+Tracking: #1287
 
 ## 1. Business goal
 
@@ -17,10 +18,12 @@ I want to control my home through simple activity-based modes (Work, Relax, Slee
 ### Current State
 - **Lighting domain**: Fully implemented with roles (MAIN, TASK, AMBIENT, ACCENT, NIGHT) and modes (WORK, RELAX, NIGHT)
 - **Climate domain**: Fully implemented with roles (HEATING_ONLY, COOLING_ONLY, AUTO, AUXILIARY, SENSOR) and modes (HEAT, COOL, AUTO, OFF)
-- **Covers domain**: Device spec exists, device page exists, but NO space-level intents
-- **Media domain**: Device spec exists, but NO space-level intents
-- **Security domain**: Device spec exists, but NO space-level intents
+- **Covers domain**: Fully implemented with space-level intents (done)
+- **Media domain**: Fully implemented with space-level intents (done)
+- **Security domain**: Device spec exists, but NO space-level roles or intents (the house-level `security` module with alerts and providers exists, the space-level domain does not)
 - **House modes**: Basic implementation (HOME, AWAY, NIGHT) exists but only affects lighting
+- **Space domain code** lives in the `spaces-home-control` plugin (Spaces refactor, PRs #578-#592): backend `apps/backend/src/plugins/spaces-home-control/`, admin `apps/admin/src/plugins/spaces-home-control/`, panel `apps/panel/lib/plugins/spaces-home-control/`
+- **Not present yet**: activity modes, scheduling, seasonal adjustments, occupancy state machine. `SpaceActivityService` (#1143) is only a last-activity timestamp and is unrelated to activity modes. `space-sensor-state.service.ts` already aggregates motionDetected/occupancyDetected (input level only)
 
 ### Vision
 The smart panel should act as a bridge between users and their smart devices. Instead of configuring complex automation rules in multiple apps, users should:
@@ -120,9 +123,10 @@ And the mode reverts when motion is detected again
 
 ## 6. Technical constraints
 
-- Follow the existing domain pattern in `apps/backend/src/modules/spaces/`
-- Reuse `SpaceIntentService` facade pattern for new domains
-- Use YAML-based spec definitions for intents (like lighting/climate)
+- Follow the existing domain pattern in `apps/backend/src/plugins/spaces-home-control/`
+- Reuse `SpaceIntentService` facade pattern (`services/space-intent.service.ts`) for new domains
+- Use YAML-based spec definitions for intents in `spec/definitions/` (like lighting/climate)
+- New role types go into the unified `SpaceRoleEntity` hierarchy via an incremental migration
 - Do not introduce new dependencies unless really needed
 - Do not modify generated code
 - Tests are expected for new business logic
@@ -132,13 +136,13 @@ And the mode reverts when motion is detected again
 
 ### Domain Architecture Pattern
 Each new domain should follow the existing pattern:
-1. Add constants in `spaces.constants.ts` (roles, modes, intent types)
-2. Create `Space*RoleEntity` for role mapping
-3. Create `*IntentService` extending `SpaceIntentBaseService`
+1. Add constants (roles, modes, intent types) to the `spaces-home-control` plugin constants
+2. Add a `Space*RoleEntity` as a new discriminator of the unified `SpaceRoleEntity` hierarchy (existing: lighting, climate, covers, sensor, media_binding, active_media) with an incremental migration
+3. Create `*IntentService` extending `SpaceIntentBaseService` in `services/`
 4. Create DTOs with validation
-5. Create YAML spec definitions
+5. Create YAML spec definitions in `spec/definitions/`
 6. Update `SpaceIntentService` facade
-7. Add to `SpacesResponseModel` for read models
+7. Add to the plugin's response models for read models
 
 ### Mode Orchestration Pattern
 ```
@@ -171,23 +175,31 @@ SpaceModeService
 
 ## 9. Subtasks
 
+Tracking: epic #1287.
+
 ### Phase 1: Domain Completion
+Security domain = #1288 to #1291.
+
 | ID | Task | Size | Status |
 |----|------|------|--------|
 | FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | medium | done |
 | FEATURE-SPACE-MEDIA-DOMAIN | Add media domain intents for spaces | medium | done |
-| FEATURE-SPACE-SECURITY-DOMAIN | Add security domain intents for spaces | medium | planned |
+| FEATURE-SPACE-SECURITY-DOMAIN | Add security domain intents for spaces (#1288 roles, #1289 intents, #1290 admin, #1291 panel) | medium | planned |
 
 ### Phase 2: Unified Room Modes
+Phase 2 = #1292 to #1296.
+
 | ID | Task | Size | Status |
 |----|------|------|--------|
-| FEATURE-SPACE-ACTIVITY-MODES | Add activity-based room modes | large | planned |
-| FEATURE-SPACE-MODE-ADMIN-UI | Admin UI for configuring space modes | medium | planned |
-| FEATURE-SPACE-MODE-PANEL-UI | Panel UI for activating space modes | medium | planned |
+| FEATURE-SPACE-ACTIVITY-MODES | Add activity-based room modes (#1292 definitions and config, #1293 orchestration, #1294 activation endpoints and events) | large | planned |
+| FEATURE-SPACE-MODE-ADMIN-UI | Admin UI for configuring space modes (#1295) | medium | planned |
+| FEATURE-SPACE-MODE-PANEL-UI | Panel UI for activating space modes (#1296) | medium | planned |
 
 ### Phase 3: Automation Triggers
+Phase 3 = #1297 to #1302. The UniFi epic (#1221) adds camera person detections as an additional occupancy input for FEATURE-SPACE-OCCUPANCY-MODES.
+
 | ID | Task | Size | Status |
 |----|------|------|--------|
-| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling | medium | planned |
-| FEATURE-SPACE-OCCUPANCY-MODES | Occupancy-based mode triggers | medium | planned |
-| FEATURE-SPACE-SEASONAL-DEFAULTS | Seasonal baseline adjustments | small | planned |
+| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling (#1297 backend, #1298 admin schedule editor) | medium | planned |
+| FEATURE-SPACE-OCCUPANCY-MODES | Occupancy-based mode triggers (#1299 state machine, #1300 admin config; input #1221) | medium | planned |
+| FEATURE-SPACE-SEASONAL-DEFAULTS | Seasonal baseline adjustments (#1301 backend, #1302 admin) | small | planned |

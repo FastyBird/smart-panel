@@ -1,5 +1,7 @@
 # Homey Device Integration — Implementation Plan
 
+> **Status:** Implemented. Two explicitly deferred checks remain unverified and untracked: Socket.IO event ordering and a repeat on Homey Pro hardware. Checkboxes below are not ticked retroactively.
+
 **Goal:** Deliver a secure local Homey SHS/Homey Pro provider with discovery, mapping preview, adoption, real-time synchronization, and control.
 
 **Architecture:** One `devices-homey` plugin owns provider-domain behavior. A transport-independent `HomeyConnector` produces normalized devices/capabilities/events. Mapping, preview, adoption, synchronization, and control depend only on that contract. Admin uses the shared device wizard; Flutter uses the normal Devices API and state stream.

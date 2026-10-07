@@ -5,17 +5,19 @@ Type: technical
 Scope: backend
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: done
+
+> **Note:** Implemented in `influx-v1-managed.service.ts` and `memory-storage-managed.service.ts` (with specs), with `StorageService.registerPlugin()` / `unregisterPlugin()`. Identifiers were renamed when this work was absorbed into `docs/superpowers/plans/2026-09-01-managed-extension-services.md`: `PluginServiceManagerService` -> `ManagedServiceManagerService`, `IManagedPluginService` -> `IManagedExtensionService`, `BaseManagedPluginService` -> `BaseManagedExtensionService` (`base-managed-extension.service.ts`). Runtime keys are now `<kind>:<type>:<serviceId>` (the keys in the scenarios below predate this).
 
 ## 1. Business goal
 
 In order to have consistent lifecycle management across all plugins
 As a developer / system admin
-I want storage plugins (InfluxV1, MemoryStorage) to participate in the centralized `PluginServiceManagerService` lifecycle — just like device, buddy, and logger plugins already do.
+I want storage plugins (InfluxV1, MemoryStorage) to participate in the centralized `ManagedServiceManagerService` lifecycle — just like device, buddy, and logger plugins already do.
 
 ## 2. Context
 
-- All long-running plugin services (Shelly V1, Shelly NG, Home Assistant, WLED, Zigbee2MQTT, Telegram, Discord, WhatsApp, FileLogger, Simulator) implement `IManagedPluginService` and register with `PluginServiceManagerService`.
+- All long-running plugin services (Shelly V1, Shelly NG, Home Assistant, WLED, Zigbee2MQTT, Telegram, Discord, WhatsApp, FileLogger, Simulator) implement `IManagedExtensionService` and register with `ManagedServiceManagerService`.
 - Storage plugins use their own factory-based lifecycle (`StorageService.registerPluginFactory()` → `onApplicationBootstrap` creates instances → `initialize()` / `destroy()`).
 - This means storage plugins are **invisible** in the managed services status dashboard, lack health checks, runtime tracking (uptime, start count, last error), and don't respond to enable/disable config changes through the centralized system.
 - Reference implementations: `FileLoggerService`, `WledService`.
@@ -24,8 +26,8 @@ I want storage plugins (InfluxV1, MemoryStorage) to participate in the centraliz
 
 **In scope**
 
-- Create `@Injectable()` managed service wrappers for InfluxV1 and MemoryStorage plugins implementing `IManagedPluginService`.
-- Register them with `PluginServiceManagerService` during `onModuleInit()`.
+- Create `@Injectable()` managed service wrappers for InfluxV1 and MemoryStorage plugins implementing `IManagedExtensionService`.
+- Register them with `ManagedServiceManagerService` during `onModuleInit()`.
 - Refactor `StorageService` to support dynamic plugin registration (`registerPlugin` / `unregisterPlugin`) instead of the factory pattern.
 - Remove the factory pattern from `StorageService` (`registerPluginFactory`, `pluginFactories`, `createPlugin`).
 - Remove direct lifecycle management from `StorageService` (`onApplicationBootstrap` plugin creation, `onModuleDestroy` plugin cleanup).
@@ -41,12 +43,12 @@ I want storage plugins (InfluxV1, MemoryStorage) to participate in the centraliz
 
 ## 4. Acceptance criteria
 
-- [x] `InfluxV1ManagedService` implements `IManagedPluginService` and is registered with `PluginServiceManagerService`.
-- [x] `MemoryStorageManagedService` implements `IManagedPluginService` and is registered with `PluginServiceManagerService`.
+- [x] `InfluxV1ManagedService` implements `IManagedExtensionService` and is registered with `ManagedServiceManagerService`.
+- [x] `MemoryStorageManagedService` implements `IManagedExtensionService` and is registered with `ManagedServiceManagerService`.
 - [x] `StorageService` no longer uses the factory pattern; plugins register dynamically via `registerPlugin()`.
 - [x] `StorageService` no longer implements `OnApplicationBootstrap` / `OnModuleDestroy` for plugin lifecycle.
 - [x] Schema buffering continues to work — schemas registered before plugins arrive are flushed when plugins register.
-- [x] Storage plugins appear in `PluginServiceManagerService.getStatus()` with correct state, health, and runtime info.
+- [x] Storage plugins appear in `ManagedServiceManagerService.getStatus()` with correct state, health, and runtime info.
 - [x] InfluxV1 managed service signals `restartRequired: true` when host/database/credentials config changes.
 - [x] Storage managed services use priority 10 (start before default-priority device plugins).
 - [x] Unit tests cover start, stop, state transitions, health checks, and config change handling.
@@ -57,7 +59,7 @@ I want storage plugins (InfluxV1, MemoryStorage) to participate in the centraliz
 ### Scenario: Storage plugins appear in managed service status
 
 Given the application is running with InfluxV1 as primary and MemoryStorage as fallback
-When `PluginServiceManagerService.getStatus()` is called
+When `ManagedServiceManagerService.getStatus()` is called
 Then both `influx-v1-plugin:storage` and `memory-storage-plugin:storage` appear with state `started`
 
 ### Scenario: InfluxDB config change triggers restart
@@ -65,7 +67,7 @@ Then both `influx-v1-plugin:storage` and `memory-storage-plugin:storage` appear 
 Given the InfluxV1 managed service is running
 When the admin changes the InfluxDB host in plugin config
 Then `onConfigChanged()` returns `{ restartRequired: true }`
-And the `PluginServiceManagerService` performs a stop → start cycle
+And the `ManagedServiceManagerService` performs a stop → start cycle
 
 ### Scenario: Storage starts before device plugins
 
@@ -75,7 +77,7 @@ Then storage services start in level 0 and device plugins start in a later level
 
 ## 6. Technical constraints
 
-- Follow the existing `IManagedPluginService` pattern (see `FileLoggerService`, `WledService`).
+- Follow the existing `IManagedExtensionService` pattern (see `FileLoggerService`, `WledService`).
 - Do not introduce new dependencies.
 - Do not modify generated code.
 - Pre-release migration policy: no new migrations needed.

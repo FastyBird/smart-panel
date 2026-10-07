@@ -4,7 +4,8 @@ Type: bug
 Scope: admin
 Size: medium
 Parent: (none)
-Status: review
+Status: done
+Delivered: PR #609
 
 ## 1. Business goal
 

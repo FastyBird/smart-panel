@@ -5,6 +5,18 @@ Scope: backend, admin, panel
 Size: large
 Parent: (none)
 Status: planned
+Tracking: #1236
+
+> **Needs regrounding before implementation (#1237).** Only the docs PR #463 has landed; nothing is implemented, and the specs have drifted from the codebase:
+>
+> - `DisplayEntity` has no parent/child relation, so "companion = child of a parent display" has no backing model.
+> - Plugins must register as extensions with an admin mirror (backend plugin alone is not enough).
+> - Long-running work must be managed extension services (`ManagedServiceManagerService`, `BaseManagedExtensionService`); CLI mode must not start them.
+> - The server-side ESPHome/PlatformIO toolchain is not part of the installer.
+> - Panel serial access differs on flutter-pi vs Android.
+> - Knob events should be considered against `docs/hardware-inputs.md` (button/analog input channels).
+> - The panel is now space/deck-based, so the screen compiler's "pages and tiles" input needs rethinking.
+> - `Scope: firmware` is not a valid commit scope; firmware in `packages/` maps to `sdk`.
 
 ## 1. Business goal
 
@@ -280,11 +292,30 @@ Overview (read-only)  →  status_display (rotate to browse)
 ### Phase 3: Runtime Communication
 | ID | Task | Size | Scope | Status |
 |----|------|------|-------|--------|
-| FEATURE-COMPANION-ESPHOME-COMPONENT | Custom ESPHome component for serial protocol + LVGL | large | firmware | planned |
+| FEATURE-COMPANION-ESPHOME-COMPONENT | Custom ESPHome component for serial protocol + LVGL | large | sdk (firmware, see #1237) | planned |
 | FEATURE-COMPANION-PANEL-SERIAL | Panel Flutter serial service + page sync | medium | panel | planned |
 
 ### Phase 4: Screen Types & Polish
 | ID | Task | Size | Scope | Status |
 |----|------|------|-------|--------|
-| FEATURE-COMPANION-SCREEN-TYPES | Implement all screen types (arc, mode selector, status, toggle) | medium | firmware, backend | planned |
-| FEATURE-COMPANION-LED-RING | LED ring support for visual feedback | small | firmware | planned |
+| FEATURE-COMPANION-SCREEN-TYPES | Implement all screen types (arc, mode selector, status, toggle) | medium | sdk (firmware, see #1237), backend | planned |
+| FEATURE-COMPANION-LED-RING | LED ring support for visual feedback | small | sdk (firmware, see #1237) | planned |
+
+### Issues
+
+- #1237 reground specs
+- #1238 plugin entity + CRUD
+- #1239 screen compiler
+- #1240 admin management views
+- #1241 compiled screens preview
+- #1242 ESPHome generator
+- #1243 firmware package + panel_protocol component
+- #1244 LVGL screen types
+- #1245 LED ring
+- #1246 firmware build managed service
+- #1247 USB provisioning + OTA deploy
+- #1248 admin deploy workflow
+- #1249 panel USB serial connection
+- #1250 panel value/input/page sync
+- #1251 architecture doc
+- #1252 hardware acceptance

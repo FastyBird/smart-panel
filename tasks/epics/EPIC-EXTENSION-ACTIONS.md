@@ -6,6 +6,7 @@ Scope: backend, admin
 Size: large
 Parent: (none)
 Status: in-progress
+Tracking: #1303
 
 ## 1. Business goal
 
@@ -67,8 +68,8 @@ The interactive session system is a **platform feature** reusable across:
 - [ ] Terminal UI component renders prompts, collects input, shows progress
 - [ ] Simulator complex operations use interactive sessions
 - [ ] System module app updates use interactive sessions
-- [ ] Session history/audit log for executed operations
-- [ ] Action permissions based on user roles
+- [~] Session history/audit log for executed operations (partial: in-memory ring buffer audit log exists in `action-audit.service.ts` with `GET :actionId/history`, commit 9f38e978b; lost on restart and interactive sessions are not recorded, #1310)
+- [x] Action permissions based on user roles (TECH-EXTENSION-ACTION-PERMISSIONS, commits 78576decf, 9d0a92f90)
 
 ## 5. Child tasks
 
@@ -96,9 +97,24 @@ The interactive session system is a **platform feature** reusable across:
 
 | ID | Title | Scope | Size | Status |
 |----|-------|-------|------|--------|
-| TECH-EXTENSION-ACTION-PERMISSIONS | Role-based action access control | backend | small | planned |
-| TECH-EXTENSION-ACTION-AUDIT-LOG | Action execution history and audit trail | backend, admin | small | planned |
+| TECH-EXTENSION-ACTION-PERMISSIONS | Role-based action access control | backend | small | done |
+| TECH-EXTENSION-ACTION-AUDIT-LOG | Action execution history and audit trail | backend, admin | small | done |
 | FEATURE-EXTENSION-MARKETPLACE-SESSIONS | Marketplace install/uninstall via sessions | backend, admin | large | planned |
+
+### Issue mapping
+
+| Issue | Title |
+|-------|-------|
+| #1304 | Interactive session protocol and service |
+| #1305 | Interactive session websocket gateway |
+| #1306 | Route interactive actions to session handlers |
+| #1307 | Admin terminal component |
+| #1308 | Open interactive actions from the extension actions tab |
+| #1309 | Interactive simulator scenarios |
+| #1310 | Audit interactive sessions (persistence beyond the in-memory ring buffer) |
+| #1311 | System update progress session |
+| #1312 | Admin update terminal |
+| #1313 | Extension marketplace design spike |
 
 ## 6. Technical constraints
 

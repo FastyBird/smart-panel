@@ -1,6 +1,6 @@
 # Zigbee2MQTT Device Adoption Wizard — Design
 
-**Status:** Approved
+**Status:** Implemented
 **Date:** 2026-04-30
 **Author:** Adam Kadlec
 **Related:** shelly-ng wizard implementation (reference), `tasks/`

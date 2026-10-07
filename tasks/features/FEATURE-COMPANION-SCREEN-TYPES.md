@@ -1,10 +1,12 @@
 # Task: Companion Screen Types Implementation
 ID: FEATURE-COMPANION-SCREEN-TYPES
 Type: feature
-Scope: firmware, backend
+Scope: sdk (firmware, see #1237), backend
 Size: medium
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
+Tracking: #1236
+Issues: #1244
 
 ## 1. Business goal
 

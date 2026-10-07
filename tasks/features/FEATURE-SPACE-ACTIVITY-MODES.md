@@ -1,10 +1,12 @@
 # Task: Add activity-based room modes
 ID: FEATURE-SPACE-ACTIVITY-MODES
 Type: feature
-Scope: backend, admin, panel
+Scope: backend
 Size: large
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
 Status: planned
+Tracking: #1287
+Issues: #1292 (definitions and config), #1293 (orchestration), #1294 (activation endpoints and events)
 
 ## 1. Business goal
 
@@ -22,7 +24,9 @@ I want to activate activity-based modes (Work, Relax, Sleep, etc.) that automati
 - **House modes**: `apps/backend/src/modules/system/` (HOME, AWAY, NIGHT)
 - **Lighting modes**: WORK, RELAX, NIGHT (lighting domain only)
 - **Scenes**: `apps/backend/src/modules/scenes/` (arbitrary device commands)
-- **Space intents**: `apps/backend/src/modules/spaces/services/`
+- **Space intents**: `apps/backend/src/plugins/spaces-home-control/services/` (`lighting-intent.service.ts`, `space-intent.service.ts`, ...); intent definitions in `apps/backend/src/plugins/spaces-home-control/spec/definitions/`
+- **Last activity**: `SpaceActivityService` (#1143) only stores a last-activity timestamp and is unrelated to activity modes
+- **Role storage**: new role types go into the unified `SpaceRoleEntity` hierarchy (`apps/backend/src/plugins/spaces-home-control/entities/`, discriminators lighting, climate, covers, sensor, media_binding, active_media) and need an incremental migration, never an edit of the initial migration
 
 ### Concept Differentiation (Key Distinction)
 | Concept | Scope | Orchestration | Customization |
@@ -64,15 +68,7 @@ Backend:
 - Define default mode configurations (what each mode does)
 - Expose REST endpoints for mode operations
 
-Admin:
-- View available modes for a space
-- Customize mode behavior per space (which domains, what values)
-- Enable/disable specific modes per space
-
-Panel:
-- Display available modes as quick action buttons
-- Show currently active mode indicator
-- One-tap mode activation
+Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`, `FEATURE-SPACE-MODE-PANEL-UI`).
 
 **Out of scope**
 - Automatic mode triggers (time, occupancy) - separate task

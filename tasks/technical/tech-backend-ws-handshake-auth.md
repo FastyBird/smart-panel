@@ -4,7 +4,8 @@ Type: technical
 Scope: backend
 Size: small
 Parent: BUG-BACKEND-WS-UNAUTHORIZED-ADMITTED
-Status: review
+Status: done
+Delivered: PR #611
 
 ## 1. Business goal
 

@@ -5,7 +5,18 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: in-progress
+Tracking: #1346
+
+> **Implementation status:** Shipped in #577 and #621: `BackupContributionRegistry`, `BackupService` / `BackupController` with six endpoints and OWNER/ADMIN roles, `MAX_BACKUPS = 5` constant, archive-safety validation and restore; contributions from the config, buddy and system modules; admin `/system/backups` view and `useBackups`. Spaces live in the database, so no separate spaces contribution is needed.
+>
+> **Open items:**
+> - #1347 backend tests (registry, creation, listing, metadata parsing)
+> - #1348 admin tests
+> - #1349 automatic backup before system updates
+> - #1350 configurable retention (currently hard-coded `MAX_BACKUPS = 5`)
+> - #1351 restore version compatibility check (verify first whether it exists)
+> - #1352 website docs
 
 ## 1. Business goal
 
@@ -82,8 +93,8 @@ On restore: files are restored to their original paths based on the metadata.
 - Backup file format: tar.gz containing database, contributed files, and metadata JSON
 - Backup metadata: id, name, version, createdAt, size, contributions list
 - Store backups in FB_DATA_DIR/backups/
-- Auto-create backup before updates (integrate with update executor)
-- Limit stored backups (configurable, default 5)
+- Auto-create backup before updates (integrate with update executor) — not implemented, #1349
+- Limit stored backups (configurable, default 5) — currently a hard-coded constant, #1350
 - Module registrations: config, buddy, spaces, system environment
 
 ### Admin UI
@@ -107,33 +118,33 @@ On restore: files are restored to their original paths based on the metadata.
 
 ### Backend
 
-- [ ] `BackupContributionRegistry` service allows modules to register file/directory paths
-- [ ] Config module registers its config directory
-- [ ] Buddy module registers personality and auth files
-- [ ] Spaces module registers custom YAML files
-- [ ] System module registers environment file
-- [ ] POST /modules/system/backups creates a tar.gz with database + all contributions + metadata
-- [ ] Backup metadata contains: id, name, version, createdAt, sizeBytes, contributions list
-- [ ] GET /modules/system/backups returns list of available backups sorted by date
-- [ ] GET /modules/system/backups/:id/download streams the backup file
-- [ ] POST /modules/system/backups/upload accepts a tar.gz file upload
-- [ ] POST /modules/system/backups/:id/restore stops service, replaces database + contributed files, restarts
-- [ ] DELETE /modules/system/backups/:id removes the backup file
-- [ ] Database is copied (not moved) during backup to avoid locking issues
-- [ ] Restore validates the backup metadata (version compatibility check)
-- [ ] Old backups are automatically cleaned up when limit is exceeded
-- [ ] Endpoints require OWNER or ADMIN role
-- [ ] Unit tests for registry, backup creation, listing, and metadata parsing
+- [x] `BackupContributionRegistry` service allows modules to register file/directory paths
+- [x] Config module registers its config directory
+- [x] Buddy module registers personality and auth files
+- [x] Spaces module registers custom YAML files (not needed: spaces live in the database, no separate contribution)
+- [x] System module registers environment file
+- [x] POST /modules/system/backups creates a tar.gz with database + all contributions + metadata
+- [x] Backup metadata contains: id, name, version, createdAt, sizeBytes, contributions list
+- [x] GET /modules/system/backups returns list of available backups sorted by date
+- [x] GET /modules/system/backups/:id/download streams the backup file
+- [x] POST /modules/system/backups/upload accepts a tar.gz file upload
+- [x] POST /modules/system/backups/:id/restore stops service, replaces database + contributed files, restarts
+- [x] DELETE /modules/system/backups/:id removes the backup file
+- [x] Database is copied (not moved) during backup to avoid locking issues
+- [ ] Restore validates the backup metadata (version compatibility check) (not verified, #1351; archive-safety validation is implemented)
+- [x] Old backups are automatically cleaned up when limit is exceeded
+- [x] Endpoints require OWNER or ADMIN role
+- [ ] Unit tests for registry, backup creation, listing, and metadata parsing (#1347)
 
 ### Admin UI
 
-- [ ] System settings shows "Backups" section with backup list
-- [ ] "Create Backup" opens dialog with optional name field
-- [ ] Backup list shows name, date, version, size with download/restore/delete actions
-- [ ] Download triggers browser file download
-- [ ] Restore shows confirmation dialog with warning about data replacement
-- [ ] Upload accepts .tar.gz files
-- [ ] No regressions in existing system settings
+- [x] System settings shows "Backups" section with backup list
+- [x] "Create Backup" opens dialog with optional name field
+- [x] Backup list shows name, date, version, size with download/restore/delete actions
+- [x] Download triggers browser file download
+- [x] Restore shows confirmation dialog with warning about data replacement
+- [x] Upload accepts .tar.gz files
+- [ ] No regressions in existing system settings (admin tests: #1348)
 
 ## 5. Example scenarios
 

@@ -1,10 +1,12 @@
 # Task: Custom ESPHome Component for Companion Serial Protocol + LVGL
 ID: FEATURE-COMPANION-ESPHOME-COMPONENT
 Type: feature
-Scope: firmware
+Scope: sdk (firmware, see #1237)
 Size: large
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
+Tracking: #1236
+Issues: #1243
 
 ## 1. Business goal
 

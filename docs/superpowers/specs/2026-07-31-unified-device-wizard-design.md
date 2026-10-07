@@ -1,6 +1,6 @@
 # Unified Device Adoption Wizard — Design
 
-**Status:** Approved
+**Status:** Implemented
 **Date:** 2026-07-31
 **Author:** Adam Kadlec
 **Related:** `docs/superpowers/specs/2026-04-30-zigbee2mqtt-device-wizard-design.md`

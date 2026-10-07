@@ -5,6 +5,7 @@ Scope: panel
 Size: large
 Parent: (none)
 Status: planned
+Tracking: #1253
 Created: 2026-03-13
 
 ## 1. Business goal
@@ -137,13 +138,26 @@ Default                       → 😐 Neutral (blink + look)
 | FEATURE-AI-ASSISTANT-PANEL-FACE-MVP | Face widget + buddy integration | medium | **1 - Start here** | planned |
 | FEATURE-AI-ASSISTANT-PANEL-FACE | Extended features & customization | small | 2 - After MVP | planned |
 
+### Issues
+
+- #1254 FacePainter + emotion presets
+- #1255 Blink and look controllers
+- #1256 Demo page
+- #1257 BuddyEmotionMapper (state to emotion)
+- #1258 Face page with tap-to-listen
+- #1259 60fps performance on RPi
+- #1260 Extra emotions + reduced motion
+- #1261 Text bubble
+- #1262 Dashboard tile
+- #1263 Appearance/behavior settings (conflicts with the no-admin-changes constraint, pending a decision)
+
 ### Implementation Phases
 
 ```
 Phase 1: MVP (FEATURE-AI-ASSISTANT-PANEL-FACE-MVP)
 ├── Step 1: Eye rendering with EyeConfig parameters
 ├── Step 2: Mouth rendering with MouthConfig parameters
-├── Step 3: All 12 emotion presets (static)
+├── Step 3: All 14 emotion presets (static)
 ├── Step 4: Smooth interpolated transitions
 ├── Step 5: BlinkController (random blinking)
 ├── Step 6: LookController (eye wandering)
@@ -153,7 +167,7 @@ Phase 1: MVP (FEATURE-AI-ASSISTANT-PANEL-FACE-MVP)
 └── Step 10: Performance testing on RPi
 
 Phase 2: Extensions (FEATURE-AI-ASSISTANT-PANEL-FACE)
-├── Additional emotion presets (18+ total)
+├── Additional emotion presets (20+ total)
 ├── Face as dashboard tile
 ├── Appearance customization
 ├── Text bubble overlay

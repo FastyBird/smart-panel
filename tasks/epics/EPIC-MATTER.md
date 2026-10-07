@@ -1,5 +1,7 @@
 # Task: Matter bridge and controller
 
+This epic is tracked in the GitHub milestone "Matter" (epic #1191).
+
 ID: EPIC-MATTER
 Type: epic
 Scope: backend, admin, installer, spec, website

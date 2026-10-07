@@ -6,6 +6,7 @@ Scope: panel
 Size: small
 Parent: EPIC-BUDDY-HARDENING
 Status: planned
+Tracking: #1264
 
 ## 1. Business goal
 
@@ -20,6 +21,11 @@ I want the buddy chat and voice features to handle edge cases gracefully.
 - Voice auto-play state (`_voiceModeActive`, `_lastAutoPlayedMessageId`) is managed as scattered state variables in `BuddyChatPage` rather than a dedicated state class.
 - `BuddySuggestionModel.fromJson` defaults `createdAt` to `DateTime.now()` when missing, which is misleading for display purposes.
 - Audio error detection in the repository relies on string matching against response messages to distinguish STT vs LLM errors.
+
+### Audit findings (2026-10-07)
+
+- `voice_activation_service.dart:313-316` has the same duration-drift bug as `audio_recording_service.dart` (accumulated timer increments); fix both.
+- `message.dart` and `conversation.dart` also default `createdAt` to `DateTime.now()` when missing, in addition to `BuddySuggestionModel`; cover them in the `createdAt` fix.
 
 ### Impact
 
@@ -50,11 +56,11 @@ I want the buddy chat and voice features to handle edge cases gracefully.
 
 ## 4. Acceptance criteria
 
-- [ ] All model `fromJson` factories handle missing required fields gracefully (default values or explicit error)
-- [ ] `AudioRecordingService` duration tracking uses `DateTime.now().difference(startTime)` instead of accumulating increments
-- [ ] Voice auto-play state extracted to `VoiceAutoPlayState` class used by `BuddyChatPage`
-- [ ] `BuddySuggestionModel.fromJson` does not silently default `createdAt` to `DateTime.now()`
-- [ ] Audio error detection uses HTTP status codes (503 for provider not configured, 504 for timeout) instead of response message string matching
+- [ ] All model `fromJson` factories handle missing required fields gracefully (default values or explicit error) (#1265)
+- [ ] `AudioRecordingService` duration tracking uses `DateTime.now().difference(startTime)` instead of accumulating increments, in `AudioRecordingService` and `voice_activation_service.dart` (#1266)
+- [ ] Voice auto-play state extracted to `VoiceAutoPlayState` class used by `BuddyChatPage` (#1267)
+- [ ] `BuddySuggestionModel.fromJson` does not silently default `createdAt` to `DateTime.now()`, including `message.dart` and `conversation.dart` (#1265)
+- [ ] Audio error detection uses HTTP status codes (503 for provider not configured, 504 for timeout) instead of response message string matching (#1267)
 - [ ] No regressions in existing buddy chat and voice functionality
 
 ## 5. Example scenarios

@@ -1,6 +1,6 @@
 # Virtual Devices — Design
 
-**Status:** Approved
+**Status:** Implemented
 **Date:** 2026-07-31
 **Author:** Adam Kadlec
 **Related:** `tasks/archive/EPIC-VIRTUAL-DEVICES.md` (supersedes its key architectural decisions), `tasks/features/FEATURE-DEVICE-SPLITTER-PLUGIN.md`, `tasks/features/FEATURE-DEVICE-COMPOSITE-PLUGIN.md`
