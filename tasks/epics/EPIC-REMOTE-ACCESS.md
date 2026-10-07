@@ -725,9 +725,40 @@ button target, saving the normalized manual URL through the configuration form a
 sign-in page. All 32 card tests and the admin TypeScript check passed.
 
 Private build, startup, smoke and API evidence is in `remote-access-r4/docker-alpha49`.
-This is local candidate evidence, not a pass for the published alpha.49 image. The Docker checklist
-row remains open until a new release containing the fixes passes; dispatching the old release tag
-would rebuild its old source. AMD64 release validation and Home Assistant acceptance remain unverified.
+This is local candidate evidence, not a pass for the published alpha.49 image. At this point the Docker
+checklist remained open for a new release; dispatching the old release tag would rebuild its old source.
+The subsequent alpha.50 release verification is recorded below. Home Assistant remains unverified.
+
+#### Published alpha.50 Docker acceptance (2026-10-07)
+
+Release `v1.1.0-alpha.50`, commit `afbe3649cb531975584939f9aba4009a16b09bd7`, contains #1229.
+[Release run 37582397688](https://github.com/FastyBird/smart-panel/actions/runs/37582397688)
+successfully built and published both Docker architectures. The normal-runtime smoke passed on the
+native ARM64 runner at 07:00:19 UTC and AMD64 runner at 07:00:28 UTC, checking migrations, Docker
+health, API version, fresh onboarding and a real admin JavaScript asset before manifest publication.
+
+Published platform digests:
+
+- ARM64: `sha256:f592c4f7710396ec89f95c7a25253cee39ba388651bba4d94acb44f94551918f`.
+- AMD64: `sha256:00cd7d460b291af5ea7742410792b523c84a784b84a5d03904d862bf9a48c0c2`.
+
+The Mac independently pulled the exact ARM64 digest and passed the runtime smoke, then ran an isolated
+Compose deployment with fresh storage and loopback-only port 51126. First-owner registration, login
+and onboarding succeeded. Direct admin navigation displayed Tailscale as Unsupported and the Docs
+button targeted the platform documentation URL without previously loading Extensions. API status
+agreed, with privileged setup unavailable; an install request returned HTTP 422 / `platform-unsupported`.
+
+The configuration form saved `http://localhost:51126` as the manual external URL. It appeared as Primary
+with HTTP/Public indicators and the expected `external-url-insecure` / `public-exposure` advisories;
+opening the URL loaded the sign-in page. After forced container recreation with the same data volume,
+Docker became healthy, the authenticated API still returned the same primary URL and unsupported
+provider, and the UI agreed (07:11:06 UTC). This closes the Docker Compose checklist row.
+
+Private evidence is in `remote-access-r4/docker-alpha50`: manifest/digests, both native CI job logs,
+local smoke/Compose logs and `acceptance.json`. The temporary deployment and its volume were removed.
+This is Docker runtime/manual-URL acceptance, not public internet/TLS, Home Assistant or Raspberry Pi
+image acceptance. The Raspberry Pi image jobs were still running when these Docker results were
+recorded; both existing Pi installations were unchanged. The remaining R4 gates and epic stay open.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
@@ -775,7 +806,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 ##### Other deployments
 
-- [ ] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works.
+- [x] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works. Passed on the published alpha.50 ARM64 digest on 2026-10-07, including UI configuration and persistence across container recreation; native ARM64 and AMD64 release runtime smoke tests also passed. The manual URL fixture was loopback-only.
 - [ ] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports each step, and System → Update runs the in-app updater through the privileged worker (the sudo probe must pass with the script's sudoers file).
 
 ## 5. Example scenarios
