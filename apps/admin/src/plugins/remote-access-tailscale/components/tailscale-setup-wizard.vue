@@ -20,6 +20,26 @@
 		</el-steps>
 
 		<div class="min-h-[220px]">
+			<ul
+				v-if="visible && setupStages.length > 0"
+				class="flex flex-col gap-1 mb-4"
+				:aria-label="t('remoteAccessTailscalePlugin.wizard.setupProgress.title')"
+				aria-live="polite"
+			>
+				<li
+					v-for="stage in setupStages"
+					:key="stage.step"
+					:data-setup-step="stage.step"
+					:data-setup-state="stage.state"
+					class="flex items-center gap-2 text-sm"
+				>
+					<el-icon :class="stage.state === 'complete' ? 'text-green-500' : stage.state === 'running' ? 'is-loading' : 'text-gray-400'">
+						<icon :icon="setupStageIcons[stage.state]" />
+					</el-icon>
+					<span>{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.steps.${stage.step}`) }}</span>
+					<span class="text-xs text-gray-500">{{ t(`remoteAccessTailscalePlugin.wizard.setupProgress.states.${stage.state}`) }}</span>
+				</li>
+			</ul>
 			<!-- Set up -->
 			<template v-if="currentStep === 'setup'">
 				<el-alert
@@ -362,6 +382,7 @@ import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../com
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 import { buildTailscaleRemedyPlan, flashTailscaleApiError, resolveTailscaleErrorHintKey } from '../utils/provider-actions';
+import { type TailscaleSetupStageState, getTailscaleSetupStages } from '../utils/setup-progress';
 
 import TailscaleConfigForm from './tailscale-config-form.vue';
 import type { ITailscaleSetupWizardProps, TailscaleWizardStep } from './tailscale-setup-wizard.types';
@@ -394,6 +415,14 @@ const goToStep = (step: TailscaleWizardStep): void => {
 
 const { status, requirements, privilegedSetup, fetchStatus, refreshStatus } = useTailscaleStatus();
 const { progress: effectiveProgress, isInstalling, install, startPolling: startSetupPolling, stopPolling: stopSetupPolling } = useTailscaleSetup();
+const setupStages = computed(() => getTailscaleSetupStages(effectiveProgress.value));
+const setupStageIcons: Record<TailscaleSetupStageState, string> = {
+	pending: 'mdi:circle-outline',
+	running: 'mdi:loading',
+	complete: 'mdi:check-circle',
+	failed: 'mdi:alert-circle',
+	interrupted: 'mdi:help-circle-outline',
+};
 const { isLoggingIn, isPolling, hasPollingTimedOut, login, stopPolling } = useTailscaleLogin();
 const { configPlugin, fetchConfigPlugin } = useConfigPlugin({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 

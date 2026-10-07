@@ -121,6 +121,21 @@
 		},
 		"setupDescription": "Instala el paquete de Tailscale si falta, habilita el demonio y concede a Smart Panel derechos de operador.",
 		"settingUp": "Configurando Tailscale...",
+		"setupProgress": {
+			"title": "Progreso de configuración",
+			"steps": {
+				"install": "Preparar el paquete Tailscale",
+				"daemon": "Activar el servicio Tailscale",
+				"operator": "Conceder acceso al usuario del servicio"
+			},
+			"states": {
+				"pending": "Pendiente",
+				"running": "En curso",
+				"complete": "Completado",
+				"failed": "Error",
+				"interrupted": "Sin confirmar"
+			}
+		},
 		"setupFailed": "El trabajo de configuración no se completó. Puede intentarlo de nuevo.",
 		"signInDescription": "Abra el enlace de inicio de sesión en cualquier dispositivo y apruébelo, o escanee el código QR.",
 		"advancedDescription": "Para instalaciones sin supervisión: pegue una clave de autenticación preautorizada para iniciar sesión sin aprobación interactiva.",

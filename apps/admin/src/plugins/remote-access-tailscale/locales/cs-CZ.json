@@ -121,6 +121,21 @@
 		},
 		"setupDescription": "Nainstaluje balíček Tailscale, pokud chybí, povolí démona a udělí Smart Panelu práva operátora.",
 		"settingUp": "Probíhá nastavení Tailscale...",
+		"setupProgress": {
+			"title": "Průběh nastavení",
+			"steps": {
+				"install": "Připravit balíček Tailscale",
+				"daemon": "Zapnout službu Tailscale",
+				"operator": "Udělit přístup uživateli služby"
+			},
+			"states": {
+				"pending": "Čeká",
+				"running": "Probíhá",
+				"complete": "Dokončeno",
+				"failed": "Selhalo",
+				"interrupted": "Nepotvrzeno"
+			}
+		},
 		"setupFailed": "Úloha nastavení nebyla dokončena. Můžete to zkusit znovu.",
 		"signInDescription": "Otevřete přihlašovací odkaz na libovolném zařízení a potvrďte jej, nebo naskenujte QR kód.",
 		"advancedDescription": "Pro bezobslužné instalace: vložte předautorizovaný přihlašovací klíč a přihlaste se bez interaktivního potvrzení.",

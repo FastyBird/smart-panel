@@ -121,6 +121,21 @@
 		},
 		"setupDescription": "Instaluje pakiet Tailscale, jeśli go brakuje, włącza usługę demona i nadaje Smart Panel uprawnienia operatora.",
 		"settingUp": "Trwa konfigurowanie Tailscale...",
+		"setupProgress": {
+			"title": "Postęp konfiguracji",
+			"steps": {
+				"install": "Przygotuj pakiet Tailscale",
+				"daemon": "Włącz usługę Tailscale",
+				"operator": "Przyznaj dostęp użytkownikowi usługi"
+			},
+			"states": {
+				"pending": "Oczekuje",
+				"running": "W toku",
+				"complete": "Ukończono",
+				"failed": "Błąd",
+				"interrupted": "Niepotwierdzone"
+			}
+		},
 		"setupFailed": "Zadanie konfiguracji nie zostało ukończone. Możesz spróbować ponownie.",
 		"signInDescription": "Otwórz link logowania na dowolnym urządzeniu i zatwierdź go albo zeskanuj kod QR.",
 		"advancedDescription": "Do instalacji bezobsługowych: wklej wstępnie autoryzowany klucz uwierzytelniający, aby zalogować się bez interaktywnego zatwierdzenia.",

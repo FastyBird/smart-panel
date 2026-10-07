@@ -121,6 +121,21 @@
 		},
 		"setupDescription": "Installs the Tailscale package if missing, enables the daemon, and grants Smart Panel operator rights.",
 		"settingUp": "Setting up Tailscale...",
+		"setupProgress": {
+			"title": "Setup progress",
+			"steps": {
+				"install": "Prepare Tailscale package",
+				"daemon": "Enable Tailscale daemon",
+				"operator": "Grant service-user access"
+			},
+			"states": {
+				"pending": "Waiting",
+				"running": "In progress",
+				"complete": "Complete",
+				"failed": "Failed",
+				"interrupted": "Not confirmed"
+			}
+		},
 		"setupFailed": "The setup job did not complete. You can try again.",
 		"signInDescription": "Open the sign-in link on any device and approve it, or scan the QR code.",
 		"advancedDescription": "For headless installs: paste a pre-authorised auth key to sign in without an interactive approval.",

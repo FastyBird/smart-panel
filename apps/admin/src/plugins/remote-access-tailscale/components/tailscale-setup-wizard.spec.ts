@@ -37,9 +37,10 @@ const status = ref<{
 	control?: { enabled: boolean; authentication: string; operation: string | null; availableActions: string[] };
 } | null>(null);
 const requirements = ref<{ code: string; satisfied: boolean; message: string; remedy: { commands: string[]; note: string | null } | null }[]>([]);
-const setup = ref<{ state: string; step: string | null; message: string | null } | null>(null);
+const setup = ref<{ job?: string; state: string; step: string | null; message: string | null } | null>(null);
 const privilegedSetup = ref<{ available: boolean; reason: string | null } | null>({ available: true, reason: null });
 const progress = ref<{
+	job?: string;
 	state: string;
 	step?: string;
 	message?: string;
@@ -157,6 +158,71 @@ describe('TailscaleSetupWizard', () => {
 		fns.flashError.mockReset();
 		fns.flashSuccess.mockReset();
 		fns.copy.mockReset().mockResolvedValue(true);
+	});
+
+	describe('persistent setup stage results', () => {
+		const stageStates = (wrapper: ReturnType<typeof mountWizard>) =>
+			wrapper.findAll('[data-setup-step]').map((stage) => stage.attributes('data-setup-state'));
+
+		it('retains every completed stage after a direct completion jump advances to Sign in', async () => {
+			progress.value = { job: 'job-1', state: 'running', step: 'install' };
+			const wrapper = mountWizard();
+			await flushPromises();
+			expect(stageStates(wrapper)).toEqual(['running', 'pending', 'pending']);
+
+			progress.value = { job: 'job-1', state: 'complete', step: 'complete' };
+			await flushPromises();
+			expect(stepsProp(wrapper)).toBe(1);
+			expect(stageStates(wrapper)).toEqual(['complete', 'complete', 'complete']);
+			await wrapper.setProps({ visible: false });
+			expect(stageStates(wrapper)).toEqual([]);
+			wrapper.unmount();
+		});
+
+		it.each([
+			['daemon', ['complete', 'running', 'pending']],
+			['operator', ['complete', 'complete', 'running']],
+		])('reconstructs results after reload at %s without a websocket event', async (step, expected) => {
+			setup.value = { job: 'job-1', state: 'running', step, message: null };
+			const wrapper = mountWizard();
+			await flushPromises();
+			expect(stageStates(wrapper)).toEqual(expected);
+			wrapper.unmount();
+		});
+
+		it('keeps completed results visible on Options for an authenticated node', async () => {
+			status.value = {
+				state: 'connected',
+				endpoints: [],
+				control: { enabled: true, authentication: 'authenticated', operation: null, availableActions: [] },
+			};
+			setup.value = { job: 'job-1', state: 'complete', step: 'complete', message: null };
+			const wrapper = mountWizard();
+			await flushPromises();
+			expect(stepsProp(wrapper)).toBe(2);
+			expect(stageStates(wrapper)).toEqual(['complete', 'complete', 'complete']);
+			wrapper.unmount();
+		});
+
+		it('shows a failed named stage and does not carry successes into a retry job', async () => {
+			progress.value = { job: 'job-1', state: 'failed', step: 'operator' };
+			const wrapper = mountWizard();
+			await flushPromises();
+			expect(stageStates(wrapper)).toEqual(['complete', 'complete', 'failed']);
+			progress.value = { job: 'job-2', state: 'running' };
+			await nextTick();
+			expect(stageStates(wrapper)).toEqual(['pending', 'pending', 'pending']);
+			wrapper.unmount();
+		});
+
+		it.each(['failed', 'timeout'])('does not infer success from satisfied prerequisites for an unknown %s result', async (state) => {
+			requirements.value = [{ code: 'binary-installed', satisfied: true, message: 'Installed', remedy: null }];
+			progress.value = { job: 'job-1', state, step: 'unknown' };
+			const wrapper = mountWizard();
+			await flushPromises();
+			expect(stageStates(wrapper)).toEqual(['interrupted', 'interrupted', 'interrupted']);
+			wrapper.unmount();
+		});
 	});
 
 	it.each([false, true])('ignores a delayed completion-read failure after closing the wizard (reopened: %s)', async (reopened) => {
