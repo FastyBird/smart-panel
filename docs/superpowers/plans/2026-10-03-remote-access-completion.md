@@ -464,6 +464,20 @@ configuration/reachability/persistence. The Docker checklist row is complete. Ho
 remaining R4 gates are still open; this loopback-only Docker test does not certify public internet/TLS
 or Raspberry Pi images. See the epic's verification section for exact digests and evidence boundaries.
 
+### Clean host installer regression (2026-10-07)
+
+A clean Bookworm Pi 4 installed the published alpha.49 npm packages through `install-server.sh` and
+passed onboarding and the sudo probe. Real Tailscale UI setup nevertheless failed: its scope inherited
+`ProtectSystem=strict`, preventing writes to the apt keyring. Setup now selects an independent
+transient service through the existing privileged worker. The equivalent on-device candidate installed
+Tailscale from apt, restored progress after a page reload and satisfied all prerequisites without
+loosening backend hardening. Three focused suites passed 102 tests, including the service launch
+contract and existing worker lifecycle coverage. The candidate was restored to the original release
+before testing the npm updater. The actual System UI upgrade from alpha.49 to published alpha.50
+then passed, preserving the owner, authenticated session and plugin configuration. Published-release
+fresh-package setup acceptance remains pending; see the epic verification section for timestamps
+and evidence boundaries.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

@@ -122,7 +122,7 @@ describe('TailscaleSetupService', () => {
 	});
 
 	describe('install', () => {
-		it('spawns the privileged job with the expected unit, script, env and status file', async () => {
+		it('launches package installation as an independent service outside the backend filesystem sandbox', async () => {
 			const result = await service.install();
 
 			expect(result).toEqual({ id: 'job-1' });
@@ -132,6 +132,9 @@ describe('TailscaleSetupService', () => {
 			const env = spec.env ?? {};
 
 			expect(spec.unit).toBe(TAILSCALE_SETUP_WORKER_UNIT);
+			// A scope would inherit ProtectSystem=strict and fail writing /usr/share/keyrings
+			// even after sudo succeeds. This must stay an independently launched service.
+			expect(spec.unitType).toBe('service');
 			expect(spec.script.endsWith(join('scripts', 'tailscale-setup.sh'))).toBe(true);
 			expect(spec.args).toEqual([]);
 			expect(spec.statusFile).toBe(join(dataDir, 'remote-access', 'tailscale-setup-status.json'));
