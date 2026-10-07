@@ -694,6 +694,41 @@ Private evidence is in `pi4-alpha49-funnel`: the blocked/allowed API and UI capt
 the extra-handler probes, `serve-restored.json` and `progress.json`. This completes the Funnel row,
 not the remaining R4 gates.
 
+#### Docker runtime regression and local candidate (2026-10-07)
+
+The published alpha.49 ARM64 image (`sha256:b0d4c7ce376e06cd64d20c87cd40d4510bb1a60ea70d5afd90adf01112fa87bb`)
+failed before backend startup: the migration command could not resolve `/app/node_modules/typeorm/cli.js`.
+Flattening the pnpm workspace broke dependency links, and the runtime omitted the built extension SDK.
+The image also omitted `PLATFORM_TYPE=docker`; after correcting packaging, the Alpine healthcheck
+failed because `localhost` selected IPv6 while the backend listened on IPv4.
+
+The local ARM64 candidate, based on `41b60253c`, preserves the workspace dependency layout and SDK,
+sets the Docker platform in the image and Compose, and probes `127.0.0.1` for container health.
+The release workflow now runs the normal migration/start command against fresh storage and requires
+container health, the expected API version, fresh onboarding, admin HTML and a real JavaScript asset
+before publishing the multi-platform manifest. The old package-version-only check could not detect
+the startup failure.
+
+An isolated Compose deployment on the Mac passed startup, first-owner registration and onboarding.
+Tailscale reported `unsupported`, with privileged setup unavailable; an actual install request returned
+HTTP 422 / `platform-unsupported` without starting a setup job. The manual URL
+`HTTP://LOCALHOST:51124/` normalized to `http://localhost:51124`, appeared as the primary external URL,
+survived container recreation with the same data volume and opened the admin sign-in page. The UI
+showed the expected HTTP/public-exposure advisories. This was a loopback-only acceptance fixture,
+not a public internet or TLS test; both Raspberry Pis were unchanged.
+
+Direct navigation also exposed a missing documentation button: extension metadata had not been loaded.
+The card now falls back to the platform requirement's validated HTTP(S) documentation URL without an
+extra metadata request. Focused card tests cover that fallback, preferred metadata and invalid URLs.
+The final built admin passed browser login, direct navigation to the unsupported card, the Docs
+button target, saving the normalized manual URL through the configuration form and opening its
+sign-in page. All 32 card tests and the admin TypeScript check passed.
+
+Private build, startup, smoke and API evidence is in `remote-access-r4/docker-alpha49`.
+This is local candidate evidence, not a pass for the published alpha.49 image. The Docker checklist
+row remains open until a new release containing the fixes passes; dispatching the old release tag
+would rebuild its old source. AMD64 release validation and Home Assistant acceptance remain unverified.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

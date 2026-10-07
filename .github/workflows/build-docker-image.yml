@@ -102,7 +102,7 @@ jobs:
           cache-from: "type=gha,scope=docker-${{ matrix.arch }}"
           cache-to: "type=gha,mode=max,scope=docker-${{ matrix.arch }}"
 
-      - name: "Verify built package version"
+      - name: "Verify built runtime"
         shell: bash
         env:
           DIGEST: "${{ steps.build.outputs.digest }}"
@@ -111,10 +111,8 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
-          actual="$(docker run --rm --platform "$PLATFORM" --entrypoint node \
-            "ghcr.io/fastybird/smart-panel@$DIGEST" \
-            -p "require('/app/package.json').version")"
-          test "$actual" = "$VERSION"
+          bash scripts/test-docker-runtime.sh \
+            "ghcr.io/fastybird/smart-panel@$DIGEST" "$VERSION" "$PLATFORM"
 
       - name: "Retain platform digest"
         shell: bash

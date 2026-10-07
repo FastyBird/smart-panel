@@ -88,16 +88,19 @@ FROM node:24-alpine AS runtime
 
 RUN apk add --no-cache tini
 
-WORKDIR /app
+WORKDIR /app/apps/backend
 
-# Copy backend build output and dependencies
+# Preserve the workspace layout: pnpm links resolve relative to these directories.
 COPY --from=backend-builder /build/apps/backend/dist/ ./dist/
 COPY --from=backend-builder /build/apps/backend/package.json ./
 COPY --from=backend-builder /build/apps/backend/node_modules/ ./node_modules/
-COPY --from=backend-builder /build/node_modules/ /app/root_node_modules/
+COPY --from=backend-builder /build/node_modules/ /app/node_modules/
+COPY --from=backend-builder /build/packages/extension-sdk/dist/ /app/packages/extension-sdk/dist/
+COPY --from=backend-builder /build/packages/extension-sdk/package.json /app/packages/extension-sdk/
+COPY --from=backend-builder /build/packages/extension-sdk/node_modules/ /app/packages/extension-sdk/node_modules/
 
 # Copy admin static files into backend's static directory
-COPY --from=admin-builder /build/apps/admin/dist/ ./static/
+COPY --from=admin-builder /build/apps/admin/dist/ /app/static/
 
 # Copy seed/config data
 COPY var/ /app/var/
@@ -107,7 +110,7 @@ RUN mkdir -p /data/db /data/config
 
 # Environment defaults
 ENV NODE_ENV=production \
-	NODE_PATH=/app/root_node_modules \
+	PLATFORM_TYPE=docker \
 	FB_BACKEND_PORT=3000 \
 	FB_ADMIN_UI_PATH=/app/static \
 	FB_DB_PATH=/data/db \
@@ -118,7 +121,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-	CMD wget -qO- http://localhost:${FB_BACKEND_PORT}/api/v1/modules/system/system/health || exit 1
+	CMD wget -qO- http://127.0.0.1:${FB_BACKEND_PORT}/api/v1/modules/system/system/health || exit 1
 
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]

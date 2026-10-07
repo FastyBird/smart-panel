@@ -26,13 +26,14 @@ services:
       - smart-panel-data:/data
     environment:
       NODE_ENV: production
+      PLATFORM_TYPE: docker
       FB_BACKEND_PORT: 3000
       FB_TOKEN_SECRET: "${FB_TOKEN_SECRET:?Set FB_TOKEN_SECRET (openssl rand -base64 32)}"
       FB_DB_PATH: /data/db
       FB_CONFIG_PATH: /data/config
       FB_ADMIN_UI_PATH: /app/static
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/modules/system/system/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/v1/modules/system/system/health"]
       interval: 30s
       timeout: 10s
       start_period: 30s
