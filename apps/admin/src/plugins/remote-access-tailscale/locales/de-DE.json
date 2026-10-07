@@ -121,6 +121,21 @@
 		},
 		"setupDescription": "Installiert das Tailscale-Paket, falls es fehlt, aktiviert den Daemon und gewährt Smart Panel Operator-Rechte.",
 		"settingUp": "Tailscale wird eingerichtet ...",
+		"setupProgress": {
+			"title": "Einrichtungsfortschritt",
+			"steps": {
+				"install": "Tailscale-Paket vorbereiten",
+				"daemon": "Tailscale-Dienst aktivieren",
+				"operator": "Dienstbenutzer Zugriff gewähren"
+			},
+			"states": {
+				"pending": "Ausstehend",
+				"running": "In Bearbeitung",
+				"complete": "Abgeschlossen",
+				"failed": "Fehlgeschlagen",
+				"interrupted": "Nicht bestätigt"
+			}
+		},
 		"setupFailed": "Der Einrichtungsjob wurde nicht abgeschlossen. Sie können es erneut versuchen.",
 		"signInDescription": "Öffnen Sie den Anmeldelink auf einem beliebigen Gerät und bestätigen Sie ihn, oder scannen Sie den QR-Code.",
 		"advancedDescription": "Für unbeaufsichtigte Installationen: Fügen Sie einen vorautorisierten Anmeldeschlüssel ein, um sich ohne interaktive Bestätigung anzumelden.",
