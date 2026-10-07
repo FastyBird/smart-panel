@@ -53,6 +53,9 @@ export const CLOUDFLARED_READY_GRACE_MS = 60_000;
 /** Grace period between SIGTERM and SIGKILL when stopping the `cloudflared` child process. */
 export const CLOUDFLARED_STOP_GRACE_MS = 10_000;
 
+/** Maximum wait for confirmed termination after SIGKILL, before stop rejects and retains ownership. */
+export const CLOUDFLARED_STOP_KILL_TIMEOUT_MS = 2_000;
+
 /** Number of most-recent stderr lines retained from the `cloudflared` child process, token-redacted. */
 export const CLOUDFLARED_STDERR_RING_SIZE = 64;
 

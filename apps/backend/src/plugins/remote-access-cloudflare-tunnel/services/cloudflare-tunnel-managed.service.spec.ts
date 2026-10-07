@@ -445,6 +445,58 @@ describe('CloudflareTunnelManagedService', () => {
 
 			expect(service.getState()).toBe('error');
 		});
+
+		it('preserves the stop error when recovery is requested while the old child is still owned', async () => {
+			await service.start();
+			processService.isRunning.mockReturnValue(true);
+			processService.stop.mockRejectedValue(new Error('termination not confirmed'));
+			await expect(service.stop()).rejects.toThrow('termination not confirmed');
+			processService.start.mockClear();
+			metricsService.fetchReady.mockResolvedValue({ readyConnections: 1, connectorId: 'old-child' });
+			eventEmitterMock.emit.mockClear();
+
+			await expect(service.start()).rejects.toThrow('termination not confirmed');
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(service.getState()).toBe('error');
+			expect(await service.computeStatus()).toMatchObject({ state: 'error', message: 'termination not confirmed' });
+			expect(processService.start).not.toHaveBeenCalled();
+			expect(metricsService.fetchReady).not.toHaveBeenCalled();
+			expect(eventEmitterMock.emit).not.toHaveBeenCalled();
+		});
+
+		it('can recover after a late exit releases the old child following a failed stop', async () => {
+			await service.start();
+			processService.isRunning.mockReturnValue(true);
+			processService.stop.mockRejectedValue(new Error('termination not confirmed'));
+			await expect(service.stop()).rejects.toThrow('termination not confirmed');
+			processService.start.mockClear();
+			processService.isRunning.mockReturnValue(false);
+
+			await service.start();
+
+			expect(service.getState()).toBe('started');
+			expect(processService.start).toHaveBeenCalledTimes(1);
+			processService.isRunning.mockReturnValue(true);
+			metricsService.fetchReady.mockResolvedValue({ readyConnections: 1, connectorId: 'replacement' });
+			await jest.advanceTimersByTimeAsync(0);
+			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({ status: expect.objectContaining({ state: 'connected' }) as unknown }),
+			);
+		});
+
+		it('keeps self-healing an ordinary failed spawn that owns no child', async () => {
+			processService.start.mockImplementationOnce(() => {
+				throw new Error('spawn failed');
+			});
+
+			await expect(service.start()).resolves.toBeUndefined();
+			expect(service.getState()).toBe('started');
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(processService.start).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('onConfigChanged()', () => {

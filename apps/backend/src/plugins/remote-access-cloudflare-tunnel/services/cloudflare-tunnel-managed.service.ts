@@ -145,14 +145,22 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	}
 
 	/**
-	 * Never throws (self-healing, matching the Tailscale node's D3 philosophy): unsatisfied
+	 * Self-healing (matching the Tailscale node's D3 philosophy): unsatisfied
 	 * requirements simply skip spawning the process, the poller keeps running, and
 	 * `computeStatus()` reports `not-installed`/`setup-required` until an admin fixes it.
+	 * Recovery after a failed stop throws while the old process is still owned: it cannot
+	 * pick up new configuration, and reporting it as started would hide the stop failure.
 	 */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
 			if (this.state === 'started') {
 				return;
+			}
+
+			if (this.state === 'error' && this.processService.isRunning()) {
+				throw new CloudflareTunnelStopFailedException(
+					this.lastError ?? 'The previous cloudflared process has not terminated.',
+				);
 			}
 
 			const generation = ++this.generation;

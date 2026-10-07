@@ -7,6 +7,7 @@ import {
 	CLOUDFLARED_BINARY,
 	CLOUDFLARED_STDERR_RING_SIZE,
 	CLOUDFLARED_STOP_GRACE_MS,
+	CLOUDFLARED_STOP_KILL_TIMEOUT_MS,
 	REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
 } from '../remote-access-cloudflare-tunnel.constants';
 
@@ -23,6 +24,14 @@ export interface CloudflaredExitInfo {
 	signal: NodeJS.Signals | null;
 }
 
+interface CloudflaredProcessState {
+	child: ChildProcess;
+	token: string;
+	stderrCarry: string;
+	terminated: boolean;
+	stopPromise?: Promise<void>;
+}
+
 /**
  * Spawns and supervises `cloudflared tunnel ... run` as a child process of the backend (D9) —
  * never through `cloudflared service install`/systemd. The token is handed to the child only
@@ -36,15 +45,14 @@ export class CloudflaredProcessService {
 		'CloudflaredProcessService',
 	);
 
-	private child: ChildProcess | null = null;
+	private processState: CloudflaredProcessState | null = null;
+	private latestProcess: CloudflaredProcessState | null = null;
 	private startedAt: number | null = null;
-	private currentToken = '';
 	private stderrRing: string[] = [];
-	private stderrCarry = '';
 	private lastExit: CloudflaredExitInfo | null = null;
 
 	isRunning(): boolean {
-		return this.child !== null;
+		return this.processState !== null;
 	}
 
 	/** `Date.now()` timestamp of the current spawn, or `null` while not running. */
@@ -75,13 +83,11 @@ export class CloudflaredProcessService {
 
 	/** Idempotent — a call while already running is a no-op, matching the managed service's own tolerant `start()` pattern. */
 	start(options: CloudflaredProcessOptions): void {
-		if (this.child) {
+		if (this.processState) {
 			return;
 		}
 
-		this.currentToken = options.token;
 		this.stderrRing = [];
-		this.stderrCarry = '';
 		this.lastExit = null;
 
 		const args = [
@@ -105,78 +111,139 @@ export class CloudflaredProcessService {
 			stdio: ['ignore', 'pipe', 'pipe'],
 		});
 
-		this.child = child;
+		const state: CloudflaredProcessState = { child, token: options.token, stderrCarry: '', terminated: false };
+
+		this.processState = state;
+		this.latestProcess = state;
 		this.startedAt = Date.now();
 
-		child.stderr?.on('data', (chunk: Buffer) => {
-			this.appendStderr(chunk.toString('utf8'));
-		});
+		const onData = (chunk: Buffer): void => this.appendStderr(state, chunk.toString('utf8'));
+		const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
+			this.markTerminated(state, { code, signal });
+		};
+		const onError = (error: Error): void => {
+			this.appendStderr(state, `${error.message}\n`);
 
-		child.once('exit', (code, signal) => {
-			this.lastExit = { code, signal };
-			this.child = null;
-			this.startedAt = null;
-		});
+			if (this.latestProcess === state) {
+				this.logger.warn(`cloudflared process error: ${this.redact(state, error.message)}`);
+			}
 
-		child.once('error', (error) => {
-			this.appendStderr(`${error.message}\n`);
-			this.lastExit = { code: null, signal: null };
-			this.child = null;
-			this.startedAt = null;
+			// A failed spawn has no PID. Runtime errors (including failed signals) do not prove exit.
+			if (child.pid === undefined) {
+				this.markTerminated(state, { code: null, signal: null });
+			}
+		};
+		const onClose = (code: number | null, signal: NodeJS.Signals | null): void => {
+			this.markTerminated(state, { code, signal });
 
-			this.logger.warn(`cloudflared failed to spawn: ${error.message}`);
-		});
+			if (state.stderrCarry) {
+				this.appendStderr(state, '\n');
+			}
+
+			child.stderr?.removeListener('data', onData);
+			child.removeListener('exit', onExit);
+			child.removeListener('error', onError);
+			child.removeListener('close', onClose);
+		};
+
+		child.stderr?.on('data', onData);
+		child.once('exit', onExit);
+		child.on('error', onError);
+		child.once('close', onClose);
 	}
 
 	/**
-	 * SIGTERM, then SIGKILL after `graceMs` (default {@link CLOUDFLARED_STOP_GRACE_MS}) if the
-	 * process has not exited by then. Resolves once the process has actually exited (via either
-	 * path) — a no-op when nothing is running.
+	 * SIGTERM, then SIGKILL after `graceMs`. Rejects after a bounded wait if termination
+	 * cannot be confirmed, retaining ownership so another process cannot be started alongside it.
 	 */
 	async stop(graceMs: number = CLOUDFLARED_STOP_GRACE_MS): Promise<void> {
-		const child = this.child;
+		const state = this.processState;
 
-		if (!child) {
+		if (!state) {
 			return;
 		}
 
-		await new Promise<void>((resolve) => {
-			const timer = setTimeout(() => {
-				try {
-					child.kill('SIGKILL');
-				} catch {
-					// Already gone.
+		if (state.stopPromise !== undefined) {
+			return state.stopPromise;
+		}
+
+		const { child } = state;
+		const stopPromise = new Promise<void>((resolve, reject) => {
+			let timer: ReturnType<typeof setTimeout>;
+			const cleanup = (): void => {
+				clearTimeout(timer);
+				child.removeListener('exit', onTerminated);
+				child.removeListener('close', onTerminated);
+				child.removeListener('error', onError);
+			};
+			const onTerminated = (): void => {
+				cleanup();
+				resolve();
+			};
+			const onError = (): void => {
+				if (state.terminated) {
+					onTerminated();
 				}
+			};
+			const signal = (name: NodeJS.Signals): void => {
+				try {
+					child.kill(name);
+				} catch {
+					// A failed signal does not prove exit. Keep waiting for exit/close or the bound.
+				}
+			};
+
+			child.once('exit', onTerminated);
+			child.once('close', onTerminated);
+			child.on('error', onError);
+			timer = setTimeout(() => {
+				timer = setTimeout(() => {
+					cleanup();
+					reject(new Error('cloudflared termination could not be confirmed after SIGKILL'));
+				}, CLOUDFLARED_STOP_KILL_TIMEOUT_MS);
+				timer.unref?.();
+				signal('SIGKILL');
 			}, graceMs);
-
 			timer.unref?.();
-
-			child.once('exit', () => {
-				clearTimeout(timer);
-				resolve();
-			});
-
-			try {
-				child.kill('SIGTERM');
-			} catch {
-				clearTimeout(timer);
-				resolve();
-			}
+			signal('SIGTERM');
 		});
 
-		this.child = null;
-		this.startedAt = null;
+		state.stopPromise = stopPromise;
+
+		try {
+			await stopPromise;
+		} finally {
+			state.stopPromise = undefined;
+		}
 	}
 
-	private appendStderr(text: string): void {
-		this.stderrCarry += text;
+	private markTerminated(state: CloudflaredProcessState, exit: CloudflaredExitInfo): void {
+		if (state.terminated) {
+			return;
+		}
 
-		const lines = this.stderrCarry.split('\n');
+		state.terminated = true;
 
-		this.stderrCarry = lines.pop() ?? '';
+		if (this.processState === state) {
+			this.lastExit = exit;
+			this.processState = null;
+			this.startedAt = null;
+		}
+	}
+
+	private appendStderr(state: CloudflaredProcessState, text: string): void {
+		if (this.latestProcess !== state) {
+			return;
+		}
+
+		state.stderrCarry += text;
+
+		const lines = state.stderrCarry.split('\n');
+
+		state.stderrCarry = lines.pop() ?? '';
 
 		for (const rawLine of lines) {
-			this.stderrRing.push(this.redact(rawLine));
+			this.stderrRing.push(this.redact(state, rawLine));
 
 			if (this.stderrRing.length > CLOUDFLARED_STDERR_RING_SIZE) {
 				this.stderrRing.shift();
@@ -184,12 +251,12 @@ export class CloudflaredProcessService {
 		}
 	}
 
-	/** Replaces every occurrence of the current tunnel token with a placeholder — the token must never reach a log line, error message or stderr excerpt. */
-	private redact(line: string): string {
-		if (!this.currentToken) {
+	/** Replaces every occurrence of the child’s tunnel token with a placeholder — the token must never reach a log line, error message or stderr excerpt. */
+	private redact(state: CloudflaredProcessState, line: string): string {
+		if (!state.token) {
 			return line;
 		}
 
-		return line.split(this.currentToken).join('***redacted***');
+		return line.split(state.token).join('***redacted***');
 	}
 }
