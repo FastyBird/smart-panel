@@ -438,22 +438,38 @@ HTTP client/auth middleware and ignored-abort late replies. Admin lint passed wi
 warnings. The full suite before the final middleware correction passed 3,327 tests with one
 15-second timeout in the unchanged virtual-device wizard; that entire 18-test suite passed when
 rerun alone. The final correction was verified by the focused tests and type checking.
+[PR #1234](https://github.com/FastyBird/smart-panel/pull/1234) merged as `74b88590b` after
+all CI checks passed and CodeRabbit reported minimal merge risk for the final commit.
 
-The separate backend audit identified the following schedules for the next regression/fix batch:
+The first backend correction addresses child-process ownership and termination:
 
-- A child that emits no `exit` after SIGKILL can leave stop waiting indefinitely. An error/close-only
-  spawn failure and a thrown kill need explicit, bounded outcomes without abandoning a live child.
-- Old child exit/error/stderr callbacks and a previous stop continuation can affect a replacement
-  child. Token redaction must belong to the emitting child, including logged errors.
+- Stop sends SIGTERM, escalates after the existing 10-second grace, then rejects after another
+  two seconds if termination is still unconfirmed. Failed signals do not imply exit. The service
+  retains ownership, reports an error and permits another stop attempt or a genuine late exit.
+- Concurrent stops share the same termination attempt. Exit, close-only and failed-spawn errors
+  settle the wait; terminal paths release timers and wait listeners.
+- Child identity guards isolate old exit/error/stderr callbacks and stop continuations from a
+  replacement. Stderr carry and token redaction belong to their originating child; logged errors
+  are redacted too.
+- Managed start refuses recovery from a failed stop while the old child remains owned, so a
+  config restart cannot present the old tunnel as a successfully started replacement. Recovery
+  after a late exit and ordinary failed-spawn self-healing remain available.
+- The real SIGKILL regression waits for a signal-handler readiness sentinel and asserts SIGKILL.
+
+Validation: all 20 Cloudflare/Extensions suites passed (229 tests), full backend type checking and
+changed-file lint/format passed. Deterministic ownership regressions failed against the pre-fix
+source; real child-process tests cover normal stop, crash and forced termination. This is local
+code validation, not real-tunnel acceptance.
+
+Two source-reviewed backend gaps remain for the next regression/fix batch:
+
 - A hostname-only config change invalidates an in-flight poll without replacing its consumed timer;
   polling and crash recovery must continue in the new generation.
 - A child can exit while `/ready` is pending; the old successful response must not publish Connected.
-- The real SIGKILL test must wait until its stub installs the SIGTERM handler and assert the actual
-  exit signal, rather than accepting any quick exit.
 
-These are source-reviewed gaps, not yet passing regressions or real-tunnel evidence. R5 still needs
-an identified release, a dedicated Cloudflare tunnel/public hostname, token configure/replace/remove,
-external TLS/login/WebSocket/client-address checks, crash/network recovery, reboot/reset and upgrade.
+R5 still needs an identified release, a dedicated Cloudflare tunnel/public hostname, token
+configure/replace/remove, external TLS/login/WebSocket/client-address checks, crash/network
+recovery, reboot/reset and upgrade. R4's pending node-expiry test remains unchanged.
 
 ### R3 implementation verification (2026-10-04)
 

@@ -35,6 +35,7 @@ describe('CloudflaredProcessService', () => {
 			'if (mode === "ignore-sigterm") {',
 			'  process.on("SIGTERM", () => { process.stderr.write("SIGTERM ignored\\n"); });',
 			'}',
+			'process.stderr.write("signal handlers ready\\n");',
 			'setInterval(() => {}, 60000);',
 			'',
 		].join('\n');
@@ -143,13 +144,14 @@ describe('CloudflaredProcessService', () => {
 		writeFakeCloudflared('ignore-sigterm');
 
 		service.start({ token: TOKEN, protocol: 'auto', metricsAddress: '127.0.0.1:20246' });
-		await waitFor(() => service.isRunning());
+		await waitFor(() => service.getStderrLines().includes('signal handlers ready'));
 
 		const startedAt = Date.now();
 
 		await service.stop(100);
 
 		expect(service.isRunning()).toBe(false);
+		expect(service.getLastExit()).toEqual({ code: null, signal: 'SIGKILL' });
 		// Proves SIGKILL actually fired: the process ignores SIGTERM outright, so exit could only
 		// happen once the grace timer escalated — bounded well under the real 10s production grace.
 		expect(Date.now() - startedAt).toBeLessThan(5000);
