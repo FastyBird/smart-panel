@@ -35,8 +35,7 @@ I want to customize the face appearance, add it as a dashboard tile, and configu
 **Out of scope**
 
 - Core face rendering (done in MVP)
-- Buddy module changes
-- Backend changes
+- Buddy module and backend changes, except the face settings fields added to the buddy module config in #1263 (no new endpoints, no other buddy module logic)
 
 ## 4. Acceptance criteria
 
