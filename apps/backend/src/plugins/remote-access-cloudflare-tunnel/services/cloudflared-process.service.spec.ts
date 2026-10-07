@@ -99,6 +99,27 @@ describe('CloudflaredProcessService', () => {
 		expect(service.getStartedAt()).not.toBeNull();
 	});
 
+	it('uses distinct child identities even when replacement spawns share a timestamp', async () => {
+		writeFakeCloudflared('run');
+		const now = jest.spyOn(Date, 'now').mockReturnValue(1234);
+		try {
+			expect(service.getProcessIdentity()).toBeNull();
+			service.start({ token: TOKEN, protocol: 'auto', metricsAddress: '127.0.0.1:20246' });
+			const identity = service.getProcessIdentity();
+			expect(identity).not.toBeNull();
+			expect(service.getStartedAt()).toBe(1234);
+			service.start({ token: TOKEN, protocol: 'auto', metricsAddress: '127.0.0.1:20246' });
+			expect(service.getProcessIdentity()).toBe(identity);
+			await service.stop(50);
+			expect(service.getProcessIdentity()).toBeNull();
+			service.start({ token: TOKEN, protocol: 'auto', metricsAddress: '127.0.0.1:20246' });
+			expect(service.getStartedAt()).toBe(1234);
+			expect(service.getProcessIdentity()).not.toBe(identity);
+		} finally {
+			now.mockRestore();
+		}
+	});
+
 	it('is idempotent — a second start() call while already running does not respawn', async () => {
 		writeFakeCloudflared('run');
 

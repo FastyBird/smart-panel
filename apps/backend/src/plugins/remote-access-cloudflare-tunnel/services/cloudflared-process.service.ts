@@ -26,6 +26,7 @@ export interface CloudflaredExitInfo {
 
 interface CloudflaredProcessState {
 	child: ChildProcess;
+	identity: symbol;
 	token: string;
 	stderrCarry: string;
 	terminated: boolean;
@@ -53,6 +54,11 @@ export class CloudflaredProcessService {
 
 	isRunning(): boolean {
 		return this.processState !== null;
+	}
+
+	/** Opaque identity of the owned child, distinct even for spawns in the same millisecond. */
+	getProcessIdentity(): symbol | null {
+		return this.processState?.identity ?? null;
 	}
 
 	/** `Date.now()` timestamp of the current spawn, or `null` while not running. */
@@ -111,7 +117,13 @@ export class CloudflaredProcessService {
 			stdio: ['ignore', 'pipe', 'pipe'],
 		});
 
-		const state: CloudflaredProcessState = { child, token: options.token, stderrCarry: '', terminated: false };
+		const state: CloudflaredProcessState = {
+			child,
+			identity: Symbol(),
+			token: options.token,
+			stderrCarry: '',
+			terminated: false,
+		};
 
 		this.processState = state;
 		this.latestProcess = state;

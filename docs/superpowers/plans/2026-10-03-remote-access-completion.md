@@ -471,6 +471,31 @@ R5 still needs an identified release, a dedicated Cloudflare tunnel/public hostn
 configure/replace/remove, external TLS/login/WebSocket/client-address checks, crash/network
 recovery, reboot/reset and upgrade. R4's pending node-expiry test remains unchanged.
 
+### R5 polling follow-up (2026-10-07)
+
+[PR #1235](https://github.com/FastyBird/smart-panel/pull/1235) merged as `6398216c9` after
+all CI checks passed and CodeRabbit reported minimal merge risk for the final commit, with no
+actionable review comments.
+
+The polling correction addresses both gaps recorded above. A hostname-only update clears the old
+poll timer and rearms it after its observation only if it still owns the current generation. Stop
+and newer config updates cannot be superseded by an old continuation. Connecting/stable cadence
+remains five/thirty seconds, including the recovery poll after a hostname change.
+
+Each spawned child has an opaque identity distinct from its start timestamp. Status collection
+checks liveness and that identity after awaiting readiness, so an exited or replaced child's
+response cannot publish Connected, endpoints, proxy addresses or obsolete connector metadata.
+
+Validation: 21 suites / 244 tests passed across Cloudflare, Extensions and the shared observation
+helper; full backend type checking and changed-file lint/format passed. Tests reproduce interrupted
+polling, rapid hostname changes, stop supersession and stale readiness on both the polling and
+status-request paths. Four regressions failed against the pre-fix managed-service source, including
+the REST exit case that previously returned Connected with the obsolete connector and proxy trust.
+A real-process test confirms distinct identities for replacements sharing a start timestamp.
+
+Cloudflare hardware acceptance remains pending, and the test Pi's Tailscale login is left unchanged
+for natural expiry. These code tests do not substitute for release installation or a real tunnel.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
