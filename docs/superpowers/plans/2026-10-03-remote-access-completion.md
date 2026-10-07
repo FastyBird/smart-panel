@@ -533,6 +533,62 @@ external TLS/login/WebSocket or lifecycle acceptance can proceed. The successful
 upgrade does not establish Cloudflare provider upgrade preservation while connected. R5 remains
 open, and Pi 4 has not been changed.
 
+### R5 staging public-access acceptance (2026-10-08)
+
+[PR #1366](https://github.com/FastyBird/smart-panel/pull/1366) merged as `7a996c625`.
+Its transient-service setup correction is verified on the separate staging Raspberry Pi 5
+(`192.168.2.22`, image installation), running `v1.1.0-alpha.53`, release tag `3493f2893`.
+The tag includes version synchronization and a subsequent documentation-only merge; the published
+server runtime was separately checked for the setup correction and matched the backend npm package.
+
+The normal System-module upgrade from alpha.52 completed after a verified database/configuration
+backup. All 111 devices, topology, schema, 28 migration rows, configuration, accounts and long-lived
+tokens were preserved. Existing-session and fresh-login checks passed; Tailscale retained its identity
+and connection. The deployed 1,719 backend files and 250 admin files matched the verified release.
+This upgrade preceded Cloudflare configuration and does **not** prove a connected Cloudflare upgrade.
+
+Cloudflare setup could now write the signed repository keyring outside the application sandbox.
+The first alpha.53 job then failed during APT index refresh because the Debian/Raspberry Pi HTTP
+repositories reported missing Release files. Subsequent endpoint checks and a diagnostic APT refresh
+succeeded without changing repository/network settings. One new normal plugin setup job completed,
+installing cloudflared `2026.10.0`; the original failed job was retained as evidence.
+
+The operator entered the dedicated tunnel token directly in the admin. Readback exposed only the
+configured marker. The dedicated `smart-panel-staging` tunnel routes `panel-test.zbysov.app` to
+`http://localhost:3000` on Pi 5. The Cloudflare route wizard claimed DNS creation, but both the zone
+record list and authoritative NXDOMAIN showed the record was absent. Creating the matching proxied
+CNAME in the DNS zone established authoritative resolution; unrelated routes were not changed.
+
+The following checks passed on this release:
+
+- Public HTTPS served the admin and healthy alpha.53 with normal certificate validation. Public
+  owner login/profile matched local authentication; anonymous protected API requests returned 401.
+- Socket.IO accepted a valid token and rejected missing/invalid tokens with authentication errors.
+  The public admin browser logged in and showed a connected WebSocket.
+- Manual stop withdrew endpoints/proxy contributions, terminated the child and remained withdrawn
+  for more than 35 seconds. Start and restart restored real public HTTPS, with one replacement start
+  on restart. Disable also held the withdrawn state for more than 35 seconds; enable preserved the
+  omitted token and reconnected. Protocol changes to HTTP/2 and back to Auto restored public HTTPS.
+- The local admin reflected provider transitions and URL withdrawal/reappearance without reload.
+  Tailscale remained available. Final state: plugin enabled, protocol Auto, four ready connections,
+  one unprivileged cloudflared child owned by the backend, no token argument, readiness HTTP 200.
+- The user confirmed the admin loaded without a certificate error on a phone with Wi-Fi and
+  Tailscale disabled. Login succeeded, and a light-state change made from another client appeared
+  without refreshing the page. This confirms public cellular access and live application updates.
+
+CLI HTTP/WebSocket checks used an authoritative-verified Cloudflare edge address while the Mac's
+system resolver retained the earlier negative DNS response; URL, Host, SNI and default certificate
+verification were preserved. The public browser and phone checks used the hostname normally.
+Cloudflare rejected Python's default user agent, so the HTTP harness identified itself explicitly
+as `SmartPanel-Acceptance/1.0`. An initial lifecycle harness request incorrectly combined an empty
+POST body with JSON Content-Type; the corrected request used a separate receipt after confirming
+the connector had not changed. These harness/environment findings are not application failures.
+
+R5 remains open. Token replacement/removal, invalid-token behavior, reset, process-crash/network
+recovery, stop/config races, reboot, connected-provider upgrade, client-address policy and the
+remaining installation matrix are **not established by this run**. No token was reset, and no
+Cloudflare work contacted or changed Pi 4; its natural Tailscale key-expiry acceptance stays separate.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
