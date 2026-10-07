@@ -84,7 +84,7 @@ I want a native plugin that communicates directly with Zigbee devices using zigb
 - [ ] Adapter service emits typed events: `deviceJoined`, `deviceInterview`, `deviceLeave`, `deviceAnnounce`, `message`, `adapterDisconnected`
 - [ ] `ZigbeeHerdsmanService` implements `IManagedExtensionService` with proper lifecycle (start → initialize controller → form/join network → listen for events)
 - [ ] Service gracefully handles coordinator disconnection and attempts reconnection
-- [ ] Service registers with `PluginServiceManagerService` and `PlatformRegistryService`
+- [ ] Service registers with `ManagedServiceManagerService` and `PlatformRegistryService`
 - [ ] Plugin metadata registered with `ExtensionsService` (name, description, author, readme)
 
 ### Phase 2 — Device discovery & converter integration

@@ -4,7 +4,7 @@
 
 **Tracking:** #1268
 
-### Implementation status (audit 2026-10-07)
+## Implementation status (audit 2026-10-07)
 
 Merged PRs:
 

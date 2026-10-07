@@ -36,7 +36,7 @@ This task covers the remaining actionable findings that require more careful imp
 
 - L3 done (#1142, #1145, #1150, #1151): hashed-token lookup.
 - L4 done (#919): client address resolution ignores untrusted forwarded headers.
-- Open findings: H2 CORS -> #1331; H6 exchange room -> #1332; M3 InfluxDB auth -> #1333 (installer) + #1334 (plugin); H4 cookie flags -> #1335 (HttpOnly is a separate design decision).
+- Open findings: H2 CORS -> #1331; H6 exchange room -> #1332; M3 InfluxDB auth -> #1333 (installer) + #1334 (plugin); H4 cookie flags -> #1335 (SameSite, Secure) + #1363 (HttpOnly via server-issued cookies).
 - Remote access and MCP OAuth proxy setups affect the CORS design (H2); account for them.
 
 ## 3. Scope
@@ -50,7 +50,7 @@ This task covers the remaining actionable findings that require more careful imp
 - Apply to both HTTP API and WebSocket gateway
 - Document how to configure for reverse proxy setups
 
-### H4. Secure cookie flags for JWT tokens (open, #1335)
+### H4. Secure cookie flags for JWT tokens (open, #1335, #1363)
 - Admin SPA stores JWT tokens in cookies without HttpOnly, Secure, or SameSite flags
 - Add HttpOnly and SameSite=Lax flags at minimum
 - Add Secure flag when HTTPS is detected
@@ -90,7 +90,8 @@ This task covers the remaining actionable findings that require more careful imp
 
 - [ ] CORS rejects cross-origin requests by default; configurable via FB_CORS_ORIGIN
 - [ ] WebSocket gateway also respects CORS configuration
-- [ ] JWT cookies have HttpOnly, SameSite=Lax flags; Secure when HTTPS detected
+- [ ] JWT cookies have SameSite=Lax; Secure when HTTPS detected (#1335)
+- [ ] Tokens are not readable from JavaScript: HttpOnly server-set cookie or memory-only access token (#1363)
 - [ ] WebSocket exchange room requires OWNER or ADMIN role
 - [ ] USER-role clients cannot join the exchange room
 - [ ] InfluxDB authentication enabled in install-server.sh

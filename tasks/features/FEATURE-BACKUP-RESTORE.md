@@ -55,7 +55,7 @@ The backup module does NOT hardcode which files to back up. Instead, each module
 
 ```typescript
 interface BackupContribution {
-    source: string;          // 'buddy-plugin', 'config-module', 'spaces-module'
+    source: string;          // 'buddy-plugin', 'config-module', 'system-module'
     label: string;           // 'AI Personality', 'Plugin Configurations'
     type: 'file' | 'directory';
     path: string;            // absolute path to back up
@@ -66,7 +66,6 @@ interface BackupContribution {
 Each module registers during `onModuleInit()`:
 - **Config module**: registers `FB_CONFIG_PATH/` directory
 - **Buddy plugin**: registers `personality.md`, `whatsapp-auth/`, etc.
-- **Spaces module**: registers custom YAML files
 - **System module**: registers `/etc/smart-panel/environment`
 
 The database (`database.sqlite`) is always included automatically — no registration needed.
@@ -95,7 +94,7 @@ On restore: files are restored to their original paths based on the metadata.
 - Store backups in FB_DATA_DIR/backups/
 - Auto-create backup before updates (integrate with update executor) — not implemented, #1349
 - Limit stored backups (configurable, default 5) — currently a hard-coded constant, #1350
-- Module registrations: config, buddy, spaces, system environment
+- Module registrations: config, buddy, system environment
 
 ### Admin UI
 
@@ -121,7 +120,6 @@ On restore: files are restored to their original paths based on the metadata.
 - [x] `BackupContributionRegistry` service allows modules to register file/directory paths
 - [x] Config module registers its config directory
 - [x] Buddy module registers personality and auth files
-- [x] Spaces module registers custom YAML files (not needed: spaces live in the database, no separate contribution)
 - [x] System module registers environment file
 - [x] POST /modules/system/backups creates a tar.gz with database + all contributions + metadata
 - [x] Backup metadata contains: id, name, version, createdAt, sizeBytes, contributions list

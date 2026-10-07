@@ -1,7 +1,7 @@
 # Virtual Devices — Admin Implementation Plan (Plan B)
 
 > **Status:** Implemented — PR #635 (admin virtual device plugin and wizard); remaining leftovers are in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, epic #1336. Checkboxes below are not ticked retroactively.
-
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make virtual devices usable — an admin wizard that builds one from other devices' properties, plus the hidden-device handling the backend already models but no UI exposes.

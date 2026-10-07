@@ -200,6 +200,6 @@ Phase 3 = #1297 to #1302. The UniFi epic (#1221) adds camera person detections a
 
 | ID | Task | Size | Status |
 |----|------|------|--------|
-| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling (#1297 backend, #1298 admin schedule editor) | medium | planned |
+| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling (#1297 backend, #1298 admin schedule editor, #1362 panel current/next mode) | medium | planned |
 | FEATURE-SPACE-OCCUPANCY-MODES | Occupancy-based mode triggers (#1299 state machine, #1300 admin config; input #1221) | medium | planned |
 | FEATURE-SPACE-SEASONAL-DEFAULTS | Seasonal baseline adjustments (#1301 backend, #1302 admin) | small | planned |

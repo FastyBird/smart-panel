@@ -104,7 +104,7 @@ Standalone open issues from the audit: #1353 (Dependabot advisories), #1355 and 
 | 8   | [FEATURE-SPACE-OCCUPANCY-MODES](features/FEATURE-SPACE-OCCUPANCY-MODES.md)     | backend | :clipboard: Planned |
 | 9   | [FEATURE-SPACE-SEASONAL-DEFAULTS](features/FEATURE-SPACE-SEASONAL-DEFAULTS.md) | backend | :clipboard: Planned |
 
-**Tracking:** epic #1287 — security domain SM-1 … SM-4, activity modes SM-5 … SM-9, triggers SM-10 … SM-15. Camera person detection as an occupancy input is #1221 (UniFi Protect epic). The feature files list the backend, admin and panel parts; the scope columns above show the primary surface.
+**Tracking:** epic #1287 — security domain SM-1 … SM-4, activity modes SM-5 … SM-9, triggers SM-10 … SM-16. Camera person detection as an occupancy input is #1221 (UniFi Protect epic). The feature files list the backend, admin and panel parts; the scope columns above show the primary surface.
 
 **Next up:** Security domain (Phase 1), then activity modes (Phase 2 prerequisite for unified room control).
 

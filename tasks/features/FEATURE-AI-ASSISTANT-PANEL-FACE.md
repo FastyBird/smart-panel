@@ -29,7 +29,7 @@ I want to customize the face appearance, add it as a dashboard tile, and configu
 - Face appearance customization (eye style, color scheme, face shape)
 - Face as a dashboard tile (embeddable in dashboard grid)
 - Text bubble overlay (show last buddy message near the face)
-- Admin-configurable face behavior (inactivity timeout, default emotion). Note: this conflicts with the epic's no-admin-changes constraint (panel only) and is tracked as #1263 pending a decision
+- Admin-configurable face appearance and behavior (colors/style preset, inactivity timeout, default emotion, reduced motion default), tracked as #1263. Stored as face fields in the buddy module config (`BuddyConfigModel` + update DTO), edited in the admin buddy config form, delivered to the panel with the module config; no new endpoints
 - Accessibility considerations (reduced motion mode)
 
 **Out of scope**
