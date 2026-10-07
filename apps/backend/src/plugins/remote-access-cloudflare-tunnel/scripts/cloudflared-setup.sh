@@ -1,6 +1,6 @@
 #!/bin/bash
 # Privileged Cloudflare Tunnel setup job, run by PrivilegedWorkerService as
-# `sudo -n systemd-run --scope --unit=smart-panel-remote-access-cloudflare
+# `sudo -n systemd-run --collect --service-type=exec --unit=smart-panel-remote-access-cloudflare
 # bash cloudflared-setup.sh` (see CloudflareTunnelSetupService.install()).
 # Idempotent: re-running is harmless once the package is already installed.
 #

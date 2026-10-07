@@ -496,6 +496,43 @@ A real-process test confirms distinct identities for replacements sharing a star
 Cloudflare hardware acceptance remains pending, and the test Pi's Tailscale login is left unchanged
 for natural expiry. These code tests do not substitute for release installation or a real tunnel.
 
+### R5 staging installation finding (2026-10-07)
+
+[PR #1361](https://github.com/FastyBird/smart-panel/pull/1361) merged as `a2496c2d0` after
+its final CI checks passed. Its polling/readiness corrections and the preceding R5 fixes are in
+published `v1.1.0-alpha.52`, tag commit `06478e633`.
+
+The user selected the separate staging Raspberry Pi 5 for Cloudflare acceptance, preserving the
+Pi 4's natural Tailscale key-expiry test. The Pi 5 upgraded from alpha.47 to alpha.52 through one
+normal System-module install request. Before installation, the server archive checksum, backend
+and admin npm integrity, compiled backend/static assets and unchanged migration files were verified;
+a retained database/configuration backup passed integrity and preservation checks. The ten upstream
+server-build/publication jobs passed; independent Docker and SD-image jobs were still running.
+
+After installation, the durable worker completed with no lock. Health, 1,719 backend files and
+250 admin files matched the verified release. All 111 devices, channel/property topology,
+28 migration rows, database schema, configuration, accounts, long-lived tokens and Tailscale
+identity were preserved. Both the existing session and a fresh login worked.
+
+The first owner-triggered Cloudflare package installation then failed before configuring a token:
+`tee: /usr/share/keyrings/cloudflare-main.gpg: Read-only file system`. The worker was launched as
+`smart-panel-remote-access-cloudflare.scope`, inheriting the backend's `ProtectSystem=strict`
+mount namespace even after elevation. The Cloudflare setup caller must use the existing
+manager-owned transient-service mode, as Tailscale setup already does; backend hardening stays
+unchanged. A successful launcher exit remains distinct from worker completion, which is observed
+through the existing status-file/service lifecycle contract.
+
+Validation: the Cloudflare setup, installer-script and shared privileged-worker suites passed
+(3 suites / 90 tests), along with full backend type checking, changed-file lint/format and shell
+syntax checks. Independent review found no lifecycle incompatibility. Hardware success for this
+correction is still pending.
+
+The dedicated Cloudflare dashboard tunnel exists, but no public route or plugin token has been
+configured. Package setup must be repeated on a release containing this correction before
+external TLS/login/WebSocket or lifecycle acceptance can proceed. The successful application
+upgrade does not establish Cloudflare provider upgrade preservation while connected. R5 remains
+open, and Pi 4 has not been changed.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and

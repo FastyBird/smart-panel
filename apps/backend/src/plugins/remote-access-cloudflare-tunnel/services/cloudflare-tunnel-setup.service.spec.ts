@@ -103,7 +103,7 @@ describe('CloudflareTunnelSetupService', () => {
 	});
 
 	describe('install()', () => {
-		it('spawns the privileged worker with the setup script and returns its id', async () => {
+		it('spawns a service outside the backend sandbox with the setup script and returns its id', async () => {
 			const { id } = await service.install();
 
 			expect(id).toBe('job-1');
@@ -112,6 +112,9 @@ describe('CloudflareTunnelSetupService', () => {
 			const spec = privilegedWorker.run.mock.calls[0][0];
 
 			expect(spec.unit).toBe(CLOUDFLARE_TUNNEL_SETUP_WORKER_UNIT);
+			// A scope would inherit ProtectSystem=strict and fail writing /usr/share/keyrings
+			// or /etc/apt even as root, so package installation must use a transient service.
+			expect(spec.unitType).toBe('service');
 			expect(spec.script).toContain('cloudflared-setup.sh');
 			expect(existsSync(spec.script)).toBe(true);
 		});
