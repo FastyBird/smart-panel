@@ -778,7 +778,7 @@ The candidate selects `unitType: 'service'`, using the existing privileged-worke
 without weakening backend hardening. An equivalent one-line change was applied temporarily to the
 installed compiled service. A second UI setup ran from 08:36:02 to 08:36:53 UTC, installed Tailscale
 1.102.5 from its signed apt repository and advanced to Sign in. The installation message arrived live;
-a full page reload during apt installation restored the running wizard. The final API reported all
+a full-page reload during apt installation restored the running wizard. The final API reported all
 five prerequisites satisfied; independent checks confirmed active/enabled `tailscaled` and NeedsLogin
 under the backend service user. The short daemon/operator intermediate steps were not captured
 individually. No tailnet login or external-access acceptance is claimed for this clean host.
