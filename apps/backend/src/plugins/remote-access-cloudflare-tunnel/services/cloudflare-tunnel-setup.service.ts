@@ -109,6 +109,10 @@ export class CloudflareTunnelSetupService {
 
 		const { id } = await this.privilegedWorker.run({
 			unit: CLOUDFLARE_TUNNEL_SETUP_WORKER_UNIT,
+			// A scope inherits the backend's ProtectSystem=strict mount namespace, so even
+			// root cannot write apt sources or install packages. Let systemd launch a separate
+			// service outside that sandbox; the backend retains its existing hardening.
+			unitType: 'service',
 			script,
 			args: [],
 			env: {
