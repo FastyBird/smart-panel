@@ -957,6 +957,37 @@ All 14 focused admin component tests, backend/admin type checks, changed-source 
 and independent review passed. The source fixes remain unshipped and R4 remains open.
 Private receipts are in `remote-access-r4/host-install-acceptance/manual-adoption-alpha53/`.
 
+#### Alpha.53 unavailable helper and manual preparation (2026-10-08)
+
+The installer Pi 4 on published alpha.53/Tailscale 1.102.5 passed the backend/manual-remedy portion
+of the unavailable-helper scenario and exposed a wizard progression defect. A root-only checkpoint
+and ten-minute recovery timer preceded removal of only the service user's `systemd-run` sudoers
+grant and Tailscale operator grant. The backend was restarted once to perform a fresh capability
+probe; the node retained its existing authentication. LAN access remained available.
+
+At 21:23:44 UTC, the API reported `setup-required`, authenticated, an unsatisfied operator requirement,
+no endpoints and `privileged_setup.available=false` with the actual sudo refusal. An explicit install
+request returned **422 / privileged-worker-unavailable**, with no setup job. The normal Set up wizard
+showed the failure reason, `sudo tailscale set --operator=smart-panel`, Copy and Re-check; it did not
+offer Start setup. Applying that displayed command restored all requirements and Connected with three
+endpoints while the privileged-worker grant was still absent. No new login or installation was needed.
+
+The wizard nevertheless stayed at Set up after Re-check even though its requirements and the card
+had updated successfully. Its completion watcher depended on a completed automatic setup job, which
+does not exist for manual preparation. The accompanying admin fix advances a successful manual
+recheck using fresh requirements/authentication, while preserving failed, incomplete, active-job and
+closed-session guards. Both core progression tests failed before the change; all 93 wizard
+component/integration tests, admin type checking, targeted lint/format checks and independent review
+passed afterward. The hardware observation is a reproduction on alpha.53, not released acceptance
+of that source fix.
+
+The exact sudoers file and operator grant were restored. The helper probe recovered to available by
+21:25:40 UTC without another backend restart. Peer certificate-verified HTTPS, owner login/profile,
+authenticated WebSocket subscription and missing/invalid credential rejection passed at 21:25:06 UTC.
+The recovery timer and setup worker were inactive. Database/schema, configuration, accounts, node
+identity and host boot identity matched the baseline; only the planned initial backend restart occurred.
+Private receipts are in `remote-access-r4/host-install-acceptance/manual-setup-alpha53/`.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
