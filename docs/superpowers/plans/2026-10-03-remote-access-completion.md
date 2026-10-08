@@ -907,6 +907,34 @@ row is now complete. These Pi 5 peer checks do not establish phone-specific traf
 the remaining R4/epic gates. Private receipts are in
 `remote-access-r4/host-install-acceptance/node-expiry-2026-10-08/`.
 
+### R4 alpha.53 continuation and remaining work (2026-10-08)
+
+The installer Pi 4 passed a normal alpha.51 → alpha.53 System UI update while connected to Tailscale.
+The independent updater survived application shutdown; the existing admin session observed completion.
+Official npm SRI and all installed wrapper/backend/admin artifact files matched. Database/configuration,
+accounts and Tailscale identity/authentication were retained, and peer HTTPS/login/WebSocket recovered.
+
+A real setup rerun after temporarily stopping the daemon exercised published #1233 without purging the
+package or signing out. All three completed setup rows remained rendered in Options and Done. Waiting
+and Complete were observed; individual transient Running stages were not. The timer-backed daemon
+recovery path was cleaned up after successful UI setup. The epic records exact counts, times and scope.
+
+The auth acceptance wording now follows the original design's approval on any device. The confirmed
+computer approval is sufficient for the interactive authentication row; it does not claim phone QR
+scanning. This does not change the separate cellular-access criterion.
+
+The HTTPS-disabled advisory still needs a clickable console URL in the released UI. The accompanying
+admin fix adds that link with a failing-then-passing component regression; alpha.53 hardware results
+do not include this unshipped change. The earlier disabled/restored HTTPS functional observations are
+retained, so repeat only the missing released-link observation when a suitable test window is available.
+
+R4 is still open. Remaining work includes the `--with-tailscale` installer variant, manual adoption and
+preference-conflict paths, adverse/pending authentication and pending-login upgrade, the unobserved
+live setup stages and relevant transport-loss variants. The one-candidate acceptance requirement has
+not been silently waived: these historical results identify their own release and are not relabelled
+as a complete alpha.53 matrix. R5 still needs connected-provider upgrade and its remaining installation
+variants; a new Cloudflare upgrade cannot be recorded while alpha.53 is the latest published release.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
