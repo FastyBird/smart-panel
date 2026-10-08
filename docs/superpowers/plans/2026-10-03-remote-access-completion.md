@@ -766,6 +766,45 @@ and `registration-r2/registration-result.json`). Pi 4 was untouched. R5 remains 
 application upgrade, distinct valid-token rotation/revocation and the remaining installation matrix;
 these client-policy checks do not complete those gates.
 
+### R5 valid-token rotation and revocation acceptance (2026-10-08)
+
+Staging Pi 5 on alpha.53 passed rotation of the dedicated `smart-panel-staging` tunnel token.
+The operator rotated the token in Cloudflare, then one accepted Extensions restart forced a new
+connection attempt with the still-stored original token. A Pi-side comparison confirmed that the
+stored token still matched the retained original and identified the expected tunnel. Neither token
+values nor token digests left the Pi during these comparisons.
+
+The provider settled in `error`, with endpoints, proxy contributions and the public URL withdrawn.
+Seven read-only observations spanning more than 42 seconds retained this state and returned public
+HTTP 530. The backend remained running, desired service state remained started, and the original
+pre-restart child did not reappear. This verifies loss of connectivity with the revoked, well-formed
+token after restart; it does not assert that rotation immediately terminates existing connections.
+
+The operator pasted the replacement token into the normal plugin configuration UI and saved it.
+A second Pi-side comparison confirmed a different token for the same tunnel, with Enabled, Auto
+and the public hostname preserved. Three observations spanning more than 14 seconds showed connected
+state, restored endpoint/proxy contributions, one unprivileged backend-owned cloudflared child and
+public health HTTP 200. The backend process was unchanged, and no `--token` argument was present in
+the child's command line. Subsequent checks using system DNS and default certificate validation passed admin HTML,
+owner login/profile, public/local provider agreement and authenticated WebSocket connection. Missing
+and invalid WebSocket tokens were rejected; protected anonymous HTTP routes returned 401.
+
+The original rejection harness stopped on an HTTP error whose status was not retained. Its oracle
+also independently had an incompatible timing budget: a 60-second readiness grace followed by a
+required hold exceeding 38 seconds cannot fit into its 90-second deadline. That attempt remains
+recorded as failed. Separate bounded read-only observations established withdrawal and recovery
+without repeating the restart. No original-deadline guarantee is claimed. A journal probe returned
+zero entries, so this run establishes neither a specific authentication-error log nor journal secret
+redaction. These are harness/evidence limitations, not a demonstrated application defect.
+
+Private evidence is retained under `cloudflare-alpha53-token-rotation/`, including the failed attempt,
+separate observation results and boolean token comparisons; public checks are in
+`cloudflare-alpha53-acceptance/post-token-rotation-natural-dns.external.json`. The earlier private
+token-matrix checkpoint now contains a revoked token and must not be used to restore configuration.
+Pi 4 was not contacted. Rotation/revocation is now covered; R5 remains open for connected-provider
+application upgrade and the remaining installation matrix. The latest available release is still
+alpha.53, so this run does not claim another upgrade.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
