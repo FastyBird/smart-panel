@@ -118,6 +118,108 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		}
 	);
 
+	const manualSetup = () => {
+		snapshot.privileged_setup = { available: false, reason: 'systemd-run unavailable' };
+		snapshot.requirements = [
+			{
+				code: 'operator-granted',
+				satisfied: false,
+				message: 'Grant operator',
+				remedy: { commands: ['sudo tailscale set --operator=panel'], note: null },
+			},
+		];
+	};
+	const recheck = (wrapper: ReturnType<typeof mountWizard>) =>
+		wrapper
+			.findAllComponents({ name: 'ElButton' })
+			.find((button) => button.text().includes('buttons.recheck'))!
+			.vm.$emit('click');
+	const satisfyManualSetup = (state = 'connected', authentication = 'authenticated') => {
+		snapshot.revision = 2;
+		snapshot.state = state;
+		snapshot.requirements = [{ code: 'operator-granted', satisfied: true, message: 'Operator granted', remedy: null }];
+		snapshot.control = {
+			enabled: true,
+			service_state: 'started',
+			authentication,
+			operation: null,
+			available_actions: authentication === 'required' ? ['login'] : ['disconnect'],
+		};
+	};
+
+	it.each([
+		['connected', 'authenticated', 2],
+		['setup-required', 'required', 1],
+	])('advances a manual recheck from %s without a setup job', async (state, authentication, step) => {
+		manualSetup();
+		const wrapper = mountWizard();
+		await flushPromises();
+		expect(wrapper.text()).toContain('sudo tailscale set --operator=panel');
+		expect(wrapper.text()).not.toContain('buttons.startSetup');
+		satisfyManualSetup(state as string, authentication as string);
+		recheck(wrapper);
+		await flushPromises();
+		expect(snapshot.setup).toBeNull();
+		expect(fns.post).not.toHaveBeenCalled();
+		expect(activeStep(wrapper)).toBe(step);
+	});
+
+	it.each(['missing', 'empty', 'malformed', 'unexpected', 'operation', 'running', 'unreadable'])(
+		'keeps manual setup open after a %s recheck',
+		async (scenario) => {
+			manualSetup();
+			const wrapper = mountWizard();
+			await flushPromises();
+			satisfyManualSetup();
+			if (scenario === 'missing') snapshot.requirements = [{ code: 'operator-granted', satisfied: false, message: 'Grant operator', remedy: null }];
+			if (scenario === 'empty') snapshot.requirements = [];
+			if (scenario === 'malformed') snapshot.requirements = [{ code: 'operator-granted', satisfied: 'yes', message: 'Granted', remedy: null }];
+			if (scenario === 'unexpected') snapshot.state = 'error';
+			if (scenario === 'operation') (snapshot.control as Record<string, unknown>).operation = 'connect';
+			if (scenario === 'running') snapshot.setup = job('job-active', 'running');
+			if (scenario === 'unreadable') {
+				await store.get(); // A cached ready status must not advance after a failed refresh.
+				fns.get.mockRejectedValueOnce(new Error('offline'));
+			}
+			recheck(wrapper);
+			await flushPromises();
+			expect(activeStep(wrapper)).toBe(0);
+		}
+	);
+
+	it('requires a newly accepted snapshot rather than cached readiness', async () => {
+		manualSetup();
+		const wrapper = mountWizard();
+		await flushPromises();
+		satisfyManualSetup();
+		await store.get();
+		vi.spyOn(store, 'refresh').mockResolvedValueOnce(undefined);
+		recheck(wrapper);
+		await flushPromises();
+		expect(activeStep(wrapper)).toBe(0);
+	});
+
+	it.each([false, true])('ignores manual recheck after closing the session (reopened: %s)', async (reopened) => {
+		manualSetup();
+		const wrapper = mountWizard();
+		await flushPromises();
+		let resolveRead!: (result: unknown) => void;
+		fns.get.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveRead = resolve;
+				})
+		);
+		recheck(wrapper);
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		if (reopened) await wrapper.setProps({ visible: true });
+		satisfyManualSetup();
+		resolveRead({ data: { data: structuredClone(snapshot) }, response: { status: 200 } });
+		await flushPromises();
+		expect(activeStep(wrapper)).toBe(0);
+	});
+
 	it('immediately reconciles acceptance and advances after REST completion with all events lost', async () => {
 		const wrapper = mountWizard();
 		await flushPromises();

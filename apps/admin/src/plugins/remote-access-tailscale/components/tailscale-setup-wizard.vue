@@ -487,15 +487,50 @@ const onInstall = async (): Promise<void> => {
 	}
 };
 
+// Both completion paths use the privileged control snapshot to choose the next step.
+const nextSetupStep = (): 'options' | 'signin' | null => {
+	const control = status.value?.control;
+	if (!control?.enabled || control.operation || !requirements.value.every((requirement) => requirement.satisfied === true)) return null;
+
+	if (control.authentication === 'authenticated') return 'options';
+	if (control.authentication === 'required' && canLogin.value) return 'signin';
+	return null;
+};
+
 const onRecheck = async (): Promise<void> => {
+	if (isRechecking.value || !props.visible || currentStep.value !== 'setup') return;
+	const generation = sessionGeneration;
+	const previousStatus = status.value;
 	isRechecking.value = true;
 
 	try {
 		await refreshStatus();
+
+		if (
+			!props.visible ||
+			generation !== sessionGeneration ||
+			currentStep.value !== 'setup' ||
+			status.value === previousStatus ||
+			isInstalling.value ||
+			effectiveProgress.value?.state === 'running' ||
+			requirements.value.length === 0
+		)
+			return;
+
+		const nextStep = nextSetupStep();
+		const state = status.value?.state;
+		if (
+			(nextStep === 'options' && (state === 'connected' || state === 'disconnected')) ||
+			(nextStep === 'signin' && (state === 'setup-required' || state === 'pending-auth'))
+		) {
+			goToStep(nextStep);
+		}
 	} catch (error) {
+		if (!props.visible || generation !== sessionGeneration) return;
+
 		flashApiError(error, [409, 422], t('remoteAccessTailscalePlugin.messages.requestError'));
 	} finally {
-		isRechecking.value = false;
+		if (generation === sessionGeneration) isRechecking.value = false;
 	}
 };
 
@@ -612,14 +647,15 @@ watch(
 			await fetchStatus();
 
 			// A second installation may have been accepted while this read was pending.
+			const nextStep = nextSetupStep();
 			if (
 				props.visible &&
 				generation === sessionGeneration &&
 				effectiveProgress.value?.job === completed.job &&
 				effectiveProgress.value?.state === 'complete' &&
-				requirements.value.every((requirement) => requirement.satisfied)
+				nextStep !== null
 			) {
-				goToStep(status.value?.control?.authentication === 'authenticated' ? 'options' : 'signin');
+				goToStep(nextStep);
 			}
 		} catch (error) {
 			if (!props.visible || generation !== sessionGeneration) return;
@@ -707,6 +743,7 @@ watch(
 	(): boolean => props.visible,
 	(visible, previous): void => {
 		if (previous !== undefined) sessionGeneration++;
+		isRechecking.value = false;
 		awaitingKeyedConnection.value = false;
 		if (visible) {
 			currentStep.value = props.initialStep;

@@ -955,6 +955,20 @@ controls. The admin correction uses one outer scrolling region instead of collap
 Both fixes require released runtime verification. The epic retains the detailed reproduction and
 evidence boundaries; remaining R4/R5 gates are unchanged.
 
+### R4 unavailable helper and manual wizard recovery (2026-10-08)
+
+On published alpha.53 Pi 4, temporarily removing the service's privileged-worker grant and Tailscale
+operator grant produced accurate setup requirements, a manual operator command and a 422 refusal of
+automatic installation. Applying the displayed command restored Connected without a setup job or
+reauthentication while privileged jobs were still unavailable. Restoring the original sudoers grant
+recovered the helper probe without another backend restart. Peer HTTPS/login/WebSocket and retained
+identity/configuration checks passed; the test recovery timer was stopped.
+
+The actual wizard's Re-check refreshed the requirements but stayed at Set up because progression
+required an automatic job's completion. The admin correction allows a successful manual recheck to
+advance with fresh requirements/authentication and session guards. This source fix still requires
+released verification. The epic records the hardware reproduction; the wider R4 gate remains open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
