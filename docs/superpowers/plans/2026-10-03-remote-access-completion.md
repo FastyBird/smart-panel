@@ -935,6 +935,26 @@ not been silently waived: these historical results identify their own release an
 as a complete alpha.53 matrix. R5 still needs connected-provider upgrade and its remaining installation
 variants; a new Cloudflare upgrade cannot be recorded while alpha.53 is the latest published release.
 
+### R4 manual adoption failure and source correction (2026-10-08)
+
+Published alpha.53 on the installer Pi 4 failed to adopt a manually connected node with an unmanaged
+non-default `--snat-subnet-routes=false` preference (no advertised routes). The plugin's full `up`
+flags triggered Tailscale 1.102.5's omitted-preference refusal; the UI showed Error and withdrew URLs,
+while authentication and the preference were preserved. The gate returns to the owning backend
+regression; this scenario is not marked passed.
+
+The correction uses flagless `up` only after a fresh preference read establishes that configured
+tags and login server already match. Other cases retain the conservative flagged attempt with no
+reset/retry. All 432 plugin tests passed; the equivalent CLI sequence preserved the preference and
+identity on both stopped and running nodes. The application candidate is not installed on the Pi.
+The test preference was restored, normal UI Connect and peer HTTPS/login/WebSocket recovered, and
+the recovery timers were removed from active use.
+
+The test also exposed a short-viewport layout defect: long address lists left zero height for provider
+controls. The admin correction uses one outer scrolling region instead of collapsing the tabs.
+Both fixes require released runtime verification. The epic retains the detailed reproduction and
+evidence boundaries; remaining R4/R5 gates are unchanged.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

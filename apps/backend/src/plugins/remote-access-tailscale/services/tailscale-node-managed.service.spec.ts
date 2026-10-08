@@ -520,14 +520,132 @@ describe('TailscaleNodeManagedService', () => {
 			},
 		);
 
-		it('preserves the settings-conflict refusal during Connect without a reset or retry', async () => {
+		it.each([STOPPED_STATUS, RUNNING_CONNECTED_STATUS])(
+			'adopts an authenticated node with unmanaged preferences using flagless up (state: $BackendState)',
+			async (status) => {
+				const prefs = {
+					OperatorUser: os.userInfo().username,
+					ControlURL: defaultConfig().loginServer,
+					AdvertiseTags: null,
+					NoSNAT: true,
+					AdvertiseRoutes: [],
+				};
+				cli.getStatus.mockResolvedValue(status);
+				cli.getPrefs.mockResolvedValue(prefs);
+				cli.up.mockImplementation((flags: string[]) => {
+					if (flags.length > 0) {
+						throw new TailscaleCliError('settings-conflict', 'must specify --snat-subnet-routes=false');
+					}
+					return Promise.resolve();
+				});
+
+				await service.connect();
+
+				expect(cli.set).toHaveBeenCalledWith(service.buildPreferenceFlags(defaultConfig()));
+				expect(cli.up).toHaveBeenCalledTimes(1);
+				expect(cli.up).toHaveBeenCalledWith([]);
+				expect(prefs.NoSNAT).toBe(true);
+				expect(prefs.AdvertiseRoutes).toEqual([]);
+			},
+		);
+
+		it('checks fresh prefs after set and accepts matching tags regardless of their order', async () => {
+			const config = defaultConfig();
+			config.advertiseTags = ['tag:smart-panel', 'tag:home'];
+			configServiceMock.getPluginConfig.mockReturnValue(config);
+			const prefs = {
+				OperatorUser: os.userInfo().username,
+				ControlURL: config.loginServer,
+				AdvertiseTags: ['tag:home', 'tag:smart-panel'],
+				NoSNAT: true,
+			};
+			cli.getPrefs.mockResolvedValueOnce({ ...prefs, AdvertiseTags: ['tag:old'] }).mockResolvedValue(prefs);
+
+			await service.connect();
+
+			expect(cli.getPrefs.mock.invocationCallOrder[1]).toBeGreaterThan(cli.set.mock.invocationCallOrder[0]);
+			expect(cli.up).toHaveBeenCalledWith([]);
+		});
+
+		it('treats an explicitly empty ControlURL as the Tailscale default server', async () => {
+			cli.getPrefs.mockResolvedValue({
+				OperatorUser: os.userInfo().username,
+				ControlURL: '',
+				AdvertiseTags: [],
+			});
+
+			await service.connect();
+
+			expect(cli.up).toHaveBeenCalledWith([]);
+		});
+
+		it.each([
+			{ AdvertiseTags: ['tag:old'], ControlURL: 'https://controlplane.tailscale.com' },
+			{ AdvertiseTags: [], ControlURL: 'https://headscale.example.com' },
+		])('preserves the settings-conflict refusal for changed up-only prefs: %j', async (prefs) => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: os.userInfo().username, ...prefs });
 			const conflict = new TailscaleCliError('settings-conflict', 'must specify all non-default flags');
 			cli.up.mockRejectedValue(conflict);
 
 			await expect(service.connect()).rejects.toBe(conflict);
 
 			expect(cli.up).toHaveBeenCalledTimes(1);
+			expect(cli.up).toHaveBeenCalledWith(service.buildUpFlags(defaultConfig()));
 			expect(cli.up).not.toHaveBeenCalledWith(expect.arrayContaining(['--reset']));
+		});
+
+		it.each([
+			{},
+			{ AdvertiseTags: [], ControlURL: null },
+			{ AdvertiseTags: [], ControlURL: 42 },
+			{ AdvertiseTags: 'tag:smart-panel', ControlURL: 'https://controlplane.tailscale.com' },
+			{ AdvertiseTags: [null], ControlURL: 'https://controlplane.tailscale.com' },
+		])('keeps full up flags when preference fields cannot be verified: %j', async (prefs) => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: os.userInfo().username, ...prefs });
+			const conflict = new TailscaleCliError('settings-conflict', 'must specify all non-default flags');
+			cli.up.mockRejectedValue(conflict);
+
+			await expect(service.connect()).rejects.toBe(conflict);
+
+			expect(cli.up).toHaveBeenCalledTimes(1);
+			expect(cli.up).toHaveBeenCalledWith(service.buildUpFlags(defaultConfig()));
+		});
+
+		it('keeps full up flags when the fresh preference read is unavailable', async () => {
+			cli.getPrefs
+				.mockResolvedValueOnce({ OperatorUser: os.userInfo().username })
+				.mockRejectedValue(new TailscaleCliError('unknown', 'debug prefs unavailable'));
+			const conflict = new TailscaleCliError('settings-conflict', 'must specify all non-default flags');
+			cli.up.mockRejectedValue(conflict);
+
+			await expect(service.connect()).rejects.toBe(conflict);
+
+			expect(cli.up).toHaveBeenCalledTimes(1);
+			expect(cli.up).toHaveBeenCalledWith(service.buildUpFlags(defaultConfig()));
+		});
+
+		it('does not bring up a node after the fresh preference read is superseded by Disconnect', async () => {
+			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+			await service.start();
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			let finishRead!: (prefs: { ControlURL: string; AdvertiseTags: null }) => void;
+			let enteredRead!: () => void;
+			const entered = new Promise<void>((resolve) => (enteredRead = resolve));
+			const delayedRead = new Promise<{ ControlURL: string; AdvertiseTags: null }>((resolve) => (finishRead = resolve));
+			cli.getPrefs.mockResolvedValueOnce({ OperatorUser: os.userInfo().username }).mockImplementationOnce(() => {
+				enteredRead();
+				return delayedRead;
+			});
+			const connect = service.connect();
+			const cancellation = expect(connect).rejects.toMatchObject({ code: 'operation-cancelled' });
+			await entered;
+
+			await service.stop();
+			await cancellation;
+			finishRead({ ControlURL: defaultConfig().loginServer, AdvertiseTags: null });
+			await delayedRead;
+
+			expect(cli.up).not.toHaveBeenCalled();
 		});
 
 		it('connects an already-started supervisor using supported set flags and tagged up flags', async () => {

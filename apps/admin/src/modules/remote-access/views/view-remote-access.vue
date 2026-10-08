@@ -30,71 +30,63 @@
 	<div
 		v-loading="isLoading"
 		:element-loading-text="t('remoteAccessModule.texts.loadingStatus')"
-		class="flex flex-col flex-1 min-h-0 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+		class="flex flex-col flex-1 min-h-0 overflow-hidden lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
 	>
-		<div class="mt-2 shrink-0">
-			<remote-access-status-banner />
-		</div>
+		<el-scrollbar class="flex-1 min-h-0">
+			<div class="mt-2">
+				<remote-access-status-banner />
+			</div>
 
-		<el-card
-			shadow="never"
-			class="mt-2 shrink-0"
-		>
-			<template #header>
-				{{ t('remoteAccessModule.headings.accessUrls') }}
-			</template>
-
-			<access-urls-list />
-		</el-card>
-
-		<el-tabs
-			v-model="activeTab"
-			:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
-		>
-			<el-tab-pane
-				name="providers"
-				class="h-full overflow-hidden"
+			<el-card
+				shadow="never"
+				class="mt-2"
 			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:lan-connect" />
-						{{ t('remoteAccessModule.tabs.providers') }}
-					</div>
+				<template #header>
+					{{ t('remoteAccessModule.headings.accessUrls') }}
 				</template>
 
-				<el-scrollbar class="h-full">
+				<access-urls-list />
+			</el-card>
+
+			<el-tabs
+				v-model="activeTab"
+				class="mt-2"
+			>
+				<el-tab-pane name="providers">
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:lan-connect" />
+							{{ t('remoteAccessModule.tabs.providers') }}
+						</div>
+					</template>
+
 					<provider-cards />
-				</el-scrollbar>
-			</el-tab-pane>
+				</el-tab-pane>
 
-			<el-tab-pane
-				name="advisories"
-				class="h-full overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2 px-4">
-						<icon icon="mdi:shield-alert-outline" />
-						{{ t('remoteAccessModule.tabs.advisories') }}
-						<el-tag
-							v-if="advisories.length > 0"
-							size="small"
-							:type="advisoriesTagType"
-						>
-							{{ advisories.length }}
-						</el-tag>
-					</div>
-				</template>
+				<el-tab-pane name="advisories">
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:shield-alert-outline" />
+							{{ t('remoteAccessModule.tabs.advisories') }}
+							<el-tag
+								v-if="advisories.length > 0"
+								size="small"
+								:type="advisoriesTagType"
+							>
+								{{ advisories.length }}
+							</el-tag>
+						</div>
+					</template>
 
-				<el-scrollbar class="h-full">
 					<el-card
 						shadow="never"
 						body-class="p-0!"
 					>
 						<advisories-table />
 					</el-card>
-				</el-scrollbar>
-			</el-tab-pane>
-		</el-tabs>
+				</el-tab-pane>
+			</el-tabs>
+		</el-scrollbar>
 	</div>
 </template>
 
@@ -104,7 +96,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElCard, ElScrollbar, ElTabPane, ElTabs, ElTag, useNamespace, vLoading } from 'element-plus';
+import { ElCard, ElScrollbar, ElTabPane, ElTabs, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -119,8 +111,6 @@ defineOptions({
 
 const router = useRouter();
 const { t } = useI18n();
-
-const ns = useNamespace('view-remote-access');
 
 const { isMDDevice } = useBreakpoints();
 
@@ -155,7 +145,3 @@ useMeta({
 	title: t('remoteAccessModule.meta.remoteAccess.title'),
 });
 </script>
-
-<style rel="stylesheet/scss" lang="scss" scoped>
-@use 'view-remote-access.scss';
-</style>
