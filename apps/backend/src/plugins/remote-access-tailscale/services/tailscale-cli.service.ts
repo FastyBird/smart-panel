@@ -98,13 +98,14 @@ export interface TailscaleVersionInfo {
  * `debug` namespace is explicitly unstable across Tailscale releases (unlike
  * `status --json`, which is at least documented as a stable-ish, if evolving,
  * contract), so this is read tolerantly: only the fields
- * `TailscaleNodeManagedService.evaluateOperatorGranted()` actually reads are
+ * `TailscaleNodeManagedService` actually reads are
  * declared, and a caller whose release renamed or dropped a field simply sees
  * it as `undefined` rather than a parse failure.
  */
 export interface TailscalePrefs {
 	OperatorUser?: string;
 	ControlURL?: string;
+	AdvertiseTags?: string[] | null;
 	Hostname?: string;
 	LoggedOut?: boolean;
 	WantRunning?: boolean;
@@ -280,7 +281,11 @@ export class TailscaleCliService {
 		}
 
 		try {
-			return JSON.parse(stdout) as TailscalePrefs;
+			const parsed: unknown = JSON.parse(stdout);
+			if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+				throw new Error('Expected a preferences object.');
+			}
+			return parsed as TailscalePrefs;
 		} catch (error) {
 			throw new TailscaleCliError('unknown', 'Failed to parse `tailscale debug prefs` output.', error);
 		}

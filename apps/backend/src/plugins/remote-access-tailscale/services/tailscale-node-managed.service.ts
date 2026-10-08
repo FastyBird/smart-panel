@@ -28,6 +28,7 @@ import { RemoteAccessTailscalePluginConfigModel } from '../models/config.model';
 import {
 	REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
+	TAILSCALE_DEFAULT_LOGIN_SERVER,
 	TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS,
 	TAILSCALE_MIN_VERSION,
 	TAILSCALE_POLL_INTERVAL_STABLE_MS,
@@ -630,8 +631,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 				if (status && this.mapper.hasExistingKey(status)) {
 					this.operations.assertCurrent();
 					if (this.pendingAdvertiseTags !== null) {
-						// Tags are supported by `up`, not `set`. Keep the complete managed
-						// flags and its settings-conflict check; never reset unmanaged prefs.
+						// Tags are supported by `up`, not `set`. Fresh prefs decide whether
+						// they need flagged up and its settings-conflict check.
 						await this.applyNodePreferences(next);
 						this.operations.assertCurrent();
 						status = await this.getStatusOrNull();
@@ -1708,10 +1709,40 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		this.pendingAdvertiseTags = tags;
 		await this.cli.set(this.buildPreferenceFlags(config));
 		this.operations.assertCurrent();
-		await this.cli.up(this.buildUpFlags(config));
+		const upOnlyPreferencesMatch = await this.upOnlyPreferencesMatch(config);
+		this.operations.assertCurrent();
+		// Flagless up preserves every existing preference, including unmanaged
+		// settings that a flagged up would refuse to omit. Changed or unknown
+		// up-only settings still need the full flags and Tailscale's safety check.
+		await this.cli.up(upOnlyPreferencesMatch ? [] : this.buildUpFlags(config));
 		this.operations.assertCurrent();
 		if (this.pendingAdvertiseTags === tags) {
 			this.pendingAdvertiseTags = null;
+		}
+	}
+
+	private async upOnlyPreferencesMatch(config: RemoteAccessTailscalePluginConfigModel): Promise<boolean> {
+		try {
+			// Read after set, rather than using the prerequisite observation, so
+			// the reconnect decision uses fresh preferences owned by this operation.
+			const prefs = await this.cli.getPrefs();
+			this.operations.assertCurrent();
+			if (typeof prefs.ControlURL !== 'string') {
+				return false;
+			}
+			const controlUrl = prefs.ControlURL || TAILSCALE_DEFAULT_LOGIN_SERVER;
+			const tags = prefs.AdvertiseTags === null ? [] : prefs.AdvertiseTags;
+			if (controlUrl !== config.loginServer || !Array.isArray(tags) || !tags.every((tag) => typeof tag === 'string')) {
+				return false;
+			}
+			const advertisedTags = new Set(tags);
+			const configuredTags = new Set(config.advertiseTags);
+			return advertisedTags.size === configuredTags.size && [...configuredTags].every((tag) => advertisedTags.has(tag));
+		} catch {
+			this.operations.assertCurrent();
+			// debug prefs is unstable upstream; inability to verify is never
+			// permission to skip applying the configured tags or login server.
+			return false;
 		}
 	}
 

@@ -212,6 +212,20 @@ describe('TailscaleCliService', () => {
 			await expect(service.getPrefs()).rejects.toMatchObject({ kind: 'unknown' });
 		});
 
+		it.each(['null', '[]', 'true', '"prefs"'])('rejects non-object preferences JSON: %s', async (stdout) => {
+			mockExecFileOnce(() => ({ stdout }));
+
+			await expect(service.getPrefs()).rejects.toMatchObject({ kind: 'unknown' });
+		});
+
+		it('preserves the advertised tags and unknown preference fields for tolerant callers', async () => {
+			mockExecFileOnce(() => ({
+				stdout: JSON.stringify({ AdvertiseTags: null, NoSNAT: true }),
+			}));
+
+			await expect(service.getPrefs()).resolves.toEqual({ AdvertiseTags: null, NoSNAT: true });
+		});
+
 		it('classifies a non-zero exit code as an error', async () => {
 			mockExecFileOnce(() => ({ stdout: '', stderr: 'unknown command "prefs" for "tailscale debug"', exitCode: 1 }));
 

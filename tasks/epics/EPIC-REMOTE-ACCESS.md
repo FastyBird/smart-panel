@@ -923,6 +923,40 @@ regression failed before the change and passed afterward. This source correction
 the Pi; the previously recorded disabled-HTTPS functional cycle does not establish its released UI
 acceptance. R4 remains open.
 
+#### Alpha.53 manual preference adoption regression (2026-10-08)
+
+The installer Pi 4 (`10.10.0.49`, published alpha.53, Tailscale 1.102.5) reproduced an adoption
+failure using an existing authenticated node. After normal UI Disconnect, the test set the unmanaged
+`--snat-subnet-routes=false` preference with no advertised subnet routes and ran flagless `tailscale up`.
+The CLI returned Running with the same node/user identity. Normal UI Connect then failed at
+20:30:07 UTC: the plugin's flagged `up` omitted that non-default preference. The card showed Error
+and the aggregate withdrew external URLs. Tailscale retained both authentication and the preference;
+there was no logout or automatic reset. This is a failed adoption scenario, not a passed R4 row.
+
+The source fix reads fresh preferences after applying only the managed `set` flags. If the configured
+login server and advertised tags already match, it reconnects with flagless `up`, preserving unmanaged
+preferences. Changed or unverifiable up-only preferences retain the existing single flagged attempt
+and conflict refusal; the code does not reset preferences or retry a refused mutation. Regression
+coverage includes stopped/running authenticated nodes, malformed/unavailable preferences, changed
+tags/server and Disconnect superseding the preference read. All 432 Tailscale tests in 14 suites passed.
+
+A separate real-CLI check ran the equivalent sequence as the unprivileged `smart-panel` operator
+on both Stopped and Running nodes. It preserved the unmanaged preference and authentication in both
+cases. This validates CLI compatibility, **not deployment of the application fix**. After restoring
+the original preference, normal UI Connect recovered; peer certificate-verified HTTPS, owner login,
+authenticated WebSocket subscription and missing/invalid credential rejection passed at 20:36:06 UTC.
+The host/backend identity, database/schema, accounts, configuration and Tailscale identity were
+unchanged across the initial failure/recovery. Recovery timers were stopped; no reset/logout occurred.
+
+The same run found a separate layout defect at 1280×800: the non-shrinking address card consumed the
+available height and collapsed the provider scrollbar to zero, making Disconnect unreachable. The
+admin fix places status, addresses and naturally sized tabs in one scrolling region. Local candidate
+browser verification against the actual Pi API passed at 1280×800, 1440×1200 and 390×844: expanded
+QR content, provider dropdown, Disconnect hit testing and the advisories tab remained reachable.
+All 14 focused admin component tests, backend/admin type checks, changed-source lint/format checks
+and independent review passed. The source fixes remain unshipped and R4 remains open.
+Private receipts are in `remote-access-r4/host-install-acceptance/manual-adoption-alpha53/`.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
