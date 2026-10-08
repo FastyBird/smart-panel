@@ -730,6 +730,42 @@ well-formed-token revocation, and the remaining installation matrix. The recorde
 transport tests are bounded cases; physical network loss and exhaustive race schedules are not
 claimed. WebSocket client-address policy remains distinct from its verified authentication behavior.
 
+### R5 WebSocket client address and registration enforcement (2026-10-08)
+
+Staging Pi 5 (`192.168.2.22`) on published alpha.53 passed a separate client-address check through
+`https://panel-test.zbysov.app`, using system DNS and default certificate validation. An authenticated
+owner observer subscribed to the normal WebSocket exchange and received the subscription acknowledgement.
+Four independent probe connections exercised no extra forwarding headers, forged
+`X-Forwarded-For: 127.0.0.1`, forged `X-Real-IP: 127.0.0.1`, and both forged headers together.
+
+For every probe, the observer matched the connected and disconnected events to that socket's ID.
+Both events reported the actual public client address from Cloudflare's `/cdn-cgi/trace`, which stayed
+stable before and after the matrix; neither event reported loopback. Tokens stayed in memory and
+receipts retained boolean comparisons rather than token values, user payloads or client addresses.
+The Cloudflare configuration and connector ID matched before and after the test. No display entity,
+runtime instrumentation or provider lifecycle change was needed. This verifies address resolution
+for WebSocket handshakes and disconnects; it does not claim WebSocket throttling or a persisted
+authentication-failure audit. The gateway explicitly skips throttling, so the earlier HTTP limits
+remain separate evidence.
+
+The public registration policy was then exercised with actual unauthenticated `POST` requests, using
+valid display registration bodies, a recognized display user agent and unique synthetic MAC addresses.
+With public registration closed, the same four header variants each returned application JSON HTTP 403
+with the registration-policy denial message. Thus the denial came from the application rather than
+an edge HTML response. The two existing display IDs were preserved, public pairing remained closed,
+and no test display was created or needed cleanup. This extends the earlier registration-status GET
+evidence to enforcement on the registration operation.
+
+An initial registration harness preflight incorrectly expected direct-loopback registration status
+to be closed. It stopped before any registration POST: direct localhost registration is intentionally
+allowed. The corrected, separately retained attempt checks public registration status before each
+request. This was a harness correction, not an application defect.
+
+Private evidence is retained under `cloudflare-alpha53-ws-policy/` (`result.json`, `complete.json`,
+and `registration-r2/registration-result.json`). Pi 4 was untouched. R5 remains open for connected-provider
+application upgrade, distinct valid-token rotation/revocation and the remaining installation matrix;
+these client-policy checks do not complete those gates.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
