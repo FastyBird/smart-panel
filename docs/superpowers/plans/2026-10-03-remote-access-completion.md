@@ -878,6 +878,35 @@ complete. The original every-step live-reporting requirement remains separately 
 status-file sampling does not establish UI visibility. Expiry, fallback and other R4 gaps remain. See the epic for
 release provenance, timestamps and the distinction between status samples and rendered progress.
 
+### R4 natural node-key expiry and reauthentication (2026-10-08)
+
+The clean installer Pi 4 on published alpha.51/Tailscale 1.102.5 completed the pending one-day
+node-key expiry test. The earlier `key-expiring` warning matched the natural expiry at 11:25:29 UTC.
+After expiry, CLI reported NeedsLogin; API/UI required sign-in and withdrew all provider endpoints,
+proxy contributions and aggregate external/primary URLs. Tailnet peer HTTPS and both HTTP alternatives
+timed out while LAN access remained available. The CLI's cached Self.Online value alone was not used
+as proof of connectivity.
+
+The normal wizard supplied a fresh link and QR with pending-auth/no-store. The operator confirmed
+approval on a computer, so the phone-approval case remains unverified. Approval advanced
+the existing UI through Options and Done without a page reload or backend restart. The card and API
+became connected/authenticated, HTTPS became primary again and the new key expires on April 6, 2027,
+consistent with the restored 180-day default. Certificate-verified peer HTTPS, owner login/profile and
+WebSocket-only exchange subscription passed; missing/invalid socket credentials and anonymous HTTP
+access were rejected. Peer registration status remained closed on HTTPS and both HTTP alternatives.
+
+A subsequent 623.8-second idle observation passed with the test admin tab closed. Service identities
+and restart counters, one process per service, and the Serve configuration matched at both boundaries.
+No retained management subprocess was observed. A readable retained journal cursor covered 33 entries
+without matching management-denial, Serve-change/error, lifecycle or fatal-error patterns. Tailscale
+remained Running/online at the boundaries. This is bounded evidence, not continuous process sampling
+or proof against unlogged transitions; service-user status access is distinct from mutation permission.
+
+The epic records the detailed evidence and preserved harness failures. Its short-expiry/reauthentication
+row is now complete. These Pi 5 peer checks do not establish phone-specific traffic, nor do they complete
+the remaining R4/epic gates. Private receipts are in
+`remote-access-r4/host-install-acceptance/node-expiry-2026-10-08/`.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
