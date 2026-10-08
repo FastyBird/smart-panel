@@ -23,7 +23,22 @@
 			:label="t('remoteAccessModule.fields.advisory.message')"
 			prop="message"
 			:min-width="320"
-		/>
+		>
+			<template #default="scope">
+				<template v-if="scope.row.consoleLinkOffset >= 0">
+					<span>{{ scope.row.message.slice(0, scope.row.consoleLinkOffset) }}</span>
+					<el-link
+						:href="tailscaleDnsConsoleUrl"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{{ tailscaleDnsConsoleUrl }}
+					</el-link>
+					<span>{{ scope.row.message.slice(scope.row.consoleLinkOffset + tailscaleDnsConsoleUrl.length) }}</span>
+				</template>
+				<template v-else>{{ scope.row.message }}</template>
+			</template>
+		</el-table-column>
 
 		<el-table-column
 			:label="t('remoteAccessModule.fields.advisory.provider')"
@@ -72,7 +87,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElResult, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElLink, ElResult, ElTable, ElTableColumn, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -87,14 +102,19 @@ defineOptions({
 const { t } = useI18n();
 
 const { advisories } = useRemoteAccessStatus();
+const tailscaleDnsConsoleUrl = 'https://login.tailscale.com/admin/dns';
 
 // `row-key` only ever receives the row itself, never its index, so the index has to be baked
 // into a synthetic field up front to keep keys unique for two advisories that otherwise share a
 // code and provider.
-const rows = computed<(IRemoteAccessAdvisory & { rowKey: string })[]>(() =>
+const rows = computed<(IRemoteAccessAdvisory & { rowKey: string; consoleLinkOffset: number })[]>(() =>
 	advisories.value.map((advisory, index) => ({
 		...advisory,
 		rowKey: `${advisory.code}-${advisory.provider ?? 'module'}-${index}`,
+		consoleLinkOffset:
+			advisory.code === 'tailnet-https-disabled' && advisory.provider === 'remote-access-tailscale-plugin'
+				? advisory.message.indexOf(tailscaleDnsConsoleUrl)
+				: -1,
 	}))
 );
 

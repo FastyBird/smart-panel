@@ -26,6 +26,48 @@ vi.mock('../composables', () => ({
 }));
 
 describe('AdvisoriesTable', () => {
+	it('makes the HTTPS-disabled advisory console URL clickable without changing the message', async () => {
+		const consoleUrl = 'https://login.tailscale.com/admin/dns';
+		const message = `HTTPS Serve was requested, but this tailnet does not have HTTPS certificates enabled. Enable them at ${consoleUrl}.`;
+		advisories.value = [
+			{
+				code: 'tailnet-https-disabled',
+				severity: RemoteAccessModuleAdvisorySeverity.warning,
+				message,
+				provider: 'remote-access-tailscale-plugin',
+			},
+		];
+
+		const wrapper = mount(AdvisoriesTable);
+		await flushPromises();
+
+		const link = wrapper.find(`a[href="${consoleUrl}"]`);
+		expect(link.exists()).toBe(true);
+		expect(link.text()).toBe(consoleUrl);
+		expect(link.attributes('target')).toBe('_blank');
+		expect(link.attributes('rel')).toBe('noopener noreferrer');
+		expect(wrapper.findAll('tbody tr')[0].findAll('td')[1].text()).toBe(message);
+		wrapper.unmount();
+	});
+
+	it('keeps other advisory messages as plain text', async () => {
+		advisories.value = [
+			{
+				code: 'external-url-insecure',
+				severity: RemoteAccessModuleAdvisorySeverity.warning,
+				message: 'Check https://example.com and <a href="https://example.com">settings</a>.',
+				provider: null,
+			},
+		];
+
+		const wrapper = mount(AdvisoriesTable);
+		await flushPromises();
+
+		expect(wrapper.find('tbody a').exists()).toBe(false);
+		expect(wrapper.text()).toContain(advisories.value[0].message);
+		wrapper.unmount();
+	});
+
 	it('renders one row per advisory with the right tag type and "Module" for a null provider', async () => {
 		advisories.value = [
 			{ code: 'proxy-trust-untrusted', severity: RemoteAccessModuleAdvisorySeverity.critical, message: 'Forwarded headers ignored', provider: null },

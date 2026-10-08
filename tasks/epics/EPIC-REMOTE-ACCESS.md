@@ -884,6 +884,45 @@ version-verified npm package instead. Failed receipts remain retained separately
 required an application change. The short-expiry/reauthentication checklist row is complete; R4 and
 the epic retain their other unperformed gates.
 
+#### Alpha.53 connected host upgrade and retained setup results (2026-10-08)
+
+The installer Pi 4 upgraded from published alpha.51 to alpha.53 through one normal System UI
+confirmation while Tailscale was authenticated and connected. A private consistent SQLite/config
+backup preceded the update. The independent update service remained running while the application
+was stopped, completed at 13:57:49 UTC and released its lock. The existing admin session displayed
+successful completion and the new version without manual reload.
+
+Wrapper, backend and admin packages matched the official npm alpha.53 tarballs after SHA-512 SRI
+verification: all 42 wrapper files, 5,207 backend dist files and 250 admin dist files matched, with no
+extra files in the compared trees. Database integrity, schema/migrations, empty device topology,
+accounts/long-lived tokens and saved configuration matched the pre-upgrade snapshot. The host did not
+reboot; the application process changed. Tailscale retained its node identity and authentication.
+Certificate-verified peer HTTPS, owner login/profile, authenticated WebSocket exchange subscription
+and missing/invalid credential rejection passed again.
+
+To exercise published #1233 through the actual wizard, the test briefly stopped only `tailscaled`
+over LAN, without logout, package removal or configuration edits. An independent five-minute recovery
+timer was armed first. The card correctly showed the inactive-daemon requirement and **Set up**.
+**Start setup** used the existing package, restarted the daemon and reapplied the operator grant.
+The same wizard advanced automatically to Options and, after Skip, Done. All three rendered rows
+(`install`, `daemon`, `operator`) remained visible as Complete in both later steps. DOM observations
+captured Waiting followed by Complete; they did not capture each short intermediate Running state.
+This establishes retained per-step outcomes, not newly downloaded package installation or separate
+rendering of every transient stage. The existing stricter live-stage observation row remains open.
+
+The setup job completed at 13:59:40 UTC. Backend identity, configuration, schema, accounts and
+Tailscale node identity/authentication were preserved; peer HTTPS/login/WebSocket passed after setup.
+The recovery timer was cancelled and confirmed inactive before its deadline. Private evidence is in
+`remote-access-r4/host-install-acceptance/alpha53/`, including npm manifests, before/after inventories,
+UI/API stage observations and peer checks.
+
+The acceptance review also confirmed that the HTTPS-disabled advisory's console URL was still plain
+text in alpha.53. The accompanying admin change makes the official Tailscale DNS URL clickable for
+that advisory, preserving its message and leaving other messages as escaped text. A mounted component
+regression failed before the change and passed afterward. This source correction is not installed on
+the Pi; the previously recorded disabled-HTTPS functional cycle does not establish its released UI
+acceptance. R4 remains open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -899,7 +938,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 - [x] Admin → Remote access on the image shows internal URLs and, after enabling the plugin in Extensions, a Setup required card with inactive-daemon/operator requirements. Verified on fresh Pi 4 alpha.47. The clean npm-without-package variant correctly reported Not installed on 2026-10-07.
 - [x] Set up completes on the image with the package pre-installed and installs the package from the apt repository on an npm host. Image alpha.47 passed. Published npm alpha.51 passed on 2026-10-07 after removing the package, apt source and keyring: live installation/completion events, full-page reload recovery, all script steps captured in the status file and all prerequisites satisfied.
 - [ ] Report each setup step live in the admin, including daemon and operator. This is the visibility part of the original setup/host-installer criteria, retained separately from functional installation. Alpha.51 status-file samples captured every step, but the subsecond daemon/operator stages were not individually observed in UI/WebSocket progress; this requirement is not marked passed.
-- [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs. Link/QR display and user approval passed on fresh Pi 4 alpha.47; the approval device was not recorded, so the phone-specific step remains unverified.
+- [x] Sign in: a login link and QR code appear; approval on another device flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs. The original design permits approval on any device. Fresh Pi 4 alpha.47 passed link/QR and approval; alpha.51 reauthentication on 2026-10-08 passed with user-confirmed computer approval. Phone camera/QR usability remains a separate untested variant, not an authentication blocker.
 - [x] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. The actual Services → Plugins view showed Running / Healthy on Pi 4 alpha.47.
 
 ##### HTTPS and remote use
