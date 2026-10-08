@@ -852,7 +852,8 @@ Provider endpoints/proxy addresses and aggregate external/primary URLs were empt
 IPv4/MagicDNS HTTP probes from another tailnet peer timed out; LAN access remained available.
 
 The real wizard offered a new interactive login link and QR code, with `pending-auth` and
-`Cache-Control: no-store`. After the operator approved it, the open wizard advanced to Options
+`Cache-Control: no-store`. The operator confirmed approval on a computer; phone approval remains
+unverified. After approval, the open wizard advanced to Options
 without a page reload. Skipping unchanged options reached Done, while the card became Connected
 and the HTTPS primary URL returned. CLI confirmed Running/online and a new expiry of
 2027-04-06 12:17:49 UTC. No application restart, manual CLI repair or configuration change was

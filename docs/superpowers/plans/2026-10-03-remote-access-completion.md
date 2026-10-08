@@ -887,7 +887,8 @@ proxy contributions and aggregate external/primary URLs. Tailnet peer HTTPS and 
 timed out while LAN access remained available. The CLI's cached Self.Online value alone was not used
 as proof of connectivity.
 
-The normal wizard supplied a fresh link and QR with pending-auth/no-store. Operator approval advanced
+The normal wizard supplied a fresh link and QR with pending-auth/no-store. The operator confirmed
+approval on a computer, so the phone-approval case remains unverified. Approval advanced
 the existing UI through Options and Done without a page reload or backend restart. The card and API
 became connected/authenticated, HTTPS became primary again and the new key expires on April 6, 2027,
 consistent with the restored 180-day default. Certificate-verified peer HTTPS, owner login/profile and
