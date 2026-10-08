@@ -650,6 +650,86 @@ valid token or revocation of a well-formed token is not established. R5 remains 
 network outage/recovery, stop/config races, connected-provider upgrade, client-address policy and the
 remaining installation matrix. Pi 4 and its Tailscale expiry test were untouched.
 
+### R5 staging client-address and throttle acceptance (2026-10-08)
+
+The alpha.53 staging Pi 5 public hostname passed an additional bounded client-policy check.
+Display registration status reported closed with permit-join inactive, both normally and with
+individually supplied loopback `X-Forwarded-For` or `X-Real-IP` headers. A forged
+`CF-Connecting-IP` request received HTTP 403 at the edge; that result does not establish how the
+backend would handle that header if it reached the origin.
+
+Seven login attempts used a unique nonexistent test username. The first five returned 404 and the
+last two returned 429. Forging `X-Forwarded-For` on the second and seventh requests neither changed
+the recorded client nor bypassed the limit. The backend notification's client address matched the
+address reported by Cloudflare's trace endpoint, rather than loopback. A local owner login still
+worked while the public client was throttled, demonstrating separate peer budgets for these paths.
+After the retry interval, public owner login and authenticated WebSocket checks passed again.
+
+The initial combined-header probe stopped at the edge's 403 before sending the invalid-user login
+sequence. Subsequent checks isolated the headers, preserving the original observation. Registration
+status was tested; no display was registered. This is an HTTP client-address/throttle result, not
+a separate assertion of WebSocket client-address resolution or every registration-policy branch.
+
+### R5 staging stop/config overlap acceptance (2026-10-08)
+
+Four finite alpha.53 Pi 5 cases overlapped a protocol change from Auto to HTTP/2 with either manual
+Stop or `enabled: false`, in both invocation orders. The recorded HTTP intervals overlapped by
+approximately 92–162 ms. This establishes overlapping requests on this hardware, not a controlled
+backend coroutine schedule or exhaustive race coverage.
+
+Manual Stop does not persist a desired-state override: an enabled plugin still desires `started`,
+and asynchronous config reconciliation can restart it. Both stop/protocol cases settled connected.
+In the config-first case, Stop returned the existing HTTP 400 rejection while the config transition
+owned the lifecycle; the rejection was recorded and not silently retried. After each overlap settled,
+a distinct final Stop held the provider withdrawn with no child for more than 38 seconds.
+
+Both disable/protocol cases preserved `enabled: false`, HTTP/2 and desired state `stopped`; the child,
+endpoints, proxy contributions and public URL remained absent for more than 39 seconds. No sample
+contained more than one cloudflared child. Each case restored Enabled and Auto through the normal
+API, preserving the omitted token, and observed one unprivileged backend-owned child connected for
+more than 10 seconds. Process inventories and API snapshots were sequential samples, not atomic
+proof against every transient state. No backend modification or restart was used for this matrix.
+
+### R5 staging transport-outage acceptance (2026-10-08)
+
+The same alpha.53 Pi 5 passed short and sustained Cloudflare transport outages. Before each run,
+fresh process and socket identities plus a header-only packet observation confirmed cloudflared's
+UDP egress to port 7844. This matches Cloudflare's documented
+[QUIC/HTTP/2 transport ports](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/tunnel-with-firewall/).
+The test added a dedicated temporary nftables table blocking UID 994's TCP/UDP destination port
+7844 outside loopback. This was a transport-specific rule, not PID isolation or physical link loss.
+An independent 180-second systemd cleanup timer was armed before insertion; normal cleanup removed
+only the test table and then stopped its timer. Existing firewall tables were preserved.
+
+Both runs recorded dropped packets, `/ready` HTTP 503, provider `error`, absent endpoints/proxy
+contributions/public URL, and a failed real public health request. The managed service remained
+started with desired state started. The sustained run held this withdrawn condition across seven
+successful observations spanning more than 36 seconds, beyond the 30-second stable polling interval.
+No sampled address revival or observation gap occurred during that hold.
+
+Removing the test rule restored the connection automatically with the same backend and cloudflared
+identities. Public HTTPS recovery was checked independently: in the short run, edge readiness became
+connected before the public health request recovered from 502 to 200. Public owner login and valid,
+missing and invalid WebSocket-token checks passed again after the sustained run, using normal DNS
+and certificate validation. The final test table was absent, its timer inactive and readiness HTTP 200.
+Configuration, database schema/migrations, topology, accounts and long-lived tokens matched the
+pre-matrix baseline, and no backend restart occurred.
+
+Local API/SSH access remained available. Pi-side Tailscale identity and Running/Online state matched
+before, during and after the outages. The Mac could not resolve the Tailscale hostname at baseline,
+so this run does not claim a fresh end-to-end tailnet connection check. Pi 4 was not contacted.
+
+An initial preflight filtered out the backend because its process name differed from `node`; it
+stopped before packet capture or any firewall mutation. The corrected inventory identifies it by
+systemd MainPID and executable. Socket output is complete or rejected, never silently truncated.
+These preparation findings and the original receipts were retained separately from the successful
+network runs.
+
+R5 remains open for connected-provider application upgrade, rotation to a different valid token and
+well-formed-token revocation, and the remaining installation matrix. The recorded overlap and
+transport tests are bounded cases; physical network loss and exhaustive race schedules are not
+claimed. WebSocket client-address policy remains distinct from its verified authentication behavior.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
