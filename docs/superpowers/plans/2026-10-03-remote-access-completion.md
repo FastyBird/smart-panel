@@ -969,6 +969,35 @@ required an automatic job's completion. The admin correction allows a successful
 advance with fresh requirements/authentication and session guards. This source fix still requires
 released verification. The epic records the hardware reproduction; the wider R4 gate remains open.
 
+### R4 alpha.54 released regression acceptance (2026-10-09)
+
+The installer Pi 4 upgraded alpha.53 → alpha.54 through one normal System UI action while connected
+to Tailscale. The existing session observed automatic completion without a reload. Published npm
+SHA-512 integrity and every installed wrapper/backend/admin file matched; database/configuration,
+accounts and Tailscale identity/authentication were retained. Peer certificate-verified HTTPS, owner
+login, anonymous-profile rejection and authenticated/rejected WebSocket cases passed. The release
+contains #1373/#1374/#1375; its image and Docker jobs were still building when this evidence was recorded.
+
+The released Connect UI adopted both a manually Running node and a Stopped authenticated node while
+preserving unmanaged `NoSNAT=true`, empty advertised routes and node/user identity. The original
+preference was restored, final peer checks passed and the recovery timer was stopped. Released layout
+checks passed at actual 1280×800 with expanded QR content, provider dropdown, Disconnect hit testing
+and reachable advisories. Browser resize requests did not change that viewport, so this run does not
+establish released behavior at 1440×1200 or 390×844.
+
+The unavailable-helper scenario again reported the missing operator and correctly refused automatic
+installation with 422 and no job. Applying the displayed operator command while the helper remained
+unavailable allowed the actual wizard Re-check to advance Set up → Options, then Skip → Done with
+Connected state. Exact sudoers/operator restoration, helper recovery, final peer authentication and
+inactive recovery timer/setup worker checks passed without another backend restart. Final retained
+data/configuration/identity comparisons also passed.
+The HTTPS advisory link is included in the verified release and has source regression coverage;
+the HTTPS-disabled/restored cycle and released link navigation were not repeated.
+
+Private receipts are retained under `remote-access-r4/host-install-acceptance/next-release-2026-10-09/`.
+These results verify the named released regressions without relabelling older evidence as an alpha.54
+matrix. R4, R5 and the epic remain open for their remaining gates.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
