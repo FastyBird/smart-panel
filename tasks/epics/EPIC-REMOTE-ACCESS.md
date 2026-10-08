@@ -837,6 +837,52 @@ status samples, WebSocket events and UI recording, is in
 `remote-access-r4/host-install-acceptance/alpha51`. The GitHub release was published at 10:42:17 UTC;
 Docker and Raspberry Pi image jobs were still pending when this npm acceptance completed.
 
+#### Natural node-key expiry and reauthentication (2026-10-08)
+
+The clean-OS installer Pi 4 remained on published alpha.51 with Tailscale 1.102.5. On October 7,
+the operator temporarily selected a one-day node-key lifetime, approved this node and restored the
+tailnet default to 180 days. The API/UI displayed `key-expiring` with the expected expiry. The node
+was then left to expire naturally at 2026-10-08 11:25:29 UTC; no logout, reset or forced expiry was
+used to produce the expired state.
+
+At 12:12 UTC, CLI `BackendState` was `NeedsLogin` with the original expiry in the past. Although
+the cached Self object still reported Online, the provider correctly reported `setup-required`,
+authentication required and the available login action. The card said it needed to sign in again.
+Provider endpoints/proxy addresses and aggregate external/primary URLs were empty. HTTPS and both
+IPv4/MagicDNS HTTP probes from another tailnet peer timed out; LAN access remained available.
+
+The real wizard offered a new interactive login link and QR code, with `pending-auth` and
+`Cache-Control: no-store`. After the operator approved it, the open wizard advanced to Options
+without a page reload. Skipping unchanged options reached Done, while the card became Connected
+and the HTTPS primary URL returned. CLI confirmed Running/online and a new expiry of
+2027-04-06 12:17:49 UTC. No application restart, manual CLI repair or configuration change was
+required for recovery; the provider epoch and completed setup job remained unchanged.
+
+From the Pi 5 tailnet peer, system DNS and default certificate validation passed HTTPS admin HTML,
+alpha.51 health, owner login/profile and an authenticated WebSocket-only exchange subscription.
+Missing/invalid WebSocket tokens were rejected by application authentication, and anonymous profile
+access returned HTTP 401. Separate HTTPS and IPv4/MagicDNS HTTP checks returned admin HTML and
+closed display registration. These peer probes do not establish phone-specific traffic or transport.
+
+After closing the test admin tab and finishing the peer probes, a 623.8-second idle observation
+(12:25:50–12:36:14 UTC) passed. Backend and tailscaled identities/restart counters stayed unchanged,
+with one process per service at both boundaries and no retained management subprocesses. The Serve
+configuration fingerprint stayed unchanged, with one HTTPS listener/handler and Funnel disabled.
+Both boundaries reported Running/online with no auth URL and successful service-user status access.
+The readable, retained journal cursor covered 33 entries with no matches for management permission
+failures, Serve changes/errors, service lifecycle changes or fatal errors. This is a bounded idle
+observation: boundary snapshots and journal patterns do not prove absence of every intermediate or
+unlogged transition, and read permission alone is not a management-mutation permission test.
+
+Private receipts are retained under `remote-access-r4/host-install-acceptance/node-expiry-2026-10-08/`.
+The first peer-auth harness assumed exactly HTTP 200 for login and stopped with an assertion;
+the corrected run accepts successful 2xx login responses. The first idle preflight incorrectly
+required the backend working directory to be inside its npm package. The real working directory is
+the application data directory; the corrected guard checks the running entrypoint against the
+version-verified npm package instead. Failed receipts remain retained separately. Neither finding
+required an application change. The short-expiry/reauthentication checklist row is complete; R4 and
+the epic retain their other unperformed gates.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -875,7 +921,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 - [x] Funnel on: the URL becomes public (open it from a device without Tailscale); the public-exposure advisory shows; Funnel off returns it to tailnet-only without touching other Serve handlers. Passed on Pi 4 alpha.49 from the Mac with Tailscale Stopped: public TLS/login/WebSocket, UI advisories, public access removal and retained private HTTPS. An independent private handler on port 8443 survived both transitions and was removed after the test.
 - [ ] Tailscale SSH on: `ssh <login-user>@<node>` from the phone/laptop works per the tailnet ACL; off again disables Tailscale SSH. Use an existing OS account with a login shell (`smartpanel` on the test image), not the `smart-panel` service account. Pi 5 peer login after the required authentication check and UI/CLI disable passed on alpha.49; phone/laptop SSH remains untested. Disabling this option does not disable the system OpenSSH service.
-- [ ] With a short-expiry auth key (or a key expiry set in the console): the key-expiring advisory appears and "Sign in again" recovers.
+- [x] With a short-expiry auth key (or a key expiry set in the console): the key-expiring advisory appears and "Sign in again" recovers. Published alpha.51 Pi 4: one-day node-key warning observed on 2026-10-07; natural expiry, withdrawn URLs, normal wizard reauthentication and verified peer HTTPS/login/WebSocket recovery passed on 2026-10-08. The tailnet default was restored to 180 days before expiry.
 - [ ] Tailnet with HTTPS certificates disabled: the tailnet-https-disabled advisory appears with the console link; IPv4 and MagicDNS HTTP endpoints still work.
 
 ##### MCP
