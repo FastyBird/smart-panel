@@ -372,7 +372,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | --- | -------------------------------------------------------------------------------------- | -------------- | ------------------- |
 | 3   | [FEATURE-COMPANION-SCREEN-COMPILER](features/FEATURE-COMPANION-SCREEN-COMPILER.md)     | backend        | :clipboard: Planned |
 | 4   | [FEATURE-COMPANION-ESPHOME-GENERATOR](features/FEATURE-COMPANION-ESPHOME-GENERATOR.md) | backend        | :clipboard: Planned |
-| 5   | [FEATURE-COMPANION-PROVISIONING](features/FEATURE-COMPANION-PROVISIONING.md)           | backend, admin, installer | :clipboard: Planned |
+| 5   | [FEATURE-COMPANION-PROVISIONING](features/FEATURE-COMPANION-PROVISIONING.md)           | backend, admin | :clipboard: Planned |
 
 ### Phase 3: Runtime Communication
 

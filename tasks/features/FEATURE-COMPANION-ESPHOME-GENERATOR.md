@@ -66,6 +66,7 @@ the optional ESPHome toolchain is available, and to tell me clearly when it is n
 ### Generator (#1242)
 - [ ] `EsphomeGeneratorService.generate(device, screens)` returns YAML that passes `esphome config` for the reference profile with every screen type
 - [ ] Generated YAML contains no plaintext secrets in logs or API responses; the export variant uses `!secret wifi_password` / `!secret ota_password` placeholders
+- [ ] When WiFi credentials are absent from the plugin config, the generated USB-only YAML omits the `wifi` and `ota` blocks and passes `esphome config`; when they exist, both blocks are present. Unit tests cover both states
 - [ ] `build_hash` in the YAML equals the compiler's `structure_hash`
 - [ ] The LED ring block is present only when `led_ring_count > 0`
 - [ ] `GET /api/v1/plugins/devices-companion/devices/:id/config.yaml?variant=export` downloads the export YAML
