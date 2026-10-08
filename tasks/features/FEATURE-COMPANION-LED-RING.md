@@ -1,7 +1,7 @@
 # Task: Companion LED Ring Support
 ID: FEATURE-COMPANION-LED-RING
 Type: feature
-Scope: sdk (firmware, see #1237)
+Scope: sdk
 Size: small
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
@@ -10,76 +10,69 @@ Issues: #1245
 
 ## 1. Business goal
 
-In order to provide ambient visual feedback around the companion knob display,
+In order to get ambient visual feedback around the companion knob,
 As a user,
-I want an addressable LED ring around the round display that indicates the current value, mode, or status through color and brightness.
+I want an optional addressable LED ring that shows the current value, mode or connection status through color and
+brightness.
 
 ## 2. Context
 
-- Many ESP32 round display boards include or support an external addressable LED ring (WS2812 / SK6812)
-- The LED ring provides ambient feedback visible from a distance (e.g. blue glow for cooling, orange for heating)
-- Controlled via the serial protocol from the panel
-- ESPHome has native support for addressable LEDs (NeoPixelBus, FastLED)
-- Optional hardware feature — companion should work without it
-- Related: `EPIC-COMPANION-DISPLAY` (parent epic)
+- Optional hardware. It is enabled per device by `led_ring_count > 0` on the companion device (#1238); the generator
+  (#1242) emits the `light` block only then. The companion must work without it.
+- The panel drives it with the `led` protocol command (#1250); the firmware handles it in `panel_protocol` (#1243).
+- ESPHome has native addressable LED platforms (`esp32_rmt_led_strip`, `neopixelbus`). Choose the one supported by
+  the pinned ESPHome for ESP32-S3.
+- The ring is **not** modelled as a `light` channel on the companion device in v1 (it is not user-controllable from
+  the backend).
 
 ## 3. Scope
 
 **In scope**
-- ESPHome configuration for addressable LED ring (WS2812/SK6812)
-- Serial protocol command for LED control: color, brightness, effect
-- LED effects: solid color, arc indicator (partial ring lit to show value position), breathing, flash
-- Domain-based default colors (climate=blue/orange, lights=warm white, etc.)
-- Graceful handling when no LED ring hardware is present
+- `led` command: `color`, `brightness`, `effect` (`solid`, `arc`, `breathe`, `flash`), `value` (0-100 for `arc`)
+- Default behaviours in firmware: `breathe` while disconnected, `flash` on click confirmation
+- Generator support: LED pin and count from the hardware profile and the device's `led_ring_count`
+- Graceful no-op when the ring is not configured
 
 **Out of scope**
-- Complex LED animations (rainbow, chase, etc.)
-- LED ring as primary UI element (it supplements the display, not replaces it)
-- Per-LED individual control from the panel
+- Complex animations (rainbow, chase), per-LED control from the panel
+- Exposing the ring as a device channel
 
 ## 4. Acceptance criteria
 
-- [ ] LED ring lights up with domain-appropriate color when a screen is active
-- [ ] Arc indicator effect: LEDs light up proportionally to current value (e.g. 50% brightness = half the ring lit)
-- [ ] Serial command `{"cmd":"led","color":"#4FC3F7","brightness":80,"effect":"arc","value":50}` works
-- [ ] Flash effect on click confirmation
-- [ ] Breathing effect when companion is in "disconnected" state
-- [ ] Component gracefully handles missing LED hardware (no errors, no output)
-- [ ] LED configuration is optional in ESPHome YAML (generated only if enabled)
+- [ ] `{"cmd":"led","color":"#4FC3F7","brightness":80,"effect":"arc","value":50}` lights half the ring
+- [ ] `flash` runs on click; `breathe` runs while the "Disconnected" overlay is shown
+- [ ] With no ring configured, `led` commands are accepted and ignored (no errors)
+- [ ] The LED block appears in the generated YAML only when `led_ring_count > 0`; the CI test config covers both cases
+- [ ] LED updates do not block the main loop; brightness is capped by a YAML option
 
 ## 5. Example scenarios
 
 ### Scenario: Climate arc indicator
 
-Given the companion is showing Climate screen at 22°C (range 16-30)
-Then the LED ring shows a blue arc covering ~43% of the ring (proportional to value position)
-When the temperature changes to 26°C, the arc extends to ~71%
-When heating mode is active, the arc color changes to orange
+Given the `climate` screen is at 22 °C in the range 16-30
+Then the ring shows a blue arc over about 43 % of the LEDs
+When the value changes to 26 °C, the arc grows to about 71 %
+When heating is active, the panel sends an orange color
 
 ## 6. Technical constraints
 
-- Use ESPHome's native addressable LED platforms (no external libraries)
-- LED updates should not block the main loop
-- Keep LED brightness configurable (some setups may be too bright)
-- Typical ring sizes: 12, 16, 24, or 32 LEDs
+- Native ESPHome LED platforms only; no external libraries
+- Typical ring sizes are 12, 16, 24 and 32 LEDs; the count comes from the device, the pin from the hardware profile
 
 ## 7. Implementation hints
 
 ```yaml
-# ESPHome config for LED ring
 light:
-  - platform: neopixelbus
+  - platform: esp32_rmt_led_strip   # or the platform the pinned ESPHome recommends for ESP32-S3
     id: led_ring
-    type: GRB
-    variant: WS2812
-    pin: GPIO5
-    num_leds: 24
-    name: "Companion LED Ring"
+    pin: ${led_pin}
+    num_leds: ${led_count}
+    chipset: WS2812
+    rgb_order: GRB
 ```
 
 ## 8. AI instructions
 
-- Read this file entirely before making any code changes.
-- This is a small, self-contained feature that extends the ESPHome component.
-- Keep it simple — the LED ring is supplementary, not critical.
-- For each acceptance criterion, either implement it or explain why it's skipped.
+- Read this file and the epic's protocol section; start with a short plan (max 10 steps).
+- Follow `CLAUDE.md`; PR title e.g. `feat(sdk): add optional companion LED ring`. If the generator change is not trivial, put it in a separate `feat(backend): …` PR.
+- For each acceptance criterion, implement it or explain why it is skipped.
