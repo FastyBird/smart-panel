@@ -1029,6 +1029,42 @@ upgrade comparison/UI, peer authentication and the two bounded regression scenar
 release results retain their original scope. These named passes do not establish a complete alpha.54
 matrix or close R4, R5 or the epic.
 
+#### Alpha.54 Cloudflare connected-provider upgrade (2026-10-09)
+
+Staging Pi 5 upgraded alpha.53 → alpha.54 through one normal System UI action over the public
+Cloudflare HTTPS hostname. Candidate tag `0d6ef96ae256ee9598bc1984952680f2f11fbb66` and release run
+`37853264112` were verified; all 19 release jobs passed. The ARM64 server checksum, backend/admin npm
+SHA-512 integrity, server/npm content agreement and installed **1,719 backend JavaScript / 249 admin
+files** passed. Bundled throttler remained 6.7.1.
+
+The updater completed durably, cleared its lock and recovered both providers without a host reboot.
+All **111 devices**, property topology, **28 migrations**, schema, configuration, accounts and
+long-lived tokens were preserved. The pre-upgrade API session and a fresh login worked afterward.
+The original public browser tab displayed success without reloading. Cloudflare returned automatically
+with four ready connections, its endpoint/proxy contributions and desired Started state. Boundary
+samples found one unprivileged backend-owned cloudflared child before and after, with new backend/child
+identities and no `--token` argument. A Pi-side equality check confirmed the stored token and nonsecret
+settings matched the fresh backup; the earlier revoked-token checkpoint was not used.
+
+Post-upgrade public checks used normal DNS/certificate validation and passed admin HTML, owner profile,
+anonymous protected-route **401**, valid WebSocket authentication and explicit rejection of missing or
+invalid WebSocket tokens. These are protocol checks, not a new cellular/manual-device-change test.
+
+After closing the completion dialog, the old admin page failed to navigate to Remote access because
+it requested a removed CSS chunk. Explicit full navigation fetched the alpha.54 bundle, retained the
+session and showed Connected. This frontend regression is separate from successful tunnel recovery;
+the accompanying source fix reloads the admin on dismissal of the completed update dialog. All four
+dismissal paths are covered by component regressions, with negative cancellation/failure/in-progress
+cases. It is not yet deployed: the hardware retest must start from a release that already contains
+the fix, so upgrading from alpha.54 alone cannot verify the corrected dismissal behavior.
+
+The initial default-Python-User-Agent health observer received 403 before the update and is retained
+as an unsuitable probe. The corrected observer used the same explicit User-Agent as the passing
+preflight, captured 530/502 during restart and three healthy target-version samples afterward. No exact
+outage duration or continuous child-count claim is made. Private evidence is retained under
+`remote-access-r5/staging-alpha54-upgrade/`. R5 remains open for remaining installation cases and the
+released frontend fix; R4 and the epic are also unchanged.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
