@@ -866,6 +866,37 @@ token, client-policy and connected-upgrade cases already have evidence. The next
 can use the existing npm-host Pi 4 without reflashing its OS or touching Pi 5's working public tunnel.
 Pi 4 was not contacted during this deployment; R4/R5 and the epic remain open.
 
+### R5 npm-host/manual installation and wizard recovery (2026-10-09)
+
+The existing npm-host Pi 4 on published alpha.54 began without cloudflared, its apt source/key, a
+Cloudflare token or a setup job. Tailscale remained connected. A root-only database/configuration
+backup was created before temporarily enabling Cloudflare through Extensions.
+
+The real "Run it yourself" disclosure repeated the four installation commands twice and offered no
+Re-check button. Running the four unique displayed commands once installed cloudflared 2026.10.0
+from the signed Cloudflare apt repository. The still-open wizard refreshed the binary/version checks
+but stayed on Install without token inputs; no privileged setup job had been submitted.
+
+Only the package installed by this test was then removed, retaining its apt source/key and avoiding
+autoremove. One normal Start setup action launched job `0f6bef18-1640-4a49-869e-41896997adb0`, which
+completed and reinstalled the supported package. The wizard again stayed on Install: its transition
+required the token that the following step was meant to collect. Closing it and choosing Configure
+opened the token form; the form was not saved and no token was entered.
+
+The accompanying admin fix checks platform/binary/version readiness separately from token
+configuration, adds Re-check to the supported manual path, allows manual readiness without a job,
+and deduplicates remedy commands. Regressions cover fresh token-absent setup, manual installation,
+failed/in-flight work and close/reopen/late-response races. It is not deployed: released wizard
+acceptance remains pending even though both package-installation paths succeeded.
+
+Cloudflare was disabled again through Extensions, with its original empty configuration, no token
+and no published endpoint. The installed package/source/key remain available for the next test.
+Pi 4's backend PID, boot, Tailscale identity/runtime state, accounts, schema and 28 migrations were
+unchanged. Parsed configuration exactly matched the backup; only YAML serialization changed during
+the UI toggles. No sudoers/helper changes, backend restart, logout or Pi 5 contact were needed.
+Private evidence: `remote-access-r5/pi4-cloudflare-install/`. R4/R5 and the epic remain open; no
+Cloudflare connection or new external-access result is claimed for Pi 4.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and

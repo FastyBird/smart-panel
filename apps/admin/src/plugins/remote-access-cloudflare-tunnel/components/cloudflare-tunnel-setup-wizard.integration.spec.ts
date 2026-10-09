@@ -49,9 +49,13 @@ const mountWizard = () => {
 };
 const activeStep = (wrapper: ReturnType<typeof mountWizard>) => wrapper.findComponent({ name: 'ElSteps' }).props('active');
 const job = (jobId: string, state: string) => ({ job_id: jobId, state, step: null, message: null, updated_at: '2026-10-04T10:00:00Z' });
+const installedRequirements = () =>
+	['platform-supported', 'binary-installed', 'version-supported']
+		.map((code) => ({ code, satisfied: true, message: code, remedy: null }))
+		.concat([{ code: 'token-configured', satisfied: false, message: 'Paste token', remedy: null }]);
 const complete = () => {
 	snapshot.setup = job('job-new', 'complete');
-	snapshot.requirements = [{ code: 'binary-installed', satisfied: true, message: 'Installed', remedy: null }];
+	snapshot.requirements = installedRequirements();
 };
 
 describe('CloudflareTunnel setup wizard with actual store and composables', () => {
@@ -81,6 +85,22 @@ describe('CloudflareTunnel setup wizard with actual store and composables', () =
 	afterEach(() => {
 		for (const wrapper of wrappers.splice(0)) wrapper.unmount();
 		vi.useRealTimers();
+	});
+
+	it.each([true, false])('rechecks a manual install without a setup job (helper available: %s)', async (available) => {
+		snapshot.privileged_setup = { available, reason: available ? null : 'Unavailable' };
+		snapshot.requirements = [
+			{ code: 'binary-installed', satisfied: false, message: 'Missing', remedy: { commands: ['sudo apt-get install cloudflared'], note: null } },
+		];
+		const wrapper = mountWizard();
+		await flushPromises();
+		const button = wrapper.findAllComponents({ name: 'ElButton' }).find((item) => item.text().includes('recheck'));
+		expect(button).toBeDefined();
+		snapshot.requirements = installedRequirements();
+		button!.vm.$emit('click');
+		await flushPromises();
+		expect(activeStep(wrapper)).toBe(1);
+		expect(fns.post).not.toHaveBeenCalled();
 	});
 
 	it('immediately reconciles acceptance and advances after REST completion with all events lost', async () => {

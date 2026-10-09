@@ -110,6 +110,13 @@
 							>
 								{{ note }}
 							</p>
+							<el-button
+								:loading="isRechecking"
+								:disabled="isInstalling || effectiveProgress?.state === 'running'"
+								@click="onRecheck"
+							>
+								{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.recheck') }}
+							</el-button>
 						</el-collapse-item>
 					</el-collapse>
 				</template>
@@ -146,6 +153,7 @@
 
 					<el-button
 						:loading="isRechecking"
+						:disabled="isInstalling || effectiveProgress?.state === 'running'"
 						@click="onRecheck"
 					>
 						{{ t('remoteAccessCloudflareTunnelPlugin.wizard.buttons.recheck') }}
@@ -295,6 +303,7 @@ const configFormSubmit = ref<boolean>(false);
 const configFormResult = ref<FormResultType>(FormResult.NONE);
 
 const isRechecking = ref<boolean>(false);
+const isInstallRunning = computed<boolean>(() => isInstalling.value || effectiveProgress.value?.state === 'running');
 const installErrorCode = ref<string | null>(null);
 let sessionGeneration = 0;
 
@@ -323,6 +332,9 @@ const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: stri
 	flashCloudflareTunnelApiError(error, meaningfulCodes, fallback, flashMessage.error);
 
 const onInstall = async (): Promise<void> => {
+	if (isInstalling.value || effectiveProgress.value?.state === 'running' || isRechecking.value) {
+		return;
+	}
 	const generation = sessionGeneration;
 	installErrorCode.value = null;
 
@@ -337,15 +349,32 @@ const onInstall = async (): Promise<void> => {
 	}
 };
 
+// The install step prepares the host; the token is collected on the following config step.
+const installationReady = computed(() =>
+	['platform-supported', 'binary-installed', 'version-supported'].every((code) =>
+		requirements.value.some((requirement) => requirement.code === code && requirement.satisfied)
+	)
+);
+
 const onRecheck = async (): Promise<void> => {
+	if (isRechecking.value || isInstallRunning.value) {
+		return;
+	}
+	const generation = sessionGeneration;
 	isRechecking.value = true;
 
 	try {
 		await refreshStatus();
+		if (props.visible && generation === sessionGeneration && currentStep.value === 'install' && !isInstallRunning.value && installationReady.value) {
+			goToStep('config');
+		}
 	} catch (error) {
+		if (!props.visible || generation !== sessionGeneration) return;
 		flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.requestError'));
 	} finally {
-		isRechecking.value = false;
+		if (generation === sessionGeneration) {
+			isRechecking.value = false;
+		}
 	}
 };
 
@@ -383,16 +412,24 @@ const onDialogUpdate = (value: boolean): void => {
 	}
 };
 
-let completing = false;
+let completingGeneration: number | null = null;
 
 // Revisit completion when requirements are refreshed after a transient read failure.
 watch(
-	[effectiveProgress, requirements],
+	[effectiveProgress, requirements, isInstalling],
 	async ([completed]): Promise<void> => {
-		if (completing || !props.visible || completed?.state !== 'complete' || currentStep.value !== 'install') return;
+		if (
+			completingGeneration === sessionGeneration ||
+			!props.visible ||
+			isInstalling.value ||
+			completed?.state !== 'complete' ||
+			currentStep.value !== 'install'
+		) {
+			return;
+		}
 
 		const generation = sessionGeneration;
-		completing = true;
+		completingGeneration = generation;
 
 		try {
 			await fetchStatus();
@@ -401,9 +438,11 @@ watch(
 			if (
 				props.visible &&
 				generation === sessionGeneration &&
+				currentStep.value === 'install' &&
 				effectiveProgress.value?.job === completed.job &&
 				effectiveProgress.value?.state === 'complete' &&
-				requirements.value.every((requirement) => requirement.satisfied)
+				!isInstalling.value &&
+				installationReady.value
 			) {
 				goToStep('config');
 			}
@@ -412,7 +451,9 @@ watch(
 
 			flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.requestError'));
 		} finally {
-			completing = false;
+			if (completingGeneration === generation) {
+				completingGeneration = null;
+			}
 		}
 	},
 	{ immediate: true }
@@ -474,6 +515,7 @@ watch(
 	(): boolean => props.visible,
 	(visible, previous): void => {
 		if (previous !== undefined) sessionGeneration++;
+		isRechecking.value = false;
 		if (visible) {
 			currentStep.value = props.initialStep;
 			installErrorCode.value = null;

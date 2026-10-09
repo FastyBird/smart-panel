@@ -101,7 +101,7 @@ export interface ICloudflareTunnelRemedyPlan {
 /**
  * Builds the manual "do it yourself" plan D12 describes for both the wizard's "Run it yourself"
  * disclosure (`privileged_setup.available` true) and its unavailable-platform fallback (`available`
- * false): every unsatisfied requirement's `remedy.commands`, concatenated in order into one
+ * false): every unsatisfied requirement's `remedy.commands`, deduplicated in order into one
  * copyable block, or its `note` shown as prose when there are no exact commands for it. A
  * satisfied requirement (`remedy: null`) never contributes to either list. Mirrors
  * `buildTailscaleRemedyPlan`.
@@ -116,7 +116,11 @@ export const buildCloudflareTunnelRemedyPlan = (requirements: ICloudflareTunnelR
 		}
 
 		if (requirement.remedy.commands.length > 0) {
-			commands.push(...requirement.remedy.commands);
+			for (const command of requirement.remedy.commands) {
+				if (!commands.includes(command)) {
+					commands.push(command);
+				}
+			}
 		} else if (requirement.remedy.note) {
 			notes.push(requirement.remedy.note);
 		}
