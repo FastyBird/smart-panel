@@ -155,7 +155,7 @@
 			"upToDate": "Ihr System ist auf dem neuesten Stand.",
 			"checking": "Suche nach Updates...",
 			"installing": "Update wird installiert...",
-			"waitingForRestart": "Dienst wird neu gestartet, bitte warten...",
+			"waitingForRestart": "Verbindung nicht verfügbar oder Aktualisierungsstatus unbestätigt. Warten auf die Bestätigung des Ergebnisses durch das System...",
 			"noVersionInfo": "Versionsinformationen konnten nicht abgerufen werden.",
 			"lessStableChannel": "Der Kanal {channel} ist weniger stabil als Ihre installierte Version",
 			"lessStableChannelDescription": "Updates aus diesem Kanal sind möglicherweise weniger getestet als die von Ihnen verwendete Version. Sie können jederzeit zurückwechseln; der gewählte Kanal ist nur ein Minimum, stabilere Versionen werden weiterhin angeboten."

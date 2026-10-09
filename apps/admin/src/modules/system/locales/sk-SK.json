@@ -155,7 +155,7 @@
 			"upToDate": "Váš systém je aktuálny.",
 			"checking": "Kontrola aktualizácií...",
 			"installing": "Inštalácia aktualizácie...",
-			"waitingForRestart": "Služba sa reštartuje, počkajte prosím...",
+			"waitingForRestart": "Pripojenie nie je dostupné alebo stav aktualizácie nie je potvrdený. Čakáme na potvrdenie výsledku systémom...",
 			"noVersionInfo": "Nie je možné získať informácie o verzii.",
 			"lessStableChannel": "Kanál {channel} je menej stabilný než nainštalovaná verzia",
 			"lessStableChannelDescription": "Aktualizácie z tohto kanála môžu byť menej otestované než verzia, ktorú používate. Kedykoľvek sa môžete vrátiť späť; zvolený kanál je len minimum, stabilnejšie vydania sú ponúkané vždy."

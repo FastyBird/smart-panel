@@ -155,7 +155,7 @@
       "upToDate": "Your system is up to date.",
       "checking": "Checking for updates...",
       "installing": "Installing update...",
-      "waitingForRestart": "Service is restarting, please wait...",
+      "waitingForRestart": "Connection unavailable or update status unconfirmed. Waiting for the system to confirm the result...",
       "noVersionInfo": "Unable to retrieve version information.",
       "lessStableChannel": "The {channel} channel is less stable than your installed version",
       "lessStableChannelDescription": "Updates from this channel may be less tested than the release you are running. Switch back at any time; the channel you pick is only a minimum, so more stable releases are always offered too."

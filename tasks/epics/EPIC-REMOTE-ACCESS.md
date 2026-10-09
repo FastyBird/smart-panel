@@ -1280,6 +1280,46 @@ coalesced burst can still render as completed stages in a single UI frame. The l
 remains open for released verification after correction. Lost-WebSocket variants were not
 exercised in this run and remain separate gates.
 
+#### Released short-stage delivery and long-upgrade UI timeout (2026-10-09)
+
+The npm-host Pi 4 upgraded alpha.56 → published alpha.57
+(`26f7b9140cba39c5ea811d9fcf26a5baf8162a62`, including #1384) through one System UI install
+confirmation. The release tag's ancestry and all three npm package identities/integrities were
+verified. Installed files matched the published wrapper (42), backend dist (5,207) and admin dist
+(249) manifests. Schema/migrations, topology, accounts/long-lived credentials, configuration bytes,
+boot ID and Tailscale identity/authentication were preserved.
+
+Installation succeeded, but the original admin document reported `downloading / Update failed`
+after its five-minute reconnect window elapsed while npm was still installing. At 16:00:57 UTC,
+the authoritative update API reported alpha.57, `complete`, 100% and no error. Manual navigation
+showed alpha.57 normally. This is a separate admin observation/recovery defect; this upgrade is
+not credited as passing the uninterrupted UI completion/reload path.
+
+The follow-up admin correction keeps status requests serial, bounds each request, and backs off
+while the backend is unavailable instead of converting elapsed waiting time into an update
+failure. The connection message describes an unconfirmed outcome. Monitoring ends on an
+authoritative result or when its last active consumer leaves, and can resume on return. This
+source correction is not installed on the Pi; its released long-upgrade acceptance remains open.
+
+With a fresh post-upgrade checkpoint and an operator-only recovery timer, the actual released
+wizard repaired a removed operator grant without logging out or stopping the daemon. For job
+`7ba33d21-9904-4330-907d-fd908f43d42a`, the browser received `running/install`, `running/daemon`,
+`running/operator` and `complete/complete` at 16:00:36.441, 16:00:36.462, 16:00:36.997 and
+16:00:37.054 UTC. These matched the script's job-scoped history, in order and without duplicate
+stage events. Named-stage delivery spanned 613 ms (718 ms including the initial unstepped event).
+DOM observations separately captured each of the three rows as In progress, then Complete. The
+wizard automatically advanced to Options and completed Skip → Done; REST confirmed the same
+terminal job. No artificial stage delay or local runtime patch was used.
+
+The setup's configuration, stable preferences, identity, schema/migrations, topology, credentials,
+boot ID and backend/tailscaled process/restart counters matched the post-upgrade checkpoint.
+The setup worker and unused recovery timer were inactive, the cached test session was removed,
+and the isolated browser was closed. Read-only Pi 5 peer probes returned certificate-verified
+HTTPS and IPv4 HTTP 200/alpha.57. Private receipts: `remote-access-r4/pi4-setup-transport-alpha57/`.
+This closes the live-stage delivery row for the released installed-package setup. Intentional
+WebSocket loss, fresh-package installation, additional login/phone variants and the other R4
+gates were not exercised by this run; R4 and the epic remain open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -1294,7 +1334,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 - [x] Admin → Remote access on the image shows internal URLs and, after enabling the plugin in Extensions, a Setup required card with inactive-daemon/operator requirements. Verified on fresh Pi 4 alpha.47. The clean npm-without-package variant correctly reported Not installed on 2026-10-07.
 - [x] Set up completes on the image with the package pre-installed and installs the package from the apt repository on an npm host. Image alpha.47 passed. Published npm alpha.51 passed on 2026-10-07 after removing the package, apt source and keyring: live installation/completion events, full-page reload recovery, all script steps captured in the status file and all prerequisites satisfied.
-- [ ] Report each setup step live in the admin, including daemon and operator. This is the visibility part of the original setup/host-installer criteria, retained separately from functional installation. Alpha.51 status-file samples captured every step, but the subsecond daemon/operator stages were not individually observed in UI/WebSocket progress; this requirement is not marked passed.
+- [x] Report each setup step live in the admin, including daemon and operator. Published alpha.57 on the npm-host Pi 4 (2026-10-09): the installed-package operator-repair setup delivered all four named stage events in order, matching job-scoped script history; DOM observations captured each row In progress and then Complete. This closes the reporting gap reproduced on alpha.56; no intentional WebSocket loss was introduced.
 - [x] Sign in: a login link and QR code appear; approval on another device flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs. The original design permits approval on any device. Fresh Pi 4 alpha.47 passed link/QR and approval; alpha.51 reauthentication on 2026-10-08 passed with user-confirmed computer approval. Phone camera/QR usability remains a separate untested variant, not an authentication blocker.
 - [x] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. The actual Services → Plugins view showed Running / Healthy on Pi 4 alpha.47.
 
