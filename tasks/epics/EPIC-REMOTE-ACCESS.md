@@ -1299,7 +1299,8 @@ The follow-up admin correction keeps status requests serial, bounds each request
 while the backend is unavailable instead of converting elapsed waiting time into an update
 failure. The connection message describes an unconfirmed outcome. Monitoring ends on an
 authoritative result or when its last active consumer leaves, and can resume on return. This
-source correction is not installed on the Pi; its released long-upgrade acceptance remains open.
+source correction was not yet installed during this run; the following alpha.58 record tracks
+its deployment. Released long-upgrade acceptance remains open.
 
 With a fresh post-upgrade checkpoint and an operator-only recovery timer, the actual released
 wizard repaired a removed operator grant without logging out or stopping the daemon. For job
@@ -1319,6 +1320,59 @@ HTTPS and IPv4 HTTP 200/alpha.57. Private receipts: `remote-access-r4/pi4-setup-
 This closes the live-stage delivery row for the released installed-package setup. Intentional
 WebSocket loss, fresh-package installation, additional login/phone variants and the other R4
 gates were not exercised by this run; R4 and the epic remain open.
+
+#### Alpha.58 deployment and bounded setup transport-loss acceptance (2026-10-09)
+
+The npm-host Pi 4 upgraded alpha.57 → published alpha.58
+(`4fa129f7f04276eaa5850a49869f799edd2ca442`, including #1385) with one System UI confirmation.
+The tag/version-sync ancestry and npm integrity checks passed. Installed wrapper (42), backend
+dist (5,207) and admin dist (249) files matched the published manifests exactly. Schema/migrations,
+topology, accounts/long-lived credentials, configuration bytes, boot ID and Tailscale identity
+were preserved. Tailscaled retained its PID; the independent updater survived backend shutdown.
+
+The original alpha.57 admin again showed `downloading / Update failed` after five minutes.
+The authoritative API subsequently confirmed alpha.58 / complete / 100% / no error; fresh
+navigation showed alpha.58 and Connected. This installs the observer fix but does **not** pass
+its hardware gate: that needs a subsequent upgrade starting from the fixed alpha.58 admin.
+
+On this released candidate, three isolated browser contexts ran actual operator-repair setup jobs.
+Each used a fresh database/configuration checkpoint and a 15-minute recovery timer; only
+`OperatorUser` was cleared. Package, daemon, authentication and other preferences were retained.
+REST was left available while WebSocket delivery/reconnection was blocked until after completion.
+All times below are UTC on 2026-10-09:
+
+| Client-observed loss trigger                    | Fresh job                              | Cut          | First matching terminal REST response | Options      |
+| ----------------------------------------------- | -------------------------------------- | ------------ | ------------------------------------- | ------------ |
+| Before POST acceptance                          | `8ad077cc-95f7-40d2-8652-18157625efc9` | 17:56:15.623 | 17:56:18.988                          | 17:56:19.004 |
+| After initial Running event (no named step yet) | `dbe838c5-857a-4a0c-9e73-f8dbd355c724` | 17:58:04.195 | 17:58:07.530                          | 17:58:07.549 |
+| Complete event withheld                         | `834c3d0a-a14b-4ac7-8664-44706f43e042` | 17:59:48.784 | 17:59:51.435                          | 17:59:51.450 |
+
+Each accepted job reached Complete through REST with satisfied prerequisites and enabled Options
+without a document reload. Status reads did not overlap. The terminal-event case had neither a
+terminal REST result nor Options before its cut, so it establishes fallback recovery rather than
+an already-completed UI. Each context later reconnected its authenticated socket and received normal
+events. The first case reached Options and Skip; its harness tried the nonexistent Done button,
+then closed the context. The other two verified Skip → Close. This harness issue is not a product
+failure or evidence of the first case's final Close action.
+
+The first two cuts closed the browser-facing transport; an upstream test proxy socket lingered
+until timeout. No message was forwarded to the page during either outage. The third used a valid
+browser close code and ignored retired sockets. Later GETs overwrote a convenience terminal field
+in the first two receipts; their original timed request records preserve confirmation before the
+observation ended. Report client-observed loss, not immediate upstream TCP closure. The second
+case is specifically loss after initial Running; loss during a named setup stage remains untested.
+
+After every job, all baseline preservation checks passed: stable preferences, configuration bytes,
+schema/migrations, topology, credentials, identity, boot ID and backend/tailscaled PIDs/restart
+counters. Unused recovery timers and setup workers were inactive, cached sessions removed and all
+owned browsers closed. The final Pi 5 peer probe at 18:01:00 UTC returned certificate-verified
+HTTPS and IPv4 HTTP 200/alpha.58. No runtime code patch or artificial worker delay was used.
+Private evidence: `remote-access-r4/pi4-admin-upgrade-alpha58/` and
+`remote-access-r4/pi4-setup-transport-alpha58/`.
+
+These bounded installed-package cases do not establish fresh-package transport recovery, slow CLI,
+the production setup timeout, device network loss, pending-login upgrade or new phone observations.
+R4/#910 and the epic stay open, including the remaining matrix and one-candidate reconciliation.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
