@@ -91,6 +91,18 @@ if [ "$PRINT_PLAN" -eq 1 ]; then
 	exit 0
 fi
 
+# History is opt-in: manual invocations retain the legacy status shape. Validate
+# the generated UUID before embedding it in JSON; print-plan exits above without
+# validating or writing anything. History belongs to this process, never a prior file.
+JOB_ID="${PRIVILEGED_WORKER_JOB_ID:-}"
+if [ -n "$JOB_ID" ] && [[ ! "$JOB_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+	echo "Invalid PRIVILEGED_WORKER_JOB_ID" >&2
+	exit 1
+fi
+STATUS_HISTORY=""
+STATUS_HISTORY_COUNT=0
+LAST_STATUS_STATE=""
+
 # Writes the canonical `{ state, step, message }` status PrivilegedWorkerService
 # expects, via a temp file + rename so a concurrent read never sees a
 # half-written file. printf %s (never direct interpolation into the format
@@ -102,6 +114,7 @@ write_status() {
 	local message="${3:-}"
 	local tmp_file="${STATUS_FILE}.tmp"
 	local safe_message=""
+	local entry=""
 
 	if [ -n "$message" ]; then
 		# Strip control characters first (defensive: every message here is a
@@ -114,10 +127,29 @@ write_status() {
 
 	mkdir -p "$(dirname "$STATUS_FILE")"
 
-	printf '{\n\t"state": "%s",\n\t"step": "%s",\n\t"message": "%s"\n}\n' \
-		"$state" "$step" "$safe_message" >"$tmp_file"
+	if [ -n "$JOB_ID" ]; then
+		# The script has four success entries (or a final failure). Keep the same
+		# 32-entry bound as the worker rather than permitting unbounded growth.
+		if [ "$STATUS_HISTORY_COUNT" -ge 32 ]; then
+			echo "Status history exceeds 32 entries" >&2
+			return 1
+		fi
+
+		printf -v entry '{"state":"%s","step":"%s","message":"%s"}' "$state" "$step" "$safe_message"
+		if [ -n "$STATUS_HISTORY" ]; then
+			STATUS_HISTORY+=","
+		fi
+		STATUS_HISTORY+="$entry"
+		STATUS_HISTORY_COUNT=$((STATUS_HISTORY_COUNT + 1))
+		printf '{"jobId":"%s","state":"%s","step":"%s","message":"%s","history":[%s]}\n' \
+			"$JOB_ID" "$state" "$step" "$safe_message" "$STATUS_HISTORY" >"$tmp_file"
+	else
+		printf '{\n\t"state": "%s",\n\t"step": "%s",\n\t"message": "%s"\n}\n' \
+			"$state" "$step" "$safe_message" >"$tmp_file"
+	fi
 
 	mv "$tmp_file" "$STATUS_FILE"
+	LAST_STATUS_STATE="$state"
 }
 
 # Only fires on an exit this script did not already report itself (a crash,
@@ -127,7 +159,7 @@ cleanup() {
 	local exit_code=$?
 
 	if [ "$exit_code" -ne 0 ]; then
-		if [ -f "$STATUS_FILE" ] && grep -q '"state": "failed"' "$STATUS_FILE" 2>/dev/null; then
+		if [ "$LAST_STATUS_STATE" = "failed" ]; then
 			return
 		fi
 

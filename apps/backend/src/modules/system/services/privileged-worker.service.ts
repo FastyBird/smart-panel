@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from 'fs';
+import { FSWatcher, closeSync, existsSync, openSync, readFileSync, readSync, watch } from 'fs';
 import { execFile, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { basename, dirname } from 'path';
 
 import { Injectable } from '@nestjs/common';
 
@@ -18,6 +19,12 @@ export interface PrivilegedJobSpec {
 	timeoutMs?: number;
 	/** Use a manager-owned service when the worker must stop its launching application. */
 	unitType?: 'scope' | 'service';
+	/** Opt in to the canonical, immutable `{ jobId, history: [{ state, step?, message? }] }`
+	 * protocol (at most 32 entries / 64 KiB). The top-level status must match the last entry.
+	 * The generated id is passed as PRIVILEGED_WORKER_JOB_ID; caller env cannot override it.
+	 * History cannot be combined with mapStatus: mapping remains a legacy snapshot protocol.
+	 */
+	trackStatusHistory?: boolean;
 	/**
 	 * Maps a raw, caller-defined status-file JSON shape onto the generic PrivilegedJobStatus
 	 * fields this service understands, applied before the service's own terminal-state
@@ -64,6 +71,8 @@ export interface PrivilegedJobStatus {
 	updatedAt: string;
 }
 
+type HistoryEntry = Pick<PrivilegedJobStatus, 'state' | 'step' | 'message'>;
+
 type StatusHandler = (status: PrivilegedJobStatus) => void;
 
 interface JobRecord {
@@ -82,6 +91,7 @@ interface JobRecord {
 	/** True once an unusable tick (missing/invalid state, or mapStatus returning null) has been
 	 *  logged for this job — caps the debug log at one per job instead of one per bad tick. */
 	loggedInvalidStatus: boolean;
+	loggedHandlerError: boolean;
 	/**
 	 * Non-null from the moment this job's unit is actually freed (see `stopPolling`) until
 	 * `PRUNE_AFTER_MS` elapses, at which point the record is dropped from `jobs` (see
@@ -91,11 +101,19 @@ interface JobRecord {
 	 * other timer in this file so a pending prune can never keep the process alive.
 	 */
 	pruneTimer: NodeJS.Timeout | null;
+	trackStatusHistory: boolean;
+	statusWatcher: FSWatcher | null;
+	history: HistoryEntry[];
+	historyStatuses: PrivilegedJobStatus[];
+	pendingHistoryHandlers: Set<StatusHandler>;
 	serviceLaunched: boolean;
 	serviceProbePending: boolean;
 }
 
 const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
+const STATUS_HISTORY_LIMIT = 32;
+const STATUS_FILE_LIMIT_BYTES = 64 * 1024;
+
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 /** Caps how much of a failed job's stderr is retained/exposed — enough for a useful diagnostic (e.g. sudo's own refusal reason) without holding an unbounded buffer for a chatty script. */
@@ -162,6 +180,10 @@ export class PrivilegedWorkerService {
 	constructor(private readonly platformService: PlatformService) {}
 
 	async run(spec: PrivilegedJobSpec): Promise<{ id: string }> {
+		if (spec.trackStatusHistory && spec.mapStatus) {
+			throw new Error('Status history cannot be combined with mapStatus');
+		}
+
 		const supported = await this.platformService.supportsPrivilegedWorkers();
 
 		if (!supported) {
@@ -203,7 +225,13 @@ export class PrivilegedWorkerService {
 			redact: spec.redact,
 			stderrBuffer: Buffer.alloc(0),
 			loggedInvalidStatus: false,
+			loggedHandlerError: false,
 			pruneTimer: null,
+			trackStatusHistory: spec.trackStatusHistory ?? false,
+			statusWatcher: null,
+			history: [],
+			historyStatuses: [],
+			pendingHistoryHandlers: new Set(),
 			serviceLaunched: false,
 			serviceProbePending: false,
 		};
@@ -214,7 +242,13 @@ export class PrivilegedWorkerService {
 		this.busyUnits.set(spec.unit, id);
 
 		try {
-			const setenvArgs = Object.entries(spec.env ?? {}).flatMap(([key, value]) => ['--setenv', `${key}=${value}`]);
+			const env = { ...spec.env };
+
+			if (record.trackStatusHistory) {
+				env.PRIVILEGED_WORKER_JOB_ID = id;
+			}
+
+			const setenvArgs = Object.entries(env).flatMap(([key, value]) => ['--setenv', `${key}=${value}`]);
 
 			// A scope's sudo parent waits inside the caller's cgroup until the worker exits.
 			// A transient service releases that launcher after exec, so a worker can verify
@@ -289,6 +323,16 @@ export class PrivilegedWorkerService {
 					return;
 				}
 
+				// A fast failing script may publish all its history before its child exit
+				// notification beats the directory watcher. Drain it before fallback failure.
+				if (record.trackStatusHistory) {
+					this.pollTick(record);
+
+					if (record.lastStatus.state !== 'running' || !record.pollTimer) {
+						return;
+					}
+				}
+
 				const reason = signal ? `was terminated by signal ${signal}` : `exited with code ${code}`;
 				const stderr = this.getCapturedStderr(record);
 
@@ -355,6 +399,9 @@ export class PrivilegedWorkerService {
 	 * process listeners are spent (see `finishJob`/`stopPolling`), so the replay is the only
 	 * delivery that will ever happen. A `running` snapshot is simply an extra, harmless copy of
 	 * what the poll interval already re-delivers on every tick regardless of whether it changed.
+	 * For opted-in history jobs, replay instead delivers every accepted entry in order (including
+	 * a service-owned failure/timeout), then future unseen entries. Pending replay subscribers
+	 * are excluded from live delivery until that microtask completes, avoiding duplicate stages.
 	 */
 	onStatus(id: string, handler: StatusHandler): () => void {
 		const record = this.jobs.get(id);
@@ -365,19 +412,36 @@ export class PrivilegedWorkerService {
 
 		record.handlers.add(handler);
 
+		if (record.trackStatusHistory) {
+			record.pendingHistoryHandlers.add(handler);
+		}
+
 		// A native Promise microtask, not queueMicrotask(): jest.useFakeTimers()
 		// (the modern implementation every spec in this file — and the update
 		// executor's and setup service's specs — relies on) fakes
 		// queueMicrotask itself, so it would never fire without an explicit
 		// timer advance. Promise scheduling is not on that fakeable list.
 		void Promise.resolve().then(() => {
-			if (record.handlers.has(handler)) {
+			if (record.trackStatusHistory) {
+				const statuses = record.historyStatuses.length ? [...record.historyStatuses] : [record.lastStatus];
+
+				try {
+					for (const status of statuses) {
+						if (record.handlers.has(handler)) {
+							this.deliverStatus(record, handler, status);
+						}
+					}
+				} finally {
+					record.pendingHistoryHandlers.delete(handler);
+				}
+			} else if (record.handlers.has(handler)) {
 				handler(record.lastStatus);
 			}
 		});
 
 		return () => {
 			record.handlers.delete(handler);
+			record.pendingHistoryHandlers.delete(handler);
 		};
 	}
 
@@ -429,26 +493,66 @@ export class PrivilegedWorkerService {
 	}
 
 	private startPolling(record: JobRecord): void {
-		record.pollTimer = setInterval(() => {
-			if (Date.now() - record.startedAt > record.timeoutMs) {
-				// Cleared here directly (not via stopPolling, which would also release the unit)
-				// so this branch can never re-enter on a later tick while handleTimeout's stop
-				// attempt / is-active check are still in flight — handleTimeout is async and this
-				// callback does not (and must not) await it.
-				clearInterval(record.pollTimer);
-				record.pollTimer = null;
+		if (record.lastStatus.state !== 'running') {
+			return;
+		}
 
-				void this.handleTimeout(record);
+		record.pollTimer = setInterval(() => this.pollTick(record), STATUS_POLL_INTERVAL_MS);
+		record.pollTimer.unref();
 
-				return;
-			}
+		if (!record.trackStatusHistory) {
+			return;
+		}
 
-			this.pollStatusFile(record);
+		try {
+			// Watch the directory: atomic rename replaces the file inode. Notifications may
+			// coalesce or disappear; the durable history and polling remain authoritative.
+			record.statusWatcher = watch(dirname(record.statusFile), (_event, filename) => {
+				if (filename === null || filename.toString() === basename(record.statusFile)) {
+					this.pollTick(record);
+				}
+			});
+			record.statusWatcher.unref();
+			record.statusWatcher.on('error', () => this.closeStatusWatcher(record));
+		} catch {
+			// A missing directory / unsupported watcher is covered by the polling fallback.
+			this.closeStatusWatcher(record);
+		}
+	}
 
-			if (record.serviceLaunched && record.lastStatus.state === 'running' && !record.serviceProbePending) {
-				void this.checkServiceSettlement(record);
-			}
-		}, STATUS_POLL_INTERVAL_MS);
+	private pollTick(record: JobRecord): void {
+		if (!record.pollTimer || record.lastStatus.state !== 'running') {
+			return;
+		}
+
+		if (Date.now() - record.startedAt > record.timeoutMs) {
+			this.stopMonitoring(record);
+			void this.handleTimeout(record);
+
+			return;
+		}
+
+		this.pollStatusFile(record);
+
+		if (record.serviceLaunched && record.lastStatus.state === 'running' && !record.serviceProbePending) {
+			void this.checkServiceSettlement(record);
+		}
+	}
+
+	private closeStatusWatcher(record: JobRecord): void {
+		const watcher = record.statusWatcher;
+
+		record.statusWatcher = null;
+		watcher?.close();
+	}
+
+	private stopMonitoring(record: JobRecord): void {
+		if (record.pollTimer) {
+			clearInterval(record.pollTimer);
+			record.pollTimer = null;
+		}
+
+		this.closeStatusWatcher(record);
 	}
 
 	private pollStatusFile(record: JobRecord): void {
@@ -459,8 +563,16 @@ export class PrivilegedWorkerService {
 		let mapped: Partial<PrivilegedJobStatus> | null;
 
 		try {
-			const raw = readFileSync(record.statusFile, 'utf-8');
+			const raw = record.trackStatusHistory
+				? this.readBoundedStatusFile(record.statusFile)
+				: readFileSync(record.statusFile, 'utf-8');
 			const rawParsed = JSON.parse(raw) as Record<string, unknown>;
+
+			if (record.trackStatusHistory) {
+				this.acceptStatusHistory(record, rawParsed);
+
+				return;
+			}
 
 			// mapStatus is caller-supplied code — a throw here must be handled exactly like a
 			// torn/mid-write read, not propagate out of this interval callback.
@@ -505,6 +617,106 @@ export class PrivilegedWorkerService {
 		}
 	}
 
+	private readBoundedStatusFile(path: string): string {
+		const fd = openSync(path, 'r');
+
+		try {
+			const buffer = Buffer.alloc(STATUS_FILE_LIMIT_BYTES + 1);
+			let size = 0;
+			let count: number;
+
+			while ((count = readSync(fd, buffer, size, buffer.length - size, null)) > 0) {
+				size += count;
+
+				if (size > STATUS_FILE_LIMIT_BYTES) {
+					throw new Error('Status file exceeds 64 KiB');
+				}
+			}
+
+			return buffer.subarray(0, size).toString('utf-8');
+		} finally {
+			closeSync(fd);
+		}
+	}
+
+	private acceptStatusHistory(record: JobRecord, raw: Record<string, unknown>): void {
+		const invalid = () => this.logInvalidStatusOnce(record, 'invalid job-scoped status history');
+
+		if (
+			!raw ||
+			raw.jobId !== record.id ||
+			!Array.isArray(raw.history) ||
+			raw.history.length < 1 ||
+			raw.history.length > STATUS_HISTORY_LIMIT ||
+			raw.history.length < record.history.length
+		) {
+			invalid();
+
+			return;
+		}
+
+		const history: HistoryEntry[] = [];
+
+		for (const [index, value] of (raw.history as unknown[]).entries()) {
+			if (!value || typeof value !== 'object' || Array.isArray(value)) {
+				invalid();
+
+				return;
+			}
+
+			const entry = value as Record<string, unknown>;
+
+			if (
+				!isValidTickState(entry.state) ||
+				(entry.step !== undefined && typeof entry.step !== 'string') ||
+				(entry.message !== undefined && typeof entry.message !== 'string') ||
+				(index < raw.history.length - 1 && entry.state !== 'running')
+			) {
+				invalid();
+
+				return;
+			}
+
+			const status: HistoryEntry = {
+				state: entry.state,
+				step: toOptionalString(entry.step),
+				message: toOptionalString(entry.message),
+			};
+
+			if (index < record.history.length && JSON.stringify(status) !== JSON.stringify(record.history[index])) {
+				invalid();
+
+				return;
+			}
+
+			history.push(status);
+		}
+
+		const last = history[history.length - 1];
+
+		if (raw.state !== last.state || raw.step !== last.step || raw.message !== last.message) {
+			invalid();
+
+			return;
+		}
+
+		const unseen = history.slice(record.history.length);
+
+		record.history = history;
+
+		for (const entry of unseen) {
+			const status: PrivilegedJobStatus = { ...entry, id: record.id, updatedAt: new Date().toISOString() };
+
+			record.historyStatuses.push(status);
+			record.lastStatus = status;
+			this.notifyHandlers(record, status);
+
+			if (status.state !== 'running') {
+				this.stopPolling(record);
+			}
+		}
+	}
+
 	private async checkServiceSettlement(record: JobRecord): Promise<void> {
 		record.serviceProbePending = true;
 
@@ -527,7 +739,12 @@ export class PrivilegedWorkerService {
 
 			// The worker may have published its terminal file while systemctl was in flight.
 			// Read it again before deciding that an exited service failed to report completion.
-			this.pollStatusFile(record);
+			this.pollTick(record);
+
+			if (!record.pollTimer) {
+				return;
+			}
+
 			this.finishJob(record, {
 				id: record.id,
 				state: 'failed',
@@ -654,6 +871,10 @@ export class PrivilegedWorkerService {
 
 			record.lastStatus = status;
 
+			if (record.trackStatusHistory) {
+				record.historyStatuses.push(status);
+			}
+
 			this.notifyHandlers(record, status);
 
 			return;
@@ -693,6 +914,10 @@ export class PrivilegedWorkerService {
 
 		record.lastStatus = status;
 
+		if (record.trackStatusHistory) {
+			record.historyStatuses.push(status);
+		}
+
 		this.notifyHandlers(record, status);
 
 		this.stopPolling(record);
@@ -706,15 +931,33 @@ export class PrivilegedWorkerService {
 	 */
 	private notifyHandlers(record: JobRecord, status: PrivilegedJobStatus): void {
 		for (const handler of [...record.handlers]) {
+			if (!record.pendingHistoryHandlers.has(handler)) {
+				this.deliverStatus(record, handler, status);
+			}
+		}
+	}
+
+	private deliverStatus(record: JobRecord, handler: StatusHandler, status: PrivilegedJobStatus): void {
+		if (!record.trackStatusHistory) {
 			handler(status);
+
+			return;
+		}
+
+		try {
+			handler(status);
+		} catch {
+			// A broken subscriber must not consume the rest of a durable batch, prevent
+			// other subscribers receiving it, or strand the worker's terminal cleanup.
+			if (!record.loggedHandlerError) {
+				record.loggedHandlerError = true;
+				this.logger.warn(`Privileged worker job ${record.id} status subscriber threw`);
+			}
 		}
 	}
 
 	private stopPolling(record: JobRecord): void {
-		if (record.pollTimer) {
-			clearInterval(record.pollTimer);
-			record.pollTimer = null;
-		}
+		this.stopMonitoring(record);
 
 		// A newer job may already have reserved this unit (this job's own reservation was freed
 		// earlier by its own terminal status) — only clear the entry if it still belongs to this
@@ -745,6 +988,7 @@ export class PrivilegedWorkerService {
 		record.pruneTimer = setTimeout(() => {
 			record.pruneTimer = null;
 			record.handlers.clear();
+			record.pendingHistoryHandlers.clear();
 			this.jobs.delete(record.id);
 		}, PRUNE_AFTER_MS);
 

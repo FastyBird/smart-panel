@@ -131,6 +131,7 @@ export class TailscaleSetupService {
 			// root cannot write apt sources or install packages. Let systemd launch a separate
 			// service outside that sandbox; the backend retains its existing hardening.
 			unitType: 'service',
+			trackStatusHistory: true,
 			script,
 			args: [],
 			env: {

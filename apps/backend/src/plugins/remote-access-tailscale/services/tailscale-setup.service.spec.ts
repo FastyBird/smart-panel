@@ -135,6 +135,7 @@ describe('TailscaleSetupService', () => {
 			// A scope would inherit ProtectSystem=strict and fail writing /usr/share/keyrings
 			// even after sudo succeeds. This must stay an independently launched service.
 			expect(spec.unitType).toBe('service');
+			expect(spec.trackStatusHistory).toBe(true);
 			expect(spec.script.endsWith(join('scripts', 'tailscale-setup.sh'))).toBe(true);
 			expect(spec.args).toEqual([]);
 			expect(spec.statusFile).toBe(join(dataDir, 'remote-access', 'tailscale-setup-status.json'));
