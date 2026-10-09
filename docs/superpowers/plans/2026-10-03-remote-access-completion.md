@@ -897,6 +897,34 @@ the UI toggles. No sudoers/helper changes, backend restart, logout or Pi 5 conta
 Private evidence: `remote-access-r5/pi4-cloudflare-install/`. R4/R5 and the epic remain open; no
 Cloudflare connection or new external-access result is claimed for Pi 4.
 
+### R5 released installation-wizard retest (2026-10-09)
+
+Published alpha.56 (`0803ced792f2809c4c05d6d84a55c0ae1d26598f`) contains #1379.
+The npm-host Pi 4 upgraded from alpha.54 through one normal System update action after a fresh
+database/configuration backup. Registry integrity and installed hashes matched all 42 wrapper,
+5,207 backend-dist and 249 admin-dist files. The update completed successfully; its worker exited,
+and database integrity, accounts, topology, configuration and Tailscale identity/runtime were preserved.
+
+After the upgrade restart and a fresh browser load, Cloudflare reported no setup job. The manual
+test ran first: only the inactive test package was removed, retaining the signed apt source/key.
+Run it yourself displayed four unique commands and Re-check. Those commands installed cloudflared
+2026.10.0; Re-check reached Token and hostname with the token absent and `setup: null` throughout.
+No automatic installation was submitted for this case, excluding a stale completed-job transition.
+
+The package was removed again without purge/autoremove. One Start setup action launched fresh job
+`72dcad40-eed6-45d0-aabf-d0e10c4a213f`; running progress was visible, the job completed, and the
+still-open wizard automatically reached Token and hostname without Re-check or reopening.
+Neither case entered a token or saved the configuration form. This closes the released regression
+for the installation-to-configuration transition, not the full configured-tunnel/Done flow.
+
+Cloudflare returned to disabled with its original empty configuration and no endpoints; the package
+remains installed. Final configuration bytes matched the pre-upgrade baseline. The backend did not
+restart during the two installation tests, and Tailscale identity/runtime, accounts and 28 migrations
+remained unchanged. No sudoers/helper changes or Pi 5 contact occurred. Evidence:
+`remote-access-r5/pi4-cloudflare-alpha56/`. Actual unavailable-helper presentation and the reload
+regression from an already-fixed admin remain pending; R4/R5 and the epic stay open. Server/display SD images passed; the AIO image
+was still building at the last release check. The npm installation did not depend on these images.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
