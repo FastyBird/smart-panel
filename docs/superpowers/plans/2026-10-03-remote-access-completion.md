@@ -1267,9 +1267,11 @@ The admin follow-up replaces terminal client waiting deadlines with serial, boun
 and capped outage backoff. Consumer disposal cancels monitoring; returning while an update is
 pending resumes observation. The UI describes an unconfirmed result during connection loss.
 This source correction still needs released-device acceptance on a subsequent upgrade.
-Source validation passed: 32 focused admin tests, full admin type checking, targeted lint and
+Source validation passed: 42 focused admin tests, full admin type checking, targeted lint and
 format checks. Independent review's shared-fetch disposal/reentry findings were fixed and
-covered by regressions; final review found no remaining blocker.
+covered by regressions. Idle or missing-status responses without the target version remain
+unconfirmed in both reconnect polling and the initial fetch after navigation; regressions cover
+continued observation and eventual completion or explicit failure.
 
 After setup, all post-upgrade baseline preservation checks passed, including stable preferences
 and unchanged backend/tailscaled process/restart counters. The unused operator-recovery timer

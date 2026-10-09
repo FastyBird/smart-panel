@@ -102,6 +102,10 @@ const isUpdating = computed<boolean>((): boolean => {
 	return ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value);
 });
 
+const isUnconfirmedClearedStatus = (data: Record<string, unknown>, targetVersion: string | null): boolean => {
+	return (!data.status || data.status === 'idle') && (!targetVersion || data.current_version !== targetVersion);
+};
+
 const applyInfoResponse = (data: Record<string, unknown>): void => {
 	currentVersion.value = (data.current_version as string) ?? null;
 	latestVersion.value = (data.latest_version as string) ?? null;
@@ -205,6 +209,8 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		}
 
 		const generation = observerGeneration;
+		const wasUpdating = isUpdating.value;
+		const targetVersion = latestVersion.value;
 		const now = Date.now();
 
 		// Share only requests from the current observer generation. A request left
@@ -226,6 +232,13 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
 
 				if (generation === observerGeneration && responseData?.data) {
+					// A mount/refresh GET must preserve the same pending state as the poll.
+					if (wasUpdating && isUnconfirmedClearedStatus(responseData.data, targetVersion)) {
+						waitingForRestart.value = true;
+
+						return;
+					}
+
 					applyInfoResponse(responseData.data);
 
 					if (status.value === 'complete' || status.value === 'failed') {
@@ -299,6 +312,13 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 
 				const typedData = responseData.data as Record<string, unknown>;
 				const responseStatus = typedData.status as string | undefined;
+				const clearedStatus = !responseStatus || responseStatus === 'idle';
+
+				// A cleared status only confirms completion when the installed version
+				// matches the target. Otherwise retain the pending state and retry.
+				if (isUnconfirmedClearedStatus(typedData, targetVersion)) {
+					throw new Error('Update result unconfirmed');
+				}
 
 				applyInfoResponse(typedData);
 
@@ -315,14 +335,11 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 					}
 
 					stopReconnectPoll();
-				} else if (!responseStatus || responseStatus === 'idle') {
+				} else if (clearedStatus) {
 					// Compatibility with backends that clear the completed status on restart.
-					if (typedData.current_version && targetVersion && typedData.current_version === targetVersion) {
-						status.value = 'complete';
-						error.value = null;
-						progressPercent.value = 100;
-					}
-
+					status.value = 'complete';
+					error.value = null;
+					progressPercent.value = 100;
 					phase.value = null;
 					installing.value = false;
 					waitingForRestart.value = false;

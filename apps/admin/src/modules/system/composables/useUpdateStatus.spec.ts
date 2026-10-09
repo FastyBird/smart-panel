@@ -121,6 +121,81 @@ describe('useUpdateStatus', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
+	it.each([{ status: 'idle', current_version: '1.1.0-alpha.56' }, { current_version: '1.1.0-alpha.56' }, { status: 'idle' }, {}])(
+		'keeps an unconfirmed cleared status pending: %j',
+		async (unconfirmed) => {
+			mockGet.mockResolvedValueOnce(response({ status: 'installing', phase: 'installing', progress_percent: 45, error: null }));
+			const { api } = consumer();
+			await api.installUpdate();
+			await vi.advanceTimersByTimeAsync(4_000);
+			mockGet.mockResolvedValue(response({ ...unconfirmed, phase: null, progress_percent: null, error: null }));
+			await vi.advanceTimersByTimeAsync(4_000);
+
+			expect(api.status.value).toBe('installing');
+			expect(api.phase.value).toBe('installing');
+			expect(api.installing.value).toBe(true);
+			expect(api.progressPercent.value).toBe(45);
+			expect(api.error.value).toBeNull();
+			expect(api.waitingForRestart.value).toBe(true);
+			await vi.advanceTimersByTimeAsync(8_000);
+			expect(mockGet).toHaveBeenCalledTimes(3);
+			expect(api.status.value).toBe('installing');
+
+			mockGet.mockResolvedValue(response({ status: 'idle', current_version: '1.1.0-alpha.57' }));
+			await vi.advanceTimersByTimeAsync(16_000);
+			expect(api.status.value).toBe('complete');
+			expect(api.progressPercent.value).toBe(100);
+			expect(api.waitingForRestart.value).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
+	it.each([{ status: 'idle', current_version: '1.1.0-alpha.56' }, { current_version: '1.1.0-alpha.56' }, { status: 'idle' }, {}])(
+		'preserves the pending update when the remount fetch is unconfirmed: %j',
+		async (unconfirmed) => {
+			mockGet.mockResolvedValue(response({ status: 'installing', phase: 'installing', progress_percent: 45, error: null }));
+			const first = consumer();
+			await first.api.installUpdate();
+			await vi.advanceTimersByTimeAsync(4_000);
+			first.scope.stop();
+			const second = consumer();
+			mockGet.mockResolvedValue(response({ ...unconfirmed, phase: null, progress_percent: null, error: null }));
+			await second.api.fetchStatus();
+
+			expect(second.api.status.value).toBe('installing');
+			expect(second.api.phase.value).toBe('installing');
+			expect(second.api.installing.value).toBe(true);
+			expect(second.api.progressPercent.value).toBe(45);
+			expect(second.api.waitingForRestart.value).toBe(true);
+			expect(second.api.error.value).toBeNull();
+			await vi.advanceTimersByTimeAsync(4_000);
+			expect(mockGet).toHaveBeenCalledTimes(3);
+			expect(second.api.status.value).toBe('installing');
+
+			mockGet.mockResolvedValue(completed);
+			await vi.advanceTimersByTimeAsync(8_000);
+			expect(second.api.status.value).toBe('complete');
+			expect(second.api.progressPercent.value).toBe(100);
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
+	it.each(['complete', 'failed'])('settles an unconfirmed idle response on explicit %s', async (terminalStatus) => {
+		mockGet.mockResolvedValue(response({ status: 'idle', current_version: '1.1.0-alpha.56' }));
+		const { api } = consumer();
+		await api.installUpdate();
+		await vi.advanceTimersByTimeAsync(4_000);
+		expect(api.status.value).toBe('downloading');
+		mockGet.mockResolvedValue(response({ status: terminalStatus, error: terminalStatus === 'failed' ? 'Failed' : null }));
+		await vi.advanceTimersByTimeAsync(8_000);
+
+		expect(api.status.value).toBe(terminalStatus);
+		expect(api.waitingForRestart.value).toBe(false);
+		expect(api.installing.value).toBe(false);
+		expect(api.error.value).toBe(terminalStatus === 'failed' ? 'systemModule.messages.update.updateFailed' : null);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('does not infer completion from the version while the backend still reports an update in progress', async () => {
 		mockGet.mockResolvedValue(response({ status: 'starting', current_version: '1.1.0-alpha.57' }));
 		const { api } = consumer();
