@@ -1308,6 +1308,23 @@ returned 200/alpha.58. Private receipts: `remote-access-r4/pi4-admin-upgrade-alp
 slow CLI, long setup timeout, device network outage or new phone test was performed. Those remaining
 matrix rows and the one-candidate reconciliation requirement keep R4 and the epic open.
 
+### R4 named-stage WebSocket loss on alpha.58 (2026-10-09)
+
+The remaining named-stage variant passed on the same npm-host Pi 4 / alpha.58 candidate. The
+browser forwarded the fresh job's `running/install` frame at 19:51:27.940 UTC and immediately
+requested native WebSocket closure; close/disconnect was observed at .960. With reconnection
+disabled, REST confirmed the same job Complete at 19:51:31.175 and enabled Options appeared at
+.195, without reload, overlapping reads, a forwarded Complete frame or an intervening connection.
+This measures interruption on receipt of the named frame, not the worker's instantaneous stage.
+
+Skip → Close passed. Socket reconnection was explicitly restored only after the observation,
+then an authenticated connection and normal events resumed. Job history confirmed the ordered
+install/daemon/operator/complete stages. All baseline preservation and timer/worker/session cleanup
+checks passed; peer HTTPS/IPv4 health returned 200/alpha.58. Receipts:
+`remote-access-r4/pi4-setup-named-stage-alpha58/`. This completes the named-stage variant for
+installed-package operator repair. Fresh-package/slow-CLI/network/authentication variants and an
+upgrade starting from the fixed admin remain separate; R4 and the epic are still open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
