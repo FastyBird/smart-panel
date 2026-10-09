@@ -1113,6 +1113,30 @@ No helper/sudoers change, backend restart or Pi 5 contact occurred. This run doe
 unavailable-helper presentation, a configured Pi 4 tunnel or external reachability. Evidence:
 `remote-access-r5/pi4-cloudflare-install/`. R4/R5 and the epic remain open.
 
+#### Cloudflare released wizard regression on Pi 4 (2026-10-09)
+
+The npm-host Pi 4 upgraded alpha.54 → alpha.56 through one normal System update action after a
+fresh backup. The release tag `0803ced792f2809c4c05d6d84a55c0ae1d26598f` includes #1379.
+Published npm integrity and installed hashes matched 42 wrapper, 5,207 backend-dist and 249 admin
+files. Upgrade completion, exited update worker, database/configuration/account preservation and
+the same authenticated Tailscale identity were verified.
+
+With a fresh browser and no setup job after the upgrade, the manual test removed only the inactive
+cloudflared package, retained its apt source/key, and ran the four unique commands displayed by
+Run it yourself. Re-check advanced to Token and hostname with the token absent and `setup: null`;
+no privileged installation job was submitted. After a second package-only removal, one Start setup
+created job `72dcad40-eed6-45d0-aabf-d0e10c4a213f`. Its running state and successful completion
+were observed, followed by an automatic transition to the token form without Re-check or reopening.
+
+Both installation-to-configuration regressions pass on the released build. Neither form was saved
+and no token was entered, so this does not claim a configured Pi 4 tunnel, the Done step or external
+Cloudflare access. The plugin returned to disabled/no token/no endpoints, with cloudflared 2026.10.0
+installed. Final configuration bytes, accounts, topology and 28 migrations matched the baseline;
+Tailscale remained authenticated and the backend PID stayed stable throughout the installation tests.
+Pi 5 and sudoers/helpers were untouched. Evidence: `remote-access-r5/pi4-cloudflare-alpha56/`.
+Actual unavailable-helper UI and an upgrade beginning from the released reload fix remain pending.
+R4/R5 and the epic stay open. Server/display SD images passed; the AIO image was still building.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
