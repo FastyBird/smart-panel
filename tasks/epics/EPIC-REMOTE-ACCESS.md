@@ -1089,6 +1089,30 @@ the independently verified server package was used. Private evidence:
 `remote-access-r5/staging-alpha55-upgrade/`. R5 remains open for npm/manual installation and the
 released reload regression; R4 and the epic remain open.
 
+#### Cloudflare npm-host/manual installation on Pi 4 (2026-10-09)
+
+Published alpha.54 on the existing installer/npm Pi 4 started with no cloudflared, apt source/key,
+token or setup job. After a database/configuration backup and temporary plugin enablement, the
+displayed manual commands installed cloudflared 2026.10.0. The UI duplicated those four commands and
+offered no Re-check; after installation its binary/version checks refreshed but the wizard stayed on
+Install without exposing the token form. This manual test preceded any privileged setup job.
+
+Removing only the newly installed package (no autoremove; source/key retained) allowed an independent
+automatic Start setup test. Job `0f6bef18-1640-4a49-869e-41896997adb0` completed and the package/version
+requirements passed, but the wizard again stayed on Install because it also required the token from
+the next step. Closing and reopening via Configure exposed the form; nothing was saved there.
+
+Both package-installation paths passed; the complete wizard flow failed and remains pending a
+released retest of the accompanying readiness/Re-check/command-deduplication fix. Component and
+store integration regressions cover the correction; source tests are not hardware acceptance.
+
+Cloudflare returned to disabled, token absent and no endpoints, retaining the installed package and
+signed apt source/key. Tailscale identity/runtime state, backend PID, boot, accounts and 28 migrations
+were unchanged. The entire parsed configuration matched its backup (YAML serialization changed).
+No helper/sudoers change, backend restart or Pi 5 contact occurred. This run does not cover an actual
+unavailable-helper presentation, a configured Pi 4 tunnel or external reachability. Evidence:
+`remote-access-r5/pi4-cloudflare-install/`. R4/R5 and the epic remain open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

@@ -252,6 +252,24 @@ describe('buildCloudflareTunnelRemedyPlan', () => {
 		});
 	});
 
+	it('deduplicates overlapping install remedies while preserving command order', () => {
+		const requirements = [
+			{
+				code: 'binary-installed',
+				satisfied: false,
+				message: 'Missing',
+				remedy: { commands: ['keyring', 'source', 'update', 'install'], note: null },
+			},
+			{
+				code: 'version-supported',
+				satisfied: false,
+				message: 'Unknown',
+				remedy: { commands: ['keyring', 'source', 'update', 'install', 'verify'], note: null },
+			},
+		] as unknown as ICloudflareTunnelRequirement[];
+		expect(buildCloudflareTunnelRemedyPlan(requirements).commands).toEqual(['keyring', 'source', 'update', 'install', 'verify']);
+	});
+
 	it('ignores a satisfied requirement even if it still carries a remedy', () => {
 		const requirements = [
 			{ code: 'binary-installed', satisfied: true, message: 'x', remedy: { commands: ['sudo apt-get install -y cloudflared'], note: null } },

@@ -1,13 +1,15 @@
 import { computed, ref } from 'vue';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { flushPromises, shallowMount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, shallowMount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/config';
 import { RemoteAccessCloudflareTunnelApiException } from '../remote-access-cloudflare-tunnel.exceptions';
 
 import CloudflareTunnelSetupWizard from './cloudflare-tunnel-setup-wizard.vue';
+
+enableAutoUnmount(afterEach);
 
 // Only the mock functions themselves are hoisted (vi.mock factories need them, and vi.fn() does
 // not depend on any import) - mirrors `tailscale-setup-wizard.spec.ts`.
@@ -101,7 +103,12 @@ const findHintAlert = (wrapper: ReturnType<typeof mountWizard>, title: string) =
 describe('CloudflareTunnelSetupWizard', () => {
 	beforeEach(() => {
 		status.value = null;
-		requirements.value = [];
+		requirements.value = ['platform-supported', 'binary-installed', 'version-supported'].map((code) => ({
+			code,
+			satisfied: true,
+			message: code,
+			remedy: null,
+		}));
 		setup.value = null;
 		privilegedSetup.value = { available: true, reason: null };
 		progress.value = null;
@@ -203,6 +210,183 @@ describe('CloudflareTunnelSetupWizard', () => {
 		expect(stepsProp(wrapper)).toBe(0);
 		const errorAlert = wrapper.findAllComponents({ name: 'ElAlert' }).find((alert) => alert.props('type') === 'error');
 		expect(errorAlert?.props('title')).toBe('apt-get failed');
+	});
+
+	it.each(['platform-supported', 'binary-installed', 'version-supported', 'missing'])(
+		'does not advance after completion with an unmet install prerequisite (%s)',
+		async (code) => {
+			if (code === 'missing') requirements.value = [];
+			else requirements.value = requirements.value.map((requirement) => ({ ...requirement, satisfied: requirement.code !== code }));
+			const wrapper = mountWizard();
+			progress.value = { state: 'complete' };
+			await flushPromises();
+			expect(stepsProp(wrapper)).toBe(0);
+			wrapper.unmount();
+		}
+	);
+
+	it.each(['running', 'failed', 'timeout'])('does not advance automatically with ready prerequisites and a %s job', async (state) => {
+		const wrapper = mountWizard();
+		progress.value = { state };
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(0);
+		wrapper.unmount();
+	});
+
+	it('allows a manual recheck to recover after an earlier failed installation', async () => {
+		privilegedSetup.value = { available: false, reason: 'Unavailable' };
+		progress.value = { state: 'failed' };
+		const wrapper = mountWizard();
+		await flushPromises();
+		wrapper
+			.findAllComponents({ name: 'ElButton' })
+			.find((button) => button.text().includes('recheck'))!
+			.vm.$emit('click');
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(1);
+		expect(fns.install).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it.each([false, true])('ignores a delayed manual recheck after closing (reopened: %s)', async (reopened) => {
+		privilegedSetup.value = { available: false, reason: 'Unavailable' };
+		const wrapper = mountWizard();
+		await flushPromises();
+		let finishRead!: () => void;
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishRead = resolve;
+				})
+		);
+		wrapper
+			.findAllComponents({ name: 'ElButton' })
+			.find((button) => button.text().includes('recheck'))!
+			.vm.$emit('click');
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		if (reopened) await wrapper.setProps({ visible: true });
+		finishRead();
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(0);
+		expect(fns.flashError).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('keeps a failed manual refresh on install and permits a successful retry', async () => {
+		privilegedSetup.value = { available: false, reason: 'Unavailable' };
+		const wrapper = mountWizard();
+		await flushPromises();
+		fns.fetchStatus.mockRejectedValueOnce(new Error('offline'));
+		const recheck = () =>
+			wrapper
+				.findAllComponents({ name: 'ElButton' })
+				.find((button) => button.text().includes('recheck'))!
+				.vm.$emit('click');
+		recheck();
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(0);
+		expect(fns.flashError).toHaveBeenCalledTimes(1);
+		recheck();
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(1);
+		wrapper.unmount();
+	});
+
+	it('blocks manual recheck and a duplicate install while the accepted job is running', async () => {
+		privilegedSetup.value = { available: false, reason: 'Unavailable' };
+		progress.value = { state: 'running' };
+		const wrapper = mountWizard();
+		await flushPromises();
+		fns.fetchStatus.mockClear();
+		const button = wrapper.findAllComponents({ name: 'ElButton' }).find((item) => item.text().includes('recheck'))!;
+		expect(button.props('disabled')).toBe(true);
+		button.vm.$emit('click');
+		await flushPromises();
+		expect(fns.fetchStatus).not.toHaveBeenCalled();
+		await wrapper.setProps({ visible: false });
+		privilegedSetup.value = { available: true, reason: null };
+		await wrapper.setProps({ visible: true });
+		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		await flushPromises();
+		expect(fns.install).not.toHaveBeenCalled();
+		expect(stepsProp(wrapper)).toBe(0);
+		wrapper.unmount();
+	});
+
+	it('reconciles completion arriving before the install request settles', async () => {
+		const wrapper = mountWizard();
+		await flushPromises();
+		fns.fetchStatus.mockClear();
+		isInstalling.value = true;
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(0);
+		expect(fns.fetchStatus).not.toHaveBeenCalled();
+		isInstalling.value = false;
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(1);
+		expect(fns.fetchStatus).toHaveBeenCalledTimes(1);
+		wrapper.unmount();
+	});
+
+	it('keeps a new session recheck busy when the previous session read settles', async () => {
+		privilegedSetup.value = { available: false, reason: 'Unavailable' };
+		const wrapper = mountWizard();
+		await flushPromises();
+		let finishOld!: () => void;
+		let finishNew!: () => void;
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishOld = resolve;
+				})
+		);
+		const recheckButton = () => wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.text().includes('recheck'))!;
+		recheckButton().vm.$emit('click');
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishNew = resolve;
+				})
+		);
+		recheckButton().vm.$emit('click');
+		await flushPromises();
+		finishOld();
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(0);
+		expect(recheckButton().props('loading')).toBe(true);
+		finishNew();
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(1);
+		wrapper.unmount();
+	});
+
+	it('can reconcile a reopened session while its previous completion read is pending', async () => {
+		const wrapper = mountWizard();
+		await flushPromises();
+		let finishOld!: () => void;
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishOld = resolve;
+				})
+		);
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		requirements.value = [...requirements.value];
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(1);
+		finishOld();
+		await flushPromises();
+		expect(stepsProp(wrapper)).toBe(1);
+		wrapper.unmount();
 	});
 
 	it('delegates accepted-install reconciliation to the setup composable', async () => {
