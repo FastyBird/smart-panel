@@ -977,6 +977,30 @@ Evidence: `remote-access-r5/staging-alpha56-upgrade/`. The update worker complet
 the owned browser and SSH tunnel were closed. Pi 4 was untouched. R4/R5 and the epic remain open
 pending reconciliation of the remaining acceptance matrix.
 
+### R4 Home Assistant platform contract in isolated Docker (2026-10-09)
+
+Published alpha.56's Linux ARM64 Docker image
+(`sha256:8fb26a49948b33103c977ca3113f4a67ffa47709e6c6aa316a7e3123d365fa21`) passed the
+Home Assistant unsupported-platform contract with `PLATFORM_TYPE=home-assistant`. A fresh volume,
+disposable owner, internal-only application network and separate Mac-loopback browser gateway
+isolated the test. No Supervisor token, privileged mode or real HA/Pi connection was used.
+
+System info identified Home Assistant; the enabled Tailscale provider's API and real admin card
+reported Unsupported with its platform reason. Privileged setup was unavailable, no endpoints or
+proxy addresses were published, and install returned 422 / `platform-unsupported` without a job.
+Anonymous status/install requests returned 401. Docs invoked the expected HTTPS documentation URL;
+setup/sign-in/connect actions were absent. The offered Disconnect stopped the managed service:
+API/card became Disconnected while retaining the failed platform requirement and no remaining
+lifecycle actions. A container restart restored Unsupported and the existing authenticated admin
+reconciled without manual reload.
+
+The test containers, networks, volume and browser were removed. Evidence:
+`remote-access-r4/ha-platform-alpha56/`. This closes the platform-branch criterion at the documented
+container scope. It does not validate HA add-on packaging, Supervisor APIs or ingress. The separate
+add-on audit (`remote-access-r5/ha-addon-audit/audit.json`) found stale bundled versions, an incomplete
+ARM64 publication and alpha.56 ingress asset-path incompatibility; those were not changed or claimed
+fixed by this test. R4 remains open.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and

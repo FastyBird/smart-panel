@@ -80,8 +80,10 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 - [x] Serve exposes the admin at `https://<node>.<tailnet>.ts.net` and declares loopback as a trusted
       proxy; Funnel and SSH are opt-in with advisories.
 - [x] Disable disconnects, logout expires the node key, factory reset clears Serve and logs out.
-- [ ] Docker and Home Assistant platforms report `unsupported` with documentation links.
-      (Docker passed on published alpha.50, 2026-10-07; Home Assistant has no recorded evidence.)
+- [x] Docker and Home Assistant platforms report `unsupported` with documentation links.
+      (Docker passed on published alpha.50, 2026-10-07; Home Assistant platform contract passed on
+      alpha.56 with `PLATFORM_TYPE=home-assistant` in an isolated Docker container, 2026-10-09.
+      This does not verify the HA add-on, Supervisor or ingress.)
 
 ### Admin
 
@@ -1182,6 +1184,31 @@ automated Mac evidence, not a new phone/mobile-data or live device-change confir
 The update worker completed, its lock cleared and the owned browser/SSH tunnel were closed. Pi 4
 was untouched. Evidence: `remote-access-r5/staging-alpha56-upgrade/`. This closes the reload item
 left pending above; R4/R5 and the epic remain open pending remaining-matrix reconciliation.
+
+#### Home Assistant platform contract in isolated Docker (2026-10-09)
+
+Published alpha.56's Linux ARM64 image was pinned to digest
+`sha256:8fb26a49948b33103c977ca3113f4a67ffa47709e6c6aa316a7e3123d365fa21` and run with
+`PLATFORM_TYPE=home-assistant`, a fresh data volume and disposable owner account. The application
+had an internal-only Docker network, no privileged mode and no Supervisor token; a separate
+temporary gateway exposed it only on Mac loopback. This tests the released Home Assistant platform
+branch, not an actual HA add-on installation or Supervisor/ingress integration.
+
+System info reported `home-assistant` and health reported `1.1.0-alpha.56`. After enabling Tailscale,
+API and the actual admin card showed Unsupported with the platform-specific reason. Privileged
+setup was unavailable, endpoints/proxy addresses were empty and `setup` was null. An explicit
+install request returned **422 / platform-unsupported** without creating a job; anonymous status
+and install requests returned 401.
+
+The card offered Docs and Disconnect, with no setup, sign-in or connect action. Capturing the Docs
+button's `window.open` arguments confirmed the HTTPS documentation URL. Explicit Disconnect
+stopped the managed service and changed API/card state to Disconnected; the unsupported-platform
+requirement persisted and no lifecycle action remained. Restarting the container retained config,
+restored Unsupported and updated the still-open authenticated admin without manual reload.
+
+Both test containers, their networks/volume and the owned browser were removed afterward. Neither
+Pi nor the user's HA instance was touched. Evidence: `remote-access-r4/ha-platform-alpha56/`.
+The unsupported-platform criterion passes at this scope; R4 and the epic remain open.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
