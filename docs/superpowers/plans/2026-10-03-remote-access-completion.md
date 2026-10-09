@@ -950,6 +950,33 @@ from an already-fixed admin remains pending; no new configured Pi 4 tunnel or ex
 access is claimed. R4/R5 and the epic remain open. Alpha.56's release run, including AIO, has now
 completed successfully.
 
+### R5 released upgrade-dialog reload acceptance (2026-10-09)
+
+The image-installed Pi 5 passed one normal System UI upgrade from alpha.55 to published alpha.56
+(`0803ced792f2809c4c05d6d84a55c0ae1d26598f`) after a fresh database/configuration backup.
+The complete release workflow passed. Installed runtime files matched the verified server archive:
+1,719 backend JavaScript files and 249 admin static files.
+
+The original alpha.55 browser document stayed open through successful update completion. Clicking
+only Close in the completed dialog triggered a navigation of type `reload`, changed the document's
+time origin and loaded alpha.56's entry script. No manual reload or navigation intervened. Loaded
+scripts/styles belonged to the verified target artifact; the session remained authenticated. Normal
+navigation afterward rendered Remote access with both providers Connected and Devices with 111
+entries, without resource HTTP failures or unloaded styles. This closes the released regression
+left pending in the preceding acceptance records.
+
+All 111 devices, property topology, database schema, 28 migrations, accounts, configuration and the
+current Cloudflare token matched the fresh backup/baseline. Tailscale identity/authentication remained
+intact; Cloudflare recovered automatically with four ready connections. Public HTTPS recovered after
+the expected update interruption. Natural-DNS checks with normal certificate validation passed admin
+loading, owner login/profile and authenticated Socket.IO connection; anonymous API calls returned
+401 and missing/invalid socket credentials were rejected. These are automated Mac checks, not a new
+phone or live device-event test.
+
+Evidence: `remote-access-r5/staging-alpha56-upgrade/`. The update worker completed and its lock cleared;
+the owned browser and SSH tunnel were closed. Pi 4 was untouched. R4/R5 and the epic remain open
+pending reconciliation of the remaining acceptance matrix.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and

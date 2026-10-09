@@ -1159,6 +1159,30 @@ case is complete; the upgrade-reload regression from an already-fixed admin rema
 This does not add a configured Pi 4 tunnel or external-access result. R4/R5 and the epic remain open.
 The complete alpha.56 release, including AIO, has now passed.
 
+#### Alpha.55 → alpha.56 upgrade and automatic admin reload on Pi 5 (2026-10-09)
+
+The image-installed staging Pi 5 passed one normal System UI update after a fresh database/configuration
+backup. Published alpha.56's complete release workflow passed; 1,719 installed backend JavaScript
+files and 249 admin static files matched the verified server archive.
+
+The alpha.55 document remained open until the update dialog reported success. Clicking only Close
+then produced a new document with navigation type `reload` and alpha.56's entry script, preserving
+the authenticated session. No manual reload or navigation occurred between completion and this
+capture. Loaded scripts/styles matched the target artifact. Subsequent navigation showed both
+providers Connected and the Devices table with 111 entries, without resource HTTP failures or
+unloaded styles. The released completed-dialog reload regression is now **passed**.
+
+All 111 devices, property topology, schema, 28 migrations, accounts, configuration and the current
+Cloudflare token were preserved. Tailscale retained its authenticated identity. Cloudflare returned
+automatically with four ready connections after the update interruption. Public natural-DNS HTTPS
+checks passed certificate validation, admin loading, owner authentication and Socket.IO connection;
+anonymous API access returned 401 and missing/invalid socket credentials were rejected. This is
+automated Mac evidence, not a new phone/mobile-data or live device-change confirmation.
+
+The update worker completed, its lock cleared and the owned browser/SSH tunnel were closed. Pi 4
+was untouched. Evidence: `remote-access-r5/staging-alpha56-upgrade/`. This closes the reload item
+left pending above; R4/R5 and the epic remain open pending remaining-matrix reconciliation.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
