@@ -988,6 +988,47 @@ The recovery timer and setup worker were inactive. Database/schema, configuratio
 identity and host boot identity matched the baseline; only the planned initial backend restart occurred.
 Private receipts are in `remote-access-r4/host-install-acceptance/manual-setup-alpha53/`.
 
+#### Alpha.54 released host regressions (2026-10-09)
+
+Published `v1.1.0-alpha.54`, tag commit `0d6ef96ae256ee9598bc1984952680f2f11fbb66`, contains
+#1373 (HTTPS advisory link), #1374 (manual preference adoption and layout) and #1375 (manual wizard
+Re-check). [Release run 37853264112](https://github.com/FastyBird/smart-panel/actions/runs/37853264112)
+had published server/npm/platform bundles while image and Docker jobs were still building at this
+acceptance checkpoint. The date follows Europe/Prague; execution began late on October 8 UTC.
+
+One normal System UI update upgraded the connected installer Pi 4 from alpha.53 to alpha.54.
+The original admin session observed automatic completion without a reload. Registry SHA-512 SRI
+checks passed, and installed artifacts matched every file in the verified wrapper/backend/admin
+packages (**42 / 5,207 / 249 files**). Before/after comparison passed for database/schema, accounts,
+configuration and Tailscale identity/authentication. Peer HTTPS used normal certificate validation;
+owner login/profile, anonymous **401**, valid WebSocket subscription and missing/invalid credential
+rejection all passed.
+
+The actual released Connect UI passed manual adoption from both already Running and Stopped
+authenticated states, retaining the unmanaged `--snat-subnet-routes=false` preference (`NoSNAT=true`),
+no advertised routes and node/user identity. The saved preference was restored to `NoSNAT=false`,
+final peer authentication checks passed and the bounded recovery timer was inactive. Released layout
+verification passed at **actual 1280×800**: expanded QR content, provider dropdown, Disconnect hit
+testing and the advisories tab were reachable. Requested 1440×1200 and 390×844 resizes left the browser
+at 1280×800; those dimensions remain local candidate evidence from the earlier run.
+
+The unavailable-helper fixture accurately reported the missing operator and returned
+**422 / privileged-worker-unavailable** on an explicit JSON `{}` installation request without a setup
+job. Applying the wizard's displayed operator command restored requirements while the helper remained
+unavailable. Actual Re-check advanced **Set up → Options**, then Skip reached **Done / Connected**,
+without a setup job or reauthentication. Exact sudoers/operator restoration, recovered helper availability,
+final peer authentication and inactive recovery timer/setup worker checks passed. The backend retained
+its PID after the fixture's initial restart. Final database/schema, configuration, accounts, topology,
+Tailscale identity and host boot identity comparisons passed.
+
+The HTTPS advisory link is present in the verified released admin and covered by the source component
+regression. This run did not repeat the tailnet HTTPS-disabled/restored cycle or prove released link
+navigation. Private receipts are in
+`remote-access-r4/host-install-acceptance/next-release-2026-10-09/`, including npm/runtime verification,
+upgrade comparison/UI, peer authentication and the two bounded regression scenarios. Historical
+release results retain their original scope. These named passes do not establish a complete alpha.54
+matrix or close R4, R5 or the epic.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
