@@ -1210,6 +1210,46 @@ Both test containers, their networks/volume and the owned browser were removed a
 Pi nor the user's HA instance was touched. Evidence: `remote-access-r4/ha-platform-alpha56/`.
 The unsupported-platform criterion passes at this scope; R4 and the epic remain open.
 
+#### Tailscale preference mismatch refusal and recovery (2026-10-09)
+
+The npm-host Pi 4 running published alpha.56 (`0803ced792f2809c4c05d6d84a55c0ae1d26598f`),
+Debian 12 arm64 and Tailscale 1.102.5 passed the
+changed-tag preference-conflict scenario at 13:36–13:42 UTC. The baseline was authenticated and
+connected, with empty advertised tags/routes. A fresh SQLite/configuration/preferences checkpoint
+and a 15-minute recovery timer were prepared before the real admin Disconnect action.
+
+With the daemon Stopped, the unmanaged `--snat-subnet-routes=false` preference was introduced without
+advertising any routes. An unchanged-managed-flags CLI probe first proved that this CLI version
+refuses the omitted non-default flag without changing preferences or identity. Only then was the
+configured tag changed to a test value, while the daemon's actual tags remained empty.
+
+Saving configuration restarted the plugin's managed service and attempted reconnect automatically;
+it did not restart the backend process or tailscaled. The journal recorded the non-default-flags
+refusal during startup and reconnect. One subsequent real admin Connect returned HTTP 500 in
+325 ms and displayed **Failed to connect Tailscale**. The card stayed Disconnected and offered
+Connect; API/aggregate endpoints, proxy addresses and external URLs remained empty. The managed
+service was `started`, distinct from the daemon's `Stopped` state. Authentication and node/user
+identity were retained, the test tag was not applied, and `NoSNAT=true` remained in effect.
+
+Restoring only the configured tags through the configuration API automatically recovered Connected,
+external URLs and the existing admin page without reload or another Connect action. This recovery
+occurred while `NoSNAT=true` was still present. Certificate-verified HTTPS and tailnet IPv4 health
+requests from Pi 5 then both returned 200/alpha.56. The earlier peer probe overlapped restoration
+(HTTPS failed, subsequent IPv4 succeeded), so it does not establish a complete disconnected
+reachability check. Mac DNS/direct-tailnet probes remained a separate client limitation.
+
+Cleanup restored the original SNAT setting. Configuration saves reordered YAML entries; a full
+parsed-YAML comparison proved semantic equality before restoring the original bytes and metadata.
+Final checks matched the baseline configuration, stable preferences, node identity, database schema,
+28 migrations, topology, accounts/long-lived credentials, boot ID and service PIDs/restart counters.
+No logout/reset or application restart was needed; the unused recovery timer was disarmed and the
+owned browser closed. Pi 5 was used only for read-only peer probes.
+
+Private evidence is in `remote-access-r4/pi4-preference-mismatch-alpha56/`. This closes the actual
+changed-tag conflict-refusal/recovery variant, supplementing alpha.54's compatible manual-adoption
+checks. It does not certify valid tag assignment, login-server migration, minimum-version CLI
+behavior or new login/WebSocket/phone checks. R4/#910 and the epic remain open for their other gates.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
