@@ -950,6 +950,57 @@ from an already-fixed admin remains pending; no new configured Pi 4 tunnel or ex
 access is claimed. R4/R5 and the epic remain open. Alpha.56's release run, including AIO, has now
 completed successfully.
 
+### R5 released upgrade-dialog reload acceptance (2026-10-09)
+
+The image-installed Pi 5 passed one normal System UI upgrade from alpha.55 to published alpha.56
+(`0803ced792f2809c4c05d6d84a55c0ae1d26598f`) after a fresh database/configuration backup.
+The complete release workflow passed. Installed runtime files matched the verified server archive:
+1,719 backend JavaScript files and 249 admin static files.
+
+The original alpha.55 browser document stayed open through successful update completion. Clicking
+only Close in the completed dialog triggered a navigation of type `reload`, changed the document's
+time origin and loaded alpha.56's entry script. No manual reload or navigation intervened. Loaded
+scripts/styles belonged to the verified target artifact; the session remained authenticated. Normal
+navigation afterward rendered Remote access with both providers Connected and Devices with 111
+entries, without resource HTTP failures or unloaded styles. This closes the released regression
+left pending in the preceding acceptance records.
+
+All 111 devices, property topology, database schema, 28 migrations, accounts, configuration and the
+current Cloudflare token matched the fresh backup/baseline. Tailscale identity/authentication remained
+intact; Cloudflare recovered automatically with four ready connections. Public HTTPS recovered after
+the expected update interruption. Natural-DNS checks with normal certificate validation passed admin
+loading, owner login/profile and authenticated Socket.IO connection; anonymous API calls returned
+401 and missing/invalid socket credentials were rejected. These are automated Mac checks, not a new
+phone or live device-event test.
+
+Evidence: `remote-access-r5/staging-alpha56-upgrade/`. The update worker completed and its lock cleared;
+the owned browser and SSH tunnel were closed. Pi 4 was untouched. R4/R5 and the epic remain open
+pending reconciliation of the remaining acceptance matrix.
+
+### R4 Home Assistant platform contract in isolated Docker (2026-10-09)
+
+Published alpha.56's Linux ARM64 Docker image
+(`sha256:8fb26a49948b33103c977ca3113f4a67ffa47709e6c6aa316a7e3123d365fa21`) passed the
+Home Assistant unsupported-platform contract with `PLATFORM_TYPE=home-assistant`. A fresh volume,
+disposable owner, internal-only application network and separate Mac-loopback browser gateway
+isolated the test. No Supervisor token, privileged mode or real HA/Pi connection was used.
+
+System info identified Home Assistant; the enabled Tailscale provider's API and real admin card
+reported Unsupported with its platform reason. Privileged setup was unavailable, no endpoints or
+proxy addresses were published, and install returned 422 / `platform-unsupported` without a job.
+Anonymous status/install requests returned 401. Docs invoked the expected HTTPS documentation URL;
+setup/sign-in/connect actions were absent. The offered Disconnect stopped the managed service:
+API/card became Disconnected while retaining the failed platform requirement and no remaining
+lifecycle actions. A container restart restored Unsupported and the existing authenticated admin
+reconciled without manual reload.
+
+The test containers, networks, volume and browser were removed. Evidence:
+`remote-access-r4/ha-platform-alpha56/`. This closes the platform-branch criterion at the documented
+container scope. It does not validate HA add-on packaging, Supervisor APIs or ingress. The separate
+add-on audit (`remote-access-r5/ha-addon-audit/audit.json`) found stale bundled versions, an incomplete
+ARM64 publication and alpha.56 ingress asset-path incompatibility; those were not changed or claimed
+fixed by this test. R4 remains open.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
