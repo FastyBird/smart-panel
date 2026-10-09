@@ -1137,6 +1137,28 @@ Pi 5 and sudoers/helpers were untouched. Evidence: `remote-access-r5/pi4-cloudfl
 Actual unavailable-helper UI and an upgrade beginning from the released reload fix remain pending.
 R4/R5 and the epic stay open. Server/display SD images passed; the AIO image was still building.
 
+#### Cloudflare unavailable-helper/manual recovery on Pi 4 (2026-10-09)
+
+Alpha.56 passed the actual unavailable-helper case on the npm-host Pi 4. After a fresh backup and
+arming a ten-minute restore timer, only the `systemd-run` sudoers grant was temporarily removed.
+One planned backend restart cleared its positive capability cache. Tailscale settings were unchanged.
+Removing only the inactive cloudflared package produced missing binary/version requirements and
+`privileged_setup.available: false`. A direct install request returned HTTP 422 with
+`privileged-worker-unavailable` and remediation, creating no job.
+
+The real wizard offered four unique manual commands and Re-check, with no Start setup button.
+Manual installation restored cloudflared 2026.10.0; Re-check reached Token and hostname while the
+helper was still unavailable and `setup: null`. No token was entered or form saved. Restoring the
+exact sudoers bytes made helper availability recover without another backend restart.
+
+The recovery timer and setup worker were inactive at cleanup. Cloudflare returned to disabled/no
+token/no endpoints with the package installed. Configuration bytes, accounts, topology, 28 migrations,
+Tailscale identity and all Tailscale preferences matched the baseline; Pi 5 was untouched. Evidence:
+`remote-access-r5/pi4-cloudflare-helper-alpha56/`. The released unavailable-helper/manual-recovery
+case is complete; the upgrade-reload regression from an already-fixed admin remains pending.
+This does not add a configured Pi 4 tunnel or external-access result. R4/R5 and the epic remain open.
+The complete alpha.56 release, including AIO, has now passed.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
