@@ -1280,6 +1280,34 @@ health passed from the Pi 5 peer. Receipts: `remote-access-r4/pi4-setup-transpor
 No intentional WebSocket loss, fresh-package setup, new login or phone test was performed.
 R4 and the epic remain open for their other gates.
 
+### R4 alpha.58 installation and setup WebSocket recovery (2026-10-09)
+
+Published alpha.58 (`4fa129f7f04276eaa5850a49869f799edd2ca442`, including #1385) was installed
+on the npm-host Pi 4 with one System UI confirmation. The tag/version-sync ancestry, three npm
+package integrities and all installed wrapper/backend/admin files were verified. Data, schema,
+accounts/long-lived credentials, configuration, boot ID and Tailscale identity were preserved.
+The old alpha.57 admin again reported failure after five minutes; the authoritative API returned
+alpha.58 / complete / 100% / no error, and fresh navigation showed the correct version. The fixed
+observer is now installed, but acceptance still requires an upgrade **starting from alpha.58**.
+
+Three actual released wizard jobs repaired only a removed operator grant, each with a fresh
+checkpoint and an unused automatic recovery timer. Browser WebSockets were interrupted while
+REST remained available: before the install POST was accepted, after the fresh job's initial
+unstepped Running event, and by withholding its Complete event. In every case, REST confirmed
+the accepted job, satisfied prerequisites and an enabled Options step without reload or overlapping
+status reads. Re-enabling transport restored an authenticated socket and normal events. These are
+client-observed loss cases; the middle case does not prove loss during a named install/daemon/operator
+stage. The first case reached Options and Skip but did not verify the final Close button; the other
+two completed Skip → Close. See the epic's timestamped record for evidence boundaries.
+
+After each job, configuration/preferences, database/topology, credentials, identity and both service
+process/restart counters matched the checkpoint. Recovery timers and workers were inactive, cached
+sessions removed and owned browsers closed. Final certificate-verified HTTPS and IPv4 peer health
+returned 200/alpha.58. Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha58/` and
+`remote-access-r4/pi4-setup-transport-alpha58/`. No fresh-package installation, pending authentication,
+slow CLI, long setup timeout, device network outage or new phone test was performed. Those remaining
+matrix rows and the one-candidate reconciliation requirement keep R4 and the epic open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
