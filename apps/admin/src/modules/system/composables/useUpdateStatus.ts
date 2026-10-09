@@ -1,7 +1,9 @@
-import { computed, ref } from 'vue';
+import { computed, getCurrentScope, ref } from 'vue';
 
-import { useBackend } from '../../../common';
+import { tryOnScopeDispose } from '@vueuse/core';
+
 import { MODULES_PREFIX } from '../../../app.constants';
+import { useBackend } from '../../../common';
 import { onUpdateEvent } from '../services/update-events.service';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
@@ -14,6 +16,7 @@ const UPDATE_INSTALL_PATH = `/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/u
 // Deduplication for concurrent fetchStatus calls
 let fetchPromise: Promise<void> | null = null;
 let lastFetchTimestamp = 0;
+let lastFetchGeneration = -1;
 const FETCH_DEBOUNCE_MS = 5_000;
 
 // Shared singleton refs — all callers share the same reactive state
@@ -33,23 +36,75 @@ const loading = ref<boolean>(false);
 const installing = ref<boolean>(false);
 const waitingForRestart = ref<boolean>(false);
 
-// Polling handle for reconnection detection after service restart
-let reconnectPollTimer: ReturnType<typeof setInterval> | null = null;
+// One serial observer for the shared state. Connectivity loss never establishes an
+// update failure; keep observing until the backend settles or the last consumer leaves.
+let reconnectPollTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectRequestTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectController: AbortController | null = null;
+let observerGeneration = 0;
+let monitoring = false;
+let activeConsumers = 0;
 const RECONNECT_POLL_INTERVAL_MS = 4_000;
-const RECONNECT_POLL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max unreachable gap
-// A backend stuck reporting a non-terminal status must not keep the poll alive forever:
-// every successful response resets the unreachable timeout, so without an absolute
-// ceiling the interval outlives navigation for as long as the tab does.
-const RECONNECT_POLL_MAX_LIFETIME_MS = 30 * 60 * 1000;
+const RECONNECT_POLL_MAX_INTERVAL_MS = 30_000;
+const RECONNECT_REQUEST_TIMEOUT_MS = 10_000;
 
-// Simulated progress ticker during backend restart gap
+// Simulated progress remains below completion while status is unconfirmed.
 let progressTickTimer: ReturnType<typeof setInterval> | null = null;
 const PROGRESS_TICK_INTERVAL_MS = 2_000;
-const PROGRESS_MAX_SIMULATED = 90; // Cap at 90%, leave 90→100% for real completion
+const PROGRESS_MAX_SIMULATED = 90;
+
+const stopProgressTick = (): void => {
+	if (progressTickTimer !== null) {
+		clearInterval(progressTickTimer);
+		progressTickTimer = null;
+	}
+};
+
+const startProgressTick = (): void => {
+	if (progressTickTimer !== null) {
+		return;
+	}
+
+	progressTickTimer = setInterval(() => {
+		const current = progressPercent.value ?? 45;
+
+		if (current >= PROGRESS_MAX_SIMULATED) {
+			stopProgressTick();
+		} else {
+			const remaining = PROGRESS_MAX_SIMULATED - current;
+			const step = Math.max(1, Math.floor(remaining * 0.15));
+
+			progressPercent.value = Math.min(PROGRESS_MAX_SIMULATED, current + step);
+		}
+	}, PROGRESS_TICK_INTERVAL_MS);
+};
+
+const stopReconnectPoll = (): void => {
+	observerGeneration += 1;
+	monitoring = false;
+	stopProgressTick();
+
+	if (reconnectPollTimer !== null) {
+		clearTimeout(reconnectPollTimer);
+		reconnectPollTimer = null;
+	}
+
+	if (reconnectRequestTimer !== null) {
+		clearTimeout(reconnectRequestTimer);
+		reconnectRequestTimer = null;
+	}
+
+	reconnectController?.abort();
+	reconnectController = null;
+};
 
 const isUpdating = computed<boolean>((): boolean => {
 	return ['downloading', 'stopping', 'installing', 'migrating', 'starting'].includes(status.value);
 });
+
+const isUnconfirmedClearedStatus = (data: Record<string, unknown>, targetVersion: string | null): boolean => {
+	return (!data.status || data.status === 'idle') && (!targetVersion || data.current_version !== targetVersion);
+};
 
 const applyInfoResponse = (data: Record<string, unknown>): void => {
 	currentVersion.value = (data.current_version as string) ?? null;
@@ -117,6 +172,12 @@ const applyStatusEvent = (payload: Record<string, unknown>): void => {
 		error.value = rawError === null ? null : 'systemModule.messages.update.updateFailed';
 	}
 
+	// A terminal socket event is authoritative, including during an outstanding GET.
+	if (status.value === 'complete' || status.value === 'failed') {
+		stopReconnectPoll();
+		waitingForRestart.value = false;
+	}
+
 	// Update installing state
 	installing.value = isUpdating.value;
 };
@@ -128,40 +189,73 @@ const unsubscribe = onUpdateEvent(applyStatusEvent);
 if (import.meta.hot) {
 	import.meta.hot.dispose(() => {
 		unsubscribe();
+		stopReconnectPoll();
 	});
 }
 
 export const useUpdateStatus = (): IUseUpdateStatus => {
 	const backend = useBackend();
+	let disposed = false;
 
 	const fetchStatus = async (): Promise<void> => {
-		const now = Date.now();
-
-		// Suppress duplicate fetches within the debounce window
-		if (now - lastFetchTimestamp < FETCH_DEBOUNCE_MS) {
+		if (disposed) {
 			return;
 		}
 
-		// Reuse in-flight request if one is pending
-		if (fetchPromise) {
+		// Returning during the outage must resume observation even if this GET fails
+		// or is deduplicated against the previous consumer's request.
+		if (isUpdating.value && !monitoring) {
+			startReconnectPoll();
+		}
+
+		const generation = observerGeneration;
+		const wasUpdating = isUpdating.value;
+		const targetVersion = latestVersion.value;
+		const now = Date.now();
+
+		// Share only requests from the current observer generation. A request left
+		// behind by disposal or a terminal event cannot serve a returning consumer.
+		if (fetchPromise && lastFetchGeneration === generation) {
 			return fetchPromise;
+		}
+
+		if (lastFetchGeneration === generation && now - lastFetchTimestamp < FETCH_DEBOUNCE_MS) {
+			return;
 		}
 
 		loading.value = true;
 		lastFetchTimestamp = now;
+		lastFetchGeneration = generation;
 
 		fetchPromise = (async () => {
 			try {
 				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
 
-				if (responseData?.data) {
+				if (generation === observerGeneration && responseData?.data) {
+					// A mount/refresh GET must preserve the same pending state as the poll.
+					if (wasUpdating && isUnconfirmedClearedStatus(responseData.data, targetVersion)) {
+						waitingForRestart.value = true;
+
+						return;
+					}
+
 					applyInfoResponse(responseData.data);
+
+					if (status.value === 'complete' || status.value === 'failed') {
+						waitingForRestart.value = false;
+						stopReconnectPoll();
+					} else if (isUpdating.value && !monitoring) {
+						startReconnectPoll();
+					}
 				}
 			} catch {
 				// Silently fail - endpoint may not exist yet
 			} finally {
-				loading.value = false;
-				fetchPromise = null;
+				// A superseded request must not clear the newer shared request.
+				if (lastFetchGeneration === generation) {
+					loading.value = false;
+					fetchPromise = null;
+				}
 			}
 		})();
 
@@ -186,134 +280,129 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 		}
 	};
 
-	const stopProgressTick = (): void => {
-		if (progressTickTimer !== null) {
-			clearInterval(progressTickTimer);
-			progressTickTimer = null;
-		}
-	};
-
-	const startProgressTick = (): void => {
-		stopProgressTick();
-
-		// Simulate progress advancing from the last known value toward 90%.
-		// Each tick adds a small increment that decelerates as it approaches the cap,
-		// giving the appearance of ongoing work during the backend restart gap.
-		progressTickTimer = setInterval(() => {
-			const current = progressPercent.value ?? 45;
-
-			if (current < PROGRESS_MAX_SIMULATED) {
-				const remaining = PROGRESS_MAX_SIMULATED - current;
-				const step = Math.max(1, Math.floor(remaining * 0.15));
-
-				progressPercent.value = Math.min(PROGRESS_MAX_SIMULATED, current + step);
-			}
-		}, PROGRESS_TICK_INTERVAL_MS);
-	};
-
-	const stopReconnectPoll = (): void => {
-		stopProgressTick();
-
-		if (reconnectPollTimer !== null) {
-			clearInterval(reconnectPollTimer);
-			reconnectPollTimer = null;
-		}
-	};
-
 	const startReconnectPoll = (): void => {
 		stopReconnectPoll();
-
-		// Capture the version we're updating TO before the poll overwrites it
+		monitoring = true;
+		const generation = observerGeneration;
 		const targetVersion = latestVersion.value;
+		let delay = RECONNECT_POLL_INTERVAL_MS;
+		const isCurrent = (): boolean => generation === observerGeneration;
 
-		const startedAt = Date.now();
-
-		let lastSuccessAt = startedAt;
-
-		reconnectPollTimer = setInterval(async () => {
-			// Timeout only applies to the reconnection gap (backend unreachable); the
-			// absolute ceiling applies regardless of how healthily the backend answers.
-			// Reset the timer on every successful response so slow-but-active
-			// updates aren't incorrectly marked as failed.
-			if (Date.now() - lastSuccessAt > RECONNECT_POLL_TIMEOUT_MS || Date.now() - startedAt > RECONNECT_POLL_MAX_LIFETIME_MS) {
-				stopReconnectPoll();
-				waitingForRestart.value = false;
-				installing.value = false;
-				status.value = 'failed';
-				error.value = 'systemModule.messages.update.updateFailed';
-
+		const poll = async (): Promise<void> => {
+			if (!isCurrent()) {
 				return;
 			}
 
+			reconnectPollTimer = null;
+			const controller = new AbortController();
+			reconnectController = controller;
+			const requestTimer = setTimeout(() => controller.abort(), RECONNECT_REQUEST_TIMEOUT_MS);
+			reconnectRequestTimer = requestTimer;
+
 			try {
-				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH);
+				const { data: responseData } = await backend.client.GET(UPDATE_STATUS_PATH, { signal: controller.signal });
 
-				if (responseData?.data) {
-					const typedData = responseData.data as Record<string, unknown>;
-					const responseStatus = typedData.status as string | undefined;
+				if (!isCurrent()) {
+					return;
+				}
 
-					// Capture current_version before applyInfoResponse overwrites latestVersion
-					const newVersion = typedData.current_version as string | undefined;
+				if (controller.signal.aborted || !responseData?.data) {
+					throw new Error('Update status unavailable');
+				}
 
-					applyInfoResponse(typedData);
-					lastSuccessAt = Date.now();
+				const typedData = responseData.data as Record<string, unknown>;
+				const responseStatus = typedData.status as string | undefined;
+				const clearedStatus = !responseStatus || responseStatus === 'idle';
+
+				// A cleared status only confirms completion when the installed version
+				// matches the target. Otherwise retain the pending state and retry.
+				if (isUnconfirmedClearedStatus(typedData, targetVersion)) {
+					throw new Error('Update result unconfirmed');
+				}
+
+				applyInfoResponse(typedData);
+
+				if (responseStatus === 'complete' || responseStatus === 'failed') {
+					phase.value = null;
+					installing.value = false;
+					waitingForRestart.value = false;
 
 					if (responseStatus === 'complete') {
-						status.value = 'complete';
-						phase.value = null;
 						error.value = null;
 						progressPercent.value = 100;
-						installing.value = false;
-						waitingForRestart.value = false;
-						stopReconnectPoll();
-					} else if (responseStatus === 'failed') {
-						status.value = 'failed';
-						phase.value = null;
-						installing.value = false;
-						waitingForRestart.value = false;
-						error.value = error.value || 'systemModule.messages.update.updateFailed';
-						stopReconnectPoll();
-					} else if (!responseStatus || responseStatus === 'idle') {
-						// Backend restarted but status was already cleared.
-						// Check if current version matches the update target.
-						if (newVersion && targetVersion && newVersion === targetVersion) {
-							status.value = 'complete';
-							error.value = null;
-							progressPercent.value = 100;
-						}
-
-						// Always clean up — whether version matched or not,
-						// the update process is over at this point.
-						phase.value = null;
-						installing.value = false;
-						waitingForRestart.value = false;
-						stopReconnectPoll();
 					} else {
-						// Still updating — stop simulated progress, use real values
-						stopProgressTick();
-						waitingForRestart.value = false;
+						error.value = error.value || 'systemModule.messages.update.updateFailed';
 					}
+
+					stopReconnectPoll();
+				} else if (clearedStatus) {
+					// Compatibility with backends that clear the completed status on restart.
+					status.value = 'complete';
+					error.value = null;
+					progressPercent.value = 100;
+					phase.value = null;
+					installing.value = false;
+					waitingForRestart.value = false;
+					stopReconnectPoll();
+				} else {
+					stopProgressTick();
+					waitingForRestart.value = false;
+					delay = RECONNECT_POLL_INTERVAL_MS;
 				}
 			} catch {
-				// Backend still down — simulate progress advancement
-				waitingForRestart.value = true;
+				if (!isCurrent()) {
+					return;
+				}
 
-				if (progressTickTimer === null) {
-					startProgressTick();
+				waitingForRestart.value = true;
+				startProgressTick();
+				delay = Math.min(delay * 2, RECONNECT_POLL_MAX_INTERVAL_MS);
+			} finally {
+				clearTimeout(requestTimer);
+
+				if (isCurrent()) {
+					reconnectController = null;
+					reconnectRequestTimer = null;
+					reconnectPollTimer = setTimeout(() => void poll(), delay);
 				}
 			}
-		}, RECONNECT_POLL_INTERVAL_MS);
+		};
+
+		reconnectPollTimer = setTimeout(() => void poll(), delay);
 	};
 
+	// Shared polling stays alive while any scoped consumer needs it. The final
+	// disposal also cancels an in-flight POST/GET through the generation guard.
+	if (getCurrentScope()) {
+		activeConsumers += 1;
+
+		tryOnScopeDispose(() => {
+			disposed = true;
+			activeConsumers -= 1;
+
+			if (activeConsumers === 0) {
+				stopReconnectPoll();
+			}
+		});
+	}
+
 	const installUpdate = async (allowMajor: boolean = false): Promise<void> => {
+		stopReconnectPoll();
+		monitoring = true;
+		const generation = observerGeneration;
 		installing.value = true;
 		status.value = 'downloading';
+		waitingForRestart.value = false;
 		error.value = null;
 
 		try {
 			const { error: responseError } = await backend.client.POST(UPDATE_INSTALL_PATH, {
 				body: { allow_major: allowMajor },
 			});
+
+			if (generation !== observerGeneration) {
+				return;
+			}
 
 			if (responseError) {
 				installing.value = false;
@@ -327,6 +416,11 @@ export const useUpdateStatus = (): IUseUpdateStatus => {
 			// after the service restarts
 			startReconnectPoll();
 		} catch (err) {
+			if (generation !== observerGeneration) {
+				return;
+			}
+
+			stopReconnectPoll();
 			installing.value = false;
 			status.value = 'failed';
 			error.value = 'systemModule.messages.update.installFailed';

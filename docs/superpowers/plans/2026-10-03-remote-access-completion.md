@@ -1247,6 +1247,39 @@ syntax checks. Regression coverage includes coalesced steps, watcher failure/fal
 files, rewritten/malformed history, timeout and late-subscription paths, plus a throwing subscriber
 that must not lose later stages or terminal cleanup. Independent review found no remaining blocker.
 
+### R4 released stage reporting acceptance on alpha.57 (2026-10-09)
+
+Published alpha.57 (`26f7b9140cba39c5ea811d9fcf26a5baf8162a62`, #1384 included) passed the
+installed-package setup reporting retest on the npm-host Pi 4. The actual browser received
+install → daemon → operator → complete at 16:00:36.441 / .462 / .997 / 16:00:37.054 UTC,
+matching the fresh job's script history without duplicate stages. Each row was also observed
+In progress and then Complete in the DOM. The wizard advanced to Options and completed
+Skip → Done; terminal REST confirmation matched the same job. This passes the retained
+live-stage criterion without introducing artificial stage delays.
+
+The preceding single System UI upgrade preserved data/configuration/authentication and installed
+files matched the three verified npm manifests. Its original admin document nevertheless showed
+an update failure after five minutes of backend unavailability during npm installation; the
+backend later confirmed alpha.57 / complete / 100% / no error. Manual navigation recovered the
+view. Keep this UI timeout defect separate from successful installation and setup acceptance.
+
+The admin follow-up replaces terminal client waiting deadlines with serial, bounded requests
+and capped outage backoff. Consumer disposal cancels monitoring; returning while an update is
+pending resumes observation. The UI describes an unconfirmed result during connection loss.
+This source correction still needs released-device acceptance on a subsequent upgrade.
+Source validation passed: 42 focused admin tests, full admin type checking, targeted lint and
+format checks. Independent review's shared-fetch disposal/reentry findings were fixed and
+covered by regressions. Idle or missing-status responses without the target version remain
+unconfirmed in both reconnect polling and the initial fetch after navigation; regressions cover
+continued observation and eventual completion or explicit failure.
+
+After setup, all post-upgrade baseline preservation checks passed, including stable preferences
+and unchanged backend/tailscaled process/restart counters. The unused operator-recovery timer
+and setup worker were inactive; the browser was closed. Certificate-verified HTTPS and IPv4
+health passed from the Pi 5 peer. Receipts: `remote-access-r4/pi4-setup-transport-alpha57/`.
+No intentional WebSocket loss, fresh-package setup, new login or phone test was performed.
+R4 and the epic remain open for their other gates.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
