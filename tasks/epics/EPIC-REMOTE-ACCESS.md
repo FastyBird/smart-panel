@@ -1405,6 +1405,29 @@ three cuts. Fresh-package transport loss, slow CLI, setup timeout, device-networ
 variants remain outside this run. The fixed update observer still needs an upgrade starting from
 alpha.58; R4/#910 and the epic remain open.
 
+#### Minimum/installed-version CLI fixture check (2026-10-09)
+
+Official checksum-verified Tailscale 1.66.0 and 1.102.5 Linux ARM64 CLI/daemon pairs
+were captured in separate disposable containers with networking disabled and fresh
+unauthenticated state. Both produced parseable version/status/preferences output,
+NeedsLogin with exit code 0, an omitted unset `OperatorUser`, and empty Serve/Funnel
+configuration. Setting the disposable container's operator to `nobody` as root
+succeeded and appeared in the next preferences read. The selected flags listed in
+fixture provenance were present in both releases' help output; this is not an
+exhaustive flag audit.
+
+The committed fixtures exercise the real CLI adapter and requirement evaluator;
+platform/systemd facts remain stubbed in those tests. Fixture provenance documents
+the official archive hashes, commands, container image and status Self projection.
+Raw receipts are private under `remote-access-r4/minimum-cli-compatibility/`.
+Both daemons and containers were cleaned up; no Pi or tailnet state was changed.
+
+This passes the unauthenticated minimum/installed-version JSON fixture check, not
+authenticated minimum-version adoption, preference-conflict recovery, service-user
+permissions or actual Serve/Funnel connectivity. Help flags alone cannot prove those
+operations. The remaining hardware matrix, upgrade from the fixed admin and
+one-candidate reconciliation still keep R4/#910 and the epic open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
