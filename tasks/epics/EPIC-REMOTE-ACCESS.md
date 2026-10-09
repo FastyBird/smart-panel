@@ -1065,6 +1065,30 @@ outage duration or continuous child-count claim is made. Private evidence is ret
 `remote-access-r5/staging-alpha54-upgrade/`. R5 remains open for remaining installation cases and the
 released frontend fix; R4 and the epic are also unchanged.
 
+#### Alpha.55 deployment on staging Pi 5 (2026-10-09)
+
+One normal System UI update over public Cloudflare HTTPS upgraded alpha.54 → alpha.55, tag
+`e0a72186d6872000ada24b2449091248a680c474`. All ten server release jobs in run `37899751087`
+succeeded. Server/npm integrity and the installed 1,719 backend JavaScript / 249 admin file hashes
+matched. The bundled admin contains #1377's completed-dialog reload guard.
+
+The fresh pre-install backup passed validation. The updater completed with its lock cleared, no host
+reboot, and preserved 111 devices/topology, 28 migrations/schema, accounts, long-lived tokens,
+configuration and the current Cloudflare token. Cloudflare recovered automatically with four ready
+connections and one unprivileged backend-owned child in the post-update sample. Public HTTPS,
+owner login/profile, anonymous 401 and valid/missing/invalid WebSocket authentication passed.
+
+The old alpha.54 tab displayed success; manual full navigation loaded the new bundle and retained
+authentication with both providers Connected. Automatic dismissal reload remains untested on hardware:
+the next upgrade must start from the fixed alpha.55 admin. No new phone/live-device-change result or
+continuous connector-count guarantee is claimed. Pi 4 was untouched.
+
+At this checkpoint Docker publication passed, server/display SD builds were pending, and AIO image
+building failed on GitHub API rate limiting in `flutterpi_tool`. Overall release success is not claimed;
+the independently verified server package was used. Private evidence:
+`remote-access-r5/staging-alpha55-upgrade/`. R5 remains open for npm/manual installation and the
+released reload regression; R4 and the epic remain open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

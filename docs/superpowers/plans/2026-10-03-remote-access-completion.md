@@ -835,6 +835,37 @@ establish an exact outage duration or continuous process-count invariant. Privat
 `remote-access-r5/staging-alpha54-upgrade/`. Connected-provider backend recovery is now covered; R5
 remains open for the installation matrix and released admin recovery, and R4/the epic remain open.
 
+### R5 alpha.55 deployment and remaining installation paths (2026-10-09)
+
+Staging Pi 5 passed one public System UI update from alpha.54 to alpha.55, tag
+`e0a72186d6872000ada24b2449091248a680c474`, containing the merged admin correction #1377.
+Release run `37899751087` completed all ten jobs required for the server package. Server checksum,
+backend/admin npm integrity and agreement with all 1,719 installed backend JavaScript / 249 admin
+files passed. The shipped admin chunk contains the completed-dialog visibility/reload guard.
+
+A fresh `/var/backups/smart-panel/alpha55-pre-install` backup was validated before submission.
+The worker completed, cleared its lock and recovered the providers without rebooting the host.
+All 111 devices/topology, 28 migrations, schema, accounts, long-lived tokens, configuration and the
+current Cloudflare token were preserved. Boundary samples showed one new unprivileged cloudflared
+child owned by the new backend, with four ready connections and no token argument. Public HTTPS,
+owner login/profile, anonymous HTTP 401 and valid/missing/invalid WebSocket authentication passed.
+
+The original alpha.54 tab displayed completion. A manual full navigation loaded the alpha.55 admin
+and retained the session with Connected provider cards. This installs the correction; it does not
+verify its reload behavior, which requires a later upgrade initiated from alpha.55 or newer.
+Private evidence is in `remote-access-r5/staging-alpha55-upgrade/`.
+
+The full release workflow was not green at this checkpoint: Docker publication passed, server/display
+SD images were still running, and the AIO image failed when `flutterpi_tool` hit the GitHub API rate
+limit while fetching Flutter Pi metadata. This does not invalidate the separately verified server
+package. Recheck the auxiliary jobs and retry the failed image after the run settles.
+
+Reconciled R5 remaining work is the npm-host automatic installation path, manual installation/Re-check,
+and the released admin reload regression. The image installation path and recorded provider lifecycle,
+token, client-policy and connected-upgrade cases already have evidence. The next installation batch
+can use the existing npm-host Pi 4 without reflashing its OS or touching Pi 5's working public tunnel.
+Pi 4 was not contacted during this deployment; R4/R5 and the epic remain open.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
