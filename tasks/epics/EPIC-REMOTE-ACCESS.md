@@ -1250,6 +1250,36 @@ changed-tag conflict-refusal/recovery variant, supplementing alpha.54's compatib
 checks. It does not certify valid tag assignment, login-server migration, minimum-version CLI
 behavior or new login/WebSocket/phone checks. R4/#910 and the epic remain open for their other gates.
 
+#### Short setup stages missing from progress events (2026-10-09)
+
+The npm-host Pi 4 on alpha.56 / Tailscale 1.102.5 reproduced the remaining setup-visibility gap.
+After a fresh checkpoint and recovery timer, only the operator grant was removed; the package,
+daemon, authentication, configuration and sudoers were retained. The real admin wizard accepted
+Start setup with HTTP 202 and completed Set up → Options → Skip → Done without another sign-in.
+
+A read-only 5 ms status-file sampler observed `install`, `daemon`, `operator` and `complete` at
+14:49:46.679, 14:49:46.695, 14:49:47.171 and 14:49:47.214 UTC respectively. The browser received only
+an unstepped `running` event at 14:49:46.582 and `complete/complete` at 14:49:49.581. REST snapshots
+likewise skipped the named running stages. The admin's three Complete rows were inferred from the
+terminal snapshot; they do not establish delivery of each stage. The worker's three-second poll
+reads a single atomically overwritten file, so short intermediate states disappear before observation.
+
+This is a reporting defect, not a failed setup: the operator grant was restored by the normal job,
+the original admin document returned to Connected, and peer certificate-verified HTTPS/IPv4 health
+returned 200. Final configuration, stable preferences, identity, schema/migrations, topology,
+credentials, boot ID and process/restart checks matched the checkpoint. Setup worker and unused
+recovery timer were inactive afterward; the isolated browser was closed. No runtime patch was
+installed. The T3 preview became unavailable before the operator change, so this test used a fresh
+local headless Chromium context. Private receipts: `remote-access-r4/pi4-setup-transport-alpha56/`.
+
+The source correction makes Tailscale setup retain a bounded, job-scoped history in the atomic
+status snapshot. The worker emits unseen reports in order, using directory notifications for
+prompt delivery and polling as fallback; stale job files and rewritten history are rejected.
+Existing snapshot/mapped callers keep their protocol. No artificial delay is introduced, and a
+coalesced burst can still render as completed stages in a single UI frame. The live-stage row
+remains open for released verification after correction. Lost-WebSocket variants were not
+exercised in this run and remain separate gates.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

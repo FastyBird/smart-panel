@@ -1222,6 +1222,31 @@ Together with alpha.54's compatible adoption checks, this passes the actual inst
 preference-conflict refusal/recovery variant. Successful tag assignment, login-server migration,
 minimum-version CLI behavior and the other R4 gates remain outside this observation. R4 stays open.
 
+### R4 short setup-stage reporting defect (2026-10-09)
+
+On published alpha.56 / Tailscale 1.102.5, an installed-package setup rerun on the npm-host Pi 4
+restored a temporarily removed operator grant through the actual admin wizard. Status-file samples
+captured install → daemon → operator → complete in about 535 ms. The browser's WebSocket and REST
+observations contained only initial unstepped running and terminal complete; the three-second
+worker poll missed every named running stage. The UI's Complete rows were inferred from the final
+snapshot, so the live-stage criterion cannot be closed by those rows or a faster screen recorder.
+
+The setup itself passed and the Pi was restored: configuration, stable preferences, identity/data
+and service processes matched the checkpoint; peer HTTPS/IPv4 health passed, recovery timer and
+setup worker were inactive and the isolated browser was closed. No candidate code was deployed.
+Private evidence: `remote-access-r4/pi4-setup-transport-alpha56/`. The source correction retains
+bounded per-job stage history, delivers unseen reports on directory notifications or fallback
+polling, and rejects stale/rewritten history. It adds no artificial delay or public API change.
+Repeat released visibility acceptance after shipping it; prompt reporting does not guarantee a
+separate rendered frame for each short stage. The remaining transport variants were not run;
+R4 remains open.
+
+Source validation passed: 49 affected backend suites / 978 tests, the separate unchanged update-worker
+script suite, 37 admin files / 637 tests, backend type checking, changed-file lint/format and Bash
+syntax checks. Regression coverage includes coalesced steps, watcher failure/fallback, stale job
+files, rewritten/malformed history, timeout and late-subscription paths, plus a throwing subscriber
+that must not lose later stages or terminal cleanup. Independent review found no remaining blocker.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

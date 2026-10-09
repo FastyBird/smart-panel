@@ -225,6 +225,7 @@ run(spec: {
   statusFile: string; timeoutMs?: number;                 // default 10 minutes
   unitType?: 'scope' | 'service';                         // default scope
   mapStatus?: (raw: Record<string, unknown>) => Partial<PrivilegedJobStatus> | null;
+  trackStatusHistory?: boolean;                         // canonical job-scoped history; excludes mapStatus
 }): Promise<{ id: string }>
 ```
 
@@ -239,6 +240,15 @@ run(spec: {
   (the update worker's legacy `status`/`phase`/`error` fields) adapt it to that same shape before the
   service's own terminal-state detection runs. `state: 'timeout'` is reserved for the service itself — a
   file/mapper tick claiming it is rejected like an unrecognised state.
+- Tailscale setup opts into `trackStatusHistory`. Its atomic snapshot includes the generated
+  `PRIVILEGED_WORKER_JOB_ID` as `jobId` and an append-only history of canonical stage reports.
+  The worker validates the job identity, immutable prefix and terminal ordering before delivering
+  unseen reports in order. History is bounded to 32 entries and the input file to 64 KiB; a previous
+  job's status cannot complete the new job. A directory watcher gives prompt rename notifications,
+  while the three-second poll and durable history cover unavailable/coalesced notifications.
+  Watchers close on terminal results, launch failures and timeout. Legacy snapshot/mapped jobs
+  retain their existing protocol. No delay is added to make fast stages linger on screen: several
+  reports can arrive together, and the UI can render their final completed state in one frame.
 - One job per `unit` at a time (`PrivilegedWorkerUnavailableException` on a second concurrent job); the unit
   is released only on a terminal state (`complete`/`failed`/`timeout`), a spawn failure, or the child process
   exiting unsuccessfully before ever reporting completion — never merely because a service launcher
@@ -576,7 +586,10 @@ also re-applies and self-heals a drifted Serve/Funnel handler, exactly like a po
 2. `systemctl enable --now tailscaled`.
 3. `tailscale set --operator=<service user>` — persists in `tailscaled.state`, so the backend can operate
    the daemon without sudo from then on.
-4. Writes the status file after each step; a non-zero exit reports `failed`.
+4. Writes the status file at each stage transition; a non-zero exit reports `failed`. Privileged-worker
+   invocations also retain every report in job-scoped history, so a fast install/daemon/operator
+   sequence is not lost between observations. Manual invocations without the job ID retain the
+   original snapshot shape; `--print-plan` remains read-only.
 
 ### Development Override
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { EventEmitter } from 'events';
-import { existsSync, readFileSync } from 'fs';
+import { closeSync, existsSync, openSync, readFileSync, readSync, watch } from 'fs';
 import { execFile, spawn } from 'node:child_process';
 
 import { PlatformType } from '../../platform/platform.constants';
@@ -13,6 +13,10 @@ jest.mock('fs', () => ({
 	...jest.requireActual<typeof import('fs')>('fs'),
 	existsSync: jest.fn(),
 	readFileSync: jest.fn(),
+	openSync: jest.fn(),
+	readSync: jest.fn(),
+	closeSync: jest.fn(),
+	watch: jest.fn(),
 }));
 
 jest.mock('node:child_process', () => ({
@@ -67,6 +71,9 @@ describe('PrivilegedWorkerService', () => {
 		(spawn as jest.Mock).mockReturnValue(fakeChild);
 		(existsSync as jest.Mock).mockReturnValue(false);
 		(readFileSync as jest.Mock).mockReturnValue('');
+		(watch as jest.Mock).mockImplementation(() => {
+			throw new Error('Unavailable');
+		});
 		// Default: the unit is confirmed stopped, so a bare timeout (no test-specific override)
 		// still frees the unit exactly like before this change.
 		(execFile as unknown as jest.Mock).mockImplementation(
@@ -87,6 +94,280 @@ describe('PrivilegedWorkerService', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		jest.clearAllMocks();
+	});
+
+	describe('status history', () => {
+		let watcher: EventEmitter & { close: jest.Mock; unref: jest.Mock };
+		let onChange: (event: string, filename: string | null) => void;
+		let file: string;
+
+		const entries = [
+			{ state: 'running', step: 'install', message: 'Installed' },
+			{ state: 'running', step: 'daemon', message: 'Enabled' },
+			{ state: 'running', step: 'operator', message: 'Granted' },
+			{ state: 'complete', step: 'complete', message: 'Done' },
+		];
+
+		function publish(id: string, history = entries): void {
+			file = JSON.stringify({ jobId: id, ...history[history.length - 1], history });
+		}
+
+		beforeEach(() => {
+			file = '';
+			watcher = Object.assign(new EventEmitter(), { close: jest.fn(), unref: jest.fn() });
+			(watch as jest.Mock).mockImplementation((_path: string, callback: typeof onChange) => {
+				onChange = callback;
+
+				return watcher;
+			});
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(openSync as jest.Mock).mockReturnValue(42);
+			(readSync as jest.Mock).mockImplementation((_fd: number, buffer: Buffer, offset: number, length: number) => {
+				return Buffer.from(file).copy(buffer, offset, offset, offset + length);
+			});
+		});
+
+		it('replays all coalesced stages before the first poll, then settles once', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+			const handler = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			handler.mockClear();
+			publish(id);
+			jest.advanceTimersByTime(3_000);
+
+			expect(handler.mock.calls.map(([status]: [PrivilegedJobStatus]) => status.step)).toEqual([
+				'install',
+				'daemon',
+				'operator',
+				'complete',
+			]);
+			expect(handler.mock.calls.every(([status]: [PrivilegedJobStatus]) => status.id === id)).toBe(true);
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+			expect(closeSync).toHaveBeenCalledWith(42);
+			onChange('rename', 'test-status.json');
+			jest.advanceTimersByTime(3_000);
+			expect(handler).toHaveBeenCalledTimes(4);
+			await expect(service.run(baseSpec)).resolves.toHaveProperty('id');
+		});
+
+		it('reads atomic rename promptly, ignores duplicates, and replays accepted history to a late subscriber', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			publish(id, entries.slice(0, 2));
+			onChange('rename', 'unrelated.json');
+			expect(service.getStatus(id)?.step).toBeUndefined();
+			onChange('rename', 'test-status.json');
+			expect(service.getStatus(id)?.step).toBe('daemon');
+			const handler = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			expect(handler.mock.calls.map(([status]: [PrivilegedJobStatus]) => status.step)).toEqual(['install', 'daemon']);
+			onChange('rename', null);
+			jest.advanceTimersByTime(3_000);
+			expect(handler).toHaveBeenCalledTimes(2);
+			publish(id);
+			onChange('rename', 'test-status.json');
+			expect(handler).toHaveBeenCalledTimes(4);
+			expect(watcher.unref).toHaveBeenCalledTimes(1);
+		});
+
+		it('replays progress captured before subscription without a duplicate terminal event', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			publish(id);
+			onChange('rename', 'test-status.json');
+			const handler = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			expect(handler).toHaveBeenCalledTimes(4);
+			expect(handler.mock.calls[3][0].state).toBe('complete');
+		});
+
+		it('overrides caller job id env and rejects a previous job file when a unit is reused', async () => {
+			const spec = { ...baseSpec, trackStatusHistory: true, env: { PRIVILEGED_WORKER_JOB_ID: 'spoof' } };
+			const first = await service.run(spec);
+
+			expect(((spawn as jest.Mock).mock.calls[0] as [string, string[]])[1]).toContain(
+				`PRIVILEGED_WORKER_JOB_ID=${first.id}`,
+			);
+			expect(((spawn as jest.Mock).mock.calls[0] as [string, string[]])[1]).not.toContain(
+				'PRIVILEGED_WORKER_JOB_ID=spoof',
+			);
+			publish(first.id);
+			onChange('rename', null);
+			const second = await service.run(spec);
+
+			onChange('rename', null);
+			expect(service.getStatus(second.id)?.state).toBe('running');
+			expect(service.getStatus(second.id)?.step).toBeUndefined();
+		});
+
+		it.each([
+			['missing job id', { ...entries[3], history: entries }],
+			['empty history', { state: 'running', history: [] }],
+			['null entry', { state: 'running', history: [null] }],
+			['noncanonical state', { state: 'timeout', history: [{ state: 'timeout' }] }],
+			['terminal in middle', { ...entries[0], history: [entries[3], entries[0]] }],
+			['mismatched latest', { ...entries[0], history: entries }],
+			['invalid step', { state: 'running', step: 42, history: [{ state: 'running', step: 42 }] }],
+			['too many entries', { ...entries[0], history: Array.from({ length: 33 }, () => entries[0]) }],
+		])('rejects %s without partial delivery', async (name, raw) => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			file = JSON.stringify({ jobId: name === 'missing job id' ? undefined : id, ...raw });
+			onChange('rename', null);
+			expect(service.getStatus(id)?.step).toBeUndefined();
+			expect(service.getStatus(id)?.state).toBe('running');
+		});
+
+		it('rejects rewrites and truncation of an accepted prefix', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+			const handler = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			publish(id, entries.slice(0, 2));
+			onChange('rename', null);
+			handler.mockClear();
+			publish(id, entries.slice(0, 1));
+			onChange('rename', null);
+			publish(id, [{ ...entries[0], message: 'Changed' }, entries[1]]);
+			onChange('rename', null);
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)?.step).toBe('daemon');
+		});
+
+		it('bounds file reads and closes the fd on oversize input', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			file = ' '.repeat(64 * 1024 + 1);
+			onChange('rename', null);
+			expect(service.getStatus(id)?.step).toBeUndefined();
+			expect(closeSync).toHaveBeenCalledWith(42);
+			expect(((readSync as jest.Mock).mock.calls[0] as [number, Buffer, number, number])[3]).toBe(64 * 1024 + 1);
+		});
+
+		it('falls back to polling after watcher errors or setup failure', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			watcher.emit('error', new Error('Unavailable'));
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+			publish(id);
+			jest.advanceTimersByTime(3_000);
+			expect(service.getStatus(id)?.state).toBe('complete');
+			(watch as jest.Mock).mockImplementation(() => {
+				throw new Error('Unavailable');
+			});
+			const second = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			publish(second.id);
+			jest.advanceTimersByTime(3_000);
+			expect(service.getStatus(second.id)?.state).toBe('complete');
+		});
+
+		it.each(['error', 'exit'])('closes the watcher after child %s', async (event) => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			if (event === 'error') {
+				fakeChild.emit('error', new Error('Failed'));
+			} else {
+				fakeChild.emit('exit', 1, null);
+			}
+
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+			publish(id);
+			onChange('rename', null);
+			expect(service.getStatus(id)?.state).toBe('failed');
+		});
+
+		it('closes the watcher at the deadline and cannot revive while the stop is in flight', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true, timeoutMs: 100 });
+
+			jest.advanceTimersByTime(101);
+			publish(id);
+			onChange('rename', null);
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+			onChange('rename', null);
+			fakeChild.emit('exit', 0, null);
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('timeout');
+			onChange('rename', null);
+			expect(service.getStatus(id)?.state).toBe('timeout');
+		});
+
+		it('drains failed script history when a nonzero scope exit beats the watcher', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+			const handler = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			handler.mockClear();
+			publish(id, [...entries.slice(0, 2), { state: 'failed', step: 'daemon', message: 'Refused' }]);
+			fakeChild.emit('exit', 1, null);
+			expect(handler.mock.calls.map(([status]: [PrivilegedJobStatus]) => status.step)).toEqual([
+				'install',
+				'daemon',
+				'daemon',
+			]);
+			expect(service.getStatus(id)?.message).toBe('Refused');
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('replays service-owned timeout once after accepted progress while retaining an active unit', async () => {
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) =>
+					callback(null, 'active'),
+			);
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true, timeoutMs: 100 });
+
+			publish(id, entries.slice(0, 1));
+			onChange('rename', null);
+			jest.advanceTimersByTime(101);
+			onChange('rename', null);
+			fakeChild.emit('exit', 0, null);
+			await flushMicrotasks();
+			const handler = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			expect(handler.mock.calls.map(([status]: [PrivilegedJobStatus]) => status.state)).toEqual(['running', 'timeout']);
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+			await expect(service.run(baseSpec)).rejects.toThrow('still running');
+		});
+
+		it('isolates a throwing subscriber during replay and batch delivery so other subscribers and cleanup still finish', async () => {
+			const { id } = await service.run({ ...baseSpec, trackStatusHistory: true });
+
+			publish(id, entries.slice(0, 1));
+			onChange('rename', null);
+			const throwing = jest.fn<void, [PrivilegedJobStatus]>(() => {
+				throw new Error('Subscriber failed');
+			});
+			const healthy = jest.fn<void, [PrivilegedJobStatus]>();
+
+			service.onStatus(id, throwing);
+			service.onStatus(id, healthy);
+			await flushMicrotasks();
+			expect(throwing).toHaveBeenCalledTimes(1);
+			publish(id);
+			onChange('rename', null);
+			expect(throwing).toHaveBeenCalledTimes(4);
+			expect(healthy.mock.calls.map(([status]) => status.step)).toEqual(['install', 'daemon', 'operator', 'complete']);
+			expect(service.getStatus(id)?.state).toBe('complete');
+			expect(watcher.close).toHaveBeenCalledTimes(1);
+			await expect(service.run(baseSpec)).resolves.toHaveProperty('id');
+		});
+
+		it('rejects mapping plus history before spawning', async () => {
+			await expect(service.run({ ...baseSpec, trackStatusHistory: true, mapStatus: () => null })).rejects.toThrow(
+				'Status history cannot be combined with mapStatus',
+			);
+			expect(spawn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('run', () => {

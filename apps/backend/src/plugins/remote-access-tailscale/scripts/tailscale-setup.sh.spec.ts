@@ -42,6 +42,74 @@ describe('tailscale-setup.sh --dry-run', () => {
 		expect(status).toMatchObject({ state: 'complete', step: 'complete' });
 	});
 
+	it('preserves every real dry-run step in immutable job-scoped history even when they finish quickly', () => {
+		const jobId = 'ad98dd86-83e4-4b3e-ae8e-c30d07c4b8b0';
+		const { status } = runDryRun({ PRIVILEGED_WORKER_JOB_ID: jobId });
+		const record = status as {
+			jobId: string;
+			state: string;
+			step: string;
+			message: string;
+			history: { state: string; step: string; message: string }[];
+		};
+
+		expect(record.jobId).toBe(jobId);
+		expect(record.history.map(({ state, step }) => ({ state, step }))).toEqual([
+			{ state: 'running', step: 'install' },
+			{ state: 'running', step: 'daemon' },
+			{ state: 'running', step: 'operator' },
+			{ state: 'complete', step: 'complete' },
+		]);
+		expect(record.history[3]).toEqual({ state: record.state, step: record.step, message: record.message });
+		expect(Buffer.byteLength(readFileSync(statusFile, 'utf8'))).toBeLessThan(64 * 1024);
+		expect(existsSync(`${statusFile}.tmp`)).toBe(false);
+		// A new job reconstructs its own history instead of carrying over a prior file.
+		const second = runDryRun({ PRIVILEGED_WORKER_JOB_ID: '0d98dd86-83e4-4b3e-ae8e-c30d07c4b8b0' });
+
+		expect(second.status).toMatchObject({ jobId: '0d98dd86-83e4-4b3e-ae8e-c30d07c4b8b0', history: record.history });
+	});
+
+	it('retains the manual legacy shape when no job id is supplied', () => {
+		const { status } = runDryRun({ PRIVILEGED_WORKER_JOB_ID: '' });
+
+		expect(status).not.toHaveProperty('history');
+		expect(status).not.toHaveProperty('jobId');
+	});
+
+	it('rejects an invalid job id before writing any status or invoking steps', () => {
+		expect(() => runDryRun({ PRIVILEGED_WORKER_JOB_ID: 'bad"id' })).toThrow();
+		expect(existsSync(statusFile)).toBe(false);
+	});
+
+	it('reports a failed stage once at the end of history without appending cleanup after a terminal state', () => {
+		const fakeBin = join(statusDir, 'bin');
+
+		mkdirSync(fakeBin);
+		writeFileSync(join(fakeBin, 'tailscale'), '#!/bin/bash\nexit 0\n');
+		writeFileSync(join(fakeBin, 'systemctl'), '#!/bin/bash\nexit 1\n');
+		chmodSync(join(fakeBin, 'tailscale'), 0o755);
+		chmodSync(join(fakeBin, 'systemctl'), 0o755);
+		expect(() =>
+			execFileSync('bash', [scriptPath], {
+				env: {
+					...process.env,
+					STATUS_FILE: statusFile,
+					SMART_PANEL_USER: 'smart-panel',
+					PATH: `${fakeBin}:/usr/bin:/bin`,
+					PRIVILEGED_WORKER_JOB_ID: 'ad98dd86-83e4-4b3e-ae8e-c30d07c4b8b0',
+				},
+				stdio: 'pipe',
+			}),
+		).toThrow();
+		const record = JSON.parse(readFileSync(statusFile, 'utf8')) as { history: { state: string; step: string }[] };
+
+		expect(record.history.map(({ state, step }) => ({ state, step }))).toEqual([
+			{ state: 'running', step: 'install' },
+			{ state: 'running', step: 'daemon' },
+			{ state: 'failed', step: 'daemon' },
+		]);
+	});
+
 	it('prints the planned systemctl and operator commands', () => {
 		const { stdout } = runDryRun();
 
@@ -239,7 +307,7 @@ describe('tailscale-setup.sh --print-plan', () => {
 		const statusFile = join(workDir, 'status.json');
 
 		try {
-			runPrintPlan(['--step=daemon'], { STATUS_FILE: statusFile });
+			runPrintPlan(['--step=daemon'], { STATUS_FILE: statusFile, PRIVILEGED_WORKER_JOB_ID: 'invalid-id' });
 
 			expect(existsSync(statusFile)).toBe(false);
 		} finally {
