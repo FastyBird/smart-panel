@@ -1325,6 +1325,31 @@ checks passed; peer HTTPS/IPv4 health returned 200/alpha.58. Receipts:
 installed-package operator repair. Fresh-package/slow-CLI/network/authentication variants and an
 upgrade starting from the fixed admin remain separate; R4 and the epic are still open.
 
+### R4 minimum-version CLI fixtures (2026-10-09)
+
+Official checksum-verified Linux ARM64 Tailscale 1.66.0 (the supported minimum) and
+1.102.5 (the installed Pi version) were each run with their matching daemon in a
+disposable userspace-networking container with `--network none`, no capabilities
+and no tailnet login. Both returned parseable version/status/preferences JSON,
+NeedsLogin with exit code 0, omitted `OperatorUser` before configuration, and empty
+Serve/Funnel `{}`. An isolated root `set --operator=nobody` succeeded and subsequent
+preferences included that operator. The selected flags listed in fixture provenance
+appeared in the captured `up`/`set`/`serve`/`funnel` help output; this is not an exhaustive
+flag audit.
+
+Versioned fixtures and their provenance now exercise the actual CLI adapter and
+requirement evaluator. Status Self identity fields are excluded by a documented
+projection; other command output and exit codes are preserved. Private raw receipts:
+`remote-access-r4/minimum-cli-compatibility/`. Both daemons were reaped and their
+containers removed; neither Pi nor tailnet configuration was changed.
+
+This supplies the minimum/installed-version unauthenticated JSON fixture gate.
+It does not establish authenticated adoption/preference-mismatch recovery on 1.66.0,
+service-user permissions, login, Serve/Funnel reachability or complete minimum-version
+hardware acceptance. Help output establishes flag availability only. Remaining R4
+hardware rows, the upgrade starting from the fixed admin and candidate reconciliation
+remain open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

@@ -1,0 +1,111 @@
+{
+	"version": "1.66.0",
+	"provenance": {
+		"capturedAt": "2026-10-09T20:57:18.135362+00:00",
+		"archive": {
+			"version": "1.66.0",
+			"url": "https://pkgs.tailscale.com/stable/tailscale_1.66.0_arm64.tgz",
+			"checksumUrl": "https://pkgs.tailscale.com/stable/tailscale_1.66.0_arm64.tgz.sha256",
+			"sha256": "72b498e7a0649b98240e47d54fe60de3e93bec34396f4b9339416b4e17c67168",
+			"sha256Verified": true
+		},
+		"platform": "linux/arm64",
+		"containerImage": "sha256:05cda9777409a9c3ffddd94a4c476b79f0769a0b4857f0c7ed9226b6800b0d6f",
+		"network": "none",
+		"uid": 0,
+		"authenticated": false,
+		"statusSelfProjection": [
+			"Online",
+			"ExitNode",
+			"ExitNodeOption",
+			"Active",
+			"InNetworkMap",
+			"InMagicSock",
+			"InEngine"
+		],
+		"helpFlagsPresent": {
+			"up": {
+				"hostname": true,
+				"accept-dns": true,
+				"accept-routes": true,
+				"ssh": true,
+				"operator": true,
+				"advertise-tags": true,
+				"login-server": true
+			},
+			"set": {
+				"hostname": true,
+				"accept-dns": true,
+				"accept-routes": true,
+				"ssh": true,
+				"operator": true
+			},
+			"serve": {
+				"bg": true,
+				"https": true
+			},
+			"funnel": {
+				"bg": true,
+				"https": true
+			}
+		}
+	},
+	"commands": [
+		{
+			"args": ["version", "--json"],
+			"phase": "baseline",
+			"stdout": "{\n\t\"majorMinorPatch\": \"1.66.0\",\n\t\"short\": \"1.66.0\",\n\t\"long\": \"1.66.0-t2b2f4268a-g4c86ccb9d\",\n\t\"gitCommit\": \"2b2f4268ad16fb3330ef3dea8e4df92443ade52e\",\n\t\"extraGitCommit\": \"4c86ccb9d46a4f0782acb35d8302520dc8ad5c58\",\n\t\"cap\": 95\n}\n",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["status", "--json"],
+			"phase": "baseline",
+			"stdout": "{\n  \"Version\": \"1.66.0-t2b2f4268a-g4c86ccb9d\",\n  \"TUN\": false,\n  \"BackendState\": \"NeedsLogin\",\n  \"AuthURL\": \"\",\n  \"TailscaleIPs\": null,\n  \"Self\": {\n    \"Online\": false,\n    \"ExitNode\": false,\n    \"ExitNodeOption\": false,\n    \"Active\": false,\n    \"InNetworkMap\": false,\n    \"InMagicSock\": false,\n    \"InEngine\": false\n  },\n  \"Health\": [\n    \"state=NeedsLogin, wantRunning=false\"\n  ],\n  \"MagicDNSSuffix\": \"\",\n  \"CurrentTailnet\": null,\n  \"CertDomains\": null,\n  \"Peer\": null,\n  \"User\": null,\n  \"ClientVersion\": null\n}\n",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["debug", "prefs"],
+			"phase": "baseline",
+			"stdout": "{\n\t\"ControlURL\": \"\",\n\t\"RouteAll\": true,\n\t\"AllowSingleHosts\": true,\n\t\"ExitNodeID\": \"\",\n\t\"ExitNodeIP\": \"\",\n\t\"InternalExitNodePrior\": \"\",\n\t\"ExitNodeAllowLANAccess\": false,\n\t\"CorpDNS\": true,\n\t\"RunSSH\": false,\n\t\"RunWebClient\": false,\n\t\"WantRunning\": false,\n\t\"LoggedOut\": true,\n\t\"ShieldsUp\": false,\n\t\"AdvertiseTags\": null,\n\t\"Hostname\": \"\",\n\t\"NotepadURLs\": false,\n\t\"AdvertiseRoutes\": null,\n\t\"NoSNAT\": false,\n\t\"NoStatefulFiltering\": false,\n\t\"NetfilterMode\": 2,\n\t\"AutoUpdate\": {\n\t\t\"Check\": true,\n\t\t\"Apply\": null\n\t},\n\t\"AppConnector\": {\n\t\t\"Advertise\": false\n\t},\n\t\"PostureChecking\": false,\n\t\"NetfilterKind\": \"\",\n\t\"DriveShares\": null,\n\t\"Config\": null\n}\n",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["serve", "status", "--json"],
+			"phase": "baseline",
+			"stdout": "{}\n",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["funnel", "status", "--json"],
+			"phase": "baseline",
+			"stdout": "{}\n",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["set", "--operator=nobody"],
+			"phase": "operator-change",
+			"stdout": "",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["debug", "prefs"],
+			"phase": "operator-change",
+			"stdout": "{\n\t\"ControlURL\": \"\",\n\t\"RouteAll\": true,\n\t\"AllowSingleHosts\": true,\n\t\"ExitNodeID\": \"\",\n\t\"ExitNodeIP\": \"\",\n\t\"InternalExitNodePrior\": \"\",\n\t\"ExitNodeAllowLANAccess\": false,\n\t\"CorpDNS\": true,\n\t\"RunSSH\": false,\n\t\"RunWebClient\": false,\n\t\"WantRunning\": false,\n\t\"LoggedOut\": true,\n\t\"ShieldsUp\": false,\n\t\"AdvertiseTags\": null,\n\t\"Hostname\": \"\",\n\t\"NotepadURLs\": false,\n\t\"AdvertiseRoutes\": null,\n\t\"NoSNAT\": false,\n\t\"NoStatefulFiltering\": false,\n\t\"NetfilterMode\": 2,\n\t\"OperatorUser\": \"nobody\",\n\t\"AutoUpdate\": {\n\t\t\"Check\": true,\n\t\t\"Apply\": null\n\t},\n\t\"AppConnector\": {\n\t\t\"Advertise\": false\n\t},\n\t\"PostureChecking\": false,\n\t\"NetfilterKind\": \"\",\n\t\"DriveShares\": null,\n\t\"Config\": null\n}\n",
+			"stderr": "",
+			"exitCode": 0
+		},
+		{
+			"args": ["status", "--json"],
+			"phase": "operator-change",
+			"stdout": "{\n  \"Version\": \"1.66.0-t2b2f4268a-g4c86ccb9d\",\n  \"TUN\": false,\n  \"BackendState\": \"NeedsLogin\",\n  \"AuthURL\": \"\",\n  \"TailscaleIPs\": null,\n  \"Self\": {\n    \"Online\": false,\n    \"ExitNode\": false,\n    \"ExitNodeOption\": false,\n    \"Active\": false,\n    \"InNetworkMap\": false,\n    \"InMagicSock\": false,\n    \"InEngine\": false\n  },\n  \"Health\": [\n    \"state=NeedsLogin, wantRunning=false\"\n  ],\n  \"MagicDNSSuffix\": \"\",\n  \"CurrentTailnet\": null,\n  \"CertDomains\": null,\n  \"Peer\": null,\n  \"User\": null,\n  \"ClientVersion\": null\n}\n",
+			"stderr": "",
+			"exitCode": 0
+		}
+	]
+}
