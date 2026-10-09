@@ -1360,7 +1360,8 @@ until timeout. No message was forwarded to the page during either outage. The th
 browser close code and ignored retired sockets. Later GETs overwrote a convenience terminal field
 in the first two receipts; their original timed request records preserve confirmation before the
 observation ended. Report client-observed loss, not immediate upstream TCP closure. The second
-case is specifically loss after initial Running; loss during a named setup stage remains untested.
+case is specifically loss after initial Running; it does not establish the named-stage variant
+recorded separately below.
 
 After every job, all baseline preservation checks passed: stable preferences, configuration bytes,
 schema/migrations, topology, credentials, identity, boot ID and backend/tailscaled PIDs/restart
@@ -1373,6 +1374,36 @@ Private evidence: `remote-access-r4/pi4-admin-upgrade-alpha58/` and
 These bounded installed-package cases do not establish fresh-package transport recovery, slow CLI,
 the production setup timeout, device network loss, pending-login upgrade or new phone observations.
 R4/#910 and the epic stay open, including the remaining matrix and one-candidate reconciliation.
+
+#### Named-stage transport-loss follow-up on alpha.58 (2026-10-09)
+
+On the same published alpha.58 npm-host Pi 4 and Tailscale 1.102.5, job
+`b8c6d16f-5716-4b47-8aaa-ab44fa38d269` passed the remaining named-stage interruption case.
+The owned browser forwarded the genuine `running/install` frame at **19:51:27.940 UTC**, then
+closed its native WebSocket with code 4001; disconnect and closed state were observed at .960.
+The next REST response still reported Running/daemon. Terminal REST confirmed the same accepted
+job at **19:51:31.175**, with Connected and all prerequisites satisfied; enabled Options appeared
+at **19:51:31.195** (3.255 seconds after the cut). There was no reload, overlapping status request,
+forwarded Complete frame or reconnection during this observation. Script history matched the
+fresh job and ordered install → daemon → operator → complete stages.
+
+The trigger is receipt of a named Running frame; it does not timestamp the worker's exact current
+stage. Browser instrumentation observed genuine application requests/responses and forwarded the
+original frame before closure. Reading cloned REST bodies adds observation overhead. Reconnection
+was disabled during the test and **explicitly restored afterward**, so this is not an automatic
+reconnect test. Skip → Close passed, then the restored authenticated socket received normal events.
+
+Only the operator grant was cleared under a fresh checkpoint and unused recovery timer. All
+configuration, stable-preference, data/topology, credential, identity, boot and process/restart
+preservation checks passed. The timer and worker were inactive, the cached session removed and
+browser instrumentation/tab closed. Certificate-verified HTTPS and IPv4 health from the Pi 5 peer
+returned 200/alpha.58 at 19:53:09 UTC. No installed runtime files were modified.
+Private receipts: `remote-access-r4/pi4-setup-named-stage-alpha58/`.
+
+This completes the named-stage installed-package operator-repair variant left open by the earlier
+three cuts. Fresh-package transport loss, slow CLI, setup timeout, device-network and pending-auth
+variants remain outside this run. The fixed update observer still needs an upgrade starting from
+alpha.58; R4/#910 and the epic remain open.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
