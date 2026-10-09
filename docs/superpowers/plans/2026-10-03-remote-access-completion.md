@@ -1194,6 +1194,34 @@ Private receipts are retained under `remote-access-r4/host-install-acceptance/ne
 These results verify the named released regressions without relabelling older evidence as an alpha.54
 matrix. R4, R5 and the epic remain open for their remaining gates.
 
+### R4 alpha.56 preference mismatch refusal and recovery (2026-10-09)
+
+The npm-host Pi 4 (Debian 12 arm64, Tailscale 1.102.5) passed the changed-tag mismatch scenario on
+published alpha.56 at 13:36–13:42 UTC. After admin Disconnect, an unmanaged `NoSNAT=true` fixture
+with empty advertised routes was guarded by an actual CLI refusal probe before configuring a test
+tag. Configuration reload started the managed service, but the CLI refused the omitted non-default
+flag and remained Stopped/authenticated with unchanged identity and no applied tag.
+
+One real UI Connect returned HTTP 500 (325 ms) with a failure toast; the card remained Disconnected
+and usable, and API/aggregate endpoints, proxy addresses and external URLs were empty. The journal
+confirmed the CLI's non-default-flags refusal. Restoring only the configured tags automatically
+recovered Connected and the same admin document while preserving the unmanaged preference.
+Pi 5 peer HTTPS with certificate verification and tailnet IPv4 health both passed afterward.
+The peer probe during conflict overlapped recovery, so this run does not claim a complete
+disconnected reachability check; the Mac remained a separate tailnet-client limitation.
+
+The original SNAT setting was restored. Full parsed YAML was semantically identical after the API
+restoration; the save had reordered entries, so original bytes/metadata were restored as final
+cleanup. Configuration, stable preferences, identity, schema/migrations, topology, credentials,
+boot ID and backend/daemon processes matched the checkpoint. The unused recovery timer was
+disarmed and the owned browser closed; no backend restart, logout or preference reset was needed.
+Pi 5 was only a read-only probe peer. Detailed receipts are in
+`remote-access-r4/pi4-preference-mismatch-alpha56/` and the epic's verification section.
+
+Together with alpha.54's compatible adoption checks, this passes the actual installed-CLI
+preference-conflict refusal/recovery variant. Successful tag assignment, login-server migration,
+minimum-version CLI behavior and the other R4 gates remain outside this observation. R4 stays open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
