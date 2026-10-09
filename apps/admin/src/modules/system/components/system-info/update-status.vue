@@ -160,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -206,6 +206,14 @@ const {
 	checkForUpdates,
 	installUpdate,
 } = useUpdateStatus();
+
+watch(showUpdateDialog, (visible, wasVisible): void => {
+	if (wasVisible && !visible && status.value === 'complete') {
+		// The update replaces hashed admin assets. Load the new bundle before
+		// navigating to a lazy-loaded page from this pre-update browser session.
+		window.location.reload();
+	}
+});
 
 const updateTypeColor = computed<'danger' | 'warning' | 'success' | 'info'>((): 'danger' | 'warning' | 'success' | 'info' => {
 	switch (updateType.value) {

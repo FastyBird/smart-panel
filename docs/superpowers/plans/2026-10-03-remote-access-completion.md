@@ -805,6 +805,36 @@ Pi 4 was not contacted. Rotation/revocation is now covered; R5 remains open for 
 application upgrade and the remaining installation matrix. The latest available release is still
 alpha.53, so this run does not claim another upgrade.
 
+### R5 connected-provider upgrade and stale admin assets (2026-10-09)
+
+Staging Pi 5 passed one normal System UI update from alpha.53 to published alpha.54 while Cloudflare
+was connected. The update was submitted from the public HTTPS admin. The original tab displayed
+successful completion without a reload, and the tunnel recovered automatically without a provider
+restart or token re-entry. The worker completed and released its lock; the host did not reboot.
+
+Verified release/npm artifacts matched all 1,719 installed backend JavaScript and 249 admin files.
+All 111 device identities/topology, 28 migrations, schema, accounts, long-lived tokens and saved
+configuration were retained. A Pi-side comparison confirmed that the current tunnel token matched
+its fresh pre-upgrade backup; no token or token digest was emitted. The revoked token checkpoint was
+not used. Before/after process samples showed one unprivileged backend-owned cloudflared child,
+a new child after the application restart, and no token argument. Public HTTPS, owner login/profile,
+anonymous HTTP rejection, valid WebSocket authentication and missing/invalid token rejection passed.
+
+A separate UI defect appeared after closing the success dialog: navigating to Remote access requested
+an old CSS asset that the new release no longer served, leaving the old route displayed. A full page
+navigation loaded the new admin bundle, retained the session and showed Cloudflare Connected. The
+accompanying correction reloads the admin when the user dismisses the completed update dialog, after
+leaving success visible for acknowledgement. Component regressions cover Close, header X, backdrop and
+Escape, plus cancellation, failure and in-progress states. Hardware verification needs an upgrade
+started from a release containing this correction; alpha.54 does not contain it.
+
+The first public health observer used Python's default User-Agent and received 403 before submission;
+those samples are retained separately. A corrected observer using the successful preflight's explicit
+User-Agent observed 530/502 during the update and then three healthy alpha.54 responses. This does not
+establish an exact outage duration or continuous process-count invariant. Private evidence is in
+`remote-access-r5/staging-alpha54-upgrade/`. Connected-provider backend recovery is now covered; R5
+remains open for the installation matrix and released admin recovery, and R4/the epic remain open.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
