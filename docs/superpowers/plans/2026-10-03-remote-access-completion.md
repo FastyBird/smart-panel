@@ -925,6 +925,31 @@ remained unchanged. No sudoers/helper changes or Pi 5 contact occurred. Evidence
 regression from an already-fixed admin remain pending; R4/R5 and the epic stay open. Server/display SD images passed; the AIO image
 was still building at the last release check. The npm installation did not depend on these images.
 
+### R5 actual unavailable-helper acceptance (2026-10-09)
+
+On the npm-host Pi 4 running alpha.56, a fresh database/configuration/sudoers backup and a
+10-minute restore timer protected a temporary removal of only the `systemd-run` sudoers grant.
+One planned backend restart cleared the process-lifetime positive capability cache; Tailscale
+preferences and authentication were not changed. Only the inactive cloudflared package was removed,
+retaining its apt source/key. The status API then reported `privileged_setup.available: false` with
+`sudo: a password is required`, missing binary/version requirements and no setup job.
+
+An explicit install API request returned HTTP 422 with `privileged-worker-unavailable`, actionable
+remediation and no job. The actual wizard omitted Start setup and displayed four unique manual
+commands plus Re-check. Running those commands restored cloudflared 2026.10.0; Re-check reached
+Token and hostname while the helper remained unavailable and `setup: null`. No token was entered
+and the form was not saved.
+
+The exact sudoers bytes were restored. A later status read detected helper availability without
+another backend restart. The recovery timer and setup worker were inactive at cleanup. Cloudflare
+returned to disabled/no token/no endpoint, retaining the installed package. Configuration bytes,
+accounts, topology, 28 migrations, Tailscale identity and all Tailscale preferences matched the
+baseline. Pi 5 was untouched. Evidence: `remote-access-r5/pi4-cloudflare-helper-alpha56/`.
+This closes the actual unavailable-helper/manual-recovery case. The upgrade-reload regression
+from an already-fixed admin remains pending; no new configured Pi 4 tunnel or external Cloudflare
+access is claimed. R4/R5 and the epic remain open. Alpha.56's release run, including AIO, has now
+completed successfully.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
