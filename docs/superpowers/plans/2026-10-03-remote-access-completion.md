@@ -1430,6 +1430,28 @@ Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha59/`, including
 of release publication and are not evidence for this npm-host test. Other R4 hardware rows and
 one-candidate reconciliation remain open.
 
+### R4 cellular sign-in recovery on alpha.59 (2026-10-11)
+
+The user completed the cellular/Tailscale retry test and confirmed the expected invalid-credential
+and rate-limit feedback, followed by successful owner-account login after waiting. The user also
+requested a presentation correction: request-level failures belong only in flash notifications;
+the form should retain field-validation errors only. The inline alert shipped in #1390 therefore
+needs a UI follow-up, despite the successful functional test.
+
+The 22:17:08–22:22:09 UTC observation on October 10 contained 117 TCP gaps overall. Its selected
+HTTP stream was incomplete and request/response attribution was misaligned, so none of that
+stream's status records count as evidence for phone login or renewed throttle isolation. The
+separate selected WebSocket stream was complete and valid: phone HTTP 101 at 22:21:03.306 UTC,
+authenticated gateway admission at 22:21:03.400 UTC, and 30 server / 3 client text frames over
+approximately 62 seconds. This corroborates the user's successful-login report. Frame contents
+were not retained. Alpha.58's earlier clean capture remains the HTTP per-client isolation evidence.
+
+The observer exited and all ten baseline comparison groups matched. Private receipts:
+`remote-access-r4/pi4-phone-throttle-alpha59/` (`phone-throttle-01.json`, `phone-result-01.json`,
+`baseline-comparison-01.json`). The failed HTTP correlation is retained as a measurement limitation,
+not an application failure. The flash-only presentation correction and the remaining R4 matrix /
+one-candidate reconciliation stay open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
