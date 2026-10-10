@@ -37,6 +37,9 @@
     "yourProfile": "Your profile"
   },
   "messages": {
+    "invalidCredentials": "The username or password is incorrect.",
+    "signInRateLimited": "Too many sign-in attempts. Please try again later.",
+    "signInRetryAfter": "Too many sign-in attempts. Please wait {seconds} seconds before trying again.",
     "requestError": "Something went wrong, please try again later.",
     "invalidPassword": "The password you entered is incorrect.",
     "profileEdited": "Your profile has been updated successfully.",

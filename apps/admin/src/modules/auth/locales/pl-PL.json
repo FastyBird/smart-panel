@@ -37,6 +37,9 @@
     "yourProfile": "Twój profil"
   },
   "messages": {
+    "invalidCredentials": "Nazwa użytkownika lub hasło są nieprawidłowe.",
+    "signInRateLimited": "Zbyt wiele prób logowania. Spróbuj ponownie później.",
+    "signInRetryAfter": "Zbyt wiele prób logowania. Odczekaj {seconds} sekund przed kolejną próbą.",
     "requestError": "Coś poszło nie tak, spróbuj ponownie później.",
     "invalidPassword": "Wprowadzone hasło jest nieprawidłowe.",
     "profileEdited": "Twój profil został pomyślnie zaktualizowany.",

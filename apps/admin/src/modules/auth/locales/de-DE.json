@@ -37,6 +37,9 @@
     "yourProfile": "Ihr Profil"
   },
   "messages": {
+    "invalidCredentials": "Der Benutzername oder das Passwort ist falsch.",
+    "signInRateLimited": "Zu viele Anmeldeversuche. Bitte versuchen Sie es später erneut.",
+    "signInRetryAfter": "Zu viele Anmeldeversuche. Bitte warten Sie {seconds} Sekunden, bevor Sie es erneut versuchen.",
     "requestError": "Etwas ist schiefgelaufen, bitte versuchen Sie es später erneut.",
     "invalidPassword": "Das eingegebene Passwort ist falsch.",
     "profileEdited": "Ihr Profil wurde erfolgreich aktualisiert.",

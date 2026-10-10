@@ -1368,8 +1368,31 @@ topology, accounts/long-lived credentials, configuration, node identity, boot an
 processes matched; peer HTTPS/IPv4 health returned 200/alpha.58 after the phone actions.
 Receipts: `remote-access-r4/pi4-remote-policy-alpha58/`. No login POST was captured in the
 final window, so it does not independently prove a fresh password-login exchange.
-Phone HTTP throttle isolation and a fresh-host device-update observation remain untested;
-the epic now separates the passing phone login-address check from the open throttle row.
+A fresh-host device-update observation remains untested. The subsequent phone HTTP throttle
+capture below establishes isolation; successful phone sign-in after the block remains open.
+
+### R4 phone HTTP throttle isolation and sign-in feedback (2026-10-10)
+
+On the published alpha.58 npm-host Pi 4, a bounded five-minute metadata capture recorded five
+failed phone logins followed by HTTP 429 with `Retry-After: 60` at 21:12:05 UTC. A single
+concurrent login from the Pi 5's distinct tailnet address returned HTTP 201 within that block.
+Later phone attempts received decreasing retry intervals. At 21:14:34 UTC the phone's login
+reached authentication and returned HTTP 404; the matching backend notification identified
+the owner username and `wrong_password`. This demonstrates that the block expired, but does
+not satisfy successful phone login recovery. The same credentials file worked in the peer probe.
+
+The user saw the sign-in page without an error. Browser reproduction found transient generic
+error feedback; a separate native form submission reproduced a `validate is not a function`
+exception without a request. The admin follow-up adds persistent, translated sign-in feedback
+for rate limits and rejected credentials and repairs native form submission. Released phone
+verification remains pending. No backend throttle configuration was changed.
+
+Capture records had no TCP gaps, drops, truncation or incomplete selected streams. All ten
+baseline comparison groups matched, including accounts, long-lived credentials, configuration,
+Tailscale identity and device topology. The observer stopped. Private receipts are under
+`remote-access-r4/pi4-phone-throttle-alpha58/`: `phone-throttle-02.json`,
+`phone-throttle-02-peer-during-limit.json`, `phone-failure-reason-01.json`, and
+`baseline-comparison-02.json`. The preceding empty capture is excluded from acceptance.
 Other R4 rows and the one-candidate reconciliation requirement remain open.
 
 ### Automated evidence from this analysis
