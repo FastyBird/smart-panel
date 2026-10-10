@@ -1350,6 +1350,28 @@ hardware acceptance. Help output establishes flag availability only. Remaining R
 hardware rows, the upgrade starting from the fixed admin and candidate reconciliation
 remain open.
 
+### R4 cellular phone transport and client policy on alpha.58 (2026-10-10)
+
+The user completed the cellular/Tailscale phone check against the npm-host Pi 4 and
+reported registration status `open: false`. A dedicated failed-login notification
+recorded the phone's tailnet address. The final five-minute passive observation
+(16:15:13–16:20:13 UTC) captured three mobile WebSocket upgrades with HTTP 101 and
+the same forwarded address, followed by authenticated gateway admissions. All three
+streams exchanged text frames in both directions; the middle authenticated session
+lasted about 79 seconds. No gaps, incomplete/invalid selected streams or capture-limit
+drops were reported. This closes the phone WebSocket transport and login-address
+observations; frame contents and per-socket application address resolution were not
+measured. Two preceding empty windows are explicitly not passes.
+
+The observer saved allowlisted metadata only and exited normally. Baseline database,
+topology, accounts/long-lived credentials, configuration, node identity, boot and service
+processes matched; peer HTTPS/IPv4 health returned 200/alpha.58 after the phone actions.
+Receipts: `remote-access-r4/pi4-remote-policy-alpha58/`. No login POST was captured in the
+final window, so it does not independently prove a fresh password-login exchange.
+Phone HTTP throttle isolation and a fresh-host device-update observation remain untested;
+the epic now separates the passing phone login-address check from the open throttle row.
+Other R4 rows and the one-candidate reconciliation requirement remain open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

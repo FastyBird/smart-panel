@@ -1428,6 +1428,38 @@ permissions or actual Serve/Funnel connectivity. Help flags alone cannot prove t
 operations. The remaining hardware matrix, upgrade from the fixed admin and
 one-candidate reconciliation still keep R4/#910 and the epic open.
 
+#### Cellular phone transport and client policy on alpha.58 (2026-10-10)
+
+The user completed the phone check with Wi-Fi disabled and Tailscale enabled against
+the npm-host Pi 4's private HTTPS endpoint. The registration-status endpoint returned
+`open: false`, as reported by the user. One deliberate login with a dedicated nonexistent
+test username produced a backend authentication notification with the phone's tailnet
+address, rather than localhost.
+
+A passive, metadata-only observation from 16:15:13 to 16:20:13 UTC captured three mobile
+WebSocket upgrades through Serve to the unchanged origin, all with HTTP 101 and the
+same forwarded address as the authentication notification. The streams contained 4/37/13
+server text frames and 2/4/3 client text frames respectively. Backend gateway admission
+events followed the upgrades at 16:15:20.514, 16:15:29.716 and 16:16:56.228 UTC. Gateway
+admission occurs after authentication; frame payloads were not inspected. The middle
+authenticated connection lasted about 79 seconds before disconnecting. This establishes
+actual phone WebSocket transport, not the content of a device-update event or per-socket
+application address resolution.
+
+The capture had no TCP gaps, invalid/incomplete selected streams or resource-limit drops.
+No credentials, cookies, raw traffic or frame payloads were saved. Two earlier five-minute
+windows captured no selected requests and are not counted as passes. The observer exited
+normally; baseline database/topology, accounts/long-lived credentials, configuration,
+node identity, service processes and boot identity matched. Peer HTTPS and IPv4 health
+returned 200/alpha.58 after the phone actions. Private receipts:
+`remote-access-r4/pi4-remote-policy-alpha58/` (`phone-observation-03.json`,
+`phone-user-done-03.json`, `after-phone-03.json`, `peer-health-after-phone-03.json`).
+
+No login POST was captured in the final window, so it does not independently establish a
+fresh password-login exchange. Phone HTTP throttle isolation, a new device-state update
+on this fresh-host candidate, pending/adverse authentication and the other remaining R4
+rows remain open. The IP result and HTTP throttle criterion are tracked separately below.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -1450,9 +1482,10 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 - [x] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR. Default HTTPS, primary URL and actual TLS reachability passed on fresh Pi 4 alpha.47; clipboard equality and decoding the endpoint QR passed on Pi 4 alpha.49 (2026-10-06).
 - [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05). On the separate Pi 4 alpha.49, the user confirmed loading without a certificate error and successful login; a fresh-host live device change remains untested.
-- [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; separate WebSocket-only probes passed from the Mac previously and from Pi 5 against Pi 4 alpha.49 (20 seconds, eight normal event payloads).
-- [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client. Alpha.49 peer authentication-notification address and Pi 5 tailnet/Mac LAN throttle separation passed; phone-specific logging remains untested.
-- [ ] Displays → registration status seen from the phone is "closed" (not treated as local). The alpha.49 Pi 5 HTTPS peer check returned closed; the phone-specific check remains untested.
+- [x] Verify the phone's WebSocket transport through the proxy. Published alpha.58 on the npm-host Pi 4 (2026-10-10): three phone upgrades returned HTTP 101, exchanged frames in both directions and correlated with authenticated gateway admissions. The metadata-only capture does not establish individual application event contents.
+- [x] Backend records the tailnet client address (not 127.0.0.1) for a login attempt from the phone. Published alpha.58 (2026-10-10): the dedicated failed-login notification recorded the same tailnet IP subsequently observed on the mobile WebSocket upgrades.
+- [ ] The phone's HTTP login throttle is per client. Alpha.49 Pi 5 tailnet/Mac LAN throttle separation passed; the phone-specific rate-limit and isolation check remains untested. A single failed phone login does not prove throttling.
+- [x] Displays → registration status seen from the phone is "closed" (not treated as local). The user reported `open: false` from the Pi 4 alpha.58 HTTPS registration-status endpoint on 2026-10-10; the earlier alpha.49 peer result remains separate.
 
 ##### Lifecycle
 
