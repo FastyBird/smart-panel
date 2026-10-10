@@ -1395,6 +1395,41 @@ Tailscale identity and device topology. The observer stopped. Private receipts a
 `baseline-comparison-02.json`. The preceding empty capture is excluded from acceptance.
 Other R4 rows and the one-candidate reconciliation requirement remain open.
 
+### R4 alpha.59 upgrade observation and released sign-in feedback (2026-10-11)
+
+The npm-host Pi 4 was upgraded from alpha.58 to published alpha.59
+(`561ceb1a02fe7666f3d388d2dd99dcd58cef4be1`, including #1390) with exactly one normal
+System UI confirmation. Release publication jobs, tag/version-sync ancestry and all three
+npm package integrities were verified before submission. A fresh SQLite/configuration
+backup was retained under `/var/backups/smart-panel/r4-alpha59-pre-install`.
+
+The original alpha.58 browser document stayed open throughout the update. At 22:04:38 UTC
+on October 10 it showed downloading, then an unconfirmed connection/result message while
+the backend was stopped for npm installation. Without reloading or resubmitting, it showed
+alpha.59 and successful completion at 22:08:39 UTC. The authenticated API independently
+returned complete / 100% / no error. This establishes normal upgrade observation and recovery
+from the fixed admin. The approximately four-minute run does not exercise an outage beyond
+the old five-minute deadline or the separate pending-login-upgrade scenario.
+
+All 19 baseline comparison checks passed: database integrity/schema/migrations, device
+counts/topology, accounts/long-lived credentials, configuration, boot identity and Tailscale
+identity/authentication were preserved. The backend restarted, the update worker exited,
+and no update lock remained. All 5,498 installed wrapper/backend/admin files matched the
+fresh verified npm manifests. Certificate-verified HTTPS and tailnet IPv4 health from the
+Pi 5 peer both returned 200/alpha.59.
+
+A fresh browser document against the installed alpha.59 admin verified native form submission,
+persistent neutral feedback for rejected credentials, and the actual HTTP 429 retry message.
+The message remained visible after the transient notification disappeared. These were Mac LAN
+browser checks; successful phone login recovery and cellular feedback verification remain open.
+No provider settings or backend rate limits were changed.
+
+Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha59/`, including
+`ui-observation-complete.json`, `authoritative-status.json`, `installed-runtime-verified.json`,
+`upgrade-comparison.json`, and `peer-health-after.json`. SD-image and Docker builds are downstream
+of release publication and are not evidence for this npm-host test. Other R4 hardware rows and
+one-candidate reconciliation remain open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

@@ -1460,6 +1460,26 @@ fresh password-login exchange. Phone HTTP throttle isolation, a new device-state
 on this fresh-host candidate, pending/adverse authentication and the other remaining R4
 rows remain open. The IP result and HTTP throttle criterion are tracked separately below.
 
+#### Upgrade observation and sign-in feedback on alpha.59 (2026-10-11)
+
+One System UI update from the fixed alpha.58 admin installed published alpha.59
+(`561ceb1a02fe7666f3d388d2dd99dcd58cef4be1`). The original browser document remained open,
+showed an unconfirmed result during the backend outage, then automatically displayed alpha.59
+and successful completion without reload or a second submission. The run lasted approximately
+four minutes (22:04:38–22:08:39 UTC on October 10); it does not prove recovery beyond the former
+five-minute deadline or an upgrade during pending login.
+
+The authoritative API confirmed complete / 100% / no error. All 19 baseline comparisons passed,
+all 5,498 installed package files matched verified npm manifests, and Pi 5 peer HTTPS/IPv4 health
+returned 200/alpha.59. Database, configuration, accounts/long-lived credentials, device topology
+and Tailscale identity/authentication were preserved. A fresh installed-admin browser verified
+native sign-in submission and persistent credential/429 feedback after transient notifications
+expired. Successful phone login recovery and cellular feedback verification remain pending.
+
+This records normal upgrade recovery from the fixed observer, not completion of R4/#910 or the
+epic. Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha59/`; detailed chronology and
+limitations are in the R4 alpha.59 section of the completion plan.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
