@@ -37,6 +37,9 @@
     "yourProfile": "Tu perfil"
   },
   "messages": {
+    "invalidCredentials": "El nombre de usuario o la contraseña son incorrectos.",
+    "signInRateLimited": "Demasiados intentos de inicio de sesión. Inténtalo de nuevo más tarde.",
+    "signInRetryAfter": "Demasiados intentos de inicio de sesión. Espera {seconds} segundos antes de volver a intentarlo.",
     "requestError": "Algo salió mal, por favor inténtalo de nuevo más tarde.",
     "invalidPassword": "La contraseña que ingresaste es incorrecta.",
     "profileEdited": "Tu perfil ha sido actualizado correctamente.",

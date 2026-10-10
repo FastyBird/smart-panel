@@ -9,7 +9,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type IUseBackend, getErrorReason, useBackend } from '../../../common';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
-import { AuthException } from '../auth.exceptions';
+import { AuthException, AuthLoginException } from '../auth.exceptions';
 
 import { useSession } from './session.store';
 
@@ -176,6 +176,61 @@ describe('Session Store', (): void => {
 		(getErrorReason as Mock).mockReturnValue('Failed to create user session.');
 
 		await expect(sessionStore.create({ data: { username: 'test', password: 'wrong-password' } })).rejects.toThrow(AuthException);
+	});
+
+	it('preserves throttle metadata and permits a subsequent successful login', async () => {
+		const payload = { data: { username: 'test', password: 'password' } };
+		(backendMock.client.POST as Mock).mockResolvedValueOnce({
+			error: { message: 'Too many requests' },
+			response: new Response(null, { status: 429, headers: { 'Retry-After': '60' } }),
+		});
+		await expect(sessionStore.create(payload)).rejects.toMatchObject({ status: 429, retryAfterSeconds: 60 });
+		expect(sessionStore.semaphore.creating).toBe(false);
+		expect(sessionStore.tokenPair).toBeNull();
+		(backendMock.client.POST as Mock).mockResolvedValueOnce({
+			data: {
+				data: {
+					access_token: 'mockAccessToken',
+					refresh_token: 'mockRefreshToken',
+					type: 'Bearer',
+					expiration: Math.floor(Date.now() / 1000) + 3600,
+				},
+			},
+		});
+		(backendMock.client.GET as Mock).mockResolvedValueOnce({
+			data: {
+				data: {
+					id: uuid(),
+					username: 'tester',
+					role: UsersModuleUserRole.user,
+					created_at: '2024-03-01T12:00:00Z',
+				},
+			},
+		});
+		await expect(sessionStore.create(payload)).resolves.toMatchObject({ username: 'tester' });
+		expect(sessionStore.semaphore.creating).toBe(false);
+	});
+
+	it('identifies rejected credentials without classifying profile failures as login failures', async () => {
+		const payload = { data: { username: 'test', password: 'password' } };
+		(backendMock.client.POST as Mock).mockResolvedValueOnce({
+			error: { message: 'Invalid email or password' },
+			response: new Response(null, { status: 404 }),
+		});
+		await expect(sessionStore.create(payload)).rejects.toBeInstanceOf(AuthLoginException);
+		(backendMock.client.POST as Mock).mockResolvedValueOnce({
+			data: {
+				data: {
+					access_token: 'mockAccessToken',
+					refresh_token: 'mockRefreshToken',
+					type: 'Bearer',
+					expiration: Math.floor(Date.now() / 1000) + 3600,
+				},
+			},
+		});
+		(backendMock.client.GET as Mock).mockResolvedValueOnce({ error: { message: 'Profile failed' } });
+		await expect(sessionStore.create(payload)).rejects.not.toBeInstanceOf(AuthLoginException);
+		expect(sessionStore.semaphore.creating).toBe(false);
 	});
 
 	it('should refresh the session when refresh token exists', async (): Promise<void> => {

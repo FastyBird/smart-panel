@@ -14,7 +14,7 @@ import type {
 } from '../../../openapi.constants';
 import { type IUser, transformUserResponse, USERS_MODULE_PREFIX } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
-import { AuthApiException, AuthException } from '../auth.exceptions';
+import { AuthApiException, AuthException, AuthLoginException } from '../auth.exceptions';
 
 import { TokenPairSchema } from './session.store.schemas';
 import type {
@@ -196,7 +196,11 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		semaphore.value.creating = true;
 
 		try {
-			const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/login`, {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/login`, {
 				body: {
 					data: {
 						username: payload.data.username,
@@ -221,7 +225,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				errorReason = getErrorReason<AuthModuleRegisterOperation>(error, errorReason);
 			}
 
-			throw new AuthException(errorReason);
+			throw new AuthLoginException(errorReason, response?.status, response?.headers.get('Retry-After'));
 		} finally {
 			semaphore.value.creating = false;
 		}

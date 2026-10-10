@@ -37,6 +37,9 @@
     "yourProfile": "Váš profil"
   },
   "messages": {
+    "invalidCredentials": "Používateľské meno alebo heslo je nesprávne.",
+    "signInRateLimited": "Príliš veľa pokusov o prihlásenie. Skúste to prosím neskôr.",
+    "signInRetryAfter": "Príliš veľa pokusov o prihlásenie. Pred ďalším pokusom počkajte {seconds} sekúnd.",
     "requestError": "Niečo sa pokazilo, skúste to prosím neskôr.",
     "invalidPassword": "Zadané heslo je nesprávne.",
     "profileEdited": "Váš profil bol úspešne aktualizovaný.",
