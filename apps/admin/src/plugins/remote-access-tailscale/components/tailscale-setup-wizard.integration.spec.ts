@@ -83,6 +83,81 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		vi.useRealTimers();
 	});
 
+	it.each([true, false])('recovers existing pending sign-in on open and reopen (link already available: %s)', async (hasLink) => {
+		snapshot.state = 'pending-auth';
+		snapshot.control = { enabled: true, service_state: 'started', authentication: 'required', operation: 'login', available_actions: ['disconnect'] };
+		if (hasLink) Object.assign(snapshot, { auth_url: 'https://login.tailscale.com/a/current', qr: 'data:image/png;base64,current' });
+		await store.get();
+		const wrapper = mountWizard('signin');
+		await flushPromises();
+		if (!hasLink) {
+			expect(wrapper.text()).toContain('wizard.waitingForLink');
+			snapshot.revision = 2;
+			Object.assign(snapshot, { auth_url: 'https://login.tailscale.com/a/current', qr: 'data:image/png;base64,current' });
+			await vi.advanceTimersByTimeAsync(3_000);
+			await flushPromises();
+		}
+		expect(wrapper.find('a').attributes('href')).toBe('https://login.tailscale.com/a/current');
+		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,current');
+		await wrapper.setProps({ visible: false });
+		expect(wrapper.find('a').exists()).toBe(false);
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+		expect(wrapper.find('a').attributes('href')).toBe('https://login.tailscale.com/a/current');
+		expect(fns.post).not.toHaveBeenCalled();
+		snapshot.revision = 3;
+		snapshot.state = 'connected';
+		await vi.advanceTimersByTimeAsync(3_000);
+		await flushPromises();
+		expect(activeStep(wrapper)).toBe(2);
+	});
+
+	it.each([
+		[true, true],
+		[false, true],
+		[true, false],
+		[false, false],
+	])('releases a lost pending login while open (link: %s, new epoch: %s)', async (hasLink, newEpoch) => {
+		snapshot.state = 'pending-auth';
+		snapshot.control = { enabled: true, service_state: 'started', authentication: 'required', operation: 'login', available_actions: ['disconnect'] };
+		if (hasLink) Object.assign(snapshot, { auth_url: 'https://login.tailscale.com/a/old', qr: 'data:image/png;base64,old' });
+		const wrapper = mountWizard('signin');
+		await flushPromises();
+		if (hasLink) expect(wrapper.find('a').exists()).toBe(true);
+		else expect(wrapper.text()).toContain('wizard.waitingForLink');
+
+		snapshot.epoch = newEpoch ? 'restarted-server' : 'server';
+		snapshot.revision = newEpoch ? 1 : 2;
+		delete snapshot.auth_url;
+		delete snapshot.qr;
+		snapshot.control = {
+			enabled: true,
+			service_state: 'started',
+			authentication: 'required',
+			operation: null,
+			available_actions: ['disconnect', 'login'],
+		};
+		await vi.advanceTimersByTimeAsync(3_000);
+		await flushPromises();
+		expect(wrapper.find('a').exists()).toBe(false);
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('wizard.waitingForLink');
+		const button = wrapper.findAllComponents({ name: 'ElButton' }).find((entry) => entry.text().includes('wizard.buttons.getSignInLink'))!;
+		expect(button.props('disabled')).toBe(false);
+		const reads = fns.get.mock.calls.length;
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(fns.get).toHaveBeenCalledTimes(reads);
+		expect(fns.post).not.toHaveBeenCalled();
+		fns.post.mockResolvedValue({
+			data: { data: { state: 'pending-auth', auth_url: 'https://login.tailscale.com/a/new' } },
+			response: { status: 200 },
+		});
+		button.vm.$emit('click');
+		await flushPromises();
+		expect(fns.post).toHaveBeenCalledTimes(1);
+		expect(wrapper.find('a').attributes('href')).toBe('https://login.tailscale.com/a/new');
+	});
+
 	it.each(['pending-auth', 'connecting', 'pending-approval'])(
 		'reports a keyed login timeout with %s as the last status and allows a retry',
 		async (state) => {

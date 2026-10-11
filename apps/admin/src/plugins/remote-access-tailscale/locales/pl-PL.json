@@ -28,6 +28,7 @@
 	"buttons": {
 		"setup": "Skonfiguruj",
 		"signIn": "Zaloguj się",
+		"resumeSignIn": "Wznów logowanie",
 		"connect": "Połącz",
 		"disconnect": "Rozłącz",
 		"reconnect": "Połącz ponownie",

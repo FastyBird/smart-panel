@@ -459,7 +459,15 @@ const onCopyOperatorCommand = async (): Promise<void> => {
 };
 
 // Backend availability determines the primary action; Disconnect remains usable to cancel login.
-const primaryActionOrder: (keyof ITailscaleProviderActions)[] = ['setup', 'signIn', 'connect', 'disconnect', 'signOut', 'resetPreferences'];
+const primaryActionOrder: (keyof ITailscaleProviderActions)[] = [
+	'setup',
+	'resumeSignIn',
+	'signIn',
+	'connect',
+	'disconnect',
+	'signOut',
+	'resetPreferences',
+];
 
 const primaryActionKey = computed<keyof ITailscaleProviderActions | null>(() => primaryActionOrder.find((key) => actions.value[key]) ?? null);
 
@@ -470,7 +478,7 @@ const secondaryActionKeys = computed<(keyof ITailscaleProviderActions)[]>(() =>
 );
 
 const primaryActionType = computed<'primary' | undefined>(() =>
-	primaryActionKey.value === 'setup' || primaryActionKey.value === 'signIn' ? 'primary' : undefined
+	primaryActionKey.value === 'setup' || primaryActionKey.value === 'signIn' || primaryActionKey.value === 'resumeSignIn' ? 'primary' : undefined
 );
 
 const isLocalBusy = computed<boolean>(() => isConnecting.value || isDisconnecting.value || isLoggingOut.value || isResettingPreferences.value);
@@ -480,6 +488,8 @@ const actionLabel = (key: keyof ITailscaleProviderActions): string => {
 	switch (key) {
 		case 'setup':
 			return t('remoteAccessTailscalePlugin.buttons.setup');
+		case 'resumeSignIn':
+			return t('remoteAccessTailscalePlugin.buttons.resumeSignIn');
 		case 'signIn':
 			return t('remoteAccessTailscalePlugin.buttons.signIn');
 		case 'connect':
@@ -499,6 +509,7 @@ const runAction = (key: keyof ITailscaleProviderActions): void => {
 		case 'setup':
 			openWizard('setup');
 			break;
+		case 'resumeSignIn':
 		case 'signIn':
 			openWizard('signin');
 			break;

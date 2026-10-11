@@ -28,6 +28,7 @@
 	"buttons": {
 		"setup": "Configurar",
 		"signIn": "Iniciar sesión",
+		"resumeSignIn": "Continuar inicio de sesión",
 		"connect": "Conectar",
 		"disconnect": "Desconectar",
 		"reconnect": "Reconectar",

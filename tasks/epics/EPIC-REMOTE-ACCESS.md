@@ -1504,6 +1504,29 @@ cellular run or fresh per-client isolation measurement.
 Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha60/`; the completion plan records exact
 timestamps and evidence scope. Other R4 rows and single-candidate reconciliation remain open.
 
+#### Pending-login lifecycle on alpha.60 and reload correction (2026-10-11)
+
+The npm-host Pi 4 on published alpha.60/Tailscale 1.102.5 passed pending interactive-login
+cancellation through Disconnect, plugin disable (including HTTP 409 for login while disabled),
+and graceful backend shutdown/restart. Each case removed the old CLI child and tracked link;
+settled observations had no active operation or external endpoints and `WantRunning=false`.
+Sign out removed the Tailscale profile's operator grant; the existing Set up wizard repaired it
+before sign-in. Closing the wizard alone is not cancellation.
+
+Reload exposed a released-admin defect: status retained the same link/QR and repeated login reused
+one child, but the card offered only Disconnect and could not reopen the link. The accompanying
+admin correction adds read-only Resume sign-in for an active login, preserving fresh Sign in after
+a backend restart. Automated regression coverage passes; hardware acceptance of the released fix
+is still required. Shutdown/restart does not cover an application upgrade with login pending.
+
+The user's final approval restored Connected/Running with the original identity and HTTPS address.
+Pi 5 peer HTTPS, owner login and authenticated WebSocket subscription passed; missing/invalid
+WebSocket tokens were rejected. Database, accounts/long-lived credentials and topology were
+preserved. Configuration values matched; the enable/disable saves changed YAML formatting only.
+Private receipts: `remote-access-r4/pi4-pending-auth-alpha60/`; the completion plan records timestamps
+and evidence limits. R4/#910 remains open for the released reload fix, timeout/pending-upgrade cases
+and remaining matrix reconciliation.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

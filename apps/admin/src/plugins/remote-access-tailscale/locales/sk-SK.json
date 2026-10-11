@@ -28,6 +28,7 @@
 	"buttons": {
 		"setup": "Nastaviť",
 		"signIn": "Prihlásiť sa",
+		"resumeSignIn": "Pokračovať v prihlásení",
 		"connect": "Pripojiť",
 		"disconnect": "Odpojiť",
 		"reconnect": "Znova pripojiť",

@@ -1,4 +1,8 @@
-import { type RemoteAccessModuleProviderState, RemoteAccessTailscalePluginControlAction } from '../../../openapi.constants';
+import {
+	ExtensionsModuleServiceState,
+	type RemoteAccessModuleProviderState,
+	RemoteAccessTailscalePluginControlAction,
+} from '../../../openapi.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 import type { ITailscaleControl, ITailscaleRequirement } from '../store/tailscale-status.store.types';
 
@@ -26,6 +30,7 @@ export const flashTailscaleApiError = (error: unknown, meaningfulCodes: number[]
 export interface ITailscaleProviderActions {
 	setup: boolean;
 	signIn: boolean;
+	resumeSignIn: boolean;
 	connect: boolean;
 	disconnect: boolean;
 	signOut: boolean;
@@ -39,6 +44,13 @@ export interface IResolveTailscaleProviderActionsOptions {
 	isAdmin: boolean;
 }
 
+/** Resuming a pending sign-in reads its existing capability; it never starts another login. */
+export const canResumeTailscaleSignIn = (state: RemoteAccessModuleProviderState, control?: ITailscaleControl): boolean =>
+	state === 'pending-auth' &&
+	control?.enabled === true &&
+	control.serviceState !== ExtensionsModuleServiceState.stopping &&
+	control.operation === 'login';
+
 /** Availability comes from the privileged provider snapshot, never from display labels. */
 export const resolveTailscaleProviderActions = ({
 	state,
@@ -50,6 +62,7 @@ export const resolveTailscaleProviderActions = ({
 	const canManage = isOwner || isAdmin;
 	return {
 		setup: isOwner && control?.enabled === true && control.operation === null && (state === 'not-installed' || state === 'setup-required'),
+		resumeSignIn: canManage && canResumeTailscaleSignIn(state, control),
 		signIn: canManage && available.has(RemoteAccessTailscalePluginControlAction.login),
 		connect: canManage && available.has(RemoteAccessTailscalePluginControlAction.connect),
 		disconnect: canManage && available.has(RemoteAccessTailscalePluginControlAction.disconnect),

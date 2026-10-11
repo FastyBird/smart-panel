@@ -28,6 +28,7 @@
 	"buttons": {
 		"setup": "Set up",
 		"signIn": "Sign in",
+		"resumeSignIn": "Resume sign-in",
 		"connect": "Connect",
 		"disconnect": "Disconnect",
 		"reconnect": "Reconnect",
