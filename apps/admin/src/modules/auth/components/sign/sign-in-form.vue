@@ -35,15 +35,6 @@
 			/>
 		</el-form-item>
 
-		<el-alert
-			v-if="submitError"
-			:title="submitError"
-			type="error"
-			:closable="false"
-			role="alert"
-			class="mb-5"
-		/>
-
 		<el-button
 			type="primary"
 			size="large"
@@ -60,7 +51,6 @@ import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
-	ElAlert,
 	ElButton,
 	ElForm,
 	ElFormItem,
@@ -100,8 +90,6 @@ const sessionStore = storesManager.getStore(sessionStoreKey);
 
 const signFormEl = ref<FormInstance | undefined>(undefined);
 
-const submitError = ref<string | null>(null);
-
 const passwordInputEl = ref<InputInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<SignInFormFields>>({
@@ -119,13 +107,11 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 
 	await formEl.validate(async (valid: boolean): Promise<void> => {
 		if (valid) {
-			submitError.value = null;
 			emit('update:remoteFormResult', FormResult.WORKING);
 
 			try {
 				await sessionStore.create({ data: { username: signForm.username, password: signForm.password } });
 
-				submitError.value = null;
 				emit('update:remoteFormResult', FormResult.OK);
 			} catch (error: unknown) {
 				emit('update:remoteFormResult', FormResult.ERROR);
@@ -142,8 +128,6 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 						errorMessage = t('authModule.messages.invalidCredentials');
 					}
 				}
-
-				submitError.value = errorMessage;
 
 				if (error instanceof Error && 'exception' in error && error.exception instanceof Error) {
 					flashMessage.exception(errorMessage);
@@ -169,7 +153,6 @@ watch(
 		emit('update:remoteFormReset', false);
 
 		if (val) {
-			submitError.value = null;
 			if (!signFormEl.value) return;
 
 			signFormEl.value.resetFields();

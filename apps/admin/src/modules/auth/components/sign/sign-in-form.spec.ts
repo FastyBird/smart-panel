@@ -1,6 +1,6 @@
 import { nextTick } from 'vue';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, type FormInstance } from 'element-plus';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
@@ -33,7 +33,6 @@ vi.mock('../../../../common', () => ({
 
 describe('SignInForm', (): void => {
 	let wrapper: VueWrapper;
-	let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
 	const mockSessionStore: SessionStore = {
 		create: vi.fn(),
@@ -41,7 +40,7 @@ describe('SignInForm', (): void => {
 
 	beforeEach((): void => {
 		vi.clearAllMocks();
-		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		(injectStoresManager as Mock).mockReturnValue({
 			getStore: vi.fn(() => mockSessionStore),
@@ -118,27 +117,26 @@ describe('SignInForm', (): void => {
 		[new AuthLoginException('raw server text', 500), 'authModule.messages.requestError'],
 		[new AuthException('Profile failed'), 'authModule.messages.requestError'],
 		[new TypeError('Network failed'), 'authModule.messages.requestError'],
-	])('keeps safe feedback visible for %s', async (error, message) => {
+	])('shows request errors only in flash messages for %s', async (error, message) => {
 		(mockSessionStore.create as Mock).mockRejectedValueOnce(error);
 		await wrapper.find('input[name="username"]').setValue('testuser');
 		await wrapper.find('input[name="password"]').setValue('password123');
 		await wrapper.findComponent(ElButton).trigger('click');
 		await flushPromises();
-		const alert = wrapper.findComponent(ElAlert);
-		expect(alert.props('title')).toBe(message);
-		expect(alert.props('closable')).toBe(false);
-		expect(alert.attributes('role')).toBe('alert');
+		expect(wrapper.findComponent(ElAlert).exists()).toBe(false);
+		expect(wrapper.text()).not.toContain(message);
+		expect(wrapper.findAll('.el-form-item__error')).toHaveLength(0);
 		expect(wrapper.text()).not.toContain('raw server text');
 		expect(mockFlash.error).toHaveBeenCalledWith(message);
 	});
 
-	it('clears the error when retry starts and allows success after rejection', async () => {
+	it('allows a successful retry after a rate-limit flash message', async () => {
 		(mockSessionStore.create as Mock).mockRejectedValueOnce(new AuthLoginException('limited', 429, '60'));
 		await wrapper.find('input[name="username"]').setValue('testuser');
 		await wrapper.find('input[name="password"]').setValue('password123');
 		await wrapper.findComponent(ElButton).trigger('click');
 		await flushPromises();
-		expect(wrapper.findComponent(ElAlert).exists()).toBe(true);
+		expect(mockFlash.error).toHaveBeenCalledWith('authModule.messages.signInRetryAfter:60');
 		let complete!: (value: object) => void;
 		(mockSessionStore.create as Mock).mockImplementationOnce(
 			() =>
@@ -154,19 +152,24 @@ describe('SignInForm', (): void => {
 		expect(wrapper.emitted('update:remoteFormResult')?.at(-1)).toEqual([FormResult.OK]);
 	});
 
-	it('clears persistent feedback on reset', async () => {
-		(mockSessionStore.create as Mock).mockRejectedValueOnce(new AuthLoginException('invalid', 404));
-		await wrapper.find('input[name="username"]').setValue('testuser');
-		await wrapper.find('input[name="password"]').setValue('password123');
+	it('does not attempt login or show a flash when field validation fails', async () => {
+		// Isolate the submit handler from async-validator's CommonJS interop in Vitest.
+		vi.spyOn(wrapper.findComponent(ElForm).vm.$.exposed as FormInstance, 'validate').mockImplementation(
+			async (callback) => {
+				await callback?.(false, { username: [{ message: 'Required', field: 'username' }] });
+				return false;
+			}
+		);
 		await wrapper.findComponent(ElButton).trigger('click');
 		await flushPromises();
-		expect(wrapper.findComponent(ElAlert).exists()).toBe(true);
-		await wrapper.setProps({ remoteFormReset: true });
-		expect(wrapper.findComponent(ElAlert).exists()).toBe(false);
+		expect(mockSessionStore.create).not.toHaveBeenCalled();
+		expect(mockFlash.error).not.toHaveBeenCalled();
+		expect(mockFlash.exception).not.toHaveBeenCalled();
 	});
 
 	afterEach((): void => {
-		consoleWarnSpy.mockRestore();
+		wrapper.unmount();
+		vi.restoreAllMocks();
 	});
 
 	it('resets form when remoteFormReset is set to true', async (): Promise<void> => {
