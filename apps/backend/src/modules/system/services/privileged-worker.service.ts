@@ -6,11 +6,18 @@ import { basename, dirname } from 'path';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import {
+	PRIVILEGED_HELPER_PATH,
+	PRIVILEGED_OPERATIONS,
+	PrivilegedOperation,
+} from '../../../common/utils/privileged-helper.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 import { PrivilegedWorkerUnavailableException } from '../system.exceptions';
 
 export interface PrivilegedJobSpec {
+	/** Select a fixed installed helper operation; scripts/env are used only by legacy installations. */
+	job?: PrivilegedOperation;
 	unit: string;
 	script: string;
 	args: string[];
@@ -76,6 +83,8 @@ type HistoryEntry = Pick<PrivilegedJobStatus, 'state' | 'step' | 'message'>;
 type StatusHandler = (status: PrivilegedJobStatus) => void;
 
 interface JobRecord {
+	transport: 'helper' | 'legacy';
+	operation?: PrivilegedOperation;
 	id: string;
 	unit: string;
 	statusFile: string;
@@ -147,8 +156,9 @@ function toOptionalString(value: unknown): string | undefined {
 }
 
 /**
- * Runs a script in a root-owned systemd scope (default) or independent service and tracks its
- * progress through a JSON status file the script writes itself.
+ * Runs allowlisted operations through the installed root-owned helper and tracks their
+ * job-scoped status files. Installations without the helper retain the legacy systemd-run
+ * script transport until the installer upgrades their sudo policy.
  *
  * Extracted from UpdateExecutorService so any privileged, long-running operation (OS update,
  * Tailscale setup, ...) can reuse the same spawn / poll / timeout / one-job-per-unit machinery
@@ -184,12 +194,31 @@ export class PrivilegedWorkerService {
 			throw new Error('Status history cannot be combined with mapStatus');
 		}
 
-		const supported = await this.platformService.supportsPrivilegedWorkers();
+		const support = await this.platformService.getPrivilegedWorkerSupport();
 
-		if (!supported) {
+		if (!support.supported) {
 			throw new PrivilegedWorkerUnavailableException(
-				`Privileged workers are not supported on this platform (${this.platformService.getPlatformType()}).`,
+				support.reason ??
+					`Privileged workers are not supported on this platform (${this.platformService.getPlatformType()}).`,
 			);
+		}
+
+		if (spec.job !== undefined && !Object.prototype.hasOwnProperty.call(PRIVILEGED_OPERATIONS, spec.job)) {
+			throw new PrivilegedWorkerUnavailableException('Unknown privileged helper operation.');
+		}
+
+		if (support.transport === 'helper') {
+			if (!spec.job) {
+				throw new PrivilegedWorkerUnavailableException(
+					'Installed privileged helper requires an allowlisted operation.',
+				);
+			}
+
+			if ((spec.job === 'update' && spec.args.length !== 1) || (spec.job !== 'update' && spec.args.length !== 0)) {
+				throw new PrivilegedWorkerUnavailableException('Invalid privileged helper operation arguments.');
+			}
+
+			spec = { ...spec, ...PRIVILEGED_OPERATIONS[spec.job], unitType: 'service' };
 		}
 
 		if (this.busyUnits.has(spec.unit)) {
@@ -213,6 +242,8 @@ export class PrivilegedWorkerService {
 		const timeoutMs = spec.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
 		const record: JobRecord = {
+			transport: support.transport ?? 'legacy',
+			operation: spec.job,
 			id,
 			unit: spec.unit,
 			statusFile: spec.statusFile,
@@ -256,7 +287,9 @@ export class PrivilegedWorkerService {
 			const unitArgs = spec.unitType === 'service' ? ['--collect', '--service-type=exec'] : ['--scope'];
 			const child = spawn(
 				'sudo',
-				['-n', 'systemd-run', ...unitArgs, `--unit=${spec.unit}`, ...setenvArgs, 'bash', spec.script, ...spec.args],
+				record.transport === 'helper'
+					? ['-n', PRIVILEGED_HELPER_PATH, 'run-job', spec.job, id, ...(spec.job === 'update' ? [spec.args[0]] : [])]
+					: ['-n', 'systemd-run', ...unitArgs, `--unit=${spec.unit}`, ...setenvArgs, 'bash', spec.script, ...spec.args],
 				// stderr is piped (not ignored) so a refusal sudo/systemd-run itself only ever
 				// reports on stderr — e.g. "sudo: a password is required" — reaches the admin
 				// instead of a bare "Worker process exited with code 1". stdin/stdout stay
@@ -325,7 +358,7 @@ export class PrivilegedWorkerService {
 
 				// A fast failing script may publish all its history before its child exit
 				// notification beats the directory watcher. Drain it before fallback failure.
-				if (record.trackStatusHistory) {
+				if (record.trackStatusHistory || record.transport === 'helper') {
 					this.pollTick(record);
 
 					if (record.lastStatus.state !== 'running' || !record.pollTimer) {
@@ -374,6 +407,23 @@ export class PrivilegedWorkerService {
 		this.startPolling(record);
 
 		return { id };
+	}
+
+	async clearUpdateStatus(): Promise<void> {
+		await new Promise<void>((resolve, reject) => {
+			execFile(
+				'sudo',
+				['-n', PRIVILEGED_HELPER_PATH, 'clear-update-status'],
+				{ timeout: STOP_ATTEMPT_TIMEOUT_MS },
+				(error, _stdout, stderr) => {
+					if (error) {
+						reject(new Error((stderr ?? '').toString().trim() || error.message));
+					} else {
+						resolve();
+					}
+				},
+			);
+		});
 	}
 
 	getStatus(id: string): PrivilegedJobStatus | null {
@@ -563,10 +613,15 @@ export class PrivilegedWorkerService {
 		let mapped: Partial<PrivilegedJobStatus> | null;
 
 		try {
-			const raw = record.trackStatusHistory
-				? this.readBoundedStatusFile(record.statusFile)
-				: readFileSync(record.statusFile, 'utf-8');
+			const raw =
+				record.trackStatusHistory || record.transport === 'helper'
+					? this.readBoundedStatusFile(record.statusFile)
+					: readFileSync(record.statusFile, 'utf-8');
 			const rawParsed = JSON.parse(raw) as Record<string, unknown>;
+
+			if (record.transport === 'helper' && rawParsed.jobId !== record.id) {
+				return;
+			}
 
 			if (record.trackStatusHistory) {
 				this.acceptStatusHistory(record, rawParsed);
@@ -764,7 +819,8 @@ export class PrivilegedWorkerService {
 	 * refusal or spawn failure here must not stop the `systemctl is-active` confirmation that
 	 * follows in `handleTimeout` from running.
 	 */
-	private stopUnit(unit: string): Promise<void> {
+	private stopUnit(record: JobRecord): Promise<void> {
+		const unit = record.unit;
 		return new Promise((resolve) => {
 			let settled = false;
 			let timer: NodeJS.Timeout | null = null;
@@ -787,7 +843,9 @@ export class PrivilegedWorkerService {
 			try {
 				const child = spawn(
 					'sudo',
-					['-n', 'systemd-run', '--scope', '--quiet', `--unit=${unit}-stop`, 'systemctl', 'stop', unit],
+					record.transport === 'helper'
+						? ['-n', PRIVILEGED_HELPER_PATH, 'stop-job', record.operation, record.id]
+						: ['-n', 'systemd-run', '--scope', '--quiet', `--unit=${unit}-stop`, 'systemctl', 'stop', unit],
 					{ stdio: 'ignore' },
 				);
 
@@ -809,13 +867,25 @@ export class PrivilegedWorkerService {
 
 	/**
 	 * Unprivileged read of whether `unit` is still active — the same `systemctl is-active`
-	 * pattern TailscaleNodeManagedService already uses to probe a systemd unit. Any failure (unit
-	 * not found, probe timeout, systemctl missing) resolves `false` so a probe failure can never
-	 * keep a unit reserved forever by itself; only a confirmed 'active' does that.
+	 * pattern TailscaleNodeManagedService already uses to probe a systemd unit. Helper jobs keep
+	 * their reservation unless an explicit stopped/not-found response confirms settlement. The
+	 * legacy transport retains its previous behavior of treating a failed probe as inactive.
 	 */
-	private isUnitActive(unit: string): Promise<boolean> {
+	private isUnitActive(unit: string, failClosed = false): Promise<boolean> {
 		return new Promise((resolve) => {
 			execFile('systemctl', ['is-active', unit], { timeout: IS_ACTIVE_PROBE_TIMEOUT_MS }, (error, stdout) => {
+				if (failClosed) {
+					const state = (stdout ?? '').trim();
+					resolve(
+						!(
+							((!error || error.code === 3) && ['inactive', 'failed'].includes(state)) ||
+							((!error || error.code === 4) && state === 'unknown')
+						),
+					);
+
+					return;
+				}
+
 				if (error) {
 					resolve(false);
 
@@ -843,9 +913,9 @@ export class PrivilegedWorkerService {
 	private async handleTimeout(record: JobRecord): Promise<void> {
 		this.logger.error(`Privileged worker unit "${record.unit}" timed out after ${record.timeoutMs}ms`);
 
-		await this.stopUnit(record.unit);
+		await this.stopUnit(record);
 
-		const stillActive = await this.isUnitActive(record.unit);
+		const stillActive = await this.isUnitActive(record.unit, record.transport === 'helper');
 		const stderr = this.getCapturedStderr(record);
 
 		// The main child's own 'exit'/'error' handler (guarded the same way) could have already

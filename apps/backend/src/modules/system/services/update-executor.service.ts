@@ -5,6 +5,11 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import {
+	PRIVILEGED_OPERATIONS,
+	PRIVILEGED_STATE_DIR,
+	privilegedHelperPresent,
+} from '../../../common/utils/privileged-helper.utils';
+import {
 	NotificationActionType,
 	NotificationKind,
 	NotificationSeverity,
@@ -35,8 +40,8 @@ interface UpdateAttemptFile {
 	error?: string;
 }
 
-const STATUS_FILE = '/var/lib/smart-panel/update-status.json';
-const ATTEMPT_FILE = '/var/lib/smart-panel/update-attempt/attempt.json';
+const LEGACY_STATUS_FILE = '/var/lib/smart-panel/update-status.json';
+const LEGACY_ATTEMPT_FILE = '/var/lib/smart-panel/update-attempt/attempt.json';
 const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 // PrivilegedWorkerService's own hard timeout for this job. Kept slightly longer than
@@ -107,7 +112,11 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 	) {}
 
 	async onModuleInit(): Promise<void> {
-		await this.checkPendingUpdateStatus();
+		try {
+			await this.checkPendingUpdateStatus();
+		} catch (error) {
+			await this.failUpdate(error instanceof Error ? error.message : 'Cannot read privileged update recovery state');
+		}
 	}
 
 	onModuleDestroy(): void {
@@ -123,24 +132,56 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		this.observerTask = null;
 	}
 
+	private get statusFile(): string {
+		return privilegedHelperPresent() ? PRIVILEGED_OPERATIONS.update.statusFile : LEGACY_STATUS_FILE;
+	}
+
+	private get attemptFile(): string {
+		return privilegedHelperPresent() ? `${PRIVILEGED_STATE_DIR}/update-attempt/attempt.json` : LEGACY_ATTEMPT_FILE;
+	}
+
 	private readAttempt(): UpdateAttemptFile | null {
-		if (!existsSync(ATTEMPT_FILE)) {
+		if (!existsSync(this.attemptFile)) {
 			return null;
 		}
 
 		try {
-			return JSON.parse(readFileSync(ATTEMPT_FILE, 'utf-8')) as UpdateAttemptFile;
+			const attempt = JSON.parse(readFileSync(this.attemptFile, 'utf-8')) as UpdateAttemptFile;
+
+			if (
+				privilegedHelperPresent() &&
+				(!attempt ||
+					typeof attempt.attemptId !== 'string' ||
+					attempt.attemptId.length === 0 ||
+					!Number.isInteger(attempt.ownerPid) ||
+					attempt.ownerPid <= 0 ||
+					typeof attempt.targetVersion !== 'string' ||
+					typeof attempt.phase !== 'string' ||
+					!['active', 'failed_preflight', 'reconciled', 'recovery_required', 'complete'].includes(attempt.state) ||
+					typeof attempt.recoveryRequired !== 'boolean')
+			) {
+				throw new Error('Invalid privileged update attempt record; operator recovery is required');
+			}
+
+			return attempt;
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to read update attempt record: ${err.message}`);
+
+			if (privilegedHelperPresent()) {
+				throw err;
+			}
 
 			return null;
 		}
 	}
 
 	private isAttemptUnresolved(attempt: UpdateAttemptFile | null): attempt is UpdateAttemptFile {
-		return Boolean(attempt && (attempt.state === 'active' || attempt.recoveryRequired === true));
+		return Boolean(
+			attempt &&
+			(attempt.state === 'active' || attempt.state === 'recovery_required' || attempt.recoveryRequired === true),
+		);
 	}
 
 	private isObserverCurrent(generation: number, attemptId: string): boolean {
@@ -163,11 +204,11 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 	}
 
 	private readStatusFile(): UpdateProgressFile | null {
-		if (!existsSync(STATUS_FILE)) {
+		if (!existsSync(this.statusFile)) {
 			return null;
 		}
 
-		return JSON.parse(readFileSync(STATUS_FILE, 'utf-8')) as UpdateProgressFile;
+		return JSON.parse(readFileSync(this.statusFile, 'utf-8')) as UpdateProgressFile;
 	}
 
 	private async waitForObserverPoll(generation: number, attemptId: string): Promise<boolean> {
@@ -222,11 +263,8 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		return { attempt, status };
 	}
 
-	private async reconcileCompletedAttempt(
-		attempt: UpdateAttemptFile,
-		status?: UpdateProgressFile | null,
-	): Promise<void> {
-		const targetVersion = status?.targetVersion ?? attempt.targetVersion;
+	private async reconcileCompletedAttempt(attempt: UpdateAttemptFile): Promise<void> {
+		const targetVersion = attempt.targetVersion;
 
 		this.logger.log(`Update to ${targetVersion} completed successfully (durable attempt record)`);
 
@@ -240,8 +278,12 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 
 		await this.reportUpdateSucceeded();
 
-		if (existsSync(STATUS_FILE)) {
-			unlinkSync(STATUS_FILE);
+		try {
+			await this.cleanupPendingStatus();
+		} catch (error) {
+			// Completion may be durable before systemd observes the updater exit. A refused
+			// acknowledgement keeps root state for the next reconciliation, not a failed update.
+			this.logHandlerFailure('Deferring completed update status acknowledgement', error);
 		}
 	}
 
@@ -286,14 +328,22 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			return;
 		}
 
+		if (privilegedHelperPresent() && !settled.attempt) {
+			await this.failUpdate(
+				`Update attempt ${attempt.attemptId} lost its durable recovery record; operator recovery is required`,
+			);
+
+			return;
+		}
+
 		if (settled.attempt && settled.attempt.attemptId !== attempt.attemptId) {
 			this.logger.warn(`Update attempt ${attempt.attemptId} was replaced while being observed`);
 
 			return;
 		}
 
-		if (settled.attempt?.state === 'complete') {
-			await this.reconcileCompletedAttempt(settled.attempt, settled.status);
+		if (settled.attempt?.state === 'complete' && !this.isAttemptUnresolved(settled.attempt)) {
+			await this.reconcileCompletedAttempt(settled.attempt);
 			this.updateService.releaseUpdateLock();
 
 			return;
@@ -314,7 +364,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		// the durable record for the next operator action rather than treating that gap as success.
 		if (settled.status) {
 			await this.processPendingStatus(settled.status);
-			this.cleanupPendingStatus();
+			await this.cleanupPendingStatus();
 			this.updateService.releaseUpdateLock();
 		}
 	}
@@ -322,8 +372,8 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 	private async checkPendingUpdateStatus(): Promise<void> {
 		const attemptBeforeStatus = this.readAttempt();
 
-		if (!existsSync(STATUS_FILE)) {
-			if (attemptBeforeStatus?.state === 'complete') {
+		if (!existsSync(this.statusFile)) {
+			if (attemptBeforeStatus?.state === 'complete' && !this.isAttemptUnresolved(attemptBeforeStatus)) {
 				await this.reconcileCompletedAttempt(attemptBeforeStatus);
 				this.updateService.releaseUpdateLock();
 
@@ -350,8 +400,8 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			const status = this.readStatusFile();
 			const attempt = this.readAttempt();
 
-			if (attempt?.state === 'complete') {
-				await this.reconcileCompletedAttempt(attempt, status);
+			if (attempt?.state === 'complete' && !this.isAttemptUnresolved(attempt)) {
+				await this.reconcileCompletedAttempt(attempt);
 				this.updateService.releaseUpdateLock();
 
 				return;
@@ -401,14 +451,14 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			await this.processPendingStatus(status);
 
 			// Clean up status file after processing
-			this.cleanupPendingStatus();
+			await this.cleanupPendingStatus();
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to read update status file: ${err.message}`);
 
 			try {
-				unlinkSync(STATUS_FILE);
+				await this.cleanupPendingStatus();
 			} catch {
 				// Ignore cleanup errors
 			}
@@ -453,15 +503,21 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		}
 	}
 
-	private cleanupPendingStatus(): void {
-		if (!existsSync(STATUS_FILE)) {
+	private async cleanupPendingStatus(): Promise<void> {
+		if (privilegedHelperPresent()) {
+			await this.privilegedWorker.clearUpdateStatus();
+
+			return;
+		}
+		if (!existsSync(this.statusFile)) {
 			return;
 		}
 
-		unlinkSync(STATUS_FILE);
+		unlinkSync(this.statusFile);
 	}
 
 	async startUpdate(targetVersion: string): Promise<void> {
+		const helperMode = privilegedHelperPresent();
 		const attempt = this.readAttempt();
 
 		if (this.isAttemptUnresolved(attempt)) {
@@ -477,7 +533,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		const installType = this.updateService.getInstallType();
 		let healthUrl: string | undefined;
 
-		if (installType === 'image') {
+		if (!helperMode && installType === 'image') {
 			try {
 				healthUrl = this.getLocalHealthUrl();
 			} catch (error) {
@@ -495,7 +551,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		// For image installs, resolve the download URL before spawning the worker
 		let downloadUrl: string | undefined;
 
-		if (installType === 'image') {
+		if (!helperMode && installType === 'image') {
 			const asset = await this.updateService.fetchServerReleaseAsset(targetVersion);
 
 			if (!asset) {
@@ -529,7 +585,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		// Spawn detached update script (bundled as NestJS asset in dist/modules/system/scripts/)
 		const updateScript = join(__dirname, '..', 'scripts', 'update-worker.sh');
 
-		if (!existsSync(updateScript)) {
+		if (!helperMode && !existsSync(updateScript)) {
 			this.updateService.releaseUpdateLock();
 
 			const errorMsg = `Update worker script not found at ${updateScript}`;
@@ -549,24 +605,26 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			throw new Error(errorMsg);
 		}
 
-		const envVars: Record<string, string> = {
-			UPDATE_VERSION: targetVersion,
-			// The public API never selects the operator-only stopped-maintenance mode.  Keep this
-			// explicit so an ambient service environment cannot change the lifecycle contract.
-			UPDATE_START_MODE: 'running-service',
-			STATUS_FILE,
-			INSTALL_TYPE: installType,
-			IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
-			DOWNLOAD_URL: downloadUrl ?? '',
-			HOME: process.env.HOME ?? '/root',
-			PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
-		};
+		const envVars: Record<string, string> = helperMode
+			? {}
+			: {
+					UPDATE_VERSION: targetVersion,
+					// The public API never selects the operator-only stopped-maintenance mode.  Keep this
+					// explicit so an ambient service environment cannot change the lifecycle contract.
+					UPDATE_START_MODE: 'running-service',
+					STATUS_FILE: this.statusFile,
+					INSTALL_TYPE: installType,
+					IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
+					DOWNLOAD_URL: downloadUrl ?? '',
+					HOME: process.env.HOME ?? '/root',
+					PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+				};
 
 		// Grant this backend group read access to the root-owned attempt metadata only.
 		// The worker retains exclusive write access and private lock/migration artifacts.
 		const observerGid = process.getgid?.();
 
-		if (observerGid !== undefined) {
+		if (!helperMode && observerGid !== undefined) {
 			envVars.UPDATE_OBSERVER_GID = String(observerGid);
 		}
 
@@ -575,20 +633,25 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			envVars.HEALTH_EXPECTED_VERSION = targetVersion;
 		}
 
-		if (process.env.FB_DATA_DIR) envVars.FB_DATA_DIR = process.env.FB_DATA_DIR;
-		if (process.env.FB_DB_PATH) envVars.FB_DB_PATH = process.env.FB_DB_PATH;
-		if (process.env.FB_CONFIG_PATH) envVars.FB_CONFIG_PATH = process.env.FB_CONFIG_PATH;
+		if (!helperMode && process.env.FB_DATA_DIR) envVars.FB_DATA_DIR = process.env.FB_DATA_DIR;
+		if (!helperMode && process.env.FB_DB_PATH) envVars.FB_DB_PATH = process.env.FB_DB_PATH;
+		if (!helperMode && process.env.FB_CONFIG_PATH) envVars.FB_CONFIG_PATH = process.env.FB_CONFIG_PATH;
 
 		try {
 			// Let systemd own the worker as a service. A scope leaves a waiting sudo parent
 			// in the backend cgroup, so the worker's quiescence check waits on its own launcher.
+			if (helperMode) {
+				await this.cleanupPendingStatus();
+			}
+
 			const { id } = await this.privilegedWorker.run({
+				job: 'update',
 				unit: UPDATE_WORKER_UNIT,
 				unitType: 'service',
 				script: updateScript,
 				args: [targetVersion],
 				env: envVars,
-				statusFile: STATUS_FILE,
+				statusFile: this.statusFile,
 				timeoutMs: STATUS_POLL_MAX_MS,
 				mapStatus: mapUpdateWorkerStatus,
 			});
@@ -697,19 +760,22 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 	}
 
 	private writeStatusFile(status: UpdateProgressFile): void {
+		if (privilegedHelperPresent()) {
+			return;
+		}
 		try {
-			const dir = dirname(STATUS_FILE);
+			const dir = dirname(this.statusFile);
 
 			if (!existsSync(dir)) {
 				mkdirSync(dir, { recursive: true });
 			}
 
 			// Atomic write: write to temp file then rename
-			const tmpFile = `${STATUS_FILE}.tmp`;
+			const tmpFile = `${this.statusFile}.tmp`;
 
 			writeFileSync(tmpFile, JSON.stringify(status, null, '\t'), { mode: 0o644 });
 
-			renameSync(tmpFile, STATUS_FILE);
+			renameSync(tmpFile, this.statusFile);
 		} catch (error) {
 			const err = error as Error;
 

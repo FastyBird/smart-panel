@@ -5,6 +5,11 @@ import si from 'systeminformation';
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import {
+	PRIVILEGED_HELPER_PATH,
+	PRIVILEGED_OPERATIONS,
+	privilegedHelperPresent,
+} from '../../../common/utils/privileged-helper.utils';
 import { PLATFORM_MODULE_NAME, PLATFORM_TYPE_ENV, PlatformType } from '../platform.constants';
 import { Platform } from '../platforms/abstract.platform';
 import { DevelopmentPlatform } from '../platforms/development.platform';
@@ -34,6 +39,8 @@ const PRIVILEGED_WORKER_PROBE_TIMEOUT_MS = 5_000;
 
 /** Result of probing whether this platform can run a privileged job right now. */
 export interface PrivilegedWorkerSupport {
+	/** Internal transport selection; response models expose only supported/reason/checkedAt. */
+	transport?: 'helper' | 'legacy';
 	/** Whether `PrivilegedWorkerService.run()` can spawn a privileged job right now. */
 	supported: boolean;
 	/**
@@ -123,8 +130,8 @@ export class PlatformService {
 	 * `isPlatformCapableOfPrivilegedWorkers()` to distinguish that permanent case from a probe
 	 * that merely fails right now.
 	 *
-	 * A positive result is cached for the life of the process — once a privileged job has run
-	 * successfully there is no operational reason it would stop working. A negative result on an
+	 * A positive result is cached while helper presence is unchanged. Installing the helper
+	 * invalidates any legacy result immediately. A negative result on an
 	 * otherwise-capable platform is cached for only `PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS`
 	 * (60s): unlike a positive result, "no" can become "yes" purely from an administrator adding a
 	 * sudoers grant, and without this short TTL that fix would silently require a full backend
@@ -158,6 +165,12 @@ export class PlatformService {
 				? null
 				: Date.now() + PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS;
 
+		// Installation can finish while a legacy probe is in flight. Re-evaluate before
+		// returning its result so no caller can retain that obsolete transport selection.
+		if (this.isPlatformCapableOfPrivilegedWorkers() && (result.transport === 'helper') !== privilegedHelperPresent()) {
+			return this.getPrivilegedWorkerSupport();
+		}
+
 		return result;
 	}
 
@@ -180,6 +193,13 @@ export class PlatformService {
 			return null;
 		}
 
+		if (
+			this.isPlatformCapableOfPrivilegedWorkers() &&
+			(this.privilegedWorkerSupportCache.transport === 'helper') !== privilegedHelperPresent()
+		) {
+			return null;
+		}
+
 		const fresh =
 			this.privilegedWorkerSupportCacheExpiresAt === null || Date.now() < this.privilegedWorkerSupportCacheExpiresAt;
 
@@ -197,9 +217,46 @@ export class PlatformService {
 			};
 		}
 
-		const probe = await this.probeSystemdRunScope();
+		const transport = privilegedHelperPresent() ? 'helper' : 'legacy';
+		const probe = transport === 'helper' ? await this.probeHelper() : await this.probeSystemdRunScope();
 
-		return { supported: probe.success, reason: probe.success ? null : probe.reason, checkedAt };
+		return { supported: probe.success, reason: probe.success ? null : probe.reason, checkedAt, transport };
+	}
+
+	private probeHelper(): Promise<{ success: boolean; reason: string | null }> {
+		return new Promise((resolve) => {
+			execFile(
+				'sudo',
+				['-n', PRIVILEGED_HELPER_PATH, 'probe'],
+				{ timeout: PRIVILEGED_WORKER_PROBE_TIMEOUT_MS },
+				(error, stdout, stderr) => {
+					if (error) {
+						resolve({ success: false, reason: (stderr ?? '').toString().trim() || error.message });
+
+						return;
+					}
+
+					try {
+						const result = JSON.parse(stdout.toString()) as { version?: unknown; operations?: unknown };
+						const operations = result.operations;
+
+						if (
+							result.version === 1 &&
+							Array.isArray(operations) &&
+							Object.keys(PRIVILEGED_OPERATIONS).every((operation) => operations.includes(operation))
+						) {
+							resolve({ success: true, reason: null });
+
+							return;
+						}
+					} catch {
+						// An installed helper with a malformed protocol must not activate broad legacy sudo.
+					}
+
+					resolve({ success: false, reason: 'Installed privileged helper returned an unsupported probe response.' });
+				},
+			);
+		});
 	}
 
 	getSystemInfo() {

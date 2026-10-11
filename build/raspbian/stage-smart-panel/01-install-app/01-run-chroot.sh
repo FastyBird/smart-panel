@@ -143,7 +143,8 @@ chmod +x "${APP_BASE_DIR}/rebuild-native.sh"
 ln -sfn "${APP_INSTALL_DIR}" "${APP_BASE_DIR}/current"
 
 # Set ownership
-chown -R smart-panel:smart-panel "${APP_BASE_DIR}"
+chown -R root:root "${APP_BASE_DIR}"
+chmod -R go-w "${APP_BASE_DIR}"
 chown -R smart-panel:smart-panel "${DATA_DIR}"
 
 # Clean up temp files

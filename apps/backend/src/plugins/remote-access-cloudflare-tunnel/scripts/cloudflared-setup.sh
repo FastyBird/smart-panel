@@ -65,6 +65,7 @@ if [ "$PRINT_PLAN" -eq 1 ]; then
 		# only blind-prefixes `sudo` onto lines that do not already contain a pipe.
 		echo "curl -fsSL ${KEYRING_URL} | sudo tee ${KEYRING_PATH} >/dev/null"
 		echo "echo '${LIST_LINE}' | sudo tee ${LIST_PATH} >/dev/null"
+		echo "chmod 0644 ${KEYRING_PATH} ${LIST_PATH}"
 		echo "apt-get update -qq"
 		echo "apt-get install -y -qq --no-install-recommends cloudflared"
 		;;
@@ -77,6 +78,13 @@ if [ "$PRINT_PLAN" -eq 1 ]; then
 	esac
 
 	exit 0
+fi
+
+# Reject malformed identities before writing status; the read-only plan bypasses this.
+JOB_ID="${PRIVILEGED_WORKER_JOB_ID:-}"
+if [ -n "$JOB_ID" ] && [[ ! "$JOB_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+	echo "Invalid PRIVILEGED_WORKER_JOB_ID" >&2
+	exit 1
 fi
 
 # Writes the canonical `{ state, step, message }` status PrivilegedWorkerService
@@ -97,8 +105,8 @@ write_status() {
 
 	mkdir -p "$(dirname "$STATUS_FILE")"
 
-	printf '{\n\t"state": "%s",\n\t"step": "%s",\n\t"message": "%s"\n}\n' \
-		"$state" "$step" "$safe_message" >"$tmp_file"
+	printf '{\n\t"jobId": "%s",\n\t"state": "%s",\n\t"step": "%s",\n\t"message": "%s"\n}\n' \
+		"$JOB_ID" "$state" "$step" "$safe_message" >"$tmp_file"
 
 	mv "$tmp_file" "$STATUS_FILE"
 }
@@ -141,6 +149,7 @@ else
 		if [ "$DRY_RUN" -eq 1 ]; then
 			echo "[dry-run] curl -fsSL $KEYRING_URL | tee $KEYRING_PATH"
 			echo "[dry-run] echo '$LIST_LINE' | tee $LIST_PATH"
+			echo "[dry-run] chmod 0644 $KEYRING_PATH $LIST_PATH"
 			echo "[dry-run] apt-get update -qq"
 			echo "[dry-run] apt-get install -y -qq --no-install-recommends cloudflared"
 		else
@@ -153,6 +162,12 @@ else
 			}
 			echo "$LIST_LINE" | tee "$LIST_PATH" >/dev/null || {
 				write_status "failed" "install" "Failed to write the Cloudflare apt source list"
+				exit 1
+			}
+			# The helper's UMask=0027 creates root-owned files as 0640. apt's
+			# sandbox user needs public read access to both repository metadata files.
+			chmod 0644 "$KEYRING_PATH" "$LIST_PATH" || {
+				write_status "failed" "install" "Failed to set Cloudflare apt repository permissions"
 				exit 1
 			}
 			apt-get update -qq || {

@@ -14,9 +14,9 @@ EnvironmentFile=-/etc/smart-panel/environment
 ExecStart=/usr/local/bin/node /opt/smart-panel/current/dist/main.js
 Restart=always
 RestartSec=5
-# Only kill the main Node.js process on stop — detached update worker
-# must survive the service restart to complete the OTA update.
-KillMode=process
+# Privileged jobs run in independent manager-owned units. Stop every application
+# process so migrations never overlap a retained database writer.
+KillMode=control-group
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=smart-panel
@@ -28,7 +28,7 @@ SyslogIdentifier=smart-panel
 # they implicitly enable NoNewPrivileges, which blocks sudo.
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/smart-panel /opt/smart-panel
+ReadWritePaths=/var/lib/smart-panel /opt/smart-panel /var/lib/smart-panel-privileged
 PrivateTmp=true
 ProtectControlGroups=true
 

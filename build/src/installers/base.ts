@@ -42,6 +42,8 @@ export interface ServiceStatus {
 }
 
 export interface InstalledConfig {
+	/** Installed backend HTTP port */
+	port?: number;
 	/** Service user name */
 	user?: string;
 	/** Data directory path */

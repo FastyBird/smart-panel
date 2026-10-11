@@ -18,9 +18,9 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,6 +35,50 @@ const { logger, isRoot, hasSystemd, getArch, getDistroInfo, compareSemver } = aw
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
+
+function provisionPrivilegedHelper({
+	backendRoot,
+	installType = 'npm',
+	serviceUser = 'smart-panel',
+	dataDir = '/var/lib/smart-panel',
+	port = '3000',
+	imageBaseDir = '/opt/smart-panel',
+}) {
+	const source = realpathSync(
+		backendRoot || join(__dirname, '..', 'node_modules', '@fastybird', 'smart-panel-backend'),
+	);
+	const installerPath = join(source, 'dist', 'modules', 'system', 'scripts', 'privileged', 'install-helper.py');
+	// Validate before interpreting the installer, including the complete resolved ancestor chain.
+	const trustedInstaller = realpathSync(installerPath);
+	let component = trustedInstaller;
+	while (true) {
+		const metadata = statSync(component);
+		if (metadata.uid !== 0 || (metadata.mode & 0o022) !== 0) {
+			throw new Error(
+				`Helper migration requires a root-owned release without group/world writable paths: ${component}`,
+			);
+		}
+		const parent = dirname(component);
+		if (parent === component) break;
+		component = parent;
+	}
+	const args = [
+		'-I',
+		trustedInstaller,
+		'--backend-root',
+		source,
+		'--install-type',
+		installType,
+		'--service-user',
+		serviceUser,
+		'--data-dir',
+		dataDir,
+		'--port',
+		String(port),
+	];
+	if (installType === 'image') args.push('--image-base-dir', resolve(imageBaseDir));
+	execFileSync('/usr/bin/python3', args, { stdio: 'inherit' });
+}
 
 /**
  * Detect a display installed by the retired eLinux path, by the systemd unit the old installer
@@ -57,10 +101,46 @@ function isLegacyElinuxInstall() {
 
 const program = new Command();
 
+program.name('smart-panel-service').description('FastyBird Smart Panel service management CLI').version(version);
+
 program
-	.name('smart-panel-service')
-	.description('FastyBird Smart Panel service management CLI')
-	.version(version);
+	.command('migrate-privileges')
+	.description('Install the protected helper and revoke legacy grants from a trusted root-owned release')
+	.option('--backend-root <path>', 'Trusted backend release directory containing dist (required for image migration)')
+	.option('--install-type <type>', 'Installation type: npm or image', 'npm')
+	.option('--service-user <user>', 'Installed service account (defaults to installed configuration)')
+	.option('--data-dir <path>', 'Installed data directory (defaults to installed configuration)')
+	.option('--port <port>', 'Installed backend HTTP port (defaults to installed configuration)')
+	.option('--image-base-dir <path>', 'Image installation base', '/opt/smart-panel')
+	.action(async (options) => {
+		if (!isRoot()) {
+			logger.error('This command must be run as root. Please use sudo.');
+			process.exit(1);
+		}
+		try {
+			if (!['npm', 'image'].includes(options.installType)) throw new Error('Unsupported installation type');
+			if (options.installType === 'image' && !options.backendRoot) {
+				throw new Error('Image migration requires --backend-root pointing to a trusted root-owned extracted release');
+			}
+			const installer = getInstaller();
+			const wasRunning = (await installer.status()).running;
+			const config = installer.getInstalledConfig();
+			provisionPrivilegedHelper({
+				...options,
+				serviceUser: options.serviceUser || config.user || 'smart-panel',
+				dataDir: options.dataDir || config.dataDir || '/var/lib/smart-panel',
+				port: options.port || config.port || 3000,
+			});
+			// Running units adopt a changed ProtectSystem mount namespace only after restart.
+			if (wasRunning) {
+				await installer.restart();
+			}
+			logger.success('Protected helper installed; legacy wildcard grants revoked.');
+		} catch (error) {
+			logger.error(error instanceof Error ? error.message : String(error));
+			process.exit(1);
+		}
+	});
 
 // ============================================================================
 // Install Command
@@ -597,6 +677,11 @@ program
 			spinner.start('Running database migrations...');
 			const config = installer.getInstalledConfig();
 			const dataDir = config.dataDir || '/var/lib/smart-panel';
+			provisionPrivilegedHelper({
+				serviceUser: config.user || 'smart-panel',
+				dataDir,
+				port: config.port || 3000,
+			});
 			await installer.runMigrations(dataDir);
 			spinner.succeed('Migrations complete');
 

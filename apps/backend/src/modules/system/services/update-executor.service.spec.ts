@@ -3,6 +3,7 @@ import { existsSync, readFileSync, unlinkSync } from 'fs';
 
 import { Logger } from '@nestjs/common';
 
+import * as privilegedHelper from '../../../common/utils/privileged-helper.utils';
 import {
 	NotificationActionType,
 	NotificationKind,
@@ -32,6 +33,7 @@ describe('UpdateExecutorService', () => {
 		getCurrentVersion: jest.Mock;
 	};
 	let privilegedWorker: {
+		clearUpdateStatus: jest.Mock;
 		run: jest.Mock;
 		getStatus: jest.Mock;
 		onStatus: jest.Mock;
@@ -49,6 +51,7 @@ describe('UpdateExecutorService', () => {
 		// UpdateExecutorService now takes PrivilegedWorkerService as a constructor
 		// dependency (not used by the checkPendingUpdateStatus path this file covers).
 		privilegedWorker = {
+			clearUpdateStatus: jest.fn().mockResolvedValue(undefined),
 			run: jest.fn(),
 			getStatus: jest.fn(),
 			onStatus: jest.fn(),
@@ -97,6 +100,147 @@ describe('UpdateExecutorService', () => {
 				message: 'Starting update process...',
 			}),
 		);
+	});
+
+	describe('root-owned update state', () => {
+		beforeEach(() => {
+			jest.spyOn(privilegedHelper, 'privilegedHelperPresent').mockReturnValue(true);
+		});
+
+		it('launches using helper state without writing backend-owned files', async () => {
+			(existsSync as jest.Mock).mockReturnValue(false);
+			privilegedWorker.run.mockResolvedValue({ id: 'helper-job' });
+			privilegedWorker.onStatus.mockReturnValue(jest.fn());
+			await executor.startUpdate('1.2.3');
+			expect(privilegedWorker.clearUpdateStatus).toHaveBeenCalledTimes(1);
+			expect(privilegedWorker.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					job: 'update',
+					statusFile: privilegedHelper.PRIVILEGED_OPERATIONS.update.statusFile,
+				}),
+			);
+			expect(unlinkSync).not.toHaveBeenCalled();
+		});
+
+		it('refuses a new launch when the helper cannot acknowledge a recovery hold', async () => {
+			(existsSync as jest.Mock).mockReturnValue(false);
+			privilegedWorker.clearUpdateStatus.mockRejectedValue(new Error('recovery required'));
+			await expect(executor.startUpdate('1.2.3')).rejects.toThrow('recovery required');
+			expect(privilegedWorker.run).not.toHaveBeenCalled();
+			expect(unlinkSync).not.toHaveBeenCalled();
+		});
+
+		it('preserves malformed durable state and refuses new updates', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue('{"state":"unknown"}');
+			await executor.onModuleInit();
+			await expect(executor.startUpdate('1.2.3')).rejects.toThrow('operator recovery');
+			expect(privilegedWorker.run).not.toHaveBeenCalled();
+			expect(privilegedWorker.clearUpdateStatus).not.toHaveBeenCalled();
+			expect(unlinkSync).not.toHaveBeenCalled();
+		});
+
+		it('observes the root updater after a backend restart and fails closed if its durable record disappears', async () => {
+			jest.useFakeTimers();
+			let attemptExists = true;
+			(existsSync as jest.Mock).mockImplementation((path: string) =>
+				path.includes('update-attempt') ? attemptExists : true,
+			);
+			(readFileSync as jest.Mock).mockImplementation((path: string) =>
+				JSON.stringify(
+					path.includes('update-attempt')
+						? {
+								attemptId: 'live-root',
+								ownerPid: process.pid,
+								targetVersion: '1.2.3',
+								state: 'active',
+								phase: 'starting',
+								recoveryRequired: false,
+							}
+						: {
+								status: UpdateStatusType.COMPLETE,
+								phase: 'complete',
+								targetVersion: '1.2.3',
+								startedAt: new Date().toISOString(),
+							},
+				),
+			);
+			await executor.onModuleInit();
+			expect(updateService.setStatus).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.STARTING }),
+			);
+			attemptExists = false;
+			await jest.advanceTimersByTimeAsync(3000);
+			expect(updateService.setStatus).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					status: UpdateStatusType.FAILED,
+					error: expect.stringContaining('lost its durable recovery record'),
+				}),
+			);
+			expect(privilegedWorker.clearUpdateStatus).not.toHaveBeenCalled();
+			expect(unlinkSync).not.toHaveBeenCalled();
+		});
+
+		it('keeps durable completion when acknowledgement races the updater exit', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'completed-root',
+					ownerPid: 999999,
+					targetVersion: '1.2.3',
+					state: 'complete',
+					phase: 'complete',
+					recoveryRequired: false,
+				}),
+			);
+			privilegedWorker.clearUpdateStatus.mockRejectedValue(new Error('unit is still active'));
+			await executor.onModuleInit();
+			expect(updateService.setStatus).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+			);
+			expect(notifications.notify).not.toHaveBeenCalled();
+			expect(unlinkSync).not.toHaveBeenCalled();
+		});
+
+		it('holds recovery-required metadata even if its state claims completion', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'held-root',
+					ownerPid: 999999,
+					targetVersion: '1.2.3',
+					state: 'complete',
+					phase: 'migrating',
+					recoveryRequired: true,
+				}),
+			);
+			await executor.onModuleInit();
+			await expect(executor.startUpdate('1.2.4')).rejects.toThrow('requires recovery');
+			expect(updateService.setStatus).not.toHaveBeenCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+			);
+			expect(privilegedWorker.clearUpdateStatus).not.toHaveBeenCalled();
+		});
+
+		it('acknowledges a recovered completed attempt through the helper', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'root-attempt',
+					ownerPid: 999999,
+					targetVersion: '1.2.3',
+					state: 'complete',
+					phase: 'complete',
+					recoveryRequired: false,
+				}),
+			);
+			await executor.onModuleInit();
+			expect(privilegedWorker.clearUpdateStatus).toHaveBeenCalledTimes(1);
+			expect(updateService.setStatus).toHaveBeenCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+			);
+			expect(unlinkSync).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {

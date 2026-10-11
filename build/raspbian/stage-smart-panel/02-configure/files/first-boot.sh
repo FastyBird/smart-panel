@@ -92,9 +92,15 @@ fi
 # ──────────────────────────────────────────────────────────────
 log_info "Building native modules (this may take a minute)..."
 if [ -x "${APP_BASE_DIR}/rebuild-native.sh" ]; then
-	if "${APP_BASE_DIR}/rebuild-native.sh" "${APP_DIR}" >> "${BOOT_LOG}" 2>&1; then
+	# Only the native build workspace is writable while the service is not started.
+	chown -hR smart-panel:smart-panel "${APP_DIR}/node_modules"
+	if /usr/sbin/runuser -u smart-panel -- "${APP_BASE_DIR}/rebuild-native.sh" "${APP_DIR}" >> "${BOOT_LOG}" 2>&1; then
+		chown -hR root:root "${APP_DIR}/node_modules"
+		chmod -R a+rX,go-w "${APP_DIR}/node_modules"
 		log_ok "Native modules compiled"
 	else
+		chown -hR root:root "${APP_DIR}/node_modules"
+		chmod -R a+rX,go-w "${APP_DIR}/node_modules"
 		log_error "Native module compilation failed"
 		echo "========================================" >> "${BOOT_LOG}"
 		echo "RESULT: FAILED" >> "${BOOT_LOG}"

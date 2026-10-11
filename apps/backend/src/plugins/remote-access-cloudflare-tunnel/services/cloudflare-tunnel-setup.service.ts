@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { PRIVILEGED_OPERATIONS } from '../../../common/utils/privileged-helper.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
@@ -98,16 +99,22 @@ export class CloudflareTunnelSetupService {
 		const dataDir = getEnvValue<string>(this.nestConfigService, 'FB_DATA_DIR', '/var/lib/smart-panel');
 		const remoteAccessDir = join(dataDir, CLOUDFLARE_TUNNEL_DATA_SUBDIR);
 
-		this.ensureDir(remoteAccessDir);
+		if (privilegedWorkerSupport.transport !== 'helper') {
+			this.ensureDir(remoteAccessDir);
+		}
 
-		const statusFile = join(remoteAccessDir, CLOUDFLARE_TUNNEL_SETUP_STATUS_FILENAME);
+		const statusFile =
+			privilegedWorkerSupport.transport === 'helper'
+				? PRIVILEGED_OPERATIONS['cloudflared-setup'].statusFile
+				: join(remoteAccessDir, CLOUDFLARE_TUNNEL_SETUP_STATUS_FILENAME);
 		const script = join(__dirname, '..', 'scripts', 'cloudflared-setup.sh');
 
-		if (!existsSync(script)) {
+		if (privilegedWorkerSupport.transport !== 'helper' && !existsSync(script)) {
 			throw new Error(`Cloudflare Tunnel setup script not found at ${script}`);
 		}
 
 		const { id } = await this.privilegedWorker.run({
+			job: 'cloudflared-setup',
 			unit: CLOUDFLARE_TUNNEL_SETUP_WORKER_UNIT,
 			// A scope inherits the backend's ProtectSystem=strict mount namespace, so even
 			// root cannot write apt sources or install packages. Let systemd launch a separate

@@ -96,7 +96,9 @@ Smart Panel only trusts the client address a reverse proxy reports — via `X-Fo
 (with **Trust forwarded headers** turned on); otherwise every request behind it looks like it came from the
 proxy itself, which breaks the login throttle and the display-registration guard. See
 [Remote Access](/docs/admin-management/remote-access) for the full picture, including how a provider like
-Tailscale is trusted automatically while a hand-built proxy is not.
+Tailscale Serve or Cloudflare Tunnel contributes trusted local proxy addresses while connected and the
+module is enabled. Configure a hand-built proxy explicitly. Provider connectivity does not itself verify
+the public hostname, TLS or origin route; test HTTPS, login and live WebSocket updates from outside the LAN.
 
 ---
 

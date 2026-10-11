@@ -81,14 +81,18 @@ Documentation changes alone do not require another alpha. The completion plan re
 - [x] Forwarded headers are honoured only when the socket peer is a configured or provider-declared
       trusted proxy; the display registration guard and the throttler use the resolved client address.
       (Alpha.44/alpha.49: HTTPS registration status returned closed; Pi 5 tailnet/Mac LAN throttle separation.)
-- [ ] `remote-access` module exposes status, providers and urls endpoints, module config, events routed
-      to the exchange room only, and OpenAPI models under the `{Module}Data{Name}` convention.
-- [ ] `PrivilegedWorkerService` runs the update worker unchanged and reports unsupported platforms.
+- [x] `remote-access` module exposes status, providers and urls endpoints, module config, owner/admin-only
+      events and OpenAPI models under the `{Module}Data{Name}` convention.
+      (R1–R3 implementation verification and production provider/module HTTP tests in the completion plan.)
+- [x] `PrivilegedWorkerService` runs an independent update worker and reports unsupported platforms.
+      (Recorded System upgrades and alpha.50/56 platform checks; fixed-helper migration remains A1–A4 below.)
 
 ### Tailscale
 
-- [ ] Set up installs the package if missing, enables the daemon and grants the operator, reporting each
+- [x] Set up installs the package if missing, enables the daemon and grants the operator, reporting each
       step; re-running is harmless.
+      (Alpha.47 image, alpha.51 clean npm package setup, alpha.57 live stages and alpha.58 transport recovery.
+      These establish the existing worker contract; fixed-helper setup acceptance remains A3.)
 - [x] Sign in returns an auth URL and QR code; the node reaches `connected` after approval; an auth key
       path works headless; the key is never persisted or logged.
 - [x] Serve exposes the admin at `https://<node>.<tailnet>.ts.net` and declares loopback as a trusted
@@ -103,18 +107,48 @@ Documentation changes alone do not require another alpha. The completion plan re
 
 - [x] Remote access page shows internal and external URLs, the primary URL with copy and QR, provider
       cards, advisories, and updates live from events.
-- [ ] Tailscale wizard walks Set up → Sign in → Options → Done; actions match the node state.
-- [ ] Config schemas bind to generated types; all six locales present.
+- [x] Tailscale wizard walks Set up → Sign in → Options → Done; actions match the node state.
+      (Alpha.47/53 wizard completion; alpha.61 released reload and alpha.62 delayed-link/failure recovery.)
+- [x] Config schemas bind to generated types; all six locales present.
+      (R3 admin/backend type and API checks; six module/provider locale inventories and provider
+      `locales.spec.ts` completeness/nonblank tests.)
 
 ### Installer and docs
 
 - [ ] Raspberry Pi image ships Tailscale disabled; `install-server.sh --with-tailscale` works.
       (Image ships it disabled: passed on fresh Pi 4 alpha.47; the `--with-tailscale` flag has no recorded evidence.)
-- [ ] Website guide published; network requirements, extensions, image and MCP pages updated.
+- [ ] Reconciled website guide published with the final candidate; related network requirements,
+      extensions, image and MCP pages reflect both delivered providers.
+      (Source reconciliation complete; final release/publication is not claimed by source edits.)
 
 ### Verification
 
 - [ ] Hardware acceptance matrix from the plan recorded here with dates and outcomes.
+
+#### Finite final acceptance after helper release (reconciled 2026-10-12)
+
+Retain the identified evidence below. These are the five remaining hardware gates; no fixed-helper
+hardware result is claimed. The completion plan's scoped checklist records the retained contract matrix
+and change-impact rules. Publish the reviewed helper and docs in the combined candidate, then record:
+
+- [ ] A1: fresh helper installation, including `install-server.sh --with-tailscale`.
+- [ ] A2: existing-host root-helper/sudoers migration and normal in-app System update, including updater
+      survival, preserved data/configuration, admin recovery and cleanup.
+- [ ] A3: Tailscale and Cloudflare setup through the fixed helper with correlated progress and settled UI.
+- [ ] A4: both providers restored after setup/migration/update, with actual HTTPS, owner login and
+      authenticated WebSocket recovery and coherent endpoint/proxy state.
+- [ ] A5: observe the released HTTPS-disabled advisory's clickable Tailscale DNS-console link.
+
+Twenty lifecycle cycles, idle, network recovery, token rotation/revocation, cellular traffic, manual
+installation, unsupported-platform branches and pending-login/timeout recovery already have versioned
+receipts. Repeat only helper-affected behavior or a newly failed contract. Phone QR or approval-device
+variants, a fresh-host live change, phone/laptop-specific SSH, full minimum-version hardware repetition,
+HA add-on/Supervisor packaging and extra fresh-package transport-loss combinations are not added gates.
+Their unperformed variants remain unperformed; local/integration failure, permission, cancellation and
+deadline checks run before release. No documentation-only change requires another alpha.
+
+WireGuard #913 is deferred. #910/#1159/#914 and #1354/#991/#897 remain open until the scoped acceptance,
+release/documentation publication and evidence reconciliation finish.
 
 #### October R4 candidate verification
 
@@ -1674,9 +1708,9 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Options and advisories
 
 - [x] Funnel on: the URL becomes public (open it from a device without Tailscale); the public-exposure advisory shows; Funnel off returns it to tailnet-only without touching other Serve handlers. Passed on Pi 4 alpha.49 from the Mac with Tailscale Stopped: public TLS/login/WebSocket, UI advisories, public access removal and retained private HTTPS. An independent private handler on port 8443 survived both transitions and was removed after the test.
-- [ ] Tailscale SSH on: `ssh <login-user>@<node>` from the phone/laptop works per the tailnet ACL; off again disables Tailscale SSH. Use an existing OS account with a login shell (`smartpanel` on the test image), not the `smart-panel` service account. Pi 5 peer login after the required authentication check and UI/CLI disable passed on alpha.49; phone/laptop SSH remains untested. Disabling this option does not disable the system OpenSSH service.
+- [x] Tailscale SSH opt-in works per the tailnet ACL and off disables the Tailscale SSH setting. Retained alpha.49 Pi 5 peer evidence covers this contract; the phone/laptop variant is not an additional gate. Use an existing OS account with a login shell (`smartpanel` on the test image), not the `smart-panel` service account. Pi 5 peer login after the required authentication check and UI/CLI disable passed on alpha.49; phone/laptop SSH remains an unperformed optional variant. Disabling this option does not disable the system OpenSSH service.
 - [x] With a short-expiry auth key (or a key expiry set in the console): the key-expiring advisory appears and "Sign in again" recovers. Published alpha.51 Pi 4: one-day node-key warning observed on 2026-10-07; natural expiry, withdrawn URLs, normal wizard reauthentication and verified peer HTTPS/login/WebSocket recovery passed on 2026-10-08. The tailnet default was restored to 180 days before expiry.
-- [ ] Tailnet with HTTPS certificates disabled: the tailnet-https-disabled advisory appears with the console link; IPv4 and MagicDNS HTTP endpoints still work.
+- [ ] Released HTTPS-disabled advisory console-link navigation (A5). The disabled/restored HTTPS functional cycle is retained in the alpha.53 continuation record; only the shipped clickable link remains unobserved, not the entire endpoint matrix.
 
 ##### MCP
 
@@ -1685,7 +1719,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Other deployments
 
 - [x] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works. Passed on the published alpha.50 ARM64 digest on 2026-10-07, including UI configuration and persistence across container recreation; native ARM64 and AMD64 release runtime smoke tests also passed. The manual URL fixture was loopback-only.
-- [x] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports progress, and System → Update runs the in-app updater through the privileged worker. Clean alpha.49 installation, sudoers/probe checks, alpha.49 → alpha.50 and alpha.50 → alpha.51 UI npm updates passed on 2026-10-07. Published alpha.51 fresh-package setup passed after #1231, with backend hardening retained. Every-step live admin reporting remains the separate unchecked criterion above; see verification for sampling boundaries.
+- [x] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports progress, and System → Update runs the in-app updater through the privileged worker. Clean alpha.49 installation, sudoers/probe checks, alpha.49 → alpha.50 and alpha.50 → alpha.51 UI npm updates passed on 2026-10-07. Published alpha.51 fresh-package setup passed after #1231, with backend hardening retained. Every-step live admin reporting passed separately on alpha.57; see verification for sampling boundaries.
 
 ## 5. Example scenarios
 
@@ -1741,8 +1775,8 @@ Tracked as GitHub sub-issues of the epic issue under the "Remote access" milesto
 | RA-10 | docs(cross): document remote access and Tailscale setup                  | done                                                      |
 | RA-11 | feat(cross): suggest remote access URL for MCP OAuth                     | done                                                      |
 | RA-12 | integrated verification and hardware acceptance                          | in-progress                                               |
-| RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin                | code merged (#911, PR #1027); hardware acceptance pending |
-| RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | code merged (#912, PR #1030); hardware acceptance pending |
+| RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin                | delivered; retained acceptance recorded, helper retest A3/A4 pending |
+| RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | delivered; retained wizard acceptance recorded, helper retest A3/A4 pending |
 | RA-15 | feat(cross): add WireGuard client remote access plugin                   | deferred separate feature (#913)                                               |
 | RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | required for current scope (#914), open                     |
 
@@ -1753,8 +1787,8 @@ October work packages (completion plan R1-R8; see the linked plan):
 | R1   | #1156 fix(backend): coordinate Tailscale operations and lifecycle                   | merged (PR #1160)                                            |
 | R2   | #1157 fix(cross): order remote access snapshots and bound status reads              | merged (PR #1161)                                            |
 | R3   | #1158 fix(admin): complete reliable remote access plugin controls                   | merged (PR #1162)                                            |
-| R4   | #910 RA-12: integrated verification and hardware acceptance                         | open (hardware gate, in progress)                            |
-| R5   | #1159 fix(cross): verify Cloudflare lifecycle and remote access flows               | open (Cloudflare lifecycle gate)                             |
+| R4   | #910 RA-12: integrated verification and hardware acceptance                         | open (scoped A1–A5/final reconciliation)                            |
+| R5   | #1159 fix(cross): verify Cloudflare lifecycle and remote access flows               | open (helper-affected A3/A4/final reconciliation)                             |
 | R6   | #914 chore(installer): replace systemd-run sudo grant with fixed helper             | open                                                         |
 | R7   | #913 feat(cross): add WireGuard client remote access plugin                         | deferred separate feature                                                         |
 | R8   | #1354 docs reconciliation and epic close-out                                     | open                                                         |
@@ -1776,9 +1810,10 @@ Disconnect, stale reads/events after Stop, backend and both provider-store order
 cancellation, and starting setup reconciliation without websocket events. See the linked completion
 plan for the evidence, repair packages R1–R8 and provider-specific acceptance gates.
 
-No new hardware acceptance is claimed by this reassessment. The checklist above stays open until
-results are recorded against an identified candidate release. #897, #991, #910, #914 and #913 remain
-open; Cloudflare implementation issues #911/#912 remain closed.
+No new hardware acceptance is claimed by this reconciliation. Retained release evidence remains valid
+at its documented scope; A1–A5 require the final helper candidate. #897, #991, #910, #1159, #914 and
+#1354 remain open for scoped close-out. #913 is separately deferred; Cloudflare implementation issues
+#911/#912 remain closed.
 
 ## 9. AI instructions
 

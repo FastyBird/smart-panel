@@ -1,7 +1,8 @@
 # Remote Access Architecture
 
 This document describes the architecture of the remote-access system in the Smart Panel backend and admin:
-the core `remote-access` module, the provider-plugin contract, and the first provider, `remote-access-tailscale`.
+the core `remote-access` module, the provider-plugin contract, and the delivered Tailscale and Cloudflare
+Tunnel providers. WireGuard is deferred to a separate feature.
 
 ## Overview
 
@@ -13,6 +14,8 @@ IP address, port forwarding, dynamic DNS, or a hand-built reverse proxy. It is s
   never shells out and never knows a provider's binary.
 - **`plugins/remote-access-tailscale`** — the first provider. Wraps the `tailscale` CLI, runs a privileged
   one-time setup job, drives sign-in/sign-out, and manages the node as a `node` managed service.
+- **`plugins/remote-access-cloudflare-tunnel`** — runs an unprivileged `cloudflared` child with a
+  dashboard-managed tunnel token and contributes a configured public HTTPS hostname while connected.
 - **`modules/api`** — gained a proxy-trust boundary (`ClientAddressService` / `TrustedProxyRegistryService`,
   from RA-1) that the whole HTTP/websocket surface uses, and that `remote-access` contributes to rather than
   owning.
@@ -39,7 +42,7 @@ plugins/remote-access-tailscale                    (a provider, registered at on
 ├── TailscaleNodeManagedService                    managed service "node" (start/stop/config/health)
 ├── TailscaleSetupService                          privileged worker (install, enable, grant operator)
 ├── TailscaleLoginService                          sign-in / sign-out / reset-preferences
-└── REST  /api/v1/plugins/remote-access-tailscale/*  status · install · login · logout · reset-preferences
+└── REST  /api/v1/plugins/remote-access-tailscale/*  status · install · connect · disconnect · login · logout · reset-preferences
 ```
 
 Every provider plugin implements `IRemoteAccessProvider` (`apps/backend/src/modules/remote-access/platforms/remote-access-provider.platform.ts`)
@@ -65,7 +68,9 @@ interface IRemoteAccessProvider {
   readonly type: string;                 // plugin type, e.g. 'remote-access-tailscale'
   readonly kind: 'mesh' | 'tunnel' | 'vpn' | 'external';
   readonly capabilities: { https: boolean; publicUrl: boolean; identityHeaders: boolean; ssh: boolean };
-  getStatus(): Promise<RemoteAccessProviderStatus>;
+  getStatus(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<RemoteAccessProviderStatus>;
+  getSnapshot?(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<RemoteAccessProviderSnapshot>;
+  awaitObservationIdle?(): Promise<void>;
 }
 ```
 
@@ -85,16 +90,24 @@ An in-memory `Map<type, IRemoteAccessProvider>`. `register()` throws
 
 **Location:** `apps/backend/src/modules/remote-access/services/remote-access-status.service.ts`
 
-Two read paths that serve different callers:
+Provider observations enter through `RemoteAccessModule.Provider.Observation` or an authoritative
+REST read. The module accepts them before publishing `RemoteAccessModule.Provider.Status`. Each accepted
+provider, aggregate and URL snapshot carries a process `epoch` and increasing `revision`; timestamps
+are informational. Committing the cache before notifying URL and proxy consumers keeps these views coherent.
 
-- `getAggregatedStatuses()` / `getProviderStatus(type)` — live `getStatus()` calls (used by the REST
-  surface). Each call is raced against `REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS` (5s); a provider that
-  never settles, or whose promise rejects, becomes a synthesized `error` entry instead of hanging or failing
-  the whole `Promise.all`. This is a race, not a cancellation — the provider contract has no abort signal,
-  so a timed-out call keeps running in the background and its eventual settlement is ignored.
-- `getCachedStatuses()` — a synchronous, cache-only read fed by the `RemoteAccessModule.Provider.Status`
-  event (`@OnEvent`). Used by `RemoteAccessUrlService`, `RemoteAccessPostureService`, and
-  `RemoteAccessProxyContributionService`, none of which can await a live call from a per-request code path.
+- `getAggregatedStatuses()` / `getProviderStatus(type)` obtain a bounded provider observation. Concurrent
+  requests share the provider's status and requirements work. Provider observations have a six-second
+  budget and the module has a seven-second outer deadline. Abort signals reach CLI reads and Cloudflare
+  metrics HTTP. Work still being reaped retains its observation slot; a timeout cannot create an
+  accumulating queue of replacement reads. Disabled providers retain diagnostics but contribute no
+  endpoints or proxy addresses.
+- `getCachedStatuses()` serves synchronous URL, posture and proxy consumers without starting a live read.
+- Ordinary GETs observe; they do not run node management, operator write probes, Serve/Funnel convergence
+  or privileged setup. Explicit Re-check refreshes read-only requirements. Managed lifecycle/configuration
+  work and background reconciliation own mutations.
+- The admin module and provider stores reject stale revisions, reconcile independent provider/URL
+  snapshots, buffer first-load events and resync through REST on an unknown backend epoch. Reconnection
+  supersedes pending reads. Provider authentication metadata is never broadcast in shared events.
 
 A status is always cached (and returned) under its *registered* type, not whatever `status.type` a
 misbehaving provider's payload claims — `normalizeStatusType()` corrects a mismatch and warns once per
@@ -140,7 +153,8 @@ See [Proxy Trust](#proxy-trust) below.
 - **Ranking** — HTTPS before HTTP, public before private, then original array order (manual URL first, then
   providers in registration order) as the final tiebreaker. `external[0]` is the `primaryExternalUrl`.
 - **Disabled module** — `config.enabled === false` short-circuits to `{ internal, external: [], primaryExternalUrl: null }`
-  without inspecting provider caches at all.
+  without inspecting provider caches at all. This disables the URL/proxy registry contribution, not
+  independently enabled providers. Disable a provider plugin to stop its connection.
 
 ```typescript
 getUrl(options: {
@@ -207,99 +221,135 @@ host could spoof a loopback address to bypass permit-join.
 presents forwarding headers *without being trusted* is, by definition, a proxy: `resolve()` reports
 `ignoredForwardedHeaders: true`, and callers that special-case "genuinely direct" (e.g. the display
 registration guard's localhost bypass) MUST refuse that bypass in that case — otherwise an unrecognised
-local proxy would turn every remote client reaching it into "localhost". A connected Tailscale node is the
-one built-in exception: while `connected`, its `proxyAddresses` (`['127.0.0.1', '::1']` while Serve is
-active) are contributed automatically, because the remote-access module itself controls that endpoint.
+local proxy would turn every remote client reaching it into "localhost". Connected providers contribute their declared local proxy addresses automatically: Tailscale while
+Serve is active and Cloudflare Tunnel while its connector is connected. These contributions disappear
+when the provider disconnects, is disabled, or the module is disabled.
 
 ## Privileged Worker
 
-**Location:** `apps/backend/src/modules/system/services/privileged-worker.service.ts`
+`PrivilegedWorkerService` now selects the installed, fixed root helper for application updates and
+provider setup. Its application-controlled script transport remains available only while that helper
+is absent, so existing installations can be migrated explicitly by a root operator.
 
-Extracted, unchanged in observable behaviour, from `UpdateExecutorService`'s spawn/status-file pattern so any
-privileged, long-running operation (an OS update, Tailscale setup, ...) can reuse it instead of
-re-implementing it:
+**Locations:** `apps/backend/src/modules/system/services/privileged-worker.service.ts`,
+`apps/backend/src/modules/system/scripts/privileged/helper.py` and `install-helper.py`.
 
 ```typescript
 run(spec: {
+  job?: 'update' | 'tailscale-setup' | 'cloudflared-setup';
   unit: string; script: string; args: string[]; env?: Record<string, string>;
   statusFile: string; timeoutMs?: number;                 // default 10 minutes
-  unitType?: 'scope' | 'service';                         // default scope
+  unitType?: 'scope' | 'service';                         // legacy transport only
   mapStatus?: (raw: Record<string, unknown>) => Partial<PrivilegedJobStatus> | null;
-  trackStatusHistory?: boolean;                         // canonical job-scoped history; excludes mapStatus
+  trackStatusHistory?: boolean;                          // excludes mapStatus
 }): Promise<{ id: string }>
 ```
 
-- Spawns `sudo -n systemd-run --scope --unit=<unit> [--setenv K=V ...] bash <script> [...args]`, detached and
-  `unref()`'d by default. The updater opts into `unitType: 'service'`, replacing `--scope` with
-  `--collect --service-type=exec`. Systemd then owns the worker and the sudo launcher exits after exec.
-  A scope keeps that sudo process waiting inside the backend cgroup, causing the updater to wait on
-  its own launcher during writer-quiescence verification. The service mode does not use `--wait`.
-- Tracks progress by polling `statusFile` every 3 seconds. A native script only ever needs to write
-  `{ state: 'running' | 'complete' | 'failed', step?, message? }`; `id`/`updatedAt` are always
-  service-owned, never trusted from the file. `mapStatus` lets a caller with a differently-shaped status file
-  (the update worker's legacy `status`/`phase`/`error` fields) adapt it to that same shape before the
-  service's own terminal-state detection runs. `state: 'timeout'` is reserved for the service itself — a
-  file/mapper tick claiming it is rejected like an unrecognised state.
-- Tailscale setup opts into `trackStatusHistory`. Its atomic snapshot includes the generated
-  `PRIVILEGED_WORKER_JOB_ID` as `jobId` and an append-only history of canonical stage reports.
-  The worker validates the job identity, immutable prefix and terminal ordering before delivering
-  unseen reports in order. History is bounded to 32 entries and the input file to 64 KiB; a previous
-  job's status cannot complete the new job. A directory watcher gives prompt rename notifications,
-  while the three-second poll and durable history cover unavailable/coalesced notifications.
-  Watchers close on terminal results, launch failures and timeout. Legacy snapshot/mapped jobs
-  retain their existing protocol. No delay is added to make fast stages linger on screen: several
-  reports can arrive together, and the UI can render their final completed state in one frame.
-- One job per `unit` at a time (`PrivilegedWorkerUnavailableException` on a second concurrent job); the unit
-  is released only on a terminal state (`complete`/`failed`/`timeout`), a spawn failure, or the child process
-  exiting unsuccessfully before ever reporting completion — never merely because a service launcher
-  exits successfully or the last `onStatus` subscriber unsubscribed. After a service launch is confirmed,
-  polling also checks its systemd state: a stopped/collected worker without terminal status fails promptly.
-  The status file is re-read after that check to preserve a concurrently published terminal result;
-  unavailable or ambiguous probes keep the reservation until the existing timeout path settles it.
-- The updater's internal launch environment supplies `UPDATE_OBSERVER_GID` from the backend's own
-  process group. The root worker grants that group traversal of the attempt directory (0710) and
-  read-only access to each atomically replaced attempt record (0640). The lock stays 0700 and
-  migration logs remain private. No public request selects this group. Invocations without it retain
-  owner-only metadata permissions. On restart, a signal-0 `EPERM` response denotes a live privileged
-  worker rather than an interrupted update; the bounded background observer awaits its durable result.
-- `PlatformService.supportsPrivilegedWorkers()` is `true` for `raspberry`/`generic` with systemd, `false` for
-  `docker`/`home-assistant`/`development`. The Tailscale plugin's own `FB_REMOTE_ACCESS_ALLOW_DEV` override
-  is plugin-local — it never changes the platform capability itself.
-- **`getPrivilegedWorkerSupport()`** is the end-to-end probe every provider's `privileged_setup` field (see
-  [Manual Remedy Contract (D12)](#manual-remedy-contract-d12) below) is sourced from. Rather than only asking
-  `sudo -n -l` whether the policy *would* allow it, it actually runs the exact command every privileged job
-  itself uses — `sudo -n systemd-run --scope --quiet --unit=smart-panel-privileged-probe-<pid> /bin/true` —
-  through the real sudoers grant (`/usr/bin/systemd-run *`, installed by `build/src/installers/linux.ts`'s
-  `createSudoersRule()`). A sudoers rule can permit `-l` while the real invocation still fails for an unrelated
-  reason (a wrong `NOPASSWD` tag, `systemd-run` missing from the elevated `PATH`, dbus unavailable, ...); only
-  actually running the command tells the whole story. The probe's `reason` (`null` when `supported`) is the
-  captured stderr verbatim (e.g. `"sudo: a password is required"`), or the architectural message for a
-  platform with no privileged-worker support at all.
-- **Caching.** A **positive** result is cached for the life of the process — once a privileged job has run
-  successfully there is no operational reason it would stop working. A **negative** result on an otherwise
-  capable platform is cached for only 60 seconds (`PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS`): unlike a
-  positive result, "no" can become "yes" purely from an administrator adding the sudoers grant, and without
-  this short TTL that fix would silently require a full backend restart to take effect — the exact gap
-  hardware acceptance testing hit on 2026-09-07. A platform with no privileged-worker support at all
-  (`docker`/`home-assistant`/`development`) is cached forever too — no sudoers change can ever make it
-  available there. Concurrent callers before the first result share one in-flight probe promise.
-- **Stderr capture on failure.** `PrivilegedWorkerService` itself captures the spawned job's stderr (capped at
-  4 KiB, `STDERR_CAPTURE_LIMIT_BYTES`) whenever the child fails to spawn or exits non-zero before ever
-  reporting completion, and folds it into the job's `stderr`/`message` fields — so a real refusal reason (e.g.
-  sudo itself rejecting the invocation) reaches the admin instead of a bare "Worker process exited with code
-  1".
+- **Protected transport.** The backend calls `sudo -n /usr/local/libexec/smart-panel/helper` with
+  `run-job <job> <generated-UUID>`, adding an exact release version only for `update`. The helper runs Python
+  in isolated mode and selects its worker from `/usr/local/libexec/smart-panel/jobs/`, using the
+  root-owned `/usr/local/libexec/smart-panel/config.json`. Helper code, workers, configuration and
+  their ancestors must be root-owned, without group/world write access or symlinks. The caller
+  cannot select a script, unit, filesystem path, environment assignment, maintenance mode or
+  command. The backend ignores its legacy `unit`, `script`, `env` and `statusFile` values in helper
+  mode; setup accepts no arguments and updates accept one validated version.
+- **Manager ownership.** The helper uses fixed transient services with `--collect --service-type=exec`,
+  `KillMode=control-group`, bounded runtime and stop timeouts, and a cleared environment. It derives
+  service identity, data/config/database paths and loopback health settings from protected
+  configuration. The root helper exits after launch; the manager owns the worker outside the backend
+  sandbox and cgroup. The update worker can therefore stop the backend and verify writer quiescence
+  without waiting on its own launching sudo process. The job launch does not use `--wait`.
 
-`TailscaleSetupService.install()` (RA-5) calls `run()` with `scripts/tailscale-setup.sh`
-(`apps/backend/src/plugins/remote-access-tailscale/scripts/tailscale-setup.sh`, bundled via `nest-cli.json`
-assets) and forwards every `onStatus()` tick as a `RemoteAccessModule.Setup.Progress` event.
+| Job | Fixed systemd service | Status under `/var/lib/smart-panel-privileged/` |
+| --- | --- | --- |
+| `update` | `smart-panel-update.service` | `update-status.json` |
+| `tailscale-setup` | `smart-panel-remote-access.service` | `tailscale-setup-status.json` |
+| `cloudflared-setup` | `smart-panel-remote-access-cloudflare.service` | `cloudflare-tunnel-setup-status.json` |
+
+- **Root state and identity.** The helper owns `/var/lib/smart-panel-privileged/`, serializes its
+  commands with a private lock, records the generated operation UUID, and removes the previous
+  job's status before launch. Status files include `jobId`; the backend accepts helper status only
+  when it matches the current job. It polls every three seconds, bounds helper status reads to
+  64 KiB, and owns the public `id` and `updatedAt` fields. `mapStatus` adapts the updater's
+  `status`/`phase`/`error` fields. A file cannot claim the service-reserved `timeout` state.
+- **Durable setup history.** Tailscale setup uses `trackStatusHistory`: an atomic snapshot carries
+  `jobId` plus at most 32 canonical stage reports. The backend validates the immutable prefix and
+  terminal ordering, then delivers unseen reports in order. A directory watcher covers atomic
+  renames; polling and durable history cover missed or coalesced notifications. Several fast stages
+  can arrive together without introducing artificial delays. Cloudflare setup uses a job-bound
+  snapshot; both providers forward accepted status through `RemoteAccessModule.Setup.Progress`.
+- **Settlement and timeout.** The backend reserves each unit until settlement, independently of
+  subscriber lifetimes. A successful service launcher exit is not completion. A stopped service
+  without a terminal status fails after a final status read. Timeout calls the fixed helper's
+  `stop-job <job> <UUID>`; the helper refuses a stale identity. An uncertain or still-active systemd
+  probe keeps the helper job reserved. The root helper also rejects overlapping operations across
+  all three fixed units and unresolved updater recovery state, including across backend restarts.
+  Failed launch stderr is captured up to 4 KiB and exposed through the job's diagnostic fields.
+- **Updater recovery.** Attempt metadata lives in the protected `update-attempt/` directory. The
+  helper derives `UPDATE_OBSERVER_GID` from the installed service account; the updater grants group
+  traversal (0710) and read-only attempt records (0640), while its lock and migration evidence stay
+  private. The backend reads this state without writing it. On restart, signal-0 `EPERM` still
+  denotes a live root worker, and one bounded observer awaits durable settlement. Malformed or
+  unresolved recovery metadata fails closed. `clear-update-status` acknowledges terminal state
+  only after the fixed updater unit is inactive and no recovery hold remains; it never bypasses a
+  hold. Completion can precede unit exit, so a refused acknowledgement leaves the successful result
+  and durable evidence for later reconciliation.
+- **Capability probe.** `PlatformService.getPrivilegedWorkerSupport()` calls
+  `sudo -n /usr/local/libexec/smart-panel/helper probe`. The helper validates its protected workers
+  and executes a harmless bounded manager-owned job before returning protocol version 1 and the
+  three supported operations. The backend requires that version and every required operation.
+  A present but broken, unreadable, incompatible or refused helper makes privileged setup unavailable;
+  it never activates the legacy transport. Helper presence also invalidates a cached legacy result,
+  including a legacy probe that was already in flight. Positive results otherwise remain cached;
+  negative results on capable platforms expire after 60 seconds, and concurrent callers share a
+  probe. Docker, Home Assistant and development remain unsupported without probing; Tailscale's
+  `FB_REMOTE_ACCESS_ALLOW_DEV` override remains plugin-local.
+- **Legacy compatibility.** Only when the helper path is absent does support discovery retain the
+  real `sudo -n systemd-run --scope ... /bin/true` probe and the previous script/environment launch
+  contract. Existing update and setup callers use independent service units; legacy status paths
+  remain below their existing application data directories. The legacy result is identified
+  internally without changing the provider API models. An application release update alone does
+  not grant the backend permission to install the protected helper or rewrite sudo policy.
+
+The backend keeps `ProtectSystem=strict`. A root-owned systemd drop-in permits the helper's state
+directory as a writable mount for the inherited sudo namespace; root ownership and mode 02750 still
+prevent the application UID from writing there. Migration reloads systemd, and the CLI restarts an
+already active backend to activate that mount exception. An inactive backend stays inactive.
+
+New npm service installations and image builds provision the helper from a trusted root-owned
+release and replace the Smart Panel policy's broad legacy grants. Existing installations require
+an explicit root migration while privileged jobs are idle and no unresolved update attempt remains:
+`sudo smart-panel-service migrate-privileges` for an npm installation, or
+`sudo smart-panel-service migrate-privileges --install-type image --backend-root /root/trusted-backend-release`
+for an image installation. The image source must be a separately verified, root-protected extracted
+release containing `dist/`; an existing service-owned `current` tree is not a trusted source. Changing
+ownership of previously service-writable application code cannot establish its provenance. Migration
+also protects the image installation parent while preserving the historical release and recovery
+evidence. The helper and worker behavior still require representative Linux/systemd and device
+acceptance before a deployment is treated as verified.
+
+### Helper validation
+
+The backend Jest suites cover transport selection, incompatible probes, job-bound status and recovery.
+`modules/system/scripts/privileged/test_helper.py` additionally exercises the parser, clean environment,
+trusted paths, cancellation identity, terminal acknowledgement and migration holds. Its filesystem cases
+require Linux root; run them in a disposable container, not by elevating the whole test runner on a host.
+`test_install_helper.py` deliberately requires a disposable Docker container and
+`SMART_PANEL_HELPER_CONTAINER_TEST=1`: it installs a real policy, runs `visudo` and `sudo`, checks
+service-account permissions, and proves untrusted source/configuration cannot replace the policy.
+`build/tests/update-worker-permissions.py` covers extraction under umask 0027, service-account readability
+and ownership restoration after failed native builds. These automated results complement, rather than
+replace, final systemd/update/provider acceptance on the released candidate.
 
 ## Image update migration runbook
 
 ### Stopped-service maintenance mode
 
-The release worker defaults to `UPDATE_START_MODE=running-service`; the public update executor
-always sets that value explicitly. Operators may use `UPDATE_START_MODE=stopped-maintenance` only
-with a reviewed, private identity packet. An already inactive or failed installed service uses the
+The release worker defaults to `UPDATE_START_MODE=running-service`. The protected helper fixes
+that value from its root-owned launch contract; the legacy public update executor sets it explicitly.
+The compatibility procedure below invokes a reviewed worker directly as an operator; it is not a
+helper command. Operators may use `UPDATE_START_MODE=stopped-maintenance` only with a reviewed,
+private identity packet. An already inactive or failed installed service uses the
 original stopped entry. For an eligible active service, the approved operator procedure first owns
 the exact `smart-panel-update.scope` collision domain outside `smart-panel.service`, verifies the
 installed release, updater/lock, service and database identities, then records and issues exactly one
@@ -309,9 +359,11 @@ the service later appears stopped. There is no automatic retry, force kill or re
 release. This is not an API option or a recovery retry.
 
 Before invoking the released worker, retain the exact target archive and worker SHA-256 values and
-the expected current version, image base, status/attempt paths and database path. The supported image
-unit retains `KillMode=process`; its independent manager/cgroup checks and the operator's captured
-process roster remain necessary after the ordinary stop. The worker verifies
+the expected current version, image base, status/attempt paths and database path. Newly generated
+application and helper worker units use `KillMode=control-group`. Historical image
+units may retain `KillMode=process`; the captured unit configuration is part of the recovery evidence.
+Independent manager/cgroup checks and the operator's captured process roster remain necessary after
+the ordinary stop under either configuration. The worker verifies
 the canonical `current` link, systemd `ActiveState`, `MainPID`, `ControlPID`, pending job state,
 systemd Manager process enumeration and the cgroup-v2 subtree. Manager replies must have the
 expected typed array and complete tuples; blank, malformed, unknown-unit or failed replies are
@@ -333,10 +385,12 @@ and completion. Do not pass `UPDATE_START_MODE` through the backend API or an am
 environment. The complete active-stop and already-stopped paths require real Linux/systemd integration
 with the compiled target and representative SQLite data before staging use.
 
-Image updates use a durable, owner-only attempt record beside the public status file. The worker takes an atomic
-installation lock before download/extraction and rejects a concurrent or unresolved attempt. The record survives a
-backend restart and target-directory cleanup; an old timestamp or missing lock is never treated as proof that a
-migration did not commit.
+Image updates use a durable, root-written attempt record beside the public status file. In helper
+mode both live under `/var/lib/smart-panel-privileged/`, with read-only metadata access for the backend;
+legacy/operator invocations retain their existing status/attempt paths and permissions. The worker
+takes an atomic installation lock before download/extraction and rejects a concurrent or unresolved
+attempt. The record survives a backend restart and target-directory cleanup; an old timestamp or
+missing lock is never treated as proof that a migration did not commit.
 
 Before changing the `current` symlink or invoking the target release's TypeORM CLI and `dist/dataSource.js`, the
 worker stops the exact service and verifies `ActiveState=inactive|failed`, `MainPID=0`, `ControlPID=0` and an empty
@@ -358,7 +412,8 @@ The backend does not wait for an active worker to settle from a Nest initializat
 the platform and observes the owner-bound attempt in one bounded, cancellable background task. This prevents the
 restarted target from waiting on the worker while the worker waits for the target health route. The observer never
 signals the worker, extends its deadline, clears a recovery hold or treats a later HTTP response as ordinary update
-completion. Image launches must provide the local loopback health route
+completion. The helper derives the local loopback health route from protected configuration; legacy
+image launches must provide that route explicitly:
 `/api/v1/modules/system/system/health`; readiness requires a parsed `data.status = 'ok'`, the expected target
 version, a stable service main-PID/start identity and a resolved `current` release path.
 
@@ -384,8 +439,8 @@ restore. Any state outside those verified prerequisites stops the update and req
 
 ## Manual Remedy Contract (D12)
 
-Every provider plugin — Tailscale today, the milestone-2 Cloudflare Tunnel and milestone-3 WireGuard plugins
-later — surfaces its own prerequisite checklist and privileged-setup availability through the same shape, so
+Both delivered provider plugins — Tailscale and Cloudflare Tunnel —
+surface their prerequisite checklists and privileged-setup availability through the same shape, so
 the admin UI and the setup wizard need exactly one rendering path regardless of provider. This is a rule every
 future provider plugin must follow, not a Tailscale-only convention:
 
@@ -463,72 +518,47 @@ CLI-level failures are classified before they ever reach the mapper: `not-instal
 `permission-denied` → `'setup-required'` ("The smart-panel operator has not been granted on tailscaled."),
 `daemon-down` → `'setup-required'` ("The Tailscale daemon is not running."), anything else → `'error'`.
 
-- **`start()`** never authenticates a node that has never signed in — it only re-applies preferences
-  (`tailscale set`) and brings an already-keyed node up (`tailscale up`) when `evaluateRequirements()`
-  passes and `mapper.hasExistingKey(status)` is true. It schedules the poller
-  (`TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS` = 5s while the state is settling,
-  `TAILSCALE_POLL_INTERVAL_STABLE_MS` = 30s once stable) and only emits `PROVIDER_STATUS` when the mapped
-  status actually changed since the last tick.
-- **`stop()`** clears the poller first, then runs `tailscale down` — never `tailscale logout`. `down` succeeding,
-  or failing with one of the tolerated "nothing to bring down" outcomes (`needs-login`, `daemon-down`,
-  `not-installed`, or the backend already reporting `Stopped` regardless of why `down` itself failed),
-  transitions the managed service's own lifecycle state (`this.state`, distinct from the daemon's
-  `BackendState`) to `stopped`. Any other failure (`permission-denied`, `timeout`, `unknown`, or a
-  non-`TailscaleCliError`) transitions to `error`, records `lastError`, and throws
-  `TailscaleNodeStopFailedException` after still reporting the status (see Lifecycle events below).
-  `computeStatus()` reads `this.state` first (D2) and short-circuits to `disconnected` (empty
-  `endpoints`/`proxyAddresses`) while `stopped`/`stopping`, or to `error` with the recorded message while
-  `error` — instead of trusting whatever the daemon last reported. Serve is only ever applied while the mapped
-  state is `connected` (see [Serve, Funnel, and Advisories](#serve-funnel-and-advisories) below), so a stopped
-  node never carries a stale Serve endpoint either.
-- **Lifecycle events.** `PROVIDER_STATUS` is emitted from three places: the poller's own tick (gated on
-  `hasStatusChanged()`), `start()` (schedules an immediate tick via `schedulePoll(0)`, and additionally emits
-  directly from its `catch` block when `set`/`up` fails, so a failed start is visible immediately rather than
-  waiting for that first tick), and `stop()` (emits directly at the end of both the tolerated-success and the
-  thrown-failure paths). A stopped/errored node's status is therefore visible to the rest of the system the
-  moment `stop()` returns or throws — not only on the next live read or poller tick.
-- **`onConfigChanged()`** diffs the cached `login_server`: a change signs the node out (best-effort) and
-  reports `{ restartRequired: true }` so it re-authenticates against the new control plane instead of
-  silently keeping a key from the old one. Every other preference change is applied in place via
-  `tailscale set` and reports `{ restartRequired: false }`.
-- **`isHealthy()`** is `BackendState === 'Running' && Self.Online === true`, from a fresh `getStatus()` call
-  (no network probe).
-- **`factoryReset()`** (registered with `FactoryResetRegistryService`, priority 90) best-effort resets Serve
-  configuration, then logs out; a node that was never installed or never signed in still reports success,
-  since the desired end state (no tailnet state) already holds.
-- **`buildPreferenceFlags(config)`** — `--hostname=`, `--accept-dns=`, `--accept-routes=`,
-  `--advertise-tags=`, `--ssh=`, `--operator=<service user>`. **`buildUpFlags(config)`** adds
-  `--login-server=`. `tailscale up` is always called with this complete managed set, never `--reset`, so a
-  preference changed by hand outside Smart Panel surfaces as `settings-conflict` instead of being silently
-  overwritten; the explicit "Reset preferences" action (RA-5, `TailscaleLoginService.resetPreferences()`)
-  runs `up --reset` with the same flag set. Both flag builders are `public` so `TailscaleLoginService`'s
-  sign-in flows reuse them instead of re-deriving the same set.
+- **Lifecycle and authentication are separate.** Provider administrative status includes managed lifecycle,
+  authentication, the current operation and allowed actions. Disconnect preserves authentication and offers
+  Connect again. Plugin enablement is persistent ownership: a manual Disconnect stops this session;
+  disabling the plugin prevents automatic start after an application restart.
+- **Connect** starts a stopped supervisor or reconciles an already-started disconnected node. Repeated
+  Connect/Disconnect converges safely. The provider's `POST /connect` and `POST /disconnect` implement this
+  behavior; generic Extensions start/stop semantics remain available separately.
+- **Operation ownership.** Node, login and Serve mutations share `TailscaleOperationCoordinatorService`.
+  Stop, disable and shutdown invalidate the lifecycle generation, cancel and reap login/management children,
+  and suppress stale results/retries. Logout cancels work before revoking authentication; reset cancels work
+  before clearing Serve and login state. A delayed observation cannot publish Connected after a newer stop.
+- **`stop()`** runs `tailscale down`, never logout. Missing installation/login/daemon or an already stopped
+  daemon can satisfy the stopped end state. Other failures record an error and throw
+  `TailscaleNodeStopFailedException`; status and endpoint/proxy withdrawal reflect the managed lifecycle.
+- **Observations and reconciliation.** GET reads lifecycle, authentication, requirements and daemon/Serve
+  state together. The poller reconciles managed state and emits internal provider observations when it
+  changes. Polling is five seconds during transitions and thirty seconds when stable. A failed action is
+  observed promptly, and only the module emits accepted, ordered public status events.
+- **Preferences.** `buildPreferenceFlags()` includes hostname, accept-DNS, accept-routes, SSH and operator,
+  which are supported by `tailscale set`. `buildUpFlags()` additionally includes advertise-tags and
+  login-server. Reconnecting uses flagless `up` when those up-only preferences already match, preserving
+  compatible unmanaged preferences. Changed or unverifiable up-only preferences require complete managed
+  flags and retain Tailscale's settings-conflict refusal. Only explicit Reset preferences uses `up --reset`.
+- A login-server change signs out for reauthentication against the new control plane. Ordinary config changes
+  apply the appropriate supported flags and reconcile Serve within the same operation ownership.
+- **`factoryReset()`** stops/cancels work, clears Serve and logs out. No tailnet login remains afterward;
+  this does not imply deletion of a non-ephemeral node from the vendor console.
 
 ### Requirements
 
-`refreshRequirements(reason)` re-evaluates, in order: `platform-supported` (short-circuits the rest to "not
-evaluated" if it fails), then `binary-installed`+`version-supported`, `daemon-active`, and `operator-granted`
-in parallel, caching the result for `getRequirements()`/`GET /status` to read. Every reason except the
-poller's own `'periodic'` (`'start'`, `'permission-denied'`, `'setup-complete'`, `'status-read'` — all rare,
-admin/lifecycle-triggered events, used by `start()`/`onConfigChanged()` gating among others) always performs a
-fresh evaluation; `'periodic'` is throttled to at most once every five minutes, so the steady-state poll stays
-at one `status --json` call per tick instead of also paying for the operator check's own extra CLI calls on
-every tick. `evaluateRequirements()` is a backward-compatible alias that always forces a fresh
-(`'status-read'`) evaluation. `daemon-active` is checked unprivileged (`systemctl is-active tailscaled`),
-needing no sudo.
+A full observation refreshes read-only requirements: platform support, binary/version, daemon activity
+and operator grant. Unsupported platforms short-circuit remaining requirements to unevaluated. Concurrent
+checks share one observation; explicit Re-check and normal polls observe the current prerequisites.
+`systemctl is-active tailscaled` is unprivileged.
 
-**Operator grant (D1).** `operator-granted` is verified via `tailscale debug prefs`
-(`OperatorUser === os.userInfo().username`) rather than trusting a plain `status --json` call succeeding —
-that call is read-only and succeeds for *any* local user regardless of the operator grant (`ipnauth.IsReadonlyConn`
-upstream), which is exactly the false positive this check exists to close. `debug` is an unstable namespace
-across Tailscale releases, so a `debug prefs` call that fails outright or whose output cannot be parsed falls
-back to an idempotent **write probe** instead: `tailscale set --operator=<service user>`, harmless for the
-current operator (it just re-asserts the same grant) and `permission-denied` for anyone else. Either path is
-authoritative; the write-probe fallback exists purely for the case where `debug prefs` itself is unavailable,
-not as a weaker substitute check. A `permission-denied` result means the setup script's `--operator=` step is
-still missing (or was lost, e.g. by reinstalling `tailscaled`) — re-running **Set up** (idempotent), or
-running the one-line remedy `GET /status` returns for this requirement
-(`sudo tailscale set --operator=<service user>`), is the fix.
+**Operator grant.** `tailscale debug prefs` checks `OperatorUser` against the actual service user. A readable
+`tailscale status --json` alone is insufficient because any local user can read it. On CLI variants where
+prefs cannot be read, an idempotent `tailscale set --operator=<service user>` probe belongs only to explicit
+setup/action reconciliation, never periodic or GET status reads. Missing grants carry the exact manual
+remedy; rerun Set up or apply that command, then Re-check. Authentication logout can discard the profile
+and its operator grant, requiring this repair before the next sign-in.
 
 **Manual remedy (D12).** Every unsatisfied requirement carries a `remedy: { commands, note }` (`null` once
 satisfied) — see [Manual Remedy Contract (D12)](#manual-remedy-contract-d12) above for the shape every
@@ -563,16 +593,10 @@ this advisory computation on top, per the design spec:
 Commands: `tailscale serve --bg --https=443 --set-path=/ http://127.0.0.1:<port>`, `serve reset`,
 `serve status --json`, `funnel 443 on|off`, `funnel status --json`.
 
-**Convergence timing.** `TailscaleServeService.apply()` runs from two call sites, both inside
-`TailscaleNodeManagedService`: once per `computeStatus()` call, gated on `mapped.state === 'connected'`
-(`Self.CapMap`/`Self.DNSName` are only meaningful then); and once, immediately, from `onConfigChanged()` —
-the latter builds its own live status directly (`getStatusOrNull()` + its own `mapper.map()` call) rather than
-calling `computeStatus()`, so a config change converges Serve/Funnel without waiting for the next poll tick.
-`computeStatus()` itself is reached both by the poller's tick **and** by every live status read
-(`TailscaleProviderService.getStatus()`, which backs both this plugin's own `GET status` and the remote-access
-module's aggregated/live status calls) — so opening the Remote access page, or any live poll of `GET status`,
-also re-applies and self-heals a drifted Serve/Funnel handler, exactly like a poll tick. A plain cache read
-(`RemoteAccessStatusService.getCachedStatuses()`) never triggers it — only a live call does.
+**Convergence timing.** Managed actions, configuration changes and background polling reconcile
+Serve/Funnel while the node is connected. `computeStatus()` and provider/module GETs read the actual Serve
+state without applying it. Opening the page therefore cannot mutate Serve, Funnel or node preferences.
+Lifecycle generation checks prevent old reads or reconciliation from restoring endpoints after stop.
 
 ### Setup Script
 
@@ -612,7 +636,8 @@ granted; without the flag, the provider reports `unsupported` on `development`.
 - **`privileged_setup`** (`RemoteAccessTailscalePluginPrivilegedSetupModel`) — `{ available, reason }`, see
   [Manual Remedy Contract (D12)](#manual-remedy-contract-d12) above.
 
-`SetupController`'s four mutating actions (`install`, `login`, `logout`, `reset-preferences`) map failures to
+`SetupController`'s mutating actions (`install`, `connect`, `disconnect`, `login`, `logout`,
+`reset-preferences`) map expected failures to
 either `409 Conflict` (a transient condition — retry once it clears) or `422 Unprocessable Entity` (a
 permanent refusal — fix the installation first):
 
@@ -626,22 +651,50 @@ permanent refusal — fix the installation first):
 | 422 | `platform-unsupported` | `install` was called on a platform that cannot run privileged workers at all, or is blocked by the `FB_REMOTE_ACCESS_ALLOW_DEV` override |
 | 422 | `privileged-worker-unavailable` | `install` was called on a capable platform whose privileged-worker probe currently fails (e.g. a missing sudoers grant) |
 
-Every case carries a `message` with actionable "here's the fix" text (e.g. "Re-run `sudo smart-panel-service
-install`, or add the sudoers grant from the installation guide."). The target wire contract (RA-27, #996,
-epic decision D13) puts the machine-readable code at `error.details.code`, with the human message duplicated
-at `error.details.reason`, in every environment, for both 409 and 422 responses; the two 409s with no `code`
-above are string-thrown `ConflictException`s and, under that same contract, always yield `details.reason`
-only, never `details.code`. As of this writing that contract is not fully in place yet: `GlobalErrorFilter`
-— the only filter in the chain that would otherwise see these 409s — currently masks `error.details` down to
-a generic `{ reason }` in production, so only a non-production request observes `error.details.code` today
-(see the `mapActionError()` doc comment on `SetupController` for the exact gap). #996 closes it by adding
-dedicated `ConflictException`/`UnprocessableEntityException` filters.
+Operation failures also use 409 with `operation-cancelled`, `operation-in-progress`, `plugin-disabled`,
+`child-termination-failed` or `disconnect-failed` as appropriate. Unexpected CLI failures remain 500.
+The action error contract preserves machine-readable codes at `error.details.code` and human reasons at
+`error.details.reason` in production and development. Dedicated `ConflictException` and
+`UnprocessableEntityException` filters preserve these safe structured details. String-thrown conflicts
+have a reason but no invented code. Setup is owner-only; status, Connect, Disconnect and sign-in allow
+owner/admin; logout and preference reset remain owner-only. Authentication-bearing responses use
+`Cache-Control: no-store`.
+
+## Cloudflare Tunnel Plugin
+
+**Location:** `apps/backend/src/plugins/remote-access-cloudflare-tunnel/`.
+
+The plugin supports Raspberry Pi and generic host deployments. Docker, Home Assistant and development
+platforms report unsupported. Requirements cover platform, `cloudflared` installation/version (minimum
+`2024.1.0`) and a configured tunnel token. Each unmet requirement carries a manual remedy; Re-check can
+advance manual installation without a prior privileged job.
+
+- The owner-only install action installs the signed vendor package through an independent systemd service,
+  outside the backend's read-only mount namespace. It does not install a persistent root connector service.
+- The `tunnel` managed service owns one unprivileged `cloudflared` child. The persisted token is accepted
+  on configuration writes and omitted from reads; reads expose only `tunnel_token_configured`. The child
+  receives it through `TUNNEL_TOKEN`, never a command-line argument, and captured stderr is redacted.
+- Token/protocol changes restart the owned connector; a public-hostname-only change refreshes endpoints.
+  Stop invalidates observations and polling, terminates the child with bounded SIGTERM/SIGKILL escalation,
+  and retains ownership until it is reaped. Failed stop cannot start a duplicate connector. Background
+  reconciliation recovers a crashed child while the managed service remains started.
+- Local `/ready` establishes edge connectivity. It does not verify DNS, public TLS or the origin route.
+  Connected status publishes `https://<public_hostname>` only when a hostname is configured, and
+  contributes loopback proxy addresses. The hostname is configured separately in Cloudflare to route
+  to this Smart Panel origin; end-to-end HTTPS/login/WebSocket checks remain distinct acceptance evidence.
+- Reset stops the service and clears its token/hostname through configuration. Removing the token also
+  withdraws endpoints; resetting local configuration does not delete the dashboard-managed tunnel.
+- Provider status and admin stores use the same generation, bounded observation and ordered module
+  publication contracts as Tailscale. Setup progress is observed through events with REST fallback.
 
 ## Events
 
+`RemoteAccessModule.Provider.Observation` is an internal publication input. It is accepted/versioned
+by the module before the admin-only events below are emitted.
+
 | Event | Payload | Routing |
 | --- | --- | --- |
-| `RemoteAccessModule.Provider.Status` | full `RemoteAccessProviderStatus` (never an auth URL, QR, or key) | admin room only |
+| `RemoteAccessModule.Provider.Status` | accepted status with `enabled`, `epoch`, `revision` (never an auth URL, QR, or key) | admin room only |
 | `RemoteAccessModule.Urls.Changed` | `{ internal, external, primaryExternalUrl }` | admin room only |
 | `RemoteAccessModule.Setup.Progress` | `{ type, job, step?, state, message? }` | admin room only |
 

@@ -5,14 +5,15 @@ import { Callout, Cards, Steps } from 'nextra/components'
 Remote access lets you reach a Smart Panel installation from outside your home network — a phone on
 cellular, a laptop at work — without port forwarding, a public IP address, dynamic DNS, or a hand-built
 reverse proxy. It ships as a core **Remote access** module that tracks how the installation is reachable,
-plus provider plugins that do the actual connecting. The first provider is **Tailscale**.
+plus provider plugins that do the actual connecting. The available providers are **Tailscale** and
+**Cloudflare Tunnel**.
 
 <Callout type="info">
 	Remote access never opens a port on your router and never gives your installation a public IP address.
 	Tailscale connects it to a private mesh network and stays private unless you explicitly turn on
 	[Funnel](#funnel-optional) — the only way the Tailscale provider exposes anything publicly. A manually
-	configured [external URL](#external-url-baseline) — your own reverse proxy or dynamic DNS — is the other
-	way an installation becomes publicly reachable.
+	configured [external URL](#external-url-baseline) or [Cloudflare Tunnel](#set-up-cloudflare-tunnel)
+	can also make an installation publicly reachable.
 </Callout>
 
 ---
@@ -41,6 +42,9 @@ credentials, query, or fragment.
 	<Cards.Card title="Tailscale (recommended)" href="#set-up-tailscale">
 		Sign in from a browser link or QR code. No account on your router, no public exposure by default,
 		free tier is enough for a household.
+	</Cards.Card>
+	<Cards.Card title="Cloudflare Tunnel" href="#set-up-cloudflare-tunnel">
+		Publish a dashboard-managed tunnel at your own public hostname. Remote clients need only a browser.
 	</Cards.Card>
 	<Cards.Card title="External URL Baseline" href="#external-url-baseline">
 		Already run your own reverse proxy or dynamic DNS? Register the URL directly — no provider plugin
@@ -71,8 +75,9 @@ that update live as things change, without a reload:
 
 The module's own settings — `internal_url`, `external_url`, `trust_forwarded_headers`, and
 `trusted_proxies` — live under **Config → Modules → Remote access**. The Remote access module is a core
-module but, unlike some others, can be enabled or disabled from the **Extensions** page; disabling it stops
-every provider and leaves only the internal URL resolvable.
+module but, unlike some others, can be enabled or disabled from the **Extensions** page. Disabling it
+removes external URLs and proxy-trust contributions, leaving the internal URL resolvable. Provider plugins
+have their own enablement: disable a provider in Extensions to stop its connection.
 
 ---
 
@@ -98,7 +103,7 @@ exposure.
 <Steps>
 	### Set up
 
-	Open the Tailscale provider card and choose **Set up**. This runs a one-time, privileged job: it installs
+	As the owner, open the Tailscale provider card and choose **Set up**. This runs a one-time, privileged job: it installs
 	the `tailscale` package if it isn't already present, enables the `tailscaled` daemon, and grants the
 	Smart Panel service user as the Tailscale operator so the backend can manage the connection without
 	further sudo prompts. Progress streams to the card live. The step is idempotent — safe to re-run if it
@@ -140,8 +145,10 @@ exposure.
 
 	### Tailscale SSH (optional)
 
-	Turning on Tailscale SSH lets an administrator open a shell on the installation over the tailnet, without
-	opening any port for it. It's off by default.
+	Turning on Tailscale SSH lets an administrator open a shell over the tailnet, subject to the tailnet
+	SSH policy and any required authentication check. Use an existing OS account with a login shell;
+	the `smart-panel` service account does not provide one. It is off by default. Turning it off disables
+	Tailscale SSH and does not stop the separate system OpenSSH service.
 </Steps>
 
 Hostname, the control-plane URL (for a self-hosted Headscale server), accepting the tailnet's DNS and
@@ -150,13 +157,18 @@ Tailscale**.
 
 ### Connect, Disconnect, and Sign Out
 
-Day-to-day, the Tailscale node is managed like any other extension service:
+The provider card distinguishes connection, authentication and the current operation:
 
+- **Connect** starts or reconnects an authenticated node. **Disconnect** stops the current session and
+  retains authentication. The card offers Connect again once the operation settles. A manually disconnected
+  node can start again after an application restart; disable the plugin for a persistent choice.
 - **Extensions → Services** lists `remote-access-tailscale-plugin / node`. **Start**, **Stop**, and
   **Restart** behave as connect, disconnect, and reconnect. Disabling the Tailscale plugin from the
   Extensions page disconnects the node the same way.
 - **Sign out**, from the Remote access page, is a separate, explicit action: it expires the node's key and
-  removes the device from your tailnet entirely. It never happens as a side effect of disconnecting.
+  stops authenticated tailnet access. A non-ephemeral device can remain listed in the Tailscale console;
+  delete that listing there if needed. Sign out never happens as a side effect of disconnecting. Signing
+  out can discard the operator grant: run Set up again if the card reports it missing.
 - **Reset preferences** re-applies Smart Panel's complete set of managed settings, clearing anything changed
   by hand outside Smart Panel (for example, at the command line on the host).
 - A **factory reset** of the installation signs the node out and clears its Serve configuration along with
@@ -164,11 +176,64 @@ Day-to-day, the Tailscale node is managed like any other extension service:
 
 ---
 
+## Set Up Cloudflare Tunnel
+
+Cloudflare Tunnel publishes Smart Panel at a public HTTPS hostname without router port forwarding.
+It runs on Raspberry Pi and generic host installations. You need a Cloudflare-managed domain and a
+remotely managed tunnel in the Cloudflare dashboard.
+
+<Steps>
+	### Prepare the public route
+
+	Create a tunnel and configure its public hostname, such as `panel.example.com`, to forward to this
+	installation's HTTP origin, normally `http://localhost:3000`. Use the actual backend port if you changed
+	it. Check that the hostname's DNS record exists and points to the tunnel. Smart Panel does not create
+	the dashboard tunnel, DNS record or public route for you.
+
+	### Install cloudflared
+
+	Enable **Cloudflare Tunnel** in Extensions, open its provider card and choose **Set up** as the owner.
+	Start setup installs `cloudflared` from the signed vendor package repository. If privileged setup is
+	unavailable, use **Run it yourself**, apply the displayed commands and choose **Re-check**. Once the
+	package requirements pass, the wizard advances to Token and hostname without requiring a saved token.
+
+	### Configure the connector
+
+	Copy the tunnel token from the dashboard into the token field and enter the public hostname only,
+	without `https://` or a path. Save the configuration. The token is stored for future reconnects but is
+	not returned in configuration reads. Keep the default Auto transport unless your network requires a
+	specific transport. The connector runs under the Smart Panel service user.
+
+	### Verify public access
+
+	Connected means the connector has an active connection to Cloudflare's edge. It does not prove that
+	DNS or the public route reaches this installation. Open the public HTTPS URL from outside the LAN,
+	check normal certificate validation, sign in and confirm that live updates work. A configured hostname
+	is published as a public endpoint while connected and may become the primary external URL.
+
+</Steps>
+
+Cloudflare makes the route public: Smart Panel authentication still protects the admin/API. Review any
+additional access policy in your Cloudflare account separately. The plugin does not provide identity-header
+single sign-on.
+
+Use the card's service controls or disable the plugin in Extensions to stop its connector and withdraw
+its endpoints. To rotate credentials, save a replacement token; the connector restarts with it. Remove
+credentials explicitly to stop using them. **Remove tunnel** stops the connector and clears its local token and
+hostname; it does not delete the dashboard tunnel or DNS record. The package remains installed.
+
+If Connected has no URL, configure the public hostname. If the URL fails while Connected, check DNS,
+the dashboard route and origin port before reinstalling the package. For a rejected or revoked token,
+replace it with the current token from the dashboard. Setup progress uses live events with status polling
+as a fallback, so an interrupted browser connection can recover without repeating installation.
+
+---
+
 ## Manual Setup
 
 **Set up** normally runs unattended, as a privileged one-time job. If it's unavailable on this installation
 (see [Set up cannot run](#set-up-cannot-run) below) — or you simply prefer to prepare the system yourself —
-every requirement Smart Panel checks for has an exact console command behind it. **Preparing a provider
+each unmet requirement shows its manual remedy, with a console command or documentation link. **Preparing a provider
 entirely this way is fully supported, not just tolerated:** once every requirement is satisfied, Smart Panel
 picks up the node exactly as if its own **Set up** action had run.
 
@@ -205,11 +270,12 @@ access page:
 	```
 
 	Replace `smart-panel` with your installation's actual service user if you changed it during installation.
+
 </Steps>
 
-Once all three are done — and the node is signed in, either with `sudo tailscale up` or through Smart Panel's
-own **Sign in** step — open the Remote access page: Smart Panel reports the node as connected without any
-further action.
+Once all three are done, choose **Re-check**. An already authenticated node can be adopted without
+signing out; otherwise use Smart Panel's **Sign in** step. If you intentionally disconnected the managed
+service, choose **Connect** to resume it.
 
 ---
 
@@ -245,12 +311,14 @@ Add the proxy's address — the one Smart Panel actually sees as the connection'
 balancer further upstream — to **Trusted proxies** and turn on **Trust forwarded headers**.
 
 <Callout type="warning">
-	A proxy on the **same host** as the backend (loopback) must still be listed explicitly. Smart Panel does
-	not automatically trust forwarded headers from `127.0.0.1`/`::1` just because they're local: without an
-	explicit trust entry, any other local process could otherwise spoof a client address and make itself
-	look like a trusted device, bypassing display registration and the login throttle. A **connected**
-	Tailscale node is the one exception — its Serve endpoint is trusted automatically while connected,
-	because the remote-access module itself controls that endpoint.
+  A proxy on the **same host** as the backend (loopback) must still be listed
+  explicitly. Smart Panel does not automatically trust forwarded headers from
+  `127.0.0.1`/`::1` just because they're local: without an explicit trust entry,
+  any other local process could otherwise spoof a client address and make itself
+  look like a trusted device, bypassing display registration and the login
+  throttle. A **connected** provider contributes its own proxy addresses while
+  connected: Tailscale Serve and Cloudflare Tunnel are trusted automatically
+  while their declared proxy endpoints are active and the module is enabled.
 </Callout>
 
 This trusted-proxy list is shared: it's the same set the [MCP module](/docs/admin-management/mcp) uses for
@@ -264,7 +332,8 @@ for the general reverse-proxy setup.
 
 The Tailscale plugin needs privileged access to install and run `tailscaled` on the host — something the
 Smart Panel Docker image and the (future) Home Assistant add-on sandbox deliberately don't grant. Both
-deployments report the Tailscale provider as **unsupported** rather than erroring.
+deployments report the Tailscale and Cloudflare Tunnel providers as **unsupported** rather than erroring.
+Run a vendor-managed connector outside Smart Panel and use the external URL baseline for those deployments.
 
 Use the [external URL baseline](#external-url-baseline) together with the vendor's own Tailscale
 integration instead:

@@ -1,6 +1,6 @@
 # Remote access: fresh analysis and completion plan
 
-Date: 2026-10-03. Adopted: 2026-10-04. Status: R1–R3 merged (#1160/#1161/#1162); R4 hardware acceptance in progress (#910).
+Date: 2026-10-03. Adopted: 2026-10-04. Reconciled: 2026-10-12. Status: R1–R3 merged; retained R4/R5 evidence, five final helper-candidate gates outstanding.
 Epic: [#897](https://github.com/FastyBird/smart-panel/issues/897).
 Coordination: [#991](https://github.com/FastyBird/smart-panel/issues/991).
 Reviewed baseline: `3f7b838fb65a346b86e9100c246d6bfc31af06e1` (`main`, application alpha.41).
@@ -58,10 +58,10 @@ To avoid another test → small PR → alpha → full retest loop:
 | Foundation and Tailscale, RA-1–11   | Implemented and merged                                                                                                              | Cross-layer fixes and device acceptance                                  |
 | September close-out, RA-17–27       | Operator verification, stop handling, Serve read/converge split, setup diagnostics, error envelopes and admin actions are in source | Preserve these fixes; they do not close the new findings                 |
 | Follow-up PR #1005                  | Login error handling, reconnect backoff and status-read requirement refresh are in source                                           | Retest the actual resulting flows                                        |
-| Tailscale acceptance, RA-12 #910    | Still open; task checklist has no completed device matrix                                                                           | Fresh acceptance on one identified candidate release                     |
-| Cloudflare, RA-13 #911 / RA-14 #912 | Closed, delivered in PRs #1027 / #1030                                                                                              | Shared status fixes, process lifecycle review and real tunnel acceptance |
+| Tailscale acceptance, RA-12 #910    | Retained release acceptance recorded below; issue remains open                                                                       | Scoped A1–A5 and final change-impact reconciliation                       |
+| Cloudflare, RA-13 #911 / RA-14 #912 | Delivered with identified install/lifecycle/token/public-tunnel acceptance below                                                     | Helper-affected A3/A4 and final reconciliation                            |
 | Fixed privileged helper, RA-16 #914 | Open; wildcard systemd-run grants still exist                                                                                       | Design against the current updater, migration and implementation         |
-| WireGuard, RA-15 #913               | Open; provider not implemented                                                                                                      | Helper first, then backend/admin and acceptance                          |
+| WireGuard, RA-15 #913               | Deferred separate feature; provider not implemented                                                                                 | Not a completion gate for this epic                                      |
 
 The old task file incorrectly labels Cloudflare as future work and helper hardening as out of scope.
 Those tracking statements are corrected alongside this plan. Unchecked hardware criteria remain
@@ -1799,7 +1799,51 @@ checks and generated API validation. Changes to shared Extensions, proxy or work
 affected suites. Use the current CI result as evidence; #1040/#1045 are closed after the October audit,
 so the old blanket instruction to rerun failures as known flakes is obsolete.
 
-### Tailscale gate R4 / #910
+### Scoped remaining acceptance (reconciled 2026-10-12)
+
+This is the current finite release gate for the module, Tailscale, Cloudflare and fixed helper. It
+supersedes blanket retests and optional variants in the historical matrices below. Helper source/local
+validation is not root-helper hardware acceptance. Publish the reviewed helper and documentation together,
+identify the candidate, and record these five outstanding checks in one combined acceptance session:
+
+| Gate | Outstanding check | Required result |
+| --- | --- | --- |
+| A1 | Fresh host installation, including `install-server.sh --with-tailscale` | Root-owned helper and fixed sudoers policy installed; Tailscale package path works; no authentication/public route is implied by package installation. |
+| A2 | Existing-host helper migration and normal in-app System update | Migration removes the wildcard grant; independent updater survives backend shutdown; data/configuration preserved; app/admin recovery and worker cleanup succeed. |
+| A3 | Both provider setup jobs through the fixed helper | Real Tailscale and Cloudflare setup complete with job-correlated progress; remedies and UI settle correctly. Existing manual/unavailable-helper evidence is retained; affected refusal/cancellation/deadline paths are exercised locally/in integration before release. |
+| A4 | Both providers restored after setup/migration/update | Correct CLI/API/card/URL/proxy state and actual HTTPS, owner login and authenticated WebSocket recovery; retained identities/tokens remain private. |
+| A5 | Released Tailscale HTTPS-disabled advisory link | Observe clickable DNS-console navigation in the released admin. Retain the recorded disabled/restored HTTPS functionality; do not repeat the entire matrix to verify this link. |
+
+Retained evidence, not tests of the new candidate:
+
+| Contract | Existing identified evidence |
+| --- | --- |
+| Module endpoints, OpenAPI, ordering, permissions and admin-only events | R1–R3 implementation verification; production-interceptor/provider HTTP and mounted-store/card/wizard regressions. |
+| Tailscale lifecycle, twenty rounds, rapid cancellation and idle | Alpha.46 acceptance; node expiry/reauthentication and a separate idle observation on alpha.51. |
+| Image/npm setup, manual adoption and preference mismatch | Alpha.47 image; alpha.51 npm package setup; alpha.54 manual adoption/unavailable helper; alpha.56 conflict refusal/recovery. |
+| Live setup stages and event-loss recovery | Alpha.57 live stages; alpha.58 acceptance cuts before job acceptance, at completion and during the named operator stage. |
+| Login failure/cancellation/reload/timeout/delayed link and pending upgrade | Alpha.48 invalid-key recovery; alpha.60 cancellation/disable/shutdown; alpha.61 released reload, pending upgrade and real login timeout; alpha.62 delayed-link/early-exit recovery. |
+| Tailscale external use, network recovery, Funnel/SSH and client policy | Alpha.44/46 cellular live changes; alpha.49 authenticated outage recovery, Funnel and SSH peer; alpha.58/59 phone transport/address/registration/throttle recovery. |
+| Unsupported deployment branches | Alpha.50 Docker and alpha.56 isolated Home Assistant platform contract, with their recorded packaging/ingress limits. |
+| Cloudflare lifecycle, token rotation/revocation, crash/reboot, outage and client policy | Alpha.53 staging records, including distinct valid-token rotation/revocation and WebSocket/registration enforcement. |
+| Cloudflare image/npm/manual install, unavailable helper and connected upgrade/admin recovery | Alpha.53 image setup; alpha.56 released npm/manual/unavailable-helper wizard checks and alpha.55 → alpha.56 connected upgrade with released reload. |
+| Existing updater behavior | Identified provider-enabled and pending-login upgrades, including alpha.61; repeat helper-affected behavior in A2/A4. |
+
+Keep each original release, timestamp and evidence limitation. The unchanged provider contract does not
+require another phone QR/approval device, fresh-host live change, phone/laptop-specific SSH, full
+minimum-version hardware matrix, real HA add-on/Supervisor test, or fresh-package event-loss combination.
+Invalid-key refusal, real node expiry and automated pending-approval/deadline tests cover their respective
+contracts; an additional expired auth-key or approval-enabled tailnet hardware variant is not a new
+release gate. These variants remain unperformed, not relabelled as passes. Slow CLI/setup timeout,
+permissions and cancellation are bounded local/integration checks under the adopted workflow; do not
+create another release solely to repeat them on hardware.
+
+The helper change-impact review names the affected suites and retained receipts. A newly found blocker
+requires its owning regression and affected retest, not an automatic restart of the whole matrix.
+After A1–A5 pass, publish/reconcile the docs and close #910/#1159/#914/#1354/#991/#897 as appropriate.
+#913 remains the deferred WireGuard feature and is not a completion dependency.
+
+### Historical Tailscale gate R4 / #910
 
 Record release + commit, OS/image or npm-install path, Tailscale version, timestamp, initial plugin/
 lifecycle/auth state, action, observed CLI/API/UI result, actual reachability and redacted logs for each
@@ -1826,13 +1870,13 @@ row. Establish LAN/console recovery access before tests that disconnect remote a
 9. Normal system-module application upgrade while provider is enabled and while login is pending;
    shutdown completes, updater survives, application and provider recover. Repeat after helper migration.
 
-Cloudflare records an equivalent provider-specific matrix: image/npm/manual install, token configure/
+The historical Cloudflare matrix records: image/npm/manual install, token configure/
 replace/remove without disclosure, public-hostname routing, websocket/client address, process crash,
 bad token, network outage, stop/config race, reboot, reset and upgrade. WireGuard records peer config,
 handshake freshness, idle traffic, network recovery, reboot, stop/reset, route containment and secrets.
 
-Unperformed rows remain **not tested**, with their prerequisites named. A green unit suite or merged
-provider PR does not substitute for these gates. Under the explicit 2026-10-11 scope revision,
+Unperformed historical variants remain **not tested**. The scoped A1–A5 checklist above now determines
+which hardware checks remain required; a green unit suite or merged PR does not substitute for them. Under the explicit 2026-10-11 scope revision,
 epic closure requires the module, Tailscale, Cloudflare and helper gates. WireGuard is deferred.
 Use retained evidence and the final candidate/change-impact review described above.
 
