@@ -1553,6 +1553,30 @@ This closes the released-reload and pending-upgrade evidence gaps above. The ten
 delayed-link hardware variant and remaining R4/#910 matrix reconciliation stay open; no new phone
 test or shared-event secrecy observation was performed.
 
+#### Real interactive-login timeout on alpha.61 (2026-10-11)
+
+The npm-host Pi 4 on published alpha.61/Tailscale 1.102.5 passed the real ten-minute interactive
+sign-in deadline with its link left unapproved. No deadline was shortened and the dialog remained
+open. Across 121 samples, the original child was present at age 597.65 seconds and absent at
+602.90 seconds; three settled samples had no child/tracked capability, no active operation and
+fresh login available. Status requests succeeded, no overlapping child or backend restart was
+observed, and pending endpoints/proxy addresses remained absent.
+
+At 18:28:23.449 UTC the same dialog cleared its link/QR and enabled Get sign-in link without reload.
+Retry started a new child and produced a link. The UI recorder did not cover the flash notification
+component, so transient flash presence or absence is not established. The daemon remained
+NeedsLogin/WantRunning=true, which is consistent with command timeout rather than explicit Disconnect.
+
+After the user approved the retry, the original UI and CLI/API returned Connected/Running with the
+same Tailscale identity and address. Pi 5 peer certificate-verified HTTPS, owner login and authenticated
+WebSocket subscription passed; missing/invalid tokens were rejected. All 18 preservation checks
+passed for the existing owner, database/schema/28 migrations, configuration and boot identity.
+Device and long-lived-token tables remained empty; no populated-dataset claim is made.
+
+Private receipts: `remote-access-r4/pi4-login-timeout-alpha61/`; the completion plan records the
+timing and evidence limits. The ten-minute timeout gap above is now covered; delayed-link hardware
+behavior and the remaining R4 reconciliation are still open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
