@@ -302,8 +302,13 @@ export class TailscaleLoginService implements OnModuleInit, OnModuleDestroy {
 				await this.prepareLogin(token);
 				const child = this.cli.spawnUp(['--json', '--timeout=10m', ...this.buildManagedFlags()]);
 				const closed = this.operations.trackChild(child);
+				let exitCode: number | null = null;
+				child.once('close', (code: number | null) => {
+					exitCode = code;
+				});
 				child.stderr.resume();
 				let buffer = '';
+				let jsonBlockSeen = false;
 				let firstBlockSeen = false;
 				let cancelled = false;
 				const clear = (): void => {
@@ -347,6 +352,7 @@ export class TailscaleLoginService implements OnModuleInit, OnModuleDestroy {
 						} catch {
 							continue;
 						}
+						jsonBlockSeen = true;
 						if (!firstBlockSeen && block.AuthURL) {
 							firstBlockSeen = true;
 							clearTimeout(firstTimer);
@@ -374,6 +380,11 @@ export class TailscaleLoginService implements OnModuleInit, OnModuleDestroy {
 					await closed;
 					this.operations.assertCurrent(token);
 					if (!cancelled) {
+						// A daemon can remain NeedsLogin after the CLI fails without JSON.
+						// That status cannot imply a sign-in is still producing its link.
+						if (!jsonBlockSeen && exitCode !== 0) {
+							throw new Error('The Tailscale sign-in command failed.');
+						}
 						resolveResult(await this.currentStatus());
 					}
 				} finally {

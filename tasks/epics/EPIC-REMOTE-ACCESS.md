@@ -1577,6 +1577,25 @@ Private receipts: `remote-access-r4/pi4-login-timeout-alpha61/`; the completion 
 timing and evidence limits. The ten-minute timeout gap above is now covered; delayed-link hardware
 behavior and the remaining R4 reconciliation are still open.
 
+#### Delayed sign-in link on alpha.61 and early-exit recovery (2026-10-11)
+
+The npm-host Pi 4 passed a bounded pre-exec CLI-delay exercise on released alpha.61. A 150-second
+attempt produced link/QR without replacing its tracked child. A second attempt reloaded the admin
+after the 30-second no-link response, resumed the same pending operation from the provider card,
+and displayed link/QR after releasing the delay at 54.89 seconds. PID/start ticks and backend PID
+were unchanged across sampled stages. This is controlled command-output delay, not a real network
+outage. Disconnect after link arrival cleared the child, operation and capability and stopped the node.
+
+The wrapper, gate state and systemd override were removed; original PATH, unchanged CLI hash,
+inactive cleanup timer and healthy alpha.61 were verified. Fresh unwrapped login awaits final
+approval/reconnection verification. Private evidence: `remote-access-r4/pi4-delayed-link-alpha61/`.
+The completion plan separates failed harness preparation from valid acceptance observations.
+
+Preparation also reproduced early CLI failure leaving the admin waiting without a live operation.
+The accompanying backend/admin fix adds sanitized failure and safe retry, while preserving genuinely
+delayed login and rejecting stale pre-login responses. 56 backend login and 299 admin plugin tests
+passed. The fix still requires release verification; this does not close all R4/#910 acceptance.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

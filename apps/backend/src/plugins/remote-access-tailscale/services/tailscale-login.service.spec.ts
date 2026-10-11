@@ -603,6 +603,49 @@ describe('TailscaleLoginService', () => {
 			await expect(loginPromise).rejects.toThrow('The Tailscale sign-in command failed to start.');
 		});
 
+		it.each([
+			{ code: 1, signal: null },
+			{ code: null, signal: 'SIGTERM' },
+		])('rejects an early CLI exit ($code, $signal), clears ownership and permits retry', async ({ code, signal }) => {
+			const child = new FakeChildProcess();
+			const retryChild = new FakeChildProcess();
+			cli.spawnUp.mockReturnValueOnce(child).mockReturnValueOnce(retryChild);
+			nodeManagedService.computeStatus.mockResolvedValue({ state: 'pending-auth' });
+
+			const loginPromise = service.login();
+			const rejected = expect(loginPromise).rejects.toEqual(new Error('The Tailscale sign-in command failed.'));
+			await flushMicrotasks();
+			child.stderr.emit('data', Buffer.from('failure https://login.tailscale.com/a/private-capability'));
+			child.emit('close', code, signal);
+			await rejected;
+			await flushMicrotasks();
+
+			expect(nodeManagedService.computeStatus).not.toHaveBeenCalled();
+			expect(service['pending']).toBeNull();
+			expect(service['interactiveRequest']).toBeNull();
+			expect(service.getPendingInteractiveAuth()).toBeNull();
+
+			const retry = service.login();
+			await flushMicrotasks();
+			expect(cli.spawnUp).toHaveBeenCalledTimes(2);
+			retryChild.stdout.emit('data', Buffer.from('{"AuthURL":"https://login.tailscale.com/a/retry"}'));
+			await expect(retry).resolves.toEqual({ state: 'pending-auth', authUrl: 'https://login.tailscale.com/a/retry' });
+			service.stopPendingLogin();
+		});
+
+		it('falls back to the real status when the CLI exits successfully without a JSON block', async () => {
+			const child = new FakeChildProcess();
+			cli.spawnUp.mockReturnValue(child);
+			nodeManagedService.computeStatus.mockResolvedValue({ state: 'connected' });
+
+			const loginPromise = service.login();
+			await flushMicrotasks();
+			child.emit('close', 0);
+
+			await expect(loginPromise).resolves.toEqual({ state: 'connected' });
+			expect(service['pending']).toBeNull();
+		});
+
 		it('only one pending login at a time — a second call while pending returns the same URL instead of spawning again', async () => {
 			const child = new FakeChildProcess();
 			cli.spawnUp.mockReturnValue(child);
@@ -693,6 +736,39 @@ describe('TailscaleLoginService', () => {
 
 				expect(service.getPendingInteractiveAuth()).toBeNull();
 				expect(service['pending']).toBeNull();
+			});
+
+			it('clears ownership and permits retry after a nonzero exit without JSON, even after the response settled', async () => {
+				const child = new FakeChildProcess();
+				const retryChild = new FakeChildProcess();
+				cli.spawnUp.mockReturnValueOnce(child).mockReturnValueOnce(retryChild);
+				nodeManagedService.computeStatus.mockResolvedValue({ state: 'pending-auth' });
+				const operations = nodeManagedService.getOperationCoordinator() as TailscaleOperationCoordinatorService;
+
+				const loginPromise = service.login();
+				await expect(loginPromise).resolves.toEqual({ state: 'pending-auth' });
+				expect(operations.getOperation()).toBe('login');
+				expect(operations['children'].size).toBe(1);
+
+				child.emit('close', 1);
+				await flushMicrotasks();
+
+				// A settled HTTP result cannot turn into a rejection. Cleanup instead
+				// allows the next authoritative status poll to advertise a retry.
+				await expect(loginPromise).resolves.toEqual({ state: 'pending-auth' });
+				expect(nodeManagedService.computeStatus).not.toHaveBeenCalled();
+				expect(operations.getOperation()).toBeNull();
+				expect(operations['children'].size).toBe(0);
+				expect(service['pending']).toBeNull();
+				expect(service['interactiveRequest']).toBeNull();
+				expect(service.getPendingInteractiveAuth()).toBeNull();
+
+				const retry = service.login();
+				await flushMicrotasks();
+				expect(cli.spawnUp).toHaveBeenCalledTimes(2);
+				retryChild.stdout.emit('data', Buffer.from('{"AuthURL":"https://login.tailscale.com/a/retry"}'));
+				await expect(retry).resolves.toEqual({ state: 'pending-auth', authUrl: 'https://login.tailscale.com/a/retry' });
+				service.stopPendingLogin();
 			});
 
 			it('a first block with no AuthURL arriving after the first-block timeout still falls back to the real status and releases the marker', async () => {
