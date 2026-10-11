@@ -1543,6 +1543,53 @@ the pending/cancel/disable/restart observations, `restored-peer-auth.json`, `res
 `config-semantic-comparison-02.json` and pre/post inventories. The ten-minute authentication timeout,
 pending-login upgrade and released reload-fix acceptance remain open, along with R4 reconciliation.
 
+### R4 alpha.61 pending-login upgrade and released dialog recovery (2026-10-11)
+
+The npm-host Pi 4 was upgraded from alpha.60 to published alpha.61
+(`1edfaf994787716ef519d3a0457b9a18915c314f`, whose sole parent is the #1394 merge
+`5616abd4ed2af9c5a3fbd394dd45d08ce980dd07`). Tailscale remained on 1.102.5. The npm
+wrapper/backend/admin archives passed registry-integrity verification; all 5,498 installed package
+files matched those archives, with no missing, extra or mismatched files. The server bundle archive's
+SHA-256 also matched its published checksum and asset digest; no image was flashed in this test.
+
+- **Upgrade with login pending:** the bounded observer armed at 17:11:47 UTC with alpha.60 and
+  one live login child. The System update was confirmed at 17:11:59 UTC. The old child disappeared
+  during shutdown, the backend PID changed, and three healthy alpha.61 samples completed by
+  17:15:53 UTC. The original update dialog automatically showed successful completion at
+  17:15:59 UTC, about 240 seconds after confirmation, without a reload or a second update request.
+  The authenticated update API independently reported complete / 100% / no error. After the upgrade,
+  no login child or tracked link remained, `operation` was null and fresh login was available;
+  the unauthenticated CLI condition still mapped to `pending-auth`, with `WantRunning=false`.
+- **Released #1394 recovery:** after loading the alpha.61 admin bundle, a new pending login
+  supplied a link and QR code. Full-page reload exposed **Resume sign-in**; reopening it, then
+  closing and reopening the dialog, preserved the same link/QR and the same single child PID/start
+  ticks. Resource timing recorded provider status paths only during these reopenings. This is not
+  a complete HTTP-method capture; the no-POST behavior also has the automated coverage above.
+- **Open-dialog backend restart:** a graceful restart removed that child and changed the provider
+  epoch. The resumed dialog cleared its obsolete link/QR and enabled **Get sign-in link** by
+  17:21:17 UTC. The API had no active operation or tracked capability and offered fresh login.
+  Starting a fresh login through that button worked. This separate restart observation exercises
+  stale-dialog recovery; the earlier upgrade observation covers the actual version transition.
+
+After the user approved the final link, API/CLI and the admin returned Connected/Running with the
+original node identity, tailnet IPv4 and HTTPS hostname. At 17:23:22 UTC the Pi 5 peer reached the
+admin and healthy alpha.61 over certificate-verified HTTPS using system DNS, authenticated as owner,
+and established an authenticated WebSocket subscription. Missing/invalid WebSocket tokens were
+rejected. The final UI showed healthy remote access with no pending link.
+
+All 18 preservation checks passed: SQLite integrity, schema and 28 migrations, the existing owner
+account, configuration bytes/modes and boot identity were retained, with no update lock remaining.
+This Pi had zero devices/channels/properties and zero long-lived token rows before and after; the
+matching hashes do not establish preservation of a populated device/token dataset.
+
+Private receipts are in `remote-access-r4/pi4-pending-auth-alpha61/`: the bounded upgrade JSONL and
+summary, `ui-upgrade-observation.json`, `installed-runtime-verified.json`, the released pending/
+resumed/restart observations, `released-ui-recovery.json`, `restored-status.json`, `restored-ui.json`,
+`restored-peer-auth.json` and `preservation-comparison.json`. This supersedes the released-reload and
+pending-upgrade gaps recorded in the alpha.60 section. The delayed-link variant and ten-minute
+authentication timeout were not exercised here; R4/#910 and the remaining matrix reconciliation
+stay open. No new phone or shared-event secrecy claim is made by this batch.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

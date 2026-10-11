@@ -1527,6 +1527,32 @@ Private receipts: `remote-access-r4/pi4-pending-auth-alpha60/`; the completion p
 and evidence limits. R4/#910 remains open for the released reload fix, timeout/pending-upgrade cases
 and remaining matrix reconciliation.
 
+#### Pending-login upgrade and released dialog recovery on alpha.61 (2026-10-11)
+
+The npm-host Pi 4 upgraded from alpha.60 to published alpha.61
+(`1edfaf994787716ef519d3a0457b9a18915c314f`, including #1394) while an interactive login
+was pending. The old login child disappeared during shutdown, the backend returned healthy on
+alpha.61, and the original System dialog automatically completed in about 240 seconds without
+reload or resubmission. All 5,498 installed wrapper/backend/admin files matched the verified npm
+archives. After the upgrade, no tracked link/child or active operation remained and fresh login
+was available; the coarse unauthenticated state could still be `pending-auth`.
+
+On the released admin, full-page reload and dialog close/reopen recovered the same link/QR through
+Resume sign-in while retaining one child with the same PID/start ticks. Provider resource timing
+showed status paths only, not a complete HTTP-method capture. A subsequent graceful backend restart
+with that dialog open cleared its stale link/QR and enabled Get sign-in link; fresh login worked.
+The user's approval restored Connected/Running with the original Tailscale identity and address.
+Pi 5 peer certificate-verified HTTPS, owner login and authenticated WebSocket subscription passed;
+missing/invalid WebSocket tokens were rejected.
+
+All 18 preservation checks passed, including database integrity/schema, 28 migrations, the owner
+account and byte-identical configuration. This fixture had no devices or long-lived token rows, so
+it does not add populated-dataset coverage. Private receipts:
+`remote-access-r4/pi4-pending-auth-alpha61/`; the completion plan records timestamps and limits.
+This closes the released-reload and pending-upgrade evidence gaps above. The ten-minute timeout,
+delayed-link hardware variant and remaining R4/#910 matrix reconciliation stay open; no new phone
+test or shared-event secrecy observation was performed.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
