@@ -21,6 +21,36 @@ This adopted plan supersedes the execution order in the September plan and #991.
 design remains the architecture reference, except for the explicitly proposed contract changes below.
 Do not reopen all completed September tasks or reimplement their fixes.
 
+### Scope and completion workflow revision (2026-10-11)
+
+The user explicitly deferred WireGuard to a separate feature. The completion scope is now the
+remote-access module, Tailscale, Cloudflare Tunnel and the fixed privileged helper (#914).
+WireGuard (#913 / R7) remains future work and is not a prerequisite for closing this epic.
+Historical evidence below retains its original release and limits; older statements requiring
+all three providers are superseded by this decision.
+
+To avoid another test → small PR → alpha → full retest loop:
+
+- Retain passing evidence from prior identified releases. Replace the blanket single-candidate
+  requirement with a final identified candidate plus an explicit change-impact review of retained
+  evidence. Repeat a passed scenario only when subsequent changes affect its contract or a new
+  failure gives a concrete reason. Do not relabel old results as tests of the final candidate.
+- Reconcile R4/R5 into one finite acceptance checklist before hardware work: each row is covered
+  by retained evidence, needs a named test, or needs an explicit scope/support decision. An unchecked
+  historical checkbox alone is not a new defect; an unperformed mandatory test is not a pass.
+- Proceed to helper design and implementation without another Tailscale-only release cycle.
+  Keep reviewable implementation PRs, but batch their release. Exercise failures, permissions,
+  cancellation and UI recovery locally/in integration before publishing a hardware candidate.
+- Target one combined final acceptance session after the helper ships: fresh helper installation
+  (including the unverified `--with-tailscale` path), migration of an existing installation,
+  normal System upgrade/recovery, provider setup through the helper, and remote HTTPS/login/
+  WebSocket recovery for both providers. Include only the reconciled outstanding provider cases
+  and regressions affected by the helper, not a repeat of every historical test.
+- A real blocker can require a corrected candidate and its affected retests; do not promise one
+  release regardless of findings. Documentation-only changes do not trigger another alpha.
+- Close #910/#1159/#914 and reconcile #1354/#991/#897 when this scoped checklist passes. Retain
+  deferred WireGuard design separately. Do not add speculative WireGuard helper operations now.
+
 ## 2. What is already delivered
 
 | Area                                | Current evidence                                                                                                                    | Remaining work                                                           |
@@ -205,15 +235,15 @@ fix. Do not close #897 from a component PR.
 | R1    | Tailscale operation ownership and control contract; F1/F2/F5. Node, login, Serve, provider administrative API; focused Extensions integration only  | Disconnect retains auth; Connect valid from both lifecycle states; no old operation mutates or publishes after stop/disable/reset/shutdown; every child reaped; errors actionable                              |
 | R2    | Ordered snapshots and bounded observations; F2/F3/F6. Provider contract, module cache/publication, both providers and all three admin status stores | Controlled GET/event/stop/start/reconnect permutations converge; committed status, URLs and proxy contributions agree; one observation in flight per provider; deadline paths leave no accumulating work       |
 | R3    | Complete plugin operator flows; F1/F4. Cards, wizard, action gating, job identity, REST reconciliation and six locales                              | Connect→Disconnect→Connect works without reload or login; no invalid primary action; accepted setup starts fallback immediately; lost events, second install and reload recover; API failure clears busy state |
-| R4    | Tailscale release acceptance using #910                                                                                                             | All required rows below recorded on one identified candidate release; failures produce a reproducible owning regression and return to R1–R3                                                                    |
+| R4    | Tailscale release acceptance using #910                                                                                                             | Required rows covered by identified evidence plus final candidate/change-impact review; failures produce an owning regression                                                                    |
 | R5    | Cloudflare parity and acceptance using delivered #911/#912 as baseline                                                                              | Generation/child-stop tests pass; install/token replacement/removal and crash recovery work; external URL, login and websocket verified on a real tunnel                                                       |
 | R6    | Fixed privileged helper #914, design then implementation                                                                                            | Root trust boundary tested; legacy migration explicit; fresh install and normal app upgrade/recovery pass on hardware; independent updater service preserved                                                   |
-| R7    | WireGuard #913, backend then admin                                                                                                                  | Uses helper only; safe peer config and secret handling; real peer handshake/recovery, stop/disable/reset, admin and manual setup acceptance                                                                    |
-| R8    | Epic close-out and documentation reconciliation (#1354)                                                                                                  | R1–R7 gates recorded, docs reflect shipped contracts, #910/#914/#913 and coordination completed, no unchecked mandatory acceptance silently waived                                                             |
+| R7 (deferred) | WireGuard #913, separate feature: backend then admin                                                                                                                  | Uses helper only; safe peer config and secret handling; real peer handshake/recovery, stop/disable/reset, admin and manual setup acceptance                                                                    |
+| R8    | Epic close-out and documentation reconciliation (#1354)                                                                                                  | R1–R6 gates recorded, docs reflect shipped contracts, #910/#1159/#914 and coordination completed; R7 deferred explicitly                                                             |
 
-Dependencies: R1 → R2 → R3 → R4. R5 consumes R2/R3 conventions. R6 starts after the Tailscale gate
-so helper migration does not obscure provider debugging. R7 depends on R6 and the verified provider
-contract. R8 requires all gates. Cloudflare's completed implementation is retained throughout.
+Dependencies after the 2026-10-11 revision: R1–R3 are delivered; reconcile R4/R5 evidence while
+implementing R6, then run combined final acceptance. R8 requires R1–R6. Deferred R7 will depend on
+R6 and the verified provider contract in its separate feature. Retain existing Cloudflare implementation.
 
 ### R2 implementation contract
 
@@ -237,7 +267,7 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   and resync through authoritative REST on an unknown epoch. Reconnect supersedes pending reads;
   further events during an epoch resync join that resync rather than repeatedly aborting it.
 
-### Helper and WireGuard constraints
+### Helper constraints and deferred WireGuard design
 
 - #914 needs a small design review of allowlisted jobs, root-owned installation/update, validated
   arguments/environment, status-file ownership, cancellation, recovery and rollback. Include the
@@ -1802,8 +1832,9 @@ bad token, network outage, stop/config race, reboot, reset and upgrade. WireGuar
 handshake freshness, idle traffic, network recovery, reboot, stop/reset, route containment and secrets.
 
 Unperformed rows remain **not tested**, with their prerequisites named. A green unit suite or merged
-provider PR does not substitute for these gates. Epic closure requires all three milestone gates;
-deferring WireGuard/helper would require an explicit scope decision, not an implicit checkbox change.
+provider PR does not substitute for these gates. Under the explicit 2026-10-11 scope revision,
+epic closure requires the module, Tailscale, Cloudflare and helper gates. WireGuard is deferred.
+Use retained evidence and the final candidate/change-impact review described above.
 
 ## 7. External contract checks
 

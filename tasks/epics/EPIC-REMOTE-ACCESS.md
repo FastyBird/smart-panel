@@ -30,7 +30,8 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
   [`2026-10-03-remote-access-completion.md`](../../docs/superpowers/plans/2026-10-03-remote-access-completion.md).
   This separates delivered code from outstanding hardware acceptance and documents reproduced
   lifecycle/status defects. The replacement execution sequence is active: R1 (#1156, PR #1160), R2 (#1157, PR #1161) and R3 (#1158, PR #1162) are complete.
-  R4 (#910) and R5 (#1159) remain open, followed by #914 and #913.
+  R4 (#910) and R5 (#1159) remain open. The 2026-10-11 scope revision retains helper #914
+  and defers WireGuard #913 to a separate feature; final acceptance follows helper implementation.
 - Prior art: Home Assistant `helpers/network.py` and `components/http/forwarded.py`; the Home Assistant
   Tailscale and Cloudflared add-ons; Tailscale CLI `up --json`, operator mechanism, Serve and Funnel.
 
@@ -48,12 +49,25 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 - Raspberry Pi image pre-installs Tailscale (disabled); installer flag; website documentation.
 - MCP form suggests the primary external URL; MCP proxy policy consumes the shared trusted-proxy set.
 
-**In scope (later milestones)**
+**Also required for completion (scope confirmed 2026-10-11)**
 
 - Cloudflare Tunnel plugin (backend and admin).
-- WireGuard client plugin.
-- Fixed privileged helper and sudoers migration (#914), prerequisite for WireGuard. This was pulled
-  into milestone 3 in the epic's September planning update.
+- Fixed privileged helper and sudoers migration (#914), including fresh install and existing-host
+  update/recovery acceptance. This remains required independently of WireGuard.
+
+**Deferred to a separate feature (user decision 2026-10-11)**
+
+- WireGuard client plugin (#913). It is not a completion dependency of this epic.
+
+**Completion workflow**
+
+Retain identified passing Tailscale/Cloudflare evidence and reconcile stale checkboxes into a finite
+remaining checklist. Implement/review the helper, batch the next release, then run one combined final
+acceptance session covering helper install/migration/update, affected provider regressions and named
+outstanding cases. Repeat old scenarios only where change impact or a new failure warrants it.
+The final candidate and retained earlier evidence remain distinguishable; no unperformed mandatory
+criterion becomes a pass. A new blocker may require a corrected release and affected retests.
+Documentation changes alone do not require another alpha. The completion plan records the revised gate.
 
 **Out of scope**
 
@@ -1729,8 +1743,8 @@ Tracked as GitHub sub-issues of the epic issue under the "Remote access" milesto
 | RA-12 | integrated verification and hardware acceptance                          | in-progress                                               |
 | RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin                | code merged (#911, PR #1027); hardware acceptance pending |
 | RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | code merged (#912, PR #1030); hardware acceptance pending |
-| RA-15 | feat(cross): add WireGuard client remote access plugin                   | milestone 3                                               |
-| RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | milestone 3 prerequisite (#914), open                     |
+| RA-15 | feat(cross): add WireGuard client remote access plugin                   | deferred separate feature (#913)                                               |
+| RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | required for current scope (#914), open                     |
 
 October work packages (completion plan R1-R8; see the linked plan):
 
@@ -1742,7 +1756,7 @@ October work packages (completion plan R1-R8; see the linked plan):
 | R4   | #910 RA-12: integrated verification and hardware acceptance                         | open (hardware gate, in progress)                            |
 | R5   | #1159 fix(cross): verify Cloudflare lifecycle and remote access flows               | open (Cloudflare lifecycle gate)                             |
 | R6   | #914 chore(installer): replace systemd-run sudo grant with fixed helper             | open                                                         |
-| R7   | #913 feat(cross): add WireGuard client remote access plugin                         | open                                                         |
+| R7   | #913 feat(cross): add WireGuard client remote access plugin                         | deferred separate feature                                                         |
 | R8   | #1354 docs reconciliation and epic close-out                                     | open                                                         |
 
 Earlier merged fixes (all closed): #931 validate provider-declared proxy addresses; #934 report the Tailscale
