@@ -1153,11 +1153,83 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 
 	set +e
 	if [ "$HELPER_MANAGED" = 1 ]; then
-		# Python's data filter refuses archive traversal, device entries and escaping links.
+		# Validate the entire archive before writing. Debian 12's Python predates tarfile filters.
 		/usr/bin/python3 -I - "$TMP_TARBALL" "$NEW_VERSION_DIR" <<'PY'
 import sys, tarfile
+import os, posixpath, shutil, stat
+from pathlib import PurePosixPath
+
+def member_name(value):
+    if not value or '\0' in value or value.startswith('/') or '..' in PurePosixPath(value).parts:
+        raise ValueError('Unsafe archive member path')
+    return str(PurePosixPath(value))
+
+def link_target(name, member):
+    value = member.linkname
+    if not value or '\0' in value or value.startswith('/'):
+        raise ValueError('Unsafe archive link target')
+    parent = posixpath.dirname(name) if member.issym() else ''
+    target = posixpath.normpath(posixpath.join(parent, value))
+    if target == '..' or target.startswith('../') or target.startswith('/'):
+        raise ValueError('Archive link escapes release directory')
+    return target
+
+destination = os.path.abspath(sys.argv[2])
+if not stat.S_ISDIR(os.lstat(destination).st_mode) or os.listdir(destination):
+    raise ValueError('Extraction requires an empty real directory')
+
 with tarfile.open(sys.argv[1], 'r:gz') as archive:
-    archive.extractall(sys.argv[2], filter='data')
+    members = {}
+    targets = {}
+    directories = {}
+    for member in archive.getmembers():
+        name = member_name(member.name)
+        if name in members:
+            raise ValueError('Duplicate archive member')
+        if not (member.isdir() or member.type in (tarfile.REGTYPE, tarfile.AREGTYPE)
+                or member.issym() or member.islnk()):
+            raise ValueError('Non-data archive member')
+        if name == '.' and not member.isdir():
+            raise ValueError('Archive root must be a directory')
+        members[name] = member
+        if member.issym() or member.islnk():
+            targets[name] = link_target(name, member)
+
+    for name, member in members.items():
+        for parent in PurePosixPath(name).parents:
+            ancestor = str(parent)
+            if ancestor in members and not members[ancestor].isdir():
+                raise ValueError('Archive member descends through a link or non-directory')
+            if ancestor != '.':
+                directories.setdefault(ancestor, 0o755)
+        if member.isdir() and name != '.':
+            directories[name] = (member.mode & 0o755) | 0o700
+        if member.islnk():
+            target = members.get(targets[name])
+            if target is None or target.type not in (tarfile.REGTYPE, tarfile.AREGTYPE):
+                raise ValueError('Archive hardlink must target a declared regular file')
+
+    # No path created below has a link ancestor: all declared links are installed last.
+    for name in sorted(directories, key=lambda value: (value.count('/'), value)):
+        os.mkdir(os.path.join(destination, name), 0o700)
+    for name, member in members.items():
+        if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE):
+            continue
+        path = os.path.join(destination, name)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'wb') as output, archive.extractfile(member) as content:
+            shutil.copyfileobj(content, output)
+            os.fchmod(output.fileno(), (member.mode & 0o755) | 0o600)
+    for name, target in targets.items():
+        path = os.path.join(destination, name)
+        if members[name].issym():
+            # Normalize before storing: a raw "link/.." must never escape after link dereference.
+            value = posixpath.relpath(target, posixpath.dirname(name) or '.')
+            os.symlink(value, path)
+        else:
+            os.link(os.path.join(destination, target), path, follow_symlinks=False)
+    for name, mode in directories.items():
+        os.chmod(os.path.join(destination, name), mode)
 PY
 		extract_exit=$?
 	else

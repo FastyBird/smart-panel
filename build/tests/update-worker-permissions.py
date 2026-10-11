@@ -38,15 +38,38 @@ try:
     with tarfile.open(archive_path, 'w:gz') as archive:
         directory = tarfile.TarInfo('dist')
         directory.type = tarfile.DIRTYPE
-        directory.mode = 0o750
+        directory.mode = 0o1750
         archive.addfile(directory)
         artifact = tarfile.TarInfo('dist/migration.py')
-        artifact.mode = 0o640
+        artifact.mode = 0o4640
         artifact.size = len(code)
         archive.addfile(artifact, io.BytesIO(code))
+        package_file = tarfile.TarInfo('node_modules/.pnpm/example/node_modules/example/index.js')
+        package_file.mode = 0o644
+        package_file.size = len(b'example package\n')
+        archive.addfile(package_file, io.BytesIO(b'example package\n'))
+        package_link = tarfile.TarInfo('node_modules/example')
+        package_link.type = tarfile.SYMTYPE
+        package_link.linkname = '.pnpm/example/node_modules/example'
+        archive.addfile(package_link)
+        hardlink = tarfile.TarInfo('dist/migration-copy.py')
+        hardlink.type = tarfile.LNKTYPE
+        hardlink.linkname = 'dist/migration.py'
+        archive.addfile(hardlink)
+        for name, target in [('root-link', '.'), ('normalized-root-link', 'root-link/..')]:
+            link = tarfile.TarInfo(name)
+            link.type = tarfile.SYMTYPE
+            link.linkname = target
+            archive.addfile(link)
     extraction = re.search(r"<<'PY'\n(import sys, tarfile[\s\S]*?)\nPY", source).group(1)
     subprocess.run([sys.executable, '-I', '-', str(archive_path), str(release)],
                    input=extraction, text=True, check=True, preexec_fn=lambda: os.umask(0o027))
+    assert (release / 'node_modules/example/index.js').read_text() == 'example package\n'
+    assert os.readlink(release / 'node_modules/example') == '.pnpm/example/node_modules/example'
+    assert (release / 'dist/migration.py').stat().st_ino == (release / 'dist/migration-copy.py').stat().st_ino
+    assert (release / 'normalized-root-link').resolve() == release
+    assert (release / 'dist').stat().st_mode & 0o7000 == 0
+    assert (release / 'dist/migration.py').stat().st_mode & 0o7000 == 0
     assert run_as_service(['/usr/bin/test', '-r', str(release / 'dist/migration.py')], check=False).returncode != 0
     normalization = next(line.strip() for line in source.splitlines()
                          if 'chmod -R a+rX,go-w "$NEW_VERSION_DIR"' in line)
@@ -54,6 +77,39 @@ try:
                    env=dict(os.environ, NEW_VERSION_DIR=str(release)), check=True)
     assert run_as_service([sys.executable, '-I', str(release / 'dist/migration.py')]).stdout.strip() == 'service-read-ok'
     assert run_as_service(['/usr/bin/test', '-w', str(release / 'dist/migration.py')], check=False).returncode != 0
+
+    # Every malicious archive must fail validation before even its first valid file is written.
+    rejected_archives = [
+        [('escape', tarfile.SYMTYPE, '../outside')],
+        [('through-link/payload', tarfile.REGTYPE, ''), ('through-link', tarfile.SYMTYPE, 'safe')],
+        [('through-hardlink', tarfile.LNKTYPE, 'first-file'), ('through-hardlink/payload', tarfile.REGTYPE, '')],
+        [('duplicate', tarfile.REGTYPE, ''), ('./duplicate', tarfile.REGTYPE, '')],
+        [('/absolute', tarfile.REGTYPE, '')],
+        [('../parent', tarfile.REGTYPE, '')],
+        [('fifo', tarfile.FIFOTYPE, '')],
+        [('missing-target', tarfile.LNKTYPE, 'missing')],
+        [('soft', tarfile.SYMTYPE, 'first-file'), ('hard-to-soft', tarfile.LNKTYPE, 'soft')],
+        [('hard', tarfile.LNKTYPE, 'first-file'), ('hard-chain', tarfile.LNKTYPE, 'hard')],
+        [('regular-parent', tarfile.REGTYPE, ''), ('regular-parent/child', tarfile.REGTYPE, '')],
+    ]
+    for index, entries in enumerate(rejected_archives):
+        bad_archive = base / ('invalid-' + str(index) + '.tar.gz')
+        bad_release = base / ('invalid-' + str(index))
+        bad_release.mkdir()
+        with tarfile.open(bad_archive, 'w:gz') as archive:
+            for name, kind, linkname in [('first-file', tarfile.REGTYPE, '')] + entries:
+                member = tarfile.TarInfo(name)
+                member.type = kind
+                member.linkname = linkname
+                if kind == tarfile.REGTYPE:
+                    member.size = 1
+                    archive.addfile(member, io.BytesIO(b'x'))
+                else:
+                    archive.addfile(member)
+        result = subprocess.run([sys.executable, '-I', '-', str(bad_archive), str(bad_release)],
+                                input=extraction, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert result.returncode != 0, 'Unsafe archive was accepted: ' + str(index)
+        assert not list(bad_release.iterdir()), 'Validation wrote files before rejecting archive: ' + str(index)
 
     # Run the deployed native-rebuild failure branch, including the real ownership restore.
     package = base / 'npm-package'
@@ -111,6 +167,8 @@ update_status() { :; }
         assert (dependencies / 'compiled.node').stat().st_uid == 0
         assert dependencies.stat().st_mode & 0o022 == 0
     print('PASS: extracted release is readable/executable as service UID and not writable')
+    print('PASS: internal pnpm symlinks/hardlinks work and special permission bits are stripped')
+    print('PASS: 11 malicious archives are rejected before any file is written')
     print('PASS: failed native rebuild restores root ownership and preserves protected assets')
     print('PASS: both firstboot native-build failure branches restore protected ownership')
 finally:
