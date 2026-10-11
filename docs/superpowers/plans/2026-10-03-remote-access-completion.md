@@ -21,6 +21,36 @@ This adopted plan supersedes the execution order in the September plan and #991.
 design remains the architecture reference, except for the explicitly proposed contract changes below.
 Do not reopen all completed September tasks or reimplement their fixes.
 
+### Scope and completion workflow revision (2026-10-11)
+
+The user explicitly deferred WireGuard to a separate feature. The completion scope is now the
+remote-access module, Tailscale, Cloudflare Tunnel and the fixed privileged helper (#914).
+WireGuard (#913 / R7) remains future work and is not a prerequisite for closing this epic.
+Historical evidence below retains its original release and limits; older statements requiring
+all three providers are superseded by this decision.
+
+To avoid another test → small PR → alpha → full retest loop:
+
+- Retain passing evidence from prior identified releases. Replace the blanket single-candidate
+  requirement with a final identified candidate plus an explicit change-impact review of retained
+  evidence. Repeat a passed scenario only when subsequent changes affect its contract or a new
+  failure gives a concrete reason. Do not relabel old results as tests of the final candidate.
+- Reconcile R4/R5 into one finite acceptance checklist before hardware work: each row is covered
+  by retained evidence, needs a named test, or needs an explicit scope/support decision. An unchecked
+  historical checkbox alone is not a new defect; an unperformed mandatory test is not a pass.
+- Proceed to helper design and implementation without another Tailscale-only release cycle.
+  Keep reviewable implementation PRs, but batch their release. Exercise failures, permissions,
+  cancellation and UI recovery locally/in integration before publishing a hardware candidate.
+- Target one combined final acceptance session after the helper ships: fresh helper installation
+  (including the unverified `--with-tailscale` path), migration of an existing installation,
+  normal System upgrade/recovery, provider setup through the helper, and remote HTTPS/login/
+  WebSocket recovery for both providers. Include only the reconciled outstanding provider cases
+  and regressions affected by the helper, not a repeat of every historical test.
+- A real blocker can require a corrected candidate and its affected retests; do not promise one
+  release regardless of findings. Documentation-only changes do not trigger another alpha.
+- Close #910/#1159/#914 and reconcile #1354/#991/#897 when this scoped checklist passes. Retain
+  deferred WireGuard design separately. Do not add speculative WireGuard helper operations now.
+
 ## 2. What is already delivered
 
 | Area                                | Current evidence                                                                                                                    | Remaining work                                                           |
@@ -205,15 +235,15 @@ fix. Do not close #897 from a component PR.
 | R1    | Tailscale operation ownership and control contract; F1/F2/F5. Node, login, Serve, provider administrative API; focused Extensions integration only  | Disconnect retains auth; Connect valid from both lifecycle states; no old operation mutates or publishes after stop/disable/reset/shutdown; every child reaped; errors actionable                              |
 | R2    | Ordered snapshots and bounded observations; F2/F3/F6. Provider contract, module cache/publication, both providers and all three admin status stores | Controlled GET/event/stop/start/reconnect permutations converge; committed status, URLs and proxy contributions agree; one observation in flight per provider; deadline paths leave no accumulating work       |
 | R3    | Complete plugin operator flows; F1/F4. Cards, wizard, action gating, job identity, REST reconciliation and six locales                              | Connect→Disconnect→Connect works without reload or login; no invalid primary action; accepted setup starts fallback immediately; lost events, second install and reload recover; API failure clears busy state |
-| R4    | Tailscale release acceptance using #910                                                                                                             | All required rows below recorded on one identified candidate release; failures produce a reproducible owning regression and return to R1–R3                                                                    |
+| R4    | Tailscale release acceptance using #910                                                                                                             | Required rows covered by identified evidence plus final candidate/change-impact review; failures produce an owning regression                                                                    |
 | R5    | Cloudflare parity and acceptance using delivered #911/#912 as baseline                                                                              | Generation/child-stop tests pass; install/token replacement/removal and crash recovery work; external URL, login and websocket verified on a real tunnel                                                       |
 | R6    | Fixed privileged helper #914, design then implementation                                                                                            | Root trust boundary tested; legacy migration explicit; fresh install and normal app upgrade/recovery pass on hardware; independent updater service preserved                                                   |
-| R7    | WireGuard #913, backend then admin                                                                                                                  | Uses helper only; safe peer config and secret handling; real peer handshake/recovery, stop/disable/reset, admin and manual setup acceptance                                                                    |
-| R8    | Epic close-out and documentation reconciliation (#1354)                                                                                                  | R1–R7 gates recorded, docs reflect shipped contracts, #910/#914/#913 and coordination completed, no unchecked mandatory acceptance silently waived                                                             |
+| R7 (deferred) | WireGuard #913, separate feature: backend then admin                                                                                                                  | Uses helper only; safe peer config and secret handling; real peer handshake/recovery, stop/disable/reset, admin and manual setup acceptance                                                                    |
+| R8    | Epic close-out and documentation reconciliation (#1354)                                                                                                  | R1–R6 gates recorded, docs reflect shipped contracts, #910/#1159/#914 and coordination completed; R7 deferred explicitly                                                             |
 
-Dependencies: R1 → R2 → R3 → R4. R5 consumes R2/R3 conventions. R6 starts after the Tailscale gate
-so helper migration does not obscure provider debugging. R7 depends on R6 and the verified provider
-contract. R8 requires all gates. Cloudflare's completed implementation is retained throughout.
+Dependencies after the 2026-10-11 revision: R1–R3 are delivered; reconcile R4/R5 evidence while
+implementing R6, then run combined final acceptance. R8 requires R1–R6. Deferred R7 will depend on
+R6 and the verified provider contract in its separate feature. Retain existing Cloudflare implementation.
 
 ### R2 implementation contract
 
@@ -237,7 +267,7 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   and resync through authoritative REST on an unknown epoch. Reconnect supersedes pending reads;
   further events during an epoch resync join that resync rather than repeatedly aborting it.
 
-### Helper and WireGuard constraints
+### Helper constraints and deferred WireGuard design
 
 - #914 needs a small design review of allowlisted jobs, root-owned installation/update, validated
   arguments/environment, status-file ownership, cancellation, recovery and rollback. Include the
@@ -1675,6 +1705,62 @@ tables remain empty, so populated-data coverage is not added. Restoration receip
 `restored-status.json`, `restored-ui.json`, `restored-peer-auth.json` and `preservation-comparison.json`.
 Delayed-link/reload behavior is covered; the remaining R4/#910 matrix stays open.
 
+### R4 alpha.62 released early CLI-exit recovery (2026-10-11)
+
+Published npm alpha.62 contains #1397: version-sync commit
+`40e57e7918c8e96545ba8498ca6a47dffc5519bd` is the direct child of merge
+`5e556490452a6811f526c7249913ade358250230`, and the release tag names that sync commit.
+The main/admin/backend publication jobs passed and all three npm archives passed SRI/package
+identity checks. The Pi 4 uses the npm install path, so its upgrade did not depend on image builds.
+The GitHub release/server archive was published at 20:44:08 UTC, after the npm upgrade.
+Raspbian and Docker jobs were still building during the failure tests. This record does not claim
+those image builds passed.
+
+The original System dialog started the update at 20:38:09 UTC and confirmed success at 20:42:10,
+without reload or prematurely treating the connection outage as success. The installed wrapper
+(42 files), backend dist (5,207 files) and admin dist (249 files) exactly matched the published
+archives. All 19 upgrade checks passed, including healthy alpha.62, backend restart, unchanged boot,
+database/schema/28 migrations, owner, configuration and Tailscale identity/authentication.
+A root-only database/config backup was retained before upgrade.
+
+The released admin then exercised two one-shot command failures. The temporary root-owned wrapper
+intercepted only interactive `up --json --timeout=10m`; all other calls and the next attempt executed
+the unchanged genuine CLI. Each mode had an independent 15-minute cleanup timer. Application bundles
+and production deadlines were unchanged; these were controlled CLI failures, not control-plane outages.
+
+- **Immediate nonzero exit before JSON:** the real login request returned HTTP 500 in about 317 ms.
+  The dialog showed the generic Failed to sign in to Tailscale flash notification and re-enabled
+  Get sign-in link in the next 250-ms UI sample. API observations had no child, operation or tracked
+  capability and permitted login. The daemon-derived provider state was setup-required in this
+  attempt. Retry from the same dialog, without reload, spawned the genuine CLI and displayed link/QR.
+- **Nonzero exit after the first response:** login returned HTTP 200/pending-auth after 30.185 seconds
+  and the dialog waited without a link. The wrapper exited at 45.0005 seconds. The provider remained
+  pending-auth, but the API released operation/child/capability and offered login. At 20:47:22.560 UTC
+  the retry button in the same dialog was observed enabled, about 0.35 seconds after exit; it did not wait
+  for the ten-minute deadline. No flash notification was captured in the late-case samples, consistent
+  with the already-settled request and the recovery implemented in #1397. Retry without reload
+  produced a genuine link/QR again.
+
+The early retry was cancelled during the harness cleanup restart; the late retry was cancelled
+through the provider's Disconnect menu and verified Disconnected/WantRunning=false with no child
+or operation. Both harness installations were cleaned up. Final checks confirmed original PATH,
+unchanged real CLI SHA-256, healthy alpha.62, absence of wrapper/gate/drop-in and inactive cleanup timer.
+After user approval of a fresh unwrapped login, the same released UI advanced to Options and
+reported healthy Connected at 20:51:09 UTC. API/CLI were Connected/Running with the original node
+identity/address and no pending child or operation. At 20:51:10 the Pi 5 peer passed certificate-verified
+HTTPS/admin/health, owner login and authenticated WebSocket subscription; missing/invalid WebSocket
+tokens were rejected. All 18 post-test preservation checks passed, including configuration, owner,
+database integrity/schema/28 migrations and boot identity. Device/long-lived-token tables remain
+empty, so this adds no populated-dataset coverage.
+
+Private evidence: `remote-access-r4/pi4-upgrade-alpha62/` (npm/runtime manifests, backup,
+`ui-upgrade.json`, `upgrade-comparison.json`) and `remote-access-r4/pi4-early-exit-alpha62/`
+(`early-ui.json`, `early-events.json`, `early-failed-status.json`, `early-retry-*`, `delayed-ui.json`,
+`delayed-events.json`, `delayed-*-status.json`, `delayed-retry-ui.json`, `final-cleanup-verified.json`,
+`restored-status.json`, `restored-ui.json`, `restored-peer-auth.json`, `preservation-comparison.json`).
+Process observations are sampled; no complete process/HTTP mutation trace or live signalled-exit
+claim is made. The released fix's two failure paths are covered; remaining R4/#910 matrix work stays open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
@@ -1746,8 +1832,9 @@ bad token, network outage, stop/config race, reboot, reset and upgrade. WireGuar
 handshake freshness, idle traffic, network recovery, reboot, stop/reset, route containment and secrets.
 
 Unperformed rows remain **not tested**, with their prerequisites named. A green unit suite or merged
-provider PR does not substitute for these gates. Epic closure requires all three milestone gates;
-deferring WireGuard/helper would require an explicit scope decision, not an implicit checkbox change.
+provider PR does not substitute for these gates. Under the explicit 2026-10-11 scope revision,
+epic closure requires the module, Tailscale, Cloudflare and helper gates. WireGuard is deferred.
+Use retained evidence and the final candidate/change-impact review described above.
 
 ## 7. External contract checks
 
