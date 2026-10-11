@@ -1590,6 +1590,42 @@ pending-upgrade gaps recorded in the alpha.60 section. The delayed-link variant 
 authentication timeout were not exercised here; R4/#910 and the remaining matrix reconciliation
 stay open. No new phone or shared-event secrecy claim is made by this batch.
 
+### R4 alpha.61 real interactive-login timeout (2026-10-11)
+
+The same npm-host Pi 4 remained on published alpha.61
+(`1edfaf994787716ef519d3a0457b9a18915c314f`) and Tailscale 1.102.5. After sign-out and the
+normal Set up operator repair, the released admin started one interactive login at 18:18:22 UTC.
+Its link was deliberately left unapproved for the full production ten-minute limit. Neither the
+backend nor browser deadline was shortened, and the dialog was not closed or reloaded.
+
+A bounded observer captured 121 CLI/API/process samples. The child was still present at age
+597.65 seconds and absent at the first clean sample at 602.90 seconds, followed by two more clean
+samples. The API cleared the tracked URL/QR, released `operation`, and offered fresh login. All
+sampled status requests returned HTTP 200; no overlapping login child or backend PID change was
+observed, and pending snapshots exposed no external endpoints/proxy addresses. The daemon stayed
+NeedsLogin with `WantRunning=true`: timeout cleans up the interactive command, not the daemon's
+intent to run, so this result must not be described as Disconnect.
+
+The original dialog removed its link/QR and enabled **Get sign-in link** at 18:28:23.449 UTC.
+Clicking the enabled button started a new child and produced a usable link without reload; the old
+process was not revived. The recorder sampled message elements rather than the notification
+component used for flash feedback, so transient flash presence or absence is not established.
+
+After the user approved the retry, API/CLI were Connected/Running by 18:33:38 UTC with the original
+node identity, IPv4 address and HTTPS hostname, no child and no active operation. The same admin
+advanced to Options without reload and the final card showed healthy remote access. At 18:33:57 UTC
+the Pi 5 peer passed certificate-verified HTTPS/admin/health, owner login and authenticated WebSocket
+subscription; missing/invalid WebSocket tokens were rejected. All 18 preservation checks passed,
+including database integrity, schema/28 migrations, the owner account, configuration bytes/modes
+and boot identity. As before, device and long-lived-token tables were empty, so this does not add
+populated-dataset coverage.
+
+Private receipts: `remote-access-r4/pi4-login-timeout-alpha61/`, including
+`timeout-observation.jsonl`, `timeout-summary.json`, `ui-timeout.json`, `retry-settled.json`,
+`restored-status.json`, `restored-ui.json`, `restored-peer-auth.json` and `preservation-comparison.json`.
+This closes the ten-minute interactive-login timeout gap in the preceding alpha.61 record.
+Delayed-link hardware behavior remains untested; this run received its initial link promptly.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
