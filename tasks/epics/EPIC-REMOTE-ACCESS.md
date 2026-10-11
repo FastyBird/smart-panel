@@ -1480,6 +1480,30 @@ This records normal upgrade recovery from the fixed observer, not completion of 
 epic. Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha59/`; detailed chronology and
 limitations are in the R4 alpha.59 section of the completion plan.
 
+#### Released flash-only feedback and six-minute upgrade on alpha.60 (2026-10-11)
+
+One ordinary System UI confirmation upgraded the npm-host Pi 4 from alpha.59 to published
+alpha.60 (`ba92752288c25e3f88199e531472a172c8973c5d`, including #1392). The original admin
+observed the unconfirmed backend outage and recovered to successful completion without reload
+or resubmission at 08:52:56 UTC, 362 seconds after confirmation. This supplies normal-update
+recovery evidence beyond the former five-minute deadline; pending-login upgrade remains untested.
+
+The authoritative API confirmed complete / 100% / no error. All 19 preservation checks and all
+5,498 installed package hashes passed. Database/configuration, accounts/long-lived credentials,
+device topology, boot identity and Tailscale identity/authentication survived. Peer HTTPS/IPv4
+health returned 200/alpha.60; the updater exited and tailscaled kept running.
+
+The fresh released-admin Mac LAN browser showed required-field errors inline without sending
+login requests. Five synthetic HTTP 404 responses and the subsequent HTTP 429 displayed only
+flash notifications, including the 60-second waiting instruction. Flashes disappeared automatically
+and no form-level alert remained. After 91 seconds, the existing owner credentials returned HTTP 201
+and opened the overview. Ten post-test preservation groups matched; observers stopped and owned
+browser tabs closed. This completes the requested presentation correction, without claiming another
+cellular run or fresh per-client isolation measurement.
+
+Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha60/`; the completion plan records exact
+timestamps and evidence scope. Other R4 rows and single-candidate reconciliation remain open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -1504,7 +1528,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 - [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05). On the separate Pi 4 alpha.49, the user confirmed loading without a certificate error and successful login; a fresh-host live device change remains untested.
 - [x] Verify the phone's WebSocket transport through the proxy. Published alpha.58 on the npm-host Pi 4 (2026-10-10): three phone upgrades returned HTTP 101, exchanged frames in both directions and correlated with authenticated gateway admissions. The metadata-only capture does not establish individual application event contents.
 - [x] Backend records the tailnet client address (not 127.0.0.1) for a login attempt from the phone. Published alpha.58 (2026-10-10): the dedicated failed-login notification recorded the same tailnet IP subsequently observed on the mobile WebSocket upgrades.
-- [x] The phone's HTTP login throttle is per client, with successful sign-in after the block expires. Alpha.58's clean capture (2026-10-10) proved phone HTTP 429 / 60-second retry with simultaneous distinct-peer HTTP 201. On alpha.59 (2026-10-11), the user confirmed the expected errors and successful sign-in after waiting; a complete phone WebSocket stream and authenticated backend admission corroborated login. The alpha.59 HTTP stream had gaps/misalignment and is excluded from status attribution. The user requested flash-only request errors; that presentation follow-up and one-candidate reconciliation remain open. See the completion plan for exact evidence limits.
+- [x] The phone's HTTP login throttle is per client, with successful sign-in after the block expires. Alpha.58's clean capture (2026-10-10) proved phone HTTP 429 / 60-second retry with simultaneous distinct-peer HTTP 201. On alpha.59 (2026-10-11), the user confirmed the expected errors and successful sign-in after waiting; a complete phone WebSocket stream and authenticated backend admission corroborated login. The alpha.59 HTTP stream had gaps/misalignment and is excluded from status attribution. The requested flash-only presentation follow-up passed on released alpha.60 in the Mac LAN browser (see above); one-candidate reconciliation remains open. See the completion plan for exact evidence limits.
 - [x] Displays → registration status seen from the phone is "closed" (not treated as local). The user reported `open: false` from the Pi 4 alpha.58 HTTPS registration-status endpoint on 2026-10-10; the earlier alpha.49 peer result remains separate.
 
 ##### Lifecycle
