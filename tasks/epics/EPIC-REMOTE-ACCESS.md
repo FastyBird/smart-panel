@@ -1587,8 +1587,11 @@ were unchanged across sampled stages. This is controlled command-output delay, n
 outage. Disconnect after link arrival cleared the child, operation and capability and stopped the node.
 
 The wrapper, gate state and systemd override were removed; original PATH, unchanged CLI hash,
-inactive cleanup timer and healthy alpha.61 were verified. Fresh unwrapped login awaits final
-approval/reconnection verification. Private evidence: `remote-access-r4/pi4-delayed-link-alpha61/`.
+inactive cleanup timer and healthy alpha.61 were verified. After user approval of a fresh unwrapped
+login, UI/API/CLI returned Connected/Running with the original identity and no pending command.
+Pi 5 peer HTTPS, owner login and authenticated WebSocket passed; invalid/missing tokens were rejected.
+All 18 preservation checks passed; device/long-lived-token tables remain empty. Private evidence:
+`remote-access-r4/pi4-delayed-link-alpha61/`.
 The completion plan separates failed harness preparation from valid acceptance observations.
 
 Preparation also reproduced early CLI failure leaving the admin waiting without a live operation.
