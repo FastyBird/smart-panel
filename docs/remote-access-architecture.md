@@ -584,8 +584,10 @@ also re-applies and self-heals a drifted Serve/Funnel handler, exactly like a po
    report `not-installed` with a pointer to the vendor's manual instructions. **Never** downloads and
    executes a script — only installs a signed package from the vendor's own repository.
 2. `systemctl enable --now tailscaled`.
-3. `tailscale set --operator=<service user>` — persists in `tailscaled.state`, so the backend can operate
-   the daemon without sudo from then on.
+3. `tailscale set --operator=<service user>` — persists in the current Tailscale profile, so the backend
+   can operate the daemon without sudo. Sign out can discard that profile and its operator grant
+   (observed with Tailscale 1.102.5). In that case the card returns to Setup required: run **Set up** to
+   restore the grant, then **Sign in**. Disconnect retains the profile and does not require this repair.
 4. Writes the status file at each stage transition; a non-zero exit reports `failed`. Privileged-worker
    invocations also retain every report in job-scoped history, so a fast install/daemon/operator
    sequence is not lost between observations. Manual invocations without the job ID retain the

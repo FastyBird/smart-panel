@@ -101,6 +101,7 @@ vi.mock('../composables', () => ({
 		isPolling,
 		hasPollingTimedOut,
 		login: fns.login,
+		resumePolling: vi.fn(),
 		stopPolling: fns.stopPolling,
 	}),
 }));

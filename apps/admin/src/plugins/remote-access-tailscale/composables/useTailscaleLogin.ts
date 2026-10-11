@@ -147,6 +147,10 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 		isPolling: computed<boolean>((): boolean => polling.value),
 		hasPollingTimedOut: computed<boolean>((): boolean => pollingTimedOut.value),
 		login,
+		resumePolling: (): void => {
+			if (polling.value || loggingIn.value || pollingTimedOut.value) return;
+			startPolling(++currentAttemptId);
+		},
 		stopPolling,
 	};
 };

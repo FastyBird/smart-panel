@@ -41,5 +41,6 @@ export interface IUseTailscaleLogin {
 	isPolling: ComputedRef<boolean>;
 	hasPollingTimedOut: ComputedRef<boolean>;
 	login: (authKey?: string) => Promise<ITailscaleLoginResult>;
+	resumePolling: () => void;
 	stopPolling: () => void;
 }

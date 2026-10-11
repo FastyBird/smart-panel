@@ -78,7 +78,34 @@ describe('resolveTailscaleProviderActions', () => {
 			isAdmin: true,
 		});
 		expect(actions.disconnect).toBe(true);
+		expect(actions.resumeSignIn).toBe(true);
 		expect(actions.signIn).toBe(false);
+	});
+
+	it.each([
+		{ enabled: false },
+		{ serviceState: ExtensionsModuleServiceState.stopping },
+		{ operation: 'disconnect' as ITailscaleControl['operation'] },
+		{ operation: null },
+	])('does not resume a pending sign-in with inactive or conflicting control (%j)', (overrides) => {
+		const actions = resolveTailscaleProviderActions({
+			state: 'pending-auth' as RemoteAccessModuleProviderState,
+			control: control([RemoteAccessTailscalePluginControlAction.login], { operation: 'login' as ITailscaleControl['operation'], ...overrides }),
+			isOwner: true,
+			isAdmin: false,
+		});
+		expect(actions.resumeSignIn).toBe(false);
+	});
+
+	it('offers a fresh login when backend restart lost the previous pending operation', () => {
+		const actions = resolveTailscaleProviderActions({
+			state: 'pending-auth' as RemoteAccessModuleProviderState,
+			control: control([RemoteAccessTailscalePluginControlAction.login, RemoteAccessTailscalePluginControlAction.disconnect]),
+			isOwner: true,
+			isAdmin: false,
+		});
+		expect(actions.resumeSignIn).toBe(false);
+		expect(actions.signIn).toBe(true);
 	});
 
 	it('restricts owner actions even when an inconsistent response includes them for an admin', () => {

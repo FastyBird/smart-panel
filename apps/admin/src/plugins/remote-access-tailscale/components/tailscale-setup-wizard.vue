@@ -381,7 +381,7 @@ import { RemoteAccessTailscalePluginControlAction } from '../../../openapi.const
 import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
-import { buildTailscaleRemedyPlan, flashTailscaleApiError, resolveTailscaleErrorHintKey } from '../utils/provider-actions';
+import { buildTailscaleRemedyPlan, canResumeTailscaleSignIn, flashTailscaleApiError, resolveTailscaleErrorHintKey } from '../utils/provider-actions';
 import { type TailscaleSetupStageState, getTailscaleSetupStages } from '../utils/setup-progress';
 
 import TailscaleConfigForm from './tailscale-config-form.vue';
@@ -423,7 +423,7 @@ const setupStageIcons: Record<TailscaleSetupStageState, string> = {
 	failed: 'mdi:alert-circle',
 	interrupted: 'mdi:help-circle-outline',
 };
-const { isLoggingIn, isPolling, hasPollingTimedOut, login, stopPolling } = useTailscaleLogin();
+const { isLoggingIn, isPolling, hasPollingTimedOut, login, resumePolling, stopPolling } = useTailscaleLogin();
 const { configPlugin, fetchConfigPlugin } = useConfigPlugin({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 
 const signInTab = ref<'interactive' | 'advanced'>('interactive');
@@ -437,6 +437,8 @@ const optionsFormResult = ref<FormResultType>(FormResult.NONE);
 const isRechecking = ref<boolean>(false);
 const installErrorCode = ref<string | null>(null);
 let sessionGeneration = 0;
+let recoveringSignIn = false;
+let recoveredSignInEpoch: string | undefined;
 const loginErrorCode = ref<string | null>(null);
 const awaitingKeyedConnection = ref<boolean>(false);
 
@@ -744,6 +746,8 @@ watch(
 	(visible, previous): void => {
 		if (previous !== undefined) sessionGeneration++;
 		isRechecking.value = false;
+		recoveringSignIn = false;
+		recoveredSignInEpoch = undefined;
 		awaitingKeyedConnection.value = false;
 		if (visible) {
 			currentStep.value = props.initialStep;
@@ -762,6 +766,35 @@ watch(
 			authKey.value = '';
 			stopPolling();
 			stopSetupPolling();
+		}
+	},
+	{ immediate: true }
+);
+
+// Read the existing pending sign-in after a reload or reopening, including while its link is
+// still being produced. Never call POST /login here: the backend operation already owns it.
+watch(
+	() => [props.visible, currentStep.value, status.value] as const,
+	([visible, step, snapshot]) => {
+		if (!visible || step !== 'signin' || !snapshot) return;
+		const canResume = canResumeTailscaleSignIn(snapshot.state, snapshot.control);
+		// A daemon can still report pending-auth after the backend has lost its RAM-only login
+		// operation. Release the old capability and poll so the newly permitted login is usable.
+		if (recoveringSignIn && (snapshot.epoch !== recoveredSignInEpoch || (snapshot.state === 'pending-auth' && !canResume))) {
+			recoveringSignIn = false;
+			authUrl.value = undefined;
+			qr.value = undefined;
+			awaitingKeyedConnection.value = false;
+			stopPolling();
+		}
+		if (!canResume) return;
+
+		if (!hasPollingTimedOut.value) {
+			recoveringSignIn = true;
+			recoveredSignInEpoch = snapshot.epoch;
+			resumePolling();
+			authUrl.value = snapshot.authUrl;
+			qr.value = snapshot.authUrl ? snapshot.qr : undefined;
 		}
 	},
 	{ immediate: true }

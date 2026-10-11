@@ -185,8 +185,24 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 		await mountCard();
 		expect(hasBusyAlert()).toBe(true);
 		expect(primary().props('disabled')).toBe(false);
-		await click();
+		expect(primary().text()).toContain('buttons.resumeSignIn');
+		primary().vm.$emit('command', 'disconnect');
+		await flushPromises();
 		expect(fns.post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/disconnect', { signal: expect.any(AbortSignal) });
+	});
+
+	it('reopens pending sign-in from its private status after reload without another login', async () => {
+		fns.get.mockResolvedValue(response(snapshot(1, 'pending-auth', 'started', 'login', ['disconnect'])));
+		await mountCard();
+		expect(primary().text()).toContain('buttons.resumeSignIn');
+		await click();
+		const wizard = wrapper.findComponent({ name: 'TailscaleSetupWizard' });
+		expect(wizard.props('initialStep')).toBe('signin');
+		wizard.vm.$emit('update:visible', false);
+		await flushPromises();
+		await click();
+		expect(wrapper.findComponent({ name: 'TailscaleSetupWizard' }).props('initialStep')).toBe('signin');
+		expect(fns.post).not.toHaveBeenCalled();
 	});
 
 	it('fails closed without the administrative control contract instead of inferring authentication from a label', async () => {

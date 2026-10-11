@@ -28,6 +28,7 @@
 	"buttons": {
 		"setup": "Einrichten",
 		"signIn": "Anmelden",
+		"resumeSignIn": "Anmeldung fortsetzen",
 		"connect": "Verbinden",
 		"disconnect": "Trennen",
 		"reconnect": "Erneut verbinden",

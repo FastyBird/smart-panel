@@ -1497,6 +1497,52 @@ Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha60/`, including
 `post-sign-in-comparison.json`. SD-image builds are downstream and still running at the time of
 this record; they are not evidence for this npm-host acceptance.
 
+### R4 alpha.60 pending-login cancellation and reload defect (2026-10-11)
+
+The npm-host Pi 4 remained on published alpha.60 (`ba92752288c25e3f88199e531472a172c8973c5d`)
+with Tailscale 1.102.5. LAN admin and SSH remained available throughout these tests. Sign out at
+09:58:48 UTC cleared authentication and the profile's operator grant. The existing Set up wizard
+restored operator access without reinstalling the package, then supplied an interactive link/QR.
+This is the supported Sign out → Set up → Sign in recovery, not an operator-preservation claim.
+
+- At 10:00:15 UTC, authenticated status returned pending-auth, URL/QR and `Cache-Control: no-store`.
+  Repeating interactive login returned the same URL/QR fingerprints and the same single CLI child.
+  A full-page reload exposed a UI defect: the card instructed the user to open the link but offered
+  only Disconnect, with no way to reopen the wizard. Backend capability recovery passed; released
+  admin reload recovery **failed**.
+- Disconnect through the provider card reaped that child by 10:01:10 UTC, removed the tracked link,
+  withdrew endpoints/proxy addresses and returned stopped/disconnected with `WantRunning=false`.
+- A second pending attempt was cancelled by disabling the plugin. The settled observation at
+  10:01:53 UTC had no child, link or active operation and `WantRunning=false`; login was rejected
+  with HTTP 409 / `plugin-disabled`. The plugin was re-enabled before the next attempt.
+- Gracefully restarting the backend during a third pending attempt changed its PID and provider
+  epoch. At 10:02:55 UTC the backend was healthy, the old child/link were absent and
+  `WantRunning=false`. The CLI still exposed a pending-auth condition, but the API did not relay
+  its untracked URL: operation was null and a fresh login was available. This tests shutdown/restart,
+  **not an application upgrade while login is pending**.
+
+The accompanying admin correction adds **Resume sign-in** for an enabled, active login operation.
+Opening the wizard reads the existing private status and resumes bounded polling without another
+POST /login, including when the URL has not arrived yet. After a backend restart with no operation,
+the user can start a fresh login. Automated coverage includes card reopening, delayed link/QR,
+completion and disabled/stopping/conflicting-operation guards; released hardware verification of
+the correction remains open.
+
+After the user approved the final fresh login, API/CLI were Connected/Running at 10:04:52 UTC;
+the final UI receipt confirmed the Connected card at 10:06:33 UTC. The original node ID, tailnet
+address and HTTPS hostname were retained. From the Pi 5 peer, default
+certificate-verified HTTPS returned the admin and alpha.60 health; owner login and an authenticated
+WebSocket subscription succeeded. Missing/invalid WebSocket tokens were rejected. Database
+integrity, schema/migrations, device topology, accounts/long-lived credentials and boot identity
+were preserved. Configuration values matched the baseline; saving the enable/disable changes
+rewrote YAML formatting, so byte hashes differ. The service journal scan through 10:04:20 UTC found
+no raw Tailscale auth links or keys; shared-event secrecy was not measured by this scan.
+
+Private receipts: `remote-access-r4/pi4-pending-auth-alpha60/`, including `reload-ui-unrecoverable.json`,
+the pending/cancel/disable/restart observations, `restored-peer-auth.json`, `restored-ui.json`,
+`config-semantic-comparison-02.json` and pre/post inventories. The ten-minute authentication timeout,
+pending-login upgrade and released reload-fix acceptance remain open, along with R4 reconciliation.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
