@@ -1599,6 +1599,29 @@ The accompanying backend/admin fix adds sanitized failure and safe retry, while 
 delayed login and rejecting stale pre-login responses. 56 backend login and 299 admin plugin tests
 passed. The fix still requires release verification; this does not close all R4/#910 acceptance.
 
+#### Released early CLI-exit recovery on alpha.62 (2026-10-11)
+
+Pi 4 upgraded through the original System dialog from alpha.61 to published npm alpha.62 containing
+#1397. The dialog confirmed completion after about 241 seconds. Published npm integrity and exact
+installed wrapper/backend/admin manifests passed, as did all 19 upgrade preservation checks.
+The release tag names the version-sync child of #1397. Raspbian/Docker builds were still running;
+this npm-host acceptance does not claim image-build success.
+
+Both controlled nonzero CLI exits passed on released code: immediate failure returned HTTP 500,
+showed a generic flash error and promptly enabled retry; failure after the 30-second pending-auth
+response released the operation after the 45-second exit; retry was observed enabled about 0.35 seconds
+later despite the provider remaining pending-auth. No flash notification was captured in the late-case samples.
+Both retries produced genuine link/QR from the same dialog without reload. The final Disconnect
+cleared the pending child/operation and stopped the node.
+
+All temporary harness paths/drop-ins were removed, original PATH and unchanged CLI hash verified,
+and the independent cleanup timer stopped. User-approved unwrapped login restored healthy Connected
+with the original identity and no pending child/operation. Pi 5 peer HTTPS/owner login/authenticated
+WebSocket passed; missing/invalid tokens were rejected. All 18 post-test preservation checks passed;
+device and long-lived-token tables remain empty.
+Private receipts: `remote-access-r4/pi4-upgrade-alpha62/` and `remote-access-r4/pi4-early-exit-alpha62/`.
+The completion plan records timing and evidence limits. Remaining R4/#910 acceptance stays open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
