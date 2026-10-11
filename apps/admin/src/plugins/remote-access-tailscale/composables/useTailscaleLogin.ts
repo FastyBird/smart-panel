@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 
 import { injectStoresManager } from '../../../common';
+import { RemoteAccessTailscalePluginControlAction } from '../../../openapi.constants';
 import { TAILSCALE_LOGIN_POLL_INTERVAL_MS, TAILSCALE_LOGIN_POLL_TIMEOUT_MS } from '../remote-access-tailscale.constants';
 import { RemoteAccessTailscaleException } from '../remote-access-tailscale.exceptions';
 import { tailscaleStatusStoreKey } from '../store/keys';
@@ -64,6 +65,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 		polling.value = true;
 
 		const startedAt = Date.now();
+		let firstPoll = true;
 
 		pollTimer = setInterval((): void => {
 			// A newer login() call superseded this one since the interval was set up - nothing
@@ -80,8 +82,12 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 				return;
 			}
 
+			// Do not join a status request that started before this login. Its pending-auth
+			// snapshot can still advertise login as available while the new CLI is running.
+			const force = firstPoll;
+			firstPoll = false;
 			tailscaleStatusStore
-				.get()
+				.get(force)
 				.then((status): void => {
 					// The tick that fired this request may have started before a newer attempt
 					// took over; re-check after the await, not just before it.
@@ -95,7 +101,16 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 					// as the control server rejecting an already-approved auth path). Stopping only
 					// on `connected`/`error` left the wizard polling forever - looking "frozen" -
 					// through every one of those other terminal outcomes.
-					if (status.state !== 'pending-auth' && status.state !== 'connecting' && status.state !== 'pending-approval') {
+					// A CLI can exit after POST /login has already returned without producing a
+					// link. The daemon remains pending-auth, but the privileged snapshot explicitly
+					// releases the operation and permits retry. Keep waiting when operation=login
+					// owns a genuinely delayed link, or when control metadata is unavailable.
+					const abandonedLogin =
+						status.state === 'pending-auth' &&
+						!status.authUrl &&
+						status.control?.operation === null &&
+						status.control.availableActions.includes(RemoteAccessTailscalePluginControlAction.login);
+					if (abandonedLogin || (status.state !== 'pending-auth' && status.state !== 'connecting' && status.state !== 'pending-approval')) {
 						clearPolling();
 					}
 				})

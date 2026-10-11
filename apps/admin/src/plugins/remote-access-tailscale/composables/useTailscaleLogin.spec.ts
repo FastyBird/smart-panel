@@ -72,6 +72,33 @@ describe('useTailscaleLogin', () => {
 		expect(get).not.toHaveBeenCalled();
 	});
 
+	it('stops waiting when an authoritative poll releases a login without a link', async () => {
+		vi.useFakeTimers();
+		login.mockResolvedValue({ state: 'pending-auth' });
+		get.mockResolvedValue({ state: 'pending-auth', control: { operation: null, availableActions: ['login'] } });
+		const composable = useTailscaleLogin();
+		await composable.login();
+		expect(composable.isPolling.value).toBe(true);
+		expect(get).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(get).toHaveBeenCalledExactlyOnceWith(true);
+		expect(composable.isPolling.value).toBe(false);
+		expect(composable.hasPollingTimedOut.value).toBe(false);
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(get).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps polling a delayed link while the login operation is live', async () => {
+		vi.useFakeTimers();
+		login.mockResolvedValue({ state: 'pending-auth' });
+		get.mockResolvedValue({ state: 'pending-auth', control: { operation: 'login', availableActions: ['disconnect'] } });
+		const composable = useTailscaleLogin();
+		await composable.login();
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(get.mock.calls).toEqual([[true], [false]]);
+		expect(composable.isPolling.value).toBe(true);
+	});
+
 	it('does not poll when a keyed login resolves connected immediately', async () => {
 		login.mockResolvedValue({ state: 'connected' });
 		const { login: doLogin, isPolling } = useTailscaleLogin();

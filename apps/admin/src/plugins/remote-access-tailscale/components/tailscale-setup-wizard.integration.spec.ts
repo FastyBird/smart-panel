@@ -158,6 +158,67 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		expect(wrapper.find('a').attributes('href')).toBe('https://login.tailscale.com/a/new');
 	});
 
+	it('exposes retry when a local login returns no link and its first poll finds no live operation', async () => {
+		snapshot.state = 'pending-auth';
+		fns.post.mockResolvedValue({ data: { data: { state: 'pending-auth' } }, response: { status: 200 } });
+		const wrapper = mountWizard('signin');
+		await flushPromises();
+		const signInButton = () =>
+			wrapper.findAllComponents({ name: 'ElButton' }).find((entry) => entry.text().includes('wizard.buttons.getSignInLink'))!;
+		signInButton().vm.$emit('click');
+		await flushPromises();
+		// The pre-login store snapshot also lacks an operation. It must not cancel the
+		// just-started attempt before the composable obtains a post-login status read.
+		expect(wrapper.text()).toContain('wizard.waitingForLink');
+		await vi.advanceTimersByTimeAsync(3_000);
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('wizard.waitingForLink');
+		expect(signInButton().props('disabled')).toBe(false);
+		expect(fns.flashError).not.toHaveBeenCalled();
+		const reads = fns.get.mock.calls.length;
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(fns.get).toHaveBeenCalledTimes(reads);
+		signInButton().vm.$emit('click');
+		await flushPromises();
+		expect(fns.post).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not cancel a local delayed login using its pre-login snapshot', async () => {
+		snapshot.state = 'pending-auth';
+		// No epoch exercises the legacy login-result merge, which retains pre-login
+		// control metadata until the first authoritative poll arrives.
+		delete snapshot.epoch;
+		delete snapshot.revision;
+		await store.get();
+		const staleSnapshot = structuredClone(snapshot);
+		let resolvePreLoginRead!: (response: unknown) => void;
+		fns.get.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolvePreLoginRead = resolve;
+				})
+		);
+		fns.post.mockResolvedValue({ data: { data: { state: 'pending-auth' } }, response: { status: 200 } });
+		const wrapper = mountWizard('signin');
+		await flushPromises();
+		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		await flushPromises();
+		expect(wrapper.text()).toContain('wizard.waitingForLink');
+		snapshot.control = { enabled: true, service_state: 'started', authentication: 'required', operation: 'login', available_actions: ['disconnect'] };
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(fns.get.mock.calls[1]![1].signal.aborted).toBe(true);
+		resolvePreLoginRead({ data: { data: staleSnapshot }, response: { status: 200 } });
+		await vi.advanceTimersByTimeAsync(3_000);
+		await flushPromises();
+		expect(wrapper.text()).toContain('wizard.waitingForLink');
+		Object.assign(snapshot, { auth_url: 'https://login.tailscale.com/a/delayed', qr: 'data:image/png;base64,delayed' });
+		await vi.advanceTimersByTimeAsync(3_000);
+		await flushPromises();
+		expect(wrapper.find('a').attributes('href')).toBe('https://login.tailscale.com/a/delayed');
+		expect(fns.post).toHaveBeenCalledTimes(1);
+		expect(fns.flashError).not.toHaveBeenCalled();
+	});
+
 	it.each(['pending-auth', 'connecting', 'pending-approval'])(
 		'reports a keyed login timeout with %s as the last status and allows a retry',
 		async (state) => {
@@ -169,6 +230,7 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 			await flushPromises();
 			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
 			await flushPromises();
+			if (state === 'pending-auth') (snapshot.control as Record<string, unknown>).operation = 'login';
 			await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 3_000);
 			expect(activeStep(wrapper)).toBe(1);
 			expect(fns.flashError).not.toHaveBeenCalled();
@@ -179,6 +241,13 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 			await vi.advanceTimersByTimeAsync(6_000);
 			expect(fns.flashError).toHaveBeenCalledTimes(1);
 
+			// A retry is advertised only after the backend releases its operation.
+			if (state === 'pending-auth') {
+				(snapshot.control as Record<string, unknown>).operation = null;
+				snapshot.revision = 2;
+				await store.get();
+				await flushPromises();
+			}
 			fns.flashError.mockClear();
 			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-retry-key');
 			await flushPromises();

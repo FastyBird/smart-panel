@@ -1626,6 +1626,55 @@ Private receipts: `remote-access-r4/pi4-login-timeout-alpha61/`, including
 This closes the ten-minute interactive-login timeout gap in the preceding alpha.61 record.
 Delayed-link hardware behavior remains untested; this run received its initial link promptly.
 
+### R4 alpha.61 delayed sign-in link and early CLI failure (2026-10-11)
+
+The npm-host Pi 4 on published alpha.61/Tailscale 1.102.5 passed a controlled delayed-link
+exercise. A one-shot wrapper delayed execution of the real interactive CLI, with a 150-second
+bound and an independent 15-minute cleanup timer. Application bundles, production deadlines,
+and the installed Tailscale binary were unchanged. This models a live command producing no
+output; it is not evidence of a real control-plane network delay.
+
+- One attempt reached the automatic 150-second release and displayed its link/QR. The same
+  child PID/start ticks survived the wrapper's exec of the genuine CLI.
+- In the reload attempt, login began at 19:19:10 UTC. After the normal 30-second first-response
+  deadline, the dialog showed Requesting the sign-in link without a URL/QR. Full page reload at
+  19:19:42 offered Resume sign-in; reopening at 19:19:54 resumed waiting without a link.
+  Samples before reload, after reload and after reopening retained one child with identical
+  PID/start ticks and backend PID, operation=login, and no external endpoints.
+- Releasing the gate after 54.89 seconds executed the genuine CLI in that same process. By
+  19:20:13 the reopened dialog displayed both link and QR through normal polling. These are
+  sampled process observations, not a complete HTTP mutation trace.
+- Disconnect from the provider menu then returned Disconnected/WantRunning=false, with no child,
+  active operation or tracked capability. Cancellation was tested after the link arrived.
+- Cleanup removed the wrapper, writable gate directory and systemd drop-in, restored the original
+  service PATH, stopped the cleanup timer and verified healthy alpha.61 and the unchanged real
+  CLI SHA-256. A fresh unwrapped login was then approved by the user.
+
+Preparation attempts with an ignored PATH override, a noexec mount and a read-only gate location
+were excluded from delayed-link acceptance. A subsequent harness reinstall also hit the local
+90-second restart-command deadline and rolled back; the following clean attempt is the reload
+result above. The read-only-gate failure exposed a separate application bug: a CLI exiting nonzero
+before JSON could return pending-auth despite no live login operation, leaving the UI waiting for
+its full polling deadline.
+
+The accompanying fix rejects early nonzero/signalled CLI exits with a fixed generic error and
+allows retry after cleanup. Admin polling also stops on an authoritative pending-auth snapshot
+with no link, no operation and login available, including failure after the initial response has
+settled. The first poll supersedes any pre-login request so stale metadata cannot stop a genuine
+delayed login. Backend login tests (56) and admin plugin tests (299) passed, with targeted lint and
+format checks, full admin type checking and 55 scoped tests rerun after the enum correction. This fix is not yet deployed to the Pi; the hardware results above describe alpha.61.
+
+Private receipts: `remote-access-r4/pi4-delayed-link-alpha61/`, especially `delayed-04-*`,
+`delayed-07-*`, `harness-07-final-events.json`, `harness-07-cleaned.json` and
+`final-cleanup-verification.json`. By 19:25:39 UTC the released UI/API were Connected again, with
+no child or active operation and the original node identity/address. At 19:25:40 the Pi 5 peer
+passed certificate-verified HTTPS/admin/health, owner login and authenticated WebSocket subscription;
+missing/invalid WebSocket tokens were rejected. All 18 preservation checks passed for boot identity,
+configuration, owner, database integrity/schema and 28 migrations. Device and long-lived-token
+tables remain empty, so populated-data coverage is not added. Restoration receipts are
+`restored-status.json`, `restored-ui.json`, `restored-peer-auth.json` and `preservation-comparison.json`.
+Delayed-link/reload behavior is covered; the remaining R4/#910 matrix stays open.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

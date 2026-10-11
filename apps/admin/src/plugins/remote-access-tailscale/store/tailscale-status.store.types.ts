@@ -59,7 +59,7 @@ export interface ITailscaleStatusStoreState {
 export interface ITailscaleStatusStoreActions {
 	firstLoadFinished: () => boolean;
 	isLoaded: () => boolean;
-	get: () => Promise<ITailscaleStatus>;
+	get: (force?: boolean) => Promise<ITailscaleStatus>;
 	install: () => Promise<ITailscaleInstallResult>;
 	login: (authKey?: string) => Promise<ITailscaleLoginResult>;
 	connect: () => Promise<ITailscaleStatus>;
