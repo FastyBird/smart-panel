@@ -1452,6 +1452,51 @@ The observer exited and all ten baseline comparison groups matched. Private rece
 not an application failure. The flash-only presentation correction and the remaining R4 matrix /
 one-candidate reconciliation stay open.
 
+### R4 alpha.60 flash-only feedback and upgrade recovery beyond five minutes (2026-10-11)
+
+The npm-host Pi 4 was upgraded from alpha.59 to published alpha.60
+(`ba92752288c25e3f88199e531472a172c8973c5d`, including #1392). The version-sync commit
+is a direct child of the reviewed main candidate `b51f96129ca82551398d5d611b16c0c5546304ad`.
+Release/tag ancestry and all three npm package integrities were verified before installation;
+the SQLite/configuration backup is `/var/backups/smart-panel/r4-alpha60-pre-install`.
+
+Exactly one normal System UI confirmation started the update at 08:46:54 UTC. The original
+alpha.59 browser document remained open and reported an unconfirmed connection/result from
+08:47:00 UTC. It automatically showed alpha.60 and successful completion at 08:52:56 UTC,
+without reload or resubmission. This 362-second observation supplies the previously missing
+normal-update recovery evidence beyond the former five-minute deadline. It does not establish
+upgrade during pending provider login or recovery from an arbitrarily long outage.
+
+The authenticated API independently returned complete / 100% / no error and healthy alpha.60.
+All 19 preservation checks passed, and all 5,498 installed wrapper/backend/admin files matched
+the verified npm manifests. Database/schema/migrations, configuration, accounts/long-lived
+credentials, device topology, boot identity and Tailscale identity/authentication were preserved.
+The backend restarted, the updater exited and no update lock remained. Tailscaled retained its
+PID. Certificate-verified HTTPS and tailnet IPv4 health from the Pi 5 peer both returned 200/alpha.60.
+
+A fresh incognito Mac LAN browser against the installed admin verified the requested presentation:
+
+- Empty submission showed the two required-field errors inline, without a flash or login request.
+- Native form submission with synthetic credentials produced five HTTP 404 responses and neutral
+  incorrect-credentials flash notifications, with no form-level alert.
+- The sixth rejected attempt returned HTTP 429 at 08:54:27 UTC and a flash asking the user to wait
+  60 seconds. Notifications disappeared automatically; no request error remained inside the form.
+- After 91 seconds, native submission with the existing owner credentials returned HTTP 201 at
+  08:55:58 UTC and opened the authenticated overview. No credentials or response bodies were retained
+  in the browser evidence; only DOM feedback and resource-timing response metadata were recorded.
+
+All ten post-sign-in preservation groups matched. Both browser observers stopped and both owned
+tabs closed. This completes the released flash-only presentation follow-up from #1392; it is not
+a repeat cellular test or fresh per-client throttle-isolation proof. The earlier alpha.58 isolation
+and alpha.59 phone-recovery evidence retain their documented limits. Remaining R4 rows and the
+single-candidate reconciliation stay open.
+
+Private receipts: `remote-access-r4/pi4-admin-upgrade-alpha60/`, including
+`ui-observation-complete.json`, `authoritative-status.json`, `installed-runtime-verified.json`,
+`upgrade-comparison.json`, `peer-health-after.json`, `released-sign-in-browser.json`, and
+`post-sign-in-comparison.json`. SD-image builds are downstream and still running at the time of
+this record; they are not evidence for this npm-host acceptance.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.
