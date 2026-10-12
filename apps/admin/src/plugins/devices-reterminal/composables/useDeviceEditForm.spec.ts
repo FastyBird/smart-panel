@@ -2,10 +2,11 @@ import { nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesValidationException, FormResult } from '../../../modules/devices';
+import { DevicesApiException, DevicesValidationException, FormResult } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory, DevicesReTerminalPluginVariant } from '../../../openapi.constants';
+import { DevicesReTerminalValidationException } from '../devices-reterminal.exceptions';
 import type { IReTerminalDevice } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';
@@ -66,8 +67,8 @@ vi.mock('../../../common', async () => {
 
 describe('useDeviceEditForm', () => {
 	beforeEach(() => {
-		mockEdit.mockClear();
-		mockSave.mockClear();
+		mockEdit.mockReset();
+		mockSave.mockReset();
 		mockSuccess.mockClear();
 		mockError.mockClear();
 	});
@@ -177,5 +178,130 @@ describe('useDeviceEditForm', () => {
 		const editPayload = mockEdit.mock.calls[0][0];
 
 		expect(editPayload.data.roomId).toBe(roomTwoId);
+	});
+	it('sends an explicit null for room removal and omits an unchanged null room', async () => {
+		const form = useDeviceEditForm({ device: { ...mockDevice, draft: false, roomId: roomOneId } });
+		form.formEl.value = {
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		} as unknown as FormInstance;
+		form.model.roomId = null;
+
+		await form.submit();
+		expect(mockEdit.mock.calls[0][0].data).toHaveProperty('roomId', null);
+
+		form.model.name = 'Room remains cleared';
+		await form.submit();
+		expect(mockEdit.mock.calls[1][0].data).not.toHaveProperty('roomId');
+	});
+
+	describe('shared submit lifecycle', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
+
+		const createForm = (draft = false, messages?: { success?: string; error?: string }) => {
+			const form = useDeviceEditForm({ device: { ...mockDevice, draft }, messages });
+			form.formEl.value = {
+				clearValidate: vi.fn(),
+				validate: vi.fn().mockResolvedValue(true),
+			} as unknown as FormInstance;
+			return form;
+		};
+
+		it('exposes API validation errors and clears the error result after two seconds', async () => {
+			const error = new DevicesApiException('Placement is invalid', 422);
+			mockEdit.mockRejectedValueOnce(error);
+			const form = createForm();
+			form.model.name = 'Unsaved edit';
+			await nextTick();
+
+			await expect(form.submit()).rejects.toBe(error);
+
+			expect(form.formResult.value).toBe(FormResult.ERROR);
+			expect(form.formChanged.value).toBe(true);
+			expect(mockError).toHaveBeenCalledWith(error.message);
+			expect(mockSave).not.toHaveBeenCalled();
+			expect(mockSuccess).not.toHaveBeenCalled();
+			vi.advanceTimersByTime(2000);
+			expect(form.formResult.value).toBe(FormResult.NONE);
+		});
+
+		it('uses the supplied error message for other store failures', async () => {
+			const error = new DevicesApiException('Server unavailable', 503);
+			mockEdit.mockRejectedValueOnce(error);
+			const form = createForm(false, { error: 'custom edit failure' });
+
+			await expect(form.submit()).rejects.toBe(error);
+
+			expect(mockError).toHaveBeenCalledWith('custom edit failure');
+		});
+
+		it('handles a draft save failure after the edit without reporting success', async () => {
+			const error = new Error('Save failed');
+			mockSave.mockRejectedValueOnce(error);
+			const form = createForm(true, { error: 'custom create failure' });
+
+			await expect(form.submit()).rejects.toBe(error);
+
+			expect(mockEdit).toHaveBeenCalledOnce();
+			expect(mockSave).toHaveBeenCalledWith({ id: mockDevice.id });
+			expect(mockError).toHaveBeenCalledWith('custom create failure');
+			expect(mockSuccess).not.toHaveBeenCalled();
+			expect(form.formResult.value).toBe(FormResult.ERROR);
+		});
+
+		it('preserves the schema validation exception without submitting', async () => {
+			const form = createForm();
+			form.model.id = 'invalid-id';
+
+			await expect(form.submit()).rejects.toThrow(DevicesReTerminalValidationException);
+
+			expect(mockEdit).not.toHaveBeenCalled();
+			expect(mockSave).not.toHaveBeenCalled();
+			expect(mockError).not.toHaveBeenCalled();
+			expect(form.formResult.value).toBe(FormResult.NONE);
+		});
+
+		it('keeps validation rejection outside the store error lifecycle', async () => {
+			const form = createForm();
+			const error = new Error('Form validation rejected');
+			vi.mocked(form.formEl.value!.validate).mockRejectedValueOnce(error);
+
+			await expect(form.submit()).rejects.toBe(error);
+
+			expect(mockEdit).not.toHaveBeenCalled();
+			expect(mockError).not.toHaveBeenCalled();
+			expect(form.formResult.value).toBe(FormResult.NONE);
+		});
+
+		it('returns the existing submit outcomes and uses custom success messages', async () => {
+			const form = createForm(false, { success: 'custom.success' });
+			form.model.name = 'Saved edit';
+			await nextTick();
+
+			await expect(form.submit()).resolves.toBe('saved');
+
+			expect(mockSuccess).toHaveBeenCalledWith('custom.success');
+			expect(form.formChanged.value).toBe(false);
+			vi.advanceTimersByTime(2000);
+			expect(form.formResult.value).toBe(FormResult.NONE);
+
+			await expect(createForm(true).submit()).resolves.toBe('added');
+		});
+
+		it('refreshes the room baseline after saving a placement change', async () => {
+			const form = createForm();
+			form.model.roomId = roomTwoId;
+			await form.submit();
+			form.model.name = 'Second edit';
+			await nextTick();
+			expect(form.formChanged.value).toBe(true);
+			await form.submit();
+
+			expect(mockEdit.mock.calls[0][0].data.roomId).toBe(roomTwoId);
+			expect(mockEdit.mock.calls[1][0].data).not.toHaveProperty('roomId');
+			form.clear();
+			expect(form.formResult.value).toBe(FormResult.NONE);
+		});
 	});
 });

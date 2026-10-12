@@ -1,9 +1,9 @@
 /* eslint-disable vue/one-component-per-file */
 import { nextTick, ref } from 'vue';
 
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
 
 import type { IChannel, IChannelProperty, IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
@@ -22,10 +22,10 @@ import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 
 import ViewVirtualDeviceWizard from './view-virtual-device-wizard.vue';
 
-// These drive the whole four-step wizard through a real flow — every step component mounts, and the
-// end-to-end cases await compatibility checks and the create call. Fast in isolation, but they crossed
-// vitest's 5s default under full-suite parallelism and reddened CI intermittently. See the same note in
-// virtual-wizard-mapping-step.spec.ts: the headroom absorbs machine load, not test growth.
+enableAutoUnmount(afterEach);
+
+// Real four-step flows retain the same bounded budget as the full mapping component suite.
+// Measurements and the policy for this exception live in docs/testing-lifecycle.md.
 vi.setConfig({ testTimeout: 15000 });
 
 const mocks = vi.hoisted(() => ({

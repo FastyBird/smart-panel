@@ -137,17 +137,10 @@
 			:device="device"
 		/>
 
-		<!--
-			The devices module has no plugin extension slot for this view (nothing like a `deviceDetail`
-			element in devices.types.ts), so — same precedent as the "Create virtual device" launcher in
-			view-devices.vue — this is a virtual-specific affordance added directly into the module view
-			behind a gate, rather than a new shared-module extension point for a single caller. Gated only
-			on the device's own type: unlike the wizard launcher (which offers to *start* building a virtual
-			device and so hides behind the plugin's enabled toggle), this device already exists, and an
-			admin who has disabled the plugin still needs to see why it is offline.
-		-->
-		<virtual-device-sources
-			v-if="device && device.type === DEVICES_VIRTUAL_TYPE"
+		<!-- Existing devices retain plugin diagnostics even when their integration is disabled. -->
+		<component
+			:is="deviceDetailSection"
+			v-if="device && deviceDetailSection"
 			:key="device.id"
 			:device="device"
 		/>
@@ -441,12 +434,20 @@ import {
 	useUuid,
 } from '../../../common';
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
-import VirtualDeviceSources from '../../../plugins/devices-virtual/components/virtual-device-sources.vue';
-import { DEVICES_VIRTUAL_TYPE } from '../../../plugins/devices-virtual/devices-virtual.constants';
 import { ChannelDetail, DeviceDetail, DeviceLogs } from '../components/components';
-import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceControls, useDeviceLogs, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
-import { DevicesApiException } from '../devices.exceptions';
+import {
+	useChannels,
+	useChannelsActions,
+	useChannelsPropertiesActions,
+	useDevice,
+	useDeviceControls,
+	useDeviceLogs,
+	useDeviceSpecification,
+	useDeviceValidation,
+	useDevicesPlugins,
+} from '../composables/composables';
 import { RouteNames } from '../devices.constants';
+import { DevicesApiException } from '../devices.exceptions';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
@@ -475,6 +476,8 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const deviceId = computed(() => props.id);
 
 const { device, isLoading, fetchDevice } = useDevice({ id: deviceId });
+const { getElement: getDevicePluginElement } = useDevicesPlugins();
+const deviceDetailSection = computed(() => (device.value ? getDevicePluginElement(device.value.type)?.components?.deviceDetailSection : undefined));
 const { issues: validationIssues, fetchValidation } = useDeviceValidation({ id: deviceId });
 
 // Single shared logs composable — used for both the alert badge and the device-logs component

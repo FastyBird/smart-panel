@@ -21,11 +21,18 @@ import {
 } from './store/channels.properties.store.schemas';
 import { ChannelCreateReqSchema, type ChannelSchema, ChannelUpdateReqSchema } from './store/channels.store.schemas';
 import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './store/devices.store.schemas';
+import type { IDevice } from './store/devices.store.types';
+
+/** Props passed to the plugin-owned section below the shared device information card. */
+export interface IDeviceDetailSectionProps {
+	device: IDevice;
+}
 
 export type IDevicePluginsComponents = {
 	deviceAddForm?: DefineComponent<IDeviceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceAddFormEmits>;
 	deviceEditForm?: DefineComponent<IDeviceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceEditFormEmits>;
 	deviceWizardAdapter?: () => IDeviceWizardAdapter;
+	deviceDetailSection?: DefineComponent<IDeviceDetailSectionProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 };
 
 export type IDevicePluginsSchemas = {

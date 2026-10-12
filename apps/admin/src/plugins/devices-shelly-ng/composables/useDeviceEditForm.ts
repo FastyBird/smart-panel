@@ -1,23 +1,13 @@
-import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
+import { computed, reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { FormInstance } from 'element-plus';
-import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { tryOnMounted } from '@vueuse/core';
 
-import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
-import {
-	DevicesApiException,
-	DevicesValidationException,
-	FormResult,
-	type FormResultType,
-	type IDevice,
-	channelsPropertiesStoreKey,
-	channelsStoreKey,
-	devicesStoreKey,
-} from '../../../modules/devices';
+import { injectStoresManager } from '../../../common';
+import { type IDevice, channelsPropertiesStoreKey, channelsStoreKey } from '../../../modules/devices';
+import { useDeviceEditFormSubmit } from '../../../modules/devices/composables/useDeviceEditFormSubmit';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DevicesShellyNgValidationException } from '../devices-shelly-ng.exceptions';
 import { ShellyNgDeviceEditFormSchema } from '../schemas/devices.schemas';
@@ -44,20 +34,12 @@ const extractAddresses = (d: DeviceWithAddresses): { wifi: string | null; ethern
 export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps): IUseDeviceEditForm => {
 	const storesManager = injectStoresManager();
 
-	const devicesStore = storesManager.getStore(devicesStoreKey);
 	const channelsStore = storesManager.getStore(channelsStoreKey);
 	const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 	const { t } = useI18n();
 
-	const flashMessage = useFlashMessage();
-	const logger = useLogger();
-
 	const { supportedDevices, fetchDevices: fetchSupportedDevices } = useSupportedDevices();
-
-	const formResult = ref<FormResultType>(FormResult.NONE);
-
-	let timer: number;
 
 	const deviceModel = computed<string | undefined>((): string | undefined => {
 		const channel = channelsStore.findForDevice(device.id).find((c) => c.category === DevicesModuleChannelCategory.device_information);
@@ -109,42 +91,15 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		ethernetAddress: addresses.ethernet,
 	});
 
-	let initialModel: Reactive<IShellyNgDeviceEditForm> = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
-
-	const formEl = ref<FormInstance | undefined>(undefined);
-
-	const formChanged = ref<boolean>(false);
-
-	const submit = async (): Promise<'added' | 'saved'> => {
-		const isDraft = device.draft;
-
-		const errorMessage =
-			messages && messages.error
-				? messages.error
-				: device.draft
-					? t('devicesShellyNgPlugin.messages.devices.notCreated', { device: device.name })
-					: t('devicesShellyNgPlugin.messages.devices.notEdited', { device: device.name });
-
-		formEl.value!.clearValidate();
-
-		const valid = await formEl.value!.validate();
-
-		if (!valid) throw new DevicesValidationException('Form not valid');
-
-		const parsedModel = ShellyNgDeviceEditFormSchema.safeParse(model);
-
-		if (!parsedModel.success) {
-			logger.error('Schema validation failed with:', parsedModel.error);
-
-			throw new DevicesShellyNgValidationException('Failed to validate edit device model.');
-		}
-
-		formResult.value = FormResult.WORKING;
-
-		try {
-			const { wifiAddress, ethernetAddress, roomId, ...deviceData } = parsedModel.data;
-
-			// Only send fields when they've actually changed
+	const { formEl, formChanged, submit, clear, formResult } = useDeviceEditFormSubmit({
+		device,
+		model,
+		messages,
+		messagePrefix: 'devicesShellyNgPlugin',
+		parseModel: () => ShellyNgDeviceEditFormSchema.safeParse(model),
+		validationException: DevicesShellyNgValidationException,
+		prepareData: (parsedModel, initialModel) => {
+			const { wifiAddress, ethernetAddress, roomId, ...deviceData } = parsedModel;
 			const fieldUpdates: Record<string, string | null> = {};
 
 			if (wifiAddress !== initialModel.wifiAddress) {
@@ -159,75 +114,14 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 				fieldUpdates.roomId = roomId ?? null;
 			}
 
-			await devicesStore.edit({
-				id: device.id,
-				data: {
-					...deviceData,
-					...fieldUpdates,
-					type: device.type,
-				},
-			});
-
-			if (device.draft) {
-				await devicesStore.save({
-					id: device.id,
-				});
-			}
-		} catch (error: unknown) {
-			formResult.value = FormResult.ERROR;
-
-			timer = window.setTimeout(clear, 2000);
-
-			if (error instanceof DevicesApiException && error.code === 422) {
-				flashMessage.error(error.message);
-			} else {
-				flashMessage.error(errorMessage);
-			}
-
-			throw error;
-		}
-
-		formResult.value = FormResult.OK;
-
-		timer = window.setTimeout(clear, 2000);
-
-		if (isDraft) {
-			flashMessage.success(
-				t(messages && messages.success ? messages.success : 'devicesShellyNgPlugin.messages.devices.created', {
-					device: device.name,
-				})
-			);
-
-			return 'added';
-		}
-
-		flashMessage.success(
-			t(messages && messages.success ? messages.success : 'devicesShellyNgPlugin.messages.devices.edited', {
-				device: device.name,
-			})
-		);
-
-		formChanged.value = false;
-
-		initialModel = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
-
-		return 'saved';
-	};
-
-	const clear = (): void => {
-		window.clearTimeout(timer);
-
-		formResult.value = FormResult.NONE;
-	};
+			return { ...deviceData, ...fieldUpdates };
+		},
+	});
 
 	tryOnMounted((): void => {
 		fetchSupportedDevices().catch(() => {
 			// Could be ignored
 		});
-	});
-
-	watch(model, (): void => {
-		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

@@ -14,7 +14,7 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 
 	const { enabled } = useConfigPlugins();
 
-	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm', 'deviceWizardAdapter'];
+	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm', 'deviceWizardAdapter', 'deviceDetailSection'];
 	const typeOptionComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm'];
 
 	const pluginSchemas: (keyof IDevicePluginsSchemas)[] = [
