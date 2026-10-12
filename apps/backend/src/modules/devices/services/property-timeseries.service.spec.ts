@@ -315,5 +315,27 @@ describe('PropertyTimeseriesService', () => {
 
 			expect(storageService.query).toHaveBeenCalledWith(expect.stringContaining("propertyId = 'source-prop'"));
 		});
+
+		it('contains resolver failures in best-effort queries and preserves them in strict queries', async () => {
+			const registry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+			const failure = new Error('resolver unavailable');
+			registry.register({
+				getType: () => 'throwing-source',
+				resolve: () => {
+					throw failure;
+				},
+			});
+			const property = {
+				id: 'projection-prop',
+				type: 'throwing-source',
+				dataType: DataTypeType.FLOAT,
+			} as ChannelPropertyEntity;
+			const from = new Date('2026-01-01');
+			const to = new Date('2026-01-02');
+
+			await expect(service.queryTimeseries(property, from, to)).resolves.toMatchObject({ points: [] });
+			await expect(service.queryTimeseriesStrict(property, from, to)).rejects.toBe(failure);
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
 	});
 });
