@@ -22,7 +22,7 @@ Every open epic has a GitHub milestone and an epic issue whose sub-issues are ti
 | Security hardening phase 2 | Security hardening phase 2 | #1330 |
 | Backup and restore follow-ups | Backup and restore follow-ups | #1346 |
 
-Standalone open issues from the audit: #1402 (shared device editing and test infrastructure), #1403 (embedded device-control snapshot race); #1353 (Dependabot advisories), #1355 and #1356 (panel signage rendering), #1357 (energy screen widget test), #1358 (extension actions and managed services docs), #1359 (intent failure badge).
+Standalone open issues from the audit: #1402 (shared device editing and test infrastructure); #1353 (Dependabot advisories), #1355 and #1356 (panel signage rendering), #1357 (energy screen widget test), #1358 (extension actions and managed services docs), #1359 (intent failure badge).
 
 ---
 

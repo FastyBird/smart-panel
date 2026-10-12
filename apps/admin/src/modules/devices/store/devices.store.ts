@@ -104,6 +104,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	const pendingFetchPromises: Record<string, Promise<IDevice[]>> = {};
 
 	// Embedded rows belong to their stores: capture those read fences before any parent await.
+	const captureDeviceControlsSnapshot = () => storesManager.getStore(devicesControlsStoreKey).captureReadSnapshot();
 	const captureChannelsSnapshot = () => ({
 		channel: storesManager.getStore(channelsStoreKey).captureReadSnapshot(),
 		control: storesManager.getStore(channelsControlsStoreKey).captureReadSnapshot(),
@@ -228,6 +229,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const requestedAt = mutationToken;
 		const generation = ++requestGeneration;
 		const channelsSnapshot = captureChannelsSnapshot();
+		const deviceControlsSnapshot = captureDeviceControlsSnapshot();
 
 		const getPromise = (async (): Promise<IDevice> => {
 			if (semaphore.value.fetching.item.includes(payload.id)) {
@@ -263,7 +265,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 					readGenerationById[transformed.id] = generation;
 					commit(transformed, { read: true });
 
-					insertDeviceControlsRelations(transformed, responseData.data.controls);
+					insertDeviceControlsRelations(transformed, responseData.data.controls, deviceControlsSnapshot);
 					insertChannelsRelations(transformed, responseData.data.channels, channelsSnapshot);
 
 					return transformed;
@@ -317,6 +319,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const requestedAt = mutationToken;
 		const generation = ++requestGeneration;
 		const channelsSnapshot = captureChannelsSnapshot();
+		const deviceControlsSnapshot = captureDeviceControlsSnapshot();
 
 		const fetchPromise = (async (): Promise<IDevice[]> => {
 			try {
@@ -388,7 +391,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 							continue;
 						}
 
-						insertDeviceControlsRelations(transformedDevice, device.controls);
+						insertDeviceControlsRelations(transformedDevice, device.controls, deviceControlsSnapshot);
 						insertChannelsRelations(transformedDevice, device.channels, channelsSnapshot);
 
 						readGenerationById[transformedDevice.id] = generation;
@@ -464,6 +467,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		commit(parsedNewItem.data);
 		const channelsSnapshot = captureChannelsSnapshot();
+		const deviceControlsSnapshot = captureDeviceControlsSnapshot();
 
 		if (parsedNewItem.data.draft) {
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
@@ -491,7 +495,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					commit(transformed);
 
-					insertDeviceControlsRelations(transformed, responseData.data.controls);
+					insertDeviceControlsRelations(transformed, responseData.data.controls, deviceControlsSnapshot);
 					insertChannelsRelations(transformed, responseData.data.channels, channelsSnapshot);
 
 					return transformed;
@@ -630,6 +634,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.updating.push(payload.id);
 		const channelsSnapshot = captureChannelsSnapshot();
+		const deviceControlsSnapshot = captureDeviceControlsSnapshot();
 
 		try {
 			const {
@@ -649,7 +654,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 				commit(transformed);
 
-				insertDeviceControlsRelations(transformed, responseData.data.controls);
+				insertDeviceControlsRelations(transformed, responseData.data.controls, deviceControlsSnapshot);
 				insertChannelsRelations(transformed, responseData.data.channels, channelsSnapshot);
 
 				return transformed;
@@ -930,11 +935,15 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		}
 	};
 
-	const insertDeviceControlsRelations = (device: IDevice, controls: IDeviceControlRes[]): void => {
+	const insertDeviceControlsRelations = (
+		device: IDevice,
+		controls: IDeviceControlRes[],
+		applySnapshot: ReturnType<typeof captureDeviceControlsSnapshot>
+	): void => {
 		const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
 
 		controls.forEach((control) => {
-			devicesControlsStore.set({
+			applySnapshot({
 				id: control.id,
 				data: transformDeviceControlResponse(control),
 			});

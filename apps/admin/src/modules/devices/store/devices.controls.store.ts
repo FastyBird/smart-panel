@@ -2,13 +2,13 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type {
-	DevicesModuleGetDeviceControlOperation,
-	DevicesModuleGetDeviceControlsOperation,
 	DevicesModuleCreateDeviceControlOperation,
 	DevicesModuleDeleteDeviceControlOperation,
+	DevicesModuleGetDeviceControlOperation,
+	DevicesModuleGetDeviceControlsOperation,
 } from '../../../openapi.constants';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -72,6 +72,26 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 		const pendingFetchPromises: Record<string, Promise<IDeviceControl[]>> = {};
 
+		let mutationToken = 0;
+		const mutationTokenById: Record<IDeviceControl['id'], number> = {};
+		const scopeMutationToken: Record<string, number> = {};
+		let requestGeneration = 0;
+		const readGenerationById: Record<IDeviceControl['id'], number> = {};
+
+		const commit = (item: IDeviceControl): IDeviceControl => {
+			mutationTokenById[item.id] = ++mutationToken;
+			return (data.value[item.id] = item);
+		};
+		const forget = (id: IDeviceControl['id']): void => {
+			mutationTokenById[id] = ++mutationToken;
+			delete data.value[id];
+		};
+		const unchangedSince = (item: IDeviceControl, requestedAt: number): boolean =>
+			(mutationTokenById[item.id] ?? 0) <= requestedAt && (scopeMutationToken[item.device] ?? 0) <= requestedAt;
+
+		const canApplyRead = (item: IDeviceControl, requestedAt: number, generation: number): boolean =>
+			unchangedSince(item, requestedAt) && (readGenerationById[item.id] ?? 0) <= generation;
+
 		const onEvent = (payload: IDevicesControlsOnEventActionPayload): IDeviceControl => {
 			return set({
 				id: payload.id,
@@ -79,7 +99,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			});
 		};
 
-		const set = (payload: IDevicesControlsSetActionPayload): IDeviceControl => {
+		const applySet = (payload: IDevicesControlsSetActionPayload, apply: (item: IDeviceControl) => IDeviceControl = commit): IDeviceControl => {
 			if (payload.id && data.value && payload.id in data.value) {
 				const parsed = DeviceControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
@@ -89,7 +109,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					throw new DevicesValidationException('Failed to insert device control.');
 				}
 
-				return (data.value[parsed.data.id] = parsed.data);
+				return apply(parsed.data);
 			}
 
 			const parsed = DeviceControlSchema.safeParse({ ...payload.data, id: payload.id });
@@ -102,7 +122,23 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 			data.value = data.value ?? {};
 
-			return (data.value[parsed.data.id] = parsed.data);
+			return apply(parsed.data);
+		};
+
+		const set = (payload: IDevicesControlsSetActionPayload): IDeviceControl => applySet(payload);
+
+		// Parents capture this before their request, so embedded snapshots share the child's fences.
+		const captureReadSnapshot: IDevicesControlsStoreActions['captureReadSnapshot'] = () => {
+			const requestedAt = mutationToken;
+			const generation = ++requestGeneration;
+			return (payload: IDevicesControlsSetActionPayload): IDeviceControl =>
+				applySet(payload, (item: IDeviceControl): IDeviceControl => {
+					if (canApplyRead(item, requestedAt, generation)) {
+						readGenerationById[item.id] = generation;
+						data.value[item.id] = item;
+					}
+					return data.value[item.id] ?? item;
+				});
 		};
 
 		const unset = (payload: IDevicesControlsUnsetActionPayload): void => {
@@ -111,17 +147,18 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			}
 
 			if (payload.deviceId !== undefined) {
+				scopeMutationToken[payload.deviceId] = ++mutationToken;
 				const items = findForDevice(payload.deviceId);
 
 				for (const item of items) {
 					if (item.id in (data.value ?? {})) {
-						delete (data.value ?? {})[item.id];
+						forget(item.id);
 					}
 				}
 
 				return;
 			} else if (payload.id !== undefined) {
-				delete data.value[payload.id];
+				forget(payload.id);
 
 				return;
 			}
@@ -134,6 +171,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			if (existingPromise) {
 				return existingPromise;
 			}
+
+			const applySnapshot = captureReadSnapshot();
 
 			const getPromise = (async (): Promise<IDeviceControl> => {
 				if (semaphore.value.fetching.item.includes(payload.id)) {
@@ -156,7 +195,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					if (typeof responseData !== 'undefined') {
 						const control = transformDeviceControlResponse(responseData.data);
 
-						data.value[control.id] = control;
+						applySnapshot({ id: control.id, data: control });
 
 						return control;
 					}
@@ -188,6 +227,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				return existingPromise;
 			}
 
+			const applySnapshot = captureReadSnapshot();
+
 			const fetchPromise = (async (): Promise<IDeviceControl[]> => {
 				if (semaphore.value.fetching.items.includes(payload.deviceId)) {
 					throw new DevicesApiException('Already fetching device controls.');
@@ -213,15 +254,10 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 						firstLoad.value.push(payload.deviceId);
 						firstLoad.value = [...new Set(firstLoad.value)];
 
-						const controls = Object.fromEntries(
-							responseData.data.map((control) => {
-								const transformedDeviceControl = transformDeviceControlResponse(control);
-
-								return [transformedDeviceControl.id, transformedDeviceControl];
-							})
-						);
-
-						data.value = { ...data.value, ...controls };
+						for (const control of responseData.data) {
+							const transformed = transformDeviceControlResponse(control);
+							applySnapshot({ id: transformed.id, data: transformed });
+						}
 
 						return Object.values(data.value);
 					}
@@ -272,7 +308,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 			semaphore.value.creating.push(parsedNewDeviceControl.data.id);
 
-			data.value[parsedNewDeviceControl.data.id] = parsedNewDeviceControl.data;
+			commit(parsedNewDeviceControl.data);
+			const requestedAt = mutationToken;
 
 			if (parsedNewDeviceControl.data.draft) {
 				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDeviceControl.data.id);
@@ -296,13 +333,19 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
 						const control = transformDeviceControlResponse(responseData.data);
 
-						data.value[control.id] = control;
+						if (!unchangedSince(control, requestedAt)) {
+							return data.value[control.id] ?? control;
+						}
+
+						commit(control);
 
 						return control;
 					}
 
 					// Record could not be created on api, we have to remove it from a database
-					delete data.value[parsedNewDeviceControl.data.id];
+					if (unchangedSince(parsedNewDeviceControl.data, requestedAt)) {
+						forget(parsedNewDeviceControl.data.id);
+					}
 
 					let errorReason: string | null = 'Failed to create device control.';
 
@@ -335,6 +378,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			}
 
 			semaphore.value.updating.push(payload.id);
+			const requestedAt = mutationToken;
 
 			try {
 				const {
@@ -353,7 +397,11 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
 					const control = transformDeviceControlResponse(responseData.data);
 
-					data.value[control.id] = control;
+					if (!unchangedSince(control, requestedAt)) {
+						return data.value[control.id] ?? control;
+					}
+
+					commit(control);
 
 					return control;
 				}
@@ -376,6 +424,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			}
 
 			if (!Object.keys(data.value).includes(payload.id)) {
+				forget(payload.id);
 				return true;
 			}
 
@@ -383,7 +432,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 			const recordToRemove = data.value[payload.id];
 
-			delete data.value[payload.id];
+			forget(payload.id);
+			const requestedAt = mutationToken;
 
 			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
@@ -400,7 +450,12 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					}
 
 					// Deleting record on api failed, we need to refresh the record
-					await get({ id: payload.id, deviceId: payload.deviceId });
+					if (unchangedSince(recordToRemove, requestedAt)) {
+						await pendingGetPromises[payload.id]?.catch(() => undefined);
+						if (unchangedSince(recordToRemove, requestedAt)) {
+							await get({ id: payload.id, deviceId: payload.deviceId });
+						}
+					}
 
 					let errorReason: string | null = 'Remove device control failed.';
 
@@ -428,6 +483,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			findForDevice,
 			findById,
 			onEvent,
+			captureReadSnapshot,
 			set,
 			unset,
 			get,
