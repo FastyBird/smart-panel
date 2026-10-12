@@ -26,6 +26,7 @@ import { PagesCardsValidationException } from '../pages-cards.exceptions';
 import { CardsPageNestedBuilderService } from './page-create-nested-builder.service';
 
 describe('CardsPageNestedBuilderService', () => {
+	let module: TestingModule | undefined;
 	let service: CardsPageNestedBuilderService;
 	let tileMapperService: TilesTypeMapperService;
 	let dataSourceMapperService: DataSourcesTypeMapperService;
@@ -87,7 +88,7 @@ describe('CardsPageNestedBuilderService', () => {
 			create: jest.fn().mockImplementation((x): CardEntity => x),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				CardsPageNestedBuilderService,
 				{
@@ -143,7 +144,10 @@ describe('CardsPageNestedBuilderService', () => {
 		ormDataSource = module.get(OrmDataSource);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

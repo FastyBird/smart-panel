@@ -23,6 +23,7 @@ import {
 import { VirtualDevicePlatform } from './virtual-device.platform';
 
 describe('VirtualDevicePlatform', () => {
+	let module: TestingModule | undefined;
 	let platform: VirtualDevicePlatform;
 	let graphs: { findPropertyTarget: jest.Mock };
 	let platformRegistryService: { get: jest.Mock };
@@ -114,7 +115,7 @@ describe('VirtualDevicePlatform', () => {
 		channelsById = {};
 		devicesById = {};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				VirtualDevicePlatform,
 				{
@@ -147,7 +148,10 @@ describe('VirtualDevicePlatform', () => {
 		jest.spyOn(Logger.prototype, 'log').mockImplementation();
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

@@ -16,6 +16,7 @@ import { SpaceClimateStateListener } from './space-climate-state.listener';
 const DEBOUNCE_DELAY = 100;
 
 describe('SpaceClimateStateListener', () => {
+	let module: TestingModule | undefined;
 	let listener: SpaceClimateStateListener;
 	let metadata: { findOne: jest.Mock };
 	let climateStateService: jest.Mocked<SpaceClimateStateService>;
@@ -61,7 +62,7 @@ describe('SpaceClimateStateListener', () => {
 		// Use fake timers for debounce testing
 		jest.useFakeTimers();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceClimateStateListener,
 				{
@@ -91,7 +92,10 @@ describe('SpaceClimateStateListener', () => {
 		eventEmitter = module.get(EventEmitter2);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		listener.onModuleDestroy();
 		jest.clearAllMocks();
 		jest.useRealTimers();

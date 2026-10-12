@@ -13,6 +13,7 @@ import { PropertyCommandService } from '../services/property-command.service';
 import { DevicesWsEventType, DevicesWsHandlerName, WebsocketExchangeListener } from './websocket-exchange.listener';
 
 describe('WebsocketExchangeListener (Devices)', () => {
+	let module: TestingModule | undefined;
 	let listener: WebsocketExchangeListener;
 	let commandEventRegistry: jest.Mocked<CommandEventRegistryService>;
 	let propertyCommandService: jest.Mocked<PropertyCommandService>;
@@ -26,7 +27,7 @@ describe('WebsocketExchangeListener (Devices)', () => {
 	});
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				WebsocketExchangeListener,
 				{
@@ -49,7 +50,10 @@ describe('WebsocketExchangeListener (Devices)', () => {
 		propertyCommandService = module.get(PropertyCommandService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

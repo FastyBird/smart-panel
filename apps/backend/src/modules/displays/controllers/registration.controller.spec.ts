@@ -23,6 +23,7 @@ import { RegistrationService } from '../services/registration.service';
 import { RegistrationController } from './registration.controller';
 
 describe('RegistrationController', () => {
+	let module: TestingModule | undefined;
 	let controller: RegistrationController;
 	let service: RegistrationService;
 	let permitJoinService: { isPermitJoinActive: jest.Mock; getRemainingTime: jest.Mock };
@@ -79,7 +80,7 @@ describe('RegistrationController', () => {
 			getRemainingTime: jest.fn().mockReturnValue(null),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [RegistrationController],
 			providers: [
 				{
@@ -107,7 +108,10 @@ describe('RegistrationController', () => {
 		trustedProxyRegistry = module.get<TrustedProxyRegistryService>(TrustedProxyRegistryService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

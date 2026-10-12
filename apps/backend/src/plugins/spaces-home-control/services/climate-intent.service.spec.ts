@@ -29,6 +29,7 @@ import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 
 describe('ClimateIntentService', () => {
+	let module: TestingModule | undefined;
 	let service: ClimateIntentService;
 	let spacesService: jest.Mocked<SpacesService>;
 	let climateStateService: jest.Mocked<SpaceClimateStateService>;
@@ -101,7 +102,7 @@ describe('ClimateIntentService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				ClimateIntentService,
 				{
@@ -702,5 +703,11 @@ describe('ClimateIntentService', () => {
 			expect(result?.offlineDeviceIds).toHaveLength(1);
 			expect(result?.offlineDeviceIds).toContain(deviceId);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

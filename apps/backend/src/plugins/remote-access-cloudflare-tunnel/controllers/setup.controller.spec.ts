@@ -18,6 +18,7 @@ import {
 import { CloudflareTunnelSetupController } from './setup.controller';
 
 describe('CloudflareTunnelSetupController', () => {
+	let module: TestingModule | undefined;
 	let controller: CloudflareTunnelSetupController;
 	let setupService: { install: jest.Mock };
 	let providerService: { getStatus: jest.Mock };
@@ -44,7 +45,7 @@ describe('CloudflareTunnelSetupController', () => {
 		};
 		configService = { updatePluginConfig: jest.fn().mockResolvedValue(undefined) };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [CloudflareTunnelSetupController],
 			providers: [
 				{ provide: CloudflareTunnelSetupService, useValue: setupService },
@@ -177,5 +178,11 @@ describe('CloudflareTunnelSetupController', () => {
 
 			await expect(controller.reset()).rejects.toMatchObject({ status: 500 });
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

@@ -6,6 +6,7 @@ import { SpacesBulkService } from './spaces-bulk.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpacesBulkService', () => {
+	let module: TestingModule | undefined;
 	let service: SpacesBulkService;
 	let spacesService: { remove: jest.Mock };
 
@@ -14,7 +15,7 @@ describe('SpacesBulkService', () => {
 			remove: jest.fn().mockResolvedValue(undefined),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [SpacesBulkService, { provide: SpacesService, useValue: spacesService }],
 		}).compile();
 
@@ -44,5 +45,11 @@ describe('SpacesBulkService', () => {
 			expect(result.succeeded).toEqual(['a', 'c']);
 			expect(result.failed).toEqual([{ id: 'b', reason: 'Requested space does not exist' }]);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

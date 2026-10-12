@@ -12,6 +12,7 @@ import { NotificationInputValidator } from './notification-input.validator';
 import { CreateNotificationInput } from './notifications.service';
 
 describe('NotificationInputValidator', () => {
+	let module: TestingModule | undefined;
 	let validator: NotificationInputValidator;
 
 	const baseInput = (overrides: Partial<CreateNotificationInput> = {}): CreateNotificationInput => ({
@@ -23,7 +24,7 @@ describe('NotificationInputValidator', () => {
 	});
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [NotificationInputValidator],
 		}).compile();
 
@@ -345,5 +346,11 @@ describe('NotificationInputValidator', () => {
 
 			expect(result).toEqual({ outcome: 'rejected', reason: expect.stringContaining('data') as string });
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

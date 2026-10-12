@@ -36,6 +36,7 @@ import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
 import { WledService } from './wled.service';
 
 describe('WledService', () => {
+	let module: TestingModule | undefined;
 	let service: WledService;
 	let configService: jest.Mocked<ConfigService>;
 	let wledAdapter: jest.Mocked<WledClientAdapterService>;
@@ -109,7 +110,7 @@ describe('WledService', () => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				WledService,
 				{
@@ -213,7 +214,10 @@ describe('WledService', () => {
 		managedServiceManager = module.get(ManagedServiceManagerService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.useRealTimers();
 	});
 

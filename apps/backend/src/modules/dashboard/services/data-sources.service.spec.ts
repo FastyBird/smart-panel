@@ -77,6 +77,7 @@ class MockDataSourceEntity extends DataSourceEntity {
 }
 
 describe('DataSourcesService', () => {
+	let module: TestingModule | undefined;
 	let dataSourceService: DataSourcesService;
 	let repository: Repository<DataSourceEntity>;
 	let mapper: DataSourcesTypeMapperService;
@@ -128,7 +129,7 @@ describe('DataSourcesService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DataSourcesService,
 				{ provide: getRepositoryToken(DataSourceEntity), useFactory: mockRepository },
@@ -177,7 +178,10 @@ describe('DataSourcesService', () => {
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

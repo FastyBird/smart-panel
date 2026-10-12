@@ -74,6 +74,7 @@ class UpdateMockDeviceDto extends UpdateDeviceDto {
 }
 
 describe('DevicesService', () => {
+	let module: TestingModule | undefined;
 	let service: DevicesService;
 	let repository: Repository<DeviceEntity>;
 	let spaceRepository: Repository<SpaceEntity>;
@@ -134,7 +135,7 @@ describe('DevicesService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DevicesService,
 				// Dependency-free and re-entrant, so the real one is used: what it serializes is exactly what
@@ -216,7 +217,10 @@ describe('DevicesService', () => {
 		channelsService = jest.mocked(module.get<ChannelsService>(ChannelsService));
 		propertiesService = jest.mocked(module.get<ChannelsPropertiesService>(ChannelsPropertiesService));
 	});
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

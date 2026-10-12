@@ -27,6 +27,7 @@ jest.mock('bcrypt', () => ({
 }));
 
 describe('AuthService', () => {
+	let module: TestingModule | undefined;
 	let authService: AuthService;
 	let tokensService: TokensService;
 	let usersService: UsersService;
@@ -54,7 +55,7 @@ describe('AuthService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				AuthService,
 				{
@@ -102,7 +103,10 @@ describe('AuthService', () => {
 		notifications = module.get<NotificationsService>(NotificationsService) as unknown as typeof notifications;
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 		jest.useRealTimers();
 	});

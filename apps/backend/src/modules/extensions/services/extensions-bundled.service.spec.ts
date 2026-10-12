@@ -16,6 +16,7 @@ import { ExtensionsBundledService } from './extensions-bundled.service';
 jest.mock('node:fs');
 
 describe('ExtensionsBundledService', () => {
+	let module: TestingModule | undefined;
 	let service: ExtensionsBundledService;
 
 	const mockManifest = {
@@ -27,7 +28,7 @@ describe('ExtensionsBundledService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				ExtensionsBundledService,
 				{
@@ -42,7 +43,10 @@ describe('ExtensionsBundledService', () => {
 		service = module.get<ExtensionsBundledService>(ExtensionsBundledService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 		service.clearCache();
 	});

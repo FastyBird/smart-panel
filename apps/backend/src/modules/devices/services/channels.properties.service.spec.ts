@@ -80,6 +80,7 @@ class UpdateMockChannelPropertyDto extends UpdateChannelPropertyDto {
 }
 
 describe('ChannelsPropertiesService', () => {
+	let module: TestingModule | undefined;
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let structureLock: DeviceStructureLockService;
@@ -156,7 +157,7 @@ describe('ChannelsPropertiesService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				ChannelsPropertiesService,
 				// Dependency-free and re-entrant, so the real one is used: what it serializes is exactly
@@ -230,7 +231,10 @@ describe('ChannelsPropertiesService', () => {
 		propertyCommandWindowService = module.get<PropertyCommandWindowService>(PropertyCommandWindowService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.useRealTimers();
 		jest.clearAllMocks();
 	});

@@ -25,6 +25,7 @@ import { TailscaleSetupService, TailscaleSetupUnavailableException } from '../se
 import { TailscaleSetupController } from './setup.controller';
 
 describe('TailscaleSetupController', () => {
+	let module: TestingModule | undefined;
 	let controller: TailscaleSetupController;
 	let setupService: { install: jest.Mock; getLastJob: jest.Mock };
 	let loginService: {
@@ -69,7 +70,7 @@ describe('TailscaleSetupController', () => {
 			stop: jest.fn().mockResolvedValue(undefined),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [TailscaleSetupController],
 			providers: [
 				{
@@ -395,5 +396,11 @@ describe('TailscaleSetupController', () => {
 
 			await expect(controller.resetPreferences(res)).rejects.toBeInstanceOf(InternalServerErrorException);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

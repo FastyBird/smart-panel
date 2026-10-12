@@ -13,6 +13,7 @@ import { OpenWeatherMapOneCallGeolocationService } from './openweathermap-onecal
 const mockFetch = jest.spyOn(global, 'fetch').mockImplementation();
 
 describe('OpenWeatherMapOneCallGeolocationService', () => {
+	let module: TestingModule | undefined;
 	let service: OpenWeatherMapOneCallGeolocationService;
 	let configService: ConfigService;
 
@@ -44,7 +45,7 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				OpenWeatherMapOneCallGeolocationService,
 				{
@@ -60,7 +61,10 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 		configService = module.get<ConfigService>(ConfigService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.resetAllMocks();
 	});
 

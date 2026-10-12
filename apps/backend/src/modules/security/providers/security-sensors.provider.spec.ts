@@ -115,6 +115,7 @@ function buildDefaultRules(): Map<string, ResolvedSensorRule> {
 }
 
 describe('SecuritySensorsProvider', () => {
+	let module: TestingModule | undefined;
 	let provider: SecuritySensorsProvider;
 	let testingModule: TestingModule;
 	let channelsPropertiesService: { findOne: jest.Mock };
@@ -127,7 +128,7 @@ describe('SecuritySensorsProvider', () => {
 
 		channelsPropertiesService = { findOne: jest.fn().mockResolvedValue(null) };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SecuritySensorsProvider,
 				{ provide: DevicesService, useValue: devicesService },
@@ -855,5 +856,11 @@ describe('SecuritySensorsProvider', () => {
 		expect(signal.activeAlerts).toEqual([
 			expect.objectContaining({ sourceDeviceId: 'virtual', timestamp: '2026-08-01T11:00:00.000Z' }),
 		]);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

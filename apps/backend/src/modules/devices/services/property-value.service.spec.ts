@@ -20,7 +20,7 @@ import { PropertyValueSourceRegistryService } from './property-value-source.regi
 import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
-	let module: TestingModule;
+	let module: TestingModule | undefined;
 	let service: PropertyValueService;
 	let storageService: jest.Mocked<StorageService>;
 
@@ -64,7 +64,10 @@ describe('PropertyValueService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

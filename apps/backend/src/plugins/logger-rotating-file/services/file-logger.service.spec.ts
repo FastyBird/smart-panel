@@ -52,6 +52,7 @@ type Cfg = {
 };
 
 describe('FileLoggerService', () => {
+	let module: TestingModule | undefined;
 	let svc: FileLoggerService;
 	let cfgRef: Cfg;
 	let configService: { getPluginConfig: jest.Mock };
@@ -88,7 +89,7 @@ describe('FileLoggerService', () => {
 		(fsMock.appendFile as jest.Mock).mockResolvedValue(undefined);
 		(fsMock.readdir as jest.Mock).mockResolvedValue([]);
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				FileLoggerService,
 				{ provide: ConfigService, useValue: configService },
@@ -100,7 +101,10 @@ describe('FileLoggerService', () => {
 		scheduler = module.get(SchedulerRegistry);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

@@ -10,6 +10,7 @@ import { CloudflareTunnelSetupService } from '../services/cloudflare-tunnel-setu
 import { CloudflareTunnelStatusController } from './status.controller';
 
 describe('CloudflareTunnelStatusController', () => {
+	let module: TestingModule | undefined;
 	let controller: CloudflareTunnelStatusController;
 	let providerService: { getStatus: jest.Mock };
 	let tunnelManagedService: { refreshRequirements: jest.Mock };
@@ -43,7 +44,7 @@ describe('CloudflareTunnelStatusController', () => {
 				.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-08T00:00:00.000Z' }),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [CloudflareTunnelStatusController],
 			providers: [
 				{ provide: CloudflareTunnelProviderService, useValue: providerService },
@@ -146,5 +147,11 @@ describe('CloudflareTunnelStatusController', () => {
 				reason: 'sudo: a password is required',
 			});
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

@@ -14,11 +14,12 @@ import { Z2mWizardService } from '../services/wizard.service';
 import { Zigbee2mqttWizardController } from './zigbee2mqtt-wizard.controller';
 
 describe('Zigbee2mqttWizardController', () => {
+	let module: TestingModule | undefined;
 	let controller: Zigbee2mqttWizardController;
 	let wizardService: jest.Mocked<Z2mWizardService>;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [Zigbee2mqttWizardController],
 			providers: [
 				{
@@ -109,5 +110,11 @@ describe('Zigbee2mqttWizardController', () => {
 				data: { devices: [{ ieeeAddress: 'x', name: 'X', category: 'lighting' as any }] },
 			} as any),
 		).rejects.toBeInstanceOf(NotFoundException);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

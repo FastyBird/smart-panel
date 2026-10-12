@@ -19,6 +19,7 @@ import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 
 describe('DeviceAdoptionService', () => {
+	let module: TestingModule | undefined;
 	let service: DeviceAdoptionService;
 	let homeAssistantWsService: jest.Mocked<HomeAssistantWsService>;
 	let devicesService: jest.Mocked<DevicesService>;
@@ -81,7 +82,7 @@ describe('DeviceAdoptionService', () => {
 			validate: jest.fn().mockResolvedValue(true),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DeviceAdoptionService,
 				{ provide: HomeAssistantWsService, useValue: homeAssistantWsServiceMock },
@@ -107,7 +108,10 @@ describe('DeviceAdoptionService', () => {
 		channelsService = module.get(ChannelsService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

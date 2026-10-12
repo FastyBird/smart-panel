@@ -24,6 +24,7 @@ import { LocationsTypeMapperService } from './locations-type-mapper.service';
 import { LocationsService } from './locations.service';
 
 describe('LocationsService', () => {
+	let module: TestingModule | undefined;
 	let service: LocationsService;
 	let repository: Repository<WeatherLocationEntity>;
 	let locationsMapperService: LocationsTypeMapperService;
@@ -53,7 +54,7 @@ describe('LocationsService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				LocationsService,
 				{
@@ -105,7 +106,10 @@ describe('LocationsService', () => {
 		configService = module.get<ConfigService>(ConfigService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.resetAllMocks();
 	});
 

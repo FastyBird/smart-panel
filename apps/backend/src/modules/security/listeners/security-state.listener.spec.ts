@@ -15,6 +15,7 @@ import { SecurityEventsService } from '../services/security-events.service';
 import { SecurityStateListener } from './security-state.listener';
 
 describe('SecurityStateListener', () => {
+	let module: TestingModule | undefined;
 	let listener: SecurityStateListener;
 	let channelRepository: jest.Mocked<Repository<ChannelEntity>>;
 	let aggregator: jest.Mocked<SecurityAggregatorService>;
@@ -44,7 +45,7 @@ describe('SecurityStateListener', () => {
 
 		const mockChannelQueryBuilder = channelQueryBuilder as unknown as SelectQueryBuilder<ChannelEntity>;
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SecurityStateListener,
 				{
@@ -86,7 +87,10 @@ describe('SecurityStateListener', () => {
 		aggregator = module.get(SecurityAggregatorService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.useRealTimers();
 		jest.clearAllMocks();
 	});

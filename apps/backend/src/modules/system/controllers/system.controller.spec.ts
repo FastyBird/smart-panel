@@ -16,12 +16,13 @@ import { SystemService } from '../services/system.service';
 import { SystemController } from './system.controller';
 
 describe('SystemController', () => {
+	let module: TestingModule | undefined;
 	let controller: SystemController;
 	let service: SystemService;
 	let onboardingService: OnboardingService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [SystemController],
 			providers: [
 				{
@@ -46,7 +47,10 @@ describe('SystemController', () => {
 		onboardingService = module.get<OnboardingService>(OnboardingService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 
