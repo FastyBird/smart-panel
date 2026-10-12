@@ -630,9 +630,7 @@ describe('DevicesService', () => {
 		// property whose source cannot fill its slot, say — the device must not survive as a half-built
 		// row, and the children that already announced themselves must have their deletions announced
 		// too, or websocket clients keep ghosts.
-		// Provenance is meaningless once a device is visible again, and no caller can send
-		// `hidden_by: null` — the generated admin type drops the null and the DTO's own transform reads
-		// an explicit null as "not provided" — so unhiding has to clear it here.
+		// Unhiding clears provenance even when the caller only changes hidden and omits hidden_by.
 		it('clears the hidden provenance when a device is unhidden', async () => {
 			const hiddenDevice = toInstance(MockDevice, { ...mockDevice, hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM });
 
@@ -1556,6 +1554,30 @@ describe('DevicesService', () => {
 				expect.objectContaining({ hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM }),
 			);
 		});
+
+		it.each([DeviceHiddenBy.USER, DeviceHiddenBy.SYSTEM])(
+			'clears explicit hidden_by null without changing the hidden or enabled flags (%s)',
+			async (hiddenBy) => {
+				const persisted = toInstance(MockDevice, { ...mockDevice, hidden: true, enabled: false, hiddenBy });
+
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: MockDevice,
+					createDto: CreateMockDeviceDto,
+					updateDto: UpdateMockDeviceDto,
+				});
+				jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+				jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(persisted);
+				jest.spyOn(repository, 'findOne').mockResolvedValue(persisted);
+				jest.spyOn(repository, 'save').mockResolvedValue(persisted);
+
+				await service.update(mockDevice.id, { type: 'mock', hidden_by: null } as UpdateMockDeviceDto);
+
+				expect(repository.save).toHaveBeenCalledWith(
+					expect.objectContaining({ hidden: true, enabled: false, hiddenBy: null }),
+				);
+			},
+		);
 
 		// Regression test, pinning the class-field-initializer trap that shipped twice on the predecessor
 		// branch (see the note on `hidden` above for the mechanism). `getOne` is backed by a single shared
