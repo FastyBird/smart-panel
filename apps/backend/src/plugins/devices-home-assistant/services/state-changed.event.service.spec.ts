@@ -29,6 +29,7 @@ import { StateChangedEventService } from './state-changed.event.service';
 import { VirtualPropertyService } from './virtual-property.service';
 
 describe('StateChangedEventService', () => {
+	let module: TestingModule | undefined;
 	let service: StateChangedEventService;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsService: jest.Mocked<ChannelsService>;
@@ -38,7 +39,7 @@ describe('StateChangedEventService', () => {
 	let inputOccurrencesService: jest.Mocked<ChannelInputOccurrencesService>;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				StateChangedEventService,
 				{ provide: DevicesService, useValue: { findAll: jest.fn() } },
@@ -76,7 +77,10 @@ describe('StateChangedEventService', () => {
 		jest.useFakeTimers();
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.useRealTimers();
 		jest.clearAllMocks();
 	});

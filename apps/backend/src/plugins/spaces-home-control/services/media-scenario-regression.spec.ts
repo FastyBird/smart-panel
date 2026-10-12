@@ -92,6 +92,7 @@ function createPropertyCommandDispatchMock(harness: MediaTestHarness) {
 // ==========================================================================
 
 describe('Media Regression – Endpoints Derivation', () => {
+	let module: TestingModule | undefined;
 	let service: DerivedMediaEndpointService;
 	let mockSpacesService: { getOneOrThrow: jest.Mock };
 	let mockMediaCapabilityService: { getMediaCapabilitiesInSpace: jest.Mock };
@@ -105,7 +106,7 @@ describe('Media Regression – Endpoints Derivation', () => {
 			getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DerivedMediaEndpointService,
 				{ provide: SpacesService, useValue: mockSpacesService },
@@ -243,6 +244,12 @@ describe('Media Regression – Endpoints Derivation', () => {
 			expect(r1.endpoints.map((e) => e.endpointId)).toEqual(r2.endpoints.map((e) => e.endpointId));
 		});
 	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
+	});
 });
 
 // ==========================================================================
@@ -250,6 +257,7 @@ describe('Media Regression – Endpoints Derivation', () => {
 // ==========================================================================
 
 describe('Media Regression – Default Bindings Quality', () => {
+	let module: TestingModule | undefined;
 	let service: SpaceMediaActivityBindingService;
 	let harness: MediaTestHarness;
 
@@ -257,7 +265,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 		resetIds();
 		harness = new MediaTestHarness();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceMediaActivityBindingService,
 				{ provide: getRepositoryToken(SpaceMediaActivityBindingEntity), useValue: harness.mockBindingRepository },
@@ -510,6 +518,12 @@ describe('Media Regression – Default Bindings Quality', () => {
 			}
 		});
 	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
+	});
 });
 
 // ==========================================================================
@@ -518,6 +532,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 
 // Activation tests include inter-step delays (STEP_PRE_DELAY_MS + STEP_POST_DELAY_MS per step)
 describe('Media Regression – Activation Behavior', () => {
+	let module: TestingModule | undefined;
 	let service: SpaceMediaActivityService;
 	let harness: MediaTestHarness;
 
@@ -525,7 +540,7 @@ describe('Media Regression – Activation Behavior', () => {
 		resetIds();
 		harness = new MediaTestHarness();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceMediaActivityService,
 				{ provide: getRepositoryToken(SpaceActiveMediaActivityEntity), useValue: harness.mockActiveRepository },
@@ -724,6 +739,12 @@ describe('Media Regression – Activation Behavior', () => {
 			expect(result.resolved?.audioDeviceId).toBe(DEVICE_AVR);
 		}, 15_000);
 	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
+	});
 });
 
 // ==========================================================================
@@ -731,6 +752,7 @@ describe('Media Regression – Activation Behavior', () => {
 // ==========================================================================
 
 describe('Media Regression – Failure Model', () => {
+	let module: TestingModule | undefined;
 	let service: SpaceMediaActivityService;
 	let harness: MediaTestHarness;
 
@@ -738,7 +760,7 @@ describe('Media Regression – Failure Model', () => {
 		resetIds();
 		harness = new MediaTestHarness();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceMediaActivityService,
 				{ provide: getRepositoryToken(SpaceActiveMediaActivityEntity), useValue: harness.mockActiveRepository },
@@ -835,6 +857,12 @@ describe('Media Regression – Failure Model', () => {
 		expect(result.summary?.stepsFailed).toBeGreaterThan(0);
 		expect(result.summary?.failures?.[0].reason).toContain('not found');
 	}, 15_000);
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
+	});
 });
 
 // ==========================================================================
@@ -842,6 +870,7 @@ describe('Media Regression – Failure Model', () => {
 // ==========================================================================
 
 describe('Media Regression – WS Events', () => {
+	let module: TestingModule | undefined;
 	let service: SpaceMediaActivityService;
 	let harness: MediaTestHarness;
 
@@ -849,7 +878,7 @@ describe('Media Regression – WS Events', () => {
 		resetIds();
 		harness = new MediaTestHarness();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceMediaActivityService,
 				{ provide: getRepositoryToken(SpaceActiveMediaActivityEntity), useValue: harness.mockActiveRepository },
@@ -1043,4 +1072,10 @@ describe('Media Regression – WS Events', () => {
 		expect(activatingIdx).toBeLessThan(activatedIdx);
 		expect(activatedIdx).toBeLessThan(deactivatedIdx);
 	}, 15_000);
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
+	});
 });

@@ -21,6 +21,7 @@ import { WledDeviceMapperService } from './device-mapper.service';
 import { WledHardwareIdentityService } from './hardware-identity.service';
 
 describe('WledDeviceMapperService', () => {
+	let module: TestingModule | undefined;
 	let service: WledDeviceMapperService;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsService: jest.Mocked<ChannelsService>;
@@ -163,7 +164,7 @@ describe('WledDeviceMapperService', () => {
 	beforeEach(async () => {
 		jest.clearAllMocks();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				WledDeviceMapperService,
 				{
@@ -596,5 +597,11 @@ describe('WledDeviceMapperService', () => {
 				}),
 			);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

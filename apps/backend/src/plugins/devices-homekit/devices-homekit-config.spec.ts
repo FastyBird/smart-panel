@@ -24,6 +24,7 @@ jest.mock('yaml', () => ({
 }));
 
 describe('DevicesHomeKit Config Redaction and Persistence', () => {
+	let module: TestingModule | undefined;
 	let configService: ConfigService;
 	let pluginsMapperService: PluginsTypeMapperService;
 	const initialPin = '031-45-154';
@@ -52,7 +53,7 @@ describe('DevicesHomeKit Config Redaction and Persistence', () => {
 			return JSON.stringify(data);
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			imports: [NestConfigModule],
 			providers: [
 				ConfigService,
@@ -133,5 +134,11 @@ describe('DevicesHomeKit Config Redaction and Persistence', () => {
 		) as unknown as Record<string, unknown>;
 		expect(publicConfig.pincode).toBeUndefined();
 		expect(publicConfig.pincode_configured).toBe(true);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

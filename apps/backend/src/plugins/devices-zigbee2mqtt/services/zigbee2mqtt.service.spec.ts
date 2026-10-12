@@ -28,6 +28,7 @@ import { Z2mWsClientAdapterService } from './ws-client-adapter.service';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 describe('Zigbee2mqttService', () => {
+	let module: TestingModule | undefined;
 	let service: Zigbee2mqttService;
 	let configService: jest.Mocked<ConfigService>;
 	let mqttAdapter: jest.Mocked<Z2mMqttClientAdapterService>;
@@ -124,7 +125,7 @@ describe('Zigbee2mqttService', () => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				Zigbee2mqttService,
 				{
@@ -183,7 +184,10 @@ describe('Zigbee2mqttService', () => {
 		managedServiceManager = module.get(ManagedServiceManagerService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.useRealTimers();
 	});
 

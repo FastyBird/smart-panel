@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PlatformType } from '../../../modules/platform/platform.constants';
@@ -66,6 +66,7 @@ class LoginChild extends EventEmitter {
 }
 
 describe('Tailscale lifecycle regressions', () => {
+	let module: TestingModule | undefined;
 	let node: TailscaleNodeManagedService;
 	let cli: {
 		getVersion: jest.Mock;
@@ -117,7 +118,7 @@ describe('Tailscale lifecycle regressions', () => {
 		config.serveHttps = true;
 		config.funnel = false;
 
-		const module = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				TailscaleNodeManagedService,
 				TailscaleStatusMapperService,
@@ -136,6 +137,9 @@ describe('Tailscale lifecycle regressions', () => {
 	});
 
 	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		await node.stop().catch(() => undefined);
 		jest.clearAllTimers();
 		jest.useRealTimers();

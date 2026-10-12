@@ -23,6 +23,7 @@ import { WeatherException, WeatherValidationException } from '../weather.excepti
 import { LocationsController } from './locations.controller';
 
 describe('LocationsController', () => {
+	let module: TestingModule | undefined;
 	let controller: LocationsController;
 	let service: LocationsService;
 	let mapper: LocationsTypeMapperService;
@@ -36,7 +37,7 @@ describe('LocationsController', () => {
 	} as WeatherLocationEntity;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [LocationsController],
 			providers: [
 				{
@@ -253,5 +254,11 @@ describe('LocationsController', () => {
 			await expect(result).rejects.not.toBeInstanceOf(UnprocessableEntityException);
 			await expect(result).rejects.toThrow('database is on fire');
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

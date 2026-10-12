@@ -23,6 +23,7 @@ import { MappingPreviewService } from '../services/mapping-preview.service';
 import { HomeAssistantDiscoveredDevicesController } from './home-assistant-discovered-devices.controller';
 
 describe('HomeAssistantDiscoveredDevicesController', () => {
+	let module: TestingModule | undefined;
 	let controller: HomeAssistantDiscoveredDevicesController;
 	let homeAssistantHttpService: jest.Mocked<HomeAssistantHttpService>;
 	let mappingPreviewService: jest.Mocked<MappingPreviewService>;
@@ -67,7 +68,7 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 			adoptDevice: jest.fn(),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [HomeAssistantDiscoveredDevicesController],
 			providers: [
 				{ provide: HomeAssistantHttpService, useValue: homeAssistantHttpServiceMock },
@@ -82,7 +83,10 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 		deviceAdoptionService = module.get(DeviceAdoptionService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 
