@@ -20,7 +20,7 @@ import ora from 'ora';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,6 +35,36 @@ const { logger, isRoot, hasSystemd, getArch, getDistroInfo, compareSemver } = aw
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
+
+function createNpmUpdateStage() {
+	const npmRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim();
+	const npmPackagePath = join(npmRoot, '@fastybird', 'smart-panel');
+	if (!npmRoot.startsWith('/') || !lstatSync(npmPackagePath).isDirectory()) {
+		throw new Error('CLI updates require a real global npm package directory; linked installs are unsupported.');
+	}
+	const packageRoot = realpathSync(npmPackagePath);
+	if (packageRoot !== realpathSync(join(__dirname, '..'))) {
+		throw new Error('Run the CLI from the canonical global npm installation being updated.');
+	}
+	let component = realpathSync(packageRoot);
+	while (true) {
+		const metadata = statSync(component);
+		if (!metadata.isDirectory() || metadata.uid !== 0 || (metadata.mode & 0o022) !== 0) {
+			throw new Error(`CLI updates require root-owned directories without group/world write access: ${component}`);
+		}
+		const parent = dirname(component);
+		if (parent === component) break;
+		component = parent;
+	}
+	// Same-filesystem private staging permits exact directory rollback without downloading the old version.
+	const stagingRoot = mkdtempSync(join(dirname(packageRoot), '.smart-panel-update-'));
+	return {
+		packageRoot,
+		stagingRoot,
+		candidateRoot: join(stagingRoot, 'lib', 'node_modules', '@fastybird', 'smart-panel'),
+		backupRoot: join(stagingRoot, 'previous-package'),
+	};
+}
 
 function provisionPrivilegedHelper({
 	backendRoot,
@@ -585,6 +615,13 @@ program
 		const installer = getInstaller();
 		const spinner = ora();
 		let wasRunning = false;
+		let updateStage = null;
+		let serviceStopAttempted = false;
+		let provisionAttempted = false;
+		let provisionSucceeded = false;
+		let previousPackageRetained = false;
+		let candidatePublished = false;
+		let migrationsStarted = false;
 
 		try {
 			// Check current status
@@ -651,37 +688,54 @@ program
 
 			console.log();
 
-			// Stop service if running
+			// Download/install into an isolated global-layout prefix; the installed package stays untouched.
+			updateStage = createNpmUpdateStage();
+			spinner.start('Preparing update packages...');
+			const packageSpec = `@fastybird/smart-panel${versionArg}`;
+			execFileSync('npm', ['install', packageSpec, '-g', '--prefix', updateStage.stagingRoot], {
+				stdio: 'inherit',
+			});
+			const candidate = JSON.parse(readFileSync(join(updateStage.candidateRoot, 'package.json'), 'utf8'));
+			if (
+				candidate.name !== '@fastybird/smart-panel' ||
+				typeof candidate.version !== 'string' ||
+				!/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(candidate.version)
+			) {
+				throw new Error('Staged update does not contain a valid Smart Panel release.');
+			}
+			if (options.version && candidate.version !== options.version) {
+				throw new Error(`Staged release ${candidate.version} does not match requested version ${options.version}.`);
+			}
+			spinner.succeed('Update packages prepared');
+
+			// Stop requests before the helper guard checks independent jobs/recovery holds.
 			if (status.running) {
 				spinner.start('Stopping service...');
+				serviceStopAttempted = true;
 				await installer.stop();
 				spinner.succeed('Service stopped');
 			}
 
-			// Update package
-			spinner.start('Updating packages...');
-			try {
-				const packageSpec = `@fastybird/smart-panel${versionArg}`;
-				// Use 'install' when a specific version/tag is requested, 'update' for latest
-				const npmCommand = versionArg ? 'install' : 'update';
-				execFileSync('npm', [npmCommand, packageSpec, '-g'], {
-					stdio: 'inherit',
-				});
-				spinner.succeed('Packages updated');
-			} catch {
-				spinner.fail('Failed to update packages');
-				throw new Error('npm update failed');
-			}
-
-			// Run migrations
-			spinner.start('Running database migrations...');
 			const config = installer.getInstalledConfig();
 			const dataDir = config.dataDir || '/var/lib/smart-panel';
+			provisionAttempted = true;
 			provisionPrivilegedHelper({
+				backendRoot: join(updateStage.candidateRoot, 'node_modules', '@fastybird', 'smart-panel-backend'),
 				serviceUser: config.user || 'smart-panel',
 				dataDir,
 				port: config.port || 3000,
 			});
+			provisionSucceeded = true;
+
+			// Existing npm bin links already address the canonical directory and remain valid after publication.
+			renameSync(updateStage.packageRoot, updateStage.backupRoot);
+			previousPackageRetained = true;
+			renameSync(updateStage.candidateRoot, updateStage.packageRoot);
+			candidatePublished = true;
+
+			// A migration may commit before throwing. Crossing this boundary forbids package rollback/restart.
+			spinner.start('Running database migrations...');
+			migrationsStarted = true;
 			await installer.runMigrations(dataDir);
 			spinner.succeed('Migrations complete');
 
@@ -706,17 +760,46 @@ program
 			}
 
 			console.log();
+			try {
+				rmSync(updateStage.stagingRoot, { recursive: true, force: true });
+			} catch {
+				logger.warning(`Update succeeded; could not remove staging/previous package: ${updateStage.stagingRoot}`);
+			}
 		} catch (error) {
 			spinner.fail('Update failed');
 			logger.error(error instanceof Error ? error.message : String(error));
 
-			// Try to restart service if it was running before update
-			if (wasRunning) {
+			let restored = !previousPackageRetained;
+			if (updateStage && previousPackageRetained && !migrationsStarted) {
+				try {
+					if (candidatePublished) {
+						renameSync(updateStage.packageRoot, updateStage.candidateRoot);
+					}
+					renameSync(updateStage.backupRoot, updateStage.packageRoot);
+					restored = true;
+				} catch (restoreError) {
+					logger.error(`Could not restore the installed package: ${restoreError.message}`);
+				}
+			}
+			if (migrationsStarted) {
+				logger.warning(`Migration began; no package rollback or additional restart was attempted. Retained package: ${updateStage.backupRoot}`);
+			} else if (updateStage && previousPackageRetained && !restored) {
+				logger.warning(`Service remains stopped; restore the retained previous package from ${updateStage.backupRoot}.`);
+			} else if (provisionAttempted && !provisionSucceeded) {
+				logger.warning('Helper provisioning failed; the installed package was not replaced. Service remains stopped pending recovery.');
+			} else if (wasRunning && serviceStopAttempted && provisionSucceeded && restored) {
 				try {
 					await installer.start();
-					logger.info('Service restarted');
+					logger.info('Previous installed service restarted');
 				} catch {
-					logger.warning('Failed to restart service. Please start manually.');
+					logger.warning('Failed to restart the previous service. Please start manually.');
+				}
+			}
+			if (updateStage && !migrationsStarted && restored) {
+				try {
+					rmSync(updateStage.stagingRoot, { recursive: true, force: true });
+				} catch {
+					logger.warning(`Could not remove update staging: ${updateStage.stagingRoot}`);
 				}
 			}
 

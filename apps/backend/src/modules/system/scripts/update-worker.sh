@@ -483,12 +483,14 @@ target_process_is_stable() {
 	state="$(service_property ActiveState 2>/dev/null || true)"
 	main_pid="$(service_property MainPID 2>/dev/null || true)"
 	start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
-	resolved_target="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
-	expected_target="$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)"
 
 	[ "$state" = "active" ] || return 1
 	[ "$main_pid" != "0" ] && [ -n "$main_pid" ] || return 1
 	[ -n "$start_identity" ] || return 1
+	# npm has no versioned image symlink; process and health checks still apply.
+	[ "$INSTALL_TYPE" = "image" ] || return 0
+	resolved_target="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
+	expected_target="$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)"
 	[ -n "$CURRENT_LINK" ] && [ -n "$NEW_VERSION_DIR" ] || return 1
 	[ -n "$expected_target" ] && [ "$resolved_target" = "$expected_target" ] || return 1
 }

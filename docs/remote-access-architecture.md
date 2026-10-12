@@ -328,6 +328,14 @@ also protects the image installation parent while preserving the historical rele
 evidence. The helper and worker behavior still require representative Linux/systemd and device
 acceptance before a deployment is treated as verified.
 
+The root `smart-panel-service update` command prepares the npm candidate in a private directory on
+the installation filesystem before stopping an active backend. It provisions the helper before
+replacing the installed package. A provisioning refusal leaves the package and database unchanged
+and does not restart the backend into a possible concurrent update or recovery hold. Publication
+retains the exact previous package until the update succeeds. Once database migrations begin, a
+failure preserves that backup and the candidate for diagnosis without an automatic rollback or
+restart; the CLI reports the retained backup path. An initially inactive backend stays inactive.
+
 ### Helper validation
 
 The backend Jest suites cover transport selection, incompatible probes, job-bound status and recovery.
