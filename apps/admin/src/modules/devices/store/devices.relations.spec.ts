@@ -17,20 +17,20 @@ import { useChannelsControls } from './channels.controls.store';
 import { useChannelsProperties } from './channels.properties.store';
 import { useChannels } from './channels.store';
 import type { IChannelRes } from './channels.store.types';
+import { useDevicesControls } from './devices.controls.store';
 import { useDevices } from './devices.store';
 import { DeviceSchema } from './devices.store.schemas';
 import type { IDeviceRes } from './devices.store.types';
 import { transformDeviceResponse } from './devices.transformers';
-import { channelsControlsStoreKey, channelsPropertiesStoreKey, channelsStoreKey } from './keys';
+import { channelsControlsStoreKey, channelsPropertiesStoreKey, channelsStoreKey, devicesControlsStoreKey } from './keys';
 
 const client = { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn(), DELETE: vi.fn() };
 const stores = new Map<symbol, unknown>();
-const deviceControls = { firstLoad: [] as string[], set: vi.fn(), unset: vi.fn() };
 vi.mock('../../../common', async () => ({
 	...(await vi.importActual('../../../common')),
 	useBackend: () => ({ client }),
 	useLogger: () => ({ error: vi.fn() }),
-	injectStoresManager: () => ({ getStore: (key: symbol) => stores.get(key) ?? deviceControls }),
+	injectStoresManager: () => ({ getStore: (key: symbol) => stores.get(key) }),
 }));
 vi.mock('../composables/useDevicesPlugins', () => ({ useDevicesPlugins: () => ({ getElement: () => undefined }) }));
 vi.mock('../composables/useChannelsPlugins', () => ({ useChannelsPlugins: () => ({ getElement: () => undefined }) }));
@@ -56,6 +56,7 @@ const rawProperty = {
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: null,
 };
+const rawDeviceControl = { id: uuid(), device: deviceId, name: 'Old device control', created_at: '2024-03-01T12:00:00Z', updated_at: null };
 const rawControl = { id: controlId, channel: channelId, name: 'Old control', created_at: '2024-03-01T12:00:00Z', updated_at: null };
 const rawChannel: IChannelRes = {
 	id: channelId,
@@ -87,7 +88,7 @@ const rawDevice = (overrides: Partial<IDeviceRes> = {}): IDeviceRes =>
 		status: { online: false, status: DevicesModuleDeviceConnectionStatus.unknown, last_changed: null },
 		created_at: '2024-03-01T12:00:00Z',
 		updated_at: null,
-		controls: [],
+		controls: [rawDeviceControl],
 		channels: [rawChannel],
 		...overrides,
 	}) as IDeviceRes;
@@ -105,6 +106,7 @@ describe('device snapshots hydrate real child stores safely', () => {
 	let channels: ReturnType<typeof useChannels>;
 	let properties: ReturnType<typeof useChannelsProperties>;
 	let controls: ReturnType<typeof useChannelsControls>;
+	let deviceControls: ReturnType<typeof useDevicesControls>;
 	beforeEach(() => {
 		vi.clearAllMocks();
 		stores.clear();
@@ -115,10 +117,12 @@ describe('device snapshots hydrate real child stores safely', () => {
 		stores.set(channelsControlsStoreKey, controls);
 		channels = useChannels();
 		stores.set(channelsStoreKey, channels);
+		deviceControls = useDevicesControls();
+		stores.set(devicesControlsStoreKey, deviceControls);
 		devices = useDevices();
 	});
 	const start = (action: string) => (action === 'get' ? devices.get({ id: deviceId }) : devices.fetch());
-	const answer = (action: string) => response(action === 'get' ? rawDevice() : [rawDevice()]);
+	const answer = (action: string) => response(action === 'fetch' ? [rawDevice()] : rawDevice());
 
 	it.each(['get', 'fetch'])('preserves property-only and control-only socket events while device %s applies', async (action) => {
 		const pending = deferred();
@@ -260,4 +264,61 @@ describe('device snapshots hydrate real child stores safely', () => {
 		await write;
 		expect(properties.findById(propertyId)?.name).toBe('Newest property');
 	});
+	for (const action of ['get', 'fetch', 'add', 'save']) {
+		it.each(['socket', 'row', 'scope'])(`device ${action} preserves a newer device-control %s mutation`, async (mutation) => {
+			const pending = deferred();
+			client.GET.mockReturnValue(pending.promise);
+			client.POST.mockReturnValue(pending.promise);
+			if (action === 'save')
+				devices.set({
+					id: deviceId,
+					data: { ...transformDeviceResponse(rawDevice(), DeviceSchema), draft: true } as Parameters<typeof devices.set>[0]['data'],
+				});
+			const work =
+				action === 'add'
+					? devices.add({ id: deviceId, draft: false, data: { type: 'some-device', category: DevicesModuleDeviceCategory.generic, name: 'Created' } })
+					: action === 'save'
+						? devices.save({ id: deviceId })
+						: start(action);
+			if (mutation === 'socket') deviceControls.onEvent({ id: rawDeviceControl.id, data: { ...rawDeviceControl, name: 'Newest device control' } });
+			else if (mutation === 'row') deviceControls.unset({ id: rawDeviceControl.id });
+			else deviceControls.unset({ deviceId });
+			pending.resolve(answer(action));
+			await work;
+			expect(deviceControls.findById(rawDeviceControl.id)?.name ?? null).toBe(mutation === 'socket' ? 'Newest device control' : null);
+			expect(deviceControls.firstLoadFinished(deviceId)).toBe(true);
+		});
+	}
+
+	for (const parentFirst of [true, false]) {
+		for (const directKind of ['get', 'fetch']) {
+			it.each(['older-first', 'newer-first'])(
+				`orders parent and direct ${directKind} snapshots with parentFirst=${parentFirst}, %s`,
+				async (order) => {
+					const parent = deferred();
+					const direct = deferred();
+					client.GET.mockImplementation((path: string) => (path.includes('/controls') ? direct.promise : parent.promise));
+					const parentRead = () => devices.get({ id: deviceId });
+					const directRead = () =>
+						directKind === 'get' ? deviceControls.get({ id: rawDeviceControl.id, deviceId }) : deviceControls.fetch({ deviceId });
+					const older = parentFirst ? parentRead() : directRead();
+					const newer = parentFirst ? directRead() : parentRead();
+					const resolveParent = () => parent.resolve(response(rawDevice({ controls: [{ ...rawDeviceControl, name: 'Parent' }] })));
+					const resolveDirect = () =>
+						direct.resolve(response(directKind === 'get' ? { ...rawDeviceControl, name: 'Direct' } : [{ ...rawDeviceControl, name: 'Direct' }]));
+					if (order === 'older-first') {
+						(parentFirst ? resolveParent : resolveDirect)();
+						await older;
+					}
+					(parentFirst ? resolveDirect : resolveParent)();
+					await newer;
+					if (order === 'newer-first') {
+						(parentFirst ? resolveParent : resolveDirect)();
+						await older;
+					}
+					expect(deviceControls.findById(rawDeviceControl.id)?.name).toBe(parentFirst ? 'Direct' : 'Parent');
+				}
+			);
+		}
+	}
 });

@@ -65,6 +65,7 @@ export interface IDevicesControlsStoreActions {
 	findAll: () => IDeviceControl[];
 	// Actions
 	onEvent: (payload: IDevicesControlsOnEventActionPayload) => IDeviceControl;
+	captureReadSnapshot: () => (payload: IDevicesControlsSetActionPayload) => IDeviceControl;
 	set: (payload: IDevicesControlsSetActionPayload) => IDeviceControl;
 	unset: (payload: IDevicesControlsUnsetActionPayload) => void;
 	get: (payload: IDevicesControlsGetActionPayload) => Promise<IDeviceControl>;
