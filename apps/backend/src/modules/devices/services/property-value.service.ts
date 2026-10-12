@@ -29,7 +29,7 @@ export type BoundedPropertyValueStorageStatus = 'not_needed' | 'available' | 'di
 
 interface BoundedPropertyValueItemBase {
 	propertyId: ChannelPropertyEntity['id'];
-	sourcePropertyId: ChannelPropertyEntity['id'];
+	sourcePropertyId: ChannelPropertyEntity['id'] | null;
 }
 
 export type BoundedPropertyValueItem =
@@ -118,10 +118,12 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<boolean> {
-		const key = this.valueSourceRegistry.resolve(property);
+		const key = this.resolveBestEffort(property, 'write');
+		if (key === null) return false;
 
-		return (await this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp)))
-			.changed;
+		return (
+			await this.withValueLock(key, () => this.writeInternal(property, key, value, false, undefined, valueTimestamp))
+		).changed;
 	}
 
 	/**
@@ -135,9 +137,10 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
-		const key = this.valueSourceRegistry.resolve(property);
+		const key = this.resolveBestEffort(property, 'write');
+		if (key === null) return { changed: false, state: null };
 
-		return this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp));
+		return this.withValueLock(key, () => this.writeInternal(property, key, value, false, undefined, valueTimestamp));
 	}
 
 	/** Publishable live state after history admission, without waiting for best-effort I/O. */
@@ -150,10 +153,11 @@ export class PropertyValueService {
 		if (this.valueLock.isEnabled()) {
 			return this.writeWithState(property, value, valueTimestamp);
 		}
-		const key = this.valueSourceRegistry.resolve(property);
+		const key = this.resolveBestEffort(property, 'write');
+		if (key === null) return { changed: false, state: null };
 		return this.withValueLock(
 			key,
-			() => this.writeInternal(property, value, false, undefined, valueTimestamp, true),
+			() => this.writeInternal(property, key, value, false, undefined, valueTimestamp, true),
 			false,
 		);
 	}
@@ -183,7 +187,9 @@ export class PropertyValueService {
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
-		return this.withValueLock(key, () => this.writeInternal(property, value, true, storageBinding, valueTimestamp));
+		return this.withValueLock(key, () =>
+			this.writeInternal(property, key, value, true, storageBinding, valueTimestamp),
+		);
 	}
 
 	async writeStrictIfPersistedDifferent(
@@ -210,20 +216,19 @@ export class PropertyValueService {
 			}
 			await valueLease.assertOwned();
 
-			return this.writeInternal(property, value, true, latest.storageBinding, valueTimestamp);
+			return this.writeInternal(property, key, value, true, latest.storageBinding, valueTimestamp);
 		});
 	}
 
 	private async writeInternal(
 		property: ChannelPropertyEntity,
+		key: ChannelPropertyEntity['id'],
 		value: string | boolean | number | null,
 		strict: boolean,
 		storageBinding?: StorageBackendBinding,
 		valueTimestamp?: Date,
 		deferHistory = false,
 	): Promise<PropertyValueWriteResult> {
-		const key = this.valueSourceRegistry.resolve(property);
-
 		// A projected property owns no series — the value belongs to its source, and only the source's
 		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
 		// the same reason: dereferencing here would persist the supplied value as a real measurement of
@@ -510,12 +515,24 @@ export class PropertyValueService {
 		const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
 
 		const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
-		const sourcePropertyIds = new Array<ChannelPropertyEntity['id']>(properties.length);
+		const sourcePropertyIds = new Array<ChannelPropertyEntity['id'] | null>(properties.length);
 		const unresolvedBySource = new Map<ChannelPropertyEntity['id'], BoundedPropertyValueSourceGroup>();
+		let sourceResolutionFailed = false;
 
 		for (const [index, property] of properties.entries()) {
-			const sourcePropertyId = this.valueSourceRegistry.resolve(property);
+			const sourcePropertyId = this.resolveBestEffort(property, 'bounded read');
 			sourcePropertyIds[index] = sourcePropertyId;
+			if (sourcePropertyId === null) {
+				sourceResolutionFailed = true;
+				items[index] = {
+					propertyId: property.id,
+					sourcePropertyId: null,
+					status: 'unprocessed',
+					source: null,
+					state: null,
+				};
+				continue;
+			}
 			const cached = this.valuesMap.get(sourcePropertyId);
 
 			if (cached) {
@@ -533,7 +550,7 @@ export class PropertyValueService {
 		}
 
 		if (unresolvedBySource.size === 0) {
-			return this.buildBoundedResult(items, 'not_needed');
+			return this.buildBoundedResult(items, sourceResolutionFailed ? 'failed' : 'not_needed');
 		}
 
 		if (Date.now() >= deadlineAt) {
@@ -551,7 +568,7 @@ export class PropertyValueService {
 		}
 
 		const sourceEntries = [...unresolvedBySource.entries()];
-		let storageStatus: BoundedPropertyValueStorageStatus = 'available';
+		let storageStatus: BoundedPropertyValueStorageStatus = sourceResolutionFailed ? 'failed' : 'available';
 
 		for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
 			if (Date.now() >= deadlineAt) {
@@ -701,6 +718,20 @@ export class PropertyValueService {
 		this.bumpCacheVersion(key);
 	}
 
+	private resolveBestEffort(property: ChannelPropertyEntity, operation: string): string | null {
+		try {
+			return this.valueSourceRegistry.resolve(property);
+		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(
+				`Failed to resolve property value source during ${operation} id=${property.id} error=${err.message}`,
+				err.stack,
+			);
+
+			return null;
+		}
+	}
+
 	private samePersistedState(left: PropertyValueState | null, right: PropertyValueState | null): boolean {
 		return left?.value === right?.value && left?.lastUpdated === right?.lastUpdated;
 	}
@@ -775,10 +806,11 @@ export class PropertyValueService {
 	private refreshBoundedItemsFromCache(
 		items: Array<BoundedPropertyValueItem | undefined>,
 		properties: ChannelPropertyEntity[],
-		sourcePropertyIds: ChannelPropertyEntity['id'][],
+		sourcePropertyIds: Array<ChannelPropertyEntity['id'] | null>,
 	): void {
 		for (const [index, property] of properties.entries()) {
 			const sourcePropertyId = sourcePropertyIds[index];
+			if (sourcePropertyId === null) continue;
 			const cached = this.valuesMap.get(sourcePropertyId);
 
 			if (!cached) {
@@ -864,7 +896,15 @@ export class PropertyValueService {
 		bypassCache = false,
 		activeBackendOnly = false,
 	): Promise<InternalPropertyValueReadResult> {
-		const key = this.valueSourceRegistry.resolve(property);
+		let key: string;
+		try {
+			key = this.valueSourceRegistry.resolve(property);
+		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(`Failed to resolve property value source id=${property.id} error=${err.message}`, err.stack);
+			if (strict) throw error;
+			return { state: null };
+		}
 		const cacheVersionAtQueryStart = this.cacheVersion(key);
 
 		// Check local cache first
@@ -995,7 +1035,8 @@ export class PropertyValueService {
 	}
 
 	async delete(property: ChannelPropertyEntity): Promise<void> {
-		const key = this.valueSourceRegistry.resolve(property);
+		const key = this.resolveBestEffort(property, 'delete');
+		if (key === null) return;
 
 		return this.withValueLock(key, () => this.deleteInternal(property, key));
 	}

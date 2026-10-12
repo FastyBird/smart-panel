@@ -103,6 +103,17 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 	const pendingFetchPromises: Record<string, Promise<IDevice[]>> = {};
 
+	// Embedded rows belong to their stores: capture those read fences before any parent await.
+	const captureChannelsSnapshot = () => ({
+		channel: storesManager.getStore(channelsStoreKey).captureReadSnapshot(),
+		control: storesManager.getStore(channelsControlsStoreKey).captureReadSnapshot(),
+		property: storesManager.getStore(channelsPropertiesStoreKey).captureReadSnapshot(),
+	});
+	let requestGeneration = 0;
+	// Only accepted collection responses fence older GETs, including IDs absent from the list.
+	let appliedFetchGeneration = 0;
+	const readGenerationById: Record<IDevice['id'], number> = {};
+
 	// Tracks how many `fetch()` calls are in flight right now (across all `hidden` values), so the
 	// semaphore is only cleared once every one of them has settled, not just whichever finishes first.
 	let inFlightFetchCount = 0;
@@ -214,6 +225,10 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			return existingPromise;
 		}
 
+		const requestedAt = mutationToken;
+		const generation = ++requestGeneration;
+		const channelsSnapshot = captureChannelsSnapshot();
+
 		const getPromise = (async (): Promise<IDevice> => {
 			if (semaphore.value.fetching.item.includes(payload.id)) {
 				throw new DevicesApiException('Already fetching device.');
@@ -237,10 +252,19 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
+					if (
+						(writeTokenById[transformed.id] ?? 0) > requestedAt ||
+						(readGenerationById[transformed.id] ?? 0) > generation ||
+						appliedFetchGeneration > generation
+					) {
+						return data.value[transformed.id] ?? transformed;
+					}
+
+					readGenerationById[transformed.id] = generation;
 					commit(transformed, { read: true });
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
-					insertChannelsRelations(transformed, responseData.data.channels);
+					insertChannelsRelations(transformed, responseData.data.channels, channelsSnapshot);
 
 					return transformed;
 				}
@@ -291,6 +315,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		// Read before the request goes out: every row stamped later than this was written while the
 		// server was assembling its answer, so for those rows this response is out of date.
 		const requestedAt = mutationToken;
+		const generation = ++requestGeneration;
+		const channelsSnapshot = captureChannelsSnapshot();
 
 		const fetchPromise = (async (): Promise<IDevice[]> => {
 			try {
@@ -352,7 +378,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 						const transformedDevice = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
 
-						if ((mutationTokenById[transformedDevice.id] ?? 0) > requestedAt) {
+						if ((writeTokenById[transformedDevice.id] ?? 0) > requestedAt || (readGenerationById[transformedDevice.id] ?? 0) > generation) {
 							const local = data.value[transformedDevice.id];
 
 							if (local) {
@@ -363,20 +389,22 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 						}
 
 						insertDeviceControlsRelations(transformedDevice, device.controls);
-						insertChannelsRelations(transformedDevice, device.channels);
+						insertChannelsRelations(transformedDevice, device.channels, channelsSnapshot);
 
+						readGenerationById[transformedDevice.id] = generation;
 						applied[transformedDevice.id] = transformedDevice;
 					}
 
-					// Written while the request was in flight and absent from its answer: a device created
-					// locally, or one that came into existence after the server read the list.
-					for (const [id, token] of Object.entries(mutationTokenById)) {
-						if (token > requestedAt && !(id in applied) && data.value[id]) {
+					// Keep post-request writes and genuinely newer reads absent from this answer. An older
+					// GET merely landing late is not a new write and must not defeat collection eviction.
+					for (const id of Object.keys(mutationTokenById)) {
+						if (((writeTokenById[id] ?? 0) > requestedAt || (readGenerationById[id] ?? 0) > generation) && !(id in applied) && data.value[id]) {
 							applied[id] = data.value[id];
 						}
 					}
 
 					data.value = applied;
+					appliedFetchGeneration = Math.max(appliedFetchGeneration, generation);
 
 					firstLoad.value = true;
 
@@ -435,6 +463,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		semaphore.value.creating.push(parsedNewItem.data.id);
 
 		commit(parsedNewItem.data);
+		const channelsSnapshot = captureChannelsSnapshot();
 
 		if (parsedNewItem.data.draft) {
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
@@ -463,7 +492,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 					commit(transformed);
 
 					insertDeviceControlsRelations(transformed, responseData.data.controls);
-					insertChannelsRelations(transformed, responseData.data.channels);
+					insertChannelsRelations(transformed, responseData.data.channels, channelsSnapshot);
 
 					return transformed;
 				}
@@ -600,6 +629,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		}
 
 		semaphore.value.updating.push(payload.id);
+		const channelsSnapshot = captureChannelsSnapshot();
 
 		try {
 			const {
@@ -620,7 +650,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				commit(transformed);
 
 				insertDeviceControlsRelations(transformed, responseData.data.controls);
-				insertChannelsRelations(transformed, responseData.data.channels);
+				insertChannelsRelations(transformed, responseData.data.channels, channelsSnapshot);
 
 				return transformed;
 			}
@@ -752,10 +782,11 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		semaphore.value.deleting.push(...persisted);
 
 		try {
-			const { data: responseBody, error, response } = await backend.client.POST(
-				`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-remove`,
-				{ body: { data: { ids: persisted } } }
-			);
+			const {
+				data: responseBody,
+				error,
+				response,
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-remove`, { body: { data: { ids: persisted } } });
 
 			if (typeof responseBody === 'undefined' || !response.ok) {
 				let errorReason: string | null = 'Remove devices failed.';
@@ -801,10 +832,13 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const stampedBefore = new Map(persisted.map((id): [IDevice['id'], number] => [id, writeTokenById[id] ?? 0]));
 
 		try {
-			const { data: responseBody, error, response } = await backend.client.POST(
-				`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-update`,
-				{ body: { data: { ids: persisted, enabled: payload.enabled } } }
-			);
+			const {
+				data: responseBody,
+				error,
+				response,
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/bulk-update`, {
+				body: { data: { ids: persisted, enabled: payload.enabled } },
+			});
 
 			if (typeof responseBody === 'undefined' || !response.ok) {
 				let errorReason: string | null = 'Update devices failed.';
@@ -909,7 +943,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		markFirstLoad(devicesControlsStore.firstLoad, device.id);
 	};
 
-	const insertChannelsRelations = (device: IDevice, channels: IChannelRes[]): void => {
+	const insertChannelsRelations = (device: IDevice, channels: IChannelRes[], snapshot: ReturnType<typeof captureChannelsSnapshot>): void => {
 		const channelsStore = storesManager.getStore(channelsStoreKey);
 		const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
 		const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
@@ -917,13 +951,17 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		channels.forEach((channel) => {
 			const element = getChannelsPluginElement(channel.type);
 
-			channelsStore.set({
+			const applied = snapshot.channel({
 				id: channel.id,
 				data: transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema),
 			});
 
+			if (applied === null) {
+				return;
+			}
+
 			channel.controls.forEach((control) => {
-				channelsControlsStore.set({
+				snapshot.control({
 					id: control.id,
 					data: transformChannelControlResponse(control),
 				});
@@ -934,7 +972,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			channel.properties.forEach((property) => {
 				const element = getChannelsPropertiesPluginElement(property.type);
 
-				channelsPropertiesStore.set({
+				snapshot.property({
 					id: property.id,
 					data: transformChannelPropertyResponse(property, element?.schemas?.channelPropertySchema || ChannelPropertySchema),
 				});

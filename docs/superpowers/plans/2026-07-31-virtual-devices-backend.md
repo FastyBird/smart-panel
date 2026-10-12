@@ -1,6 +1,6 @@
 # Virtual Devices — Backend & Panel Implementation Plan (Plan A)
 
-> **Status:** Implemented — PR #628 (`devices-virtual` plugin, backend and panel); remaining leftovers are in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, epic #1336. Checkboxes below are not ticked retroactively.
+> **Status:** Implemented — PR #628 (`devices-virtual` plugin, backend and panel); the completed follow-up audit is in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, epic #1336. Shared editing and test-infrastructure refactors continue in #1402. Checkboxes below are not ticked retroactively.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

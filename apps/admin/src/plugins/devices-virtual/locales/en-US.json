@@ -59,6 +59,7 @@
 			"channelOptional": "Optional",
 			"propertyRequired": "Required",
 			"showOptional": "Show {count} more optional properties",
+			"hideOptional": "Hide empty optional properties",
 			"source": {
 				"devicePlaceholder": "Source device",
 				"channelPlaceholder": "Source channel",

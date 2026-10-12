@@ -88,12 +88,14 @@ describe('VirtualProjectionListener', () => {
 
 			const [eventA, payloadA] = eventEmitter.emit.mock.calls[0];
 			expect(eventA).toBe(EventType.CHANNEL_PROPERTY_VALUE_SET);
-			expect(payloadA).toBe(virtualA);
+			expect(payloadA).not.toBe(virtualA);
+			expect(Object.getPrototypeOf(payloadA)).toBe(Object.getPrototypeOf(virtualA));
 			expect(payloadA.value?.value).toBe('new');
+			expect(virtualA.value?.value).toBe('old');
 
 			const [eventB, payloadB] = eventEmitter.emit.mock.calls[1];
 			expect(eventB).toBe(EventType.CHANNEL_PROPERTY_VALUE_SET);
-			expect(payloadB).toBe(virtualB);
+			expect(payloadB).not.toBe(virtualB);
 			expect(payloadB.value?.value).toBe('new');
 		});
 
@@ -109,7 +111,7 @@ describe('VirtualProjectionListener', () => {
 			expect(payload.value).toBeNull();
 		});
 
-		it('passes the projection entity as payload so subscribers see the virtual property id', () => {
+		it('passes a detached projection snapshot so subscribers see the virtual property id', () => {
 			index.findBySourceProperty.mockReturnValue([virtualA]);
 
 			sourceProperty.value = new PropertyValueState(42);
@@ -120,6 +122,28 @@ describe('VirtualProjectionListener', () => {
 			// otherwise WS subscribers keyed on virtualA would miss the broadcast.
 			expect(payload.id).toBe('virt-a');
 			expect(payload.id).not.toBe(sourceProperty.id);
+		});
+
+		it('keeps deferred snapshots stable across later source writes', () => {
+			index.findBySourceProperty.mockReturnValue([virtualA]);
+			const deferred: Array<{ consume: () => void; expected: number }> = [];
+			eventEmitter.emit.mockImplementation((_event, payload) => {
+				const expected = payload.value.value;
+				deferred.push({ consume: () => expect(payload.value.value).toBe(expected), expected });
+			});
+
+			sourceProperty.value = new PropertyValueState(1);
+			listener.handlePropertyValueSet(sourceProperty);
+			const first = eventEmitter.emit.mock.calls[0][1];
+			sourceProperty.value = new PropertyValueState(2);
+			listener.handlePropertyValueSet(sourceProperty);
+			const second = eventEmitter.emit.mock.calls[1][1];
+
+			expect(first).not.toBe(second);
+			expect(first.value).not.toBe(sourceProperty.value);
+			expect(virtualA.value?.value).toBe('old');
+			deferred.forEach(({ consume }) => consume());
+			expect(deferred.map(({ expected }) => expected)).toEqual([1, 2]);
 		});
 	});
 

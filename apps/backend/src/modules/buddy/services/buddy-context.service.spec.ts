@@ -176,6 +176,17 @@ describe('BuddyContextService', () => {
 			);
 		});
 
+		it('requests visible devices for full-home context while retaining disabled visible devices', async () => {
+			const visible = { id: 'visible', name: 'Disabled visible', category: 'generic', enabled: false, channels: [] };
+			const hidden = { ...visible, id: 'hidden', hidden: true };
+			devicesService.findAll.mockImplementation((_type, hiddenFilter) =>
+				Promise.resolve(hiddenFilter === 'false' ? [visible] : [visible, hidden]),
+			);
+			const ctx = await service.buildContext();
+			expect(devicesService.findAll).toHaveBeenCalledWith(undefined, 'false');
+			expect(ctx.devices.map((device) => device.id)).toEqual(['visible']);
+		});
+
 		it('should include devices with state in context', async () => {
 			const ctx = await service.buildContext();
 

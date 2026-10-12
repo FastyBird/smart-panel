@@ -580,6 +580,23 @@ describe('VirtualDeviceRemapDialog', () => {
 	// The property can vanish between the sources panel rendering the warning and the dialog actually
 	// opening for it (someone else deletes it, or its device, in that window). `property` is read live
 	// off the store rather than snapshotted, so this state is reachable at mount, not just mid-session.
+	it('blocks an already valid selection when the target is deleted while the dialog is open', async () => {
+		const { wrapper, selectSource, confirm, canConfirm, property } = mountRemapDialog();
+		await selectSource(NEW_SOURCE_PROPERTY_ID);
+		expect(canConfirm.value).toBe(true);
+
+		// CHANNEL_PROPERTY_DELETED removes the row from this same reactive store.
+		propertiesStore.unset({ id: ORPHANED_PROPERTY_ID });
+		await nextTick();
+
+		expect(property.value).toBeUndefined();
+		expect(canConfirm.value).toBe(false);
+		expect(wrapper.find('[data-test-id="remap-property-gone"]').exists()).toBe(true);
+		await confirm();
+		expect(backendClient.PATCH).not.toHaveBeenCalled();
+		expect(wrapper.emitted('remapped')).toBeUndefined();
+	});
+
 	it('shows the property as gone and blocks confirm when it no longer exists', async () => {
 		const { property, canConfirm, wrapper } = mountRemapDialog({ propertyId: uuid() });
 

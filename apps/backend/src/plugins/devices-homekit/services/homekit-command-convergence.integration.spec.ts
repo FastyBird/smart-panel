@@ -266,7 +266,6 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			});
 			const alias = await properties.findOne<VirtualChannelPropertyEntity>(savedAlias.id);
 			if (!alias) throw new Error('Missing alias property');
-			index.add(alias, device.id);
 			aliases.push(alias);
 			const hydrated = await devices.findOne(aliasDevice.id);
 			if (!hydrated) throw new Error('Missing alias device');
@@ -281,6 +280,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			characteristic.on('change', (change: { newValue: unknown }) => changes.push(change.newValue));
 			notifications.push(changes);
 		}
+		await index.rebuild();
 		await propertyMetadata.onModuleInit();
 	});
 

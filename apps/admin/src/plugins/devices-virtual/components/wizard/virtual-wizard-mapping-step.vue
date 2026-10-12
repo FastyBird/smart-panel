@@ -228,12 +228,17 @@
 				</div>
 
 				<el-button
-					v-if="hiddenSlotsCount(group) > 0"
+					v-if="expanded[group.specChannel] || hiddenSlotsCount(group) > 0"
 					link
 					type="primary"
-					@click="expanded[group.specChannel] = true"
+					:data-test-id="`optional-slots-${group.specChannel}`"
+					@click="expanded[group.specChannel] = !expanded[group.specChannel]"
 				>
-					{{ t('devicesVirtualPlugin.wizard.mapping.showOptional', { count: hiddenSlotsCount(group) }) }}
+					{{
+						expanded[group.specChannel]
+							? t('devicesVirtualPlugin.wizard.mapping.hideOptional')
+							: t('devicesVirtualPlugin.wizard.mapping.showOptional', { count: hiddenSlotsCount(group) })
+					}}
 				</el-button>
 			</div>
 		</template>
@@ -644,7 +649,7 @@ const propertiesOptions = (channelId: string | null): { value: IChannelProperty[
 
 	return orderBy<IChannelProperty>(
 		propertiesStore.findForChannel(channelId),
-		[(property: IChannelProperty): string => property.name ?? property.category],
+		[(property: IChannelProperty): string => property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`)],
 		['asc']
 	).map((property: IChannelProperty): { value: IChannelProperty['id']; label: string } => ({
 		value: property.id,

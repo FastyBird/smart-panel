@@ -1,5 +1,5 @@
 import { StorageService } from '../../storage/services/storage.service';
-import { ConnectionState } from '../devices.constants';
+import { ConnectionState, PropertyCategory } from '../devices.constants';
 import { DeviceEntity } from '../entities/devices.entity';
 
 import { DeviceConnectionStateService } from './device-connection-state.service';
@@ -76,5 +76,48 @@ describe('DeviceConnectionStateService', () => {
 		const result = await service.readLatestMany([{ id: 'device-a' }]);
 
 		expect(result.get('device-a')).toEqual(expect.objectContaining({ online: false, status: ConnectionState.UNKNOWN }));
+	});
+
+	it('caches a successful cold read with no stored row', async () => {
+		storageService.query.mockResolvedValue([]);
+		storageService.queryStrict.mockResolvedValue([]);
+
+		await expect(service.readLatest({ id: 'device-a' })).resolves.toEqual({
+			online: false,
+			status: ConnectionState.UNKNOWN,
+			lastChanged: null,
+		});
+		await service.readLatest({ id: 'device-a' });
+
+		expect(storageService.query).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not cache unknown after a transient best-effort storage failure', async () => {
+		storageService.query.mockRejectedValueOnce(new Error('temporary failure')).mockResolvedValueOnce([]);
+
+		await service.readLatest({ id: 'device-a' });
+		await service.readLatest({ id: 'device-a' });
+
+		expect(storageService.query).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps a newer report that arrives while a cold read is in flight', async () => {
+		let resolveRead: (rows: Array<{ deviceId: string; online: boolean; status: ConnectionState }>) => void = () => {};
+		storageService.query.mockReturnValue(
+			new Promise((resolve) => {
+				resolveRead = resolve;
+			}),
+		);
+		const coldRead = service.readLatest({ id: 'device-a' });
+		await service.write(
+			{ id: 'device-a' } as DeviceEntity,
+			{ id: 'status-property', category: PropertyCategory.STATUS } as never,
+			ConnectionState.CONNECTED,
+		);
+		resolveRead([{ deviceId: 'device-a', online: false, status: ConnectionState.DISCONNECTED }]);
+
+		await expect(coldRead).resolves.toEqual(
+			expect.objectContaining({ status: ConnectionState.CONNECTED, online: true }),
+		);
 	});
 });

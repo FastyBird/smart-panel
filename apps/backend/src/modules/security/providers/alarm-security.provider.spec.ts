@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DevicesService } from '../../devices/services/devices.service';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { AlarmState, ArmedState, SecurityAlertType, Severity } from '../security.constants';
 
 import { AlarmSecurityProvider } from './alarm-security.provider';
@@ -26,7 +27,7 @@ function makeAlarmDevice(
 			{
 				id: `channel-${id}`,
 				category: channelCategory,
-				properties,
+				properties: properties.map((property) => ({ ...property, id: `${id}:${property.id}` })),
 			},
 		],
 	};
@@ -35,15 +36,172 @@ function makeAlarmDevice(
 describe('AlarmSecurityProvider', () => {
 	let provider: AlarmSecurityProvider;
 	let devicesService: { findAll: jest.Mock };
+	let valueSourceRegistry: { resolve: jest.Mock };
 
 	beforeEach(async () => {
 		devicesService = { findAll: jest.fn().mockResolvedValue([]) };
+		valueSourceRegistry = { resolve: jest.fn((property: { id: string }) => property.id) };
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [AlarmSecurityProvider, { provide: DevicesService, useValue: devicesService }],
+			providers: [
+				AlarmSecurityProvider,
+				{ provide: DevicesService, useValue: devicesService },
+				{ provide: PropertyValueSourceRegistryService, useValue: valueSourceRegistry },
+			],
 		}).compile();
 
 		provider = module.get<AlarmSecurityProvider>(AlarmSecurityProvider);
+	});
+
+	it('deduplicates source/projection alerts and prefers the visible projection in either input order', async () => {
+		const source = { ...makeAlarmDevice('a-source', [makeProperty(PropertyCategory.TRIGGERED, true)]), hidden: true };
+		const projection = makeAlarmDevice('z-projection', [makeProperty(PropertyCategory.TRIGGERED, true)]);
+		valueSourceRegistry.resolve.mockImplementation((property: { id: string }) =>
+			property.id.replace('z-projection:', 'a-source:'),
+		);
+		for (const devices of [
+			[source, projection],
+			[projection, source],
+		]) {
+			devicesService.findAll.mockResolvedValue(devices);
+			const signal = await provider.getSignals();
+			expect(signal.activeAlertsCount).toBe(1);
+			expect(signal.activeAlerts?.[0].sourceDeviceId).toBe('z-projection');
+			expect(signal.hasCriticalAlert).toBe(true);
+		}
+	});
+
+	it('keeps independent hidden-source tamper and projected fault alerts', async () => {
+		const source = {
+			...makeAlarmDevice('source', [
+				makeProperty(PropertyCategory.TRIGGERED, true),
+				makeProperty(PropertyCategory.TAMPERED, true),
+			]),
+			hidden: true,
+		};
+		const projection = makeAlarmDevice('projection', [
+			makeProperty(PropertyCategory.TRIGGERED, true),
+			makeProperty(PropertyCategory.FAULT, 1),
+		]);
+		valueSourceRegistry.resolve.mockImplementation((property: { id: string; category: PropertyCategory }) =>
+			property.category === PropertyCategory.TRIGGERED ? `shared:${property.category}` : property.id,
+		);
+		devicesService.findAll.mockResolvedValue([source, projection]);
+		const signal = await provider.getSignals();
+		expect(signal.activeAlertsCount).toBe(3);
+		expect(signal.activeAlerts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ sourceDeviceId: 'source', type: SecurityAlertType.TAMPER }),
+				expect.objectContaining({ sourceDeviceId: 'projection', type: SecurityAlertType.INTRUSION }),
+				expect.objectContaining({ sourceDeviceId: 'projection', type: SecurityAlertType.FAULT }),
+			]),
+		);
+	});
+
+	it('retains hidden alarms without a projection and distinct alarms with the same values', async () => {
+		devicesService.findAll.mockResolvedValue([
+			{ ...makeAlarmDevice('hidden', [makeProperty(PropertyCategory.TRIGGERED, true)]), hidden: true },
+			makeAlarmDevice('visible', [makeProperty(PropertyCategory.TRIGGERED, true)]),
+		]);
+		const signal = await provider.getSignals();
+		expect(signal.activeAlertsCount).toBe(2);
+	});
+
+	it('does not lose an independent intrusion measurement on a partly mapped hidden alarm', async () => {
+		devicesService.findAll.mockResolvedValue([
+			{
+				...makeAlarmDevice('source', [
+					makeProperty(PropertyCategory.ALARM_STATE, 'triggered'),
+					makeProperty(PropertyCategory.TRIGGERED, true),
+				]),
+				hidden: true,
+			},
+			makeAlarmDevice('projection', [makeProperty(PropertyCategory.TRIGGERED, true)]),
+		]);
+		valueSourceRegistry.resolve.mockImplementation((property: { id: string }) =>
+			property.id.replace('projection:', 'source:'),
+		);
+		const signal = await provider.getSignals();
+		expect(signal.activeAlertsCount).toBe(2);
+		expect(signal.activeAlerts?.map((alert) => alert.sourceDeviceId).sort()).toEqual(['projection', 'source']);
+	});
+
+	it('retains safety alerts when a value-source resolver fails', async () => {
+		devicesService.findAll.mockResolvedValue([
+			{ ...makeAlarmDevice('hidden', [makeProperty(PropertyCategory.TRIGGERED, true)]), hidden: true },
+		]);
+		valueSourceRegistry.resolve.mockImplementation(() => {
+			throw new Error('unavailable resolver');
+		});
+		const signal = await provider.getSignals();
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.hasCriticalAlert).toBe(true);
+	});
+
+	it('uses the newest duplicate condition timestamp even when the projection names the alert', async () => {
+		const source = { ...makeAlarmDevice('source', [makeProperty(PropertyCategory.TRIGGERED, true)]), hidden: true };
+		const projection = makeAlarmDevice('projection', [makeProperty(PropertyCategory.TRIGGERED, true)]);
+		Object.assign(source.channels[0].properties[0].value, { lastUpdated: '2026-10-12T10:00:00.000Z' });
+		Object.assign(projection.channels[0].properties[0].value, { lastUpdated: '2026-10-12T09:00:00.000Z' });
+		valueSourceRegistry.resolve.mockImplementation((property: { id: string }) =>
+			property.id.replace('projection:', 'source:'),
+		);
+		devicesService.findAll.mockResolvedValue([source, projection]);
+		const signal = await provider.getSignals();
+		expect(signal.activeAlerts).toEqual([
+			expect.objectContaining({ sourceDeviceId: 'projection', timestamp: '2026-10-12T10:00:00.000Z' }),
+		]);
+	});
+
+	it.each([
+		{ type: SecurityAlertType.INTRUSION, category: PropertyCategory.TRIGGERED, value: true },
+		{ type: SecurityAlertType.TAMPER, category: PropertyCategory.TAMPERED, value: true },
+		{ type: SecurityAlertType.FAULT, category: PropertyCategory.FAULT, value: 1 },
+	])('keeps a $type alert timestamp stable when an unrelated lastEvent is newer', async ({ type, category, value }) => {
+		const condition = makeProperty(category, value);
+		Object.assign(condition.value, { lastUpdated: '2026-10-12T10:00:00.000Z' });
+		const lastEvent = makeProperty(
+			PropertyCategory.LAST_EVENT,
+			JSON.stringify({ type: 'unrelated-event', timestamp: '2026-10-12T11:00:00.000Z' }),
+		);
+		devicesService.findAll.mockResolvedValue([makeAlarmDevice('dev-1', [condition, lastEvent])]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ type, timestamp: '2026-10-12T10:00:00.000Z' })]);
+	});
+
+	it('falls back to lastEvent when an active condition has no property timestamp', async () => {
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [
+				makeProperty(PropertyCategory.TRIGGERED, true),
+				makeProperty(
+					PropertyCategory.LAST_EVENT,
+					JSON.stringify({ type: 'intrusion', timestamp: '2026-10-12T11:00:00.000Z' }),
+				),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts?.[0]).toEqual(
+			expect.objectContaining({ type: SecurityAlertType.INTRUSION, timestamp: '2026-10-12T11:00:00.000Z' }),
+		);
+	});
+
+	it('keeps the current-time fallback when neither the condition nor lastEvent has a timestamp', async () => {
+		const before = new Date().toISOString();
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.TRIGGERED, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		const after = new Date().toISOString();
+		const timestamp = signal.activeAlerts?.[0]?.timestamp;
+		expect(timestamp).toBeDefined();
+		expect(Date.parse(timestamp)).toBeGreaterThanOrEqual(Date.parse(before));
+		expect(Date.parse(timestamp)).toBeLessThanOrEqual(Date.parse(after));
 	});
 
 	it('should return key "alarm"', () => {

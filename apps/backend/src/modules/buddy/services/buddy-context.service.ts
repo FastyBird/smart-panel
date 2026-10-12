@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
+import { DeviceHiddenFilter } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
@@ -265,7 +266,7 @@ export class BuddyContextService {
 			if (spaceId) {
 				devices = await this.spacesService.findDevicesBySpace(spaceId);
 			} else {
-				devices = await this.devicesService.findAll();
+				devices = await this.devicesService.findAll(undefined, DeviceHiddenFilter.FALSE);
 			}
 
 			return devices.map((device) => {

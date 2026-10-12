@@ -18,6 +18,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritan
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { readSubmittedValue } from '../../../common/utils/transform.utils';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import {
@@ -143,19 +144,20 @@ export class DeviceEntity extends BaseEntity {
 		name: 'hidden_by',
 		description:
 			'Why the device is hidden. `system` when a virtual device replaced it, `user` when an operator hid it.',
-		enum: DeviceHiddenBy,
-		nullable: true,
+		// The null-only enum has no type restriction; a typed string enum would exclude null.
+		// Keep separate arms so clients retain a string enum and nullable provenance.
+		oneOf: [
+			{ type: 'string', enum: Object.values(DeviceHiddenBy) },
+			{ enum: [null], nullable: true },
+		],
 		example: DeviceHiddenBy.SYSTEM,
 	})
 	@Expose({ name: 'hidden_by' })
 	@IsOptional()
 	@IsEnum(DeviceHiddenBy)
-	@Transform(
-		({ obj }: { obj: { hidden_by?: DeviceHiddenBy; hiddenBy?: DeviceHiddenBy } }) => obj.hidden_by ?? obj.hiddenBy,
-		{
-			toClassOnly: true,
-		},
-	)
+	@Transform(({ obj }: { obj: unknown }) => readSubmittedValue<DeviceHiddenBy>(obj, 'hidden_by', 'hiddenBy'), {
+		toClassOnly: true,
+	})
 	@Index()
 	@Column({ type: 'text', enum: DeviceHiddenBy, nullable: true, default: null })
 	hiddenBy: DeviceHiddenBy | null;

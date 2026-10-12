@@ -198,7 +198,7 @@ export class DeviceConnectionStateService {
 			}
 
 			for (const id of missingIds) {
-				statuses.set(id, this.unknownStatus());
+				statuses.set(id, this.statusMap.get(id) ?? this.unknownStatus());
 			}
 
 			return statuses;
@@ -219,6 +219,12 @@ export class DeviceConnectionStateService {
 			const rowByDevice = new Map(rows.map((row) => [row.deviceId, row]));
 
 			for (const id of missingIds) {
+				const reportedWhileReading = this.statusMap.get(id);
+				if (reportedWhileReading) {
+					statuses.set(id, reportedWhileReading);
+					continue;
+				}
+
 				const row = rowByDevice.get(id);
 				const status = row ? this.toStatus(row) : this.unknownStatus();
 				this.statusMap.set(id, status);
@@ -237,7 +243,7 @@ export class DeviceConnectionStateService {
 			}
 
 			for (const id of missingIds) {
-				statuses.set(id, this.unknownStatus());
+				statuses.set(id, this.statusMap.get(id) ?? this.unknownStatus());
 			}
 
 			return statuses;
@@ -283,14 +289,26 @@ export class DeviceConnectionStateService {
 
 			if (!result.length) {
 				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
+				const reportedWhileReading = this.statusMap.get(device.id);
+				if (reportedWhileReading) {
+					return reportedWhileReading;
+				}
 
-				return this.unknownStatus();
+				const unknown = this.unknownStatus();
+				this.statusMap.set(device.id, unknown);
+
+				return unknown;
 			}
 
 			const latest = result[0];
 			const connectionState = this.toStatus(latest);
 
 			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
+
+			const reportedWhileReading = this.statusMap.get(device.id);
+			if (reportedWhileReading) {
+				return reportedWhileReading;
+			}
 
 			this.statusMap.set(device.id, connectionState);
 			if (latest.propertyId) {
@@ -310,7 +328,7 @@ export class DeviceConnectionStateService {
 				throw error;
 			}
 
-			return this.unknownStatus();
+			return this.statusMap.get(device.id) ?? this.unknownStatus();
 		}
 	}
 

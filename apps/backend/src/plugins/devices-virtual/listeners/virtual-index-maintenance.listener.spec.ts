@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	ConnectionState,
 	DeviceHiddenBy,
@@ -1433,11 +1434,14 @@ describe('VirtualIndexMaintenanceListener', () => {
 	// and never again afterwards, so "did the rebuild see it" answers "did the rebuild read inside the
 	// transaction" with no clock involved at all — which the previous version of this test, which
 	// raced the commit and sampled the flag, could not.
-	describe('reads only committed state (real sqlite)', () => {
+	describe.each([
+		['upstream', DataSource],
+		['coordinated', SqliteDataSource],
+	] as const)('reads only committed state (real sqlite, %s)', (_driver, DataSourceClass) => {
 		let dataSource: DataSource;
 
 		beforeAll(async () => {
-			dataSource = new DataSource({ type: 'sqlite', database: ':memory:', entities: [], synchronize: false });
+			dataSource = new DataSourceClass({ type: 'sqlite', database: ':memory:', entities: [], synchronize: false });
 			await dataSource.initialize();
 			await dataSource.query('CREATE TABLE probe (id TEXT PRIMARY KEY)');
 		});
@@ -1458,12 +1462,6 @@ describe('VirtualIndexMaintenanceListener', () => {
 			rowsRead: () => { id: string }[];
 			observed: Promise<void>;
 		} => {
-			// The exact query runner obtainQueryRunner() falls back to for any unscoped query —
-			// including VirtualPropertyIndexService.rebuild()'s repository.find() — because sqlite is
-			// not pooled (see AbstractSqliteDriver): this one instance is shared by every
-			// non-transactional caller in the app, ours included.
-			const sharedQueryRunner = dataSource.createQueryRunner();
-
 			let rows: { id: string }[] = [];
 			let resolveObserved!: () => void;
 			const observed = new Promise<void>((resolve) => {
@@ -1471,7 +1469,7 @@ describe('VirtualIndexMaintenanceListener', () => {
 			});
 
 			const rebuild = jest.fn().mockImplementation(async () => {
-				rows = (await sharedQueryRunner.query('SELECT id FROM probe')) as { id: string }[];
+				rows = await dataSource.query<{ id: string }[]>('SELECT id FROM probe');
 
 				resolveObserved();
 
@@ -1492,6 +1490,37 @@ describe('VirtualIndexMaintenanceListener', () => {
 
 			return { listener, rebuild, rowsRead: () => rows, observed };
 		};
+
+		if (DataSourceClass === SqliteDataSource) {
+			it('detaches the rebuild context so the query gate remains safe after a stale activity check', async () => {
+				const probe = createProbe();
+				jest
+					.spyOn(
+						probe.listener as unknown as { deferPastOpenTransaction(): Promise<boolean> },
+						'deferPastOpenTransaction',
+					)
+					.mockResolvedValue(true);
+				let releaseTransaction: () => void;
+				const heldOpen = new Promise<void>((resolve) => (releaseTransaction = resolve));
+				let reportStarted: () => void;
+				const started = new Promise<void>((resolve) => (reportStarted = resolve));
+				let observed = false;
+				void probe.observed.then(() => (observed = true));
+				const transaction = dataSource.transaction(async (manager) => {
+					await manager.query('INSERT INTO probe (id) VALUES (?)', ['committed']);
+					probe.listener.handleStructuralChange();
+					reportStarted();
+					await heldOpen;
+				});
+				await started;
+				await burnEventLoopTurns(TURNS_TO_HOLD_A_TRANSACTION_OPEN);
+				expect(observed).toBe(false);
+				releaseTransaction();
+				await transaction;
+				await probe.observed;
+				expect(probe.rowsRead()).toEqual([{ id: 'committed' }]);
+			});
+		}
 
 		it('never sees rows the emitting transaction went on to roll back', async () => {
 			const probe = createProbe();

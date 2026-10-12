@@ -71,9 +71,7 @@ const devicesStore = injectStoresManager().getStore(devicesStoreKey);
 
 const unhiding = ref<boolean>(false);
 
-// Only `hidden` is sent. The backend clears the provenance itself when a device becomes visible,
-// which is what makes this expressible at all: no client can send `hidden_by: null` — the generated
-// update type drops the null, and the DTO reads an explicit null as "not provided".
+// Only `hidden` is needed: the backend also clears provenance when a device becomes visible.
 const onUnhide = async (): Promise<void> => {
 	unhiding.value = true;
 

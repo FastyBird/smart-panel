@@ -10,6 +10,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MODULES_PREFIX, PLUGINS_PREFIX } from './app.constants';
+import { createSqliteDataSource } from './common/database/sqlite-data-source';
 import { getEnvValue } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
@@ -210,6 +211,7 @@ export class AppModule {
 				TypeOrmModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],
+					dataSourceFactory: createSqliteDataSource,
 					useFactory: (configService: NestConfigService) => {
 						const isTest = process.env.NODE_ENV === 'test';
 

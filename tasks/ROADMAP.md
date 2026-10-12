@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-10-07. Reflects actual codebase state (audited against the code on 2026-10-07).
+> Last updated: 2026-10-12. Virtual-device follow-ups audited on 2026-10-12; other sections retain the 2026-10-07 audit.
 
 ## GitHub tracking
 
@@ -20,10 +20,9 @@ Every open epic has a GitHub milestone and an epic issue whose sub-issues are ti
 | Panel app updates | Panel app updates | #1314 |
 | Zigbee Herdsman plugin | Zigbee Herdsman | #1322 |
 | Security hardening phase 2 | Security hardening phase 2 | #1330 |
-| Virtual devices follow-ups | Virtual devices follow-ups | #1336 |
 | Backup and restore follow-ups | Backup and restore follow-ups | #1346 |
 
-Standalone open issues from the audit: #1353 (Dependabot advisories), #1355 and #1356 (panel signage rendering), #1357 (energy screen widget test), #1358 (extension actions and managed services docs), #1359 (intent failure badge).
+Standalone open issues from the audit: #1402 (shared device editing and test infrastructure), #1403 (embedded device-control snapshot race); #1353 (Dependabot advisories), #1355 and #1356 (panel signage rendering), #1357 (energy screen widget test), #1358 (extension actions and managed services docs), #1359 (intent failure badge).
 
 ---
 
@@ -242,9 +241,9 @@ Build a device from properties of other devices — splitting one physical devic
 | --- | ----------------------------------------------------------------------------------------------- | --------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | [FEATURE-DEVICE-VIRTUAL-PLUGIN](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md) | backend, admin, panel | :white_check_mark: Done | Backend plugin, admin wizard and detail page with remap, `hidden` filtering across every picker, panel rendering. The six closed-loop categories stay blocked by the design's v1 boundary                 |
 | 2   | [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md)              | backend               | :white_check_mark: Done | A projected meter now has one accountable claimant and is billed to the device presenting it; the space readers scope by the recorded room, so moving or deleting a device no longer rewrites its history |
-| 3   | [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md)                   | backend               | :construction: In Progress | 23 of 38 items open, none blocking; tracked in epic #1336                                                                                                                                         |
+| 3   | [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md)                   | backend, admin, panel | :white_check_mark: Done | Direct defects resolved and remaining findings triaged in #1336; shared refactors tracked separately in #1402                                                                                                                                         |
 
-**Next up:** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer, in what order the decisions unblock each other, which categories to take first, and what the deliverable is. [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) is the other open thread, none of it blocking.
+**Next up:** [controller support](../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support), which unblocks the six closed-loop categories the v1 boundary excludes. It starts with a design rather than a task — a control loop touches safety, concurrency and the platform's command path — and the design spec now carries what that design has to answer, in what order the decisions unblock each other, which categories to take first, and what the deliverable is. [TECH-VIRTUAL-DEVICES-FOLLOWUPS](technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md) records the completed follow-up audit and explicit visibility/reference policy. Shared editing and test-infrastructure refactors continue separately in #1402.
 
 ---
 

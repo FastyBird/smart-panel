@@ -26,6 +26,7 @@ type RelationStoreStub = {
 	set: Mock;
 	unset: Mock;
 	findForDevice: Mock;
+	captureReadSnapshot: () => Mock;
 };
 
 // Keyed by store symbol and kept for the life of a test, mirroring the real `storesManager`, which
@@ -51,6 +52,7 @@ const mockGetStore = vi.fn((key: symbol): RelationStoreStub => {
 		set: vi.fn(),
 		unset: vi.fn(),
 		findForDevice: vi.fn(() => []),
+		captureReadSnapshot: () => created.set,
 	};
 
 	relationStores.set(key, created);
@@ -769,5 +771,4 @@ describe('Devices Store', () => {
 			expect(store.findAll()).toHaveLength(2);
 		});
 	});
-
 });

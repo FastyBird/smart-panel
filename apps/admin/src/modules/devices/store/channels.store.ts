@@ -4,28 +4,28 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import type {
-	DevicesModuleGetChannelOperation,
-	DevicesModuleGetDeviceChannelOperation,
-	DevicesModuleGetChannelsOperation,
-	DevicesModuleGetDeviceChannelsOperation,
 	DevicesModuleCreateDeviceChannelOperation,
-	DevicesModuleUpdateChannelOperation,
-	DevicesModuleUpdateDeviceChannelOperation,
 	DevicesModuleDeleteChannelOperation,
 	DevicesModuleDeleteDeviceChannelOperation,
+	DevicesModuleGetChannelOperation,
+	DevicesModuleGetChannelsOperation,
+	DevicesModuleGetDeviceChannelOperation,
+	DevicesModuleGetDeviceChannelsOperation,
+	DevicesModuleUpdateChannelOperation,
+	DevicesModuleUpdateDeviceChannelOperation,
 } from '../../../openapi.constants';
 import { useChannelsPlugins } from '../composables/useChannelsPlugins';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
-import type { IChannelControlRes } from './channels.controls.store.types';
+import type { IChannelControlRes, IChannelsControlsStoreActions } from './channels.controls.store.types';
 import { transformChannelControlResponse } from './channels.controls.transformers';
 import { ChannelPropertySchema } from './channels.properties.store.schemas';
-import type { IChannelPropertyRes } from './channels.properties.store.types';
+import type { IChannelPropertyRes, IChannelsPropertiesStoreActions } from './channels.properties.store.types';
 import { transformChannelPropertyResponse } from './channels.properties.transformers';
 import {
 	ChannelCreateReqSchema,
@@ -103,6 +103,29 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 	const pendingFetchPromises: Record<string, Promise<IChannel[]>> = {};
 
+	// Writes (including deletion tombstones) fence snapshots requested before them.
+	let mutationToken = 0;
+	const mutationTokenById: Record<IChannel['id'], number> = {};
+	const scopeMutationToken: Record<string, number> = {};
+	let requestGeneration = 0;
+	const readGenerationById: Record<IChannel['id'], number> = {};
+
+	const commit = (item: IChannel): IChannel => {
+		mutationTokenById[item.id] = ++mutationToken;
+		return (data.value[item.id] = item);
+	};
+
+	const forget = (id: IChannel['id']): void => {
+		mutationTokenById[id] = ++mutationToken;
+		delete data.value[id];
+	};
+
+	const unchangedSince = (item: IChannel, requestedAt: number): boolean =>
+		(mutationTokenById[item.id] ?? 0) <= requestedAt && (scopeMutationToken[item.device] ?? 0) <= requestedAt;
+
+	const canApplyRead = (item: IChannel, requestedAt: number, generation: number): boolean =>
+		unchangedSince(item, requestedAt) && (readGenerationById[item.id] ?? 0) <= generation;
+
 	const onEvent = (payload: IChannelsOnEventActionPayload): IChannel => {
 		const element = getPluginElement(payload.type);
 
@@ -112,7 +135,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		});
 	};
 
-	const set = (payload: IChannelsSetActionPayload): IChannel => {
+	const applySet = <T>(payload: IChannelsSetActionPayload, apply: (item: IChannel) => T): T => {
 		const element = getPluginElement(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
@@ -124,7 +147,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				throw new DevicesValidationException('Failed to insert channel.');
 			}
 
-			return (data.value[parsed.data.id] = parsed.data);
+			return apply(parsed.data);
 		}
 
 		const parsed = (element?.schemas?.channelSchema || ChannelSchema).safeParse({ ...payload.data, id: payload.id });
@@ -137,7 +160,23 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		data.value = data.value ?? {};
 
-		return (data.value[parsed.data.id] = parsed.data);
+		return apply(parsed.data);
+	};
+
+	const set = (payload: IChannelsSetActionPayload): IChannel => applySet(payload, commit);
+
+	const captureReadSnapshot: IChannelsStoreActions['captureReadSnapshot'] = () => {
+		const requestedAt = mutationToken;
+		const generation = ++requestGeneration;
+		return (payload: IChannelsSetActionPayload): IChannel | null =>
+			applySet(payload, (item: IChannel): IChannel | null => {
+				if (canApplyRead(item, requestedAt, generation)) {
+					readGenerationById[item.id] = generation;
+					data.value[item.id] = item;
+				}
+				// A blocked/deleted channel must not become a conduit for hydrating its old children.
+				return data.value[item.id] ?? null;
+			});
 	};
 
 	const unset = (payload: IChannelsUnsetActionPayload): void => {
@@ -146,17 +185,18 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		}
 
 		if (payload.deviceId !== undefined) {
+			scopeMutationToken[payload.deviceId] = ++mutationToken;
 			const items = findForDevice(payload.deviceId);
 
 			for (const item of items) {
 				if (item.id in (data.value ?? {})) {
-					delete (data.value ?? {})[item.id];
+					forget(item.id);
 				}
 			}
 
 			return;
 		} else if (payload.id !== undefined) {
-			delete data.value[payload.id];
+			forget(payload.id);
 
 			return;
 		}
@@ -169,6 +209,12 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		if (existingPromise) {
 			return existingPromise;
 		}
+
+		const requestedAt = mutationToken;
+		const generation = ++requestGeneration;
+
+		const applyControlsSnapshot = storesManager.getStore(channelsControlsStoreKey).captureReadSnapshot();
+		const applyPropertiesSnapshot = storesManager.getStore(channelsPropertiesStoreKey).captureReadSnapshot();
 
 		const getPromise = (async (): Promise<IChannel> => {
 			if (semaphore.value.fetching.item.includes(payload.id)) {
@@ -201,10 +247,13 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 					const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
-					data.value[transformed.id] = transformed;
+					if (canApplyRead(transformed, requestedAt, generation)) {
+						readGenerationById[transformed.id] = generation;
+						data.value[transformed.id] = transformed;
 
-					insertChannelControlsRelations(transformed, responseData.data.controls);
-					insertChannelPropertiesRelations(transformed, responseData.data.properties);
+						insertChannelControlsRelations(transformed, responseData.data.controls, applyControlsSnapshot);
+						insertChannelPropertiesRelations(transformed, responseData.data.properties, applyPropertiesSnapshot);
+					}
 
 					return transformed;
 				}
@@ -241,6 +290,12 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			return existingPromise;
 		}
 
+		const requestedAt = mutationToken;
+		const generation = ++requestGeneration;
+
+		const applyControlsSnapshot = storesManager.getStore(channelsControlsStoreKey).captureReadSnapshot();
+		const applyPropertiesSnapshot = storesManager.getStore(channelsPropertiesStoreKey).captureReadSnapshot();
+
 		const fetchPromise = (async (): Promise<IChannel[]> => {
 			if (semaphore.value.fetching.items.includes(payload?.deviceId ?? 'all')) {
 				throw new DevicesApiException('Already fetching channels.');
@@ -275,20 +330,20 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 						firstLoad.value = [...new Set(firstLoad.value)];
 					}
 
-					const channels = Object.fromEntries(
-						responseData.data.map((channel) => {
-							const element = getPluginElement(channel.type);
+					for (const channel of responseData.data) {
+						const element = getPluginElement(channel.type);
+						const transformed = transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema);
 
-							const transformed = transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema);
+						if (!canApplyRead(transformed, requestedAt, generation)) {
+							continue;
+						}
 
-							insertChannelControlsRelations(transformed, channel.controls);
-							insertChannelPropertiesRelations(transformed, channel.properties);
+						readGenerationById[transformed.id] = generation;
+						data.value[transformed.id] = transformed;
 
-							return [transformed.id, transformed];
-						})
-					);
-
-					data.value = { ...data.value, ...channels };
+						insertChannelControlsRelations(transformed, channel.controls, applyControlsSnapshot);
+						insertChannelPropertiesRelations(transformed, channel.properties, applyPropertiesSnapshot);
+					}
 
 					if (payload?.deviceId) {
 						return findForDevice(payload.deviceId);
@@ -349,7 +404,10 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		semaphore.value.creating.push(parsedNewItem.data.id);
 
-		data.value[parsedNewItem.data.id] = parsedNewItem.data;
+		commit(parsedNewItem.data);
+		const requestedAt = mutationToken;
+		const applyControlsSnapshot = storesManager.getStore(channelsControlsStoreKey).captureReadSnapshot();
+		const applyPropertiesSnapshot = storesManager.getStore(channelsPropertiesStoreKey).captureReadSnapshot();
 
 		if (parsedNewItem.data.draft) {
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
@@ -378,16 +436,22 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 					const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
-					data.value[transformed.id] = transformed;
+					if (!unchangedSince(transformed, requestedAt)) {
+						return data.value[transformed.id] ?? transformed;
+					}
 
-					insertChannelControlsRelations(transformed, responseData.data.controls);
-					insertChannelPropertiesRelations(transformed, responseData.data.properties);
+					commit(transformed);
+
+					insertChannelControlsRelations(transformed, responseData.data.controls, applyControlsSnapshot);
+					insertChannelPropertiesRelations(transformed, responseData.data.properties, applyPropertiesSnapshot);
 
 					return transformed;
 				}
 
 				// Record could not be created on api, we have to remove it from a database
-				delete data.value[parsedNewItem.data.id];
+				if (unchangedSince(parsedNewItem.data, requestedAt)) {
+					forget(parsedNewItem.data.id);
+				}
 
 				let errorReason: string | null = 'Failed to create channel.';
 
@@ -434,7 +498,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		semaphore.value.updating.push(payload.id);
 
-		data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
+		commit(parsedEditedItem.data);
+		const requestedAt = mutationToken;
 
 		if (parsedEditedItem.data.draft) {
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
@@ -451,7 +516,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 						},
 						body: {
 							data: transformChannelUpdateRequest<IChannelUpdateReq>(
-								parsedEditedItem.data,
+								payload.data,
 								element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
 							),
 						},
@@ -463,7 +528,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 						},
 						body: {
 							data: transformChannelUpdateRequest<IChannelUpdateReq>(
-								parsedEditedItem.data,
+								payload.data,
 								element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
 							),
 						},
@@ -477,13 +542,23 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 					const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
-					data.value[transformed.id] = transformed;
+					if (!unchangedSince(transformed, requestedAt)) {
+						return data.value[transformed.id] ?? transformed;
+					}
+
+					commit(transformed);
 
 					return transformed;
 				}
 
 				// Updating the record on api failed, we need to refresh the record
-				await get({ id: payload.id });
+				if (unchangedSince(parsedEditedItem.data, requestedAt)) {
+					// Drain an older coalesced GET before asking for recovery state.
+					await pendingGetPromises[payload.id]?.catch(() => undefined);
+					if (unchangedSince(parsedEditedItem.data, requestedAt)) {
+						await get({ id: payload.id });
+					}
+				}
 
 				let errorReason: string | null = 'Failed to update channel.';
 
@@ -523,6 +598,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		}
 
 		semaphore.value.updating.push(payload.id);
+		const requestedAt = mutationToken;
+		const applyControlsSnapshot = storesManager.getStore(channelsControlsStoreKey).captureReadSnapshot();
+		const applyPropertiesSnapshot = storesManager.getStore(channelsPropertiesStoreKey).captureReadSnapshot();
 
 		try {
 			const {
@@ -546,10 +624,14 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
-				data.value[transformed.id] = transformed;
+				if (!unchangedSince(transformed, requestedAt)) {
+					return data.value[transformed.id] ?? transformed;
+				}
 
-				insertChannelControlsRelations(transformed, responseData.data.controls);
-				insertChannelPropertiesRelations(transformed, responseData.data.properties);
+				commit(transformed);
+
+				insertChannelControlsRelations(transformed, responseData.data.controls, applyControlsSnapshot);
+				insertChannelPropertiesRelations(transformed, responseData.data.properties, applyPropertiesSnapshot);
 
 				return transformed;
 			}
@@ -579,7 +661,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		const recordToRemove = data.value[payload.id];
 
-		delete data.value[payload.id];
+		forget(payload.id);
 
 		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
@@ -637,11 +719,11 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		return true;
 	};
 
-	const insertChannelControlsRelations = (channel: IChannel, controls: IChannelControlRes[]): void => {
+	const insertChannelControlsRelations = (channel: IChannel, controls: IChannelControlRes[], apply?: IChannelsControlsStoreActions['set']): void => {
 		const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
 
 		controls.forEach((control) => {
-			channelsControlsStore.set({
+			(apply ?? channelsControlsStore.set)({
 				id: control.id,
 				data: transformChannelControlResponse(control),
 			});
@@ -650,13 +732,17 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		markFirstLoad(channelsControlsStore.firstLoad, channel.id);
 	};
 
-	const insertChannelPropertiesRelations = (channel: IChannel, properties: IChannelPropertyRes[]): void => {
+	const insertChannelPropertiesRelations = (
+		channel: IChannel,
+		properties: IChannelPropertyRes[],
+		apply?: IChannelsPropertiesStoreActions['set']
+	): void => {
 		const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 		properties.forEach((property) => {
 			const element = getChannelsPropertiesPluginElement(property.type);
 
-			channelsPropertiesStore.set({
+			(apply ?? channelsPropertiesStore.set)({
 				id: property.id,
 				data: transformChannelPropertyResponse(property, element?.schemas?.channelPropertySchema || ChannelPropertySchema),
 			});
@@ -676,6 +762,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		findForDevice,
 		findById,
 		onEvent,
+		captureReadSnapshot,
 		set,
 		unset,
 		get,

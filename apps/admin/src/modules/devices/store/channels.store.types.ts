@@ -67,6 +67,7 @@ export interface IChannelsStoreActions {
 	findForDevice: (deviceId: IDevice['id']) => IChannel[];
 	findAll: () => IChannel[];
 	// Actions
+	captureReadSnapshot: () => (payload: IChannelsSetActionPayload) => IChannel | null;
 	onEvent: (payload: IChannelsOnEventActionPayload) => IChannel;
 	set: (payload: IChannelsSetActionPayload) => IChannel;
 	unset: (payload: IChannelsUnsetActionPayload) => void;

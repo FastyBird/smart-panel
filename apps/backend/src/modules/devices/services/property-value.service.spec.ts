@@ -27,6 +27,7 @@ describe('PropertyValueService', () => {
 	beforeEach(async () => {
 		const mockStorageService = {
 			writePoints: jest.fn(),
+			enqueueWritePoint: jest.fn(),
 			flushQueuedWrites: jest.fn().mockResolvedValue(undefined),
 			writePointsStrict: jest.fn(),
 			query: jest.fn(),
@@ -1141,5 +1142,77 @@ describe('PropertyValueService', () => {
 				expect.stringContaining("DELETE FROM property_value WHERE propertyId = 'own-prop'"),
 			);
 		});
+	});
+
+	describe('value source resolver failures', () => {
+		const registerThrowingSource = (failure: unknown): void => {
+			module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService).register({
+				getType: () => 'throwing-source',
+				resolve: () => {
+					throw failure;
+				},
+			});
+		};
+		const projected = (): ChannelPropertyEntity =>
+			({
+				id: 'projection-property',
+				type: 'throwing-source',
+				dataType: DataTypeType.FLOAT,
+			}) as ChannelPropertyEntity;
+
+		it('contains best-effort writes and never writes under the projection id', async () => {
+			registerThrowingSource(new Error('resolver unavailable'));
+
+			await expect(service.write(projected(), 42)).resolves.toBe(false);
+			await expect(service.writeWithState(projected(), 43)).resolves.toEqual({ changed: false, state: null });
+			await expect(service.writeLiveWithState(projected(), 44)).resolves.toEqual({ changed: false, state: null });
+			expect(storageService.writePoints).not.toHaveBeenCalled();
+			expect(storageService.enqueueWritePoint).not.toHaveBeenCalled();
+		});
+
+		it('contains best-effort reads and deletes without querying or deleting the projection id', async () => {
+			registerThrowingSource(new Error('resolver unavailable'));
+
+			await expect(service.readLatest(projected())).resolves.toBeNull();
+			await expect(service.delete(projected())).resolves.toBeUndefined();
+			const bounded = await service.readLatestManyBounded([projected()]);
+
+			expect(bounded.items[0]).toMatchObject({
+				status: 'unprocessed',
+				source: null,
+				sourcePropertyId: null,
+			});
+			expect(bounded.storageStatus).toBe('failed');
+			expect(storageService.query).not.toHaveBeenCalled();
+		});
+
+		it('preserves resolver errors on strict operations', async () => {
+			const failure = new Error('resolver unavailable');
+			registerThrowingSource(failure);
+
+			await expect(service.writeStrict(projected(), 42)).rejects.toBe(failure);
+			await expect(service.readLatestStrict(projected())).rejects.toBe(failure);
+			await expect(service.deleteSinceStrict(projected(), new Date())).rejects.toBe(failure);
+		});
+
+		it.each([null, undefined, 'resolver unavailable'])(
+			'contains non-Error resolver throws (%p)',
+			async (failure: unknown) => {
+				registerThrowingSource(failure);
+
+				await expect(service.write(projected(), 42)).resolves.toBe(false);
+				await expect(service.readLatest(projected())).resolves.toBeNull();
+				await expect(service.delete(projected())).resolves.toBeUndefined();
+				const bounded = await service.readLatestManyBounded([projected()]);
+
+				expect(bounded.items[0]).toMatchObject({ status: 'unprocessed', sourcePropertyId: null });
+				await expect(service.writeStrict(projected(), 43)).rejects.toBe(failure);
+				await expect(service.readLatestStrict(projected())).rejects.toBe(failure);
+				expect(storageService.writePoints).not.toHaveBeenCalled();
+				expect(storageService.enqueueWritePoint).not.toHaveBeenCalled();
+				expect(storageService.query).not.toHaveBeenCalled();
+				expect(storageService.queryStrict).not.toHaveBeenCalled();
+			},
+		);
 	});
 });

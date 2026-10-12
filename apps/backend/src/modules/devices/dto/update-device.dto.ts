@@ -104,15 +104,18 @@ export class UpdateDeviceDto {
 	@ApiPropertyOptional({
 		description:
 			'Why the device is hidden. `system` when a virtual device replaced it, `user` when an operator hid it.',
-		enum: DeviceHiddenBy,
-		nullable: true,
+		// The null-only enum has no type restriction; a typed string enum would exclude null.
+		// Keep separate arms so clients retain a string enum and nullable provenance.
+		oneOf: [
+			{ type: 'string', enum: Object.values(DeviceHiddenBy) },
+			{ enum: [null], nullable: true },
+		],
 		example: DeviceHiddenBy.SYSTEM,
 	})
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(DeviceHiddenBy, { message: '[{"field":"hidden_by","reason":"Hidden by attribute must be a valid value."}]' })
-	hidden_by?: DeviceHiddenBy;
+	hidden_by?: DeviceHiddenBy | null;
 
 	@ApiPropertyOptional({
 		name: 'room_id',

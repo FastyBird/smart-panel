@@ -8,13 +8,23 @@ import { RouteNames as DevicesRouteNames } from '../../modules/devices';
 
 import { RouteNames as VirtualRouteNames } from './devices-virtual.constants';
 import DevicesVirtualPlugin from './devices-virtual.plugin';
-import { VirtualChannelPropertyCreateReqSchema, VirtualChannelPropertyUpdateReqSchema } from './store/channels.properties.store.schemas';
+import {
+	VirtualChannelPropertyCreateReqSchema,
+	VirtualChannelPropertySchema,
+	VirtualChannelPropertyUpdateReqSchema,
+} from './store/channels.properties.store.schemas';
 
 const mocks = vi.hoisted(() => ({
 	addPlugin: vi.fn(),
+	configStore: {
+		firstLoadFinished: vi.fn(),
+		fetch: vi.fn(),
+		findByType: vi.fn(),
+	},
 }));
 
 vi.mock('../../common', () => ({
+	injectStoresManager: () => ({ getStore: () => mocks.configStore }),
 	injectPluginsManager: () => ({
 		addPlugin: mocks.addPlugin,
 	}),
@@ -46,9 +56,9 @@ vi.mock('./schemas/devices.schemas', () => ({
 }));
 
 vi.mock('./store/channels.properties.store.schemas', () => ({
-	VirtualChannelPropertySchema: {},
-	VirtualChannelPropertyCreateReqSchema: {},
-	VirtualChannelPropertyUpdateReqSchema: {},
+	VirtualChannelPropertySchema: { schema: 'VirtualChannelPropertySchema' },
+	VirtualChannelPropertyCreateReqSchema: { schema: 'VirtualChannelPropertyCreateReqSchema' },
+	VirtualChannelPropertyUpdateReqSchema: { schema: 'VirtualChannelPropertyUpdateReqSchema' },
 }));
 
 vi.mock('./store/channels.store.schemas', () => ({
@@ -79,6 +89,9 @@ const createOptions = (routes: Array<{ name: string }>) =>
 describe('devicesVirtualPlugin', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.configStore.firstLoadFinished.mockReturnValue(true);
+		mocks.configStore.fetch.mockResolvedValue(undefined);
+		mocks.configStore.findByType.mockReturnValue({ enabled: true });
 	});
 
 	it('does not register the wizard route when the devices list route is missing', () => {
@@ -136,6 +149,11 @@ describe('devicesVirtualPlugin', () => {
 		const options = createOptions([{ name: 'root' }]);
 
 		DevicesVirtualPlugin.install({} as App, options);
+
+		const registered = mocks.addPlugin.mock.calls[0]?.[1].elements[0].schemas;
+		expect(registered.channelPropertySchema).toBe(VirtualChannelPropertySchema);
+		expect(registered.channelPropertyCreateReqSchema).toBe(VirtualChannelPropertyCreateReqSchema);
+		expect(registered.channelPropertyUpdateReqSchema).toBe(VirtualChannelPropertyUpdateReqSchema);
 
 		expect(mocks.addPlugin).toHaveBeenCalledWith(
 			expect.any(Symbol),
@@ -211,5 +229,49 @@ describe('devicesVirtualPlugin', () => {
 
 			expect(router.currentRoute.value.name).toBe(VirtualRouteNames.WIZARD);
 		});
+	});
+});
+
+describe('virtual wizard direct navigation gate', () => {
+	const navigate = async () => {
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [{ path: '/devices', name: DevicesRouteNames.DEVICES, component: { template: '<div />' } }],
+		});
+		const options = createOptions([]);
+		options.router = router;
+		DevicesVirtualPlugin.install({} as App, options);
+		await router.push('/devices/devices-virtual/wizard');
+		await router.isReady();
+		return router.currentRoute.value.name;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.configStore.firstLoadFinished.mockReturnValue(true);
+		mocks.configStore.fetch.mockResolvedValue(undefined);
+	});
+
+	it.each([false, undefined])('redirects disabled or absent plugin state %s to the devices list', async (enabled) => {
+		mocks.configStore.findByType.mockReturnValue(enabled === undefined ? null : { enabled });
+		expect(await navigate()).toBe(DevicesRouteNames.DEVICES);
+		expect(mocks.configStore.fetch).not.toHaveBeenCalled();
+	});
+
+	it('waits for first hydration before allowing an enabled plugin', async () => {
+		mocks.configStore.firstLoadFinished.mockReturnValue(false);
+		mocks.configStore.findByType.mockReturnValue(null);
+		mocks.configStore.fetch.mockImplementation(async () => {
+			mocks.configStore.findByType.mockReturnValue({ enabled: true });
+		});
+		expect(await navigate()).toBe(VirtualRouteNames.WIZARD);
+		expect(mocks.configStore.fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('redirects when config cannot be hydrated', async () => {
+		mocks.configStore.firstLoadFinished.mockReturnValue(false);
+		mocks.configStore.findByType.mockReturnValue(null);
+		mocks.configStore.fetch.mockRejectedValue(new Error('Offline'));
+		expect(await navigate()).toBe(DevicesRouteNames.DEVICES);
 	});
 });

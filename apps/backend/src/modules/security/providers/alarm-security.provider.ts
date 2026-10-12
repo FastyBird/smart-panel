@@ -4,6 +4,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
+import { PropertyValueSourceRegistryService } from '../../devices/services/property-value-source.registry.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
@@ -26,6 +27,8 @@ const ALARM_STATE_RANK: Record<AlarmState, number> = {
 
 interface AlarmDeviceState {
 	deviceId: string;
+	hidden: boolean;
+	measurements: Map<SecurityAlertType, Array<{ id: string; projected: boolean }>>;
 	armedState: ArmedState | null;
 	alarmState: AlarmState | null;
 	triggered: boolean;
@@ -44,7 +47,10 @@ interface AlarmDeviceState {
 export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 	private readonly logger = createExtensionLogger(SECURITY_MODULE_NAME, 'AlarmSecurityProvider');
 
-	constructor(private readonly devicesService: DevicesService) {}
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+	) {}
 
 	getKey(): string {
 		return 'alarm';
@@ -146,8 +152,46 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			this.getPropertyTimestamp(properties, PropertyCategory.FAULT) ??
 			this.getPropertyTimestamp(properties, PropertyCategory.ACTIVE);
 
+		// Resolve each active condition separately. A projection may share intrusion
+		// with its source but carry its own tamper/fault, or only one of two active
+		// intrusion measurements. Suppressing an entire device loses those alerts.
+		const measurements: AlarmDeviceState['measurements'] = new Map();
+		const add = (type: SecurityAlertType, category: PropertyCategory) => {
+			const property = properties.find((candidate) => candidate.category === category);
+			if (!property) {
+				return;
+			}
+			let id = property.id;
+			try {
+				id = this.valueSourceRegistry.resolve(property);
+			} catch (error) {
+				// Identity resolution must never suppress an active safety condition.
+				this.logger.warn(`Failed to resolve alarm measurement property=${property.id}: ${error}`);
+			}
+			const entries = measurements.get(type) ?? [];
+			entries.push({ id, projected: id !== property.id });
+			measurements.set(type, entries);
+		};
+		if (alarmState === AlarmState.TRIGGERED && this.parseAlarmState(alarmStateValue) === AlarmState.TRIGGERED) {
+			add(SecurityAlertType.INTRUSION, PropertyCategory.ALARM_STATE);
+		}
+		if (triggered) {
+			add(SecurityAlertType.INTRUSION, PropertyCategory.TRIGGERED);
+		}
+		if (tampered) {
+			add(SecurityAlertType.TAMPER, PropertyCategory.TAMPERED);
+		}
+		if (active === false) {
+			add(SecurityAlertType.FAULT, PropertyCategory.ACTIVE);
+		}
+		if (fault > 0) {
+			add(SecurityAlertType.FAULT, PropertyCategory.FAULT);
+		}
+
 		return {
 			deviceId: device.id,
+			hidden: device.hidden === true,
+			measurements,
 			armedState,
 			alarmState,
 			triggered,
@@ -183,35 +227,81 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		// Build alerts for exception states
 		const activeAlerts: SecurityAlert[] = [];
 
+		// Choose one presentation for every underlying measurement and alert type.
+		// Visible projections win; hidden sources still win when no replacement
+		// reports their condition. IDs remain device-based for acknowledgement compatibility.
+		const conditionTimestamp = (state: AlarmDeviceState, type: SecurityAlertType) => {
+			const timestamp =
+				type === SecurityAlertType.INTRUSION
+					? state.triggeredTimestamp
+					: type === SecurityAlertType.TAMPER
+						? state.tamperedTimestamp
+						: state.faultTimestamp;
+
+			return timestamp ?? state.lastEvent?.timestamp ?? null;
+		};
+		const owners = new Map<string, { state: AlarmDeviceState; projected: boolean; timestamp: string | null }>();
+		const rank = (candidate: AlarmDeviceState, projected: boolean) => (candidate.hidden ? 2 : 0) + (projected ? 0 : 1);
+		for (const state of states) {
+			for (const [type, measurements] of state.measurements) {
+				for (const measurement of measurements) {
+					const key = `${type}:${measurement.id}`;
+					const previous = owners.get(key);
+					const timestamp = conditionTimestamp(state, type);
+					const newestTimestamp =
+						previous?.timestamp && (!timestamp || Date.parse(previous.timestamp) > Date.parse(timestamp))
+							? previous.timestamp
+							: timestamp;
+					if (!previous || rank(state, measurement.projected) < rank(previous.state, previous.projected)) {
+						owners.set(key, { state, projected: measurement.projected, timestamp: newestTimestamp });
+					} else {
+						previous.timestamp = newestTimestamp;
+					}
+				}
+			}
+		}
+		const ownsAlert = (state: AlarmDeviceState, type: SecurityAlertType) =>
+			(state.measurements.get(type) ?? []).some(({ id }) => owners.get(`${type}:${id}`)?.state === state);
+
+		const alertTimestamp = (state: AlarmDeviceState, type: SecurityAlertType) => {
+			const timestamps = (state.measurements.get(type) ?? [])
+				.map(({ id }) => owners.get(`${type}:${id}`))
+				.filter((owner) => owner?.state === state)
+				.map((owner) => owner?.timestamp)
+				.filter((timestamp): timestamp is string => timestamp != null)
+				.sort((a, b) => Date.parse(b) - Date.parse(a));
+			return timestamps[0] ?? new Date().toISOString();
+		};
+
 		for (const s of states) {
-			if (s.alarmState === AlarmState.TRIGGERED || s.triggered) {
+			if (ownsAlert(s, SecurityAlertType.INTRUSION)) {
 				activeAlerts.push({
 					id: `alarm:${s.deviceId}:${SecurityAlertType.INTRUSION}`,
 					type: SecurityAlertType.INTRUSION,
 					severity: Severity.CRITICAL,
-					timestamp: s.lastEvent?.timestamp ?? s.triggeredTimestamp ?? new Date().toISOString(),
+					timestamp: alertTimestamp(s, SecurityAlertType.INTRUSION),
 					acknowledged: false,
 					sourceDeviceId: s.deviceId,
 				});
 			}
 
-			if (s.tampered) {
+			if (ownsAlert(s, SecurityAlertType.TAMPER)) {
 				activeAlerts.push({
 					id: `alarm:${s.deviceId}:${SecurityAlertType.TAMPER}`,
 					type: SecurityAlertType.TAMPER,
 					severity: Severity.CRITICAL,
-					timestamp: s.lastEvent?.timestamp ?? s.tamperedTimestamp ?? new Date().toISOString(),
+					timestamp: alertTimestamp(s, SecurityAlertType.TAMPER),
 					acknowledged: false,
 					sourceDeviceId: s.deviceId,
 				});
 			}
 
-			if (s.active === false || s.fault > 0) {
+			if (ownsAlert(s, SecurityAlertType.FAULT)) {
 				activeAlerts.push({
 					id: `alarm:${s.deviceId}:${SecurityAlertType.FAULT}`,
 					type: SecurityAlertType.FAULT,
 					severity: Severity.WARNING,
-					timestamp: s.lastEvent?.timestamp ?? s.faultTimestamp ?? new Date().toISOString(),
+					timestamp: alertTimestamp(s, SecurityAlertType.FAULT),
 					acknowledged: false,
 					sourceDeviceId: s.deviceId,
 				});

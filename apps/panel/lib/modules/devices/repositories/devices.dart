@@ -50,6 +50,16 @@ class DevicesRepository extends Repository<DeviceModel> {
       if (row['hidden'] == true) {
         if (rowId is String) {
           insertData.remove(rowId);
+          _channelsRepository.removeDevice(
+            rowId,
+            channelIds: row['channels'] is List
+                ? (row['channels'] as List)
+                      .map(
+                        (channel) => channel is Map ? channel['id'] : channel,
+                      )
+                      .whereType<String>()
+                : const [],
+          );
 
           if (_fetchesInFlight > 0) {
             _hiddenWhileFetching.add(rowId);
@@ -66,6 +76,7 @@ class DevicesRepository extends Repository<DeviceModel> {
       // no later event guaranteed to bring it back.
       if (rowId is String) {
         _hiddenWhileFetching.remove(rowId);
+        _channelsRepository.restoreDevice(rowId);
       }
 
       if (!row.containsKey('type')) {
@@ -131,7 +142,8 @@ class DevicesRepository extends Repository<DeviceModel> {
   ///
   /// Separated from `fetchAll` so the rule can be tested without standing up an HTTP client.
   @visibleForTesting
-  bool shouldApply(Map<String, dynamic> row) => !_hiddenWhileFetching.contains(row['id']);
+  bool shouldApply(Map<String, dynamic> row) =>
+      !_hiddenWhileFetching.contains(row['id']);
 
   @visibleForTesting
   void markHiddenWhileFetching(String id) => _hiddenWhileFetching.add(id);
@@ -146,6 +158,13 @@ class DevicesRepository extends Repository<DeviceModel> {
   }
 
   void delete(String id) {
+    _channelsRepository.removeDevice(
+      id,
+      channelIds: getItem(id)?.channels ?? const [],
+    );
+    if (_fetchesInFlight > 0) {
+      _hiddenWhileFetching.add(id);
+    }
     if (data.containsKey(id) && data.remove(id) != null) {
       if (kDebugMode) {
         debugPrint('[DEVICES MODULE][DEVICES] Removed device: $id');
@@ -155,71 +174,69 @@ class DevicesRepository extends Repository<DeviceModel> {
     }
   }
 
-  Future<void> fetchOne(
-    String id,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDevicesModuleDevice(
-          id: id,
-        );
-
+  Future<void> fetchOne(String id) async {
+    return handleApiCall(() async {
+      _fetchesInFlight++;
+      try {
+        final response = await apiClient.getDevicesModuleDevice(id: id);
         final raw = response.response.data['data'] as Map<String, dynamic>;
-
-        insert([raw]);
-      },
-      'fetch device',
-    );
+        if (shouldApply(raw)) {
+          insert([raw]);
+        }
+      } finally {
+        _fetchesInFlight--;
+        if (_fetchesInFlight == 0) {
+          _hiddenWhileFetching.clear();
+        }
+      }
+    }, 'fetch device');
   }
 
   Future<void> fetchAll() async {
-    return handleApiCall(
-      () async {
-        // Captured before the request goes out. What this eviction may remove is what this panel knew
-        // about *when it asked* — a device created while the request was in flight arrives by socket and
-        // is absent from a snapshot taken before it existed, so evicting on absence alone would delete a
-        // device newer than the answer being applied, with no further event to bring it back.
-        final knownBefore = data.keys.toSet();
+    return handleApiCall(() async {
+      // Captured before the request goes out. What this eviction may remove is what this panel knew
+      // about *when it asked* — a device created while the request was in flight arrives by socket and
+      // is absent from a snapshot taken before it existed, so evicting on absence alone would delete a
+      // device newer than the answer being applied, with no further event to bring it back.
+      final knownBefore = data.keys.toSet();
 
-        _fetchesInFlight++;
+      _fetchesInFlight++;
 
-        final List<Map<String, dynamic>> rows;
+      final List<Map<String, dynamic>> rows;
 
-        try {
-          final response = await apiClient.getDevicesModuleDevices();
+      try {
+        final response = await apiClient.getDevicesModuleDevices();
 
-          final raw = response.response.data['data'] as List;
+        final raw = response.response.data['data'] as List;
 
-          // Without the devices hidden since the request went out. They are in the response because it
-          // was produced before they were hidden, and re-inserting one puts a source device back on
-          // screen next to the virtual device that replaced it — commandable, and past the eviction
-          // below, which reads the same stale response as saying the device is visible.
-          rows = raw
-              .cast<Map<String, dynamic>>()
-              .where(shouldApply)
-              .toList();
-        } finally {
-          _fetchesInFlight--;
+        // Without the devices hidden since the request went out. They are in the response because it
+        // was produced before they were hidden, and re-inserting one puts a source device back on
+        // screen next to the virtual device that replaced it — commandable, and past the eviction
+        // below, which reads the same stale response as saying the device is visible.
+        rows = raw.cast<Map<String, dynamic>>().where(shouldApply).toList();
+      } finally {
+        _fetchesInFlight--;
 
-          if (_fetchesInFlight == 0) {
-            _hiddenWhileFetching.clear();
-          }
+        if (_fetchesInFlight == 0) {
+          _hiddenWhileFetching.clear();
         }
+      }
 
-        insert(rows);
+      insert(rows);
 
-        // A device the response omits has to go, and `insert` merges rather than replaces, so nothing
-        // else would ever take it out. This endpoint answers with the visible devices only: a source
-        // device is hidden the moment a virtual device replaces it, and without this eviction the panel
-        // would keep rendering the original alongside its replacement — commandable, and duplicated in
-        // every space it belongs to — for the life of the process.
-        final visibleIds = rows.map((row) => row['id']).whereType<String>().toSet();
+      // A device the response omits has to go, and `insert` merges rather than replaces, so nothing
+      // else would ever take it out. This endpoint answers with the visible devices only: a source
+      // device is hidden the moment a virtual device replaces it, and without this eviction the panel
+      // would keep rendering the original alongside its replacement — commandable, and duplicated in
+      // every space it belongs to — for the life of the process.
+      final visibleIds = rows
+          .map((row) => row['id'])
+          .whereType<String>()
+          .toSet();
 
-        evictMissing(knownBefore, visibleIds);
+      evictMissing(knownBefore, visibleIds);
 
-        _hasFetched = true;
-      },
-      'fetch devices',
-    );
+      _hasFetched = true;
+    }, 'fetch devices');
   }
 }

@@ -231,8 +231,8 @@ describe('VirtualPropertyIndexService', () => {
 
 	// -- supplementary cases --------------------------------------------------------------------
 	// These pin behaviour the design constraints call for that the six pinned cases above don't
-	// individually exercise: the exact relations loaded, add() as a standalone entry point, the
-	// two-virtual-devices-share-one-source removal case the task brief calls out by name, rebuild()
+	// individually exercise: the exact relations loaded, the two-virtual-devices-share-one-source
+	// removal case the task brief calls out by name, rebuild()
 	// clearing stale state, and the string-shaped relation shape the entity notes explicitly allow.
 
 	it('loads exactly the relations needed to resolve both the virtual and source device in one query', async () => {
@@ -275,22 +275,7 @@ describe('VirtualPropertyIndexService', () => {
 		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);
 	});
 
-	it('add() indexes a property immediately, without a full reload', () => {
-		service.add(linkedProperty, 'source-device');
-
-		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
-		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual(['virtual-device']);
-		expect(repository.find).not.toHaveBeenCalled();
-	});
-
-	it('add() replaces rather than duplicates an entry when called twice for the same property', () => {
-		service.add(linkedProperty, 'source-device');
-		service.add(linkedProperty, 'source-device');
-
-		expect(service.findBySourceProperty('source-prop')).toEqual([linkedProperty]);
-	});
-
-	it('resolves the owning device from a plain id string, not only a loaded relation object', () => {
+	it('resolves the owning device from a plain id string, not only a loaded relation object', async () => {
 		const property = virtualProperty({
 			id: 'string-linked-prop',
 			sourcePropertyId: 'source-prop',
@@ -298,12 +283,13 @@ describe('VirtualPropertyIndexService', () => {
 			channel: makeChannel('string-virtual-channel', 'string-virtual-device'),
 		});
 
-		service.add(property, 'source-device');
+		repository.find.mockResolvedValue([property]);
+		await service.rebuild();
 
 		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual(['string-virtual-device']);
 	});
 
-	it('still indexes by source property when the channel relation is a bare id with no device to resolve', () => {
+	it('still indexes by source property when the channel relation is a bare id with no device to resolve', async () => {
 		const property = virtualProperty({
 			id: 'unresolvable-prop',
 			sourcePropertyId: 'source-prop',
@@ -311,7 +297,8 @@ describe('VirtualPropertyIndexService', () => {
 			channel: 'bare-channel-id',
 		});
 
-		service.add(property, 'source-device');
+		repository.find.mockResolvedValue([property]);
+		await service.rebuild();
 
 		expect(service.findBySourceProperty('source-prop')).toEqual([property]);
 		expect(service.findVirtualDeviceIdsBySourceDevice('source-device')).toEqual([]);

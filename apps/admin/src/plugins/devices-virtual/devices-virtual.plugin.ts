@@ -4,7 +4,8 @@ import type { RouteRecordRaw } from 'vue-router';
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
-import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
+import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectStoresManager } from '../../common';
+import { configPluginsStoreKey } from '../../modules/config/store/keys';
 import {
 	DEVICES_MODULE_NAME,
 	RouteNames as DevicesRouteNames,
@@ -56,7 +57,23 @@ export default {
 
 		if (devicesRoute) {
 			PluginRoutes.forEach((route: RouteRecordRaw): void => {
-				options.router.addRoute(DevicesRouteNames.DEVICES, route);
+				options.router.addRoute(DevicesRouteNames.DEVICES, {
+					...route,
+					beforeEnter: async () => {
+						// Resolve at navigation time: plugin installation precedes async config hydration.
+						const configPluginsStore = injectStoresManager(app).getStore(configPluginsStoreKey);
+
+						try {
+							if (!configPluginsStore.firstLoadFinished()) {
+								await configPluginsStore.fetch();
+							}
+						} catch {
+							return { name: DevicesRouteNames.DEVICES };
+						}
+
+						return configPluginsStore.findByType(DEVICES_VIRTUAL_PLUGIN_NAME)?.enabled === true ? true : { name: DevicesRouteNames.DEVICES };
+					},
+				});
 			});
 		}
 

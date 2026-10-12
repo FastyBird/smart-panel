@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import {
 	DevicesModuleChannelPropertyCategory,
@@ -157,5 +158,18 @@ describe('Channels Transformers', (): void => {
 				)
 			).toThrow(DevicesValidationException);
 		});
+	});
+});
+
+describe('transformChannelPropertyUpdateRequest omissions', () => {
+	it('does not let schema defaults fill omitted PATCH fields', () => {
+		const schema = ChannelPropertyUpdateReqSchema.and(
+			z.object({
+				name: z.string().nullable().default(null),
+			})
+		);
+		expect(
+			transformChannelPropertyUpdateRequest({ type: 'some-type', step: null } as Parameters<typeof transformChannelPropertyUpdateRequest>[0], schema)
+		).toEqual({ type: 'some-type', step: null });
 	});
 });

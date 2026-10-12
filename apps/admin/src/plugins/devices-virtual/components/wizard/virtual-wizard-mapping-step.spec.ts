@@ -1,7 +1,7 @@
 import { computed, nextTick } from 'vue';
 
 import { ElProgress } from 'element-plus';
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
@@ -48,12 +48,15 @@ const logger = {
 	error: vi.fn(),
 };
 
+const i18nMock = vi.hoisted(() => ({ translations: {} as Record<string, string> }));
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
 		// Interpolation params are appended so a test can assert on the numbers fed into the
 		// progress string without depending on the English wording.
-		t: (key: string, params?: Record<string, unknown>) => (params === undefined ? key : `${key}:${JSON.stringify(params)}`),
+		t: (key: string, params?: Record<string, unknown>) =>
+			params === undefined ? (i18nMock.translations[key] ?? key) : `${key}:${JSON.stringify(params)}`,
 	}),
 }));
 
@@ -228,6 +231,8 @@ const respondCompatible = async (
 
 const PERMISSION_MISMATCH = `Source property id=${READ_ONLY_PROPERTY_ID} permissions [ro] do not satisfy required permission(s) [rw]`;
 
+const mountedWrappers: { unmount: () => void }[] = [];
+
 const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) => {
 	const wrapper = mount(VirtualWizardMappingStep, {
 		props: {
@@ -236,6 +241,8 @@ const mountMappingStep = (props: Partial<IVirtualWizardMappingStepProps> = {}) =
 			...props,
 		},
 	});
+
+	mountedWrappers.push(wrapper);
 
 	// The component keys errors by slot key (`<channel>.<property>`), because a bare property
 	// category is not unique across a category's channels — `fault` and `active` appear on several.
@@ -295,8 +302,16 @@ const mapping = (
 });
 
 describe('VirtualWizardMappingStep', () => {
+	afterEach(() => {
+		for (const wrapper of mountedWrappers.splice(0)) {
+			wrapper.unmount();
+		}
+		vi.restoreAllMocks();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
+		i18nMock.translations = {};
 
 		backendClient.POST.mockImplementation(respondCompatible);
 	});
@@ -867,6 +882,45 @@ describe('VirtualWizardMappingStep', () => {
 		});
 	});
 
+	describe('optional slots and translated property labels', () => {
+		it('re-collapses empty optional slots while retaining mapped slots and errors', async () => {
+			const { wrapper, groups } = mountMappingStep();
+			const group = groups.value.find((entry) => entry.specChannel === DevicesModuleChannelCategory.light)!;
+			const [mapped, refused, empty] = group.slots.filter((slot) => !slot.required);
+			expect(empty).toBeDefined();
+
+			const toggle = wrapper.get('[data-test-id="optional-slots-light"]');
+			await toggle.trigger('click');
+			expect(wrapper.find(`[data-test-id="slot-${empty.key}"]`).exists()).toBe(true);
+			await wrapper.vm.selectSource(mapped.key, PROPERTY_ON);
+			backendClient.POST.mockResolvedValueOnce(
+				respondWith([report(refused.specChannel, refused.specProperty, READ_ONLY_PROPERTY_ID, false, PERMISSION_MISMATCH)])
+			);
+			await wrapper.vm.selectSource(refused.key, READ_ONLY_PROPERTY_ID);
+			await toggle.trigger('click');
+
+			expect(wrapper.find(`[data-test-id="slot-${empty.key}"]`).exists()).toBe(false);
+			expect(wrapper.find(`[data-test-id="slot-${mapped.key}"]`).exists()).toBe(true);
+			expect(wrapper.find(`[data-test-id="slot-error-${refused.key}"]`).text()).toBe(PERMISSION_MISMATCH);
+		});
+
+		it('sorts property options by their displayed translated labels', async () => {
+			i18nMock.translations['devicesModule.categories.channelsProperties.power'] = 'Zasilanie';
+			i18nMock.translations['devicesModule.categories.channelsProperties.voltage'] = 'Napięcie';
+			const findForChannel = vi
+				.spyOn(propertiesStore, 'findForChannel')
+				.mockImplementation((id) => properties.filter((property) => property.channel === id).map((property) => ({ ...property, name: null })));
+			const { wrapper } = mountMappingStep({
+				modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_POWER)],
+			});
+			await nextTick();
+
+			const picker = wrapper.findAllComponents({ name: 'ElSelect' }).find((select) => select.props('name') === 'property-light.on')!;
+			expect(picker.findAllComponents({ name: 'ElOption' }).map((option) => option.props('label'))).toEqual(['Napięcie', 'Zasilanie']);
+			findForChannel.mockRestore();
+		});
+	});
+
 	describe('when the wizard shell replaces the mapping list', () => {
 		it('adopts the supplied mappings and drops the ones it replaced', async () => {
 			const { wrapper, selectSource, progress } = mountMappingStep();
@@ -895,6 +949,23 @@ describe('VirtualWizardMappingStep', () => {
 				device: DEVICE_RELAY,
 				channel: CHANNEL_SWITCHER,
 			});
+		});
+
+		it('removes the old picker and re-derives a retained slot after external replacement', async () => {
+			const { wrapper } = mountMappingStep({
+				modelValue: [
+					mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, PROPERTY_ON),
+					mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.brightness, PROPERTY_ON),
+				],
+			});
+			expect(wrapper.vm.pickers['light.brightness']).toEqual({ device: DEVICE_RELAY, channel: CHANNEL_SWITCHER });
+
+			await wrapper.setProps({
+				modelValue: [mapping(DevicesModuleChannelCategory.light, DevicesModuleChannelPropertyCategory.on, READ_ONLY_PROPERTY_ID)],
+			});
+
+			expect(wrapper.vm.pickers['light.brightness']).toBeUndefined();
+			expect(wrapper.vm.pickers['light.on']).toEqual({ device: DEVICE_SENSOR, channel: CHANNEL_SENSOR });
 		});
 
 		it('ignores the echo of its own emit', async () => {

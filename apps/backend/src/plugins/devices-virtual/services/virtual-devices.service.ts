@@ -13,6 +13,7 @@ import { DeviceValidationService, ValidationIssue } from '../../../modules/devic
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
+import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
 import { getAllProperties, isChannelAllowed, isValidDataType } from '../../../modules/devices/utils/schema.utils';
 import { findEnergySourceType } from '../../../modules/energy/utils/energy-source-type.utils';
 import { DEVICES_VIRTUAL_TYPE, VIRTUAL_BLOCKED_CATEGORIES } from '../devices-virtual.constants';
@@ -451,16 +452,12 @@ export class VirtualDevicesService {
 	/**
 	 * Throws when `sourceProperty`'s permissions cannot satisfy every one of `specPermissions`.
 	 *
-	 * Mirrors DeviceValidationService.permissionSatisfied (device-validation.service.ts:685):
-	 * READ_WRITE satisfies both READ_ONLY and WRITE_ONLY. That method is private on a service this
-	 * plan lists as an interface not to modify, so there is no public entry point to call into —
-	 * the three-line rule is restated here rather than exposed. The truth table is identical; the
-	 * canonical rule is cited above for anyone auditing the two for drift.
+	 * Uses the same permission matching as structural device validation.
 	 */
 	assertPermissionsCompatible(specPermissions: PermissionType[], sourceProperty: ChannelPropertyEntity): void {
 		const sourcePermissions = new Set(sourceProperty.permissions);
 
-		const unsatisfied = specPermissions.filter((required) => !this.permissionSatisfied(required, sourcePermissions));
+		const unsatisfied = specPermissions.filter((required) => !permissionSatisfied(required, sourcePermissions));
 
 		if (unsatisfied.length > 0) {
 			throw new VirtualPermissionsIncompatibleException(
@@ -826,22 +823,6 @@ export class VirtualDevicesService {
 		}
 
 		return devices;
-	}
-
-	private permissionSatisfied(required: PermissionType, sourcePermissions: Set<PermissionType>): boolean {
-		if (sourcePermissions.has(required)) {
-			return true;
-		}
-
-		if (required === PermissionType.READ_ONLY && sourcePermissions.has(PermissionType.READ_WRITE)) {
-			return true;
-		}
-
-		if (required === PermissionType.WRITE_ONLY && sourcePermissions.has(PermissionType.READ_WRITE)) {
-			return true;
-		}
-
-		return false;
 	}
 
 	/**

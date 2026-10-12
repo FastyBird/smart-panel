@@ -396,6 +396,11 @@ const stopDiscoveryForPlugin = (type: string): void => {
 };
 
 const startDiscovery = async (type: string): Promise<void> => {
+	// Authored virtual devices have no discovery lifecycle or scan to wait for.
+	if (NON_DISCOVERABLE_PLUGINS.includes(type)) {
+		return;
+	}
+
 	const generation = (discoveryGeneration[type] ?? 0) + 1;
 	discoveryGeneration[type] = generation;
 

@@ -59,4 +59,16 @@ describe('PropertyValueSourceRegistryService', () => {
 		expect(service.register(source)).toBe(false);
 		expect(service.list()).toEqual(['mock-virtual']);
 	});
+
+	it('propagates a registered resolver failure instead of changing the property identity', () => {
+		const failure = new Error('resolver unavailable');
+		service.register({
+			getType: () => 'mock-virtual',
+			resolve: () => {
+				throw failure;
+			},
+		});
+
+		expect(() => service.resolve(property('linked', 'mock-virtual'))).toThrow(failure);
+	});
 });
