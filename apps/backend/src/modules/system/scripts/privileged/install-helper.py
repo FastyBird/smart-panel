@@ -135,6 +135,8 @@ def main():
     parser.add_argument('--data-dir', required=True)
     parser.add_argument('--port', required=True, type=int)
     parser.add_argument('--image-base-dir', default='/opt/smart-panel')
+    parser.add_argument('--check-only', action='store_true',
+                        help='Validate idle state and release inputs without installing; rechecked during installation')
     parser.add_argument('--worker-refresh', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     require_idle_installation(args.worker_refresh)
@@ -175,6 +177,11 @@ def main():
         info = base.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid not in (0, account.pw_uid):
             raise ValueError('Unsafe image installation parent')
+    if args.check_only:
+        # This is a read-only observation, not a reservation. The real invocation
+        # must repeat the checks after the caller has stopped backend requests.
+        print('Smart Panel helper preflight passed; no installation files changed.')
+        return
     policy_dir = Path('/etc/sudoers.d')
     helper.trusted(policy_dir, directory=True)
     # Validate a private temporary policy before removing the broad legacy permissions.

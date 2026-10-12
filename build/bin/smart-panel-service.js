@@ -73,6 +73,7 @@ function provisionPrivilegedHelper({
 	dataDir = '/var/lib/smart-panel',
 	port = '3000',
 	imageBaseDir = '/opt/smart-panel',
+	checkOnly = false,
 }) {
 	const source = realpathSync(
 		backendRoot || join(__dirname, '..', 'node_modules', '@fastybird', 'smart-panel-backend'),
@@ -107,6 +108,7 @@ function provisionPrivilegedHelper({
 		String(port),
 	];
 	if (installType === 'image') args.push('--image-base-dir', resolve(imageBaseDir));
+	if (checkOnly) args.push('--check-only');
 	execFileSync('/usr/bin/python3', args, { stdio: 'inherit' });
 }
 
@@ -707,6 +709,16 @@ program
 				throw new Error(`Staged release ${candidate.version} does not match requested version ${options.version}.`);
 			}
 			spinner.succeed('Update packages prepared');
+			const config = installer.getInstalledConfig();
+			const dataDir = config.dataDir || '/var/lib/smart-panel';
+			const helperOptions = {
+				backendRoot: join(updateStage.candidateRoot, 'node_modules', '@fastybird', 'smart-panel-backend'),
+				serviceUser: config.user || 'smart-panel',
+				dataDir,
+				port: config.port || 3000,
+			};
+			// Refuse known worker/recovery conflicts before disrupting an otherwise healthy service.
+			provisionPrivilegedHelper({ ...helperOptions, checkOnly: true });
 
 			// Stop requests before the helper guard checks independent jobs/recovery holds.
 			if (status.running) {
@@ -716,15 +728,9 @@ program
 				spinner.succeed('Service stopped');
 			}
 
-			const config = installer.getInstalledConfig();
-			const dataDir = config.dataDir || '/var/lib/smart-panel';
 			provisionAttempted = true;
-			provisionPrivilegedHelper({
-				backendRoot: join(updateStage.candidateRoot, 'node_modules', '@fastybird', 'smart-panel-backend'),
-				serviceUser: config.user || 'smart-panel',
-				dataDir,
-				port: config.port || 3000,
-			});
+			// Recheck after stop: a job may have started since the read-only preflight.
+			provisionPrivilegedHelper(helperOptions);
 			provisionSucceeded = true;
 
 			// Existing npm bin links already address the canonical directory and remain valid after publication.

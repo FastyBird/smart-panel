@@ -1,6 +1,7 @@
 """Protocol tests run everywhere; root filesystem tests run in an isolated Linux container."""
 
 import importlib.util
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -121,6 +122,50 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertNotIn('/evil', result.stdout)
         self.assertIn('HOME=/root', result.stdout)
+
+
+class InstallerPreflightTests(unittest.TestCase):
+    def test_check_only_validates_release_and_idle_state_without_installation(self):
+        root_filesystem = sys.platform == 'linux' and os.geteuid() == 0
+        with tempfile.TemporaryDirectory(dir='/root' if root_filesystem else None) as directory:
+            backend = Path(directory)
+            scripts = backend / 'dist/modules/system/scripts'
+            (scripts / 'privileged').mkdir(parents=True)
+            shutil.copyfile(Path(__file__).with_name('helper.py'), scripts / 'privileged/helper.py')
+            workers = (scripts / 'update-worker.sh',
+                       backend / 'dist/plugins/remote-access-tailscale/scripts/tailscale-setup.sh',
+                       backend / 'dist/plugins/remote-access-cloudflare-tunnel/scripts/cloudflared-setup.sh')
+            for worker in workers:
+                worker.parent.mkdir(parents=True, exist_ok=True)
+                worker.write_text('#!/bin/bash\nexit 0\n')
+            argv = ['install-helper.py', '--check-only', '--backend-root', str(backend),
+                    '--install-type', 'npm', '--service-user', 'nobody',
+                    '--data-dir', '/var/lib/smart-panel', '--port', '3000']
+            for rejection in (None, 'active privileged worker', 'unresolved recovery hold'):
+                with self.subTest(rejection=rejection), ExitStack() as stack:
+                    stack.enter_context(patch.dict(os.environ))
+                    stack.enter_context(patch.object(sys, 'argv', argv))
+                    stack.enter_context(patch.object(os, 'geteuid', return_value=0))
+                    stack.enter_context(patch.object(os, 'chdir'))
+                    stack.enter_context(patch.object(installer.pwd, 'getpwnam', return_value=ACCOUNT))
+                    stack.enter_context(patch.object(installer, 'existing_data_paths', return_value={
+                        'FB_DB_PATH': '/srv/panel/db', 'FB_CONFIG_PATH': '/srv/panel/config'}))
+                    if not root_filesystem:
+                        stack.enter_context(patch.object(installer, 'check_source', side_effect=lambda path: path))
+                    idle = stack.enter_context(patch.object(installer, 'require_idle_installation',
+                                                           side_effect=ValueError(rejection) if rejection else None))
+                    mutations = [stack.enter_context(patch.object(owner, name,
+                                 side_effect=AssertionError('Preflight must not mutate installation')))
+                                 for owner, name in ((installer, 'protected_directory'), (installer, 'install_file'),
+                                                     (tempfile, 'mkstemp'), (os, 'chown'), (os, 'chmod'))]
+                    if rejection:
+                        with self.assertRaisesRegex(ValueError, rejection):
+                            installer.main()
+                    else:
+                        installer.main()
+                    idle.assert_called_once_with(False)
+                    for mutation in mutations:
+                        mutation.assert_not_called()
 
 
 @unittest.skipUnless(sys.platform == 'linux' and os.geteuid() == 0, 'requires isolated Linux root container')

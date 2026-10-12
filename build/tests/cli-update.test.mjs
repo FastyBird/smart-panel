@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import vm from "node:vm";
 
 const source = fs.readFileSync(
@@ -14,6 +14,24 @@ const stageFunction = source.match(
 const updateAction = source.match(
   /\.command\('update'\)[\s\S]*?\.action\((async \(options\) => \{[\s\S]*?\n\t\})\);/,
 )[1];
+const helperFunction = source.match(
+  /function provisionPrivilegedHelper\([\s\S]*?\n\}\n/,
+)[0];
+const forwarded = [];
+const helperWrapper = vm.runInNewContext(`(${helperFunction})`, {
+  __dirname: "/trusted/package/bin",
+  dirname,
+  join,
+  resolve,
+  realpathSync: (path) => path,
+  statSync: () => ({ uid: 0, mode: 0o755 }),
+  execFileSync: (command, args) => forwarded.push({ command, args }),
+});
+helperWrapper({ backendRoot: "/trusted/backend", checkOnly: true });
+helperWrapper({ backendRoot: "/trusted/backend" });
+assert.equal(forwarded[0].command, "/usr/bin/python3");
+assert.ok(forwarded[0].args.includes("--check-only"));
+assert.ok(!forwarded[1].args.includes("--check-only"));
 const oldVersion = "1.0.0";
 const newVersion = "1.1.0";
 const inRootContainer =
@@ -177,8 +195,6 @@ async function scenario(settings = {}) {
         throw new Error("Staging npm failed after writing partial files");
     },
     provisionPrivilegedHelper: (options) => {
-      calls.push("provision");
-      assert.equal(running, false);
       assert.equal(readVersion(packageRoot), oldVersion);
       assert.equal(
         options.backendRoot,
@@ -189,6 +205,14 @@ async function scenario(settings = {}) {
           "smart-panel-backend",
         ),
       );
+      if (options.checkOnly) {
+        calls.push("preflight");
+        assert.equal(running, settings.running !== false);
+        if (settings.preflightFails) throw new Error(settings.preflightFails);
+        return;
+      }
+      calls.push("provision");
+      assert.equal(running, false);
       if (settings.partialProvision) policy = "partially changed helper policy";
       if (settings.provisionFails) throw new Error(settings.provisionFails);
       policy = "new helper policy";
@@ -270,9 +294,20 @@ for (const settings of [
   );
   assert.equal(result.stagingExists, false);
 }
-for (const provisionFails of [
+for (const preflightFails of [
   "An independent worker is active",
   "An unresolved recovery hold exists",
+]) {
+  const result = await scenario({ preflightFails });
+  assert.equal(result.exited, true);
+  assert.equal(result.version, oldVersion);
+  assert.equal(result.running, true);
+  assert.equal(result.policy, "previous policy");
+  assert.deepEqual(result.calls, ["stage", "preflight"]);
+  assert.equal(result.stagingExists, false);
+}
+for (const provisionFails of [
+  "A worker started after preflight",
   "Helper IO failed",
 ]) {
   const result = await scenario({
@@ -282,16 +317,31 @@ for (const provisionFails of [
   assert.equal(result.exited, true);
   assert.equal(result.version, oldVersion);
   assert.equal(result.running, false);
-  assert.deepEqual(result.calls, ["stage", "stop", "provision"]);
+  assert.deepEqual(result.calls, ["stage", "preflight", "stop", "provision"]);
   assert.equal(result.stagingExists, false);
   assert.match(
     result.warnings.join("\n"),
     /not replaced.*stopped pending recovery/,
   );
 }
+for (const settings of [
+  { preflightFails: "Recovery hold exists", running: false },
+  { provisionFails: "A worker started after preflight", running: false },
+]) {
+  const result = await scenario(settings);
+  assert.equal(result.exited, true);
+  assert.equal(result.version, oldVersion);
+  assert.equal(result.running, false);
+  assert.ok(!result.calls.includes("stop"));
+  assert.ok(
+    !result.calls.some(
+      (value) => value.startsWith("start:") || value.startsWith("rename:"),
+    ),
+  );
+}
 const stopFailure = await scenario({ stopFails: true });
 assert.equal(stopFailure.version, oldVersion);
-assert.deepEqual(stopFailure.calls, ["stage", "stop"]);
+assert.deepEqual(stopFailure.calls, ["stage", "preflight", "stop"]);
 assert.equal(stopFailure.stagingExists, false);
 for (const renameFails of [[1], [2]]) {
   const result = await scenario({ renameFails });
@@ -350,6 +400,9 @@ assert.match(
   /Update succeeded; could not remove/,
 );
 
+console.log(
+  "PASS: preflight forwards --check-only and refuses known conflicts without stopping the backend",
+);
 console.log(
   "PASS: staged npm/helper/stop/version failures preserve the exact installed package and never start a new release",
 );
