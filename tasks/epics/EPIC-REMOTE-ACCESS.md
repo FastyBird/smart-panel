@@ -5,7 +5,7 @@ Type: epic
 Scope: backend, admin, installer, website
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 Created: 2026-09-02
 
 ## 1. Business goal
@@ -23,15 +23,16 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 - The MCP module already carries an `oauth_public_base_url` and an env-only trusted-proxy list; both are
   module-scoped precedents for a system-wide URL and proxy-trust model.
 - The backend runs as an unprivileged `smart-panel` user with a sudoers allowlist. The update executor
-  already runs a root worker through `sudo -n systemd-run`; that primitive is reused for provider setup.
+  runs root workers through a fixed, root-owned helper for updates and provider setup.
 - Design: `docs/superpowers/specs/2026-09-02-remote-access-design.md`
 - Plan and delegation map: `docs/superpowers/plans/2026-09-02-remote-access.md`
 - Fresh analysis and adopted completion sequence (2026-10-03, adopted 2026-10-04):
   [`2026-10-03-remote-access-completion.md`](../../docs/superpowers/plans/2026-10-03-remote-access-completion.md).
   This separates delivered code from outstanding hardware acceptance and documents reproduced
   lifecycle/status defects. The replacement execution sequence is active: R1 (#1156, PR #1160), R2 (#1157, PR #1161) and R3 (#1158, PR #1162) are complete.
-  R4 (#910) and R5 (#1159) remain open. The 2026-10-11 scope revision retains helper #914
-  and defers WireGuard #913 to a separate feature; final acceptance follows helper implementation.
+  R4 (#910), R5 (#1159) and helper #914 passed the finite final acceptance on 2026-10-12.
+  [Final acceptance](../../docs/remote-access-final-acceptance.md) records alpha.64 and retained evidence.
+  WireGuard #913 remains a deferred separate feature.
 - Prior art: Home Assistant `helpers/network.py` and `components/http/forwarded.py`; the Home Assistant
   Tailscale and Cloudflared add-ons; Tailscale CLI `up --json`, operator mechanism, Serve and Funnel.
 
@@ -85,14 +86,14 @@ Documentation changes alone do not require another alpha. The completion plan re
       events and OpenAPI models under the `{Module}Data{Name}` convention.
       (R1–R3 implementation verification and production provider/module HTTP tests in the completion plan.)
 - [x] `PrivilegedWorkerService` runs an independent update worker and reports unsupported platforms.
-      (Recorded System upgrades and alpha.50/56 platform checks; fixed-helper migration remains A1–A4 below.)
+      (Recorded System upgrades and alpha.50/56 platform checks; fixed-helper acceptance passed in A1–A4 below.)
 
 ### Tailscale
 
 - [x] Set up installs the package if missing, enables the daemon and grants the operator, reporting each
       step; re-running is harmless.
       (Alpha.47 image, alpha.51 clean npm package setup, alpha.57 live stages and alpha.58 transport recovery.
-      These establish the existing worker contract; fixed-helper setup acceptance remains A3.)
+      These establish the existing worker contract; fixed-helper setup also passed A3 below.)
 - [x] Sign in returns an auth URL and QR code; the node reaches `connected` after approval; an auth key
       path works headless; the key is never persisted or logged.
 - [x] Serve exposes the admin at `https://<node>.<tailnet>.ts.net` and declares loopback as a trusted
@@ -115,29 +116,30 @@ Documentation changes alone do not require another alpha. The completion plan re
 
 ### Installer and docs
 
-- [ ] Raspberry Pi image ships Tailscale disabled; `install-server.sh --with-tailscale` works.
-      (Image ships it disabled: passed on fresh Pi 4 alpha.47; the `--with-tailscale` flag has no recorded evidence.)
-- [ ] Reconciled website guide published with the final candidate; related network requirements,
+- [x] Raspberry Pi image ships Tailscale disabled; `install-server.sh --with-tailscale` works.
+      (Image: fresh Pi 4 alpha.47. Install script: clean Bookworm Pi 4 alpha.64, 2026-10-12; signed
+      Tailscale 1.104.1 package installed with its daemon disabled/inactive.)
+- [x] Reconciled website guide published with the final candidate; related network requirements,
       extensions, image and MCP pages reflect both delivered providers.
-      (Source reconciliation complete; final release/publication is not claimed by source edits.)
+      (Deployment 38223711276 succeeded; five live documentation pages checked on 2026-10-12.)
 
 ### Verification
 
-- [ ] Hardware acceptance matrix from the plan recorded here with dates and outcomes.
+- [x] Hardware acceptance matrix from the plan recorded here with dates and outcomes.
 
 #### Finite final acceptance after helper release (reconciled 2026-10-12)
 
-Retain the identified evidence below. These are the five remaining hardware gates; no fixed-helper
-hardware result is claimed. The completion plan's scoped checklist records the retained contract matrix
-and change-impact rules. Publish the reviewed helper and docs in the combined candidate, then record:
+All five gates passed. The [final acceptance record](../../docs/remote-access-final-acceptance.md)
+identifies the alpha.64 hardware results, retained alpha.63 link check, publication and private receipt
+names. Historical evidence below retains its original scope; it is not all attributed to alpha.64:
 
-- [ ] A1: fresh helper installation, including `install-server.sh --with-tailscale`.
-- [ ] A2: existing-host root-helper/sudoers migration and normal in-app System update, including updater
+- [x] A1: fresh helper installation, including `install-server.sh --with-tailscale`.
+- [x] A2: existing-host root-helper/sudoers migration and normal in-app System update, including updater
       survival, preserved data/configuration, admin recovery and cleanup.
-- [ ] A3: Tailscale and Cloudflare setup through the fixed helper with correlated progress and settled UI.
-- [ ] A4: both providers restored after setup/migration/update, with actual HTTPS, owner login and
+- [x] A3: Tailscale and Cloudflare setup through the fixed helper with correlated progress and settled UI.
+- [x] A4: both providers restored after setup/migration/update, with actual HTTPS, owner login and
       authenticated WebSocket recovery and coherent endpoint/proxy state.
-- [ ] A5: observe the released HTTPS-disabled advisory's clickable Tailscale DNS-console link.
+- [x] A5: observe the released HTTPS-disabled advisory's clickable Tailscale DNS-console link.
 
 Twenty lifecycle cycles, idle, network recovery, token rotation/revocation, cellular traffic, manual
 installation, unsupported-platform branches and pending-login/timeout recovery already have versioned
@@ -147,8 +149,9 @@ HA add-on/Supervisor packaging and extra fresh-package transport-loss combinatio
 Their unperformed variants remain unperformed; local/integration failure, permission, cancellation and
 deadline checks run before release. No documentation-only change requires another alpha.
 
-WireGuard #913 is deferred. #910/#1159/#914 and #1354/#991/#897 remain open until the scoped acceptance,
-release/documentation publication and evidence reconciliation finish.
+WireGuard #913 is deferred. The scoped acceptance, release/documentation publication and evidence
+reconciliation are complete; the final documentation PR closes #910/#1159/#914 and #1354/#991/#897.
+The dated sections below are historical checkpoints, including failures later corrected.
 
 #### October R4 candidate verification
 
@@ -1774,11 +1777,11 @@ Tracked as GitHub sub-issues of the epic issue under the "Remote access" milesto
 | RA-9  | feat(installer): preinstall Tailscale for remote access                  | done                                                      |
 | RA-10 | docs(cross): document remote access and Tailscale setup                  | done                                                      |
 | RA-11 | feat(cross): suggest remote access URL for MCP OAuth                     | done                                                      |
-| RA-12 | integrated verification and hardware acceptance                          | in-progress                                               |
-| RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin                | delivered; retained acceptance recorded, helper retest A3/A4 pending |
-| RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | delivered; retained wizard acceptance recorded, helper retest A3/A4 pending |
+| RA-12 | integrated verification and hardware acceptance                          | done (final A1–A5 acceptance)                             |
+| RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin                | done (retained evidence and alpha.64 A3/A4) |
+| RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | done (retained evidence and alpha.64 A3/A4) |
 | RA-15 | feat(cross): add WireGuard client remote access plugin                   | deferred separate feature (#913)                                               |
-| RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | required for current scope (#914), open                     |
+| RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | done (#1399/#1400, alpha.64 acceptance)                     |
 
 October work packages (completion plan R1-R8; see the linked plan):
 
@@ -1787,11 +1790,11 @@ October work packages (completion plan R1-R8; see the linked plan):
 | R1   | #1156 fix(backend): coordinate Tailscale operations and lifecycle                   | merged (PR #1160)                                            |
 | R2   | #1157 fix(cross): order remote access snapshots and bound status reads              | merged (PR #1161)                                            |
 | R3   | #1158 fix(admin): complete reliable remote access plugin controls                   | merged (PR #1162)                                            |
-| R4   | #910 RA-12: integrated verification and hardware acceptance                         | open (scoped A1–A5/final reconciliation)                            |
-| R5   | #1159 fix(cross): verify Cloudflare lifecycle and remote access flows               | open (helper-affected A3/A4/final reconciliation)                             |
-| R6   | #914 chore(installer): replace systemd-run sudo grant with fixed helper             | open                                                         |
+| R4   | #910 RA-12: integrated verification and hardware acceptance                         | done (final A1–A5 acceptance)                            |
+| R5   | #1159 fix(cross): verify Cloudflare lifecycle and remote access flows               | done (alpha.64 A3/A4)                             |
+| R6   | #914 chore(installer): replace systemd-run sudo grant with fixed helper             | done |
 | R7   | #913 feat(cross): add WireGuard client remote access plugin                         | deferred separate feature                                                         |
-| R8   | #1354 docs reconciliation and epic close-out                                     | open                                                         |
+| R8   | #1354 docs reconciliation and epic close-out                                     | done |
 
 Earlier merged fixes (all closed): #931 validate provider-declared proxy addresses; #934 report the Tailscale
 provider under its plugin name; #948 stop converging Serve/Funnel state from read endpoints; #949 prune finished
@@ -1810,10 +1813,10 @@ Disconnect, stale reads/events after Stop, backend and both provider-store order
 cancellation, and starting setup reconciliation without websocket events. See the linked completion
 plan for the evidence, repair packages R1–R8 and provider-specific acceptance gates.
 
-No new hardware acceptance is claimed by this reconciliation. Retained release evidence remains valid
-at its documented scope; A1–A5 require the final helper candidate. #897, #991, #910, #1159, #914 and
-#1354 remain open for scoped close-out. #913 is separately deferred; Cloudflare implementation issues
-#911/#912 remain closed.
+The [final alpha.64 acceptance](../../docs/remote-access-final-acceptance.md) now completes A1–A5
+with the retained alpha.63 advisory-link check and earlier versioned contract evidence. The final
+documentation PR closes #897, #991, #910, #1159, #914 and #1354. #913 is separately deferred;
+Cloudflare implementation issues #911/#912 remain closed.
 
 ## 9. AI instructions
 

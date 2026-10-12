@@ -1,9 +1,13 @@
 # Remote access: fresh analysis and completion plan
 
-Date: 2026-10-03. Adopted: 2026-10-04. Reconciled: 2026-10-12. Status: R1–R3 merged; retained R4/R5 evidence, five final helper-candidate gates outstanding.
+Date: 2026-10-03. Adopted: 2026-10-04. Reconciled: 2026-10-12. Status: completed for module, Tailscale, Cloudflare and fixed helper; WireGuard deferred.
 Epic: [#897](https://github.com/FastyBird/smart-panel/issues/897).
 Coordination: [#991](https://github.com/FastyBird/smart-panel/issues/991).
 Reviewed baseline: `3f7b838fb65a346b86e9100c246d6bfc31af06e1` (`main`, application alpha.41).
+
+Final result: [A1–A5 acceptance on 2026-10-12](../../remote-access-final-acceptance.md), including
+alpha.64 hardware checks and identified retained evidence. Historical checkpoints below retain their
+original dates and limits; their former open-gate statements are superseded by this result.
 
 ## 1. Conclusion and scope
 
@@ -1801,12 +1805,12 @@ so the old blanket instruction to rerun failures as known flakes is obsolete.
 
 ### Scoped remaining acceptance (reconciled 2026-10-12)
 
-This is the current finite release gate for the module, Tailscale, Cloudflare and fixed helper. It
-supersedes blanket retests and optional variants in the historical matrices below. Helper source/local
-validation is not root-helper hardware acceptance. Publish the reviewed helper and documentation together,
-identify the candidate, and record these five outstanding checks in one combined acceptance session:
+This finite release gate supersedes blanket retests and optional variants in the historical matrices
+below. **All five gates passed**; see the [final acceptance record](../../remote-access-final-acceptance.md)
+for alpha.64 hardware results, the retained alpha.63 link check and published documentation.
+Source/local helper validation remains distinct from the recorded real hardware acceptance.
 
-| Gate | Outstanding check | Required result |
+| Completed gate | Check | Required result |
 | --- | --- | --- |
 | A1 | Fresh host installation, including `install-server.sh --with-tailscale` | Root-owned helper and fixed sudoers policy installed; Tailscale package path works; no authentication/public route is implied by package installation. |
 | A2 | Existing-host helper migration and normal in-app System update | Migration removes the wildcard grant; independent updater survives backend shutdown; data/configuration preserved; app/admin recovery and worker cleanup succeed. |
@@ -1814,7 +1818,7 @@ identify the candidate, and record these five outstanding checks in one combined
 | A4 | Both providers restored after setup/migration/update | Correct CLI/API/card/URL/proxy state and actual HTTPS, owner login and authenticated WebSocket recovery; retained identities/tokens remain private. |
 | A5 | Released Tailscale HTTPS-disabled advisory link | Observe clickable DNS-console navigation in the released admin. Retain the recorded disabled/restored HTTPS functionality; do not repeat the entire matrix to verify this link. |
 
-#### Alpha.63 acceptance progress (2026-10-12)
+#### Historical alpha.63 acceptance progress (2026-10-12)
 
 Pi 4's existing npm installation upgraded from alpha.62 to alpha.63 through the legacy System updater.
 Data, configuration, accounts and Tailscale identity were preserved; the installed wrapper, backend
@@ -1863,7 +1867,9 @@ create another release solely to repeat them on hardware.
 
 The helper change-impact review names the affected suites and retained receipts. A newly found blocker
 requires its owning regression and affected retest, not an automatic restart of the whole matrix.
-After A1–A5 pass, publish/reconcile the docs and close #910/#1159/#914/#1354/#991/#897 as appropriate.
+A1–A5 and documentation publication now pass; the final documentation PR closes
+#910/#1159/#914/#1354/#991/#897. The acceptance record preserves the failed alpha.63 attempt and its
+separate operator recovery; the subsequent successful alpha.64 update completes A2.
 #913 remains the deferred WireGuard feature and is not a completion dependency.
 
 ### Historical Tailscale gate R4 / #910

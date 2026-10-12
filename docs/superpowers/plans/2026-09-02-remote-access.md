@@ -1,6 +1,9 @@
 # Remote Access — Implementation Plan
 
-> **Status:** Delivered through RA-11; remaining work is tracked in `docs/superpowers/plans/2026-10-03-remote-access-completion.md`.
+> **Status (2026-10-12):** Completed for the module, Tailscale, Cloudflare Tunnel and fixed privileged helper.
+> [Final acceptance](../../remote-access-final-acceptance.md) records A1–A5 and retained evidence.
+> WireGuard #913 is deferred. This original implementation sequence is historical; the
+> [October completion plan](2026-10-03-remote-access-completion.md) defines the adopted scope.
 
 **Goal:** Make a Smart Panel installation reachable from outside the LAN without a public IP address, through
 a core `remote-access` module and a family of provider plugins, starting with Tailscale.
