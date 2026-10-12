@@ -279,6 +279,8 @@ describe('property command convergence integration', () => {
 		expect(published).toEqual([]);
 		expect(writeWithState).not.toHaveBeenCalled();
 		expect(updateValue).not.toHaveBeenCalledWith(false);
+		const retainedAliasAValue = aliasA.value;
+		const retainedAliasBValue = aliasB.value;
 
 		await channelsProperties.update(source.id, { type: source.type, value: true });
 		expect(history).toEqual([true]);
@@ -287,8 +289,12 @@ describe('property command convergence integration', () => {
 			{ id: aliasB.id, value: true },
 			{ id: source.id, value: true },
 		]);
-		expect(aliasA.value?.value).toBe(true);
-		expect(aliasB.value?.value).toBe(true);
+		// Projection events carry the confirmed state as detached snapshots. The index's retained
+		// entities stay unchanged; downstream consumers observe the emitted snapshots above.
+		expect(aliasA.value).toBe(retainedAliasAValue);
+		expect(aliasB.value).toBe(retainedAliasBValue);
+		expect(aliasA.value?.value).toBe(false);
+		expect(aliasB.value?.value).toBe(false);
 		expect(updateValue).not.toHaveBeenCalledWith(false);
 
 		releaseHomeKitDispatch();

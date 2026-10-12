@@ -10,6 +10,12 @@ import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/c
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
+const detachedClone = <T extends object>(value: T): T => {
+	const clone = Object.create(Reflect.getPrototypeOf(value)) as T;
+
+	return Object.assign(clone, value);
+};
+
 /**
  * A source write emits a value event carrying the *source* property's id, which the WebSocket
  * gateway rebroadcasts verbatim. Clients holding a virtual property would never see their own
@@ -38,11 +44,14 @@ export class VirtualProjectionListener {
 		}
 
 		for (const projection of projections) {
-			// The value itself is already shared — both properties resolve to the same storage key,
-			// so the projection carries the source's state without a second read.
-			projection.value = property.value;
+			// The index retains hydrated entities, so mutating one here makes already-emitted events
+			// change under deferred consumers. Preserve the entity prototype for serialization, while
+			// detaching both the entity and its mutable value state from the indexed/source objects.
+			const snapshot = Object.assign(detachedClone(projection), {
+				value: property.value ? detachedClone(property.value) : null,
+			});
 
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, projection);
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, snapshot);
 		}
 
 		this.logger.debug(`Projected value of property id=${property.id} to ${projections.length} virtual properties`);
