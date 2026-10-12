@@ -6,6 +6,7 @@ import { execFile, spawn } from 'node:child_process';
 import { PRIVILEGED_HELPER_PATH, PRIVILEGED_OPERATIONS } from '../../../common/utils/privileged-helper.utils';
 import { PlatformType } from '../../platform/platform.constants';
 import { PlatformService } from '../../platform/services/platform.service';
+import { UPDATE_WORKER_TIMEOUT_MS } from '../system.constants';
 import { PrivilegedWorkerUnavailableException } from '../system.exceptions';
 
 import { PrivilegedJobSpec, PrivilegedJobStatus, PrivilegedWorkerService } from './privileged-worker.service';
@@ -183,6 +184,46 @@ describe('PrivilegedWorkerService', () => {
 			await flushMicrotasks();
 			expect(service.getStatus(id)?.state).toBe('timeout');
 			await expect(service.run({ ...baseSpec, job: 'update' })).rejects.toThrow('still running');
+		});
+
+		it('allows a twelve-minute npm install but still stops the update at its finite deadline', async () => {
+			let active = true;
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: unknown, _opts: unknown, callback: ExecFileCallback) =>
+					callback(null, active ? 'active\n' : 'inactive\n', ''),
+			);
+			const { id } = await service.run({ ...baseSpec, job: 'update', timeoutMs: UPDATE_WORKER_TIMEOUT_MS });
+			file = JSON.stringify({ jobId: id, state: 'running', step: 'installing' });
+			fakeChild.emit('exit', 0, null);
+			await jest.advanceTimersByTimeAsync(12 * 60_000);
+			expect(service.getStatus(id)?.state).toBe('running');
+			expect(spawn).toHaveBeenCalledTimes(1);
+			await jest.advanceTimersByTimeAsync(UPDATE_WORKER_TIMEOUT_MS - 12 * 60_000);
+			expect(service.getStatus(id)?.state).toBe('running');
+			expect(spawn).toHaveBeenCalledTimes(1);
+
+			const stopChild = createFakeChild(4243);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+			await jest.advanceTimersByTimeAsync(3_000);
+			expect(spawn).toHaveBeenLastCalledWith('sudo', ['-n', PRIVILEGED_HELPER_PATH, 'stop-job', 'update', id], {
+				stdio: 'ignore',
+			});
+			active = false;
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('timeout');
+		});
+
+		it.each(['tailscale-setup', 'cloudflared-setup'] as const)('%s retains the ten-minute timeout', async (job) => {
+			const { id } = await service.run({ ...baseSpec, job, args: [] });
+			file = JSON.stringify({ jobId: id, state: 'running', step: 'install' });
+			await jest.advanceTimersByTimeAsync(10 * 60_000);
+			expect(service.getStatus(id)?.state).toBe('running');
+			expect(spawn).toHaveBeenCalledTimes(1);
+			await jest.advanceTimersByTimeAsync(3_000);
+			expect(spawn).toHaveBeenLastCalledWith('sudo', ['-n', PRIVILEGED_HELPER_PATH, 'stop-job', job, id], {
+				stdio: 'ignore',
+			});
 		});
 	});
 

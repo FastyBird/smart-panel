@@ -16,7 +16,14 @@ import {
 } from '../../notifications/notifications.constants';
 import { NotificationsService } from '../../notifications/services/notifications.service';
 import { SystemConfigModel } from '../models/config.model';
-import { EventType, SYSTEM_MODULE_NAME, UpdateChannelType, UpdatePhase, UpdateStatusType } from '../system.constants';
+import {
+	EventType,
+	SYSTEM_MODULE_NAME,
+	UPDATE_WORKER_TIMEOUT_MS,
+	UpdateChannelType,
+	UpdatePhase,
+	UpdateStatusType,
+} from '../system.constants';
 
 interface ConfigUpdatedEvent {
 	source: string;
@@ -106,7 +113,8 @@ export class UpdateService {
 	};
 
 	private updateLockAcquiredAt: number | null = null;
-	private readonly UPDATE_LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
+	// Allow worker termination and the final status poll to settle before expiring the UI lock.
+	private readonly UPDATE_LOCK_TIMEOUT_MS = UPDATE_WORKER_TIMEOUT_MS + 30_000;
 	private static readonly FETCH_TIMEOUT_MS = 15_000; // 15 seconds
 
 	// Budget for the *entire* GitHub lookup: the stable probe, the releases listing, and every

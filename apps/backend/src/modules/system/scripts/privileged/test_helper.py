@@ -39,7 +39,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(args[0], '/usr/bin/systemd-run')
         self.assertIn('--service-type=exec', args)
         self.assertIn('--unit=smart-panel-update', args)
-        self.assertIn('--property=RuntimeMaxSec=630', args)
+        self.assertIn('--property=RuntimeMaxSec=1830', args)
         self.assertNotIn('--scope', args)
         self.assertNotIn('--wait', args)
         self.assertEqual(args[args.index('/usr/bin/env') + 1], '-i')
@@ -68,6 +68,7 @@ class ProtocolTests(unittest.TestCase):
             with self.assertRaises(helper.Refused):
                 self.plan(operation=operation, version='/tmp/payload')
             args = self.plan(operation=operation, version=None)
+            self.assertIn('--property=RuntimeMaxSec=600', args)
             self.assertIn('SMART_PANEL_USER=nobody', args)
             self.assertIn('PRIVILEGED_WORKER_JOB_ID=' + JOB, args)
 

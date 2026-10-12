@@ -18,7 +18,7 @@ import {
 	NotificationSeverity,
 } from '../../notifications/notifications.constants';
 import { NotificationsService } from '../../notifications/services/notifications.service';
-import { SYSTEM_MODULE_NAME, UpdateChannelType } from '../system.constants';
+import { SYSTEM_MODULE_NAME, UPDATE_WORKER_TIMEOUT_MS, UpdateChannelType } from '../system.constants';
 
 import { UpdateService } from './update.service';
 
@@ -249,13 +249,18 @@ describe('UpdateService', () => {
 			service.releaseUpdateLock();
 		});
 
-		it('should auto-release lock after timeout', () => {
+		it('retains the lock through slow npm installation and worker termination, then expires it', () => {
+			jest.useFakeTimers();
 			expect(service.acquireUpdateLock()).toBe(true);
 
-			// Simulate timeout by directly setting the lock timestamp far in the past
-			(service as any).updateLockAcquiredAt = Date.now() - 16 * 60 * 1000;
-
+			jest.advanceTimersByTime(20 * 60_000);
+			expect(service.isUpdateInProgress()).toBe(true);
+			expect(service.acquireUpdateLock()).toBe(false);
+			jest.advanceTimersByTime(UPDATE_WORKER_TIMEOUT_MS - 20 * 60_000 + 15_000);
+			expect(service.isUpdateInProgress()).toBe(true);
+			jest.advanceTimersByTime(15_001);
 			expect(service.isUpdateInProgress()).toBe(false);
+			jest.useRealTimers();
 		});
 	});
 
