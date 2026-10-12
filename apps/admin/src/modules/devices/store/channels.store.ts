@@ -135,7 +135,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		});
 	};
 
-	const set = (payload: IChannelsSetActionPayload): IChannel => {
+	const applySet = <T>(payload: IChannelsSetActionPayload, apply: (item: IChannel) => T): T => {
 		const element = getPluginElement(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
@@ -147,7 +147,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				throw new DevicesValidationException('Failed to insert channel.');
 			}
 
-			return commit(parsed.data);
+			return apply(parsed.data);
 		}
 
 		const parsed = (element?.schemas?.channelSchema || ChannelSchema).safeParse({ ...payload.data, id: payload.id });
@@ -160,7 +160,23 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		data.value = data.value ?? {};
 
-		return commit(parsed.data);
+		return apply(parsed.data);
+	};
+
+	const set = (payload: IChannelsSetActionPayload): IChannel => applySet(payload, commit);
+
+	const captureReadSnapshot: IChannelsStoreActions['captureReadSnapshot'] = () => {
+		const requestedAt = mutationToken;
+		const generation = ++requestGeneration;
+		return (payload: IChannelsSetActionPayload): IChannel | null =>
+			applySet(payload, (item: IChannel): IChannel | null => {
+				if (canApplyRead(item, requestedAt, generation)) {
+					readGenerationById[item.id] = generation;
+					data.value[item.id] = item;
+				}
+				// A blocked/deleted channel must not become a conduit for hydrating its old children.
+				return data.value[item.id] ?? null;
+			});
 	};
 
 	const unset = (payload: IChannelsUnsetActionPayload): void => {
@@ -746,6 +762,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		findForDevice,
 		findById,
 		onEvent,
+		captureReadSnapshot,
 		set,
 		unset,
 		get,
