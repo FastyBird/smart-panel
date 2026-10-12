@@ -15,6 +15,7 @@ import { ManagedServiceManagerService } from '../services/managed-service-manage
 import { ServicesController } from './services.controller';
 
 describe('ServicesController', () => {
+	let module: TestingModule | undefined;
 	let controller: ServicesController;
 	let managedServiceManager: jest.Mocked<ManagedServiceManagerService>;
 
@@ -36,7 +37,7 @@ describe('ServicesController', () => {
 	});
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [ServicesController],
 			providers: [
 				{
@@ -56,7 +57,10 @@ describe('ServicesController', () => {
 		managedServiceManager = module.get(ManagedServiceManagerService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

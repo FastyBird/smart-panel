@@ -66,6 +66,7 @@ class UpdateMockChannelDto extends UpdateChannelDto {
 }
 
 describe('ChannelsService', () => {
+	let module: TestingModule | undefined;
 	let service: ChannelsService;
 	let repository: Repository<ChannelEntity>;
 	let mapper: ChannelsTypeMapperService;
@@ -141,7 +142,7 @@ describe('ChannelsService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				ChannelsService,
 				DeviceStructureLockService,
@@ -212,7 +213,10 @@ describe('ChannelsService', () => {
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

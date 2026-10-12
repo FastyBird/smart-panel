@@ -19,12 +19,13 @@ import { EventType } from '../system.constants';
 import { SystemService } from './system.service';
 
 describe('SystemService', () => {
+	let module: TestingModule | undefined;
 	let service: SystemService;
 	let eventEmitter: EventEmitter2;
 	let platform: PlatformService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SystemService,
 				{
@@ -56,7 +57,10 @@ describe('SystemService', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 		jest.useRealTimers();
 	});

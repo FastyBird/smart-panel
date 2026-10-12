@@ -6,6 +6,7 @@ import { DisplaysBulkService } from './displays-bulk.service';
 import { DisplaysService } from './displays.service';
 
 describe('DisplaysBulkService', () => {
+	let module: TestingModule | undefined;
 	let service: DisplaysBulkService;
 	let displaysService: { remove: jest.Mock };
 
@@ -14,7 +15,7 @@ describe('DisplaysBulkService', () => {
 			remove: jest.fn().mockResolvedValue(undefined),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [DisplaysBulkService, { provide: DisplaysService, useValue: displaysService }],
 		}).compile();
 
@@ -45,5 +46,11 @@ describe('DisplaysBulkService', () => {
 			expect(result.succeeded).toEqual(['a', 'c']);
 			expect(result.failed).toEqual([{ id: 'b', reason: 'Requested display does not exist' }]);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

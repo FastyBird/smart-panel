@@ -12,17 +12,21 @@ class MockCreateDto extends CreateDataSourceDto {}
 class MockUpdateDto extends UpdateDataSourceDto {}
 
 describe('DataSourceTypeMapperService', () => {
+	let module: TestingModule | undefined;
 	let service: DataSourcesTypeMapperService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [DataSourcesTypeMapperService],
 		}).compile();
 
 		service = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

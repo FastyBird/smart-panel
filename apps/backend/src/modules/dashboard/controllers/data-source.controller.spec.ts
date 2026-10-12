@@ -72,6 +72,7 @@ class MockDataSourceEntity extends DataSourceEntity {
 }
 
 describe('DataSourceController', () => {
+	let module: TestingModule | undefined;
 	let controller: DataSourceController;
 	let dataSourceService: DataSourcesService;
 	let mapper: DataSourcesTypeMapperService;
@@ -101,7 +102,7 @@ describe('DataSourceController', () => {
 	} as MockDataSourceEntity;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [DataSourceController],
 			providers: [
 				{
@@ -131,7 +132,10 @@ describe('DataSourceController', () => {
 		mapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

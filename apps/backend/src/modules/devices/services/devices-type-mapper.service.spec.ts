@@ -12,17 +12,21 @@ class MockCreateDeviceDto extends CreateDeviceDto {}
 class MockUpdateDeviceDto extends UpdateDeviceDto {}
 
 describe('DevicesTypeMapperService', () => {
+	let module: TestingModule | undefined;
 	let service: DevicesTypeMapperService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [DevicesTypeMapperService],
 		}).compile();
 
 		service = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

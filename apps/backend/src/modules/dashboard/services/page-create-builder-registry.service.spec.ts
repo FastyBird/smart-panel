@@ -5,6 +5,7 @@ import { IPageNestedCreateBuilder } from '../entities/dashboard.relations';
 import { PageCreateBuilderRegistryService } from './page-create-builder-registry.service';
 
 describe('PageCreateBuilderRegistryService', () => {
+	let module: TestingModule | undefined;
 	let service: PageCreateBuilderRegistryService;
 
 	const mockBuilder: IPageNestedCreateBuilder = {
@@ -13,14 +14,17 @@ describe('PageCreateBuilderRegistryService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [PageCreateBuilderRegistryService],
 		}).compile();
 
 		service = module.get<PageCreateBuilderRegistryService>(PageCreateBuilderRegistryService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

@@ -36,6 +36,7 @@ jest.mock('bcrypt', () => ({
 }));
 
 describe('TokensService', () => {
+	let module: TestingModule | undefined;
 	let service: TokensService;
 	let repository: Repository<TokenEntity>;
 	let mapper: TokensTypeMapperService;
@@ -75,7 +76,7 @@ describe('TokensService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				TokensService,
 				{ provide: TokenMetadataService, useValue: { findByHash: jest.fn() } },
@@ -109,7 +110,10 @@ describe('TokensService', () => {
 		dataSource = module.get<DataSource>(DataSource);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

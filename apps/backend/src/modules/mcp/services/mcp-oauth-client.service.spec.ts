@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { ConfigService } from '../../config/services/config.service';
@@ -11,6 +11,7 @@ import { McpCapability, McpOAuthScope } from '../mcp.constants';
 import { McpOAuthClientService } from './mcp-oauth-client.service';
 
 describe('McpOAuthClientService', () => {
+	let moduleRef: TestingModule | undefined;
 	const createdById = uuid();
 	const entity = Object.assign(new McpOAuthClientEntity(), {
 		id: uuid(),
@@ -42,7 +43,7 @@ describe('McpOAuthClientService', () => {
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
-		const moduleRef = await Test.createTestingModule({
+		moduleRef = await Test.createTestingModule({
 			providers: [
 				McpOAuthClientService,
 				{ provide: getRepositoryToken(McpOAuthClientEntity), useValue: repository },
@@ -105,5 +106,11 @@ describe('McpOAuthClientService', () => {
 		repository.findOneBy.mockResolvedValue(null);
 
 		await expect(service.update(uuid(), { enabled: false })).rejects.toBeInstanceOf(NotFoundException);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = moduleRef;
+		moduleRef = undefined;
+		await moduleToClose?.close();
 	});
 });

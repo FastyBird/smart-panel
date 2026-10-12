@@ -48,10 +48,11 @@ describe('Services Commands', () => {
 	});
 
 	describe('ListServicesCommand', () => {
+		let module: TestingModule | undefined;
 		let command: ListServicesCommand;
 
 		beforeEach(async () => {
-			const module: TestingModule = await Test.createTestingModule({
+			module = await Test.createTestingModule({
 				providers: [
 					ListServicesCommand,
 					{
@@ -87,13 +88,20 @@ describe('Services Commands', () => {
 
 			expect(managedServiceManager.getStatus).toHaveBeenCalled();
 		});
+
+		afterEach(async () => {
+			const moduleToClose = module;
+			module = undefined;
+			await moduleToClose?.close();
+		});
 	});
 
 	describe('StartServiceCommand', () => {
+		let module: TestingModule | undefined;
 		let command: StartServiceCommand;
 
 		beforeEach(async () => {
-			const module: TestingModule = await Test.createTestingModule({
+			module = await Test.createTestingModule({
 				providers: [
 					StartServiceCommand,
 					{
@@ -151,13 +159,20 @@ describe('Services Commands', () => {
 			expect(mockExit).toHaveBeenCalledWith(1);
 			mockExit.mockRestore();
 		});
+
+		afterEach(async () => {
+			const moduleToClose = module;
+			module = undefined;
+			await moduleToClose?.close();
+		});
 	});
 
 	describe('StopServiceCommand', () => {
+		let module: TestingModule | undefined;
 		let command: StopServiceCommand;
 
 		beforeEach(async () => {
-			const module: TestingModule = await Test.createTestingModule({
+			module = await Test.createTestingModule({
 				providers: [
 					StopServiceCommand,
 					{
@@ -196,13 +211,20 @@ describe('Services Commands', () => {
 			expect(managedServiceManager.getServiceStatus).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 			expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to stop service'));
 		});
+
+		afterEach(async () => {
+			const moduleToClose = module;
+			module = undefined;
+			await moduleToClose?.close();
+		});
 	});
 
 	describe('RestartServiceCommand', () => {
+		let module: TestingModule | undefined;
 		let command: RestartServiceCommand;
 
 		beforeEach(async () => {
-			const module: TestingModule = await Test.createTestingModule({
+			module = await Test.createTestingModule({
 				providers: [
 					RestartServiceCommand,
 					{
@@ -240,6 +262,12 @@ describe('Services Commands', () => {
 
 			expect(managedServiceManager.getServiceStatus).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 			expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Cannot restart'));
+		});
+
+		afterEach(async () => {
+			const moduleToClose = module;
+			module = undefined;
+			await moduleToClose?.close();
 		});
 	});
 });

@@ -14,6 +14,7 @@ import { HomeResolutionService } from './home-resolution.service';
 import { SpaceHomePageResolverRegistryService } from './space-home-page-resolver-registry.service';
 
 describe('HomeResolutionService', () => {
+	let module: TestingModule | undefined;
 	let service: HomeResolutionService;
 	let pagesRepository: Repository<PageEntity>;
 	let spacesRepository: Repository<SpaceEntity>;
@@ -104,7 +105,7 @@ describe('HomeResolutionService', () => {
 			findOne: jest.fn().mockResolvedValue(null),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				HomeResolutionService,
 				SpaceHomePageResolverRegistryService,
@@ -119,7 +120,10 @@ describe('HomeResolutionService', () => {
 		resolverRegistry = module.get<SpaceHomePageResolverRegistryService>(SpaceHomePageResolverRegistryService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

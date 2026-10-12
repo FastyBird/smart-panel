@@ -7,6 +7,7 @@ import { INotificationChannel } from '../platforms/notification-channel.platform
 import { NotificationChannelRegistryService } from './notification-channel-registry.service';
 
 describe('NotificationChannelRegistryService', () => {
+	let module: TestingModule | undefined;
 	let service: NotificationChannelRegistryService;
 
 	const fakeChannel = (type: string): INotificationChannel => ({
@@ -17,7 +18,7 @@ describe('NotificationChannelRegistryService', () => {
 	});
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [NotificationChannelRegistryService],
 		}).compile();
 
@@ -87,5 +88,11 @@ describe('NotificationChannelRegistryService', () => {
 		it('is false for a source that is not a registered channel', () => {
 			expect(service.isChannel('home-assistant-plugin')).toBe(false);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

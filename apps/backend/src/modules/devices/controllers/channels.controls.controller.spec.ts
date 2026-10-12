@@ -20,6 +20,7 @@ import { ChannelsService } from '../services/channels.service';
 import { ChannelsControlsController } from './channels.controls.controller';
 
 describe('ChannelsControlsController', () => {
+	let module: TestingModule | undefined;
 	let controller: ChannelsControlsController;
 	let channelsService: ChannelsService;
 	let channelsControlsService: ChannelsControlsService;
@@ -68,7 +69,7 @@ describe('ChannelsControlsController', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [ChannelsControlsController],
 			providers: [
 				{
@@ -99,7 +100,10 @@ describe('ChannelsControlsController', () => {
 		channelsControlsService = module.get<ChannelsControlsService>(ChannelsControlsService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 
