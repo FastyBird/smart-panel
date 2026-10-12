@@ -228,6 +228,7 @@ class SqliteConnectionCoordinator {
 
 const coordinators = new WeakMap<DataSource, SqliteConnectionCoordinator>();
 
+/** Keep connection ownership shared by every runner of the same data source. */
 function coordinatorFor(dataSource: DataSource): SqliteConnectionCoordinator {
 	let coordinator = coordinators.get(dataSource);
 	if (!coordinator) {

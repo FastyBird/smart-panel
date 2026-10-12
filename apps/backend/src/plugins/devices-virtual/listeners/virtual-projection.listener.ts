@@ -10,6 +10,7 @@ import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/c
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
+/** Create a shallow snapshot with the prototype needed by entity serialization. */
 const detachedClone = <T extends object>(value: T): T => {
 	const clone = Object.create(Reflect.getPrototypeOf(value)) as T;
 
