@@ -153,6 +153,57 @@ describe('AlarmSecurityProvider', () => {
 		]);
 	});
 
+	it.each([
+		{ type: SecurityAlertType.INTRUSION, category: PropertyCategory.TRIGGERED, value: true },
+		{ type: SecurityAlertType.TAMPER, category: PropertyCategory.TAMPERED, value: true },
+		{ type: SecurityAlertType.FAULT, category: PropertyCategory.FAULT, value: 1 },
+	])('keeps a $type alert timestamp stable when an unrelated lastEvent is newer', async ({ type, category, value }) => {
+		const condition = makeProperty(category, value);
+		Object.assign(condition.value, { lastUpdated: '2026-10-12T10:00:00.000Z' });
+		const lastEvent = makeProperty(
+			PropertyCategory.LAST_EVENT,
+			JSON.stringify({ type: 'unrelated-event', timestamp: '2026-10-12T11:00:00.000Z' }),
+		);
+		devicesService.findAll.mockResolvedValue([makeAlarmDevice('dev-1', [condition, lastEvent])]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toEqual([expect.objectContaining({ type, timestamp: '2026-10-12T10:00:00.000Z' })]);
+	});
+
+	it('falls back to lastEvent when an active condition has no property timestamp', async () => {
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [
+				makeProperty(PropertyCategory.TRIGGERED, true),
+				makeProperty(
+					PropertyCategory.LAST_EVENT,
+					JSON.stringify({ type: 'intrusion', timestamp: '2026-10-12T11:00:00.000Z' }),
+				),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts?.[0]).toEqual(
+			expect.objectContaining({ type: SecurityAlertType.INTRUSION, timestamp: '2026-10-12T11:00:00.000Z' }),
+		);
+	});
+
+	it('keeps the current-time fallback when neither the condition nor lastEvent has a timestamp', async () => {
+		const before = new Date().toISOString();
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.TRIGGERED, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		const after = new Date().toISOString();
+		const timestamp = signal.activeAlerts?.[0]?.timestamp;
+		expect(timestamp).toBeDefined();
+		expect(Date.parse(timestamp)).toBeGreaterThanOrEqual(Date.parse(before));
+		expect(Date.parse(timestamp)).toBeLessThanOrEqual(Date.parse(after));
+	});
+
 	it('should return key "alarm"', () => {
 		expect(provider.getKey()).toBe('alarm');
 	});

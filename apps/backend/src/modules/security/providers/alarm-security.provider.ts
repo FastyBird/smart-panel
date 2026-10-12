@@ -230,13 +230,16 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		// Choose one presentation for every underlying measurement and alert type.
 		// Visible projections win; hidden sources still win when no replacement
 		// reports their condition. IDs remain device-based for acknowledgement compatibility.
-		const conditionTimestamp = (state: AlarmDeviceState, type: SecurityAlertType) =>
-			state.lastEvent?.timestamp ??
-			(type === SecurityAlertType.INTRUSION
-				? state.triggeredTimestamp
-				: type === SecurityAlertType.TAMPER
-					? state.tamperedTimestamp
-					: state.faultTimestamp);
+		const conditionTimestamp = (state: AlarmDeviceState, type: SecurityAlertType) => {
+			const timestamp =
+				type === SecurityAlertType.INTRUSION
+					? state.triggeredTimestamp
+					: type === SecurityAlertType.TAMPER
+						? state.tamperedTimestamp
+						: state.faultTimestamp;
+
+			return timestamp ?? state.lastEvent?.timestamp ?? null;
+		};
 		const owners = new Map<string, { state: AlarmDeviceState; projected: boolean; timestamp: string | null }>();
 		const rank = (candidate: AlarmDeviceState, projected: boolean) => (candidate.hidden ? 2 : 0) + (projected ? 0 : 1);
 		for (const state of states) {
