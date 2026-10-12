@@ -5,7 +5,6 @@ import { IDataSourceNestedCreateBuilder } from '../entities/dashboard.relations'
 import { DataSourceCreateBuilderRegistryService } from './data-source-create-builder-registry.service';
 
 describe('DataSourceCreateBuilderRegistryService', () => {
-	let module: TestingModule | undefined;
 	let service: DataSourceCreateBuilderRegistryService;
 
 	const mockBuilder: IDataSourceNestedCreateBuilder = {
@@ -14,17 +13,14 @@ describe('DataSourceCreateBuilderRegistryService', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [DataSourceCreateBuilderRegistryService],
 		}).compile();
 
 		service = module.get<DataSourceCreateBuilderRegistryService>(DataSourceCreateBuilderRegistryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -17,14 +17,13 @@ import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.serv
 import { SecurityController } from './security.controller';
 
 describe('SecurityController', () => {
-	let module: TestingModule | undefined;
 	let controller: SecurityController;
 	let service: SecurityService;
 
 	beforeEach(async () => {
 		const defaultProvider = new DefaultSecurityProvider();
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [SecurityController],
 			providers: [
 				{
@@ -97,11 +96,5 @@ describe('SecurityController', () => {
 			expect(result.data.hasCriticalAlert).toBe(false);
 			expect(result.data.lastEvent).toBeUndefined();
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

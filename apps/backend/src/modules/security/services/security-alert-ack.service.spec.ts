@@ -9,7 +9,6 @@ import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityAlertAckService } from './security-alert-ack.service';
 
 describe('SecurityAlertAckService', () => {
-	let module: TestingModule | undefined;
 	let service: SecurityAlertAckService;
 	let repo: jest.Mocked<Repository<SecurityAlertAckEntity>>;
 
@@ -23,7 +22,7 @@ describe('SecurityAlertAckService', () => {
 	});
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SecurityAlertAckService,
 				{
@@ -213,11 +212,5 @@ describe('SecurityAlertAckService', () => {
 			await service.cleanupStale(['a', 'b']);
 			expect(repo.delete).toHaveBeenCalledWith({ id: Not(In(['a', 'b'])) });
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

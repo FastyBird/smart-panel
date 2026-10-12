@@ -19,7 +19,6 @@ import { homeContextSpacePageResultSchema, homeSnapshotResultSchema } from '../s
 import { HomeContextQueryService } from './home-context-query.service';
 
 describe('HomeContextQueryService', () => {
-	let module: TestingModule | undefined;
 	let service: HomeContextQueryService;
 	let spaces: {
 		findSummaryPage: jest.Mock;
@@ -70,7 +69,7 @@ describe('HomeContextQueryService', () => {
 		};
 		security = { getBoundedStatus: jest.fn().mockRejectedValue(new Error('security unavailable')) };
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HomeContextQueryService,
 				{ provide: SpacesService, useValue: spaces },
@@ -86,10 +85,7 @@ describe('HomeContextQueryService', () => {
 		service = module.get(HomeContextQueryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.useRealTimers();
 	});
 

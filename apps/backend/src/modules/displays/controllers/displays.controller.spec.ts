@@ -26,7 +26,6 @@ import { RegistrationService } from '../services/registration.service';
 import { DisplaysController } from './displays.controller';
 
 describe('DisplaysController', () => {
-	let module: TestingModule | undefined;
 	let controller: DisplaysController;
 	let service: DisplaysService;
 	let tokensService: TokensService;
@@ -119,7 +118,7 @@ describe('DisplaysController', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [DisplaysController],
 			providers: [
 				{
@@ -188,10 +187,7 @@ describe('DisplaysController', () => {
 		bulkService = module.get<DisplaysBulkService>(DisplaysBulkService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -27,7 +27,6 @@ import { HomeStateQueryService } from './home-state-query.service';
 const profile = HOME_CONTEXT_PROFILE_MCP_COMPATIBILITY;
 
 describe('HomeStateQueryService', () => {
-	let module: TestingModule | undefined;
 	let service: HomeStateQueryService;
 	let spaces: { findOne: jest.Mock };
 	let devices: { findVisibleSummaryById: jest.Mock };
@@ -66,7 +65,7 @@ describe('HomeStateQueryService', () => {
 		energy = { getSummary: jest.fn(), getSpaceSummary: jest.fn(), getDeviceZoneSummary: jest.fn() };
 		security = { getBoundedStatus: jest.fn() };
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HomeStateQueryService,
 				{ provide: SpacesService, useValue: spaces },
@@ -84,10 +83,7 @@ describe('HomeStateQueryService', () => {
 		service = module.get(HomeStateQueryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.useRealTimers();
 	});
 

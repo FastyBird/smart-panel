@@ -20,7 +20,6 @@ import { DeviceChannelDataSourceEntity } from '../entities/data-sources-device-c
 import { DataSourceRelationsLoaderService } from './data-source-relations-loader.service';
 
 describe('DataSourceRelationsLoaderService', () => {
-	let module: TestingModule | undefined;
 	let service: DataSourceRelationsLoaderService;
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
@@ -31,7 +30,7 @@ describe('DataSourceRelationsLoaderService', () => {
 	const mockProperty = { id: uuid().toString() };
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DataSourceRelationsLoaderService,
 				{
@@ -61,10 +60,7 @@ describe('DataSourceRelationsLoaderService', () => {
 		propertiesService = module.get(ChannelsPropertiesService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

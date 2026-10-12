@@ -23,7 +23,6 @@ import { SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceStateReadService } from './space-state-read.service';
 
 describe('SpaceClimateStateService', () => {
-	let module: TestingModule | undefined;
 	let service: SpaceClimateStateService;
 	let stateReads: jest.Mocked<SpaceStateReadService>;
 	let intentTimeseriesService: jest.Mocked<IntentTimeseriesService>;
@@ -167,7 +166,7 @@ describe('SpaceClimateStateService', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceClimateStateService,
 				{
@@ -192,10 +191,7 @@ describe('SpaceClimateStateService', () => {
 		intentTimeseriesService = module.get(IntentTimeseriesService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -22,7 +22,6 @@ import {
 import { SecurityEventsService } from './security-events.service';
 
 describe('SecurityEventsService', () => {
-	let module: TestingModule | undefined;
 	let service: SecurityEventsService;
 	let influxDb: jest.Mocked<StorageService>;
 	let notifications: { notify: jest.Mock; resolve: jest.Mock };
@@ -45,7 +44,7 @@ describe('SecurityEventsService', () => {
 			resolve: jest.fn().mockResolvedValue(true),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SecurityEventsService,
 				{
@@ -319,11 +318,5 @@ describe('SecurityEventsService', () => {
 			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1', Severity.CRITICAL);
 			expect(influxDb.writePoints).not.toHaveBeenCalled();
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -34,7 +34,6 @@ jest.mock('../devices-shelly-v1.constants', () => ({
 }));
 
 describe('ShellyV1ProbeService', () => {
-	let module: TestingModule | undefined;
 	let service: ShellyV1ProbeService;
 	let httpClient: jest.Mocked<ShellyV1HttpClientService>;
 
@@ -111,7 +110,7 @@ describe('ShellyV1ProbeService', () => {
 			getDeviceSettings: jest.fn(),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [ShellyV1ProbeService, { provide: ShellyV1HttpClientService, useValue: httpClientMock }],
 		}).compile();
 
@@ -119,10 +118,7 @@ describe('ShellyV1ProbeService', () => {
 		httpClient = module.get(ShellyV1HttpClientService) as jest.Mocked<ShellyV1HttpClientService>;
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

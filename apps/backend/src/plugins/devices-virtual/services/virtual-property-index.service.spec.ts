@@ -7,7 +7,6 @@ import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/de
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 
 describe('VirtualPropertyIndexService', () => {
-	let module: TestingModule | undefined;
 	let service: VirtualPropertyIndexService;
 	let repository: { find: jest.Mock };
 
@@ -108,7 +107,7 @@ describe('VirtualPropertyIndexService', () => {
 	});
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				VirtualPropertyIndexService,
 				{
@@ -122,10 +121,7 @@ describe('VirtualPropertyIndexService', () => {
 		repository = module.get(getRepositoryToken(VirtualChannelPropertyEntity));
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

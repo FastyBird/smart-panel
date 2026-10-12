@@ -48,7 +48,6 @@ jest.mock('../devices-shelly-ng.constants', () => ({
 }));
 
 describe('ShellyNgDevicesController', () => {
-	let module: TestingModule | undefined;
 	let controller: ShellyNgDevicesController;
 	let deviceManager: jest.Mocked<DeviceManagerService>;
 	let discoveryService: jest.Mocked<ShellyNgDiscoveryService>;
@@ -69,7 +68,7 @@ describe('ShellyNgDevicesController', () => {
 			adopt: jest.fn(),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ShellyNgDevicesController],
 			providers: [
 				{ provide: DeviceManagerService, useValue: deviceManagerMock },
@@ -159,10 +158,7 @@ describe('ShellyNgDevicesController', () => {
 		});
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

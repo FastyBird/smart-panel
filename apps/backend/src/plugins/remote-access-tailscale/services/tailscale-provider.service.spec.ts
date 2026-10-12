@@ -6,14 +6,13 @@ import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
 import { TailscaleProviderService } from './tailscale-provider.service';
 
 describe('TailscaleProviderService', () => {
-	let module: TestingModule | undefined;
 	let service: TailscaleProviderService;
 	let nodeManagedService: { computeStatus: jest.Mock };
 
 	beforeEach(async () => {
 		nodeManagedService = { computeStatus: jest.fn() };
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TailscaleProviderService, { provide: TailscaleNodeManagedService, useValue: nodeManagedService }],
 		}).compile();
 
@@ -56,11 +55,5 @@ describe('TailscaleProviderService', () => {
 		nodeManagedService.computeStatus.mockResolvedValue(status);
 
 		await expect(service.getStatus()).resolves.toEqual(status);
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

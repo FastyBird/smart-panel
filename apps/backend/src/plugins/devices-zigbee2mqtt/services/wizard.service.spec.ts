@@ -19,14 +19,13 @@ import { Z2mWizardService } from './wizard.service';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 describe('Z2mWizardService', () => {
-	let module: TestingModule | undefined;
 	let service: Z2mWizardService;
 	let zigbee2mqttService: jest.Mocked<Zigbee2mqttService>;
 
 	beforeEach(async () => {
 		jest.useFakeTimers();
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				Z2mWizardService,
 				{
@@ -86,9 +85,6 @@ describe('Z2mWizardService', () => {
 	});
 
 	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 		await service.onModuleDestroy();
 		jest.useRealTimers();
 	});

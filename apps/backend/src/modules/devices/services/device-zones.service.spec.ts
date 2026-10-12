@@ -22,7 +22,6 @@ import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceZonesService } from './device-zones.service';
 
 describe('DeviceZonesService', () => {
-	let module: TestingModule | undefined;
 	let eventEmitter: { emit: jest.Mock };
 	let service: DeviceZonesService;
 	let repository: Repository<DeviceZoneEntity>;
@@ -55,7 +54,7 @@ describe('DeviceZonesService', () => {
 			},
 		});
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DeviceZonesService,
 				{ provide: getRepositoryToken(DeviceZoneEntity), useFactory: mockRepository },
@@ -71,10 +70,7 @@ describe('DeviceZonesService', () => {
 		spaceRepository = module.get<Repository<SpaceEntity>>(getRepositoryToken(SpaceEntity));
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

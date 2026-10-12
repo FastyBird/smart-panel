@@ -28,7 +28,6 @@ import { WebsocketNotAllowedException } from '../websocket.exceptions';
 import { WebsocketGateway } from './websocket.gateway';
 
 describe('WebsocketGateway', () => {
-	let module: TestingModule | undefined;
 	let gateway: WebsocketGateway;
 	let eventRegistry: CommandEventRegistryService;
 	let wsAuthService: WsAuthService;
@@ -83,7 +82,7 @@ describe('WebsocketGateway', () => {
 	} as unknown as Socket;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				WebsocketGateway,
 				{
@@ -139,10 +138,7 @@ describe('WebsocketGateway', () => {
 		gateway.enable();
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -39,7 +39,6 @@ class MockChannel extends ChannelEntity {
 }
 
 describe('ChannelsControlsService', () => {
-	let module: TestingModule | undefined;
 	let channelsService: ChannelsService;
 	let channelsControlsService: ChannelsControlsService;
 	let repository: Repository<ChannelControlEntity>;
@@ -94,7 +93,7 @@ describe('ChannelsControlsService', () => {
 			})),
 		});
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				ChannelsControlsService,
 				{ provide: getRepositoryToken(ChannelControlEntity), useFactory: mockRepository },
@@ -127,10 +126,7 @@ describe('ChannelsControlsService', () => {
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

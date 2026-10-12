@@ -37,7 +37,6 @@ function buildChannel(category: string, properties: Array<{ category: string; pe
 }
 
 describe('MediaCapabilityService', () => {
-	let module: TestingModule | undefined;
 	let service: MediaCapabilityService;
 	let mockSpacesService: {
 		getOneOrThrow: jest.Mock;
@@ -52,7 +51,7 @@ describe('MediaCapabilityService', () => {
 			findDevicesBySpace: jest.fn().mockResolvedValue([]),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [MediaCapabilityService, { provide: SpacesService, useValue: mockSpacesService }],
 		}).compile();
 
@@ -362,11 +361,5 @@ describe('MediaCapabilityService', () => {
 
 			expect(result[0].volume?.permission).toBe(MediaCapabilityPermission.WRITE);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

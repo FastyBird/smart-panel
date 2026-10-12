@@ -28,7 +28,6 @@ import {
 type StatusHandler = (status: PrivilegedJobStatus) => void;
 
 describe('CloudflareTunnelSetupService', () => {
-	let module: TestingModule | undefined;
 	let service: CloudflareTunnelSetupService;
 	let privilegedWorker: {
 		run: jest.Mock<Promise<{ id: string }>, [Parameters<PrivilegedWorkerService['run']>[0]]>;
@@ -84,7 +83,7 @@ describe('CloudflareTunnelSetupService', () => {
 		};
 		managedServiceManagerMock = { restartService: jest.fn().mockResolvedValue(true) };
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				CloudflareTunnelSetupService,
 				{ provide: PrivilegedWorkerService, useValue: privilegedWorker },
@@ -100,10 +99,7 @@ describe('CloudflareTunnelSetupService', () => {
 		service = module.get(CloudflareTunnelSetupService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		rmSync(dataDir, { recursive: true, force: true });
 	});
 

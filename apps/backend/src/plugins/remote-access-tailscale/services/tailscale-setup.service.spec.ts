@@ -28,7 +28,6 @@ import { TailscaleSetupService, TailscaleSetupUnavailableException } from './tai
 type StatusHandler = (status: PrivilegedJobStatus) => void;
 
 describe('TailscaleSetupService', () => {
-	const testingModules: TestingModule[] = [];
 	let service: TailscaleSetupService;
 	// run is given an explicit generic (return, args) instead of a bare
 	// jest.Mock so `privilegedWorker.run.mock.calls[0][0]` below resolves to
@@ -110,16 +109,11 @@ describe('TailscaleSetupService', () => {
 				{ provide: ConfigService, useValue: configServiceMock },
 			],
 		}).compile();
-		testingModules.push(module);
 
 		service = module.get<TailscaleSetupService>(TailscaleSetupService);
 	});
 
-	afterEach(async () => {
-		for (const module of testingModules.splice(0)) {
-			await module.close();
-		}
-
+	afterEach(() => {
 		rmSync(dataDir, { recursive: true, force: true });
 		jest.clearAllMocks();
 	});
@@ -482,7 +476,6 @@ describe('TailscaleSetupService', () => {
 					{ provide: ConfigService, useValue: configServiceMock },
 				],
 			}).compile();
-			testingModules.push(module);
 
 			const serviceWithRefresh = module.get<TailscaleSetupService>(TailscaleSetupService);
 

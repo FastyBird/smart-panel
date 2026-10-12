@@ -14,7 +14,6 @@ import { SystemThrottleMonitorService } from './system-throttle-monitor.service'
 import { SystemService } from './system.service';
 
 describe('SystemThrottleMonitorService', () => {
-	let module: TestingModule | undefined;
 	let service: SystemThrottleMonitorService;
 	let systemService: { getThrottleStatus: jest.Mock };
 	let notifications: { notify: jest.Mock; resolve: jest.Mock };
@@ -36,7 +35,7 @@ describe('SystemThrottleMonitorService', () => {
 			resolve: jest.fn().mockResolvedValue(true),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SystemThrottleMonitorService,
 				{ provide: SystemService, useValue: systemService },
@@ -164,11 +163,5 @@ describe('SystemThrottleMonitorService', () => {
 
 		await expect(service.checkThrottleStatus()).resolves.toBeUndefined();
 		expect(notifications.notify).not.toHaveBeenCalled();
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -9,7 +9,6 @@ import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesService } from './devices.service';
 
 describe('DevicesBulkService', () => {
-	let module: TestingModule | undefined;
 	let service: DevicesBulkService;
 	let devicesService: { findOne: jest.Mock; remove: jest.Mock; update: jest.Mock };
 	let mapperService: { getMapping: jest.Mock };
@@ -27,7 +26,7 @@ describe('DevicesBulkService', () => {
 			getMapping: jest.fn().mockReturnValue({ updateDto: UpdateDeviceDto }),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DevicesBulkService,
 				{ provide: DevicesService, useValue: devicesService },
@@ -128,11 +127,5 @@ describe('DevicesBulkService', () => {
 
 			expect(result.failed).toEqual([{ id: 'a', reason: 'Hidden device placement is immutable' }]);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -36,13 +36,6 @@ function makeAlert(overrides: Partial<SecurityAlert> & { id: string }): Security
 }
 
 describe('SecurityAggregatorService', () => {
-	const testingModules: TestingModule[] = [];
-
-	afterEach(async () => {
-		for (const module of testingModules.splice(0)) {
-			await module.close();
-		}
-	});
 	async function createAggregator(providers: SecurityStateProviderInterface[]): Promise<SecurityAggregatorService> {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -69,7 +62,6 @@ describe('SecurityAggregatorService', () => {
 				SecurityAggregatorService,
 			],
 		}).compile();
-		testingModules.push(module);
 
 		return module.get<SecurityAggregatorService>(SecurityAggregatorService);
 	}
@@ -303,7 +295,6 @@ describe('SecurityAggregatorService', () => {
 				SecurityAggregatorService,
 			],
 		}).compile();
-		testingModules.push(module);
 
 		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
 		const result = await aggregator.aggregateWithErrors();
@@ -342,7 +333,6 @@ describe('SecurityAggregatorService', () => {
 				SecurityAggregatorService,
 			],
 		}).compile();
-		testingModules.push(module);
 		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
 
 		const result = await aggregator.aggregateBounded(100, 10, 20, { roomIds: ['room-1'] });
@@ -389,7 +379,6 @@ describe('SecurityAggregatorService', () => {
 				SecurityAggregatorService,
 			],
 		}).compile();
-		testingModules.push(module);
 		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
 
 		await expect(aggregator.aggregateBounded(100, 10, 20)).rejects.toBe(loadError);

@@ -83,21 +83,17 @@ function mockExecFileOnce(
 }
 
 describe('TailscaleCliService', () => {
-	let module: TestingModule | undefined;
 	let service: TailscaleCliService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TailscaleCliService],
 		}).compile();
 
 		service = module.get<TailscaleCliService>(TailscaleCliService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

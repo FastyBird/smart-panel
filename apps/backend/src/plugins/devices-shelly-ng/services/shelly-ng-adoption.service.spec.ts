@@ -9,7 +9,6 @@ import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 import { ShellyNgAdoptionService } from './shelly-ng-adoption.service';
 
 describe('ShellyNgAdoptionService', () => {
-	let module: TestingModule | undefined;
 	let service: ShellyNgAdoptionService;
 	let devicesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
 
@@ -30,7 +29,7 @@ describe('ShellyNgAdoptionService', () => {
 			update: jest.fn().mockImplementation(() => Promise.resolve({ id: 'existing' } as ShellyNgDeviceEntity)),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [ShellyNgAdoptionService, { provide: DevicesService, useValue: devicesService }],
 		}).compile();
 
@@ -125,11 +124,5 @@ describe('ShellyNgAdoptionService', () => {
 		]);
 
 		expect(outcomes.map((outcome) => outcome.status)).toEqual(['created', 'failed', 'created']);
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

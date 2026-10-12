@@ -12,7 +12,6 @@ import { MappingContext } from './mapping.types';
 import { TransformerRegistry } from './transformers';
 
 describe('MappingLoaderService Integration Tests', () => {
-	let module: TestingModule | undefined;
 	let service: MappingLoaderService;
 	let transformerRegistry: TransformerRegistry;
 	let tempDir: string;
@@ -22,7 +21,7 @@ describe('MappingLoaderService Integration Tests', () => {
 		tempDir = join(tmpdir(), `mapping-tests-${Date.now()}-${Math.random().toString(36).substring(7)}`);
 		mkdirSync(tempDir, { recursive: true });
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TransformerRegistry, MappingLoaderService],
 		})
 			.overrideProvider(MappingLoaderService)
@@ -41,10 +40,7 @@ describe('MappingLoaderService Integration Tests', () => {
 		service = module.get<MappingLoaderService>(MappingLoaderService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		// Cleanup temp directory if needed
 		// Note: In a real implementation, you'd want to clean this up
 	});

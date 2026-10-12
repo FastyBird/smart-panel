@@ -6,14 +6,13 @@ import { ExtensionsBulkService } from './extensions-bulk.service';
 import { ExtensionsService } from './extensions.service';
 
 describe('ExtensionsBulkService', () => {
-	let module: TestingModule | undefined;
 	let service: ExtensionsBulkService;
 	let extensionsService: { updateEnabled: jest.Mock };
 
 	beforeEach(async () => {
 		extensionsService = { updateEnabled: jest.fn().mockResolvedValue(undefined) };
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [ExtensionsBulkService, { provide: ExtensionsService, useValue: extensionsService }],
 		}).compile();
 
@@ -61,11 +60,5 @@ describe('ExtensionsBulkService', () => {
 		await service.setEnabled(['a'], false);
 
 		expect(extensionsService.updateEnabled).toHaveBeenCalledWith('a', false);
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -24,12 +24,11 @@ import { SpacesSeederService } from './spaces-seeder.service';
  * so seed records reach `SpacesService.create()` intact.
  */
 describe('SpacesSeederService.createSpace', () => {
-	let module: TestingModule | undefined;
 	let service: SpacesSeederService;
 	let spacesService: SpacesService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpacesSeederService,
 				{
@@ -97,11 +96,5 @@ describe('SpacesSeederService.createSpace', () => {
 		const createMock = spacesService.create as jest.Mock;
 		const [callArg] = createMock.mock.calls[0] as [Record<string, unknown>];
 		expect(callArg.suggestionsEnabled ?? callArg.suggestions_enabled).toBe(false);
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

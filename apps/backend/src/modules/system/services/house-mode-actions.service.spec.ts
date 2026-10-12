@@ -13,7 +13,6 @@ import { EventType, HouseMode } from '../system.constants';
 import { HouseModeActionsService } from './house-mode-actions.service';
 
 describe('HouseModeActionsService', () => {
-	let module: TestingModule | undefined;
 	let service: HouseModeActionsService;
 	let configService: jest.Mocked<ConfigService>;
 	let spacesService: jest.Mocked<SpacesService>;
@@ -49,7 +48,7 @@ describe('HouseModeActionsService', () => {
 			emit: jest.fn(),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HouseModeActionsService,
 				{ provide: ConfigService, useValue: mockConfigService },
@@ -66,10 +65,7 @@ describe('HouseModeActionsService', () => {
 		eventEmitter = module.get(EventEmitter2);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

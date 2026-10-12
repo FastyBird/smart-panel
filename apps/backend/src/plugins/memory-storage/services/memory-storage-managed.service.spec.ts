@@ -10,7 +10,6 @@ import { MemoryStorage } from './memory-storage.storage';
 jest.mock('./memory-storage.storage');
 
 describe('MemoryStorageManagedService', () => {
-	let module: TestingModule | undefined;
 	let svc: MemoryStorageManagedService;
 	let storageService: { registerPlugin: jest.Mock; unregisterPlugin: jest.Mock };
 
@@ -27,17 +26,14 @@ describe('MemoryStorageManagedService', () => {
 		MockMemoryStorage.prototype.destroy = jest.fn().mockResolvedValue(undefined);
 		MockMemoryStorage.prototype.isAvailable = jest.fn().mockReturnValue(true);
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [MemoryStorageManagedService, { provide: StorageService, useValue: storageService }],
 		}).compile();
 
 		svc = module.get(MemoryStorageManagedService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

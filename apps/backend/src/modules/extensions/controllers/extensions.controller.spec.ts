@@ -15,7 +15,6 @@ import { ExtensionsService } from '../services/extensions.service';
 import { ExtensionsController } from './extensions.controller';
 
 describe('ExtensionsController', () => {
-	let module: TestingModule | undefined;
 	let controller: ExtensionsController;
 	let extensionsService: ExtensionsService;
 
@@ -35,7 +34,7 @@ describe('ExtensionsController', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ExtensionsController],
 			providers: [
 				{
@@ -59,10 +58,7 @@ describe('ExtensionsController', () => {
 		extensionsService = module.get<ExtensionsService>(ExtensionsService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

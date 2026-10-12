@@ -23,7 +23,6 @@ import { CoverStateSnapshot, LightStateSnapshot, SpaceContextSnapshot } from './
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 
 describe('SpaceUndoHistoryService', () => {
-	let module: TestingModule | undefined;
 	let service: SpaceUndoHistoryService;
 	let devicesService: jest.Mocked<DevicesService>;
 	let platformRegistryService: jest.Mocked<PlatformRegistryService>;
@@ -181,7 +180,7 @@ describe('SpaceUndoHistoryService', () => {
 	});
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceUndoHistoryService,
 				{
@@ -217,10 +216,7 @@ describe('SpaceUndoHistoryService', () => {
 		platformRegistryService = module.get(PlatformRegistryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		// Destroy the service to clean up timers
 		service.onModuleDestroy();
 	});

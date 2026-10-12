@@ -17,12 +17,11 @@ import { DevicePreviewTileEntity } from '../entities/tiles-device-preview.entity
 import { TileRelationsLoaderService } from './tile-relations-loader.service';
 
 describe('TileRelationsLoaderService', () => {
-	let module: TestingModule | undefined;
 	let service: TileRelationsLoaderService;
 	let devicesService: DevicesService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				TileRelationsLoaderService,
 				{
@@ -38,10 +37,7 @@ describe('TileRelationsLoaderService', () => {
 		devicesService = module.get(DevicesService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

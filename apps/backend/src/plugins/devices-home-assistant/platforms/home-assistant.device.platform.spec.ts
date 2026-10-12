@@ -17,13 +17,12 @@ import { HaSupervisorService } from '../services/ha-supervisor.service';
 import { HomeAssistantDevicePlatform } from './home-assistant.device.platform';
 
 describe('HomeAssistantDevicePlatform', () => {
-	let module: TestingModule | undefined;
 	let platform: HomeAssistantDevicePlatform;
 	let mapperService: MapperService;
 	let sendCommandMock: jest.SpiedFunction<any>;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HomeAssistantDevicePlatform,
 				{
@@ -69,10 +68,7 @@ describe('HomeAssistantDevicePlatform', () => {
 		sendCommandMock = jest.spyOn(platform as any, 'sendCommand').mockResolvedValue({});
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

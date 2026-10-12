@@ -20,7 +20,6 @@ import { ClimateMode } from '../spaces-home-control.constants';
 import { SpacesWsEventType, SpacesWsHandlerName, WebsocketExchangeListener } from './websocket-exchange.listener';
 
 describe('WebsocketExchangeListener (Spaces)', () => {
-	let module: TestingModule | undefined;
 	let listener: WebsocketExchangeListener;
 	let commandEventRegistry: jest.Mocked<CommandEventRegistryService>;
 	let spacesService: jest.Mocked<SpacesService>;
@@ -42,7 +41,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 	});
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				WebsocketExchangeListener,
 				{
@@ -81,10 +80,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 		undoHistoryService = module.get(SpaceUndoHistoryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

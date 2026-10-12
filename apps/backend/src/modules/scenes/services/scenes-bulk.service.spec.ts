@@ -6,7 +6,6 @@ import { ScenesBulkService } from './scenes-bulk.service';
 import { ScenesService } from './scenes.service';
 
 describe('ScenesBulkService', () => {
-	let module: TestingModule | undefined;
 	let service: ScenesBulkService;
 	let scenesService: { remove: jest.Mock; update: jest.Mock };
 
@@ -16,7 +15,7 @@ describe('ScenesBulkService', () => {
 			update: jest.fn().mockResolvedValue(undefined),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [ScenesBulkService, { provide: ScenesService, useValue: scenesService }],
 		}).compile();
 
@@ -76,11 +75,5 @@ describe('ScenesBulkService', () => {
 			expect(result.succeeded).toEqual([]);
 			expect(result.failed).toEqual([{ id: 'a', reason: 'Scene with id=a was not found.' }]);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

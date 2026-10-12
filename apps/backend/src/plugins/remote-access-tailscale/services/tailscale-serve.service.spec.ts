@@ -87,7 +87,6 @@ function statusWithCaps(caps: string[], overrides: Partial<TailscaleStatus> = {}
 }
 
 describe('TailscaleServeService', () => {
-	let module: TestingModule | undefined;
 	let service: TailscaleServeService;
 	let cli: {
 		serve: jest.Mock;
@@ -106,7 +105,7 @@ describe('TailscaleServeService', () => {
 			funnelOn: jest.fn().mockResolvedValue(undefined),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TailscaleServeService, { provide: TailscaleCliService, useValue: cli }],
 		}).compile();
 
@@ -682,11 +681,5 @@ describe('TailscaleServeService', () => {
 
 			expect(warnSpy).toHaveBeenCalledTimes(1);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

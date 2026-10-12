@@ -10,7 +10,6 @@ import { HomeAssistantHttpService } from '../services/home-assistant.http.servic
 import { HomeAssistantStatesController } from './home-assistant-states.controller';
 
 describe('HomeAssistantStatesController', () => {
-	let module: TestingModule | undefined;
 	let controller: HomeAssistantStatesController;
 	let homeAssistantHttpService: jest.Mocked<HomeAssistantHttpService>;
 
@@ -20,7 +19,7 @@ describe('HomeAssistantStatesController', () => {
 			getState: jest.fn(),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [HomeAssistantStatesController],
 			providers: [{ provide: HomeAssistantHttpService, useValue: homeAssistantHttpServiceMock }],
 		}).compile();
@@ -29,10 +28,7 @@ describe('HomeAssistantStatesController', () => {
 		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

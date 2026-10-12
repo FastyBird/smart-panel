@@ -21,7 +21,6 @@ import { TailscaleSetupService } from '../services/tailscale-setup.service';
 import { TailscaleStatusController } from './status.controller';
 
 describe('TailscaleStatusController', () => {
-	let module: TestingModule | undefined;
 	let controller: TailscaleStatusController;
 	let acceptedStatus: { getCachedProviderSnapshot: jest.Mock };
 	let providerService: { getStatus: jest.Mock };
@@ -64,7 +63,7 @@ describe('TailscaleStatusController', () => {
 				.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' }),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [TailscaleStatusController],
 			providers: [
 				{ provide: TailscaleProviderService, useValue: providerService },
@@ -266,11 +265,5 @@ describe('TailscaleStatusController', () => {
 				reason: 'sudo: a password is required',
 			});
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

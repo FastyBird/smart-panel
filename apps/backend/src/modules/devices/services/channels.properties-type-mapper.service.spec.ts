@@ -12,21 +12,17 @@ class MockCreateChannelPropertyDto extends CreateChannelPropertyDto {}
 class MockUpdateChannelPropertyDto extends UpdateChannelPropertyDto {}
 
 describe('ChannelsPropertiesTypeMapperService', () => {
-	let module: TestingModule | undefined;
 	let service: ChannelsPropertiesTypeMapperService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [ChannelsPropertiesTypeMapperService],
 		}).compile();
 
 		service = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

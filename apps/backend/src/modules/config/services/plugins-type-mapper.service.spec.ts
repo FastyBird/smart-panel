@@ -10,21 +10,17 @@ class MockPlugin extends PluginConfigModel {}
 class MockCreatePluginDto extends UpdatePluginConfigDto {}
 
 describe('PluginsTypeMapperService', () => {
-	let module: TestingModule | undefined;
 	let service: PluginsTypeMapperService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [PluginsTypeMapperService],
 		}).compile();
 
 		service = module.get<PluginsTypeMapperService>(PluginsTypeMapperService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

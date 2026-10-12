@@ -23,7 +23,6 @@ import { ExtensionsBundledService } from './extensions-bundled.service';
 import { ExtensionsService } from './extensions.service';
 
 describe('ExtensionsService', () => {
-	let module: TestingModule | undefined;
 	let service: ExtensionsService;
 	let configService: ConfigService;
 	let modulesMapperService: ModulesTypeMapperService;
@@ -53,7 +52,7 @@ describe('ExtensionsService', () => {
 	] as never;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				ExtensionsService,
 				{
@@ -103,10 +102,7 @@ describe('ExtensionsService', () => {
 		bundledService = module.get<ExtensionsBundledService>(ExtensionsBundledService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

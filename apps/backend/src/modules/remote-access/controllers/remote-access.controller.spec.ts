@@ -12,7 +12,6 @@ import { RemoteAccessUrlService } from '../services/remote-access-url.service';
 import { RemoteAccessController } from './remote-access.controller';
 
 describe('RemoteAccessController', () => {
-	let module: TestingModule | undefined;
 	let controller: RemoteAccessController;
 	let configService: { getModuleConfig: jest.Mock };
 	let statusService: {
@@ -63,7 +62,7 @@ describe('RemoteAccessController', () => {
 		};
 		postureService = { getAdvisories: jest.fn().mockReturnValue([]) };
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [RemoteAccessController],
 			providers: [
 				{ provide: ConfigService, useValue: configService },
@@ -162,11 +161,5 @@ describe('RemoteAccessController', () => {
 				primary: null,
 			});
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

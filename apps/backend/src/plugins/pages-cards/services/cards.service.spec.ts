@@ -27,7 +27,6 @@ import { PagesCardsValidationException } from '../pages-cards.exceptions';
 import { CardsService } from './cards.service';
 
 describe('CardsService', () => {
-	let module: TestingModule | undefined;
 	let pagesService: PagesService;
 	let cardsService: CardsService;
 	let repository: Repository<CardEntity>;
@@ -80,7 +79,7 @@ describe('CardsService', () => {
 			})),
 		});
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				CardsService,
 				{ provide: getRepositoryToken(CardEntity), useFactory: mockRepository },
@@ -128,10 +127,7 @@ describe('CardsService', () => {
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

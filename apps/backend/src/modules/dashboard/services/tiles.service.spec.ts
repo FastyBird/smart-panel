@@ -78,7 +78,6 @@ class MockTileEntity extends TileEntity {
 }
 
 describe('TilesService', () => {
-	let module: TestingModule | undefined;
 	let tilesService: TilesService;
 	let repository: Repository<TileEntity>;
 	let tilesMapper: TilesTypeMapperService;
@@ -138,7 +137,7 @@ describe('TilesService', () => {
 			})),
 		});
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				TilesService,
 				{ provide: getRepositoryToken(TileEntity), useFactory: mockRepository },
@@ -199,10 +198,7 @@ describe('TilesService', () => {
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

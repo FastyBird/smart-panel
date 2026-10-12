@@ -97,7 +97,6 @@ function expectRequirements(
 }
 
 describe('TailscaleNodeManagedService', () => {
-	let module: TestingModule | undefined;
 	let service: TailscaleNodeManagedService;
 	let cli: {
 		getVersion: jest.Mock;
@@ -164,7 +163,7 @@ describe('TailscaleNodeManagedService', () => {
 			converge: jest.fn().mockResolvedValue(EMPTY_SERVE_RESULT),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				TailscaleNodeManagedService,
 				TailscaleStatusMapperService,
@@ -181,10 +180,7 @@ describe('TailscaleNodeManagedService', () => {
 	});
 
 	afterEach(async () => {
-		cli.down.mockResolvedValue(undefined);
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+		await service.stop().catch(() => undefined);
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		jest.clearAllMocks();

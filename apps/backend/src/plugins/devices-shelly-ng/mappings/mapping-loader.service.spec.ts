@@ -8,11 +8,10 @@ import { MappingContext } from './mapping.types';
 import { TransformerRegistry } from './transformers';
 
 describe('MappingLoaderService', () => {
-	let module: TestingModule | undefined;
 	let service: MappingLoaderService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TransformerRegistry, MappingLoaderService],
 		}).compile();
 
@@ -201,11 +200,5 @@ describe('MappingLoaderService', () => {
 		it('falls back to SWITCH for an unknown type', () => {
 			expect(resolve('not-a-real-type')).toBe(ComponentType.SWITCH);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

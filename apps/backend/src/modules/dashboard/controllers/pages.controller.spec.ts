@@ -57,7 +57,6 @@ class MockPageEntity extends PageEntity {
 }
 
 describe('PagesController', () => {
-	let module: TestingModule | undefined;
 	let controller: PagesController;
 	let service: PagesService;
 	let pageMapper: PagesTypeMapperService;
@@ -121,7 +120,7 @@ describe('PagesController', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [PagesController],
 			providers: [
 				{
@@ -171,10 +170,7 @@ describe('PagesController', () => {
 		dataSourceMapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -3,21 +3,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { FactoryResetRegistryService } from './factory-reset-registry.service';
 
 describe('FactoryResetRegistryService', () => {
-	let module: TestingModule | undefined;
 	let service: FactoryResetRegistryService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [FactoryResetRegistryService],
 		}).compile();
 
 		service = module.get<FactoryResetRegistryService>(FactoryResetRegistryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

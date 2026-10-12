@@ -5,7 +5,6 @@ import { IDataSourceRelationsLoader } from '../entities/dashboard.relations';
 import { DataSourceRelationsLoaderRegistryService } from './data-source-relations-loader-registry.service';
 
 describe('DataSourceRelationsLoaderRegistryService', () => {
-	let module: TestingModule | undefined;
 	let service: DataSourceRelationsLoaderRegistryService;
 
 	const mockLoader: IDataSourceRelationsLoader = {
@@ -14,17 +13,14 @@ describe('DataSourceRelationsLoaderRegistryService', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [DataSourceRelationsLoaderRegistryService],
 		}).compile();
 
 		service = module.get<DataSourceRelationsLoaderRegistryService>(DataSourceRelationsLoaderRegistryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

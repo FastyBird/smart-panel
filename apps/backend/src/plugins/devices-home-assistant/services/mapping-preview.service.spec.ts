@@ -19,7 +19,6 @@ import { MappingPreviewService } from './mapping-preview.service';
 import { VirtualPropertyService } from './virtual-property.service';
 
 describe('MappingPreviewService', () => {
-	let module: TestingModule | undefined;
 	let service: MappingPreviewService;
 	let homeAssistantHttpService: jest.Mocked<HomeAssistantHttpService>;
 	let homeAssistantWsService: jest.Mocked<HomeAssistantWsService>;
@@ -132,7 +131,7 @@ describe('MappingPreviewService', () => {
 			}),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MappingPreviewService,
 				LightCapabilityAnalyzer,
@@ -152,10 +151,7 @@ describe('MappingPreviewService', () => {
 		mappingLoaderService = module.get(MappingLoaderService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

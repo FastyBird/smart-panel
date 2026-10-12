@@ -19,7 +19,6 @@ import { SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 
 describe('SpaceContextSnapshotService', () => {
-	let module: TestingModule | undefined;
 	let service: SpaceContextSnapshotService;
 	let spacesService: jest.Mocked<SpacesService>;
 	let spaceIntentService: jest.Mocked<SpaceIntentService>;
@@ -157,7 +156,7 @@ describe('SpaceContextSnapshotService', () => {
 			getClimateState: jest.fn(),
 		} as unknown as jest.Mocked<SpaceIntentService>;
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceContextSnapshotService,
 				{
@@ -603,11 +602,5 @@ describe('SpaceContextSnapshotService', () => {
 			expect(result.lighting.lights[1].channelName).toBe('Accent Light');
 			expect(result.lighting.lights[1].brightness).toBe(50);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -27,7 +27,6 @@ import { CoverDevice, SpaceCoversStateService } from './space-covers-state.servi
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 
 describe('CoversIntentService', () => {
-	let module: TestingModule | undefined;
 	let service: CoversIntentService;
 	let spacesService: jest.Mocked<SpacesService>;
 	let coversStateService: jest.Mocked<SpaceCoversStateService>;
@@ -64,7 +63,7 @@ describe('CoversIntentService', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				CoversIntentService,
 				{
@@ -472,11 +471,5 @@ describe('CoversIntentService', () => {
 			expect(result?.success).toBe(true);
 			expect(result?.affectedDevices).toBe(0);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

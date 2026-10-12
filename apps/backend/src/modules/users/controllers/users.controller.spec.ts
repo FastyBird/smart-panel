@@ -23,7 +23,6 @@ import { USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 import { UsersController } from './users.controller';
 
 describe('UsersController', () => {
-	let module: TestingModule | undefined;
 	let controller: UsersController;
 	let service: UsersService;
 
@@ -56,7 +55,7 @@ describe('UsersController', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [UsersController],
 			providers: [
 				{
@@ -74,10 +73,7 @@ describe('UsersController', () => {
 		service = module.get<UsersService>(UsersService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

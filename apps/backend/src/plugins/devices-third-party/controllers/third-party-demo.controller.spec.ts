@@ -18,12 +18,11 @@ import { ThirdPartyDemoController } from './third-party-demo.controller';
 jest.useFakeTimers();
 
 describe('ThirdPartyDemoController', () => {
-	let module: TestingModule | undefined;
 	let controller: ThirdPartyDemoController;
 	let propertiesService: ChannelsPropertiesService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ThirdPartyDemoController],
 			providers: [
 				{
@@ -40,10 +39,7 @@ describe('ThirdPartyDemoController', () => {
 		propertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllTimers();
 		jest.clearAllMocks();
 	});

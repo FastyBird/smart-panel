@@ -27,7 +27,6 @@ jest.mock('fs', () => ({
 }));
 
 describe('UpdateServerCommand', () => {
-	let module: TestingModule | undefined;
 	const BASE_DIR = '/opt/smart-panel';
 	const NEW_VERSION_DIR = '/opt/smart-panel/v1.1.0-alpha.0';
 	const SCRIPT = `${BASE_DIR}/rebuild-native.sh`;
@@ -53,7 +52,7 @@ describe('UpdateServerCommand', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [UpdateServerCommand, { provide: UpdateService, useValue: {} }],
 		}).compile();
 
@@ -66,10 +65,7 @@ describe('UpdateServerCommand', () => {
 		delete process.env.npm_config_nodedir;
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.useRealTimers();
 		jest.restoreAllMocks();
 

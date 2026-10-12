@@ -21,7 +21,6 @@ import {
 import { NotificationsRetentionService } from './notifications-retention.service';
 
 describe('NotificationsRetentionService', () => {
-	const testingModules: TestingModule[] = [];
 	let dataSource: DataSource;
 	let repository: Repository<NotificationEntity>;
 	let service: NotificationsRetentionService;
@@ -81,7 +80,6 @@ describe('NotificationsRetentionService', () => {
 				{ provide: EventEmitter2, useValue: eventEmitter },
 			],
 		}).compile();
-		testingModules.push(module);
 
 		service = module.get(NotificationsRetentionService);
 	};
@@ -102,10 +100,6 @@ describe('NotificationsRetentionService', () => {
 	});
 
 	afterEach(async () => {
-		for (const module of testingModules.splice(0)) {
-			await module.close();
-		}
-
 		jest.restoreAllMocks();
 
 		await dataSource.destroy();

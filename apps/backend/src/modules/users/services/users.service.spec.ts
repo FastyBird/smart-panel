@@ -29,7 +29,6 @@ jest.mock('bcrypt', () => ({
 }));
 
 describe('UsersService', () => {
-	let module: TestingModule | undefined;
 	let service: UsersService;
 	let repository: Repository<UserEntity>;
 	let eventEmitter: EventEmitter2;
@@ -63,7 +62,7 @@ describe('UsersService', () => {
 			delete: jest.fn(),
 		});
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				UsersService,
 				{ provide: getRepositoryToken(UserEntity), useFactory: mockRepository },
@@ -83,10 +82,7 @@ describe('UsersService', () => {
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

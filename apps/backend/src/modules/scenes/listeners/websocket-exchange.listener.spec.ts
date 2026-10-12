@@ -16,7 +16,6 @@ import { SceneExecutorService } from '../services/scene-executor.service';
 import { ScenesWsEventType, ScenesWsHandlerName, WebsocketExchangeListener } from './websocket-exchange.listener';
 
 describe('WebsocketExchangeListener (Scenes)', () => {
-	let module: TestingModule | undefined;
 	let listener: WebsocketExchangeListener;
 	let commandEventRegistry: jest.Mocked<CommandEventRegistryService>;
 	let sceneExecutorService: jest.Mocked<SceneExecutorService>;
@@ -30,7 +29,7 @@ describe('WebsocketExchangeListener (Scenes)', () => {
 	});
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				WebsocketExchangeListener,
 				{
@@ -53,10 +52,7 @@ describe('WebsocketExchangeListener (Scenes)', () => {
 		sceneExecutorService = module.get(SceneExecutorService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -26,7 +26,6 @@ import { MapperService } from './mapper.service';
 import { UniversalEntityMapperService } from './universal.entity.mapper.service';
 
 describe('MapperService', () => {
-	let module: TestingModule | undefined;
 	let service: MapperService;
 	let channelsService: jest.Mocked<ChannelsService>;
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
@@ -51,7 +50,7 @@ describe('MapperService', () => {
 		transformerRegistry = new TransformerRegistry();
 		transformerRegistry.registerAll(BUILTIN_TRANSFORMERS);
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MapperService,
 				{
@@ -92,10 +91,7 @@ describe('MapperService', () => {
 		universalEntityMapperService = module.get(UniversalEntityMapperService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

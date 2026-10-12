@@ -12,21 +12,17 @@ class MockCreateDto extends CreatePageDto {}
 class MockUpdateDto extends UpdatePageDto {}
 
 describe('PageTypeMapperService', () => {
-	let module: TestingModule | undefined;
 	let service: PagesTypeMapperService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [PagesTypeMapperService],
 		}).compile();
 
 		service = module.get<PagesTypeMapperService>(PagesTypeMapperService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

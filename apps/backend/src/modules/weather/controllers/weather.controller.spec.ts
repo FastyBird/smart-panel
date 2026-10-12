@@ -16,7 +16,6 @@ import { WeatherNotFoundException, WeatherNotSupportedException } from '../weath
 import { WeatherController } from './weather.controller';
 
 describe('WeatherController', () => {
-	let module: TestingModule | undefined;
 	let controller: WeatherController;
 	let service: WeatherService;
 
@@ -81,7 +80,7 @@ describe('WeatherController', () => {
 	];
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [WeatherController],
 			providers: [
 				{
@@ -102,10 +101,7 @@ describe('WeatherController', () => {
 		service = module.get<WeatherService>(WeatherService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.resetAllMocks();
 	});
 

@@ -28,7 +28,6 @@ import { SpacesNotFoundException, SpacesValidationException } from '../spaces.ex
 import { SpacesController } from './spaces.controller';
 
 describe('SpacesController', () => {
-	let module: TestingModule | undefined;
 	let controller: SpacesController;
 	let spacesService: SpacesService;
 	let spacesBulkService: SpacesBulkService;
@@ -63,7 +62,7 @@ describe('SpacesController', () => {
 	} as unknown as DisplayEntity;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [SpacesController],
 			providers: [
 				{
@@ -347,11 +346,5 @@ describe('SpacesController', () => {
 			await expect(result).rejects.toBeInstanceOf(UnprocessableEntityException);
 			await expect(result).rejects.toThrow('Device is hidden and its room can not be changed.');
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

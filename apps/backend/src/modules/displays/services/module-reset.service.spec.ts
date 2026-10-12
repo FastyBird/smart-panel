@@ -21,7 +21,6 @@ import { DisplayEntity } from '../entities/displays.entity';
 import { DisplaysModuleResetService } from './module-reset.service';
 
 describe('DisplaysModuleResetService', () => {
-	let module: TestingModule | undefined;
 	let service: DisplaysModuleResetService;
 	let repository: Repository<DisplayEntity>;
 	let tokensService: TokensService;
@@ -118,7 +117,7 @@ describe('DisplaysModuleResetService', () => {
 			clear: jest.fn(),
 		});
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DisplaysModuleResetService,
 				{ provide: getRepositoryToken(DisplayEntity), useFactory: mockRepository },
@@ -142,10 +141,7 @@ describe('DisplaysModuleResetService', () => {
 		tokensService = module.get<TokensService>(TokensService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

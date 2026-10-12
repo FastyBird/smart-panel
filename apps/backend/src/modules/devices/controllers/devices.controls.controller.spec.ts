@@ -21,7 +21,6 @@ import { DevicesService } from '../services/devices.service';
 import { DevicesControlsController } from './devices.controls.controller';
 
 describe('DevicesControlsController', () => {
-	let module: TestingModule | undefined;
 	let controller: DevicesControlsController;
 	let devicesService: DevicesService;
 	let devicesControlsService: DevicesControlsService;
@@ -57,7 +56,7 @@ describe('DevicesControlsController', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [DevicesControlsController],
 			providers: [
 				{
@@ -151,11 +150,5 @@ describe('DevicesControlsController', () => {
 			expect(result).toBeUndefined();
 			expect(devicesControlsService.remove).toHaveBeenCalledWith(mockDeviceControl.id, mockDevice.id);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

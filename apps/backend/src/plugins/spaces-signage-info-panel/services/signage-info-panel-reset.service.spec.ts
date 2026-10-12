@@ -12,7 +12,6 @@ import { SignageInfoPanelSpaceEntity } from '../entities/signage-info-panel-spac
 import { SignageInfoPanelResetService } from './signage-info-panel-reset.service';
 
 describe('SignageInfoPanelResetService', () => {
-	let module: TestingModule | undefined;
 	let service: SignageInfoPanelResetService;
 	let announcementsRepository: Repository<SignageAnnouncementEntity>;
 	let spacesTypeMapper: SpacesTypeMapperService;
@@ -32,7 +31,7 @@ describe('SignageInfoPanelResetService', () => {
 	beforeEach(async () => {
 		jest.clearAllMocks();
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SignageInfoPanelResetService,
 				{
@@ -88,11 +87,5 @@ describe('SignageInfoPanelResetService', () => {
 		const result = await service.reset();
 
 		expect(result).toEqual({ success: false, reason: 'db gone' });
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

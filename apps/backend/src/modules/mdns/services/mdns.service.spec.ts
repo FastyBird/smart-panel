@@ -35,7 +35,6 @@ jest.mock('bonjour-service', () => {
 });
 
 describe('MdnsService', () => {
-	let module: TestingModule | undefined;
 	let service: MdnsService;
 	let configService: ConfigService;
 	let managedServiceManager: { isRegistered: jest.Mock; register: jest.Mock };
@@ -80,7 +79,7 @@ describe('MdnsService', () => {
 			register: jest.fn(),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MdnsService,
 				{
@@ -102,10 +101,7 @@ describe('MdnsService', () => {
 		// Silence logger during tests
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.restoreAllMocks();
 	});
 

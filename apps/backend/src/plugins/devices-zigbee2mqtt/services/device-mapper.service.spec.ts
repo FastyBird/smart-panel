@@ -28,7 +28,6 @@ import { Z2mExposesMapperService } from './exposes-mapper.service';
 import { Z2mVirtualPropertyService } from './virtual-property.service';
 
 describe('Z2mDeviceMapperService', () => {
-	let module: TestingModule | undefined;
 	let service: Z2mDeviceMapperService;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsService: jest.Mocked<ChannelsService>;
@@ -65,7 +64,7 @@ describe('Z2mDeviceMapperService', () => {
 			}),
 		} as unknown as jest.Mocked<ChannelInputOccurrencesService>;
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				Z2mDeviceMapperService,
 				{ provide: DevicesService, useValue: devicesService },
@@ -546,11 +545,5 @@ describe('Z2mDeviceMapperService', () => {
 				}),
 			);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -20,7 +20,6 @@ import { CardsService } from '../services/cards.service';
 import { CardsController } from './cards.controller';
 
 describe('CardsController', () => {
-	let module: TestingModule | undefined;
 	let controller: CardsController;
 	let pagesService: PagesService;
 	let cardsService: CardsService;
@@ -53,7 +52,7 @@ describe('CardsController', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [CardsController],
 			providers: [
 				{
@@ -84,10 +83,7 @@ describe('CardsController', () => {
 		cardsService = module.get<CardsService>(CardsService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

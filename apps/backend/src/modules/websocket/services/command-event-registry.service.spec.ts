@@ -3,21 +3,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CommandEventRegistryService } from './command-event-registry.service';
 
 describe('CommandEventRegistryService', () => {
-	let module: TestingModule | undefined;
 	let service: CommandEventRegistryService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [CommandEventRegistryService],
 		}).compile();
 
 		service = module.get<CommandEventRegistryService>(CommandEventRegistryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

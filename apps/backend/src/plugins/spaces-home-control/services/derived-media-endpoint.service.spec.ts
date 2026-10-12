@@ -41,7 +41,6 @@ function capMapping(propertyId?: string) {
 }
 
 describe('DerivedMediaEndpointService', () => {
-	let module: TestingModule | undefined;
 	let service: DerivedMediaEndpointService;
 	let mockSpacesService: { getOneOrThrow: jest.Mock };
 	let mockMediaCapabilityService: { getMediaCapabilitiesInSpace: jest.Mock };
@@ -56,7 +55,7 @@ describe('DerivedMediaEndpointService', () => {
 			getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DerivedMediaEndpointService,
 				{ provide: SpacesService, useValue: mockSpacesService },
@@ -468,11 +467,5 @@ describe('DerivedMediaEndpointService', () => {
 
 			expect(result.endpoints[0].name).toBe('Living Room TV (Display)');
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

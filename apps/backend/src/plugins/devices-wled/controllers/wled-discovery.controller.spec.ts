@@ -7,12 +7,11 @@ import { WledService } from '../services/wled.service';
 import { WledDiscoveryController } from './wled-discovery.controller';
 
 describe('WledDiscoveryController', () => {
-	let module: TestingModule | undefined;
 	let controller: WledDiscoveryController;
 	let service: jest.Mocked<WledService>;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			controllers: [WledDiscoveryController],
 			providers: [
 				{
@@ -66,11 +65,5 @@ describe('WledDiscoveryController', () => {
 
 		expect(service.adoptDevices).toHaveBeenCalledWith(devices);
 		expect(response.data[0].status).toBe('created');
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

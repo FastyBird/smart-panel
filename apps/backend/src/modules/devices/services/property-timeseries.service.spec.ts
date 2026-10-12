@@ -17,7 +17,7 @@ import { PropertyValueSourceRegistryService } from './property-value-source.regi
 describe('PropertyTimeseriesService', () => {
 	let service: PropertyTimeseriesService;
 	let storageService: jest.Mocked<StorageService>;
-	let module: TestingModule | undefined;
+	let module: TestingModule;
 
 	const mockProperty: ChannelPropertyEntity = {
 		id: 'prop-123',
@@ -48,10 +48,7 @@ describe('PropertyTimeseriesService', () => {
 		storageService = module.get(StorageService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 		jest.useRealTimers();
 	});

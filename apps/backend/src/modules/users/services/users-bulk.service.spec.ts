@@ -8,7 +8,6 @@ import { UsersBulkService } from './users-bulk.service';
 import { UsersService } from './users.service';
 
 describe('UsersBulkService', () => {
-	let module: TestingModule | undefined;
 	let service: UsersBulkService;
 	let usersService: { getOneOrThrow: jest.Mock; remove: jest.Mock };
 
@@ -32,7 +31,7 @@ describe('UsersBulkService', () => {
 			remove: jest.fn().mockResolvedValue(undefined),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [UsersBulkService, { provide: UsersService, useValue: usersService }],
 		}).compile();
 
@@ -86,11 +85,5 @@ describe('UsersBulkService', () => {
 			expect(usersService.remove).toHaveBeenCalledTimes(1);
 			expect(usersService.remove).toHaveBeenCalledWith('a');
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

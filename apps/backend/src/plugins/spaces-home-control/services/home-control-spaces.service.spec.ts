@@ -15,12 +15,11 @@ import { ZoneSpaceEntity } from '../entities/zone-space.entity';
 import { HomeControlSpacesService } from './home-control-spaces.service';
 
 describe('HomeControlSpacesService', () => {
-	let module: TestingModule | undefined;
 	let service: HomeControlSpacesService;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HomeControlSpacesService,
 				{
@@ -144,11 +143,5 @@ describe('HomeControlSpacesService', () => {
 			expect(result[0].name).toBe('Living Room');
 			expect(result[0].deviceCount).toBe(2);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

@@ -49,13 +49,12 @@ const mockVirtualPropertyService = {
 };
 
 describe('HomeAssistantHttpService', () => {
-	let module: TestingModule | undefined;
 	let service: HomeAssistantHttpService;
 	let configService: ConfigService;
 	let devicesService: DevicesService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HomeAssistantHttpService,
 				{ provide: ConfigService, useValue: mockConfigService },
@@ -89,10 +88,7 @@ describe('HomeAssistantHttpService', () => {
 		mockChannelsPropertiesService.findAll.mockResolvedValue([]);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -6,11 +6,10 @@ import { TailscaleStatusMapperService } from './tailscale-status-mapper.service'
 const PORT = 3000;
 
 describe('TailscaleStatusMapperService', () => {
-	let module: TestingModule | undefined;
 	let service: TailscaleStatusMapperService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TailscaleStatusMapperService],
 		}).compile();
 
@@ -262,11 +261,5 @@ describe('TailscaleStatusMapperService', () => {
 		])('%s -> holdsKey=%s', (backendState, expected) => {
 			expect(service.hasExistingKey({ BackendState: backendState })).toBe(expected);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

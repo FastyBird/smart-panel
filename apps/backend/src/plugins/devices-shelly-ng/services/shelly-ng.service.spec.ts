@@ -8,7 +8,7 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -169,7 +169,6 @@ const mockWsServer = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('ShellyNgService', () => {
-	const testingModules: TestingModule[] = [];
 	let svc: ShellyNgService | null = null;
 
 	function createPollingService(delegates: {
@@ -202,10 +201,6 @@ describe('ShellyNgService', () => {
 		}
 
 		svc = null;
-
-		for (const module of testingModules.splice(0)) {
-			await module.close();
-		}
 
 		const ds9 = require('shellies-ds9');
 		ds9.__testing.shelliesInstances.length = 0;
@@ -273,7 +268,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(moduleRef);
 
 		svc = moduleRef.get(ShellyNgService);
 		await svc.start();
@@ -304,7 +298,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(mod);
 
 		svc = mod.get(ShellyNgService);
 		await svc.start();
@@ -338,7 +331,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(mod);
 
 		svc = mod.get(ShellyNgService);
 		await svc.start();
@@ -363,7 +355,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(mod);
 
 		svc = mod.get(ShellyNgService);
 		await svc.start();
@@ -404,7 +395,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(mod);
 
 		svc = mod.get(ShellyNgService);
 		await svc.start();
@@ -675,7 +665,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(mod);
 
 		svc = mod.get(ShellyNgService);
 
@@ -703,7 +692,6 @@ describe('ShellyNgService', () => {
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
-		testingModules.push(mod);
 
 		svc = mod.get(ShellyNgService);
 		await svc.start();
@@ -731,7 +719,6 @@ describe('ShellyNgService', () => {
 					{ provide: ShellyWsServerService, useValue: mockWsServer },
 				],
 			}).compile();
-			testingModules.push(moduleRef);
 
 			svc = moduleRef.get(ShellyNgService);
 

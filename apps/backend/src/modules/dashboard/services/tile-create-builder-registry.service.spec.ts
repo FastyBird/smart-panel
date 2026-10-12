@@ -5,7 +5,6 @@ import { ITileNestedCreateBuilder } from '../entities/dashboard.relations';
 import { TileCreateBuilderRegistryService } from './tile-create-builder-registry.service';
 
 describe('TileCreateBuilderRegistryService', () => {
-	let module: TestingModule | undefined;
 	let service: TileCreateBuilderRegistryService;
 
 	const mockBuilder: ITileNestedCreateBuilder = {
@@ -14,17 +13,14 @@ describe('TileCreateBuilderRegistryService', () => {
 	};
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [TileCreateBuilderRegistryService],
 		}).compile();
 
 		service = module.get<TileCreateBuilderRegistryService>(TileCreateBuilderRegistryService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

@@ -25,7 +25,6 @@ import { WledClientAdapterService } from '../services/wled-client-adapter.servic
 import { WledDevicePlatform } from './wled.device.platform';
 
 describe('WledDevicePlatform', () => {
-	let module: TestingModule | undefined;
 	let platform: WledDevicePlatform;
 	let wledAdapter: jest.Mocked<WledClientAdapterService>;
 
@@ -61,7 +60,7 @@ describe('WledDevicePlatform', () => {
 			updateSegment: jest.fn(),
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				WledDevicePlatform,
 				{
@@ -382,11 +381,5 @@ describe('WledDevicePlatform', () => {
 				expect.objectContaining({ on: true }),
 			);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

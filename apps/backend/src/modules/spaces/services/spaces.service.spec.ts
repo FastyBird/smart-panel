@@ -27,7 +27,6 @@ import { SpacesTypeMapperService } from './spaces-type-mapper.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpacesService', () => {
-	let module: TestingModule | undefined;
 	let service: SpacesService;
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
@@ -137,7 +136,7 @@ describe('SpacesService', () => {
 			},
 		};
 
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpacesService,
 				{
@@ -1473,11 +1472,5 @@ describe('SpacesService', () => {
 
 			expect(devices.map((device) => device.id)).toEqual(['visible']);
 		});
-	});
-
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
 	});
 });

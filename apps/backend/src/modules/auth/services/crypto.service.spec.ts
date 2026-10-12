@@ -3,21 +3,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CryptoService } from './crypto.service';
 
 describe('CryptoService', () => {
-	let module: TestingModule | undefined;
 	let service: CryptoService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [CryptoService],
 		}).compile();
 
 		service = module.get<CryptoService>(CryptoService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

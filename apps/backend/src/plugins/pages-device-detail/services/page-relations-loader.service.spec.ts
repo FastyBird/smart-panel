@@ -18,12 +18,11 @@ import { PageRelationsLoaderService } from './page-relations-loader.service';
 class MockPageEntity extends PageEntity {}
 
 describe('PageRelationsLoaderService', () => {
-	let module: TestingModule | undefined;
 	let service: PageRelationsLoaderService;
 	let devicesService: DevicesService;
 
 	beforeEach(async () => {
-		module = await Test.createTestingModule({
+		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PageRelationsLoaderService,
 				{
@@ -39,10 +38,7 @@ describe('PageRelationsLoaderService', () => {
 		devicesService = module.get(DevicesService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = module;
-		module = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 

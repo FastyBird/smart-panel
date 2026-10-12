@@ -43,7 +43,6 @@ class MockPluginConfigDto extends UpdatePluginConfigDto {
 }
 
 describe('ConfigController', () => {
-	let testingModule: TestingModule | undefined;
 	let controller: ConfigController;
 	let configService: ConfigService;
 	let pluginConfigValidator: PluginConfigValidatorService;
@@ -61,7 +60,7 @@ describe('ConfigController', () => {
 	};
 
 	beforeEach(async () => {
-		testingModule = await Test.createTestingModule({
+		const testingModule: TestingModule = await Test.createTestingModule({
 			controllers: [ConfigController],
 			providers: [
 				{
@@ -114,10 +113,7 @@ describe('ConfigController', () => {
 		pluginConfigValidator = testingModule.get<PluginConfigValidatorService>(PluginConfigValidatorService);
 	});
 
-	afterEach(async () => {
-		const moduleToClose = testingModule;
-		testingModule = undefined;
-		await moduleToClose?.close();
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
