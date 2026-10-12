@@ -16,7 +16,13 @@ import {
 } from '../../notifications/notifications.constants';
 import { sanitizeErrorMessage } from '../../notifications/notifications.utils';
 import { NotificationsService } from '../../notifications/services/notifications.service';
-import { SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
+import {
+	SYSTEM_MODULE_NAME,
+	UPDATE_TIMEOUT_MS,
+	UPDATE_WORKER_TIMEOUT_MS,
+	UpdatePhase,
+	UpdateStatusType,
+} from '../system.constants';
 
 import { PrivilegedJobStatus, PrivilegedWorkerService } from './privileged-worker.service';
 import { UpdateService } from './update.service';
@@ -42,12 +48,6 @@ interface UpdateAttemptFile {
 
 const LEGACY_STATUS_FILE = '/var/lib/smart-panel/update-status.json';
 const LEGACY_ATTEMPT_FILE = '/var/lib/smart-panel/update-attempt/attempt.json';
-const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-
-// PrivilegedWorkerService's own hard timeout for this job. Kept slightly longer than
-// UPDATE_TIMEOUT_MS (used above for restart-recovery detection) so a completion signal
-// landing right at the boundary is still caught by the last poll tick.
-const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000;
 const ATTEMPT_RECONCILIATION_POLL_INTERVAL_MS = 3_000;
 const LOCAL_HEALTH_PATH = '/api/v1/modules/system/system/health';
 
@@ -234,7 +234,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 	): Promise<{ attempt: UpdateAttemptFile | null; status: UpdateProgressFile | null }> {
 		let attempt: UpdateAttemptFile | null = initialAttempt;
 		let status: UpdateProgressFile | null = null;
-		const deadline = Date.now() + STATUS_POLL_MAX_MS;
+		const deadline = Date.now() + UPDATE_WORKER_TIMEOUT_MS;
 
 		while (
 			this.isObserverCurrent(generation, initialAttempt.attemptId) &&
@@ -492,7 +492,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			if (Date.now() - startedAt > UPDATE_TIMEOUT_MS) {
 				this.logger.error(`Update to ${status.targetVersion} timed out`);
 
-				await this.failUpdate('Update timed out after 10 minutes');
+				await this.failUpdate(`Update timed out after ${UPDATE_TIMEOUT_MS / 60_000} minutes`);
 			} else {
 				this.logger.warn(
 					`Update to ${status.targetVersion} was in progress (phase: ${status.phase}), service restarted`,
@@ -652,7 +652,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 				args: [targetVersion],
 				env: envVars,
 				statusFile: this.statusFile,
-				timeoutMs: STATUS_POLL_MAX_MS,
+				timeoutMs: UPDATE_WORKER_TIMEOUT_MS,
 				mapStatus: mapUpdateWorkerStatus,
 			});
 

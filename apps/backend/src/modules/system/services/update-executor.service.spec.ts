@@ -9,7 +9,7 @@ import {
 	NotificationKind,
 	NotificationSeverity,
 } from '../../notifications/notifications.constants';
-import { SYSTEM_MODULE_NAME, UpdateStatusType } from '../system.constants';
+import { SYSTEM_MODULE_NAME, UPDATE_TIMEOUT_MS, UPDATE_WORKER_TIMEOUT_MS, UpdateStatusType } from '../system.constants';
 
 import { UpdateExecutorService } from './update-executor.service';
 
@@ -88,6 +88,7 @@ describe('UpdateExecutorService', () => {
 			expect.objectContaining({
 				unit: 'smart-panel-update',
 				unitType: 'service',
+				timeoutMs: 1_830_000,
 				env: expect.objectContaining({
 					UPDATE_START_MODE: 'running-service',
 					UPDATE_OBSERVER_GID: String(process.getgid()),
@@ -116,6 +117,7 @@ describe('UpdateExecutorService', () => {
 			expect(privilegedWorker.run).toHaveBeenCalledWith(
 				expect.objectContaining({
 					job: 'update',
+					timeoutMs: 1_830_000,
 					statusFile: privilegedHelper.PRIVILEGED_OPERATIONS.update.statusFile,
 				}),
 			);
@@ -446,6 +448,61 @@ describe('UpdateExecutorService', () => {
 			expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
 		});
 
+		it.each([true, false])(
+			'observes a live slow update past ten minutes (eventual completion: %s)',
+			async (complete) => {
+				jest.useFakeTimers();
+				jest.spyOn(privilegedHelper, 'privilegedHelperPresent').mockReturnValue(true);
+				jest.spyOn(process, 'kill').mockReturnValue(true);
+				(existsSync as jest.Mock).mockReturnValue(true);
+				let state = 'active';
+				const startedAt = new Date(Date.now() - 12 * 60_000).toISOString();
+				(readFileSync as jest.Mock).mockImplementation((path: string) =>
+					JSON.stringify(
+						path.includes('update-attempt')
+							? {
+									attemptId: 'slow-update',
+									ownerPid: process.pid,
+									targetVersion: '1.1.0-alpha.63',
+									state,
+									phase: state === 'active' ? 'starting' : 'complete',
+									recoveryRequired: false,
+								}
+							: {
+									status: state === 'active' ? UpdateStatusType.STARTING : UpdateStatusType.COMPLETE,
+									phase: state === 'active' ? 'starting' : 'complete',
+									targetVersion: '1.1.0-alpha.63',
+									startedAt,
+								},
+					),
+				);
+
+				await executor.onModuleInit();
+				await jest.advanceTimersByTimeAsync(12 * 60_000);
+				expect(updateService.setStatus).not.toHaveBeenCalledWith(
+					expect.objectContaining({ status: UpdateStatusType.FAILED }),
+				);
+				expect(privilegedWorker.clearUpdateStatus).not.toHaveBeenCalled();
+				expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+
+				if (complete) {
+					state = 'complete';
+					await jest.advanceTimersByTimeAsync(3_000);
+					expect(updateService.setStatus).toHaveBeenLastCalledWith(
+						expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+					);
+					expect(privilegedWorker.clearUpdateStatus).toHaveBeenCalledTimes(1);
+				} else {
+					await jest.advanceTimersByTimeAsync(UPDATE_WORKER_TIMEOUT_MS - 12 * 60_000);
+					expect(updateService.setStatus).toHaveBeenLastCalledWith(
+						expect.objectContaining({ status: UpdateStatusType.FAILED, error: expect.stringContaining('recovery') }),
+					);
+					expect(privilegedWorker.clearUpdateStatus).not.toHaveBeenCalled();
+					expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+				}
+			},
+		);
+
 		it('does not permit another update while a durable attempt requires recovery', async () => {
 			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
 			(readFileSync as jest.Mock).mockReturnValue(
@@ -518,7 +575,7 @@ describe('UpdateExecutorService', () => {
 		});
 
 		it('should detect timed-out updates', async () => {
-			const oldTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+			const oldTime = new Date(Date.now() - UPDATE_TIMEOUT_MS - 1).toISOString();
 
 			(existsSync as jest.Mock).mockReturnValue(true);
 			(readFileSync as jest.Mock).mockReturnValue(
@@ -535,7 +592,7 @@ describe('UpdateExecutorService', () => {
 			expect(updateService.setStatus).toHaveBeenCalledWith(
 				expect.objectContaining({
 					status: UpdateStatusType.FAILED,
-					error: expect.stringContaining('timed out'),
+					error: 'Update timed out after 30 minutes',
 				}),
 			);
 		});

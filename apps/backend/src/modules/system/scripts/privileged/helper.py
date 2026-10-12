@@ -17,8 +17,10 @@ STATE = Path('/var/lib/smart-panel-privileged')
 CONFIG = ROOT / 'config.json'
 SAFE_ENV = {'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
             'HOME': '/root', 'LANG': 'C.UTF-8', 'LC_ALL': 'C.UTF-8'}
+# Match system.constants.ts: a 30-minute update budget plus 30 seconds for settlement.
+UPDATE_RUNTIME_SECONDS = 30 * 60 + 30
 OPERATIONS = {
-    'update': ('smart-panel-update', 'update-worker.sh', 'update-status.json', 630),
+    'update': ('smart-panel-update', 'update-worker.sh', 'update-status.json', UPDATE_RUNTIME_SECONDS),
     'tailscale-setup': ('smart-panel-remote-access', 'tailscale-setup.sh', 'tailscale-setup-status.json', 600),
     'cloudflared-setup': ('smart-panel-remote-access-cloudflare', 'cloudflared-setup.sh',
                          'cloudflare-tunnel-setup-status.json', 600),

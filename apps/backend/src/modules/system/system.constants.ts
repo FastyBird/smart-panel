@@ -45,6 +45,11 @@ export enum EventType {
 	SYSTEM_UPDATE_PROGRESS = 'SystemModule.System.Update.Progress',
 }
 
+// Pi npm installs can spend more than ten minutes resolving dependencies before native rebuilds.
+export const UPDATE_TIMEOUT_MS = 30 * 60 * 1000;
+// Keep the fixed helper's update RuntimeMaxSec aligned with this bounded settlement allowance.
+export const UPDATE_WORKER_TIMEOUT_MS = UPDATE_TIMEOUT_MS + 30_000;
+
 export enum UpdateStatusType {
 	IDLE = 'idle',
 	CHECKING = 'checking',

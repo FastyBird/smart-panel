@@ -1814,6 +1814,29 @@ identify the candidate, and record these five outstanding checks in one combined
 | A4 | Both providers restored after setup/migration/update | Correct CLI/API/card/URL/proxy state and actual HTTPS, owner login and authenticated WebSocket recovery; retained identities/tokens remain private. |
 | A5 | Released Tailscale HTTPS-disabled advisory link | Observe clickable DNS-console navigation in the released admin. Retain the recorded disabled/restored HTTPS functionality; do not repeat the entire matrix to verify this link. |
 
+#### Alpha.63 acceptance progress (2026-10-12)
+
+Pi 4's existing npm installation upgraded from alpha.62 to alpha.63 through the legacy System updater.
+Data, configuration, accounts and Tailscale identity were preserved; the installed wrapper, backend
+and admin matched the published artifacts. Explicit trusted-root helper migration then passed and
+removed the wildcard sudo grant.
+
+A2 remains open: a subsequent alpha.63-to-alpha.63 System reinstall through the fixed helper reached
+npm package replacement, but systemd terminated it at the helper's 630-second limit while npm was
+still working. Migration had not started. The durable attempt and lock prevented another update.
+Operator recovery verified the unchanged database/schema/history and npm's retained original package
+tree, restored that exact alpha.63 tree, and verified native dependencies, health, admin and preserved
+data/configuration/identity. The interrupted tree and unresolved attempt were retained. This recovery
+is not a successful helper update. The correction gives application updates a bounded 30-minute budget
+with aligned worker, observer and lock deadlines; provider setup retains its ten-minute limit. Repeat
+the affected helper update gate after the correction is published, without restarting the provider matrix.
+
+A5 passed in the verified released alpha.63 admin: a browser-memory `tailnet-https-disabled` advisory
+fixture rendered the DNS-console anchor with `target="_blank"` and `rel="noopener noreferrer"`.
+Clicking it opened the Tailscale login page with `/admin/dns` as its destination. Reload removed the
+fixture; no backend configuration or tailnet HTTPS setting changed. This checks the released link;
+the earlier real HTTPS-disabled/restored evidence remains the functional evidence.
+
 Retained evidence, not tests of the new candidate:
 
 | Contract | Existing identified evidence |
