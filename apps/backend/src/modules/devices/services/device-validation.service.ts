@@ -10,6 +10,7 @@ import {
 	PropertyCategory,
 } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { permissionSatisfied } from '../utils/property-permissions.utils';
 import {
 	type PropertyMetadata,
 	getAllProperties,
@@ -679,29 +680,6 @@ export class DeviceValidationService {
 	}
 
 	/**
-	 * Check if a property's permissions satisfy a required permission.
-	 * READ_WRITE satisfies both READ_ONLY and WRITE_ONLY requirements.
-	 */
-	private permissionSatisfied(requiredPermission: PermissionType, propertyPermissions: Set<PermissionType>): boolean {
-		// Direct match
-		if (propertyPermissions.has(requiredPermission)) {
-			return true;
-		}
-
-		// READ_WRITE satisfies READ_ONLY requirement
-		if (requiredPermission === PermissionType.READ_ONLY && propertyPermissions.has(PermissionType.READ_WRITE)) {
-			return true;
-		}
-
-		// READ_WRITE satisfies WRITE_ONLY requirement
-		if (requiredPermission === PermissionType.WRITE_ONLY && propertyPermissions.has(PermissionType.READ_WRITE)) {
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
 	 * Validate a property against its specification
 	 */
 	private validatePropertyAgainstSpec(
@@ -743,7 +721,7 @@ export class DeviceValidationService {
 		if (spec.permissions && spec.permissions.length > 0) {
 			const propertyPermissions = new Set(property.permissions);
 			const unsatisfiedPermissions = spec.permissions.filter(
-				(requiredPerm) => !this.permissionSatisfied(requiredPerm, propertyPermissions),
+				(requiredPerm) => !permissionSatisfied(requiredPerm, propertyPermissions),
 			);
 
 			if (unsatisfiedPermissions.length > 0) {
@@ -1205,7 +1183,7 @@ export class DeviceValidationService {
 		if (spec.permissions && spec.permissions.length > 0 && property.permissions) {
 			const propertyPermissions = new Set(property.permissions);
 			const unsatisfiedPermissions = spec.permissions.filter(
-				(requiredPerm) => !this.permissionSatisfied(requiredPerm, propertyPermissions),
+				(requiredPerm) => !permissionSatisfied(requiredPerm, propertyPermissions),
 			);
 
 			if (unsatisfiedPermissions.length > 0) {
