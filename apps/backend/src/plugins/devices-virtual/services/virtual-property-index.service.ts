@@ -75,7 +75,7 @@ export interface VirtualIndexRebuildResult {
  * ## This service never fills itself
  *
  * There is no lifecycle hook here: VirtualIndexMaintenanceListener owns both the bootstrap hydration
- * and every rebuild after it, and this class only exposes rebuild() / add() / removeVirtualDevice()
+ * and every rebuild after it, and this class only exposes rebuild() / removeVirtualDevice()
  * for it to call. That is not merely tidier — rebuild() reports which virtual devices came out wired
  * differently (see VirtualIndexRebuildResult), and *something has to act on that report*. Hydrating
  * from in here would mean either discarding the first pass's report, which is how a virtual device
@@ -94,7 +94,7 @@ export interface VirtualIndexRebuildResult {
  * read at the point of use instead.
  *
  * `bySourceProperty` is the one exception and holds entities on purpose: its consumer
- * (VirtualProjectionListener) needs a full ChannelPropertyEntity to re-emit as the event payload,
+ * (VirtualProjectionListener) needs a full ChannelPropertyEntity to create a detached event snapshot,
  * and it runs on every property value change in the entire system. Resolving that live would put a
  * database read on the exact hot path this index exists to keep clear. What it caches is a property
  * row's own structure — refreshed by rebuild() on every CHANNEL_PROPERTY_* event — not another
@@ -215,25 +215,6 @@ export class VirtualPropertyIndexService {
 		return properties
 			.filter((property) => property.isProjecting)
 			.map((property) => this.toLink(property, this.resolveSourceDeviceId(property)));
-	}
-
-	/**
-	 * Indexes one projecting property after a CRUD create/update, without a full reload.
-	 * `sourceDeviceId` is supplied by the caller — by the time a property is linked, whoever
-	 * created/updated it has already resolved and validated its source, so re-deriving it here would
-	 * be redundant work. It is ignored for an orphaned property, which by definition has no source
-	 * device. The owning virtual device id, in contrast, is local to `property` itself and is
-	 * resolved from its own channel relation.
-	 *
-	 * Safe to call again for a property id already indexed: existing entries for that id are
-	 * replaced, not duplicated, so this also serves an update in place.
-	 */
-	add(property: VirtualChannelPropertyEntity, sourceDeviceId: string): void {
-		if (!property.isProjecting) {
-			return;
-		}
-
-		this.indexProperty(this.bySourceProperty, this.bySourceDevice, this.byVirtualDevice, property, sourceDeviceId);
 	}
 
 	/** Removes every trace of one virtual device, leaving no stale entries in any of the three maps. */
@@ -366,9 +347,8 @@ export class VirtualPropertyIndexService {
 	}
 
 	/**
-	 * Indexes one already-projecting property into the three supplied maps, shared by `add()` (which
-	 * passes the live maps and a caller-supplied `sourceDeviceId`, always resolvable by contract) and
-	 * `rebuild()` (which passes its fresh local maps and a resolved-from-relations `sourceDeviceId`
+	 * Indexes one already-projecting property into the three supplied maps. `rebuild()` passes its
+	 * fresh local maps and a resolved-from-relations `sourceDeviceId`
 	 * that, on a malformed row, may not be).
 	 *
 	 * `bySourceProperty` is populated first, before either device id is looked at: it reads only
@@ -425,8 +405,8 @@ export class VirtualPropertyIndexService {
 	 * Reduces one projecting property to the plain-id link shape both the index maps and
 	 * loadLinksByVirtualDevice() hand out, so the two can never disagree about what a link is.
 	 *
-	 * `sourceDeviceId` is passed in rather than always resolved here because `add()` supplies one its
-	 * caller already validated, while rebuild() and loadLinksByVirtualDevice() resolve it from the
+	 * `sourceDeviceId` is passed in rather than always resolved here because rebuild() and
+	 * loadLinksByVirtualDevice() resolve it from the
 	 * loaded relations. It is discarded for an orphaned property, which by definition has no source
 	 * device to name — not a failure, just nothing to resolve.
 	 */
