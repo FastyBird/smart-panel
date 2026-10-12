@@ -28,6 +28,7 @@ import {
 import { SignageAnnouncementsService } from './signage-announcements.service';
 
 describe('SignageAnnouncementsService', () => {
+	let module: TestingModule | undefined;
 	let service: SignageAnnouncementsService;
 	let repository: Repository<SignageAnnouncementEntity>;
 	let spacesService: SpacesService;
@@ -91,7 +92,7 @@ describe('SignageAnnouncementsService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SignageAnnouncementsService,
 				{ provide: getRepositoryToken(SignageAnnouncementEntity), useFactory: mockRepository },
@@ -313,5 +314,11 @@ describe('SignageAnnouncementsService', () => {
 			expect(result.map((r) => r.id)).toEqual(['b', 'a']);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.ANNOUNCEMENT_UPDATED, expect.any(Object));
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

@@ -37,7 +37,7 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1Service } from './shelly-v1.service';
 
 describe('ShellyV1Service', () => {
-	let module: TestingModule;
+	let module: TestingModule | undefined;
 	let service: ShellyV1Service;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsService: jest.Mocked<ChannelsService>;
@@ -204,7 +204,10 @@ describe('ShellyV1Service', () => {
 		channelInputOccurrencesService = module.get(ChannelInputOccurrencesService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

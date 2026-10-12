@@ -29,6 +29,7 @@ const mockReaddir = readdir as jest.MockedFunction<typeof readdir>;
 const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
 
 describe('MappingLoaderService', () => {
+	let module: TestingModule | undefined;
 	let service: MappingLoaderService;
 	let transformerRegistry: jest.Mocked<TransformerRegistry>;
 
@@ -88,7 +89,7 @@ describe('MappingLoaderService', () => {
 			}),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [MappingLoaderService, { provide: TransformerRegistry, useValue: transformerRegistryMock }],
 		}).compile();
 
@@ -96,7 +97,10 @@ describe('MappingLoaderService', () => {
 		transformerRegistry = module.get(TransformerRegistry);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

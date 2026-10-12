@@ -21,11 +21,12 @@ import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 import { HomeAssistantRegistryController } from './home-assistant-registry.controller';
 
 describe('HomeAssistantRegistryController', () => {
+	let module: TestingModule | undefined;
 	let controller: HomeAssistantRegistryController;
 	let homeAssistantWsService: jest.Mocked<HomeAssistantWsService>;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [HomeAssistantRegistryController],
 			providers: [
 				{
@@ -42,7 +43,10 @@ describe('HomeAssistantRegistryController', () => {
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

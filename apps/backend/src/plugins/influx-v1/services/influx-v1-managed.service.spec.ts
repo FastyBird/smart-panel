@@ -20,6 +20,7 @@ type Cfg = {
 };
 
 describe('InfluxV1ManagedService', () => {
+	let module: TestingModule | undefined;
 	let svc: InfluxV1ManagedService;
 	let cfgRef: Cfg;
 	let configService: { getPluginConfig: jest.Mock };
@@ -51,7 +52,7 @@ describe('InfluxV1ManagedService', () => {
 		MockInfluxV1Storage.prototype.destroy = jest.fn().mockResolvedValue(undefined);
 		MockInfluxV1Storage.prototype.isAvailable = jest.fn().mockReturnValue(true);
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				InfluxV1ManagedService,
 				{ provide: ConfigService, useValue: configService },
@@ -62,7 +63,10 @@ describe('InfluxV1ManagedService', () => {
 		svc = module.get(InfluxV1ManagedService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

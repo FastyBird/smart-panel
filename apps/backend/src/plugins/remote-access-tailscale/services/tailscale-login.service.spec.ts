@@ -136,6 +136,7 @@ describe('extractJsonObjects', () => {
 });
 
 describe('TailscaleLoginService', () => {
+	let module: TestingModule | undefined;
 	let service: TailscaleLoginService;
 	// spawnUp is given an explicit generic (return, args) instead of a bare
 	// jest.Mock so `cli.spawnUp.mock.calls[0][0]` below resolves to
@@ -151,6 +152,7 @@ describe('TailscaleLoginService', () => {
 		getOperationCoordinator: jest.Mock;
 		ensureSupervisorStartedForLogin: jest.Mock;
 		clearAuthentication: jest.Mock;
+		stop: jest.Mock;
 	};
 	let nestConfigServiceMock: { get: jest.Mock };
 	let dataDir: string;
@@ -173,6 +175,7 @@ describe('TailscaleLoginService', () => {
 			getOperationCoordinator: jest.fn().mockReturnValue(new TailscaleOperationCoordinatorService()),
 			ensureSupervisorStartedForLogin: jest.fn().mockResolvedValue(undefined),
 			clearAuthentication: jest.fn(),
+			stop: jest.fn().mockResolvedValue(undefined),
 			buildUpFlags: jest.fn().mockReturnValue(['--hostname=panel', '--operator=smart-panel']),
 			// Satisfied by default so every pre-existing test in this file
 			// keeps observing login()/logout()/resetPreferences() proceeding
@@ -194,7 +197,7 @@ describe('TailscaleLoginService', () => {
 		warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 		errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				TailscaleLoginService,
 				{ provide: TailscaleCliService, useValue: cli },
@@ -206,7 +209,10 @@ describe('TailscaleLoginService', () => {
 		service = module.get<TailscaleLoginService>(TailscaleLoginService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		rmSync(dataDir, { recursive: true, force: true });
 		jest.clearAllMocks();
 	});

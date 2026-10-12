@@ -6,6 +6,7 @@ import { LocationsBulkService } from './locations-bulk.service';
 import { LocationsService } from './locations.service';
 
 describe('LocationsBulkService', () => {
+	let module: TestingModule | undefined;
 	let service: LocationsBulkService;
 	let locationsService: { remove: jest.Mock };
 
@@ -14,7 +15,7 @@ describe('LocationsBulkService', () => {
 			remove: jest.fn().mockResolvedValue(undefined),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [LocationsBulkService, { provide: LocationsService, useValue: locationsService }],
 		}).compile();
 
@@ -66,5 +67,11 @@ describe('LocationsBulkService', () => {
 				},
 			]);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

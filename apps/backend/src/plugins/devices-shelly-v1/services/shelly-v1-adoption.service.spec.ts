@@ -9,6 +9,7 @@ import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShellyV1AdoptionService } from './shelly-v1-adoption.service';
 
 describe('ShellyV1AdoptionService', () => {
+	let module: TestingModule | undefined;
 	let service: ShellyV1AdoptionService;
 	let devicesService: { findOneBy: jest.Mock; create: jest.Mock; update: jest.Mock };
 
@@ -29,7 +30,7 @@ describe('ShellyV1AdoptionService', () => {
 			update: jest.fn().mockImplementation(() => Promise.resolve({ id: 'existing' } as ShellyV1DeviceEntity)),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [ShellyV1AdoptionService, { provide: DevicesService, useValue: devicesService }],
 		}).compile();
 
@@ -124,5 +125,11 @@ describe('ShellyV1AdoptionService', () => {
 		]);
 
 		expect(outcomes.map((outcome) => outcome.status)).toEqual(['created', 'failed', 'created']);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

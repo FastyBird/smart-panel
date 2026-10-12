@@ -19,6 +19,7 @@ import { Z2mVirtualPropertyService } from './virtual-property.service';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 describe('Z2mMappingPreviewService', () => {
+	let module: TestingModule | undefined;
 	let service: Z2mMappingPreviewService;
 	let zigbee2mqttService: jest.Mocked<Zigbee2mqttService>;
 	let mappingLoader: MappingLoaderService;
@@ -127,7 +128,7 @@ describe('Z2mMappingPreviewService', () => {
 	beforeEach(async () => {
 		jest.clearAllMocks();
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				Z2mMappingPreviewService,
 				Z2mExposesMapperService,
@@ -557,5 +558,11 @@ describe('Z2mMappingPreviewService', () => {
 			expect(preview.suggestedDevice.category).toBe(DeviceCategory.INPUT_CONTROLLER);
 			expect(preview.readyToAdopt).toBe(true);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

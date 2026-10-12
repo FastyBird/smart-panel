@@ -52,6 +52,7 @@ import { IntentSpecLoaderService } from '../spec';
 import { SpacesDomainController } from './spaces-domain.controller';
 
 describe('SpacesDomainController', () => {
+	let module: TestingModule | undefined;
 	let controller: SpacesDomainController;
 	let spacesService: SpacesService;
 	let homeControlSpacesService: HomeControlSpacesService;
@@ -69,7 +70,7 @@ describe('SpacesDomainController', () => {
 	} as SpaceEntity;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [SpacesDomainController],
 			providers: [
 				{
@@ -1295,5 +1296,11 @@ describe('SpacesDomainController', () => {
 			expect(result.data.success).toBe(false);
 			expect(result.data.failedDevices).toBe(2);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

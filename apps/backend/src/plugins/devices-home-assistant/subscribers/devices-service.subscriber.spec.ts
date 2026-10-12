@@ -18,13 +18,14 @@ import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 import { DevicesServiceSubscriber } from './devices-service.subscriber';
 
 describe('DevicesServiceSubscriber', () => {
+	let module: TestingModule | undefined;
 	let service: DevicesServiceSubscriber;
 	let haWsService: jest.Mocked<HomeAssistantWsService>;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsService: jest.Mocked<ChannelsService>;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DevicesServiceSubscriber,
 				{
@@ -54,7 +55,10 @@ describe('DevicesServiceSubscriber', () => {
 		channelsService = module.get(ChannelsService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

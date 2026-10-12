@@ -17,6 +17,7 @@ import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 import { ShellyV1DevicesController } from './shelly-v1-devices.controller';
 
 describe('ShellyV1DevicesController', () => {
+	let module: TestingModule | undefined;
 	let controller: ShellyV1DevicesController;
 	let probeService: jest.Mocked<ShellyV1ProbeService>;
 	let adoptionService: jest.Mocked<ShellyV1AdoptionService>;
@@ -38,7 +39,7 @@ describe('ShellyV1DevicesController', () => {
 			adopt: jest.fn(),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [ShellyV1DevicesController],
 			providers: [
 				{ provide: ShellyV1ProbeService, useValue: probeServiceMock },
@@ -52,7 +53,10 @@ describe('ShellyV1DevicesController', () => {
 		adoptionService = module.get(ShellyV1AdoptionService) as jest.Mocked<ShellyV1AdoptionService>;
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

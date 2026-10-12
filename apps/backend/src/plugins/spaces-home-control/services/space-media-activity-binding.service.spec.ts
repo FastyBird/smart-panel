@@ -62,6 +62,7 @@ function buildSummary(deviceId: string, deviceName: string, deviceCategory: stri
 }
 
 describe('SpaceMediaActivityBindingService', () => {
+	let module: TestingModule | undefined;
 	let service: SpaceMediaActivityBindingService;
 	let mockRepository: {
 		find: jest.Mock;
@@ -103,7 +104,7 @@ describe('SpaceMediaActivityBindingService', () => {
 			getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceMediaActivityBindingService,
 				{ provide: getRepositoryToken(SpaceMediaActivityBindingEntity), useValue: mockRepository },
@@ -466,5 +467,11 @@ describe('SpaceMediaActivityBindingService', () => {
 
 			expect(watchReport.issues.filter((i) => i.severity === 'warning')).toHaveLength(2); // display + audio
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });
