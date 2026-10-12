@@ -68,6 +68,7 @@ export interface IChannelsPropertiesStoreActions {
 	findForChannel: (channelId: IChannel['id']) => IChannelProperty[];
 	findAll: () => IChannelProperty[];
 	// Actions
+	captureReadSnapshot: () => (payload: IChannelsPropertiesSetActionPayload) => IChannelProperty;
 	onEvent: (payload: IChannelsPropertiesOnEventActionPayload) => IChannelProperty;
 	set: (payload: IChannelsPropertiesSetActionPayload) => IChannelProperty;
 	unset: (payload: IChannelsPropertiesUnsetActionPayload) => void;

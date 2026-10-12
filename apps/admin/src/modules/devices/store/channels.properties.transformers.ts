@@ -45,7 +45,8 @@ export const transformChannelPropertyUpdateRequest = <T extends IChannelProperty
 	data: IChannelsPropertiesEditActionPayload['data'],
 	schema: typeof ChannelPropertyUpdateReqSchema
 ): T => {
-	const parsed = schema.safeParse(camelToSnake(data));
+	const supplied = camelToSnake(data);
+	const parsed = schema.safeParse(supplied);
 
 	if (!parsed.success) {
 		logger.error('Schema validation failed with:', parsed.error);
@@ -53,5 +54,6 @@ export const transformChannelPropertyUpdateRequest = <T extends IChannelProperty
 		throw new DevicesValidationException('Failed to validate update channel property request.');
 	}
 
-	return parsed.data as T;
+	// Request schemas may supply defaults. PATCH must preserve the caller's omissions.
+	return Object.fromEntries(Object.entries(parsed.data).filter(([key]) => Object.hasOwn(supplied, key) && supplied[key] !== undefined)) as T;
 };

@@ -2,16 +2,16 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { isUndefined, omit, omitBy } from 'lodash';
+import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type {
-	DevicesModuleGetChannelPropertyOperation,
-	DevicesModuleGetChannelPropertiesOperation,
 	DevicesModuleCreateChannelPropertyOperation,
-	DevicesModuleUpdateChannelPropertyOperation,
 	DevicesModuleDeleteChannelPropertyOperation,
+	DevicesModuleGetChannelPropertiesOperation,
+	DevicesModuleGetChannelPropertyOperation,
+	DevicesModuleUpdateChannelPropertyOperation,
 } from '../../../openapi.constants';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -91,9 +91,36 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 		const pendingFetchPromises: Record<string, Promise<IChannelProperty[]>> = {};
 
+		// Writes (including deletion tombstones) fence snapshots requested before them.
+		let mutationToken = 0;
+		const mutationTokenById: Record<IChannelProperty['id'], number> = {};
+		const scopeMutationToken: Record<string, number> = {};
+		let requestGeneration = 0;
+		const readGenerationById: Record<IChannelProperty['id'], number> = {};
+
+		const commit = (item: IChannelProperty): IChannelProperty => {
+			mutationTokenById[item.id] = ++mutationToken;
+			return (data.value[item.id] = item);
+		};
+
+		const forget = (id: IChannelProperty['id']): void => {
+			mutationTokenById[id] = ++mutationToken;
+			delete data.value[id];
+		};
+
+		const unchangedSince = (item: IChannelProperty, requestedAt: number): boolean =>
+			(mutationTokenById[item.id] ?? 0) <= requestedAt && (scopeMutationToken[item.channel] ?? 0) <= requestedAt;
+
+		const canApplyRead = (item: IChannelProperty, requestedAt: number, generation: number): boolean =>
+			unchangedSince(item, requestedAt) && (readGenerationById[item.id] ?? 0) <= generation;
+
 		// Shared by `set` and `onEvent` so a single incoming event scans the plugin registry once,
 		// not twice: each caller resolves `element` itself and hands it in here.
-		const applySet = (payload: IChannelsPropertiesSetActionPayload, element: ReturnType<typeof getPluginElement>): IChannelProperty => {
+		const applySet = (
+			payload: IChannelsPropertiesSetActionPayload,
+			element: ReturnType<typeof getPluginElement>,
+			apply: (item: IChannelProperty) => IChannelProperty = commit
+		): IChannelProperty => {
 			if (payload.id && data.value && payload.id in data.value) {
 				const parsed = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
@@ -103,7 +130,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 					throw new DevicesValidationException('Failed to insert channel property.');
 				}
 
-				return (data.value[parsed.data.id] = parsed.data);
+				return apply(parsed.data);
 			}
 
 			const parsed = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...payload.data, id: payload.id });
@@ -116,7 +143,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 			data.value = data.value ?? {};
 
-			return (data.value[parsed.data.id] = parsed.data);
+			return apply(parsed.data);
 		};
 
 		const onEvent = (payload: IChannelsPropertiesOnEventActionPayload): IChannelProperty => {
@@ -136,23 +163,38 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 		const set = (payload: IChannelsPropertiesSetActionPayload): IChannelProperty => applySet(payload, getPluginElement(payload.data.type));
 
+		// Parents capture this before their request, so embedded snapshots share the child's fences.
+		const captureReadSnapshot: IChannelsPropertiesStoreActions['captureReadSnapshot'] = () => {
+			const requestedAt = mutationToken;
+			const generation = ++requestGeneration;
+			return (payload: IChannelsPropertiesSetActionPayload): IChannelProperty =>
+				applySet(payload, getPluginElement(payload.data.type), (item: IChannelProperty): IChannelProperty => {
+					if (canApplyRead(item, requestedAt, generation)) {
+						readGenerationById[item.id] = generation;
+						data.value[item.id] = item;
+					}
+					return data.value[item.id] ?? item;
+				});
+		};
+
 		const unset = (payload: IChannelsPropertiesUnsetActionPayload): void => {
 			if (!data.value) {
 				return;
 			}
 
 			if (payload.channelId !== undefined) {
+				scopeMutationToken[payload.channelId] = ++mutationToken;
 				const items = findForChannel(payload.channelId);
 
 				for (const item of items) {
 					if (item.id in (data.value ?? {})) {
-						delete (data.value ?? {})[item.id];
+						forget(item.id);
 					}
 				}
 
 				return;
 			} else if (payload.id !== undefined) {
-				delete data.value[payload.id];
+				forget(payload.id);
 
 				return;
 			}
@@ -165,6 +207,9 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 			if (existingPromise) {
 				return existingPromise;
 			}
+
+			const requestedAt = mutationToken;
+			const generation = ++requestGeneration;
 
 			const getPromise = (async (): Promise<IChannelProperty> => {
 				if (semaphore.value.fetching.item.includes(payload.id)) {
@@ -189,7 +234,10 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 						const transformed = transformChannelPropertyResponse(responseData.data, element?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-						data.value[transformed.id] = transformed;
+						if (canApplyRead(transformed, requestedAt, generation)) {
+							readGenerationById[transformed.id] = generation;
+							data.value[transformed.id] = transformed;
+						}
 
 						return transformed;
 					}
@@ -221,6 +269,9 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 				return existingPromise;
 			}
 
+			const requestedAt = mutationToken;
+			const generation = ++requestGeneration;
+
 			const fetchPromise = (async (): Promise<IChannelProperty[]> => {
 				if (semaphore.value.fetching.items.includes(payload.channelId)) {
 					throw new DevicesApiException('Already fetching properties.');
@@ -246,17 +297,17 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 						firstLoad.value.push(payload.channelId);
 						firstLoad.value = [...new Set(firstLoad.value)];
 
-						const properties = Object.fromEntries(
-							responseData.data.map((property) => {
-								const element = getPluginElement(property.type);
+						for (const property of responseData.data) {
+							const element = getPluginElement(property.type);
+							const transformed = transformChannelPropertyResponse(property, element?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-								const transformed = transformChannelPropertyResponse(property, element?.schemas?.channelPropertySchema || ChannelPropertySchema);
+							if (!canApplyRead(transformed, requestedAt, generation)) {
+								continue;
+							}
 
-								return [transformed.id, transformed];
-							})
-						);
-
-						data.value = { ...data.value, ...properties };
+							readGenerationById[transformed.id] = generation;
+							data.value[transformed.id] = transformed;
+						}
 
 						return Object.values(data.value);
 					}
@@ -309,7 +360,8 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 			semaphore.value.creating.push(parsedNewItem.data.id);
 
-			data.value[parsedNewItem.data.id] = parsedNewItem.data;
+			commit(parsedNewItem.data);
+			const requestedAt = mutationToken;
 
 			if (parsedNewItem.data.draft) {
 				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
@@ -338,13 +390,19 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 						const transformed = transformChannelPropertyResponse(responseData.data, element?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-						data.value[transformed.id] = transformed;
+						if (!unchangedSince(transformed, requestedAt)) {
+							return data.value[transformed.id] ?? transformed;
+						}
+
+						commit(transformed);
 
 						return transformed;
 					}
 
 					// Record could not be created on api, we have to remove it from a database
-					delete data.value[parsedNewItem.data.id];
+					if (unchangedSince(parsedNewItem.data, requestedAt)) {
+						forget(parsedNewItem.data.id);
+					}
 
 					let errorReason: string | null = 'Failed to create channel property.';
 
@@ -379,8 +437,8 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 			const element = getPluginElement(payload.data.type);
 
 			const parsedEditedItem = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({
-				...omit(data.value[payload.id], 'value'),
-				...omitBy(payload.data, isUndefined),
+				...data.value[payload.id],
+				...omitBy({ ...payload.data, ...parsedPayload.data.data }, isUndefined),
 			});
 
 			if (!parsedEditedItem.success) {
@@ -391,7 +449,8 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 			semaphore.value.updating.push(payload.id);
 
-			data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
+			commit(parsedEditedItem.data);
+			const requestedAt = mutationToken;
 
 			if (parsedEditedItem.data.draft) {
 				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
@@ -409,9 +468,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 						},
 						body: {
 							data: transformChannelPropertyUpdateRequest<IChannelPropertyUpdateReq>(
-								{
-									...('value' in payload.data ? { ...parsedEditedItem.data, value: parsedEditedItem.data.value?.value ?? null } : omit(parsedEditedItem.data, 'value')),
-								},
+								{ ...payload.data, ...parsedPayload.data.data },
 								element?.schemas?.channelPropertyUpdateReqSchema || ChannelPropertyUpdateReqSchema
 							),
 						},
@@ -422,13 +479,23 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 						const transformed = transformChannelPropertyResponse(responseData.data, element?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-						data.value[transformed.id] = transformed;
+						if (!unchangedSince(transformed, requestedAt)) {
+							return data.value[transformed.id] ?? transformed;
+						}
+
+						commit(transformed);
 
 						return transformed;
 					}
 
 					// Updating the record on api failed, we need to refresh the record
-					await get({ id: payload.id, channelId: payload.channelId });
+					if (unchangedSince(parsedEditedItem.data, requestedAt)) {
+						// Drain an older coalesced GET before asking for recovery state.
+						await pendingGetPromises[payload.id]?.catch(() => undefined);
+						if (unchangedSince(parsedEditedItem.data, requestedAt)) {
+							await get({ id: payload.id, channelId: payload.channelId });
+						}
+					}
 
 					let errorReason: string | null = 'Failed to update channel property.';
 
@@ -464,6 +531,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 			}
 
 			semaphore.value.updating.push(payload.id);
+			const requestedAt = mutationToken;
 
 			try {
 				const {
@@ -487,7 +555,11 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 					const transformed = transformChannelPropertyResponse(responseData.data, element?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-					data.value[transformed.id] = transformed;
+					if (!unchangedSince(transformed, requestedAt)) {
+						return data.value[transformed.id] ?? transformed;
+					}
+
+					commit(transformed);
 
 					return transformed;
 				}
@@ -517,17 +589,20 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 			const recordToRemove = data.value[payload.id];
 
-			delete data.value[payload.id];
+			forget(payload.id);
 
 			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {
-					const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
-						params: {
-							path: { channelId: payload.channelId, id: payload.id },
-						},
-					});
+					const { error, response } = await backend.client.DELETE(
+						`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`,
+						{
+							params: {
+								path: { channelId: payload.channelId, id: payload.id },
+							},
+						}
+					);
 
 					if (response.status === 204) {
 						return true;
@@ -562,6 +637,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 			findForChannel,
 			findById,
 			onEvent,
+			captureReadSnapshot,
 			set,
 			unset,
 			get,

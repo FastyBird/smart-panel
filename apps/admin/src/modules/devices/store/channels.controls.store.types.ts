@@ -64,6 +64,7 @@ export interface IChannelsControlsStoreActions {
 	findForChannel: (channelId: IChannel['id']) => IChannelControl[];
 	findAll: () => IChannelControl[];
 	// Actions
+	captureReadSnapshot: () => (payload: IChannelsControlsSetActionPayload) => IChannelControl;
 	onEvent: (payload: IChannelsControlsOnEventActionPayload) => IChannelControl;
 	set: (payload: IChannelsControlsSetActionPayload) => IChannelControl;
 	unset: (payload: IChannelsControlsUnsetActionPayload) => void;

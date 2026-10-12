@@ -142,6 +142,7 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 	channelId: ItemIdSchema,
 	data: z.object({
 		type: z.string().trim().nonempty(),
+		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType).optional(),
 		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).optional(),
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable().optional(),

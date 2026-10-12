@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
@@ -122,6 +123,19 @@ describe('Channels Transformers', (): void => {
 					ChannelUpdateReqSchema
 				)
 			).toThrow(DevicesValidationException);
+		});
+	});
+});
+
+describe('transformChannelUpdateRequest omissions', () => {
+	it('does not let schema defaults fill omitted PATCH fields', () => {
+		const schema = ChannelUpdateReqSchema.and(
+			z.object({
+				name: z.string().nullable().default(null),
+			})
+		);
+		expect(transformChannelUpdateRequest({ type: 'some-type', step: null } as Parameters<typeof transformChannelUpdateRequest>[0], schema)).toEqual({
+			type: 'some-type',
 		});
 	});
 });
