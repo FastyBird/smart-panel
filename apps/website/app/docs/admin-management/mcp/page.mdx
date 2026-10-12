@@ -160,7 +160,8 @@ address; trust only the address reported as the backend socket peer.
 
 MCP also accepts forwarded headers from any peer the [Remote access](/docs/admin-management/remote-access) module
 already trusts — every **Trusted proxies** entry (while **Trust forwarded headers** is on) and every connected
-provider's own proxy address, such as a Tailscale node while Serve is active. `FB_MCP_OAUTH_TRUSTED_PROXIES` stays
+provider's own proxy address, such as Tailscale Serve or Cloudflare Tunnel. These module contributions
+apply only while the module is enabled and the provider is connected. `FB_MCP_OAUTH_TRUSTED_PROXIES` stays
 useful for an operator who fronts Smart Panel with their own proxy but never enables the Remote access module; the
 two lists are additive, not exclusive.
 

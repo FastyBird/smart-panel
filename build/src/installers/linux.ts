@@ -18,6 +18,7 @@ import {
 	getAdminDistPath,
 	getBackendCliPath,
 	getBackendMainPath,
+	getBackendPath,
 	getDataSourcePath,
 	getNodePath,
 	getTypeOrmCliPath,
@@ -64,6 +65,10 @@ export class LinuxInstaller implements BaseInstaller {
 			errors.push('Node.js executable not found');
 		}
 
+		if (!existsSync('/usr/bin/python3')) {
+			errors.push('Python 3 is required for the privileged helper (install the python3 package)');
+		}
+
 		// Check Node.js version (>= 24 required)
 		const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
 
@@ -73,7 +78,10 @@ export class LinuxInstaller implements BaseInstaller {
 
 		// Check disk space (need at least 200 MB)
 		try {
-			const dfOutput = execFileSync('df', ['-BM', '/var/lib'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+			const dfOutput = execFileSync('df', ['-BM', '/var/lib'], {
+				encoding: 'utf-8',
+				stdio: ['pipe', 'pipe', 'ignore'],
+			});
 			const lines = dfOutput.trim().split('\n');
 
 			if (lines.length >= 2) {
@@ -113,8 +121,8 @@ export class LinuxInstaller implements BaseInstaller {
 		// Install polkit rule for reboot/poweroff authorization
 		this.createPolkitRule(user);
 
-		// Install sudoers for service management and updates
-		this.createSudoersRule(user);
+		// Provision protected workers and the narrow sudoers policy from the installed release.
+		this.installPrivilegedHelper(user, dataDir, port);
 
 		// Reload systemd
 		exec('systemctl daemon-reload');
@@ -122,6 +130,8 @@ export class LinuxInstaller implements BaseInstaller {
 		// Enable service
 		exec('systemctl enable smart-panel');
 
+		// Application code always runs as the service account, including during installation.
+		setOwnership(dataDir, user);
 		// Run migrations
 		await this.runMigrations(dataDir);
 
@@ -141,6 +151,8 @@ export class LinuxInstaller implements BaseInstaller {
 	}
 
 	async uninstall(options: UninstallOptions): Promise<void> {
+		// Refuse before stopping the application or deleting data owned by an active worker.
+		this.assertNoActivePrivilegedJobs();
 		const { keepData } = options;
 
 		// Read installed config before removing environment file
@@ -154,6 +166,8 @@ export class LinuxInstaller implements BaseInstaller {
 		} catch {
 			// Service might not be running
 		}
+		// A request accepted immediately before stop may have launched an independent worker.
+		this.assertNoActivePrivilegedJobs();
 
 		try {
 			exec('systemctl disable smart-panel', { silent: true });
@@ -164,6 +178,16 @@ export class LinuxInstaller implements BaseInstaller {
 		// Remove systemd service file
 		if (existsSync(SYSTEMD_PATH)) {
 			unlinkSync(SYSTEMD_PATH);
+		}
+
+		// Remove only this installer's policy/drop-in; preserve unrelated administrator settings.
+		for (const path of [
+			'/etc/sudoers.d/smart-panel',
+			'/etc/systemd/system/smart-panel.service.d/privileged-helper.conf',
+		]) {
+			if (existsSync(path)) {
+				unlinkSync(path);
+			}
 		}
 
 		// Reload systemd
@@ -217,6 +241,10 @@ export class LinuxInstaller implements BaseInstaller {
 		}
 
 		const config: InstalledConfig = {};
+		const portMatch = content.match(/^FB_BACKEND_PORT=(\d+)$/m);
+		if (portMatch?.[1]) {
+			config.port = Number(portMatch[1]);
+		}
 
 		const userMatch = content.match(/^FB_SERVICE_USER=(.+)$/m);
 		if (userMatch?.[1]) {
@@ -301,10 +329,9 @@ export class LinuxInstaller implements BaseInstaller {
 
 					// Get uptime
 					try {
-						const startTimeOutput = exec(
-							'systemctl show smart-panel --property=ActiveEnterTimestamp --value',
-							{ silent: true }
-						);
+						const startTimeOutput = exec('systemctl show smart-panel --property=ActiveEnterTimestamp --value', {
+							silent: true,
+						});
 						const startTime = new Date(startTimeOutput.trim());
 						const calculatedUptime = Math.floor((Date.now() - startTime.getTime()) / 1000);
 						// Only assign if valid (not NaN and non-negative)
@@ -365,11 +392,16 @@ export class LinuxInstaller implements BaseInstaller {
 			NODE_ENV: 'production',
 		};
 
-		execFileSync('node', [typeormCli, 'migration:run', '-d', dataSource], {
-			cwd: actualModulesPath,
-			env,
-			stdio: 'inherit',
-		});
+		const user = this.getInstalledConfig().user || 'smart-panel';
+		execFileSync(
+			'/usr/sbin/runuser',
+			['-u', user, '--', getNodePath(), typeormCli, 'migration:run', '-d', dataSource],
+			{
+				cwd: actualModulesPath,
+				env,
+				stdio: 'inherit',
+			},
+		);
 	}
 
 	async createAdminUser(dataDir: string, username: string, password: string): Promise<void> {
@@ -392,11 +424,16 @@ export class LinuxInstaller implements BaseInstaller {
 			NODE_ENV: 'production',
 		};
 
-		execFileSync('node', [backendCli, 'auth:onboarding', username, password], {
-			cwd: actualModulesPath,
-			env,
-			stdio: 'inherit',
-		});
+		const user = this.getInstalledConfig().user || 'smart-panel';
+		execFileSync(
+			'/usr/sbin/runuser',
+			['-u', user, '--', getNodePath(), backendCli, 'auth:onboarding', username, password],
+			{
+				cwd: actualModulesPath,
+				env,
+				stdio: 'inherit',
+			},
+		);
 	}
 
 	private createEnvironmentFile(dataDir: string, port: number, user: string): void {
@@ -475,7 +512,7 @@ SyslogIdentifier=smart-panel
 # are also omitted because they implicitly enable NoNewPrivileges.
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=${dataDir}
+ReadWritePaths=${dataDir} /var/lib/smart-panel-privileged
 PrivateTmp=true
 ProtectControlGroups=true
 
@@ -508,18 +545,50 @@ polkit.addRule(function (action, subject) {
 		writeFile(join(rulesDir, '50-smart-panel.rules'), content, 0o644);
 	}
 
-	private createSudoersRule(user: string): void {
-		const npmPath = getNodePath().replace(/node$/, 'npm');
+	private installPrivilegedHelper(user: string, dataDir: string, port: number): void {
+		const backendRoot = getBackendPath(this.packageRoot);
+		execFileSync(
+			'/usr/bin/python3',
+			[
+				'-I',
+				join(backendRoot, 'dist', 'modules', 'system', 'scripts', 'privileged', 'install-helper.py'),
+				'--backend-root',
+				backendRoot,
+				'--install-type',
+				'npm',
+				'--service-user',
+				user,
+				'--data-dir',
+				dataDir,
+				'--port',
+				String(port),
+			],
+			{ stdio: 'inherit' },
+		);
+	}
 
-		const content = `# Smart Panel service management and update operations
-${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
-${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
-${user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
-${user} ALL=(ALL) NOPASSWD: ${npmPath} install *
-${user} ALL=(ALL) NOPASSWD: ${npmPath} update *
-${user} ALL=(ALL) NOPASSWD: /usr/bin/systemd-run *
-`;
-
-		writeFile('/etc/sudoers.d/smart-panel', content, 0o440);
+	private assertNoActivePrivilegedJobs(): void {
+		if (!existsSync('/usr/local/libexec/smart-panel/helper')) {
+			return;
+		}
+		for (const unit of [
+			'smart-panel-update.service',
+			'smart-panel-remote-access.service',
+			'smart-panel-remote-access-cloudflare.service',
+		]) {
+			let state;
+			try {
+				state = execFileSync('/usr/bin/systemctl', ['show', unit, '--property=ActiveState', '--value'], {
+					encoding: 'utf8',
+					timeout: 5000,
+					stdio: ['ignore', 'pipe', 'pipe'],
+				}).trim();
+			} catch {
+				throw new Error(`Cannot establish privileged worker state (${unit}); uninstall refused.`);
+			}
+			if (!['inactive', 'failed'].includes(state)) {
+				throw new Error(`Privileged worker ${unit} is active or its state is ambiguous; uninstall refused.`);
+			}
+		}
 	}
 }

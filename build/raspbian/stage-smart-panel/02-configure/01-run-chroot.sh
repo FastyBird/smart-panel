@@ -47,28 +47,11 @@ exec sudo -u smart-panel /bin/bash -c '
 CLI_WRAPPER
 chmod +x /usr/local/bin/smart-panel-cli
 
-# Allow smart-panel user to run specific system commands via sudoers
-cat > /etc/sudoers.d/smart-panel << 'SUDOERS'
-# Smart Panel system commands
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/true
-smart-panel ALL=(ALL) NOPASSWD: /sbin/reboot
-smart-panel ALL=(ALL) NOPASSWD: /sbin/poweroff
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/vcgencmd get_throttled
-# Update operations (symlink switch, service management, ownership)
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v[0-9]* /opt/smart-panel/current
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
-# The display app is updated by the same CLI, running as the same unprivileged user.
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel-display
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel-display
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel-display
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/chown -R smart-panel\:smart-panel /opt/smart-panel/v[0-9]*
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/npm install *
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/npm update *
-smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemd-run *
-SUDOERS
-chmod 0440 /etc/sudoers.d/smart-panel
+# Install root-owned helper workers and replace legacy wildcard sudo grants.
+/usr/bin/python3 -I /opt/smart-panel/current/dist/modules/system/scripts/privileged/install-helper.py \
+	--backend-root /opt/smart-panel/current --install-type image \
+	--service-user smart-panel --data-dir /var/lib/smart-panel --port 3000 \
+	--image-base-dir /opt/smart-panel
 
 # Install polkit rule to allow smart-panel user to reboot/poweroff
 mkdir -p /etc/polkit-1/rules.d

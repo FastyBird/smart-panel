@@ -6,6 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { PRIVILEGED_OPERATIONS } from '../../../common/utils/privileged-helper.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { PlatformType } from '../../../modules/platform/platform.constants';
@@ -117,6 +118,22 @@ describe('CloudflareTunnelSetupService', () => {
 			expect(spec.unitType).toBe('service');
 			expect(spec.script).toContain('cloudflared-setup.sh');
 			expect(existsSync(spec.script)).toBe(true);
+		});
+
+		it('selects the installed helper status without creating backend-writable setup state', async () => {
+			platformServiceMock.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: true,
+				transport: 'helper',
+				reason: null,
+			});
+			await service.install();
+			expect(privilegedWorker.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					job: 'cloudflared-setup',
+					statusFile: PRIVILEGED_OPERATIONS['cloudflared-setup'].statusFile,
+				}),
+			);
+			expect(existsSync(join(dataDir, 'remote-access-cloudflare-tunnel'))).toBe(false);
 		});
 
 		it('creates the data subdirectory for the status file', async () => {

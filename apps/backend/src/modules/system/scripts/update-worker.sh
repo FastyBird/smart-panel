@@ -9,6 +9,55 @@ DOWNLOAD_URL="${DOWNLOAD_URL:-}"
 HEALTH_URL="${HEALTH_URL:-}"
 HEALTH_EXPECTED_VERSION="${HEALTH_EXPECTED_VERSION:-$VERSION}"
 UPDATE_START_MODE="${UPDATE_START_MODE:-running-service}"
+HELPER_MANAGED="${HELPER_MANAGED:-0}"
+SMART_PANEL_USER="${SMART_PANEL_USER:-smart-panel}"
+JOB_ID="${PRIVILEGED_WORKER_JOB_ID:-}"
+NATIVE_OWNERSHIP_PENDING=0
+native_dirs=()
+
+restore_native_ownership() {
+	[ "$NATIVE_OWNERSHIP_PENDING" = 1 ] || return 0
+	local native_dir
+	for native_dir in "${native_dirs[@]}"; do
+		chown -hR root:root "$native_dir" || return 1
+		chmod -R a+rX,go-w "$native_dir" || return 1
+	done
+	NATIVE_OWNERSHIP_PENDING=0
+}
+
+if [ -n "$JOB_ID" ] && [[ ! "$JOB_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+	printf 'Invalid privileged worker job identity\n' >&2
+	exit 64
+fi
+
+# The protected helper supplies the complete environment from root-owned configuration.
+# Legacy/operator mode remains a compatibility path until explicit privilege migration.
+if [ "$HELPER_MANAGED" = 1 ]; then
+	[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]] || {
+		printf 'Protected updates require an exact semantic version\n' >&2
+		exit 64
+	}
+	[ "$EUID" -eq 0 ] && [ -n "$JOB_ID" ] || exit 64
+fi
+
+run_application() {
+	if [ "$HELPER_MANAGED" = 1 ]; then
+		/usr/sbin/runuser -u "$SMART_PANEL_USER" -- "$@"
+	else
+		"$@"
+	fi
+}
+
+provision_helper() {
+	local backend_root="$1"
+	[ "$HELPER_MANAGED" = 1 ] || return 0
+	local installer="${backend_root}/dist/modules/system/scripts/privileged/install-helper.py"
+	[ -f "$installer" ] && [ ! -L "$installer" ] || return 1
+	local args=(--worker-refresh --backend-root "$backend_root" --install-type "$INSTALL_TYPE"
+		--service-user "$SMART_PANEL_USER" --data-dir "$FB_DATA_DIR" --port "$FB_BACKEND_PORT")
+	if [ "$INSTALL_TYPE" = image ]; then args+=(--image-base-dir "$IMAGE_BASE_DIR"); fi
+	/usr/bin/python3 -I "$installer" "${args[@]}"
+}
 
 # `stopped-maintenance` is an operator-only mode.  The API always supplies the default
 # running-service mode; this mode is intentionally guarded by a complete, explicit identity
@@ -434,12 +483,14 @@ target_process_is_stable() {
 	state="$(service_property ActiveState 2>/dev/null || true)"
 	main_pid="$(service_property MainPID 2>/dev/null || true)"
 	start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
-	resolved_target="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
-	expected_target="$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)"
 
 	[ "$state" = "active" ] || return 1
 	[ "$main_pid" != "0" ] && [ -n "$main_pid" ] || return 1
 	[ -n "$start_identity" ] || return 1
+	# npm has no versioned image symlink; process and health checks still apply.
+	[ "$INSTALL_TYPE" = "image" ] || return 0
+	resolved_target="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
+	expected_target="$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)"
 	[ -n "$CURRENT_LINK" ] && [ -n "$NEW_VERSION_DIR" ] || return 1
 	[ -n "$expected_target" ] && [ "$resolved_target" = "$expected_target" ] || return 1
 }
@@ -862,8 +913,8 @@ update_status() {
 		safe_error=$(printf '%s' "$error" | sed 's/\\/\\\\/g; s/"/\\"/g')
 	fi
 
-	printf '{\n\t"status": "%s",\n\t"phase": "%s",\n\t"targetVersion": "%s",\n\t"startedAt": "%s"' \
-		"$status" "$phase" "$VERSION" "$STARTED_AT" > "$tmp_file"
+	printf '{\n\t"jobId": "%s",\n\t"status": "%s",\n\t"phase": "%s",\n\t"targetVersion": "%s",\n\t"startedAt": "%s"' \
+		"$JOB_ID" "$status" "$phase" "$VERSION" "$STARTED_AT" > "$tmp_file"
 
 	if [ -n "$completed_at" ]; then
 		printf ',\n\t"completedAt": "%s"' "$completed_at" >> "$tmp_file"
@@ -877,6 +928,13 @@ update_status() {
 
 cleanup() {
 	local exit_code=$?
+	if ! restore_native_ownership; then
+		if [ -n "$ATTEMPT_ID" ]; then
+			hold_attempt "installing" "Could not restore protected native workspace ownership"
+		fi
+		update_status "failed" "failed" "Native workspace ownership requires operator recovery"
+		FINALIZED=true
+	fi
 
 	if [ -n "${BACKUP_TMP_PATH:-}" ]; then
 		rm -f "$BACKUP_TMP_PATH" 2>/dev/null || true
@@ -1064,11 +1122,22 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		fail_before_migration "downloading" "No download URL provided for image update"
 	fi
 
-	TMP_TARBALL="/tmp/smart-panel-backend-v${CLEAN_VERSION}.tar.gz"
+	if [ "$HELPER_MANAGED" = 1 ]; then
+		TMP_TARBALL="$(mktemp "${ATTEMPT_DIR}/backend-XXXXXX.tar.gz")"
+	else
+		TMP_TARBALL="/tmp/smart-panel-backend-v${CLEAN_VERSION}.tar.gz"
+	fi
 
-	curl -fSL -o "$TMP_TARBALL" "$DOWNLOAD_URL" 2>&1 || {
+	if [ "$HELPER_MANAGED" = 1 ]; then
+		curl --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 300 \
+			-fSL -o "$TMP_TARBALL" "$DOWNLOAD_URL" 2>&1 || {
+			fail_before_migration "downloading" "Release download failed"
+		}
+	else
+		curl -fSL -o "$TMP_TARBALL" "$DOWNLOAD_URL" 2>&1 || {
 		fail_before_migration "downloading" "Download failed from ${DOWNLOAD_URL}"
-	}
+		}
+	fi
 
 	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
 		actual_archive_sha256="$(sha256sum "$TMP_TARBALL" 2>/dev/null | awk '{print $1}')"
@@ -1079,13 +1148,102 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	# ── Extract ──
 	update_status "installing" "installing"
 
+	if [ "$HELPER_MANAGED" = 1 ] && { [ -e "$NEW_VERSION_DIR" ] || [ -L "$NEW_VERSION_DIR" ]; }; then
+		fail_before_migration "installing" "Protected update target already exists"
+	fi
 	mkdir -p "$NEW_VERSION_DIR"
 
-	tar -xzf "$TMP_TARBALL" -C "$NEW_VERSION_DIR" 2>&1 || {
+	set +e
+	if [ "$HELPER_MANAGED" = 1 ]; then
+		# Validate the entire archive before writing. Debian 12's Python predates tarfile filters.
+		/usr/bin/python3 -I - "$TMP_TARBALL" "$NEW_VERSION_DIR" <<'PY'
+import sys, tarfile
+import os, posixpath, shutil, stat
+from pathlib import PurePosixPath
+
+def member_name(value):
+    if not value or '\0' in value or value.startswith('/') or '..' in PurePosixPath(value).parts:
+        raise ValueError('Unsafe archive member path')
+    return str(PurePosixPath(value))
+
+def link_target(name, member):
+    value = member.linkname
+    if not value or '\0' in value or value.startswith('/'):
+        raise ValueError('Unsafe archive link target')
+    parent = posixpath.dirname(name) if member.issym() else ''
+    target = posixpath.normpath(posixpath.join(parent, value))
+    if target == '..' or target.startswith('../') or target.startswith('/'):
+        raise ValueError('Archive link escapes release directory')
+    return target
+
+destination = os.path.abspath(sys.argv[2])
+if not stat.S_ISDIR(os.lstat(destination).st_mode) or os.listdir(destination):
+    raise ValueError('Extraction requires an empty real directory')
+
+with tarfile.open(sys.argv[1], 'r:gz') as archive:
+    members = {}
+    targets = {}
+    directories = {}
+    for member in archive.getmembers():
+        name = member_name(member.name)
+        if name in members:
+            raise ValueError('Duplicate archive member')
+        if not (member.isdir() or member.type in (tarfile.REGTYPE, tarfile.AREGTYPE)
+                or member.issym() or member.islnk()):
+            raise ValueError('Non-data archive member')
+        if name == '.' and not member.isdir():
+            raise ValueError('Archive root must be a directory')
+        members[name] = member
+        if member.issym() or member.islnk():
+            targets[name] = link_target(name, member)
+
+    for name, member in members.items():
+        for parent in PurePosixPath(name).parents:
+            ancestor = str(parent)
+            if ancestor in members and not members[ancestor].isdir():
+                raise ValueError('Archive member descends through a link or non-directory')
+            if ancestor != '.':
+                directories.setdefault(ancestor, 0o755)
+        if member.isdir() and name != '.':
+            directories[name] = (member.mode & 0o755) | 0o700
+        if member.islnk():
+            target = members.get(targets[name])
+            if target is None or target.type not in (tarfile.REGTYPE, tarfile.AREGTYPE):
+                raise ValueError('Archive hardlink must target a declared regular file')
+
+    # No path created below has a link ancestor: all declared links are installed last.
+    for name in sorted(directories, key=lambda value: (value.count('/'), value)):
+        os.mkdir(os.path.join(destination, name), 0o700)
+    for name, member in members.items():
+        if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE):
+            continue
+        path = os.path.join(destination, name)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'wb') as output, archive.extractfile(member) as content:
+            shutil.copyfileobj(content, output)
+            os.fchmod(output.fileno(), (member.mode & 0o755) | 0o600)
+    for name, target in targets.items():
+        path = os.path.join(destination, name)
+        if members[name].issym():
+            # Normalize before storing: a raw "link/.." must never escape after link dereference.
+            value = posixpath.relpath(target, posixpath.dirname(name) or '.')
+            os.symlink(value, path)
+        else:
+            os.link(os.path.join(destination, target), path, follow_symlinks=False)
+    for name, mode in directories.items():
+        os.chmod(os.path.join(destination, name), mode)
+PY
+		extract_exit=$?
+	else
+		tar -xzf "$TMP_TARBALL" -C "$NEW_VERSION_DIR" 2>&1
+		extract_exit=$?
+	fi
+	set -e
+	if [ "$extract_exit" -ne 0 ]; then
 		rm -rf "$NEW_VERSION_DIR"
 		rm -f "$TMP_TARBALL"
 		fail_before_migration "installing" "Failed to extract update archive"
-	}
+	fi
 
 	rm -f "$TMP_TARBALL"
 
@@ -1123,6 +1281,9 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	# compiled for ARM64 by the CI arm-runner. Only install as fallback if
 	# node_modules is missing (e.g. manually extracted tarball without deps).
 	if [ ! -d "node_modules" ]; then
+		if [ "$HELPER_MANAGED" = 1 ]; then
+			fail_before_migration "installing" "Protected image updates require bundled release dependencies"
+		fi
 		npm install --omit=dev 2>&1 || {
 			rm -rf "$NEW_VERSION_DIR"
 			fail_before_migration "installing" "npm install failed"
@@ -1132,10 +1293,16 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	# Set ownership
 	# All sudo calls use -n (non-interactive) to fail fast instead of
 	# hanging on password prompt when running as a detached process.
-	sudo -n chown -R smart-panel:smart-panel "$NEW_VERSION_DIR" || {
+	if [ "$HELPER_MANAGED" = 1 ]; then
+		chown -hR root:root "$NEW_VERSION_DIR"
+		chmod -R a+rX,go-w "$NEW_VERSION_DIR"
+		provision_helper "$NEW_VERSION_DIR" || fail_before_migration "installing" "Failed to provision protected release helper"
+	else
+		sudo -n chown -R smart-panel:smart-panel "$NEW_VERSION_DIR" || {
 		rm -rf "$NEW_VERSION_DIR"
 		fail_before_migration "installing" "Failed to set ownership on ${NEW_VERSION_DIR}"
-	}
+		}
+	fi
 
 	# ── Stop/qualify service ──
 	update_status "stopping" "stopping"
@@ -1276,12 +1443,15 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 
 	set +e
 	(
-		set -a
-		# shellcheck source=/dev/null
-		[ -f "$ENV_FILE" ] && . "$ENV_FILE"
-		set +a
+		if [ "$HELPER_MANAGED" != 1 ]; then
+			set -a
+			# Compatibility/operator mode only; protected jobs never source shell configuration.
+			# shellcheck source=/dev/null
+			[ -f "$ENV_FILE" ] && . "$ENV_FILE"
+			set +a
+		fi
 		cd "$NEW_VERSION_DIR"
-		node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js
+		run_application node node_modules/typeorm/cli.js migration:run -d dist/dataSource.js
 	) 2>&1 | awk -v output="$MIGRATION_LOG" '
 		BEGIN { limit = 65536; bytes = 0 }
 		{
@@ -1354,6 +1524,116 @@ fi
 # ──────────────────────────────────────────────────────────────
 # NPM-based update (global npm installs)
 # ──────────────────────────────────────────────────────────────
+
+if [ "$HELPER_MANAGED" = 1 ]; then
+	if ! acquire_attempt; then
+		update_status "failed" "failed" "An unresolved update attempt already owns the updater"
+		FINALIZED="true"
+		exit 1
+	fi
+	update_status "stopping" "stopping"
+	write_attempt "active" "stopping"
+	if ! capture_service_identity || ! /usr/bin/systemctl stop "$SERVICE_NAME" || ! wait_for_quiescence; then
+		hold_attempt "stopping" "Service did not reach verified quiescence before npm update"
+		update_status "failed" "failed" "Service quiescence could not be verified; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	update_status "installing" "installing"
+	# npm lifecycle code is application code, never a root installation hook.
+	if ! npm install -g --ignore-scripts --registry=https://registry.npmjs.org "@fastybird/smart-panel@$VERSION"; then
+		hold_attempt "installing" "npm package publication failed"
+		update_status "failed" "failed" "npm installation failed; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	NPM_PACKAGE_ROOT="$(npm root -g)/@fastybird/smart-panel"
+	NPM_BACKEND_ROOT="${NPM_PACKAGE_ROOT}/node_modules/@fastybird/smart-panel-backend"
+	# The helper's restrictive umask must not make published application code inaccessible.
+	chmod -R a+rX,go-w "$NPM_PACKAGE_ROOT"
+	if ! run_application test -r "${NPM_BACKEND_ROOT}/dist/dataSource.js"; then
+		hold_attempt "installing" "Service account cannot traverse the npm release"
+		update_status "failed" "failed" "Installed release permissions prevent service execution; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	# Copy trusted helper artifacts before any application code can write this package tree.
+	if ! provision_helper "$NPM_BACKEND_ROOT"; then
+		hold_attempt "installing" "Failed to provision protected npm release helper"
+		update_status "failed" "failed" "Helper installation failed; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	# Only native dependency workspaces become writable; helper sources and all
+	# application entry points retain their release ownership throughout the rebuild.
+	mapfile -d '' native_dirs < <(find "$NPM_PACKAGE_ROOT/node_modules" -type d \( -name sqlite3 -o -name bcrypt \) -print0)
+	NATIVE_OWNERSHIP_PENDING=1
+	for native_dir in "${native_dirs[@]}"; do chown -hR "$SMART_PANEL_USER" "$native_dir"; done
+	set +e
+	run_application env HOME="$FB_DATA_DIR" npm_config_cache="$FB_DATA_DIR/.npm" \
+		npm rebuild --prefix "$NPM_PACKAGE_ROOT" --omit=dev sqlite3 bcrypt
+	rebuild_exit=$?
+	set -e
+	if ! restore_native_ownership; then
+		hold_attempt "installing" "Could not restore protected native workspace ownership"
+		update_status "failed" "failed" "Native workspace ownership requires operator recovery"
+		FINALIZED=true
+		exit 1
+	fi
+	if [ "$rebuild_exit" -ne 0 ]; then
+		hold_attempt "installing" "Native npm rebuild failed"
+		update_status "failed" "failed" "Native npm rebuild failed; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	if ! service_quiesced; then
+		hold_attempt "migrating" "Stopped service changed before npm migration entry"
+		update_status "failed" "failed" "Stopped service changed before migration entry; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	update_status "migrating" "migrating"
+	MIGRATION_ENTERED=true
+	MIGRATION_LOG="${ATTEMPT_DIR}/${ATTEMPT_ID}.migration.log"
+	: > "$MIGRATION_LOG"
+	chmod 600 "$MIGRATION_LOG"
+	write_attempt "active" "migrating" "" "false" "true"
+	set +e
+	run_application node "${NPM_PACKAGE_ROOT}/node_modules/typeorm/cli.js" migration:run \
+		-d "${NPM_BACKEND_ROOT}/dist/dataSource.js" 2>&1 | awk -v output="$MIGRATION_LOG" '
+		BEGIN { limit = 65536; bytes = 0 }
+		{
+			if (bytes < limit) {
+				line = $0 ORS;
+				remaining = limit - bytes;
+				if (length(line) > remaining) line = substr(line, 1, remaining);
+				printf "%s", line >> output;
+				bytes += length(line);
+			}
+		}
+	'
+	npm_migration_status=("${PIPESTATUS[@]}")
+	set -e
+	if [ "${npm_migration_status[0]}" -ne 0 ] || [ "${npm_migration_status[1]}" -ne 0 ]; then
+		hold_attempt "migration_failed" "Database migration failed"
+		update_status "failed" "failed" "Database migration failed; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	update_status "starting" "starting"
+	write_attempt "active" "starting" "" "false" "true"
+	if ! /usr/bin/systemctl start "$SERVICE_NAME" || ! wait_for_started_service; then
+		hold_attempt "start_failed" "Target service did not reach verified health after migration"
+		update_status "failed" "failed" "Target service failed to become healthy; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	release_attempt
+	update_status "complete" "complete"
+	FINALIZED=true
+	trap - EXIT
+	exit 0
+fi
 
 # Downloading / preparing
 update_status "downloading" "downloading"

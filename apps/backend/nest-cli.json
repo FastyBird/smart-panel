@@ -64,6 +64,11 @@
       {
         "include": "plugins/remote-access-cloudflare-tunnel/scripts/**/*.sh",
         "outDir": "dist"
+      },
+      {
+        "include": "modules/system/scripts/privileged/**/*.py",
+        "exclude": "modules/system/scripts/privileged/**/test_*.py",
+        "outDir": "dist"
       }
     ]
   }

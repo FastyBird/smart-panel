@@ -411,6 +411,56 @@ function stoppedMaintenanceEnv(fixture: Fixture, overrides: Record<string, strin
 jest.setTimeout(30_000);
 
 describe('legacy image update worker lifecycle', () => {
+	it('refuses an escaping archive symlink before protected extraction can write outside its release', () => {
+		const fixture = createFixture();
+		try {
+			const archiveRoot = join(fixture.root, 'escaping-archive');
+			const target = join(fixture.root, 'protected-release');
+			mkdirSync(archiveRoot);
+			mkdirSync(target);
+			symlinkSync('../outside-release', join(archiveRoot, 'escape'));
+			execFileSync('tar', ['-czf', fixture.archive, '-C', archiveRoot, '.']);
+			// Execute the deployed extraction block, without requiring root/systemd on the test host.
+			const extraction = readFileSync(WORKER, 'utf8').match(/<<'PY'\n(import sys, tarfile[\s\S]*?)\nPY/);
+			expect(extraction).not.toBeNull();
+			expect(() =>
+				execFileSync('python3', ['-I', '-', fixture.archive, target], {
+					input: extraction[1],
+					stdio: ['pipe', 'pipe', 'pipe'],
+				}),
+			).toThrow();
+			expect(existsSync(join(fixture.root, 'outside-release'))).toBe(false);
+			expect(existsSync(join(target, 'escape'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('binds update status to the helper job identity while preserving legacy compatibility', () => {
+		const fixture = createFixture();
+		const jobId = 'b91e427a-678d-4a4c-876b-b2f8a44eb512';
+		try {
+			const result = runWorker(fixture, { PRIVILEGED_WORKER_JOB_ID: jobId });
+			expect(result.status).toBe('success');
+			expect(readJson(fixture.statusFile).jobId).toBe(jobId);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects a malformed helper identity before changing status, service, or release files', () => {
+		const fixture = createFixture();
+		try {
+			const result = runWorker(fixture, { PRIVILEGED_WORKER_JOB_ID: '../other-job' });
+			expect(result.status).toBe('64');
+			expect(existsSync(fixture.statusFile)).toBe(false);
+			expect(readFileSync(fixture.stateFile, 'utf8')).toBe('active');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
 	it('runs a verified stopped-maintenance update without starting the old release', async () => {
 		const fixture = createFixture();
 		const backup = join(fixture.root, 'backup.sqlite');

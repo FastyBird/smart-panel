@@ -18,9 +18,9 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,6 +35,82 @@ const { logger, isRoot, hasSystemd, getArch, getDistroInfo, compareSemver } = aw
 const packageJsonPath = join(__dirname, '..', 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const version = packageJson.version;
+
+function createNpmUpdateStage() {
+	const npmRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim();
+	const npmPackagePath = join(npmRoot, '@fastybird', 'smart-panel');
+	if (!npmRoot.startsWith('/') || !lstatSync(npmPackagePath).isDirectory()) {
+		throw new Error('CLI updates require a real global npm package directory; linked installs are unsupported.');
+	}
+	const packageRoot = realpathSync(npmPackagePath);
+	if (packageRoot !== realpathSync(join(__dirname, '..'))) {
+		throw new Error('Run the CLI from the canonical global npm installation being updated.');
+	}
+	let component = realpathSync(packageRoot);
+	while (true) {
+		const metadata = statSync(component);
+		if (!metadata.isDirectory() || metadata.uid !== 0 || (metadata.mode & 0o022) !== 0) {
+			throw new Error(`CLI updates require root-owned directories without group/world write access: ${component}`);
+		}
+		const parent = dirname(component);
+		if (parent === component) break;
+		component = parent;
+	}
+	// Same-filesystem private staging permits exact directory rollback without downloading the old version.
+	const stagingRoot = mkdtempSync(join(dirname(packageRoot), '.smart-panel-update-'));
+	return {
+		packageRoot,
+		stagingRoot,
+		candidateRoot: join(stagingRoot, 'lib', 'node_modules', '@fastybird', 'smart-panel'),
+		backupRoot: join(stagingRoot, 'previous-package'),
+	};
+}
+
+function provisionPrivilegedHelper({
+	backendRoot,
+	installType = 'npm',
+	serviceUser = 'smart-panel',
+	dataDir = '/var/lib/smart-panel',
+	port = '3000',
+	imageBaseDir = '/opt/smart-panel',
+	checkOnly = false,
+}) {
+	const source = realpathSync(
+		backendRoot || join(__dirname, '..', 'node_modules', '@fastybird', 'smart-panel-backend'),
+	);
+	const installerPath = join(source, 'dist', 'modules', 'system', 'scripts', 'privileged', 'install-helper.py');
+	// Validate before interpreting the installer, including the complete resolved ancestor chain.
+	const trustedInstaller = realpathSync(installerPath);
+	let component = trustedInstaller;
+	while (true) {
+		const metadata = statSync(component);
+		if (metadata.uid !== 0 || (metadata.mode & 0o022) !== 0) {
+			throw new Error(
+				`Helper migration requires a root-owned release without group/world writable paths: ${component}`,
+			);
+		}
+		const parent = dirname(component);
+		if (parent === component) break;
+		component = parent;
+	}
+	const args = [
+		'-I',
+		trustedInstaller,
+		'--backend-root',
+		source,
+		'--install-type',
+		installType,
+		'--service-user',
+		serviceUser,
+		'--data-dir',
+		dataDir,
+		'--port',
+		String(port),
+	];
+	if (installType === 'image') args.push('--image-base-dir', resolve(imageBaseDir));
+	if (checkOnly) args.push('--check-only');
+	execFileSync('/usr/bin/python3', args, { stdio: 'inherit' });
+}
 
 /**
  * Detect a display installed by the retired eLinux path, by the systemd unit the old installer
@@ -57,10 +133,46 @@ function isLegacyElinuxInstall() {
 
 const program = new Command();
 
+program.name('smart-panel-service').description('FastyBird Smart Panel service management CLI').version(version);
+
 program
-	.name('smart-panel-service')
-	.description('FastyBird Smart Panel service management CLI')
-	.version(version);
+	.command('migrate-privileges')
+	.description('Install the protected helper and revoke legacy grants from a trusted root-owned release')
+	.option('--backend-root <path>', 'Trusted backend release directory containing dist (required for image migration)')
+	.option('--install-type <type>', 'Installation type: npm or image', 'npm')
+	.option('--service-user <user>', 'Installed service account (defaults to installed configuration)')
+	.option('--data-dir <path>', 'Installed data directory (defaults to installed configuration)')
+	.option('--port <port>', 'Installed backend HTTP port (defaults to installed configuration)')
+	.option('--image-base-dir <path>', 'Image installation base', '/opt/smart-panel')
+	.action(async (options) => {
+		if (!isRoot()) {
+			logger.error('This command must be run as root. Please use sudo.');
+			process.exit(1);
+		}
+		try {
+			if (!['npm', 'image'].includes(options.installType)) throw new Error('Unsupported installation type');
+			if (options.installType === 'image' && !options.backendRoot) {
+				throw new Error('Image migration requires --backend-root pointing to a trusted root-owned extracted release');
+			}
+			const installer = getInstaller();
+			const wasRunning = (await installer.status()).running;
+			const config = installer.getInstalledConfig();
+			provisionPrivilegedHelper({
+				...options,
+				serviceUser: options.serviceUser || config.user || 'smart-panel',
+				dataDir: options.dataDir || config.dataDir || '/var/lib/smart-panel',
+				port: options.port || config.port || 3000,
+			});
+			// Running units adopt a changed ProtectSystem mount namespace only after restart.
+			if (wasRunning) {
+				await installer.restart();
+			}
+			logger.success('Protected helper installed; legacy wildcard grants revoked.');
+		} catch (error) {
+			logger.error(error instanceof Error ? error.message : String(error));
+			process.exit(1);
+		}
+	});
 
 // ============================================================================
 // Install Command
@@ -505,6 +617,13 @@ program
 		const installer = getInstaller();
 		const spinner = ora();
 		let wasRunning = false;
+		let updateStage = null;
+		let serviceStopAttempted = false;
+		let provisionAttempted = false;
+		let provisionSucceeded = false;
+		let previousPackageRetained = false;
+		let candidatePublished = false;
+		let migrationsStarted = false;
 
 		try {
 			// Check current status
@@ -571,32 +690,58 @@ program
 
 			console.log();
 
-			// Stop service if running
+			// Download/install into an isolated global-layout prefix; the installed package stays untouched.
+			updateStage = createNpmUpdateStage();
+			spinner.start('Preparing update packages...');
+			const packageSpec = `@fastybird/smart-panel${versionArg}`;
+			execFileSync('npm', ['install', packageSpec, '-g', '--prefix', updateStage.stagingRoot], {
+				stdio: 'inherit',
+			});
+			const candidate = JSON.parse(readFileSync(join(updateStage.candidateRoot, 'package.json'), 'utf8'));
+			if (
+				candidate.name !== '@fastybird/smart-panel' ||
+				typeof candidate.version !== 'string' ||
+				!/^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(candidate.version)
+			) {
+				throw new Error('Staged update does not contain a valid Smart Panel release.');
+			}
+			if (options.version && candidate.version !== options.version) {
+				throw new Error(`Staged release ${candidate.version} does not match requested version ${options.version}.`);
+			}
+			spinner.succeed('Update packages prepared');
+			const config = installer.getInstalledConfig();
+			const dataDir = config.dataDir || '/var/lib/smart-panel';
+			const helperOptions = {
+				backendRoot: join(updateStage.candidateRoot, 'node_modules', '@fastybird', 'smart-panel-backend'),
+				serviceUser: config.user || 'smart-panel',
+				dataDir,
+				port: config.port || 3000,
+			};
+			// Refuse known worker/recovery conflicts before disrupting an otherwise healthy service.
+			provisionPrivilegedHelper({ ...helperOptions, checkOnly: true });
+
+			// Stop requests before the helper guard checks independent jobs/recovery holds.
 			if (status.running) {
 				spinner.start('Stopping service...');
+				serviceStopAttempted = true;
 				await installer.stop();
 				spinner.succeed('Service stopped');
 			}
 
-			// Update package
-			spinner.start('Updating packages...');
-			try {
-				const packageSpec = `@fastybird/smart-panel${versionArg}`;
-				// Use 'install' when a specific version/tag is requested, 'update' for latest
-				const npmCommand = versionArg ? 'install' : 'update';
-				execFileSync('npm', [npmCommand, packageSpec, '-g'], {
-					stdio: 'inherit',
-				});
-				spinner.succeed('Packages updated');
-			} catch {
-				spinner.fail('Failed to update packages');
-				throw new Error('npm update failed');
-			}
+			provisionAttempted = true;
+			// Recheck after stop: a job may have started since the read-only preflight.
+			provisionPrivilegedHelper(helperOptions);
+			provisionSucceeded = true;
 
-			// Run migrations
+			// Existing npm bin links already address the canonical directory and remain valid after publication.
+			renameSync(updateStage.packageRoot, updateStage.backupRoot);
+			previousPackageRetained = true;
+			renameSync(updateStage.candidateRoot, updateStage.packageRoot);
+			candidatePublished = true;
+
+			// A migration may commit before throwing. Crossing this boundary forbids package rollback/restart.
 			spinner.start('Running database migrations...');
-			const config = installer.getInstalledConfig();
-			const dataDir = config.dataDir || '/var/lib/smart-panel';
+			migrationsStarted = true;
 			await installer.runMigrations(dataDir);
 			spinner.succeed('Migrations complete');
 
@@ -621,17 +766,46 @@ program
 			}
 
 			console.log();
+			try {
+				rmSync(updateStage.stagingRoot, { recursive: true, force: true });
+			} catch {
+				logger.warning(`Update succeeded; could not remove staging/previous package: ${updateStage.stagingRoot}`);
+			}
 		} catch (error) {
 			spinner.fail('Update failed');
 			logger.error(error instanceof Error ? error.message : String(error));
 
-			// Try to restart service if it was running before update
-			if (wasRunning) {
+			let restored = !previousPackageRetained;
+			if (updateStage && previousPackageRetained && !migrationsStarted) {
+				try {
+					if (candidatePublished) {
+						renameSync(updateStage.packageRoot, updateStage.candidateRoot);
+					}
+					renameSync(updateStage.backupRoot, updateStage.packageRoot);
+					restored = true;
+				} catch (restoreError) {
+					logger.error(`Could not restore the installed package: ${restoreError.message}`);
+				}
+			}
+			if (migrationsStarted) {
+				logger.warning(`Migration began; no package rollback or additional restart was attempted. Retained package: ${updateStage.backupRoot}`);
+			} else if (updateStage && previousPackageRetained && !restored) {
+				logger.warning(`Service remains stopped; restore the retained previous package from ${updateStage.backupRoot}.`);
+			} else if (provisionAttempted && !provisionSucceeded) {
+				logger.warning('Helper provisioning failed; the installed package was not replaced. Service remains stopped pending recovery.');
+			} else if (wasRunning && serviceStopAttempted && provisionSucceeded && restored) {
 				try {
 					await installer.start();
-					logger.info('Service restarted');
+					logger.info('Previous installed service restarted');
 				} catch {
-					logger.warning('Failed to restart service. Please start manually.');
+					logger.warning('Failed to restart the previous service. Please start manually.');
+				}
+			}
+			if (updateStage && !migrationsStarted && restored) {
+				try {
+					rmSync(updateStage.stagingRoot, { recursive: true, force: true });
+				} catch {
+					logger.warning(`Could not remove update staging: ${updateStage.stagingRoot}`);
 				}
 			}
 

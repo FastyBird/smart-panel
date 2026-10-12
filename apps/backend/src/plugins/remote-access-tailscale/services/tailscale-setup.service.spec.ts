@@ -6,6 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { PRIVILEGED_OPERATIONS } from '../../../common/utils/privileged-helper.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PlatformType } from '../../../modules/platform/platform.constants';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
@@ -142,6 +143,22 @@ describe('TailscaleSetupService', () => {
 			expect(env.STATUS_FILE).toBe(spec.statusFile);
 			expect(typeof env.SMART_PANEL_USER).toBe('string');
 			expect(env.SMART_PANEL_USER.length).toBeGreaterThan(0);
+		});
+
+		it('selects the installed helper status without creating backend-writable setup state', async () => {
+			platformServiceMock.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: true,
+				transport: 'helper',
+				reason: null,
+			});
+			await service.install();
+			expect(privilegedWorker.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					job: 'tailscale-setup',
+					statusFile: PRIVILEGED_OPERATIONS['tailscale-setup'].statusFile,
+				}),
+			);
+			expect(existsSync(join(dataDir, 'remote-access'))).toBe(false);
 		});
 
 		it('creates the remote-access data directory before spawning', async () => {

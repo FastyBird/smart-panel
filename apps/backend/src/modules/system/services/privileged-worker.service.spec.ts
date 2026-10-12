@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import { closeSync, existsSync, openSync, readFileSync, readSync, watch } from 'fs';
 import { execFile, spawn } from 'node:child_process';
 
+import { PRIVILEGED_HELPER_PATH, PRIVILEGED_OPERATIONS } from '../../../common/utils/privileged-helper.utils';
 import { PlatformType } from '../../platform/platform.constants';
 import { PlatformService } from '../../platform/services/platform.service';
 import { PrivilegedWorkerUnavailableException } from '../system.exceptions';
@@ -52,7 +53,11 @@ async function flushMicrotasks(times = 5): Promise<void> {
 
 describe('PrivilegedWorkerService', () => {
 	let service: PrivilegedWorkerService;
-	let platformService: { supportsPrivilegedWorkers: jest.Mock; getPlatformType: jest.Mock };
+	let platformService: {
+		getPrivilegedWorkerSupport: jest.Mock;
+		supportsPrivilegedWorkers: jest.Mock;
+		getPlatformType: jest.Mock;
+	};
 	let fakeChild: FakeChild;
 
 	const baseSpec: PrivilegedJobSpec = {
@@ -83,6 +88,10 @@ describe('PrivilegedWorkerService', () => {
 		);
 
 		platformService = {
+			getPrivilegedWorkerSupport: jest.fn().mockImplementation(async () => ({
+				supported: await platformService.supportsPrivilegedWorkers(),
+				transport: 'legacy',
+			})),
 			supportsPrivilegedWorkers: jest.fn().mockResolvedValue(true),
 			getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY),
 		};
@@ -94,6 +103,87 @@ describe('PrivilegedWorkerService', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		jest.clearAllMocks();
+	});
+
+	describe('installed helper', () => {
+		let file: string;
+		beforeEach(() => {
+			platformService.getPrivilegedWorkerSupport.mockResolvedValue({ supported: true, transport: 'helper' });
+			file = '';
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(openSync as jest.Mock).mockReturnValue(42);
+			(readSync as jest.Mock).mockImplementation((_fd: number, buffer: Buffer, offset: number, length: number) =>
+				Buffer.from(file).copy(buffer, offset, offset, offset + length),
+			);
+		});
+
+		it('rejects unknown and unspecified operations without spawning legacy commands', async () => {
+			await expect(service.run(baseSpec)).rejects.toThrow('allowlisted');
+			await expect(service.run({ ...baseSpec, job: 'anything' as 'update' })).rejects.toThrow('Unknown');
+			expect(spawn).not.toHaveBeenCalled();
+		});
+
+		it('passes only the fixed operation, generated job id and update version', async () => {
+			const { id } = await service.run({ ...baseSpec, job: 'update', unitType: 'scope' });
+			expect(spawn).toHaveBeenCalledWith(
+				'sudo',
+				['-n', PRIVILEGED_HELPER_PATH, 'run-job', 'update', id, '1.2.3'],
+				expect.anything(),
+			);
+			file = JSON.stringify({ jobId: 'older-job', state: 'complete' });
+			jest.advanceTimersByTime(3000);
+			expect(service.getStatus(id)?.state).toBe('running');
+			file = JSON.stringify({ jobId: id, state: 'complete' });
+			jest.advanceTimersByTime(3000);
+			expect(service.getStatus(id)?.state).toBe('complete');
+			expect(openSync).toHaveBeenCalledWith(PRIVILEGED_OPERATIONS.update.statusFile, 'r');
+		});
+
+		it('drains a fast helper failure status before generic child failure', async () => {
+			const { id } = await service.run({ ...baseSpec, job: 'update' });
+			file = JSON.stringify({ jobId: id, state: 'failed', message: 'Root worker preflight refused' });
+			fakeChild.emit('exit', 1, null);
+			expect(service.getStatus(id)).toEqual(
+				expect.objectContaining({ state: 'failed', message: 'Root worker preflight refused' }),
+			);
+		});
+
+		it('replays the helper history even when all setup stages finish between polls', async () => {
+			const { id } = await service.run({ ...baseSpec, job: 'tailscale-setup', args: [], trackStatusHistory: true });
+			const history = [
+				{ state: 'running', step: 'install' },
+				{ state: 'running', step: 'operator' },
+				{ state: 'complete', step: 'complete' },
+			];
+			file = JSON.stringify({ jobId: id, ...history[history.length - 1], history });
+			jest.advanceTimersByTime(3000);
+			const handler = jest.fn();
+			service.onStatus(id, handler);
+			await flushMicrotasks();
+			expect(handler.mock.calls.map(([status]: [PrivilegedJobStatus]) => status.step)).toEqual([
+				'install',
+				'operator',
+				'complete',
+			]);
+		});
+
+		it('stops only the matching helper job and holds the unit on an uncertain settlement probe', async () => {
+			const stopChild = createFakeChild(4243);
+			(spawn as jest.Mock).mockReturnValueOnce(fakeChild).mockReturnValueOnce(stopChild);
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: unknown, _opts: unknown, callback: ExecFileCallback) =>
+					callback(new Error('permission denied'), '', ''),
+			);
+			const { id } = await service.run({ ...baseSpec, job: 'update', timeoutMs: 1 });
+			jest.advanceTimersByTime(3000);
+			expect(spawn).toHaveBeenLastCalledWith('sudo', ['-n', PRIVILEGED_HELPER_PATH, 'stop-job', 'update', id], {
+				stdio: 'ignore',
+			});
+			stopChild.emit('exit', 1, null);
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('timeout');
+			await expect(service.run({ ...baseSpec, job: 'update' })).rejects.toThrow('still running');
+		});
 	});
 
 	describe('status history', () => {

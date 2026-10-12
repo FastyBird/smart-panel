@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { PRIVILEGED_OPERATIONS } from '../../../common/utils/privileged-helper.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
@@ -114,18 +115,24 @@ export class TailscaleSetupService {
 		const dataDir = getEnvValue<string>(this.nestConfigService, 'FB_DATA_DIR', '/var/lib/smart-panel');
 		const remoteAccessDir = join(dataDir, TAILSCALE_DATA_SUBDIR);
 
-		this.ensureDir(remoteAccessDir);
+		if (privilegedWorkerSupport.transport !== 'helper') {
+			this.ensureDir(remoteAccessDir);
+		}
 
-		const statusFile = join(remoteAccessDir, TAILSCALE_SETUP_STATUS_FILENAME);
+		const statusFile =
+			privilegedWorkerSupport.transport === 'helper'
+				? PRIVILEGED_OPERATIONS['tailscale-setup'].statusFile
+				: join(remoteAccessDir, TAILSCALE_SETUP_STATUS_FILENAME);
 		const script = join(__dirname, '..', 'scripts', 'tailscale-setup.sh');
 
-		if (!existsSync(script)) {
+		if (privilegedWorkerSupport.transport !== 'helper' && !existsSync(script)) {
 			throw new Error(`Tailscale setup script not found at ${script}`);
 		}
 
 		const serviceUser = os.userInfo().username;
 
 		const { id } = await this.privilegedWorker.run({
+			job: 'tailscale-setup',
 			unit: TAILSCALE_SETUP_WORKER_UNIT,
 			// A scope inherits the backend's ProtectSystem=strict mount namespace, so even
 			// root cannot write apt sources or install packages. Let systemd launch a separate

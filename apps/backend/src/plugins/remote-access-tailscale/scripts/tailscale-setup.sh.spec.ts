@@ -1,7 +1,7 @@
 import { execFileSync } from 'child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 
 /**
  * `bats` is not available in this repo, so the script's own dry-run mode
@@ -148,6 +148,57 @@ describe('tailscale-setup.sh --dry-run', () => {
 		expect(typeof record.message).toBe('string');
 	});
 
+	it('makes apt repository files readable before apt runs under the protected helper umask', () => {
+		const workDir = join(statusDir, 'repository-fixture');
+		const fakeBin = join(workDir, 'bin');
+		mkdirSync(fakeBin, { recursive: true });
+		const osRelease = join(workDir, 'os-release');
+		const keyring = join(workDir, 'keyring.gpg');
+		const list = join(workDir, 'provider.list');
+		const aptCalls = join(workDir, 'apt-calls');
+		writeFileSync(osRelease, 'ID=debian\nVERSION_CODENAME=bookworm\n');
+		const source = readFileSync(scriptPath, 'utf8')
+			.replaceAll('/etc/os-release', osRelease)
+			.replaceAll('/usr/share/keyrings/tailscale-archive-keyring.gpg', keyring)
+			.replaceAll('/etc/apt/sources.list.d/tailscale.list', list)
+			.replace('if command -v tailscale >/dev/null 2>&1; then', 'if false; then');
+		const scriptCopy = join(workDir, 'setup.sh');
+		writeFileSync(scriptCopy, source);
+		for (const name of ['curl', 'systemctl', 'tailscale']) {
+			writeFileSync(join(fakeBin, name), '#!/bin/bash\nprintf public\n', { mode: 0o755 });
+		}
+		// Verify permissions at each apt invocation, not just after the setup finishes.
+		writeFileSync(
+			join(fakeBin, 'apt-get'),
+			`#!/usr/bin/env node
+const fs = require('node:fs');
+for (const path of ${JSON.stringify([keyring, list])}) {
+  if ((fs.statSync(path).mode & 0o777) !== 0o644) process.exit(1);
+}
+fs.appendFileSync(${JSON.stringify(aptCalls)}, process.argv.slice(2).join(' ') + String.fromCharCode(10));
+`,
+			{ mode: 0o755 },
+		);
+		const env = {
+			...process.env,
+			STATUS_FILE: statusFile,
+			SMART_PANEL_USER: 'smart-panel',
+			PATH: `${fakeBin}:${dirname(process.execPath)}:/usr/bin:/bin`,
+		};
+		const preview = execFileSync('bash', [scriptCopy, '--dry-run'], { env, encoding: 'utf8' });
+		expect(preview).toContain(`chmod 0644 ${keyring} ${list}`);
+		expect(existsSync(keyring)).toBe(false);
+		// All privileged destinations and host commands are confined to this fixture.
+		execFileSync('bash', ['-c', 'umask 0027; exec bash "$1"', 'setup-fixture', scriptCopy], { env, stdio: 'pipe' });
+		expect(statSync(keyring).mode & 0o777).toBe(0o644);
+		expect(statSync(list).mode & 0o777).toBe(0o644);
+		expect(readFileSync(aptCalls, 'utf8').split('\n').filter(Boolean)).toEqual([
+			'update -qq',
+			'install -y -qq --no-install-recommends tailscale',
+		]);
+		expect(JSON.parse(readFileSync(statusFile, 'utf8')) as unknown).toMatchObject({ state: 'complete' });
+	});
+
 	it('sets pipefail, so a curl failure inside `curl | tee` is not masked by tee', () => {
 		const source = readFileSync(scriptPath, 'utf8');
 
@@ -278,6 +329,7 @@ describe('tailscale-setup.sh --print-plan', () => {
 		expect(lines).toEqual([
 			'curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null',
 			'curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null',
+			'chmod 0644 /usr/share/keyrings/tailscale-archive-keyring.gpg /etc/apt/sources.list.d/tailscale.list',
 			'apt-get update -qq',
 			'apt-get install -y -qq --no-install-recommends tailscale',
 		]);

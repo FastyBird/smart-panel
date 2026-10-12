@@ -74,6 +74,7 @@ if [ "$PRINT_PLAN" -eq 1 ]; then
 			# blind-prefixes `sudo` onto lines that do not already contain a pipe.
 			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null"
 			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null"
+			echo "chmod 0644 /usr/share/keyrings/tailscale-archive-keyring.gpg /etc/apt/sources.list.d/tailscale.list"
 			echo "apt-get update -qq"
 			echo "apt-get install -y -qq --no-install-recommends tailscale"
 			;;
@@ -197,6 +198,7 @@ else
 		if [ "$DRY_RUN" -eq 1 ]; then
 			echo "[dry-run] curl -fsSL $KEYRING_URL | tee $KEYRING"
 			echo "[dry-run] curl -fsSL $LIST_URL | tee $LIST"
+			echo "[dry-run] chmod 0644 $KEYRING $LIST"
 			echo "[dry-run] apt-get update -qq"
 			echo "[dry-run] apt-get install -y -qq --no-install-recommends tailscale"
 		else
@@ -209,6 +211,12 @@ else
 			}
 			curl -fsSL "$LIST_URL" | tee "$LIST" >/dev/null || {
 				write_status "failed" "install" "Failed to download the Tailscale apt source list"
+				exit 1
+			}
+			# The helper's UMask=0027 creates root-owned files as 0640. apt's
+			# sandbox user needs public read access to both repository metadata files.
+			chmod 0644 "$KEYRING" "$LIST" || {
+				write_status "failed" "install" "Failed to set Tailscale apt repository permissions"
 				exit 1
 			}
 			apt-get update -qq || {

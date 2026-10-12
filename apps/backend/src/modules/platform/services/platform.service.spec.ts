@@ -11,6 +11,7 @@ import si, { Systeminformation } from 'systeminformation';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import * as privilegedHelper from '../../../common/utils/privileged-helper.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { SystemInfoDto } from '../dto/system-info.dto';
@@ -225,6 +226,76 @@ describe('PlatformService', () => {
 			// override below happens after it — and stays put, since that promise's `.then()`
 			// only ever runs once.
 			await service['platformDetection'];
+		});
+
+		it('uses the installed helper probe and never falls back after a refusal or invalid response', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+			const present = jest.spyOn(privilegedHelper, 'privilegedHelperPresent').mockReturnValue(true);
+			try {
+				mockExecFile(() => false, 'helper denied');
+				const support = await service.getPrivilegedWorkerSupport();
+				expect(support).toEqual(
+					expect.objectContaining({ supported: false, transport: 'helper', reason: 'helper denied' }),
+				);
+				expect(execFile).toHaveBeenCalledTimes(1);
+				expect(execFile).toHaveBeenCalledWith(
+					'sudo',
+					['-n', privilegedHelper.PRIVILEGED_HELPER_PATH, 'probe'],
+					{ timeout: 5000 },
+					expect.any(Function),
+				);
+				service['privilegedWorkerSupportCache'] = null;
+				mockExecFile(() => true);
+				expect((await service.getPrivilegedWorkerSupport()).supported).toBe(false);
+				expect(execFile).toHaveBeenCalledTimes(2);
+			} finally {
+				present.mockRestore();
+			}
+		});
+
+		it.each([
+			{ version: 1 },
+			{ version: 1, operations: 'update,tailscale-setup,cloudflared-setup' },
+			{ version: 1, operations: ['update', 'tailscale-setup'] },
+			{ version: 2, operations: ['update', 'tailscale-setup', 'cloudflared-setup'] },
+		])('refuses incomplete or incompatible helper capabilities: %j', async (response) => {
+			service['platformType'] = PlatformType.RASPBERRY;
+			const present = jest.spyOn(privilegedHelper, 'privilegedHelperPresent').mockReturnValue(true);
+			try {
+				(execFile as unknown as jest.Mock).mockImplementation((...args: unknown[]) => {
+					(args[args.length - 1] as ExecFileCallback)(null, JSON.stringify(response), '');
+					return {};
+				});
+				const support = await service.getPrivilegedWorkerSupport();
+				expect(support.supported).toBe(false);
+				expect(support.transport).toBe('helper');
+				expect(support.reason).toContain('unsupported probe response');
+				expect(execFile).toHaveBeenCalledTimes(1);
+			} finally {
+				present.mockRestore();
+			}
+		});
+
+		it('invalidates a cached legacy success immediately when the helper appears', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+			const present = jest.spyOn(privilegedHelper, 'privilegedHelperPresent').mockReturnValue(false);
+			try {
+				mockExecFile(() => true);
+				expect((await service.getPrivilegedWorkerSupport()).transport).toBe('legacy');
+				present.mockReturnValue(true);
+				(execFile as unknown as jest.Mock).mockImplementation((...args: unknown[]) => {
+					(args[args.length - 1] as ExecFileCallback)(
+						null,
+						JSON.stringify({ version: 1, operations: Object.keys(privilegedHelper.PRIVILEGED_OPERATIONS) }),
+						'',
+					);
+					return {};
+				});
+				expect((await service.getPrivilegedWorkerSupport()).transport).toBe('helper');
+				expect(execFile).toHaveBeenCalledTimes(2);
+			} finally {
+				present.mockRestore();
+			}
 		});
 
 		it.each([PlatformType.DOCKER, PlatformType.HOME_ASSISTANT, PlatformType.DEVELOPMENT])(
