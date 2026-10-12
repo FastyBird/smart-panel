@@ -59,6 +59,7 @@
 			"channelOptional": "Optional",
 			"propertyRequired": "Erforderlich",
 			"showOptional": "{count} weitere optionale Eigenschaften anzeigen",
+			"hideOptional": "Leere optionale Eigenschaften ausblenden",
 			"source": {
 				"devicePlaceholder": "Quellgerät",
 				"channelPlaceholder": "Quellkanal",

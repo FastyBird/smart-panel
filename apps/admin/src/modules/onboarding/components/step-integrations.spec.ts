@@ -215,6 +215,29 @@ describe('StepIntegrations.vue', () => {
 	// Toggling an integration off deletes the devices it owns, which is a cache-clear for anything
 	// that finds its own hardware. A virtual device is authored in the wizard and no scan can bring
 	// it back, so the same toggle would be silent, unconfirmed, unrecoverable data loss.
+	it.each([true, false])('does not start virtual discovery on initial enabled state %s or later enabling', async (initiallyEnabled) => {
+		vi.useFakeTimers();
+		mockExtensionsStore.data = { [VIRTUAL_PLUGIN_TYPE]: buildExtension({ enabled: initiallyEnabled }) };
+		const wrapper = mount(StepIntegrations, { global: { stubs: { IntegrationConfigDialog: true } } });
+
+		try {
+			await flushPromises();
+			if (!initiallyEnabled) {
+				wrapper.findComponent({ name: 'ElSwitch' }).vm.$emit('update:model-value', true);
+				await flushPromises();
+			}
+
+			expect(wrapper.text()).not.toContain('onboardingModule.integrations.searching');
+			expect(wrapper.text()).not.toContain('onboardingModule.integrations.stopScan');
+			await vi.advanceTimersByTimeAsync(35000);
+			expect(mockDevicesStore.fetch).not.toHaveBeenCalled();
+			expect(mockRemove).not.toHaveBeenCalled();
+		} finally {
+			wrapper.unmount();
+			vi.useRealTimers();
+		}
+	});
+
 	it('keeps hand-built virtual devices when the integration is toggled off', async () => {
 		mockExtensionsStore.data = { [VIRTUAL_PLUGIN_TYPE]: buildExtension() };
 		mockDevicesStore.findAll.mockReturnValue([{ id: 'virtual-device-1', type: VIRTUAL_DEVICE_TYPE }]);

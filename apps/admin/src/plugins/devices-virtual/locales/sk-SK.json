@@ -59,6 +59,7 @@
 			"channelOptional": "Voliteľný",
 			"propertyRequired": "Povinná",
 			"showOptional": "Zobraziť ďalších {count} voliteľných vlastností",
+			"hideOptional": "Skryť prázdne voliteľné vlastnosti",
 			"source": {
 				"devicePlaceholder": "Zdrojové zariadenie",
 				"channelPlaceholder": "Zdrojový kanál",
