@@ -23,6 +23,18 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
   final Map<String, PropertyValueState?> _valueBackup = {};
   final Map<String, Timer> _debounceTimers = {};
+  final Map<String, Completer<bool>> _pendingCommands = {};
+  final Set<String> _removedChannels = {};
+
+  void restoreChannel(String id) => _removedChannels.remove(id);
+
+  void removeChannel(String id) {
+    _removedChannels.add(id);
+    for (final property
+        in data.values.where((property) => property.channel == id).toList()) {
+      delete(property.id);
+    }
+  }
 
   ChannelPropertiesRepository({
     required super.apiClient,
@@ -43,6 +55,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     late Map<String, ChannelPropertyModel> insertData = {...data};
 
     for (var row in json) {
+      if (_removedChannels.contains(row['channel'])) {
+        continue;
+      }
       if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
@@ -54,8 +69,10 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       }
 
       try {
-        ChannelPropertyModel property =
-            buildChannelPropertyModel(row['type'], row);
+        ChannelPropertyModel property = buildChannelPropertyModel(
+          row['type'],
+          row,
+        );
 
         insertData[property.id] = property;
       } catch (e) {
@@ -77,6 +94,12 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   }
 
   void delete(String id) {
+    _debounceTimers.remove(id)?.cancel();
+    _valueBackup.remove(id);
+    final pending = _pendingCommands.remove(id);
+    if (pending != null && !pending.isCompleted) {
+      pending.complete(false);
+    }
     if (data.containsKey(id) && data.remove(id) != null) {
       if (kDebugMode) {
         debugPrint(
@@ -109,10 +132,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       newValue = !(property.value as BooleanValueType).value;
     }
 
-    return await setValue(
-      id,
-      newValue,
-    );
+    return await setValue(id, newValue);
   }
 
   Future<bool> setValue(String id, dynamic value) async {
@@ -143,7 +163,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     if (property.dataType == DevicesModuleDataType.valueBool) {
       try {
         property = property.copyWith(
-          valueState: PropertyValueState(value: BooleanValueType(_valueToBoolean(value))),
+          valueState: PropertyValueState(
+            value: BooleanValueType(_valueToBoolean(value)),
+          ),
         );
       } on ArgumentError {
         /// Clearing of backup value
@@ -160,7 +182,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         property.dataType == DevicesModuleDataType.float) {
       try {
         property = property.copyWith(
-          valueState: PropertyValueState(value: NumberValueType(_valueToNumber(value))),
+          valueState: PropertyValueState(
+            value: NumberValueType(_valueToNumber(value)),
+          ),
         );
       } on ArgumentError {
         /// Clearing of backup value
@@ -171,7 +195,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     } else if (property.dataType == DevicesModuleDataType.string ||
         property.dataType == DevicesModuleDataType.valueEnum) {
       property = property.copyWith(
-        valueState: PropertyValueState(value: StringValueType(value.toString())),
+        valueState: PropertyValueState(
+          value: StringValueType(value.toString()),
+        ),
       );
     } else {
       /// Clearing of backup value
@@ -187,16 +213,20 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
     if (channel != null) {
       final completer = Completer<bool>();
+      final previous = _pendingCommands[id];
+      if (previous != null && !previous.isCompleted) {
+        previous.complete(false);
+      }
+      _pendingCommands[id] = completer;
 
       // Cancel previous debounce if it exists
       _debounceTimers[id]?.cancel();
 
       // Start new debounce timer
       _debounceTimers[id] = Timer(const Duration(milliseconds: 300), () async {
+        _debounceTimers.remove(id);
         // Send command and wait for result
         await _sendCommandToBackend(channel!, property!, completer);
-
-        _debounceTimers.remove(id);
 
         // Note: _valueBackup is cleared in _sendCommandToBackend on success,
         // or used for revert on failure. Don't clear here as ack is async.
@@ -264,6 +294,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         ),
       );
 
+      // A hide/delete (or a newer command) invalidates this acknowledgement.
+      // It must not revert or clear backups belonging to a restored property.
+      if (_pendingCommands[property.id] != completer) {
+        return;
+      }
+      _pendingCommands.remove(property.id);
+
       if (result.success) {
         if (kDebugMode) {
           debugPrint(
@@ -290,6 +327,10 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         completer.complete(false);
       }
     } catch (e) {
+      if (_pendingCommands[property.id] != completer) {
+        return;
+      }
+      _pendingCommands.remove(property.id);
       if (kDebugMode) {
         debugPrint(
           '[DEVICES MODULE][CHANNEL PROPERTIES] Exception sending command for property: ${property.id}: $e',
@@ -356,7 +397,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       final requestId = const Uuid().v4();
 
       // Build properties payload
-      final propertiesPayload = properties.map((prop) => prop.toJson()).toList();
+      final propertiesPayload = properties
+          .map((prop) => prop.toJson())
+          .toList();
 
       // Build context payload if provided
       Map<String, dynamic>? contextPayload;
@@ -493,39 +536,28 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     throw ArgumentError('Cannot convert value to number: $value');
   }
 
-  Future<void> fetchOne(
-    String channelId,
-    String id,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDevicesModuleChannelProperty(
-          channelId: channelId,
-          id: id,
-        );
+  Future<void> fetchOne(String channelId, String id) async {
+    return handleApiCall(() async {
+      final response = await apiClient.getDevicesModuleChannelProperty(
+        channelId: channelId,
+        id: id,
+      );
 
-        final raw = response.response.data['data'] as Map<String, dynamic>;
+      final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insert([raw]);
-      },
-      'fetch channel property',
-    );
+      insert([raw]);
+    }, 'fetch channel property');
   }
 
-  Future<void> fetchAll(
-    String channelId,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDevicesModuleChannelProperties(
-          channelId: channelId,
-        );
+  Future<void> fetchAll(String channelId) async {
+    return handleApiCall(() async {
+      final response = await apiClient.getDevicesModuleChannelProperties(
+        channelId: channelId,
+      );
 
-        final raw = response.response.data['data'] as List;
+      final raw = response.response.data['data'] as List;
 
-        insert(raw.cast<Map<String, dynamic>>());
-      },
-      'fetch channel properties',
-    );
+      insert(raw.cast<Map<String, dynamic>>());
+    }, 'fetch channel properties');
   }
 }

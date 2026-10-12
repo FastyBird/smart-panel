@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
@@ -6,6 +8,25 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channel_prope
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _DelayedSocketService extends SocketService {
+  int callCount = 0;
+  Function(SocketCommandResponseModel?)? acknowledge;
+
+  @override
+  bool get isConnected => true;
+
+  @override
+  Future<void> sendCommand(
+    String event,
+    dynamic data,
+    String handler, {
+    Function(SocketCommandResponseModel?)? onAck,
+  }) async {
+    callCount++;
+    acknowledge = onAck;
+  }
+}
 
 DevicesRepository _buildRepository() {
   final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
@@ -38,7 +59,248 @@ Map<String, dynamic> _device(String id, {bool? hidden}) => {
 const deviceId = '9f8c1d2e-3a4b-4c5d-8e6f-0a1b2c3d4e5f';
 const arrivedMidFlightId = '1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e';
 
+const channelId = '2b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e';
+const propertyId = '3b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e';
+
+Map<String, dynamic> _property() => {
+  'id': propertyId,
+  'type': 'generic',
+  'channel': channelId,
+  'data_type': 'bool',
+  'category': 'generic',
+  'permissions': ['rw'],
+  'created_at': '2026-01-01T00:00:00.000Z',
+  'value': {'value': false},
+};
+Map<String, dynamic> _channel() => {
+  'id': channelId,
+  'type': 'generic',
+  'device': deviceId,
+  'category': 'generic',
+  'name': 'Channel',
+  'created_at': '2026-01-01T00:00:00.000Z',
+  'controls': [],
+  'properties': [_property()],
+};
+
 void main() {
+  group('device child lifecycle', () {
+    late DevicesRepository devices;
+    late ChannelsRepository channels;
+    late ChannelPropertiesRepository properties;
+    late _DelayedSocketService socket;
+    setUp(() {
+      socket = _DelayedSocketService();
+      final client = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
+      properties = ChannelPropertiesRepository(
+        apiClient: client,
+        commandDispatch: CommandDispatchService(socketService: socket),
+      );
+      channels = ChannelsRepository(
+        apiClient: client,
+        channelPropertiesRepository: properties,
+      );
+      devices = DevicesRepository(
+        apiClient: client,
+        channelsRepository: channels,
+      );
+      properties.setChannelsRepository(channels);
+    });
+
+    test('allows children before device bootstrap', () {
+      channels.insert([_channel()]);
+      devices.insert([_device(deviceId)]);
+      expect(channels.data, contains(channelId));
+      expect(properties.data, contains(propertyId));
+    });
+
+    for (final hide in [true, false]) {
+      test(
+        'cascades ${hide ? 'hide' : 'delete'} and rejects late child rows',
+        () async {
+          devices.insert([
+            {
+              ..._device(deviceId),
+              'channels': [_channel()],
+            },
+            _device(arrivedMidFlightId),
+          ]);
+          final pending = properties.setValue(propertyId, true);
+          if (hide) {
+            devices.insert([_device(deviceId, hidden: true)]);
+          } else {
+            devices.delete(deviceId);
+          }
+          expect(await pending, isFalse);
+          await Future<void>.delayed(const Duration(milliseconds: 350));
+          expect(socket.callCount, 0);
+          channels.insert([_channel()]);
+          properties.insert([_property()]);
+          expect(channels.data, isEmpty);
+          expect(properties.data, isEmpty);
+          expect(devices.data, contains(arrivedMidFlightId));
+        },
+      );
+    }
+
+    test('unhide permits children to be fetched again', () {
+      devices.insert([
+        {
+          ..._device(deviceId),
+          'channels': [_channel()],
+        },
+      ]);
+      devices.insert([_device(deviceId, hidden: true)]);
+      devices.insert([_device(deviceId, hidden: false)]);
+      channels.insert([_channel()]);
+      expect(channels.data, contains(channelId));
+      expect(properties.getItem(propertyId)?.value?.value, false);
+    });
+
+    test(
+      'hidden embedded channel IDs reject property updates before channel bootstrap',
+      () {
+        properties.insert([_property()]);
+        devices.insert([
+          {
+            ..._device(deviceId, hidden: true),
+            'channels': [_channel()],
+          },
+        ]);
+        properties.insert([_property()]);
+        expect(properties.data, isEmpty);
+        expect(channels.data, isEmpty);
+      },
+    );
+
+    test('late unseen channel is blocked along with its properties', () {
+      devices.insert([_device(deviceId, hidden: true)]);
+      channels.insert([_channel()]);
+      properties.insert([_property()]);
+      expect(channels.data, isEmpty);
+      expect(properties.data, isEmpty);
+    });
+
+    test(
+      'late failed acknowledgement cannot revert a restored property',
+      () async {
+        devices.insert([
+          {
+            ..._device(deviceId),
+            'channels': [_channel()],
+          },
+        ]);
+        final pending = properties.setValue(propertyId, true);
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        expect(socket.callCount, 1);
+        devices.insert([_device(deviceId, hidden: true)]);
+        expect(await pending, isFalse);
+        devices.insert([
+          {
+            ..._device(deviceId, hidden: false),
+            'channels': [
+              {
+                ..._channel(),
+                'properties': [
+                  {
+                    ..._property(),
+                    'value': {'value': true},
+                  },
+                ],
+              },
+            ],
+          },
+        ]);
+        socket.acknowledge?.call(
+          SocketCommandResponseModel(status: false, message: 'failed'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(properties.getItem(propertyId)?.value?.value, true);
+      },
+    );
+
+    test(
+      'channel deletion cancels a pending command and removes properties',
+      () async {
+        channels.insert([_channel()]);
+        final pending = properties.setValue(propertyId, true);
+        channels.delete(channelId);
+        expect(await pending, isFalse);
+        channels.insert([_channel()]);
+        expect(channels.data, isEmpty);
+        properties.insert([_property()]);
+        expect(properties.data, isEmpty);
+      },
+    );
+  });
+
+  test(
+    'a stale single-device fetch cannot restore a hidden parent or its children',
+    () async {
+      final response = Completer<Map<String, dynamic>>();
+      final started = Completer<void>();
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            started.complete();
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'status': 'success',
+                  'timestamp': '2026-01-01T00:00:00.000Z',
+                  'request_id': 'test',
+                  'path': options.path,
+                  'method': 'GET',
+                  'metadata': {
+                    'request_duration_ms': 0,
+                    'server_time': '2026-01-01T00:00:00.000Z',
+                    'cpu_usage': 0,
+                  },
+                  'data': await response.future,
+                },
+              ),
+            );
+          },
+        ),
+      );
+      final client = DevicesModuleClient(dio, baseUrl: 'http://localhost');
+      final properties = ChannelPropertiesRepository(
+        apiClient: client,
+        commandDispatch: CommandDispatchService(socketService: SocketService()),
+      );
+      final channels = ChannelsRepository(
+        apiClient: client,
+        channelPropertiesRepository: properties,
+      );
+      final devices = DevicesRepository(
+        apiClient: client,
+        channelsRepository: channels,
+      );
+      devices.insert([
+        {
+          ..._device(deviceId),
+          'channels': [_channel()],
+        },
+      ]);
+      final fetch = devices.fetchOne(deviceId);
+      await started.future;
+      devices.insert([_device(deviceId, hidden: true)]);
+      response.complete({
+        ..._device(deviceId, hidden: false),
+        'controls': [],
+        'zone_ids': [],
+        'status': {'online': true, 'status': 'connected'},
+        'channels': [_channel()],
+      });
+      await fetch;
+      expect(devices.data, isEmpty);
+      expect(channels.data, isEmpty);
+      expect(properties.data, isEmpty);
+    },
+  );
+
   group('DevicesRepository.fetchAll', () {
     // A device created while the request is in flight arrives by socket and is absent from a snapshot
     // taken before it existed. Evicting on absence alone would delete it moments after it appeared,
