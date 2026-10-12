@@ -22,6 +22,7 @@ const existsSyncMock = existsSync as jest.MockedFunction<typeof existsSync>;
 const readFileSyncMock = readFileSync as jest.MockedFunction<typeof readFileSync>;
 
 describe('DetectionRulesLoaderService', () => {
+	let module: TestingModule | undefined;
 	let service: DetectionRulesLoaderService;
 
 	const realExistsSync = jest.requireActual<typeof import('fs')>('fs').existsSync;
@@ -31,7 +32,7 @@ describe('DetectionRulesLoaderService', () => {
 		existsSyncMock.mockImplementation(realExistsSync);
 		readFileSyncMock.mockImplementation(realReadFileSync);
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [DetectionRulesLoaderService],
 		}).compile();
 
@@ -274,5 +275,11 @@ sensors:
 
 			loggerErrorSpy.mockRestore();
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

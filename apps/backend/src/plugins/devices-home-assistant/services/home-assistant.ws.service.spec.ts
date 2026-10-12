@@ -20,6 +20,7 @@ import { HomeAssistantWsService } from './home-assistant.ws.service';
 jest.mock('ws');
 
 describe('HomeAssistantWsService', () => {
+	let module: TestingModule | undefined;
 	let service: HomeAssistantWsService;
 	let mockConfigService: Partial<ConfigService>;
 	let mockHttpService: Partial<HomeAssistantHttpService>;
@@ -78,7 +79,7 @@ describe('HomeAssistantWsService', () => {
 
 		(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWs);
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				HomeAssistantWsService,
 				{ provide: ConfigService, useValue: mockConfigService },
@@ -99,7 +100,10 @@ describe('HomeAssistantWsService', () => {
 		service = module.get(HomeAssistantWsService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		service?.['stopPing']();
 
 		// A test that drives an unexpected close leaves a real reconnect timer scheduled;

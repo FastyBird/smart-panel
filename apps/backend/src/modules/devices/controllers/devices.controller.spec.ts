@@ -27,6 +27,7 @@ import { DevicesService } from '../services/devices.service';
 import { DevicesController } from './devices.controller';
 
 describe('DevicesController', () => {
+	let module: TestingModule | undefined;
 	let controller: DevicesController;
 	let service: DevicesService;
 	let deviceZonesService: DeviceZonesService;
@@ -56,7 +57,7 @@ describe('DevicesController', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [DevicesController],
 			providers: [
 				{
@@ -306,5 +307,11 @@ describe('DevicesController', () => {
 
 			expect(bulkService.setEnabled).toHaveBeenCalledWith(ids, false);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

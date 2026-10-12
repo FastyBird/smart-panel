@@ -21,12 +21,8 @@ import { DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
 import type { IVirtualWizardMappingStepProps } from './virtual-wizard-mapping-step.types';
 import VirtualWizardMappingStep from './virtual-wizard-mapping-step.vue';
 
-// These mount the whole mapping step — Element Plus selects, the slot expansion for a full category,
-// and awaited compatibility round-trips — so a single case is an order of magnitude heavier than the
-// suite's typical unit test. Comfortably under a second each when run alone, but they crossed vitest's
-// 5s default under full-suite parallelism and reddened CI intermittently. The headroom is for machine
-// load, not for the tests getting slower: if one of these genuinely approaches 15s, that is a
-// regression worth investigating rather than raising again.
+// Full Element Plus mapping flows need a bounded budget under parallel suite load.
+// Measurements and the policy for this exception live in docs/testing-lifecycle.md.
 vi.setConfig({ testTimeout: 15000 });
 
 const backendClient = {
@@ -61,10 +57,11 @@ vi.mock('vue-i18n', () => ({
 }));
 
 vi.mock('../../../../common', async () => {
-	const actual = await vi.importActual('../../../../common');
+	// Keep the production error decoder without loading unrelated common UI and services.
+	const { getErrorReason } = await import('../../../../common/utils/api-error.utils');
 
 	return {
-		...actual,
+		getErrorReason,
 		injectStoresManager: () => ({
 			// Keyed explicitly rather than falling through to a default, so asking for a store this
 			// fixture does not provide fails loudly instead of quietly handing back the wrong one.

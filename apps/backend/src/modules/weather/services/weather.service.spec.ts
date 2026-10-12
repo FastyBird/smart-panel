@@ -24,6 +24,7 @@ import { WeatherProviderRegistryService } from './weather-provider-registry.serv
 import { WeatherService } from './weather.service';
 
 describe('WeatherService', () => {
+	let module: TestingModule | undefined;
 	let service: WeatherService;
 	let locationsService: LocationsService;
 	let configService: ConfigService;
@@ -55,7 +56,7 @@ describe('WeatherService', () => {
 			doesExist: jest.fn(() => cronRegistered),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				WeatherService,
 				{
@@ -115,6 +116,9 @@ describe('WeatherService', () => {
 	});
 
 	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		await service.stop();
 		jest.resetAllMocks();
 	});

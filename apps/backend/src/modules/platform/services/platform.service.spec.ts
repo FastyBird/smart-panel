@@ -48,6 +48,7 @@ function mockExecFile(succeed: () => boolean, stderr = 'sudo: a password is requ
 }
 
 describe('PlatformService', () => {
+	let module: TestingModule | undefined;
 	let service: PlatformService;
 
 	const originalEnv = process.env;
@@ -56,14 +57,17 @@ describe('PlatformService', () => {
 		process.env = { ...originalEnv };
 		delete process.env[PLATFORM_TYPE_ENV];
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [PlatformService],
 		}).compile();
 
 		service = module.get<PlatformService>(PlatformService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 		process.env = originalEnv;
 	});

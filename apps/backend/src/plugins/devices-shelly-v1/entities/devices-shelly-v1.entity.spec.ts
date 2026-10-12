@@ -39,6 +39,7 @@ import { ShellyV1DeviceEntity } from './devices-shelly-v1.entity';
 // (DeviceEntity.zoneIds is a getter declared only on the base class) — these tests calling
 // service.update() against ShellyV1DeviceEntity without throwing is itself part of what they prove.
 describe('ShellyV1DeviceEntity via DevicesService.update()', () => {
+	let module: TestingModule | undefined;
 	let service: DevicesService;
 	let repository: Repository<DeviceEntity>;
 	let dataSource: DataSource;
@@ -92,7 +93,7 @@ describe('ShellyV1DeviceEntity via DevicesService.update()', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DevicesService,
 				DeviceStructureLockService,
@@ -157,7 +158,10 @@ describe('ShellyV1DeviceEntity via DevicesService.update()', () => {
 		dataSource = module.get<DataSource>(DataSource);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

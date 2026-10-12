@@ -23,6 +23,7 @@ import { DisplaysService } from './displays.service';
 import { SpaceSelectionValidatorRegistryService } from './space-selection-validator-registry.service';
 
 describe('DisplaysService', () => {
+	let module: TestingModule | undefined;
 	let service: DisplaysService;
 	let repository: Repository<DisplayEntity>;
 	let spaceRepository: Repository<SpaceEntity>;
@@ -137,7 +138,7 @@ describe('DisplaysService', () => {
 			createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DisplaysService,
 				{ provide: getRepositoryToken(DisplayEntity), useFactory: mockRepository },
@@ -160,7 +161,10 @@ describe('DisplaysService', () => {
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

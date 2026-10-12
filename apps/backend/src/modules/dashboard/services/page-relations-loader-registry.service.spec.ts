@@ -5,6 +5,7 @@ import { IPageRelationsLoader } from '../entities/dashboard.relations';
 import { PageRelationsLoaderRegistryService } from './page-relations-loader-registry.service';
 
 describe('PageRelationsLoaderRegistryService', () => {
+	let module: TestingModule | undefined;
 	let service: PageRelationsLoaderRegistryService;
 
 	const mockLoader: IPageRelationsLoader = {
@@ -13,14 +14,17 @@ describe('PageRelationsLoaderRegistryService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [PageRelationsLoaderRegistryService],
 		}).compile();
 
 		service = module.get<PageRelationsLoaderRegistryService>(PageRelationsLoaderRegistryService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

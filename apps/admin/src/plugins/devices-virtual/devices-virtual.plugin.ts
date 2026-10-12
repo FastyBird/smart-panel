@@ -19,6 +19,7 @@ import {
 } from '../../modules/devices';
 
 import { VirtualDeviceAddForm, VirtualDeviceEditForm } from './components/components';
+import VirtualDeviceSources from './components/virtual-device-sources.vue';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE, RouteNames } from './devices-virtual.constants';
 import { locales } from './locales';
 import { PluginRoutes } from './router';
@@ -93,6 +94,7 @@ export default {
 					components: {
 						deviceAddForm: VirtualDeviceAddForm,
 						deviceEditForm: VirtualDeviceEditForm,
+						deviceDetailSection: VirtualDeviceSources,
 					},
 					schemas: {
 						deviceSchema: VirtualDeviceSchema,

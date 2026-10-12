@@ -13,6 +13,7 @@ import { OpenWeatherMapOneCallGeolocationService } from '../services/openweather
 import { OpenWeatherMapOneCallGeolocationController } from './geolocation.controller';
 
 describe('OpenWeatherMapOneCallGeolocationController', () => {
+	let module: TestingModule | undefined;
 	let controller: OpenWeatherMapOneCallGeolocationController;
 	let service: OpenWeatherMapOneCallGeolocationService;
 
@@ -56,7 +57,7 @@ describe('OpenWeatherMapOneCallGeolocationController', () => {
 	];
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [OpenWeatherMapOneCallGeolocationController],
 			providers: [
 				{
@@ -74,7 +75,10 @@ describe('OpenWeatherMapOneCallGeolocationController', () => {
 		service = module.get<OpenWeatherMapOneCallGeolocationService>(OpenWeatherMapOneCallGeolocationService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.resetAllMocks();
 	});
 

@@ -39,6 +39,7 @@ class MockDevice extends DeviceEntity {
 }
 
 describe('DevicesControlsService', () => {
+	let module: TestingModule | undefined;
 	let devicesService: DevicesService;
 	let devicesControlsService: DevicesControlsService;
 	let repository: Repository<DeviceControlEntity>;
@@ -97,7 +98,7 @@ describe('DevicesControlsService', () => {
 			})),
 		});
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DevicesControlsService,
 				{ provide: getRepositoryToken(DeviceControlEntity), useFactory: mockRepository },
@@ -130,7 +131,10 @@ describe('DevicesControlsService', () => {
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

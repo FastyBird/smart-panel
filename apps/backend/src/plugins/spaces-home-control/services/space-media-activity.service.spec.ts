@@ -66,6 +66,7 @@ function buildBinding(activityKey: MediaActivityKey, overrides: Record<string, s
 
 // Activation includes inter-step delays (STEP_PRE_DELAY_MS + STEP_POST_DELAY_MS per step)
 describe('SpaceMediaActivityService', () => {
+	let module: TestingModule | undefined;
 	jest.setTimeout(15_000);
 
 	let service: SpaceMediaActivityService;
@@ -115,7 +116,7 @@ describe('SpaceMediaActivityService', () => {
 			emit: jest.fn(),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceMediaActivityService,
 				{ provide: getRepositoryToken(SpaceActiveMediaActivityEntity), useValue: mockActiveRepository },
@@ -807,5 +808,11 @@ describe('SpaceMediaActivityService', () => {
 				expect.objectContaining({ state: MediaActivationState.DEACTIVATED }),
 			);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

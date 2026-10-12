@@ -11,11 +11,12 @@ import { HomeAssistantWizardService } from '../services/wizard.service';
 import { HomeAssistantWizardController } from './home-assistant-wizard.controller';
 
 describe('HomeAssistantWizardController', () => {
+	let module: TestingModule | undefined;
 	let controller: HomeAssistantWizardController;
 	let wizardService: jest.Mocked<HomeAssistantWizardService>;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [HomeAssistantWizardController],
 			providers: [
 				{
@@ -88,5 +89,11 @@ describe('HomeAssistantWizardController', () => {
 		controller.endSession('session-1');
 
 		expect(wizardService.end.mock.calls).toEqual([['session-1']]);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

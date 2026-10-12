@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file */
 import type { App } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
@@ -6,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IPluginOptions } from '../../app.types';
 import { RouteNames as DevicesRouteNames } from '../../modules/devices';
 
+import VirtualDeviceSources from './components/virtual-device-sources.vue';
 import { RouteNames as VirtualRouteNames } from './devices-virtual.constants';
 import DevicesVirtualPlugin from './devices-virtual.plugin';
 import {
@@ -48,6 +50,11 @@ vi.mock('./components/components', async () => {
 		VirtualDeviceAddForm: StubComponent,
 		VirtualDeviceEditForm: StubComponent,
 	};
+});
+
+vi.mock('./components/virtual-device-sources.vue', async () => {
+	const { defineComponent } = await import('vue');
+	return { default: defineComponent({ name: 'VirtualDeviceSources', template: '<div />' }) };
 });
 
 vi.mock('./schemas/devices.schemas', () => ({
@@ -168,6 +175,14 @@ describe('devicesVirtualPlugin', () => {
 				],
 			})
 		);
+	});
+
+	it('registers its sources and remap section for the virtual device type', () => {
+		DevicesVirtualPlugin.install({} as App, createOptions([{ name: 'root' }]));
+
+		const element = mocks.addPlugin.mock.calls[0]?.[1].elements[0];
+		expect(element.type).toBe('virtual');
+		expect(element.components.deviceDetailSection).toBe(VirtualDeviceSources);
 	});
 
 	it('registers its bespoke wizard as route-based launcher metadata when the route is available', () => {

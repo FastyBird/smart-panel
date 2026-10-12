@@ -18,6 +18,7 @@ import { SYSTEM_MODULE_NAME } from '../system.constants';
 import { OnboardingService } from './onboarding.service';
 
 describe('OnboardingService', () => {
+	let module: TestingModule | undefined;
 	let service: OnboardingService;
 	let usersService: UsersService;
 	let devicesService: DevicesService;
@@ -26,7 +27,7 @@ describe('OnboardingService', () => {
 	let configService: ConfigService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				OnboardingService,
 				{
@@ -71,7 +72,10 @@ describe('OnboardingService', () => {
 		configService = module.get<ConfigService>(ConfigService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

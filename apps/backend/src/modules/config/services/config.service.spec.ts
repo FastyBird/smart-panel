@@ -98,6 +98,7 @@ class ModuleConfigDto extends UpdateModuleConfigDto {
 }
 
 describe('ConfigService', () => {
+	let module: TestingModule | undefined;
 	let service: ConfigService;
 	let eventEmitter: EventEmitter2;
 	let moduleConfigMutations: ModuleConfigMutationRegistryService;
@@ -144,7 +145,7 @@ describe('ConfigService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			imports: [NestConfigModule],
 			providers: [
 				ConfigService,
@@ -218,7 +219,10 @@ describe('ConfigService', () => {
 		platform = module.get<PlatformService>(PlatformService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.resetAllMocks();
 	});
 

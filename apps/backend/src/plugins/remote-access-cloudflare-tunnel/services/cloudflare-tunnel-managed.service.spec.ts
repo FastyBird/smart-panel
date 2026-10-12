@@ -53,6 +53,7 @@ function expectRequirements(
 }
 
 describe('CloudflareTunnelManagedService', () => {
+	let module: TestingModule | undefined;
 	let service: CloudflareTunnelManagedService;
 	let cliService: { getVersion: jest.Mock };
 	let processService: {
@@ -101,7 +102,7 @@ describe('CloudflareTunnelManagedService', () => {
 		platformServiceMock = { getPlatformTypeAsync: jest.fn().mockResolvedValue(PlatformType.RASPBERRY) };
 		eventEmitterMock = { emit: jest.fn() };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				CloudflareTunnelManagedService,
 				{ provide: CloudflaredCliService, useValue: cliService },
@@ -117,7 +118,10 @@ describe('CloudflareTunnelManagedService', () => {
 		service = module.get(CloudflareTunnelManagedService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllTimers();
 		jest.useRealTimers();
 	});

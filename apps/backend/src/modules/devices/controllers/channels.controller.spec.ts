@@ -26,6 +26,7 @@ import { DeviceExistsConstraintValidator } from '../validators/device-exists-con
 import { ChannelsController } from './channels.controller';
 
 describe('ChannelsController', () => {
+	let module: TestingModule | undefined;
 	let controller: ChannelsController;
 	let service: ChannelsService;
 	let mapper: ChannelsTypeMapperService;
@@ -67,7 +68,7 @@ describe('ChannelsController', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [ChannelsController],
 			providers: [
 				DeviceExistsConstraintValidator,
@@ -125,7 +126,10 @@ describe('ChannelsController', () => {
 		inputOccurrencesService = module.get<ChannelInputOccurrencesService>(ChannelInputOccurrencesService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

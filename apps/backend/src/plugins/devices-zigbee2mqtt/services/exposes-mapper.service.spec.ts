@@ -19,11 +19,12 @@ import { TransformerRegistry } from '../mappings/transformers';
 import { Z2mExposesMapperService } from './exposes-mapper.service';
 
 describe('Z2mExposesMapperService', () => {
+	let module: TestingModule | undefined;
 	let service: Z2mExposesMapperService;
 	let mappingLoader: MappingLoaderService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [Z2mExposesMapperService, ConfigDrivenConverter, MappingLoaderService, TransformerRegistry],
 		}).compile();
 
@@ -848,5 +849,11 @@ describe('Z2mExposesMapperService', () => {
 			expect(switcherChannel).toBeUndefined();
 			expect(outletChannel?.identifier).toBe('outlet');
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

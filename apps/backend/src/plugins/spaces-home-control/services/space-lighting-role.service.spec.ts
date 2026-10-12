@@ -18,6 +18,7 @@ import { LightingRole } from '../spaces-home-control.constants';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 
 describe('SpaceLightingRoleService', () => {
+	let module: TestingModule | undefined;
 	let service: SpaceLightingRoleService;
 	let roleRepository: jest.Mocked<Repository<SpaceLightingRoleEntity>>;
 	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
@@ -135,7 +136,7 @@ describe('SpaceLightingRoleService', () => {
 		}));
 		transactionalSave = jest.fn().mockImplementation(<T>(entity: T): T => entity);
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				SpaceLightingRoleService,
 				{
@@ -580,5 +581,11 @@ describe('SpaceLightingRoleService', () => {
 			expect(result[0].role).toBeNull();
 			expect(result[0].priority).toBe(0); // Default priority
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

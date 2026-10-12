@@ -3,10 +3,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SignageHomePageResolver } from './signage-home-page.resolver';
 
 describe('SignageHomePageResolver', () => {
+	let module: TestingModule | undefined;
 	let resolver: SignageHomePageResolver;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [SignageHomePageResolver],
 		}).compile();
 
@@ -15,5 +16,11 @@ describe('SignageHomePageResolver', () => {
 
 	it('always resolves to null', () => {
 		expect(resolver.resolve()).toBeNull();
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

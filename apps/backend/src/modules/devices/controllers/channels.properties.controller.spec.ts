@@ -35,6 +35,7 @@ import { PropertyTimeseriesService } from '../services/property-timeseries.servi
 import { ChannelsPropertiesController } from './channels.properties.controller';
 
 describe('ChannelsPropertiesController', () => {
+	let module: TestingModule | undefined;
 	let controller: ChannelsPropertiesController;
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
@@ -95,7 +96,7 @@ describe('ChannelsPropertiesController', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [ChannelsPropertiesController],
 			providers: [
 				{
@@ -159,7 +160,10 @@ describe('ChannelsPropertiesController', () => {
 		propertyTimeseriesService = module.get<PropertyTimeseriesService>(PropertyTimeseriesService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

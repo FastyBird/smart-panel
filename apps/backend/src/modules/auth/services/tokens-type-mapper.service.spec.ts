@@ -12,17 +12,21 @@ class MockCreateTokenDto extends CreateTokenDto {}
 class MockUpdateTokenDto extends UpdateTokenDto {}
 
 describe('TokensTypeMapperService', () => {
+	let module: TestingModule | undefined;
 	let service: TokensTypeMapperService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [TokensTypeMapperService],
 		}).compile();
 
 		service = module.get<TokensTypeMapperService>(TokensTypeMapperService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

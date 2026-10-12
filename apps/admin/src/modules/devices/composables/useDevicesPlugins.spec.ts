@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { defineComponent, ref } from 'vue';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -71,6 +71,16 @@ const mockPluginList = [
 		modules: [DEVICES_MODULE_NAME],
 	},
 	{
+		type: 'detail-only-plugin',
+		source: 'detail',
+		name: 'Detail Only Plugin',
+		description: 'Detail extension',
+		links: { documentation: '', devDocumentation: '', bugsTracking: '' },
+		elements: [{ type: 'detail-only-type', components: { deviceDetailSection: defineComponent({ template: '<div />' }) } }],
+		isCore: false,
+		modules: [DEVICES_MODULE_NAME],
+	},
+	{
 		type: 'unrelated-plugin',
 		source: 'source2',
 		name: 'Unrelated Plugin',
@@ -107,7 +117,7 @@ vi.mock('../../config', async (importOriginal) => ({
 describe('useDevicesPlugins', () => {
 	it('returns only plugins related to devices module', () => {
 		const { plugins } = useDevicesPlugins();
-		expect(plugins.value.length).toBe(2);
+		expect(plugins.value.length).toBe(3);
 		expect(plugins.value[0]?.type).toBe('test-plugin');
 	});
 
@@ -120,6 +130,14 @@ describe('useDevicesPlugins', () => {
 				disabled: false,
 			},
 		]);
+	});
+
+	it('discovers detail-only elements without offering them as creatable device types', () => {
+		const { getElement, options, wizardOptions } = useDevicesPlugins();
+
+		expect(getElement('detail-only-type')?.components?.deviceDetailSection).toBeDefined();
+		expect(options.value.map((option) => option.value)).not.toContain('detail-only-type');
+		expect(wizardOptions.value.map((option) => option.value)).not.toContain('detail-only-plugin');
 	});
 
 	it('getByName returns correct plugin', () => {

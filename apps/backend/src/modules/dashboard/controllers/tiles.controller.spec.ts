@@ -71,6 +71,7 @@ class MockTileEntity extends TileEntity {
 }
 
 describe('TilesController', () => {
+	let module: TestingModule | undefined;
 	let controller: TilesController;
 	let tilesService: TilesService;
 	let tileMapper: TilesTypeMapperService;
@@ -105,7 +106,7 @@ describe('TilesController', () => {
 	} as MockTileEntity;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [TilesController],
 			providers: [
 				{
@@ -133,7 +134,10 @@ describe('TilesController', () => {
 		tileMapper = module.get<TilesTypeMapperService>(TilesTypeMapperService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

@@ -6,6 +6,7 @@ import { PagesBulkService } from './pages-bulk.service';
 import { PagesService } from './pages.service';
 
 describe('PagesBulkService', () => {
+	let module: TestingModule | undefined;
 	let service: PagesBulkService;
 	let pagesService: { remove: jest.Mock };
 
@@ -14,7 +15,7 @@ describe('PagesBulkService', () => {
 			remove: jest.fn().mockResolvedValue(undefined),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [PagesBulkService, { provide: PagesService, useValue: pagesService }],
 		}).compile();
 
@@ -44,5 +45,11 @@ describe('PagesBulkService', () => {
 			expect(result.succeeded).toEqual(['a', 'c']);
 			expect(result.failed).toEqual([{ id: 'b', reason: 'Requested page does not exist' }]);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

@@ -31,6 +31,7 @@ import { SpaceLightingStateService } from './space-lighting-state.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
 
 describe('LightingIntentService', () => {
+	let module: TestingModule | undefined;
 	let service: LightingIntentService;
 	let spacesService: jest.Mocked<SpacesService>;
 	let platformRegistryService: {
@@ -85,7 +86,7 @@ describe('LightingIntentService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				LightingIntentService,
 				{
@@ -507,5 +508,11 @@ describe('LightingIntentService', () => {
 			expect(result?.success).toBe(true);
 			expect(result?.affectedDevices).toBe(0);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

@@ -22,6 +22,7 @@ import { PagesTilesValidationException } from '../pages-tiles.exceptions';
 import { TilesPageNestedBuilderService } from './page-create-nested-builder.service';
 
 describe('TilesPageNestedBuilderService', () => {
+	let module: TestingModule | undefined;
 	let service: TilesPageNestedBuilderService;
 	let tileMapperService: TilesTypeMapperService;
 	let dataSourceMapperService: DataSourcesTypeMapperService;
@@ -36,7 +37,7 @@ describe('TilesPageNestedBuilderService', () => {
 			create: jest.fn().mockImplementation((x): DataSourceEntity => x),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				TilesPageNestedBuilderService,
 				{
@@ -82,7 +83,10 @@ describe('TilesPageNestedBuilderService', () => {
 		ormDataSource = module.get(OrmDataSource);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 
