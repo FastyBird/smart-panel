@@ -163,5 +163,17 @@ describe('Devices Transformers', (): void => {
 				hidden_by: DevicesModuleDeviceHiddenBy.system,
 			});
 		});
+
+		it('preserves explicit null provenance in the wire request', (): void => {
+			const result = transformDeviceUpdateRequest({ type: 'some-device', hiddenBy: null }, DeviceUpdateReqSchema);
+
+			expect(result).toEqual({ type: 'some-device', hidden_by: null });
+		});
+
+		it('does not invent provenance for an unrelated update', (): void => {
+			const result = transformDeviceUpdateRequest(validDeviceUpdatePayload, DeviceUpdateReqSchema);
+
+			expect(result).not.toHaveProperty('hidden_by');
+		});
 	});
 });

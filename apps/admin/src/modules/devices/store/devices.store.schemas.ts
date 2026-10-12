@@ -223,7 +223,7 @@ export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 	// (e.g. the virtual device wizard's review step hiding a source device) would see the request
 	// "succeed" while the outgoing PATCH body carried neither field, and the device would stay visible.
 	hidden: z.boolean().optional(),
-	hidden_by: z.nativeEnum(DevicesModuleDeviceHiddenBy).optional(),
+	hidden_by: z.nativeEnum(DevicesModuleDeviceHiddenBy).nullable().optional(),
 	room_id: z.string().uuid().nullable().optional(),
 });
 
@@ -236,12 +236,7 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	description: z.string().trim().nullable(),
 	enabled: z.boolean(),
 	hidden: z.boolean(),
-	// `.optional()`, not `.nullable()`: the generated `ApiDevice.hidden_by` type loses the `| null`
-	// that the OpenAPI spec declares (nullable enum) because openapi-typescript does not append it
-	// to enum-referencing properties (see the `variant` field on the reTerminal plugin's device
-	// schema for the same quirk). Matching that exact shape keeps this assignable to `ZodType<ApiDevice>`
-	// in both directions; the internal `DeviceSchema.hiddenBy` below is unconstrained and stays nullable.
-	hidden_by: z.nativeEnum(DevicesModuleDeviceHiddenBy).optional(),
+	hidden_by: z.nativeEnum(DevicesModuleDeviceHiddenBy).nullable().optional(),
 	room_id: z.string().uuid().nullable(),
 	zone_ids: z.array(z.string().uuid()),
 	status: z.object({
