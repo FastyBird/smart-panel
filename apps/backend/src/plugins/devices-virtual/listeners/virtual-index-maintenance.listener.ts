@@ -4,6 +4,7 @@ import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { isSqliteTransactionActive, outsideSqliteTransaction } from '../../../common/database/sqlite-data-source';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DeviceHiddenBy, DeviceHiddenFilter, EventType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
@@ -47,72 +48,18 @@ const channelOf = (property: ChannelPropertyEntity): ChannelEntity | undefined =
  * that was already in flight when more events arrived — never a concurrent second pass, never one
  * rebuild per event. See runRebuildLoop() for the mechanics.
  *
- * DEVICE_DELETED and CHANNEL_PROPERTY_DELETED are emitted synchronously from *inside* the
- * `dataSource.transaction()` callback that performs the deletion (`DevicesService.remove()`,
- * `ChannelsPropertiesService.remove()`) — `EventEmitter2.emit()` runs listeners synchronously, so
- * handleStructuralChange() executes before that transaction has committed. rebuild() must not read
- * through it: on the shared, single-connection SQLite driver this app runs on (see
- * AbstractSqliteDriver — sqlite is not pooled, so `dataSource.createQueryRunner()` always returns
- * the one instance every non-transactional query in the app shares), a read that lands before
- * commit is a read of state that could still be rolled back — the index would then reflect a
- * structural change that never durably happened.
+ * Deletion events are emitted synchronously inside transaction callbacks. The production
+ * SqliteDataSource serializes access to the physical connection and lets awaited persistence hooks
+ * share their caller's transaction. This listener starts fire-and-forget work, so it explicitly
+ * leaves that context with outsideSqliteTransaction(): rebuilds must read committed state, including
+ * when the emitting transaction later rolls back. A detached query also waits for any transaction
+ * that starts between the activity check and the query itself.
  *
- * Getting "after commit" right is *not* a matter of picking a long-enough delay: sqlite3 (the
- * driver's underlying npm package) executes queued commands via libuv's threadpool, so `COMMIT`
- * completing is a real async I/O round trip, not merely a same-tick submission. A single
- * `setImmediate` hop is not sufficient — confirmed empirically, not just argued: with the read
- * sampled at the moment rebuild() is actually invoked, an earlier version of this class that
- * deferred with one bare `setImmediate` hop observed `isTransactionActive === true` in 15 out of 15
- * repeated trials. deferPastOpenTransaction() therefore does not guess a hop count at all — it polls
- * the shared QueryRunner's own `isTransactionActive` flag, which the driver itself only clears once
- * `COMMIT`/`ROLLBACK` has actually completed (see AbstractSqliteQueryRunner). That makes "has the
- * transaction settled" an observed fact rather than a timing assumption, for both commit and
- * rollback alike.
- *
- * ## Why the wait is bounded, and why expiry still rebuilds
- *
- * The poll is bounded (see deferPastOpenTransaction()), and a bounded wait can expire while the flag
- * is still set — a transaction that keeps doing awaited work after emitting its event stays open for
- * as long as that work takes. runRebuildLoop() rebuilds anyway when that happens, and then schedules
- * a *repair* pass. Both halves of that are deliberate — and so is the limit of what a repair can
- * cover:
- *
- * - **Waiting indefinitely instead is not safe**, because `isTransactionActive` can be left set with
- *   no transaction behind it at all, permanently, for the life of the process.
- *   `AbstractSqliteQueryRunner.startTransaction()` assigns `isTransactionActive = true` *before* it
- *   awaits `BEGIN TRANSACTION`, and does not reset it if that query throws. When it does throw —
- *   `SQLITE_ERROR: cannot start a transaction within a transaction`, the collision follow-up 3.3
- *   documents and looksTransientSqliteError() below already matches on — `EntityManager.transaction()`
- *   calls `rollbackTransaction()`, whose `await this.query("ROLLBACK")` then also throws ("cannot
- *   rollback - no transaction is active") and so never reaches the `isTransactionActive = false` on
- *   the following line. The flag is stuck true from then on. A listener that refused to rebuild while
- *   it is set would freeze this index permanently on the first such collision, which is a strictly
- *   worse failure than the one the wait exists to prevent — and one this repo has actually observed
- *   (see `ensureDeviceDeleted` in test/devices-virtual.e2e-spec.ts).
- * - **Rebuilding without a repair is not safe either**, which is what the bound used to do. A read
- *   that lands inside a still-open transaction sees that transaction's uncommitted rows, so if it
- *   later rolls back, the index holds structure that never durably happened — and no further event
- *   arrives to correct it, because the rollback is not an event. scheduleRepairPass() is that
- *   correction: after any pass whose wait expired, another pass is queued, and it keeps being queued
- *   (up to MAX_REPAIR_PASSES) until one completes having actually observed the flag clear. Whatever
- *   the expired pass read, the repair overwrites with committed state.
- * - **The repair covers the index and nothing else.** Overwriting three in-memory maps costs one
- *   query; a row this listener has already patched is not coming back. So a pass whose wait expired
- *   may rebuild, and may recompute a connection state (which is level-triggered, and re-derived by
- *   the repair pass along with everything else), but it may not unhide a source device — an unhide is
- *   an edge with no opposite, and there is no pass, event or repair that would ever re-hide what one
- *   wrote off a read that turned out to be uncommitted. runRebuildLoop() holds those back for a pass
- *   that observed the flag clear, and unhideAbandonedSources() re-checks them against what that pass
- *   read.
- *
- * Either way the wait is scoped to whatever transaction happened to be open — it does not mean no
- * transaction is open at all by the time rebuild() reads. A different, unrelated transaction can
- * start in the gap between the poll returning and rebuild()'s own read executing, because
- * `dataSource.createQueryRunner()` is a single connection shared by every unscoped query in the app,
- * not just this listener's; by the same token the flag this polls may be held by a transaction that
- * has nothing to do with the event being handled. That is a pre-existing hazard (follow-up 3.3) this
- * task does not fix — see rebuildWithRetry() / looksTransientSqliteError() for how a rebuild() that
- * loses that particular race still recovers rather than leaving the index stale.
+ * deferPastOpenTransaction() observes the coordinator's physical-connection activity signal rather
+ * than creating an independent runner and inspecting that runner's local flag. The bounded polling,
+ * repair passes and transient-error handling remain as compatibility safeguards for an uncoordinated
+ * DataSource (including the upstream-driver regression fixtures). On the coordinated production
+ * connection, even a pass whose polling budget expires waits at the query gate for committed state.
  */
 @Injectable()
 export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
@@ -349,7 +296,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 		this.running = true;
 
-		void this.runRebuildLoop();
+		outsideSqliteTransaction(this.dataSource, () => void this.runRebuildLoop());
 	}
 
 	/**
@@ -1600,14 +1547,9 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * scheduleRepairPass()); it is deliberately not swallowed here, because "we read anyway" and "we
 	 * read after it settled" are not the same guarantee.
 	 *
-	 * `dataSource.createQueryRunner()` is the exact call `VirtualPropertyIndexService.rebuild()`'s
-	 * `repository.find()` resolves to internally (obtainQueryRunner() falls back to it for any
-	 * unscoped query), and sqlite is not pooled, so this is always the one connection every such
-	 * query — including the caller's, if it is still mid-transaction — actually runs on. Polling the
-	 * flag itself, rather than assuming a fixed number of hops clears it, is what makes a settled
-	 * transaction an *observed* fact rather than a timing guess: the driver only flips
-	 * `isTransactionActive` back to false once `COMMIT`/`ROLLBACK` has actually completed (see
-	 * AbstractSqliteQueryRunner's commitTransaction()/rollbackTransaction()).
+	 * isSqliteTransactionActive() observes the connection owner on the coordinated production
+	 * DataSource. For an uncoordinated DataSource it falls back to the upstream shared runner flag.
+	 * Neither path assumes that a fixed number of event-loop hops implies COMMIT has completed.
 	 *
 	 * Two phases, never a bare microtask in either (a microtask would still resolve inside the
 	 * emitting transaction's own async flow — see the class docstring): `setImmediate` first, which
@@ -1621,12 +1563,10 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 	 * why an abandoned transaction must cost the budget once rather than once per pass.
 	 */
 	private async deferPastOpenTransaction(): Promise<boolean> {
-		const queryRunner = this.dataSource.createQueryRunner();
-
 		for (let poll = 0; poll < VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_IMMEDIATE_POLLS; poll++) {
 			await new Promise<void>((resolve) => setImmediate(resolve));
 
-			if (!queryRunner.isTransactionActive) {
+			if (!isSqliteTransactionActive(this.dataSource)) {
 				this.connectionStoppedSettling = false;
 
 				return true;
@@ -1643,7 +1583,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 					setTimeout(resolve, VirtualIndexMaintenanceListener.TRANSACTION_SETTLE_TIMER_INTERVAL_MS),
 				);
 
-				if (!queryRunner.isTransactionActive) {
+				if (!isSqliteTransactionActive(this.dataSource)) {
 					this.connectionStoppedSettling = false;
 
 					return true;

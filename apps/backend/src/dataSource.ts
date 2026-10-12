@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import * as path from 'path';
-import { DataSource } from 'typeorm';
+
+import { SqliteDataSource } from './common/database/sqlite-data-source';
 
 const envPaths = [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')];
 
@@ -8,7 +9,7 @@ for (const envPath of envPaths) {
 	dotenv.config({ path: envPath, override: false, quiet: true });
 }
 
-const AppDataSource = new DataSource({
+const AppDataSource = new SqliteDataSource({
 	type: 'sqlite',
 	database:
 		process.env.NODE_ENV === 'test'
@@ -22,4 +23,4 @@ const AppDataSource = new DataSource({
 	logging: process.env.FB_DB_LOGGING === 'true',
 });
 
-module.exports = AppDataSource;
+export default AppDataSource;
