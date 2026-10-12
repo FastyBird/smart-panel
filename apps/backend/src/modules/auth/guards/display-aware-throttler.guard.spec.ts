@@ -20,6 +20,7 @@ type ContextOptions = {
 };
 
 describe('DisplayAwareThrottlerGuard', () => {
+	let module: TestingModule | undefined;
 	let guard: DisplayAwareThrottlerGuard;
 	let jwtService: { verifyAsync: jest.Mock; decode: jest.Mock };
 	let reflector: { getAllAndOverride: jest.Mock };
@@ -58,7 +59,7 @@ describe('DisplayAwareThrottlerGuard', () => {
 		// specific keys.
 		reflector = { getAllAndOverride: jest.fn().mockReturnValue(undefined) };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DisplayAwareThrottlerGuard,
 				{ provide: Reflector, useValue: reflector },
@@ -304,6 +305,12 @@ describe('DisplayAwareThrottlerGuard', () => {
 		// cache.
 		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
 	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
+	});
 });
 
 describe('DisplayAwareThrottlerGuard.getTracker', () => {
@@ -311,6 +318,7 @@ describe('DisplayAwareThrottlerGuard.getTracker', () => {
 	// on `ClientAddressService`'s trust-aware resolution rather than the
 	// raw socket address — otherwise every client behind one trusted proxy
 	// (a tunnel, Tailscale Serve, …) would share a single 30/60s budget.
+	let module: TestingModule | undefined;
 	let guard: DisplayAwareThrottlerGuard;
 	let trustedProxyRegistry: TrustedProxyRegistryService;
 
@@ -323,7 +331,7 @@ describe('DisplayAwareThrottlerGuard.getTracker', () => {
 	});
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				DisplayAwareThrottlerGuard,
 				{ provide: Reflector, useValue: { getAllAndOverride: jest.fn() } },
@@ -359,5 +367,11 @@ describe('DisplayAwareThrottlerGuard.getTracker', () => {
 
 		await expect(callGetTracker(clientA)).resolves.toBe('203.0.113.10');
 		await expect(callGetTracker(clientB)).resolves.toBe('203.0.113.20');
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

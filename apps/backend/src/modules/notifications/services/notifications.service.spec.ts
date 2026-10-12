@@ -22,6 +22,7 @@ import { NotificationInputValidator } from './notification-input.validator';
 import { CreateNotificationInput, NotificationsService } from './notifications.service';
 
 describe('NotificationsService', () => {
+	let module: TestingModule | undefined;
 	let dataSource: DataSource;
 	let repository: Repository<NotificationEntity>;
 	let service: NotificationsService;
@@ -70,7 +71,7 @@ describe('NotificationsService', () => {
 		repository = dataSource.getRepository(NotificationEntity);
 		eventEmitter = { emit: jest.fn() };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				NotificationsService,
 				NotificationInputValidator,
@@ -83,6 +84,9 @@ describe('NotificationsService', () => {
 	});
 
 	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.restoreAllMocks();
 
 		await dataSource.destroy();

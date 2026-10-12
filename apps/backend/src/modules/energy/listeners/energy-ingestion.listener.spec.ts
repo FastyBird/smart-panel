@@ -16,6 +16,7 @@ import { EnergyMetricsService } from '../services/energy-metrics.service';
 import { EnergyIngestionListener } from './energy-ingestion.listener';
 
 describe('EnergyIngestionListener', () => {
+	let module: TestingModule | undefined;
 	let listener: EnergyIngestionListener;
 	let channelRepository: jest.Mocked<Repository<ChannelEntity>>;
 	let valueSourceRegistry: jest.Mocked<PropertyValueSourceRegistryService>;
@@ -92,7 +93,7 @@ describe('EnergyIngestionListener', () => {
 			getOne: jest.fn().mockResolvedValue(undefined),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				EnergyIngestionListener,
 				{
@@ -152,7 +153,10 @@ describe('EnergyIngestionListener', () => {
 		energyClaims = module.get(EnergyClaimRegistryService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

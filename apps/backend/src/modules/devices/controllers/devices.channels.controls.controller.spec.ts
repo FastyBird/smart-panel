@@ -22,6 +22,7 @@ import { DevicesService } from '../services/devices.service';
 import { DevicesChannelsControlsController } from './devices.channels.controls.controller';
 
 describe('DevicesChannelsControlsController', () => {
+	let module: TestingModule | undefined;
 	let controller: DevicesChannelsControlsController;
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
@@ -72,7 +73,7 @@ describe('DevicesChannelsControlsController', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [DevicesChannelsControlsController],
 			providers: [
 				{
@@ -122,7 +123,10 @@ describe('DevicesChannelsControlsController', () => {
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

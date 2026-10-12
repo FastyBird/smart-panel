@@ -84,6 +84,7 @@ class MockChannelProperty extends ChannelPropertyEntity {
 }
 
 describe('PropertyCommandService', () => {
+	let module: TestingModule | undefined;
 	let service: PropertyCommandService;
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
@@ -181,7 +182,7 @@ describe('PropertyCommandService', () => {
 	beforeEach(async () => {
 		targetValidator = { validate: jest.fn().mockResolvedValue(true) };
 		traceCollector = { observeCommand: jest.fn(), bindWindow: jest.fn() };
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				PropertyCommandService,
 				{ provide: DeviceCommandGraphService, useExisting: DevicesService },
@@ -263,7 +264,10 @@ describe('PropertyCommandService', () => {
 		loggerLogSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

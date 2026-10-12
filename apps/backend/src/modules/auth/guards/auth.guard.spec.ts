@@ -43,6 +43,7 @@ jest.mock('../utils/token.utils', () => ({
 }));
 
 describe('AuthGuard', () => {
+	let module: TestingModule | undefined;
 	let guard: AuthGuard;
 	let jwtService: JwtService;
 	let reflector: Reflector;
@@ -139,7 +140,7 @@ describe('AuthGuard', () => {
 			getRequestId: jest.fn().mockReturnValue('request-1'),
 			recordAuthenticationFailure: jest.fn(),
 		};
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				AuthGuard,
 				{
@@ -212,7 +213,10 @@ describe('AuthGuard', () => {
 		mcpInstallationService = module.get<McpInstallationService>(McpInstallationService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

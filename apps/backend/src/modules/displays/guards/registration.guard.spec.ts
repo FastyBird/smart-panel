@@ -50,6 +50,7 @@ function buildConfig(mode: DeploymentMode = DeploymentMode.COMBINED): DisplaysCo
 }
 
 describe('RegistrationGuard', () => {
+	let module: TestingModule | undefined;
 	let guard: RegistrationGuard;
 	let trustedProxyRegistry: TrustedProxyRegistryService;
 	let permitJoinService: { isPermitJoinActive: jest.Mock };
@@ -59,7 +60,7 @@ describe('RegistrationGuard', () => {
 		permitJoinService = { isPermitJoinActive: jest.fn().mockReturnValue(false) };
 		configService = { getModuleConfig: jest.fn().mockReturnValue(buildConfig()) };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				RegistrationGuard,
 				{ provide: ConfigService, useValue: configService },
@@ -164,5 +165,11 @@ describe('RegistrationGuard', () => {
 			expect.stringContaining('forwarding headers from an untrusted peer'),
 			expect.anything(),
 		);
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

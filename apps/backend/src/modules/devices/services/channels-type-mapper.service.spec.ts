@@ -12,10 +12,11 @@ class MockCreateChannelDto extends CreateChannelDto {}
 class MockUpdateChannelDto extends UpdateChannelDto {}
 
 describe('ChannelsTypeMapperService', () => {
+	let module: TestingModule | undefined;
 	let service: ChannelsTypeMapperService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [ChannelsTypeMapperService],
 		}).compile();
 
@@ -62,5 +63,11 @@ describe('ChannelsTypeMapperService', () => {
 				new DevicesException('Unsupported channel type: unregistered'),
 			);
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

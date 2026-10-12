@@ -13,11 +13,12 @@ import { IntentTimeseriesService } from './intent-timeseries.service';
 import { IntentsService } from './intents.service';
 
 describe('IntentsService', () => {
+	let module: TestingModule | undefined;
 	let service: IntentsService;
 	let eventEmitter: EventEmitter2;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				IntentsService,
 				{
@@ -42,7 +43,10 @@ describe('IntentsService', () => {
 		service.onModuleInit();
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		// Clean up the service (stops cleanup interval)
 		service.onModuleDestroy();
 	});

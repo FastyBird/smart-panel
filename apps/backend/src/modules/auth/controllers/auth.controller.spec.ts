@@ -32,13 +32,14 @@ import { AuthService } from '../services/auth.service';
 import { AuthController } from './auth.controller';
 
 describe('AuthController', () => {
+	let module: TestingModule | undefined;
 	let controller: AuthController;
 	let authService: AuthService;
 	let usersService: UsersService;
 	let clientAddressService: ClientAddressService;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			controllers: [AuthController],
 			providers: [
 				{
@@ -79,7 +80,10 @@ describe('AuthController', () => {
 		clientAddressService = module.get<ClientAddressService>(ClientAddressService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

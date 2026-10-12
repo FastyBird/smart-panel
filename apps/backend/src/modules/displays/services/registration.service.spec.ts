@@ -24,6 +24,7 @@ import { DisplaysService } from './displays.service';
 import { RegistrationService } from './registration.service';
 
 describe('RegistrationService', () => {
+	let module: TestingModule | undefined;
 	let service: RegistrationService;
 	let displaysService: DisplaysService;
 	let tokensService: TokensService;
@@ -79,7 +80,7 @@ describe('RegistrationService', () => {
 			save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
 		} as unknown as Repository<DisplayEntity>;
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				RegistrationService,
 				{
@@ -120,7 +121,10 @@ describe('RegistrationService', () => {
 		(service as { testModule?: TestingModule }).testModule = module;
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

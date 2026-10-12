@@ -5,6 +5,7 @@ import { ITileRelationsLoader } from '../entities/dashboard.relations';
 import { TileRelationsLoaderRegistryService } from './tile-relations-loader-registry.service';
 
 describe('TileRelationsLoaderRegistryService', () => {
+	let module: TestingModule | undefined;
 	let service: TileRelationsLoaderRegistryService;
 
 	const mockLoader: ITileRelationsLoader = {
@@ -13,14 +14,17 @@ describe('TileRelationsLoaderRegistryService', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [TileRelationsLoaderRegistryService],
 		}).compile();
 
 		service = module.get<TileRelationsLoaderRegistryService>(TileRelationsLoaderRegistryService);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 		jest.clearAllMocks();
 	});
 

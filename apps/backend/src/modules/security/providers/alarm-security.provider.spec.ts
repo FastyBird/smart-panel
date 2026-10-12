@@ -34,6 +34,7 @@ function makeAlarmDevice(
 }
 
 describe('AlarmSecurityProvider', () => {
+	let module: TestingModule | undefined;
 	let provider: AlarmSecurityProvider;
 	let devicesService: { findAll: jest.Mock };
 	let valueSourceRegistry: { resolve: jest.Mock };
@@ -42,7 +43,7 @@ describe('AlarmSecurityProvider', () => {
 		devicesService = { findAll: jest.fn().mockResolvedValue([]) };
 		valueSourceRegistry = { resolve: jest.fn((property: { id: string }) => property.id) };
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				AlarmSecurityProvider,
 				{ provide: DevicesService, useValue: devicesService },
@@ -665,5 +666,11 @@ describe('AlarmSecurityProvider', () => {
 
 			expect(signal.activeAlerts?.[0].sourceDeviceId).toBe('dev-abc');
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

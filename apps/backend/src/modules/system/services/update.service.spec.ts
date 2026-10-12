@@ -31,12 +31,13 @@ jest.mock('fs', () => ({
 }));
 
 describe('UpdateService', () => {
+	let module: TestingModule | undefined;
 	let service: UpdateService;
 	let notifications: { notify: jest.Mock; resolve: jest.Mock; resolveAll: jest.Mock };
 	let configService: { getModuleConfig: jest.Mock };
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				UpdateService,
 				{
@@ -1343,5 +1344,11 @@ describe('UpdateService', () => {
 
 			expect(emitter.emit).toHaveBeenCalled();
 		});
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });

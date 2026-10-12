@@ -12,6 +12,7 @@ import { StorageFallbackMonitorService } from './storage-fallback-monitor.servic
 import { StorageService } from './storage.service';
 
 describe('StorageFallbackMonitorService', () => {
+	let module: TestingModule | undefined;
 	let service: StorageFallbackMonitorService;
 	let storageService: { isUsingFallback: jest.Mock; isConnected: jest.Mock };
 	let notifications: { notify: jest.Mock; resolve: jest.Mock };
@@ -27,7 +28,7 @@ describe('StorageFallbackMonitorService', () => {
 			resolve: jest.fn().mockResolvedValue(true),
 		};
 
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				StorageFallbackMonitorService,
 				{ provide: StorageService, useValue: storageService },
@@ -182,5 +183,11 @@ describe('StorageFallbackMonitorService', () => {
 		});
 
 		await expect(service.checkStorageStatus()).resolves.toBeUndefined();
+	});
+
+	afterEach(async () => {
+		const moduleToClose = module;
+		module = undefined;
+		await moduleToClose?.close();
 	});
 });
