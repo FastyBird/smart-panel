@@ -8,7 +8,6 @@ export class AddTokenLastUsedAt1000000000002 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		// SQLite doesn't support DROP COLUMN directly, but since this is nullable
-		// and the code handles null gracefully, we can leave it in place
+		await queryRunner.query(`ALTER TABLE "auth_module_tokens" DROP COLUMN "lastUsedAt"`);
 	}
 }
