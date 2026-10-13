@@ -7,7 +7,7 @@ Tracking: [#1409](https://github.com/FastyBird/smart-panel/issues/1409)
 ## Completion contract
 
 The completed wiring implementation remains supported. The next virtual-devices milestone is complete only when all
-three capabilities below work through backend, admin authoring, panel controls, scenes and space intents, with persistent
+the capabilities below work through backend, admin authoring, panel controls, scenes and space intents, with persistent
 configuration, source repair, diagnostics and regression tests.
 
 | Capability         | Required behavior                                                                                                                                                                                                             |
@@ -59,14 +59,27 @@ exclusive actuator ownership, release priority, asynchronous confirmation and re
 [`docs/climate-architecture.md`](../../climate-architecture.md) for the domain; current service paths are under
 `plugins/spaces-home-control`, rather than the older `modules/spaces` locations in that document.
 
+The user also requests a separate numeric conversion device: transform a source value X into a derived measurement Y.
+It shares measurement quality and dependency infrastructure; conversion logic does not belong to the thermostat.
+
 ## Initial qualification target
 
 The first requested installation uses Shelly for the actuator, Zigbee for ambient temperature and Shelly for floor
 temperature. The initial Zigbee adapter is the existing Zigbee2MQTT integration. There is currently no physical window
 contact in that installation, so automatic window detection must work independently. Physical-contact support is a
 minimum capability, while configuring contacts is optional for each installation. Shelly generation/model and installed
-equipment protections are qualification inputs, not guarantees inferred from the brand. The spike must distinguish NG and v1 protocol capabilities and record
-which concrete profiles it proves. It must not operate the user's live hardware without an explicit hardware test task.
+equipment protections are qualification inputs, not guarantees inferred from the brand. The spike must distinguish NG
+and v1 protocol capabilities and record which concrete profiles it proves. It must not operate the user's live hardware
+without an explicit hardware test task.
+
+The user has now identified the actuator as Shelly 1PM Gen2 and the floor probe as a thermistor on its analog input.
+Shelly's helper already returns Celsius, but the current integration exposes the raw voltage instead. VD2-1b must
+adopt and observe the functional helper output with its quantity/unit/configuration identity, rather than repeat that
+conversion in the thermostat. Confirm exact model ID, firmware, peripheral/component and helper configuration before
+hardware qualification. DS18B20 fixtures demonstrate a separate supported protocol, not this installation's probe.
+For native analog helpers, validate transformed `xpercent`/`xvoltage` and configured unit/expression together; a
+missing/null/error transformed result must never silently fall back to raw percent or voltage under a Celsius label.
+Do not assume script-managed `Number` virtual components exist on every Gen2 model.
 
 ### Pilot source evidence to prove in VD2-1 / VD2-2a
 
@@ -90,12 +103,14 @@ Keep one `devices-virtual` plugin with explicitly typed modes:
 2. `sensor_aggregate`: read-only materialized measurement with typed aggregate inputs and policy.
 3. `actuator_group`: materialized reported values plus a member command expansion plan.
 4. `climate_controller`: local user settings, sensor dependencies, physical actuator bindings and controller runtime.
+5. `sensor_transform`: a separate read-only numeric measurement with one physical input and typed conversion policy.
 
 Mode and configuration revision are durable. Use dedicated binding entities with foreign keys, stable edge identities
 and typed/versioned policy configuration. Do not store an unvalidated list of source UUIDs or executable expressions in
 a generic JSON blob. Initial entity/table boundaries:
 
 - Aggregate configuration and aggregate-input rows, owned by the output property.
+- Transform configuration and one source binding, owned by the materialized output property.
 - Light-group membership and per-property member bindings, owned by the group.
 - Climate-controller configuration, source-role bindings, exclusive physical actuator claims and durable runtime state.
 
@@ -129,6 +144,11 @@ invalidation API. Emit the sample signal only after a valid provider sample is a
 invalid/null inputs never count as fresh observations. Retain ordinary physical null-write semantics. Derived producer
 invalidation is a different internal operation, not a change making every physical null report erase history.
 
+Measurement `sampledAt` is normalized UTC source time and controls freshness. Command admission uses a separate
+internal server-clock `observedAt`: poll request start, or notification capture before asynchronous processing.
+An active command window requires live evidence observed after the window opened; missing causal evidence is held.
+Neither a skewed device clock nor a late response's receipt time proves that the observation followed a command.
+
 API hydration, bounded/latest reads, WebSocket value-state serialization and controller input reads apply the producer
 quality/expiry overlay. History remains intact, and unchanged reports do not manufacture additional energy deltas.
 Physical API/value/energy behavior is unchanged when no derived producer owns the property. Give quality transitions
@@ -144,8 +164,11 @@ backend; older clients do not author new modes.
 
 ## Dependencies and composition
 
-The required initial composition is `physical temperatures -> aggregate sensor -> thermostat`. Permit read-only
-materialized aggregate outputs as sensor sources. Preserve the prohibition on writable virtual forwarding and arbitrary
+Required composition includes `physical temperatures -> aggregate sensor -> thermostat` and
+`physical numeric input -> transform sensor -> thermostat` (or transform sensor -> aggregate -> thermostat).
+Permit read-only materialized aggregate/transform outputs with canonical temperature semantics as sensor sources.
+Transforms initially accept physical inputs only; aggregates accept physical temperatures and qualified transformed
+temperatures. Preserve the prohibition on writable virtual forwarding and arbitrary
 alias chains until those paths have their own deliberately designed resolution rules. Light groups initially accept
 physical light channels. Thermostat outputs initially claim physical readable/writable actuator properties.
 
@@ -199,7 +222,7 @@ Policies are explicit and editable:
 - Fixed minimum valid-source count, defaulting to all configured sources. Missing/deleted sources remain configured.
 - Exclude missing, stale, invalid/sentinel, incompatible and definitively offline inputs. Unknown connectivity needs a
   demonstrably fresh valid measurement; it is never assumed to mean off or zero.
-- Require compatible quantity, datatype and exact unit initially. Conversions are a future tested adapter, not relabeling.
+- Require compatible quantity, datatype and exact unit. Conversion is an explicit upstream transform device, never relabeling.
 - No implicit outlier exclusion. Median is a transparent robust option; future filtering must expose exclusion reasons.
 
 Use a stable input order, fixed evaluation clock, deterministic median and numerically stable mean. Round only the
@@ -213,6 +236,38 @@ Be conservative until fresh evidence arrives.
 
 Expose input membership, individual current values, sample ages, exclusion reasons and aggregate operator in the admin
 detail section. Preserve output property identity and history when members are remapped.
+
+## Numeric conversion sensors
+
+Keep conversion outside the thermostat and outside aggregate operators. A persistent `sensor_transform` owns an
+ordinary read-only numeric output, its quantity/unit, one physical source and a versioned typed operator. Initial
+operators are affine `Y = scale * X + offset`, piecewise linear interpolation from explicit calibration points, and an
+NTC beta profile for raw divider voltage. They are bounded configuration, not JavaScript or arbitrary executable text.
+Reusable pure numeric helpers may be shared with integration transformers, while source eligibility, quality and
+persistence remain plugin responsibilities.
+
+Affine coefficients must be finite. Calibration X points must be finite, strictly increasing and unique; configured
+points define the domain, with no implicit extrapolation. The NTC profile requires explicit supply/reference voltage,
+series resistance, nominal resistance and its reference temperature, beta coefficient and divider orientation. No
+electrical or probe parameters are guessed. For an NTC on the low leg, use
+`R = Rseries * V / (Vref - V)`; for the high leg use `R = Rseries * (Vref - V) / V`. Then
+`Tkelvin = 1 / (1 / T0kelvin + ln(R / R0) / beta)` and convert to Celsius. Reject zero/rail voltage, invalid resistance,
+nonpositive Kelvin/denominator and nonfinite results. A declared valid input/output range is enforced without clamping.
+
+Helper output that is already Celsius is ingested as a qualified physical temperature by the Shelly adapter. It does
+not pass through another thermistor calculation. A transform can explicitly provide calibration or quantity conversion
+for another source, including a generic numeric output; only a temperature-profile output in canonical Celsius is
+eligible for thermostat or temperature-aggregate roles. Changing source unit, helper expression/peripheral identity or
+operator configuration invalidates the old revision until the new contract is validated and fresh evidence arrives.
+
+Derived quality and timestamps use the original qualified source sample. Evaluating the same cached value again never
+renews freshness. Missing, stale, invalid/sentinel, offline, out-of-domain or computation-error input clears live output
+while preserving history. Remap/edit preserves output UUID/history, and restart awaits fresh eligible evidence.
+Admin supports authoring, preview against supplied sample values, edits, source repair and diagnostics. Panel shows
+the normal quantity control/presentation with producer quality. Preview and persistence use the same operator validator.
+Tests cover all operators, source clock/expiry, null/error/domain boundaries, configuration revisions, deletion/remap
+and transformed-temperature -> aggregate/thermostat composition. Input sharing follows the same room contribution
+rules as other composite temperature sensors, so raw/transformed sources are not counted twice.
 
 ## Actuator groups
 
@@ -468,6 +523,8 @@ apply to every PR. Documentation or a basic relay prototype alone does not compl
 | VD2-9  | Floor and window policies                                     | Threshold/recovery/fault protection; contact aggregation; heuristic heating/cooling detection and pause precedence.                    |
 | VD2-10 | Thermostat admin/panel/intents                                | Complete authoring and visible current/floor/guard/activity state; latest user settings survive pauses and restart.                    |
 | VD2-11 | Full regression and documentation                             | End-to-end scenarios, physical/simulated adapter acceptance, lifecycle cleanup, existing projection/hidden/energy tests and user docs. |
+| VD2-12 | Numeric conversion sensor backend                             | Typed operators, unit/domain validation, source-age propagation, revision fences and temperature composition tests.                    |
+| VD2-13 | Numeric conversion authoring and panel                        | Create/edit/preview/repair a converter, show input/output/quality, preserve history and test legacy clients.                           |
 
 VD2-1 must complete before VD2-7 actuator-profile work starts. Activation also requires the recorded hardware
 qualification evidence; protocol fixtures alone do not pass that gate. Neither requirement blocks independent
@@ -481,6 +538,10 @@ Sonnet medium when a cross-provider check is useful. Each task issue records exa
 acceptance and its conventional PR title before delegation.
 
 Core acceptance scenarios:
+
+0. Shelly 1PM Gen2 analog helper reports Celsius as a temperature source. Helper null/error disables floor eligibility
+   rather than substituting voltage. A separate numeric transform also produces a qualified temperature that can feed
+   an aggregate or thermostat, with original sample age and tested domain/error behavior.
 
 1. Three physical temperatures form one median/mean sensor; the thermostat consumes it. An unchanged fresh report
    refreshes freshness, a timer expires old data, and quorum loss releases active heat instead of reading a cached number.
