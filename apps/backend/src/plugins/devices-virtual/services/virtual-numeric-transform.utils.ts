@@ -148,7 +148,10 @@ export function evaluateVirtualNumericTransform(
 			if (index < 1) return unavailable('invalid_domain');
 			const left = config.points[index - 1];
 			const right = config.points[index];
-			const fraction = (input - left.x) / (right.x - left.x);
+			const span = right.x - left.x;
+			const distance = input - left.x;
+			if (!Number.isFinite(span) || !Number.isFinite(distance)) return unavailable('nonfinite_output');
+			const fraction = distance / span;
 			if (!Number.isFinite(fraction)) return unavailable('nonfinite_output');
 			output = left.y + fraction * (right.y - left.y);
 			break;
