@@ -1,3 +1,6 @@
+import { EntityManager } from 'typeorm';
+import { v4 as uuid } from 'uuid';
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -27,6 +30,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
+import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME,
@@ -53,15 +57,19 @@ import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
+	VirtualDeviceMode,
 } from './entities/devices-virtual.entity';
+import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
 import { VirtualDeviceInformationListener } from './listeners/virtual-device-information.listener';
 import { VirtualIndexMaintenanceListener } from './listeners/virtual-index-maintenance.listener';
 import { VirtualProjectionListener } from './listeners/virtual-projection.listener';
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
+import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
@@ -80,7 +88,12 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		// back to null when it unhides a source device (see its unhideSource()). Repeating a
 		// DevicesModule registration is fine: TypeORM scopes repositories per module and both owners
 		// get their own instance over the same table.
-		TypeOrmModule.forFeature([VirtualDeviceEntity, VirtualChannelPropertyEntity, DeviceEntity]),
+		TypeOrmModule.forFeature([
+			VirtualDeviceEntity,
+			VirtualChannelPropertyEntity,
+			DeviceEntity,
+			...VIRTUAL_PRODUCER_ENTITIES,
+		]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
@@ -95,6 +108,8 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualDevicePlatform,
 		VirtualPropertyIndexService,
 		VirtualDevicesService,
+		VirtualDependencyGraphService,
+		VirtualProducerConfigService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
@@ -103,7 +118,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
-	controllers: [VirtualDevicesController],
+	controllers: [VirtualDevicesController, VirtualProducerConfigController],
 })
 export class DevicesVirtualPlugin {
 	constructor(
@@ -122,6 +137,7 @@ export class DevicesVirtualPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly deviceInformationListener: VirtualDeviceInformationListener,
 		private readonly virtualDevicesService: VirtualDevicesService,
+		private readonly graph: VirtualDependencyGraphService,
 	) {}
 
 	onModuleInit() {
@@ -141,6 +157,10 @@ export class DevicesVirtualPlugin {
 			// one can be judged against the channels the device already carries.
 			beforeUpdate: async (device: VirtualDeviceEntity, previous): Promise<void> => {
 				try {
+					if ((device.mode ?? VirtualDeviceMode.PROJECTION) !== (previous.mode ?? VirtualDeviceMode.PROJECTION))
+						throw new DevicesValidationException(
+							'Virtual device mode is immutable; create the requested producer mode as a separate device.',
+						);
 					await this.virtualDevicesService.assertCategoryChangeSafe(device, previous.category);
 				} catch (error) {
 					// Translated for the same reason the property hooks translate theirs: the plugin's own
@@ -221,9 +241,17 @@ export class DevicesVirtualPlugin {
 			// left to escape, for the same reason as in `beforeUpdate` below: this hook's caller
 			// reports a DevicesException as an unprocessable entity and anything else as a 500, and a
 			// refused payload is not a server fault. Any other exception is re-thrown untouched.
-			beforeCreate: async (property: VirtualChannelPropertyEntity, channelId: string): Promise<void> => {
+			withStructuralWrite: (operation) => this.graph.withStructuralWrite(operation),
+			beforeCreate: async (
+				property: VirtualChannelPropertyEntity,
+				channelId: string,
+				manager?: EntityManager,
+			): Promise<void> => {
 				try {
+					property.id ??= uuid();
+					if (manager) await this.graph.validateProperty(manager, property);
 					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId);
+					await this.virtualDevicesService.assertDerivedOutputSupported(property, channelId, manager);
 					// Repeated here as well as on the create DTO so that *every* creation path is covered,
 					// including this plugin's own listeners and any future internal caller that bypasses
 					// the DTO. The DTO constraint still owns the user-facing error, which names the field.
@@ -265,8 +293,9 @@ export class DevicesVirtualPlugin {
 			// DevicesException as an unprocessable entity and anything else as a 500, and a rejected
 			// payload is not a server fault. Any *other* exception is re-thrown untouched — a bug in
 			// here must not be reported to the client as invalid input.
-			beforeUpdate: async (property: VirtualChannelPropertyEntity): Promise<void> => {
+			beforeUpdate: async (property: VirtualChannelPropertyEntity, manager?: EntityManager): Promise<void> => {
 				try {
+					if (manager) await this.graph.validateProperty(manager, property);
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
 					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
 
@@ -279,6 +308,7 @@ export class DevicesVirtualPlugin {
 					const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
 
 					if (channelId) {
+						await this.virtualDevicesService.assertDerivedOutputSupported(property, channelId, manager);
 						await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
 					}
 				} catch (error) {

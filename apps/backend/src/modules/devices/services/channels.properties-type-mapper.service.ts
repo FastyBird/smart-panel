@@ -1,3 +1,5 @@
+import { EntityManager } from 'typeorm';
+
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -31,7 +33,9 @@ export interface ChannelPropertyTypeMapping<
 	 * `beforeUpdate`: `DevicesValidationException` (or another `DevicesException`) is reported by the
 	 * HTTP layer as an unprocessable entity, anything else as a 500.
 	 */
-	beforeCreate?: (property: TProperty, channelId: string) => Promise<void>;
+	/** Runs inside the global structure lock. Hooks and row persistence share its transaction manager. */
+	withStructuralWrite?: <T>(operation: (manager: EntityManager) => Promise<T>) => Promise<T>;
+	beforeCreate?: (property: TProperty, channelId: string, manager?: EntityManager) => Promise<void>;
 	/**
 	 * Last look at the row a PATCH is about to write, before it is written.
 	 *
@@ -46,7 +50,7 @@ export interface ChannelPropertyTypeMapping<
 	 * entity because the service goes on to save the very instance it passed in — mutate it in place if
 	 * a hook ever needs to normalise rather than reject.
 	 */
-	beforeUpdate?: (property: TProperty) => Promise<void>;
+	beforeUpdate?: (property: TProperty, manager?: EntityManager) => Promise<void>;
 	afterCreate?: (device: TProperty) => Promise<TProperty>;
 	afterUpdate?: (device: TProperty) => Promise<TProperty>;
 }

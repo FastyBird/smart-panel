@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { EntityManager } from 'typeorm';
+
+import { Injectable, Optional } from '@nestjs/common';
 
 import {
 	ChannelCategory,
@@ -6,6 +8,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -32,12 +35,16 @@ import {
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
 	VirtualValueOrigin,
 	isUnsupportedOwnedPermissionsPair,
 	isUnsupportedValueOriginPair,
 } from '../entities/devices-virtual.entity';
 
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
+import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 /**
  * A spec slot the wizard is trying to fill: one property, on one channel category, from the target
@@ -131,6 +138,7 @@ export class VirtualDevicesService {
 		private readonly devicesService: DevicesService,
 		private readonly index: VirtualPropertyIndexService,
 		private readonly deviceValidationService: DeviceValidationService,
+		@Optional() private readonly graph?: VirtualDependencyGraphService,
 	) {}
 
 	/**
@@ -288,6 +296,45 @@ export class VirtualDevicesService {
 		);
 	}
 
+	async assertDerivedOutputSupported(
+		property: VirtualChannelPropertyEntity,
+		channelId: string,
+		manager?: EntityManager,
+	): Promise<void> {
+		if (property.valueOrigin !== VirtualValueOrigin.DERIVED) return;
+		this.assertValueOriginPairSupported(property);
+		this.assertOwnedPropertyNotWritable(property);
+		const channel = manager
+			? await manager.findOne(ChannelEntity, { where: { id: channelId }, relations: ['device'] })
+			: await this.channelsService.findOne(channelId);
+		const deviceId = channel && (typeof channel.device === 'string' ? channel.device : channel.device?.id);
+		const device =
+			channel && typeof channel.device !== 'string'
+				? channel.device
+				: deviceId
+					? await this.devicesService.findOne(deviceId)
+					: null;
+		if (
+			!channel ||
+			!device ||
+			!(
+				isEligibleVirtualMeasurement(property, channel, device) ||
+				(device.type === DEVICES_VIRTUAL_TYPE &&
+					(device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP &&
+					device.category === DeviceCategory.LIGHTING &&
+					channel.category === ChannelCategory.LIGHT &&
+					getAllProperties(channel.category).some(
+						(slot) =>
+							slot.category === property.category &&
+							isValidDataType(channel.category, property.category, property.dataType),
+					))
+			)
+		)
+			throw new DevicesValidationException(
+				'Derived outputs require a supported typed aggregate or light-group producer slot.',
+			);
+	}
+
 	/** Throws when `category` needs closed-loop control (VIRTUAL_BLOCKED_CATEGORIES). */
 	assertCategoryAllowed(category: DeviceCategory): void {
 		if (VIRTUAL_BLOCKED_CATEGORIES.includes(category)) {
@@ -323,6 +370,15 @@ export class VirtualDevicesService {
 		}
 
 		if (device.type === DEVICES_VIRTUAL_TYPE) {
+			const property = await this.channelsPropertiesService.findOne(sourcePropertyId);
+			const channel = property ? await this.resolveChannelOf(property) : null;
+			if (
+				property &&
+				channel &&
+				!this.graph?.isQuarantined(property.id) &&
+				isEligibleVirtualMeasurement(property, channel, device)
+			)
+				return;
 			throw new VirtualNestingNotAllowedException(
 				`Source property id=${sourcePropertyId} belongs to virtual device id=${device.id}; nesting virtual devices is not allowed`,
 			);
@@ -955,7 +1011,7 @@ export class VirtualDevicesService {
 		// optional `value_origin` arrives here as `undefined` and only becomes `source` when the column
 		// default is applied on save — after this hook. Testing for `!== SOURCE` would let exactly that
 		// request through unchecked, which is the shape a direct API caller is most likely to send.
-		if (property.valueOrigin === VirtualValueOrigin.LOCAL) {
+		if (!property.isProjecting) {
 			return;
 		}
 

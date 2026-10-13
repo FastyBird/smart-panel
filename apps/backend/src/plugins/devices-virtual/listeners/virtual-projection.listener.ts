@@ -9,6 +9,7 @@ import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices
 import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
+import { isEligibleVirtualMeasurement } from '../services/virtual-source-eligibility.utils';
 
 /** Create a shallow snapshot with the prototype needed by entity serialization. */
 const detachedClone = <T extends object>(value: T): T => {
@@ -16,6 +17,19 @@ const detachedClone = <T extends object>(value: T): T => {
 
 	return Object.assign(clone, value);
 };
+
+/** Preserve value-state prototypes while detaching quality metadata and diagnostic arrays. */
+const snapshotValue = <T>(value: T): T => {
+	if (value === null || typeof value !== 'object') return value;
+	if (value instanceof Date) return new Date(value.getTime()) as T;
+	if (Array.isArray(value)) return value.map((entry: unknown) => snapshotValue(entry)) as T;
+	const clone = Object.create(Object.getPrototypeOf(value) as object) as Record<string, unknown>;
+	for (const [key, entry] of Object.entries(value)) clone[key] = snapshotValue(entry);
+	return clone as T;
+};
+
+/** The core quality boundary is introduced by VD2-2a; keep the event spelling stable during staged merging. */
+const VALUE_STATE_CHANGED_EVENT = 'DevicesModule.ChannelProperty.ValueStateChanged';
 
 /**
  * A source write emits a value event carrying the *source* property's id, which the WebSocket
@@ -29,6 +43,7 @@ const detachedClone = <T extends object>(value: T): T => {
  */
 @Injectable()
 export class VirtualProjectionListener {
+	private readonly activeProperties = new Set<string>();
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualProjectionListener');
 
 	constructor(
@@ -38,21 +53,42 @@ export class VirtualProjectionListener {
 
 	@OnEvent(EventType.CHANNEL_PROPERTY_VALUE_SET)
 	handlePropertyValueSet(property: ChannelPropertyEntity): void {
+		this.projectValueSnapshot(property, EventType.CHANNEL_PROPERTY_VALUE_SET);
+	}
+
+	@OnEvent(VALUE_STATE_CHANGED_EVENT)
+	handlePropertyValueStateChanged(property: ChannelPropertyEntity): void {
+		this.projectValueSnapshot(property, VALUE_STATE_CHANGED_EVENT);
+	}
+
+	private projectValueSnapshot(property: ChannelPropertyEntity, event: string): void {
+		if (this.activeProperties.has(property.id) || this.activeProperties.size >= 16) return;
+		if (property.type === 'virtual') {
+			const channel = typeof property.channel === 'string' ? null : property.channel;
+			const device = channel && typeof channel.device !== 'string' ? channel.device : null;
+			if (!channel || !device || !isEligibleVirtualMeasurement(property, channel, device)) return;
+		}
 		const projections = this.index.findBySourceProperty(property.id);
 
 		if (projections.length === 0) {
 			return;
 		}
 
-		for (const projection of projections) {
-			// The index retains hydrated entities, so mutating one here makes already-emitted events
-			// change under deferred consumers. Preserve the entity prototype for serialization, while
-			// detaching both the entity and its mutable value state from the indexed/source objects.
-			const snapshot = Object.assign(detachedClone(projection), {
-				value: property.value ? detachedClone(property.value) : null,
-			});
+		this.activeProperties.add(property.id);
+		try {
+			for (const projection of projections) {
+				if (this.activeProperties.has(projection.id)) continue;
+				// The index retains hydrated entities, so mutating one here makes already-emitted events
+				// change under deferred consumers. Preserve the entity prototype for serialization, while
+				// detaching both the entity and its mutable value state from the indexed/source objects.
+				const snapshot = Object.assign(detachedClone(projection), {
+					value: snapshotValue(property.value),
+				});
 
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, snapshot);
+				this.eventEmitter.emit(event, snapshot);
+			}
+		} finally {
+			this.activeProperties.delete(property.id);
 		}
 
 		this.logger.debug(`Projected value of property id=${property.id} to ${projections.length} virtual properties`);
