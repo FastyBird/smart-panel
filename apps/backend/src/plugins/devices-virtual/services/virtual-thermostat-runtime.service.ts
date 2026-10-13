@@ -382,7 +382,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const state = evaluateVirtualWindowContact(
 				this.contacts.get(contact.id) ?? createVirtualWindowContactState(),
 				{ openingMs: context.config.contactOpeningMs, closingMs: context.config.contactClosingMs },
-				{ now, basis: contact.basis, reported: contact.value },
+				{
+					now,
+					basis: thermostatFingerprint({ contact: contact.basis, configRevision: context.config.revision }),
+					reported: contact.value,
+				},
 			);
 			if (advance) this.contacts.set(contact.id, state);
 			return state.confirmed === 'unknown' ? null : state.confirmed;

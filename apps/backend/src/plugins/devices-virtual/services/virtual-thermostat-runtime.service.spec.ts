@@ -744,6 +744,14 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.flush();
 		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		expect(sends).toContain(true);
+		config.contactClosingMs = 250;
+		config.revision++;
+		await database.manager.save(config);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		expect(samples.get(relayId)?.value).toBe(false);
 		sample(contactPropertyId, false);
 		runtime.request(controllerId);
 		await runtime.inspect(controllerId);
