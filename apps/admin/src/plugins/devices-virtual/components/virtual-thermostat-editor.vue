@@ -592,12 +592,13 @@ const save = async (): Promise<void> => {
 	}
 };
 const requestRelease = async (): Promise<void> => {
-	if (!configuration.value) return;
+	const deviceId = props.deviceId;
+	if (!configuration.value || !deviceId) return;
 	mutationBusy.value = true;
 	requestError.value = null;
 	try {
 		const { data, error } = await backend.client.POST(`${path}/release`, {
-			params: { path: { id: props.deviceId } },
+			params: { path: { id: deviceId } },
 			body: { expected_revision: configuration.value.revision },
 		});
 		if (data) {

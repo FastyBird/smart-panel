@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+	DevicesVirtualPluginThermostatActuatorRole as ActuatorRole,
+	DevicesVirtualPluginThermostatSourceRole as SourceRole,
+} from '../../../openapi';
+
 import { buildThermostatRequest, draftFromConfiguration, emptyThermostatDraft, type ThermostatConfiguration } from './thermostat-authoring';
 
 describe('thermostat authoring payload', () => {
@@ -51,12 +56,12 @@ describe('thermostat authoring payload', () => {
 		draft.policy.floor = { limit: 28, recoveryHysteresis: 1 };
 		draft.contact_opening_ms = 0;
 		draft.contact_closing_ms = 0;
-		draft.sources.push({ role: 'ambient', source_property: 'ambient', maximum_age_seconds: 60 });
+		draft.sources.push({ role: SourceRole.ambient, source_property: 'ambient', maximum_age_seconds: 60 });
 		const incomplete = buildThermostatRequest(draft, 0);
 		expect(incomplete.errors).toContain('Floor protection requires exactly one independent floor source.');
 		expect(incomplete.errors).toContain('heating actuator must match its comfort setpoint branch.');
-		draft.sources.push({ role: 'floor', source_property: 'floor', maximum_age_seconds: 60 });
-		draft.actuators.push({ role: 'heating', source_property: 'switch', lease_seconds: 60 });
+		draft.sources.push({ role: SourceRole.floor, source_property: 'floor', maximum_age_seconds: 60 });
+		draft.actuators.push({ role: ActuatorRole.heating, source_property: 'switch', lease_seconds: 60 });
 		expect(buildThermostatRequest(draft, 0).errors).toEqual([]);
 	});
 });
