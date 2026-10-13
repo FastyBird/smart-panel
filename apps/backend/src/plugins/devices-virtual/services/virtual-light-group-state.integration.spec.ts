@@ -41,7 +41,7 @@ import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualLightGroupCommandService } from './virtual-light-group-command.service';
-import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
+import { LIGHT_GROUP_REPORTED_STATE_CHANGED, VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualValueSourceService } from './virtual-value-source.service';
@@ -382,7 +382,10 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			intended.find((member) => member.sourceChannelIdentity === physical[0].memberChannelId)?.sourceChannelId,
 		).toBeNull();
 		expect(runtime.getReportedState(channelId)?.total).toBe(2);
+		const invalidated = jest.fn();
+		events.on(LIGHT_GROUP_REPORTED_STATE_CHANGED, invalidated);
 		runtime.onModuleDestroy();
+		expect(invalidated).toHaveBeenCalledWith({ groupChannelId: channelId, revision: configured.revision, state: null });
 		producers = new PropertyProducerRegistryService(events);
 		values = new PropertyValueService(
 			storage as never,

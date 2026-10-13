@@ -250,8 +250,11 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 			}
 	}
 	private invalidateAll(): void {
+		const previous = [...this.stateRevisions];
 		this.states.clear();
 		this.stateRevisions.clear();
 		for (const lease of this.leases.values()) this.producers.invalidate(lease, ['runtime_unavailable']);
+		for (const [groupChannelId, revision] of previous)
+			this.events.emit(LIGHT_GROUP_REPORTED_STATE_CHANGED, { groupChannelId, revision, state: null });
 	}
 }
