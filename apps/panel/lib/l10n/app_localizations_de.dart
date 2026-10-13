@@ -907,7 +907,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wie Zahlen angezeigt werden (Tausender- und Dezimaltrennzeichen).';
 
   @override
-  String get number_format_comma_dot => '1.234,56';
+  String get number_format_comma_dot => '1,234.56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -2277,7 +2277,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NEIN₂';
+  String get device_no2 => 'NO₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -2339,7 +2339,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String duration_format_minutes(int minutes) {
-    return '${minutes}M';
+    return '${minutes}m';
   }
 
   @override
@@ -2349,7 +2349,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_idle => 'Leerlauf';
 
   @override
-  String get media_standby => 'Stehen zu';
+  String get media_standby => 'Standby';
 
   @override
   String get media_volume => 'Lautstärke';
@@ -2367,7 +2367,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_other_devices => 'Weitere Geräte';
 
   @override
-  String get device_status_standby => 'Stehen zu';
+  String get device_status_standby => 'Standby';
 
   @override
   String get device_status_active => 'Aktiv';
@@ -2958,7 +2958,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_input_hdmi6 => 'HDMI 6';
 
   @override
-  String get media_input_arc => 'BOGEN';
+  String get media_input_arc => 'ARC';
 
   @override
   String get media_input_earc => 'eARC';
@@ -3086,8 +3086,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'warnings',
-      one: 'warning',
+      other: 'Warnungen',
+      one: 'Warnung',
     );
     return 'Einige Schritte fehlgeschlagen ($count $_temp0)';
   }
@@ -3148,14 +3148,14 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       errors,
       locale: localeName,
-      other: 'errors',
-      one: 'error',
+      other: 'Fehler',
+      one: 'Fehler',
     );
     String _temp1 = intl.Intl.pluralLogic(
       warnings,
       locale: localeName,
-      other: 'warnings',
-      one: 'warning',
+      other: 'Warnungen',
+      one: 'Warnung',
     );
     return 'Aktivität konnte nicht angewendet werden ($errors $_temp0, $warnings $_temp1)';
   }
@@ -3181,7 +3181,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get media_status_standby => 'Stehen zu';
+  String get media_status_standby => 'Standby';
 
   @override
   String get media_status_activating => 'Aktivierung...';

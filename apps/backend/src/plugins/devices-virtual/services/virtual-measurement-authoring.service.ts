@@ -159,6 +159,7 @@ export class VirtualMeasurementAuthoringService {
 					this.state.installUnavailable(prepared.output, prepared.config.revision);
 					this.aggregateRuntime.requireFreshInputs(prepared.output.id, freshSources);
 				},
+				dto.outputPropertyId,
 			);
 			return Object.assign(new VirtualCreatedAggregateModel(), {
 				device: await this.devices.findOne(committed.device.id),
@@ -195,6 +196,7 @@ export class VirtualMeasurementAuthoringService {
 					return { device, prepared };
 				},
 				({ prepared }) => this.transforms.activate(prepared.output, prepared.config, prepared.source),
+				dto.outputPropertyId,
 			);
 			return Object.assign(new VirtualCreatedTransformModel(), {
 				device: await this.devices.findOne(committed.device.id),

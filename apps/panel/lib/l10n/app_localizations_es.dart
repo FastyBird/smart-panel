@@ -909,7 +909,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Cómo se muestran los números (separadores de miles y decimales).';
 
   @override
-  String get number_format_comma_dot => '1.234,56';
+  String get number_format_comma_dot => '1,234.56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -2035,7 +2035,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sensor_enum_voc_level_low_long => 'VOC bajo';
 
   @override
-  String get sensor_enum_voc_level_medium => 'Medicina';
+  String get sensor_enum_voc_level_medium => 'Medio';
 
   @override
   String get sensor_enum_voc_level_medium_long => 'VOC medio';
@@ -2547,7 +2547,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get light_cap_hue => 'Tono';
 
   @override
-  String get light_cap_saturation => 'Se sentó';
+  String get light_cap_saturation => 'Saturación';
 
   @override
   String get light_cap_white => 'Blanco';
@@ -2670,7 +2670,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sensor_enum_leak_level_low_long => 'Fuga leve';
 
   @override
-  String get sensor_enum_leak_level_medium => 'Medicina';
+  String get sensor_enum_leak_level_medium => 'Medio';
 
   @override
   String get sensor_enum_leak_level_medium_long => 'Fuga media';
@@ -2694,7 +2694,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sensor_enum_battery_level_low_long => 'Baja';
 
   @override
-  String get sensor_enum_battery_level_medium => 'Medicina';
+  String get sensor_enum_battery_level_medium => 'Media';
 
   @override
   String get sensor_enum_battery_level_medium_long => 'Media';
@@ -2961,10 +2961,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_input_hdmi6 => 'HDMI6';
 
   @override
-  String get media_input_arc => 'ARCO';
+  String get media_input_arc => 'ARC';
 
   @override
-  String get media_input_earc => 'ARCO';
+  String get media_input_earc => 'eARC';
 
   @override
   String get media_input_tv => 'TV';
@@ -3003,7 +3003,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_input_wifi => 'Wifi';
 
   @override
-  String get media_input_airplay => 'Salida en antena';
+  String get media_input_airplay => 'AirPlay';
 
   @override
   String get media_input_cast => 'Chromecast';
@@ -3024,19 +3024,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get media_input_app_spotify => 'Spotify';
 
   @override
-  String get media_input_app_prime_video => 'Vídeo principal';
+  String get media_input_app_prime_video => 'Prime Video';
 
   @override
   String get media_input_app_disney_plus => 'Disney+';
 
   @override
-  String get media_input_app_hbo_max => 'HBO máximo';
+  String get media_input_app_hbo_max => 'HBO Max';
 
   @override
-  String get media_input_app_apple_tv => 'AppleTV';
+  String get media_input_app_apple_tv => 'Apple TV';
 
   @override
-  String get media_input_app_plex => 'plexo';
+  String get media_input_app_plex => 'Plex';
 
   @override
   String get media_input_app_kodi => 'Kodi';
@@ -3090,8 +3090,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'warnings',
-      one: 'warning',
+      other: 'advertencias',
+      one: 'advertencia',
     );
     return 'Algunos pasos fallaron ($count $_temp0)';
   }
@@ -3152,14 +3152,14 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       errors,
       locale: localeName,
-      other: 'errors',
+      other: 'errores',
       one: 'error',
     );
     String _temp1 = intl.Intl.pluralLogic(
       warnings,
       locale: localeName,
-      other: 'warnings',
-      one: 'warning',
+      other: 'advertencias',
+      one: 'advertencia',
     );
     return 'No se pudo aplicar la actividad ($errors $_temp0, $warnings $_temp1)';
   }

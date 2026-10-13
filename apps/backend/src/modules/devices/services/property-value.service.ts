@@ -120,6 +120,7 @@ export class PropertyValueService {
 	private readonly cacheVersions = new Map<ChannelPropertyEntity['id'], number>();
 	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
+	private sampleGeneration = 0;
 	private readonly liveEpochs = new Set<string>();
 	private readonly samples = new Map<string, QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>>();
 	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
@@ -245,6 +246,7 @@ export class PropertyValueService {
 						sampledAt: new Date(sampledAt),
 						receivedAt: new Date(receivedAt),
 						provenance: evidence.provenance,
+						...(live ? { acceptanceGeneration: ++this.sampleGeneration } : {}),
 						quality: 'good',
 						reasons: Object.freeze([]),
 					});
@@ -273,6 +275,12 @@ export class PropertyValueService {
 		);
 	}
 
+	/** Captures the live acceptance boundary for new process-local producer admission. */
+	currentSampleGeneration(): number {
+		return this.sampleGeneration;
+	}
+
+	/** Qualifies current live evidence; derived samples must still incorporate the current source acceptance. */
 	readQualifiedSample(
 		property: ChannelPropertyEntity,
 		maxAgeMs: number,
@@ -289,6 +297,17 @@ export class PropertyValueService {
 				produced.producer.sampledAt === null
 			)
 				return null;
+			const incorporated = this.producers.readIncorporatedSample(key);
+			if (incorporated) {
+				const sourceSample = this.samples.get(incorporated.propertyId);
+				if (
+					!sourceSample ||
+					sourceSample.acceptanceGeneration !== incorporated.acceptanceGeneration ||
+					sourceSample.isCurrent?.() === false
+				)
+					return null;
+			}
+
 			const sampledAt = new Date(produced.producer.sampledAt);
 			if (
 				sampledAt.getTime() > now.getTime() ||
@@ -334,6 +353,7 @@ export class PropertyValueService {
 			sampledAt: new Date(publication.sampledAt),
 			evaluatedAt: new Date(publication.evaluatedAt),
 			expiresAt: new Date(publication.expiresAt),
+			sourceSample: publication.sourceSample ? Object.freeze({ ...publication.sourceSample }) : undefined,
 		});
 
 		const key = this.valueSourceRegistry.resolve(property);

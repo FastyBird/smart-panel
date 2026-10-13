@@ -27,6 +27,20 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 describe('measurement authoring API lifecycle', () => {
+	it('requires an attainable aggregate minimum while preserving transform preview eligibility', () => {
+		const aggregate = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate);
+		aggregate.model.inputs = [{ source_property: 'one' }, { source_property: 'two' }];
+		aggregate.model.minimumValidInputs = 3;
+		expect(aggregate.canPreview.value).toBe(false);
+		aggregate.model.minimumValidInputs = 2;
+		expect(aggregate.canPreview.value).toBe(true);
+		aggregate.model.inputs[1].source_property = null;
+		expect(aggregate.canPreview.value).toBe(false);
+		const transform = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform);
+		transform.model.inputs = [{ source_property: 'one' }];
+		transform.model.minimumValidInputs = 3;
+		expect(transform.canPreview.value).toBe(true);
+	});
 	it('reopens custom quantity/unit and keeps a missing stable source binding for repair', async () => {
 		client.GET.mockResolvedValue({ data: { data: config() } });
 		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
