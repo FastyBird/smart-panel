@@ -7,7 +7,11 @@ import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/p
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
+} from '../entities/devices-virtual.entity';
 import { VirtualDependencyGraphService } from '../services/virtual-dependency-graph.service';
 
 @Injectable()
@@ -38,6 +42,14 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		// Checked across the whole batch and before a single source is resolved, so a disabled device
 		// never partially applies — the same all-or-nothing discipline as the platform-resolution
 		// pre-pass below. `find` rather than `updates[0]` because an empty batch has no first element.
+		const inactiveProducer = updates.find((update) => {
+			const mode = (update.device as VirtualDeviceEntity).mode ?? VirtualDeviceMode.PROJECTION;
+			return mode !== VirtualDeviceMode.PROJECTION;
+		});
+		// Typed configurations are durable, but their evaluator/command runtime is not active yet.
+		// A hand-edited SOURCE row must not turn an inactive group/controller into legacy forwarding.
+		if (inactiveProducer) return false;
+
 		const disabled = updates.find((update) => !update.device.enabled);
 
 		if (disabled) {

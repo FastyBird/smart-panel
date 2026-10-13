@@ -872,6 +872,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			sampledAt: new Date(evidence.sampledAt),
 			receivedAt: new Date(evidence.receivedAt),
 			provenance: evidence.provenance,
+			...(evidence.isCurrent ? { isCurrent: evidence.isCurrent } : {}),
+			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 		});
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
@@ -1209,6 +1211,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		evidence?: PropertySampleEvidence,
 	): Promise<WindowedValueCommitResult> {
 		const canonicalPropertyId = this.valueSourceRegistry.resolve(property);
+		if (evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false)
+			return { changed: false, state: null, held: true, forceValueEvent: false };
 		// Protective faults revoke qualification independently of command acknowledgement causality.
 		const validation = validatePropertyCommandValue(property, value);
 
@@ -1241,6 +1245,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 			// Clients may still display the unconfirmed command even when the provider reports the
 			// unchanged stored value. Resolve that optimistic state without adding duplicate history.
+			if (evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false)
+				return { changed: false, state: null, held: false, forceValueEvent: false };
 			return { ...result, held: false, forceValueEvent: reconcilesCommand && result.state !== null };
 		}
 
@@ -1264,8 +1270,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const firstConfirmation = isConfirmation && window.state === 'pending';
 		const result = await writers.windowed();
 
-		if (result.state === null) {
-			return { ...result, held: false, forceValueEvent: false };
+		if (result.state === null || evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false) {
+			return { changed: false, state: null, held: false, forceValueEvent: false };
 		}
 
 		if (isConfirmation) {

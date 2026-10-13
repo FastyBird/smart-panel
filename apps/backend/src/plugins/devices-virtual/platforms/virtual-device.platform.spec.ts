@@ -17,6 +17,7 @@ import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
+	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
 
@@ -153,6 +154,25 @@ describe('VirtualDevicePlatform', () => {
 		module = undefined;
 		await moduleToClose?.close();
 		jest.clearAllMocks();
+	});
+
+	it.each([
+		VirtualDeviceMode.SENSOR_AGGREGATE,
+		VirtualDeviceMode.ACTUATOR_GROUP,
+		VirtualDeviceMode.CLIMATE_CONTROLLER,
+		VirtualDeviceMode.SENSOR_TRANSFORM,
+	])('refuses legacy command forwarding for inactive producer mode %s', async (mode) => {
+		const sourceDevice = makeDevice('source-device');
+		linkSource('source-prop', sourceDevice);
+		const sourcePlatform = createMockPlatform();
+		platformRegistryService.get.mockReturnValue(sourcePlatform);
+		const device = Object.assign(new VirtualDeviceEntity(), { id: 'inactive', mode });
+		const linked = virtualProperty({ sourcePropertyId: 'source-prop' });
+		expect(await platform.processBatch([{ device, channel: virtualChannel, property: linked, value: true }])).toBe(
+			false,
+		);
+		expect(graphs.findPropertyTarget).not.toHaveBeenCalled();
+		expect(sourcePlatform.processBatch).not.toHaveBeenCalled();
 	});
 
 	it('forwards a linked property write to the source device platform', async () => {
