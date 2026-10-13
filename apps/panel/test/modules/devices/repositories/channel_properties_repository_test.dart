@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
@@ -34,6 +35,21 @@ class _FakeSocketService extends SocketService {
   }
 }
 
+class _RecordingChannelPropertiesRepository extends ChannelPropertiesRepository {
+  final List<ChannelPropertyModel> replacements = [];
+
+  _RecordingChannelPropertiesRepository({
+    required super.apiClient,
+    required super.commandDispatch,
+  });
+
+  @override
+  bool replaceItem(ChannelPropertyModel item) {
+    replacements.add(item);
+    return super.replaceItem(item);
+  }
+}
+
 void main() {
   test(
     'quality-only virtual snapshots replace metadata and unavailable clears value',
@@ -43,7 +59,7 @@ void main() {
         VirtualChannelPropertyModel.fromJson,
       );
       addTearDown(() => channelPropertyModelMappers.remove('virtual'));
-      final repo = ChannelPropertiesRepository(
+      final repo = _RecordingChannelPropertiesRepository(
         apiClient: DevicesModuleClient(Dio(), baseUrl: 'http://localhost'),
         commandDispatch: CommandDispatchService(
           socketService: _FakeSocketService(),
@@ -83,6 +99,8 @@ void main() {
         PropertyProducerQuality.degraded,
       );
       await repo.setValue(id, 22);
+      expect(repo.replacements.first.value?.value, 22);
+      expect(repo.replacements.first.valueState?.producer?.revision, 2);
       expect(repo.getItem(id)?.valueState?.producer?.revision, 2);
       repo.insert([snapshot('unavailable', null, 3)]);
       expect(repo.getItem(id)?.value, isNull);
