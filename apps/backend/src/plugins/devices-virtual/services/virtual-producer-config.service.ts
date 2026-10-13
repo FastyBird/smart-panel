@@ -39,6 +39,7 @@ import {
 } from '../models/producer-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
@@ -49,6 +50,7 @@ export class VirtualProducerConfigService {
 		private readonly structureLock: DeviceStructureLockService,
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly producerState: VirtualProducerStateService,
 	) {}
 
 	async configureAggregate(
@@ -56,12 +58,17 @@ export class VirtualProducerConfigService {
 		dto: ConfigureVirtualAggregateDto,
 	): Promise<VirtualAggregateConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
+			let committedOutput: VirtualChannelPropertyEntity;
+			let committedRevision: number;
 			await this.graph.withStructuralWrite(async (manager) => {
-				const { config, inputs } = await this.validateAggregate(manager, outputPropertyId, dto);
+				const { config, inputs, output } = await this.validateAggregate(manager, outputPropertyId, dto);
 				await manager.save(config);
 				await manager.delete(VirtualAggregateInputEntity, { outputPropertyId });
 				await manager.save(inputs);
+				committedOutput = output;
+				committedRevision = config.revision;
 			}, dto.expectedGraphRevision);
+			this.producerState.installUnavailable(committedOutput, committedRevision);
 			await this.announceOutputs([outputPropertyId]);
 			return this.getAggregate(outputPropertyId);
 		});
@@ -91,7 +98,11 @@ export class VirtualProducerConfigService {
 		manager: EntityManager,
 		outputPropertyId: string,
 		dto: ConfigureVirtualAggregateDto,
-	): Promise<{ config: VirtualAggregateConfigEntity; inputs: VirtualAggregateInputEntity[] }> {
+	): Promise<{
+		config: VirtualAggregateConfigEntity;
+		inputs: VirtualAggregateInputEntity[];
+		output: VirtualChannelPropertyEntity;
+	}> {
 		this.assertPolicy(dto);
 		const output = await this.property(manager, outputPropertyId);
 		const channel = output.channel as ChannelEntity;
@@ -158,7 +169,7 @@ export class VirtualProducerConfigService {
 			[outputPropertyId],
 			inputs
 				.filter((input) => input.sourcePropertyId)
-				.map((input) => ({ outputPropertyId, sourcePropertyId: input.sourcePropertyId! })),
+				.map((input) => ({ outputPropertyId, sourcePropertyId: input.sourcePropertyId })),
 		);
 		const config = manager.create(VirtualAggregateConfigEntity, {
 			outputPropertyId,
@@ -168,7 +179,7 @@ export class VirtualProducerConfigService {
 			maximumAgeSeconds: dto.maximumAgeSeconds,
 			revision: (existing?.revision ?? 0) + 1,
 		});
-		return { config, inputs };
+		return { config, inputs, output: output as VirtualChannelPropertyEntity };
 	}
 
 	async configureLightGroup(
@@ -177,6 +188,8 @@ export class VirtualProducerConfigService {
 	): Promise<VirtualLightGroupConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
 			let outputs: string[] = [];
+			let committedProperties: VirtualChannelPropertyEntity[] = [];
+			let committedRevision = 0;
 			await this.graph.withStructuralWrite(async (manager) => {
 				const prepared = await this.validateLightGroup(manager, groupChannelId, dto);
 				await manager.save(prepared.config);
@@ -184,7 +197,10 @@ export class VirtualProducerConfigService {
 				await manager.save(prepared.members);
 				await manager.save(prepared.bindings);
 				outputs = [...new Set(prepared.bindings.map((binding) => binding.outputPropertyId))];
+				committedProperties = prepared.outputs;
+				committedRevision = prepared.config.revision;
 			}, dto.expectedGraphRevision);
+			for (const property of committedProperties) this.producerState.installUnavailable(property, committedRevision);
 			await this.announceOutputs(outputs);
 			return this.getLightGroup(groupChannelId);
 		});
@@ -221,6 +237,7 @@ export class VirtualProducerConfigService {
 		config: VirtualLightGroupConfigEntity;
 		members: VirtualLightGroupMemberEntity[];
 		bindings: VirtualLightGroupBindingEntity[];
+		outputs: VirtualChannelPropertyEntity[];
 	}> {
 		if (
 			dto.profile !== VirtualLightGroupProfile.LIGHT ||
@@ -293,7 +310,7 @@ export class VirtualProducerConfigService {
 				id: old?.id ?? uuid(),
 				groupChannelId,
 				sourceChannelId: sourceChannel?.id ?? null,
-				sourceChannelIdentity: sourceChannel?.id ?? old!.sourceChannelIdentity,
+				sourceChannelIdentity: sourceChannel?.id ?? old.sourceChannelIdentity,
 			});
 			members.push(member);
 			if (
@@ -361,7 +378,7 @@ export class VirtualProducerConfigService {
 				.filter((binding) => binding.sourcePropertyId)
 				.map((binding) => ({
 					outputPropertyId: binding.outputPropertyId,
-					sourcePropertyId: binding.sourcePropertyId!,
+					sourcePropertyId: binding.sourcePropertyId,
 				})),
 		);
 		return {
@@ -373,6 +390,7 @@ export class VirtualProducerConfigService {
 			}),
 			members,
 			bindings,
+			outputs: exposed,
 		};
 	}
 

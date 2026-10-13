@@ -53,14 +53,14 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return [
 			...projections
 				.filter((property) => property.isProjecting)
-				.map((property) => ({ outputPropertyId: property.id, sourcePropertyId: property.sourcePropertyId! })),
+				.map((property) => ({ outputPropertyId: property.id, sourcePropertyId: property.sourcePropertyId })),
 			...inputs.map((input) => ({
 				outputPropertyId: input.outputPropertyId,
-				sourcePropertyId: input.sourcePropertyId!,
+				sourcePropertyId: input.sourcePropertyId,
 			})),
 			...bindings.map((binding) => ({
 				outputPropertyId: binding.outputPropertyId,
-				sourcePropertyId: binding.sourcePropertyId!,
+				sourcePropertyId: binding.sourcePropertyId,
 			})),
 		];
 	}
@@ -123,9 +123,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		const depths = new Map<string, number>();
 		const visiting = new Set<string>();
 		const depth = (node: string): number => {
+			if (visiting.size > 16) throw new DevicesValidationException('Virtual dependency graph exceeds the depth limit.');
 			if (visiting.has(node))
 				throw new DevicesValidationException('Virtual dependency graph contains a cycle or self-reference.');
-			if (depths.has(node)) return depths.get(node)!;
+			if (depths.has(node)) return depths.get(node);
 			visiting.add(node);
 			let result = 0;
 			for (const input of graph.get(node) ?? []) {

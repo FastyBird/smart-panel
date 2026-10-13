@@ -70,6 +70,7 @@ import { VirtualDependencyGraphService } from './services/virtual-dependency-gra
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
+import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
@@ -110,6 +111,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualDevicesService,
 		VirtualDependencyGraphService,
 		VirtualProducerConfigService,
+		VirtualProducerStateService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
@@ -138,6 +140,7 @@ export class DevicesVirtualPlugin {
 		private readonly deviceInformationListener: VirtualDeviceInformationListener,
 		private readonly virtualDevicesService: VirtualDevicesService,
 		private readonly graph: VirtualDependencyGraphService,
+		private readonly producerState: VirtualProducerStateService,
 	) {}
 
 	onModuleInit() {
@@ -220,10 +223,16 @@ export class DevicesVirtualPlugin {
 			// neither case can be observed as an orphan by anything, rather than repaired after the fact
 			// by something racing the same service's next write.
 			afterCreate: async (property: VirtualChannelPropertyEntity): Promise<VirtualChannelPropertyEntity> => {
+				this.producerState.initializeOutput(property);
 				await this.deviceInformationListener.claimDeviceInformationProperty(property);
 
 				return property;
 			},
+			afterUpdate: (property: VirtualChannelPropertyEntity): Promise<VirtualChannelPropertyEntity> => {
+				this.producerState.initializeOutput(property);
+				return Promise.resolve(property);
+			},
+
 			// Containment. A channel property's `type` is chosen from the request payload while its
 			// channel is a route parameter, so nothing before this stopped a virtual property being
 			// created inside an ordinary *physical* channel — after which
@@ -241,13 +250,23 @@ export class DevicesVirtualPlugin {
 			// left to escape, for the same reason as in `beforeUpdate` below: this hook's caller
 			// reports a DevicesException as an unprocessable entity and anything else as a 500, and a
 			// refused payload is not a server fault. Any other exception is re-thrown untouched.
-			withStructuralWrite: (operation) => this.graph.withStructuralWrite(operation),
+			withStructuralWrite: async (operation) => {
+				const result = await this.graph.withStructuralWrite(operation);
+				// Install synchronously from the committed catalog row before core hydrates/returns it.
+				// All value and structure events remain after commit, under core's existing lock.
+				if (result instanceof VirtualChannelPropertyEntity) this.producerState.initializeOutput(result);
+				return result;
+			},
 			beforeCreate: async (
 				property: VirtualChannelPropertyEntity,
 				channelId: string,
 				manager?: EntityManager,
 			): Promise<void> => {
 				try {
+					const suppliedValue =
+						property.value && typeof property.value === 'object' ? property.value.value : property.value;
+					if (property.isDerived && suppliedValue !== undefined && suppliedValue !== null)
+						throw new DevicesValidationException('Derived producer outputs cannot be seeded with client values.');
 					property.id ??= uuid();
 					if (manager) await this.graph.validateProperty(manager, property);
 					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId);
@@ -295,7 +314,14 @@ export class DevicesVirtualPlugin {
 			// here must not be reported to the client as invalid input.
 			beforeUpdate: async (property: VirtualChannelPropertyEntity, manager?: EntityManager): Promise<void> => {
 				try {
-					if (manager) await this.graph.validateProperty(manager, property);
+					if (manager) {
+						const previous = await manager.findOneBy(VirtualChannelPropertyEntity, { id: property.id });
+						if (previous?.isDerived && !property.isDerived)
+							throw new DevicesValidationException(
+								'Materialized producer output origin is immutable; remove the output rather than converting its series to an alias.',
+							);
+						await this.graph.validateProperty(manager, property);
+					}
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
 					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
 

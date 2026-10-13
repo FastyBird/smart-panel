@@ -7,6 +7,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { EventType } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
+import { clonePropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 import { isEligibleVirtualMeasurement } from '../services/virtual-source-eligibility.utils';
@@ -18,18 +19,7 @@ const detachedClone = <T extends object>(value: T): T => {
 	return Object.assign(clone, value);
 };
 
-/** Preserve value-state prototypes while detaching quality metadata and diagnostic arrays. */
-const snapshotValue = <T>(value: T): T => {
-	if (value === null || typeof value !== 'object') return value;
-	if (value instanceof Date) return new Date(value.getTime()) as T;
-	if (Array.isArray(value)) return value.map((entry: unknown) => snapshotValue(entry)) as T;
-	const clone = Object.create(Object.getPrototypeOf(value) as object) as Record<string, unknown>;
-	for (const [key, entry] of Object.entries(value)) clone[key] = snapshotValue(entry);
-	return clone as T;
-};
-
-/** The core quality boundary is introduced by VD2-2a; keep the event spelling stable during staged merging. */
-const VALUE_STATE_CHANGED_EVENT = 'DevicesModule.ChannelProperty.ValueStateChanged';
+const VALUE_STATE_CHANGED_EVENT = EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED;
 
 /**
  * A source write emits a value event carrying the *source* property's id, which the WebSocket
@@ -82,7 +72,7 @@ export class VirtualProjectionListener {
 				// change under deferred consumers. Preserve the entity prototype for serialization, while
 				// detaching both the entity and its mutable value state from the indexed/source objects.
 				const snapshot = Object.assign(detachedClone(projection), {
-					value: snapshotValue(property.value),
+					value: property.value ? clonePropertyValueState(property.value) : null,
 				});
 
 				this.eventEmitter.emit(event, snapshot);

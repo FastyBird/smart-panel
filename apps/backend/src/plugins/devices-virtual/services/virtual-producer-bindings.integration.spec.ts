@@ -16,7 +16,11 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -35,7 +39,9 @@ import {
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
+import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
+import { VirtualValueSourceService } from './virtual-value-source.service';
 
 jest.setTimeout(30_000);
 
@@ -45,6 +51,8 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 	let second: SqliteDataSource;
 	let graph: VirtualDependencyGraphService;
 	let configs: VirtualProducerConfigService;
+	let producers: PropertyProducerRegistryService;
+	let producerState: VirtualProducerStateService;
 
 	beforeEach(async () => {
 		directory = await mkdtemp(join(tmpdir(), 'vd2-bindings-'));
@@ -58,7 +66,15 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		await database.query('PRAGMA busy_timeout = 5000');
 		await second.query('PRAGMA busy_timeout = 5000');
 		graph = new VirtualDependencyGraphService(database);
-		configs = new VirtualProducerConfigService(database, new DeviceStructureLockService(), graph, new EventEmitter2());
+		producers = new PropertyProducerRegistryService(new EventEmitter2());
+		producerState = new VirtualProducerStateService(database, producers);
+		configs = new VirtualProducerConfigService(
+			database,
+			new DeviceStructureLockService(),
+			graph,
+			new EventEmitter2(),
+			producerState,
+		);
 	});
 
 	afterEach(async () => {
@@ -268,6 +284,67 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		await database.getRepository(ChannelEntity).delete(groupChannelId);
 		expect(await database.getRepository(VirtualLightGroupMemberEntity).count()).toBe(0);
 		expect(await database.getRepository(VirtualLightGroupBindingEntity).count()).toBe(0);
+	});
+
+	it('owns unavailable live state after configuration and restart, and exposes it through projected core reads', async () => {
+		const a = await measurement();
+		const b = await measurement();
+		const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
+		expect(producers.read(output.propertyId)?.producer).toMatchObject({
+			quality: 'unavailable',
+			reasons: ['runtime_unavailable'],
+			revision: 1,
+		});
+		const resolver = new PropertyValueSourceRegistryService();
+		resolver.register(new VirtualValueSourceService());
+		const values = new PropertyValueService(null as never, resolver, null as never, producers);
+		const projection = Object.assign(new VirtualChannelPropertyEntity(), {
+			id: uuid(),
+			valueOrigin: VirtualValueOrigin.SOURCE,
+			sourcePropertyId: output.propertyId,
+		});
+		// A history backend is deliberately absent: qualified reads must not fall through to it.
+		expect((await values.readLatest(projection))?.producer.quality).toBe('unavailable');
+		producers.onModuleDestroy();
+		await producerState.onModuleInit();
+		expect((await values.readLatest(projection))?.producer).toMatchObject({ quality: 'unavailable', revision: 1 });
+		const property = await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.findOneByOrFail({ id: output.propertyId });
+		producerState.handlePropertyDeleted(property);
+		expect(producers.owns(output.propertyId)).toBe(false);
+	});
+
+	it('fences former runtime leases on configuration revision changes and leaves state intact on rejected edits', async () => {
+		const a = await measurement();
+		const b = await measurement();
+		const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const property = await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.findOneByOrFail({ id: output.propertyId });
+		const oldLease = producers.register(property, 0);
+		await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
+		expect(producers.isCurrent(oldLease)).toBe(false);
+		const before = producers.read(output.propertyId);
+		await expect(
+			configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, a.propertyId], 1)),
+		).rejects.toThrow(/distinct/);
+		expect(producers.read(output.propertyId)).toEqual(before);
+		expect(
+			producers.commit(
+				oldLease,
+				new PropertyValueState(22),
+				{
+					quality: 'good',
+					reasons: [],
+					sampledAt: new Date(),
+					evaluatedAt: new Date(),
+					expiresAt: new Date(Date.now() + 1000),
+				},
+				0,
+			),
+		).toBe(false);
 	});
 
 	it('builds identical binding column, FK, check and index contracts through migration and synchronize', async () => {

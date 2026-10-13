@@ -245,19 +245,19 @@ export class VirtualPropertyIndexService {
 			['devices_virtual_aggregate_inputs', 'aggregate_input'],
 			['devices_virtual_light_group_bindings', 'group_binding'],
 		] as const) {
-			const rows = (await manager.query(
+			const rows = await manager.query<VirtualPropertyLink[]>(
 				`SELECT b.id AS bindingId, b.outputPropertyId AS propertyId, b.sourcePropertyId AS sourcePropertyId, sc.deviceId AS sourceDeviceId
 				FROM ${table} b JOIN devices_module_channels_properties op ON op.id = b.outputPropertyId JOIN devices_module_channels oc ON oc.id = op.channelId
 				LEFT JOIN devices_module_channels_properties sp ON sp.id = b.sourcePropertyId LEFT JOIN devices_module_channels sc ON sc.id = sp.channelId WHERE oc.deviceId = ?`,
 				[id],
-			)) as VirtualPropertyLink[];
+			);
 			links.push(...rows.map((row) => ({ ...row, kind })));
 		}
-		const members = (await manager.query(
+		const members = await manager.query<VirtualPropertyLink[]>(
 			`SELECT m.id AS bindingId, m.groupChannelId AS propertyId, m.sourceChannelId AS sourcePropertyId, sc.deviceId AS sourceDeviceId
 			FROM devices_virtual_light_group_members m JOIN devices_module_channels oc ON oc.id = m.groupChannelId LEFT JOIN devices_module_channels sc ON sc.id = m.sourceChannelId WHERE oc.deviceId = ?`,
 			[id],
-		)) as VirtualPropertyLink[];
+		);
 		links.push(...members.map((row) => ({ ...row, kind: 'group_binding' as const })));
 		return links;
 	}
