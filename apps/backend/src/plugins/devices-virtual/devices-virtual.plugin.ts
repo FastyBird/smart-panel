@@ -31,6 +31,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
+import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME,
@@ -73,7 +74,10 @@ import { VirtualEnergyClaimService } from './services/virtual-energy-claim.servi
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
+import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
+import { VirtualTransformRuntimeService } from './services/virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
+import { VirtualTransformMetadataSubscriber } from './subscribers/virtual-transform-metadata.subscriber';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from './validators/device-is-virtual-constraint.validator';
 import { SourceNotVirtualConstraintValidator } from './validators/source-not-virtual-constraint.validator';
@@ -114,6 +118,9 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualProducerConfigService,
 		VirtualProducerStateService,
 		VirtualAggregateRuntimeService,
+		VirtualTransformConfigService,
+		VirtualTransformMetadataSubscriber,
+		VirtualTransformRuntimeService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
@@ -122,7 +129,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
-	controllers: [VirtualDevicesController, VirtualProducerConfigController],
+	controllers: [VirtualTransformConfigController, VirtualDevicesController, VirtualProducerConfigController],
 })
 export class DevicesVirtualPlugin {
 	constructor(
