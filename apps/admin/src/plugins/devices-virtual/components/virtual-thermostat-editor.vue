@@ -383,7 +383,7 @@
 				<el-button
 					type="primary"
 					:loading="busy"
-					:disabled="!preview || validationErrors.length > 0"
+					:disabled="!preview || !canSavePreview || validationErrors.length > 0"
 					@click="save"
 				>
 					{{ create ? 'Create thermostat' : 'Save configuration' }}
@@ -429,6 +429,7 @@ import {
 	DevicesVirtualPluginThermostatSourceRole as ThermostatSourceRole,
 	type operations,
 } from '../../../openapi';
+import { useThermostatPreviewGate } from '../composables/use-thermostat-preview-gate';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import {
 	type ThermostatConfiguration,
@@ -467,9 +468,21 @@ const payload = () =>
 		configuration.value?.graph_revision ?? preview.value?.graph_revision
 	);
 const loading = ref(false);
-const busy = ref(false);
+const mutationBusy = ref(false);
+const previewBusy = ref(false);
+const busy = computed(() => mutationBusy.value || previewBusy.value);
 const loadError = ref<string | null>(null);
 const requestError = ref<string | null>(null);
+const previewGate = useThermostatPreviewGate(
+	() =>
+		JSON.stringify({ draft: draft.value, name: name.value, create: props.create, deviceId: props.deviceId, revision: configuration.value?.revision }),
+	[draft, name, () => props.create, () => props.deviceId, () => configuration.value?.revision],
+	() => {
+		preview.value = null;
+		previewBusy.value = false;
+	}
+);
+const canSavePreview = previewGate.canSave;
 const validationErrors = computed(() => [...(props.create && !name.value.trim() ? ['Enter a thermostat name.'] : []), ...payload().errors]);
 const modeNames = Object.values(SpacesModuleClimateIntentMode);
 const settingNames = Object.values(ThermostatSettingRole);
@@ -493,7 +506,7 @@ const reload = async (): Promise<void> => {
 	const sequence = ++requestSequence;
 	loading.value = true;
 	loadError.value = null;
-	preview.value = null;
+	previewGate.invalidate();
 	try {
 		const { data, error, response } = await backend.client.GET(path, { params: { path: { id: props.deviceId } } });
 		if (sequence !== requestSequence) return;
@@ -523,30 +536,36 @@ const errorText = (error: unknown): string => {
 	return 'Thermostat request failed.';
 };
 const runPreview = async (): Promise<void> => {
+	if (mutationBusy.value) return;
 	const result = payload();
 	if (!result.request) return;
-	busy.value = true;
+	const ticket = previewGate.begin({
+		configuration: result.request,
+		device: props.create ? creationGraph().device : null,
+		deviceId: props.deviceId,
+	});
+	previewBusy.value = true;
 	requestError.value = null;
-	preview.value = null;
 	try {
 		const { data, error } = props.create
 			? await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/thermostats/draft-preview`, {
-					body: { device: creationGraph().device, configuration: result.request },
+					body: { device: ticket.request.device!, configuration: ticket.request.configuration },
 				})
-			: await backend.client.POST(`${path}/preview`, { params: { path: { id: props.deviceId! } }, body: result.request });
-		if (data) preview.value = data.data;
+			: await backend.client.POST(`${path}/preview`, { params: { path: { id: ticket.request.deviceId! } }, body: ticket.request.configuration });
+		if (!previewGate.isCurrent(ticket)) return;
+		if (data && previewGate.approve(ticket)) preview.value = data.data;
 		else requestError.value = errorText(error);
 	} catch (error) {
-		requestError.value = errorText(error);
+		if (previewGate.isCurrent(ticket)) requestError.value = errorText(error);
 	} finally {
-		busy.value = false;
+		if (previewGate.isCurrent(ticket)) previewBusy.value = false;
 	}
 };
 const save = async (): Promise<void> => {
-	if (!preview.value) return;
+	if (!preview.value || !previewGate.canSave.value || busy.value) return;
 	const result = payload();
 	if (!result.request) return;
-	busy.value = true;
+	mutationBusy.value = true;
 	requestError.value = null;
 	try {
 		if (props.create) {
@@ -566,12 +585,12 @@ const save = async (): Promise<void> => {
 	} catch (error) {
 		requestError.value = errorText(error);
 	} finally {
-		busy.value = false;
+		mutationBusy.value = false;
 	}
 };
 const requestRelease = async (): Promise<void> => {
 	if (!configuration.value) return;
-	busy.value = true;
+	mutationBusy.value = true;
 	requestError.value = null;
 	try {
 		const { data, error } = await backend.client.POST(`${path}/release`, {
@@ -586,7 +605,7 @@ const requestRelease = async (): Promise<void> => {
 	} catch (error) {
 		requestError.value = errorText(error);
 	} finally {
-		busy.value = false;
+		mutationBusy.value = false;
 	}
 };
 const toggleFloor = (enabled: string | number | boolean): void => {
@@ -614,18 +633,9 @@ const setContactValue = (source: ThermostatDraft['sources'][number], key: 'open_
 	}
 };
 watch(
-	draft,
-	() => {
-		preview.value = null;
-	},
-	{ deep: true }
-);
-watch(name, () => {
-	preview.value = null;
-});
-watch(
 	() => props.deviceId,
 	() => {
+		previewGate.invalidate();
 		void reload();
 	}
 );
