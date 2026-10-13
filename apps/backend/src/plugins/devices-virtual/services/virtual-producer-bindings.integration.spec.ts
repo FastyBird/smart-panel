@@ -134,7 +134,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		const initial = await configs.configureAggregate(output.propertyId, aggregateDto([a.propertyId, b.propertyId]));
 		expect(initial.runtime_readiness).toBe('unavailable');
 		expect(initial.graph_revision).toBe(1);
-		const removed = initial.inputs.find((input) => input.source_property === a.propertyId)!;
+		const removed = initial.inputs.find((input) => input.source_property === a.propertyId);
 		await database.getRepository(ChannelPropertyEntity).delete(a.propertyId);
 		const missing = await configs.getAggregate(output.propertyId);
 		expect(missing.inputs).toHaveLength(2);
@@ -203,7 +203,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			edit(other, b.propertyId, a.propertyId),
 		]);
 		expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
-		const rejection = outcomes.find((result) => result.status === 'rejected') as PromiseRejectedResult;
+		const rejection = outcomes.find((result) => result.status === 'rejected');
 		expect(String(rejection.reason)).toMatch(/cycle/);
 		expect(await graph.revision()).toBe(1);
 	});
@@ -211,8 +211,9 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 	it('rejects a stale expected revision across independent writers before invoking validation', async () => {
 		let validations = 0;
 		const other = new VirtualDependencyGraphService(second);
-		const operation = async () => {
+		const operation = () => {
 			validations++;
+			return Promise.resolve();
 		};
 		const outcomes = await Promise.allSettled([
 			graph.withStructuralWrite(operation, 0),
@@ -244,7 +245,11 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			permissions: [PermissionType.READ_ONLY],
 			valueOrigin: VirtualValueOrigin.DERIVED,
 		} as never);
-		const members = [];
+		const members: {
+			sourceChannelId: string;
+			deviceId: string;
+			bindings: { outputPropertyId: string; sourcePropertyId: string }[];
+		}[] = [];
 		for (let i = 0; i < 2; i++) {
 			const deviceId = uuid();
 			const channelId = uuid();
@@ -395,31 +400,31 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		resolver.register(new VirtualValueSourceService(graph));
 		const storage = {
 			isConnected: () => true,
-			query: async () => [],
+			query: () => Promise.resolve([]),
 			enqueueWritePoint: () => undefined,
-			flushQueuedWrites: async () => undefined,
+			flushQueuedWrites: () => Promise.resolve(undefined),
 		} as unknown as StorageService;
 		const values = new PropertyValueService(storage, resolver, new PropertyValueLockService(database), producers);
 		const source = await database
 			.getRepository(ChannelPropertyEntity)
 			.findOne({ where: { id: physical.propertyId }, relations: ['channel'] });
 		const alias = await database.getRepository(VirtualChannelPropertyEntity).findOneByOrFail({ id: a.propertyId });
-		await values.writeSampleWithState(source!, 21, {
+		await values.writeSampleWithState(source, 21, {
 			sampledAt: new Date(Date.now() - 10),
 			receivedAt: new Date(),
 			provenance: 'live',
 		});
-		expect(values.readQualifiedSample(source!, 1000)?.value).toBe(21);
+		expect(values.readQualifiedSample(source, 1000)?.value).toBe(21);
 		expect(values.readQualifiedSample(alias, 1000)).toBeNull();
 		expect((await values.readLatest(alias))?.producer).toMatchObject({
 			quality: 'unavailable',
 			reasons: ['graph_quarantined'],
 		});
 		expect((await values.readLatestStrict(alias))?.producer.quality).toBe('unavailable');
-		const many = await values.readLatestManyStrict([alias, source!]);
+		const many = await values.readLatestManyStrict([alias, source]);
 		expect(many.get(alias.id)?.producer.quality).toBe('unavailable');
-		expect(many.get(source!.id)?.value).toBe(21);
-		const bounded = await values.readLatestManyBounded([alias, source!]);
+		expect(many.get(source.id)?.value).toBe(21);
+		const bounded = await values.readLatestManyBounded([alias, source]);
 		expect(bounded.items.find((item) => item.propertyId === alias.id)?.state?.producer.quality).toBe('unavailable');
 		await graph.withStructuralWrite(async (manager) => {
 			await manager.delete(VirtualAggregateConfigEntity, { outputPropertyId: a.propertyId });
@@ -504,28 +509,30 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 				'devices_virtual_light_group_members',
 				'devices_virtual_light_group_bindings',
 			]) {
+				const rows = async <T>(ds: DataSource, sql: string): Promise<T[]> => {
+					const result: unknown = await ds.query(sql);
+					return result as T[];
+				};
 				const columns = async (ds: DataSource) =>
 					(
-						(await ds.query(`PRAGMA table_info("${table}")`)) as {
-							name: string;
-							type: string;
-							notnull: number;
-							pk: number;
-						}[]
-					).map(({ name, type, notnull, pk }) => ({ name, type, notnull, pk }));
+						await rows<{ name: string; type: string; notnull: number; pk: number }>(ds, `PRAGMA table_info("${table}")`)
+					).map(({ name, type, notnull, pk }) => ({
+						name,
+						type,
+						notnull,
+						pk,
+					}));
 				const fks = async (ds: DataSource) =>
 					(
-						(await ds.query(`PRAGMA foreign_key_list("${table}")`)) as {
-							table: string;
-							from: string;
-							to: string;
-							on_delete: string;
-						}[]
+						await rows<{ table: string; from: string; to: string; on_delete: string }>(
+							ds,
+							`PRAGMA foreign_key_list("${table}")`,
+						)
 					)
 						.map(({ table, from, to, on_delete }) => ({ table, from, to, on_delete }))
 						.sort((a, b) => a.from.localeCompare(b.from));
 				const indexes = async (ds: DataSource) =>
-					((await ds.query(`PRAGMA index_list("${table}")`)) as { name: string; unique: number }[])
+					(await rows<{ name: string; unique: number }>(ds, `PRAGMA index_list("${table}")`))
 						.filter((index) => !index.name.startsWith('sqlite_autoindex'))
 						.map(({ name, unique }) => ({ name, unique }))
 						.sort((a, b) => a.name.localeCompare(b.name));

@@ -302,6 +302,7 @@ export type DevicesVirtualPluginChannelPropertySchema = components['schemas']['D
 export type DevicesVirtualPluginCompatibilityCandidateSchema = components['schemas']['DevicesVirtualPluginCompatibilityCandidate'];
 export type DevicesVirtualPluginCompatibilityReportSchema = components['schemas']['DevicesVirtualPluginDataCompatibilityReport'];
 export { DevicesVirtualPluginCreateChannelPropertyValue_origin as DevicesVirtualPluginValueOrigin } from './openapi';
+export { DevicesVirtualPluginCreateDeviceMode as DevicesVirtualPluginDeviceMode } from './openapi';
 
 // Simulator Plugin Schemas
 export type SimulatorPluginDeviceSchema = components['schemas']['SimulatorPluginDataDevice'];
