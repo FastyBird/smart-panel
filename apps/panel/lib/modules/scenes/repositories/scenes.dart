@@ -1,13 +1,17 @@
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_req_trigger_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_trigger_scene.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/scenes/constants.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/repositories/actions.dart';
 import 'package:fastybird_smart_panel/modules/scenes/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
+import 'package:fastybird_smart_panel/plugins/scenes-local/models/local_action.dart';
 
 class ScenesRepository extends Repository<SceneModel> {
   final ActionsRepository _actionsRepository;
@@ -141,7 +145,14 @@ class ScenesRepository extends Repository<SceneModel> {
   Future<TriggerSceneResult> triggerScene(String sceneId) async {
     try {
       // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = await _commandDispatch.dispatch(
+      final dispatchResult = _hasCompositeAction(sceneId)
+          ? await _commandDispatch.dispatchComposite(
+              event: ScenesModuleConstants.triggerSceneEvent,
+              handler: ScenesModuleEventHandlerName.triggerScene,
+              payload: {'sceneId': sceneId},
+              apiFallback: () => _triggerCompositeSceneViaApi(sceneId),
+            )
+          : await _commandDispatch.dispatch(
         event: ScenesModuleConstants.triggerSceneEvent,
         handler: ScenesModuleEventHandlerName.triggerScene,
         payload: {
@@ -150,7 +161,9 @@ class ScenesRepository extends Repository<SceneModel> {
         apiFallback: () => _triggerSceneViaApi(sceneId),
       );
 
-      if (dispatchResult.success) {
+      if (dispatchResult.success ||
+          dispatchResult.data?['action_results'] is List ||
+          dispatchResult.data?['actionResults'] is List) {
         // Parse result from response data
         final data = dispatchResult.data;
         final successCount = data?['successfulActions'] as int? ??
@@ -247,6 +260,33 @@ class ScenesRepository extends Repository<SceneModel> {
       }
     }
     return null;
+  }
+
+  bool _hasCompositeAction(String sceneId) {
+    if (!locator.isRegistered<DevicesService>()) return true;
+    final scene = getScene(sceneId);
+    if (scene == null) return true;
+    final devices = locator<DevicesService>();
+    return scene.actions.any((id) {
+      final action = _actionsRepository.getAction(id);
+      if (action == null) return true;
+      if (action is! LocalActionModel || !action.enabled) return false;
+      final device = devices.getDevice(action.deviceId);
+      if (device == null) return true;
+      return device is LightingDeviceView && device.isCompositeGroup;
+    });
+  }
+
+  Future<Map<String, dynamic>?> _triggerCompositeSceneViaApi(String sceneId) async {
+    final response = await locator<Dio>().post<Map<String, dynamic>>(
+      '/modules/scenes/scenes/$sceneId/trigger',
+      data: {'data': {'source': 'panel'}},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 35),
+        extra: {'retryExhausted': true},
+      ),
+    );
+    return response.data?['data'] as Map<String, dynamic>?;
   }
 }
 

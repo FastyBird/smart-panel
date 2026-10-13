@@ -186,7 +186,16 @@ class CommandDispatchService {
         );
       }
     }
-    return _dispatchViaApi(apiFallback);
+    try {
+      return await _dispatchViaApi(apiFallback)
+          .timeout(const Duration(seconds: 35));
+    } catch (error) {
+      return CommandDispatchResult(
+        success: false,
+        reason: error.toString(),
+        channel: CommandDispatchChannel.api,
+      );
+    }
   }
 
   /// Dispatch command via API fallback

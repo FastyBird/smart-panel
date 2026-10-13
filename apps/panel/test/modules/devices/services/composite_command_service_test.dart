@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -152,6 +150,69 @@ void main() {
     expect(socket.sent, 0);
     expect(dio.requestOptions?.receiveTimeout, const Duration(seconds: 35));
     expect(dio.requestOptions?.extra?['retryExhausted'], true);
+    service.dispose();
+  });
+
+  test('reconnect fences an in-flight parent and its late acknowledgement', () async {
+    final socket = RecordingSocket();
+    final service = CompositeCommandService(
+      socketService: socket,
+      dispatch: CommandDispatchService(socketService: socket),
+    );
+    final resultFuture = service.send(deviceId: 'group', properties: targets);
+    await Future<void>.delayed(Duration.zero);
+    final requestId = socket.sentPayload!['request_id'] as String;
+    final acknowledge = socket.ack!;
+    socket.connection?.call(false);
+    socket.emit('DevicesModule.CompositeCommand.Completed', {
+      'id': 'old-parent', 'requestId': requestId, 'epoch': 'old-server',
+      'sequence': 1, 'status': 'confirmed',
+      'targets': [
+        {'deviceId': 'group', 'channelId': 'light', 'propertyId': 'on'},
+      ],
+    });
+    acknowledge(SocketCommandResponseModel(status: true, message: 'OK', data: {
+      'request_id': requestId,
+      'composites': [
+        {'id': 'old-parent', 'status': 'confirmed', 'children': []},
+      ],
+    }));
+    final outcome = await resultFuture;
+    expect(outcome.status, 'unknown');
+    expect(service.latestFor('group')?.status, 'unknown');
+    service.dispose();
+  });
+
+  test('an older parent cannot replace the latest command for a group', () async {
+    final socket = RecordingSocket();
+    final service = CompositeCommandService(
+      socketService: socket,
+      dispatch: CommandDispatchService(socketService: socket),
+    );
+    final first = service.send(deviceId: 'group', properties: targets);
+    await Future<void>.delayed(Duration.zero);
+    final firstRequest = socket.sentPayload!['request_id'] as String;
+    final firstAck = socket.ack!;
+    final second = service.send(deviceId: 'group', properties: targets);
+    await Future<void>.delayed(Duration.zero);
+    final secondRequest = socket.sentPayload!['request_id'] as String;
+    final secondAck = socket.ack!;
+    firstAck(SocketCommandResponseModel(status: true, message: 'OK', data: {
+      'request_id': firstRequest,
+      'composites': [
+        {'id': 'first-parent', 'status': 'confirmed', 'children': []},
+      ],
+    }));
+    await first;
+    expect(service.latestFor('group')?.requestId, secondRequest);
+    secondAck(SocketCommandResponseModel(status: true, message: 'OK', data: {
+      'request_id': secondRequest,
+      'composites': [
+        {'id': 'second-parent', 'status': 'partial', 'children': []},
+      ],
+    }));
+    await second;
+    expect(service.latestFor('group')?.status, 'partial');
     service.dispose();
   });
 }

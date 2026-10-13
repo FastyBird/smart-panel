@@ -8,10 +8,13 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_inte
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_home_control_plugin/spaces_home_control_plugin_client.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/metrics_service.dart';
 import 'package:fastybird_smart_panel/modules/intents/models/intents/intent.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/covers_state/covers_state.dart';
@@ -21,6 +24,7 @@ import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/sensor_
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/undo/undo_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/intent_types.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:flutter/foundation.dart';
 
 /// Repository for managing space state including lighting, climate, suggestions, and undo.
@@ -370,28 +374,38 @@ class SpaceStateRepository extends ChangeNotifier {
       if (white != null) 'white': white,
     };
 
-    // Create local intent for optimistic UI before sending command
-    _intentsRepository.createLocalSpaceIntent(
-      spaceId: spaceId,
-      type: _mapLightingIntentType(type),
-      value: intentBody,
-    );
+    final hasCompositeTarget = _hasCompositeLightTarget(spaceId);
+    if (!hasCompositeTarget) {
+      _intentsRepository.createLocalSpaceIntent(
+        spaceId: spaceId,
+        type: _mapLightingIntentType(type),
+        value: intentBody,
+      );
+    }
 
     try {
       // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = await _commandDispatch.dispatch(
+      final payload = {
+        'spaceId': spaceId,
+        'intent': intentBody,
+      };
+      final dispatchResult = hasCompositeTarget
+          ? await _commandDispatch.dispatchComposite(
+              event: SpacesModuleConstants.lightingIntentEvent,
+              handler: SpacesModuleEventHandlerName.lightingIntent,
+              payload: payload,
+              apiFallback: () => _executeCompositeLightingIntentViaApi(spaceId, intentBody),
+            )
+          : await _commandDispatch.dispatch(
         event: SpacesModuleConstants.lightingIntentEvent,
         handler: SpacesModuleEventHandlerName.lightingIntent,
-        payload: {
-          'spaceId': spaceId,
-          'intent': intentBody,
-        },
+        payload: payload,
         apiFallback: () => _executeLightingIntentViaApi(spaceId, intentBody),
       );
 
       stopwatch.stop();
 
-      if (dispatchResult.success) {
+      if (dispatchResult.success || dispatchResult.data?['composites'] is List) {
         // For WebSocket, we get basic success info; for API, we get full result
         final result = dispatchResult.data != null
             ? LightingIntentResult.fromJson(dispatchResult.data!)
@@ -475,6 +489,41 @@ class SpaceStateRepository extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  bool _hasCompositeLightTarget(String spaceId) {
+    if (!locator.isRegistered<DevicesService>() ||
+        !locator.isRegistered<LightTargetsRepository>()) {
+      return false;
+    }
+    final devices = locator<DevicesService>();
+    final targets = locator<LightTargetsRepository>()
+        .getLightTargetsForSpace(spaceId);
+    if (targets.isEmpty) {
+      return devices.devicesList.whereType<LightingDeviceView>().any(
+        (device) => device.isCompositeGroup &&
+            (device.roomId == spaceId || device.zoneIds.contains(spaceId)),
+      );
+    }
+    return targets.any((target) {
+          final device = devices.getDevice(target.deviceId);
+          return device is LightingDeviceView && device.isCompositeGroup;
+        });
+  }
+
+  Future<Map<String, dynamic>?> _executeCompositeLightingIntentViaApi(
+    String spaceId,
+    Map<String, dynamic> intentBody,
+  ) async {
+    final response = await locator<Dio>().post<Map<String, dynamic>>(
+      '/modules/spaces/spaces/$spaceId/intents/lighting',
+      data: {'data': intentBody},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 35),
+        extra: {'retryExhausted': true},
+      ),
+    );
+    return response.data?['data'] as Map<String, dynamic>?;
   }
 
   /// Turn all lights off
