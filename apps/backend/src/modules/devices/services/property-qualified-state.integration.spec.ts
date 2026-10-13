@@ -183,6 +183,36 @@ describe('qualified samples and producer state', () => {
 		expect(scalar).toHaveBeenCalledTimes(1);
 	});
 
+	it('qualifies only the exact incorporated live acceptance and its current provider identity', async () => {
+		let sourceCurrent = true;
+		await report(20, { ...evidence(), sourceIsCurrent: () => sourceCurrent });
+		const sourceSample = values.readQualifiedSample(property, 10000);
+		const output = Object.assign(new SampleProperty(), property, { id: 'derived-property' });
+		const lease = producers.register(output, 1);
+		await values.publishDerived(output, lease, 21, {
+			...publication(),
+			sourceSample: { propertyId: property.id, acceptanceGeneration: sourceSample.acceptanceGeneration },
+		});
+		expect(values.readQualifiedSample(output, 10000)?.value).toBe(21);
+		await report(20, { ...evidence(), sourceIsCurrent: () => sourceCurrent });
+		expect(values.readQualifiedSample(property, 10000).acceptanceGeneration).toBeGreaterThan(
+			sourceSample.acceptanceGeneration,
+		);
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+		const current = values.readQualifiedSample(property, 10000);
+		await values.publishDerived(output, lease, 21, {
+			...publication(),
+			sourceSample: { propertyId: property.id, acceptanceGeneration: current.acceptanceGeneration },
+		});
+		expect(values.readQualifiedSample(output, 10000)?.value).toBe(21);
+		sourceCurrent = false;
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+		producers.unregister(lease);
+		expect(producers.readIncorporatedSample(output.id)).toBeNull();
+		producers.register(output, 2);
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+	});
+
 	it('consults the accepted source generation at reads and omits its guard from sample events', async () => {
 		let current = true;
 		await report(20, { ...evidence(), isCurrent: () => current });
