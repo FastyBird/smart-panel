@@ -15,6 +15,7 @@ import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistr
 import { DeviceAddressService } from './device-address.service';
 import { DeviceManagerService } from './device-manager.service';
 import { ShellyRpcClientService } from './shelly-rpc-client.service';
+import { ShellySampleSourcesService } from './shelly-sample-sources.service';
 
 /** Real discovery/adoption/RPC serialization, with fixture HTTP and persistence only. */
 describe('native temperature adoption identity', () => {
@@ -26,6 +27,8 @@ describe('native temperature adoption identity', () => {
 	let properties: { channel: string; category: PropertyCategory; identifier?: string; value?: unknown }[];
 	let service: DeviceManagerService;
 	let removed: jest.Mock;
+	let bindSource: jest.Mock;
+	let invalidateSource: jest.Mock;
 
 	beforeEach(() => {
 		componentKey = 'input:100';
@@ -41,6 +44,8 @@ describe('native temperature adoption identity', () => {
 		channels = [];
 		properties = [];
 		removed = jest.fn();
+		bindSource = jest.fn().mockResolvedValue({});
+		invalidateSource = jest.fn().mockResolvedValue(undefined);
 		const device = Object.assign(new ShellyNgDeviceEntity(), {
 			id: 'pilot',
 			identifier: 'physical',
@@ -106,6 +111,7 @@ describe('native temperature adoption identity', () => {
 				enqueue: (_id: string, task: () => Promise<ShellyNgDeviceEntity>) => task(),
 			} as unknown as ConstructorParameters<typeof DeviceManagerService>[7],
 			{ getPreferredAddressOrMigrate: () => Promise.resolve('fixture.invalid') } as unknown as DeviceAddressService,
+			{ bind: bindSource, invalidateComponent: invalidateSource } as unknown as ShellySampleSourcesService,
 		);
 	});
 	afterEach(() => jest.restoreAllMocks());
@@ -117,6 +123,16 @@ describe('native temperature adoption identity', () => {
 			await service.createOrUpdate('pilot');
 			const identity = nativeTemperatureIdentity(componentKey, sourceConfig, peripherals);
 			const canonical = channels.find((channel) => channel.identifier === identity.channelIdentifier);
+			expect(bindSource).toHaveBeenCalledWith(
+				expect.any(String),
+				'pilot',
+				expect.objectContaining({
+					unit: '°C',
+					expression: 'x/2',
+					componentKey: 'input:100',
+					fingerprint: identity.fingerprint,
+				}),
+			);
 			expect(canonical.category).toBe(ChannelCategory.TEMPERATURE);
 			expect(properties).toContainEqual(
 				expect.objectContaining({

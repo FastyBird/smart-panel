@@ -8,53 +8,109 @@ export interface ShellyRawSample {
 	readonly evidence: PropertySampleEvidence;
 }
 
-function canonical(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(canonical);
-	if (value !== null && typeof value === 'object') {
-		return Object.fromEntries(
-			Object.entries(value)
-				.sort(([a], [b]) => a.localeCompare(b))
-				.map(([key, item]) => [key, canonical(item)]),
-		);
-	}
-	return value;
+export interface NativeTemperatureSnapshot {
+	readonly componentKey: string;
+	readonly fingerprint: string;
+	readonly channelIdentifier: string;
+	readonly attribute: 'xpercent' | 'xvoltage' | 'tC';
+	readonly unit: string;
+	readonly expression: string | null;
+	readonly configuration: {
+		readonly enabled: boolean;
+		readonly inverted: boolean;
+		readonly rangeMap: readonly number[] | null;
+		readonly reportThreshold: number | null;
+		readonly offset: number | null;
+	};
+	readonly peripheral: {
+		readonly kind: 'analog_in' | 'voltmeter' | 'ds18b20';
+		readonly io: number | null;
+		readonly address: string | null;
+	};
 }
 
-/** Config/peripheral identity, never executable code or a thermistor conversion. */
+/** Whitelisted sensor configuration only; expressions are metadata and are never evaluated. */
 export function nativeTemperatureIdentity(
 	componentKey: string,
 	config: Readonly<Record<string, unknown>>,
 	peripherals: Readonly<Record<string, unknown>>,
-): { channelIdentifier: string; attribute: 'xpercent' | 'xvoltage' | 'tC'; unit: string } | null {
+): NativeTemperatureSnapshot | null {
 	const [type, id] = componentKey.split(':');
-	if (type === 'temperature' && /^\d+$/.test(id)) {
-		const links = peripherals.ds18b20 as Record<string, { addr?: unknown }> | undefined;
-		const peripheral = links?.[componentKey];
-		if (!peripheral || typeof peripheral.addr !== 'string' || !peripheral.addr.trim()) return null;
-		const digest = createHash('sha256')
-			.update(JSON.stringify(canonical({ componentKey, config, peripheral })))
-			.digest('hex');
-		return { channelIdentifier: `probe-temperature:${componentKey}:${digest}`, attribute: 'tC', unit: '°C' };
-	}
-	if (!['input', 'voltmeter'].includes(type) || !/^\d+$/.test(id)) return null;
-	const attribute = type === 'input' ? 'xpercent' : 'xvoltage';
-	const helper = config[attribute] as { expr?: unknown; unit?: unknown } | undefined;
-	const links = peripherals[type === 'input' ? 'analog_in' : 'voltmeter'] as Record<string, unknown> | undefined;
+	if (!['input', 'voltmeter', 'temperature'].includes(type) || !/^\d+$/.test(id) || config.id !== Number(id))
+		return null;
+	if (!Number.isSafeInteger(Number(id))) return null;
 	if (
-		!links ||
-		!Object.hasOwn(links, componentKey) ||
-		!helper ||
-		typeof helper.expr !== 'string' ||
-		!helper.expr.trim() ||
-		typeof helper.unit !== 'string' ||
-		!['°C', 'C', 'Celsius', 'celsius'].includes(helper.unit)
+		config.range_map !== undefined &&
+		config.range_map !== null &&
+		(!Array.isArray(config.range_map) ||
+			!config.range_map.every((value: unknown) => typeof value === 'number' && Number.isFinite(value)))
 	)
 		return null;
-	if (type === 'input' && (config.type !== 'analog' || config.enable === false)) return null;
-	const digest = createHash('sha256')
-		.update(JSON.stringify(canonical({ componentKey, config, peripheral: links[componentKey] })))
+	for (const field of ['invert', 'enable'])
+		if (config[field] !== undefined && typeof config[field] !== 'boolean') return null;
+	for (const field of ['offset', 'report_thr'])
+		if (
+			config[field] !== undefined &&
+			config[field] !== null &&
+			(typeof config[field] !== 'number' || !Number.isFinite(config[field]))
+		)
+			return null;
+	const attribute = type === 'input' ? 'xpercent' : type === 'voltmeter' ? 'xvoltage' : 'tC';
+	const kind = type === 'input' ? 'analog_in' : type === 'voltmeter' ? 'voltmeter' : 'ds18b20';
+	const links = peripherals[kind] as Record<string, { io?: unknown; addr?: unknown }> | undefined;
+	const link = links?.[componentKey];
+	if (!link || typeof link !== 'object') return null;
+	let unit: string;
+	let expression: string | null;
+	if (type === 'temperature') {
+		if (typeof link.addr !== 'string' || !link.addr.trim()) return null;
+		unit = '°C';
+		expression = null;
+	} else {
+		const helper = config[attribute] as { expr?: unknown; unit?: unknown } | undefined;
+		if (
+			!helper ||
+			typeof helper.expr !== 'string' ||
+			!helper.expr.trim() ||
+			typeof helper.unit !== 'string' ||
+			!['°C', 'C', 'Celsius', 'celsius'].includes(helper.unit)
+		)
+			return null;
+		if (!Number.isInteger(link.io) || (link.io as number) < 0) return null;
+		if (type === 'input' && (config.type !== 'analog' || config.enable === false)) return null;
+		unit = helper.unit;
+		expression = helper.expr;
+	}
+	const configuration: NativeTemperatureSnapshot['configuration'] = {
+		enabled: config.enable !== false,
+		inverted: config.invert === true,
+		rangeMap:
+			Array.isArray(config.range_map) &&
+			config.range_map.every((value: unknown) => typeof value === 'number' && Number.isFinite(value))
+				? [...(config.range_map as number[])]
+				: null,
+		reportThreshold:
+			typeof config.report_thr === 'number' && Number.isFinite(config.report_thr) ? config.report_thr : null,
+		offset: typeof config.offset === 'number' && Number.isFinite(config.offset) ? config.offset : null,
+	};
+	const peripheral: NativeTemperatureSnapshot['peripheral'] = {
+		kind,
+		io: typeof link.io === 'number' ? link.io : null,
+		address: typeof link.addr === 'string' ? link.addr : null,
+	};
+	const fingerprint = createHash('sha256')
+		.update(JSON.stringify({ componentKey, unit, expression, configuration, peripheral }))
 		.digest('hex');
-	return { channelIdentifier: `helper-temperature:${componentKey}:${digest}`, attribute, unit: helper.unit };
+	return {
+		componentKey,
+		fingerprint,
+		channelIdentifier: `${type === 'temperature' ? 'probe-temperature' : 'helper-temperature'}:${componentKey}:${fingerprint}`,
+		attribute,
+		unit,
+		expression,
+		configuration,
+		peripheral,
+	};
 }
 
 export function shellySampleEvidence(ts: unknown, observedAt: Date, receivedAt = new Date()): PropertySampleEvidence {

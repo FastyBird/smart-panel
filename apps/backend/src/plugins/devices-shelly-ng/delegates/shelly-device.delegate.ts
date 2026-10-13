@@ -609,7 +609,15 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		evidence: ShellyRawSample['evidence'],
 	): void {
 		if (/^(temperature|input|voltmeter|switch):\d+$/.test(componentKey)) {
-			this.emit('sample', { componentKey, values: Object.freeze({ ...values }), evidence } satisfies ShellyRawSample);
+			const generation = this.connectionGeneration;
+			this.emit('sample', {
+				componentKey,
+				values: Object.freeze({ ...values }),
+				evidence: {
+					...evidence,
+					isCurrent: () => generation === this.connectionGeneration && (evidence.isCurrent?.() ?? true),
+				},
+			} satisfies ShellyRawSample);
 		}
 	}
 

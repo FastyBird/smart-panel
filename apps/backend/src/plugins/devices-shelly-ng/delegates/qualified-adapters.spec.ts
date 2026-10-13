@@ -12,9 +12,11 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { ShellySampleSourceEntity } from '../entities/shelly-sample-source.entity';
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
 import { DeviceAddressService } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { ShellySampleSourcesService } from '../services/shelly-sample-sources.service';
 
 import { DelegatesManagerService } from './delegates-manager.service';
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
@@ -120,6 +122,23 @@ const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: bo
 		{ syncAddresses: () => Promise.resolve() } as unknown as DeviceAddressService,
 		{ get: () => undefined } as unknown as PropertyMappingStorageService,
 		{} as TransformerRegistry,
+		undefined,
+		undefined,
+		undefined,
+		{
+			get: () =>
+				Promise.resolve({
+					metadata: Object.assign(new ShellySampleSourceEntity(), {
+						propertyId: property.id,
+						fingerprint: channel.identifier.split(':').at(-1),
+						componentKey: helper === 'probe' ? 'temperature:100' : 'input:100',
+						deviceId: device.id,
+					}),
+					activatedAt: new Date(Date.now() - 1),
+				}),
+			isCurrent: () => true,
+			revoke: () => {},
+		} as unknown as ShellySampleSourcesService,
 	);
 	const delegate = await manager.insert(physical);
 	update.mockClear();
@@ -322,6 +341,7 @@ describe('qualified Shelly adapter boundaries', () => {
 					})
 				: Promise.resolve(helperPeripheral);
 		rpc.notify({ 'input:100': { xpercent: 25 } });
+		await flush();
 		rpc.notify({ 'input:100': { xpercent: null } });
 		expect(fixture.reportSample).toHaveBeenCalledTimes(1);
 		resolve(helperConfig);
@@ -342,6 +362,7 @@ describe('qualified Shelly adapter boundaries', () => {
 					})
 				: Promise.resolve(helperPeripheral);
 		rpc.notify({ 'input:100': { xpercent: 25 } });
+		await flush();
 		rpc.emit('disconnect', 1000, '', null);
 		resolve(helperConfig);
 		await flush();
@@ -370,7 +391,7 @@ describe('qualified Shelly adapter boundaries', () => {
 		expect(
 			nativeTemperatureIdentity(
 				'voltmeter:100',
-				{ xvoltage: { expr: 'x/2', unit: '°C' } },
+				{ id: 100, xvoltage: { expr: 'x/2', unit: '°C' } },
 				{ voltmeter: { 'voltmeter:100': { io: 0 } } },
 			).attribute,
 		).toBe('xvoltage');
@@ -451,6 +472,7 @@ describe('qualified Shelly adapter boundaries', () => {
 					})
 				: Promise.resolve(helperPeripheral);
 		rpc.notify({ 'input:100': { xpercent: 25 } });
+		await flush();
 		const detached = manager.detach();
 		expect(fixture.reportSample).toHaveBeenLastCalledWith(
 			'temperature',

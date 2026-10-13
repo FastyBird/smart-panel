@@ -27,8 +27,23 @@ import {
 export abstract class Z2mBaseClientAdapter {
 	protected readonly logger: ExtensionLoggerService;
 
-	protected connected = false;
-	protected bridgeOnline = false;
+	private sourceGeneration = 0;
+	private connectedState = false;
+	private bridgeOnlineState = false;
+	protected get connected(): boolean {
+		return this.connectedState;
+	}
+	protected set connected(value: boolean) {
+		if (value !== this.connectedState) this.sourceGeneration++;
+		this.connectedState = value;
+	}
+	protected get bridgeOnline(): boolean {
+		return this.bridgeOnlineState;
+	}
+	protected set bridgeOnline(value: boolean) {
+		if (value !== this.bridgeOnlineState) this.sourceGeneration++;
+		this.bridgeOnlineState = value;
+	}
 	protected reconnectTimer: NodeJS.Timeout | null = null;
 	protected configBaseTopic: string = DEFAULT_MQTT_BASE_TOPIC;
 
@@ -51,6 +66,7 @@ export abstract class Z2mBaseClientAdapter {
 	 * Set callbacks for adapter events
 	 */
 	setCallbacks(callbacks: Z2mAdapterCallbacks): void {
+		this.sourceGeneration++;
 		this.callbacks = callbacks;
 	}
 
@@ -155,7 +171,10 @@ export abstract class Z2mBaseClientAdapter {
 		message: string,
 		isRelative = false,
 		isRetained = false,
-		options?: { isDup?: boolean; packetId?: number },
+		options?: Pick<
+			Z2mDeviceStateMetadata,
+			'isDup' | 'packetId' | 'isCached' | 'sampledAt' | 'qualificationReason' | 'isCurrent'
+		>,
 	): void {
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
@@ -381,9 +400,13 @@ export abstract class Z2mBaseClientAdapter {
 		friendlyName: string,
 		message: string,
 		isRetained = false,
-		options?: { isDup?: boolean; packetId?: number },
+		options?: Pick<
+			Z2mDeviceStateMetadata,
+			'isDup' | 'packetId' | 'isCached' | 'sampledAt' | 'qualificationReason' | 'isCurrent'
+		>,
 	): void {
 		const observedAt = new Date();
+		const generation = this.sourceGeneration;
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
@@ -406,6 +429,10 @@ export abstract class Z2mBaseClientAdapter {
 			const metadata: Z2mDeviceStateMetadata = {
 				observedAt,
 				isRetained,
+				isCached: options?.isCached,
+				sampledAt: options?.sampledAt,
+				qualificationReason: options?.qualificationReason,
+				isCurrent: () => generation === this.sourceGeneration && (options?.isCurrent?.() ?? true),
 				isDup: options?.isDup,
 				packetId: options?.packetId,
 			};
@@ -460,6 +487,7 @@ export abstract class Z2mBaseClientAdapter {
 	 * Reset adapter state on disconnect
 	 */
 	protected resetState(): void {
+		this.sourceGeneration++;
 		this.connected = false;
 		this.bridgeOnline = false;
 		this.deviceRegistry.clear();

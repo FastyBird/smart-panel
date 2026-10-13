@@ -1,6 +1,6 @@
 import { EntityManager } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { pLimit, retry, withTimeout } from '../../../common/utils/http.utils';
@@ -51,6 +51,7 @@ import { rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { DeviceAddressService } from './device-address.service';
 import { InputConfig, InputStatus, ShellyRpcClientService } from './shelly-rpc-client.service';
+import { ShellySampleSourcesService } from './shelly-sample-sources.service';
 
 @Injectable()
 export class DeviceManagerService {
@@ -83,6 +84,7 @@ export class DeviceManagerService {
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
 		private readonly provisionQueue: DeviceProvisionQueueService,
 		private readonly deviceAddressService: DeviceAddressService,
+		@Optional() private readonly sampleSources?: ShellySampleSourcesService,
 	) {}
 
 	async getDeviceInfo(
@@ -1399,6 +1401,8 @@ export class DeviceManagerService {
 									inputConfig as unknown as Record<string, unknown>,
 								);
 								if (helperChannel) channelsIds.push(helperChannel.id);
+							} else {
+								await this.sampleSources?.invalidateComponent(device.id, `input:${key}`);
 							}
 
 							const inputMode = inputConfig?.type ?? 'button';
@@ -2565,10 +2569,14 @@ export class DeviceManagerService {
 				{ password },
 			);
 		} catch {
+			await this.sampleSources?.invalidateComponent(device.id, componentKey);
 			return null;
 		}
 		const identity = nativeTemperatureIdentity(componentKey, config, peripherals);
-		if (!identity) return null;
+		if (!identity) {
+			await this.sampleSources?.invalidateComponent(device.id, componentKey);
+			return null;
+		}
 		const channel = await this.ensureChannel(
 			device,
 			'identifier',
@@ -2576,11 +2584,19 @@ export class DeviceManagerService {
 			ChannelCategory.TEMPERATURE,
 			`Temperature: ${componentKey}`,
 		);
-		await this.ensureProperty(channel, PropertyCategory.TEMPERATURE, 'identifier', identity.attribute, undefined, {
-			data_type: DataTypeType.FLOAT,
-			permissions: [PermissionType.READ_ONLY],
-			step: null,
-		});
+		const property = await this.ensureProperty(
+			channel,
+			PropertyCategory.TEMPERATURE,
+			'identifier',
+			identity.attribute,
+			undefined,
+			{
+				data_type: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				step: null,
+			},
+		);
+		await this.sampleSources?.bind(property.id, device.id, identity);
 		return channel;
 	}
 

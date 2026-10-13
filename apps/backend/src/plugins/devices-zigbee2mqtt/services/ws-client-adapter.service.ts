@@ -5,6 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { Z2mSetPayload, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
+import { websocketSampleEvidence } from './websocket-sample-evidence';
 
 /**
  * Zigbee2MQTT WebSocket message format.
@@ -27,7 +28,16 @@ interface Z2mWsMessage {
 @Injectable()
 export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	private ws: WebSocket | null = null;
+	private connectedAt: Date | null = null;
+	private connectionGeneration = 0;
 	private config: Z2mWsConfig | null = null;
+
+	getMeasurementReadiness(): { requiredProof: 'post_connection_source_timestamp'; reasons: readonly string[] } {
+		return {
+			requiredProof: 'post_connection_source_timestamp',
+			reasons: ['websocket_startup_cache_has_no_retain_flag'],
+		};
+	}
 
 	constructor() {
 		super('WsClientAdapter');
@@ -47,6 +57,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 		await this.disconnect();
 
 		this.config = config;
+		const generation = this.connectionGeneration;
 
 		const wsUrl = this.buildWsUrl(config);
 
@@ -67,8 +78,11 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 				}, config.connectTimeout);
 
 				this.ws = new WebSocket(wsUrl);
+				const socket = this.ws;
 
 				this.ws.on('open', () => {
+					if (generation !== this.connectionGeneration || this.ws !== socket) return;
+					this.connectedAt = new Date();
 					clearTimeout(timeoutId);
 					settled = true;
 
@@ -92,6 +106,8 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 				});
 
 				this.ws.on('close', () => {
+					if (generation !== this.connectionGeneration || this.ws !== socket) return;
+					this.connectedAt = null;
 					clearTimeout(timeoutId);
 
 					const wasConnected = this.connected;
@@ -112,6 +128,7 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 				});
 
 				this.ws.on('message', (data: WebSocket.Data) => {
+					if (generation !== this.connectionGeneration || this.ws !== socket || !this.connected) return;
 					this.handleWsMessage(data);
 				});
 			} catch (error) {
@@ -127,6 +144,8 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	 * Disconnect from the WebSocket
 	 */
 	async disconnect(): Promise<void> {
+		this.connectionGeneration++;
+		this.connectedAt = null;
 		this.clearReconnectTimer();
 
 		// Set flags before closing the socket to prevent the close-event handler
@@ -298,7 +317,19 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 
 			// The z2m WebSocket API sends topics WITHOUT the baseTopic prefix
 			// (e.g. "bridge/state", not "zigbee2mqtt/bridge/state"), so pass isRelative=true
-			this.handleMessage(wsMessage.topic, payloadStr, true);
+			let payload: unknown = wsMessage.payload;
+			if (typeof payload === 'string') {
+				try {
+					payload = JSON.parse(payload) as unknown;
+				} catch {
+					payload = null;
+				}
+			}
+			const generation = this.connectionGeneration;
+			this.handleMessage(wsMessage.topic, payloadStr, true, false, {
+				...websocketSampleEvidence(payload, this.connectedAt, new Date()),
+				isCurrent: () => generation === this.connectionGeneration,
+			});
 		} catch (error) {
 			this.logger.warn('Failed to parse WebSocket message', {
 				message: error instanceof Error ? error.message : String(error),

@@ -17,6 +17,10 @@ export interface Z2mDeviceStateMetadata {
 	/** Captured at packet receipt before asynchronous mapping or queueing. */
 	observedAt?: Date;
 	sampledAt?: Date;
+	/** Internal transport evidence/refusal reason; never a hardware qualification guarantee. */
+	qualificationReason?: string;
+	/** Internal generation guard; never supplied through API DTOs. */
+	isCurrent?: () => boolean;
 	isRetained?: boolean;
 	isCached?: boolean;
 	isDup?: boolean;

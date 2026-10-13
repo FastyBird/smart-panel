@@ -47,6 +47,7 @@ import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { PollPlacementDiagnosticsService } from '../services/poll-placement-diagnostics.service';
+import { ShellySampleSourceLease, ShellySampleSourcesService } from '../services/shelly-sample-sources.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate, ShellyValueOrigin } from './shelly-device.delegate';
@@ -121,6 +122,7 @@ export class DelegatesManagerService {
 			property: ShellyNgChannelPropertyEntity;
 			componentKey: string;
 			attribute: string;
+			sourceLease?: ShellySampleSourceLease;
 		}[]
 	>();
 	private readonly sampleRevisions = new Map<string, number>();
@@ -241,6 +243,7 @@ export class DelegatesManagerService {
 		private readonly pollPlacementDiagnostics: PollPlacementDiagnosticsService = new PollPlacementDiagnosticsService(),
 		@Optional()
 		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
+		@Optional() private readonly sampleSourcesRegistry?: ShellySampleSourcesService,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -1959,6 +1962,8 @@ export class DelegatesManagerService {
 			if (state !== true) {
 				this.sampleGenerations.set(delegate.id, (this.sampleGenerations.get(delegate.id) ?? 0) + 1);
 				for (const source of this.sampleSources.get(delegate.id) ?? []) {
+					this.sampleSourcesRegistry?.revoke(source.property.id);
+					this.sampleSourcesRegistry?.revoke(source.property.id);
 					void this.admitRawSample(source.property, null, {
 						componentKey: source.componentKey,
 						values: {},
@@ -2198,6 +2203,7 @@ export class DelegatesManagerService {
 			property: ShellyNgChannelPropertyEntity;
 			componentKey: string;
 			attribute: string;
+			sourceLease?: ShellySampleSourceLease;
 		}[] = [];
 		for (const channel of await this.channelsService.findAll<ShellyNgChannelEntity>(
 			device.id,
@@ -2219,12 +2225,23 @@ export class DelegatesManagerService {
 				componentKey = channel.identifier;
 				attribute = 'output';
 			} else continue;
-			const property = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+			let property = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'identifier',
 				attribute,
 				channel.id,
 			);
-			if (property) sources.push({ channel, property, componentKey, attribute });
+			if (!property && attribute === 'output')
+				property = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.ON,
+					channel.id,
+				);
+			if (property) {
+				const sourceLease = hasQualifiedFloorSourceIdentity(channel.identifier)
+					? await this.sampleSourcesRegistry?.get(property.id)
+					: undefined;
+				sources.push({ channel, property, componentKey, attribute, sourceLease: sourceLease ?? undefined });
+			}
 		}
 		this.sampleSources.set(delegate.id, sources);
 		delegate.setSampleComponentKeys(sources.map((source) => source.componentKey));
@@ -2238,7 +2255,9 @@ export class DelegatesManagerService {
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
 				this.sampleRevisions.set(key, revision);
 				const isCurrent = (): boolean =>
-					(this.sampleGenerations.get(delegate.id) ?? 0) === generation && this.sampleRevisions.get(key) === revision;
+					(this.sampleGenerations.get(delegate.id) ?? 0) === generation &&
+					this.sampleRevisions.get(key) === revision &&
+					(sample.evidence.isCurrent?.() ?? true);
 				const raw = sample.values[source.attribute];
 				const value =
 					!fault &&
@@ -2246,17 +2265,49 @@ export class DelegatesManagerService {
 						(typeof raw === 'number' && Number.isFinite(raw)))
 						? raw
 						: null;
+				let lease: ShellySampleSourceLease | null | undefined;
+				let sourceProof = false;
+				const admit = (reported: unknown, report = sample): Promise<void> =>
+					this.admitRawSample(source.property, reported, {
+						...report,
+						evidence: {
+							...report.evidence,
+							isCurrent: () =>
+								isCurrent() &&
+								(reported === null ||
+									!hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+									(sourceProof &&
+										Boolean(lease && this.sampleSourcesRegistry?.isCurrent(lease, sample.evidence.observedAt)))),
+						},
+					});
 				const task = (async (): Promise<void> => {
 					// Faults do not wait for configuration RPC or ordinary telemetry coalescing.
 					if (value !== null && hasQualifiedFloorSourceIdentity(source.channel.identifier)) {
+						lease = await this.sampleSourcesRegistry?.get(source.property.id);
+						if (!isCurrent()) return;
+						if (
+							!lease ||
+							lease.metadata.fingerprint !== source.channel.identifier.split(':').at(-1) ||
+							lease.metadata.componentKey !== source.componentKey ||
+							lease.metadata.deviceId !== device.id ||
+							!this.sampleSourcesRegistry?.isCurrent(lease, sample.evidence.observedAt)
+						) {
+							await admit(null);
+							return;
+						}
 						const current = await delegate.readNativeTemperatureIdentity(source.componentKey);
 						if (!isCurrent()) return;
 						const identity =
 							current && nativeTemperatureIdentity(source.componentKey, current.config, current.peripherals);
-						if (!identity || identity.channelIdentifier !== source.channel.identifier) {
-							await this.admitRawSample(source.property, null, sample);
+						if (
+							!identity ||
+							identity.channelIdentifier !== source.channel.identifier ||
+							!this.sampleSourcesRegistry.isCurrent(lease, sample.evidence.observedAt)
+						) {
+							await admit(null);
 							return;
 						}
+						sourceProof = true;
 					}
 					if (!isCurrent()) return;
 					// Legacy dynamic channels remain displayable; only the address-bound probe source is control-eligible.
@@ -2264,7 +2315,7 @@ export class DelegatesManagerService {
 						value !== null && /^temperature:1\d\d$/.test(source.channel.identifier)
 							? { ...sample, evidence: { ...sample.evidence, provenance: 'cached' as const } }
 							: sample;
-					await this.admitRawSample(source.property, value, admitted);
+					await admit(value, admitted);
 				})();
 				let active = this.activeSamples.get(delegate.id);
 				if (!active) {
