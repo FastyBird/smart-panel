@@ -143,6 +143,18 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	read(propertyId: string): PropertyValueState | null {
 		const entry = this.entries.get(propertyId);
 		if (!entry) return null;
+		const now = Date.now();
+		if (
+			entry.state.producer.quality !== 'unavailable' &&
+			(Date.parse(entry.state.producer.evaluatedAt) > now ||
+				(entry.state.producer.sampledAt !== null && Date.parse(entry.state.producer.sampledAt) > now))
+		) {
+			// A backwards server clock makes formerly admitted evidence temporally ineligible.
+			// This read boundary owns the correction; an old evaluator cannot gain the same authority.
+			entry.epoch++;
+			entry.state = this.unavailable(entry.lease.revision, ['clock_invalid'], new Date(now));
+			this.emit(entry.property, entry.state);
+		}
 		if (
 			entry.state.producer.quality !== 'unavailable' &&
 			entry.state.producer.expiresAt !== null &&

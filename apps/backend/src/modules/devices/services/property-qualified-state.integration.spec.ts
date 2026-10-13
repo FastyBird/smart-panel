@@ -544,6 +544,96 @@ describe('qualified samples and producer state', () => {
 		expect(invalidated).not.toHaveBeenCalled();
 	});
 
+	const clockFaults: Array<{ name: string; evidence: () => PropertySampleEvidence }> = [
+		{ name: 'future measurement', evidence: () => evidence(base + 3_600_000) },
+		{ name: 'nonfinite measurement', evidence: () => evidence(Number.NaN) },
+		{ name: 'malformed receipt', evidence: () => ({ ...evidence(), receivedAt: new Date(Number.NaN) }) },
+		{ name: 'future receipt', evidence: () => ({ ...evidence(), receivedAt: new Date(base + 3_600_000) }) },
+		{ name: 'measurement after receipt', evidence: () => ({ ...evidence(), receivedAt: new Date(base - 1) }) },
+	];
+
+	describe.each(['admitted writer', 'channel report'] as const)('clock recovery through %s', (boundary) => {
+		const write = (value: number | null, sampleEvidence: PropertySampleEvidence) =>
+			boundary === 'channel report'
+				? report(value, sampleEvidence)
+				: values.writeSampleWithState(property, value, sampleEvidence);
+
+		it.each(clockFaults)('revokes $name without poisoning corrected coarse-clock recovery', async (fault) => {
+			await write(20, evidence());
+			await write(21, fault.evidence());
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			expect((await values.readLatest(property))?.value).toBe(20);
+			expect(invalidated).toHaveBeenCalledTimes(1);
+			await write(99, evidence(base, 'cached'));
+			await write(99, evidence(base, 'retained'));
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			expect((await values.readLatest(property))?.value).toBe(20);
+			await write(22, evidence());
+			expect(values.readQualifiedSample(property, 10_000)).toMatchObject({ value: 22, sampledAt: new Date(base) });
+			expect((await values.readLatest(property))?.value).toBe(22);
+			expect(accepted).toHaveBeenCalledTimes(2);
+			expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not let clock errors clear an equal-time genuine value-fault tombstone', async () => {
+			await write(20, evidence());
+			await write(null, evidence());
+			await write(21, evidence(base + 3_600_000));
+			await write(22, evidence());
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			jest.setSystemTime(base + 1);
+			await write(22, evidence(base + 1));
+			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
+		});
+
+		it('fences cached replay even when the first live clock evidence was nonfinite', async () => {
+			await write(21, evidence(Number.NaN));
+			await write(99, evidence(base, 'cached'));
+			await write(99, evidence(base, 'retained'));
+			expect(accepted).not.toHaveBeenCalled();
+			expect(await values.readLatest(property)).toBeNull();
+			await write(22, evidence());
+			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
+		});
+
+		it('does not let older malformed-clock faults revoke a newer trusted sample', async () => {
+			jest.setSystemTime(base + 1_000);
+			await write(20, evidence(base + 1_000));
+			await write(null, { ...evidence(base), receivedAt: new Date(Number.NaN) });
+			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+			expect(invalidated).not.toHaveBeenCalled();
+		});
+	});
+
+	it.each(['measurement', 'receipt'] as const)(
+		'excludes future physical %s evidence after the server clock moves backwards',
+		async (clock) => {
+			jest.setSystemTime(base + 1_000);
+			await report(20, evidence(clock === 'measurement' ? base + 1_000 : base));
+			jest.setSystemTime(base + 500);
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			expect((await values.readLatest(property))?.value).toBe(20);
+			await report(22, evidence(clock === 'measurement' ? base + 1_000 : base));
+			expect(values.readQualifiedSample(property, 10_000)?.value).toBe(clock === 'measurement' ? undefined : 22);
+		},
+	);
+
+	it('revokes derived future evaluation authority on clock rollback and accepts a corrected evaluation', async () => {
+		const lease = producers.register(property, 1);
+		jest.setSystemTime(base + 1_000);
+		await values.publishDerived(property, lease, 20, publication(base));
+		jest.setSystemTime(base + 500);
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(await values.readLatestStrict(property)).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable', reasons: ['clock_invalid'] },
+		});
+		await values.publishDerived(property, lease, 21, publication(base, base + 1_000));
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		await values.publishDerived(property, lease, 22, publication(base));
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
+	});
+
 	it('uses one unref expiry timer and cleans it up with module disposal', () => {
 		const interval = jest.spyOn(global, 'setInterval');
 		producers.onModuleInit();
