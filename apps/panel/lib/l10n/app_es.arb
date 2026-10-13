@@ -1210,5 +1210,48 @@
   "intent_error_set_property_error": "Error al configurar el valor de la propiedad",
   "intent_error_toggle_device_failed": "Error al conmutar el dispositivo",
   "intent_error_toggle_device_error": "Error durante la conmutación del dispositivo",
-  "settings_display_screen_lock_never": "Nunca"
+  "settings_display_screen_lock_never": "Nunca",
+  "virtual_measurement_quality": "Calidad: {quality}",
+  "virtual_measurement_members": "Miembros del agregado",
+  "virtual_measurement_conversion": "Entrada del convertidor",
+  "virtual_measurement_retry": "Reintentar diagnóstico",
+  "@virtual_measurement_quality": {
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_state_good": "Buena",
+  "virtual_measurement_state_degraded": "Calidad reducida",
+  "virtual_measurement_state_input_degraded": "Calidad reducida",
+  "virtual_measurement_state_unavailable": "No disponible",
+  "virtual_measurement_state_runtime_unavailable": "No disponible",
+  "virtual_measurement_state_ready": "Listo",
+  "virtual_measurement_state_configured": "Listo",
+  "virtual_measurement_state_missing": "Falta la fuente",
+  "virtual_measurement_state_incompatible": "Medición incompatible",
+  "virtual_measurement_state_incompatible_source": "Medición incompatible",
+  "virtual_measurement_state_incompatible_output": "Medición incompatible",
+  "virtual_measurement_state_incompatible_ntc_semantics": "Medición incompatible",
+  "virtual_measurement_state_offline": "Fuente desconectada",
+  "virtual_measurement_state_invalid": "Valor inválido",
+  "virtual_measurement_state_invalid_input": "Valor inválido",
+  "virtual_measurement_state_invalid_result": "Valor inválido",
+  "virtual_measurement_state_nonfinite_output": "Valor inválido",
+  "virtual_measurement_state_stale": "Muestra caducada",
+  "virtual_measurement_state_expired": "Muestra caducada",
+  "virtual_measurement_state_disabled": "Desactivado",
+  "virtual_measurement_state_output_disabled": "Desactivado",
+  "virtual_measurement_state_quorum_lost": "No hay suficientes entradas válidas",
+  "virtual_measurement_state_invalid_policy": "Configuración inválida",
+  "virtual_measurement_state_invalid_configuration": "Configuración inválida",
+  "virtual_measurement_state_awaiting_fresh_sample": "Esperando una muestra reciente",
+  "virtual_measurement_state_runtime_error": "Error de ejecución",
+  "virtual_measurement_state_graph_quarantined": "Grafo de dependencias aislado",
+  "virtual_measurement_state_input_out_of_range": "Valor fuera del rango",
+  "virtual_measurement_state_output_out_of_range": "Valor fuera del rango",
+  "virtual_measurement_state_invalid_domain": "Fuera del dominio matemático",
+  "virtual_measurement_state_producer_disposed": "Productor detenido",
+  "virtual_measurement_state_unknown": "Diagnóstico desconocido"
 }

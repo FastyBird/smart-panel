@@ -132,6 +132,11 @@ export class VirtualTransformConfigService {
 	) {
 		const output = draftOutput ?? (await this.property(manager, outputPropertyId, previewOnly));
 		const existing = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId });
+		if (existing && (existing.quantity !== dto.quantity || existing.unit !== dto.unit))
+			throw new DevicesValidationException(
+				'Existing output quantity and unit are immutable; create a new output for different measurement semantics.',
+			);
+
 		if (!Number.isInteger(dto.expectedRevision) || dto.expectedRevision !== (existing?.revision ?? 0))
 			throw new DevicesValidationException('Producer configuration revision changed; reload and retry.');
 		const old = await manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId });

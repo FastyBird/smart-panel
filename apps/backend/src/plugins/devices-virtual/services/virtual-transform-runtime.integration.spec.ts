@@ -294,6 +294,39 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		expect(storage.writePoints).toHaveBeenCalledTimes(1);
 	});
 
+	it('edits the owned output range atomically while preserving identity and stored history', async () => {
+		const source = await measurement();
+		const output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		await transform(source, output);
+		await start();
+		await sample(source, 20);
+		const historyWrites = storage.enqueueWritePoint.mock.calls.length;
+		const emitted: ChannelPropertyEntity[] = [];
+		events.on(EventType.CHANNEL_PROPERTY_UPDATED, (property: ChannelPropertyEntity) => emitted.push(property));
+		const edited = dto(source);
+		edited.expectedRevision = 1;
+		edited.policy.outputRange = { minimum: -50, maximum: 150 };
+		await transforms.configure(output.id, edited);
+		const persisted = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.id });
+		expect(persisted.format).toEqual([-50, 150]);
+		expect(
+			emitted.some((property) => property.id === output.id && JSON.stringify(property.format) === '[-50,150]'),
+		).toBe(true);
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(historyWrites);
+		expect(await database.manager.countBy(VirtualTransformConfigEntity, { outputPropertyId: output.id })).toBe(1);
+		const graphRevision = await graph.revision();
+		const eventsBefore = emitted.length;
+		// A rejected edit must not publish a partial range change.
+		edited.expectedRevision = 2;
+		edited.policy.outputRange = { minimum: 150, maximum: -50 };
+		await expect(transforms.configure(output.id, edited)).rejects.toThrow();
+		expect(await graph.revision()).toBe(graphRevision);
+		expect((await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.id })).format).toEqual([
+			-50, 150,
+		]);
+		expect(emitted).toHaveLength(eventsBefore);
+	});
+
 	it('revokes on null, domain errors, disabled and offline source while retaining history', async () => {
 		const source = await measurement(),
 			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
@@ -720,7 +753,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		};
 	};
 
-	it('persists custom quantity/unit, hydrates cold catalogs, serializes them and edits between different units', async () => {
+	it('persists custom quantity/unit through cold hydration and rejects history meaning changes', async () => {
 		const { source, output } = await generic();
 		const proposed = dto(source);
 		proposed.quantity = 'voltage';
@@ -745,13 +778,18 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		edited.unit = 'kV';
 		edited.policy.scale = 0.001;
 		edited.policy.offset = 0;
-		expect((await transforms.preview(output.id, edited)).unit).toBe('kV');
-		await transforms.configure(output.id, edited);
-		await transformRuntime.flush();
-		await sample(source, 1.65);
-		expect(outputState(output).value).toBeCloseTo(0.00165);
+		const revision = await graph.revision();
+		const historyWrites = storage.enqueueWritePoint.mock.calls.length;
+		await expect(transforms.preview(output.id, edited)).rejects.toThrow('immutable');
+		await expect(transforms.configure(output.id, edited)).rejects.toThrow('immutable');
+		edited.unit = 'mV';
+		edited.quantity = 'custom_voltage';
+		await expect(transforms.configure(output.id, edited)).rejects.toThrow('immutable');
+		expect(await graph.revision()).toBe(revision);
+		expect(outputState(output).value).toBe(1650);
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(historyWrites);
 		const changed = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.id });
-		expect(instanceToPlain(changed)).toMatchObject({ unit: 'kV', measurement_quantity: 'voltage' });
+		expect(instanceToPlain(changed)).toMatchObject({ unit: 'mV', measurement_quantity: 'voltage' });
 		const authoring = new VirtualDevicesService({} as never, {} as never, {} as never, {} as never, {} as never, graph);
 		await expect(
 			authoring.assertDerivedOutputSupported(changed, (output.channel as ChannelEntity).id, database.manager),
@@ -766,11 +804,11 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		}).initialize();
 		new VirtualTransformMetadataSubscriber(database);
 		const restarted = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.id });
-		expect(instanceToPlain(restarted)).toMatchObject({ unit: 'kV', measurement_quantity: 'voltage' });
+		expect(instanceToPlain(restarted)).toMatchObject({ unit: 'mV', measurement_quantity: 'voltage' });
 		const persisted = await database.manager.findOneByOrFail(VirtualTransformConfigEntity, {
 			outputPropertyId: output.id,
 		});
-		expect(persisted).toMatchObject({ unit: 'kV', quantity: 'voltage', revision: 2 });
+		expect(persisted).toMatchObject({ unit: 'mV', quantity: 'voltage', revision: 1 });
 	});
 
 	it.each(['<script>', 'mV\n', 'mV\u0000', ' mV', 'mV;alert(1)', 'x'.repeat(33)])(
@@ -796,7 +834,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		await expect(configure(aggregate, [output, second])).rejects.toThrow('canonical transformed temperatures');
 		const invalid = dto(source, 1);
 		invalid.quantity = 'temperature';
-		await expect(transforms.configure(output.id, invalid)).rejects.toThrow('incompatible_output');
+		await expect(transforms.configure(output.id, invalid)).rejects.toThrow('immutable');
 		const validation = new DeviceValidationService({} as never);
 		const result = validation.validateDeviceStructure({
 			category: DeviceCategory.SENSOR,

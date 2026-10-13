@@ -9,7 +9,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get value_not_available => 'N/A';
+  String get value_not_available => 'N / A';
 
   @override
   String get value_not_set => 'Nicht eingestellt';
@@ -18,7 +18,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get value_loading => 'Laden';
 
   @override
-  String get information => 'Information';
+  String get information => 'Informationen';
 
   @override
   String get warning => 'Warnung';
@@ -907,7 +907,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wie Zahlen angezeigt werden (Tausender- und Dezimaltrennzeichen).';
 
   @override
-  String get number_format_comma_dot => '1,234.56';
+  String get number_format_comma_dot => '1.234,56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -916,7 +916,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get number_format_space_comma => '1 234,56';
 
   @override
-  String get number_format_none => '1234.56';
+  String get number_format_none => '1234,56';
 
   @override
   String get settings_display_settings_title => 'Anzeigeeinstellungen';
@@ -952,11 +952,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settings_display_settings_screen_power_off_title =>
-      'Screen Power Off';
+      'Bildschirm ausschalten';
 
   @override
   String get settings_display_settings_screen_power_off_description =>
-      'Turn off the display when screen is locked.';
+      'Schalte das Display bei Sperrung des Bildschirms aus.';
 
   @override
   String get settings_display_settings_unit_overrides_section =>
@@ -1794,7 +1794,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_role_background => 'Hintergrund';
 
   @override
-  String get media_role_gaming => 'Gaming';
+  String get media_role_gaming => 'Spielen';
 
   @override
   String get media_role_hidden => 'Versteckt';
@@ -2019,7 +2019,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get particulate_label_pm1 => 'PM1';
 
   @override
-  String get particulate_label_pm25 => 'PM2.5';
+  String get particulate_label_pm25 => 'PM2,5';
 
   @override
   String get particulate_label_pm10 => 'PM10';
@@ -2049,7 +2049,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get fan_mode_manual => 'Manuell';
 
   @override
-  String get fan_mode_eco => 'Eco';
+  String get fan_mode_eco => 'Öko';
 
   @override
   String get fan_mode_sleep => 'Schlaf';
@@ -2277,7 +2277,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NO₂';
+  String get device_no2 => 'NEIN₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -2339,7 +2339,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String duration_format_minutes(int minutes) {
-    return '${minutes}m';
+    return '${minutes}M';
   }
 
   @override
@@ -2349,7 +2349,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_idle => 'Leerlauf';
 
   @override
-  String get media_standby => 'Standby';
+  String get media_standby => 'Stehen zu';
 
   @override
   String get media_volume => 'Lautstärke';
@@ -2367,7 +2367,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_other_devices => 'Weitere Geräte';
 
   @override
-  String get device_status_standby => 'Standby';
+  String get device_status_standby => 'Stehen zu';
 
   @override
   String get device_status_active => 'Aktiv';
@@ -2846,7 +2846,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sensor_enum_camera_in_use_long => 'Kamera wird verwendet';
 
   @override
-  String get sensor_enum_camera_unavailable => 'N/A';
+  String get sensor_enum_camera_unavailable => 'N / A';
 
   @override
   String get sensor_enum_camera_unavailable_long => 'Kamera nicht verfügbar';
@@ -2925,7 +2925,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sensor_enum_device_info_alert_long => 'Alarm';
 
   @override
-  String get sensor_enum_device_info_unknown => 'N/A';
+  String get sensor_enum_device_info_unknown => 'N / A';
 
   @override
   String get sensor_enum_device_info_unknown_long => 'Unbekannt';
@@ -2958,7 +2958,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_input_hdmi6 => 'HDMI 6';
 
   @override
-  String get media_input_arc => 'ARC';
+  String get media_input_arc => 'BOGEN';
 
   @override
   String get media_input_earc => 'eARC';
@@ -2997,7 +2997,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_input_bluetooth => 'Bluetooth';
 
   @override
-  String get media_input_wifi => 'Wi-Fi';
+  String get media_input_wifi => 'W-lan';
 
   @override
   String get media_input_airplay => 'AirPlay';
@@ -3086,8 +3086,8 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Warnungen',
-      one: 'Warnung',
+      other: 'warnings',
+      one: 'warning',
     );
     return 'Einige Schritte fehlgeschlagen ($count $_temp0)';
   }
@@ -3148,14 +3148,14 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       errors,
       locale: localeName,
-      other: 'Fehler',
-      one: 'Fehler',
+      other: 'errors',
+      one: 'error',
     );
     String _temp1 = intl.Intl.pluralLogic(
       warnings,
       locale: localeName,
-      other: 'Warnungen',
-      one: 'Warnung',
+      other: 'warnings',
+      one: 'warning',
     );
     return 'Aktivität konnte nicht angewendet werden ($errors $_temp0, $warnings $_temp1)';
   }
@@ -3167,7 +3167,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_activity_listen => 'Anhören';
 
   @override
-  String get media_activity_gaming => 'Gaming';
+  String get media_activity_gaming => 'Spielen';
 
   @override
   String get media_activity_background => 'Hintergr.';
@@ -3181,7 +3181,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get media_status_standby => 'Standby';
+  String get media_status_standby => 'Stehen zu';
 
   @override
   String get media_status_activating => 'Aktivierung...';
@@ -3254,7 +3254,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get media_detail_go_back => 'Zurück';
 
   @override
-  String get media_detail_section_display => 'Display';
+  String get media_detail_section_display => 'Anzeige';
 
   @override
   String get media_detail_section_audio => 'Audio';
@@ -3497,7 +3497,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sensor_ui_period_1h => '1H';
 
   @override
-  String get sensor_ui_period_24h => '24H';
+  String get sensor_ui_period_24h => '24 Stunden';
 
   @override
   String get sensor_ui_period_7d => '7T';
@@ -4114,4 +4114,126 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settings_display_screen_lock_never => 'Nie';
+
+  @override
+  String virtual_measurement_quality(String quality) {
+    return 'Qualität: $quality';
+  }
+
+  @override
+  String get virtual_measurement_members => 'Aggregatmitglieder';
+
+  @override
+  String get virtual_measurement_conversion => 'Umrechnungseingang';
+
+  @override
+  String get virtual_measurement_retry => 'Diagnose wiederholen';
+
+  @override
+  String get virtual_measurement_state_good => 'Gut';
+
+  @override
+  String get virtual_measurement_state_degraded => 'Verminderte Qualität';
+
+  @override
+  String get virtual_measurement_state_input_degraded => 'Verminderte Qualität';
+
+  @override
+  String get virtual_measurement_state_unavailable => 'Nicht verfügbar';
+
+  @override
+  String get virtual_measurement_state_runtime_unavailable => 'Nicht verfügbar';
+
+  @override
+  String get virtual_measurement_state_ready => 'Bereit';
+
+  @override
+  String get virtual_measurement_state_configured => 'Bereit';
+
+  @override
+  String get virtual_measurement_state_missing => 'Quelle fehlt';
+
+  @override
+  String get virtual_measurement_state_incompatible => 'Inkompatible Messung';
+
+  @override
+  String get virtual_measurement_state_incompatible_source =>
+      'Inkompatible Messung';
+
+  @override
+  String get virtual_measurement_state_incompatible_output =>
+      'Inkompatible Messung';
+
+  @override
+  String get virtual_measurement_state_incompatible_ntc_semantics =>
+      'Inkompatible Messung';
+
+  @override
+  String get virtual_measurement_state_offline => 'Quelle offline';
+
+  @override
+  String get virtual_measurement_state_invalid => 'Ungültiger Wert';
+
+  @override
+  String get virtual_measurement_state_invalid_input => 'Ungültiger Wert';
+
+  @override
+  String get virtual_measurement_state_invalid_result => 'Ungültiger Wert';
+
+  @override
+  String get virtual_measurement_state_nonfinite_output => 'Ungültiger Wert';
+
+  @override
+  String get virtual_measurement_state_stale => 'Messung abgelaufen';
+
+  @override
+  String get virtual_measurement_state_expired => 'Messung abgelaufen';
+
+  @override
+  String get virtual_measurement_state_disabled => 'Deaktiviert';
+
+  @override
+  String get virtual_measurement_state_output_disabled => 'Deaktiviert';
+
+  @override
+  String get virtual_measurement_state_quorum_lost =>
+      'Zu wenige gültige Eingänge';
+
+  @override
+  String get virtual_measurement_state_invalid_policy =>
+      'Ungültige Konfiguration';
+
+  @override
+  String get virtual_measurement_state_invalid_configuration =>
+      'Ungültige Konfiguration';
+
+  @override
+  String get virtual_measurement_state_awaiting_fresh_sample =>
+      'Warten auf eine neue Messung';
+
+  @override
+  String get virtual_measurement_state_runtime_error => 'Laufzeitfehler';
+
+  @override
+  String get virtual_measurement_state_graph_quarantined =>
+      'Abhängigkeitsgraph isoliert';
+
+  @override
+  String get virtual_measurement_state_input_out_of_range =>
+      'Wert außerhalb des Bereichs';
+
+  @override
+  String get virtual_measurement_state_output_out_of_range =>
+      'Wert außerhalb des Bereichs';
+
+  @override
+  String get virtual_measurement_state_invalid_domain =>
+      'Außerhalb des mathematischen Bereichs';
+
+  @override
+  String get virtual_measurement_state_producer_disposed =>
+      'Produzent gestoppt';
+
+  @override
+  String get virtual_measurement_state_unknown => 'Unbekannte Diagnose';
 }

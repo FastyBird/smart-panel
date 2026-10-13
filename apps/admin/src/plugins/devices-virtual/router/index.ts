@@ -18,4 +18,14 @@ export const PluginRoutes: RouteRecordRaw[] = [
 			icon: 'mdi:wizard-hat',
 		},
 	},
+	{
+		path: 'devices-virtual/measurements/new',
+		name: RouteNames.MEASUREMENT_WIZARD,
+		component: () => import('../views/view-virtual-measurement-wizard.vue'),
+		meta: {
+			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
+			title: 'Create virtual measurement',
+			icon: 'mdi:function-variant',
+		},
+	},
 ];
