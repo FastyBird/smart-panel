@@ -1,0 +1,9 @@
+# Qualified Shelly dispatch
+
+Protective ON requires installed hardware evidence for the exact device/model/firmware/component, a tested finite lease, a supplied internal claim/window guard, and the guarded transport. The future controller must mint and pass that guard; it is not an API request flag. Hardware release-ordering evidence and independent protection remain operator qualification requirements.
+
+The local WebSocket RPC subclass attaches a non-enumerable per-request guard to the parameter object. The pinned SDK retains that object through connection waits and digest authentication retries. The subclass checks authority in `sendRequest` immediately before the socket send. The plugin replaces only its own factory instance's public creation method. Ordinary legacy requests keep their existing payload and behavior.
+
+Protective OFF is absolute and has no flip-back timer. Starting a protective OFF invalidates locally pending protective ON across the device's transport aliases. Caller authorization, connection generation, component identity, and the supplied timeout also bound send eligibility. RPC acceptance/`was_on` still proves neither physical output nor cancellation/draining of an already transmitted ON; results retain `outputConfirmed=false` and `pendingOnDrained=false`.
+
+Strict ordinary lighting batches currently support native `switch` ON and `light` ON/brightness. Brightness requires explicit ON in the prepared target set; unsupported components or mappings with additional transformed effects refuse preparation. These batches share the transport guard but never use a protective timer. Native light output/brightness reports enter physical sample admission, including equal values and immediate invalidations, so strict confirmation requires current measurement evidence.

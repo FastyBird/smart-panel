@@ -22,7 +22,7 @@ import {
 	DevicesZigbee2mqttValidationException,
 } from '../devices-zigbee2mqtt.exceptions';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
-import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
+import { Zigbee2mqttChannelPropertyEntity, Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 import { MappingLoaderService } from '../mappings/mapping-loader.service';
@@ -165,6 +165,7 @@ describe('Z2mDeviceAdoptionService', () => {
 						create: jest.fn().mockResolvedValue({ id: MOCK_DEVICE_ID }),
 						findOne: jest.fn().mockResolvedValue(createMockDeviceEntity()),
 						remove: jest.fn().mockResolvedValue(undefined),
+						update: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
@@ -197,6 +198,12 @@ describe('Z2mDeviceAdoptionService', () => {
 					provide: Z2mDeviceMapperService,
 					useValue: {
 						registerPropertyTransformer: jest.fn(),
+						bindSourceContracts: jest.fn().mockResolvedValue(undefined),
+						findBoundSourceDeviceId: jest.fn().mockResolvedValue(null),
+						getPropertySampleMapping: (property: Zigbee2mqttChannelPropertyEntity) => ({
+							field: property.identifier,
+							transformer: null,
+						}),
 					},
 				},
 				{
@@ -316,20 +323,35 @@ describe('Z2mDeviceAdoptionService', () => {
 			await expect(service.adoptDevice(request)).rejects.toThrow(DevicesZigbee2mqttNotFoundException);
 		});
 
-		it('should handle re-adoption by removing existing device first', async () => {
+		it('preserves existing device/property identities during compatible explicit re-adoption', async () => {
 			const z2mDevice = createMockZ2mDevice();
 			zigbee2mqttService.getRegisteredDevices.mockReturnValue([z2mDevice]);
 
 			const existingDevice = createMockDeviceEntity('existing-device-id');
 			devicesService.findAll.mockResolvedValue([existingDevice]);
+			channelsService.findAll.mockResolvedValue([
+				{ id: 'existing-light', identifier: ChannelCategory.LIGHT, category: ChannelCategory.LIGHT },
+			] as never);
+			channelsPropertiesService.findAll.mockResolvedValue(
+				createAdoptRequest().channels[0].properties.map((definition) => ({
+					id: definition.z2mProperty,
+					identifier: definition.z2mProperty,
+					category: definition.category,
+					dataType: definition.dataType,
+					permissions: definition.permissions,
+					format: definition.format ?? null,
+				})) as never,
+			);
 
 			const request = createAdoptRequest();
 			await service.adoptDevice(request);
 
-			// Should remove existing device before creating new one
-			expect(devicesService.remove).toHaveBeenCalledWith('existing-device-id');
-			// Should still create the new device
-			expect(devicesService.create).toHaveBeenCalledTimes(1);
+			expect(devicesService.remove).not.toHaveBeenCalled();
+			expect(devicesService.create).not.toHaveBeenCalled();
+			expect(devicesService.update).toHaveBeenCalledWith(
+				'existing-device-id',
+				expect.objectContaining({ name: request.name }),
+			);
 		});
 
 		it('should handle re-adoption by IEEE address in serial_number property', async () => {
@@ -348,20 +370,40 @@ describe('Z2mDeviceAdoptionService', () => {
 				id: 'info-channel-id',
 				category: ChannelCategory.DEVICE_INFORMATION,
 			};
-			channelsService.findAll.mockResolvedValue([infoChannel] as never);
+			channelsService.findAll.mockResolvedValue([
+				infoChannel,
+				{ id: 'existing-light', identifier: ChannelCategory.LIGHT, category: ChannelCategory.LIGHT },
+			] as never);
 
 			const serialProp = {
 				id: 'serial-prop-id',
 				category: PropertyCategory.SERIAL_NUMBER,
 				value: { value: '0xa4c138e4f788f9fe' },
 			};
-			channelsPropertiesService.findAll.mockResolvedValue([serialProp] as never);
+			channelsPropertiesService.findAll.mockImplementation((id) =>
+				Promise.resolve(
+					id === infoChannel.id
+						? ([serialProp] as never)
+						: (createAdoptRequest().channels[0].properties.map((definition) => ({
+								id: definition.z2mProperty,
+								identifier: definition.z2mProperty,
+								category: definition.category,
+								dataType: definition.dataType,
+								permissions: definition.permissions,
+								format: definition.format ?? null,
+							})) as never),
+				),
+			);
 
 			const request = createAdoptRequest();
 			await service.adoptDevice(request);
 
-			// Should remove existing device found by IEEE address
-			expect(devicesService.remove).toHaveBeenCalledWith('existing-device-id');
+			expect(devicesService.remove).not.toHaveBeenCalled();
+			expect(devicesService.create).not.toHaveBeenCalled();
+			expect(devicesService.update).toHaveBeenCalledWith(
+				'existing-device-id',
+				expect.objectContaining({ identifier: z2mDevice.friendlyName }),
+			);
 		});
 
 		it('should create virtual properties with fb.virtual. prefix', async () => {

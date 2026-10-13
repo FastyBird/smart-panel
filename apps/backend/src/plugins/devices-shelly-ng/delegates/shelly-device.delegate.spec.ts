@@ -102,6 +102,7 @@ jest.mock('shellies-ds9', () => {
 	}
 
 	return {
+		...jest.requireActual<typeof import('shellies-ds9')>('shellies-ds9'),
 		Switch,
 		Light,
 		Cover,
