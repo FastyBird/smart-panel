@@ -32,6 +32,7 @@ import { PropertyValueSourceRegistryService } from './property-value-source.regi
 import { PropertyValueService } from './property-value.service';
 
 class CompositeAdmissionSnapshotChangedError extends Error {}
+class CompositeDeadlineExceededError extends Error {}
 
 export interface PropertyCommandDispatchOptions {
 	readonly intentId?: string;
@@ -314,7 +315,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				source = await this.withCompositeDeadline(this.propertyMetadata.findOne(canonical), deadline);
 			} catch (error) {
 				Object.assign(outcomes[index], {
-					status: Date.now() >= deadline ? 'timed_out' : 'failed',
+					status: error instanceof CompositeDeadlineExceededError || Date.now() >= deadline ? 'timed_out' : 'failed',
 					reason: error instanceof Error ? error.message : 'Metadata unavailable',
 				});
 				continue;
@@ -605,7 +606,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 								if (window?.generation === handle.generation && window.state === 'confirmed_grace')
 									setLeaf(leaf, 'confirmed', undefined, handle.generation);
 							}
-						setPending(prepared.isCurrent() ? 'failed' : 'superseded', dispatched.reason);
+						setPending(
+							!prepared.isCurrent() ? 'superseded' : Date.now() >= deadline ? 'timed_out' : 'failed',
+							dispatched.reason,
+						);
 						continue;
 					}
 					while (!this.disposed && Date.now() < deadline) {
@@ -632,7 +636,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					setPending(
 						error instanceof CompositeAdmissionSnapshotChangedError
 							? 'superseded'
-							: Date.now() >= deadline
+							: error instanceof CompositeDeadlineExceededError || Date.now() >= deadline
 								? 'timed_out'
 								: 'failed',
 						error instanceof Error ? error.message : 'Execution failed',
@@ -709,7 +713,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				operation,
 				new Promise<T>((_, reject) => {
 					timer = setTimeout(
-						() => reject(new Error('Composite deadline exceeded')),
+						() => reject(new CompositeDeadlineExceededError('Composite deadline exceeded')),
 						Math.max(1, deadline - Date.now()),
 					);
 				}),
