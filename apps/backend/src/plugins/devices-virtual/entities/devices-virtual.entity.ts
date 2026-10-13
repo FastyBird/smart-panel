@@ -13,6 +13,8 @@ export enum VirtualValueOrigin {
 	SOURCE = 'source',
 	/** Value is stored under this property's own id, e.g. synthesized device information. */
 	LOCAL = 'local',
+	/** Materialized read-only producer output owns its series. */
+	DERIVED = 'derived',
 }
 
 /**
@@ -46,7 +48,8 @@ export enum VirtualValueOrigin {
 export const isUnsupportedValueOriginPair = (
 	valueOrigin: VirtualValueOrigin | undefined,
 	sourcePropertyId: string | null | undefined,
-): boolean => valueOrigin === VirtualValueOrigin.LOCAL && !!sourcePropertyId;
+): boolean =>
+	(valueOrigin === VirtualValueOrigin.LOCAL || valueOrigin === VirtualValueOrigin.DERIVED) && !!sourcePropertyId;
 
 /** Permissions through which a client can command a property. `ev` is a report channel, not one. */
 const WRITABLE_PERMISSIONS: readonly PermissionType[] = [PermissionType.READ_WRITE, PermissionType.WRITE_ONLY];
@@ -80,12 +83,30 @@ export const isUnsupportedOwnedPermissionsPair = (
 	valueOrigin: VirtualValueOrigin | undefined,
 	permissions: PermissionType[] | undefined | null,
 ): boolean =>
-	valueOrigin === VirtualValueOrigin.LOCAL &&
+	(valueOrigin === VirtualValueOrigin.LOCAL || valueOrigin === VirtualValueOrigin.DERIVED) &&
 	!!permissions?.some((permission) => WRITABLE_PERMISSIONS.includes(permission));
+
+export enum VirtualDeviceMode {
+	PROJECTION = 'projection',
+	SENSOR_AGGREGATE = 'sensor_aggregate',
+	ACTUATOR_GROUP = 'actuator_group',
+	CLIMATE_CONTROLLER = 'climate_controller',
+	SENSOR_TRANSFORM = 'sensor_transform',
+}
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataDevice' })
 @ChildEntity()
 export class VirtualDeviceEntity extends DeviceEntity {
+	@ApiProperty({
+		description: 'Virtual producer mode; legacy devices default to projection',
+		enum: VirtualDeviceMode,
+		default: VirtualDeviceMode.PROJECTION,
+	})
+	@Expose()
+	@IsEnum(VirtualDeviceMode)
+	@Column({ type: 'text', enum: VirtualDeviceMode, default: VirtualDeviceMode.PROJECTION })
+	mode: VirtualDeviceMode;
+
 	@ApiProperty({
 		description: 'Device type',
 		type: 'string',
@@ -231,10 +252,14 @@ export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 	 * source's.
 	 */
 	get isProjecting(): boolean {
-		return this.valueOrigin !== VirtualValueOrigin.LOCAL;
+		return this.valueOrigin === undefined || this.valueOrigin === VirtualValueOrigin.SOURCE;
 	}
 
 	/** True when this property was meant to project a source that has since been deleted. */
+	get isDerived(): boolean {
+		return this.valueOrigin === VirtualValueOrigin.DERIVED;
+	}
+
 	get isOrphaned(): boolean {
 		return this.isProjecting && this.sourcePropertyId === null;
 	}

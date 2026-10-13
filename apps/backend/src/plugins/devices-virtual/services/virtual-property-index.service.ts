@@ -1,12 +1,20 @@
 import { Repository } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
+import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import {
+	VirtualAggregateInputEntity,
+	VirtualLightGroupBindingEntity,
+	VirtualLightGroupMemberEntity,
+} from '../entities/virtual-producer.entity';
+
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 
 /**
  * One virtual property's projection wiring, reduced to plain ids.
@@ -31,6 +39,9 @@ export interface VirtualPropertyLink {
 	 * own it) and, defensively, when the relation hops needed to reach it were not loaded.
 	 */
 	sourceDeviceId: string | null;
+	bindingId?: string;
+	kind?: 'aggregate_input' | 'group_binding';
+	quarantined?: boolean;
 }
 
 /**
@@ -116,10 +127,13 @@ export class VirtualPropertyIndexService {
 	private bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
 	private bySourceDevice = new Map<string, Set<string>>();
 	private byVirtualDevice = new Map<string, VirtualPropertyLink[]>();
+	private producerModes = new Map<string, VirtualDeviceMode>();
+	private dependents = new Map<string, Set<string>>();
 
 	constructor(
 		@InjectRepository(VirtualChannelPropertyEntity)
 		private readonly repository: Repository<VirtualChannelPropertyEntity>,
+		@Optional() private readonly graph?: VirtualDependencyGraphService,
 	) {}
 
 	/**
@@ -140,7 +154,18 @@ export class VirtualPropertyIndexService {
 			.where('sourceChannel.deviceId = :sourceDeviceId', { sourceDeviceId })
 			.getCount();
 
-		return referencing > 0;
+		if (referencing > 0) return true;
+		const manager = this.repository.manager;
+		if (!manager?.connection?.hasMetadata(VirtualAggregateInputEntity)) return false;
+		const rows: { count: number }[] = await manager.query(
+			`SELECT (
+			(SELECT COUNT(*) FROM devices_virtual_aggregate_inputs a JOIN devices_module_channels_properties p ON p.id = a.sourcePropertyId JOIN devices_module_channels c ON c.id = p.channelId WHERE c.deviceId = ?) +
+			(SELECT COUNT(*) FROM devices_virtual_light_group_members m JOIN devices_module_channels c ON c.id = m.sourceChannelId WHERE c.deviceId = ?) +
+			(SELECT COUNT(*) FROM devices_virtual_light_group_bindings b JOIN devices_module_channels_properties p ON p.id = b.sourcePropertyId JOIN devices_module_channels c ON c.id = p.channelId WHERE c.deviceId = ?)
+		) AS count`,
+			[sourceDeviceId, sourceDeviceId, sourceDeviceId],
+		);
+		return rows[0].count > 0;
 	}
 
 	/**
@@ -212,9 +237,30 @@ export class VirtualPropertyIndexService {
 			relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
 		});
 
-		return properties
+		const links = properties
 			.filter((property) => property.isProjecting)
 			.map((property) => this.toLink(property, this.resolveSourceDeviceId(property)));
+		const manager = this.repository.manager;
+		if (!manager?.connection?.hasMetadata(VirtualAggregateInputEntity)) return links;
+		for (const [table, kind] of [
+			['devices_virtual_aggregate_inputs', 'aggregate_input'],
+			['devices_virtual_light_group_bindings', 'group_binding'],
+		] as const) {
+			const rows = await manager.query<VirtualPropertyLink[]>(
+				`SELECT b.id AS bindingId, b.outputPropertyId AS propertyId, b.sourcePropertyId AS sourcePropertyId, sc.deviceId AS sourceDeviceId
+				FROM ${table} b JOIN devices_module_channels_properties op ON op.id = b.outputPropertyId JOIN devices_module_channels oc ON oc.id = op.channelId
+				LEFT JOIN devices_module_channels_properties sp ON sp.id = b.sourcePropertyId LEFT JOIN devices_module_channels sc ON sc.id = sp.channelId WHERE oc.deviceId = ?`,
+				[id],
+			);
+			links.push(...rows.map((row) => ({ ...row, kind })));
+		}
+		const members = await manager.query<VirtualPropertyLink[]>(
+			`SELECT m.id AS bindingId, m.groupChannelId AS propertyId, m.sourceChannelId AS sourcePropertyId, sc.deviceId AS sourceDeviceId
+			FROM devices_virtual_light_group_members m JOIN devices_module_channels oc ON oc.id = m.groupChannelId LEFT JOIN devices_module_channels sc ON sc.id = m.sourceChannelId WHERE oc.deviceId = ?`,
+			[id],
+		);
+		links.push(...members.map((row) => ({ ...row, kind: 'group_binding' as const })));
+		return links;
 	}
 
 	/** Removes every trace of one virtual device, leaving no stale entries in any of the three maps. */
@@ -265,6 +311,8 @@ export class VirtualPropertyIndexService {
 		const bySourceProperty = new Map<string, VirtualChannelPropertyEntity[]>();
 		const bySourceDevice = new Map<string, Set<string>>();
 		const byVirtualDevice = new Map<string, VirtualPropertyLink[]>();
+		const producerModes = new Map<string, VirtualDeviceMode>();
+		const dependents = new Map<string, Set<string>>();
 
 		// Both the property's own device (via channel) and its source's device (via
 		// sourceProperty.channel) are loaded so every row carries everything needed for both
@@ -281,6 +329,12 @@ export class VirtualPropertyIndexService {
 		});
 
 		for (const property of properties) {
+			const channel = typeof property.channel === 'string' ? null : property.channel;
+			const device = channel && typeof channel.device !== 'string' ? (channel.device as VirtualDeviceEntity) : null;
+			if (device?.mode && device.mode !== VirtualDeviceMode.PROJECTION) {
+				producerModes.set(device.id, device.mode);
+				if (!byVirtualDevice.has(device.id)) byVirtualDevice.set(device.id, []);
+			}
 			if (!property.isProjecting) {
 				continue;
 			}
@@ -294,6 +348,111 @@ export class VirtualPropertyIndexService {
 			);
 		}
 
+		const manager = this.repository.manager;
+		if (manager?.connection?.hasMetadata(VirtualAggregateInputEntity)) {
+			const add = (
+				outputId: string,
+				ownerId: string | undefined,
+				sourceId: string | null,
+				sourceDeviceId: string | undefined,
+				bindingId: string,
+				kind: 'aggregate_input' | 'group_binding',
+			) => {
+				if (!ownerId) return;
+				this.indexByVirtualDevice(byVirtualDevice, ownerId, {
+					propertyId: outputId,
+					sourcePropertyId: sourceId,
+					sourceDeviceId: sourceDeviceId ?? null,
+					bindingId,
+					kind,
+				});
+				if (sourceDeviceId) this.indexBySourceDevice(bySourceDevice, sourceDeviceId, ownerId);
+				if (sourceId) {
+					const outputs = dependents.get(sourceId) ?? new Set<string>();
+					outputs.add(outputId);
+					dependents.set(sourceId, outputs);
+				}
+			};
+			const inputs = await manager.find(VirtualAggregateInputEntity, {
+				relations: [
+					'config',
+					'config.outputProperty',
+					'config.outputProperty.channel',
+					'config.outputProperty.channel.device',
+					'sourceProperty',
+					'sourceProperty.channel',
+					'sourceProperty.channel.device',
+				],
+			});
+			for (const input of inputs) {
+				const output = input.config?.outputProperty;
+				const outputChannel = output && typeof output.channel !== 'string' ? output.channel : undefined;
+				const sourceChannel =
+					input.sourceProperty && typeof input.sourceProperty.channel !== 'string'
+						? input.sourceProperty.channel
+						: undefined;
+				add(
+					input.outputPropertyId,
+					this.resolveDeviceId(outputChannel),
+					input.sourcePropertyId,
+					this.resolveDeviceId(sourceChannel),
+					input.id,
+					'aggregate_input',
+				);
+			}
+			const bindings = await manager.find(VirtualLightGroupBindingEntity, {
+				relations: [
+					'outputProperty',
+					'outputProperty.channel',
+					'outputProperty.channel.device',
+					'sourceProperty',
+					'sourceProperty.channel',
+					'sourceProperty.channel.device',
+				],
+			});
+			for (const binding of bindings) {
+				const outputChannel =
+					binding.outputProperty && typeof binding.outputProperty.channel !== 'string'
+						? binding.outputProperty.channel
+						: undefined;
+				const sourceChannel =
+					binding.sourceProperty && typeof binding.sourceProperty.channel !== 'string'
+						? binding.sourceProperty.channel
+						: undefined;
+				add(
+					binding.outputPropertyId,
+					this.resolveDeviceId(outputChannel),
+					binding.sourcePropertyId,
+					this.resolveDeviceId(sourceChannel),
+					binding.id,
+					'group_binding',
+				);
+			}
+			// Membership remains a reference even if its individual properties have been deleted.
+			const members = await manager.find(VirtualLightGroupMemberEntity, {
+				relations: [
+					'config',
+					'config.groupChannel',
+					'config.groupChannel.device',
+					'sourceChannel',
+					'sourceChannel.device',
+				],
+			});
+			for (const member of members) {
+				const owner = this.resolveDeviceId(member.config?.groupChannel);
+				if (owner)
+					this.indexByVirtualDevice(byVirtualDevice, owner, {
+						propertyId: member.groupChannelId,
+						sourcePropertyId: member.sourceChannelId,
+						sourceDeviceId: this.resolveDeviceId(member.sourceChannel) ?? null,
+						bindingId: member.id,
+						kind: 'group_binding',
+					});
+				const sourceDevice = this.resolveDeviceId(member.sourceChannel);
+				if (owner && sourceDevice) this.indexBySourceDevice(bySourceDevice, sourceDevice, owner);
+			}
+		}
+
 		const result: VirtualIndexRebuildResult = {
 			rewiredVirtualDeviceIds: this.diffVirtualDevices(this.byVirtualDevice, byVirtualDevice),
 			abandonedSourceDeviceIds: [...this.bySourceDevice.keys()].filter(
@@ -301,6 +460,8 @@ export class VirtualPropertyIndexService {
 			),
 		};
 
+		this.producerModes = producerModes;
+		this.dependents = dependents;
 		this.bySourceProperty = bySourceProperty;
 		this.bySourceDevice = bySourceDevice;
 		this.byVirtualDevice = byVirtualDevice;
@@ -324,6 +485,14 @@ export class VirtualPropertyIndexService {
 	 * test reads `sourcePropertyId`, and the set of devices to poll for online-ness reads
 	 * `sourceDeviceId`.
 	 */
+	findProducerMode(deviceId: string): VirtualDeviceMode | undefined {
+		return this.producerModes.get(deviceId);
+	}
+
+	findDependentOutputIdsBySourceProperty(propertyId: string): string[] {
+		return [...(this.dependents.get(propertyId) ?? [])];
+	}
+
 	private diffVirtualDevices(
 		before: Map<string, VirtualPropertyLink[]>,
 		after: Map<string, VirtualPropertyLink[]>,
@@ -341,7 +510,10 @@ export class VirtualPropertyIndexService {
 
 	private fingerprintLinks(links: VirtualPropertyLink[] | undefined): string {
 		return (links ?? [])
-			.map((link) => `${link.propertyId}>${link.sourcePropertyId ?? ''}@${link.sourceDeviceId ?? ''}`)
+			.map(
+				(link) =>
+					`${link.bindingId ?? link.propertyId}>${link.sourcePropertyId ?? ''}@${link.sourceDeviceId ?? ''}#${link.quarantined ? 'quarantined' : ''}`,
+			)
 			.sort()
 			.join('|');
 	}
@@ -365,7 +537,11 @@ export class VirtualPropertyIndexService {
 		property: VirtualChannelPropertyEntity,
 		sourceDeviceId: string | undefined,
 	): void {
-		this.indexBySourceProperty(bySourceProperty, property);
+		if (
+			!this.graph?.isQuarantined(property.id) &&
+			(!property.sourcePropertyId || !this.graph?.isQuarantined(property.sourcePropertyId))
+		)
+			this.indexBySourceProperty(bySourceProperty, property);
 
 		const virtualDeviceId = this.resolveDeviceId(property.channel);
 
@@ -415,6 +591,7 @@ export class VirtualPropertyIndexService {
 			propertyId: property.id,
 			sourcePropertyId: property.sourcePropertyId,
 			sourceDeviceId: property.isOrphaned ? null : (sourceDeviceId ?? null),
+			...(this.graph?.isQuarantined(property.id) ? { quarantined: true } : {}),
 		};
 	}
 
@@ -475,8 +652,9 @@ export class VirtualPropertyIndexService {
 		virtualDeviceId: string,
 		link: VirtualPropertyLink,
 	): void {
+		const identity = link.bindingId ?? link.propertyId;
 		const siblings = (byVirtualDevice.get(virtualDeviceId) ?? []).filter(
-			(candidate) => candidate.propertyId !== link.propertyId,
+			(candidate) => (candidate.bindingId ?? candidate.propertyId) !== identity,
 		);
 
 		siblings.push(link);

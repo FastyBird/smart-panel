@@ -808,52 +808,57 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		// has, against the category it is about to store. Each reads what the other is about to change,
 		// so a property validated against the old category could commit inside the window a
 		// recategorisation had already judged (see DeviceStructureLockService).
-		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
-			// The type owner's last look at the row before it exists — the only point at which an
-			// invariant spanning the property and the channel it is being attached to is decidable, since
-			// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
-			// nothing.
-			if (mapping.beforeCreate) {
-				await mapping.beforeCreate(property, channelId);
+		return this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			const persist = async (manager?: EntityManager): Promise<TProperty> => {
+				const writeRepository = manager ? manager.getRepository(mapping.class) : repository;
+				// The type owner's last look at the row before it exists — the only point at which an
+				// invariant spanning the property and the channel it is being attached to is decidable, since
+				// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
+				// nothing.
+				if (mapping.beforeCreate) {
+					if (manager) await mapping.beforeCreate(property, channelId, manager);
+					else await mapping.beforeCreate(property, channelId);
+				}
+
+				// Inserted, not saved: the check above closes the collision only for a caller who is alone,
+				// and two requests carrying the same client-generated uuid can both pass it before either
+				// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
+				await writeRepository
+					.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+					.catch((error: unknown) => {
+						if (isPrimaryKeyCollision(error)) {
+							this.logger.error(
+								`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
+							);
+
+							throw new DevicesValidationException(
+								`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+							);
+						}
+
+						throw error;
+					});
+
+				return property;
+			};
+			const raw = mapping.withStructuralWrite ? await mapping.withStructuralWrite(persist) : await persist();
+
+			if (typeof createDto.value !== 'undefined') {
+				await this.propertyValueService.write(raw, createDto.value);
 			}
 
-			// Inserted, not saved: the check above closes the collision only for a caller who is alone,
-			// and two requests carrying the same client-generated uuid can both pass it before either
-			// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
-			await repository
-				.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
-				.catch((error: unknown) => {
-					if (isPrimaryKeyCollision(error)) {
-						this.logger.error(
-							`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
-						);
+			let savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
 
-						throw new DevicesValidationException(
-							`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
-						);
-					}
+			if (mapping.afterCreate) {
+				await mapping.afterCreate(savedProperty);
 
-					throw error;
-				});
+				savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+			}
 
-			return property;
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
+
+			return savedProperty;
 		});
-
-		if (typeof createDto.value !== 'undefined') {
-			await this.propertyValueService.write(raw, createDto.value);
-		}
-
-		let savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
-
-		if (mapping.afterCreate) {
-			await mapping.afterCreate(savedProperty);
-
-			savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
-		}
-
-		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
-
-		return savedProperty;
 	}
 
 	/** Uses exactly the ordinary update/window admission path; evidence is not a public DTO field. */
@@ -950,31 +955,41 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		// the row under this same lock; releasing after save would let pruning delete the property and its
 		// history before this PATCH resumed and appended an orphaned measurement for the deleted id.
 		return this.structureLock.runExclusive(async (): Promise<TProperty> => {
-			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
-			// was validating; saving the earlier entity would otherwise insert it again.
-			const current = (await this.getOneOrThrow(id)) as TProperty;
-			const previousCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
-			const entityFieldsChanged = this.hasEntityFieldChanges(current, updateFields);
-			if (entityFieldsChanged) {
-				// Shared live-report admission has drained. Finish accepted old-type/source history
-				// before changing the catalog so it cannot arrive after remapping or recategorization.
-				await this.propertyValueService.flushHistory();
-			}
-			Object.assign(current, updateFields);
-			if (entityFieldsChanged) {
-				const nextCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
-
-				if (nextCanonicalPropertyId !== previousCanonicalPropertyId) {
-					this.propertyCommandWindowService.cancel(previousCanonicalPropertyId);
-					this.propertyCommandWindowService.cancel(nextCanonicalPropertyId);
+			let entityFieldsChanged = false;
+			const persist = async (manager?: EntityManager): Promise<TProperty> => {
+				// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
+				// was validating; saving the earlier entity would otherwise insert it again.
+				const current = manager
+					? await manager
+							.getRepository(mapping.class)
+							.findOne({ where: { id } as never, relations: ['channel', 'channel.device'] })
+					: ((await this.getOneOrThrow(id)) as TProperty);
+				if (!current) throw new DevicesNotFoundException(`Channel property with id=${id} does not exist.`);
+				const previousCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
+				entityFieldsChanged = this.hasEntityFieldChanges(current, updateFields);
+				if (entityFieldsChanged) {
+					// Shared live-report admission has drained. Finish accepted old-type/source history
+					// before changing the catalog so it cannot arrive after remapping or recategorization.
+					await this.propertyValueService.flushHistory();
 				}
-			}
+				Object.assign(current, updateFields);
+				if (entityFieldsChanged) {
+					const nextCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
 
-			if (mapping.beforeUpdate) {
-				await mapping.beforeUpdate(current);
-			}
+					if (nextCanonicalPropertyId !== previousCanonicalPropertyId) {
+						this.propertyCommandWindowService.cancel(previousCanonicalPropertyId);
+						this.propertyCommandWindowService.cancel(nextCanonicalPropertyId);
+					}
+				}
 
-			const raw = await repository.save(current);
+				if (mapping.beforeUpdate) {
+					if (manager) await mapping.beforeUpdate(current, manager);
+					else await mapping.beforeUpdate(current);
+				}
+
+				return await (manager ? manager.getRepository(mapping.class) : repository).save(current);
+			};
+			const raw = mapping.withStructuralWrite ? await mapping.withStructuralWrite(persist) : await persist();
 
 			// Track if value actually changed
 			//

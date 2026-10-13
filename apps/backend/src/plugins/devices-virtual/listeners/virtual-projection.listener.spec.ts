@@ -5,11 +5,24 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { ChannelCategory, EventType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	EventType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 import { VirtualProjectionListener } from './virtual-projection.listener';
@@ -65,6 +78,81 @@ describe('VirtualProjectionListener', () => {
 			index as unknown as VirtualPropertyIndexService,
 			eventEmitter as unknown as EventEmitter2,
 		);
+	});
+
+	describe('producer quality snapshot relay', () => {
+		const aggregate = (): VirtualChannelPropertyEntity => {
+			const device = Object.assign(new VirtualDeviceEntity(), {
+				id: 'aggregate',
+				mode: VirtualDeviceMode.SENSOR_AGGREGATE,
+				category: DeviceCategory.SENSOR,
+			});
+			const channel = Object.assign(new VirtualChannelEntity(), {
+				id: 'temperature',
+				device,
+				category: ChannelCategory.TEMPERATURE,
+			});
+			return Object.assign(new VirtualChannelPropertyEntity(), {
+				id: 'aggregate-output',
+				channel,
+				valueOrigin: VirtualValueOrigin.DERIVED,
+				sourcePropertyId: null,
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+			});
+		};
+
+		it('relays unavailable state and deep copies reasons without changing any source/index snapshot', () => {
+			const source = aggregate();
+			source.value = Object.assign(new PropertyValueState(null), {
+				producer: { quality: 'unavailable', reasons: ['expired'], revision: 4 },
+			});
+			index.findBySourceProperty.mockReturnValue([virtualA, virtualB]);
+			listener.handlePropertyValueStateChanged(source);
+			expect(eventEmitter.emit.mock.calls.map((call: unknown[]) => call[0])).toEqual([
+				'DevicesModule.ChannelProperty.ValueStateChanged',
+				'DevicesModule.ChannelProperty.ValueStateChanged',
+			]);
+			type ProducerEvent = { id: string; value: { value: null; producer: { reasons: string[] } } };
+			const [, first] = eventEmitter.emit.mock.calls[0] as [string, ProducerEvent];
+			const [, second] = eventEmitter.emit.mock.calls[1] as [string, ProducerEvent];
+			expect(first.id).toBe('virt-a');
+			expect(first.value.value).toBeNull();
+			first.value.producer.reasons.push('mutated subscriber');
+			expect((source.value as PropertyValueState & { producer: { reasons: string[] } }).producer.reasons).toEqual([
+				'expired',
+			]);
+			expect(second.value.producer.reasons).toEqual(['expired']);
+			expect(virtualA.value?.value).toBe('old');
+		});
+
+		it('admits one-hop materialized measurements and refuses projection aliases and virtual controls', () => {
+			const source = aggregate();
+			source.value = new PropertyValueState(21);
+			index.findBySourceProperty.mockReturnValue([virtualA]);
+			listener.handlePropertyValueStateChanged(source);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+			listener.handlePropertyValueStateChanged(virtualA);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+			source.permissions = [PermissionType.READ_WRITE];
+			listener.handlePropertyValueStateChanged(source);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('bounds reentrant listener traffic and releases its traversal guard after a subscriber throws', () => {
+			index.findBySourceProperty.mockReturnValue([virtualA]);
+			eventEmitter.emit.mockImplementation(() => listener.handlePropertyValueStateChanged(sourceProperty));
+			listener.handlePropertyValueStateChanged(sourceProperty);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+			eventEmitter.emit.mockImplementationOnce(() => {
+				throw new Error('consumer failed');
+			});
+			expect(() => listener.handlePropertyValueStateChanged(sourceProperty)).toThrow('consumer failed');
+			eventEmitter.emit.mockImplementation(() => undefined);
+			listener.handlePropertyValueStateChanged(sourceProperty);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(3);
+		});
 	});
 
 	describe('handlePropertyValueSet', () => {
