@@ -5,7 +5,6 @@ import { getErrorReason } from '../../../common/utils/api-error.utils';
 import {
 	DevicesVirtualPluginConfigureAggregateOperator,
 	DevicesVirtualPluginNumericTransformPolicyOperator,
-	DevicesVirtualPluginNumericTransformPolicyThermistorLeg,
 } from '../../../openapi';
 import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import {
@@ -55,7 +54,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		coefficientA: undefined as number | undefined,
 		coefficientB: undefined as number | undefined,
 		coefficientC: undefined as number | undefined,
-		thermistorLeg: undefined as DevicesVirtualPluginNumericTransformPolicyThermistorLeg | undefined,
+		thermistorLeg: undefined as TransformPolicy['thermistorLeg'],
 		previewInput: undefined as number | undefined,
 		inputs: [] as { id?: string; source_property: string | null; identity?: string }[],
 	});
