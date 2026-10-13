@@ -128,6 +128,19 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 						if (output) this.producers.invalidate(output.lease, ['invalid']);
 					}
 				if (event === EventType.CHANNEL_PROPERTY_DELETED && sourceId) this.sourceSequences.delete(sourceId);
+				if (event === EventType.DEVICE_CONNECTION_CHANGED) {
+					const changedId = payload?.device?.id ?? payload?.id;
+					for (const [sourceId, owner] of this.sourceOwners)
+						if (owner.deviceId === changedId) this.requestRecompute(sourceId);
+					// Connection chatter from unrelated devices cannot fence or restart these evaluations.
+					if (
+						Array.from(this.outputs.values()).some(
+							(output) => ((output.property.channel as ChannelEntity)?.device as DeviceEntity)?.id === changedId,
+						)
+					)
+						this.requestRecompute();
+					return;
+				}
 				// Outputs emit their own producer state; never feed those publications back into themselves.
 				if (event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED && this.outputs.has(payload?.id)) return;
 				if (

@@ -8,8 +8,6 @@ import {
 	VirtualNumericTransformOperator,
 } from '../services/virtual-numeric-transform.utils';
 
-import { VirtualProducerBindingModel } from './producer-response.model';
-
 @ApiSchema({ name: 'DevicesVirtualPluginDataNumericRange' })
 export class VirtualNumericRangeModel {
 	@ApiProperty({ description: 'Inclusive lower bound' })
@@ -86,6 +84,58 @@ export class VirtualNumericTransformPolicyModel {
 	points?: VirtualCalibrationPointModel[];
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataTransformSource' })
+export class VirtualTransformSourceModel {
+	@ApiProperty({ description: 'Stable binding UUID', format: 'uuid' })
+	@Expose()
+	id: string;
+
+	@ApiProperty({ description: 'Materialized output UUID', format: 'uuid' })
+	@Expose()
+	output_property: string;
+
+	@ApiProperty({ description: 'Live source UUID, null when deleted', type: 'string', format: 'uuid', nullable: true })
+	@Expose()
+	source_property: string | null;
+
+	@ApiProperty({ description: 'Original source UUID retained for diagnostics and repair', format: 'uuid' })
+	@Expose()
+	source_identity: string;
+
+	@ApiProperty({ description: 'Source quantity at configuration time' })
+	@Expose()
+	quantity: string;
+
+	@ApiProperty({ description: 'Source unit at configuration time', type: 'string', nullable: true })
+	@Expose()
+	unit: string | null;
+
+	@ApiPropertyOptional({ description: 'Current source numeric value', type: Number, nullable: true })
+	@Expose()
+	current_value?: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Original source sample timestamp',
+		type: String,
+		format: 'date-time',
+		nullable: true,
+	})
+	@Expose()
+	sampled_at?: string | null;
+
+	@ApiPropertyOptional({ description: 'Sample age at evaluation in seconds', type: Number, nullable: true })
+	@Expose()
+	age_seconds?: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Stable source or conversion exclusion code',
+		type: String,
+		nullable: true,
+	})
+	@Expose()
+	exclusion?: string | null;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataTransformConfiguration' })
 export class VirtualTransformConfigurationModel {
 	@ApiProperty({ description: 'Stable materialized output property UUID', format: 'uuid' })
@@ -121,10 +171,10 @@ export class VirtualTransformConfigurationModel {
 	@Type(() => VirtualNumericTransformPolicyModel)
 	policy: VirtualNumericTransformConfig;
 
-	@ApiProperty({ description: 'Source binding and diagnostics', type: VirtualProducerBindingModel })
+	@ApiProperty({ description: 'Source binding and diagnostics', type: VirtualTransformSourceModel })
 	@Expose()
-	@Type(() => VirtualProducerBindingModel)
-	source: VirtualProducerBindingModel;
+	@Type(() => VirtualTransformSourceModel)
+	source: VirtualTransformSourceModel;
 
 	@ApiProperty({ description: 'Availability of evaluator in this process', enum: ['ready', 'unavailable'] })
 	@Expose()

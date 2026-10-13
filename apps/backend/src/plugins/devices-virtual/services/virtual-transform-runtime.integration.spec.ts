@@ -577,6 +577,10 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			receivedAt: new Date(base),
 			provenance: 'live',
 		});
+		events.emit(EventType.DEVICE_CONNECTION_CHANGED, {
+			device: (unrelated.channel as ChannelEntity).device,
+			state: ConnectionState.DISCONNECTED,
+		});
 		jest.advanceTimersByTime(1000);
 		release();
 		await transformRuntime.flush();

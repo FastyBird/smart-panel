@@ -12,8 +12,7 @@ import { resolvePropertyUnit } from '../../../modules/devices/utils/property-met
 import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
-import { VirtualProducerBindingModel } from '../models/producer-response.model';
-import { VirtualTransformConfigurationModel } from '../models/transform-response.model';
+import { VirtualTransformConfigurationModel, VirtualTransformSourceModel } from '../models/transform-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualNumericTransformConfig } from './virtual-numeric-transform.utils';
@@ -141,7 +140,7 @@ export class VirtualTransformConfigService {
 			current_value: result?.value ?? null,
 			quality: result?.quality ?? 'unavailable',
 			errors: result?.reasons ?? ['runtime_unavailable'],
-			source: Object.assign(new VirtualProducerBindingModel(), {
+			source: Object.assign(new VirtualTransformSourceModel(), {
 				id: source.id,
 				output_property: source.outputPropertyId,
 				source_property: source.sourcePropertyId,
