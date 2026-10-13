@@ -152,7 +152,12 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 	/**
 	 * Publish a command to a device
 	 */
-	async publishCommand(friendlyName: string, payload: Z2mSetPayload): Promise<boolean> {
+	async publishCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean = () => true,
+	): Promise<boolean> {
+		if (!isCurrent()) return false;
 		if (!this.client || !this.connected) {
 			this.logger.warn('Cannot publish: not connected to MQTT broker');
 			return false;
@@ -164,6 +169,10 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 		this.logger.debug(`Publishing to ${topic}: ${message}`);
 
 		return new Promise((resolve) => {
+			if (!isCurrent()) {
+				resolve(false);
+				return;
+			}
 			this.client?.publish(topic, message, { qos: 1 }, (error) => {
 				if (error) {
 					this.logger.error(`Failed to publish to ${topic}`, {

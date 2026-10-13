@@ -4,6 +4,7 @@
  * Based on Zigbee2MQTT MQTT API documentation.
  * https://www.zigbee2mqtt.io/guide/usage/mqtt_topics_and_messages.html
  */
+import type { ZigbeeSourceIdentity } from '../contracts/sample-source.contract';
 
 // =============================================================================
 // MQTT Adapter Callbacks
@@ -25,6 +26,7 @@ export interface Z2mDeviceStateMetadata {
 	measurementFieldsAreLive?: boolean;
 	/** Stable connection/configuration authority, independent of individual packet arrival. */
 	sourceIsCurrent?: () => boolean;
+	sourceIdentity?: ZigbeeSourceIdentity | null;
 	isRetained?: boolean;
 	isCached?: boolean;
 	isDup?: boolean;
@@ -32,6 +34,9 @@ export interface Z2mDeviceStateMetadata {
 }
 
 export interface Z2mAdapterCallbacks {
+	/** Current bridge/devices metadata, captured before any asynchronous restoration/adoption. */
+	onSourceRegistryReceived?: (identities: readonly ZigbeeSourceIdentity[]) => void | Promise<void>;
+	onSourceRegistryUnavailable?: () => void;
 	onBridgeOnline?: () => void | Promise<void>;
 	onBridgeOffline?: () => void | Promise<void>;
 	onDevicesReceived?: (devices: Z2mDevice[]) => void | Promise<void>;

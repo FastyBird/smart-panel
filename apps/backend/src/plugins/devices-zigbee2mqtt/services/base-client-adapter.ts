@@ -1,4 +1,5 @@
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { ZigbeeSourceIdentity, zigbeeSourceIdentity } from '../contracts/sample-source.contract';
 import {
 	DEFAULT_MQTT_BASE_TOPIC,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
@@ -30,6 +31,7 @@ export abstract class Z2mBaseClientAdapter {
 	private sourceGeneration = 0;
 	private cacheState: boolean | null = null;
 	private cacheProofGeneration = 0;
+	private readonly sourceIdentities = new Map<string, ZigbeeSourceIdentity>();
 	private connectedState = false;
 	private bridgeOnlineState = false;
 	protected get connected(): boolean {
@@ -41,6 +43,10 @@ export abstract class Z2mBaseClientAdapter {
 			this.setCacheState(null);
 		}
 		this.connectedState = value;
+		if (!value) {
+			this.sourceIdentities.clear();
+			this.callbacks.onSourceRegistryUnavailable?.();
+		}
 	}
 	protected get bridgeOnline(): boolean {
 		return this.bridgeOnlineState;
@@ -113,6 +119,21 @@ export abstract class Z2mBaseClientAdapter {
 		};
 	}
 
+	getSourceIdentity(friendlyName: string): ZigbeeSourceIdentity | null {
+		return this.sourceIdentities.get(friendlyName) ?? null;
+	}
+	getSourceIdentityGuard(friendlyName: string): () => boolean {
+		const identity = this.sourceIdentities.get(friendlyName);
+		const generation = this.sourceGeneration;
+		return () =>
+			Boolean(
+				identity &&
+				this.connected &&
+				generation === this.sourceGeneration &&
+				this.sourceIdentities.get(friendlyName) === identity,
+			);
+	}
+
 	private setCacheState(value: boolean | null): void {
 		if (value !== this.cacheState) this.cacheProofGeneration++;
 		this.cacheState = value;
@@ -166,7 +187,7 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Publish a command to a device
 	 */
-	abstract publishCommand(friendlyName: string, payload: Z2mSetPayload): Promise<boolean>;
+	abstract publishCommand(friendlyName: string, payload: Z2mSetPayload, isCurrent?: () => boolean): Promise<boolean>;
 
 	/**
 	 * Request current state from a device
@@ -313,6 +334,19 @@ export abstract class Z2mBaseClientAdapter {
 	protected handleBridgeDevicesMessage(message: string): void {
 		try {
 			const devices = JSON.parse(message) as Z2mDevice[];
+			if (!Array.isArray(devices) || new Set(devices.map((device) => device.friendly_name)).size !== devices.length)
+				throw new Error('Invalid or ambiguous Zigbee device registry');
+			const observedAt = new Date();
+			const next = new Map<string, ZigbeeSourceIdentity>();
+			for (const device of devices) {
+				const identity = zigbeeSourceIdentity(device, observedAt);
+				if (!identity) continue;
+				const previous = this.sourceIdentities.get(identity.friendlyName);
+				next.set(identity.friendlyName, previous?.fingerprint === identity.fingerprint ? previous : identity);
+			}
+			this.sourceIdentities.clear();
+			for (const [name, identity] of next) this.sourceIdentities.set(name, identity);
+			void this.callbacks.onSourceRegistryReceived?.([...next.values()]);
 
 			this.logger.log(`Received device registry with ${devices.length} devices`);
 
@@ -382,6 +416,8 @@ export abstract class Z2mBaseClientAdapter {
 			);
 			void this.callbacks.onDevicesReceived?.(filteredDevices);
 		} catch (error) {
+			this.sourceIdentities.clear();
+			this.callbacks.onSourceRegistryUnavailable?.();
 			this.logger.error('Failed to parse bridge/devices message', {
 				message: error instanceof Error ? error.message : String(error),
 			});
@@ -452,6 +488,7 @@ export abstract class Z2mBaseClientAdapter {
 		const observedAt = new Date();
 		const generation = this.sourceGeneration;
 		const cacheProofGeneration = this.cacheProofGeneration;
+		const identity = this.sourceIdentities.get(friendlyName);
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
@@ -477,13 +514,17 @@ export abstract class Z2mBaseClientAdapter {
 				isCached: options?.isCached,
 				sampledAt: options?.sampledAt,
 				measurementFieldsAreLive: this.connected && this.bridgeOnline && this.cacheState === false,
+				sourceIdentity: identity ?? null,
 				qualificationReason:
 					this.cacheState === false
 						? options?.qualificationReason
 						: this.cacheState === true
 							? 'zigbee_cache_state_merges_old_fields'
 							: 'zigbee_current_cache_state_unknown',
-				isCurrent: () => generation === this.sourceGeneration && (options?.isCurrent?.() ?? true),
+				isCurrent: () =>
+					generation === this.sourceGeneration &&
+					this.sourceIdentities.get(friendlyName) === identity &&
+					(options?.isCurrent?.() ?? true),
 				...(this.connected && this.bridgeOnline && this.cacheState === false && !isRetained && !options?.isCached
 					? {
 							sourceIsCurrent: () =>
@@ -492,6 +533,7 @@ export abstract class Z2mBaseClientAdapter {
 								this.connected &&
 								this.bridgeOnline &&
 								this.cacheState === false &&
+								this.sourceIdentities.get(friendlyName) === identity &&
 								(options?.isCurrent?.() ?? true),
 						}
 					: {}),
@@ -555,5 +597,6 @@ export abstract class Z2mBaseClientAdapter {
 		this.bridgeOnline = false;
 		this.deviceRegistry.clear();
 		this.stateCache.clear();
+		this.sourceIdentities.clear();
 	}
 }

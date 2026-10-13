@@ -416,6 +416,8 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	 */
 	private registerCallbacks(adapter: Z2mBaseClientAdapter): void {
 		adapter.setCallbacks({
+			onSourceRegistryReceived: (identities) => this.deviceMapper.observeSourceRegistry(identities),
+			onSourceRegistryUnavailable: () => this.deviceMapper.invalidateSourceConnection(),
 			onBridgeOnline: () => this.handleBridgeOnline(),
 			onBridgeOffline: () => this.handleBridgeOffline(),
 			onDevicesReceived: (devices) => this.handleDevicesReceived(devices),

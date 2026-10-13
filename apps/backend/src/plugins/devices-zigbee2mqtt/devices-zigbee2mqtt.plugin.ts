@@ -44,6 +44,7 @@ import {
 	Zigbee2mqttChannelPropertyEntity,
 	Zigbee2mqttDeviceEntity,
 } from './entities/devices-zigbee2mqtt.entity';
+import { ZigbeeSampleSourceEntity } from './entities/zigbee-sample-source.entity';
 import { ConfigDrivenConverter } from './mappings/config-driven.converter';
 import { MappingLoaderService } from './mappings/mapping-loader.service';
 import { TransformerRegistry } from './mappings/transformers';
@@ -59,6 +60,7 @@ import { Z2mWizardService } from './services/wizard.service';
 import { Z2mWsClientAdapterService } from './services/ws-client-adapter.service';
 import { Zigbee2mqttConfigValidatorService } from './services/zigbee2mqtt-config-validator.service';
 import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
+import { ZigbeeSampleSourcesService } from './services/zigbee-sample-sources.service';
 
 @ApiTag({
 	tagName: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
@@ -67,7 +69,12 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([Zigbee2mqttDeviceEntity, Zigbee2mqttChannelEntity, Zigbee2mqttChannelPropertyEntity]),
+		TypeOrmModule.forFeature([
+			Zigbee2mqttDeviceEntity,
+			Zigbee2mqttChannelEntity,
+			Zigbee2mqttChannelPropertyEntity,
+			ZigbeeSampleSourceEntity,
+		]),
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
@@ -84,6 +91,7 @@ import { Zigbee2mqttService } from './services/zigbee2mqtt.service';
 		Z2mWsClientAdapterService,
 		Z2mExposesMapperService,
 		Z2mDeviceMapperService,
+		ZigbeeSampleSourcesService,
 		Z2mVirtualPropertyService,
 		Z2mMappingPreviewService,
 		Z2mDeviceAdoptionService,

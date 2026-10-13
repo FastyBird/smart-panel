@@ -243,7 +243,7 @@ describe('Z2mDeviceMapperService', () => {
 				expect.objectContaining({
 					value: 'motion_detected',
 				}),
-				expect.objectContaining({ provenance: 'live' }),
+				expect.objectContaining({ provenance: 'cached' }),
 			);
 		});
 	});
@@ -571,7 +571,7 @@ describe('Z2mDeviceMapperService', () => {
 			channelsPropertiesService.findAll.mockResolvedValue([property]);
 		});
 
-		it('passes equal live reports to sample admission; missing measurement fields do not renew', async () => {
+		it('forwards equal reports but does not qualify an unbound identity; absent fields do not renew', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
 			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
 			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
@@ -580,7 +580,7 @@ describe('Z2mDeviceMapperService', () => {
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.objectContaining({ value: 25 }),
-				expect.objectContaining({ observedAt, sampledAt: observedAt, provenance: 'live' }),
+				expect.objectContaining({ observedAt, sampledAt: observedAt, provenance: 'cached' }),
 			);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
@@ -608,7 +608,7 @@ describe('Z2mDeviceMapperService', () => {
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.objectContaining({ value: null }),
-				expect.objectContaining({ provenance: 'live' }),
+				expect.objectContaining({ provenance: 'cached' }),
 			);
 		});
 
@@ -646,7 +646,7 @@ describe('Z2mDeviceMapperService', () => {
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.objectContaining({ value: null }),
-				expect.objectContaining({ provenance: 'live' }),
+				expect.objectContaining({ provenance: 'cached' }),
 			);
 		});
 	});

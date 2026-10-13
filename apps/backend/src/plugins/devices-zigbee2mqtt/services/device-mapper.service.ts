@@ -16,6 +16,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { ZigbeePropertyMapping, ZigbeeSourceIdentity, sourceFingerprint } from '../contracts/sample-source.contract';
 import {
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	DEVICES_ZIGBEE2MQTT_TYPE,
@@ -46,6 +47,7 @@ import {
 	getVirtualPropertiesForChannel,
 	getVirtualPropertyDefinition,
 } from './virtual-property.types';
+import { ZigbeeSampleSourcesService } from './zigbee-sample-sources.service';
 
 /**
  * Device Mapper Service
@@ -91,7 +93,121 @@ export class Z2mDeviceMapperService {
 		private readonly transformerRegistry: TransformerRegistry,
 		private readonly provisionQueue: DeviceProvisionQueueService,
 		@Optional() private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
+		@Optional() private readonly sampleSources?: ZigbeeSampleSourcesService,
 	) {}
+
+	observeSourceRegistry(identities: readonly ZigbeeSourceIdentity[]): Promise<void> {
+		return this.sampleSources?.observeRegistry(identities) ?? Promise.resolve();
+	}
+	invalidateSourceConnection(): void {
+		this.sampleSources?.invalidateConnection();
+	}
+
+	findBoundSourceDeviceId(ieeeAddress: string): Promise<string | null> {
+		return this.sampleSources?.findBoundDeviceId(ieeeAddress) ?? Promise.resolve(null);
+	}
+
+	getPropertySampleMapping(
+		property: Zigbee2mqttChannelPropertyEntity,
+		channel?: Zigbee2mqttChannelEntity,
+	): ZigbeePropertyMapping {
+		const registered = this.propertyTransformers.get(property.id);
+		if (registered) return { field: registered.z2mProperty, transformer: registered.transformerName };
+		const specials = new Map<PropertyCategory, string>([
+			[PropertyCategory.HUE, 'color'],
+			[PropertyCategory.SATURATION, 'color'],
+			[PropertyCategory.COLOR_TEMPERATURE, 'color_temp'],
+			[PropertyCategory.LINK_QUALITY, 'linkquality'],
+		]);
+		return {
+			field:
+				channel?.category === ChannelCategory.WINDOW_COVERING && property.category === PropertyCategory.STATUS
+					? 'state'
+					: (specials.get(property.category) ?? property.identifier),
+			transformer: null,
+		};
+	}
+
+	async bindSourceContracts(
+		deviceId: string,
+		friendlyName: string,
+		confirmedPropertyIds?: ReadonlySet<string>,
+	): Promise<void> {
+		if (!this.sampleSources) return;
+		const identity = this.sampleSources.getIdentity(friendlyName);
+		if (!identity) throw new Error('Current verified Zigbee source registry is required for adoption');
+		const entries: Array<{ property: Zigbee2mqttChannelPropertyEntity; mapping: ZigbeePropertyMapping }> = [];
+		for (const channel of await this.channelsService.findAll<Zigbee2mqttChannelEntity>(
+			deviceId,
+			DEVICES_ZIGBEE2MQTT_TYPE,
+		)) {
+			for (const property of await this.channelsPropertiesService.findAll<Zigbee2mqttChannelPropertyEntity>(
+				channel.id,
+				DEVICES_ZIGBEE2MQTT_TYPE,
+			)) {
+				if (
+					!property.identifier ||
+					property.identifier.startsWith('fb_virtual_') ||
+					(confirmedPropertyIds && !confirmedPropertyIds.has(property.id))
+				)
+					continue;
+				entries.push({ property, mapping: this.getPropertySampleMapping(property, channel) });
+			}
+		}
+		await this.sampleSources.bindDevice(deviceId, identity, entries);
+	}
+
+	private async reportPhysicalSample(
+		device: Zigbee2mqttDeviceEntity,
+		property: Zigbee2mqttChannelPropertyEntity,
+		value: string | number | boolean | null,
+		field: string,
+		evidence: PropertySampleEvidence,
+		metadata: Z2mDeviceStateMetadata | undefined,
+	): Promise<void> {
+		if (metadata?.isCurrent?.() === false) return;
+		const registered = this.propertyTransformers.get(property.id);
+		const mapping = { field, transformer: registered?.transformerName ?? null };
+		const mappingTag = sourceFingerprint(registered ?? null);
+		const admission = await this.sampleSources?.prepareSample(
+			device.id,
+			device.identifier,
+			property,
+			mapping,
+			evidence.observedAt ?? new Date(NaN),
+			() => sourceFingerprint(this.propertyTransformers.get(property.id) ?? null) === mappingTag,
+		);
+		if (metadata?.isCurrent?.() === false) return;
+		const qualified =
+			admission?.qualified === true &&
+			Boolean(
+				metadata?.sourceIdentity &&
+				this.sampleSources.getIdentity(device.identifier)?.fingerprint === metadata.sourceIdentity.fingerprint,
+			);
+		const admittedEvidence: PropertySampleEvidence = {
+			...evidence,
+			receivedAt: new Date(),
+			provenance: evidence.provenance === 'live' && !qualified ? 'cached' : evidence.provenance,
+			...(qualified
+				? { sourceIsCurrent: () => admission.isCurrent() && (evidence.sourceIsCurrent?.() ?? true) }
+				: { sourceIsCurrent: undefined }),
+		};
+		this.sampleProvenance.set(property.id, {
+			provenance: admittedEvidence.provenance,
+			sampledAt: admittedEvidence.sampledAt,
+			reason:
+				evidence.provenance !== 'live' && metadata?.qualificationReason
+					? metadata.qualificationReason
+					: !qualified
+						? (admission?.reason ?? 'zigbee_source_identity_service_unavailable')
+						: (metadata?.qualificationReason ?? admission.reason),
+		});
+		await this.channelsPropertiesService.reportSample(
+			property.id,
+			toInstance(UpdateZigbee2mqttChannelPropertyDto, { type: DEVICES_ZIGBEE2MQTT_TYPE, value }),
+			admittedEvidence,
+		);
+	}
 
 	/**
 	 * Register a transformer for a property
@@ -273,8 +389,13 @@ export class Z2mDeviceMapperService {
 			identifier,
 			DEVICES_ZIGBEE2MQTT_TYPE,
 		);
+		const newlyCreated = !device;
 
 		if (!device) {
+			const ieee = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
+			// A verified physical source renamed at the gateway is not a new logical device.
+			// Only deliberate compatible adoption may change its routing while retaining UUIDs.
+			if (await this.findBoundSourceDeviceId(ieee)) return null;
 			if (!createIfNotExists) {
 				return null;
 			}
@@ -320,6 +441,7 @@ export class Z2mDeviceMapperService {
 		};
 
 		await this.createChannelsAndProperties(device, mappedChannels, virtualContext);
+		if (newlyCreated) await this.bindSourceContracts(device.id, friendlyName);
 
 		return device;
 	}
@@ -713,17 +835,7 @@ export class Z2mDeviceMapperService {
 				});
 				// Update property value
 				if (metadata?.isCurrent && !metadata.isCurrent()) return;
-				await this.channelsPropertiesService.reportSample<
-					Zigbee2mqttChannelPropertyEntity,
-					UpdateZigbee2mqttChannelPropertyDto
-				>(
-					property.id,
-					toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-						type: DEVICES_ZIGBEE2MQTT_TYPE,
-						value: convertedValue,
-					}),
-					{ ...evidence, receivedAt: new Date() },
-				);
+				await this.reportPhysicalSample(device, property, convertedValue, z2mPropertyKey, evidence, metadata);
 			}
 
 			// Handle window_covering status from Z2M 'state' property
@@ -741,17 +853,7 @@ export class Z2mDeviceMapperService {
 						this.logger.debug(`Updating window covering status: ${JSON.stringify(z2mState)} -> ${normalizedStatus}`);
 
 						if (metadata?.isCurrent && !metadata.isCurrent()) return;
-						await this.channelsPropertiesService.reportSample<
-							Zigbee2mqttChannelPropertyEntity,
-							UpdateZigbee2mqttChannelPropertyDto
-						>(
-							statusProp.id,
-							toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-								type: DEVICES_ZIGBEE2MQTT_TYPE,
-								value: normalizedStatus,
-							}),
-							{ ...evidence, receivedAt: new Date() },
-						);
+						await this.reportPhysicalSample(device, statusProp, normalizedStatus, 'state', evidence, metadata);
 					}
 				}
 			}
@@ -770,16 +872,13 @@ export class Z2mDeviceMapperService {
 					this.logger.debug(`Updating link_quality = ${linkQualityPercent}%`);
 
 					if (metadata?.isCurrent && !metadata.isCurrent()) return;
-					await this.channelsPropertiesService.reportSample<
-						Zigbee2mqttChannelPropertyEntity,
-						UpdateZigbee2mqttChannelPropertyDto
-					>(
-						linkQualityProp.id,
-						toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-							type: DEVICES_ZIGBEE2MQTT_TYPE,
-							value: linkQualityPercent,
-						}),
-						{ ...evidence, receivedAt: new Date() },
+					await this.reportPhysicalSample(
+						device,
+						linkQualityProp,
+						linkQualityPercent,
+						'linkquality',
+						evidence,
+						metadata,
 					);
 				}
 			}
@@ -797,17 +896,7 @@ export class Z2mDeviceMapperService {
 					this.logger.debug(`Updating brightness: ${JSON.stringify(z2mBrightness)} -> ${brightnessPercent}%`);
 
 					if (metadata?.isCurrent && !metadata.isCurrent()) return;
-					await this.channelsPropertiesService.reportSample<
-						Zigbee2mqttChannelPropertyEntity,
-						UpdateZigbee2mqttChannelPropertyDto
-					>(
-						brightnessProp.id,
-						toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-							type: DEVICES_ZIGBEE2MQTT_TYPE,
-							value: brightnessPercent,
-						}),
-						{ ...evidence, receivedAt: new Date() },
-					);
+					await this.reportPhysicalSample(device, brightnessProp, brightnessPercent, 'brightness', evidence, metadata);
 				}
 			}
 
@@ -825,17 +914,7 @@ export class Z2mDeviceMapperService {
 							this.logger.debug(`Updating hue: ${colorState.hue} -> ${hueValue}`);
 
 							if (metadata?.isCurrent && !metadata.isCurrent()) return;
-							await this.channelsPropertiesService.reportSample<
-								Zigbee2mqttChannelPropertyEntity,
-								UpdateZigbee2mqttChannelPropertyDto
-							>(
-								hueProp.id,
-								toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-									type: DEVICES_ZIGBEE2MQTT_TYPE,
-									value: hueValue,
-								}),
-								{ ...evidence, receivedAt: new Date() },
-							);
+							await this.reportPhysicalSample(device, hueProp, hueValue, 'color', evidence, metadata);
 						}
 					}
 
@@ -847,17 +926,7 @@ export class Z2mDeviceMapperService {
 							this.logger.debug(`Updating saturation: ${colorState.saturation} -> ${satValue}%`);
 
 							if (metadata?.isCurrent && !metadata.isCurrent()) return;
-							await this.channelsPropertiesService.reportSample<
-								Zigbee2mqttChannelPropertyEntity,
-								UpdateZigbee2mqttChannelPropertyDto
-							>(
-								saturationProp.id,
-								toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-									type: DEVICES_ZIGBEE2MQTT_TYPE,
-									value: satValue,
-								}),
-								{ ...evidence, receivedAt: new Date() },
-							);
+							await this.reportPhysicalSample(device, saturationProp, satValue, 'color', evidence, metadata);
 						}
 					}
 				}
@@ -886,17 +955,7 @@ export class Z2mDeviceMapperService {
 						);
 
 						if (metadata?.isCurrent && !metadata.isCurrent()) return;
-						await this.channelsPropertiesService.reportSample<
-							Zigbee2mqttChannelPropertyEntity,
-							UpdateZigbee2mqttChannelPropertyDto
-						>(
-							colorTempProp.id,
-							toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-								type: DEVICES_ZIGBEE2MQTT_TYPE,
-								value: clampedKelvin,
-							}),
-							{ ...evidence, receivedAt: new Date() },
-						);
+						await this.reportPhysicalSample(device, colorTempProp, clampedKelvin, 'color_temp', evidence, metadata);
 					}
 				}
 			}

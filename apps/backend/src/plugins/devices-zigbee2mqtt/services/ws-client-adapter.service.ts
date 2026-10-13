@@ -211,7 +211,12 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	 * The z2m frontend extension automatically prepends the baseTopic when
 	 * forwarding the message to MQTT internally.
 	 */
-	async publishCommand(friendlyName: string, payload: Z2mSetPayload): Promise<boolean> {
+	async publishCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean = () => true,
+	): Promise<boolean> {
+		if (!isCurrent()) return false;
 		if (!this.ws || !this.connected) {
 			this.logger.warn('Cannot publish: not connected to Zigbee2MQTT WebSocket');
 			return false;
@@ -223,6 +228,10 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 		this.logger.debug(`Sending WS command to ${topic}: ${JSON.stringify(payload)}`);
 
 		return new Promise((resolve) => {
+			if (!isCurrent()) {
+				resolve(false);
+				return;
+			}
 			this.ws?.send(JSON.stringify(message), (error) => {
 				if (error) {
 					this.logger.error(`Failed to send WS command to ${topic}`, {
