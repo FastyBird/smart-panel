@@ -3,6 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+import { VirtualThermostatRecoveryEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatConfigService } from '../services/virtual-thermostat-config.service';
 import { ThermostatRuntimeDiagnostic } from '../services/virtual-thermostat-runtime.service';
 
@@ -183,6 +184,14 @@ export class VirtualThermostatClaimModel {
 	revision: number;
 
 	@ApiProperty({
+		description: 'Recovery generation that new internal installation evidence must match',
+		type: String,
+		nullable: true,
+	})
+	@Expose()
+	qualification_generation: string | null;
+
+	@ApiProperty({
 		description: 'Reservation lifecycle; intent never constitutes release proof',
 		enum: ['reserved', 'releasing', 'suspended', 'missing', 'released'],
 	})
@@ -336,4 +345,39 @@ export class VirtualThermostatRuntimeResponseModel extends BaseSuccessResponseMo
 	@Expose()
 	@Type(() => VirtualThermostatRuntimeModel)
 	declare data: VirtualThermostatRuntimeModel;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatRecovery' })
+export class VirtualThermostatRecoveryModel implements Pick<
+	VirtualThermostatRecoveryEntity,
+	| 'id'
+	| 'claimId'
+	| 'physicalIdentity'
+	| 'previousPropertyIdentity'
+	| 'restoredPropertyId'
+	| 'actorId'
+	| 'reason'
+	| 'createdAt'
+> {
+	@ApiProperty() @Expose() id: string;
+	@ApiProperty() @Expose() claimId: string;
+	@ApiProperty() @Expose() physicalIdentity: string;
+	@ApiProperty() @Expose() previousPropertyIdentity: string;
+	@ApiProperty() @Expose() restoredPropertyId: string;
+	@ApiProperty() @Expose() actorId: string;
+	@ApiProperty() @Expose() reason: string;
+	@ApiProperty() @Expose() createdAt: Date;
+	@ApiProperty() @Expose() disconnectionAcknowledged: boolean;
+	@ApiProperty() @Expose() configurationRevision: number;
+	@ApiProperty() @Expose() claimRevision: number;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginResThermostatRecoveries' })
+export class VirtualThermostatRecoveriesResponseModel extends BaseSuccessResponseModel<
+	VirtualThermostatRecoveryModel[]
+> {
+	@ApiProperty({ type: [VirtualThermostatRecoveryModel] })
+	@Expose()
+	@Type(() => VirtualThermostatRecoveryModel)
+	declare data: VirtualThermostatRecoveryModel[];
 }
