@@ -404,8 +404,10 @@ export class RestoreVirtualThermostatActuatorDto {
 
 	@ApiProperty({
 		name: 'disconnection_acknowledged',
-		enum: [true],
-		description: 'Operator acknowledges that the old endpoint was disconnected; this is not OFF or drainage proof',
+		type: Boolean,
+		example: true,
+		description:
+			'Must be true: operator acknowledges that the old endpoint was disconnected; this is not OFF or drainage proof',
 	})
 	@Expose({ name: 'disconnection_acknowledged' })
 	@IsIn([true])
