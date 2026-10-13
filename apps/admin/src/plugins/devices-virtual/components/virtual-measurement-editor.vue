@@ -328,7 +328,7 @@ import { useMeasurementAuthoring } from '../composables/use-measurement-authorin
 import { type MeasurementMode, measurementCandidates } from '../utils/measurement-authoring.utils';
 
 const props = defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>();
-const emit = defineEmits<{ created: [deviceId: string] }>();
+const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
 const { t, te } = useI18n();
 const stores = injectStoresManager(),
 	devices = stores.getStore(devicesStoreKey),
@@ -338,6 +338,7 @@ const { model, busy, error, conflict, current, preview, isTransform, canPreview,
 	props.mode,
 	props.outputId
 );
+watch(busy, (value) => emit('busy', value), { immediate: true });
 model.temperature = props.temperature ?? true;
 if (isTransform) model.inputs = [{ source_property: null }];
 const loading = ref(false),
@@ -377,7 +378,7 @@ const reload = async () => {
 	try {
 		await devices.fetch({ hidden: DevicesModuleDevicesHiddenFilter.all });
 		await channels.fetch({});
-		for (const channel of channels.findAll()) await properties.fetch({ channelId: channel.id });
+		await Promise.all([...new Set(channels.findAll().map((channel) => channel.id))].map((channelId) => properties.fetch({ channelId })));
 		await load();
 	} catch {
 		catalogError.value = 'measurementCatalog';

@@ -202,7 +202,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Strona szczegółów wybranego urządzenia nie jest jeszcze gotowa.';
 
   @override
-  String get device_status_offline => 'Nieaktywny';
+  String get device_status_offline => 'Rozłączony';
 
   @override
   String get device_offline_message => 'Urządzenie jest offline';
@@ -926,7 +926,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Sposób wyświetlania liczb (separatory tysięcy i miejsc dziesiętnych).';
 
   @override
-  String get number_format_comma_dot => '1234,56';
+  String get number_format_comma_dot => '1,234.56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -2303,7 +2303,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NIE₂';
+  String get device_no2 => 'NO₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -2355,7 +2355,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String duration_format_hours_minutes(int hours, int minutes) {
-    return '$hours godz. $minutes godz';
+    return '$hours godz. $minutes min';
   }
 
   @override
@@ -2934,7 +2934,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_enum_device_info_sleeping_long => 'Uśpione';
 
   @override
-  String get sensor_enum_device_info_stopped => 'Zatrzymywać się';
+  String get sensor_enum_device_info_stopped => 'Zatrzymano';
 
   @override
   String get sensor_enum_device_info_stopped_long => 'Zatrzymano';
@@ -2964,7 +2964,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_freshness_stale => 'Nieaktualne';
 
   @override
-  String get sensor_freshness_offline => 'Nieaktywny';
+  String get sensor_freshness_offline => 'Rozłączony';
 
   @override
   String get media_input_hdmi1 => 'HDMI1';
@@ -2985,7 +2985,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_hdmi6 => 'HDMI6';
 
   @override
-  String get media_input_arc => 'ŁUK';
+  String get media_input_arc => 'ARC';
 
   @override
   String get media_input_earc => 'eARC';
@@ -3030,7 +3030,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_airplay => 'AirPlay';
 
   @override
-  String get media_input_cast => 'Chromecasta';
+  String get media_input_cast => 'Chromecast';
 
   @override
   String get media_input_dlna => 'DLNA';
@@ -3039,7 +3039,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_miracast => 'Miracast';
 
   @override
-  String get media_input_app_netflix => 'Netflixa';
+  String get media_input_app_netflix => 'Netflix';
 
   @override
   String get media_input_app_youtube => 'YouTube';
@@ -3048,7 +3048,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_app_spotify => 'Spotify';
 
   @override
-  String get media_input_app_prime_video => 'Najlepsze wideo';
+  String get media_input_app_prime_video => 'Prime Video';
 
   @override
   String get media_input_app_disney_plus => 'Disney+';
@@ -3057,10 +3057,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_app_hbo_max => 'HBO Max';
 
   @override
-  String get media_input_app_apple_tv => 'Telewizja Apple';
+  String get media_input_app_apple_tv => 'Apple TV';
 
   @override
-  String get media_input_app_plex => 'Pleks';
+  String get media_input_app_plex => 'Plex';
 
   @override
   String get media_input_app_kodi => 'Kodi';
@@ -3521,10 +3521,10 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get sensor_ui_online => 'W Internecie';
+  String get sensor_ui_online => 'Połączony';
 
   @override
-  String get sensor_ui_offline => 'Nieaktywny';
+  String get sensor_ui_offline => 'Rozłączony';
 
   @override
   String get sensor_ui_period_1h => '1H';

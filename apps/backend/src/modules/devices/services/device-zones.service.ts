@@ -251,7 +251,14 @@ export class DeviceZonesService {
 		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
 
 		// Verify device exists
-		const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
+		const device = creation
+			? await creation.manager
+					.createQueryBuilder(DeviceEntity, 'device')
+					.select('device.id')
+					.where('device.id = :deviceId', { deviceId })
+					.callListeners(false)
+					.getOne()
+			: await this.deviceRepository.findOne({ where: { id: deviceId } });
 		if (!device) {
 			this.logger.error(`Device with id=${deviceId} not found`);
 			throw new DevicesNotFoundException('Device not found');
@@ -321,6 +328,7 @@ export class DeviceZonesService {
 		else await this.repository.manager.transaction(persist);
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
+		if (creation) return validatedZones;
 
 		// Fresh read, for the same reason as the two paths above: the entity this call started with was
 		// read before the zones were validated and before the transaction ran, and a device deleted in
