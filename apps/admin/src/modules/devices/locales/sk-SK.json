@@ -852,6 +852,7 @@
 			"event": "Udalosť",
 			"fault": "Chyba",
 			"fault_description": "Popis poruchy",
+			"floor_temperature": "Teplota podlahy",
 			"firmware_revision": "Revízia firmvéru",
 			"frequency": "Frekvencia",
 			"grid_export": "Export mriežky",

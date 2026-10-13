@@ -852,6 +852,7 @@
 			"event": "Wydarzenie",
 			"fault": "Wada",
 			"fault_description": "Opis usterki",
+			"floor_temperature": "Temperatura podłogi",
 			"firmware_revision": "Wersja oprogramowania sprzętowego",
 			"frequency": "Częstotliwość",
 			"grid_export": "Eksport siatki",
