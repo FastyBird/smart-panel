@@ -30,6 +30,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
+import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
 import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
@@ -71,6 +72,7 @@ import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-run
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
+import { VirtualMeasurementAuthoringService } from './services/virtual-measurement-authoring.service';
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
@@ -119,6 +121,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualProducerStateService,
 		VirtualAggregateRuntimeService,
 		VirtualTransformConfigService,
+		VirtualMeasurementAuthoringService,
 		VirtualTransformMetadataSubscriber,
 		VirtualTransformRuntimeService,
 		VirtualProjectionListener,
@@ -129,7 +132,12 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
-	controllers: [VirtualTransformConfigController, VirtualDevicesController, VirtualProducerConfigController],
+	controllers: [
+		VirtualMeasurementAuthoringController,
+		VirtualTransformConfigController,
+		VirtualDevicesController,
+		VirtualProducerConfigController,
+	],
 })
 export class DevicesVirtualPlugin {
 	constructor(
@@ -278,7 +286,7 @@ export class DevicesVirtualPlugin {
 						throw new DevicesValidationException('Derived producer outputs cannot be seeded with client values.');
 					property.id ??= uuid();
 					if (manager) await this.graph.validateProperty(manager, property);
-					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId);
+					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId, manager);
 					await this.virtualDevicesService.assertDerivedOutputSupported(property, channelId, manager);
 					// Repeated here as well as on the create DTO so that *every* creation path is covered,
 					// including this plugin's own listeners and any future internal caller that bypasses

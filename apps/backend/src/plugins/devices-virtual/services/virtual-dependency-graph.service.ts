@@ -57,9 +57,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	}
 
 	async edges(manager: EntityManager): Promise<VirtualDependencyEdge[]> {
-		const projections = await manager.find(VirtualChannelPropertyEntity, {
-			where: { sourcePropertyId: Not(IsNull()) },
-		});
+		const projections = await manager
+			.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+			.select(['property.id', 'property.sourcePropertyId', 'property.valueOrigin'])
+			.where('property.sourcePropertyId IS NOT NULL')
+			.callListeners(false)
+			.getMany();
 		const transforms = await manager.find(VirtualTransformSourceEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const inputs = await manager.find(VirtualAggregateInputEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const bindings = await manager.find(VirtualLightGroupBindingEntity, { where: { sourcePropertyId: Not(IsNull()) } });

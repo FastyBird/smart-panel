@@ -73,7 +73,11 @@ class ChannelPropertyView {
   ValueType? get defaultValue => _defaultValue;
 
   /// The raw value extracted from the value state.
-  ValueType? get value => _valueState?.value;
+  ValueType? get value {
+    final producer = _valueState?.producer;
+    if (producer != null && !producer.isCurrentAt(DateTime.now())) return null;
+    return _valueState?.value;
+  }
 
   /// The full value state including lastUpdated and trend.
   PropertyValueState? get valueState => _valueState;

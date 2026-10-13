@@ -792,7 +792,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_maintenance_title => 'Údržba';
 
   @override
-  String get settings_maintenance_restart_title => 'Restart';
+  String get settings_maintenance_restart_title => 'Restartovat';
 
   @override
   String get settings_maintenance_restart_description =>
@@ -917,7 +917,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get number_format_space_comma => '1 234,56';
 
   @override
-  String get number_format_none => '1234.56';
+  String get number_format_none => '1234,56';
 
   @override
   String get settings_display_settings_title => 'Nastavení displeje';
@@ -953,11 +953,11 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get settings_display_settings_screen_power_off_title =>
-      'Screen Power Off';
+      'Vypnutí displeje';
 
   @override
   String get settings_display_settings_screen_power_off_description =>
-      'Turn off the display when screen is locked.';
+      'Vypnout displej při uzamčení obrazovky.';
 
   @override
   String get settings_display_settings_unit_overrides_section =>
@@ -1414,7 +1414,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get space_lighting_mode_work => 'Práce';
 
   @override
-  String get space_lighting_mode_relax => 'Relax';
+  String get space_lighting_mode_relax => 'Relaxační';
 
   @override
   String get space_lighting_mode_night => 'Noc';
@@ -1974,7 +1974,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get entry_locks => 'Zámky';
 
   @override
-  String get entry_alarm => 'Alarm';
+  String get entry_alarm => 'Poplach';
 
   @override
   String get entry_cameras => 'Kamery';
@@ -2019,7 +2019,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get particulate_label_pm1 => 'PM1';
 
   @override
-  String get particulate_label_pm25 => 'PM2.5';
+  String get particulate_label_pm25 => 'PM2,5';
 
   @override
   String get particulate_label_pm10 => 'PM10';
@@ -2082,7 +2082,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get fan_timer_off => 'Vypnuto';
 
   @override
-  String get fan_timer_30m => '30m';
+  String get fan_timer_30m => '30 m';
 
   @override
   String get fan_timer_1h => '1h';
@@ -2339,7 +2339,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String duration_format_minutes(int minutes) {
-    return '${minutes}m';
+    return '$minutes m';
   }
 
   @override
@@ -2655,7 +2655,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_enum_gas_status_warning_long => 'Varování';
 
   @override
-  String get sensor_enum_gas_status_alarm => 'Alarm';
+  String get sensor_enum_gas_status_alarm => 'Poplach';
 
   @override
   String get sensor_enum_gas_status_alarm_long => 'Alarm plynu';
@@ -2907,7 +2907,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_enum_device_info_sleeping_long => 'Spí';
 
   @override
-  String get sensor_enum_device_info_stopped => 'Stop';
+  String get sensor_enum_device_info_stopped => 'Zastaveno';
 
   @override
   String get sensor_enum_device_info_stopped_long => 'Zastaveno';
@@ -2919,10 +2919,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_enum_device_info_lost_long => 'Spojení ztraceno';
 
   @override
-  String get sensor_enum_device_info_alert => 'Alert';
+  String get sensor_enum_device_info_alert => 'Alarm';
 
   @override
-  String get sensor_enum_device_info_alert_long => 'Alert';
+  String get sensor_enum_device_info_alert_long => 'Alarm';
 
   @override
   String get sensor_enum_device_info_unknown => 'N/A';
@@ -3259,7 +3259,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_detail_section_display => 'Displej';
 
   @override
-  String get media_detail_section_audio => 'Audio';
+  String get media_detail_section_audio => 'Zvuk';
 
   @override
   String get media_detail_section_source => 'Zdroj';
@@ -3393,7 +3393,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_label_battery => 'Baterie';
 
   @override
-  String get sensor_label_alarm => 'Alarm';
+  String get sensor_label_alarm => 'Poplach';
 
   @override
   String get sensor_label_door => 'Dveře';
@@ -4045,7 +4045,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String buddy_voice_recording_timer(int seconds, int maxSeconds) {
-    return '${seconds}s / ${maxSeconds}s';
+    return '$seconds s / $maxSeconds s';
   }
 
   @override
@@ -4107,4 +4107,125 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get settings_display_screen_lock_never => 'Nikdy';
+
+  @override
+  String virtual_measurement_quality(String quality) {
+    return 'Kvalita: $quality';
+  }
+
+  @override
+  String get virtual_measurement_members => 'Vstupy agregace';
+
+  @override
+  String get virtual_measurement_conversion => 'Vstup převodníku';
+
+  @override
+  String get virtual_measurement_retry => 'Opakovat diagnostiku';
+
+  @override
+  String get virtual_measurement_state_good => 'V pořádku';
+
+  @override
+  String get virtual_measurement_state_degraded => 'Snížená kvalita';
+
+  @override
+  String get virtual_measurement_state_input_degraded => 'Snížená kvalita';
+
+  @override
+  String get virtual_measurement_state_unavailable => 'Nedostupné';
+
+  @override
+  String get virtual_measurement_state_runtime_unavailable => 'Nedostupné';
+
+  @override
+  String get virtual_measurement_state_ready => 'Připraveno';
+
+  @override
+  String get virtual_measurement_state_configured => 'Připraveno';
+
+  @override
+  String get virtual_measurement_state_missing => 'Zdroj chybí';
+
+  @override
+  String get virtual_measurement_state_incompatible => 'Nekompatibilní měření';
+
+  @override
+  String get virtual_measurement_state_incompatible_source =>
+      'Nekompatibilní měření';
+
+  @override
+  String get virtual_measurement_state_incompatible_output =>
+      'Nekompatibilní měření';
+
+  @override
+  String get virtual_measurement_state_incompatible_ntc_semantics =>
+      'Nekompatibilní měření';
+
+  @override
+  String get virtual_measurement_state_offline => 'Zdroj offline';
+
+  @override
+  String get virtual_measurement_state_invalid => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_invalid_input => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_invalid_result => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_nonfinite_output => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_stale => 'Vzorek vypršel';
+
+  @override
+  String get virtual_measurement_state_expired => 'Vzorek vypršel';
+
+  @override
+  String get virtual_measurement_state_disabled => 'Zakázáno';
+
+  @override
+  String get virtual_measurement_state_output_disabled => 'Zakázáno';
+
+  @override
+  String get virtual_measurement_state_quorum_lost =>
+      'Nedostatek platných vstupů';
+
+  @override
+  String get virtual_measurement_state_invalid_policy => 'Neplatná konfigurace';
+
+  @override
+  String get virtual_measurement_state_invalid_configuration =>
+      'Neplatná konfigurace';
+
+  @override
+  String get virtual_measurement_state_awaiting_fresh_sample =>
+      'Čekání na čerstvý vzorek';
+
+  @override
+  String get virtual_measurement_state_runtime_error => 'Chyba běhu';
+
+  @override
+  String get virtual_measurement_state_graph_quarantined =>
+      'Graf závislostí v karanténě';
+
+  @override
+  String get virtual_measurement_state_input_out_of_range =>
+      'Hodnota mimo rozsah';
+
+  @override
+  String get virtual_measurement_state_output_out_of_range =>
+      'Hodnota mimo rozsah';
+
+  @override
+  String get virtual_measurement_state_invalid_domain =>
+      'Mimo matematický obor';
+
+  @override
+  String get virtual_measurement_state_producer_disposed =>
+      'Producent zastaven';
+
+  @override
+  String get virtual_measurement_state_unknown => 'Neznámá diagnostika';
 }

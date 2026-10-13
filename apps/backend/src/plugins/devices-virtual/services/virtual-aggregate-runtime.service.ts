@@ -55,6 +55,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 	private completed = 0;
 	private readonly dirty = new Set<string>();
 	private readonly sourceOutputs = new Map<string, Set<string>>();
+	private readonly newInputBarriers = new Map<string, Map<string, { leafId: string; admissionGeneration: number }>>();
 	private running?: Promise<void>;
 
 	constructor(
@@ -85,7 +86,24 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			EventType.DEVICE_CONNECTION_CHANGED,
 			EventType.MODULE_RESET,
 		]) {
-			const listener = (payload: { id?: string; propertyId?: string }) => {
+			const listener = (payload: { id?: string; propertyId?: string; sample?: { provenance?: string } }) => {
+				const observedSourceId = payload?.propertyId ?? payload?.id;
+				if (event === EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED && payload?.sample?.provenance === 'live') {
+					for (const pending of this.newInputBarriers.values()) {
+						for (const [sourceId, barrier] of pending) {
+							if (barrier.leafId !== observedSourceId) continue;
+							if (sourceId === observedSourceId) pending.delete(sourceId);
+						}
+					}
+				}
+				if (
+					(event === EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED && payload?.sample?.provenance === 'live') ||
+					event === EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED
+				)
+					for (const sourceId of this.sourceOutputs.keys())
+						if (this.producers.readIncorporatedSample(sourceId)?.propertyId === observedSourceId)
+							this.requestRecompute(sourceId);
+
 				// Outputs emit their own producer state; never feed those publications back into themselves.
 				if (event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED && this.outputs.has(payload?.id)) return;
 				if (
@@ -128,6 +146,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		this.diagnostics.clear();
 		this.dirty.clear();
 		this.sourceOutputs.clear();
+		this.newInputBarriers.clear();
 	}
 
 	isActive(): boolean {
@@ -145,6 +164,15 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 					inputs: value.inputs.map((input) => ({ ...input })),
 				}
 			: null;
+	}
+
+	/** Requires accepted live reports after admission, including the source report used by a transform. */
+	requireFreshInputs(outputId: string, sources: { sourceId: string; leafId: string }[]): void {
+		const admissionGeneration = this.values.currentSampleGeneration();
+		this.newInputBarriers.set(
+			outputId,
+			new Map(sources.map(({ sourceId, leafId }) => [sourceId, { leafId, admissionGeneration }])),
+		);
 	}
 
 	requestRecompute(sourcePropertyId?: string): void {
@@ -204,6 +232,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!ids.has(id)) {
 				this.producers.unregister(output.lease);
 				this.outputs.delete(id);
+				this.newInputBarriers.delete(id);
 				this.diagnostics.delete(id);
 				this.dirty.delete(id);
 			}
@@ -290,8 +319,15 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 						(source.unit != null && source.unit !== unit) ||
 						(property.unit != null && property.unit !== resolvePropertyUnit(property)) ||
 						this.graph.isQuarantined(source.id));
-				const sample =
+				let sample =
 					source && !incompatible ? this.values.readQualifiedSample(source, Number.MAX_SAFE_INTEGER, now) : null;
+				const barrier = this.newInputBarriers.get(property.id)?.get(source?.id);
+				if (barrier) {
+					const incorporated = this.producers.readIncorporatedSample(source.id);
+					if (sample && incorporated && incorporated.acceptanceGeneration > barrier.admissionGeneration)
+						this.newInputBarriers.get(property.id).delete(source.id);
+					else sample = null;
+				}
 				return {
 					id: input.id,
 					sourceIdentity: input.sourcePropertyIdentity,

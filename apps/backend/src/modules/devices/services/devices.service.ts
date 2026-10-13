@@ -35,6 +35,7 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
@@ -542,10 +543,12 @@ export class DevicesService {
 
 	async create<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto>(
 		createDto: TCreateDTO,
+		creation?: DeviceCreationContext,
 	): Promise<TDevice> {
 		this.logger.debug('Creating new device');
 
 		const { type } = createDto;
+		creation?.assertType(type);
 
 		if (!type) {
 			this.logger.error('Validation failed: Missing required "type" attribute in data.');
@@ -590,7 +593,9 @@ export class DevicesService {
 			throw new DevicesValidationException('Provided device data are invalid.');
 		}
 
-		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
+		const repository: Repository<TDevice> = creation
+			? creation.manager.getRepository(mapping.class)
+			: this.dataSource.getRepository(mapping.class);
 
 		const device = repository.create(toInstance(mapping.class, dtoInstance));
 
@@ -617,7 +622,14 @@ export class DevicesService {
 		// the mapped repository's own discriminator would hide exactly the case that is hardest to
 		// explain afterwards.
 		if (device.id) {
-			const existing = await this.repository.findOne({ where: { id: device.id } });
+			const existing = creation
+				? await creation.manager
+						.createQueryBuilder(DeviceEntity, 'row')
+						.select('row.id')
+						.where('row.id = :id', { id: device.id })
+						.callListeners(false)
+						.getOne()
+				: await this.repository.findOne({ where: { id: device.id } });
 
 			if (existing) {
 				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} already exists, refusing to create over it`);
@@ -635,19 +647,26 @@ export class DevicesService {
 		// with the rollback still armed behind it. `insert()` always issues an INSERT, so the primary key
 		// constraint decides, and the database does not interleave. The check above stays for the message:
 		// a caller reusing an id deliberately gets a sentence rather than a constraint violation.
-		const inserted = await repository
-			.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
-			.catch((error: unknown) => {
-				if (isPrimaryKeyCollision(error)) {
-					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
+		const inserted = await (
+			creation
+				? repository
+						.createQueryBuilder()
+						.insert()
+						.values(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+						.updateEntity(false)
+						.execute()
+				: repository.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+		).catch((error: unknown) => {
+			if (isPrimaryKeyCollision(error)) {
+				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
 
-					throw new DevicesValidationException(
-						`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
-					);
-				}
+				throw new DevicesValidationException(
+					`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+				);
+			}
 
-				throw error;
-			});
+			throw error;
+		});
 
 		// `@PrimaryGeneratedColumn('uuid')` generates in JS, so a request that supplied no id already has
 		// one on the entity by now; the returned identifier is read anyway rather than assumed, since it is
@@ -671,10 +690,9 @@ export class DevicesService {
 			for (const channelDtoInstance of channels) {
 				this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
 
-				await this.channelsService.create({
-					...channelDtoInstance,
-					device: raw.id,
-				});
+				const nested = { ...channelDtoInstance, device: raw.id };
+				if (creation) await this.channelsService.create(nested, creation);
+				else await this.channelsService.create(nested);
 			}
 
 			// Set zone memberships if provided
@@ -682,9 +700,14 @@ export class DevicesService {
 				// Initial placement, not a change to an existing one: a create may legitimately carry both
 				// `hidden: true` and `zone_ids` — the wizard hides a source device it is replacing — and the
 				// placement lock is about mutating where an already-hidden device sits, which this is not.
-				await this.deviceZonesService.setDeviceZones(raw.id, zoneIds, { initialPlacement: true });
+				await this.deviceZonesService.setDeviceZones(
+					raw.id,
+					zoneIds,
+					creation ? { initialPlacement: true, creation } : { initialPlacement: true },
+				);
 			}
 		} catch (error) {
+			if (creation) throw error;
 			this.logger.error(`Nested creation failed for deviceId=${raw.id}, rolling the device back`);
 
 			// The rows go with the device (channels cascade from it), but the events do not: every channel
@@ -763,9 +786,15 @@ export class DevicesService {
 		}
 
 		// Retrieve the saved device with its full relations
-		let savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+		let savedDevice = creation
+			? await creation.manager
+					.createQueryBuilder(mapping.class, 'row')
+					.where('row.id = :id', { id: device.id })
+					.callListeners(false)
+					.getOneOrFail()
+			: ((await this.getOneOrThrow(device.id)) as TDevice);
 
-		if (mapping.afterCreate) {
+		if (mapping.afterCreate && !creation) {
 			await mapping.afterCreate(savedDevice, dtoInstance);
 
 			// Reload a potentially updated device
@@ -774,7 +803,12 @@ export class DevicesService {
 
 		this.logger.debug(`Successfully created device with id=${savedDevice.id}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
+		if (creation)
+			creation.defer(async () => {
+				if (mapping.afterCreate) await mapping.afterCreate(savedDevice, dtoInstance);
+				this.eventEmitter.emit(EventType.DEVICE_CREATED, await this.getOneOrThrow(savedDevice.id));
+			});
+		else this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
 
 		return savedDevice;
 	}

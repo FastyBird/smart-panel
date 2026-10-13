@@ -1,5 +1,19 @@
 <template>
+	<virtual-measurement-editor
+		v-if="measurementMode && measurementOutput"
+		:key="measurementOutput"
+		:mode="measurementMode"
+		:output-id="measurementOutput"
+		:temperature="propertiesStore.findById(measurementOutput)?.category === 'temperature'"
+	/>
+	<el-alert
+		v-else-if="measurementMode"
+		:title="t('devicesVirtualPlugin.measurement.measurementUnavailable')"
+		type="warning"
+		:closable="false"
+	/>
 	<el-card
+		v-else
 		class="mt-2"
 		shadow="never"
 		data-test-id="virtual-device-sources"
@@ -106,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -120,12 +134,15 @@ import type { IChannel, IDevice } from '../../../modules/devices';
 import { DeviceSchema, RouteNames as DevicesRouteNames, transformDeviceResponse } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../../../modules/devices/store/keys';
 import type { DevicesVirtualPluginGetDeviceSourceDevicesOperation } from '../../../openapi.constants';
-import { DevicesVirtualPluginValueOrigin } from '../../../openapi.constants';
+import { DevicesVirtualPluginDeviceMode, DevicesVirtualPluginValueOrigin } from '../../../openapi.constants';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import type { IVirtualChannelProperty } from '../store/channels.properties.store.types';
+import type { MeasurementMode } from '../utils/measurement-authoring.utils';
 
 import VirtualDeviceRemapDialog from './virtual-device-remap-dialog.vue';
 import type { IVirtualDeviceSourcesProps, IVirtualSourceWarning } from './virtual-device-sources.types';
+
+const VirtualMeasurementEditor = defineAsyncComponent(() => import('./virtual-measurement-editor.vue'));
 
 defineOptions({
 	name: 'VirtualDeviceSources',
@@ -141,6 +158,17 @@ const storesManager = injectStoresManager();
 
 const channelsStore = storesManager.getStore(channelsStoreKey);
 const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+const measurementMode = computed<MeasurementMode | null>(() => {
+	const mode = (props.device as IDevice & { mode?: DevicesVirtualPluginDeviceMode }).mode;
+	return mode === DevicesVirtualPluginDeviceMode.sensor_aggregate || mode === DevicesVirtualPluginDeviceMode.sensor_transform ? mode : null;
+});
+const measurementOutput = computed(
+	() =>
+		channelsStore
+			.findForDevice(props.device.id)
+			.flatMap((channel) => propertiesStore.findForChannel(channel.id) as IVirtualChannelProperty[])
+			.find((property) => property.valueOrigin === DevicesVirtualPluginValueOrigin.derived)?.id
+);
 
 const sourceDevices = ref<IDevice[]>([]);
 const loading = ref<boolean>(false);
@@ -278,9 +306,7 @@ watch(sourceLinks, (current: string, previous: string): void => {
 		return;
 	}
 
-	fetchSourceDevices().catch((err: unknown): void =>
-		logger.error('Failed to reload virtual device source devices after its links changed', err)
-	);
+	fetchSourceDevices().catch((err: unknown): void => logger.error('Failed to reload virtual device source devices after its links changed', err));
 });
 
 const onViewSourceDevice = (deviceId: IDevice['id']): void => {

@@ -95,6 +95,7 @@ class SensorUtils {
       case DevicesModuleChannelCategory.pressure:
       case DevicesModuleChannelCategory.electricalPower:
         return 1;
+      case DevicesModuleChannelCategory.analogInput:
       case DevicesModuleChannelCategory.electricalEnergy:
       case DevicesModuleChannelCategory.electricalGeneration:
         return 3;
