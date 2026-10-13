@@ -144,7 +144,13 @@ invalidation API. Emit the sample signal only after a valid provider sample is a
 invalid/null inputs never count as fresh observations. Retain ordinary physical null-write semantics. Derived producer
 invalidation is a different internal operation, not a change making every physical null report erase history.
 
-Measurement `sampledAt` is normalized UTC source time and controls freshness. Command admission uses a separate
+Measurement `sampledAt` is normalized UTC source time and controls freshness. At the accepted-sample boundary require
+finite timestamps with `sampledAt <= receivedAt <= serverNow`; reject future timestamps without a positive skew
+allowance. A rejected live temporal report revokes qualification but cannot install an untrusted ordering watermark
+that prevents corrected-clock recovery. Cached/retained replay cannot recover qualification. Control/read boundaries
+also reject negative sample ages after a server-clock rollback. Test future, exact-boundary, past, expiry and corrected
+clock recovery. Legacy `PropertyValueService.write` timestamps and persisted history never establish control freshness.
+Command admission uses a separate
 internal server-clock `observedAt`: poll request start, or notification capture before asynchronous processing.
 An active command window requires live evidence observed after the window opened; missing causal evidence is held.
 Neither a skewed device clock nor a late response's receipt time proves that the observation followed a command.
@@ -253,6 +259,8 @@ electrical or probe parameters are guessed. For an NTC on the low leg, use
 `R = Rseries * V / (Vref - V)`; for the high leg use `R = Rseries * (Vref - V) / V`. Then
 `Tkelvin = 1 / (1 / T0kelvin + ln(R / R0) / beta)` and convert to Celsius. Reject zero/rail voltage, invalid resistance,
 nonpositive Kelvin/denominator and nonfinite results. A declared valid input/output range is enforced without clamping.
+Every operator must reject nonfinite computed outputs before publication, including affine overflow and piecewise
+interpolation overflow. Retain the NTC-specific domain checks and report computation failure as unavailable.
 
 Helper output that is already Celsius is ingested as a qualified physical temperature by the Shelly adapter. It does
 not pass through another thermistor calculation. A transform can explicitly provide calibration or quantity conversion
