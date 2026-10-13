@@ -52,6 +52,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 	private completed = 0;
 	private readonly dirty = new Set<string>();
 	private readonly sourceOutputs = new Map<string, Set<string>>();
+	private readonly newInputBarriers = new Map<string, Map<string, { leafId: string; sampledAt?: number }>>();
 	private running?: Promise<void>;
 
 	constructor(
@@ -82,7 +83,21 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			EventType.DEVICE_CONNECTION_CHANGED,
 			EventType.MODULE_RESET,
 		]) {
-			const listener = (payload: { id?: string; propertyId?: string }) => {
+			const listener = (payload: {
+				id?: string;
+				propertyId?: string;
+				sample?: { provenance?: string; sampledAt?: Date };
+			}) => {
+				const observedSourceId = payload?.propertyId ?? payload?.id;
+				if (event === EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED && payload?.sample?.provenance === 'live') {
+					for (const pending of this.newInputBarriers.values()) {
+						for (const [sourceId, barrier] of pending) {
+							if (barrier.leafId !== observedSourceId) continue;
+							if (sourceId === observedSourceId) pending.delete(sourceId);
+							else barrier.sampledAt = payload.sample.sampledAt?.getTime();
+						}
+					}
+				}
 				// Outputs emit their own producer state; never feed those publications back into themselves.
 				if (event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED && this.outputs.has(payload?.id)) return;
 				if (
@@ -125,6 +140,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		this.diagnostics.clear();
 		this.dirty.clear();
 		this.sourceOutputs.clear();
+		this.newInputBarriers.clear();
 	}
 
 	isActive(): boolean {
@@ -142,6 +158,10 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 					inputs: value.inputs.map((input) => ({ ...input })),
 				}
 			: null;
+	}
+
+	requireFreshInputs(outputId: string, sources: { sourceId: string; leafId: string }[]): void {
+		this.newInputBarriers.set(outputId, new Map(sources.map(({ sourceId, leafId }) => [sourceId, { leafId }])));
 	}
 
 	requestRecompute(sourcePropertyId?: string): void {
@@ -197,6 +217,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!ids.has(id)) {
 				this.producers.unregister(output.lease);
 				this.outputs.delete(id);
+				this.newInputBarriers.delete(id);
 				this.diagnostics.delete(id);
 				this.dirty.delete(id);
 			}
@@ -283,8 +304,14 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 						(source.unit != null && source.unit !== unit) ||
 						(property.unit != null && property.unit !== resolvePropertyUnit(property)) ||
 						this.graph.isQuarantined(source.id));
-				const sample =
+				let sample =
 					source && !incompatible ? this.values.readQualifiedSample(source, Number.MAX_SAFE_INTEGER, now) : null;
+				const barrier = this.newInputBarriers.get(property.id)?.get(source?.id);
+				if (barrier) {
+					if (sample && barrier.sampledAt !== undefined && sample.sampledAt.getTime() >= barrier.sampledAt)
+						this.newInputBarriers.get(property.id).delete(source.id);
+					else sample = null;
+				}
 				return {
 					id: input.id,
 					sourceIdentity: input.sourcePropertyIdentity,

@@ -14,6 +14,8 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
 
   final String? _sourceProperty;
 
+  final String? measurementQuantity;
+
   VirtualChannelPropertyModel({
     required super.id,
     required super.channel,
@@ -32,6 +34,7 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
     DevicesVirtualPluginDataChannelPropertyValueOrigin valueOrigin =
         DevicesVirtualPluginDataChannelPropertyValueOrigin.source,
     String? sourceProperty,
+    this.measurementQuantity,
   }) : _valueOrigin = valueOrigin,
        _sourceProperty = sourceProperty,
        super(type: virtualDeviceType);
@@ -52,6 +55,19 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
   // clients are regenerated from the backend's new enum member.
   bool get isDerived => valueOrigin.json == 'derived';
 
+  @override
+  PropertyValueState? get valueState {
+    final state = super.valueState;
+    if (!isDerived || state?.producer != null) return state;
+    return const PropertyValueState(
+      producer: PropertyProducerState(
+        quality: PropertyProducerQuality.unavailable,
+        reasons: ['runtime_unavailable'],
+        revision: 0,
+      ),
+    );
+  }
+
   bool get isOrphaned => isProjecting && sourceProperty == null;
 
   bool get isLinked => isProjecting && sourceProperty != null;
@@ -71,6 +87,9 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
           .toList(),
       dataType: DevicesModuleDataType.fromJson(json['data_type']),
       unit: json['unit'],
+      measurementQuantity: json['measurement_quantity'] is String
+          ? json['measurement_quantity'] as String
+          : null,
       format: json['format'] != null
           ? FormatType.fromJson(json['format'])
           : null,
@@ -120,6 +139,7 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
       permission: permission,
       dataType: dataType,
       unit: unit,
+      measurementQuantity: measurementQuantity,
       format: format,
       invalid: invalid,
       step: step,

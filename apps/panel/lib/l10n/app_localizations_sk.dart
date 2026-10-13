@@ -911,7 +911,7 @@ class AppLocalizationsSk extends AppLocalizations {
       'Ako sa zobrazujú čísla (oddeľovače tisícov a desatinných miest).';
 
   @override
-  String get number_format_comma_dot => '1,234.56';
+  String get number_format_comma_dot => '1 234,56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -920,7 +920,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get number_format_space_comma => '1 234,56';
 
   @override
-  String get number_format_none => '1234.56';
+  String get number_format_none => '1234,56';
 
   @override
   String get settings_display_settings_title => 'Nastavenia displeja';
@@ -956,11 +956,11 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get settings_display_settings_screen_power_off_title =>
-      'Screen Power Off';
+      'Vypnutie displeja';
 
   @override
   String get settings_display_settings_screen_power_off_description =>
-      'Turn off the display when screen is locked.';
+      'Vypnúť displej po uzamknutí obrazovky.';
 
   @override
   String get settings_display_settings_unit_overrides_section =>
@@ -1416,7 +1416,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get space_lighting_mode_work => 'Práca';
 
   @override
-  String get space_lighting_mode_relax => 'Relax';
+  String get space_lighting_mode_relax => 'Relaxačný';
 
   @override
   String get space_lighting_mode_night => 'Noc';
@@ -2021,7 +2021,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get particulate_label_pm1 => 'PM1';
 
   @override
-  String get particulate_label_pm25 => 'PM2.5';
+  String get particulate_label_pm25 => 'PM2,5';
 
   @override
   String get particulate_label_pm10 => 'PM10';
@@ -2084,7 +2084,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get fan_timer_off => 'Vypnuté';
 
   @override
-  String get fan_timer_30m => '30m';
+  String get fan_timer_30m => '30 m';
 
   @override
   String get fan_timer_1h => '1h';
@@ -2279,7 +2279,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NO₂';
+  String get device_no2 => 'NIE₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -2331,17 +2331,17 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String duration_format_hours_minutes(int hours, int minutes) {
-    return '${hours}h ${minutes}m';
+    return '$hours h $minutes min';
   }
 
   @override
   String duration_format_hours(int hours) {
-    return '${hours}h';
+    return '$hours h';
   }
 
   @override
   String duration_format_minutes(int minutes) {
-    return '${minutes}m';
+    return '$minutes min';
   }
 
   @override
@@ -2921,10 +2921,10 @@ class AppLocalizationsSk extends AppLocalizations {
   String get sensor_enum_device_info_lost_long => 'Spojenie stratené';
 
   @override
-  String get sensor_enum_device_info_alert => 'Alert';
+  String get sensor_enum_device_info_alert => 'Alarm';
 
   @override
-  String get sensor_enum_device_info_alert_long => 'Alert';
+  String get sensor_enum_device_info_alert_long => 'Alarm';
 
   @override
   String get sensor_enum_device_info_unknown => 'N/A';
@@ -3090,8 +3090,8 @@ class AppLocalizationsSk extends AppLocalizations {
       count,
       locale: localeName,
       other: 'varovaní',
-      few: 'varovania',
-      one: 'varovanie',
+      few: 'warnings',
+      one: 'warning',
     );
     return 'Niektoré kroky zlyhali ($count $_temp0)';
   }
@@ -3107,7 +3107,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String media_volume_percent(int volume) {
-    return '$volume%';
+    return '$volume %';
   }
 
   @override
@@ -3151,15 +3151,15 @@ class AppLocalizationsSk extends AppLocalizations {
       errors,
       locale: localeName,
       other: 'chýb',
-      few: 'chyby',
-      one: 'chyba',
+      few: 'errors',
+      one: 'error',
     );
     String _temp1 = intl.Intl.pluralLogic(
       warnings,
       locale: localeName,
       other: 'varovaní',
-      few: 'varovania',
-      one: 'varovanie',
+      few: 'warnings',
+      one: 'warning',
     );
     return 'Aktivitu sa nepodarilo aplikovať ($errors $_temp0, $warnings $_temp1)';
   }
@@ -3261,7 +3261,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get media_detail_section_display => 'Displej';
 
   @override
-  String get media_detail_section_audio => 'Audio';
+  String get media_detail_section_audio => 'Zvuk';
 
   @override
   String get media_detail_section_source => 'Zdroj';
@@ -4049,7 +4049,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String buddy_voice_recording_timer(int seconds, int maxSeconds) {
-    return '${seconds}s / ${maxSeconds}s';
+    return '$seconds s / $maxSeconds s';
   }
 
   @override
@@ -4112,4 +4112,126 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get settings_display_screen_lock_never => 'Nikdy';
+
+  @override
+  String virtual_measurement_quality(String quality) {
+    return 'Kvalita: $quality';
+  }
+
+  @override
+  String get virtual_measurement_members => 'Vstupy agregácie';
+
+  @override
+  String get virtual_measurement_conversion => 'Vstup prevodníka';
+
+  @override
+  String get virtual_measurement_retry => 'Opakovať diagnostiku';
+
+  @override
+  String get virtual_measurement_state_good => 'V poriadku';
+
+  @override
+  String get virtual_measurement_state_degraded => 'Znížená kvalita';
+
+  @override
+  String get virtual_measurement_state_input_degraded => 'Znížená kvalita';
+
+  @override
+  String get virtual_measurement_state_unavailable => 'Nedostupné';
+
+  @override
+  String get virtual_measurement_state_runtime_unavailable => 'Nedostupné';
+
+  @override
+  String get virtual_measurement_state_ready => 'Pripravené';
+
+  @override
+  String get virtual_measurement_state_configured => 'Pripravené';
+
+  @override
+  String get virtual_measurement_state_missing => 'Zdroj chýba';
+
+  @override
+  String get virtual_measurement_state_incompatible => 'Nekompatibilné meranie';
+
+  @override
+  String get virtual_measurement_state_incompatible_source =>
+      'Nekompatibilné meranie';
+
+  @override
+  String get virtual_measurement_state_incompatible_output =>
+      'Nekompatibilné meranie';
+
+  @override
+  String get virtual_measurement_state_incompatible_ntc_semantics =>
+      'Nekompatibilné meranie';
+
+  @override
+  String get virtual_measurement_state_offline => 'Zdroj offline';
+
+  @override
+  String get virtual_measurement_state_invalid => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_invalid_input => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_invalid_result => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_nonfinite_output => 'Neplatná hodnota';
+
+  @override
+  String get virtual_measurement_state_stale => 'Vzorka vypršala';
+
+  @override
+  String get virtual_measurement_state_expired => 'Vzorka vypršala';
+
+  @override
+  String get virtual_measurement_state_disabled => 'Zakázané';
+
+  @override
+  String get virtual_measurement_state_output_disabled => 'Zakázané';
+
+  @override
+  String get virtual_measurement_state_quorum_lost =>
+      'Nedostatok platných vstupov';
+
+  @override
+  String get virtual_measurement_state_invalid_policy =>
+      'Neplatná konfigurácia';
+
+  @override
+  String get virtual_measurement_state_invalid_configuration =>
+      'Neplatná konfigurácia';
+
+  @override
+  String get virtual_measurement_state_awaiting_fresh_sample =>
+      'Čakanie na čerstvú vzorku';
+
+  @override
+  String get virtual_measurement_state_runtime_error => 'Chyba behu';
+
+  @override
+  String get virtual_measurement_state_graph_quarantined =>
+      'Graf závislostí v karanténe';
+
+  @override
+  String get virtual_measurement_state_input_out_of_range =>
+      'Hodnota mimo rozsahu';
+
+  @override
+  String get virtual_measurement_state_output_out_of_range =>
+      'Hodnota mimo rozsahu';
+
+  @override
+  String get virtual_measurement_state_invalid_domain =>
+      'Mimo matematického oboru';
+
+  @override
+  String get virtual_measurement_state_producer_disposed =>
+      'Producent zastavený';
+
+  @override
+  String get virtual_measurement_state_unknown => 'Neznáma diagnostika';
 }

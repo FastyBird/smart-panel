@@ -1210,5 +1210,48 @@
   "intent_error_set_property_error": "Fehler beim Setzen des Eigenschaftswerts",
   "intent_error_toggle_device_failed": "Gerät konnte nicht umgeschaltet werden",
   "intent_error_toggle_device_error": "Fehler beim Umschalten des Geräts",
-  "settings_display_screen_lock_never": "Nie"
+  "settings_display_screen_lock_never": "Nie",
+  "virtual_measurement_quality": "Qualität: {quality}",
+  "virtual_measurement_members": "Aggregatmitglieder",
+  "virtual_measurement_conversion": "Umrechnungseingang",
+  "virtual_measurement_retry": "Diagnose wiederholen",
+  "@virtual_measurement_quality": {
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_state_good": "Gut",
+  "virtual_measurement_state_degraded": "Verminderte Qualität",
+  "virtual_measurement_state_input_degraded": "Verminderte Qualität",
+  "virtual_measurement_state_unavailable": "Nicht verfügbar",
+  "virtual_measurement_state_runtime_unavailable": "Nicht verfügbar",
+  "virtual_measurement_state_ready": "Bereit",
+  "virtual_measurement_state_configured": "Bereit",
+  "virtual_measurement_state_missing": "Quelle fehlt",
+  "virtual_measurement_state_incompatible": "Inkompatible Messung",
+  "virtual_measurement_state_incompatible_source": "Inkompatible Messung",
+  "virtual_measurement_state_incompatible_output": "Inkompatible Messung",
+  "virtual_measurement_state_incompatible_ntc_semantics": "Inkompatible Messung",
+  "virtual_measurement_state_offline": "Quelle offline",
+  "virtual_measurement_state_invalid": "Ungültiger Wert",
+  "virtual_measurement_state_invalid_input": "Ungültiger Wert",
+  "virtual_measurement_state_invalid_result": "Ungültiger Wert",
+  "virtual_measurement_state_nonfinite_output": "Ungültiger Wert",
+  "virtual_measurement_state_stale": "Messung abgelaufen",
+  "virtual_measurement_state_expired": "Messung abgelaufen",
+  "virtual_measurement_state_disabled": "Deaktiviert",
+  "virtual_measurement_state_output_disabled": "Deaktiviert",
+  "virtual_measurement_state_quorum_lost": "Zu wenige gültige Eingänge",
+  "virtual_measurement_state_invalid_policy": "Ungültige Konfiguration",
+  "virtual_measurement_state_invalid_configuration": "Ungültige Konfiguration",
+  "virtual_measurement_state_awaiting_fresh_sample": "Warten auf eine neue Messung",
+  "virtual_measurement_state_runtime_error": "Laufzeitfehler",
+  "virtual_measurement_state_graph_quarantined": "Abhängigkeitsgraph isoliert",
+  "virtual_measurement_state_input_out_of_range": "Wert außerhalb des Bereichs",
+  "virtual_measurement_state_output_out_of_range": "Wert außerhalb des Bereichs",
+  "virtual_measurement_state_invalid_domain": "Außerhalb des mathematischen Bereichs",
+  "virtual_measurement_state_producer_disposed": "Produzent gestoppt",
+  "virtual_measurement_state_unknown": "Unbekannte Diagnose"
 }

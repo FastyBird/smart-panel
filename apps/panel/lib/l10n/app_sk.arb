@@ -1210,5 +1210,48 @@
   "intent_error_set_property_error": "Chyba pri nastavení hodnoty vlastnosti",
   "intent_error_toggle_device_failed": "Nepodarilo sa prepnúť zariadenie",
   "intent_error_toggle_device_error": "Chyba pri prepínaní zariadenia",
-  "settings_display_screen_lock_never": "Nikdy"
+  "settings_display_screen_lock_never": "Nikdy",
+  "virtual_measurement_quality": "Kvalita: {quality}",
+  "virtual_measurement_members": "Vstupy agregácie",
+  "virtual_measurement_conversion": "Vstup prevodníka",
+  "virtual_measurement_retry": "Opakovať diagnostiku",
+  "@virtual_measurement_quality": {
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_state_good": "V poriadku",
+  "virtual_measurement_state_degraded": "Znížená kvalita",
+  "virtual_measurement_state_input_degraded": "Znížená kvalita",
+  "virtual_measurement_state_unavailable": "Nedostupné",
+  "virtual_measurement_state_runtime_unavailable": "Nedostupné",
+  "virtual_measurement_state_ready": "Pripravené",
+  "virtual_measurement_state_configured": "Pripravené",
+  "virtual_measurement_state_missing": "Zdroj chýba",
+  "virtual_measurement_state_incompatible": "Nekompatibilné meranie",
+  "virtual_measurement_state_incompatible_source": "Nekompatibilné meranie",
+  "virtual_measurement_state_incompatible_output": "Nekompatibilné meranie",
+  "virtual_measurement_state_incompatible_ntc_semantics": "Nekompatibilné meranie",
+  "virtual_measurement_state_offline": "Zdroj offline",
+  "virtual_measurement_state_invalid": "Neplatná hodnota",
+  "virtual_measurement_state_invalid_input": "Neplatná hodnota",
+  "virtual_measurement_state_invalid_result": "Neplatná hodnota",
+  "virtual_measurement_state_nonfinite_output": "Neplatná hodnota",
+  "virtual_measurement_state_stale": "Vzorka vypršala",
+  "virtual_measurement_state_expired": "Vzorka vypršala",
+  "virtual_measurement_state_disabled": "Zakázané",
+  "virtual_measurement_state_output_disabled": "Zakázané",
+  "virtual_measurement_state_quorum_lost": "Nedostatok platných vstupov",
+  "virtual_measurement_state_invalid_policy": "Neplatná konfigurácia",
+  "virtual_measurement_state_invalid_configuration": "Neplatná konfigurácia",
+  "virtual_measurement_state_awaiting_fresh_sample": "Čakanie na čerstvú vzorku",
+  "virtual_measurement_state_runtime_error": "Chyba behu",
+  "virtual_measurement_state_graph_quarantined": "Graf závislostí v karanténe",
+  "virtual_measurement_state_input_out_of_range": "Hodnota mimo rozsahu",
+  "virtual_measurement_state_output_out_of_range": "Hodnota mimo rozsahu",
+  "virtual_measurement_state_invalid_domain": "Mimo matematického oboru",
+  "virtual_measurement_state_producer_disposed": "Producent zastavený",
+  "virtual_measurement_state_unknown": "Neznáma diagnostika"
 }

@@ -7371,6 +7371,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Never'**
   String get settings_display_screen_lock_never;
+
+  /// No description provided for @virtual_measurement_quality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality: {quality}'**
+  String virtual_measurement_quality(String quality);
+
+  /// No description provided for @virtual_measurement_members.
+  ///
+  /// In en, this message translates to:
+  /// **'Aggregate members'**
+  String get virtual_measurement_members;
+
+  /// No description provided for @virtual_measurement_conversion.
+  ///
+  /// In en, this message translates to:
+  /// **'Converter input'**
+  String get virtual_measurement_conversion;
+
+  /// No description provided for @virtual_measurement_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry diagnostics'**
+  String get virtual_measurement_retry;
+
+  /// No description provided for @virtual_measurement_state_good.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get virtual_measurement_state_good;
+
+  /// No description provided for @virtual_measurement_state_degraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduced quality'**
+  String get virtual_measurement_state_degraded;
+
+  /// No description provided for @virtual_measurement_state_input_degraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduced quality'**
+  String get virtual_measurement_state_input_degraded;
+
+  /// No description provided for @virtual_measurement_state_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get virtual_measurement_state_unavailable;
+
+  /// No description provided for @virtual_measurement_state_runtime_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get virtual_measurement_state_runtime_unavailable;
+
+  /// No description provided for @virtual_measurement_state_ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get virtual_measurement_state_ready;
+
+  /// No description provided for @virtual_measurement_state_configured.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get virtual_measurement_state_configured;
+
+  /// No description provided for @virtual_measurement_state_missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Source missing'**
+  String get virtual_measurement_state_missing;
+
+  /// No description provided for @virtual_measurement_state_incompatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible measurement'**
+  String get virtual_measurement_state_incompatible;
+
+  /// No description provided for @virtual_measurement_state_incompatible_source.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible measurement'**
+  String get virtual_measurement_state_incompatible_source;
+
+  /// No description provided for @virtual_measurement_state_incompatible_output.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible measurement'**
+  String get virtual_measurement_state_incompatible_output;
+
+  /// No description provided for @virtual_measurement_state_incompatible_ntc_semantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible measurement'**
+  String get virtual_measurement_state_incompatible_ntc_semantics;
+
+  /// No description provided for @virtual_measurement_state_offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Source offline'**
+  String get virtual_measurement_state_offline;
+
+  /// No description provided for @virtual_measurement_state_invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid value'**
+  String get virtual_measurement_state_invalid;
+
+  /// No description provided for @virtual_measurement_state_invalid_input.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid value'**
+  String get virtual_measurement_state_invalid_input;
+
+  /// No description provided for @virtual_measurement_state_invalid_result.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid value'**
+  String get virtual_measurement_state_invalid_result;
+
+  /// No description provided for @virtual_measurement_state_nonfinite_output.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid value'**
+  String get virtual_measurement_state_nonfinite_output;
+
+  /// No description provided for @virtual_measurement_state_stale.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample expired'**
+  String get virtual_measurement_state_stale;
+
+  /// No description provided for @virtual_measurement_state_expired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample expired'**
+  String get virtual_measurement_state_expired;
+
+  /// No description provided for @virtual_measurement_state_disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get virtual_measurement_state_disabled;
+
+  /// No description provided for @virtual_measurement_state_output_disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get virtual_measurement_state_output_disabled;
+
+  /// No description provided for @virtual_measurement_state_quorum_lost.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough valid inputs'**
+  String get virtual_measurement_state_quorum_lost;
+
+  /// No description provided for @virtual_measurement_state_invalid_policy.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid configuration'**
+  String get virtual_measurement_state_invalid_policy;
+
+  /// No description provided for @virtual_measurement_state_invalid_configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid configuration'**
+  String get virtual_measurement_state_invalid_configuration;
+
+  /// No description provided for @virtual_measurement_state_awaiting_fresh_sample.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for a fresh sample'**
+  String get virtual_measurement_state_awaiting_fresh_sample;
+
+  /// No description provided for @virtual_measurement_state_runtime_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime error'**
+  String get virtual_measurement_state_runtime_error;
+
+  /// No description provided for @virtual_measurement_state_graph_quarantined.
+  ///
+  /// In en, this message translates to:
+  /// **'Dependency graph quarantined'**
+  String get virtual_measurement_state_graph_quarantined;
+
+  /// No description provided for @virtual_measurement_state_input_out_of_range.
+  ///
+  /// In en, this message translates to:
+  /// **'Value outside range'**
+  String get virtual_measurement_state_input_out_of_range;
+
+  /// No description provided for @virtual_measurement_state_output_out_of_range.
+  ///
+  /// In en, this message translates to:
+  /// **'Value outside range'**
+  String get virtual_measurement_state_output_out_of_range;
+
+  /// No description provided for @virtual_measurement_state_invalid_domain.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside mathematical domain'**
+  String get virtual_measurement_state_invalid_domain;
+
+  /// No description provided for @virtual_measurement_state_producer_disposed.
+  ///
+  /// In en, this message translates to:
+  /// **'Producer stopped'**
+  String get virtual_measurement_state_producer_disposed;
+
+  /// No description provided for @virtual_measurement_state_unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown diagnostic'**
+  String get virtual_measurement_state_unknown;
 }
 
 class _AppLocalizationsDelegate

@@ -6,6 +6,7 @@ import { CreateVirtualChannelPropertyDto } from './dto/create-channel-property.d
 import { CreateVirtualChannelDto } from './dto/create-channel.dto';
 import { CreateVirtualDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateVirtualDeviceDto } from './dto/create-device.dto';
+import * as MeasurementAuthoringDtos from './dto/measurement-authoring.dto';
 import * as ProducerDtos from './dto/producer-config.dto';
 import * as ThermostatDtos from './dto/thermostat-config.dto';
 import {
@@ -25,12 +26,15 @@ import {
 } from './entities/devices-virtual.entity';
 import { CompatibilityReportModel, CompatibilityResponseModel } from './models/compatibility-response.model';
 import { VirtualConfigModel } from './models/config.model';
+import * as MeasurementAuthoringModels from './models/measurement-authoring-response.model';
 import * as ProducerModels from './models/producer-response.model';
 import * as ThermostatModels from './models/thermostat-response.model';
 import * as TransformModels from './models/transform-response.model';
 import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
 
 export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	...Object.values(MeasurementAuthoringDtos),
+	...Object.values(MeasurementAuthoringModels),
 	ConfigureVirtualTransformDto,
 	VirtualNumericTransformPolicyDto,
 	VirtualNumericRangeDto,

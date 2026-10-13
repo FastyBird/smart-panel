@@ -69,7 +69,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get unit_celsius => 'Celsjusz (°C)';
 
   @override
-  String get unit_fahrenheit => 'Fahrenheit (°F)';
+  String get unit_fahrenheit => 'Fahrenheita (°F)';
 
   @override
   String get unit_wind_speed_ms => 'Metry na sekundę (m/s)';
@@ -202,7 +202,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Strona szczegółów wybranego urządzenia nie jest jeszcze gotowa.';
 
   @override
-  String get device_status_offline => 'Offline';
+  String get device_status_offline => 'Nieaktywny';
 
   @override
   String get device_offline_message => 'Urządzenie jest offline';
@@ -622,7 +622,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get thermostat_mode_cool => 'Chłodzenie';
 
   @override
-  String get thermostat_mode_auto => 'Auto';
+  String get thermostat_mode_auto => 'Automatyczny';
 
   @override
   String get thermostat_mode_manual => 'Ręczny';
@@ -809,7 +809,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_maintenance_title => 'Konserwacja';
 
   @override
-  String get settings_maintenance_restart_title => 'Restart';
+  String get settings_maintenance_restart_title => 'Uruchom ponownie';
 
   @override
   String get settings_maintenance_restart_description =>
@@ -926,7 +926,7 @@ class AppLocalizationsPl extends AppLocalizations {
       'Sposób wyświetlania liczb (separatory tysięcy i miejsc dziesiętnych).';
 
   @override
-  String get number_format_comma_dot => '1,234.56';
+  String get number_format_comma_dot => '1234,56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -935,7 +935,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get number_format_space_comma => '1 234,56';
 
   @override
-  String get number_format_none => '1234.56';
+  String get number_format_none => '1234,56';
 
   @override
   String get settings_display_settings_title => 'Ustawienia wyświetlacza';
@@ -970,11 +970,11 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_display_settings_screen_power_off_title =>
-      'Screen Power Off';
+      'Wyłączanie wyświetlacza';
 
   @override
   String get settings_display_settings_screen_power_off_description =>
-      'Turn off the display when screen is locked.';
+      'Wyłącz wyświetlacz po zablokowaniu ekranu.';
 
   @override
   String get settings_display_settings_unit_overrides_section =>
@@ -2045,7 +2045,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get particulate_label_pm1 => 'PM1';
 
   @override
-  String get particulate_label_pm25 => 'PM2.5';
+  String get particulate_label_pm25 => 'PM2,5';
 
   @override
   String get particulate_label_pm10 => 'PM10';
@@ -2069,7 +2069,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_enum_voc_level_high_long => 'Wysoki poziom VOC';
 
   @override
-  String get fan_mode_auto => 'Auto';
+  String get fan_mode_auto => 'Automatyczny';
 
   @override
   String get fan_mode_manual => 'Ręczny';
@@ -2102,13 +2102,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get fan_speed_turbo => 'Turbo';
 
   @override
-  String get fan_speed_auto => 'Auto';
+  String get fan_speed_auto => 'Automatyczny';
 
   @override
   String get fan_timer_off => 'Wył';
 
   @override
-  String get fan_timer_30m => '30m';
+  String get fan_timer_30m => '30 m';
 
   @override
   String get fan_timer_1h => '1h';
@@ -2144,7 +2144,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get filter_status_unknown => 'Nieznany';
 
   @override
-  String get dehumidifier_mode_auto => 'Auto';
+  String get dehumidifier_mode_auto => 'Automatyczny';
 
   @override
   String get dehumidifier_mode_manual => 'Ręczny';
@@ -2171,7 +2171,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get dehumidifier_timer_off => 'Wył';
 
   @override
-  String get dehumidifier_timer_30m => '30 min';
+  String get dehumidifier_timer_30m => '30 minut';
 
   @override
   String get dehumidifier_timer_1h => '1 godzina';
@@ -2198,7 +2198,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get dehumidifier_defrost_active => 'Odmrażanie';
 
   @override
-  String get humidifier_mode_auto => 'Auto';
+  String get humidifier_mode_auto => 'Automatyczny';
 
   @override
   String get humidifier_mode_manual => 'Ręczny';
@@ -2234,7 +2234,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get humidifier_timer_off => 'Wył';
 
   @override
-  String get humidifier_timer_30m => '30 min';
+  String get humidifier_timer_30m => '30 minut';
 
   @override
   String get humidifier_timer_1h => '1 godzina';
@@ -2294,7 +2294,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get device_filter_status => 'Filtr';
 
   @override
-  String get device_voc => 'VOC';
+  String get device_voc => 'LZO';
 
   @override
   String get device_co2 => 'CO₂';
@@ -2303,7 +2303,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NO₂';
+  String get device_no2 => 'NIE₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -2355,17 +2355,17 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String duration_format_hours_minutes(int hours, int minutes) {
-    return '${hours}h ${minutes}m';
+    return '$hours godz. $minutes godz';
   }
 
   @override
   String duration_format_hours(int hours) {
-    return '${hours}h';
+    return '$hours godz';
   }
 
   @override
   String duration_format_minutes(int minutes) {
-    return '${minutes}m';
+    return '$minutes m';
   }
 
   @override
@@ -2886,7 +2886,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_enum_camera_offline_long => 'Kamera offline';
 
   @override
-  String get sensor_enum_camera_initializing => 'Init';
+  String get sensor_enum_camera_initializing => 'Rozpoczęcie';
 
   @override
   String get sensor_enum_camera_initializing_long => 'Kamera się inicjalizuje';
@@ -2910,7 +2910,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_enum_device_info_disconnected_long => 'Rozłączono';
 
   @override
-  String get sensor_enum_device_info_init => 'Init';
+  String get sensor_enum_device_info_init => 'Rozpoczęcie';
 
   @override
   String get sensor_enum_device_info_init_long => 'Inicjalizacja';
@@ -2934,7 +2934,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_enum_device_info_sleeping_long => 'Uśpione';
 
   @override
-  String get sensor_enum_device_info_stopped => 'Stop';
+  String get sensor_enum_device_info_stopped => 'Zatrzymywać się';
 
   @override
   String get sensor_enum_device_info_stopped_long => 'Zatrzymano';
@@ -2946,10 +2946,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_enum_device_info_lost_long => 'Utracono połączenie';
 
   @override
-  String get sensor_enum_device_info_alert => 'Alert';
+  String get sensor_enum_device_info_alert => 'Alarm';
 
   @override
-  String get sensor_enum_device_info_alert_long => 'Alert';
+  String get sensor_enum_device_info_alert_long => 'Alarm';
 
   @override
   String get sensor_enum_device_info_unknown => 'N/D';
@@ -2964,28 +2964,28 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_freshness_stale => 'Nieaktualne';
 
   @override
-  String get sensor_freshness_offline => 'Offline';
+  String get sensor_freshness_offline => 'Nieaktywny';
 
   @override
-  String get media_input_hdmi1 => 'HDMI 1';
+  String get media_input_hdmi1 => 'HDMI1';
 
   @override
-  String get media_input_hdmi2 => 'HDMI 2';
+  String get media_input_hdmi2 => 'HDMI2';
 
   @override
-  String get media_input_hdmi3 => 'HDMI 3';
+  String get media_input_hdmi3 => 'HDMI3';
 
   @override
-  String get media_input_hdmi4 => 'HDMI 4';
+  String get media_input_hdmi4 => 'HDMI4';
 
   @override
-  String get media_input_hdmi5 => 'HDMI 5';
+  String get media_input_hdmi5 => 'HDMI5';
 
   @override
-  String get media_input_hdmi6 => 'HDMI 6';
+  String get media_input_hdmi6 => 'HDMI6';
 
   @override
-  String get media_input_arc => 'ARC';
+  String get media_input_arc => 'ŁUK';
 
   @override
   String get media_input_earc => 'eARC';
@@ -3030,7 +3030,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_airplay => 'AirPlay';
 
   @override
-  String get media_input_cast => 'Chromecast';
+  String get media_input_cast => 'Chromecasta';
 
   @override
   String get media_input_dlna => 'DLNA';
@@ -3039,7 +3039,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_miracast => 'Miracast';
 
   @override
-  String get media_input_app_netflix => 'Netflix';
+  String get media_input_app_netflix => 'Netflixa';
 
   @override
   String get media_input_app_youtube => 'YouTube';
@@ -3048,7 +3048,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_app_spotify => 'Spotify';
 
   @override
-  String get media_input_app_prime_video => 'Prime Video';
+  String get media_input_app_prime_video => 'Najlepsze wideo';
 
   @override
   String get media_input_app_disney_plus => 'Disney+';
@@ -3057,10 +3057,10 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_input_app_hbo_max => 'HBO Max';
 
   @override
-  String get media_input_app_apple_tv => 'Apple TV';
+  String get media_input_app_apple_tv => 'Telewizja Apple';
 
   @override
-  String get media_input_app_plex => 'Plex';
+  String get media_input_app_plex => 'Pleks';
 
   @override
   String get media_input_app_kodi => 'Kodi';
@@ -3256,7 +3256,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get media_remote_exit => 'Wyjście';
 
   @override
-  String get media_remote_info => 'Info';
+  String get media_remote_info => 'Informacje';
 
   @override
   String get media_remote_rewind => 'Przewiń';
@@ -3399,7 +3399,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get sensor_label_sulphur_dioxide => 'Dwutlenek siarki';
 
   @override
-  String get sensor_label_voc => 'VOC';
+  String get sensor_label_voc => 'LZO';
 
   @override
   String get sensor_label_particulate_matter => 'Pyły zawieszone';
@@ -3521,10 +3521,10 @@ class AppLocalizationsPl extends AppLocalizations {
   }
 
   @override
-  String get sensor_ui_online => 'Online';
+  String get sensor_ui_online => 'W Internecie';
 
   @override
-  String get sensor_ui_offline => 'Offline';
+  String get sensor_ui_offline => 'Nieaktywny';
 
   @override
   String get sensor_ui_period_1h => '1H';
@@ -4078,7 +4078,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String buddy_voice_recording_timer(int seconds, int maxSeconds) {
-    return '${seconds}s / ${maxSeconds}s';
+    return '$seconds s / $maxSeconds s';
   }
 
   @override
@@ -4145,4 +4145,128 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get settings_display_screen_lock_never => 'Nigdy';
+
+  @override
+  String virtual_measurement_quality(String quality) {
+    return 'Jakość: $quality';
+  }
+
+  @override
+  String get virtual_measurement_members => 'Członkowie agregacji';
+
+  @override
+  String get virtual_measurement_conversion => 'Wejście konwertera';
+
+  @override
+  String get virtual_measurement_retry => 'Ponów diagnostykę';
+
+  @override
+  String get virtual_measurement_state_good => 'Dobra';
+
+  @override
+  String get virtual_measurement_state_degraded => 'Obniżona jakość';
+
+  @override
+  String get virtual_measurement_state_input_degraded => 'Obniżona jakość';
+
+  @override
+  String get virtual_measurement_state_unavailable => 'Niedostępne';
+
+  @override
+  String get virtual_measurement_state_runtime_unavailable => 'Niedostępne';
+
+  @override
+  String get virtual_measurement_state_ready => 'Gotowe';
+
+  @override
+  String get virtual_measurement_state_configured => 'Gotowe';
+
+  @override
+  String get virtual_measurement_state_missing => 'Brak źródła';
+
+  @override
+  String get virtual_measurement_state_incompatible => 'Niezgodny pomiar';
+
+  @override
+  String get virtual_measurement_state_incompatible_source =>
+      'Niezgodny pomiar';
+
+  @override
+  String get virtual_measurement_state_incompatible_output =>
+      'Niezgodny pomiar';
+
+  @override
+  String get virtual_measurement_state_incompatible_ntc_semantics =>
+      'Niezgodny pomiar';
+
+  @override
+  String get virtual_measurement_state_offline => 'Źródło offline';
+
+  @override
+  String get virtual_measurement_state_invalid => 'Nieprawidłowa wartość';
+
+  @override
+  String get virtual_measurement_state_invalid_input => 'Nieprawidłowa wartość';
+
+  @override
+  String get virtual_measurement_state_invalid_result =>
+      'Nieprawidłowa wartość';
+
+  @override
+  String get virtual_measurement_state_nonfinite_output =>
+      'Nieprawidłowa wartość';
+
+  @override
+  String get virtual_measurement_state_stale => 'Próbka wygasła';
+
+  @override
+  String get virtual_measurement_state_expired => 'Próbka wygasła';
+
+  @override
+  String get virtual_measurement_state_disabled => 'Wyłączone';
+
+  @override
+  String get virtual_measurement_state_output_disabled => 'Wyłączone';
+
+  @override
+  String get virtual_measurement_state_quorum_lost =>
+      'Za mało prawidłowych wejść';
+
+  @override
+  String get virtual_measurement_state_invalid_policy =>
+      'Nieprawidłowa konfiguracja';
+
+  @override
+  String get virtual_measurement_state_invalid_configuration =>
+      'Nieprawidłowa konfiguracja';
+
+  @override
+  String get virtual_measurement_state_awaiting_fresh_sample =>
+      'Oczekiwanie na świeżą próbkę';
+
+  @override
+  String get virtual_measurement_state_runtime_error => 'Błąd wykonania';
+
+  @override
+  String get virtual_measurement_state_graph_quarantined =>
+      'Graf zależności odizolowany';
+
+  @override
+  String get virtual_measurement_state_input_out_of_range =>
+      'Wartość poza zakresem';
+
+  @override
+  String get virtual_measurement_state_output_out_of_range =>
+      'Wartość poza zakresem';
+
+  @override
+  String get virtual_measurement_state_invalid_domain =>
+      'Poza dziedziną matematyczną';
+
+  @override
+  String get virtual_measurement_state_producer_disposed =>
+      'Producent zatrzymany';
+
+  @override
+  String get virtual_measurement_state_unknown => 'Nieznana diagnostyka';
 }
