@@ -49,9 +49,7 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
 
   factory VirtualChannelPropertyModel.fromJson(Map<String, dynamic> json) {
     final rawValue = json['value'];
-    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
-        ? PropertyValueState.fromJson(rawValue)
-        : null;
+    final PropertyValueState? valueState = PropertyValueState.fromRaw(rawValue);
 
     return VirtualChannelPropertyModel(
       channel: json['channel'],
