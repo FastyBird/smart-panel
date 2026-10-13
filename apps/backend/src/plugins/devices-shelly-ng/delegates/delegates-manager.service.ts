@@ -27,7 +27,11 @@ import {
 	hasQualifiedFloorSourceIdentity,
 	nativeTemperatureIdentity,
 } from '../contracts/native-temperature.contract';
-import { ShellyProtectiveCommand, ShellyProtectiveCommandResult } from '../contracts/protective-switch.contract';
+import {
+	ShellyProtectiveCommand,
+	ShellyProtectiveCommandResult,
+	ShellyProtectiveQualification,
+} from '../contracts/protective-switch.contract';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
 	DevicesShellyNgException,
@@ -47,6 +51,7 @@ import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { PollPlacementDiagnosticsService } from '../services/poll-placement-diagnostics.service';
+import { ShellyGuardFenceReadback, ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { ShellySampleSourceLease, ShellySampleSourcesService } from '../services/shelly-sample-sources.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
@@ -2358,6 +2363,44 @@ export class DelegatesManagerService {
 			property.id,
 			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value }),
 			sample.evidence,
+		);
+	}
+
+	prepareGuardRpcSession(
+		device: ShellyNgDeviceEntity,
+		componentId: number,
+		qualification: ShellyProtectiveQualification,
+	): ShellyGuardRpcSession | null {
+		if (
+			!device.identifier ||
+			qualification.guardScript?.canonicalMac.toUpperCase() !== device.canonicalMac?.toUpperCase()
+		)
+			return null;
+		for (const id of this.identifierToDelegates.get(device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (!delegate?.guardedTransportActive || this.delegateDeviceIds.get(id) !== device.id) continue;
+			const generation = this.sampleGenerations.get(id) ?? 0;
+			const lease = delegate.prepareGuardRpcSession(
+				componentId,
+				qualification,
+				() =>
+					this.delegates.get(id) === delegate &&
+					this.delegateDeviceIds.get(id) === device.id &&
+					(this.sampleGenerations.get(id) ?? 0) === generation,
+			);
+			if (lease?.isCurrent()) return lease;
+		}
+		return null;
+	}
+	async admitGuardFenceSample(
+		property: ShellyNgChannelPropertyEntity,
+		readback: ShellyGuardFenceReadback,
+	): Promise<void> {
+		if (!readback.isCurrent()) return;
+		await this.channelsPropertiesService.reportSample(
+			property.id,
+			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value: false }),
+			readback.evidence,
 		);
 	}
 

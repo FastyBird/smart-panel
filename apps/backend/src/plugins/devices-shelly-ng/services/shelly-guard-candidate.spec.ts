@@ -13,6 +13,9 @@ const config = {
 	firmware: 'fixture-only',
 	componentId: 0,
 	floorComponentId: 100,
+	floorComponentType: 'temperature',
+	floorAttribute: 'tC',
+	floorConfigurationJson: JSON.stringify({ id: 100, offset: 0 }),
 	epochKey: 'fixture-epoch',
 	evidenceId: 'offline-fixture-only',
 	scriptRestartDrainQualified: true,
@@ -38,6 +41,9 @@ class DeviceFixture {
 	output = false;
 	storedEpoch = 10;
 	floor = 20;
+	floorConfiguration: Record<string, unknown> = { id: 100, offset: 0 };
+	floorComponentType = 'temperature';
+	floorAttribute = 'tC';
 	readonly handlers = new Map<string, (request: unknown, params: unknown) => void>();
 	readonly calls: LocalCall[] = [];
 	readonly timers: (() => void)[] = [];
@@ -51,6 +57,7 @@ class DeviceFixture {
 			Shelly: {
 				getDeviceInfo: () => ({ id: config.deviceId, model: config.model, fw_id: config.firmware }),
 				getUptimeMs: () => this.time,
+				getComponentConfig: () => this.floorConfiguration,
 				getComponentStatus: (type: string) => (type === 'temperature' ? { tC: this.floor } : { output: this.output }),
 				call: (method: string, params: LocalCall['params'], callback: LocalCall['callback']) =>
 					this.calls.push({ method, params, callback }),
@@ -58,9 +65,10 @@ class DeviceFixture {
 					this.statusHandler = handler;
 				},
 			},
-			Script: {
-				addRpcHandler: (method: string, handler: (request: unknown, params: unknown) => void) =>
-					this.handlers.set(method, handler),
+			HTTPServer: {
+				registerEndpoint: (_name: string, handler: (request: unknown, response: unknown) => void) => {
+					this.handlers.set('http', handler);
+				},
 			},
 			Timer: { set: (_period: number, _repeat: boolean, handler: () => void) => this.timers.push(handler) },
 		});
@@ -90,24 +98,32 @@ class DeviceFixture {
 	}
 	request(method: string, params: Record<string, unknown> = {}): Reply {
 		const reply: Reply = {};
-		this.handlers.get(method)(
-			{
-				result: (result: Reply['result']) => {
-					reply.result = result;
-				},
-				error: (_code: number, error: string) => {
-					reply.error = error;
-				},
+		const response = {
+			code: 0,
+			body: '',
+			headers: [] as unknown[],
+			send: () => {
+				const parsed = JSON.parse(response.body) as Reply;
+				Object.assign(reply, parsed);
 			},
-			params,
-		);
+		};
+		const action = { SPGuardStatus: 'status', SPGuardFence: 'fence', SPGuardOn: 'on' }[method];
+		const query = new URLSearchParams({
+			action,
+			nonce: 'fixture',
+			...Object.fromEntries(
+				Object.entries(params).map(([key, value]) => [key, typeof value === 'number' ? String(value) : 'invalid']),
+			),
+		});
+		this.handlers.get('http')({ method: 'GET', query: query.toString() }, response);
 		return reply;
 	}
+
 	on(epoch = this.storedEpoch, untilMs = this.time + 5000): Reply {
 		return this.request('SPGuardOn', { epoch, untilMs });
 	}
 	floorReport(tC: unknown): void {
-		this.statusHandler({ component: 'temperature:100', delta: { tC } });
+		this.statusHandler({ component: `${this.floorComponentType}:100`, delta: { [this.floorAttribute]: tC } });
 	}
 }
 const fixture = (): DeviceFixture => {
@@ -173,7 +189,9 @@ describe('offline Shelly guard protocol candidate', () => {
 	it('rejects absolute expiry and out-of-bounds leases before issuing native ON', () => {
 		const device = fixture();
 		for (const deadline of [device.time, device.time + 500, device.time + 30001, Infinity])
-			expect(device.on(device.storedEpoch, deadline).error).toBe('on_expired_or_unqualified');
+			expect(device.on(device.storedEpoch, deadline).error).toBe(
+				deadline === Infinity ? 'invalid_query' : 'on_expired_or_unqualified',
+			);
 		expect(device.calls).toEqual([]);
 		device.on();
 		expect(device.calls[0].params).toEqual({ id: 0, on: true, toggle_after: 5 });
@@ -193,6 +211,61 @@ describe('offline Shelly guard protocol candidate', () => {
 		device.floorReport(32.9);
 		expect(device.on().error).toBeUndefined();
 	});
+	it('uses a qualified native Celsius helper and revokes admission after helper configuration changes', () => {
+		const device = new DeviceFixture();
+		device.floorComponentType = 'voltmeter';
+		device.floorAttribute = 'xvoltage';
+		device.floorConfiguration = { id: 100, xvoltage: { expr: 'fixture-only', unit: '°C' } };
+		device.start({
+			floorComponentType: 'voltmeter',
+			floorAttribute: 'xvoltage',
+			floorConfigurationJson: JSON.stringify(device.floorConfiguration),
+		});
+		device.boot();
+		expect(device.on().error).toBeUndefined();
+		device.complete('Switch.Set');
+		device.floorConfiguration = { id: 100, offset: 1 };
+		expect(device.on().error).toBe('on_not_admitted');
+		device.timers[0]();
+		expect(device.calls[0].params).toEqual({ id: 0, on: false });
+	});
+
+	it('converts raw NTC voltage using supplied calibration and rejects invalid electrical readings', () => {
+		const device = new DeviceFixture();
+		device.floorComponentType = 'voltmeter';
+		device.floorAttribute = 'voltage';
+		device.floor = 6.68;
+		device.floorConfiguration = { id: 100, xvoltage: { expr: null, unit: null } };
+		device.start({
+			floorComponentType: 'voltmeter',
+			floorAttribute: 'voltage',
+			floorConfigurationJson: JSON.stringify(device.floorConfiguration),
+			floorConversion: {
+				kind: 'steinhart_hart',
+				referenceVoltage: 10,
+				seriesResistance: 10000,
+				a: 0.0010351024725298568,
+				b: 0.0002338353574079741,
+				c: 7.917851073336009e-8,
+			},
+		});
+		device.boot();
+		expect(device.request('SPGuardStatus').result).toMatchObject({ floorSafe: true });
+		expect(device.request('SPGuardStatus').result.floorCelsius).toBeCloseTo(18.45, 2);
+		expect(device.on().error).toBeUndefined();
+		device.complete('Switch.Set');
+		device.floorReport(1);
+		expect(device.calls[0].params).toEqual({ id: 0, on: false });
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		for (const voltage of [null, '6.68', NaN, Infinity, 0, -1, 10, 11]) {
+			device.floorReport(voltage);
+			expect(device.on().error).toBe('on_not_admitted');
+			device.complete('Switch.Set');
+			device.complete('Switch.GetStatus');
+		}
+	});
+
 	it.each([null, '35', NaN])('invalid floor %s inhibits heat immediately', (value) => {
 		const device = fixture();
 		device.floorReport(value);

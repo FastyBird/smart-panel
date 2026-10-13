@@ -29,11 +29,56 @@ function now() {
 function reject(request, reason) {
 	request.error(-1, reason);
 }
+function conversionQualified() {
+	let conversion = cfg.floorConversion;
+	return (
+		cfg.floorComponentType === 'voltmeter' &&
+		cfg.floorAttribute === 'voltage' &&
+		conversion &&
+		conversion.kind === 'steinhart_hart' &&
+		finiteNumber(conversion.referenceVoltage) &&
+		conversion.referenceVoltage > 0 &&
+		finiteNumber(conversion.seriesResistance) &&
+		conversion.seriesResistance > 0 &&
+		finiteNumber(conversion.a) &&
+		finiteNumber(conversion.b) &&
+		finiteNumber(conversion.c)
+	);
+}
+function floorCelsius(value) {
+	if (!finiteNumber(value)) return null;
+	if (cfg.floorAttribute !== 'voltage') return value;
+	if (!conversionQualified() || value <= 0 || value >= cfg.floorConversion.referenceVoltage) return null;
+	let conversion = cfg.floorConversion;
+	let resistance = (conversion.seriesResistance * value) / (conversion.referenceVoltage - value);
+	if (!finiteNumber(resistance) || resistance <= 0) return null;
+	let logarithm = Math.log(resistance);
+	let inverse = conversion.a + (conversion.b + conversion.c * logarithm * logarithm) * logarithm;
+	if (!finiteNumber(inverse) || inverse <= 0) return null;
+	let temperature = 1 / inverse - 273.15;
+	return finiteNumber(temperature) ? temperature : null;
+}
+
 function floorSafe() {
-	return floorValue !== null && !floorLatched && now() - floorObservedAt < cfg.floorMaxAgeMs;
+	let floorConfig = Shelly.getComponentConfig(cfg.floorComponentType, cfg.floorComponentId);
+	let helper = floorConfig && floorConfig[cfg.floorAttribute];
+	let celsius =
+		conversionQualified() ||
+		cfg.floorComponentType === 'temperature' ||
+		(helper &&
+			typeof helper.expr === 'string' &&
+			helper.expr.length > 0 &&
+			(helper.unit === 'C' || helper.unit === '°C' || helper.unit === 'Celsius' || helper.unit === 'celsius'));
+	return (
+		celsius &&
+		JSON.stringify(floorConfig) === cfg.floorConfigurationJson &&
+		floorValue !== null &&
+		!floorLatched &&
+		now() - floorObservedAt < cfg.floorMaxAgeMs
+	);
 }
 function observeFloor(status) {
-	let value = status && status.tC;
+	let value = floorCelsius(status && status[cfg.floorAttribute]);
 	floorObservedAt = now();
 	if (typeof value !== 'number' || !finiteNumber(value) || (status.errors && status.errors.length > 0)) {
 		floorValue = null;
@@ -58,6 +103,7 @@ function view() {
 		busy: busy,
 		fault: fault,
 		floorSafe: floorSafe(),
+		floorCelsius: floorValue,
 		output: output && typeof output.output === 'boolean' ? output.output : null,
 	};
 }
@@ -190,7 +236,7 @@ function watchdog() {
 	if (!floorSafe() || now() >= until || fault) driveOff();
 }
 function floorUpdate(event) {
-	if (event.component !== 'temperature:' + cfg.floorComponentId) return;
+	if (event.component !== cfg.floorComponentType + ':' + cfg.floorComponentId) return;
 	observeFloor(event.delta);
 	if (!floorSafe()) driveOff();
 }
@@ -227,6 +273,67 @@ function startupEpoch(result, code) {
 	epoch = result.value + 1;
 	Shelly.call('KVS.Set', { key: cfg.epochKey, value: epoch }, startupPersist);
 }
+function validNonce(nonce) {
+	if (typeof nonce !== 'string' || nonce.length < 1 || nonce.length > 64) return false;
+	let allowed = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-';
+	for (let index = 0; index < nonce.length; index++) if (allowed.indexOf(nonce.charAt(index)) < 0) return false;
+	return true;
+}
+
+function handleHttp(request, response) {
+	let params = {};
+	let reply = {
+		result: function (value) {
+			response.code = 200;
+			response.body = JSON.stringify({ result: value, nonce: params.nonce });
+			response.send();
+		},
+		error: function (code, reason) {
+			response.code = 409;
+			response.body = JSON.stringify({ error: reason, nonce: params.nonce });
+			response.send();
+		},
+	};
+	response.headers = [
+		['Content-Type', 'application/json'],
+		['Cache-Control', 'no-store'],
+	];
+	if (request.method !== 'GET') {
+		reject(reply, 'method_not_allowed');
+		return;
+	}
+	let action = null;
+	let parts = (request.query || '').split('&');
+	try {
+		for (let index = 0; index < parts.length; index++) {
+			let field = parts[index].split('=');
+			if (field.length !== 2) {
+				reject(reply, 'invalid_query');
+				return;
+			}
+			if (field[0] === 'action' && action === null) action = field[1];
+			else if (field[0] === 'nonce' && params.nonce === undefined) params.nonce = field[1];
+			else if (field[0] === 'epoch' && params.epoch === undefined) params.epoch = JSON.parse(field[1]);
+			else if (field[0] === 'untilMs' && params.untilMs === undefined) params.untilMs = JSON.parse(field[1]);
+			else {
+				reject(reply, 'invalid_query');
+				return;
+			}
+		}
+	} catch (error) {
+		reject(reply, 'invalid_query');
+		return;
+	}
+	if (!validNonce(params.nonce)) {
+		reject(reply, 'invalid_nonce');
+		return;
+	}
+	if (action === 'status' && parts.length === 2) reply.result(view());
+	else if (action === 'fence' && parts.length === 2) fence(reply);
+	else if (action === 'on' && parts.length === 4) energize(reply, params);
+	else reject(reply, 'invalid_action');
+}
+
 function validConfig() {
 	return (
 		cfg &&
@@ -238,6 +345,12 @@ function validConfig() {
 		cfg.nativeWritersExcluded === true &&
 		integer(cfg.componentId) &&
 		integer(cfg.floorComponentId) &&
+		((cfg.floorComponentType === 'temperature' && cfg.floorAttribute === 'tC') ||
+			(cfg.floorComponentType === 'voltmeter' && cfg.floorAttribute === 'xvoltage') ||
+			conversionQualified() ||
+			(cfg.floorComponentType === 'input' && cfg.floorAttribute === 'xpercent')) &&
+		typeof cfg.floorConfigurationJson === 'string' &&
+		cfg.floorConfigurationJson &&
 		typeof cfg.epochKey === 'string' &&
 		cfg.epochKey &&
 		integer(cfg.minLeaseMs) &&
@@ -260,11 +373,7 @@ function validConfig() {
 if (!validConfig()) {
 	fail('installation_qualification_missing');
 } else {
-	Script.addRpcHandler('SPGuardStatus', function (request) {
-		request.result(view());
-	});
-	Script.addRpcHandler('SPGuardFence', fence);
-	Script.addRpcHandler('SPGuardOn', energize);
+	HTTPServer.registerEndpoint('spguard', handleHttp);
 	// A cached startup snapshot cannot refresh sensor freshness. Only actual
 	// sensor status reports qualify floor input; equal-report behavior needs testing.
 	Shelly.addStatusHandler(floorUpdate);

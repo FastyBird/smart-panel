@@ -26,6 +26,7 @@ import { ShellyRawSample, shellySampleEvidence } from '../contracts/native-tempe
 import {
 	ShellyProtectiveCommand,
 	ShellyProtectiveCommandResult,
+	ShellyProtectiveQualification,
 	protectiveReadiness,
 } from '../contracts/protective-switch.contract';
 import {
@@ -37,6 +38,7 @@ import {
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
+import { ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { emitFlattenedValue } from '../utils/transform.utils';
 
 type SupportedComponent =
@@ -269,6 +271,29 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		}
 
 		this.descriptor = matchedDescriptor;
+	}
+
+	prepareGuardRpcSession(
+		componentId: number,
+		qualification: ShellyProtectiveQualification,
+		isCurrent: () => boolean,
+	): ShellyGuardRpcSession | null {
+		const rpc = this.shelly.rpcHandler;
+		const component = this.switches.get(componentId);
+		if (!(rpc instanceof GuardedShellyRpcHandler) || !component || !rpc.connected) return null;
+		const generation = this.connectionGeneration;
+		return new ShellyGuardRpcSession(
+			rpc,
+			componentId,
+			qualification,
+			() =>
+				isCurrent() &&
+				this.shelly.rpcHandler === rpc &&
+				generation === this.connectionGeneration &&
+				this.switches.get(componentId) === component &&
+				this.shelly.id === qualification.deviceId &&
+				this.shelly.model === qualification.model,
+		);
 	}
 
 	revokePendingProtectiveOn(): void {
