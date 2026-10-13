@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
@@ -21,6 +21,7 @@ export interface ZigbeeSourceAdmission {
 /** Baselines are created only at new-device adoption or explicit compatible re-adoption. */
 @Injectable()
 export class ZigbeeSampleSourcesService implements OnModuleDestroy {
+	private readonly logger = new Logger(ZigbeeSampleSourcesService.name);
 	private closed = false;
 	private failed = false;
 	private readonly bindingEpochs = new Map<string, number>();
@@ -39,7 +40,7 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 		const changed =
 			next.size !== this.sources.size ||
 			[...next].some(([name, identity]) => this.sources.get(name)?.fingerprint !== identity.fingerprint);
-		if (!changed) return this.pendingChecks;
+		if (!changed && !this.failed) return this.pendingChecks;
 		this.sources.clear();
 		for (const [name, identity] of next) this.sources.set(name, identity);
 		for (const row of this.rows.values()) if (this.mismatch(row, identities)) this.blocked.add(row.propertyId);
@@ -59,8 +60,12 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 						{ quarantined: true, reason },
 					);
 				}
+				this.failed = false;
 			})
-			.catch(() => {
+			.catch((error: unknown) => {
+				this.logger.error(
+					`Zigbee source registry check failed: ${error instanceof Error ? error.message : typeof error === 'string' ? error : 'unknown error'}`,
+				);
 				this.failed = true;
 			});
 		return this.pendingChecks;
@@ -243,6 +248,7 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 		deviceId: string,
 		friendlyName: string,
 		requiredPropertyIds: readonly string[] = [],
+		options: { allowUnbound?: boolean } = {},
 	): Promise<{
 		allowed: boolean;
 		bound: boolean;
@@ -254,16 +260,22 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 		await this.pendingChecks;
 		const rows = await this.repository.find({ where: { deviceId } });
 		const bound = rows.length > 0;
+		const targetedRows =
+			requiredPropertyIds.length > 0 ? rows.filter((row) => requiredPropertyIds.includes(row.propertyId)) : rows;
 		const isCurrent = (): boolean =>
 			!this.closed &&
 			!this.failed &&
 			epoch === (this.bindingEpochs.get(deviceId) ?? 0) &&
-			((!bound && requiredPropertyIds.length === 0) ||
+			((!bound && (options.allowUnbound === true || requiredPropertyIds.length === 0)) ||
 				Boolean(
 					identity &&
 					this.sources.get(friendlyName) === identity &&
 					requiredPropertyIds.every((id) => rows.some((row) => row.propertyId === id)) &&
-					rows.every(
+					// Quarantined dropped leaves retain historical routing; active bindings must match.
+					rows
+						.filter((row) => !row.quarantined)
+						.every((row) => row.ieeeAddress === identity.ieeeAddress && row.friendlyName === friendlyName) &&
+					targetedRows.every(
 						(row) =>
 							!row.quarantined &&
 							!this.blocked.has(row.propertyId) &&

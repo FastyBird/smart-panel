@@ -1974,7 +1974,11 @@ export class DelegatesManagerService {
 						componentKey: source.componentKey,
 						values: {},
 						evidence: { sampledAt: new Date(), receivedAt: new Date(), observedAt: new Date(), provenance: 'live' },
-					});
+					}).catch((error: Error) =>
+						this.logger.error(
+							`Failed to invalidate Shelly sample for property=${source.property.id}: ${error.message}`,
+						),
+					);
 				}
 			}
 
@@ -1983,6 +1987,14 @@ export class DelegatesManagerService {
 
 			if (state === true) {
 				if (wasConnected) return;
+				for (const source of this.sampleSources.get(delegate.id) ?? []) {
+					if (hasQualifiedFloorSourceIdentity(source.channel.identifier))
+						void this.sampleSourcesRegistry
+							?.get(source.property.id)
+							.catch((error: Error) =>
+								this.logger.error(`Failed to activate Shelly sample source=${source.property.id}: ${error.message}`),
+							);
+				}
 
 				this.delegateConnectedState.set(delegate.id, true);
 				this.pollPlacementDiagnostics.observeDelegate({
@@ -2191,11 +2203,14 @@ export class DelegatesManagerService {
 		this.sampleHandlers.delete(delegate.id);
 		delegate.setSampleComponentKeys([]);
 		for (const source of this.sampleSources.get(delegate.id) ?? []) {
+			this.sampleSourcesRegistry?.revoke(source.property.id);
 			await this.admitRawSample(source.property, null, {
 				componentKey: source.componentKey,
 				values: {},
 				evidence: { sampledAt: new Date(), receivedAt: new Date(), observedAt: new Date(), provenance: 'live' },
-			});
+			}).catch((error: Error) =>
+				this.logger.error(`Failed to invalidate Shelly sample for property=${source.property.id}: ${error.message}`),
+			);
 			this.sampleRevisions.delete(`${delegate.id}|${source.property.id}`);
 		}
 		this.sampleSources.delete(delegate.id);
@@ -2263,7 +2278,10 @@ export class DelegatesManagerService {
 			const generation = this.sampleGenerations.get(delegate.id) ?? 0;
 			for (const source of sources.filter((item) => item.componentKey === sample.componentKey)) {
 				const errors = sample.values.errors;
-				const fault = Array.isArray(errors) && errors.length > 0;
+				const fault =
+					Array.isArray(errors) &&
+					errors.length > 0 &&
+					(source.attribute !== 'output' || errors.includes('source_missing'));
 				if (!Object.hasOwn(sample.values, source.attribute) && !fault) continue;
 				const key = `${delegate.id}|${source.property.id}`;
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
@@ -2327,11 +2345,28 @@ export class DelegatesManagerService {
 						sourceProof = true;
 					}
 					if (!isCurrent()) return;
+					// Verified live ordinary reports may use capture time; probes retain invalid device-clock evidence.
+					const evidence = sample.evidence;
+					const observedAt = evidence.observedAt;
+					const invalidDeviceClock =
+						!Number.isFinite(evidence.sampledAt.getTime()) ||
+						evidence.sampledAt.getTime() > evidence.receivedAt.getTime();
+					const ordinarySample =
+						!hasQualifiedFloorSourceIdentity(source.channel.identifier) &&
+						invalidDeviceClock &&
+						evidence.provenance === 'live' &&
+						(evidence.sourceIsCurrent?.() ?? evidence.isCurrent?.()) === true &&
+						sourceIsCurrent() &&
+						observedAt instanceof Date &&
+						Number.isFinite(observedAt.getTime()) &&
+						observedAt.getTime() <= evidence.receivedAt.getTime()
+							? { ...sample, evidence: { ...evidence, sampledAt: observedAt } }
+							: sample;
 					// Legacy dynamic channels remain displayable; only the address-bound probe source is control-eligible.
 					const admitted =
 						value !== null && /^temperature:1\d\d$/.test(source.channel.identifier)
 							? { ...sample, evidence: { ...sample.evidence, provenance: 'cached' as const } }
-							: sample;
+							: ordinarySample;
 					await admit(value, admitted);
 				})();
 				let active = this.activeSamples.get(delegate.id);

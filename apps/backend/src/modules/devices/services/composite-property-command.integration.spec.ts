@@ -1,9 +1,20 @@
 /* eslint-disable @typescript-eslint/require-await -- Async platform/metadata fixture methods intentionally implement provider contracts. */
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { ShellyNgDeviceEntity } from '../../../plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
+import {
+	ShellyNgChannelEntity,
+	ShellyNgChannelPropertyEntity,
+	ShellyNgDeviceEntity,
+} from '../../../plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ShellyNgDevicePlatform } from '../../../plugins/devices-shelly-ng/platforms/shelly-ng.device.platform';
 import { WledDeviceEntity } from '../../../plugins/devices-wled/entities/devices-wled.entity';
-import { DataTypeType, PermissionType } from '../devices.constants';
+import {
+	Zigbee2mqttChannelEntity,
+	Zigbee2mqttChannelPropertyEntity,
+	Zigbee2mqttDeviceEntity,
+} from '../../../plugins/devices-zigbee2mqtt/entities/devices-zigbee2mqtt.entity';
+import { Zigbee2mqttDevicePlatform } from '../../../plugins/devices-zigbee2mqtt/platforms/zigbee2mqtt.device.platform';
+import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePropertyData } from '../platforms/device.platform';
 
@@ -110,6 +121,80 @@ describe('core opt-in composite commands', () => {
 		expect(platforms.size).toBe(2);
 		for (const platform of platforms.values()) expect(platform.processBatch).toHaveBeenCalledTimes(1);
 	});
+	it.each([true, false])(
+		'dispatches real prepared Shelly and Zigbee platforms with Zigbee qualified=%s',
+		async (qualified) => {
+			const shelly = update('shelly', true, new ShellyNgDeviceEntity());
+			shelly.device.identifier = 'shelly-light';
+			shelly.channel = Object.assign(new ShellyNgChannelEntity(), {
+				id: 'shelly-channel',
+				identifier: 'light:0',
+				device: shelly.device,
+			});
+			shelly.property = Object.assign(new ShellyNgChannelPropertyEntity(), {
+				...shelly.property,
+				channel: shelly.channel,
+				category: PropertyCategory.ON,
+				identifier: 'output',
+			});
+			const zigbee = update('zigbee', true, new Zigbee2mqttDeviceEntity());
+			zigbee.device.identifier = 'zigbee-light';
+			zigbee.channel = Object.assign(new Zigbee2mqttChannelEntity(), {
+				id: 'zigbee-channel',
+				device: zigbee.device,
+			});
+			zigbee.property = Object.assign(new Zigbee2mqttChannelPropertyEntity(), {
+				...zigbee.property,
+				channel: zigbee.channel,
+				category: PropertyCategory.ON,
+				identifier: 'state',
+			});
+			const fixture = setup([
+				{ memberId: 'shelly', update: shelly },
+				{ memberId: 'zigbee', update: zigbee },
+			]);
+			const shellyWrite = jest.fn(async (guard: () => boolean) => {
+				if (!guard()) return false;
+				return fixture.processBatch([shelly]);
+			});
+			const shellyPlatform = new ShellyNgDevicePlatform({
+				prepareLightingCommand: () => Promise.resolve({ isCurrent: () => true, dispatch: shellyWrite }),
+			} as never);
+			const publishCommand = jest.fn(async (_name: string, _payload: unknown, guard: () => boolean) => {
+				if (!guard()) return false;
+				return fixture.processBatch([zigbee]);
+			});
+			const adapter = { isConnected: () => true, getSourceIdentityGuard: () => () => true, publishCommand };
+			const prepareDispatch = jest
+				.fn()
+				.mockResolvedValue({ allowed: qualified, bound: qualified, isCurrent: () => true });
+			const zigbeePlatform = new Zigbee2mqttDevicePlatform(
+				{ getActiveAdapter: () => adapter } as never,
+				{} as never,
+				{ getWriteMapping: () => ({ z2mProperty: 'state', transformer: { write: () => 'ON' } }) } as never,
+				{
+					getPropertySampleMapping: () => ({ field: 'state', transformer: null }),
+					transformWriteValue: () => null,
+				} as never,
+				{ prepareDispatch } as never,
+			);
+			Object.assign(fixture.platforms.get(shelly.device.type), {
+				prepareCompositeBatch: (targets: IDevicePropertyData[]) => shellyPlatform.prepareCompositeBatch(targets),
+			});
+			Object.assign(fixture.platforms.get(zigbee.device.type), {
+				prepareCompositeBatch: (targets: IDevicePropertyData[]) => zigbeePlatform.prepareCompositeBatch(targets),
+			});
+			const result = await fixture.dispatch.dispatchBatch([update('group')]);
+			expect(result.composite.children.map((child) => child.status)).toEqual([
+				'confirmed',
+				qualified ? 'confirmed' : 'unavailable',
+			]);
+			expect(shellyWrite).toHaveBeenCalledTimes(1);
+			expect(prepareDispatch).toHaveBeenCalledWith(zigbee.device.id, 'zigbee-light', ['zigbee']);
+			if (qualified) expect(publishCommand).toHaveBeenCalledWith('zigbee-light', { state: 'ON' }, expect.any(Function));
+			else expect(publishCommand).not.toHaveBeenCalled();
+		},
+	);
 	it('rejects contradictory canonical values before any platform call', async () => {
 		const { dispatch, processBatch } = setup([
 			{ memberId: 'a', update: update('a') },
@@ -147,6 +232,26 @@ describe('core opt-in composite commands', () => {
 		expect(result.composite.status).toBe('failed');
 		expect(result.composite.children[0].status).toBe('timed_out');
 		expect(fixture.windows.get('a')).toBeNull();
+	});
+	it('classifies a deadline timer that fires before the wall clock reaches its deadline', async () => {
+		jest.useFakeTimers({ doNotFake: ['Date'] });
+		const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+		const fixture = setup([{ memberId: 'a', update: update('a') }]);
+		fixture.processBatch.mockImplementationOnce(() => new Promise<boolean>(() => {}));
+		try {
+			const pending = fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 30 });
+			for (let step = 0; step < 100 && fixture.processBatch.mock.calls.length === 0; step++) await Promise.resolve();
+			expect(fixture.processBatch).toHaveBeenCalledTimes(1);
+			await jest.advanceTimersByTimeAsync(30);
+			const result = await pending;
+			expect(Date.now()).toBe(1000);
+			expect(result.composite.children[0].status).toBe('timed_out');
+			expect(fixture.windows.get('a')).toBeNull();
+		} finally {
+			fixture.dispatch.onModuleDestroy();
+			clock.mockRestore();
+			jest.useRealTimers();
+		}
 	});
 	it('preserves one compound physical channel batch rather than racing individual RGB writes', async () => {
 		const red = update('red');
