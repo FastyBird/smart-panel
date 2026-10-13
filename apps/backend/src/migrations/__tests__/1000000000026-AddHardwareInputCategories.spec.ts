@@ -315,7 +315,10 @@ describe('migration transaction compatibility', () => {
 		try {
 			const executed = await dataSource.runMigrations();
 
-			expect(executed.at(-1)?.name).toBe('AddHardwareInputCategories1000000000026');
+			expect(executed.map((migration) => migration.name).sort()).toEqual(
+				dataSource.migrations.map((migration) => migration.name ?? migration.constructor.name).sort(),
+			);
+			expect(executed.some((migration) => migration.name === 'AddHardwareInputCategories1000000000026')).toBe(true);
 			expect(await dataSource.query(`PRAGMA integrity_check`)).toEqual([{ integrity_check: 'ok' }]);
 			expect(await dataSource.query(`PRAGMA foreign_key_check`)).toEqual([]);
 

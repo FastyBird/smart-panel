@@ -28,6 +28,14 @@ describe('VirtualChannelPropertyEntity', () => {
 		return property;
 	};
 
+	it('keeps a materialized derived output in its own series rather than treating it as a projection', () => {
+		const property = propertyWith({ valueOrigin: VirtualValueOrigin.DERIVED, sourcePropertyId: null });
+		expect(property.isDerived).toBe(true);
+		expect(property.isProjecting).toBe(false);
+		expect(property.isOrphaned).toBe(false);
+		expect(property.isLinked).toBe(false);
+	});
+
 	describe('update transform', () => {
 		// Regression test. `valueOrigin` used to carry a class field initializer
 		// (`= VirtualValueOrigin.SOURCE`). class-transformer builds its target with `new Target()`

@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
+import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import type {
 	DevicesVirtualPluginCreateDeviceSchema,
 	DevicesVirtualPluginDeviceSchema,
@@ -12,9 +13,16 @@ type ApiCreateDevice = DevicesVirtualPluginCreateDeviceSchema;
 type ApiUpdateDevice = DevicesVirtualPluginUpdateDeviceSchema;
 type ApiDevice = DevicesVirtualPluginDeviceSchema;
 
-// Virtual devices have no device-level field of their own, so the base device store schema is used
-// unmodified.
-export const VirtualDeviceSchema = DeviceSchema;
+export const VirtualDeviceModeSchema = z.enum(DevicesVirtualPluginDeviceMode);
+const AuthorableVirtualDeviceModeSchema = z.enum([
+	DevicesVirtualPluginDeviceMode.projection,
+	DevicesVirtualPluginDeviceMode.sensor_aggregate,
+	DevicesVirtualPluginDeviceMode.actuator_group,
+]);
+
+export const VirtualDeviceSchema = DeviceSchema.extend({
+	mode: VirtualDeviceModeSchema.default(DevicesVirtualPluginDeviceMode.projection),
+});
 
 // BACKEND API
 // ===========
@@ -22,17 +30,20 @@ export const VirtualDeviceSchema = DeviceSchema;
 export const VirtualDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCreateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_VIRTUAL_TYPE),
+		mode: AuthorableVirtualDeviceModeSchema.optional(),
 	})
 );
 
 export const VirtualDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_VIRTUAL_TYPE),
+		mode: AuthorableVirtualDeviceModeSchema.optional(),
 	})
 );
 
 export const VirtualDeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_VIRTUAL_TYPE),
+		mode: VirtualDeviceModeSchema.default(DevicesVirtualPluginDeviceMode.projection),
 	})
 );

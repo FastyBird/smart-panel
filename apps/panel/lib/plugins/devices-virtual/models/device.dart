@@ -4,9 +4,29 @@ import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart
 import 'package:fastybird_smart_panel/plugins/devices-virtual/constants.dart';
 import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
+enum VirtualDeviceMode {
+  projection,
+  sensorAggregate,
+  actuatorGroup,
+  climateController,
+  sensorTransform,
+  unknown;
+
+  static VirtualDeviceMode fromJson(dynamic value) => switch (value) {
+    null || 'projection' => VirtualDeviceMode.projection,
+    'sensor_aggregate' => VirtualDeviceMode.sensorAggregate,
+    'actuator_group' => VirtualDeviceMode.actuatorGroup,
+    'climate_controller' => VirtualDeviceMode.climateController,
+    'sensor_transform' => VirtualDeviceMode.sensorTransform,
+    _ => VirtualDeviceMode.unknown,
+  };
+}
+
 class VirtualDeviceModel extends DeviceModel {
+  final VirtualDeviceMode mode;
   VirtualDeviceModel({
     required super.id,
+    this.mode = VirtualDeviceMode.projection,
     super.category = DevicesModuleDeviceCategory.generic,
     required super.name,
     super.description,
@@ -20,9 +40,7 @@ class VirtualDeviceModel extends DeviceModel {
     super.lastStateChange,
     super.createdAt,
     super.updatedAt,
-  }) : super(
-          type: virtualDeviceType,
-        );
+  }) : super(type: virtualDeviceType);
 
   factory VirtualDeviceModel.fromJson(Map<String, dynamic> json) {
     DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.fromJson(
@@ -80,6 +98,7 @@ class VirtualDeviceModel extends DeviceModel {
 
     return VirtualDeviceModel(
       id: json['id'],
+      mode: VirtualDeviceMode.fromJson(json['mode']),
       category: category,
       name: json['name'],
       description: json['description'],
