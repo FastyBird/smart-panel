@@ -67,8 +67,10 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 				}
 
 				this.client = mqtt.connect(brokerUrl, options);
+				const client = this.client;
 
 				this.client.on('connect', () => {
+					if (this.client !== client) return;
 					this.logger.log('Connected to MQTT broker');
 					this.connected = true;
 
@@ -89,6 +91,7 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 				});
 
 				this.client.on('close', () => {
+					if (this.client !== client) return;
 					const wasConnected = this.connected;
 					this.connected = false;
 					this.bridgeOnline = false;
@@ -106,6 +109,7 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 				});
 
 				this.client.on('message', (topic, payload, packet) => {
+					if (this.client !== client || !this.connected) return;
 					const isRetained = packet?.retain === true;
 					const isDup = packet?.dup === true;
 					const packetId = packet?.messageId;
@@ -148,7 +152,12 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 	/**
 	 * Publish a command to a device
 	 */
-	async publishCommand(friendlyName: string, payload: Z2mSetPayload): Promise<boolean> {
+	async publishCommand(
+		friendlyName: string,
+		payload: Z2mSetPayload,
+		isCurrent: () => boolean = () => true,
+	): Promise<boolean> {
+		if (!isCurrent()) return false;
 		if (!this.client || !this.connected) {
 			this.logger.warn('Cannot publish: not connected to MQTT broker');
 			return false;
@@ -160,6 +169,10 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 		this.logger.debug(`Publishing to ${topic}: ${message}`);
 
 		return new Promise((resolve) => {
+			if (!isCurrent()) {
+				resolve(false);
+				return;
+			}
 			this.client?.publish(topic, message, { qos: 1 }, (error) => {
 				if (error) {
 					this.logger.error(`Failed to publish to ${topic}`, {
