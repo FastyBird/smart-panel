@@ -13,16 +13,27 @@ const code = 'offline fixture script';
 class FixtureRpc extends GuardedShellyRpcHandler {
 	firmware = 'fixture-only';
 	scriptCode = code;
+	floorConfig = { id: 100, offset_C: 0 };
+	peripherals = { ds18b20: { 'temperature:100': { addr: 'fixture' } } };
+	switchConfig = { id: 0, initial_state: 'off', in_locked: true };
+	methods: string[] = [];
 	protected override createSocket(): WebSocket {
 		return Object.assign(new EventEmitter(), {
 			readyState: WebSocket.OPEN,
 			send: (data: string, callback: () => void) => {
 				const frame = JSON.parse(data) as { id: number; method: string };
 				callback();
+				this.methods.push(frame.method);
 				const result =
 					frame.method === 'Shelly.GetDeviceInfo'
 						? { id: 'physical', model: 'SNSW-001P16EU', fw_id: this.firmware, mac: '000000000001' }
-						: { data: this.scriptCode, left: 0 };
+						: frame.method === 'Temperature.GetConfig'
+							? this.floorConfig
+							: frame.method === 'SensorAddon.GetPeripherals'
+								? this.peripherals
+								: frame.method === 'Switch.GetConfig'
+									? this.switchConfig
+									: { data: this.scriptCode, left: 0 };
 				queueMicrotask(() => this.client.receive({ jsonrpc: '2.0', id: frame.id, result }));
 			},
 		}) as unknown as WebSocket;
@@ -113,6 +124,45 @@ describe('guarded SDK identity plus qualified Shelly 1.7 HTTP guard bridge', () 
 	afterEach(async () => {
 		await rpc.destroy();
 		await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+	});
+	it('inspects code, firmware, nonce status and component/peripheral metadata using reads only', async () => {
+		const metadata = {
+			componentType: 'temperature',
+			componentId: 100,
+			configurationJson: JSON.stringify(rpc.floorConfig),
+			switchConfigurationJson: JSON.stringify(rpc.switchConfig),
+			peripheralsJson: JSON.stringify(rpc.peripherals),
+		};
+		const lease = await session.inspectInstallation(metadata, 1000, () => true);
+		expect(lease?.isCurrent()).toBe(true);
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status']);
+		expect(rpc.methods).toEqual([
+			'Shelly.GetDeviceInfo',
+			'Script.GetCode',
+			'Temperature.GetConfig',
+			'SensorAddon.GetPeripherals',
+			'Switch.GetConfig',
+		]);
+		current = false;
+		expect(lease.isCurrent()).toBe(false);
+	});
+	it('refuses stale peripheral or floor metadata before any ON or fence send', async () => {
+		Object.assign(qualification, {
+			guardScript: {
+				...qualification.guardScript,
+				installationMetadata: {
+					componentType: 'temperature',
+					componentId: 100,
+					configurationJson: JSON.stringify(rpc.floorConfig),
+					switchConfigurationJson: JSON.stringify(rpc.switchConfig),
+					peripheralsJson: JSON.stringify(rpc.peripherals),
+				},
+			},
+		});
+		rpc.peripherals.ds18b20['temperature:100'].addr = 'replacement-probe';
+		expect((await session.on(5, 1000, () => true)).outcome).toBe('refused');
+		expect(await session.fence(1000, () => true)).toBeNull();
+		expect(requests).toHaveLength(0);
 	});
 	it('uses one immutable absolute expiry for ON and never treats acceptance as output proof', async () => {
 		expect(await session.on(5, 1000, () => true)).toEqual({
