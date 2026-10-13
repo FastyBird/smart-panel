@@ -32,11 +32,9 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
     DevicesVirtualPluginDataChannelPropertyValueOrigin valueOrigin =
         DevicesVirtualPluginDataChannelPropertyValueOrigin.source,
     String? sourceProperty,
-  })  : _valueOrigin = valueOrigin,
-        _sourceProperty = sourceProperty,
-        super(
-          type: virtualDeviceType,
-        );
+  }) : _valueOrigin = valueOrigin,
+       _sourceProperty = sourceProperty,
+       super(type: virtualDeviceType);
 
   /// Whether the value is read from and written to [sourceProperty], or
   /// stored locally under this property's own id.
@@ -46,6 +44,17 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
   /// Property whose value this one projects. Null once the source has been
   /// deleted, or when [valueOrigin] is `local`.
   String? get sourceProperty => _sourceProperty;
+
+  bool get isProjecting =>
+      valueOrigin == DevicesVirtualPluginDataChannelPropertyValueOrigin.source;
+
+  // Using the serialized value keeps this handwritten mapper compatible while generated
+  // clients are regenerated from the backend's new enum member.
+  bool get isDerived => valueOrigin.json == 'derived';
+
+  bool get isOrphaned => isProjecting && sourceProperty == null;
+
+  bool get isLinked => isProjecting && sourceProperty != null;
 
   factory VirtualChannelPropertyModel.fromJson(Map<String, dynamic> json) {
     final rawValue = json['value'];
@@ -64,8 +73,9 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
           .toList(),
       dataType: DevicesModuleDataType.fromJson(json['data_type']),
       unit: json['unit'],
-      format:
-          json['format'] != null ? FormatType.fromJson(json['format']) : null,
+      format: json['format'] != null
+          ? FormatType.fromJson(json['format'])
+          : null,
       invalid: json['invalid'] != null
           ? InvalidValueType.fromJson(json['invalid'])
           : null,
@@ -81,7 +91,7 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
           ? DateTime.parse(json['updated_at'])
           : null,
       valueOrigin: DevicesVirtualPluginDataChannelPropertyValueOrigin.fromJson(
-        json['value_origin'],
+        json['value_origin'] ?? 'source',
       ),
       sourceProperty: json['source_property'] != null
           ? UuidUtils.validateUuid(json['source_property'])
