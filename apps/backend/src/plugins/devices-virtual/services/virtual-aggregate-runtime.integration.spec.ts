@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -524,5 +525,118 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		expect(outputState(output).producer.reasons).toContain('graph_quarantined');
 		expect(values.readQualifiedSample(a, 10000)?.value).toBe(20);
 		expect(producers.owns(a.id)).toBe(false);
+	});
+
+	it('keeps bootstrap alive after a transient SQLite evaluation fault and retries on the next tick', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await state.onModuleInit();
+		await graph.onApplicationBootstrap();
+		const failure = new Error('transient aggregate read');
+		const original = database.manager.find.bind(database.manager) as typeof database.manager.find;
+		const read = jest.spyOn(database.manager, 'find').mockRejectedValueOnce(failure);
+		const logged = jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation();
+		try {
+			await expect(runtime.onApplicationBootstrap()).resolves.toBeUndefined();
+			await expect(runtime.flush()).resolves.toBeUndefined();
+			expect(logged).toHaveBeenCalledTimes(1);
+			expect(logged).toHaveBeenCalledWith(expect.stringContaining('Aggregate evaluation failed'), failure);
+			expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+			read.mockImplementation(original);
+			jest.advanceTimersByTime(1000);
+			await runtime.flush();
+			expect(runtime.isActive()).toBe(true);
+			await sample(a, 21);
+			await sample(b, 23);
+			expect(outputState(output)).toMatchObject({ value: 22, producer: { quality: 'good' } });
+		} finally {
+			read.mockRestore();
+			logged.mockRestore();
+		}
+	});
+
+	it('clears live authority on evaluation failure and recovers on the next source event', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await start();
+		await sample(a, 20);
+		await sample(b, 24);
+		const failure = new Error('transient connectivity read');
+		const connection = jest.spyOn(
+			(runtime as unknown as { connectivity: DeviceConnectionStateService }).connectivity,
+			'readLatest',
+		);
+		connection.mockRejectedValueOnce(failure);
+		const logged = jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation();
+		try {
+			events.emit(EventType.DEVICE_CONNECTION_CHANGED, (a.channel as ChannelEntity).device);
+			await expect(runtime.flush()).resolves.toBeUndefined();
+			expect(logged).toHaveBeenCalledTimes(1);
+			expect(outputState(output)).toMatchObject({
+				value: null,
+				producer: { quality: 'unavailable', reasons: ['runtime_error'] },
+			});
+			await sample(a, 22);
+			expect(outputState(output)).toMatchObject({ value: 23, producer: { quality: 'good' } });
+		} finally {
+			connection.mockRestore();
+			logged.mockRestore();
+		}
+	});
+
+	it('returns a committed configuration when graph refresh encounters an evaluation fault', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await start();
+		await sample(a, 20);
+		await sample(b, 22);
+		const badInputId = uuid();
+		await database.manager.insert(VirtualAggregateInputEntity, {
+			id: badInputId,
+			outputPropertyId: output.id,
+			sourcePropertyId: output.id,
+			sourcePropertyIdentity: output.id,
+			quantity: PropertyCategory.TEMPERATURE,
+			unit: '°C',
+		});
+		await graph.refreshQuarantine();
+		await database.manager.delete(VirtualAggregateInputEntity, badInputId);
+		const failure = new Error('transient connectivity read after commit');
+		const connection = jest.spyOn(
+			(runtime as unknown as { connectivity: DeviceConnectionStateService }).connectivity,
+			'readLatest',
+		);
+		connection.mockRejectedValueOnce(failure);
+		const logged = jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation();
+		const invalidate = jest.spyOn(producers, 'invalidate');
+		try {
+			const updated = await configs.configureAggregate(
+				output.id,
+				Object.assign(new ConfigureVirtualAggregateDto(), {
+					expectedRevision: 1,
+					operator: VirtualAggregateOperator.MAX,
+					minimumValidInputs: 2,
+					maximumAgeSeconds: 10,
+					inputs: [{ sourcePropertyId: a.id }, { sourcePropertyId: b.id }],
+				}),
+			);
+			await runtime.flush();
+			expect(updated.revision).toBe(2);
+			expect(logged).toHaveBeenCalledTimes(1);
+			expect(invalidate).toHaveBeenCalledWith(expect.anything(), ['runtime_error']);
+			expect(outputState(output)).toMatchObject({ value: 22, producer: { quality: 'good', revision: 2 } });
+			await sample(a, 24);
+			expect(outputState(output)).toMatchObject({ value: 24, producer: { quality: 'good', revision: 2 } });
+		} finally {
+			connection.mockRestore();
+			logged.mockRestore();
+			invalidate.mockRestore();
+		}
 	});
 });
