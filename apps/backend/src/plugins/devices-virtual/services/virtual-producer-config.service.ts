@@ -1,7 +1,7 @@
 import { DataSource, EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import {
@@ -15,6 +15,7 @@ import {
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import {
@@ -39,6 +40,7 @@ import {
 } from '../models/producer-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { commonLightCapabilities } from './virtual-light-group.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
@@ -371,6 +373,43 @@ export class VirtualProducerConfigService {
 			new Set(bindings.map((binding) => binding.id)).size !== bindings.length
 		)
 			throw new DevicesValidationException('Member identities and binding UUIDs must be distinct.');
+		const capabilities = commonLightCapabilities(
+			await Promise.all(
+				members.map(async (member) => {
+					if (!member.sourceChannelId) return [];
+					return manager.find(ChannelPropertyEntity, { where: { channel: { id: member.sourceChannelId } } });
+				}),
+			),
+		);
+		// Missing identities retain their last durable contract; live metadata is checked again at runtime.
+		for (const output of exposed) {
+			const liveSources = bindings.filter(
+				(binding) => binding.outputPropertyId === output.id && binding.sourcePropertyId,
+			);
+			if (liveSources.length !== members.length) continue;
+			const common = capabilities.find((capability) => capability.category === output.category);
+			const numericRange = common?.format?.length === 2 && common.format.every((value) => typeof value === 'number');
+			if (
+				!common ||
+				common.dataType !== output.dataType ||
+				common.unit !== (resolvePropertyUnit(output) ?? null) ||
+				(numericRange &&
+					(!output.format ||
+						output.format.length !== 2 ||
+						Number(output.format[0]) < Number(common.format[0]) ||
+						Number(output.format[1]) > Number(common.format[1]))) ||
+				(common.step &&
+					(!output.step ||
+						!matchesStep(output.step, common.step, 0) ||
+						!matchesStep(Number(output.format?.[0] ?? 0), common.step, Number(common.format?.[0] ?? 0))))
+			) {
+				if (existing)
+					throw new ConflictException(
+						`Membership edit would remove capability ${output.category}; repair its scene/tile references and exposed contract explicitly.`,
+					);
+				throw new DevicesValidationException(`Exposed capability ${output.category} is not common to all members.`);
+			}
+		}
 		await this.graph.validateReplacement(
 			manager,
 			exposed.map((property) => property.id),

@@ -382,6 +382,7 @@ export class ChannelsPropertiesController {
 
 		if (typeof commandValue !== 'undefined' && commandValue !== null) {
 			if (
+				!this.propertyCommandService.canExecuteCompositeProperty?.(property) &&
 				!property.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)

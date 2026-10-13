@@ -161,7 +161,7 @@ export class SceneExecutorService {
 				const uniqueReasons = [...new Set(actionResults.filter((r) => !r.success && r.error).map((r) => r.error))];
 				const reasonsSuffix = uniqueReasons.length > 0 ? `: ${uniqueReasons.join('; ')}` : '';
 
-				if (result.successfulActions > 0) {
+				if (result.successfulActions > 0 || actionResults.some((action) => action.composite?.status === 'partial')) {
 					result.status = SceneExecutionStatus.PARTIALLY_COMPLETED;
 					result.error = `${result.failedActions} action(s) failed${reasonsSuffix}`;
 				} else {

@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
+
 import { Injectable, Optional } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { PermissionType } from '../devices.constants';
 import { PropertyValueState } from '../models/property-value-state.model';
@@ -7,9 +10,15 @@ import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/pro
 
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import {
+	CompositeChildOutcome,
+	CompositeCommandOutcome,
+	CompositePropertyCommandRegistryService,
+} from './composite-property-command.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
 import {
 	PropertyCommandWindowHandle,
 	PropertyCommandWindowService,
@@ -32,6 +41,7 @@ export interface PropertyCommandDispatchOptions {
 export interface PropertyCommandDispatchResult {
 	readonly success: boolean;
 	readonly reason?: string;
+	readonly composite?: CompositeCommandOutcome;
 }
 
 /** A pre-admitted API PATCH generation, kept internal to the devices module. */
@@ -76,6 +86,9 @@ export class PropertyCommandDispatchService {
 		private readonly commandWindowService: PropertyCommandWindowService,
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
+		@Optional() private readonly composites?: CompositePropertyCommandRegistryService,
+		@Optional() private readonly events?: EventEmitter2,
+		@Optional() private readonly admissionGuards?: PropertyCommandAdmissionRegistryService,
 	) {}
 
 	async dispatchBatch(
@@ -85,6 +98,9 @@ export class PropertyCommandDispatchService {
 		if (updates.length === 0) {
 			return { success: true };
 		}
+
+		const planner = updates.map((update) => this.composites?.get(update.property)).find(Boolean);
+		if (planner) return this.dispatchComposite(updates, options);
 
 		const platform = this.platformRegistryService.get(updates[0].device);
 
@@ -117,6 +133,155 @@ export class PropertyCommandDispatchService {
 			this.failOwned(handles);
 
 			throw error;
+		}
+	}
+
+	/** Composite commands reuse physical admission and exact generation readback, never aggregate equality. */
+	private async dispatchComposite(
+		updates: readonly IDevicePropertyData[],
+		options: PropertyCommandDispatchOptions,
+	): Promise<PropertyCommandDispatchResult> {
+		const id = randomUUID();
+		const deadline = Date.now() + Math.min(Math.max(options.ttlMs ?? 10_000, 1), 30_000);
+		const planner = updates.map((update) => this.composites.get(update.property)).find(Boolean);
+		let plan: Awaited<ReturnType<typeof planner.plan>>;
+		try {
+			plan = await this.withCompositeDeadline(
+				this.structureLock.runShared(() =>
+					planner.plan(updates.filter((update) => planner.canHandle(update.property))),
+				),
+				deadline,
+			);
+			plan = {
+				...plan,
+				children: [
+					...plan.children,
+					...updates
+						.filter((update) => !planner.canHandle(update.property))
+						.map((update) => ({ memberId: update.channel.id, update })),
+				],
+			};
+		} catch (error) {
+			return { success: false, reason: error instanceof Error ? error.message : 'Invalid composite plan' };
+		}
+		if (!plan.children.length || plan.children.length > 2048)
+			return { success: false, reason: 'Composite size exceeds bounds' };
+		const outcomes: CompositeChildOutcome[] = plan.children.map((child) => ({
+			memberId: child.memberId,
+			propertyId: child.update?.property.id ?? null,
+			status: child.update ? 'accepted' : 'unavailable',
+			reason: child.reason,
+		}));
+		const leaves = new Map<string, { update: IDevicePropertyData; indexes: number[] }>();
+		for (const [index, child] of plan.children.entries()) {
+			if (!child.update) continue;
+			const canonical = this.valueSourceRegistry.resolve(child.update.property);
+			const existing = leaves.get(canonical);
+			if (existing && existing.update.value !== child.update.value)
+				return { success: false, reason: 'Contradictory canonical targets in composite command' };
+			if (existing) existing.indexes.push(index);
+			else leaves.set(canonical, { update: child.update, indexes: [index] });
+		}
+		const work = [...leaves.values()];
+		let cursor = 0;
+		const publish = () =>
+			this.events?.emit('DevicesModule.Internal.CompositeCommandProgress', {
+				id,
+				children: outcomes.map((child) => ({ ...child })),
+			});
+		publish();
+		const workers = Array.from({ length: Math.min(8, work.length) }, async () => {
+			while (cursor < work.length) {
+				const leaf = work[cursor++];
+				const set = (status: CompositeChildOutcome['status'], reason?: string, generation?: string) => {
+					for (const index of leaf.indexes) Object.assign(outcomes[index], { status, reason, generation });
+					publish();
+				};
+				let handles: readonly PropertyCommandWindowHandle[] = [];
+				try {
+					if (Date.now() >= deadline) {
+						set('timed_out');
+						continue;
+					}
+					if (!(await plan.isCurrent())) {
+						set('superseded', 'Binding revision changed');
+						continue;
+					}
+					const admitted = await this.admitWindows([leaf.update], {
+						intentId: options.intentId,
+						ttlMs: deadline - Date.now(),
+					});
+					handles = admitted?.map((window) => window.handle) ?? [];
+					if (!admitted || !handles.length) {
+						set('unavailable', 'No correlated physical readback admission');
+						continue;
+					}
+					const handle = handles[0];
+					set('accepted', undefined, handle.generation);
+					const dispatched = await this.withCompositeDeadline(
+						this.dispatchBatch([leaf.update], { ...options, windowHandles: handles }),
+						deadline,
+					);
+					if (!dispatched.success) {
+						set('failed', dispatched.reason);
+						continue;
+					}
+					while (Date.now() < deadline) {
+						if (!(await plan.isCurrent())) {
+							set('superseded', 'Binding revision changed');
+							break;
+						}
+						const window = this.commandWindowService.get(handle.canonicalPropertyId);
+						if (!window || window.generation !== handle.generation) {
+							set('superseded', 'Physical command generation replaced');
+							break;
+						}
+						if (window.state === 'confirmed_grace') {
+							set('confirmed', undefined, handle.generation);
+							break;
+						}
+						await new Promise<void>((resolve) => setTimeout(resolve, Math.min(20, Math.max(1, deadline - Date.now()))));
+					}
+					if (leaf.indexes.some((index) => outcomes[index].status === 'accepted')) set('timed_out');
+				} catch (error) {
+					set(
+						Date.now() >= deadline ? 'timed_out' : 'failed',
+						error instanceof Error ? error.message : 'Execution failed',
+					);
+				} finally {
+					for (const index of leaf.indexes) if (outcomes[index].status !== 'confirmed') this.failOwned(handles);
+				}
+			}
+		});
+		await Promise.all(workers);
+		const confirmed = outcomes.filter((child) => child.status === 'confirmed').length;
+		const composite: CompositeCommandOutcome = {
+			id,
+			status: confirmed === outcomes.length ? 'confirmed' : confirmed > 0 ? 'partial' : 'failed',
+			children: outcomes,
+		};
+		this.events?.emit('DevicesModule.Internal.CompositeCommandCompleted', composite);
+		return {
+			success: composite.status === 'confirmed',
+			composite,
+			reason: composite.status === 'confirmed' ? undefined : `Composite command ${composite.status}`,
+		};
+	}
+
+	private async withCompositeDeadline<T>(operation: Promise<T>, deadline: number): Promise<T> {
+		let timer: NodeJS.Timeout;
+		try {
+			return await Promise.race([
+				operation,
+				new Promise<T>((_, reject) => {
+					timer = setTimeout(
+						() => reject(new Error('Composite deadline exceeded')),
+						Math.max(1, deadline - Date.now()),
+					);
+				}),
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
 		}
 	}
 
@@ -257,6 +422,13 @@ export class PropertyCommandDispatchService {
 		if (commandedValue === undefined) {
 			return null;
 		}
+
+		await this.admissionGuards?.assertAllowed({
+			device: sourceDevice,
+			channel: sourceChannel,
+			property: sourceProperty,
+			value: commandedValue,
+		});
 
 		// Values are runtime state, never part of the structural catalog. Read the current baseline
 		// under the source coordinator just as admission previously did through ORM afterLoad.

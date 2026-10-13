@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
@@ -47,6 +48,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly spacesService: SpacesService,
+		@Optional() private readonly composites?: CompositePropertyCommandRegistryService,
 	) {}
 
 	getType(): string {
@@ -162,7 +164,7 @@ export class LocalScenePlatform implements IScenePlatform {
 			(p) => p === PermissionType.READ_WRITE || p === PermissionType.WRITE_ONLY,
 		);
 
-		if (!isWritable) {
+		if (!isWritable && !this.composites?.get(property)) {
 			return {
 				valid: false,
 				error: 'Referenced property is not writable',
@@ -272,7 +274,7 @@ export class LocalScenePlatform implements IScenePlatform {
 				}
 
 				// Send command to device via platform
-				const { success } = await this.propertyCommandDispatchService.dispatchBatch([
+				const { success, composite } = await this.propertyCommandDispatchService.dispatchBatch([
 					{
 						device,
 						channel,
@@ -285,6 +287,7 @@ export class LocalScenePlatform implements IScenePlatform {
 					actionId: action.id,
 					success,
 					error: success ? null : 'Command execution failed',
+					composite,
 					executionTimeMs: Date.now() - startTime,
 				});
 			} catch (error) {
