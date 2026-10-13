@@ -25,6 +25,7 @@ export class UpdateVirtualDeviceDto extends UpdateDeviceDto {
 		VirtualDeviceMode.SENSOR_AGGREGATE,
 		VirtualDeviceMode.ACTUATOR_GROUP,
 		VirtualDeviceMode.SENSOR_TRANSFORM,
+		VirtualDeviceMode.CLIMATE_CONTROLLER,
 	])
 	mode?: VirtualDeviceMode;
 

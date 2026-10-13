@@ -51,10 +51,12 @@ export function validateVirtualThermostatPolicy(policy: VirtualThermostatPolicy)
 		policy.hotTolerance < 0 ||
 		!finite(policy.neutralMargin) ||
 		policy.neutralMargin <= 0 ||
-		!finite(policy.minimumOffMs) ||
+		!Number.isSafeInteger(policy.minimumOffMs) ||
 		policy.minimumOffMs < 0 ||
-		!finite(policy.changeoverMs) ||
+		policy.minimumOffMs > 86_400_000 ||
+		!Number.isSafeInteger(policy.changeoverMs) ||
 		policy.changeoverMs < 0 ||
+		policy.changeoverMs > 86_400_000 ||
 		(policy.heatingSetpoint !== null && !finite(policy.heatingSetpoint)) ||
 		(policy.coolingSetpoint !== null && !finite(policy.coolingSetpoint)) ||
 		(policy.heatingSetpoint === null && policy.coolingSetpoint === null)

@@ -31,6 +31,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
+import { VirtualThermostatConfigController } from './controllers/virtual-thermostat-config.controller';
 import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
@@ -61,6 +62,12 @@ import {
 	VirtualDeviceMode,
 } from './entities/devices-virtual.entity';
 import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
+import {
+	VirtualThermostatActuatorClaimEntity,
+	VirtualThermostatConfigEntity,
+	VirtualThermostatSettingEntity,
+	VirtualThermostatSourceEntity,
+} from './entities/virtual-thermostat.entity';
 import { VirtualDeviceInformationListener } from './listeners/virtual-device-information.listener';
 import { VirtualIndexMaintenanceListener } from './listeners/virtual-index-maintenance.listener';
 import { VirtualProjectionListener } from './listeners/virtual-projection.listener';
@@ -76,9 +83,12 @@ import { VirtualLightGroupStateService } from './services/virtual-light-group-st
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
+import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
+import { VirtualThermostatConfigService } from './services/virtual-thermostat-config.service';
 import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
 import { VirtualTransformRuntimeService } from './services/virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
+import { VirtualThermostatOwnershipSubscriber } from './subscribers/virtual-thermostat-ownership.subscriber';
 import { VirtualTransformMetadataSubscriber } from './subscribers/virtual-transform-metadata.subscriber';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from './validators/device-is-virtual-constraint.validator';
@@ -101,6 +111,10 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			VirtualChannelPropertyEntity,
 			DeviceEntity,
 			...VIRTUAL_PRODUCER_ENTITIES,
+			VirtualThermostatConfigEntity,
+			VirtualThermostatActuatorClaimEntity,
+			VirtualThermostatSourceEntity,
+			VirtualThermostatSettingEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
@@ -111,6 +125,9 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		VirtualThermostatClaimsService,
+		VirtualThermostatConfigService,
+		VirtualThermostatOwnershipSubscriber,
 		VirtualValueSourceService,
 		VirtualEnergyClaimService,
 		VirtualDevicePlatform,
@@ -133,7 +150,12 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
-	controllers: [VirtualTransformConfigController, VirtualDevicesController, VirtualProducerConfigController],
+	controllers: [
+		VirtualThermostatConfigController,
+		VirtualTransformConfigController,
+		VirtualDevicesController,
+		VirtualProducerConfigController,
+	],
 })
 export class DevicesVirtualPlugin {
 	constructor(
@@ -154,6 +176,7 @@ export class DevicesVirtualPlugin {
 		private readonly virtualDevicesService: VirtualDevicesService,
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly producerState: VirtualProducerStateService,
+		private readonly thermostats: VirtualThermostatConfigService,
 	) {}
 
 	onModuleInit() {
@@ -336,7 +359,8 @@ export class DevicesVirtualPlugin {
 						await this.graph.validateProperty(manager, property);
 					}
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
-					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
+					if (!(await this.thermostats.isRegisteredSetting(property, manager)))
+						this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
 
 					// A remap is the other way an incompatible projection gets stored, and the one the
 					// wizard's preview covers least well: the source can change permissions or data type

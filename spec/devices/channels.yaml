@@ -2098,6 +2098,16 @@ thermostat:
       Manages climate control systems, allowing adjustments of heating, cooling, and HVAC settings.
   docGroup: control
   properties:
+    floor_temperature:
+      category: floor_temperature
+      required: false
+      description:
+        en: Independent floor protection temperature, excluded from ambient comfort sensing
+      permissions:
+        - ro
+      data_type: float
+      unit: °C
+      format: null
     locked:
       category: locked
       required: false

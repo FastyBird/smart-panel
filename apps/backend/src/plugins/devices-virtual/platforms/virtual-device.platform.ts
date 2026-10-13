@@ -13,6 +13,7 @@ import {
 	VirtualDeviceMode,
 } from '../entities/devices-virtual.entity';
 import { VirtualDependencyGraphService } from '../services/virtual-dependency-graph.service';
+import { VirtualThermostatConfigService } from '../services/virtual-thermostat-config.service';
 
 @Injectable()
 export class VirtualDevicePlatform implements IDevicePlatform {
@@ -22,6 +23,7 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		private readonly graphs: DeviceCommandGraphService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		@Optional() private readonly dependencies?: VirtualDependencyGraphService,
+		@Optional() private readonly thermostats?: VirtualThermostatConfigService,
 	) {}
 
 	getType(): string {
@@ -42,6 +44,11 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		// Checked across the whole batch and before a single source is resolved, so a disabled device
 		// never partially applies — the same all-or-nothing discipline as the platform-resolution
 		// pre-pass below. `find` rather than `updates[0]` because an empty batch has no first element.
+		if (
+			updates.length &&
+			updates.every((update) => (update.device as VirtualDeviceEntity).mode === VirtualDeviceMode.CLIMATE_CONTROLLER)
+		)
+			return this.thermostats?.command(updates) ?? false;
 		const inactiveProducer = updates.find((update) => {
 			const mode = (update.device as VirtualDeviceEntity).mode ?? VirtualDeviceMode.PROJECTION;
 			return mode !== VirtualDeviceMode.PROJECTION;
