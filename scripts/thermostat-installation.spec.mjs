@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { runInstallationCli } from './thermostat-installation.mjs';
 
 const claim = '00000000-0000-4000-8000-000000000001';
-const environment = { SP_API_URL: 'http://127.0.0.1:3000', SP_API_TOKEN: 'fixture-only' };
+const environment = { SP_API_URL: 'http://127.0.0.1:3000', SP_USER_ACCESS_TOKEN: 'fixture-only' };
 test('inspect uses the authenticated panel API without leaking the credential or artifact', async () => {
 	let display;
 	await runInstallationCli(['inspect',claim],environment,async (url, options) => {
@@ -26,5 +26,5 @@ test('refuses missing revision, credential-bearing URLs and unauthenticated oper
 	const request = () => { throw new Error('unexpected network'); };
 	await assert.rejects(runInstallationCli(['verify',claim],environment,request),/revision/);
 	await assert.rejects(runInstallationCli(['inspect',claim],{...environment,SP_API_URL:'http://user:pass@localhost'},request),/credentials/);
-	await assert.rejects(runInstallationCli(['inspect',claim],{...environment,SP_API_TOKEN:''},request),/SP_API_TOKEN/);
+	await assert.rejects(runInstallationCli(['inspect',claim],{...environment,SP_USER_ACCESS_TOKEN:''},request),/SP_USER_ACCESS_TOKEN/);
 });

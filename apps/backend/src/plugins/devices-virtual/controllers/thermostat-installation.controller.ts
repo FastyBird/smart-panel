@@ -75,9 +75,9 @@ export class ThermostatInstallationController {
 	}
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
-		summary: 'Verify installation metadata',
+		summary: 'Verify and activate thermostat installation',
 		description:
-			'Read actual device identity, firmware, full script hash, fresh HTTP status and floor/switch configuration. Metadata inspection performs only reads. Successful trusted qualification resumes the runtime, which may issue safety OFF/fence and honor configured intent. Does not deploy scripts or certify physical equipment.',
+			'Read actual device identity, firmware, full script hash, fresh HTTP status and floor/switch configuration. Metadata inspection performs only reads. Successful explicit user-session activation is durably audited and resumes the runtime, which may issue safety OFF/fence and honor configured intent. Does not deploy scripts or certify physical equipment.',
 		operationId: 'verify-devices-virtual-plugin-thermostat-installation',
 	})
 	@ApiSuccessResponse(ThermostatInstallationResponseModel, 'Installation diagnostics')
@@ -111,9 +111,10 @@ export class ThermostatInstallationController {
 		const auth = req.auth;
 		if (![UserRole.OWNER, UserRole.ADMIN].includes(auth?.role))
 			throw new ForbiddenException('Owner or administrator commissioning role required.');
-		if (auth.type === 'user') return auth.id;
-		if (auth.type === 'token' && auth.ownerId) return auth.ownerId;
-		throw new ForbiddenException('An attributable user is required.');
+		if (auth?.type === 'user' && auth.id) return auth.id;
+		throw new ForbiddenException(
+			'An identified owner or administrator user session is required; API tokens cannot commission equipment.',
+		);
 	}
 	private async response(claim: string): Promise<ThermostatInstallationResponseModel> {
 		const response = new ThermostatInstallationResponseModel();

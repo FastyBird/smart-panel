@@ -105,7 +105,9 @@ export class ThermostatInstallationAuditModel {
 	@ApiProperty() @Expose() id: string;
 	@ApiProperty() @Expose() claimId: string;
 	@ApiProperty() @Expose() revision: number;
-	@ApiProperty({ enum: ['staged', 'revoked', 'metadata_verified', 'metadata_blocked'] }) @Expose() action: string;
+	@ApiProperty({ enum: ['staged', 'revoked', 'activated', 'metadata_verified', 'metadata_blocked'] })
+	@Expose()
+	action: string;
 	@ApiProperty({ type: String, nullable: true }) @Expose() actorId: string | null;
 	@ApiProperty({ type: String, format: 'date-time' }) @Expose() occurredAt: Date;
 	@ApiProperty({
@@ -119,6 +121,9 @@ export class ThermostatInstallationAuditModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatInstallation' })
 export class ThermostatInstallationModel {
+	@ApiProperty({ description: 'Server-recorded explicit user activation intent; never physical ON or drain proof' })
+	@Expose()
+	activation_requested: boolean;
 	@ApiProperty() @Expose() claim: string;
 	@ApiProperty() @Expose() revision: number;
 	@ApiProperty({ type: ThermostatGuardSetupModel })

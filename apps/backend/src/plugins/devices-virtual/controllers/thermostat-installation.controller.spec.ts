@@ -12,10 +12,11 @@ import { ThermostatInstallationController } from './thermostat-installation.cont
 
 describe('installation administration authorization', () => {
 	const stage = jest.fn(),
+		revoke = jest.fn(),
 		verify = jest.fn(),
 		inspect = jest.fn().mockResolvedValue({ claim: 'fixture', revision: 1 });
 	const controller = new ThermostatInstallationController(
-		{ stage, inspect } as unknown as ThermostatInstallationService,
+		{ stage, inspect, revoke } as unknown as ThermostatInstallationService,
 		{ verify } as unknown as ThermostatInstallationLoaderService,
 	);
 	beforeEach(() => jest.clearAllMocks());
@@ -23,14 +24,20 @@ describe('installation administration authorization', () => {
 		undefined,
 		{ type: 'user', id: 'operator', role: UserRole.USER },
 		{ type: 'token', ownerId: null, role: UserRole.ADMIN },
+		{ type: 'token', ownerId: 'admin-owner', role: UserRole.ADMIN },
+		{ type: 'token', ownerId: 'owner-user', role: UserRole.OWNER },
 	])('denies unprivileged/unattributable actors %j before any mutation or network verification', async (auth) => {
 		const req = { auth } as AuthenticatedRequest;
 		await expect(
 			controller.stage('fixture', { expected_revision: 0 } as StageThermostatInstallationDto, req),
 		).rejects.toThrow();
 		await expect(controller.verify('fixture', { expected_revision: 1 }, req)).rejects.toThrow();
+		await expect(controller.revoke('fixture', { expected_revision: 1 }, req)).rejects.toThrow();
+		await expect(controller.inspect('fixture', req)).rejects.toThrow();
 		expect(stage).not.toHaveBeenCalled();
 		expect(verify).not.toHaveBeenCalled();
+		expect(revoke).not.toHaveBeenCalled();
+		expect(inspect).not.toHaveBeenCalled();
 	});
 	it('associates accepted owner operations with authenticated actor, never a body actor', async () => {
 		const dto = { expected_revision: 0, setup: {}, operator_attestations: [] } as StageThermostatInstallationDto;

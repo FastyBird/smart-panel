@@ -7,7 +7,7 @@ export class AddThermostatInstallationProfiles1000000000033 implements Migration
 			"claimId" varchar PRIMARY KEY NOT NULL, "revision" integer NOT NULL, "controllerId" varchar NOT NULL,
 			"physicalIdentity" text NOT NULL, "claimRevision" integer NOT NULL, "configurationRevision" integer NOT NULL,
 			"bindingFingerprint" text NOT NULL, "expectedScriptHash" text NOT NULL, "artifactSource" text NOT NULL, "setup" text NOT NULL, "attestations" text NOT NULL,
-			"updatedBy" varchar NOT NULL, "updatedAt" datetime NOT NULL, "revokedAt" datetime, "lastMachineObservation" text,
+			"updatedBy" varchar NOT NULL, "updatedAt" datetime NOT NULL, "armedAt" datetime, "revokedAt" datetime, "lastMachineObservation" text,
 			CONSTRAINT "CHK_thermostat_installation_revision" CHECK ("revision" >= 1 AND "claimRevision" >= 1 AND "configurationRevision" >= 1),
 			FOREIGN KEY ("claimId") REFERENCES "devices_virtual_thermostat_actuator_claims" ("id") ON DELETE RESTRICT
 		)`);

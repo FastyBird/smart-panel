@@ -9,7 +9,7 @@ export async function runInstallationCli(args, environment, request = fetch, out
 	const base = new URL(environment.SP_API_URL);
 	if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash)
 		throw new Error('SP_API_URL must be the panel origin without credentials/query.');
-	if (!environment.SP_API_TOKEN) throw new Error('Provide an owner/admin SP_API_TOKEN through the environment.');
+	if (!environment.SP_USER_ACCESS_TOKEN) throw new Error('Provide an owner/admin user-session SP_USER_ACCESS_TOKEN through the environment.');
 	const revision = ['stage', 'verify', 'revoke'].includes(action) ? Number(revisionOrFile) : undefined;
 	if (revision !== undefined && (!Number.isSafeInteger(revision) || revision < (action === 'stage' ? 0 : 1)))
 		throw new Error('A current CAS revision is required.');
@@ -24,7 +24,7 @@ export async function runInstallationCli(args, environment, request = fetch, out
 	const result = await request(url, {
 		method: action === 'stage' ? 'PUT' : ['verify', 'revoke'].includes(action) ? 'POST' : 'GET',
 		redirect: 'error', signal: AbortSignal.timeout(15000),
-		headers: { Authorization: `Bearer ${environment.SP_API_TOKEN}`, 'Content-Type': 'application/json' },
+		headers: { Authorization: `Bearer ${environment.SP_USER_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
 		...(body ? { body: JSON.stringify(body) } : {}),
 	});
 	if (!result.ok) throw new Error(`Panel rejected the operation (${result.status}); inspect the current revision/readiness.`);

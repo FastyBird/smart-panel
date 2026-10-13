@@ -102,7 +102,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.ready = false;
 		this.epoch++;
 	}
-	/** Keep command admission closed from restore entry until its commit or rollback has been reloaded. */
+	/** Keep command admission closed from ownership/installation operation entry through reloaded commit or rollback. */
 	holdRecoveryFence(): () => void {
 		this.recoveryFences++;
 		this.invalidate();
@@ -203,6 +203,11 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	/** Revoke dispatch leases without discarding unchanged durable reservations. Recovery invalidates its bindings separately. */
 	revokeQualification(physicalIdentity: string): void {
 		this.qualifications.delete(physicalIdentity);
+		this.epoch++;
+	}
+	/** Installation operations revoke every captured qualification before entering any async lock/read. */
+	revokeAllQualifications(): void {
+		this.qualifications.clear();
 		this.epoch++;
 	}
 	qualification(

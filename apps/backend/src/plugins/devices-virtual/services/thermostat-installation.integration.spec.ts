@@ -292,6 +292,7 @@ describe('durable thermostat installation profiles', () => {
 	it('staging replacement and revocation invalidate captured machine eligibility before DB commit', async () => {
 		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
 		await loader.onApplicationBootstrap();
+		await loader.verify(claim.id, 1, 'operator');
 		const old = claims.qualification(claim, false);
 		expect(old.machineLeaseIsCurrent()).toBe(true);
 		await profiles.stage(claim.id, 1, { ...setup, epochKey: 'new-epoch' }, attestations(), 'operator');
@@ -324,6 +325,7 @@ describe('durable thermostat installation profiles', () => {
 	it('invalidates on connection epoch and refuses changed calibration/contracts', async () => {
 		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
 		await loader.onApplicationBootstrap();
+		await loader.verify(claim.id, 1, 'operator');
 		const old = claims.qualification(claim, false);
 		current = false;
 		events.emit(EventType.DEVICE_CONNECTION_CHANGED);
@@ -344,6 +346,7 @@ describe('durable thermostat installation profiles', () => {
 	it('retains equipment attestations for comfort within installed ranges but requires fresh verification after config events', async () => {
 		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
 		await loader.onApplicationBootstrap();
+		await loader.verify(claim.id, 1, 'operator');
 		const old = claims.qualification(claim, false);
 		const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
 			controllerId: claim.controllerId,
@@ -488,6 +491,117 @@ describe('durable thermostat installation profiles', () => {
 		await loader.verify(claim.id, 1, 'operator');
 		expect(inspect).not.toHaveBeenCalled();
 		expect((await profiles.inspect(claim.id)).reasons).toContain('native_restart_or_input_writer_not_excluded');
+	});
+	it('staging while queued behind the structure lock revokes ON before any read, including failed CAS', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await loader.verify(claim.id, 1, 'operator');
+		claims.registerRuntimeAdmission(() => true);
+		const authority = claims.mintAuthority(claim.id, 'on');
+		const target = { ...(await bindings.resolve(db.manager, claim.id)).target, value: true };
+		expect(claims.isAuthorized(authority, target)).toBe(true);
+		const old = claims.qualification(claim, false);
+		let enter: () => void, unlock: () => void;
+		const entered = new Promise<void>((resolve) => {
+			enter = resolve;
+		});
+		const pending = new Promise<void>((resolve) => {
+			unlock = resolve;
+		});
+		const held = lock.runExclusive(async () => {
+			enter();
+			await pending;
+		});
+		await entered;
+		const update = profiles.stage(claim.id, 999, setup, attestations(), 'operator');
+		expect(claims.isAuthorized(authority, target)).toBe(false);
+		expect(old.machineLeaseIsCurrent()).toBe(false);
+		await claims.refresh();
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
+		unlock();
+		await held;
+		await expect(update).rejects.toBeInstanceOf(ConflictException);
+		await loader.refresh();
+		expect(claims.isAuthorized(authority, target)).toBe(false);
+		expect(claims.qualification(claim, false)).toBeNull();
+	});
+	it.each(['revoke', 'verify'] as const)(
+		'%s revokes ON synchronously while its first profile query is pending',
+		async (action) => {
+			await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+			await loader.verify(claim.id, 1, 'operator');
+			claims.registerRuntimeAdmission(() => true);
+			const authority = claims.mintAuthority(claim.id, 'on');
+			const target = { ...(await bindings.resolve(db.manager, claim.id)).target, value: true };
+			const row = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			let releaseRead: () => void;
+			const pendingRead = new Promise<void>((resolve) => {
+				releaseRead = resolve;
+			});
+			const read = jest.spyOn(db.manager, 'findOneByOrFail').mockImplementationOnce(async () => {
+				await pendingRead;
+				return row;
+			});
+			const operation =
+				action === 'revoke' ? profiles.revoke(claim.id, 999, 'operator') : loader.verify(claim.id, 999, 'operator');
+			expect(claims.isAuthorized(authority, target)).toBe(false);
+			await claims.refresh();
+			expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
+			releaseRead();
+			await expect(operation).rejects.toBeInstanceOf(ConflictException);
+			read.mockRestore();
+			await loader.refresh();
+			expect(claims.qualification(claim, false)).toBeNull();
+			expect(claims.isAuthorized(authority, target)).toBe(false);
+		},
+	);
+	it('an actual SQLite audit failure rolls back staging without restoring any queued ON or prior qualification', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await loader.verify(claim.id, 1, 'operator');
+		claims.registerRuntimeAdmission(() => true);
+		const authority = claims.mintAuthority(claim.id, 'on');
+		const target = { ...(await bindings.resolve(db.manager, claim.id)).target, value: true };
+		await db.query(
+			"CREATE TRIGGER reject_profile_audit BEFORE INSERT ON devices_virtual_thermostat_installation_audit BEGIN SELECT RAISE(ABORT, 'fixture audit failure'); END",
+		);
+		await expect(
+			profiles.stage(claim.id, 1, { ...setup, epochKey: 'rollback' }, attestations(), 'operator'),
+		).rejects.toThrow('fixture audit failure');
+		const row = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+		expect(row.revision).toBe(1);
+		expect(row.setup.epochKey).toBe('fixture-epoch');
+		expect(claims.isAuthorized(authority, target)).toBe(false);
+		expect(claims.qualification(claim, false)).toBeNull();
+		await db.query('DROP TRIGGER reject_profile_audit');
+		await loader.refresh();
+		expect(claims.qualification(claim, false)).toBeNull();
+	});
+	it('stage and restart never arm intent until explicit user activation commits', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await loader.onApplicationBootstrap();
+		await loader.refresh();
+		expect(inspect).not.toHaveBeenCalled();
+		expect(claims.qualification(claim, false)).toBeNull();
+		expect((await profiles.inspect(claim.id)).activation_requested).toBe(false);
+		await loader.verify(claim.id, 1, 'operator');
+		expect((await profiles.inspect(claim.id)).activation_requested).toBe(true);
+		expect(
+			(await db.manager.find(ThermostatInstallationAuditEntity, { where: { claimId: claim.id } })).some(
+				(row) => row.action === 'activated' && row.actorId === 'operator',
+			),
+		).toBe(true);
+		await profiles.stage(claim.id, 1, setup, attestations(), 'operator');
+		await loader.refresh();
+		expect(claims.qualification(claim, false)).toBeNull();
+		expect((await profiles.inspect(claim.id)).activation_requested).toBe(false);
+	});
+	it('failed activation audit cannot publish qualification or durable armed intent', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await db.query(
+			"CREATE TRIGGER reject_activation_audit BEFORE INSERT ON devices_virtual_thermostat_installation_audit BEGIN SELECT RAISE(ABORT, 'activation audit failure'); END",
+		);
+		await expect(loader.verify(claim.id, 1, 'operator')).rejects.toThrow('activation audit failure');
+		expect(claims.qualification(claim, false)).toBeNull();
+		expect((await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id })).armedAt).toBeNull();
 	});
 	it('migration33 round trips without editing deployed earlier migrations', async () => {
 		const runner = db.createQueryRunner(),

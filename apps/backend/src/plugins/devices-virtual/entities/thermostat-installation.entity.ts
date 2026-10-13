@@ -30,6 +30,7 @@ export class ThermostatInstallationEntity {
 	@Column({ type: 'simple-json' }) attestations: ThermostatOperatorAttestation[];
 	@Column({ type: 'varchar' }) updatedBy: string;
 	@Column({ type: 'datetime' }) updatedAt: Date;
+	@Column({ type: 'datetime', nullable: true }) armedAt: Date | null;
 	@Column({ type: 'datetime', nullable: true }) revokedAt: Date | null;
 	@Column({ type: 'simple-json', nullable: true }) lastMachineObservation: ThermostatMachineObservation | null;
 }
@@ -38,7 +39,7 @@ export class ThermostatInstallationAuditEntity {
 	@PrimaryGeneratedColumn('uuid') id: string;
 	@Column({ type: 'varchar' }) claimId: string;
 	@Column({ type: 'integer' }) revision: number;
-	@Column({ type: 'text' }) action: 'staged' | 'revoked' | 'metadata_verified' | 'metadata_blocked';
+	@Column({ type: 'text' }) action: 'staged' | 'revoked' | 'activated' | 'metadata_verified' | 'metadata_blocked';
 	@Column({ type: 'varchar', nullable: true }) actorId: string | null;
 	@Column({ type: 'datetime' }) occurredAt: Date;
 	@Column({ type: 'simple-json' }) snapshot: {
