@@ -402,11 +402,14 @@ export class WledClientAdapterService {
 	 */
 	private async executeStateUpdate(host: string, update: WledStateUpdate): Promise<boolean> {
 		try {
-			const apiPayload = this.convertStateUpdateToApi(update);
+			const apiPayload = { ...this.convertStateUpdateToApi(update), v: true };
 
 			this.logger.debug(`Sending state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
-			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
+			const response = await this.post<WledApiState & { success?: boolean }>(`http://${host}/json/state`, apiPayload);
+
+			// An acceptance-only response is not reported state and cannot confirm physical convergence.
+			if (response.success === true) return true;
 
 			// Update local state with the response
 			const device = this.devices.get(host);
@@ -585,11 +588,14 @@ export class WledClientAdapterService {
 		}
 
 		try {
-			const apiPayload = this.convertExtendedStateUpdateToApi(update);
+			const apiPayload = { ...this.convertExtendedStateUpdateToApi(update), v: true };
 
 			this.logger.debug(`Sending extended state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
-			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
+			const response = await this.post<WledApiState & { success?: boolean }>(`http://${host}/json/state`, apiPayload);
+
+			// An acceptance-only response is not reported state and cannot confirm physical convergence.
+			if (response.success === true) return true;
 
 			if (device.context) {
 				const newState = this.convertApiStateToState(response);

@@ -319,7 +319,7 @@ describe('WledClientAdapterService', () => {
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
 					method: 'POST',
-					body: JSON.stringify({ on: false }),
+					body: JSON.stringify({ on: false, v: true }),
 				}),
 			);
 		});
@@ -348,7 +348,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ on: true }),
+					body: JSON.stringify({ on: true, v: true }),
 				}),
 			);
 		});
@@ -362,7 +362,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ on: false }),
+					body: JSON.stringify({ on: false, v: true }),
 				}),
 			);
 		});
@@ -385,7 +385,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ bri: 200 }),
+					body: JSON.stringify({ bri: 200, v: true }),
 				}),
 			);
 		});
@@ -398,7 +398,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ bri: 255 }),
+					body: JSON.stringify({ bri: 255, v: true }),
 				}),
 			);
 		});
@@ -423,6 +423,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, col: [[255, 128, 64]] }],
+						v: true,
 					}),
 				}),
 			);
@@ -439,6 +440,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, col: [[255, 128, 64, 32]] }],
+						v: true,
 					}),
 				}),
 			);
@@ -464,6 +466,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, fx: 5 }],
+						v: true,
 					}),
 				}),
 			);
@@ -480,6 +483,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, fx: 5, sx: 200, ix: 150 }],
+						v: true,
 					}),
 				}),
 			);
@@ -513,6 +517,38 @@ describe('WledClientAdapterService', () => {
 			const state = await service.refreshState('192.168.1.200');
 
 			expect(state).toBeNull();
+		});
+	});
+
+	describe('verbose command feedback', () => {
+		beforeEach(async () => {
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
+			await service.connect('192.168.1.100', 'wled-test');
+			jest.clearAllMocks();
+		});
+
+		it.each(['ordinary', 'extended'] as const)(
+			'requests full state for %s POST and never treats a bare acceptance as feedback',
+			async (kind) => {
+				mockFetchSuccess({ success: true });
+				const result =
+					kind === 'ordinary'
+						? await service.updateState('192.168.1.100', { on: true }, 0)
+						: await service.updateStateExtended('192.168.1.100', { on: true });
+				expect(result).toBe(true);
+				const call = (global.fetch as jest.Mock).mock.calls[0] as [string, { body: string }];
+				const options = call[1];
+				expect(JSON.parse(options.body)).toMatchObject({ on: true, v: true });
+				expect(callbacks.onDeviceStateChanged).not.toHaveBeenCalled();
+			},
+		);
+
+		it('publishes actual reported state from a verbose response', async () => {
+			mockFetchSuccess({ ...mockWledState, on: false });
+			expect(await service.updateState('192.168.1.100', { on: true }, 0)).toBe(true);
+			const callback = callbacks.onDeviceStateChanged;
+			const event = callback.mock.calls[0] as [{ state: { on: boolean } }];
+			expect(event[0].state.on).toBe(false);
 		});
 	});
 
