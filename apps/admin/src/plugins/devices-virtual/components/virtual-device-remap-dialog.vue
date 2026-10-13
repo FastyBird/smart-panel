@@ -146,7 +146,8 @@ import {
 	type DevicesVirtualPluginCheckCompatibilityOperation,
 	type DevicesVirtualPluginCompatibilityReportSchema,
 } from '../../../openapi.constants';
-import { DEVICES_VIRTUAL_PLUGIN_PREFIX, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
+import { isVirtualSourceDeviceCandidate, isVirtualSourcePropertyCandidate } from '../utils/source-candidates.utils';
 
 import type { IVirtualDeviceRemapDialogProps } from './virtual-device-remap-dialog.types';
 
@@ -221,7 +222,7 @@ const sourceDevicesOptions = computed<{ value: string; label: string }[]>(() =>
 				(candidate: IDevice): boolean =>
 					!candidate.draft &&
 					(!candidate.hidden || candidate.hiddenBy === DevicesModuleDeviceHiddenBy.system) &&
-					candidate.type !== DEVICES_VIRTUAL_TYPE
+					isVirtualSourceDeviceCandidate(candidate)
 			),
 		[(candidate: IDevice): string => candidate.name],
 		['asc']
@@ -244,7 +245,11 @@ const propertiesOptions = computed<{ value: string; label: string }[]>((): { val
 	}
 
 	return orderBy<IChannelProperty>(
-		propertiesStore.findForChannel(pickedChannel.value),
+		propertiesStore.findForChannel(pickedChannel.value!).filter((candidate: IChannelProperty) => {
+			const sourceChannel = channelsStore.findById(pickedChannel.value!);
+			const sourceDevice = sourceChannel ? devicesStore.findById(sourceChannel.device) : null;
+			return isVirtualSourcePropertyCandidate(sourceDevice, sourceChannel, candidate);
+		}),
 		[(entry: IChannelProperty): string => entry.name ?? entry.category],
 		['asc']
 	).map((entry: IChannelProperty): { value: string; label: string } => ({

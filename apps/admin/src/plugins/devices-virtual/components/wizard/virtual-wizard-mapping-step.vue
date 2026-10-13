@@ -273,7 +273,8 @@ import {
 } from '../../../../openapi.constants';
 import { channelsSchema } from '../../../../spec/channels';
 import { devicesSchema } from '../../../../spec/devices';
-import { DEVICES_VIRTUAL_PLUGIN_PREFIX, DEVICES_VIRTUAL_TYPE } from '../../devices-virtual.constants';
+import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../../devices-virtual.constants';
+import { isVirtualSourceDeviceCandidate, isVirtualSourcePropertyCandidate } from '../../utils/source-candidates.utils';
 
 import type {
 	IVirtualMappingProgress,
@@ -622,7 +623,7 @@ const sourceDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>
 			// does *not* check for it, so such a source would preview clean and then fail on create.
 			.filter(
 				(device: IDevice): boolean =>
-					!device.draft && (!device.hidden || device.hiddenBy === DevicesModuleDeviceHiddenBy.system) && device.type !== DEVICES_VIRTUAL_TYPE
+					!device.draft && (!device.hidden || device.hiddenBy === DevicesModuleDeviceHiddenBy.system) && isVirtualSourceDeviceCandidate(device)
 			),
 		[(device: IDevice): string => device.name],
 		['asc']
@@ -648,7 +649,11 @@ const propertiesOptions = (channelId: string | null): { value: IChannelProperty[
 	}
 
 	return orderBy<IChannelProperty>(
-		propertiesStore.findForChannel(channelId),
+		propertiesStore.findForChannel(channelId).filter((candidate: IChannelProperty) => {
+			const sourceChannel = channelsStore.findById(channelId);
+			const sourceDevice = sourceChannel ? devicesStore.findById(sourceChannel.device) : null;
+			return isVirtualSourcePropertyCandidate(sourceDevice, sourceChannel, candidate);
+		}),
 		[(property: IChannelProperty): string => property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`)],
 		['asc']
 	).map((property: IChannelProperty): { value: IChannelProperty['id']; label: string } => ({

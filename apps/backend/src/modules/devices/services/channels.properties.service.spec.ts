@@ -1013,6 +1013,50 @@ describe('ChannelsPropertiesService', () => {
 		// the property and the channel it is being attached to — and `channelId` is a route parameter on
 		// both property controllers, so it never reaches the create DTO and has to be handed over here.
 
+		it('uses the structural wrapper manager for validation and the actual insert while holding the global lock', async () => {
+			const beforeCreate = jest.fn().mockResolvedValue(undefined);
+			const createDto = {
+				type: 'mock',
+				category: PropertyCategory.GENERIC,
+				permissions: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.UNKNOWN,
+				mock_value: 'Wrapped',
+			};
+			const created = toInstance(MockChannelProperty, { ...createDto, id: uuid().toString() });
+			const transactionalInsert = jest.fn().mockResolvedValue({ identifiers: [{}], generatedMaps: [], raw: [] });
+			const manager = {
+				getRepository: jest.fn().mockReturnValue({ insert: transactionalInsert }),
+			} as unknown as EntityManager;
+			const withStructuralWrite = jest
+				.fn()
+				.mockImplementation(async (operation: (manager: EntityManager) => Promise<unknown>) => operation(manager));
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeCreate,
+				withStructuralWrite,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(repository, 'create').mockReturnValue(created);
+			const legacyInsert = jest.spyOn(repository, 'insert');
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(created),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			const lock = jest.spyOn(structureLock, 'runExclusive');
+			await channelsPropertiesService.create(mockChannel.id, createDto);
+			expect(withStructuralWrite).toHaveBeenCalledTimes(1);
+			expect(beforeCreate).toHaveBeenCalledWith(created, mockChannel.id, manager);
+			expect(transactionalInsert).toHaveBeenCalledWith(created);
+			expect(legacyInsert).not.toHaveBeenCalled();
+			expect(lock.mock.invocationCallOrder[0]).toBeLessThan(withStructuralWrite.mock.invocationCallOrder[0]);
+			expect(beforeCreate.mock.invocationCallOrder[0]).toBeLessThan(transactionalInsert.mock.invocationCallOrder[0]);
+		});
+
 		it('should call the mapping beforeCreate hook with the channel id, before saving', async () => {
 			const beforeCreate = jest.fn().mockResolvedValue(undefined);
 

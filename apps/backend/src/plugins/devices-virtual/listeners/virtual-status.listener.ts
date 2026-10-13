@@ -7,6 +7,7 @@ import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
 /**
@@ -55,7 +56,12 @@ export class VirtualStatusListener {
 		state: ConnectionState;
 		reason?: string;
 	}): Promise<void> {
-		if (payload.device.type === DEVICES_VIRTUAL_TYPE) {
+		if (
+			payload.device.type === DEVICES_VIRTUAL_TYPE &&
+			![VirtualDeviceMode.SENSOR_AGGREGATE, VirtualDeviceMode.SENSOR_TRANSFORM].includes(
+				(payload.device as VirtualDeviceEntity).mode,
+			)
+		) {
 			return;
 		}
 
@@ -169,9 +175,13 @@ export class VirtualStatusListener {
 	 * per device per process — not per event).
 	 */
 	private async aggregateState(virtualDeviceId: string): Promise<ConnectionState> {
+		const mode = this.index.findProducerMode?.(virtualDeviceId);
+		// Connectivity is not producer quality. Later runtimes provide quorum/member policy; a
+		// configured but unevaluated producer must not become available from online source devices.
+		if (mode && mode !== VirtualDeviceMode.PROJECTION) return ConnectionState.UNKNOWN;
 		const links = this.index.findLinksByVirtualDevice(virtualDeviceId);
 
-		if (links.some((link) => link.sourcePropertyId === null)) {
+		if (links.some((link) => link.sourcePropertyId === null || link.quarantined)) {
 			return ConnectionState.DISCONNECTED;
 		}
 

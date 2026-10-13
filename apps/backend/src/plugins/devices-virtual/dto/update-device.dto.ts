@@ -1,15 +1,33 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { UpdateDeviceDto } from '../../../modules/devices/dto/update-device.dto';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import { VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { ValidateCategoryAllowed } from '../validators/category-allowed-constraint.validator';
 
 @ApiSchema({ name: 'DevicesVirtualPluginUpdateDevice' })
 export class UpdateVirtualDeviceDto extends UpdateDeviceDto {
+	@ApiPropertyOptional({
+		description: 'Virtual producer mode; omitted means projection',
+		enum: VirtualDeviceMode,
+		default: VirtualDeviceMode.PROJECTION,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(VirtualDeviceMode)
+	@IsIn([
+		VirtualDeviceMode.PROJECTION,
+		VirtualDeviceMode.SENSOR_AGGREGATE,
+		VirtualDeviceMode.ACTUATOR_GROUP,
+		VirtualDeviceMode.SENSOR_TRANSFORM,
+	])
+	mode?: VirtualDeviceMode;
+
 	@ApiProperty({
 		description: 'Device type',
 		type: 'string',
