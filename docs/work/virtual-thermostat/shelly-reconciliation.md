@@ -145,8 +145,9 @@ A separately commissioned guard must use a different explicitly chosen slot and 
 
 Still required before installed activation:
 
-1. Choose/configure the actual native Celsius floor helper and limit/hysteresis; retain installed
-   helper/peripheral identity through the existing source qualification registry.
+1. Select the actual floor source, explicit conversion calibration when using raw voltage, and
+   limit/hysteresis; retain its installed component/peripheral identity through the source qualification
+   registry. A native Celsius helper is an alternative, not a requirement for the observed pilot.
 2. Separately authorize commissioning/installation changes, verify configured code hash/slot, epoch storage,
    endpoint authentication and each safety evidence item, and persist/load the installed record through an
    operator-controlled workflow. The current internal process-local hook is deliberately not a public API.
