@@ -82,13 +82,15 @@ const helperConfig = {
 	range_map: [0, 100],
 	xpercent: { expr: 'x/2', unit: '°C' },
 };
-const probeConfig = { id: 100, offset: 0 };
+const probeConfig = { id: 100, name: 'Bathroom Temperature', report_thr_C: 0.1, offset_C: 0 };
 const probePeripheral = { ds18b20: { 'temperature:100': { addr: '40:255:100:6:199:204:149:177' } } };
 const helperPeripheral = { analog_in: { 'input:100': { io: 0 } } };
+const voltmeterConfig = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: 'x/2', unit: '°C' } };
+const voltmeterPeripheral = { voltmeter: { 'voltmeter:100': {} } };
 
 const managerFixture = async (
 	physical: ShellyPlus1Pm | ShellyPlusHt | ShellyPlusDimmer,
-	helper: boolean | 'probe' | 'switch' | 'light' = false,
+	helper: boolean | 'probe' | 'voltmeter' | 'switch' | 'light' = false,
 ) => {
 	const device = Object.assign(new ShellyNgDeviceEntity(), { id: 'physical', identifier: physical.id, enabled: true });
 	const channel = Object.assign(new ShellyNgChannelEntity(), {
@@ -105,19 +107,28 @@ const managerFixture = async (
 				? 'light:0'
 				: helper === 'switch'
 					? 'switch:0'
-					: helper === 'probe'
-						? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
-						: helper
-							? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
-							: physical instanceof ShellyPlusHt
-								? 'temperature:0'
-								: 'temperature:100',
+					: helper === 'voltmeter'
+						? nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral).channelIdentifier
+						: helper === 'probe'
+							? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
+							: helper
+								? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
+								: physical instanceof ShellyPlusHt
+									? 'temperature:0'
+									: 'temperature:100',
 	});
 	const property = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'temperature',
 		channel,
 		category: helper === 'switch' || helper === 'light' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE,
-		identifier: helper === 'switch' || helper === 'light' ? 'output' : helper === true ? 'xpercent' : 'tC',
+		identifier:
+			helper === 'switch' || helper === 'light'
+				? 'output'
+				: helper === 'voltmeter'
+					? 'xvoltage'
+					: helper === true
+						? 'xpercent'
+						: 'tC',
 	});
 	const brightness = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'brightness',
@@ -163,7 +174,8 @@ const managerFixture = async (
 					metadata: Object.assign(new ShellySampleSourceEntity(), {
 						propertyId: property.id,
 						fingerprint: channel.identifier.split(':').at(-1),
-						componentKey: helper === 'probe' ? 'temperature:100' : 'input:100',
+						componentKey:
+							helper === 'probe' ? 'temperature:100' : helper === 'voltmeter' ? 'voltmeter:100' : 'input:100',
 						deviceId: device.id,
 					}),
 					activatedAt: new Date(Date.now() - 1),
@@ -362,6 +374,31 @@ describe('qualified Shelly adapter boundaries', () => {
 		);
 	});
 
+	it('qualifies a configured voltmeter with omitted default io and fences a changed input range', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		rpc.response = (method) =>
+			Promise.resolve(method === 'Voltmeter.GetConfig' ? voltmeterConfig : voltmeterPeripheral);
+		const fixture = await managerFixture(physical, 'voltmeter');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'voltmeter:100': { voltage: 50, xvoltage: 25 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: 25 }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+		rpc.response = (method) =>
+			Promise.resolve(method === 'Voltmeter.GetConfig' ? { ...voltmeterConfig, range: 1 } : voltmeterPeripheral);
+		rpc.notify({ 'voltmeter:100': { voltage: 50, xvoltage: 25 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+	});
+
 	it('revokes a changed helper config and fences a pending valid response after immediate null', async () => {
 		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
 		const fixture = await managerFixture(physical, true);
@@ -434,6 +471,31 @@ describe('qualified Shelly adapter boundaries', () => {
 			),
 		).toBeNull();
 		expect(nativeTemperatureIdentity('number:100', helperConfig, helperPeripheral)).toBeNull();
+		const omittedIo = nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral);
+		expect(omittedIo).toMatchObject({ peripheral: { kind: 'voltmeter', io: 0 }, configuration: { inputRange: 0 } });
+		expect(
+			nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, { voltmeter: { 'voltmeter:100': { io: 0 } } })
+				.channelIdentifier,
+		).toBe(omittedIo.channelIdentifier);
+		expect(
+			nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, { voltmeter: { 'voltmeter:100': { io: -1 } } }),
+		).toBeNull();
+		expect(nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, {})).toBeNull();
+		expect(
+			nativeTemperatureIdentity(
+				'voltmeter:100',
+				{ ...voltmeterConfig, xvoltage: { expr: null, unit: null } },
+				voltmeterPeripheral,
+			),
+		).toBeNull();
+		expect(
+			nativeTemperatureIdentity('temperature:100', { ...probeConfig, offset_C: 0.5 }, probePeripheral)
+				.channelIdentifier,
+		).not.toBe(nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier);
+		expect(
+			nativeTemperatureIdentity('temperature:100', { ...probeConfig, report_thr_C: 0.2 }, probePeripheral)
+				.channelIdentifier,
+		).not.toBe(nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier);
 		expect(
 			nativeTemperatureIdentity(
 				'voltmeter:100',
@@ -462,6 +524,30 @@ describe('qualified Shelly adapter boundaries', () => {
 			Promise.resolve(
 				method === 'Temperature.GetConfig' ? probeConfig : { ds18b20: { 'temperature:100': { addr: 'replacement' } } },
 			);
+		rpc.notify({ 'temperature:100': { tC: 25 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+	});
+
+	it('revokes a probe packet when its Celsius calibration changes', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		rpc.response = (method) => Promise.resolve(method === 'Temperature.GetConfig' ? probeConfig : probePeripheral);
+		const fixture = await managerFixture(physical, 'probe');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'temperature:100': { tC: 25 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: 25 }),
+			expect.anything(),
+		);
+		rpc.response = (method) =>
+			Promise.resolve(method === 'Temperature.GetConfig' ? { ...probeConfig, offset_C: 0.5 } : probePeripheral);
 		rpc.notify({ 'temperature:100': { tC: 25 } });
 		await flush();
 		expect(fixture.reportSample).toHaveBeenLastCalledWith(
