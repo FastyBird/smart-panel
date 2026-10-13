@@ -7,6 +7,8 @@ export interface PropertySampleEvidence {
 	readonly provenance: 'live' | 'cached' | 'retained';
 	/** Server poll request start or notification capture, before queuing. */
 	readonly observedAt?: Date;
+	/** Pure process-local generation/identity guard; never serialized or supplied by a public DTO. */
+	readonly isCurrent?: () => boolean;
 }
 
 export interface AcceptedPropertySample {
