@@ -31,6 +31,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/television.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/valve.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/window_covering.dart';
@@ -590,6 +591,9 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
       throw ArgumentError(
         'Device view is not valid for Thermostat device detail',
       );
+    }
+    if (device.type == 'virtual') {
+      return VirtualThermostatDeviceDetail(device: device);
     }
     return ThermostatDeviceDetail(device: device, config: config);
   },
