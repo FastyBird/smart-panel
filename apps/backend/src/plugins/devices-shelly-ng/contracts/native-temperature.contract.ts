@@ -176,6 +176,7 @@ export function nativeVoltmeterVoltageIdentity(
 	};
 }
 
+/** Capture live report timing while preserving invalid device clocks for qualified consumers to reject. */
 export function shellySampleEvidence(ts: unknown, observedAt: Date, receivedAt = new Date()): PropertySampleEvidence {
 	// Missing timestamps use verified live capture; malformed timestamps must retain invalid evidence.
 	const sourceTime =

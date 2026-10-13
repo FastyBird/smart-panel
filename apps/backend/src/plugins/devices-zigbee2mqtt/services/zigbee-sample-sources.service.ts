@@ -271,8 +271,10 @@ export class ZigbeeSampleSourcesService implements OnModuleDestroy {
 					identity &&
 					this.sources.get(friendlyName) === identity &&
 					requiredPropertyIds.every((id) => rows.some((row) => row.propertyId === id)) &&
-					// Physical routing must agree for every persisted leaf, including quarantined leaves.
-					rows.every((row) => row.ieeeAddress === identity.ieeeAddress && row.friendlyName === friendlyName) &&
+					// Quarantined dropped leaves retain historical routing; active bindings must match.
+					rows
+						.filter((row) => !row.quarantined)
+						.every((row) => row.ieeeAddress === identity.ieeeAddress && row.friendlyName === friendlyName) &&
 					targetedRows.every(
 						(row) =>
 							!row.quarantined &&
