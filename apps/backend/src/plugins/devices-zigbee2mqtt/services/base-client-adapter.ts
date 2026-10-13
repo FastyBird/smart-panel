@@ -28,13 +28,18 @@ export abstract class Z2mBaseClientAdapter {
 	protected readonly logger: ExtensionLoggerService;
 
 	private sourceGeneration = 0;
+	private cacheState: boolean | null = null;
+	private cacheProofGeneration = 0;
 	private connectedState = false;
 	private bridgeOnlineState = false;
 	protected get connected(): boolean {
 		return this.connectedState;
 	}
 	protected set connected(value: boolean) {
-		if (value !== this.connectedState) this.sourceGeneration++;
+		if (value !== this.connectedState) {
+			this.sourceGeneration++;
+			this.setCacheState(null);
+		}
 		this.connectedState = value;
 	}
 	protected get bridgeOnline(): boolean {
@@ -42,6 +47,7 @@ export abstract class Z2mBaseClientAdapter {
 	}
 	protected set bridgeOnline(value: boolean) {
 		if (value !== this.bridgeOnlineState) this.sourceGeneration++;
+		if (!value) this.setCacheState(null);
 		this.bridgeOnlineState = value;
 	}
 	protected reconnectTimer: NodeJS.Timeout | null = null;
@@ -89,6 +95,27 @@ export abstract class Z2mBaseClientAdapter {
 	 */
 	isBridgeOnline(): boolean {
 		return this.bridgeOnline;
+	}
+
+	getMeasurementReadiness(): { requiredProof: string; reasons: readonly string[] } {
+		return {
+			requiredProof: 'current_bridge_info_config_advanced_cache_state_false',
+			reasons:
+				!this.connected || !this.bridgeOnline
+					? ['zigbee_source_disconnected']
+					: this.cacheState === false
+						? []
+						: [
+								this.cacheState === true
+									? 'zigbee_cache_state_merges_old_fields'
+									: 'zigbee_current_cache_state_unknown_require_live_bridge_info_or_gateway_frontend_snapshot',
+							],
+		};
+	}
+
+	private setCacheState(value: boolean | null): void {
+		if (value !== this.cacheState) this.cacheProofGeneration++;
+		this.cacheState = value;
 	}
 
 	/**
@@ -194,7 +221,7 @@ export abstract class Z2mBaseClientAdapter {
 
 			// Now safe to check for bridge messages (no known device matches this path)
 			if (topicParts[0] === 'bridge') {
-				this.handleBridgeMessage(topicParts[1], message);
+				this.handleBridgeMessage(topicParts[1], message, isRetained);
 				return;
 			}
 
@@ -223,8 +250,25 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Handle bridge messages (state, devices, events)
 	 */
-	protected handleBridgeMessage(subtopic: string | undefined, message: string): void {
+	protected handleBridgeMessage(subtopic: string | undefined, message: string, isRetained = false): void {
 		switch (subtopic) {
+			case 'info': {
+				// Only the literal whitelisted config field is retained. No credentials/config dump.
+				// MQTT retained bridge info may outlive its gateway: require a current publish.
+				// Frontend WS snapshots come from the running gateway's own retainedMessages map.
+				// https://github.com/Koenkk/zigbee2mqtt/blob/master/lib/extension/frontend.ts
+				// Bridge requestLookup has no read-only info request; never mutate options to elicit proof.
+				let cacheState: boolean | null = null;
+				try {
+					const info = JSON.parse(message) as { config?: { advanced?: { cache_state?: unknown } } };
+					const value = info?.config?.advanced?.cache_state;
+					if (this.connected && !isRetained && typeof value === 'boolean') cacheState = value;
+				} catch {
+					/* malformed proof remains unqualified */
+				}
+				this.setCacheState(cacheState);
+				break;
+			}
 			case 'state':
 				this.handleBridgeStateMessage(message);
 				break;
@@ -407,6 +451,7 @@ export abstract class Z2mBaseClientAdapter {
 	): void {
 		const observedAt = new Date();
 		const generation = this.sourceGeneration;
+		const cacheProofGeneration = this.cacheProofGeneration;
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
@@ -431,8 +476,25 @@ export abstract class Z2mBaseClientAdapter {
 				isRetained,
 				isCached: options?.isCached,
 				sampledAt: options?.sampledAt,
-				qualificationReason: options?.qualificationReason,
+				measurementFieldsAreLive: this.connected && this.bridgeOnline && this.cacheState === false,
+				qualificationReason:
+					this.cacheState === false
+						? options?.qualificationReason
+						: this.cacheState === true
+							? 'zigbee_cache_state_merges_old_fields'
+							: 'zigbee_current_cache_state_unknown',
 				isCurrent: () => generation === this.sourceGeneration && (options?.isCurrent?.() ?? true),
+				...(this.connected && this.bridgeOnline && this.cacheState === false && !isRetained && !options?.isCached
+					? {
+							sourceIsCurrent: () =>
+								generation === this.sourceGeneration &&
+								cacheProofGeneration === this.cacheProofGeneration &&
+								this.connected &&
+								this.bridgeOnline &&
+								this.cacheState === false &&
+								(options?.isCurrent?.() ?? true),
+						}
+					: {}),
 				isDup: options?.isDup,
 				packetId: options?.packetId,
 			};
@@ -488,6 +550,7 @@ export abstract class Z2mBaseClientAdapter {
 	 */
 	protected resetState(): void {
 		this.sourceGeneration++;
+		this.setCacheState(null);
 		this.connected = false;
 		this.bridgeOnline = false;
 		this.deviceRegistry.clear();

@@ -32,10 +32,13 @@ export class Z2mWsClientAdapterService extends Z2mBaseClientAdapter {
 	private connectionGeneration = 0;
 	private config: Z2mWsConfig | null = null;
 
-	getMeasurementReadiness(): { requiredProof: 'post_connection_source_timestamp'; reasons: readonly string[] } {
+	getMeasurementReadiness(): { requiredProof: string; reasons: readonly string[] } {
 		return {
-			requiredProof: 'post_connection_source_timestamp',
-			reasons: ['websocket_startup_cache_has_no_retain_flag'],
+			requiredProof: 'current_bridge_info_cache_state_false_and_post_connection_source_timestamp',
+			reasons: [
+				...super.getMeasurementReadiness().reasons,
+				'websocket_measurements_require_post_connection_source_timestamp',
+			],
 		};
 	}
 

@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -19,7 +19,8 @@ export interface ShellySampleSourceLease {
 
 /** Identity writes happen at adoption/config changes; samples never manufacture durable freshness. */
 @Injectable()
-export class ShellySampleSourcesService {
+export class ShellySampleSourcesService implements OnModuleDestroy {
+	private closed = false;
 	private generation = 0;
 	private readonly mutating = new Set<string>();
 	private readonly leases = new Map<string, ShellySampleSourceLease>();
@@ -130,9 +131,9 @@ export class ShellySampleSourcesService {
 
 	isCurrent(lease: ShellySampleSourceLease, observedAt: Date | undefined): boolean {
 		return (
+			!this.closed &&
 			this.leases.get(lease.metadata.propertyId) === lease &&
 			lease.metadata.active &&
-			!this.mutating.has(`${lease.metadata.deviceId}|${lease.metadata.componentKey}`) &&
 			observedAt instanceof Date &&
 			Number.isFinite(observedAt.getTime()) &&
 			observedAt.getTime() > Math.max(lease.activatedAt.getTime(), lease.metadata.identifiedAt.getTime())
@@ -157,6 +158,12 @@ export class ShellySampleSourcesService {
 					? 'live'
 					: 'awaiting_sample',
 		};
+	}
+
+	onModuleDestroy(): void {
+		this.closed = true;
+		this.leases.clear();
+		this.generation++;
 	}
 
 	/** Clear restart/connection authority without altering durable identity or history. */

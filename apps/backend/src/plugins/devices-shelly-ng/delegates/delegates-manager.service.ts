@@ -1562,7 +1562,6 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, relativeTemperature, comp.tC);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
-				if (this.sampleSources.has(delegate.id)) return;
 				this.handleNumericChange(comp.key, 'tC', relativeTemperature.id, val, (n) =>
 					this.handleChange(relativeTemperature, n, false),
 				);
@@ -1932,6 +1931,14 @@ export class DelegatesManagerService {
 			val: CharacteristicValue,
 			origin: ShellyValueOrigin = 'notify',
 		): void => {
+			// Library value events lack raw provenance and may suppress equal reports or launder null.
+			// Adopted sample leaves have exactly one path through reportSample/window admission.
+			if (
+				(this.sampleSources.get(delegate.id) ?? []).some(
+					(source) => source.componentKey === compKey && source.attribute === attr,
+				)
+			)
+				return;
 			const handler = this.changeHandlers.get(`${delegate.id}|${compKey}|${attr}`);
 
 			if (!handler) {
@@ -1962,7 +1969,6 @@ export class DelegatesManagerService {
 			if (state !== true) {
 				this.sampleGenerations.set(delegate.id, (this.sampleGenerations.get(delegate.id) ?? 0) + 1);
 				for (const source of this.sampleSources.get(delegate.id) ?? []) {
-					this.sampleSourcesRegistry?.revoke(source.property.id);
 					this.sampleSourcesRegistry?.revoke(source.property.id);
 					void this.admitRawSample(source.property, null, {
 						componentKey: source.componentKey,
@@ -2254,10 +2260,10 @@ export class DelegatesManagerService {
 				const key = `${delegate.id}|${source.property.id}`;
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
 				this.sampleRevisions.set(key, revision);
-				const isCurrent = (): boolean =>
+				const sourceIsCurrent = (): boolean =>
 					(this.sampleGenerations.get(delegate.id) ?? 0) === generation &&
-					this.sampleRevisions.get(key) === revision &&
-					(sample.evidence.isCurrent?.() ?? true);
+					(sample.evidence.sourceIsCurrent?.() ?? sample.evidence.isCurrent?.() ?? true);
+				const isCurrent = (): boolean => sourceIsCurrent() && this.sampleRevisions.get(key) === revision;
 				const raw = sample.values[source.attribute];
 				const value =
 					!fault &&
@@ -2267,19 +2273,22 @@ export class DelegatesManagerService {
 						: null;
 				let lease: ShellySampleSourceLease | null | undefined;
 				let sourceProof = false;
-				const admit = (reported: unknown, report = sample): Promise<void> =>
-					this.admitRawSample(source.property, reported, {
+				const admit = (reported: unknown, report = sample): Promise<void> => {
+					const sourceGuard = (): boolean =>
+						sourceIsCurrent() &&
+						(reported === null ||
+							!hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+							(sourceProof &&
+								Boolean(lease && this.sampleSourcesRegistry?.isCurrent(lease, sample.evidence.observedAt))));
+					return this.admitRawSample(source.property, reported, {
 						...report,
 						evidence: {
 							...report.evidence,
-							isCurrent: () =>
-								isCurrent() &&
-								(reported === null ||
-									!hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
-									(sourceProof &&
-										Boolean(lease && this.sampleSourcesRegistry?.isCurrent(lease, sample.evidence.observedAt)))),
+							isCurrent: () => isCurrent() && sourceGuard(),
+							sourceIsCurrent: sourceGuard,
 						},
 					});
+				};
 				const task = (async (): Promise<void> => {
 					// Faults do not wait for configuration RPC or ordinary telemetry coalescing.
 					if (value !== null && hasQualifiedFloorSourceIdentity(source.channel.identifier)) {
@@ -2353,7 +2362,17 @@ export class DelegatesManagerService {
 	): Promise<ShellyProtectiveCommandResult> {
 		for (const id of this.identifierToDelegates.get(deviceIdentifier) ?? []) {
 			const delegate = this.delegates.get(id);
-			if (delegate?.rpcConnected) return delegate.protectiveSwitch(componentId, command, timeoutMs);
+			if (delegate?.rpcConnected) {
+				if (command.on) {
+					const deviceId = this.delegateDeviceIds.get(id);
+					const device =
+						deviceId && (await this.devicesService.findOne<ShellyNgDeviceEntity>(deviceId, DEVICES_SHELLY_NG_TYPE));
+					if (!device?.enabled) return { outcome: 'refused', reasons: ['source_disabled_or_missing'] };
+					if (this.delegates.get(id) !== delegate || this.delegateDeviceIds.get(id) !== deviceId)
+						return { outcome: 'refused', reasons: ['source_generation_changed'] };
+				}
+				return delegate.protectiveSwitch(componentId, command, timeoutMs);
+			}
 		}
 		return { outcome: 'refused', reasons: ['source_unavailable'] };
 	}

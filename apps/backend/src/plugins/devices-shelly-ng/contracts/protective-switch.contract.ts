@@ -1,5 +1,6 @@
 /** Internal only. Installed hardware evidence must be supplied by the qualification registry. */
 export interface ShellyProtectiveQualification {
+	/** Shelly.GetDeviceInfo.id (hardware identity), not the panel database device UUID. */
 	readonly deviceId: string;
 	readonly model: string;
 	readonly firmware: string;
@@ -42,7 +43,7 @@ export function protectiveReadiness(
 		qualification.componentId !== componentId
 	)
 		reasons.push('hardware_identity_mismatch');
-	if (!qualification.evidenceId || !Number.isInteger(qualification.revision) || qualification.revision < 1)
+	if (!qualification.evidenceId || !Number.isSafeInteger(qualification.revision) || qualification.revision < 1)
 		reasons.push('hardware_evidence_missing');
 	if (!qualification.releaseOrderingQualified) reasons.push('release_ordering_unqualified');
 	if (!qualification.independentProtectionQualified) reasons.push('independent_protection_unqualified');

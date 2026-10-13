@@ -77,15 +77,13 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		await database
 			.getRepository(ShellyNgChannelEntity)
 			.save({ id: channelId, name: 'Temperature', category: ChannelCategory.TEMPERATURE, device: { id: deviceId } });
-		await database
-			.getRepository(ShellyNgChannelPropertyEntity)
-			.save({
-				id: propertyId,
-				channel: { id: channelId },
-				category: PropertyCategory.TEMPERATURE,
-				dataType: DataTypeType.FLOAT,
-				permissions: [PermissionType.READ_ONLY],
-			});
+		await database.getRepository(ShellyNgChannelPropertyEntity).save({
+			id: propertyId,
+			channel: { id: channelId },
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		});
 		reportSample = jest.fn().mockResolvedValue({});
 		sources = new ShellySampleSourcesService(database.getRepository(ShellySampleSourceEntity), {
 			reportSample,
@@ -141,15 +139,13 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
 		const oldLease = await sources.get(propertyId);
 		const replacementId = randomUUID();
-		await database
-			.getRepository(ShellyNgChannelPropertyEntity)
-			.save({
-				id: replacementId,
-				channel: { id: channelId },
-				category: PropertyCategory.VALUE,
-				dataType: DataTypeType.FLOAT,
-				permissions: [PermissionType.READ_ONLY],
-			});
+		await database.getRepository(ShellyNgChannelPropertyEntity).save({
+			id: replacementId,
+			channel: { id: channelId },
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		});
 		await sources.bind(
 			replacementId,
 			deviceId,
@@ -201,5 +197,21 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		} finally {
 			await runner.release();
 		}
+	});
+	it('explicit helper removal invalidates old canonical eligibility and shutdown clears process authority', async () => {
+		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
+		const lease = await sources.get(propertyId);
+		await sources.invalidateComponent(deviceId, 'input:100');
+		expect(sources.isCurrent(lease, new Date(Date.now() + 1))).toBe(false);
+		expect(reportSample).toHaveBeenCalledWith(
+			propertyId,
+			expect.objectContaining({ value: null }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+		expect((await sources.getReadiness({ id: propertyId } as ChannelPropertyEntity, 1000)).metadata.active).toBe(false);
+		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
+		const restored = await sources.get(propertyId);
+		sources.onModuleDestroy();
+		expect(sources.isCurrent(restored, new Date(Date.now() + 1))).toBe(false);
 	});
 });

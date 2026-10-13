@@ -75,26 +75,28 @@ const probeConfig = { id: 100, offset: 0 };
 const probePeripheral = { ds18b20: { 'temperature:100': { addr: '40:255:100:6:199:204:149:177' } } };
 const helperPeripheral = { analog_in: { 'input:100': { io: 0 } } };
 
-const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: boolean | 'probe' = false) => {
+const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: boolean | 'probe' | 'switch' = false) => {
 	const device = Object.assign(new ShellyNgDeviceEntity(), { id: 'physical', identifier: physical.id, enabled: true });
 	const channel = Object.assign(new ShellyNgChannelEntity(), {
 		id: 'sensor',
 		device,
-		category: ChannelCategory.TEMPERATURE,
+		category: helper === 'switch' ? ChannelCategory.SWITCHER : ChannelCategory.TEMPERATURE,
 		identifier:
-			helper === 'probe'
-				? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
-				: helper
-					? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
-					: physical instanceof ShellyPlusHt
-						? 'temperature:0'
-						: 'temperature:100',
+			helper === 'switch'
+				? 'switch:0'
+				: helper === 'probe'
+					? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
+					: helper
+						? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
+						: physical instanceof ShellyPlusHt
+							? 'temperature:0'
+							: 'temperature:100',
 	});
 	const property = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'temperature',
 		channel,
-		category: PropertyCategory.TEMPERATURE,
-		identifier: helper && helper !== 'probe' ? 'xpercent' : 'tC',
+		category: helper === 'switch' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE,
+		identifier: helper === 'switch' ? 'output' : helper === true ? 'xpercent' : 'tC',
 	});
 	const reportSample = jest.fn().mockResolvedValue(property);
 	const update = jest.fn().mockResolvedValue(property);
@@ -142,7 +144,7 @@ const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: bo
 	);
 	const delegate = await manager.insert(physical);
 	update.mockClear();
-	return { manager, delegate, reportSample, update, channel, property };
+	return { manager, delegate, reportSample, update, channel, property, device };
 };
 
 describe('qualified Shelly adapter boundaries', () => {
@@ -484,5 +486,104 @@ describe('qualified Shelly adapter boundaries', () => {
 		expect(fixture.reportSample).toHaveBeenCalledTimes(1);
 		rpc.notify({ 'input:100': { xpercent: 25 } });
 		expect(fixture.reportSample).toHaveBeenCalledTimes(1);
+	});
+	it('keeps an already-submitted sample guard false after disconnect while core admission is pending', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		rpc.response = (method) => Promise.resolve(method === 'Input.GetConfig' ? helperConfig : helperPeripheral);
+		const fixture = await managerFixture(physical, true);
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		let evidence: { isCurrent(): boolean };
+		let finish: () => void;
+		fixture.reportSample.mockImplementation(
+			(_id: string, dto: { value: unknown }, captured: { isCurrent(): boolean }) => {
+				if (dto.value === null) return Promise.resolve(fixture.property);
+				evidence = captured;
+				return new Promise((resolve) => {
+					finish = () => resolve(fixture.property);
+				});
+			},
+		);
+		rpc.notify({ 'input:100': { xpercent: 25 } });
+		await flush();
+		expect(evidence.isCurrent()).toBe(true);
+		rpc.emit('disconnect', 1000, '', null);
+		expect(evidence.isCurrent()).toBe(false);
+		finish();
+		await flush();
+	});
+
+	it('refuses protective ON on a disabled source while absolute protective OFF remains available', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const fixture = await managerFixture(physical);
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		fixture.device.enabled = false;
+		expect(
+			await manager.protectiveSwitch(
+				'pilot',
+				0,
+				{ on: true, leaseSeconds: 10, qualification: qualification('pilot') },
+				1000,
+			),
+		).toEqual({ outcome: 'refused', reasons: ['source_disabled_or_missing'] });
+		expect(rpc.requests).toHaveLength(0);
+		expect((await manager.protectiveSwitch('pilot', 0, { on: false }, 1000)).outcome).toBe('accepted');
+	});
+	it('retains stable source authority while a newer valid helper proof is blocked, and a fault revokes admission immediately', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		rpc.response = (method) => Promise.resolve(method === 'Input.GetConfig' ? helperConfig : helperPeripheral);
+		const fixture = await managerFixture(physical, true);
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'input:100': { xpercent: 25 } });
+		await flush();
+		const first = (
+			fixture.reportSample.mock.calls[0] as unknown as [
+				string,
+				unknown,
+				{ isCurrent(): boolean; sourceIsCurrent(): boolean },
+			]
+		)[2];
+		expect(first.sourceIsCurrent()).toBe(true);
+		let finish: (value: unknown) => void;
+		rpc.response = (method) =>
+			method === 'Input.GetConfig'
+				? new Promise((resolve) => {
+						finish = resolve;
+					})
+				: Promise.resolve(helperPeripheral);
+		rpc.notify({ 'input:100': { xpercent: 26 } });
+		await flush();
+		expect(first.isCurrent()).toBe(false);
+		expect(first.sourceIsCurrent()).toBe(true);
+		expect(fixture.reportSample).toHaveBeenCalledTimes(1);
+		rpc.notify({ 'input:100': { xpercent: null, errors: ['read'] } });
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+		finish(helperConfig);
+		await flush();
+		expect(fixture.reportSample).toHaveBeenCalledTimes(2);
+	});
+	it('routes switch output exclusively through raw sample admission, including equal reports and null', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const fixture = await managerFixture(physical, 'switch');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'switch:0': { output: true } });
+		await flush();
+		rpc.notify({ 'switch:0': { output: true } });
+		await flush();
+		rpc.notify({ 'switch:0': { output: null } });
+		await flush();
+		expect(fixture.reportSample.mock.calls.map((call: unknown[]) => (call[1] as { value: unknown }).value)).toEqual([
+			true,
+			true,
+			null,
+		]);
+		expect(fixture.update).not.toHaveBeenCalled();
 	});
 });

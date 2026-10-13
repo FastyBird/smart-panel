@@ -232,7 +232,11 @@ describe('Z2mDeviceMapperService', () => {
 			channelsService.findAll.mockResolvedValue([genericChannel]);
 			channelsPropertiesService.findAll.mockResolvedValue([genericEventProp]);
 
-			await service.updateDeviceState('sonoff-button', { event: 'motion_detected' });
+			await service.updateDeviceState(
+				'sonoff-button',
+				{ event: 'motion_detected' },
+				{ measurementFieldsAreLive: true },
+			);
 
 			expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
 				genericEventProp.id,
@@ -569,9 +573,9 @@ describe('Z2mDeviceMapperService', () => {
 
 		it('passes equal live reports to sample admission; missing measurement fields do not renew', async () => {
 			const observedAt = new Date('2026-10-13T09:00:00Z');
-			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
-			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
-			await service.updateDeviceState('ambient', { battery: 80 }, { observedAt });
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
+			await service.updateDeviceState('ambient', { battery: 80 }, { observedAt, measurementFieldsAreLive: true });
 			expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(2);
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
@@ -600,12 +604,66 @@ describe('Z2mDeviceMapperService', () => {
 		});
 
 		it('passes null measurement through admission rather than substituting numeric zero', async () => {
-			await service.updateDeviceState('ambient', { temperature: null });
+			await service.updateDeviceState('ambient', { temperature: null }, { measurementFieldsAreLive: true });
 			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
 				'reading',
 				expect.objectContaining({ value: null }),
 				expect.objectContaining({ provenance: 'live' }),
 			);
 		});
+
+		it('does not promote a merged battery heartbeat or an unknown report contract to live temperature', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, battery: 79, last_seen: observedAt.toISOString() },
+				{
+					observedAt,
+					measurementFieldsAreLive: false,
+					qualificationReason: 'zigbee_cache_state_merges_old_fields',
+				},
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: 25 }),
+				expect.objectContaining({ provenance: 'cached' }),
+			);
+			expect(service.getSampleProvenance('reading')).toMatchObject({
+				provenance: 'cached',
+				reason: 'zigbee_cache_state_merges_old_fields',
+			});
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ provenance: 'cached', sampledAt: new Date(0) }),
+			);
+		});
+
+		it('revokes a Celsius measurement when its registered transform is missing, without a raw fallback', async () => {
+			service.registerPropertyTransformer('reading', 'missing-celsius-transform', 'temperature');
+			await service.updateDeviceState('ambient', { temperature: 2.5 }, { measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: null }),
+				expect.objectContaining({ provenance: 'live' }),
+			);
+		});
+	});
+	it('does not admit samples from a replaced transport while property lookup is pending', async () => {
+		const device = createMockDevice('ambient');
+		let current = true;
+		let finish: (device: Zigbee2mqttDeviceEntity) => void;
+		devicesService.findOneBy.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const pending = service.updateDeviceState('ambient', { temperature: 25 }, { isCurrent: () => current });
+		current = false;
+		finish(device);
+		await pending;
+		expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
 	});
 });

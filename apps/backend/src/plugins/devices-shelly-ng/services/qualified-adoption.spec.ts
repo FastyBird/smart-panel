@@ -1,9 +1,11 @@
 import { ShellyPlus1Pm } from 'shellies-ds9';
 
-import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
@@ -195,5 +197,30 @@ describe('native temperature adoption identity', () => {
 		await service.createOrUpdate('pilot');
 		expect(channels.some((channel) => channel.identifier?.startsWith('probe-temperature:'))).toBe(false);
 		expect(channels.some((channel) => channel.identifier === 'temperature:100')).toBe(true);
+	});
+	it.each([
+		[DeviceCategory.OUTLET, ChannelCategory.OUTLET],
+		[DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
+		[DeviceCategory.LIGHTING, ChannelCategory.LIGHT],
+	])('validates multiple canonical sensor channels on supported host category %s', (category, controlCategory) => {
+		const channel = (channelCategory: ChannelCategory) => ({
+			category: channelCategory,
+			properties: getRequiredProperties(channelCategory).map((propertyCategory) => {
+				const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+				return { category: propertyCategory, dataType: metadata.data_type, permissions: metadata.permissions };
+			}),
+		});
+		const validator = new DeviceValidationService({} as DevicesService);
+		const result = validator.validateDeviceStructure({
+			category,
+			channels: [
+				channel(controlCategory),
+				channel(ChannelCategory.DEVICE_INFORMATION),
+				channel(ChannelCategory.TEMPERATURE),
+				channel(ChannelCategory.TEMPERATURE),
+			],
+		});
+		expect(result.issues).toEqual([]);
+		expect(result.isValid).toBe(true);
 	});
 });

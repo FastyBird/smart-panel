@@ -21,6 +21,10 @@ export interface Z2mDeviceStateMetadata {
 	qualificationReason?: string;
 	/** Internal generation guard; never supplied through API DTOs. */
 	isCurrent?: () => boolean;
+	/** Internal proof that published fields are not merged from the gateway cache. */
+	measurementFieldsAreLive?: boolean;
+	/** Stable connection/configuration authority, independent of individual packet arrival. */
+	sourceIsCurrent?: () => boolean;
 	isRetained?: boolean;
 	isCached?: boolean;
 	isDup?: boolean;

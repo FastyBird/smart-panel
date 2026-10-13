@@ -705,7 +705,11 @@ export class Z2mDeviceMapperService {
 					sampledAt: evidence.sampledAt,
 					reason:
 						metadata?.qualificationReason ??
-						(evidence.provenance === 'live' ? 'live_provider_packet' : `${evidence.provenance}_replay`),
+						(evidence.provenance === 'live'
+							? 'live_provider_packet'
+							: !metadata?.isCached && !metadata?.isRetained
+								? 'zigbee_field_measurement_proof_missing'
+								: `${evidence.provenance}_replay`),
 				});
 				// Update property value
 				if (metadata?.isCurrent && !metadata.isCurrent()) return;
@@ -1433,7 +1437,11 @@ export class Z2mDeviceMapperService {
 				: typeof timestamp === 'string' || typeof timestamp === 'number'
 					? new Date(timestamp)
 					: null;
-		const provenance = metadata?.isRetained ? 'retained' : metadata?.isCached ? 'cached' : 'live';
+		const provenance = metadata?.isRetained
+			? 'retained'
+			: metadata?.isCached || metadata?.measurementFieldsAreLive !== true
+				? 'cached'
+				: 'live';
 		// A replay without source time must never acquire a new measurement age.
 		const sampledAt =
 			parsed && Number.isFinite(parsed.getTime()) ? parsed : provenance === 'live' ? observedAt : new Date(0);
@@ -1443,6 +1451,7 @@ export class Z2mDeviceMapperService {
 			observedAt,
 			provenance,
 			...(metadata?.isCurrent ? { isCurrent: metadata.isCurrent } : {}),
+			...(metadata?.sourceIsCurrent ? { sourceIsCurrent: metadata.sourceIsCurrent } : {}),
 		};
 	}
 

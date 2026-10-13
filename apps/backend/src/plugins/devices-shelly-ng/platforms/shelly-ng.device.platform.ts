@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
+import {
+	ShellyProtectiveCommand,
+	ShellyProtectiveCommandResult,
+	ShellyProtectiveQualification,
+	protectiveReadiness,
+} from '../contracts/protective-switch.contract';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgNotImplementedException } from '../devices-shelly-ng.exceptions';
@@ -26,6 +34,44 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 
 	getType(): string {
 		return DEVICES_SHELLY_NG_TYPE;
+	}
+
+	getProtectiveReadiness(
+		identity: { deviceId: string; model: string; firmware: string },
+		componentId: number,
+		qualification?: ShellyProtectiveQualification,
+	): { supported: boolean; reasons: readonly string[] } {
+		const reasons = protectiveReadiness(identity, componentId, qualification);
+		return { supported: reasons.length === 0, reasons };
+	}
+
+	/** Internal claim-authorized entrypoint; public generic setters never construct this command. */
+	async processProtectiveCommand(
+		target: Pick<IShellyNgDevicePropertyData, 'device' | 'channel' | 'property'>,
+		command: ShellyProtectiveCommand,
+		timeoutMs: number,
+	): Promise<ShellyProtectiveCommandResult> {
+		const { device, channel, property } = target;
+		const component = /^switch:(\d+)$/.exec(channel.identifier ?? '');
+		const permissions = new Set(property.permissions ?? []);
+		if (
+			!(device instanceof ShellyNgDeviceEntity) ||
+			!(channel instanceof ShellyNgChannelEntity) ||
+			!(property instanceof ShellyNgChannelPropertyEntity) ||
+			!component ||
+			property.category !== PropertyCategory.ON ||
+			property.dataType !== DataTypeType.BOOL ||
+			!['output', 'on'].includes(property.identifier) ||
+			!permissionSatisfied(PermissionType.READ_ONLY, permissions) ||
+			!permissionSatisfied(PermissionType.WRITE_ONLY, permissions)
+		) {
+			return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
+		}
+		const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		const propertyChannelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+		if (channelDeviceId !== device.id || propertyChannelId !== channel.id || !device.identifier)
+			return { outcome: 'refused', reasons: ['protective_leaf_identity_mismatch'] };
+		return this.delegatesManagerService.protectiveSwitch(device.identifier, Number(component[1]), command, timeoutMs);
 	}
 
 	async process({ device, channel, property, value }: IShellyNgDevicePropertyData): Promise<boolean> {
