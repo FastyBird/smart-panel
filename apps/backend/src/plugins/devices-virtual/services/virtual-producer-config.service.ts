@@ -40,11 +40,15 @@ import {
 	VirtualProducerBindingModel,
 } from '../models/producer-response.model';
 
+import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability, commonLightCapabilities } from './virtual-light-group.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
-import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
+import {
+	isEligibleVirtualMeasurement,
+	isEligibleVirtualTransformedTemperature,
+} from './virtual-source-eligibility.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
 @Injectable()
@@ -56,6 +60,7 @@ export class VirtualProducerConfigService {
 		private readonly eventEmitter: EventEmitter2,
 		private readonly producerState: VirtualProducerStateService,
 		@Optional() private readonly lightGroups?: VirtualLightGroupStateService,
+		@Optional() private readonly aggregateRuntime?: VirtualAggregateRuntimeService,
 	) {}
 
 	async configureAggregate(
@@ -135,11 +140,14 @@ export class VirtualProducerConfigService {
 				const source = await this.property(manager, proposed.sourcePropertyId);
 				const sourceChannel = source.channel as ChannelEntity;
 				const sourceDevice = sourceChannel.device as VirtualDeviceEntity;
-				// Aggregate nesting is intentionally excluded in the initial policy. Projection aliases
-				// may consume this materialized output, while aggregate inputs remain physical.
-				if (sourceDevice.type === 'virtual')
+				// Aggregate nesting and alias chains remain excluded. Only canonical, read-only
+				// transformed measurements are reserved as an upstream producer extension.
+				if (
+					sourceDevice.type === 'virtual' &&
+					!isEligibleVirtualTransformedTemperature(source, sourceChannel, sourceDevice)
+				)
 					throw new DevicesValidationException(
-						'Aggregate inputs must be physical temperatures in this producer policy version.',
+						'Aggregate inputs require physical temperatures or read-only canonical transformed temperatures.',
 					);
 				if (
 					sourceChannel.category !== ChannelCategory.TEMPERATURE ||
@@ -147,7 +155,9 @@ export class VirtualProducerConfigService {
 					source.dataType !== DataTypeType.FLOAT ||
 					(!source.permissions.includes(PermissionType.READ_ONLY) &&
 						!source.permissions.includes(PermissionType.READ_WRITE)) ||
-					resolvePropertyUnit(source) !== resolvePropertyUnit(output)
+					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
+					(source.unit != null && source.unit !== resolvePropertyUnit(source)) ||
+					(output.unit != null && output.unit !== resolvePropertyUnit(output))
 				) {
 					throw new DevicesValidationException('Aggregate input must be a readable canonical Celsius temperature.');
 				}
@@ -539,8 +549,21 @@ export class VirtualProducerConfigService {
 			maximum_age_seconds: config.maximumAgeSeconds,
 			revision: config.revision,
 			graph_revision: graphRevision,
-			runtime_readiness: 'unavailable',
-			inputs: inputs.map((input) => this.bindingModel(input)),
+			runtime_readiness: this.aggregateRuntime?.isActive() ? 'ready' : 'unavailable',
+			inputs: inputs.map((input) => {
+				const model = this.bindingModel(input);
+				const diagnostic = this.aggregateRuntime
+					?.readDiagnostics(config.outputPropertyId)
+					?.inputs.find((candidate) => candidate.id === input.id);
+				if (diagnostic)
+					Object.assign(model, {
+						current_value: diagnostic.value,
+						sampled_at: diagnostic.sampledAt,
+						age_seconds: diagnostic.ageSeconds,
+						exclusion: diagnostic.exclusion,
+					});
+				return model;
+			}),
 		});
 	}
 
