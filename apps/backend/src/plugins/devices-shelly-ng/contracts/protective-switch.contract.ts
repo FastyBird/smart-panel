@@ -26,6 +26,7 @@ export type ShellyProtectiveCommandResult =
 	  }
 	| { readonly outcome: 'unknown'; readonly outputConfirmed: false; readonly pendingOnDrained: false };
 
+/** Return identity, ordering, protection and tested-lease blockers for installed protective ON eligibility. */
 export function protectiveReadiness(
 	identity: { deviceId: string; model: string; firmware: string },
 	componentId: number,
