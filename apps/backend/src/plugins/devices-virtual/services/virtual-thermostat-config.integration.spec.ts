@@ -24,9 +24,9 @@ import { PropertyCommandAdmissionRegistryService } from '../../../modules/device
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
-import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
 import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
 import { SceneExecutorService } from '../../../modules/scenes/services/scene-executor.service';
+import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
