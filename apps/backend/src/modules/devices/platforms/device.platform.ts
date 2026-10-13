@@ -7,6 +7,13 @@ export interface IDevicePropertyData {
 	value: string | number | boolean;
 }
 
+/** Internal platform lease for a composite batch; no DTO can supply or serialize dispatch authority. */
+export interface PreparedCompositeDeviceBatch {
+	readonly updates: readonly IDevicePropertyData[];
+	readonly isCurrent: () => boolean;
+	readonly dispatch: () => Promise<boolean>;
+}
+
 export interface IDevicePlatform {
 	process({ device, channel, property, value }: IDevicePropertyData): Promise<boolean>;
 
@@ -18,6 +25,9 @@ export interface IDevicePlatform {
 	 * sibling property updates when one upstream value authoritatively changes multiple panel properties.
 	 */
 	prepareBatch?(updates: Array<IDevicePropertyData>): Array<IDevicePropertyData> | null;
+
+	/** Captures exact physical targets and a provider identity lease before core admission. */
+	prepareCompositeBatch?(updates: Array<IDevicePropertyData>): Promise<PreparedCompositeDeviceBatch | null>;
 
 	getCommandTimeoutMs?(commandCount: number): number;
 
