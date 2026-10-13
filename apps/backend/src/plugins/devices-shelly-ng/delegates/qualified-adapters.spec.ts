@@ -1,4 +1,5 @@
-import { RpcHandler, RpcParams, ShellyPlus1, ShellyPlus1Pm, ShellyPlusHt } from 'shellies-ds9';
+import { RpcParams, ShellyPlus1, ShellyPlus1Pm, ShellyPlusDimmer, ShellyPlusHt } from 'shellies-ds9';
+import WebSocket from 'ws';
 
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -16,14 +17,24 @@ import { ShellySampleSourceEntity } from '../entities/shelly-sample-source.entit
 import { PropertyMappingStorageService, TransformerRegistry } from '../mappings';
 import { DeviceAddressService } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
 import { ShellySampleSourcesService } from '../services/shelly-sample-sources.service';
 
 import { DelegatesManagerService } from './delegates-manager.service';
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
 
 /** Real pinned component classes. Only protocol transport and persistence are fixtures. */
-class FixtureRpc extends RpcHandler {
-	connected = true;
+class FixtureRpc extends GuardedShellyRpcHandler {
+	private fixtureConnected = true;
+	override get connected(): boolean {
+		return this.fixtureConnected;
+	}
+	protected override createSocket(): WebSocket {
+		return {} as WebSocket;
+	}
+	protected override disconnect(): Promise<void> {
+		return Promise.resolve();
+	}
 	readonly requests: { method: string; params?: RpcParams }[] = [];
 	response: (method: string) => Promise<unknown> = (method) =>
 		Promise.resolve(
@@ -32,7 +43,7 @@ class FixtureRpc extends RpcHandler {
 				: { was_on: false },
 		);
 	constructor() {
-		super('qualified-adapter-fixture');
+		super('fixture.invalid', { clientId: 'fixture', requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 });
 	}
 	request<T>(method: string, params?: RpcParams): Promise<T> {
 		this.requests.push({ method, params });
@@ -42,7 +53,7 @@ class FixtureRpc extends RpcHandler {
 		this.emit('statusUpdate', { ts: Date.now() / 1000, ...values });
 	}
 	destroy(): Promise<void> {
-		this.connected = false;
+		this.fixtureConnected = false;
 		this.removeAllListeners();
 		return Promise.resolve();
 	}
@@ -75,28 +86,44 @@ const probeConfig = { id: 100, offset: 0 };
 const probePeripheral = { ds18b20: { 'temperature:100': { addr: '40:255:100:6:199:204:149:177' } } };
 const helperPeripheral = { analog_in: { 'input:100': { io: 0 } } };
 
-const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: boolean | 'probe' | 'switch' = false) => {
+const managerFixture = async (
+	physical: ShellyPlus1Pm | ShellyPlusHt | ShellyPlusDimmer,
+	helper: boolean | 'probe' | 'switch' | 'light' = false,
+) => {
 	const device = Object.assign(new ShellyNgDeviceEntity(), { id: 'physical', identifier: physical.id, enabled: true });
 	const channel = Object.assign(new ShellyNgChannelEntity(), {
 		id: 'sensor',
 		device,
-		category: helper === 'switch' ? ChannelCategory.SWITCHER : ChannelCategory.TEMPERATURE,
+		category:
+			helper === 'light'
+				? ChannelCategory.LIGHT
+				: helper === 'switch'
+					? ChannelCategory.SWITCHER
+					: ChannelCategory.TEMPERATURE,
 		identifier:
-			helper === 'switch'
-				? 'switch:0'
-				: helper === 'probe'
-					? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
-					: helper
-						? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
-						: physical instanceof ShellyPlusHt
-							? 'temperature:0'
-							: 'temperature:100',
+			helper === 'light'
+				? 'light:0'
+				: helper === 'switch'
+					? 'switch:0'
+					: helper === 'probe'
+						? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
+						: helper
+							? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
+							: physical instanceof ShellyPlusHt
+								? 'temperature:0'
+								: 'temperature:100',
 	});
 	const property = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'temperature',
 		channel,
-		category: helper === 'switch' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE,
-		identifier: helper === 'switch' ? 'output' : helper === true ? 'xpercent' : 'tC',
+		category: helper === 'switch' || helper === 'light' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE,
+		identifier: helper === 'switch' || helper === 'light' ? 'output' : helper === true ? 'xpercent' : 'tC',
+	});
+	const brightness = Object.assign(new ShellyNgChannelPropertyEntity(), {
+		id: 'brightness',
+		channel,
+		category: PropertyCategory.BRIGHTNESS,
+		identifier: 'brightness',
 	});
 	const reportSample = jest.fn().mockResolvedValue(property);
 	const update = jest.fn().mockResolvedValue(property);
@@ -115,7 +142,10 @@ const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: bo
 			findAll: () => Promise.resolve([channel]),
 		} as unknown as ChannelsService,
 		{
-			findOneBy: (_field: string, value: string) => Promise.resolve(value === property.identifier ? property : null),
+			findOneBy: (_field: string, value: string) =>
+				Promise.resolve(
+					value === property.identifier ? property : helper === 'light' && value === 'brightness' ? brightness : null,
+				),
 			reportSample,
 			update,
 		} as unknown as ChannelsPropertiesService,
@@ -172,6 +202,7 @@ describe('qualified Shelly adapter boundaries', () => {
 			0,
 			{ on: true, leaseSeconds: 30, qualification: qualification('pilot') },
 			1000,
+			() => true,
 		);
 		expect(accepted).toEqual({ outcome: 'accepted', wasOn: false, outputConfirmed: false, pendingOnDrained: false });
 		expect(physical.switch0.output).toBe(false);
@@ -191,8 +222,14 @@ describe('qualified Shelly adapter boundaries', () => {
 			const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
 			delegate = new ShellyDeviceDelegate(physical);
 			expect(
-				(await delegate.protectiveSwitch(0, { on: true, leaseSeconds, qualification: qualification('pilot') }, 1000))
-					.outcome,
+				(
+					await delegate.protectiveSwitch(
+						0,
+						{ on: true, leaseSeconds, qualification: qualification('pilot') },
+						1000,
+						() => true,
+					)
+				).outcome,
 			).toBe('refused');
 			expect(rpc.requests.some((item) => item.method === 'Switch.Set')).toBe(false);
 		},
@@ -205,8 +242,14 @@ describe('qualified Shelly adapter boundaries', () => {
 		const physical = new ShellyPlus1({ id: 'other', mac: '000000000001', model: ShellyPlus1.model }, rpc);
 		delegate = new ShellyDeviceDelegate(physical);
 		expect(
-			(await delegate.protectiveSwitch(0, { on: true, leaseSeconds: 10, qualification: qualification('other') }, 1000))
-				.outcome,
+			(
+				await delegate.protectiveSwitch(
+					0,
+					{ on: true, leaseSeconds: 10, qualification: qualification('other') },
+					1000,
+					() => true,
+				)
+			).outcome,
 		).toBe('refused');
 		expect(rpc.requests.some((item) => item.method === 'Switch.Set')).toBe(false);
 	});
@@ -222,6 +265,7 @@ describe('qualified Shelly adapter boundaries', () => {
 			0,
 			{ on: true, leaseSeconds: 10, qualification: qualification('pilot') },
 			1000,
+			() => true,
 		);
 		await flush();
 		await jest.advanceTimersByTimeAsync(1000);
@@ -511,6 +555,33 @@ describe('qualified Shelly adapter boundaries', () => {
 		expect(evidence.isCurrent()).toBe(false);
 		finish();
 		await flush();
+	});
+
+	it('admits equal native Light output/brightness and immediate null through the physical sample boundary', async () => {
+		const physical = new ShellyPlusDimmer({ id: 'dimmer', mac: '000000000002', model: ShellyPlusDimmer.model }, rpc);
+		const fixture = await managerFixture(physical, 'light');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		fixture.reportSample.mockClear();
+		rpc.notify({ 'light:0': { output: false, brightness: 42 } });
+		await flush();
+		rpc.notify({ 'light:0': { output: false, brightness: 42 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenCalledTimes(4);
+		expect(
+			fixture.reportSample.mock.calls
+				.filter(([id]) => id === 'brightness')
+				.map(([, dto]) => (dto as { value: unknown }).value),
+		).toEqual([42, 42]);
+		rpc.notify({ 'light:0': { brightness: null } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'brightness',
+			expect.objectContaining({ value: null }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+		// Missing output in the brightness fault cannot renew the output measurement.
+		expect(fixture.reportSample.mock.calls.filter(([id]) => id === 'temperature')).toHaveLength(2);
 	});
 
 	it('refuses protective ON on a disabled source while absolute protective OFF remains available', async () => {

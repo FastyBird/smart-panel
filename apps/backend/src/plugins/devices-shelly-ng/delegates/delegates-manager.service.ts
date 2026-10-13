@@ -2227,7 +2227,7 @@ export class DelegatesManagerService {
 					: componentKey.startsWith('voltmeter:')
 						? 'xvoltage'
 						: 'tC';
-			} else if (/^switch:\d+$/.test(channel.identifier)) {
+			} else if (/^(switch|light):\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'output';
 			} else continue;
@@ -2247,6 +2247,14 @@ export class DelegatesManagerService {
 					? await this.sampleSourcesRegistry?.get(property.id)
 					: undefined;
 				sources.push({ channel, property, componentKey, attribute, sourceLease: sourceLease ?? undefined });
+			}
+			if (/^light:\d+$/.test(channel.identifier)) {
+				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'brightness',
+					channel.id,
+				);
+				if (brightness) sources.push({ channel, property: brightness, componentKey, attribute: 'brightness' });
 			}
 		}
 		this.sampleSources.set(delegate.id, sources);
@@ -2359,7 +2367,13 @@ export class DelegatesManagerService {
 		componentId: number,
 		command: ShellyProtectiveCommand,
 		timeoutMs: number,
+		isAdmitted?: () => boolean,
 	): Promise<ShellyProtectiveCommandResult> {
+		// A release fences locally queued ON on every transport alias, even if OFF routes elsewhere.
+		if (!command.on) {
+			for (const id of this.identifierToDelegates.get(deviceIdentifier) ?? [])
+				this.delegates.get(id)?.revokePendingProtectiveOn();
+		}
 		for (const id of this.identifierToDelegates.get(deviceIdentifier) ?? []) {
 			const delegate = this.delegates.get(id);
 			if (delegate?.rpcConnected) {
@@ -2371,7 +2385,7 @@ export class DelegatesManagerService {
 					if (this.delegates.get(id) !== delegate || this.delegateDeviceIds.get(id) !== deviceId)
 						return { outcome: 'refused', reasons: ['source_generation_changed'] };
 				}
-				return delegate.protectiveSwitch(componentId, command, timeoutMs);
+				return delegate.protectiveSwitch(componentId, command, timeoutMs, isAdmitted);
 			}
 		}
 		return { outcome: 'refused', reasons: ['source_unavailable'] };
@@ -2494,6 +2508,50 @@ export class DelegatesManagerService {
 		this.delegates.delete(deviceId);
 
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
+	}
+
+	hasGuardedTransport(deviceIdentifier: string): boolean {
+		return [...(this.identifierToDelegates.get(deviceIdentifier) ?? [])].some(
+			(id) => this.delegates.get(id)?.guardedTransportActive === true,
+		);
+	}
+
+	async prepareLightingCommand(
+		device: ShellyNgDeviceEntity,
+		componentKey: string,
+		on: boolean,
+		brightness?: number,
+		properties: readonly ShellyNgChannelPropertyEntity[] = [],
+	): Promise<{
+		isCurrent(): boolean;
+		dispatch(isAdmitted: () => boolean): Promise<boolean>;
+	} | null> {
+		const mappings = (): string =>
+			JSON.stringify(properties.map((property) => this.propertyMappingStorage.get(property.id)));
+		const mappingSnapshot = mappings();
+		for (const property of properties) {
+			const mapping = this.propertyMappingStorage.get(property.id);
+			const value = property.identifier === 'output' ? on : brightness;
+			if (mapping && this.applyTransformer(mapping, value, 'write') !== value) return null;
+		}
+		for (const id of this.identifierToDelegates.get(device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (!delegate || this.delegateDeviceIds.get(id) !== device.id) continue;
+			const prepared = delegate.prepareLightingCommand(componentKey, on, brightness);
+			if (!prepared) continue;
+			const identifier = device.identifier;
+			const isCurrent = (): boolean =>
+				mappingSnapshot === mappings() &&
+				device.enabled &&
+				device.identifier === identifier &&
+				this.delegates.get(id) === delegate &&
+				this.delegateDeviceIds.get(id) === device.id &&
+				prepared.isCurrent();
+			const current = await this.devicesService.findOne<ShellyNgDeviceEntity>(device.id, DEVICES_SHELLY_NG_TYPE);
+			if (!current?.enabled || current.identifier !== identifier || !isCurrent()) return null;
+			return { isCurrent, dispatch: (isAdmitted) => prepared.dispatch(() => isCurrent() && isAdmitted()) };
+		}
+		return null;
 	}
 
 	async setChannelValue(

@@ -36,6 +36,7 @@ import {
 	DeviceProfile,
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
+import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
 import { emitFlattenedValue } from '../utils/transform.utils';
 
 type SupportedComponent =
@@ -114,6 +115,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * the origin in this tiny synchronous window; it must never span the RPC await.
 	 */
 	private connectionGeneration = 0;
+	private protectiveGeneration = 0;
 	private readonly sampleComponentKeys = new Set<string>();
 
 	private applyingPollComponent: string | null = null;
@@ -269,17 +271,33 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.descriptor = matchedDescriptor;
 	}
 
+	revokePendingProtectiveOn(): void {
+		this.protectiveGeneration++;
+	}
+
 	/** A finite timeout is unknown execution, never output or cancellation proof. */
 	async protectiveSwitch(
 		componentId: number,
 		command: ShellyProtectiveCommand,
 		timeoutMs: number,
+		isAdmitted?: () => boolean,
 	): Promise<ShellyProtectiveCommandResult> {
+		if (command.on && (!isAdmitted || !(this.shelly.rpcHandler instanceof GuardedShellyRpcHandler)))
+			return { outcome: 'refused', reasons: ['guarded_command_authority_missing'] };
+		if (!command.on) this.protectiveGeneration++;
+		const protectiveGeneration = this.protectiveGeneration;
 		const component = this.switches.get(componentId);
 		if (!component || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
 			return { outcome: 'refused', reasons: ['invalid_component_or_timeout'] };
 		}
 		const generation = this.connectionGeneration;
+		const expiresAt = Date.now() + timeoutMs;
+		const guard = (): boolean =>
+			Date.now() < expiresAt &&
+			generation === this.connectionGeneration &&
+			protectiveGeneration === this.protectiveGeneration &&
+			this.switches.get(componentId) === component &&
+			(isAdmitted?.() ?? !command.on);
 		if (command.on) {
 			const info = await this.rpcWithTimeout(() => this.shelly.shelly.getDeviceInfo(), timeoutMs);
 			if (generation !== this.connectionGeneration)
@@ -303,14 +321,58 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			}
 			if (reasons.length) return { outcome: 'refused', reasons };
 		}
+		if (!guard()) return { outcome: 'refused', reasons: ['command_authority_expired'] };
+		const invoke = () => (command.on ? component.set(true, command.leaseSeconds) : component.set(false));
+		const rpc = this.shelly.rpcHandler;
 		const response = await this.rpcWithTimeout(
-			() => (command.on ? component.set(true, command.leaseSeconds) : component.set(false)),
+			() => (rpc instanceof GuardedShellyRpcHandler ? rpc.withSendGuard(guard, invoke) : invoke()),
 			timeoutMs,
 		);
 		if (generation !== this.connectionGeneration || !response.ok || typeof response.value?.was_on !== 'boolean') {
 			return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
 		}
 		return { outcome: 'accepted', wasOn: response.value.was_on, outputConfirmed: false, pendingOnDrained: false };
+	}
+
+	/** Strict ordinary lighting: exact explicit effects, guarded at every actual SDK send. */
+	prepareLightingCommand(
+		componentKey: string,
+		on: boolean,
+		brightness?: number,
+	): {
+		isCurrent(): boolean;
+		dispatch(isAdmitted: () => boolean): Promise<boolean>;
+	} | null {
+		const match = /^(switch|light):(\d+)$/.exec(componentKey);
+		const rpc = this.shelly.rpcHandler;
+		if (!match || !(rpc instanceof GuardedShellyRpcHandler) || !rpc.connected) return null;
+		const id = Number(match[2]);
+		const components = match[1] === 'switch' ? this.switches : this.lights;
+		const component = components.get(id);
+		if (!component || (match[1] === 'switch' && brightness !== undefined)) return null;
+		const generation = this.connectionGeneration;
+		const model = this.shelly.model;
+		const isCurrent = (): boolean =>
+			this.shelly.rpcHandler === rpc &&
+			rpc.connected &&
+			generation === this.connectionGeneration &&
+			this.shelly.model === model &&
+			components.get(id) === component;
+		return {
+			isCurrent,
+			dispatch: async (isAdmitted): Promise<boolean> => {
+				const guard = (): boolean => isCurrent() && isAdmitted();
+				if (!guard()) return false;
+				try {
+					await rpc.withSendGuard(guard, () =>
+						component instanceof Light ? component.set(on, brightness) : component.set(on),
+					);
+					return guard();
+				} catch {
+					return false;
+				}
+			},
+		};
 	}
 
 	public get id(): string {
@@ -320,6 +382,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	/**
 	 * Returns whether the underlying WebSocket reports itself as connected.
 	 */
+	public get guardedTransportActive(): boolean {
+		return this.shelly.rpcHandler instanceof GuardedShellyRpcHandler && this.shelly.rpcHandler.connected;
+	}
+
 	public get rpcConnected(): boolean {
 		return this.shelly.rpcHandler.connected;
 	}
@@ -608,7 +674,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		values: Record<string, unknown>,
 		evidence: ShellyRawSample['evidence'],
 	): void {
-		if (/^(temperature|input|voltmeter|switch):\d+$/.test(componentKey)) {
+		if (/^(temperature|input|voltmeter|switch|light):\d+$/.test(componentKey)) {
 			const generation = this.connectionGeneration;
 			this.emit('sample', {
 				componentKey,

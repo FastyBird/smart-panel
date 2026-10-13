@@ -243,11 +243,14 @@ describe('ShellyNgDevicePlatform', () => {
 		const protectiveSwitch = jest
 			.fn()
 			.mockResolvedValue({ outcome: 'accepted', outputConfirmed: false, pendingOnDrained: false });
-		const platform = new ShellyNgDevicePlatform({ protectiveSwitch } as unknown as DelegatesManagerService);
+		const platform = new ShellyNgDevicePlatform({
+			protectiveSwitch,
+			hasGuardedTransport: () => false,
+		} as unknown as DelegatesManagerService);
 		expect((await platform.processProtectiveCommand({ device, channel, property }, { on: false }, 1000)).outcome).toBe(
 			'accepted',
 		);
-		expect(protectiveSwitch).toHaveBeenCalledWith(device.identifier, 0, { on: false }, 1000);
+		expect(protectiveSwitch).toHaveBeenCalledWith(device.identifier, 0, { on: false }, 1000, undefined);
 		property.channel = makeChannel('another');
 		expect((await platform.processProtectiveCommand({ device, channel, property }, { on: false }, 1000)).outcome).toBe(
 			'refused',
@@ -257,5 +260,39 @@ describe('ShellyNgDevicePlatform', () => {
 			platform.getProtectiveReadiness({ deviceId: 'unknown', model: 'SNSW-001P16EU', firmware: 'unknown' }, 0)
 				.supported,
 		).toBe(false);
+	});
+	it('strict lighting requires explicit ON with brightness and passes the owned guard to exact prepared effects', async () => {
+		const device = Object.assign(makeDevice(), { identifier: 'dimmer', enabled: true });
+		const channel = Object.assign(makeChannel(), { identifier: 'light:0', device });
+		const on = Object.assign(makeProp('on'), {
+			identifier: 'output',
+			channel,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		});
+		const brightness = Object.assign(makeProp('brightness'), {
+			identifier: 'brightness',
+			channel,
+			category: PropertyCategory.BRIGHTNESS,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+		});
+		const dispatch = jest.fn((guard: () => boolean) => Promise.resolve(guard()));
+		const prepareLightingCommand = jest.fn().mockResolvedValue({ isCurrent: () => true, dispatch });
+		const platform = new ShellyNgDevicePlatform({ prepareLightingCommand } as unknown as DelegatesManagerService);
+		expect(await platform.prepareCompositeBatch([{ device, channel, property: brightness, value: 42 }])).toBeNull();
+		expect(prepareLightingCommand).not.toHaveBeenCalled();
+		const updates = [
+			{ device, channel, property: on, value: true },
+			{ device, channel, property: brightness, value: 42 },
+		];
+		const prepared = await platform.prepareCompositeBatch(updates);
+		expect(prepared.updates).toEqual(updates);
+		expect(prepareLightingCommand).toHaveBeenCalledWith(device, 'light:0', true, 42, [on, brightness]);
+		expect(await prepared.dispatch(() => false)).toBe(false);
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(await prepared.dispatch(() => true)).toBe(true);
+		expect(dispatch).toHaveBeenCalledTimes(1);
 	});
 });
