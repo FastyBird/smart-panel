@@ -4,7 +4,6 @@ import { useBackend } from '../../../common';
 import { getErrorReason } from '../../../common/utils/api-error.utils';
 import {
 	DevicesVirtualPluginConfigureAggregateOperator,
-	DevicesVirtualPluginConfigureTransformSchema_version,
 	DevicesVirtualPluginNumericTransformPolicyOperator,
 	DevicesVirtualPluginNumericTransformPolicyThermistorLeg,
 } from '../../../openapi';
@@ -95,7 +94,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const configuration = (): TransformConfiguration | AggregateConfiguration =>
 		isTransform
 			? {
-					schema_version: DevicesVirtualPluginConfigureTransformSchema_version.Value1,
+					schema_version: 1,
 					expected_revision: expectedRevision.value,
 					expected_graph_revision: expectedGraphRevision.value,
 					maximum_age_seconds: model.maximumAgeSeconds,
