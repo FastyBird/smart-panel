@@ -51,7 +51,18 @@ describe('core opt-in composite commands', () => {
 		const platforms = new Map(
 			physical.map((target) => [
 				target.device.type,
-				{ processBatch: jest.fn((targets: IDevicePropertyData[]) => processBatch(targets)) },
+				(() => {
+					const batch = jest.fn((targets: IDevicePropertyData[]) => processBatch(targets));
+					return {
+						processBatch: batch,
+						prepareCompositeBatch: (targets: IDevicePropertyData[]) =>
+							Promise.resolve({
+								updates: targets,
+								isCurrent: () => true,
+								dispatch: (isAdmitted: () => boolean) => (isAdmitted() ? batch(targets) : Promise.resolve(false)),
+							}),
+					};
+				})(),
 			]),
 		);
 		const platform = {
@@ -371,5 +382,17 @@ describe('core opt-in composite commands', () => {
 		const result = await fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 100 });
 		expect(result.composite.status).toBe('confirmed');
 		expect(result.composite.children[0].status).toBe('confirmed');
+	});
+	it('refuses a legacy queued provider without a guarded publish lease before any I/O', async () => {
+		const target = update('a');
+		const fixture = setup([{ memberId: 'legacy', update: target }]);
+		Object.assign(fixture.platforms.get(target.device.type), { prepareCompositeBatch: undefined });
+		const result = await fixture.dispatch.dispatchBatch([update('group')]);
+		expect(result.composite.children[0]).toMatchObject({
+			status: 'unavailable',
+			reason: 'Provider does not support the strict composite dispatch profile',
+		});
+		expect(fixture.processBatch).not.toHaveBeenCalled();
+		expect(fixture.windows.get('a')).toBeNull();
 	});
 });

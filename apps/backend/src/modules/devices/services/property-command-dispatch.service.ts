@@ -297,24 +297,12 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						const platform = this.platformRegistryService.get(channel[0].update.device);
 						if (!platform) throw new Error('Unsupported physical platform');
 						const requested = channel.map((leaf) => leaf.update);
-						let prepared: PreparedCompositeDeviceBatch | null;
-						if (platform.prepareCompositeBatch)
-							prepared = await this.withCompositeDeadline(
-								platform.prepareCompositeBatch(requested),
-								Math.min(deadline, Date.now() + 1_000),
-							);
-						else {
-							const targets = platform.prepareBatch ? platform.prepareBatch(requested) : requested;
-							prepared =
-								targets === null
-									? null
-									: {
-											updates: targets,
-											isCurrent: () => true,
-											dispatch: (isAdmitted) =>
-												isAdmitted() ? platform.processBatch(targets) : Promise.resolve(false),
-										};
-						}
+						if (!platform.prepareCompositeBatch)
+							throw new Error('Provider does not support the strict composite dispatch profile');
+						const prepared = await this.withCompositeDeadline(
+							platform.prepareCompositeBatch(requested),
+							Math.min(deadline, Date.now() + 1_000),
+						);
 						if (!prepared || !prepared.isCurrent() || prepared.updates.length !== channel.length)
 							throw new Error('Physical batch preparation is unavailable or changed target cardinality');
 						const targets = new Map(

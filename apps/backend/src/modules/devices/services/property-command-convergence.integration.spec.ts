@@ -432,6 +432,15 @@ describe('property command convergence integration', () => {
 				}),
 		});
 		Object.assign(commandDispatch, { composites: registry });
+		Object.assign(platform, {
+			prepareCompositeBatch: (targets: IDevicePropertyData[]) =>
+				Promise.resolve({
+					updates: targets,
+					isCurrent: () => true,
+					dispatch: (isAdmitted: () => boolean) =>
+						isAdmitted() ? platform.processBatch(targets) : Promise.resolve(false),
+				}),
+		});
 		platform.processBatch.mockImplementation(async () => {
 			const now = new Date();
 			await mapper.updateDeviceState('wled', { on: true, mainSegment: 0, segments: [] } as WledState, {
