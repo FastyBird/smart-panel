@@ -19,6 +19,7 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
+import { DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
 export interface ChannelSummaryPage {
@@ -310,10 +311,12 @@ export class ChannelsService {
 
 	async create<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto>(
 		createDto: TCreateDTO,
+		creation?: DeviceCreationContext,
 	): Promise<TChannel> {
 		this.logger.debug('Creating new channel');
 
 		const { type } = createDto;
+		creation?.assertType(type);
 
 		if (!type) {
 			this.logger.error('Validation failed: Missing required "type" attribute in data.');
@@ -341,7 +344,7 @@ export class ChannelsService {
 
 		// Validate parent channel belongs to the same device
 		if (dtoInstance.parent) {
-			const parentChannel = await this.repository.findOne({
+			const parentChannel = await (creation ? creation.manager.getRepository(ChannelEntity) : this.repository).findOne({
 				where: { id: dtoInstance.parent },
 				relations: ['device'],
 			});
@@ -363,7 +366,9 @@ export class ChannelsService {
 			}
 		}
 
-		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
+		const repository: Repository<TChannel> = creation
+			? creation.manager.getRepository(mapping.class)
+			: this.dataSource.getRepository(mapping.class);
 
 		const channel = repository.create(toInstance(mapping.class, dtoInstance));
 
@@ -374,7 +379,14 @@ export class ChannelsService {
 		// with. Asked of the base repository, because a collision with a channel of *another* type is the
 		// same collision: ids are unique across the table, not per subclass.
 		if (channel.id) {
-			const existing = await this.repository.findOne({ where: { id: channel.id } });
+			const existing = creation
+				? await creation.manager
+						.createQueryBuilder(ChannelEntity, 'row')
+						.select('row.id')
+						.where('row.id = :id', { id: channel.id })
+						.callListeners(false)
+						.getOne()
+				: await this.repository.findOne({ where: { id: channel.id } });
 
 			if (existing) {
 				this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} already exists, refusing to create over it`);
@@ -395,29 +407,36 @@ export class ChannelsService {
 			// and two requests carrying the same client-generated uuid can both pass it before either
 			// writes. `insert()` always issues an INSERT, so the primary key constraint decides. The check
 			// stays for the message — a caller reusing an id gets a sentence, not a constraint violation.
-			await repository
-				.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
-				.catch((error: unknown) => {
-					if (isPrimaryKeyCollision(error)) {
-						this.logger.error(
-							`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`,
-						);
+			await (
+				creation
+					? repository
+							.createQueryBuilder()
+							.insert()
+							.values(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+							.updateEntity(false)
+							.execute()
+					: repository.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+			).catch((error: unknown) => {
+				if (isPrimaryKeyCollision(error)) {
+					this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`);
 
-						throw new DevicesValidationException(
-							`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
-						);
-					}
+					throw new DevicesValidationException(
+						`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
+					);
+				}
 
-					throw error;
-				});
+				throw error;
+			});
 
 			try {
 				for (const propertyDtoInstance of createDto.properties ?? []) {
 					this.logger.debug(`Creating new property for channelId=${channel.id}`);
 
-					await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
+					if (creation) await this.channelsPropertiesService.create(channel.id, propertyDtoInstance, creation);
+					else await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
 				}
 			} catch (error) {
+				if (creation) throw error;
 				this.logger.error(`Nested creation failed for channelId=${channel.id}, rolling the channel back`);
 
 				// One request, one outcome. A property rejected halfway — the second projection of a
@@ -470,9 +489,15 @@ export class ChannelsService {
 			}
 		});
 
-		let savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+		let savedChannel = creation
+			? await creation.manager
+					.createQueryBuilder(mapping.class, 'row')
+					.where('row.id = :id', { id: channel.id })
+					.callListeners(false)
+					.getOneOrFail()
+			: ((await this.getOneOrThrow(channel.id)) as TChannel);
 
-		if (mapping.afterCreate) {
+		if (mapping.afterCreate && !creation) {
 			await mapping.afterCreate(savedChannel);
 
 			savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
@@ -480,7 +505,12 @@ export class ChannelsService {
 
 		this.logger.debug(`Successfully created channel with id=${savedChannel.id}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
+		if (creation)
+			creation.defer(async () => {
+				if (mapping.afterCreate) await mapping.afterCreate(savedChannel);
+				this.eventEmitter.emit(EventType.CHANNEL_CREATED, await this.getOneOrThrow(savedChannel.id));
+			});
+		else this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
 
 		return savedChannel;
 	}

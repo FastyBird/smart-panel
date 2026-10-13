@@ -39,6 +39,17 @@ class PropertyProducerState {
     required this.revision,
   });
 
+  /// Lease age is absolute; rendering or reading a historical scalar never renews it.
+  bool isCurrentAt(DateTime now) =>
+      quality != PropertyProducerQuality.unavailable &&
+      sampledAt != null &&
+      evaluatedAt != null &&
+      !evaluatedAt!.isBefore(sampledAt!) &&
+      !evaluatedAt!.isAfter(now) &&
+      !sampledAt!.isAfter(now) &&
+      expiresAt != null &&
+      expiresAt!.isAfter(now);
+
   factory PropertyProducerState.fromJson(Map<String, dynamic> json) {
     DateTime? timestamp(dynamic value) =>
         value is String ? DateTime.tryParse(value) : null;

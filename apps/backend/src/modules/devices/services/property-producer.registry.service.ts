@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
-import { DerivedPropertyPublication } from '../models/property-sample.model';
+import { DerivedPropertyPublication, IncorporatedPropertySample } from '../models/property-sample.model';
 import {
 	PropertyProducerState,
 	PropertyValueState,
@@ -26,6 +26,7 @@ interface ProducerEntry {
 	state: PropertyValueState;
 	epoch: number;
 	generation: number;
+	sourceSample?: IncorporatedPropertySample;
 }
 
 /** Owns process-local live authority. Persisted history is never restart evidence. */
@@ -76,6 +77,12 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	version(lease: PropertyProducerLease): number | null {
 		const entry = this.entries.get(lease.propertyId);
 		return entry?.lease === lease ? entry.epoch : null;
+	}
+
+	/** Returns immutable process-local source incorporation evidence for the current live publication. */
+	readIncorporatedSample(propertyId: string): IncorporatedPropertySample | null {
+		const entry = this.entries.get(propertyId);
+		return entry?.state.producer.quality !== 'unavailable' ? (entry?.sourceSample ?? null) : null;
 	}
 
 	beginEvaluation(lease: PropertyProducerLease): PropertyProducerEvaluation | null {
@@ -144,6 +151,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			revision: lease.revision,
 		});
 		entry.state = next;
+		entry.sourceSample = publication.sourceSample ? Object.freeze({ ...publication.sourceSample }) : undefined;
 		// Successful publications do not change the lifecycle epoch: queued newer evaluations remain valid.
 		this.emit(entry.property, next);
 		return true;
@@ -161,6 +169,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			return false;
 		entry.epoch++;
 		entry.state = this.unavailable(lease.revision, reasons, evaluatedAt);
+		entry.sourceSample = undefined;
 		this.emit(entry.property, entry.state);
 		return true;
 	}
@@ -191,6 +200,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			// This read boundary owns the correction; an old evaluator cannot gain the same authority.
 			entry.epoch++;
 			entry.state = this.unavailable(entry.lease.revision, ['clock_invalid'], new Date(now));
+			entry.sourceSample = undefined;
 			this.emit(entry.property, entry.state);
 		}
 		if (

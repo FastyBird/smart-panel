@@ -44,6 +44,7 @@ import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.serv
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability, commonLightCapabilities } from './virtual-light-group.utils';
+import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import {
 	isEligibleVirtualMeasurement,
@@ -71,10 +72,8 @@ export class VirtualProducerConfigService {
 			let committedOutput: VirtualChannelPropertyEntity;
 			let committedRevision: number;
 			await this.graph.withStructuralWrite(async (manager) => {
-				const { config, inputs, output } = await this.validateAggregate(manager, outputPropertyId, dto);
-				await manager.save(config);
-				await manager.delete(VirtualAggregateInputEntity, { outputPropertyId });
-				await manager.save(inputs);
+				const { config, inputs, output } = await this.prepareAggregate(manager, outputPropertyId, dto);
+				await this.persistAggregate(manager, { config, inputs });
 				committedOutput = output;
 				committedRevision = config.revision;
 			}, dto.expectedGraphRevision);
@@ -84,12 +83,35 @@ export class VirtualProducerConfigService {
 		});
 	}
 
+	/** Used only by admitted atomic authoring; does not publish state or open another transaction. */
+	async persistAggregate(
+		manager: EntityManager,
+		prepared: { config: VirtualAggregateConfigEntity; inputs: VirtualAggregateInputEntity[] },
+	): Promise<void> {
+		await manager.save(prepared.config);
+		await manager.delete(VirtualAggregateInputEntity, { outputPropertyId: prepared.config.outputPropertyId });
+		await manager.save(prepared.inputs);
+	}
+
+	describeAggregate(
+		prepared: { config: VirtualAggregateConfigEntity; inputs: VirtualAggregateInputEntity[] },
+		graphRevision: number,
+	): VirtualAggregateConfigurationModel {
+		return this.aggregateModel(prepared.config, prepared.inputs, graphRevision);
+	}
+
 	async previewAggregate(
 		outputPropertyId: string,
 		dto: ConfigureVirtualAggregateDto,
 	): Promise<VirtualAggregateConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
-			const { config, inputs } = await this.validateAggregate(this.dataSource.manager, outputPropertyId, dto);
+			const { config, inputs } = await this.prepareAggregate(
+				this.dataSource.manager,
+				outputPropertyId,
+				dto,
+				undefined,
+				true,
+			);
 			return this.aggregateModel(config, inputs, await this.graph.revision());
 		});
 	}
@@ -104,17 +126,19 @@ export class VirtualProducerConfigService {
 		return this.aggregateModel(config, inputs, await this.graph.revision());
 	}
 
-	private async validateAggregate(
+	async prepareAggregate(
 		manager: EntityManager,
 		outputPropertyId: string,
 		dto: ConfigureVirtualAggregateDto,
+		draftOutput?: VirtualChannelPropertyEntity,
+		previewOnly = false,
 	): Promise<{
 		config: VirtualAggregateConfigEntity;
 		inputs: VirtualAggregateInputEntity[];
 		output: VirtualChannelPropertyEntity;
 	}> {
 		this.assertPolicy(dto);
-		const output = await this.property(manager, outputPropertyId);
+		const output = draftOutput ?? (await this.property(manager, outputPropertyId, previewOnly));
 		const channel = output.channel as ChannelEntity;
 		const device = channel.device as VirtualDeviceEntity;
 		if (!isEligibleVirtualMeasurement(output, channel, device))
@@ -137,7 +161,7 @@ export class VirtualProducerConfigService {
 					throw new DevicesValidationException('Only an existing missing input can retain a null source.');
 				inputs.push(old);
 			} else {
-				const source = await this.property(manager, proposed.sourcePropertyId);
+				const source = await this.property(manager, proposed.sourcePropertyId, previewOnly);
 				const sourceChannel = source.channel as ChannelEntity;
 				const sourceDevice = sourceChannel.device as VirtualDeviceEntity;
 				// Aggregate nesting and alias chains remain excluded. Only canonical, read-only
@@ -488,15 +512,24 @@ export class VirtualProducerConfigService {
 		);
 	}
 
-	private async property(manager: EntityManager, id: string): Promise<ChannelPropertyEntity> {
-		const property = await manager.findOne(ChannelPropertyEntity, {
-			where: { id },
-			relations: ['channel', 'channel.device'],
-		});
+	private async property(manager: EntityManager, id: string, previewOnly = false): Promise<ChannelPropertyEntity> {
+		const property = previewOnly
+			? await manager
+					.createQueryBuilder(ChannelPropertyEntity, 'property')
+					.leftJoinAndSelect('property.channel', 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
+					.where('property.id = :id', { id })
+					.callListeners(false)
+					.getOne()
+			: await manager.findOne(ChannelPropertyEntity, {
+					where: { id },
+					relations: ['channel', 'channel.device'],
+				});
 		if (!property || !property.channel || !(property.channel as ChannelEntity).device)
 			throw new DevicesValidationException(
 				`Source/output property id=${id} does not resolve to a complete device structure.`,
 			);
+		if (previewOnly) await hydrateMeasurementContract(manager, property);
 		return property;
 	}
 
