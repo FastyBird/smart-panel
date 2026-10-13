@@ -13,8 +13,12 @@ configuration, source repair, diagnostics and regression tests.
 | Capability         | Required behavior                                                                                                                                                                                                             |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Aggregate sensor   | Combine several temperature measurements into one ordinary read-only temperature sensor. Support mean, median, minimum and maximum; expose freshness, membership and exclusions.                                              |
+| Numeric converter  | Convert one physical numeric input with an explicit affine, piecewise-linear or NTC beta policy. Preserve quantity/unit validation, source age, unavailable states and create/edit/preview/repair support. |
 | Actuator group     | Present several physical light channels as one controllable light. Broadcast supported commands, derive reported state, expose mixed/partial state and account for every member result.                                       |
 | Virtual thermostat | Regulate heating and cooling from a physical or aggregated room sensor. Support heat, cool, auto and off according to configured outputs, floor overheat protection, physical window contacts and automatic window detection. |
+
+All four device types in the table, including the standalone numeric converter, are required for milestone completion.
+Native Shelly helper ingestion and numeric converters are separate required features; one does not replace the other.
 
 The floor sensor's primary purpose is protection: when its configured threshold is reached, heating must be released
 even if the room still demands heat. Displaying floor temperature is supplementary. It is not blended into the ambient
