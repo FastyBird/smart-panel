@@ -49,6 +49,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	private readonly byProperty = new Map<string, VirtualThermostatActuatorClaimEntity>();
 	private epoch = 0;
 	private ready = false;
+	private recoveryFences = 0;
 	private unregister?: () => void;
 	private refreshQueue: Promise<void> = Promise.resolve();
 	private readonly onStructure = () => {
@@ -98,6 +99,18 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.ready = false;
 		this.epoch++;
 	}
+	/** Keep command admission closed from restore entry until its commit or rollback has been reloaded. */
+	holdRecoveryFence(): () => void {
+		this.recoveryFences++;
+		this.invalidate();
+		let released = false;
+		return () => {
+			if (released) return;
+			released = true;
+			this.recoveryFences--;
+			this.invalidate();
+		};
+	}
 	async refresh(): Promise<void> {
 		const epoch = this.epoch;
 		const rows = await this.dataSource.manager.find(VirtualThermostatActuatorClaimEntity, {
@@ -110,7 +123,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			this.reservations.set(row.physicalIdentity, row);
 			this.byProperty.set(row.sourcePropertyIdentity, row);
 		}
-		this.ready = true;
+		this.ready = this.recoveryFences === 0;
 	}
 	/** Captures absence as well as ownership before command metadata/budget awaits. */
 	capture() {
