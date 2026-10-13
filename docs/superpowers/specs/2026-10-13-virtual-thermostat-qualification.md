@@ -3,7 +3,7 @@
 Status: executable protocol spike; production activation **NO-GO**
 Tracking: [#1410](https://github.com/FastyBird/smart-panel/issues/1410)
 Production adapter follow-up: [#1412](https://github.com/FastyBird/smart-panel/issues/1412)
-Design: [virtual-device capabilities](https://github.com/FastyBird/smart-panel/blob/d33d3049e/docs/superpowers/specs/2026-10-13-virtual-device-capabilities-design.md)
+Design: [virtual-device capabilities](https://github.com/FastyBird/smart-panel/blob/c0546f7814aec39943d26006e286996ec30d76e2/docs/superpowers/specs/2026-10-13-virtual-device-capabilities-design.md)
 
 ## Evidence boundary
 
@@ -29,10 +29,12 @@ demonstrates the expected eligibility, floor hysteresis and unresolved-command e
 in Nest, has no production imports and does not implement durable database state, cancellation or device ordering.
 A test of that simulator does not establish that today's production adapters satisfy those rules.
 
-The tests deliberately assert current unsupported behavior under `NO-GO` names. They are characterization evidence,
-not tests that permanently require the bug. VD2-1b must replace the corresponding assertions with the intended
-production acceptance as each capability is implemented. All timers and deadlines are fixtures, not thermal safety
-parameters for an installation. No live hardware commands or configuration writes occur in this spike.
+The production adapter checkpoint in #1432 now supplies qualified raw observations and guarded protective dispatch.
+This spike checks the current contracts, including native Celsius adoption without raw-percent fallback, immediate
+raw null admission and preserved Zigbee replay provenance. Legacy scalar/library behavior is characterized separately;
+it must not be mistaken for accepted control evidence. Source/configuration identity and actual SDK send/retry fences
+have dedicated production adapter tests. All timers and deadlines are fixtures, not installation safety parameters.
+No live hardware commands or configuration writes occur in this spike.
 
 ## Run
 
@@ -48,43 +50,44 @@ TypeScript program; the backend type check and typed lint remain separate valida
 
 ## Current production matrix
 
-| Requirement                         | Existing evidence                                                                                                                                                                                                                                              | Readiness                                                                           |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Absolute NG on/off                  | Actual pinned Switch sends `Switch.Set` with `on`; actual plugin setter reaches it.                                                                                                                                                                            | Available as ordinary wiring; not controller-qualified.                             |
-| Timed NG ON                         | Actual library accepts `set(true, seconds)`; fake RPC captures the timer. Actual plugin setter uses `comp.set(val)` without timer.                                                                                                                             | **NO-GO** until VD2-1b provides a qualified command path.                           |
-| Protective NG OFF                   | Actual library `set(false)` emits no flip-back timer.                                                                                                                                                                                                          | Required contract; controller path must never add `toggle_after` to OFF.            |
-| Acceptance versus activity          | Switch.Set returns was_on (previous state), not the new output. Accepted RPC does not mutate output; delegate changes it on provider notification.                                                                                                             | Reusable seam; boolean dispatch result is not physical confirmation.                |
-| Failed/late requests                | Rejected ON does not prevent later ON feedback after accepted OFF in the fixture.                                                                                                                                                                              | **NO-GO** without durable unresolved-command state and qualified release proof.     |
-| Reboot/restart                      | A simulated `source:init`, output=false observation is not proof an earlier ON cannot land. Simulator preserves unresolved evidence through snapshot restoration.                                                                                              | Hardware reboot/ordering remains unqualified; simulator is not persistence.         |
-| Changed/equal NG notifications      | Actual delegate forwards equal notifications as well as changed values.                                                                                                                                                                                        | Available for registered components; sample eligibility still needs core/adapters.  |
-| Stale NG polls                      | Actual delegate rejects an older poll component after an intervening unchanged notification.                                                                                                                                                                   | Available and regression-tested.                                                    |
-| Equal NG polls                      | Actual library equality suppression causes current `pollStatus` to emit no value for an equal response.                                                                                                                                                        | **NO-GO** for polling-only freshness until VD2-1b carries explicit sample evidence. |
-| Separate DS18B20 discovery          | Actual adoption discovery includes a fake `temperature:100` component.                                                                                                                                                                                         | Discovery alone is available.                                                       |
-| Separate DS18B20 runtime            | Plus1 fixed descriptor/library components have no `temperature:100`; actual runtime ignores changed/equal/null/error add-on reports.                                                                                                                           | **NO-GO** until dynamic observation is implemented and tested.                      |
-| Known temperature null/error        | Pinned Component.update keeps a prior nonzero tC when raw tC becomes null and emits that old value; delegate suppresses the raw null. A direct raw null reaches the delegate but manager coerces it to 0. PlusHT is a generic-path fixture, not a floor probe. | **NO-GO** until immediate invalidation/quality propagation.                         |
-| Separate DS18B20 identity           | Sensor Add-On protocol can identify the DS18B20 address behind a component ID. Contract simulator refuses another identity.                                                                                                                                    | **NO-GO**: current adapter does not qualify/preserve that mapping for control.      |
-| Zigbee equal/live values            | Actual mapper updates equal temperatures twice; absent temperature fields do not update the scalar.                                                                                                                                                            | Reusable scalar ingestion; not yet a control sample contract.                       |
-| Zigbee retained/cached replay       | Actual mapper treats retained, cached and live scalar updates identically and omits origin/sample time.                                                                                                                                                        | **NO-GO** until provenance reaches VD2-2a's accepted-sample boundary.               |
-| Device-side release on backend loss | NG protocol has timers; existing plugin does not arm one.                                                                                                                                                                                                      | **NO-GO** until exact-model renewal/release tests and adapter delivery.             |
-| Independent overheating protection  | Not represented by ordinary relay output or internal module temperature.                                                                                                                                                                                       | Installed equipment evidence required.                                              |
-| Simultaneous heat/cool prevention   | Ordinary Switch outputs are independently commandable; no qualified interlock is established.                                                                                                                                                                  | **NO-GO** for opposed outputs without hardware/equivalent qualification.            |
+Protocol implementation and installed hardware qualification are separate gates. The adapter checkpoint is stacked
+on #1427; its availability in a feature branch does not establish that it has been released or installed.
+
+| Requirement                        | Current implementation/evidence                                                                                                 | Readiness                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Absolute NG ON/OFF                 | Real pinned Switch serializes absolute commands; ordinary wiring remains timer-free.                                            | Ordinary wiring supported.                                                 |
+| Protective timed ON                | The separate protective path requires internal admission authority, guarded transport and an explicit finite qualified lease.   | Protocol implemented; installed profile unqualified.                       |
+| Protective OFF                     | Absolute OFF carries no flip-back timer and fences locally queued protective ON.                                                | Acceptance is not output or pending-send drain proof.                      |
+| Connect/authentication retries     | Per-request guard is checked at actual SDK send, including digest authentication retry.                                         | Fake protocol tests pass; no hardware ordering certification.              |
+| Acceptance versus activity         | `was_on` is prior state. Neither accepted RPC nor timeout sets confirmed output or clears unresolved ON.                        | Durable controller runtime/reconciliation still required.                  |
+| Equal notifications/polls          | Registered raw samples capture live observations before legacy equality suppression/coalescing.                                 | Qualified source path implemented.                                         |
+| Null/errors                        | Raw null/errors reach sample admission immediately; registered properties bypass stale scalar coalescing.                       | Qualified source path implemented; history remains history.                |
+| Dynamic floor helper/probe         | Native Celsius helpers and address-bound probes have explicit persisted source identity. Unbound legacy rows remain ineligible. | Protocol supported; installed thermistor/configuration unverified.         |
+| Zigbee provenance/identity         | Retained/cached replay and unbound legacy sources cannot become live control evidence; IEEE/expose identity is durable.         | Deliberate compatible adoption and verified gateway cache policy required. |
+| Backend disappearance              | Protective ON can carry a finite actuator timer; ordinary wiring does not promise this protection.                              | Exact model/firmware renewal/release evidence required.                    |
+| Independent overheating protection | Software floor guard and a renewable timer do not establish independent equipment protection.                                   | Installed equipment evidence required.                                     |
+| Opposed heating/cooling            | No installed hardware/equivalent interlock has been demonstrated.                                                               | Activation refused without qualification.                                  |
+
+Production evidence is maintained in `qualified-adapters.spec.ts`, `guarded-shelly-rpc.spec.ts`,
+`shelly-sample-sources.service.spec.ts`, `qualified-adoption.spec.ts` and the Zigbee source/bridge evidence suites.
+The current spike remains **NO-GO for installed thermostat activation** until the controller runtime and separately
+recorded hardware evidence are complete.
 
 ## Native helper evidence for the thermistor pilot
 
-The real Input RPC client preserves `xpercent.expr` and `xpercent.unit`. Actual adoption prefers a numeric
-`status.xpercent` and stores its unit, so helper support is already partial. It creates `ANALOG_INPUT` / `VALUE`,
-not a semantically qualified temperature source. The fixture expression `x/2` is synthetic protocol data, not a
-thermistor formula or recommended calibration. No expressions are evaluated in the thermostat or deployed by this spike.
+The real Input RPC client preserves helper expression and unit. Adoption now probes peripheral links, materializes a
+separate readonly `TEMPERATURE` property for a verified Celsius helper, and binds its configuration fingerprint.
+The analog display keeps helper units when a result is missing; it does not fall back to raw percent as Celsius.
+Adoption values do not initialize accepted live control samples. The fixture expression `x/2` is synthetic protocol
+metadata, not a thermistor calibration. Smart Panel does not evaluate or deploy it.
 
-| Path                                | Fixture observation                                                                                                                                             | Qualification gap                                                                                                                                   |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Input adoption                      | `input:100`, raw percent 50 and helper 25 create VALUE=25 / UNIT=°C. Null or missing helper produces raw 50 / UNIT=%.                                           | Bind quantity and helper configuration explicitly; unavailable Celsius must suspend floor eligibility, never switch its source to raw input.        |
-| Input runtime                       | Real Plus1PM has only input:0; discovery lists input:100 and voltmeter:100, but delegate ignores their notify and poll reports.                                 | Observe dynamic component IDs after adoption. Discovery is not sample evidence.                                                                     |
-| Known-component xpercent            | With xpercent present at insertion, two equal notifications each persist 25 and a changed helper persists 31; equal polling emits nothing.                      | Carry accepted unchanged sample origin/time through VD2-2a. input:0 exercises common code only; it does not represent the add-on port.              |
-| Helper enabled later                | A known input bound before xpercent exists keeps consuming percent even when xpercent appears.                                                                  | Fence source/config generations and rebind deliberately; do not silently change units or semantics.                                                 |
-| Null/error                          | A previous xpercent=31 becomes stale 31 through pinned Component.update when null arrives; direct raw null becomes 0 through manager coercion.                  | Inspect raw helper result/errors before stale retention/coercion; invalidate immediately and retain last-good only as history.                      |
-| Expression/unit/peripheral identity | RPC responses contain expression/unit and analog peripheral IO; adoption persists the unit but does not retain expression identity or request peripheral links. | Bind device/component, peripheral type/IO, helper expression, unit, range/inversion/calibration and config revision; changes suspend qualification. |
-| Voltmeter API                       | Pinned standalone Voltmeter exposes GetConfig/xvoltage and exhibits the same null retention; constructing it does not register Plus1PM runtime observation.     | Implement only the component actually exposed by the installed firmware. Generic API/library support is not model support.                          |
+| Path                          | Current evidence                                                                                                                   | Remaining boundary                                                                     |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Native adoption               | Valid helper/peripheral metadata creates `helper-temperature:input:100:<fingerprint>` and readonly `xpercent`.                     | Exact installed component/configuration still needs identification.                    |
+| Runtime                       | Registered dynamic components report changed/equal/null/error observations before scalar conversion.                               | Bound source identity and current proof are required; discovery alone is insufficient. |
+| Missing helper result         | Analog helper value stays absent with Celsius units; raw percent is not substituted.                                               | Configured floor input becomes unavailable and inhibits heating.                       |
+| Identity/configuration change | Device/component, peripheral IO/address, expression, unit, range/inversion/calibration are fingerprinted and persisted separately. | Replacement needs deliberate compatible adoption/repair.                               |
+| Legacy scalar path            | Pinned library retention and unbound analog scalar behavior remain characterization fixtures.                                      | Those scalars cannot grant floor authority.                                            |
 
 The official [Input API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Input/)
 describes transformation of percent through `xpercent`; the separate
@@ -100,23 +103,23 @@ as a supported add-on host. Its API example is not evidence of the installed the
 [Virtual-component documentation](https://shelly-api-docs.shelly.cloud/gen2/DynamicComponents/Virtual/)
 limits that API to Gen3 and Gen2 Pro devices. Do not assume script-managed Number components are available on Gen2 Plus1PM.
 
-## NG and v1 seams
+## Legacy scalar paths and qualified boundaries
 
 The initial candidate is a single-output local NG Switch profile, not every Shelly-branded device.
 Plus1/Plus1PM device classes are useful fixture targets; the installed model may differ. Do not transfer add-on
 compatibility to Mini/Pro/other generations by a grouped descriptor name. A floor probe may live on the same or a
 separate host; both cases need explicit freshness and source-loss handling.
 
-Existing source paths:
+Source boundaries (legacy display behavior is distinct from qualified observation):
 
 - [NG setter and readback handlers](../../../apps/backend/src/plugins/devices-shelly-ng/delegates/delegates-manager.service.ts):
   switch setter calls `comp.set(val)`; temperature handlers consume `tC`, coalesce ordinary writes and drop invalid
-  numeric conversions, but the shared coercion treats null as 0. A protective invalidation/threshold release must not wait behind ordinary telemetry coalescing.
+  numeric conversions, but the shared coercion treats null as 0. Registered raw observation now bypasses that conversion/coalescing for control eligibility.
 - Pinned `shellies-ds9` `components/base.js` treats null as an object if prior characteristic is truthy; its
   `Object.assign` leaves a numeric tC unchanged and emits that stale value. The real-component fixture captures this
   additional qualification blocker; no library files are edited. In the fixture, tC=25 followed by null/read error
   persists another 25. Directly forwarding raw null bypasses that library bug but persists 0 through manager coercion.
-  VD2-1b needs an explicit raw null/error invalidation path before both conversions, not a numeric sample of 0.
+  VD2-1b supplies a raw null/error invalidation path before both conversions; it never reports numeric 0 as the fault sample.
 - [NG delegate](../../../apps/backend/src/plugins/devices-shelly-ng/delegates/shelly-device.delegate.ts):
   fixed descriptor iteration, unchanged notification forwarding, poll origin and notification revision fences.
 - [NG descriptors](../../../apps/backend/src/plugins/devices-shelly-ng/devices-shelly-ng.constants.ts):
@@ -138,7 +141,7 @@ Existing source paths:
 - [Zigbee mapper](../../../apps/backend/src/plugins/devices-zigbee2mqtt/services/device-mapper.service.ts),
   [packet boundary](../../../apps/backend/src/plugins/devices-zigbee2mqtt/services/base-client-adapter.ts) and
   [cached startup replay](../../../apps/backend/src/plugins/devices-zigbee2mqtt/services/zigbee2mqtt.service.ts):
-  cached/retained flags currently govern input occurrence suppression, not scalar control freshness.
+  sample admission carries cached/retained provenance and requires a durable verified source identity for live control freshness.
 
 ## Application protocol contract for VD2-1b
 

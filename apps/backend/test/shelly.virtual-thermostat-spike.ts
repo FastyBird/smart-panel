@@ -155,6 +155,7 @@ const createManager = async (physical: ShellyPlus1 | ShellyPlus1Pm | ShellyPlusH
 		channel: temperatureChannel,
 	});
 	const writes = jest.fn().mockResolvedValue(temperatureProperty);
+	const samples = jest.fn().mockResolvedValue(temperatureProperty);
 	physical.wifi.update({ sta_ip: 'fixture.invalid' });
 	const module = await Test.createTestingModule({
 		providers: [
@@ -167,6 +168,7 @@ const createManager = async (physical: ShellyPlus1 | ShellyPlus1Pm | ShellyPlusH
 							findOne: () => Promise.resolve(device),
 						} as unknown as DevicesService,
 						{
+							findAll: () => Promise.resolve([switchChannel, temperatureChannel, ...(analog ? [inputChannel] : [])]),
 							findOneBy: (field: string, value: string) =>
 								Promise.resolve(
 									value === String(ChannelCategory.DEVICE_INFORMATION)
@@ -192,6 +194,7 @@ const createManager = async (physical: ShellyPlus1 | ShellyPlus1Pm | ShellyPlusH
 												: null,
 								),
 							update: writes,
+							reportSample: samples,
 						} as unknown as ChannelsPropertiesService,
 						{ setConnectionState: () => Promise.resolve() } as unknown as DeviceConnectivityService,
 						absent<DeviceManagerService>(),
@@ -205,7 +208,7 @@ const createManager = async (physical: ShellyPlus1 | ShellyPlus1Pm | ShellyPlusH
 	const manager = module.get(DelegatesManagerService);
 	await manager.insert(physical);
 	writes.mockClear();
-	return { module, manager, device, switchChannel, switchProperty, writes };
+	return { module, manager, device, switchChannel, switchProperty, writes, samples };
 };
 
 describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
@@ -253,7 +256,7 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		expect(values).toHaveBeenCalledWith('switch:0', 'output', true, 'notify');
 	});
 
-	it('NO-GO: current real plugin dispatch accepts ON but supplies no device-side timer', async () => {
+	it('ordinary wiring stays timer-free; protective commands require a separate qualified path', async () => {
 		const fixture = await createManager(physical as ShellyPlus1);
 		module = fixture.module;
 		manager = fixture.manager;
@@ -276,7 +279,7 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		expect(fixture.writes).not.toHaveBeenCalled();
 	});
 
-	it('NO-GO: failed RPC propagates and late ON feedback is accepted after a newer accepted OFF', async () => {
+	it('bare RPC acceptance cannot establish that an earlier failed ON has drained', async () => {
 		const device = physical as ShellyPlus1;
 		device.switch0.update({ output: false });
 		delegate = new ShellyDeviceDelegate(device);
@@ -302,7 +305,7 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		expect(restarted.permitsOpposedOutput).toBe(true);
 	});
 
-	it('real delegate forwards equal notifications and fences an older poll, but equal polls are currently suppressed', async () => {
+	it('legacy value events fence old polls while raw sample evidence carries equal observations', async () => {
 		const device = physical as ShellyPlus1;
 		device.switch0.update({ output: false });
 		delegate = new ShellyDeviceDelegate(device);
@@ -323,7 +326,7 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		values.mockClear();
 		rpc.response = () => Promise.resolve({ 'switch:0': { output: false } });
 		await delegate.pollStatus();
-		expect(values).not.toHaveBeenCalled(); // NO-GO for polling-only sample freshness.
+		expect(values).not.toHaveBeenCalled(); // Legacy scalar equality suppression is separate from the registered raw sample path.
 	});
 
 	it('real RPC client preserves peripheral address evidence, but does not bind it as a qualified floor role', async () => {
@@ -344,7 +347,7 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		expect(guard.allowsHeating(sample({ identity: 'different-address' }), 10_000)).toBe(false);
 	});
 
-	it('discovers temperature:100 with real adoption logic but Plus1 runtime ignores that add-on component', async () => {
+	it('unbound add-on discovery does not grant runtime measurement authority', async () => {
 		const rpcClient = {
 			getDeviceInfo: () => Promise.resolve({ id: 'fixture-plus1', model: ShellyPlus1.model }),
 			getComponents: () => Promise.resolve([{ key: 'switch:0' }, { key: 'temperature:100' }]),
@@ -378,10 +381,10 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 			rpc.notify({ 'temperature:100': reading });
 		}
 		expect(delegate.temperature.has(100)).toBe(false);
-		expect(values).not.toHaveBeenCalled(); // NO-GO: adoption does not imply ongoing floor observation.
+		expect(values).not.toHaveBeenCalled(); // Source binding is required before dynamic raw observations can authorize control.
 	});
 
-	it('NO-GO: real library launders null into old temperature, and raw null still lacks guard invalidation', async () => {
+	it('raw sample admission invalidates null before the pinned library retains old ordinary telemetry', async () => {
 		physical.removeAllListeners();
 		rpc.removeAllListeners();
 		physical = createTemperature(rpc);
@@ -400,7 +403,8 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 				([component, characteristic]) => component === 'temperature:0' && characteristic === 'tC',
 			),
 		).toHaveLength(2);
-		expect(fixture.writes).toHaveBeenCalledTimes(2);
+		expect(fixture.samples).toHaveBeenCalledTimes(2);
+		expect(fixture.writes).not.toHaveBeenCalled();
 		fixture.writes.mockClear();
 		values.mockClear();
 		rpc.notify({ 'temperature:0': { tC: null, errors: ['read'] } });
@@ -409,16 +413,24 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		expect(values).toHaveBeenCalledWith('temperature:0', 'errors', ['read'], 'notify');
 		expect(values).not.toHaveBeenCalledWith('temperature:0', 'tC', null, 'notify');
 		expect(delegate.temperature.get(0).tC).toBe(25);
-		expect(fixture.writes).toHaveBeenCalledTimes(1); // Pinned Component.update keeps old tC for null.
-		const [, staleUpdate] = fixture.writes.mock.calls[0] as [string, { value: unknown }];
-		expect(staleUpdate.value).toBe(25);
+		expect(fixture.writes).not.toHaveBeenCalled(); // Qualified properties bypass the stale scalar coalescer.
+		expect(fixture.samples).toHaveBeenLastCalledWith(
+			'floor',
+			expect.objectContaining({ value: null }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
 		fixture.writes.mockClear();
 		delegate.emitNotificationValue('temperature:0', 'tC', null); // Raw path bypasses the library bug.
 		await jest.advanceTimersByTimeAsync(250);
 		expect(values).toHaveBeenCalledWith('temperature:0', 'tC', null, 'notify');
-		expect(fixture.writes).toHaveBeenCalledTimes(1);
-		expect(fixture.writes).toHaveBeenCalledWith('floor', { type: 'devices-shelly-ng', value: 0 });
-		// Manager numeric coercion converts raw null to 0; neither path invalidates control quality.
+		expect(fixture.writes).not.toHaveBeenCalled();
+		// Legacy scalar coercion is not control evidence: the raw admission path reports the actual fault.
+		expect(fixture.samples).toHaveBeenCalledWith(
+			'floor',
+			expect.objectContaining({ value: null }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+		expect(fixture.samples).not.toHaveBeenCalledWith('floor', expect.objectContaining({ value: 0 }), expect.anything());
 	});
 });
 
@@ -449,10 +461,10 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 
 	it.each([
 		{ transformed: 25, value: 25, unit: '°C' },
-		{ transformed: null, value: 50, unit: '%' },
-		{ transformed: undefined, value: 50, unit: '%' },
+		{ transformed: null, value: undefined, unit: '°C' },
+		{ transformed: undefined, value: undefined, unit: '°C' },
 	])(
-		'NO-GO: adoption keeps helper as analog VALUE and falls back when unavailable %j',
+		'adoption binds a native Celsius helper and never falls back to raw percent %j',
 		async ({ transformed, value, unit }) => {
 			const device = Object.assign(new ShellyNgDeviceEntity(), {
 				id: 'pilot',
@@ -479,6 +491,7 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 						xpercent: { expr: 'x/2', unit: '°C' },
 					},
 					'Input.GetStatus': { id: 100, percent: 50, xpercent: transformed },
+					'SensorAddon.GetPeripherals': { analog_in: { 'input:100': { io: 0 } } },
 				};
 				expect(Object.hasOwn(payloads, body.method)).toBe(true);
 				if (body.method.startsWith('Input.')) expect(body.params).toEqual({ id: 100 });
@@ -547,13 +560,17 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 			expect(properties).toContainEqual(
 				expect.objectContaining({ channel: floor.id, category: PropertyCategory.UNIT, value: unit }),
 			);
-			expect(
-				properties.some(
-					(property) => property.channel === floor.id && property.category === PropertyCategory.TEMPERATURE,
-				),
-			).toBe(false);
-			expect(JSON.stringify(properties)).not.toContain('x/2'); // Expression/config identity is not persisted.
-			expect(requests).not.toContain('SensorAddon.GetPeripherals'); // Physical IO identity is not adopted.
+			const temperature = channels.find((channel) => channel.identifier?.startsWith('helper-temperature:input:100:'));
+			expect(temperature?.category).toBe(ChannelCategory.TEMPERATURE);
+			expect(properties).toContainEqual(
+				expect.objectContaining({
+					channel: temperature.id,
+					category: PropertyCategory.TEMPERATURE,
+					identifier: 'xpercent',
+					value: undefined,
+				}),
+			);
+			expect(requests).toContain('SensorAddon.GetPeripherals');
 		},
 	);
 
@@ -575,7 +592,7 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 		// Synthetic expression is protocol data, not the installed thermistor calibration.
 	});
 
-	it('NO-GO: Plus1PM discovery sees dynamic analog and voltmeter IDs but runtime ignores helper reports', async () => {
+	it('unbound Plus1PM discovery does not silently register analog helper authority', async () => {
 		module = await Test.createTestingModule({
 			providers: [
 				{
@@ -621,7 +638,7 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 		expect(values).not.toHaveBeenCalled();
 	});
 
-	it('NO-GO: known input prefers equal xpercent notifications but null/error repeats stale values and equal polls vanish', async () => {
+	it('unbound legacy analog scalar quirks remain separate from qualified helper reports', async () => {
 		// input:0 deliberately exercises a known component, not the add-on's input:100.
 		physical.input0.update({ percent: 50, xpercent: 25 });
 		const fixture = await createManager(physical, true);
@@ -653,7 +670,7 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 		expect(fixture.writes).toHaveBeenLastCalledWith('helper-value', { type: 'devices-shelly-ng', value: 0 });
 	});
 
-	it('NO-GO: helper appearing after insertion leaves the known input bound to raw percent', async () => {
+	it('an unbound input keeps its original raw-percent mapping until deliberate helper adoption', async () => {
 		physical.input0.update({ percent: 50 });
 		const fixture = await createManager(physical, true);
 		module = fixture.module;
@@ -673,7 +690,7 @@ describe('VD2-1 Plus1PM native analog helper characterization', () => {
 		component.update({ voltage: 2.5, xvoltage: 25 });
 		expect(component.xvoltage).toBe(25);
 		component.update({ voltage: 2.6, xvoltage: null, errors: ['read'] });
-		expect(component.xvoltage).toBe(25); // NO-GO: same pinned null-retention behavior.
+		expect(component.xvoltage).toBe(25); // Qualified observation inspects raw fields before this pinned null-retention behavior.
 		expect(physical.getComponent('voltmeter:100')).toBeUndefined();
 		component.removeAllListeners();
 	});
@@ -710,7 +727,10 @@ describe('VD2-1 real Zigbee mapper replay evidence', () => {
 						new Z2mDeviceMapperService(
 							{ findOneBy: () => Promise.resolve(device) } as unknown as DevicesService,
 							{ findAll: () => Promise.resolve([channel]) } as unknown as ChannelsService,
-							{ findAll: () => Promise.resolve([property]), update: writes } as unknown as ChannelsPropertiesService,
+							{
+								findAll: () => Promise.resolve([property]),
+								reportSample: writes,
+							} as unknown as ChannelsPropertiesService,
 							absent(),
 							absent(),
 							absent(),
@@ -730,18 +750,19 @@ describe('VD2-1 real Zigbee mapper replay evidence', () => {
 	});
 
 	it.each<Z2mDeviceStateMetadata>([{ isRetained: true }, { isCached: true }, { isRetained: false }])(
-		'NO-GO: current mapper strips scalar sample provenance %j',
+		'mapper preserves replay provenance and keeps an unbound legacy source ineligible %j',
 		async (metadata) => {
 			await module.get(Z2mDeviceMapperService).updateDeviceState('ambient', { temperature: 21 }, metadata);
 			expect(writes).toHaveBeenCalledTimes(1);
-			const [, update] = writes.mock.calls[0] as [string, { value: unknown }];
+			const [, update, evidence] = writes.mock.calls[0] as [string, { value: unknown }, { provenance: string }];
 			expect(update.value).toBe(21);
 			expect(update).not.toHaveProperty('sampleOrigin');
 			expect(update).not.toHaveProperty('sampledAt');
+			expect(evidence.provenance).toBe(metadata.isRetained ? 'retained' : 'cached');
 		},
 	);
 
-	it('real MQTT packet routing keeps retained metadata, but mapper loses it at scalar persistence', async () => {
+	it('real MQTT packet routing distinguishes retained replay and unqualified live scalar admission', async () => {
 		const mqtt = new FixtureMqtt();
 		const pending: Promise<void>[] = [];
 		const receipts: Z2mDeviceStateMetadata[] = [];
@@ -760,7 +781,12 @@ describe('VD2-1 real Zigbee mapper replay evidence', () => {
 			expect(writes).toHaveBeenCalledTimes(2);
 			expect(mqtt.getCachedState('ambient')).toEqual({ temperature: 21 });
 			const updates = (writes.mock.calls as Array<[string, unknown]>).map(([, update]) => update);
-			expect(updates[0]).toEqual(updates[1]); // NO-GO: fresh packet and startup replay are indistinguishable downstream.
+			expect(updates[0]).toEqual(updates[1]); // Equal scalars do not erase the separate sample provenance.
+			expect(
+				(writes.mock.calls as Array<[string, unknown, { provenance: string }]>).map(
+					([, , evidence]) => evidence.provenance,
+				),
+			).toEqual(['retained', 'cached']);
 		} finally {
 			await mqtt.disconnect();
 		}
