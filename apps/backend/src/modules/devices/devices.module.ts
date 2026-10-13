@@ -47,6 +47,7 @@ import {
 	DeviceEntity,
 } from './entities/devices.entity';
 import { PropertyValueLockEntity } from './entities/property-value-lock.entity';
+import { PropertyCommandEntryInterceptor } from './interceptors/property-command-entry.interceptor';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DevicesConfigModel } from './models/config.model';
 import { DevicesStatsProvider } from './providers/devices-stats.provider';
@@ -124,6 +125,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		WebsocketModule,
 	],
 	providers: [
+		PropertyCommandEntryInterceptor,
 		DeviceControlToolService,
 		DevicesTypeMapperService,
 		ChannelsTypeMapperService,

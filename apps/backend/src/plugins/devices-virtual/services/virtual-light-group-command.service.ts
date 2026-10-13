@@ -18,6 +18,7 @@ import {
 	CompositePropertyCommandRegistryService,
 } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
+import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
@@ -72,9 +73,12 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 			property.permissions.includes(PermissionType.READ_ONLY)
 		);
 	}
-	async plan(updates: readonly IDevicePropertyData[]): Promise<CompositeCommandPlan> {
+	async plan(
+		updates: readonly IDevicePropertyData[],
+		entry?: PropertyCommandEntrySnapshot,
+	): Promise<CompositeCommandPlan> {
 		if (!updates.some((update) => update.property.category === PropertyCategory.BRIGHTNESS))
-			return this.planCurrent(updates);
+			return this.planCurrent(updates, undefined, entry);
 		if (this.planningLeases.size >= 128) throw new Error('Too many active brightness planning snapshots');
 		const changed = new Set<string>();
 		const admitted = new Set<string>();
@@ -98,7 +102,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 		timer.unref();
 		this.planningLeases.add(dispose);
 		try {
-			const plan = await this.planCurrent(updates, { changed, admitted, isStopped: () => stopped || overflow });
+			const plan = await this.planCurrent(updates, { changed, admitted, isStopped: () => stopped || overflow }, entry);
 			return { ...plan, dispose };
 		} catch (error) {
 			dispose();
@@ -109,6 +113,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 	private async planCurrent(
 		updates: readonly IDevicePropertyData[],
 		power?: { changed: Set<string>; admitted: Set<string>; isStopped: () => boolean },
+		entry?: PropertyCommandEntrySnapshot,
 	): Promise<CompositeCommandPlan> {
 		const graphRevision = await this.graph.revision();
 		const metadataGeneration = this.metadata.getGeneration();
@@ -172,6 +177,8 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 						on.permissions.includes(PermissionType.READ_WRITE) &&
 						(on.channel as ChannelEntity).id === channel.id &&
 						typeof sample?.value === 'boolean' &&
+						this.windows.get(on.id)?.state !== 'pending' &&
+						(entry?.canPreservePower(on.id) ?? true) &&
 						!power.isStopped() &&
 						!power.changed.has(on.id);
 					if (powerAvailable) {
@@ -186,8 +193,9 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 								const current = this.values.readQualifiedSample(on, LIGHT_GROUP_MAXIMUM_AGE_MS);
 								if (
 									power.isStopped() ||
+									!(entry?.canPreservePower(on.id) ?? true) ||
 									power.changed.has(on.id) ||
-									(this.windows.peekGeneration(on.id) !== null && this.windows.peekGeneration(on.id) !== generation) ||
+									(this.windows.peekGeneration(on.id) != null && this.windows.peekGeneration(on.id) !== generation) ||
 									current?.value !== baseline
 								)
 									return false;

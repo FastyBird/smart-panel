@@ -89,6 +89,16 @@ export class PropertyCommandWindowService {
 	private readonly windows = new Map<string, MutablePropertyCommandWindow>();
 	private readonly recoveries = new Map<string, RecoveryWindow>();
 	private readonly confirmationObservers = new Set<(handle: PropertyCommandWindowHandle) => void>();
+	/** Internal bounded snapshot before any asynchronous target resolution. */
+	snapshotPendingProperties(limit: number): { ids: ReadonlySet<string>; overflow: boolean } {
+		const ids = new Set<string>();
+		for (const [id, window] of this.windows) {
+			if (window.state !== 'pending' || this.isExpired(window, Date.now())) continue;
+			if (ids.size >= limit) return { ids, overflow: true };
+			ids.add(id);
+		}
+		return { ids, overflow: false };
+	}
 	/** Captures actual convergence while a provider acknowledgement is still in flight. */
 	observeConfirmation(observer: (handle: PropertyCommandWindowHandle) => void): () => void {
 		this.confirmationObservers.add(observer);
