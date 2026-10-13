@@ -79,13 +79,12 @@
 						:min="numericBound(control.format, 0)"
 						:max="numericBound(control.format, 1)"
 						:step="control.step ?? 1"
-						step-strictly
 						:data-test-id="`light-group-control-${control.category}`"
 					/>
 				</label>
 				<el-button
-					:disabled="busy || controls.some((control) => !Number.isFinite(requestedValues[control.category]))"
-					@click="command(controls.map((control) => ({ category: control.category, value: requestedValues[control.category]! })))"
+					:disabled="busy || controls.some((control) => numericTarget(control) === null)"
+					@click="command(controls.map((control) => ({ category: control.category, value: numericTarget(control)! })))"
 				>
 					{{ t('devicesVirtualPlugin.lightGroup.apply') }}
 				</el-button>
@@ -165,6 +164,15 @@ const previewKey = ref<string | null>(null);
 const requestedValues = ref<Record<string, number | undefined>>({});
 const numericBound = (format: (number[] | string[]) | null, index: number) =>
 	typeof format?.[index] === 'number' ? (format[index] as number) : undefined;
+const numericTarget = (control: components['schemas']['DevicesVirtualPluginDataLightGroupCapability']): number | null => {
+	const value = requestedValues.value[control.category];
+	const min = numericBound(control.format, 0);
+	const max = numericBound(control.format, 1);
+	if (value === undefined || !Number.isFinite(value) || (min !== undefined && value < min) || (max !== undefined && value > max)) return null;
+	const target =
+		control.step && control.step > 0 ? Number(((min ?? 0) + Math.round((value - (min ?? 0)) / control.step) * control.step).toFixed(6)) : value;
+	return (min !== undefined && target < min) || (max !== undefined && target > max) ? null : target;
+};
 const numericControls = computed(() => {
 	const available = configuration.value?.common_capabilities ?? [];
 	const exposed = new Set(configuration.value?.members[0]?.bindings.map((binding) => binding.quantity) ?? []);

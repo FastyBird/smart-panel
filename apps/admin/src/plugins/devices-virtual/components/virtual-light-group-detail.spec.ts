@@ -122,7 +122,7 @@ describe('light group actual state and command detail', () => {
 			data: {
 				data: {
 					...configuration,
-					common_capabilities: color.map((category) => ({ category, format: [0, 255], step: 1 })),
+					common_capabilities: color.map((category) => ({ category, format: [0.125, 1.125], step: 0.25 })),
 					members: configuration.members.map((member) => ({
 						...member,
 						bindings: color.map((quantity) => ({ quantity, output_property: `group-channel-${quantity}` })),
@@ -135,7 +135,7 @@ describe('light group actual state and command detail', () => {
 		const apply = () => wrapper.findAll('button').find((button) => button.text() === 'devicesVirtualPlugin.lightGroup.apply')!;
 		expect(apply().attributes('disabled')).toBeDefined();
 		for (const [index, category] of color.entries()) {
-			await wrapper.find(`[data-test-id="light-group-control-${category}"] input`).setValue(String(index * 25));
+			await wrapper.find(`[data-test-id="light-group-control-${category}"] input`).setValue(String([0.6, 0.125, 1.125][index]));
 		}
 		await apply().trigger('click');
 		await flushPromises();
@@ -145,7 +145,7 @@ describe('light group actual state and command detail', () => {
 				device: 'group',
 				channel: 'group-channel',
 				property: `group-channel-${category}`,
-				value: index * 25,
+				value: [0.625, 0.125, 1.125][index],
 			}))
 		);
 		expect(mocks.POST.mock.calls[0][1].body.request_id).toEqual(expect.any(String));
