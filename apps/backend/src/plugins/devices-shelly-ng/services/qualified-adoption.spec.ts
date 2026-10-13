@@ -170,26 +170,52 @@ describe('native temperature adoption identity', () => {
 
 	it('adopts dynamic Voltmeter native Celsius without assuming Gen2 Plus Number components', async () => {
 		componentKey = 'voltmeter:100';
-		sourceConfig = { id: 100, xvoltage: { expr: 'x/2', unit: '°C' } };
-		peripherals = { voltmeter: { 'voltmeter:100': { io: 0 } } };
+		sourceConfig = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: 'x/2', unit: '°C' } };
+		peripherals = { voltmeter: { 'voltmeter:100': {} } };
 		await service.createOrUpdate('pilot');
 		const identity = nativeTemperatureIdentity(componentKey, sourceConfig, peripherals);
 		expect(channels).toContainEqual(
 			expect.objectContaining({ identifier: identity.channelIdentifier, category: ChannelCategory.TEMPERATURE }),
 		);
 		expect(properties).toContainEqual(expect.objectContaining({ identifier: 'xvoltage', value: undefined }));
+		const oldIdentifier = identity.channelIdentifier;
+		sourceConfig = { ...sourceConfig, range: 1 };
+		await service.createOrUpdate('pilot');
+		expect(channels.map((channel) => channel.identifier)).toContain(oldIdentifier);
+		expect(channels.map((channel) => channel.identifier)).toContain(
+			nativeTemperatureIdentity(componentKey, sourceConfig, peripherals).channelIdentifier,
+		);
+	});
+
+	it('refuses qualified floor binding for an unconfigured pilot voltmeter', async () => {
+		componentKey = 'voltmeter:100';
+		sourceConfig = { id: 100, report_thr: 0.1, xvoltage: { expr: null, unit: null } };
+		peripherals = { voltmeter: { 'voltmeter:100': {} } };
+		await service.createOrUpdate('pilot');
+		expect(nativeTemperatureIdentity(componentKey, sourceConfig, peripherals)).toBeNull();
+		expect(channels.some((channel) => channel.identifier?.startsWith('helper-temperature:'))).toBe(false);
+		expect(bindSource).not.toHaveBeenCalled();
 	});
 
 	it('binds dynamic temperature to a physical probe address, and declines absent peripheral evidence', async () => {
 		componentKey = 'temperature:100';
-		sourceConfig = { id: 100, name: 'floor', offset: 0 };
+		sourceConfig = { id: 100, name: 'Bathroom Temperature', report_thr_C: 0.1, offset_C: 0 };
 		sourceStatus = { id: 100, tC: 25 };
 		peripherals = { ds18b20: { 'temperature:100': { addr: '40:255:100:6:199:204:149:177' } } };
 		await service.createOrUpdate('pilot');
+		const oldIdentifier = nativeTemperatureIdentity(componentKey, sourceConfig, peripherals).channelIdentifier;
 		expect(channels).toContainEqual(
 			expect.objectContaining({
-				identifier: nativeTemperatureIdentity(componentKey, sourceConfig, peripherals).channelIdentifier,
+				identifier: oldIdentifier,
 			}),
+		);
+		sourceConfig = { ...sourceConfig, offset_C: 0.5 };
+		await service.createOrUpdate('pilot');
+		expect(channels.map((channel) => channel.identifier)).toEqual(
+			expect.arrayContaining([
+				oldIdentifier,
+				nativeTemperatureIdentity(componentKey, sourceConfig, peripherals).channelIdentifier,
+			]),
 		);
 		channels = [];
 		properties = [];
