@@ -201,11 +201,39 @@ describe('WebsocketExchangeListener (Scenes)', () => {
 					success: true,
 					scene_id: sceneId,
 					status: SceneExecutionStatus.COMPLETED,
+					action_results: [],
 					total_actions: 5,
 					successful_actions: 5,
 					failed_actions: 0,
 					triggered_at: triggeredAt,
 					completed_at: completedAt,
+				},
+			});
+		});
+
+		it('returns failed group action details without losing them in a failed transport acknowledgement', async () => {
+			const sceneId = uuid();
+			const actionId = uuid();
+			const composite = {
+				id: 'parent',
+				status: 'failed' as const,
+				children: [{ memberId: 'member', propertyId: 'power', status: 'failed' as const }],
+			};
+			sceneExecutorService.triggerScene.mockResolvedValue({
+				sceneId,
+				status: SceneExecutionStatus.FAILED,
+				totalActions: 1,
+				successfulActions: 0,
+				failedActions: 1,
+				triggeredAt: new Date().toISOString(),
+				actionResults: [{ actionId, success: false, executionTimeMs: 12, composite }],
+			});
+			const result = await handleTriggerScene(createMockUser(), { sceneId });
+			expect(result).toMatchObject({
+				success: true,
+				data: {
+					success: false,
+					action_results: [{ action_id: actionId, success: false, execution_time_ms: 12, composite }],
 				},
 			});
 		});

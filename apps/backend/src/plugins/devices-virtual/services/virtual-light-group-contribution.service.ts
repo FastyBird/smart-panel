@@ -45,7 +45,9 @@ export class VirtualLightGroupContributionService implements DeviceContributionP
 			throw error;
 		}
 		const state = config.reported_state;
-		const brightness = this.states.getReportedState(channel.id)?.properties.get(PropertyCategory.BRIGHTNESS);
+		const brightness = this.states
+			.getReportedState(channel.id, config.revision)
+			?.properties.get(PropertyCategory.BRIGHTNESS);
 		return {
 			revision: config.revision,
 			isCurrent: () =>

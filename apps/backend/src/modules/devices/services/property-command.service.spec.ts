@@ -387,6 +387,8 @@ describe('PropertyCommandService', () => {
 			const result = await service.handleInternal(mockWsUser, validPayload);
 
 			expect(result).toEqual({
+				requestId: validPayload.request_id,
+				composites: [],
 				success: false,
 				results: [{ device: mockDevice.id, success: false, reason: 'Device not found' }],
 			});
@@ -482,6 +484,8 @@ describe('PropertyCommandService', () => {
 			const result = await service.handleInternal(mockWsUser, validPayload);
 
 			expect(result).toEqual({
+				requestId: validPayload.request_id,
+				composites: [],
 				success: false,
 				results: [
 					{ device: device.id, success: false, reason: `${target === 'channel' ? 'Channel' : 'Property'} not found` },
@@ -607,6 +611,8 @@ describe('PropertyCommandService', () => {
 		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result).toEqual({
+			requestId: validPayload.request_id,
+			composites: [],
 			success: false,
 			results: [{ device: mockDevice.id, success: false, reason: 'Property is not writable' }],
 		});
@@ -844,6 +850,47 @@ describe('PropertyCommandService', () => {
 			expect(result.results[0].success).toBe(true);
 			expect(result.results[1].success).toBe(true);
 		});
+	});
+
+	it.each(['device', 'channel'])(
+		'rejects stale requested %s references before any physical dispatch',
+		async (owner) => {
+			const device = toInstance(MockDevice, mockDevice);
+			const channel = toInstance(MockChannel, mockChannel);
+			channel.device = device;
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.channel = channel;
+			jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
+			const result = await service.executePropertyCommands([
+				{
+					propertyId: property.id,
+					value: true,
+					requestedDeviceId: owner === 'device' ? uuid() : device.id,
+					requestedChannelId: owner === 'channel' ? uuid() : channel.id,
+				},
+			]);
+			expect(result.success).toBe(false);
+			expect(result.results[0].reason).toContain('Requested property owner');
+			expect(jest.spyOn(mockPlatform, 'processBatch')).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps an invalidated retained admission entry tracked until shutdown disposes its observer', () => {
+		let current = true;
+		const unsubscribe = jest.fn();
+		jest.spyOn(propertyCommandWindowService, 'observeGeneration').mockReturnValue(unsubscribe);
+		Object.assign(service, {
+			admissionGuards: {
+				hasGuards: () => true,
+				capture: () => ({ isCurrent: () => current, assertAllowed: () => Promise.resolve() }),
+			},
+		});
+		const entry = service.captureCommandEntry();
+		expect(entry.retain()).toBe(true);
+		current = false;
+		service.releaseCommandEntry(entry);
+		service.onModuleDestroy();
+		expect(unsubscribe).toHaveBeenCalledTimes(1);
 	});
 	it('bounds entry observers, releases callers, and disposes all active entries on shutdown', () => {
 		const registry = new CompositePropertyCommandRegistryService();

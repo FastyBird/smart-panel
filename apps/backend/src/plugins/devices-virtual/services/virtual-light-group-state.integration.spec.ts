@@ -257,6 +257,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		await runtime.refresh();
 		expect(producers.read(outputId)?.value).toBe(true);
 		expect(runtime.getReportedState(channelId)).toMatchObject({ total: 2, onCount: 1, offCount: 1, mixed: true });
+		expect(runtime.getReportedState(channelId, configured.revision + 1)).toBeNull();
 		const metadata = new PropertyMetadataService(database);
 		const windows = new PropertyCommandWindowService();
 		const commands = new VirtualLightGroupCommandService(

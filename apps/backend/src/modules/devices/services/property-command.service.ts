@@ -70,6 +70,13 @@ export interface PropertyBatchCommandResult {
 	results: SinglePropertyCommandResult[];
 }
 
+export interface PropertySocketCommandResult {
+	success: boolean;
+	results: DevicePropertyCommandResult[] | string;
+	requestId?: string;
+	composites?: CompositeCommandOutcome[];
+}
+
 @Injectable()
 export class PropertyCommandService implements OnModuleDestroy {
 	private readonly requestEntries = new Set<PropertyCommandEntrySnapshot>();
@@ -95,7 +102,6 @@ export class PropertyCommandService implements OnModuleDestroy {
 
 	releaseCommandEntry(entry: PropertyCommandEntrySnapshot | undefined): void {
 		entry?.release();
-		if (entry && !entry.isActive()) this.requestEntries.delete(entry);
 	}
 
 	private async withCommandEntry<T>(
@@ -135,10 +141,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 		@Optional() private readonly admissionGuards?: PropertyCommandAdmissionRegistryService,
 	) {}
 
-	async handleInternal(
-		user: ClientUserDto,
-		payload?: object,
-	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
+	async handleInternal(user: ClientUserDto, payload?: object): Promise<PropertySocketCommandResult> {
 		return this.withCommandEntry({}, (options) => this.handleInternalWithEntry(user, payload, options));
 	}
 
@@ -146,7 +149,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 		user: ClientUserDto,
 		payload: object | undefined,
 		options: PropertyCommandExecutionOptions,
-	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
+	): Promise<PropertySocketCommandResult> {
 		// Allow display clients to control device properties via WebSocket
 		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
 
@@ -186,11 +189,25 @@ export class PropertyCommandService implements OnModuleDestroy {
 			};
 		}
 
-		return this.executeCommands(dtoInstance.properties, {
+		const result = await this.executeCommands(dtoInstance.properties, {
 			...options,
 			requestId: dtoInstance.request_id,
 			context: intentContext,
 		});
+		return {
+			...result,
+			requestId: dtoInstance.request_id,
+			composites:
+				typeof result.results === 'string'
+					? []
+					: [
+							...new Map(
+								result.results
+									.filter((target) => target.composite)
+									.map((target) => [target.composite.id, target.composite]),
+							).values(),
+						],
+		};
 	}
 
 	async executePropertyCommandById(
@@ -301,7 +318,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 	 * @returns A promise resolving to the batch command result and individual outcomes.
 	 */
 	async executePropertyCommands(
-		commands: Array<{ propertyId: string; value: unknown }>,
+		commands: Array<{ propertyId: string; value: unknown; requestedDeviceId?: string; requestedChannelId?: string }>,
 		options: PropertyCommandExecutionOptions = {},
 	): Promise<PropertyBatchCommandResult> {
 		return this.withCommandEntry(options, (entryOptions) =>
@@ -310,7 +327,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 	}
 
 	private async executePropertyCommandsWithEntry(
-		commands: Array<{ propertyId: string; value: unknown }>,
+		commands: Array<{ propertyId: string; value: unknown; requestedDeviceId?: string; requestedChannelId?: string }>,
 		options: PropertyCommandExecutionOptions,
 	): Promise<PropertyBatchCommandResult> {
 		if (commands.length === 0) {
@@ -367,6 +384,22 @@ export class PropertyCommandService implements OnModuleDestroy {
 						success: false,
 						property: c.propertyId,
 						reason: c.propertyId === cmd.propertyId ? 'Device not found' : 'Batch aborted due to invalid device',
+					})),
+				};
+			}
+
+			if (
+				(cmd.requestedDeviceId !== undefined && cmd.requestedDeviceId !== device.id) ||
+				(cmd.requestedChannelId !== undefined && cmd.requestedChannelId !== channel.id)
+			) {
+				return {
+					success: false,
+					results: commands.map((command) => ({
+						device: command.requestedDeviceId ?? device.id,
+						channel: command.requestedChannelId,
+						property: command.propertyId,
+						success: false,
+						reason: 'Requested property owner changed or does not match',
 					})),
 				};
 			}

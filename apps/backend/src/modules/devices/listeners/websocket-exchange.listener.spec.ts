@@ -166,10 +166,30 @@ describe('WebsocketExchangeListener (Devices)', () => {
 				success: true,
 				reason: undefined,
 				data: {
+					success: true,
 					results: [{ device: 'dev-1', success: true }],
 				},
 			});
 			expect(propertyCommandService.handleInternal).toHaveBeenCalledWith(user, mockPayload);
+		});
+
+		it('delivers failed composite children and the request correlation through a successful transport acknowledgement', async () => {
+			const composite = {
+				id: 'parent',
+				status: 'failed' as const,
+				children: [{ memberId: 'member', propertyId: 'power', status: 'failed' as const }],
+			};
+			propertyCommandService.handleInternal.mockResolvedValue({
+				success: false,
+				requestId: 'request',
+				results: [{ device: 'group', success: false, composite }],
+				composites: [composite],
+			});
+			const result = await handleSetProperty(createMockUser(), { properties: [] });
+			expect(result).toMatchObject({
+				success: true,
+				data: { success: false, request_id: 'request', composites: [composite] },
+			});
 		});
 
 		it('should return error with reason when command fails with string result', async () => {

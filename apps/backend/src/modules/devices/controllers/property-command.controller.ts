@@ -34,7 +34,12 @@ export class PropertyCommandController {
 		const administrator = !!auth && (auth.role === UserRole.ADMIN || auth.role === UserRole.OWNER);
 		if (!display && !administrator) throw new ForbiddenException('This action is not allowed for this caller');
 		const result = await this.commands.executePropertyCommands(
-			dto.properties.map((target) => ({ propertyId: target.property, value: target.value })),
+			dto.properties.map((target) => ({
+				propertyId: target.property,
+				value: target.value,
+				requestedDeviceId: target.device,
+				requestedChannelId: target.channel,
+			})),
 			{
 				requestId: dto.request_id,
 				context: {

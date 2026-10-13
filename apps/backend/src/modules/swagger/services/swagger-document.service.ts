@@ -182,6 +182,8 @@ export class SwaggerDocumentService {
 					if (typeof propSchema === 'object' && propSchema !== null && 'allOf' in propSchema) {
 						const allOf = propSchema.allOf;
 						if (
+							// A direct reference cannot carry nullable; preserve the wrapper for generated clients.
+							!propSchema.nullable &&
 							Array.isArray(allOf) &&
 							allOf.length === 1 &&
 							typeof allOf[0] === 'object' &&

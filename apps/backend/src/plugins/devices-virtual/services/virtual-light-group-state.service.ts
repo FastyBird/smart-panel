@@ -43,6 +43,7 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 	private disposed = false;
 	private readonly leases = new Map<string, PropertyProducerLease>();
 	private readonly states = new Map<string, LightGroupReportedState>();
+	private readonly stateRevisions = new Map<string, number>();
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly values: PropertyValueService,
@@ -71,12 +72,13 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 		if (this.timer) clearInterval(this.timer);
 		this.invalidateAll();
 	}
-	getReportedState(channelId: string): LightGroupReportedState | null {
+	getReportedState(channelId: string, expectedRevision?: number): LightGroupReportedState | null {
+		if (expectedRevision !== undefined && this.stateRevisions.get(channelId) !== expectedRevision) return null;
 		return this.states.get(channelId) ?? null;
 	}
 
-	getReportedModel(channelId: string): VirtualLightGroupReportedStateModel | null {
-		const state = this.states.get(channelId);
+	getReportedModel(channelId: string, expectedRevision?: number): VirtualLightGroupReportedStateModel | null {
+		const state = this.getReportedState(channelId, expectedRevision);
 		if (!state) return null;
 		return Object.assign(new VirtualLightGroupReportedStateModel(), {
 			on: state.on,
@@ -189,11 +191,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				snapshots.push({ identity: member.sourceChannelIdentity, samples, reasons: [...reasons] });
 			}
 			const state = reportLightGroup(snapshots);
-			this.states.set(config.groupChannelId, state);
 			const current = await this.dataSource.manager.findOneBy(VirtualLightGroupConfigEntity, {
 				groupChannelId: config.groupChannelId,
 			});
 			if (this.disposed || current?.revision !== config.revision) continue;
+			this.states.set(config.groupChannelId, state);
+			this.stateRevisions.set(config.groupChannelId, config.revision);
 			for (const output of outputs.filter((property) => property.isDerived)) {
 				active.add(output.id);
 				let lease = this.leases.get(output.id);
@@ -247,6 +250,8 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 			}
 	}
 	private invalidateAll(): void {
+		this.states.clear();
+		this.stateRevisions.clear();
 		for (const lease of this.leases.values()) this.producers.invalidate(lease, ['runtime_unavailable']);
 	}
 }

@@ -1,4 +1,4 @@
-import { EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { Injectable, Optional } from '@nestjs/common';
 
@@ -139,6 +139,7 @@ export class VirtualDevicesService {
 		private readonly index: VirtualPropertyIndexService,
 		private readonly deviceValidationService: DeviceValidationService,
 		@Optional() private readonly graph?: VirtualDependencyGraphService,
+		@Optional() private readonly dataSource?: DataSource,
 	) {}
 
 	/**
@@ -305,7 +306,12 @@ export class VirtualDevicesService {
 		this.assertValueOriginPairSupported(property);
 		this.assertOwnedPropertyNotWritable(property);
 		const channel = manager
-			? await manager.findOne(ChannelEntity, { where: { id: channelId }, relations: ['device'] })
+			? await manager
+					.createQueryBuilder(ChannelEntity, 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
+					.where('channel.id = :id', { id: channelId })
+					.callListeners(false)
+					.getOne()
 			: await this.channelsService.findOne(channelId);
 		const deviceId = channel && (typeof channel.device === 'string' ? channel.device : channel.device?.id);
 		const device =
@@ -427,7 +433,13 @@ export class VirtualDevicesService {
 	 * distinguishing it here.
 	 */
 	async assertDeviceIsVirtual(deviceId: string): Promise<void> {
-		const device = await this.devicesService.findOne(deviceId);
+		const device = this.dataSource
+			? await this.dataSource.manager
+					.createQueryBuilder(DeviceEntity, 'device')
+					.where('device.id = :id', { id: deviceId })
+					.callListeners(false)
+					.getOne()
+			: await this.devicesService.findOne(deviceId);
 
 		if (!device || device.type !== DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualOwnerNotVirtualException(
@@ -462,8 +474,16 @@ export class VirtualDevicesService {
 	 * Resolved by id, one hop at a time, for the same reason as `assertSourceNotVirtual`: the caller
 	 * hands over a channel id, not an entity with guaranteed-loaded relations.
 	 */
-	async assertChannelOwnerIsVirtual(channelId: string): Promise<void> {
-		const channel = await this.channelsService.findOne(channelId);
+	async assertChannelOwnerIsVirtual(channelId: string, manager?: EntityManager): Promise<void> {
+		const catalog = manager ?? this.dataSource?.manager;
+		const channel = catalog
+			? await catalog
+					.createQueryBuilder(ChannelEntity, 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
+					.where('channel.id = :id', { id: channelId })
+					.callListeners(false)
+					.getOne()
+			: await this.channelsService.findOne(channelId);
 
 		if (!channel || channel.type !== DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualOwnerNotVirtualException(
@@ -472,7 +492,12 @@ export class VirtualDevicesService {
 		}
 
 		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
-		const device = deviceId ? await this.devicesService.findOne(deviceId) : null;
+		const device =
+			catalog && channel && typeof channel.device !== 'string'
+				? channel.device
+				: deviceId
+					? await this.devicesService.findOne(deviceId)
+					: null;
 
 		if (!device || device.type !== DEVICES_VIRTUAL_TYPE) {
 			throw new VirtualOwnerNotVirtualException(

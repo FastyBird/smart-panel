@@ -15,6 +15,7 @@ import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/d
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
 import { CreateLightGroupDraftDto, LightGroupDraftDto } from '../dto/light-group-draft.dto';
@@ -147,7 +148,13 @@ export class VirtualLightGroupAuthoringService {
 			throw new DevicesValidationException('A physical light channel may occur only once in a group');
 		const channels: ChannelEntity[] = [];
 		for (const id of identities) {
-			const channel = await manager.findOne(ChannelEntity, { where: { id }, relations: ['device', 'properties'] });
+			const channel = await manager
+				.createQueryBuilder(ChannelEntity, 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.leftJoinAndSelect('channel.properties', 'property')
+				.where('channel.id = :id', { id })
+				.callListeners(false)
+				.getOne();
 			const device = channel?.device as DeviceEntity | undefined;
 			if (
 				!channel ||
@@ -157,7 +164,10 @@ export class VirtualLightGroupAuthoringService {
 				channel.category !== ChannelCategory.LIGHT
 			)
 				throw new DevicesValidationException('Every light group member must be an existing physical lighting channel');
-			for (const property of channel.properties ?? []) property.channel = channel;
+			for (const property of channel.properties ?? []) {
+				property.channel = channel;
+				property.unit = resolvePropertyUnit(property);
+			}
 			channels.push(channel);
 		}
 		const common = commonLightCapabilities(channels.map((channel) => channel.properties ?? []));

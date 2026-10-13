@@ -32,7 +32,26 @@ describe('light group draft preview', () => {
 			Promise.resolve(channels.find((channel) => channel.id === options.where.id) ?? null),
 		);
 		const service = new VirtualLightGroupAuthoringService(
-			{ manager: { findOne: reads } } as never,
+			{
+				manager: {
+					createQueryBuilder: () => {
+						const builder = {
+							leftJoinAndSelect: () => builder,
+							where: (_query: string, params: { id: string }) => {
+								selected = params.id;
+								return builder;
+							},
+							callListeners: (enabled: boolean) => {
+								expect(enabled).toBe(false);
+								return builder;
+							},
+							getOne: () => reads(ChannelEntity, { where: { id: selected } }),
+						};
+						let selected = '';
+						return builder;
+					},
+				},
+			} as never,
 			{ runShared: (operation: () => Promise<unknown>) => operation() } as never,
 			{ revision: () => Promise.resolve(7) } as never,
 			{} as never,

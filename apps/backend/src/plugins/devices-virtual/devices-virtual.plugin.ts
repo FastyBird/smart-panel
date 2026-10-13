@@ -277,7 +277,7 @@ export class DevicesVirtualPlugin {
 						throw new DevicesValidationException('Derived producer outputs cannot be seeded with client values.');
 					property.id ??= uuid();
 					if (manager) await this.graph.validateProperty(manager, property);
-					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId);
+					await this.virtualDevicesService.assertChannelOwnerIsVirtual(channelId, manager);
 					await this.virtualDevicesService.assertDerivedOutputSupported(property, channelId, manager);
 					// Repeated here as well as on the create DTO so that *every* creation path is covered,
 					// including this plugin's own listeners and any future internal caller that bypasses
