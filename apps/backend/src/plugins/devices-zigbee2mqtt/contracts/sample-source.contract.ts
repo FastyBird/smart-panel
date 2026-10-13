@@ -107,14 +107,17 @@ export function zigbeeSourceIdentity(
 		}
 	};
 	collect(device.definition.exposes);
-	fields.sort((a, b) => a.property.localeCompare(b.property));
-	if (new Set(fields.map((field) => field.property)).size !== fields.length) return null;
+	const counts = new Map<string, number>();
+	for (const field of fields) counts.set(field.property, (counts.get(field.property) ?? 0) + 1);
+	// Ambiguous fields cannot bind; independent fields keep the physical identity usable.
+	const uniqueFields = fields.filter((field) => counts.get(field.property) === 1);
+	uniqueFields.sort((a, b) => a.property.localeCompare(b.property));
 	const ieeeAddress = ieee.toLowerCase();
 	return Object.freeze({
 		friendlyName: name,
 		ieeeAddress,
-		fields: Object.freeze(fields),
-		fingerprint: sourceFingerprint({ ieeeAddress, fields }),
+		fields: Object.freeze(uniqueFields),
+		fingerprint: sourceFingerprint({ ieeeAddress, fields: uniqueFields }),
 		observedAt: new Date(observedAt),
 	});
 }

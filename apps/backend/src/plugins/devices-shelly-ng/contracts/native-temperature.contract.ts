@@ -177,7 +177,9 @@ export function nativeVoltmeterVoltageIdentity(
 }
 
 export function shellySampleEvidence(ts: unknown, observedAt: Date, receivedAt = new Date()): PropertySampleEvidence {
-	const sourceTime = typeof ts === 'number' && Number.isFinite(ts) ? new Date(ts * 1000) : observedAt;
+	// Missing timestamps use verified live capture; malformed timestamps must retain invalid evidence.
+	const sourceTime =
+		ts === undefined ? observedAt : new Date(typeof ts === 'number' && Number.isFinite(ts) ? ts * 1000 : Number.NaN);
 	return { sampledAt: sourceTime, receivedAt, observedAt, provenance: 'live' };
 }
 
