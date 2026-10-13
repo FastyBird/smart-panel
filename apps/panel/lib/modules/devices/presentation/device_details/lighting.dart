@@ -23,6 +23,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_group_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_presets_panel.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -1035,7 +1036,14 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             widget._device.lastStateChange!, localizations)
         : null;
 
-    final body = Stack(
+    final body = widget._device.isCompositeGroup
+        ? LightGroupControls(
+            key: ValueKey('${widget._device.id}:${(_selectedController ?? controller.light).channel.id}'),
+            deviceId: widget._device.id,
+            channel: (_selectedController ?? controller.light).channel,
+            service: _devicesService,
+          )
+        : Stack(
       children: [
         // Main content with orientation-aware layout
         OrientationBuilder(

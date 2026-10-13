@@ -18,6 +18,7 @@ class CompositeCommandService extends ChangeNotifier {
   final Map<String, CompositeCommandOutcome> _latest = {};
   final Map<String, String> _latestRequest = {};
   int _connectionGeneration = 0;
+  bool _disposed = false;
 
   CompositeCommandService({
     required SocketService socketService,
@@ -44,6 +45,7 @@ class CompositeCommandService extends ChangeNotifier {
     required List<PropertyCommandItem> properties,
     PropertyCommandContext? context,
   }) async {
+    if (_disposed) throw StateError('Composite command service is disposed');
     if (properties.isEmpty) throw ArgumentError('Composite batch is empty');
     final requestId = const Uuid().v4();
     final ticket = _PendingComposite(
@@ -78,13 +80,13 @@ class CompositeCommandService extends ChangeNotifier {
       apiFallback: () async {
         final response = await (_providedDio ?? locator<Dio>())
             .post<Map<String, dynamic>>(
-          '/modules/devices/property-commands',
-          data: payload,
-          options: Options(
-            receiveTimeout: const Duration(seconds: 35),
-            extra: {'retryExhausted': true},
-          ),
-        );
+              '/modules/devices/property-commands',
+              data: payload,
+              options: Options(
+                receiveTimeout: const Duration(seconds: 35),
+                extra: {'retryExhausted': true},
+              ),
+            );
         final envelope = response.data;
         return envelope?['data'] is Map<String, dynamic>
             ? envelope!['data'] as Map<String, dynamic>
@@ -133,7 +135,10 @@ class CompositeCommandService extends ChangeNotifier {
     final id = payload['id'];
     final epoch = payload['epoch'];
     final sequence = payload['sequence'];
-    if (id is! String || epoch is! String || sequence is! int || sequence <= 0) {
+    if (id is! String ||
+        epoch is! String ||
+        sequence is! int ||
+        sequence <= 0) {
       return;
     }
     if (ticket.parentId != null && ticket.parentId != id) return;
@@ -161,7 +166,9 @@ class CompositeCommandService extends ChangeNotifier {
   }
 
   void _publish(_PendingComposite ticket, CompositeCommandOutcome outcome) {
-    if (_latestRequest[ticket.deviceId] != ticket.requestId) return;
+    if (_disposed || _latestRequest[ticket.deviceId] != ticket.requestId) {
+      return;
+    }
     _latest[ticket.deviceId] = outcome;
     notifyListeners();
   }
@@ -177,6 +184,9 @@ class CompositeCommandService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
+    _connectionGeneration++;
+    _pending.clear();
     _socket.unregisterEventHandler(
       'DevicesModule.CompositeCommand.Progress',
       _event,
