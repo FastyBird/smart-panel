@@ -852,6 +852,7 @@
 			"event": "Ereignis",
 			"fault": "Fehler",
 			"fault_description": "Fehlerbeschreibung",
+			"floor_temperature": "Fußbodentemperatur",
 			"firmware_revision": "Firmware-Revision",
 			"frequency": "Frequenz",
 			"grid_export": "Rasterexport",
