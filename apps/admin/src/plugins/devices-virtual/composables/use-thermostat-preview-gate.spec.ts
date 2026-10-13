@@ -44,20 +44,21 @@ const harness = () => {
 			if (preview.value && gate.canSave.value) create();
 		};
 		const run = (response: Promise<string>) => {
-			const ticket = gate.begin({ draft: draft.value, name: name.value });
-			busy.value = true;
+			let request!: { draft: Draft; name: string };
 			error.value = null;
-			const completed = response
-				.then((result) => {
-					if (gate.isCurrent(ticket) && gate.approve(ticket)) preview.value = result;
-				})
-				.catch((reason: Error) => {
-					if (gate.isCurrent(ticket)) error.value = reason.message;
-				})
-				.finally(() => {
-					if (gate.isCurrent(ticket)) busy.value = false;
-				});
-			return { completed, request: ticket.request };
+			const completed = gate.execute(
+				{ draft: draft.value, name: name.value },
+				(snapshot) => {
+					request = snapshot;
+					return response;
+				},
+				{
+					success: (result) => (preview.value = result),
+					error: (reason) => (error.value = (reason as Error).message),
+					pending: (pending) => (busy.value = pending),
+				}
+			);
+			return { completed, request: () => request };
 		};
 		return { draft, name, preview, error, busy, gate, save, create, run };
 	})!;
@@ -74,7 +75,7 @@ describe('thermostat preview approval', () => {
 		expect(editor.busy.value).toBe(false);
 		response.resolve('approved old draft');
 		await completed;
-		expect(request).toEqual({ draft: { source: 'room-a', policy: { heatingSetpoint: 21 } }, name: 'Hall' });
+		expect(request()).toEqual({ draft: { source: 'room-a', policy: { heatingSetpoint: 21 } }, name: 'Hall' });
 		expect(editor.preview.value).toBeNull();
 		expect(editor.gate.canSave.value).toBe(false);
 		editor.save();

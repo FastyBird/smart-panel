@@ -539,27 +539,30 @@ const runPreview = async (): Promise<void> => {
 	if (mutationBusy.value) return;
 	const result = payload();
 	if (!result.request) return;
-	const ticket = previewGate.begin({
+	const request = {
+		create: props.create,
 		configuration: result.request,
 		device: props.create ? creationGraph().device : null,
 		deviceId: props.deviceId,
-	});
-	previewBusy.value = true;
+	};
 	requestError.value = null;
-	try {
-		const { data, error } = props.create
-			? await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/thermostats/draft-preview`, {
-					body: { device: ticket.request.device!, configuration: ticket.request.configuration },
-				})
-			: await backend.client.POST(`${path}/preview`, { params: { path: { id: ticket.request.deviceId! } }, body: ticket.request.configuration });
-		if (!previewGate.isCurrent(ticket)) return;
-		if (data && previewGate.approve(ticket)) preview.value = data.data;
-		else requestError.value = errorText(error);
-	} catch (error) {
-		if (previewGate.isCurrent(ticket)) requestError.value = errorText(error);
-	} finally {
-		if (previewGate.isCurrent(ticket)) previewBusy.value = false;
-	}
+	await previewGate.execute(
+		request,
+		async (snapshot) => {
+			const { data, error } = snapshot.create
+				? await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/thermostats/draft-preview`, {
+						body: { device: snapshot.device!, configuration: snapshot.configuration },
+					})
+				: await backend.client.POST(`${path}/preview`, { params: { path: { id: snapshot.deviceId! } }, body: snapshot.configuration });
+			if (!data) throw new Error(errorText(error));
+			return data.data;
+		},
+		{
+			success: (result) => (preview.value = result),
+			error: (error) => (requestError.value = errorText(error)),
+			pending: (pending) => (previewBusy.value = pending),
+		}
+	);
 };
 const save = async (): Promise<void> => {
 	if (!preview.value || !previewGate.canSave.value || busy.value) return;

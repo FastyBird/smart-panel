@@ -27,5 +27,23 @@ export function useThermostatPreviewGate(snapshot: () => string, sources: WatchS
 		return true;
 	};
 	const canSave = computed(() => approvedSnapshot.value !== null && approvedSnapshot.value === snapshot());
-	return { begin, isCurrent, approve, canSave, invalidate };
+	const execute = async <T, R>(
+		request: T,
+		send: (request: T) => Promise<R>,
+		handlers: { success: (result: R) => void; error: (error: unknown) => void; pending: (pending: boolean) => void }
+	): Promise<void> => {
+		const ticket = begin(request);
+		handlers.pending(true);
+		try {
+			const result = await send(ticket.request);
+			if (!isCurrent(ticket)) return;
+			approve(ticket);
+			handlers.success(result);
+		} catch (error) {
+			if (isCurrent(ticket)) handlers.error(error);
+		} finally {
+			if (isCurrent(ticket)) handlers.pending(false);
+		}
+	};
+	return { execute, canSave, invalidate };
 }
