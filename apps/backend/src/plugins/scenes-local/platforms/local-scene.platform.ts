@@ -56,6 +56,10 @@ export class LocalScenePlatform implements IScenePlatform {
 		return SCENES_LOCAL_TYPE;
 	}
 
+	supportsAdjacentActions(): boolean {
+		return true;
+	}
+
 	async getCommandTtlMs(actions: readonly SceneActionEntity[]): Promise<number> {
 		const executions = [];
 		const compositeUpdates: IDevicePropertyData[] = [];
@@ -238,7 +242,8 @@ export class LocalScenePlatform implements IScenePlatform {
 	async execute(scene: SceneEntity, actions: SceneActionEntity[]): Promise<ActionExecutionResultModel[]> {
 		const results: ActionExecutionResultModel[] = [];
 
-		for (const action of actions) {
+		for (let index = 0; index < actions.length; index++) {
+			const action = actions[index];
 			const startTime = Date.now();
 
 			try {
@@ -256,7 +261,7 @@ export class LocalScenePlatform implements IScenePlatform {
 				// Validate action first
 				const validation = await this.validateActionWithDetails(action);
 
-				if (!validation.valid || !validation.device || !validation.property) {
+				if (!validation.valid || !validation.device || !validation.channel || !validation.property) {
 					results.push({
 						actionId: action.id,
 						success: false,
@@ -281,6 +286,50 @@ export class LocalScenePlatform implements IScenePlatform {
 						executionTimeMs: Date.now() - startTime,
 					});
 					continue;
+				}
+				if (device.type === 'virtual' && (device as DeviceEntity & { mode?: string }).mode === 'climate_controller') {
+					const grouped: Array<{ action: LocalSceneActionEntity; update: IDevicePropertyData }> = [
+						{ action, update: { device, channel, property, value: action.value } },
+					];
+					const propertyIds = new Set([property.id]);
+					while (index + grouped.length < actions.length) {
+						const next = actions[index + grouped.length];
+						if (!isLocalSceneAction(next) || next.deviceId !== device.id || propertyIds.has(next.propertyId)) break;
+						const resolved = await this.validateActionWithDetails(next);
+						if (!resolved.valid || !resolved.channel || !resolved.property) break;
+						grouped.push({
+							action: next,
+							update: {
+								device: resolved.device,
+								channel: resolved.channel,
+								property: resolved.property,
+								value: next.value,
+							},
+						});
+						propertyIds.add(next.propertyId);
+					}
+					if (grouped.length > 1) {
+						let success = false;
+						let error: string | null = 'Command execution failed';
+						try {
+							const dispatched = await this.propertyCommandDispatchService.dispatchBatch(
+								grouped.map(({ update }) => update),
+							);
+							success = dispatched.success;
+							if (success) error = null;
+						} catch (failure) {
+							error = failure instanceof Error ? failure.message : 'Command execution failed';
+						}
+						for (const { action: member } of grouped)
+							results.push({
+								actionId: member.id,
+								success,
+								error,
+								executionTimeMs: Date.now() - startTime,
+							});
+						index += grouped.length - 1;
+						continue;
+					}
 				}
 
 				// Send command to device via platform
