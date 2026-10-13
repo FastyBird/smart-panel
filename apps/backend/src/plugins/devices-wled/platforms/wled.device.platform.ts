@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import {
+	IDevicePlatform,
+	IDevicePropertyData,
+	PreparedCompositeDeviceBatch,
+} from '../../../modules/devices/platforms/device.platform';
 import {
 	DEVICES_WLED_PLUGIN_NAME,
 	DEVICES_WLED_TYPE,
@@ -43,7 +47,47 @@ export class WledDevicePlatform implements IDevicePlatform {
 		return this.processBatch([{ device, channel, property, value }]);
 	}
 
-	async processBatch(updates: Array<IWledDevicePropertyData>): Promise<boolean> {
+	prepareCompositeBatch(updates: Array<IWledDevicePropertyData>): Promise<PreparedCompositeDeviceBatch | null> {
+		return Promise.resolve(this.prepareComposite(updates));
+	}
+
+	private prepareComposite(updates: Array<IWledDevicePropertyData>): PreparedCompositeDeviceBatch | null {
+		if (!updates.length) return null;
+		const device = updates[0].device;
+		if (!(device instanceof WledDeviceEntity) || !device.enabled || !device.mac) return null;
+		const identityCurrent = this.wledAdapter.captureDeviceIdentity(device.identifier, device.mac);
+		const registered = this.wledAdapter.getDeviceByIdentifier(device.identifier);
+		if (!identityCurrent || !registered?.context) return null;
+		const contract = () =>
+			JSON.stringify([
+				registered.context?.state.mainSegment,
+				registered.context?.state.segments.map(({ id, start, stop }) => [id, start, stop]),
+			]);
+		const layout = contract();
+		const isCurrent = () => identityCurrent() && contract() === layout;
+		for (const update of updates) {
+			if (update.device.id !== device.id) return null;
+			const identifier = update.channel.identifier;
+			if (identifier === WLED_CHANNEL_IDENTIFIERS.LIGHT) {
+				if (
+					update.property.identifier?.startsWith('color_') &&
+					(registered.context.state.mainSegment !== 0 || registered.context.state.segments[0]?.id !== 0)
+				)
+					return null;
+			} else {
+				const match = /^segment_(\d+)$/.exec(identifier ?? '');
+				if (!match || registered.context.state.segments[Number(match[1])]?.id !== Number(match[1])) return null;
+			}
+		}
+		const prepared = updates.map((update) => Object.freeze({ ...update }));
+		return {
+			updates: Object.freeze(prepared),
+			isCurrent,
+			dispatch: (isAdmitted) => this.processBatch(prepared, () => isCurrent() && isAdmitted()),
+		};
+	}
+
+	async processBatch(updates: Array<IWledDevicePropertyData>, canDispatch?: () => boolean): Promise<boolean> {
 		if (updates.length === 0) {
 			return true;
 		}
@@ -104,7 +148,14 @@ export class WledDevicePlatform implements IDevicePlatform {
 		// Process each channel's property updates
 		for (const { channel, props } of byChannel.values()) {
 			try {
-				const success = await this.executeCommand(device, channel, Array.from(props.values()), registeredDevice.host);
+				if (canDispatch?.() === false) return false;
+				const success = await this.executeCommand(
+					device,
+					channel,
+					Array.from(props.values()),
+					registeredDevice.host,
+					canDispatch,
+				);
 				results.push(success);
 			} catch (error) {
 				const err = error as Error;
@@ -141,17 +192,18 @@ export class WledDevicePlatform implements IDevicePlatform {
 		channel: WledChannelEntity,
 		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
 		host: string,
+		canDispatch?: () => boolean,
 	): Promise<boolean> {
 		const channelId = channel.identifier || '';
 
 		// Handle different channel types
 		if (channelId === WLED_CHANNEL_IDENTIFIERS.LIGHT) {
-			return this.executeMainLightCommand(device, propertyUpdates, host);
+			return this.executeMainLightCommand(device, propertyUpdates, host, canDispatch);
 		} else if (channelId.startsWith(WLED_CHANNEL_IDENTIFIERS.SEGMENT + '_')) {
 			// Extract segment ID from channel identifier (e.g., "segment_0" -> 0)
 			const segmentId = parseInt(channelId.split('_')[1], 10);
 			if (!isNaN(segmentId)) {
-				return this.executeSegmentCommand(device, segmentId, propertyUpdates, host);
+				return this.executeSegmentCommand(device, segmentId, propertyUpdates, host, canDispatch);
 			}
 		}
 		return false;
@@ -164,6 +216,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 		device: WledDeviceEntity,
 		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
 		host: string,
+		canDispatch?: () => boolean,
 	): Promise<boolean> {
 		try {
 			// Get current colors from segment 0 to avoid resetting unchanged components
@@ -180,7 +233,9 @@ export class WledDevicePlatform implements IDevicePlatform {
 				resource: device.id,
 			});
 
-			const success = await this.wledAdapter.updateStateExtended(host, stateUpdate);
+			const success = canDispatch
+				? await this.wledAdapter.updateStateExtended(host, stateUpdate, canDispatch)
+				: await this.wledAdapter.updateStateExtended(host, stateUpdate);
 
 			if (success) {
 				// Intentionally empty - update successful
@@ -205,6 +260,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 		segmentId: number,
 		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
 		host: string,
+		canDispatch?: () => boolean,
 	): Promise<boolean> {
 		try {
 			// Get current colors from the segment to avoid resetting unchanged components
@@ -259,7 +315,13 @@ export class WledDevicePlatform implements IDevicePlatform {
 			}
 
 			this.logger.log(`Sending segment ${segmentId} update to ${device.identifier}`, { resource: device.id });
-			return await this.wledAdapter.updateSegment(host, segmentId, segmentUpdate);
+			return canDispatch
+				? await this.wledAdapter.updateStateExtended(
+						host,
+						{ segment: { id: segmentId, ...segmentUpdate } },
+						canDispatch,
+					)
+				: await this.wledAdapter.updateSegment(host, segmentId, segmentUpdate);
 		} catch (error) {
 			throw new WledCommandException(
 				device.identifier,

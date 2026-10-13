@@ -404,8 +404,10 @@ export class WledService extends BaseManagedExtensionService {
 
 		const device = this.wledAdapter.getDevice(event.host);
 
-		if (device) {
-			await this.deviceMapper.updateDeviceState(device.identifier, event.state);
+		if (device && event.observation?.evidence.isCurrent?.() !== false) {
+			if (event.observation)
+				await this.deviceMapper.updateDeviceState(device.identifier, event.state, event.observation);
+			else await this.deviceMapper.updateDeviceState(device.identifier, event.state);
 		}
 	}
 

@@ -7,7 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import WebSocket from 'ws';
 
-import { WledAdapterCallbacks, WledDeviceContext } from '../interfaces/wled.interface';
+import { WledAdapterCallbacks, WledDeviceContext, WledDeviceStateChangedEvent } from '../interfaces/wled.interface';
 
 import { WledClientAdapterService } from './wled-client-adapter.service';
 
@@ -549,6 +549,51 @@ describe('WledClientAdapterService', () => {
 			const callback = callbacks.onDeviceStateChanged;
 			const event = callback.mock.calls[0] as [{ state: { on: boolean } }];
 			expect(event[0].state.on).toBe(false);
+		});
+	});
+
+	describe('qualified observation ordering', () => {
+		beforeEach(async () => {
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
+			await service.connect('192.168.1.100', 'wled-test');
+			jest.clearAllMocks();
+		});
+		it('keeps stable source authority through unchanged heartbeats and revokes it on disconnect', async () => {
+			mockFetchSuccess(mockWledState);
+			await service.refreshState('192.168.1.100');
+			const [first] = callbacks.onDeviceStateChanged.mock.calls[0] as [WledDeviceStateChangedEvent];
+			await service.refreshState('192.168.1.100');
+			expect(first.observation?.evidence.isCurrent?.()).toBe(false);
+			expect(first.observation?.evidence.sourceIsCurrent?.()).toBe(true);
+			service.disconnect('192.168.1.100');
+			expect(first.observation?.evidence.sourceIsCurrent?.()).toBe(false);
+		});
+		it('drops a delayed old poll after a newer report and after host replacement', async () => {
+			let release!: (response: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+			const pending = new Promise((resolve) => {
+				release = resolve;
+			});
+			(global.fetch as jest.Mock).mockImplementationOnce(() => pending);
+			const oldPoll = service.refreshState('192.168.1.100');
+			mockFetchSuccess({ ...mockWledState, on: false });
+			await service.refreshState('192.168.1.100');
+			release({ ok: true, status: 200, json: async () => mockWledState });
+			expect(await oldPoll).toBeNull();
+			expect(service.getDevice('192.168.1.100')?.context?.state.on).toBe(false);
+			expect(callbacks.onDeviceStateChanged).toHaveBeenCalledTimes(1);
+			const [event] = callbacks.onDeviceStateChanged.mock.calls[0] as [WledDeviceStateChangedEvent];
+			const context = service.getDevice('192.168.1.100')?.context;
+			service.connectWithContext('192.168.1.100', 'replacement', context);
+			expect(event.observation?.evidence.sourceIsCurrent?.()).toBe(false);
+		});
+		it('rechecks composite admission at actual POST and refuses mismatched captured MAC', async () => {
+			expect(service.captureDeviceIdentity('wled-test', '000000000000')).toBeNull();
+			const identity = service.captureDeviceIdentity('wled-test', 'aabbccddeeff');
+			expect(identity?.()).toBe(true);
+			expect(await service.updateStateExtended('192.168.1.100', { on: true }, () => false)).toBe(false);
+			expect(global.fetch).not.toHaveBeenCalled();
+			service.disconnect('192.168.1.100');
+			expect(identity?.()).toBe(false);
 		});
 	});
 

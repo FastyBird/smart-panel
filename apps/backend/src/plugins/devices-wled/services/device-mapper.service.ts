@@ -33,7 +33,7 @@ import { UpdateWledChannelPropertyDto } from '../dto/update-channel-property.dto
 import { UpdateWledChannelDto } from '../dto/update-channel.dto';
 import { UpdateWledDeviceDto } from '../dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
-import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.interface';
+import { WledDeviceContext, WledInfo, WledState, WledStateObservation } from '../interfaces/wled.interface';
 
 import { WledHardwareIdentityService } from './hardware-identity.service';
 
@@ -145,7 +145,8 @@ export class WledDeviceMapperService {
 	/**
 	 * Update device state from WLED state
 	 */
-	async updateDeviceState(identifier: string, state: WledState): Promise<void> {
+	async updateDeviceState(identifier: string, state: WledState, observation?: WledStateObservation): Promise<void> {
+		if (observation?.evidence.isCurrent?.() === false) return;
 		const device = await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE);
 
 		if (!device) {
@@ -154,6 +155,17 @@ export class WledDeviceMapperService {
 		}
 
 		if (!device.enabled) {
+			return;
+		}
+
+		if (observation) {
+			if (
+				observation.evidence.isCurrent?.() === false ||
+				!device.mac ||
+				device.mac.replace(/:/g, '').toLowerCase() !== observation.mac
+			)
+				return;
+			await this.updateObservedState(device, state, observation);
 			return;
 		}
 
@@ -168,6 +180,56 @@ export class WledDeviceMapperService {
 		for (let i = 0; i < state.segments.length; i++) {
 			const channelIdentifier = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_${i}`;
 			await this.updateChannelProperties(device.id, channelIdentifier, this.extractSegmentStateProperties(state, i));
+		}
+	}
+
+	/** Physical identity-safe live feedback; legacy hydration remains display-only. */
+	private async updateObservedState(
+		device: WledDeviceEntity,
+		state: WledState,
+		observation: WledStateObservation,
+	): Promise<void> {
+		const channels = await this.channelsService.findAll<WledChannelEntity>(device.id, DEVICES_WLED_TYPE);
+		for (const channel of channels) {
+			if (observation.evidence.isCurrent?.() === false) return;
+			const isMain = channel.identifier === WLED_CHANNEL_IDENTIFIERS.LIGHT;
+			const match = /^segment_(\d+)$/.exec(channel.identifier ?? '');
+			if (!isMain && !match) continue;
+			const index = match ? Number(match[1]) : 0;
+			// Existing catalogs use array-index identifiers. A different physical ID must never
+			// silently bind those stable property UUIDs to another segment.
+			const segment = state.segments[index]?.id === index ? state.segments[index] : undefined;
+			const values: Record<string, boolean | number | null> = {};
+			const report = (key: string, raw: unknown, bool = false, brightness = false) => {
+				if (raw === undefined && !observation.fullSnapshot) return;
+				const valid = bool
+					? typeof raw === 'boolean'
+					: typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 && raw <= 255;
+				values[key] = valid ? (brightness ? wledBrightnessToSpec(raw as number) : (raw as boolean | number)) : null;
+			};
+			report('on', isMain ? state.on : segment?.on, true);
+			report('brightness', isMain ? state.brightness : segment?.brightness, false, true);
+			const mainColorSafe = !isMain || state.mainSegment === 0;
+			for (const [i, key] of ['color_red', 'color_green', 'color_blue'].entries())
+				report(key, mainColorSafe ? segment?.colors?.[0]?.[i] : null);
+			// A present mismatched segment is an identity fault even in a partial notification.
+			if (!isMain && state.segments[index] && !segment)
+				for (const key of ['on', 'brightness', 'color_red', 'color_green', 'color_blue']) values[key] = null;
+			for (const [identifier, value] of Object.entries(values)) {
+				const property = await this.channelsPropertiesService.findOneBy<WledChannelPropertyEntity>(
+					'identifier',
+					identifier,
+					channel.id,
+					DEVICES_WLED_TYPE,
+				);
+				if (!property || observation.evidence.isCurrent?.() === false) continue;
+				await this.channelsPropertiesService.reportSample(
+					property.id,
+					toInstance(UpdateWledChannelPropertyDto, { type: DEVICES_WLED_TYPE, value }),
+					observation.evidence,
+					{ skipUnchangedMetadata: true },
+				);
+			}
 		}
 	}
 
