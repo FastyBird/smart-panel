@@ -7,7 +7,9 @@ import { ChannelsService } from './channels.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
@@ -16,6 +18,7 @@ import { PropertyValueService } from './property-value.service';
 
 describe('PropertyCommandDispatchService', () => {
 	let service: PropertyCommandDispatchService;
+	let admission: PropertyCommandAdmissionRegistryService;
 	let windows: PropertyCommandWindowService;
 	let platform: jest.Mocked<IDevicePlatform>;
 	let platformRegistry: jest.Mocked<Pick<PlatformRegistryService, 'get' | 'usesAuthoritativePropertyReadback'>>;
@@ -44,6 +47,7 @@ describe('PropertyCommandDispatchService', () => {
 
 	beforeEach(() => {
 		windows = new PropertyCommandWindowService();
+		admission = new PropertyCommandAdmissionRegistryService();
 		sources = new Map();
 		properties = { findOne: jest.fn().mockResolvedValue(sourceProperty) };
 		platform = {
@@ -74,6 +78,10 @@ describe('PropertyCommandDispatchService', () => {
 			new DeviceStructureLockService(),
 			new PropertyStateCoordinatorService(),
 			windows,
+			undefined,
+			undefined,
+			undefined,
+			admission,
 		);
 	});
 
@@ -250,5 +258,110 @@ describe('PropertyCommandDispatchService', () => {
 		await expect(service.dispatchBatch([update()])).resolves.toEqual({ success: true });
 		expect(platform.processBatch).toHaveBeenCalledTimes(1);
 		expect(windows.get(sourceProperty.id)).toBeNull();
+	});
+	const ownershipGuard = () => {
+		let revision = 0;
+		admission.register({
+			assertAllowed: jest.fn().mockResolvedValue(undefined),
+			requiresGuardedDispatch: () => true,
+			capture: () => {
+				const captured = revision;
+				return { isCurrent: () => captured === revision, assertAllowed: jest.fn().mockResolvedValue(undefined) };
+			},
+		});
+		return () => revision++;
+	};
+
+	it('freezes absent ownership before metadata awaits and revokes a stale command entry', async () => {
+		const claim = ownershipGuard();
+		const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, admission.capture());
+		claim();
+		await expect(service.dispatchBatch([update()], { commandEntry: entry })).resolves.toMatchObject({ success: false });
+		expect(platform.processBatch).not.toHaveBeenCalled();
+		entry.dispose();
+	});
+
+	it('routes ordinary projected physical leaves through prepared guarded I/O without changing boolean acceptance', async () => {
+		ownershipGuard();
+		const alias = { ...sourceProperty, id: 'alias' } as ChannelPropertyEntity;
+		sources.set('alias', sourceProperty.id);
+		properties.findOne.mockImplementation((id) => Promise.resolve(id === 'alias' ? alias : sourceProperty));
+		const sent = jest.fn((guard: () => boolean) => Promise.resolve(guard()));
+		platform.prepareCompositeBatch = jest.fn((updates) =>
+			Promise.resolve({ updates, isCurrent: () => true, dispatch: sent }),
+		);
+		await expect(service.dispatchBatch([update('alias')])).resolves.toEqual({ success: true });
+		expect(platform.prepareCompositeBatch).toHaveBeenCalledWith([
+			expect.objectContaining({ property: expect.objectContaining({ id: sourceProperty.id }) }),
+		]);
+		expect(sent).toHaveBeenCalledTimes(1);
+		expect(platform.processBatch).not.toHaveBeenCalled();
+	});
+
+	it('blocks a queued ordinary ON after a new exclusive reservation appears', async () => {
+		const claim = ownershipGuard();
+		let release: () => void;
+		let queued: () => void;
+		const barrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const ready = new Promise<void>((resolve) => {
+			queued = resolve;
+		});
+		const actualSend = jest.fn();
+		platform.prepareCompositeBatch = jest.fn((updates) =>
+			Promise.resolve({
+				updates,
+				isCurrent: () => true,
+				dispatch: async (guard) => {
+					queued();
+					await barrier;
+					if (!guard()) return false;
+					actualSend();
+					return true;
+				},
+			}),
+		);
+		const command = service.dispatchBatch([update()]);
+		await ready;
+		claim();
+		release();
+		await expect(command).resolves.toMatchObject({ success: false });
+		expect(actualSend).not.toHaveBeenCalled();
+	});
+
+	it('keeps room selection fences through ordinary queued sends and rejects an unsupported legacy queue', async () => {
+		await expect(service.dispatchBatch([update()], { isRequestCurrent: () => true })).resolves.toMatchObject({
+			success: false,
+		});
+		expect(platform.processBatch).not.toHaveBeenCalled();
+		let selected = true;
+		let release: () => void, queued: () => void;
+		const barrier = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const ready = new Promise<void>((resolve) => {
+			queued = resolve;
+		});
+		const actualSend = jest.fn();
+		platform.prepareCompositeBatch = jest.fn((updates) =>
+			Promise.resolve({
+				updates,
+				isCurrent: () => true,
+				dispatch: async (guard) => {
+					queued();
+					await barrier;
+					if (!guard()) return false;
+					actualSend();
+					return true;
+				},
+			}),
+		);
+		const command = service.dispatchBatch([update()], { isRequestCurrent: () => selected });
+		await ready;
+		selected = false;
+		release();
+		await expect(command).resolves.toMatchObject({ success: false });
+		expect(actualSend).not.toHaveBeenCalled();
 	});
 });

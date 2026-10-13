@@ -27,6 +27,7 @@ import {
 } from './composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
@@ -81,11 +82,12 @@ export class PropertyCommandService implements OnModuleDestroy {
 
 	/** Internal HTTP/socket boundary helper; callers own release when carrying it across validation. */
 	captureCommandEntry(): PropertyCommandEntrySnapshot | undefined {
-		if (!this.composites?.hasPlanners()) return undefined;
+		if (!this.composites?.hasPlanners() && !this.admissionGuards?.hasGuards()) return undefined;
 		const entry = PropertyCommandEntrySnapshot.capture(
 			this.propertyCommandWindowService,
 			() => this.requestEntries.delete(entry),
 			this.stopped || this.requestEntries.size >= 128,
+			this.admissionGuards?.capture(),
 		);
 		if (entry.isActive()) this.requestEntries.add(entry);
 		return entry;
@@ -130,6 +132,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 		@Optional() private readonly composites?: CompositePropertyCommandRegistryService,
+		@Optional() private readonly admissionGuards?: PropertyCommandAdmissionRegistryService,
 	) {}
 
 	async handleInternal(

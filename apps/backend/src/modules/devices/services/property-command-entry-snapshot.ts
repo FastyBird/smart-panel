@@ -1,3 +1,6 @@
+import { IDevicePropertyData } from '../platforms/device.platform';
+
+import { PropertyCommandAdmissionSnapshot } from './property-command-admission.registry.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
 
 const minted = new WeakSet<PropertyCommandEntrySnapshot>();
@@ -17,6 +20,7 @@ export class PropertyCommandEntrySnapshot {
 		windows: PropertyCommandWindowService,
 		private readonly onDispose: () => void,
 		saturated: boolean,
+		private readonly admission?: PropertyCommandAdmissionSnapshot,
 	) {
 		minted.add(this);
 		if (saturated) {
@@ -46,12 +50,24 @@ export class PropertyCommandEntrySnapshot {
 		windows: PropertyCommandWindowService,
 		onDispose: () => void,
 		saturated = false,
+		admission?: PropertyCommandAdmissionSnapshot,
 	): PropertyCommandEntrySnapshot {
-		return new PropertyCommandEntrySnapshot(windows, onDispose, saturated);
+		return new PropertyCommandEntrySnapshot(windows, onDispose, saturated, admission);
 	}
 
 	isActive(): boolean {
-		return minted.has(this) && !this.stopped && !this.overflow && Date.now() < this.deadlineAt;
+		return (
+			minted.has(this) &&
+			!this.stopped &&
+			!this.overflow &&
+			(this.admission?.isCurrent() ?? true) &&
+			Date.now() < this.deadlineAt
+		);
+	}
+
+	async assertAllowed(update: IDevicePropertyData): Promise<void> {
+		if (!this.isActive()) throw new Error('Command entry admission changed or expired');
+		await this.admission?.assertAllowed(update);
 	}
 
 	canPreservePower(id: string): boolean {
