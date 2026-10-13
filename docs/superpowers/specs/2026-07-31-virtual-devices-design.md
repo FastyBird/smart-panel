@@ -286,6 +286,11 @@ Channel UUIDs are stable across re-discovery — `devices-shelly-ng/services/dev
 
 ### Controller support
 
+The expanded product scope is now tracked in [#1409](https://github.com/FastyBird/smart-panel/issues/1409) and the
+[new capabilities design](2026-10-13-virtual-device-capabilities-design.md): aggregate sensors, light groups and a
+heating/cooling thermostat with floor overheat protection and window policies. The constraints below remain background
+for that design; the new user minimum starts with thermostat support rather than requiring all six categories at once.
+
 Unblocks all six categories listed in [v1 category boundary](#v1-category-boundary). It needs a control loop with hysteresis and minimum cycle protection, plus user-settable setpoints as owned properties — the schema already accommodates the latter.
 
 It is deliberately not filed as a task: a control loop touches safety, concurrency and the platform's command path, so it starts with a design. What follows is what a design has to answer, gathered from review of a draft that tried to specify it (PR #645, where the reasoning behind each point is recorded). None of it is a decision — the point is that none of it is discovered late.
