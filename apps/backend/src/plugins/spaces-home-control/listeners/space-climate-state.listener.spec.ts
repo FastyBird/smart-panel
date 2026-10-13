@@ -117,6 +117,26 @@ describe('SpaceClimateStateListener', () => {
 	};
 
 	describe('handlePropertyChanged', () => {
+		it('emits climate state when derived activity changes and ignores lease refreshes', async () => {
+			const property: ChannelPropertyEntity = Object.assign(new ChannelPropertyEntity(), {
+				id: uuid(),
+				category: PropertyCategory.STATUS,
+				value: { value: true, producer: { quality: 'good', revision: 1 } },
+			});
+			await listener.handleQualifiedValueChanged(property);
+			await listener.handleQualifiedValueChanged(property);
+			expect(metadata.findOne).toHaveBeenCalledTimes(1);
+			await flushDebounce();
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CLIMATE_STATE_CHANGED, expect.any(Object));
+
+			property.value = {
+				value: null,
+				producer: { quality: 'unavailable', revision: 1 },
+			} as ChannelPropertyEntity['value'];
+			await listener.handleQualifiedValueChanged(property);
+			expect(metadata.findOne).toHaveBeenCalledTimes(2);
+		});
+
 		it('should emit CLIMATE_STATE_CHANGED when climate-relevant property changes', async () => {
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),

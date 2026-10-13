@@ -45,6 +45,7 @@ export class SpaceClimateStateListener implements OnModuleInit, OnModuleDestroy 
 	 * Key: roomId, Value: NodeJS.Timeout
 	 */
 	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
+	private readonly valueStates = new Map<string, string>();
 
 	constructor(
 		private readonly propertyMetadata: PropertyMetadataService,
@@ -62,6 +63,7 @@ export class SpaceClimateStateListener implements OnModuleInit, OnModuleDestroy 
 			clearTimeout(timer);
 		}
 		this.debounceTimers.clear();
+		this.valueStates.clear();
 	}
 
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
@@ -73,6 +75,20 @@ export class SpaceClimateStateListener implements OnModuleInit, OnModuleDestroy 
 			const err = error as Error;
 			this.logger.warn(`Failed to process climate property change: ${err.message}`, err.stack);
 		}
+	}
+
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED)
+	async handleQualifiedValueChanged(property: ChannelPropertyEntity): Promise<void> {
+		if (!property.id || !CLIMATE_PROPERTY_CATEGORIES.includes(property.category)) return;
+		const state = JSON.stringify([
+			property.value?.value ?? null,
+			property.value?.producer?.quality ?? null,
+			property.value?.producer?.revision ?? null,
+		]);
+		if (this.valueStates.get(property.id) === state) return;
+		if (this.valueStates.size >= 4096) this.valueStates.clear();
+		this.valueStates.set(property.id, state);
+		await this.handlePropertyChanged(property);
 	}
 
 	private async processClimatePropertyChange(property: ChannelPropertyEntity): Promise<void> {
