@@ -9,6 +9,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { PropertySampleEvidence } from '../../../modules/devices/models/property-sample.model';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -536,6 +537,8 @@ export class Z2mDeviceMapperService {
 		state: Record<string, unknown>,
 		metadata?: Z2mDeviceStateMetadata,
 	): Promise<void> {
+		const observedAt = metadata?.observedAt ?? new Date();
+		const evidence = this.sampleEvidence(state, metadata, observedAt);
 		// Find device by identifier (= friendly_name)
 		const device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
 			'identifier',
@@ -680,7 +683,7 @@ export class Z2mDeviceMapperService {
 				);
 
 				// Update property value
-				await this.channelsPropertiesService.update<
+				await this.channelsPropertiesService.reportSample<
 					Zigbee2mqttChannelPropertyEntity,
 					UpdateZigbee2mqttChannelPropertyDto
 				>(
@@ -689,6 +692,7 @@ export class Z2mDeviceMapperService {
 						type: DEVICES_ZIGBEE2MQTT_TYPE,
 						value: convertedValue,
 					}),
+					{ ...evidence, receivedAt: new Date() },
 				);
 			}
 
@@ -1379,6 +1383,25 @@ export class Z2mDeviceMapperService {
 	 * Convert value to appropriate type based on property data type
 	 * Z2M may send floats for integer properties, so we need to round them
 	 */
+	private sampleEvidence(
+		state: Record<string, unknown>,
+		metadata: Z2mDeviceStateMetadata | undefined,
+		observedAt: Date,
+	): PropertySampleEvidence {
+		const timestamp = metadata?.sampledAt ?? state.last_seen;
+		const parsed =
+			timestamp instanceof Date
+				? new Date(timestamp)
+				: typeof timestamp === 'string' || typeof timestamp === 'number'
+					? new Date(timestamp)
+					: null;
+		const provenance = metadata?.isRetained ? 'retained' : metadata?.isCached ? 'cached' : 'live';
+		// A replay without source time must never acquire a new measurement age.
+		const sampledAt =
+			parsed && Number.isFinite(parsed.getTime()) ? parsed : provenance === 'live' ? observedAt : new Date(0);
+		return { sampledAt, receivedAt: new Date(), observedAt, provenance };
+	}
+
 	private convertValue(value: unknown, dataType?: DataTypeType): string | number | boolean | null {
 		if (value === null || value === undefined) {
 			return null;

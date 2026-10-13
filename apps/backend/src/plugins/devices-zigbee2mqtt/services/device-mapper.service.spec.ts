@@ -49,6 +49,7 @@ describe('Z2mDeviceMapperService', () => {
 		channelsPropertiesService = {
 			findAll: jest.fn(),
 			update: jest.fn().mockResolvedValue({}),
+			reportSample: jest.fn().mockResolvedValue({}),
 		} as unknown as jest.Mocked<ChannelsPropertiesService>;
 
 		channelInputOccurrencesService = {
@@ -233,11 +234,12 @@ describe('Z2mDeviceMapperService', () => {
 
 			await service.updateDeviceState('sonoff-button', { event: 'motion_detected' });
 
-			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
 				genericEventProp.id,
 				expect.objectContaining({
 					value: 'motion_detected',
 				}),
+				expect.objectContaining({ provenance: 'live' }),
 			);
 		});
 	});
@@ -552,5 +554,58 @@ describe('Z2mDeviceMapperService', () => {
 		const moduleToClose = module;
 		module = undefined;
 		await moduleToClose?.close();
+	});
+	describe('measurement provenance', () => {
+		beforeEach(() => {
+			devicesService.findOneBy.mockResolvedValue(createMockDevice('ambient'));
+			channelsService.findAll.mockResolvedValue([
+				createMockChannel('sensor', 'temperature', ChannelCategory.TEMPERATURE),
+			]);
+			const property = createMockProperty('reading', 'temperature', PropertyCategory.TEMPERATURE, 'temperature');
+			property.permissions = [PermissionType.READ_ONLY];
+			property.dataType = DataTypeType.FLOAT;
+			channelsPropertiesService.findAll.mockResolvedValue([property]);
+		});
+
+		it('passes equal live reports to sample admission; missing measurement fields do not renew', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
+			await service.updateDeviceState('ambient', { battery: 80 }, { observedAt });
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(2);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: 25 }),
+				expect.objectContaining({ observedAt, sampledAt: observedAt, provenance: 'live' }),
+			);
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ isRetained: true, provenance: 'retained' },
+			{ isCached: true, provenance: 'cached' },
+		])('preserves replay age and provenance %j', async (metadata) => {
+			await service.updateDeviceState('ambient', { temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' }, metadata);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: new Date('2026-10-12T08:00:00Z'), provenance: metadata.provenance }),
+			);
+			await service.updateDeviceState('ambient', { temperature: 25 }, metadata);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: new Date(0), provenance: metadata.provenance }),
+			);
+		});
+
+		it('passes null measurement through admission rather than substituting numeric zero', async () => {
+			await service.updateDeviceState('ambient', { temperature: null });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: null }),
+				expect.objectContaining({ provenance: 'live' }),
+			);
+		});
 	});
 });

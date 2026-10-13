@@ -14,6 +14,9 @@
  * Used for direct communication between adapter and service without event bus
  */
 export interface Z2mDeviceStateMetadata {
+	/** Captured at packet receipt before asynchronous mapping or queueing. */
+	observedAt?: Date;
+	sampledAt?: Date;
 	isRetained?: boolean;
 	isCached?: boolean;
 	isDup?: boolean;

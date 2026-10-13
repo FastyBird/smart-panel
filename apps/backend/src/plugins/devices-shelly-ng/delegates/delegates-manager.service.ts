@@ -22,6 +22,8 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { ShellyRawSample, nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { ShellyProtectiveCommand, ShellyProtectiveCommandResult } from '../contracts/protective-switch.contract';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
 	DevicesShellyNgException,
@@ -106,6 +108,20 @@ export class DelegatesManagerService {
 	);
 
 	private readonly delegates: Map<Device['id'], ShellyDeviceDelegate> = new Map();
+
+	private readonly sampleHandlers = new Map<string, (sample: ShellyRawSample) => void>();
+	private readonly sampleSources = new Map<
+		string,
+		{
+			channel: ShellyNgChannelEntity;
+			property: ShellyNgChannelPropertyEntity;
+			componentKey: string;
+			attribute: string;
+		}[]
+	>();
+	private readonly sampleRevisions = new Map<string, number>();
+	private readonly sampleGenerations = new Map<string, number>();
+	private readonly activeSamples = new Map<string, Set<Promise<void>>>();
 
 	private readonly delegateValueHandlers: Map<
 		string,
@@ -1539,6 +1555,7 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, relativeTemperature, comp.tC);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
+				if (this.sampleSources.has(delegate.id)) return;
 				this.handleNumericChange(comp.key, 'tC', relativeTemperature.id, val, (n) =>
 					this.handleChange(relativeTemperature, n, false),
 				);
@@ -1899,6 +1916,9 @@ export class DelegatesManagerService {
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
+		await this.bindSampleSources(delegate, device);
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		const valueHandler = (
 			compKey: string,
 			attr: string,
@@ -1932,6 +1952,17 @@ export class DelegatesManagerService {
 		this.delegateValueHandlers.set(delegate.id, valueHandler);
 
 		const connectionHandler = (state: boolean | null): void => {
+			if (state !== true) {
+				this.sampleGenerations.set(delegate.id, (this.sampleGenerations.get(delegate.id) ?? 0) + 1);
+				for (const source of this.sampleSources.get(delegate.id) ?? []) {
+					void this.admitRawSample(source.property, null, {
+						componentKey: source.componentKey,
+						values: {},
+						evidence: { sampledAt: new Date(), receivedAt: new Date(), observedAt: new Date(), provenance: 'live' },
+					});
+				}
+			}
+
 			const deviceDbId = this.delegateDeviceIds.get(delegate.id) ?? device.id;
 			const wasConnected = this.delegateConnectedState.get(delegate.id) ?? false;
 
@@ -2138,6 +2169,129 @@ export class DelegatesManagerService {
 		}
 	}
 
+	private async unbindSamples(delegate: ShellyDeviceDelegate): Promise<void> {
+		this.sampleGenerations.set(delegate.id, (this.sampleGenerations.get(delegate.id) ?? 0) + 1);
+		const handler = this.sampleHandlers.get(delegate.id);
+		if (handler) delegate.off('sample', handler);
+		this.sampleHandlers.delete(delegate.id);
+		for (const source of this.sampleSources.get(delegate.id) ?? []) {
+			await this.admitRawSample(source.property, null, {
+				componentKey: source.componentKey,
+				values: {},
+				evidence: { sampledAt: new Date(), receivedAt: new Date(), observedAt: new Date(), provenance: 'live' },
+			});
+			this.sampleRevisions.delete(`${delegate.id}|${source.property.id}`);
+		}
+		this.sampleSources.delete(delegate.id);
+		await Promise.allSettled(this.activeSamples.get(delegate.id) ?? []);
+		this.activeSamples.delete(delegate.id);
+	}
+
+	private async bindSampleSources(delegate: ShellyDeviceDelegate, device: ShellyNgDeviceEntity): Promise<void> {
+		const sources: {
+			channel: ShellyNgChannelEntity;
+			property: ShellyNgChannelPropertyEntity;
+			componentKey: string;
+			attribute: string;
+		}[] = [];
+		for (const channel of await this.channelsService.findAll<ShellyNgChannelEntity>(
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		)) {
+			let componentKey: string;
+			let attribute: string;
+			if (/^temperature:\d+$/.test(channel.identifier)) {
+				componentKey = channel.identifier;
+				attribute = 'tC';
+			} else if (/^helper-temperature:(input|voltmeter):\d+:[a-f0-9]{64}$/.test(channel.identifier)) {
+				componentKey = channel.identifier.split(':').slice(1, 3).join(':');
+				attribute = componentKey.startsWith('input:') ? 'xpercent' : 'xvoltage';
+			} else if (/^switch:\d+$/.test(channel.identifier)) {
+				componentKey = channel.identifier;
+				attribute = 'output';
+			} else continue;
+			const property = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				attribute,
+				channel.id,
+			);
+			if (property) sources.push({ channel, property, componentKey, attribute });
+		}
+		this.sampleSources.set(delegate.id, sources);
+		const handler = (sample: ShellyRawSample): void => {
+			const generation = this.sampleGenerations.get(delegate.id) ?? 0;
+			for (const source of sources.filter((item) => item.componentKey === sample.componentKey)) {
+				const key = `${delegate.id}|${source.property.id}`;
+				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
+				this.sampleRevisions.set(key, revision);
+				const isCurrent = (): boolean =>
+					(this.sampleGenerations.get(delegate.id) ?? 0) === generation && this.sampleRevisions.get(key) === revision;
+				const errors = sample.values.errors;
+				const fault = Array.isArray(errors) && errors.length > 0;
+				if (!Object.hasOwn(sample.values, source.attribute) && !fault) continue;
+				const raw = sample.values[source.attribute];
+				const value =
+					!fault &&
+					((source.attribute === 'output' && typeof raw === 'boolean') ||
+						(typeof raw === 'number' && Number.isFinite(raw)))
+						? raw
+						: null;
+				const task = (async (): Promise<void> => {
+					// Faults do not wait for configuration RPC or ordinary telemetry coalescing.
+					if (value !== null && source.channel.identifier.startsWith('helper-temperature:')) {
+						const current = await delegate.readNativeTemperatureIdentity(source.componentKey);
+						if (!isCurrent()) return;
+						const identity =
+							current && nativeTemperatureIdentity(source.componentKey, current.config, current.peripherals);
+						if (!identity || identity.channelIdentifier !== source.channel.identifier) {
+							await this.admitRawSample(source.property, null, sample);
+							return;
+						}
+					}
+					if (!isCurrent()) return;
+					await this.admitRawSample(source.property, value, sample);
+				})();
+				let active = this.activeSamples.get(delegate.id);
+				if (!active) {
+					active = new Set();
+					this.activeSamples.set(delegate.id, active);
+				}
+				active.add(task);
+				void task
+					.catch((error: Error) => this.logger.error(`Shelly sample admission failed: ${error.message}`))
+					.finally(() => active.delete(task));
+			}
+		};
+		delegate.on('sample', handler);
+		this.sampleHandlers.set(delegate.id, handler);
+	}
+
+	private async admitRawSample(
+		property: ShellyNgChannelPropertyEntity,
+		value: unknown,
+		sample: ShellyRawSample,
+	): Promise<void> {
+		await this.channelsPropertiesService.reportSample(
+			property.id,
+			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value }),
+			sample.evidence,
+		);
+	}
+
+	/** Claim authorization belongs to dispatch; this path never uses the ordinary boolean setter. */
+	async protectiveSwitch(
+		deviceIdentifier: string,
+		componentId: number,
+		command: ShellyProtectiveCommand,
+		timeoutMs: number,
+	): Promise<ShellyProtectiveCommandResult> {
+		for (const id of this.identifierToDelegates.get(deviceIdentifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (delegate?.rpcConnected) return delegate.protectiveSwitch(componentId, command, timeoutMs);
+		}
+		return { outcome: 'refused', reasons: ['source_unavailable'] };
+	}
+
 	private async performRemove(deviceId: string): Promise<void> {
 		const delegate = this.delegates.get(deviceId);
 
@@ -2145,6 +2299,7 @@ export class DelegatesManagerService {
 			return;
 		}
 
+		await this.unbindSamples(delegate);
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 
 		if (valueHandler) {
@@ -3345,6 +3500,7 @@ export class DelegatesManagerService {
 		const teardownPromises: Promise<void>[] = [];
 
 		for (const [, delegate] of this.delegates.entries()) {
+			teardownPromises.push(this.unbindSamples(delegate));
 			const valueHandler = this.delegateValueHandlers.get(delegate.id);
 			const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 

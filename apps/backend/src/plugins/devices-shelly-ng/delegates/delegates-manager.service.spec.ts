@@ -33,6 +33,7 @@ const devicesService = {
 };
 
 const channelsService = {
+	findAll: jest.fn(),
 	findOneBy: jest.fn(),
 };
 
@@ -303,6 +304,7 @@ describe('DelegatesManagerService', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		channelsService.findAll.mockResolvedValue([]);
 
 		deviceConnectivityService.setConnectionState = jest.fn().mockResolvedValue(undefined);
 

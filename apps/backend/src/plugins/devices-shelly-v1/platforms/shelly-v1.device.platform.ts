@@ -32,6 +32,11 @@ export type IShellyV1DevicePropertyData = IDevicePropertyData & {
  */
 @Injectable()
 export class ShellyV1DevicePlatform implements IDevicePlatform {
+	/** Ordinary v1 control has no qualified device-side lease or release ordering evidence. */
+	getProtectiveReadiness(): { supported: false; reasons: readonly string[] } {
+		return { supported: false, reasons: ['unsupported_protective_protocol'] };
+	}
+
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_V1_PLUGIN_NAME,
 		'ShellyV1DevicePlatform',

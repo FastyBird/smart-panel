@@ -22,6 +22,12 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { ShellyRawSample, shellySampleEvidence } from '../contracts/native-temperature.contract';
+import {
+	ShellyProtectiveCommand,
+	ShellyProtectiveCommandResult,
+	protectiveReadiness,
+} from '../contracts/protective-switch.contract';
 import {
 	ComponentType,
 	DESCRIPTORS,
@@ -260,6 +266,47 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.descriptor = matchedDescriptor;
 	}
 
+	/** A finite timeout is unknown execution, never output or cancellation proof. */
+	async protectiveSwitch(
+		componentId: number,
+		command: ShellyProtectiveCommand,
+		timeoutMs: number,
+	): Promise<ShellyProtectiveCommandResult> {
+		const component = this.switches.get(componentId);
+		if (!component || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+			return { outcome: 'refused', reasons: ['invalid_component_or_timeout'] };
+		}
+		if (command.on) {
+			const info = await this.rpcWithTimeout(() => this.shelly.shelly.getDeviceInfo(), timeoutMs);
+			if (!info.ok) return { outcome: 'refused', reasons: ['firmware_identity_unavailable'] };
+			const firmware = info.value.fw_id;
+			const reasons = [
+				...protectiveReadiness(
+					{ deviceId: this.id, model: this.shelly.model, firmware },
+					componentId,
+					command.qualification,
+				),
+			];
+			const bounds = command.qualification.testedLeaseSeconds;
+			if (
+				!Number.isFinite(command.leaseSeconds) ||
+				command.leaseSeconds < bounds.min ||
+				command.leaseSeconds > bounds.max
+			) {
+				reasons.push('lease_outside_qualified_bounds');
+			}
+			if (reasons.length) return { outcome: 'refused', reasons };
+		}
+		const response = await this.rpcWithTimeout(
+			() => (command.on ? component.set(true, command.leaseSeconds) : component.set(false)),
+			timeoutMs,
+		);
+		if (!response.ok || typeof response.value?.was_on !== 'boolean') {
+			return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
+		}
+		return { outcome: 'accepted', wasOn: response.value.was_on, outputConfirmed: false, pendingOnDrained: false };
+	}
+
 	public get id(): string {
 		return this.shelly.id;
 	}
@@ -289,6 +336,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			return false;
 		}
 
+		const observedAt = new Date();
 		const revisionsAtStart = new Map(this.notificationRevisions);
 		const result = await this.rpcWithTimeout(() => this.shelly.shelly.getStatus(), timeoutMs);
 
@@ -310,6 +358,11 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 				continue;
 			}
 
+			this.emitRawSample(
+				componentKey,
+				componentValues,
+				shellySampleEvidence((result.value as unknown as Record<string, unknown>).ts, observedAt),
+			);
 			const component = this.shelly.getComponent(componentKey);
 
 			if (!component) {
@@ -451,6 +504,13 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * provider report: they must fence a concurrent poll and reach command confirmation.
 	 */
 	private handleStatusUpdate = (update: Record<string, unknown>): void => {
+		const observedAt = new Date();
+		for (const [key, values] of Object.entries(update)) {
+			if (values && typeof values === 'object') {
+				this.notificationRevisions.set(key, (this.notificationRevisions.get(key) ?? 0) + 1);
+				this.emitRawSample(key, values as Record<string, unknown>, shellySampleEvidence(update.ts, observedAt));
+			}
+		}
 		for (const [componentKey, values] of Object.entries(update)) {
 			if (
 				componentKey === 'ts' ||
@@ -512,6 +572,37 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			char,
 			val,
 		);
+	}
+
+	/** Raw payloads are copied before asynchronous consumers; dynamic add-on IDs need no library class. */
+	private emitRawSample(
+		componentKey: string,
+		values: Record<string, unknown>,
+		evidence: ShellyRawSample['evidence'],
+	): void {
+		if (/^(temperature|input|voltmeter|switch):\d+$/.test(componentKey)) {
+			this.emit('sample', { componentKey, values: Object.freeze({ ...values }), evidence } satisfies ShellyRawSample);
+		}
+	}
+
+	async readNativeTemperatureIdentity(
+		componentKey: string,
+		timeoutMs = 10_000,
+	): Promise<{
+		config: Record<string, unknown>;
+		peripherals: Record<string, unknown>;
+	} | null> {
+		const [type, id] = componentKey.split(':');
+		if (!['input', 'voltmeter'].includes(type) || !/^\d+$/.test(id)) return null;
+		const result = await this.rpcWithTimeout(async () => {
+			const config = await this.shelly.rpcHandler.request<Record<string, unknown>>(
+				`${type === 'input' ? 'Input' : 'Voltmeter'}.GetConfig`,
+				{ id: Number(id) },
+			);
+			const peripherals = await this.shelly.rpcHandler.request<Record<string, unknown>>('SensorAddon.GetPeripherals');
+			return { config, peripherals };
+		}, timeoutMs);
+		return result.ok ? result.value : null;
 	}
 
 	detach(): void {

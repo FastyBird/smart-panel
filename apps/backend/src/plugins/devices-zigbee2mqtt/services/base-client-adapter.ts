@@ -157,6 +157,7 @@ export abstract class Z2mBaseClientAdapter {
 		isRetained = false,
 		options?: { isDup?: boolean; packetId?: number },
 	): void {
+		const observedAt = new Date();
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
 
@@ -383,6 +384,7 @@ export abstract class Z2mBaseClientAdapter {
 		isRetained = false,
 		options?: { isDup?: boolean; packetId?: number },
 	): void {
+		const observedAt = new Date();
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
@@ -402,7 +404,12 @@ export abstract class Z2mBaseClientAdapter {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
-			const metadata: Z2mDeviceStateMetadata = { isRetained, isDup: options?.isDup, packetId: options?.packetId };
+			const metadata: Z2mDeviceStateMetadata = {
+				observedAt,
+				isRetained,
+				isDup: options?.isDup,
+				packetId: options?.packetId,
+			};
 			void this.callbacks.onDeviceStateChanged?.(friendlyName, state, metadata);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {

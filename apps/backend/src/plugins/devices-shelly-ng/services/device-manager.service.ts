@@ -17,6 +17,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
+import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
 import {
 	ComponentType,
 	DESCRIPTORS,
@@ -1389,6 +1390,17 @@ export class DeviceManagerService {
 								throw err;
 							}
 
+							if (inputConfig.type === 'analog' && inputConfig.xpercent?.expr && inputConfig.xpercent?.unit) {
+								const helperChannel = await this.ensureNativeHelperTemperature(
+									device,
+									host,
+									password,
+									`input:${key}`,
+									inputConfig as unknown as Record<string, unknown>,
+								);
+								if (helperChannel) channelsIds.push(helperChannel.id);
+							}
+
 							const inputMode = inputConfig?.type ?? 'button';
 
 							const mappingContext: MappingContext = {
@@ -1523,7 +1535,8 @@ export class DeviceManagerService {
 								);
 							} else if (channelCategory === ChannelCategory.ANALOG_INPUT) {
 								const hasExtendedCount = inputMode === 'count' && typeof inputStatus.counts?.xtotal === 'number';
-								const hasExtendedPercent = inputMode === 'analog' && typeof inputStatus.xpercent === 'number';
+								const hasExtendedPercent =
+									inputMode === 'analog' && Boolean(inputConfig.xpercent?.expr && inputConfig.xpercent?.unit);
 
 								const analogValue =
 									inputMode === 'count'
@@ -1531,7 +1544,9 @@ export class DeviceManagerService {
 											? inputStatus.counts.xtotal
 											: (inputStatus.counts?.total ?? 0)
 										: hasExtendedPercent
-											? inputStatus.xpercent
+											? typeof inputStatus.xpercent === 'number'
+												? inputStatus.xpercent
+												: undefined
 											: (inputStatus.percent ?? 0);
 
 								const unitValue =
@@ -1591,6 +1606,27 @@ export class DeviceManagerService {
 						this.logger.warn(`${failed}/${ids.length} input component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
+					}
+				} else if (type === 'voltmeter') {
+					for (const key of ids) {
+						try {
+							const config = await this.shellyRpcClientService.call<Record<string, unknown>>(
+								host,
+								'Voltmeter.GetConfig',
+								{ id: key },
+								{ password },
+							);
+							const channel = await this.ensureNativeHelperTemperature(
+								device,
+								host,
+								password,
+								`voltmeter:${key}`,
+								config,
+							);
+							if (channel) channelsIds.push(channel.id);
+						} catch {
+							hasComponentFailures = true;
+						}
 					}
 				} else if (type === String(ComponentType.DEVICE_POWER)) {
 					for (const key of ids) {
@@ -2309,6 +2345,8 @@ export class DeviceManagerService {
 			);
 
 			for (const channel of allChannels) {
+				// Keep previous helper identity/history and aliases for explicit repair. Runtime rejects mismatched config.
+				if (channel.identifier?.startsWith('helper-temperature:')) continue;
 				if (!channelsIds.includes(channel.id)) {
 					if (descriptorInputKeys.has(channel.identifier)) {
 						this.logger.debug(
@@ -2494,6 +2532,36 @@ export class DeviceManagerService {
 			this.logger.warn(`Failed to apply derivation: ${error instanceof Error ? error.message : String(error)}`);
 			return undefined;
 		}
+	}
+
+	private async ensureNativeHelperTemperature(
+		device: ShellyNgDeviceEntity,
+		host: string,
+		password: string | null | undefined,
+		componentKey: string,
+		config: Record<string, unknown>,
+	): Promise<ShellyNgChannelEntity | null> {
+		const peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
+			host,
+			'SensorAddon.GetPeripherals',
+			undefined,
+			{ password },
+		);
+		const identity = nativeTemperatureIdentity(componentKey, config, peripherals);
+		if (!identity) return null;
+		const channel = await this.ensureChannel(
+			device,
+			'identifier',
+			identity.channelIdentifier,
+			ChannelCategory.TEMPERATURE,
+			`Temperature: ${componentKey}`,
+		);
+		await this.ensureProperty(channel, PropertyCategory.TEMPERATURE, 'identifier', identity.attribute, undefined, {
+			data_type: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+			step: null,
+		});
+		return channel;
 	}
 
 	private async ensureProperty(
