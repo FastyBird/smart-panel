@@ -236,6 +236,36 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		await runtime.flush();
 	};
 
+	it('new aggregate evidence barriers ignore retained transformed output until a new physical acceptance', async () => {
+		const raw = await measurement(),
+			sibling = await measurement(),
+			transformed = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM),
+			aggregate = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await transforms.configure(transformed.id, dto(raw));
+		await configure(aggregate, [transformed, sibling]);
+		await start();
+		await sample(raw, 10);
+		await sample(sibling, 20);
+		expect(outputState(aggregate)?.producer.quality).toBe('good');
+		runtime.requireFreshInputs(aggregate.id, [
+			{ sourceId: transformed.id, leafId: raw.id },
+			{ sourceId: sibling.id, leafId: sibling.id },
+		]);
+		runtime.requestRecompute();
+		await runtime.flush();
+		expect(outputState(aggregate)?.value).toBeNull();
+		transformRuntime.requestRecompute();
+		await transformRuntime.flush();
+		await runtime.flush();
+		expect(outputState(aggregate)?.value).toBeNull();
+		await sample(sibling, 20);
+		expect(outputState(aggregate)?.value).toBeNull();
+		jest.advanceTimersByTime(1000);
+		await sample(raw, 10);
+		expect(outputState(aggregate)?.producer.quality).toBe('good');
+		expect(outputState(aggregate)?.value).toBe(20.5);
+	});
+
 	it('requires live source evidence, preserves source age and expires without renewing on evaluation', async () => {
 		const source = await measurement(),
 			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);

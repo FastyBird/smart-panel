@@ -6,8 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
-import { VirtualTransformConfigEntity } from '../entities/virtual-transform.entity';
-import { transformContractErrors } from '../services/virtual-transform-contract.utils';
+import { hydrateMeasurementContract } from '../services/virtual-measurement-metadata.utils';
 
 /** Config-owned metadata overlays only transform properties; physical specification units remain untouched. */
 @Injectable()
@@ -25,8 +24,6 @@ export class VirtualTransformMetadataSubscriber implements EntitySubscriberInter
 
 	async afterLoad(entity: ChannelPropertyEntity, event: LoadEvent<ChannelPropertyEntity>): Promise<void> {
 		if (!(entity instanceof VirtualChannelPropertyEntity) || !entity.isDerived) return;
-		const config = await event.manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: entity.id });
-		if (!config) return;
 		const existingChannel = typeof entity.channel === 'string' ? null : entity.channel;
 		const channel =
 			existingChannel && typeof existingChannel.device !== 'string' && existingChannel.device
@@ -38,10 +35,8 @@ export class VirtualTransformMetadataSubscriber implements EntitySubscriberInter
 						.getOne();
 		if (!channel) return;
 		const hydrated = Object.assign(new VirtualChannelPropertyEntity(), entity, { channel });
-		// Generic units are durable config metadata; the base subscriber has supplied the spec's null unit.
-		hydrated.unit = null;
-		if (transformContractErrors(config, hydrated, null).length) return;
-		entity.unit = config.unit;
-		entity.measurementQuantity = config.quantity;
+		await hydrateMeasurementContract(event.manager, hydrated);
+		entity.unit = hydrated.unit;
+		entity.measurementQuantity = hydrated.measurementQuantity;
 	}
 }

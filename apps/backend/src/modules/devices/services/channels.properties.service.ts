@@ -796,9 +796,14 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		// the request had nothing to do with. Asked of the base repository, because a collision with a
 		// property of *another* type is the same collision: ids are unique across the table.
 		if (property.id) {
-			const existing = await (
-				creation ? creation.manager.getRepository(ChannelPropertyEntity) : this.repository
-			).findOne({ where: { id: property.id } });
+			const existing = creation
+				? await creation.manager
+						.createQueryBuilder(ChannelPropertyEntity, 'row')
+						.select('row.id')
+						.where('row.id = :id', { id: property.id })
+						.callListeners(false)
+						.getOne()
+				: await this.repository.findOne({ where: { id: property.id } });
 
 			if (existing) {
 				this.logger.error(

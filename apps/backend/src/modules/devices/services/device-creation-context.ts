@@ -1,6 +1,7 @@
 import { EntityManager } from 'typeorm';
 
 const admitted = new WeakSet<DeviceCreationContext>();
+const admission = Symbol('internal-device-creation');
 
 /** Internal transaction capability. Public DTOs cannot select a manager or publication callback. */
 export class DeviceCreationContext {
@@ -10,8 +11,10 @@ export class DeviceCreationContext {
 	private constructor(
 		readonly manager: EntityManager,
 		private readonly allowedType: string,
+		capability: symbol,
 	) {
-		if (!manager.queryRunner?.isTransactionActive) throw new Error('Device creation requires an admitted transaction');
+		if (capability !== admission || !manager.queryRunner?.isTransactionActive)
+			throw new Error('Device creation requires an admitted transaction');
 		admitted.add(this);
 	}
 
@@ -23,7 +26,7 @@ export class DeviceCreationContext {
 	): Promise<T> {
 		let context: DeviceCreationContext;
 		const result = await writer(async (manager) => {
-			context = new DeviceCreationContext(manager, allowedType);
+			context = new DeviceCreationContext(manager, allowedType, admission);
 			try {
 				return await operation(context);
 			} finally {

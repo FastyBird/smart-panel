@@ -15,6 +15,7 @@ import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../e
 import { VirtualTransformConfigurationModel, VirtualTransformSourceModel } from '../models/transform-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
 import { VirtualNumericTransformConfig } from './virtual-numeric-transform.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { transformContractErrors } from './virtual-transform-contract.utils';
@@ -36,11 +37,10 @@ export class VirtualTransformConfigService {
 		dto: ConfigureVirtualTransformDto,
 	): Promise<VirtualTransformConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
-			let prepared: Awaited<ReturnType<VirtualTransformConfigService['validate']>>;
+			let prepared: Awaited<ReturnType<VirtualTransformConfigService['prepare']>>;
 			await this.graph.withStructuralWrite(async (manager) => {
-				prepared = await this.validate(manager, outputPropertyId, dto);
-				await manager.save(prepared.config);
-				await manager.save(prepared.source);
+				prepared = await this.prepare(manager, outputPropertyId, dto);
+				await this.persist(manager, prepared);
 			}, dto.expectedGraphRevision);
 			this.state.installUnavailable(prepared.output, prepared.config.revision);
 			prepared.output.unit = prepared.config.unit;
@@ -51,6 +51,40 @@ export class VirtualTransformConfigService {
 		});
 	}
 
+	/** Persistence-only seam for a caller that already owns the structural writer. */
+	async persist(
+		manager: EntityManager,
+		prepared: {
+			config: VirtualTransformConfigEntity;
+			source: VirtualTransformSourceEntity;
+			output: VirtualChannelPropertyEntity;
+		},
+	): Promise<void> {
+		await manager.save(prepared.config);
+		await manager.save(prepared.source);
+		const range = prepared.config.policy.outputRange;
+		prepared.output.format = [range.minimum, range.maximum];
+		await manager.update(VirtualChannelPropertyEntity, { id: prepared.output.id }, { format: prepared.output.format });
+	}
+
+	describe(
+		prepared: { config: VirtualTransformConfigEntity; source: VirtualTransformSourceEntity },
+		graphRevision: number,
+	): VirtualTransformConfigurationModel {
+		return this.model(prepared.config, prepared.source, graphRevision, false);
+	}
+
+	activate(
+		output: VirtualChannelPropertyEntity,
+		config: VirtualTransformConfigEntity,
+		source: VirtualTransformSourceEntity,
+	): void {
+		this.state.installUnavailable(output, config.revision);
+		output.unit = config.unit;
+		output.measurementQuantity = config.quantity;
+		this.runtime?.requireFreshSample(output.id, source.sourcePropertyId);
+	}
+
 	async preview(
 		outputPropertyId: string,
 		dto: ConfigureVirtualTransformDto,
@@ -59,7 +93,7 @@ export class VirtualTransformConfigService {
 			const revision = await this.graph.revision();
 			if (dto.expectedGraphRevision !== undefined && dto.expectedGraphRevision !== revision)
 				throw new DevicesValidationException('Virtual dependency graph revision changed; reload and retry.');
-			const prepared = await this.validate(this.dataSource.manager, outputPropertyId, dto);
+			const prepared = await this.prepare(this.dataSource.manager, outputPropertyId, dto, undefined, true);
 			return this.model(prepared.config, prepared.source, revision, false);
 		});
 	}
@@ -71,17 +105,32 @@ export class VirtualTransformConfigService {
 		return this.model(config, source, await this.graph.revision(), true);
 	}
 
-	private async property(manager: EntityManager, id: string): Promise<ChannelPropertyEntity> {
-		const property = await manager.findOne(ChannelPropertyEntity, {
-			where: { id },
-			relations: ['channel', 'channel.device'],
-		});
+	private async property(manager: EntityManager, id: string, previewOnly = false): Promise<ChannelPropertyEntity> {
+		const property = previewOnly
+			? await manager
+					.createQueryBuilder(ChannelPropertyEntity, 'property')
+					.leftJoinAndSelect('property.channel', 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
+					.where('property.id = :id', { id })
+					.callListeners(false)
+					.getOne()
+			: await manager.findOne(ChannelPropertyEntity, {
+					where: { id },
+					relations: ['channel', 'channel.device'],
+				});
 		if (!property) throw new DevicesValidationException('Source/output property does not exist.');
+		if (previewOnly) await hydrateMeasurementContract(manager, property);
 		return property;
 	}
 
-	private async validate(manager: EntityManager, outputPropertyId: string, dto: ConfigureVirtualTransformDto) {
-		const output = await this.property(manager, outputPropertyId);
+	async prepare(
+		manager: EntityManager,
+		outputPropertyId: string,
+		dto: ConfigureVirtualTransformDto,
+		draftOutput?: VirtualChannelPropertyEntity,
+		previewOnly = false,
+	) {
+		const output = draftOutput ?? (await this.property(manager, outputPropertyId, previewOnly));
 		const existing = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId });
 		if (!Number.isInteger(dto.expectedRevision) || dto.expectedRevision !== (existing?.revision ?? 0))
 			throw new DevicesValidationException('Producer configuration revision changed; reload and retry.');
@@ -90,7 +139,9 @@ export class VirtualTransformConfigService {
 			throw new DevicesValidationException('Source binding UUID is not owned by this output.');
 		if (!dto.source.sourcePropertyId && (!old || old.sourcePropertyId !== null))
 			throw new DevicesValidationException('Only a missing existing source may retain a null source.');
-		const physical = dto.source.sourcePropertyId ? await this.property(manager, dto.source.sourcePropertyId) : null;
+		const physical = dto.source.sourcePropertyId
+			? await this.property(manager, dto.source.sourcePropertyId, previewOnly)
+			: null;
 		const config = manager.create(VirtualTransformConfigEntity, {
 			outputPropertyId,
 			schemaVersion: dto.schemaVersion,
