@@ -82,6 +82,7 @@ export function measurementCandidates(
 	});
 }
 
+/** Builds the virtual sensor catalog payload with the stable output UUID and selected measurement metadata. */
 export function measurementDraft(
 	mode: MeasurementMode,
 	name: string,

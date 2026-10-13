@@ -2,6 +2,7 @@ import { VirtualTransformConfigurationModel, VirtualTransformPreviewModel } from
 
 import { evaluateVirtualNumericTransform } from './virtual-numeric-transform.utils';
 
+/** Add an unqualified numeric preview without installing a producer or claiming live source evidence. */
 export function attachTransformPreview(
 	model: VirtualTransformConfigurationModel,
 	input?: number,

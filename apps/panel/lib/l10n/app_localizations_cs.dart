@@ -908,7 +908,7 @@ class AppLocalizationsCs extends AppLocalizations {
       'Jak se zobrazují čísla (oddělovače tisíců a desetinných míst).';
 
   @override
-  String get number_format_comma_dot => '1 234,56';
+  String get number_format_comma_dot => '1,234.56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -2277,7 +2277,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NE₂';
+  String get device_no2 => 'NO₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -2907,7 +2907,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_enum_device_info_sleeping_long => 'Spí';
 
   @override
-  String get sensor_enum_device_info_stopped => 'Zastávka';
+  String get sensor_enum_device_info_stopped => 'Zastaveno';
 
   @override
   String get sensor_enum_device_info_stopped_long => 'Zastaveno';
@@ -2958,7 +2958,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_input_hdmi6 => 'HDMI 6';
 
   @override
-  String get media_input_arc => 'OBLOUK';
+  String get media_input_arc => 'ARC';
 
   @override
   String get media_input_earc => 'eARC';
