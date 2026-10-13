@@ -113,6 +113,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * Native status notifications and an HTTP poll both update components synchronously.  Keep
 	 * the origin in this tiny synchronous window; it must never span the RPC await.
 	 */
+	private connectionGeneration = 0;
+	private readonly sampleComponentKeys = new Set<string>();
+
 	private applyingPollComponent: string | null = null;
 
 	/**
@@ -276,13 +279,16 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		if (!component || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
 			return { outcome: 'refused', reasons: ['invalid_component_or_timeout'] };
 		}
+		const generation = this.connectionGeneration;
 		if (command.on) {
 			const info = await this.rpcWithTimeout(() => this.shelly.shelly.getDeviceInfo(), timeoutMs);
+			if (generation !== this.connectionGeneration)
+				return { outcome: 'refused', reasons: ['connection_generation_changed'] };
 			if (!info.ok) return { outcome: 'refused', reasons: ['firmware_identity_unavailable'] };
 			const firmware = info.value.fw_id;
 			const reasons = [
 				...protectiveReadiness(
-					{ deviceId: this.id, model: this.shelly.model, firmware },
+					{ deviceId: info.value.id, model: info.value.model, firmware },
 					componentId,
 					command.qualification,
 				),
@@ -301,7 +307,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			() => (command.on ? component.set(true, command.leaseSeconds) : component.set(false)),
 			timeoutMs,
 		);
-		if (!response.ok || typeof response.value?.was_on !== 'boolean') {
+		if (generation !== this.connectionGeneration || !response.ok || typeof response.value?.was_on !== 'boolean') {
 			return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
 		}
 		return { outcome: 'accepted', wasOn: response.value.was_on, outputConfirmed: false, pendingOnDrained: false };
@@ -337,10 +343,11 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		}
 
 		const observedAt = new Date();
+		const generation = this.connectionGeneration;
 		const revisionsAtStart = new Map(this.notificationRevisions);
 		const result = await this.rpcWithTimeout(() => this.shelly.shelly.getStatus(), timeoutMs);
 
-		if (!result.ok || !isCurrent()) {
+		if (!result.ok || !isCurrent() || generation !== this.connectionGeneration) {
 			return false;
 		}
 
@@ -380,6 +387,15 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			}
 		}
 
+		for (const key of this.sampleComponentKeys) {
+			if (!isCurrent() || generation !== this.connectionGeneration) return false;
+			if (
+				!Object.hasOwn(result.value, key) &&
+				(this.notificationRevisions.get(key) ?? 0) === (revisionsAtStart.get(key) ?? 0)
+			) {
+				this.emitRawSample(key, { errors: ['source_missing'] }, shellySampleEvidence(undefined, observedAt));
+			}
+		}
 		return true;
 	}
 
@@ -430,6 +446,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	private handleConnect = (): void => {
+		this.connectionGeneration++;
 		this.logger.log(`Device=${this.shelly.id} connected`, { resource: this.shelly.id });
 
 		this.connected = true;
@@ -439,6 +456,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	};
 
 	private handleDisconnect = (code: number, reason: string, reconnectIn: number | null): void => {
+		this.connectionGeneration++;
 		const details = reason.length > 0 ? 'reason: ' + reason : 'code: ' + code;
 
 		if (this.connected) {
@@ -575,6 +593,16 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	/** Raw payloads are copied before asynchronous consumers; dynamic add-on IDs need no library class. */
+	/** Sleeping-device transport supplies whole raw components before flattening or queueing. */
+	emitNotificationSample(
+		componentKey: string,
+		values: Record<string, unknown>,
+		evidence: ShellyRawSample['evidence'],
+	): void {
+		this.notificationRevisions.set(componentKey, (this.notificationRevisions.get(componentKey) ?? 0) + 1);
+		this.emitRawSample(componentKey, values, evidence);
+	}
+
 	private emitRawSample(
 		componentKey: string,
 		values: Record<string, unknown>,
@@ -593,10 +621,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		peripherals: Record<string, unknown>;
 	} | null> {
 		const [type, id] = componentKey.split(':');
-		if (!['input', 'voltmeter'].includes(type) || !/^\d+$/.test(id)) return null;
+		if (!['input', 'voltmeter', 'temperature'].includes(type) || !/^\d+$/.test(id)) return null;
 		const result = await this.rpcWithTimeout(async () => {
 			const config = await this.shelly.rpcHandler.request<Record<string, unknown>>(
-				`${type === 'input' ? 'Input' : 'Voltmeter'}.GetConfig`,
+				`${type === 'input' ? 'Input' : type === 'voltmeter' ? 'Voltmeter' : 'Temperature'}.GetConfig`,
 				{ id: Number(id) },
 			);
 			const peripherals = await this.shelly.rpcHandler.request<Record<string, unknown>>('SensorAddon.GetPeripherals');
@@ -605,7 +633,14 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		return result.ok ? result.value : null;
 	}
 
+	setSampleComponentKeys(keys: Iterable<string>): void {
+		this.sampleComponentKeys.clear();
+		for (const key of keys) this.sampleComponentKeys.add(key);
+	}
+
 	detach(): void {
+		this.connectionGeneration++;
+		this.sampleComponentKeys.clear();
 		this.shelly.rpcHandler
 			.off('connect', this.handleConnect)
 			.off('disconnect', this.handleDisconnect)

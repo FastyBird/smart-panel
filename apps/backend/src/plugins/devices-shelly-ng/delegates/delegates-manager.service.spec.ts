@@ -214,6 +214,7 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 	const { EventEmitter } = require('events');
 
 	class MockShellyDeviceDelegate extends EventEmitter {
+		setSampleComponentKeys(): void {}
 		constructor(shelly) {
 			super();
 			this.shelly = shelly;
@@ -2274,7 +2275,7 @@ describe('DelegatesManagerService', () => {
 
 			try {
 				const property = { id: 'poll-property' } as ShellyNgChannelPropertyEntity;
-				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).delegates.set('delegate-poll', { setSampleComponentKeys: jest.fn() });
 				(svc as any).currentValueUpdateContext = {
 					delegateId: 'delegate-poll',
 					deviceId: 'device-poll',
@@ -2298,7 +2299,7 @@ describe('DelegatesManagerService', () => {
 
 			try {
 				const property = { id: 'poll-confirmation' } as ShellyNgChannelPropertyEntity;
-				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).delegates.set('delegate-poll', { setSampleComponentKeys: jest.fn() });
 				(svc as any).currentValueUpdateContext = {
 					delegateId: 'delegate-poll',
 					deviceId: 'device-poll',
@@ -2341,7 +2342,7 @@ describe('DelegatesManagerService', () => {
 						});
 					});
 				});
-				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).delegates.set('delegate-poll', { setSampleComponentKeys: jest.fn() });
 				(svc as any).currentValueUpdateContext = {
 					delegateId: 'delegate-poll',
 					deviceId: 'device-poll',
@@ -2411,7 +2412,7 @@ describe('DelegatesManagerService', () => {
 
 					return Promise.resolve({});
 				});
-				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).delegates.set('delegate-poll', { setSampleComponentKeys: jest.fn() });
 				(svc as any).currentValueUpdateContext = {
 					delegateId: 'delegate-poll',
 					deviceId: 'device-poll',
@@ -2460,7 +2461,7 @@ describe('DelegatesManagerService', () => {
 
 			try {
 				const property = { id: 'poll-detach' } as ShellyNgChannelPropertyEntity;
-				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).delegates.set('delegate-poll', { setSampleComponentKeys: jest.fn() });
 				(svc as any).currentValueUpdateContext = {
 					delegateId: 'delegate-poll',
 					deviceId: 'device-poll',

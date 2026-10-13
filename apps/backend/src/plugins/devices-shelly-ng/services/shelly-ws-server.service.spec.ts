@@ -31,6 +31,7 @@ function createService(
 		jest.fn().mockReturnValue({
 			emit: delegateEmit,
 			emitNotificationValue: delegateEmitNotificationValue,
+			emitNotificationSample: jest.fn(),
 			emitNotificationEvent: delegateEmitNotificationEvent,
 		});
 	const findOneBy = overrides.findOneBy ?? jest.fn().mockResolvedValue({ id: 'db-device-1' });

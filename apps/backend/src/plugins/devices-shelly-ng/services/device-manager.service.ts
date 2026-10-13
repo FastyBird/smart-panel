@@ -1889,6 +1889,17 @@ export class DeviceManagerService {
 								throw err;
 							});
 
+							if (key >= 100) {
+								const probe = await this.ensureNativeHelperTemperature(
+									device,
+									host,
+									password,
+									`temperature:${key}`,
+									temperatureConfig as unknown as Record<string, unknown>,
+								);
+								if (probe) channelsIds.push(probe.id);
+							}
+
 							// Use YAML mapping for temperature component
 							const temperatureMappingContext: MappingContext = {
 								componentType: ComponentType.TEMPERATURE,
@@ -2346,7 +2357,11 @@ export class DeviceManagerService {
 
 			for (const channel of allChannels) {
 				// Keep previous helper identity/history and aliases for explicit repair. Runtime rejects mismatched config.
-				if (channel.identifier?.startsWith('helper-temperature:')) continue;
+				if (
+					channel.identifier?.startsWith('helper-temperature:') ||
+					channel.identifier?.startsWith('probe-temperature:')
+				)
+					continue;
 				if (!channelsIds.includes(channel.id)) {
 					if (descriptorInputKeys.has(channel.identifier)) {
 						this.logger.debug(
@@ -2541,12 +2556,17 @@ export class DeviceManagerService {
 		componentKey: string,
 		config: Record<string, unknown>,
 	): Promise<ShellyNgChannelEntity | null> {
-		const peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
-			host,
-			'SensorAddon.GetPeripherals',
-			undefined,
-			{ password },
-		);
+		let peripherals: Record<string, unknown>;
+		try {
+			peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
+				host,
+				'SensorAddon.GetPeripherals',
+				undefined,
+				{ password },
+			);
+		} catch {
+			return null;
+		}
 		const identity = nativeTemperatureIdentity(componentKey, config, peripherals);
 		if (!identity) return null;
 		const channel = await this.ensureChannel(

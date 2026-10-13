@@ -157,7 +157,6 @@ export abstract class Z2mBaseClientAdapter {
 		isRetained = false,
 		options?: { isDup?: boolean; packetId?: number },
 	): void {
-		const observedAt = new Date();
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
 

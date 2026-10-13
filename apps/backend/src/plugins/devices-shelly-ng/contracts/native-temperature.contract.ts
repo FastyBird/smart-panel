@@ -25,8 +25,17 @@ export function nativeTemperatureIdentity(
 	componentKey: string,
 	config: Readonly<Record<string, unknown>>,
 	peripherals: Readonly<Record<string, unknown>>,
-): { channelIdentifier: string; attribute: 'xpercent' | 'xvoltage'; unit: string } | null {
+): { channelIdentifier: string; attribute: 'xpercent' | 'xvoltage' | 'tC'; unit: string } | null {
 	const [type, id] = componentKey.split(':');
+	if (type === 'temperature' && /^\d+$/.test(id)) {
+		const links = peripherals.ds18b20 as Record<string, { addr?: unknown }> | undefined;
+		const peripheral = links?.[componentKey];
+		if (!peripheral || typeof peripheral.addr !== 'string' || !peripheral.addr.trim()) return null;
+		const digest = createHash('sha256')
+			.update(JSON.stringify(canonical({ componentKey, config, peripheral })))
+			.digest('hex');
+		return { channelIdentifier: `probe-temperature:${componentKey}:${digest}`, attribute: 'tC', unit: '°C' };
+	}
 	if (!['input', 'voltmeter'].includes(type) || !/^\d+$/.test(id)) return null;
 	const attribute = type === 'input' ? 'xpercent' : 'xvoltage';
 	const helper = config[attribute] as { expr?: unknown; unit?: unknown } | undefined;
@@ -51,4 +60,11 @@ export function nativeTemperatureIdentity(
 export function shellySampleEvidence(ts: unknown, observedAt: Date, receivedAt = new Date()): PropertySampleEvidence {
 	const sourceTime = typeof ts === 'number' && Number.isFinite(ts) ? new Date(ts * 1000) : observedAt;
 	return { sampledAt: sourceTime, receivedAt, observedAt, provenance: 'live' };
+}
+
+/** A live scalar by itself does not qualify a floor probe identity. */
+export function hasQualifiedFloorSourceIdentity(channelIdentifier: string): boolean {
+	return /^(helper-temperature:(input|voltmeter)|probe-temperature:temperature):\d+:[a-f0-9]{64}$/.test(
+		channelIdentifier,
+	);
 }

@@ -22,7 +22,11 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ShellyRawSample, nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import {
+	ShellyRawSample,
+	hasQualifiedFloorSourceIdentity,
+	nativeTemperatureIdentity,
+} from '../contracts/native-temperature.contract';
 import { ShellyProtectiveCommand, ShellyProtectiveCommandResult } from '../contracts/protective-switch.contract';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
@@ -2174,6 +2178,7 @@ export class DelegatesManagerService {
 		const handler = this.sampleHandlers.get(delegate.id);
 		if (handler) delegate.off('sample', handler);
 		this.sampleHandlers.delete(delegate.id);
+		delegate.setSampleComponentKeys([]);
 		for (const source of this.sampleSources.get(delegate.id) ?? []) {
 			await this.admitRawSample(source.property, null, {
 				componentKey: source.componentKey,
@@ -2183,7 +2188,7 @@ export class DelegatesManagerService {
 			this.sampleRevisions.delete(`${delegate.id}|${source.property.id}`);
 		}
 		this.sampleSources.delete(delegate.id);
-		await Promise.allSettled(this.activeSamples.get(delegate.id) ?? []);
+		await Promise.allSettled([...(this.activeSamples.get(delegate.id) ?? [])]);
 		this.activeSamples.delete(delegate.id);
 	}
 
@@ -2203,9 +2208,13 @@ export class DelegatesManagerService {
 			if (/^temperature:\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'tC';
-			} else if (/^helper-temperature:(input|voltmeter):\d+:[a-f0-9]{64}$/.test(channel.identifier)) {
+			} else if (hasQualifiedFloorSourceIdentity(channel.identifier)) {
 				componentKey = channel.identifier.split(':').slice(1, 3).join(':');
-				attribute = componentKey.startsWith('input:') ? 'xpercent' : 'xvoltage';
+				attribute = componentKey.startsWith('input:')
+					? 'xpercent'
+					: componentKey.startsWith('voltmeter:')
+						? 'xvoltage'
+						: 'tC';
 			} else if (/^switch:\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'output';
@@ -2218,17 +2227,18 @@ export class DelegatesManagerService {
 			if (property) sources.push({ channel, property, componentKey, attribute });
 		}
 		this.sampleSources.set(delegate.id, sources);
+		delegate.setSampleComponentKeys(sources.map((source) => source.componentKey));
 		const handler = (sample: ShellyRawSample): void => {
 			const generation = this.sampleGenerations.get(delegate.id) ?? 0;
 			for (const source of sources.filter((item) => item.componentKey === sample.componentKey)) {
+				const errors = sample.values.errors;
+				const fault = Array.isArray(errors) && errors.length > 0;
+				if (!Object.hasOwn(sample.values, source.attribute) && !fault) continue;
 				const key = `${delegate.id}|${source.property.id}`;
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
 				this.sampleRevisions.set(key, revision);
 				const isCurrent = (): boolean =>
 					(this.sampleGenerations.get(delegate.id) ?? 0) === generation && this.sampleRevisions.get(key) === revision;
-				const errors = sample.values.errors;
-				const fault = Array.isArray(errors) && errors.length > 0;
-				if (!Object.hasOwn(sample.values, source.attribute) && !fault) continue;
 				const raw = sample.values[source.attribute];
 				const value =
 					!fault &&
@@ -2238,7 +2248,7 @@ export class DelegatesManagerService {
 						: null;
 				const task = (async (): Promise<void> => {
 					// Faults do not wait for configuration RPC or ordinary telemetry coalescing.
-					if (value !== null && source.channel.identifier.startsWith('helper-temperature:')) {
+					if (value !== null && hasQualifiedFloorSourceIdentity(source.channel.identifier)) {
 						const current = await delegate.readNativeTemperatureIdentity(source.componentKey);
 						if (!isCurrent()) return;
 						const identity =
@@ -2249,7 +2259,12 @@ export class DelegatesManagerService {
 						}
 					}
 					if (!isCurrent()) return;
-					await this.admitRawSample(source.property, value, sample);
+					// Legacy dynamic channels remain displayable; only the address-bound probe source is control-eligible.
+					const admitted =
+						value !== null && /^temperature:1\d\d$/.test(source.channel.identifier)
+							? { ...sample, evidence: { ...sample.evidence, provenance: 'cached' as const } }
+							: sample;
+					await this.admitRawSample(source.property, value, admitted);
 				})();
 				let active = this.activeSamples.get(delegate.id);
 				if (!active) {

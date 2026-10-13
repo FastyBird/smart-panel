@@ -24,7 +24,11 @@ class FixtureRpc extends RpcHandler {
 	connected = true;
 	readonly requests: { method: string; params?: RpcParams }[] = [];
 	response: (method: string) => Promise<unknown> = (method) =>
-		Promise.resolve(method === 'Shelly.GetDeviceInfo' ? { fw_id: 'fixture-firmware' } : { was_on: false });
+		Promise.resolve(
+			method === 'Shelly.GetDeviceInfo'
+				? { id: 'pilot', model: ShellyPlus1Pm.model, fw_id: 'fixture-firmware' }
+				: { was_on: false },
+		);
 	constructor() {
 		super('qualified-adapter-fixture');
 	}
@@ -65,25 +69,30 @@ const helperConfig = {
 	range_map: [0, 100],
 	xpercent: { expr: 'x/2', unit: '°C' },
 };
+const probeConfig = { id: 100, offset: 0 };
+const probePeripheral = { ds18b20: { 'temperature:100': { addr: '40:255:100:6:199:204:149:177' } } };
 const helperPeripheral = { analog_in: { 'input:100': { io: 0 } } };
 
-const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper = false) => {
+const managerFixture = async (physical: ShellyPlus1Pm | ShellyPlusHt, helper: boolean | 'probe' = false) => {
 	const device = Object.assign(new ShellyNgDeviceEntity(), { id: 'physical', identifier: physical.id, enabled: true });
 	const channel = Object.assign(new ShellyNgChannelEntity(), {
 		id: 'sensor',
 		device,
 		category: ChannelCategory.TEMPERATURE,
-		identifier: helper
-			? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
-			: physical instanceof ShellyPlusHt
-				? 'temperature:0'
-				: 'temperature:100',
+		identifier:
+			helper === 'probe'
+				? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
+				: helper
+					? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
+					: physical instanceof ShellyPlusHt
+						? 'temperature:0'
+						: 'temperature:100',
 	});
 	const property = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'temperature',
 		channel,
 		category: PropertyCategory.TEMPERATURE,
-		identifier: helper ? 'xpercent' : 'tC',
+		identifier: helper && helper !== 'probe' ? 'xpercent' : 'tC',
 	});
 	const reportSample = jest.fn().mockResolvedValue(property);
 	const update = jest.fn().mockResolvedValue(property);
@@ -185,7 +194,9 @@ describe('qualified Shelly adapter boundaries', () => {
 		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
 		delegate = new ShellyDeviceDelegate(physical);
 		rpc.response = (method) =>
-			method === 'Shelly.GetDeviceInfo' ? Promise.resolve({ fw_id: 'fixture-firmware' }) : new Promise(() => {});
+			method === 'Shelly.GetDeviceInfo'
+				? Promise.resolve({ id: 'pilot', model: ShellyPlus1Pm.model, fw_id: 'fixture-firmware' })
+				: new Promise(() => {});
 		const pending = delegate.protectiveSwitch(
 			0,
 			{ on: true, leaseSeconds: 10, qualification: qualification('pilot') },
@@ -227,7 +238,7 @@ describe('qualified Shelly adapter boundaries', () => {
 		expect(fixture.reportSample).toHaveBeenLastCalledWith(
 			'temperature',
 			expect.objectContaining({ value: 31 }),
-			expect.objectContaining({ observedAt: expect.any(Date), sampledAt: expect.any(Date), provenance: 'live' }),
+			expect.objectContaining({ provenance: 'cached' }),
 		);
 	});
 
@@ -363,5 +374,93 @@ describe('qualified Shelly adapter boundaries', () => {
 				{ voltmeter: { 'voltmeter:100': { io: 0 } } },
 			).attribute,
 		).toBe('xvoltage');
+	});
+	it('accepts address-bound add-on probes and revokes peripheral replacement', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		rpc.response = (method) => Promise.resolve(method === 'Temperature.GetConfig' ? probeConfig : probePeripheral);
+		const fixture = await managerFixture(physical, 'probe');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'temperature:100': { tC: 25 } });
+		await flush();
+		rpc.notify({ 'temperature:100': { tC: 25 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenCalledTimes(2);
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: 25 }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+		rpc.response = (method) =>
+			Promise.resolve(
+				method === 'Temperature.GetConfig' ? probeConfig : { ds18b20: { 'temperature:100': { addr: 'replacement' } } },
+			);
+		rpc.notify({ 'temperature:100': { tC: 25 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+	});
+
+	it('full polling source loss invalidates immediately; an absent field in a partial notify does not', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const fixture = await managerFixture(physical, true);
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'input:100': { id: 100 } });
+		expect(fixture.reportSample).not.toHaveBeenCalled();
+		rpc.response = () => Promise.resolve({ 'switch:0': { output: false } });
+		await delegate.pollStatus();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+	});
+
+	it('rejects a full poll response from a previous connection generation', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		delegate = new ShellyDeviceDelegate(physical);
+		const samples = jest.fn();
+		delegate.on('sample', samples);
+		let resolve: (value: unknown) => void;
+		rpc.response = () =>
+			new Promise((done) => {
+				resolve = done;
+			});
+		const pending = delegate.pollStatus();
+		rpc.emit('disconnect', 1000, '', null);
+		rpc.emit('connect');
+		resolve({ 'temperature:100': { tC: 25 } });
+		expect(await pending).toBe(false);
+		expect(samples).not.toHaveBeenCalled();
+	});
+
+	it('detach revokes eligibility and fences pending configuration callbacks before finishing', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const fixture = await managerFixture(physical, true);
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		let resolve: (value: unknown) => void;
+		rpc.response = (method) =>
+			method === 'Input.GetConfig'
+				? new Promise((done) => {
+						resolve = done;
+					})
+				: Promise.resolve(helperPeripheral);
+		rpc.notify({ 'input:100': { xpercent: 25 } });
+		const detached = manager.detach();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+		resolve(helperConfig);
+		await detached;
+		expect(fixture.reportSample).toHaveBeenCalledTimes(1);
+		rpc.notify({ 'input:100': { xpercent: 25 } });
+		expect(fixture.reportSample).toHaveBeenCalledTimes(1);
 	});
 });
