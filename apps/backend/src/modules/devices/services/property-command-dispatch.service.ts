@@ -40,6 +40,8 @@ export interface PropertyCommandDispatchOptions {
 	readonly isRequestCurrent?: () => boolean;
 	/** Minted internal request lifetime evidence; never read from a public DTO. */
 	readonly commandEntry?: PropertyCommandEntrySnapshot;
+	/** Internal caller selection fence, captured before room/budget metadata awaits. */
+	readonly isRequestCurrent?: () => boolean;
 	readonly ttlMs?: number;
 	/** Internal absolute bound for a composite admission; never supplied by a public DTO. */
 	readonly deadlineAt?: number;
@@ -87,6 +89,8 @@ interface AdmittedWindow {
  */
 @Injectable()
 export class PropertyCommandDispatchService implements OnModuleDestroy {
+	private readonly eventEpoch = randomUUID();
+	private eventSequence = 0;
 	private disposed = false;
 	private activeComposites = 0;
 	private readonly compositeCleanups = new Set<() => void>();
@@ -117,12 +121,18 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions = {},
 	): Promise<PropertyCommandDispatchResult> {
+		const admission = this.admissionGuards?.capture?.();
+		const isCurrent = () =>
+			(options.commandEntry?.isActive() ?? true) &&
+			(options.isRequestCurrent?.() ?? true) &&
+			(admission?.isCurrent() ?? true);
+		if (!isCurrent()) return { success: false, reason: 'Command admission changed or expired' };
 		if (updates.length === 0) {
 			return { success: true };
 		}
 
 		const planner = updates.map((update) => this.composites?.get(update.property)).find(Boolean);
-		if (planner) return this.dispatchComposite(updates, options);
+		if (planner) return this.dispatchComposite(updates, { ...options, isRequestCurrent: isCurrent });
 
 		const platform = this.platformRegistryService.get(updates[0].device);
 
@@ -142,7 +152,51 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		}
 
 		try {
-			const success = await platform.processBatch([...updates]);
+			if (!isCurrent()) {
+				this.failOwned(handles);
+				return { success: false, reason: 'Command admission changed before dispatch' };
+			}
+			const canonicalUpdates =
+				this.admissionGuards?.hasGuards?.() || options.isRequestCurrent
+					? await this.canonicalOrdinaryUpdates(updates)
+					: [...updates];
+			if (!canonicalUpdates) {
+				this.failOwned(handles);
+				return { success: false, reason: 'Physical target changed before dispatch' };
+			}
+			for (const update of canonicalUpdates) {
+				await options.commandEntry?.assertAllowed(update);
+				await admission?.assertAllowed(update);
+			}
+			// Claimable providers use their prepared transport guard all the way through queued/retried I/O.
+			let success: boolean;
+			if (
+				options.isRequestCurrent ||
+				canonicalUpdates.some((update) => this.admissionGuards?.requiresGuardedDispatch?.(update))
+			) {
+				const byDevice = new Map<string, IDevicePropertyData[]>();
+				for (const update of canonicalUpdates) {
+					const batch = byDevice.get(update.device.id) ?? [];
+					batch.push(update);
+					byDevice.set(update.device.id, batch);
+				}
+				success = true;
+				const deadline = Date.now() + (options.ttlMs ?? 3000);
+				for (const batch of byDevice.values()) {
+					const prepared = await this.platformRegistryService.get(batch[0].device)?.prepareCompositeBatch?.(batch);
+					const guard = () =>
+						isCurrent() &&
+						Date.now() < deadline &&
+						!!prepared?.isCurrent() &&
+						handles.every(
+							(handle) => this.commandWindowService.peekGeneration(handle.canonicalPropertyId) === handle.generation,
+						);
+					if (!prepared || !guard() || !(await prepared.dispatch(guard))) {
+						success = false;
+						break;
+					}
+				}
+			} else success = isCurrent() && (await platform.processBatch([...updates]));
 
 			if (!success) {
 				this.failOwned(handles);
@@ -156,6 +210,29 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 
 			throw error;
 		}
+	}
+
+	private async canonicalOrdinaryUpdates(
+		updates: readonly IDevicePropertyData[],
+	): Promise<IDevicePropertyData[] | null> {
+		const result: IDevicePropertyData[] = [];
+		for (const update of updates) {
+			const current = await this.propertyMetadata.findOne(update.property.id);
+			if (!current) return null;
+			const id = this.valueSourceRegistry.resolve(current);
+			if (id !== this.valueSourceRegistry.resolve(update.property)) return null;
+			const property = id === current.id ? current : await this.propertyMetadata.findOne(id);
+			if (!property) return null;
+			const channel =
+				typeof property.channel === 'string' ? await this.channelsService.findOne(property.channel) : property.channel;
+			const device =
+				typeof channel?.device === 'string' ? await this.devicesService.findOne(channel.device) : channel?.device;
+			if (!channel || !device) return null;
+			const validation = validatePropertyCommandValue(property, update.value);
+			if (!validation.valid || validation.value === undefined) return null;
+			result.push({ property, channel, device, value: validation.value });
+		}
+		return result;
 	}
 
 	/** Composite commands reuse physical admission and exact generation readback, never aggregate equality. */
@@ -252,6 +329,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					if (outcome.status === 'accepted') Object.assign(outcome, { status: 'failed', reason });
 				const composite: CompositeCommandOutcome = { id, status: 'failed', children: outcomes };
 				this.events?.emit('DevicesModule.CompositeCommand.Completed', {
+					epoch: this.eventEpoch,
+					sequence: ++this.eventSequence,
 					...composite,
 					intentId: options.intentId,
 					requestId: options.requestId,
@@ -358,6 +437,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			if (signature === lastPublished) return;
 			lastPublished = signature;
 			this.events?.emit('DevicesModule.CompositeCommand.Progress', {
+				epoch: this.eventEpoch,
+				sequence: ++this.eventSequence,
 				id,
 				intentId: options.intentId,
 				requestId: options.requestId,
@@ -505,6 +586,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 									dispatchActive &&
 									!this.disposed &&
 									(options.commandEntry?.isActive() ?? true) &&
+									(options.isRequestCurrent?.() ?? true) &&
 									Date.now() < deadline &&
 									(plan.isDispatchCurrent?.() ?? true) &&
 									handles.every(
@@ -591,6 +673,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				children: outcomes.map((child) => ({ ...child })),
 			};
 			this.events?.emit('DevicesModule.CompositeCommand.Completed', {
+				epoch: this.eventEpoch,
+				sequence: ++this.eventSequence,
 				...composite,
 				intentId: options.intentId,
 				requestId: options.requestId,
@@ -694,7 +778,12 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					return null;
 				}
 
-				if (this.disposed || (options.deadlineAt !== undefined && Date.now() >= options.deadlineAt)) {
+				if (
+					this.disposed ||
+					!(options.commandEntry?.isActive() ?? true) ||
+					!(options.isRequestCurrent?.() ?? true) ||
+					(options.deadlineAt !== undefined && Date.now() >= options.deadlineAt)
+				) {
 					this.failOwned(admitted.map(({ handle }) => handle));
 					return null;
 				}
