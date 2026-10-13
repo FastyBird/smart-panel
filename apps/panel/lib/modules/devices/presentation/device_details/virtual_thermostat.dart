@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_commands.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:flutter/material.dart';
@@ -124,23 +125,19 @@ class _VirtualThermostatDeviceDetailState
   }
 
   void _setMode(String mode) {
-    final heating = _command(
-      'heating_enabled',
-      mode == 'heat' || mode == 'auto',
-    );
-    final cooling = _command(
-      'cooling_enabled',
-      mode == 'cool' || mode == 'auto',
-    );
+    final heating = _command('heating_enabled', false);
+    final cooling = _command('cooling_enabled', false);
     final policy = _configuration?['policy'] as Map?;
     final hasHeating = _number(policy?['heatingSetpoint']) != null;
     final hasCooling = _number(policy?['coolingSetpoint']) != null;
-    if ((hasHeating && heating == null) || (hasCooling && cooling == null)) {
-      return;
-    }
-    unawaited(
-      _send([if (heating != null) heating, if (cooling != null) cooling]),
+    final commands = virtualThermostatModeCommands(
+      mode: mode,
+      hasHeating: hasHeating,
+      hasCooling: hasCooling,
+      heatingEnabled: heating,
+      coolingEnabled: cooling,
     );
+    if (commands != null) unawaited(_send(commands));
   }
 
   void _adjustSetpoint(String role, double current, double delta) {
