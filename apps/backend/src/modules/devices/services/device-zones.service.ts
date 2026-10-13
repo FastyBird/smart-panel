@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -15,6 +15,8 @@ import {
 } from '../devices.exceptions';
 import { DeviceZoneEntity } from '../entities/device-zone.entity';
 import { DeviceEntity } from '../entities/devices.entity';
+
+import { DeviceCreationContext } from './device-creation-context';
 
 @Injectable()
 export class DeviceZonesService {
@@ -244,7 +246,7 @@ export class DeviceZonesService {
 	async setDeviceZones(
 		deviceId: string,
 		zoneIds: string[],
-		{ initialPlacement = false }: { initialPlacement?: boolean } = {},
+		{ initialPlacement = false, creation }: { initialPlacement?: boolean; creation?: DeviceCreationContext } = {},
 	): Promise<SpaceEntity[]> {
 		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
 
@@ -293,7 +295,7 @@ export class DeviceZonesService {
 		const zoneTable = this.repository.metadata.tableName;
 		const deviceTable = this.deviceRepository.metadata.tableName;
 
-		await this.repository.manager.transaction(async (manager): Promise<void> => {
+		const persist = async (manager: EntityManager): Promise<void> => {
 			const visible = initialPlacement
 				? [{ id: deviceId }]
 				: await manager.query<{ id: string }[]>(
@@ -314,7 +316,9 @@ export class DeviceZonesService {
 			for (const zoneId of zoneIds) {
 				await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
 			}
-		});
+		};
+		if (creation) await persist(creation.manager);
+		else await this.repository.manager.transaction(persist);
 
 		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
 
@@ -329,7 +333,7 @@ export class DeviceZonesService {
 			return validatedZones;
 		}
 
-		this.eventEmitter.emit(EventType.DEVICE_UPDATED, current);
+		if (!creation) this.eventEmitter.emit(EventType.DEVICE_UPDATED, current);
 
 		return validatedZones;
 	}
