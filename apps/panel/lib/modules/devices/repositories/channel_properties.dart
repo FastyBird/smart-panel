@@ -375,6 +375,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   Future<bool> setMultipleValues({
     required List<PropertyCommandItem> properties,
     PropertyCommandContext? context,
+    bool requireAtomicBatch = false,
   }) async {
     if (properties.isEmpty) {
       return true;
@@ -419,25 +420,32 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         payload['context'] = contextPayload;
       }
 
-      // Use command dispatch with WebSocket primary and API fallback
-      final result = await _commandDispatch.dispatch(
-        event: DevicesModuleConstants.setPropertyEvent,
-        handler: DevicesModuleEventHandlerName.setProperty,
-        payload: payload,
-        apiFallback: () => _setMultiplePropertiesViaApi(properties),
-      );
+      // The REST fallback sends one property at a time. Climate mode updates
+      // must reach the server as one scoped batch or fail without changing mode.
+      final result = requireAtomicBatch
+          ? await _commandDispatch.dispatchWebSocketOnly(
+              event: DevicesModuleConstants.setPropertyEvent,
+              handler: DevicesModuleEventHandlerName.setProperty,
+              payload: payload,
+            )
+          : await _commandDispatch.dispatch(
+              event: DevicesModuleConstants.setPropertyEvent,
+              handler: DevicesModuleEventHandlerName.setProperty,
+              payload: payload,
+              apiFallback: () => _setMultiplePropertiesViaApi(properties),
+            );
 
-      if (result.success) {
+      if (result?.success == true) {
         if (kDebugMode) {
           debugPrint(
-            '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command via ${result.channel.name} for ${properties.length} properties, requestId: $requestId',
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully sent batch command via ${result?.channel.name} for ${properties.length} properties, requestId: $requestId',
           );
         }
         return true;
       } else {
         if (kDebugMode) {
           debugPrint(
-            '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${result.reason}',
+            '[DEVICES MODULE][CHANNEL PROPERTIES] Failed batch command for ${properties.length} properties, reason: ${result?.reason ?? 'atomic transport unavailable'}',
           );
         }
         return false;

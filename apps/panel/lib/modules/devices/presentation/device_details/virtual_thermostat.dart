@@ -97,7 +97,10 @@ class _VirtualThermostatDeviceDetailState
     return null;
   }
 
-  Future<void> _send(List<PropertyCommandItem> commands) async {
+  Future<void> _send(
+    List<PropertyCommandItem> commands, {
+    bool requireAtomicBatch = false,
+  }) async {
     if (_busy || commands.isEmpty || !locator.isRegistered<DevicesService>()) {
       return;
     }
@@ -107,6 +110,7 @@ class _VirtualThermostatDeviceDetailState
           .setMultiplePropertyValues(
             properties: commands,
             context: const PropertyCommandContext(origin: 'panel.device'),
+            requireAtomicBatch: requireAtomicBatch,
           );
       if (!accepted) throw StateError('Thermostat command was rejected.');
       await _refreshAfterCommand();
@@ -137,7 +141,7 @@ class _VirtualThermostatDeviceDetailState
       heatingEnabled: heating,
       coolingEnabled: cooling,
     );
-    if (commands != null) unawaited(_send(commands));
+    if (commands != null) unawaited(_send(commands, requireAtomicBatch: true));
   }
 
   void _adjustSetpoint(String role, double current, double delta) {

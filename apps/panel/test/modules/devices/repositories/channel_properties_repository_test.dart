@@ -12,13 +12,15 @@ import 'package:fastybird_smart_panel/plugins/devices-virtual/models/property.da
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeSocketService extends SocketService {
+  final bool connected;
+  _FakeSocketService({this.connected = true});
   String? lastEvent;
   dynamic lastData;
   String? lastHandler;
   int callCount = 0;
 
   @override
-  bool get isConnected => true;
+  bool get isConnected => connected;
 
   @override
   Future<void> sendCommand(
@@ -35,7 +37,8 @@ class _FakeSocketService extends SocketService {
   }
 }
 
-class _RecordingChannelPropertiesRepository extends ChannelPropertiesRepository {
+class _RecordingChannelPropertiesRepository
+    extends ChannelPropertiesRepository {
   final List<ChannelPropertyModel> replacements = [];
 
   _RecordingChannelPropertiesRepository({
@@ -109,6 +112,39 @@ void main() {
   );
 
   group('ChannelPropertiesRepository.setMultipleValues', () {
+    test(
+      'atomic climate batch does not fall back to sequential REST writes',
+      () async {
+        final socket = _FakeSocketService(connected: false);
+        final repo = ChannelPropertiesRepository(
+          apiClient: DevicesModuleClient(Dio(), baseUrl: 'http://localhost'),
+          commandDispatch: CommandDispatchService(socketService: socket),
+        );
+        addTearDown(repo.dispose);
+
+        final success = await repo.setMultipleValues(
+          properties: const [
+            PropertyCommandItem(
+              deviceId: 'thermostat',
+              channelId: 'heat',
+              propertyId: 'on',
+              value: true,
+            ),
+            PropertyCommandItem(
+              deviceId: 'thermostat',
+              channelId: 'cool',
+              propertyId: 'on',
+              value: false,
+            ),
+          ],
+          requireAtomicBatch: true,
+        );
+
+        expect(success, isFalse);
+        expect(socket.callCount, 0);
+      },
+    );
+
     test('builds payload with request_id, properties and context', () async {
       final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
       final socket = _FakeSocketService();
@@ -198,19 +234,24 @@ void main() {
       expect(data.containsKey('context'), isFalse);
     });
 
-    test('returns true and does not send when properties list is empty', () async {
-      final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');
-      final socket = _FakeSocketService();
-      final repo = ChannelPropertiesRepository(
-        apiClient: apiClient,
-        commandDispatch: CommandDispatchService(socketService: socket),
-      );
+    test(
+      'returns true and does not send when properties list is empty',
+      () async {
+        final apiClient = DevicesModuleClient(
+          Dio(),
+          baseUrl: 'http://localhost',
+        );
+        final socket = _FakeSocketService();
+        final repo = ChannelPropertiesRepository(
+          apiClient: apiClient,
+          commandDispatch: CommandDispatchService(socketService: socket),
+        );
 
-      final success = await repo.setMultipleValues(properties: const []);
-      expect(success, isTrue);
-      expect(socket.callCount, 0);
-      expect(socket.lastEvent, isNull);
-    });
+        final success = await repo.setMultipleValues(properties: const []);
+        expect(success, isTrue);
+        expect(socket.callCount, 0);
+        expect(socket.lastEvent, isNull);
+      },
+    );
   });
 }
-
