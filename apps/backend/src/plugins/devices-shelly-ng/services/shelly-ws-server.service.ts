@@ -10,6 +10,7 @@ import { AppInstanceHolder } from '../../../common/services/app-instance-holder.
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { shellySampleEvidence } from '../contracts/native-temperature.contract';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
@@ -155,6 +156,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 	}
 
 	private handleMessage(ws: WebSocket, data: Buffer, ip: string): void {
+		const observedAt = new Date();
 		if (this.stopped) {
 			return;
 		}
@@ -191,7 +193,7 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		}
 
 		if (frame.method === 'NotifyStatus' || frame.method === 'NotifyFullStatus') {
-			this.handleStatusNotification(deviceId, frame.params ?? {}, ip);
+			this.handleStatusNotification(deviceId, frame.params ?? {}, ip, observedAt);
 		} else if (frame.method === 'NotifyEvent') {
 			this.logger.debug(`Event from device=${deviceId}: ${JSON.stringify(frame.params)}`);
 			this.handleEventNotification(deviceId, frame.params ?? {}, ip);
@@ -211,7 +213,12 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		}
 	}
 
-	private handleStatusNotification(deviceId: string, params: Record<string, unknown>, ip: string): void {
+	private handleStatusNotification(
+		deviceId: string,
+		params: Record<string, unknown>,
+		ip: string,
+		observedAt = new Date(),
+	): void {
 		this.logger.log(`Status update from sleeping device=${deviceId} at ${ip}`);
 
 		const delegate = this.delegatesManager.get(deviceId);
@@ -222,6 +229,11 @@ export class ShellyWsServerService implements OnModuleDestroy {
 					continue;
 				}
 
+				delegate.emitNotificationSample(
+					compKey,
+					values as Record<string, unknown>,
+					shellySampleEvidence(params.ts, observedAt),
+				);
 				for (const [attr, val] of Object.entries(values as Record<string, unknown>)) {
 					delegate.emitNotificationValue(compKey, attr, val);
 				}
