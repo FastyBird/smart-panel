@@ -51,16 +51,20 @@ class VirtualChannelPropertyModel extends ChannelPropertyModel {
   bool get isProjecting =>
       valueOrigin == DevicesVirtualPluginDataChannelPropertyValueOrigin.source;
 
-  // Using the serialized value keeps this handwritten mapper compatible while generated
-  // clients are regenerated from the backend's new enum member.
+  /// Whether a runtime producer computes this property's measurement.
+  /// Uses the serialized origin while generated clients gain the enum member.
   bool get isDerived => valueOrigin.json == 'derived';
 
+  /// Retains historical samples while hiding unqualified derived readings.
   @override
   PropertyValueState? get valueState {
     final state = super.valueState;
     if (!isDerived || state?.producer != null) return state;
-    return const PropertyValueState(
-      producer: PropertyProducerState(
+    return PropertyValueState(
+      value: state?.value,
+      lastUpdated: state?.lastUpdated,
+      trend: state?.trend,
+      producer: const PropertyProducerState(
         quality: PropertyProducerQuality.unavailable,
         reasons: ['runtime_unavailable'],
         revision: 0,

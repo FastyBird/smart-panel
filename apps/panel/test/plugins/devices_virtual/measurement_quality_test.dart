@@ -19,6 +19,7 @@ void main() {
     'value': {
       'value': 12.5,
       'last_updated': now.toIso8601String(),
+      'trend': 'rising',
       if (producer != null) 'producer': producer,
     },
   };
@@ -43,14 +44,23 @@ void main() {
   test(
     'retained scalar without runtime qualification cannot become a reading',
     () {
-      final view = buildChannelPropertyView(
-        VirtualChannelPropertyModel.fromJson(property()),
-      );
-      expect(view.value, isNull);
-      expect(
-        view.valueState?.producer?.quality,
-        PropertyProducerQuality.unavailable,
-      );
+      final model = VirtualChannelPropertyModel.fromJson(property());
+      for (final retained in [
+        model,
+        model.copyWith(),
+        model.copyWith().copyWith(),
+      ]) {
+        final view = buildChannelPropertyView(retained);
+        expect(view.value, isNull);
+        expect(view.valueState?.value?.value, 12.5);
+        expect(view.valueState?.lastUpdated, now);
+        expect(view.valueState?.trend, ValueTrend.rising);
+        expect(
+          view.valueState?.producer?.quality,
+          PropertyProducerQuality.unavailable,
+        );
+        expect(view.valueState?.producer?.reasons, ['runtime_unavailable']);
+      }
     },
   );
   test(

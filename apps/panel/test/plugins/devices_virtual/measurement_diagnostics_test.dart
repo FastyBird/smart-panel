@@ -1,9 +1,16 @@
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/plugins/devices-virtual/presentation/measurement_diagnostics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockDevicesService extends Mock implements DevicesService {}
 
 void main() {
   Widget app(
@@ -68,6 +75,61 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  testWidgets('distinguishes two resolved inputs from the same channel', (
+    tester,
+  ) async {
+    final service = MockDevicesService();
+    locator.registerSingleton<DevicesService>(service);
+    addTearDown(() => locator.unregister<DevicesService>());
+    final channel = ChannelView(
+      id: 'source-channel',
+      type: 'generic',
+      name: 'Measurements',
+      device: 'source-device',
+      properties: const [],
+    );
+    final device = DeviceView(
+      id: 'source-device',
+      type: 'generic',
+      name: 'Meter',
+      channels: [channel],
+    );
+    for (final id in ['voltage', 'current']) {
+      when(() => service.getChannelProperty(id)).thenReturn(
+        ChannelPropertyView(id: id, type: 'generic', channel: channel.id),
+      );
+    }
+    when(() => service.getChannel(channel.id)).thenReturn(channel);
+    when(() => service.getDevice(device.id)).thenReturn(device);
+    await tester.pumpWidget(
+      app(
+        property(),
+        (_) async => const MeasurementDiagnostics(
+          transform: false,
+          inputs: [
+            MeasurementInputDiagnostic(
+              identity: 'voltage',
+              sourceId: 'voltage',
+            ),
+            MeasurementInputDiagnostic(
+              identity: 'current',
+              sourceId: 'current',
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(
+      find.textContaining('Meter / Measurements / voltage:'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Meter / Measurements / current:'),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('shows converter input error separately from live quality', (
     tester,
   ) async {
