@@ -2,7 +2,7 @@ import { QualifiedPropertySample } from '../../../modules/devices/models/propert
 import { PropertyProducerQuality } from '../../../modules/devices/models/property-value-state.model';
 import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 
-export type AggregateExclusion = 'missing' | 'incompatible' | 'offline' | 'invalid' | 'stale';
+export type AggregateExclusion = 'missing' | 'incompatible' | 'offline' | 'invalid' | 'stale' | 'disabled';
 export interface AggregateInputEvidence {
 	readonly id: string;
 	readonly sourceIdentity: string;
@@ -116,11 +116,16 @@ export function evaluateAggregate(
 		});
 	const reasons = inputs.filter((input) => input.exclusion).map((input) => `${input.exclusion}:${input.id}`);
 	const policyValid =
+		evidence.length >= 2 &&
+		evidence.length <= 256 &&
+		new Set(evidence.map((input) => input.id)).size === evidence.length &&
+		new Set(evidence.map((input) => input.sourceIdentity)).size === evidence.length &&
 		Number.isInteger(minimumValidInputs) &&
 		minimumValidInputs >= 1 &&
 		minimumValidInputs <= evidence.length &&
-		Number.isFinite(maximumAgeSeconds) &&
+		Number.isInteger(maximumAgeSeconds) &&
 		maximumAgeSeconds > 0 &&
+		maximumAgeSeconds <= 86400 &&
 		aggregateOperators.has(operator) &&
 		Number.isFinite(now.getTime());
 	if (!policyValid || included.length < minimumValidInputs)

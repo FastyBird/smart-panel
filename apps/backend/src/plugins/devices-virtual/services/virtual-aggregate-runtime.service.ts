@@ -50,6 +50,8 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 	private active = false;
 	private requested = 0;
 	private completed = 0;
+	private readonly dirty = new Set<string>();
+	private readonly sourceOutputs = new Map<string, Set<string>>();
 	private running?: Promise<void>;
 
 	constructor(
@@ -83,7 +85,15 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			const listener = (payload: { id?: string; propertyId?: string }) => {
 				// Outputs emit their own producer state; never feed those publications back into themselves.
 				if (event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED && this.outputs.has(payload?.id)) return;
-				this.requestRecompute();
+				if (
+					[
+						EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
+						EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
+						EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
+					].includes(event)
+				) {
+					this.requestRecompute(payload?.propertyId ?? payload?.id);
+				} else this.requestRecompute();
 			};
 			this.events.on(event, listener);
 			this.stopListeners.push(() => this.events.off(event, listener));
@@ -96,7 +106,9 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		);
 		// Precise input deadlines are evaluated with the fixed sample clock; bounded backstop handles
 		// expiry and connectivity even if an integration fails to emit an expected event.
-		this.timer = setInterval(() => this.requestRecompute(), 1_000);
+		this.timer = setInterval(() => {
+			if (this.running === undefined) this.requestRecompute();
+		}, 1_000);
 		this.timer.unref();
 		this.requestRecompute();
 		await this.flush();
@@ -111,6 +123,8 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		for (const output of this.outputs.values()) this.producers.unregister(output.lease);
 		this.outputs.clear();
 		this.diagnostics.clear();
+		this.dirty.clear();
+		this.sourceOutputs.clear();
 	}
 
 	isActive(): boolean {
@@ -130,11 +144,16 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			: null;
 	}
 
-	requestRecompute(): void {
+	requestRecompute(sourcePropertyId?: string): void {
 		if (!this.active) return;
-		this.requested++;
-		// Revoke in-flight evaluations immediately, including triggers at the same millisecond.
-		for (const output of this.outputs.values()) this.producers.beginEvaluation(output.lease);
+		const affected = sourcePropertyId ? this.sourceOutputs.get(sourcePropertyId) : undefined;
+		if (sourcePropertyId && !affected?.size) return;
+		if (!sourcePropertyId) this.requested++;
+		for (const id of affected ?? this.outputs.keys()) {
+			this.dirty.add(id);
+			const output = this.outputs.get(id);
+			if (output) this.producers.beginEvaluation(output.lease);
+		}
 		if (this.running === undefined) {
 			this.running = this.drain().finally(() => {
 				this.running = undefined;
@@ -149,7 +168,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 	}
 
 	private async drain(): Promise<void> {
-		while (this.active && this.completed !== this.requested) {
+		while (this.active && (this.completed !== this.requested || this.dirty.size > 0)) {
 			const generation = this.requested;
 			try {
 				await this.evaluateAll(generation);
@@ -164,16 +183,26 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 
 	private async evaluateAll(generation: number): Promise<void> {
 		const configs = await this.dataSource.manager.find(VirtualAggregateConfigEntity);
+		if (this.completed !== generation) {
+			for (const config of configs) this.dirty.add(config.outputPropertyId);
+		}
 		if (!this.current(generation)) return;
 		const ids = new Set(configs.map((config) => config.outputPropertyId));
+		for (const id of this.dirty) if (!ids.has(id)) this.dirty.delete(id);
+		for (const [sourceId, outputIds] of this.sourceOutputs) {
+			for (const id of outputIds) if (!ids.has(id)) outputIds.delete(id);
+			if (!outputIds.size) this.sourceOutputs.delete(sourceId);
+		}
 		for (const [id, output] of this.outputs)
 			if (!ids.has(id)) {
 				this.producers.unregister(output.lease);
 				this.outputs.delete(id);
 				this.diagnostics.delete(id);
+				this.dirty.delete(id);
 			}
 		for (const config of configs) {
 			if (!this.current(generation)) return;
+			if (!this.dirty.delete(config.outputPropertyId)) continue;
 			const property = await this.dataSource.manager.findOne(VirtualChannelPropertyEntity, {
 				where: { id: config.outputPropertyId },
 				relations: ['channel', 'channel.device'],
@@ -188,7 +217,13 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			output.property = property;
 			const evaluation = this.producers.beginEvaluation(output.lease);
 			const channel = property.channel as ChannelEntity;
+			if ((channel.device as DeviceEntity)?.enabled === false) {
+				this.producers.invalidate(output.lease, ['output_disabled']);
+				continue;
+			}
+
 			if (
+				config.schemaVersion !== 1 ||
 				this.graph.isQuarantined(property.id) ||
 				!isEligibleVirtualMeasurement(property, channel, channel.device as DeviceEntity)
 			) {
@@ -201,6 +236,16 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				where: { outputPropertyId: property.id },
 				order: { id: 'ASC' },
 			});
+			for (const [sourceId, outputIds] of this.sourceOutputs) {
+				outputIds.delete(property.id);
+				if (!outputIds.size) this.sourceOutputs.delete(sourceId);
+			}
+			for (const input of inputs)
+				if (input.sourcePropertyId) {
+					const outputIds = this.sourceOutputs.get(input.sourcePropertyId) ?? new Set<string>();
+					outputIds.add(property.id);
+					this.sourceOutputs.set(input.sourcePropertyId, outputIds);
+				}
 			const sources: {
 				input: VirtualAggregateInputEntity;
 				property: ChannelPropertyEntity | null;
@@ -248,19 +293,22 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 						source && this.producers.owns(source.id)
 							? new Date(this.producers.read(source.id)?.producer.expiresAt ?? NaN)
 							: undefined,
-					exclusion: !source
-						? 'missing'
-						: incompatible
-							? 'incompatible'
-							: status !== ConnectionState.UNKNOWN && !OnlineDeviceState.includes(status)
-								? 'offline'
-								: sample &&
-									  !validatePropertyCommandValue(
-											{ ...source, invalid: source.invalid ?? null, step: null } as ChannelPropertyEntity,
-											sample.value,
-									  ).valid
-									? 'invalid'
-									: undefined,
+					exclusion:
+						device?.enabled === false
+							? 'disabled'
+							: !source
+								? 'missing'
+								: incompatible
+									? 'incompatible'
+									: status !== ConnectionState.UNKNOWN && !OnlineDeviceState.includes(status)
+										? 'offline'
+										: sample &&
+											  !validatePropertyCommandValue(
+													{ ...source, invalid: source.invalid ?? null, step: null } as ChannelPropertyEntity,
+													sample.value,
+											  ).valid
+											? 'invalid'
+											: undefined,
 				};
 			});
 			const result = evaluateAggregate(
@@ -272,6 +320,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				property.step,
 			);
 			if (!this.current(generation)) return;
+			if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) continue;
 			this.diagnostics.set(property.id, result);
 			await this.publish(output, evaluation, result, now);
 		}
@@ -287,6 +336,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		result: AggregateEvaluation,
 		now: Date,
 	): Promise<void> {
+		if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) return;
 		if (result.quality === 'unavailable') {
 			if (this.producers.version(output.lease) === evaluation?.epoch)
 				this.values.invalidateDerived(output.property, output.lease, result.reasons, now);

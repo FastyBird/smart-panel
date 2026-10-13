@@ -339,6 +339,170 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		});
 	});
 
+	it('ignores unrelated heartbeats and timer ticks during an evaluation and coalesces relevant bursts', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			unrelated = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await start();
+		await sample(a, 20);
+		await sample(b, 22);
+		const original = database.manager.findOne.bind(database.manager) as typeof database.manager.findOne;
+		const runBlocked = async (during: () => Promise<void>) => {
+			let release: () => void;
+			let started: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const entered = new Promise<void>((resolve) => {
+				started = resolve;
+			});
+			let blocked = false;
+			const read = jest.spyOn(database.manager, 'findOne').mockImplementation(async (entity, options) => {
+				if (entity === ChannelPropertyEntity && (options.where as { id?: string }).id === a.id && !blocked) {
+					blocked = true;
+					started();
+					await gate;
+				}
+				return original(entity, options);
+			});
+			runtime.requestRecompute();
+			await entered;
+			await during();
+			release();
+			await runtime.flush();
+			const calls = read.mock.calls.filter(
+				([entity, options]) => entity === ChannelPropertyEntity && (options.where as { id?: string }).id === a.id,
+			).length;
+			read.mockRestore();
+			return calls;
+		};
+		const first = await runBlocked(async () => {
+			jest.setSystemTime(base + 1000);
+			await values.writeSampleWithState(unrelated, 90, {
+				sampledAt: new Date(),
+				receivedAt: new Date(),
+				provenance: 'live',
+			});
+			jest.advanceTimersByTime(1000);
+		});
+		expect(first).toBe(1);
+		expect(outputState(output)).toMatchObject({ value: 21, producer: { quality: 'good' } });
+		const second = await runBlocked(async () => {
+			for (const value of [23, 24, 25]) {
+				jest.setSystemTime(Date.now() + 1000);
+				await values.writeSampleWithState(b, value, {
+					sampledAt: new Date(),
+					receivedAt: new Date(),
+					provenance: 'live',
+				});
+			}
+		});
+		expect(second).toBe(2);
+		expect(outputState(output)).toMatchObject({
+			value: 22.5,
+			producer: { quality: 'good', sampledAt: new Date(base).toISOString() },
+		});
+	});
+
+	it('clears disabled output authority and excludes disabled source devices', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b], 1);
+		await start();
+		await sample(a, 20);
+		await sample(b, 22);
+		const sourceDevice = (a.channel as ChannelEntity).device as DeviceEntity;
+		await database.manager.update(DeviceEntity, sourceDevice.id, { enabled: false });
+		events.emit(EventType.DEVICE_UPDATED, sourceDevice);
+		await runtime.flush();
+		expect(outputState(output)).toMatchObject({ value: 22, producer: { quality: 'degraded' } });
+		expect(runtime.readDiagnostics(output.id).inputs.find((input) => input.sourceIdentity === a.id).exclusion).toBe(
+			'disabled',
+		);
+		const outputDevice = (output.channel as ChannelEntity).device as DeviceEntity;
+		await database.manager.update(DeviceEntity, outputDevice.id, { enabled: false });
+		events.emit(EventType.DEVICE_UPDATED, outputDevice);
+		await runtime.flush();
+		expect(outputState(output)).toMatchObject({ value: null, producer: { reasons: ['output_disabled'] } });
+		await database.manager.update(DeviceEntity, outputDevice.id, { enabled: true });
+		events.emit(EventType.DEVICE_UPDATED, outputDevice);
+		await runtime.flush();
+		expect(outputState(output)).toMatchObject({
+			value: 22,
+			producer: { quality: 'degraded', sampledAt: new Date(base).toISOString() },
+		});
+	});
+
+	it('bounds aggregate expiry by a qualified upstream transformed temperature', async () => {
+		const a = await measurement(),
+			transform = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, transform]);
+		await start();
+		await sample(a, 20);
+		const lease = producers.register(transform, 1);
+		await values.publishDerived(transform, lease, 24, {
+			quality: 'degraded',
+			reasons: ['source_degraded'],
+			sampledAt: new Date(base),
+			evaluatedAt: new Date(base),
+			expiresAt: new Date(base + 3000),
+		});
+		await runtime.flush();
+		expect(outputState(output)).toMatchObject({
+			value: 22,
+			producer: { quality: 'degraded', expiresAt: new Date(base + 3000).toISOString() },
+		});
+		jest.setSystemTime(base + 3000);
+		runtime.requestRecompute();
+		await runtime.flush();
+		expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+	});
+
+	it('cannot resurrect old config while its real output storage write is in flight', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await start();
+		await sample(a, 20);
+		let release: () => void;
+		let started: () => void;
+		const blocked = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const entered = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		storage.writePoints.mockImplementationOnce(() => {
+			started();
+			return blocked;
+		});
+		await values.writeSampleWithState(b, 22, {
+			sampledAt: new Date(base),
+			receivedAt: new Date(base),
+			provenance: 'live',
+		});
+		await entered;
+		await configs.configureAggregate(
+			output.id,
+			Object.assign(new ConfigureVirtualAggregateDto(), {
+				expectedRevision: 1,
+				operator: VirtualAggregateOperator.MAX,
+				minimumValidInputs: 2,
+				maximumAgeSeconds: 10,
+				inputs: [{ sourcePropertyId: a.id }, { sourcePropertyId: b.id }],
+			}),
+		);
+		expect(outputState(output)).toMatchObject({ value: null, producer: { revision: 2, quality: 'unavailable' } });
+		release();
+		await runtime.flush();
+		expect(outputState(output)).toMatchObject({ value: 22, producer: { revision: 2, quality: 'good' } });
+	});
+
 	it('quarantines an unsupported imported graph without poisoning physical qualification or looping', async () => {
 		const a = await measurement(),
 			b = await measurement(),

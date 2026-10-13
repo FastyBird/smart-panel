@@ -77,6 +77,16 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		return Object.freeze({ epoch: entry.epoch, generation: ++entry.generation });
 	}
 
+	isEvaluationCurrent(lease: PropertyProducerLease, evaluation: PropertyProducerEvaluation): boolean {
+		const entry = this.entries.get(lease.propertyId);
+		return (
+			!!entry &&
+			entry.lease === lease &&
+			entry.epoch === evaluation?.epoch &&
+			entry.generation === evaluation?.generation
+		);
+	}
+
 	canCommit(
 		lease: PropertyProducerLease,
 		publication: DerivedPropertyPublication,

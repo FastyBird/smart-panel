@@ -50,7 +50,7 @@ export class VirtualProducerBindingModel {
 
 	@ApiPropertyOptional({
 		description: 'Reason input was excluded',
-		enum: ['missing', 'incompatible', 'offline', 'invalid', 'stale'],
+		enum: ['missing', 'incompatible', 'offline', 'invalid', 'stale', 'disabled'],
 		nullable: true,
 	})
 	@Expose()
