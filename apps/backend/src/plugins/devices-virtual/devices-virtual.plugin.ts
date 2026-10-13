@@ -30,8 +30,8 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
-import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
+import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME,

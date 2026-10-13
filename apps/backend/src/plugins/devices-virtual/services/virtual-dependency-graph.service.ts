@@ -67,9 +67,14 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			.where('property.sourcePropertyId IS NOT NULL')
 			.callListeners(false)
 			.getMany();
+		const transforms = await manager.find(VirtualTransformSourceEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const inputs = await manager.find(VirtualAggregateInputEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const bindings = await manager.find(VirtualLightGroupBindingEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		return [
+			...transforms.map((input) => ({
+				outputPropertyId: input.outputPropertyId,
+				sourcePropertyId: input.sourcePropertyId,
+			})),
 			...projections
 				.filter((property) => property.isProjecting)
 				.map((property) => ({ outputPropertyId: property.id, sourcePropertyId: property.sourcePropertyId })),

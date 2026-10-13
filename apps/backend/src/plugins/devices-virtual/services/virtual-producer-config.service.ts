@@ -45,7 +45,10 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability, commonLightCapabilities } from './virtual-light-group.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
-import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
+import {
+	isEligibleVirtualMeasurement,
+	isEligibleVirtualTransformedTemperature,
+} from './virtual-source-eligibility.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
 @Injectable()

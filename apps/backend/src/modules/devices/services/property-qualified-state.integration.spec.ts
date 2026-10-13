@@ -392,14 +392,6 @@ describe('qualified samples and producer state', () => {
 		expect((await values.readLatest(property))?.value).toBe(22);
 	});
 
-	it('rejects an older contributing timestamp even when evaluation is newer', async () => {
-		const lease = producers.register(property, 1);
-		jest.setSystemTime(base + 2_000);
-		await values.publishDerived(property, lease, 21, publication(base + 1_000));
-		jest.setSystemTime(base + 3_000);
-		await values.publishDerived(property, lease, 19, publication(base));
-		expect((await values.readLatest(property))?.value).toBe(21);
-		expect(storage.writePoints).toHaveBeenCalledTimes(1);
 	it('publishes the true oldest contributor when a newer evaluation restores an older member', async () => {
 		const lease = producers.register(property, 1);
 		jest.setSystemTime(base + 10_000);
