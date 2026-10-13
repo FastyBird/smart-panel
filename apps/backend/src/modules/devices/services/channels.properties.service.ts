@@ -879,6 +879,24 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
 	}
 
+	/** Uses exactly the ordinary update/window admission path; evidence is not a public DTO field. */
+	reportSample<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
+		id: string,
+		updateDto: TUpdateDTO,
+		evidence: PropertySampleEvidence,
+		options: Pick<ChannelPropertyUpdateOptions, 'skipUnchangedMetadata'> = {},
+	): Promise<TProperty> {
+		const captured = Object.freeze({
+			sampledAt: new Date(evidence.sampledAt),
+			receivedAt: new Date(evidence.receivedAt),
+			provenance: evidence.provenance,
+			...(evidence.isCurrent ? { isCurrent: evidence.isCurrent } : {}),
+			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
+			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
+		});
+		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
+	}
+
 	async update<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
 		id: string,
 		updateDto: TUpdateDTO,
