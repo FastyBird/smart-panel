@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -59,6 +61,7 @@ class RecordingSocket extends SocketService {
 
 class RecordingDio extends Mock implements Dio {
   int calls = 0;
+  Future<void>? gate;
   Map<String, dynamic>? sentRequest;
   Options? requestOptions;
   Map<String, dynamic> response = {};
@@ -77,6 +80,7 @@ class RecordingDio extends Mock implements Dio {
     calls++;
     sentRequest = data as Map<String, dynamic>;
     onRequest?.call(sentRequest!);
+    if (gate != null) await gate;
     requestOptions = options;
     return Response<T>(
       requestOptions: RequestOptions(path: path),
@@ -227,6 +231,61 @@ void main() {
       expect(socket.sent, 0);
       expect(dio.requestOptions?.receiveTimeout, const Duration(seconds: 35));
       expect(dio.requestOptions?.extra?['retryExhausted'], true);
+      service.dispose();
+    },
+  );
+
+  test(
+    'a reconnect does not discard a correlated authoritative REST result or replay the request',
+    () async {
+      final socket = RecordingSocket()..connected = false;
+      final gate = Completer<void>();
+      final dio = RecordingDio()..gate = gate.future;
+      dio.response = {
+        'data': {
+          'request_id': '',
+          'composites': [
+            {
+              'id': 'rest-parent',
+              'status': 'partial',
+              'children': [
+                {'memberId': 'member', 'status': 'confirmed'},
+                {'memberId': 'offline', 'status': 'unavailable'},
+              ],
+            },
+          ],
+        },
+      };
+      dio.onRequest = (request) =>
+          (dio.response['data'] as Map<String, dynamic>)['request_id'] =
+              request['request_id'];
+      final service = CompositeCommandService(
+        socketService: socket,
+        dispatch: CommandDispatchService(socketService: socket),
+        dio: dio,
+      );
+      final result = service.send(deviceId: 'group', properties: targets);
+      await Future<void>.delayed(Duration.zero);
+      socket.connected = true;
+      socket.connection?.call(true);
+      socket.emit('DevicesModule.CompositeCommand.Completed', {
+        'id': 'obsolete-socket-parent',
+        'requestId': dio.sentRequest!['request_id'],
+        'epoch': 'server',
+        'sequence': 1,
+        'status': 'confirmed',
+        'targets': [
+          {'deviceId': 'group', 'channelId': 'light', 'propertyId': 'on'},
+        ],
+        'children': [],
+      });
+      expect(service.latestFor('group')?.status, 'pending');
+      gate.complete();
+      expect((await result).status, 'partial');
+      expect(service.latestFor('group')?.id, 'rest-parent');
+      expect(service.latestFor('group')?.children.last.status, 'unavailable');
+      expect(dio.calls, 1);
+      expect(socket.sent, 0);
       service.dispose();
     },
   );

@@ -78,6 +78,7 @@ class CompositeCommandService extends ChangeNotifier {
       handler: DevicesModuleEventHandlerName.setProperty,
       payload: payload,
       apiFallback: () async {
+        ticket.restDispatched = true;
         final response = await (_providedDio ?? locator<Dio>())
             .post<Map<String, dynamic>>(
               '/modules/devices/property-commands',
@@ -93,11 +94,17 @@ class CompositeCommandService extends ChangeNotifier {
             : null;
       },
     );
-    if (_pending[requestId] != ticket ||
-        ticket.generation != _connectionGeneration) {
+    final ownsPending = _pending[requestId] == ticket;
+    if (ownsPending) {
+      _pending.remove(requestId);
+    }
+    if (_disposed ||
+        _latestRequest[deviceId] != requestId ||
+        !ownsPending ||
+        (!ticket.restDispatched &&
+            ticket.generation != _connectionGeneration)) {
       return _uncertain(ticket);
     }
-    _pending.remove(requestId);
     final composite = result.data?['composites'];
     if (composite is List &&
         composite.isNotEmpty &&
@@ -175,10 +182,12 @@ class CompositeCommandService extends ChangeNotifier {
 
   void _connectionChanged(bool connected) {
     _connectionGeneration++;
-    for (final ticket in _pending.values) {
+    for (final ticket in _pending.values.toList()) {
+      // Reconnection retires socket event authority; a correlated HTTP response remains authoritative.
+      if (ticket.restDispatched) continue;
       _publish(ticket, _uncertain(ticket));
+      _pending.remove(ticket.requestId);
     }
-    _pending.clear();
     notifyListeners();
   }
 
@@ -209,6 +218,7 @@ class _PendingComposite {
   String? epoch;
   int sequence = 0;
   CompositeCommandOutcome? outcome;
+  bool restDispatched = false;
 
   _PendingComposite({
     required this.requestId,
