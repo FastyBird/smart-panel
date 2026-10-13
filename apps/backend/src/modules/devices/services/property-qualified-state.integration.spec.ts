@@ -187,7 +187,8 @@ describe('qualified samples and producer state', () => {
 		let current = true;
 		await report(20, { ...evidence(), isCurrent: () => current });
 		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
-		expect(accepted.mock.calls[0][0].sample).not.toHaveProperty('isCurrent');
+		const [event] = accepted.mock.calls[0] as [{ sample: unknown }];
+		expect(event.sample).not.toHaveProperty('isCurrent');
 		current = false;
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
 	});
