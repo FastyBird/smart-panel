@@ -34,7 +34,8 @@ interface Reply {
 interface LocalCall {
 	method: string;
 	params: Record<string, unknown>;
-	callback: (result: unknown, code: number) => void;
+	callback: (result: unknown, code: number, message?: string, userdata?: unknown) => void;
+	userdata?: unknown;
 }
 class DeviceFixture {
 	time = 1000;
@@ -59,8 +60,8 @@ class DeviceFixture {
 				getUptimeMs: () => this.time,
 				getComponentConfig: () => this.floorConfiguration,
 				getComponentStatus: (type: string) => (type === 'temperature' ? { tC: this.floor } : { output: this.output }),
-				call: (method: string, params: LocalCall['params'], callback: LocalCall['callback']) =>
-					this.calls.push({ method, params, callback }),
+				call: (method: string, params: LocalCall['params'], callback: LocalCall['callback'], userdata?: unknown) =>
+					this.calls.push({ method, params, callback, userdata }),
 				addStatusHandler: (handler: DeviceFixture['statusHandler']) => {
 					this.statusHandler = handler;
 				},
@@ -85,7 +86,7 @@ class DeviceFixture {
 			this.output = call.params.on as boolean;
 		}
 		if (method === 'Switch.GetStatus') result = { id: 0, output: this.output };
-		call.callback(result, code);
+		call.callback(result, code, undefined, call.userdata);
 		return call;
 	}
 	boot(): void {
@@ -163,13 +164,43 @@ describe('offline Shelly guard protocol candidate', () => {
 		expect(device.on(oldEpoch).error).toBe('on_not_admitted');
 		expect(device.calls).toEqual([]);
 	});
+	it('cannot acknowledge a fence from an older OFF/readback while epoch persistence is pending', () => {
+		const device = fixture();
+		device.floorReport(null);
+		device.complete('Switch.Set'); // Hold this old GetStatus.
+		const fence = device.request('SPGuardFence');
+		device.complete('Switch.GetStatus');
+		expect(fence.result).toBeUndefined();
+		expect(device.calls.map((call) => call.method)).toEqual(['KVS.Set']);
+		device.complete('KVS.Set');
+		expect(fence.result).toBeUndefined();
+		device.complete('Switch.Set');
+		expect(fence.result).toBeUndefined();
+		device.complete('Switch.GetStatus');
+		expect(fence.result?.localOnDrained).toBe(true);
+	});
+	it('waits for an older readback after persistence and then requires a fresh OFF/readback cycle', () => {
+		const device = fixture();
+		device.floorReport(null);
+		device.complete('Switch.Set');
+		const fence = device.request('SPGuardFence');
+		device.complete('KVS.Set');
+		expect(device.calls.map((call) => call.method)).toEqual(['Switch.GetStatus']);
+		device.complete('Switch.GetStatus');
+		expect(fence.result).toBeUndefined();
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		expect(fence.result?.localOnDrained).toBe(true);
+	});
+
 	it('holds the barrier when ON completes before epoch persistence', () => {
 		const device = fixture();
 		device.on();
 		const fence = device.request('SPGuardFence');
 		device.complete('Switch.Set');
-		expect(device.calls.map((call) => call.method)).toEqual(['KVS.Set']);
+		expect(device.calls.map((call) => call.method)).toEqual(['KVS.Set', 'Switch.Set']);
 		expect(fence.result).toBeUndefined();
+		device.complete('Switch.Set'); // Best-effort emergency OFF cannot acknowledge the barrier.
 		device.complete('KVS.Set');
 		device.complete('Switch.Set');
 		device.complete('Switch.GetStatus');

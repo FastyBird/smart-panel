@@ -65,6 +65,8 @@ describe('virtual thermostat durable runtime', () => {
 	let allowLateOn: boolean;
 	let proofAllowed: (propertyId: string) => boolean;
 	let proofCalls: number;
+	let installedQualifications: Map<string, ThermostatInstalledQualification>;
+	let providerCurrent: boolean;
 	let proofMutation: (proof: ThermostatReleaseOrderingEvidence) => ThermostatReleaseOrderingEvidence;
 	const sample = (id: string, value: number | boolean): void => {
 		const at = new Date();
@@ -95,6 +97,8 @@ describe('virtual thermostat durable runtime', () => {
 		proofAllowed = () => true;
 		proofMutation = (proof) => proof;
 		proofCalls = 0;
+		installedQualifications = new Map();
+		providerCurrent = true;
 		events = new EventEmitter2();
 		controllerId = uuid();
 		sensorId = uuid();
@@ -228,8 +232,14 @@ describe('virtual thermostat durable runtime', () => {
 			registerRuntimeAdmission: () => () => undefined,
 			invalidate: jest.fn(),
 			refresh: jest.fn().mockResolvedValue(undefined),
-			qualification: (claim: VirtualThermostatActuatorClaimEntity) =>
-				({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+			qualification: (claim: VirtualThermostatActuatorClaimEntity) => {
+				if (!installedQualifications.has(claim.physicalIdentity))
+					installedQualifications.set(
+						claim.physicalIdentity,
+						Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+					);
+				return installedQualifications.get(claim.physicalIdentity);
+			},
 			mintAuthority: () => ({}),
 			isAuthorized: () => true,
 		} as unknown as VirtualThermostatClaimsService;
@@ -262,6 +272,7 @@ describe('virtual thermostat durable runtime', () => {
 								scope,
 								observedAt,
 								isCurrent,
+								sourceIsCurrent: () => providerCurrent,
 								physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device) ?? '',
 								connectionIdentity: 'ordered-fake-connection',
 								coveredCommandIds: ids,
@@ -311,6 +322,56 @@ describe('virtual thermostat durable runtime', () => {
 			await runtime.flush();
 		}
 	};
+
+	it('requires new drainage when installed qualification changes under the same claim identity and revision', async () => {
+		await finishRestartReconciliation();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+		installedQualifications.set(
+			claim.physicalIdentity,
+			Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+		);
+		proofAllowed = () => false;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await finishRestartReconciliation();
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		proofAllowed = () => true;
+		await finishRestartReconciliation();
+		expect(sentTargets.some((send) => send.on)).toBe(true);
+	});
+	it('revokes a queued ON after qualification replacement and retains its reservation', async () => {
+		let resume: () => void;
+		onGate = new Promise<void>((resolve) => {
+			resume = resolve;
+		});
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await waitForOnJournal();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		installedQualifications.set(
+			claim.physicalIdentity,
+			Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+		);
+		proofAllowed = () => false;
+		resume();
+		await finishRestartReconciliation();
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(
+			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
+		).toBe(1);
+	});
+	it('revokes the stored release barrier when its stable provider connection lease changes', async () => {
+		await finishRestartReconciliation();
+		providerCurrent = false;
+		proofAllowed = () => false;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await finishRestartReconciliation();
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+	});
 
 	it('accepts a newly admitted provider OFF sample instead of reusing pre-reconciliation timestamps', async () => {
 		runtime.onModuleDestroy();

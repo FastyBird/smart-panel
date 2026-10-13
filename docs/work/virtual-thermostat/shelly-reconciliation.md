@@ -154,3 +154,16 @@ Still required before installed activation:
    reports, disconnects and opposing interlocks. Record observed bounds; refuse qualification if any fails.
 
 Offline tests establish software behavior, not firmware execution bounds or an installed heater's safety.
+
+## Release barrier regression corrections
+
+A fence cannot borrow an earlier watchdog OFF/readback. Epoch persistence must succeed first, and the
+acknowledging OFF plus readback cycle must have started for that persisted fence epoch. The candidate
+serializes existing native IO without overwriting its busy ownership; an older callback can only trigger
+the later cycle. Emergency OFF stays available while persistence is pending and cannot mint proof.
+
+Runtime release evidence is bound to the exact immutable installed qualification object and the stable
+provider connection/configuration lease. Replacing qualification under the same physical identity or
+claim revision invalidates the earlier barrier and queued ON admission. A newly qualified profile must
+complete its own OFF/drain reconciliation. This stable source lease is separate from a single evaluation
+window so ordinary new sensor reports do not permanently suspend a correctly reconciled controller.

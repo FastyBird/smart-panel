@@ -32,7 +32,7 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 
-import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 import {
@@ -107,9 +107,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly epochs = new Map<string, number>();
 	private readonly contexts = new Map<string, ControllerContext>();
 	private readonly diagnostics = new Map<string, ThermostatRuntimeDiagnostic>();
-	private readonly reconciled = new Set<string>();
+	private readonly reconciled = new Map<
+		string,
+		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
+	>();
 	private isReconciled(claim: VirtualThermostatActuatorClaimEntity): boolean {
-		return this.reconciled.has(`${claim.id}:${claim.revision}`);
+		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
+		const qualification = this.claims.qualification(claim, false);
+		return !!proof && !!qualification && proof.qualification === qualification && proof.sourceIsCurrent();
 	}
 	private readonly contacts = new Map<string, VirtualWindowContactState>();
 	private readonly trends = new Map<string, VirtualWindowTrendState>();
@@ -681,6 +686,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			acceptedOff.provenance !== 'live' ||
 			acceptedOff.quality !== 'good' ||
 			!proof.isCurrent?.() ||
+			!proof.sourceIsCurrent?.() ||
+			this.claims.qualification(claim, context.claims.length > 1) !== qualification ||
 			proof.scope?.controllerId !== context.config.controllerId ||
 			proof.scope.controllerRevision !== context.config.revision ||
 			proof.scope.claimId !== claim.id ||
@@ -725,7 +732,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				await manager.save(branch);
 			}),
 		);
-		this.reconciled.add(`${claim.id}:${claim.revision}`);
+		this.reconciled.set(`${claim.id}:${claim.revision}`, { qualification, sourceIsCurrent: proof.sourceIsCurrent });
 		if (claim.state === 'releasing') {
 			const authority = this.claims.mintAuthority(claim.id, 'off');
 			await this.claims.completeRelease(

@@ -89,6 +89,7 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 				observedAt: now,
 				provenance: 'live',
 				isCurrent: () => sourceCurrent && admission,
+				sourceIsCurrent: () => sourceCurrent,
 			},
 		};
 		accepted = {

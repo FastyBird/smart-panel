@@ -120,13 +120,13 @@ function fail(reason) {
 		pendingFence = null;
 	}
 }
-function readBack(result, code) {
+function readBack(result, code, message, cycleEpoch) {
 	busy = false;
 	if (code !== 0 || !result || result.id !== cfg.componentId || result.output !== false) {
 		fail('off_readback_unconfirmed');
 		return;
 	}
-	if (pendingFence) {
+	if (pendingFence && fencePersisted && cycleEpoch === epoch) {
 		let request = pendingFence;
 		pendingFence = null;
 		// Covers this script's earlier local IO only. External writer exclusion and
@@ -141,21 +141,30 @@ function readBack(result, code) {
 			observedAtMs: now(),
 			evidenceId: cfg.evidenceId,
 		});
+	} else if (pendingFence && fencePersisted) {
+		driveOff();
 	}
 }
-function offDone(result, code) {
+function offDone(result, code, message, cycleEpoch) {
 	if (code !== 0 || !result || typeof result.was_on !== 'boolean') {
 		busy = false;
 		fail('off_execution_unknown');
 		return;
 	}
-	Shelly.call('Switch.GetStatus', { id: cfg.componentId }, readBack);
+	Shelly.call('Switch.GetStatus', { id: cfg.componentId }, readBack, cycleEpoch);
 }
 function emergencyDone() {
 	emergencyBusy = false;
 }
 function driveOff() {
 	until = 0;
+	if (pendingFence && !fencePersisted) {
+		if (!emergencyBusy) {
+			emergencyBusy = true;
+			Shelly.call('Switch.Set', { id: cfg.componentId, on: false }, emergencyDone);
+		}
+		return;
+	}
 	if (busy) {
 		// Best-effort emergency OFF does not constitute a drain barrier. Never let a
 		// stalled ON callback suppress all OFF attempts. Serial OFF/readback follows
@@ -168,7 +177,7 @@ function driveOff() {
 	}
 	busy = true;
 	// OFF never receives a flip-back timer. Native auto_on must be disabled by qualification.
-	Shelly.call('Switch.Set', { id: cfg.componentId, on: false }, offDone);
+	Shelly.call('Switch.Set', { id: cfg.componentId, on: false }, offDone, pendingFence && fencePersisted ? epoch : null);
 }
 function onDone(result, code) {
 	busy = false;
@@ -182,8 +191,7 @@ function onDone(result, code) {
 	}
 	if (pendingFence || !ready || !floorSafe() || now() >= until) {
 		if (request) reject(request, 'on_superseded');
-		if (pendingFence && !fencePersisted) busy = true;
-		else driveOff();
+		driveOff();
 		return;
 	}
 	if (request) request.result({ epoch: epoch, accepted: true, untilMs: until });
@@ -196,11 +204,8 @@ function persistedFence(result, code) {
 		return;
 	}
 	fencePersisted = true;
-	// A previous ON's completion callback owns busy until it has observed execution.
-	if (!pendingOn) {
-		busy = false;
-		driveOff();
-	}
+	// Existing ON/OFF/readback owns busy until completion. Never overwrite its ownership.
+	if (!busy) driveOff();
 }
 function fence(request) {
 	if (!ready || pendingFence || epoch >= 2147483646) {
@@ -213,7 +218,6 @@ function fence(request) {
 	fencePersisted = false;
 	// Persist before acknowledging the barrier. A concurrently running ON callback
 	// must not run OFF/readback before this persistence operation has completed.
-	if (!busy) busy = true;
 	Shelly.call('KVS.Set', { key: cfg.epochKey, value: epoch }, persistedFence);
 }
 function energize(request, params) {

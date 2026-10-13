@@ -25,6 +25,8 @@ export interface ThermostatReleaseOrderingEvidence {
 	readonly scope: Omit<ThermostatReconciliationScope, 'qualification'>;
 	readonly observedAt: Date;
 	readonly isCurrent: () => boolean;
+	/** Stable provider lease, independent of a single evaluation/command admission window. */
+	readonly sourceIsCurrent: () => boolean;
 	readonly physicalIdentity: string;
 	readonly connectionIdentity: string;
 	readonly coveredCommandIds: readonly string[];
@@ -117,7 +119,7 @@ export class VirtualThermostatTransportService {
 				const session = platform.prepareGuardRpcSession(target, qualification.profile);
 				if (!session) return null;
 				const readback = await session.fence(1000, isCurrent);
-				if (!readback || !readback.isCurrent()) return null;
+				if (!readback || !readback.isCurrent() || typeof readback.evidence.sourceIsCurrent !== 'function') return null;
 				await platform.admitGuardFenceSample(target, readback);
 				const sample = this.values.readQualifiedSample(target.property, 30_000);
 				if (
@@ -139,6 +141,7 @@ export class VirtualThermostatTransportService {
 					offSample: sample,
 					observedAt: readback.evidence.observedAt,
 					isCurrent: readback.isCurrent,
+					sourceIsCurrent: readback.evidence.sourceIsCurrent,
 					scope: {
 						controllerId: scope.controllerId,
 						controllerRevision: scope.controllerRevision,
