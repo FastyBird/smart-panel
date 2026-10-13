@@ -29,9 +29,7 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
 
   factory Zigbee2mqttChannelPropertyModel.fromJson(Map<String, dynamic> json) {
     final rawValue = json['value'];
-    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
-        ? PropertyValueState.fromJson(rawValue)
-        : null;
+    final PropertyValueState? valueState = PropertyValueState.fromRaw(rawValue);
 
     return Zigbee2mqttChannelPropertyModel(
       channel: json['channel'],

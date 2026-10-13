@@ -77,6 +77,7 @@ import { PropertyCommandDispatchService } from './services/property-command-disp
 import { PropertyCommandWindowService } from './services/property-command-window.service';
 import { PropertyCommandService } from './services/property-command.service';
 import { PropertyMetadataService } from './services/property-metadata.service';
+import { PropertyProducerRegistryService } from './services/property-producer.registry.service';
 import { PropertyStateCoordinatorService } from './services/property-state-coordinator.service';
 import { PropertyTimeseriesService } from './services/property-timeseries.service';
 import { PropertyValueLockService } from './services/property-value-lock.service';
@@ -149,6 +150,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		PropertyValueSourceRegistryService,
 		PropertyValueLockService,
 		PropertyValueService,
+		PropertyProducerRegistryService,
 		PropertyMetadataService,
 		DeviceCommandGraphService,
 		PropertyStateCoordinatorService,
@@ -192,6 +194,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		PlatformRegistryService,
 		PropertyValueSourceRegistryService,
 		PropertyValueService,
+		PropertyProducerRegistryService,
 		PropertyMetadataService,
 		DeviceCommandGraphService,
 		PropertyStateCoordinatorService,

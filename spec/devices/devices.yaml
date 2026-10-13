@@ -1261,6 +1261,12 @@ lighting:
       multiple: true
       description:
         en: Analog control input.
+    temperature:
+      category: temperature
+      required: false
+      multiple: true
+      description:
+        en: Reports external probe or native helper temperature measurements in degrees Celsius.
 
 outlet:
   category: outlet
@@ -1333,6 +1339,12 @@ outlet:
       multiple: true
       description:
         en: Analog control input.
+    temperature:
+      category: temperature
+      required: false
+      multiple: true
+      description:
+        en: Reports external probe or native helper temperature measurements in degrees Celsius.
 
 pump:
   category: pump
@@ -1558,6 +1570,12 @@ switcher:
       multiple: true
       description:
         en: Analog control input.
+    temperature:
+      category: temperature
+      required: false
+      multiple: true
+      description:
+        en: Reports external probe or native helper temperature measurements in degrees Celsius.
 
 valve:
   category: valve

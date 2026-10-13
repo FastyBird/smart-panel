@@ -4,6 +4,7 @@
  * Based on Zigbee2MQTT MQTT API documentation.
  * https://www.zigbee2mqtt.io/guide/usage/mqtt_topics_and_messages.html
  */
+import type { ZigbeeSourceIdentity } from '../contracts/sample-source.contract';
 
 // =============================================================================
 // MQTT Adapter Callbacks
@@ -14,6 +15,18 @@
  * Used for direct communication between adapter and service without event bus
  */
 export interface Z2mDeviceStateMetadata {
+	/** Captured at packet receipt before asynchronous mapping or queueing. */
+	observedAt?: Date;
+	sampledAt?: Date;
+	/** Internal transport evidence/refusal reason; never a hardware qualification guarantee. */
+	qualificationReason?: string;
+	/** Internal generation guard; never supplied through API DTOs. */
+	isCurrent?: () => boolean;
+	/** Internal proof that published fields are not merged from the gateway cache. */
+	measurementFieldsAreLive?: boolean;
+	/** Stable connection/configuration authority, independent of individual packet arrival. */
+	sourceIsCurrent?: () => boolean;
+	sourceIdentity?: ZigbeeSourceIdentity | null;
 	isRetained?: boolean;
 	isCached?: boolean;
 	isDup?: boolean;
@@ -21,6 +34,9 @@ export interface Z2mDeviceStateMetadata {
 }
 
 export interface Z2mAdapterCallbacks {
+	/** Current bridge/devices metadata, captured before any asynchronous restoration/adoption. */
+	onSourceRegistryReceived?: (identities: readonly ZigbeeSourceIdentity[]) => void | Promise<void>;
+	onSourceRegistryUnavailable?: () => void;
 	onBridgeOnline?: () => void | Promise<void>;
 	onBridgeOffline?: () => void | Promise<void>;
 	onDevicesReceived?: (devices: Z2mDevice[]) => void | Promise<void>;
