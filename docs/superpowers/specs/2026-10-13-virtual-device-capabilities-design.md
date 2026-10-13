@@ -10,11 +10,11 @@ The completed wiring implementation remains supported. The next virtual-devices 
 three capabilities below work through backend, admin authoring, panel controls, scenes and space intents, with persistent
 configuration, source repair, diagnostics and regression tests.
 
-| Capability         | Required behavior                                                                                                                                                                                                                      |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Aggregate sensor   | Combine several temperature measurements into one ordinary read-only temperature sensor. Support mean, median, minimum and maximum; expose freshness, membership and exclusions.                                                       |
-| Actuator group     | Present several physical light channels as one controllable light. Broadcast supported commands, derive reported state, expose mixed/partial state and account for every member result.                                                |
-| Virtual thermostat | Regulate heating and cooling from a physical or aggregated room sensor. Support heat, cool, auto and off according to configured outputs, floor overheat protection, physical window contacts and optional automatic window detection. |
+| Capability         | Required behavior                                                                                                                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aggregate sensor   | Combine several temperature measurements into one ordinary read-only temperature sensor. Support mean, median, minimum and maximum; expose freshness, membership and exclusions.                                              |
+| Actuator group     | Present several physical light channels as one controllable light. Broadcast supported commands, derive reported state, expose mixed/partial state and account for every member result.                                       |
+| Virtual thermostat | Regulate heating and cooling from a physical or aggregated room sensor. Support heat, cool, auto and off according to configured outputs, floor overheat protection, physical window contacts and automatic window detection. |
 
 The floor sensor's primary purpose is protection: when its configured threshold is reached, heating must be released
 even if the room still demands heat. Displaying floor temperature is supplementary. It is not blended into the ambient
@@ -63,9 +63,9 @@ exclusive actuator ownership, release priority, asynchronous confirmation and re
 
 The first requested installation uses Shelly for the actuator, Zigbee for ambient temperature and Shelly for floor
 temperature. The initial Zigbee adapter is the existing Zigbee2MQTT integration. There is currently no physical window
-contact in that installation, so automatic window detection must work independently; contact support remains optional
-and ready for later configuration. Shelly generation/model and installed equipment protections are qualification
-inputs, not guarantees inferred from the brand. The spike must distinguish NG and v1 protocol capabilities and record
+contact in that installation, so automatic window detection must work independently. Physical-contact support is a
+minimum capability, while configuring contacts is optional for each installation. Shelly generation/model and installed
+equipment protections are qualification inputs, not guarantees inferred from the brand. The spike must distinguish NG and v1 protocol capabilities and record
 which concrete profiles it proves. It must not operate the user's live hardware without an explicit hardware test task.
 
 ### Pilot source evidence to prove in VD2-1 / VD2-2a
@@ -178,12 +178,14 @@ measurement rows. Update projection/index/status propagation and admin mapping/r
 platform's virtual write rejection and prohibition on projection-of-projection remain. Guard controller source roles
 through the same backend candidate policy, not a UI-only filter.
 
-Graph mutation takes a plugin-wide graph mutation lock before sorted device structure locks and the existing shared
-SQLite transaction boundary. Inside the transaction reserve/check the authoritative graph revision before validating
-against committed bindings, then apply bindings and revision together. Every participating graph edit follows the same
-lock order; per-device locks or a DTO preview alone cannot prevent cross-device cycle creation. A separate writer
-process must acquire the same database revision reservation before its validation read. Actuator unique constraints
-remain the ownership backstop; real SQLite interleaving tests must prove the revision/transaction algorithm.
+Graph mutation uses the existing global, re-entrant `DeviceStructureLockService` exclusively before entering the
+serialized SQLite transaction boundary. Inside the transaction reserve/check the authoritative graph revision before
+validating committed bindings, then apply bindings and revision together. Every participating graph edit follows the
+existing structure-lock-before-transaction order, including generic property mutations. Adding a plugin graph lock
+before that existing lock would invert the order used by core structural writers. A DTO preview alone cannot prevent
+cross-device cycle creation. A separate writer process must reserve the same database revision before its validation
+read. Actuator unique constraints remain the ownership backstop; real SQLite interleaving tests must prove the
+revision/transaction algorithm.
 
 ## Aggregate sensors
 
@@ -304,7 +306,7 @@ values instead of silently clamping a control request.
 Normal thresholds: heating starts below its lower threshold and releases at its upper threshold; cooling starts above
 its upper threshold and releases at its lower threshold. Ordinary cycle protection may delay energizing or a non-safety
 changeover. User OFF, protective floor limit, invalid mandatory data and a window pause dispatch release immediately.
-All inhibiting policies, including the optional heuristic window pause, request OFF immediately. This profile has no
+All inhibiting policies, including a heuristic window pause, request OFF immediately. This profile has no
 minimum-on rule that delays a release; its cycle protection gates subsequent energizing/changeover. Configured release
 retries remain active until confirmed; retry timing is bounded and visible.
 
@@ -335,7 +337,9 @@ unknown and inhibits control. All mandatory contacts must be freshly closed befo
 resume; unavailable contacts cannot be treated as closed. Preserve the user's mode and setpoints during the pause.
 When the pause ends, reevaluate the latest user configuration rather than replaying a saved pre-pause ON command.
 
-Optional automatic detection is a temperature-trend heuristic with a separately reported `suspected_open` reason.
+Automatic detection is a minimum capability and must pause and recover independently when no physical contact is
+available. Enabling it is optional when configured physical contacts provide the window policy. It is a
+temperature-trend heuristic with a separately reported `suspected_open` reason.
 For heating use a sustained falling trend; for cooling use a sustained rising trend. Configure sampling window, minimum
 samples, slope threshold, confirmation duration, recovery/cooldown and maximum heuristic pause. Do not treat startup,
 aggregate membership/quorum changes, stale samples or a sensor replacement as a temperature trend. Rebaseline after

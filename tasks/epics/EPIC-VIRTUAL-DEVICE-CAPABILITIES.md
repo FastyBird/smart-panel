@@ -49,7 +49,9 @@ and record the corresponding issue references here.
       simultaneous opposed actuation.
 - [ ] When enabled for a heating branch, floor protection has a configured threshold, immediate heat release, valid-input
       requirement and recovery hysteresis.
-- [ ] Physical window contacts and optional automatic detection pause/recover without restoring obsolete user commands.
+- [ ] Physical window contact support and automatic detection are minimum capabilities. Automatic detection pauses and
+      recovers without a physical contact; configured contacts also pause and recover. Neither restores obsolete user
+      commands.
 - [ ] A light group exposes compatible common controls, mixed/partial state and member-level outcomes.
 - [ ] Missing/stale inputs, delayed commands, restart, deletion and remap have explicit tested behavior.
 - [ ] Unsupported actuator combinations are refused consistently by preview and persistence.
@@ -60,8 +62,10 @@ and record the corresponding issue references here.
 ## Initial qualification target
 
 Shelly actuators, Zigbee room temperatures (existing Zigbee2MQTT adapter) and Shelly floor temperatures. No physical
-window contact is currently available, so the first installation uses automatic detection; optional contact support is
-still part of the minimum. Qualify actual Shelly generation/model and installed equipment protections before activation.
+window contact is currently available, so the first installation uses automatic detection. Physical-contact support is
+part of the minimum; configuring contacts is optional per installation, and automatic detection may be disabled when
+configured contacts provide the window policy. Qualify actual Shelly generation/model and installed equipment
+protections before activation.
 Independent aggregates/groups can proceed while the controller platform spike is completed.
 
 ## Future extensions
