@@ -23,7 +23,7 @@ const emit = (id: string, sequence: number, epoch = 'epoch-a', status?: string) 
 			epoch,
 			...(status ? { status } : {}),
 			targets: [{ deviceId: 'group' }],
-			children: [{ memberId: id, propertyId: 'power', status: status === 'confirmed' ? 'confirmed' : 'accepted' }],
+			children: [{ memberId: id, propertyId: 'power', value: sequence, status: status === 'confirmed' ? 'confirmed' : 'accepted' }],
 		},
 	});
 const setup = () => {
@@ -45,10 +45,24 @@ describe('light group parent outcome ordering', () => {
 		emit('current', 2);
 		emit('former', 3, 'epoch-a', 'confirmed');
 		expect(outcomes.progress.value[0].memberId).toBe('current');
+		expect(outcomes.terminal.value).toMatchObject([{ id: 'former', status: 'confirmed' }]);
 		emit('current', 4, 'epoch-a', 'confirmed');
 		emit('former', 5);
 		expect(outcomes.progress.value).toEqual([]);
-		expect(outcomes.terminal.value[0].id).toBe('current');
+		expect(outcomes.terminal.value.map((entry) => entry.id)).toEqual(['current', 'former']);
+	});
+	it('keeps tracked terminal history across out-of-order delivery without resurrecting a former parent', () => {
+		const { outcomes } = setup();
+		emit('former', 1);
+		emit('current', 4);
+		emit('former', 3, 'epoch-a', 'partial');
+		expect(outcomes.progress.value[0].memberId).toBe('current');
+		expect(outcomes.terminal.value).toMatchObject([{ id: 'former', status: 'partial' }]);
+		emit('former', 8, 'epoch-a', 'partial');
+		emit('current', 6);
+		expect(outcomes.progress.value[0].value).toBe(6);
+		emit('former', 7, 'epoch-a', 'confirmed');
+		expect(outcomes.terminal.value[0].status).toBe('partial');
 	});
 	it('rejects a retired server epoch and clears active claims on disconnect', () => {
 		const { outcomes, wrapper } = setup();

@@ -1,3 +1,4 @@
+import { ElSelect } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -149,6 +150,52 @@ describe('light group actual state and command detail', () => {
 			}))
 		);
 		expect(mocks.POST.mock.calls[0][1].body.request_id).toEqual(expect.any(String));
+		wrapper.unmount();
+	});
+	it.each([
+		[false, true],
+		[true, true],
+		[false, false],
+		[true, false],
+	])('retains stable identities with replacement %s and missing channel %s', async (replace, missingChannel) => {
+		const missing = {
+			...configuration,
+			members: configuration.members.map((member) => ({
+				...member,
+				source_channel: member.id === 'a' && missingChannel ? null : member.source_channel,
+				bindings: member.bindings.map((binding) => ({
+					...binding,
+					id: `binding-${member.id}`,
+					source_property: member.id === 'a' ? null : binding.source_property,
+				})),
+			})),
+		};
+		mocks.GET.mockResolvedValue({ data: { data: missing } });
+		mocks.POST.mockResolvedValue({ data: { data: missing } });
+		mocks.PUT.mockResolvedValue({ data: { data: missing } });
+		const wrapper = await mountDetail();
+		await click(wrapper, 'editTitle');
+		if (replace) {
+			wrapper
+				.findAllComponents(ElSelect)
+				.find((select) => select.attributes('data-test-id') === 'repair-member-a')!
+				.vm.$emit('update:modelValue', 'c');
+		} else {
+			wrapper.findComponent({ name: 'VirtualLightGroupMembers' }).vm.$emit('update:modelValue', ['a', 'b', 'c']);
+		}
+		await flushPromises();
+		await click(wrapper, 'preview');
+		const draft = mocks.POST.mock.calls[0][1].body;
+		expect(draft.members[0]).toEqual({
+			id: 'a',
+			source_channel: replace ? 'c' : missingChannel ? null : 'a',
+			bindings: [{ id: 'binding-a', output_property: 'group-channel-on', source_property: replace ? 'c-on' : null }],
+		});
+		expect(draft.members[1]).toMatchObject({ id: 'b', bindings: [{ id: 'binding-b' }] });
+		if (!replace)
+			expect(draft.members[2]).toEqual({ source_channel: 'c', bindings: [{ output_property: 'group-channel-on', source_property: 'c-on' }] });
+		await click(wrapper, 'save');
+		expect(mocks.PUT.mock.calls[0][1].body).toEqual(draft);
 		wrapper.unmount();
 	});
 	it('keeps save disabled when the server refuses a repair preview', async () => {

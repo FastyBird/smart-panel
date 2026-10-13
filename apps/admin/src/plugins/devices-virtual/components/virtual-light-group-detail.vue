@@ -101,6 +101,27 @@
 					:disabled="busy"
 					:candidates="candidates"
 				/>
+				<div
+					v-for="member in missingMembers"
+					:key="member.id"
+					class="mt-2"
+				>
+					<label>{{ t('devicesVirtualPlugin.lightGroup.missingMember', { identity: member.source_identity }) }}</label>
+					<el-select
+						v-model="replacementIds[member.id]"
+						:disabled="busy"
+						clearable
+						:placeholder="t('devicesVirtualPlugin.lightGroup.selectMembers')"
+						:data-test-id="`repair-member-${member.id}`"
+					>
+						<el-option
+							v-for="candidate in candidates"
+							:key="candidate.id"
+							:value="candidate.id"
+							:label="candidate.label"
+						/>
+					</el-select>
+				</div>
 				<el-button
 					:disabled="busy || memberIds.length < 2"
 					@click="previewEdit"
@@ -131,7 +152,7 @@
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCard, ElInputNumber } from 'element-plus';
+import { ElAlert, ElButton, ElCard, ElInputNumber, ElOption, ElSelect } from 'element-plus';
 
 import { injectSockets, injectStoresManager, useBackend } from '../../../common';
 import type { IDevice } from '../../../modules/devices';
@@ -160,6 +181,14 @@ const busy = ref(false);
 const error = ref<string | null>(null);
 const editing = ref(false);
 const memberIds = ref<string[]>([]);
+const replacementIds = ref<Record<string, string | undefined>>({});
+const missingMembers = computed(
+	() =>
+		configuration.value?.members.filter(
+			(member) =>
+				(!member.source_channel || member.bindings.some((binding) => !binding.source_property)) && memberIds.value.includes(member.source_identity)
+		) ?? []
+);
 const previewKey = ref<string | null>(null);
 const requestedValues = ref<Record<string, number | undefined>>({});
 const numericBound = (format: (number[] | string[]) | null, index: number) =>
@@ -198,7 +227,7 @@ const outcomeRows = computed(() => [
 	...terminal.value.filter((entry) => !outcomes.terminal.value.some((event) => event.id === entry.id)),
 ]);
 watch(
-	memberIds,
+	[memberIds, replacementIds],
 	() => {
 		previewKey.value = null;
 	},
@@ -233,6 +262,7 @@ const edit = async () => {
 					await Promise.all(channels.findForDevice(device.id).map((channel) => properties.fetch({ channelId: channel.id })));
 				})
 		);
+		replacementIds.value = {};
 		memberIds.value = configuration.value?.members.map((member) => member.source_channel ?? member.source_identity) ?? [];
 		editing.value = true;
 	} catch (cause) {
@@ -251,13 +281,31 @@ const editDraft = (): Configure => {
 		expected_graph_revision: current.graph_revision,
 		members: memberIds.value.map((id) => {
 			const previous = current.members.find((member) => member.source_identity === id);
+			const replacement = previous ? replacementIds.value[previous.id] : undefined;
+			if (previous && !replacement) {
+				return {
+					id: previous.id,
+					source_channel: previous.source_channel,
+					bindings: previous.bindings.map((binding) => ({
+						id: binding.id,
+						output_property: binding.output_property,
+						source_property: binding.source_property,
+					})),
+				};
+			}
+			const sourceChannel = replacement || id;
 			return {
 				...(previous ? { id: previous.id } : {}),
-				source_channel: id,
+				source_channel: sourceChannel,
 				bindings: controls.map((control) => {
-					const source = properties.findForChannel(id).find((property) => property.category === control.quantity);
+					const source = properties.findForChannel(sourceChannel).find((property) => property.category === control.quantity);
 					if (!source) throw new Error(t('devicesVirtualPlugin.lightGroup.revisionConflict'));
-					return { output_property: control.output_property, source_property: source.id };
+					const previousBinding = previous?.bindings.find((binding) => binding.output_property === control.output_property);
+					return {
+						...(previousBinding ? { id: previousBinding.id } : {}),
+						output_property: control.output_property,
+						source_property: source.id,
+					};
 				}),
 			};
 		}),

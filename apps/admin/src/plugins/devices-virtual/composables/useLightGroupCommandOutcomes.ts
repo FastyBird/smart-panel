@@ -27,12 +27,14 @@ export const useLightGroupCommandOutcomes = (deviceId: string) => {
 	const active = ref<z.infer<typeof EventSchema> | null>(null);
 	const terminal = ref<Array<{ id: string; status: 'confirmed' | 'partial' | 'failed'; children: z.infer<typeof ChildSchema>[] }>>([]);
 	const knownParents = new Set<string>();
+	const parentSequences = new Map<string, number>();
 	let latestSequence = -1;
 	let epoch: string | null = null;
 	const retiredEpochs = new Set<string>();
 	const reset = () => {
 		active.value = null;
 		knownParents.clear();
+		parentSequences.clear();
 		latestSequence = -1;
 		epoch = null;
 	};
@@ -51,21 +53,34 @@ export const useLightGroupCommandOutcomes = (deviceId: string) => {
 			reset();
 			epoch = data.epoch;
 		}
-		if (data.sequence !== undefined && data.sequence < latestSequence) return;
-		if (data.sequence !== undefined) latestSequence = data.sequence;
-		if (active.value?.id !== data.id && knownParents.has(data.id)) return;
+		const known = knownParents.has(data.id);
+		const previousSequence = parentSequences.get(data.id) ?? -1;
+		if (data.sequence !== undefined && data.sequence <= previousSequence) return;
+		const former = known && active.value?.id !== data.id;
+		const stale = data.sequence !== undefined && data.sequence < latestSequence;
+		if (former && !data.status) return;
+		if (stale && !known) return;
+		if (data.sequence !== undefined) {
+			parentSequences.set(data.id, data.sequence);
+			latestSequence = Math.max(latestSequence, data.sequence);
+		}
 		knownParents.add(data.id);
 		if (knownParents.size > 32) {
 			const oldest = knownParents.values().next().value;
-			if (oldest) knownParents.delete(oldest);
+			if (oldest) {
+				knownParents.delete(oldest);
+				parentSequences.delete(oldest);
+			}
 		}
-		active.value = data;
 		if (data.status) {
 			terminal.value = [
 				{ id: data.id, status: data.status, children: data.children },
 				...terminal.value.filter((entry) => entry.id !== data.id),
 			].slice(0, 8);
-			active.value = null;
+			// Former parents retain truthful history without reclaiming the latest progress slot.
+			if (active.value?.id === data.id || (!former && !stale)) active.value = null;
+		} else {
+			active.value = data;
 		}
 	};
 	sockets.on('event', handle);
