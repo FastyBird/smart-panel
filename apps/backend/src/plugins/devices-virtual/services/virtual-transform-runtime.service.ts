@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { ConnectionState, EventType, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IncorporatedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import {
 	PropertyProducerEvaluation,
@@ -112,9 +113,14 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 					const changedId = payload?.device?.id ?? payload?.id;
 					for (const [id, output] of this.outputs) {
 						const channel = output.property.channel as ChannelEntity;
-						if (id === changedId || channel?.id === changedId || (channel?.device as DeviceEntity)?.id === changedId)
-							for (const [sourceId, outputIds] of this.sourceOutputs)
-								if (outputIds.has(id)) this.requireFreshSample(id, sourceId);
+						if (id === changedId || channel?.id === changedId || (channel?.device as DeviceEntity)?.id === changedId) {
+							// Configuration installs the new source barrier before this event; the async index may still be old.
+							const freshnessSource = this.freshBarriers.get(id)?.sourceId;
+							if (freshnessSource) this.requireFreshSample(id, freshnessSource);
+							else
+								for (const [sourceId, outputIds] of this.sourceOutputs)
+									if (outputIds.has(id)) this.requireFreshSample(id, sourceId);
+						}
 					}
 					for (const [sourceId, outputIds] of this.sourceOutputs) {
 						const owner = this.sourceOwners.get(sourceId);
@@ -386,7 +392,15 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) continue;
 			this.diagnostics.set(property.id, result);
-			await this.publish(output, evaluation, result, now);
+			await this.publish(
+				output,
+				evaluation,
+				result,
+				now,
+				sample?.acceptanceGeneration === undefined
+					? undefined
+					: { propertyId: sample.propertyId, acceptanceGeneration: sample.acceptanceGeneration },
+			);
 		}
 		const retainedSources = new Set(Array.from(this.freshBarriers.values(), (barrier) => barrier.sourceId));
 		for (const sourceId of this.sourceSequences.keys())
@@ -397,11 +411,13 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 		return this.active && generation === this.requested;
 	}
 
+	/** Publishes the captured source acceptance only while its evaluation retains live authority. */
 	private async publish(
 		output: RuntimeOutput,
 		evaluation: PropertyProducerEvaluation,
 		result: TransformEvaluation,
 		now: Date,
+		sourceSample?: IncorporatedPropertySample,
 	): Promise<void> {
 		if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) return;
 		if (result.quality === 'unavailable') {
@@ -419,6 +435,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 				sampledAt: result.sampledAt,
 				evaluatedAt: now,
 				expiresAt: result.expiresAt,
+				sourceSample,
 			},
 			evaluation,
 		);

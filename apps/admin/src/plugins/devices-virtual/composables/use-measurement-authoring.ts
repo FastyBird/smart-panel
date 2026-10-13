@@ -28,6 +28,7 @@ class MeasurementRequestError extends Error {
 	}
 }
 
+/** Manages draft preview, revision conflicts and atomic measurement creation or configuration repair. */
 export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string) {
 	const backend = useBackend();
 	const ids = { device: crypto.randomUUID(), channel: crypto.randomUUID(), output: outputId ?? crypto.randomUUID() };
@@ -274,7 +275,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		});
 	const canPreview = computed(
 		() =>
-			(isTransform ? model.inputs.length === 1 : model.inputs.length >= 2) &&
+			(isTransform ? model.inputs.length === 1 : model.inputs.length >= 2 && model.minimumValidInputs <= model.inputs.length) &&
 			model.inputs.every((input) => input.source_property !== null || !!input.id)
 	);
 	return { model, busy, error, conflict, current, preview, isTransform, canPreview, load, previewDraft, save };

@@ -911,7 +911,7 @@ class AppLocalizationsSk extends AppLocalizations {
       'Ako sa zobrazujú čísla (oddeľovače tisícov a desatinných miest).';
 
   @override
-  String get number_format_comma_dot => '1 234,56';
+  String get number_format_comma_dot => '1,234.56';
 
   @override
   String get number_format_dot_comma => '1.234,56';
@@ -2279,7 +2279,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get device_co => 'CO';
 
   @override
-  String get device_no2 => 'NIE₂';
+  String get device_no2 => 'NO₂';
 
   @override
   String get device_o3 => 'O₃';
@@ -3090,8 +3090,8 @@ class AppLocalizationsSk extends AppLocalizations {
       count,
       locale: localeName,
       other: 'varovaní',
-      few: 'warnings',
-      one: 'warning',
+      few: 'varovania',
+      one: 'varovanie',
     );
     return 'Niektoré kroky zlyhali ($count $_temp0)';
   }
@@ -3151,15 +3151,15 @@ class AppLocalizationsSk extends AppLocalizations {
       errors,
       locale: localeName,
       other: 'chýb',
-      few: 'errors',
-      one: 'error',
+      few: 'chyby',
+      one: 'chyba',
     );
     String _temp1 = intl.Intl.pluralLogic(
       warnings,
       locale: localeName,
       other: 'varovaní',
-      few: 'warnings',
-      one: 'warning',
+      few: 'varovania',
+      one: 'varovanie',
     );
     return 'Aktivitu sa nepodarilo aplikovať ($errors $_temp0, $warnings $_temp1)';
   }

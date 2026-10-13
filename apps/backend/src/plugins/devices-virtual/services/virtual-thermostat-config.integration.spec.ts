@@ -10,6 +10,7 @@ import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	PermissionType,
@@ -19,14 +20,22 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
+import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
+import { SceneExecutorService } from '../../../modules/scenes/services/scene-executor.service';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { LocalScenePlatform } from '../../scenes-local/platforms/local-scene.platform';
+import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
+import { ClimateIntentService } from '../../spaces-home-control/services/climate-intent.service';
+import { PrimaryClimateDevice } from '../../spaces-home-control/services/space-climate-state.service';
+import { ClimateIntentType, ClimateMode, ClimateRole } from '../../spaces-home-control/spaces-home-control.constants';
 import { ConfigureVirtualThermostatDto } from '../dto/thermostat-config.dto';
 import {
 	VirtualChannelEntity,
@@ -41,6 +50,7 @@ import {
 	VirtualThermostatSettingEntity,
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
@@ -282,6 +292,242 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(configs.command([await target(heatSetting, 22)])).resolves.toBe(true);
 		expect((await configs.get(controller)).policy.heatingSetpoint).toBe(22);
 		expect(values.write).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes room climate mode and setpoint pairs through one configured virtual controller command', async () => {
+		const controller = await owner();
+		const sensor = await ambient();
+		const heat = await actuator();
+		const cool = await actuator('A8032ABE5085');
+		const heatOn = await setting(controller, ChannelCategory.HEATER, PropertyCategory.ON);
+		const heatSetpoint = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE);
+		const coolOn = await setting(controller, ChannelCategory.COOLER, PropertyCategory.ON);
+		const coolSetpoint = await setting(controller, ChannelCategory.COOLER, PropertyCategory.TEMPERATURE);
+		const locked = await setting(controller, ChannelCategory.THERMOSTAT, PropertyCategory.LOCKED);
+		await database.manager.update(
+			VirtualChannelPropertyEntity,
+			{ id: heatSetpoint },
+			{
+				channel: (await target(heatOn, false)).channel.id,
+			},
+		);
+		await database.manager.update(
+			VirtualChannelPropertyEntity,
+			{ id: coolSetpoint },
+			{
+				channel: (await target(coolOn, false)).channel.id,
+			},
+		);
+		const input = dto(sensor, heat);
+		input.policy.coolingSetpoint = 24;
+		input.actuators.push({ role: 'cooling', sourcePropertyId: cool, leaseSeconds: 30 });
+		input.settings = [
+			{ propertyId: heatOn, setting: 'heating_enabled' },
+			{ propertyId: heatSetpoint, setting: 'heating_setpoint' },
+			{ propertyId: coolOn, setting: 'cooling_enabled' },
+			{ propertyId: coolSetpoint, setting: 'cooling_setpoint' },
+			{ propertyId: locked, setting: 'locked' },
+		];
+		await configs.configure(controller, input);
+		const heatOnTarget = await target(heatOn, false);
+		const heatSetpointTarget = await target(heatSetpoint, 20);
+		const coolOnTarget = await target(coolOn, false);
+		const coolSetpointTarget = await target(coolSetpoint, 24);
+		for (const configured of [heatOnTarget, heatSetpointTarget, coolOnTarget, coolSetpointTarget])
+			expect(await configs.isRegisteredSetting(configured.property as VirtualChannelPropertyEntity)).toBe(true);
+		const device = Object.assign(heatOnTarget.device, {
+			status: { online: true, status: ConnectionState.CONNECTED },
+		});
+		const primary = {
+			device,
+			deviceCategory: DeviceCategory.THERMOSTAT,
+			role: ClimateRole.AUTO,
+			temperatureChannel: null,
+			temperatureProperty: null,
+			humidityChannel: null,
+			humidityProperty: null,
+			heaterChannel: heatOnTarget.channel,
+			heaterOnProperty: heatOnTarget.property,
+			heaterStatusProperty: null,
+			heaterSetpointProperty: heatSetpointTarget.property,
+			heaterMinSetpoint: 15,
+			heaterMaxSetpoint: 30,
+			coolerChannel: coolOnTarget.channel,
+			coolerOnProperty: coolOnTarget.property,
+			coolerStatusProperty: null,
+			coolerSetpointProperty: coolSetpointTarget.property,
+			coolerMinSetpoint: 15,
+			coolerMaxSetpoint: 30,
+			supportsHeating: true,
+			supportsCooling: true,
+			thermostatChannel: null,
+			thermostatLockedProperty: null,
+			fanChannel: null,
+			fanOnProperty: null,
+		} as PrimaryClimateDevice;
+		const platforms = { get: jest.fn(), getCommandTtlMs: jest.fn().mockReturnValue(3000) };
+		const virtual = new VirtualDevicePlatform(
+			{} as never,
+			platforms as never,
+			new VirtualDependencyGraphService(database),
+			configs,
+		);
+		platforms.get.mockReturnValue(virtual);
+		const dispatchBatch = jest.fn(async (updates: IDevicePropertyData[]) => ({
+			success: await virtual.processBatch(updates),
+		}));
+		const intent = new ClimateIntentService(
+			{ findOne: jest.fn().mockResolvedValue({ id: uuid() }) } as never,
+			platforms as never,
+			{ dispatchBatch } as unknown as PropertyCommandDispatchService,
+			{
+				getClimateState: jest.fn().mockResolvedValue({
+					hasClimate: true,
+					mode: ClimateMode.OFF,
+					lastAppliedMode: ClimateMode.OFF,
+					heatingSetpoint: 20,
+					coolingSetpoint: 24,
+					minSetpoint: 15,
+					maxSetpoint: 30,
+				}),
+				getPrimaryClimateDevicesInSpace: jest.fn().mockResolvedValue([primary]),
+			} as never,
+			{ captureSnapshot: jest.fn().mockResolvedValue(null) } as never,
+			{ pushSnapshot: jest.fn() } as never,
+			{ storeClimateModeChange: jest.fn().mockResolvedValue(undefined) } as never,
+			events,
+			{} as never,
+			{ createIntent: jest.fn().mockReturnValue({ id: uuid() }), completeIntent: jest.fn() } as never,
+		);
+		for (const [mode, bounds, expectedCount] of [
+			[ClimateMode.HEAT, { heatingSetpoint: 21 }, 3],
+			[ClimateMode.COOL, { coolingSetpoint: 25 }, 3],
+			[ClimateMode.AUTO, { heatingSetpoint: 24, coolingSetpoint: 28 }, 4],
+			[ClimateMode.OFF, { heatingSetpoint: 21 }, 3],
+		] as const) {
+			if (mode === ClimateMode.AUTO)
+				await expect(configs.command([await target(heatSetpoint, 24)])).rejects.toThrow('overlapping_setpoints');
+			const before = dispatchBatch.mock.calls.length;
+			const result = await intent.executeClimateIntent(uuid(), {
+				type: ClimateIntentType.CLIMATE_SET,
+				mode,
+				...bounds,
+			});
+			expect(dispatchBatch.mock.calls.length).toBe(before + 1);
+			expect(result?.success).toBe(true);
+			expect(dispatchBatch.mock.calls[before][0]).toHaveLength(expectedCount);
+			expect((await configs.get(controller)).requested_mode).toBe(mode);
+		}
+		expect((await configs.get(controller)).policy).toMatchObject({ heatingSetpoint: 21, coolingSetpoint: 28 });
+		const scene = new LocalScenePlatform(
+			{} as never,
+			{} as never,
+			{} as never,
+			platforms as never,
+			{ dispatchBatch } as unknown as PropertyCommandDispatchService,
+			{} as never,
+		);
+		const byId = new Map(
+			[heatOnTarget, heatSetpointTarget, coolOnTarget, coolSetpointTarget].map((entry) => [entry.property.id, entry]),
+		);
+		jest.spyOn(scene, 'validateActionWithDetails').mockImplementation((action) => {
+			const resolved = byId.get((action as { propertyId?: string }).propertyId);
+			return Promise.resolve(
+				resolved
+					? { valid: true, device, channel: resolved.channel, property: resolved.property }
+					: { valid: false, error: 'Unknown setting' },
+			);
+		});
+		const sceneActions = [
+			{ id: uuid(), type: SCENES_LOCAL_TYPE, deviceId: controller, propertyId: heatOn, value: true },
+			{ id: uuid(), type: SCENES_LOCAL_TYPE, deviceId: controller, propertyId: coolOn, value: true },
+			{ id: uuid(), type: SCENES_LOCAL_TYPE, deviceId: controller, propertyId: heatSetpoint, value: 27 },
+			{ id: uuid(), type: SCENES_LOCAL_TYPE, deviceId: controller, propertyId: coolSetpoint, value: 30 },
+		].map((action, order) => ({
+			...action,
+			order,
+			enabled: true,
+			configuration: {
+				device_id: controller,
+				property_id: action.propertyId,
+			},
+		})) as never;
+		await expect(configs.command([await target(heatSetpoint, 27)])).rejects.toThrow('overlapping_setpoints');
+		const sceneEntity = Object.assign(new SceneEntity(), {
+			id: uuid(),
+			name: 'Comfort',
+			enabled: true,
+			triggerable: true,
+			actions: sceneActions,
+		});
+		const executor = new SceneExecutorService(
+			{ getOneOrThrow: () => Promise.resolve(sceneEntity), updateLastTriggered: () => Promise.resolve() } as never,
+			events,
+			{ createIntent: jest.fn().mockReturnValue({ id: uuid() }), completeIntent: jest.fn() } as never,
+		);
+		executor.registerPlatform(scene);
+		const beforeScene = dispatchBatch.mock.calls.length;
+		expect((await executor.triggerScene(sceneEntity.id)).actionResults.map((result) => result.success)).toEqual([
+			true,
+			true,
+			true,
+			true,
+		]);
+		expect(dispatchBatch.mock.calls.length).toBe(beforeScene + 1);
+		expect((await configs.get(controller)).requested_mode).toBe('auto');
+		await configs.command([await target(locked, true)]);
+		const beforeLocked = dispatchBatch.mock.calls.length;
+		const denied = await intent.executeClimateIntent(uuid(), {
+			type: ClimateIntentType.CLIMATE_SET,
+			mode: ClimateMode.HEAT,
+			heatingSetpoint: 23,
+		});
+		expect(denied?.success).toBe(false);
+		expect(dispatchBatch.mock.calls.length).toBe(beforeLocked + 1);
+		expect((await executor.triggerScene(sceneEntity.id)).actionResults.map((result) => result.success)).toEqual([
+			false,
+			false,
+			false,
+			false,
+		]);
+		expect(dispatchBatch.mock.calls.length).toBe(beforeLocked + 2);
+		expect((await configs.get(controller)).requested_mode).toBe('auto');
+		// An explicit unlock is an ordered scene boundary; mode and bounds remain a following atomic batch.
+		byId.set(locked, await target(locked, false));
+		(sceneEntity as SceneEntity).actions = [
+			{
+				id: uuid(),
+				type: SCENES_LOCAL_TYPE,
+				deviceId: controller,
+				propertyId: locked,
+				value: false,
+				order: -1,
+				enabled: true,
+				configuration: { device_id: controller, property_id: locked },
+			} as unknown as SceneActionEntity,
+			...(sceneEntity.actions as SceneActionEntity[]),
+		];
+		const beforeUnlock = dispatchBatch.mock.calls.length;
+		expect((await executor.triggerScene(sceneEntity.id)).actionResults.map((result) => result.success)).toEqual([
+			true,
+			true,
+			true,
+			true,
+			true,
+		]);
+		expect(dispatchBatch.mock.calls.length).toBe(beforeUnlock + 2);
+		expect(dispatchBatch.mock.calls[beforeUnlock][0]).toHaveLength(1);
+		expect(dispatchBatch.mock.calls[beforeUnlock + 1][0]).toHaveLength(4);
+		const release = await configs.requestRelease(controller, (await configs.get(controller)).revision);
+		expect(release.actuators.every((actuator) => actuator.state === 'releasing')).toBe(true);
+		await intent.executeClimateIntent(uuid(), {
+			type: ClimateIntentType.CLIMATE_SET,
+			mode: ClimateMode.HEAT,
+			heatingSetpoint: 22,
+		});
+		await expect(registry.assertAllowed(await target(heat, true))).rejects.toThrow('reserved');
+		const claim = (await configs.get(controller)).actuators[0];
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
 	});
 
 	it('registers only matching local settings and never authorizes arbitrary owned writers', async () => {
