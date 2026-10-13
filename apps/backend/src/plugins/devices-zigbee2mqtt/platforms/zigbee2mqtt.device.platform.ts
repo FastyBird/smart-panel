@@ -235,7 +235,12 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			propertyUpdates.map(({ property }) => this.deviceMapper.getPropertySampleMapping(property, channel)),
 		);
 		const payload = this.buildPayload(channel, propertyUpdates);
-		const source = await this.sampleSources?.prepareDispatch(device.id, friendlyName);
+		const source = await this.sampleSources?.prepareDispatch(
+			device.id,
+			friendlyName,
+			propertyUpdates.map(({ property }) => property.id),
+			{ allowUnbound: true },
+		);
 		const isCurrent = (): boolean =>
 			this.zigbee2mqttService.getActiveAdapter() === adapter &&
 			adapter.isConnected() &&

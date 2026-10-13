@@ -19,7 +19,7 @@ import {
 } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
-import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -135,6 +135,59 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		);
 	});
 
+	it('shares reconnect acquisition and qualifies packets captured while the real repository read is pending', async () => {
+		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
+		jest.useFakeTimers({ now: Date.now() + 1000 });
+		try {
+			sources.revoke(propertyId);
+			const repository = database.getRepository(ShellySampleSourceEntity);
+			const row = await repository.findOneByOrFail({ propertyId });
+			let release: (value: ShellySampleSourceEntity) => void;
+			const read = jest.spyOn(repository, 'findOne').mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = resolve;
+					}),
+			);
+			const connectedAt = new Date();
+			const connected = sources.get(propertyId);
+			jest.setSystemTime(Date.now() + 1);
+			const observedAt = new Date();
+			const firstSample = sources.get(propertyId);
+			jest.setSystemTime(Date.now() + 100);
+			release(row);
+			const lease = await connected;
+			expect(await firstSample).toBe(lease);
+			expect(read).toHaveBeenCalledTimes(1);
+			expect(lease.activatedAt).toEqual(connectedAt);
+			expect(sources.isCurrent(lease, observedAt)).toBe(true);
+			expect(sources.isCurrent(lease, connectedAt)).toBe(false);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('a disconnect fences an in-flight acquisition before it can re-create authority', async () => {
+		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
+		sources.revoke(propertyId);
+		const repository = database.getRepository(ShellySampleSourceEntity);
+		const row = await repository.findOneByOrFail({ propertyId });
+		let release: (value: ShellySampleSourceEntity) => void;
+		jest.spyOn(repository, 'findOne').mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		const pending = sources.get(propertyId);
+		sources.revoke(propertyId);
+		release(row);
+		expect(await pending).toBeNull();
+		const current = await sources.get(propertyId);
+		expect(current).not.toBeNull();
+		expect(sources.isCurrent(current, new Date(current.activatedAt.getTime() + 1))).toBe(true);
+	});
+
 	it('identity changes revoke old leases and old scalar eligibility while preserving metadata for history/aliases', async () => {
 		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
 		const oldLease = await sources.get(propertyId);
@@ -162,6 +215,39 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		expect(
 			(await database.getRepository(ShellySampleSourceEntity).findOneByOrFail({ propertyId: replacementId })).active,
 		).toBe(true);
+	});
+
+	it('keeps raw volts and device-side Celsius helper leases independent on one physical voltmeter', async () => {
+		const voltmeter = { voltmeter: { 'voltmeter:100': {} } };
+		const config = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: 'x/2', unit: '°C' } };
+		const raw = nativeVoltmeterVoltageIdentity('voltmeter:100', config, voltmeter, 'A8032ABE5085');
+		const helper = nativeTemperatureIdentity('voltmeter:100', config, voltmeter);
+		const otherId = randomUUID();
+		await database.getRepository(ShellyNgChannelPropertyEntity).save({
+			id: otherId,
+			channel: { id: channelId },
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		});
+		await sources.bind(propertyId, deviceId, raw);
+		await sources.bind(otherId, deviceId, helper);
+		const rawLease = await sources.get(propertyId);
+		const helperLease = await sources.get(otherId);
+		expect(sources.isCurrent(rawLease, new Date(Date.now() + 1))).toBe(true);
+		expect(sources.isCurrent(helperLease, new Date(Date.now() + 1))).toBe(true);
+		await sources.invalidateComponent(deviceId, 'voltmeter:100', 'temperature');
+		expect(sources.isCurrent(rawLease, new Date(Date.now() + 1))).toBe(true);
+		expect(sources.isCurrent(helperLease, new Date(Date.now() + 1))).toBe(false);
+		await sources.bind(otherId, deviceId, helper);
+		const restored = await sources.get(otherId);
+		const changed = nativeVoltmeterVoltageIdentity('voltmeter:100', { ...config, range: 1 }, voltmeter, 'A8032ABE5085');
+		await sources.bind(propertyId, deviceId, changed);
+		expect(sources.isCurrent(rawLease, new Date(Date.now() + 1))).toBe(false);
+		expect(sources.isCurrent(restored, new Date(Date.now() + 1))).toBe(true);
+		expect((await database.getRepository(ShellySampleSourceEntity).findOneByOrFail({ propertyId })).fingerprint).toBe(
+			changed.fingerprint,
+		);
 	});
 
 	it('migration and synchronized metadata agree on columns and property deletion cascades', async () => {

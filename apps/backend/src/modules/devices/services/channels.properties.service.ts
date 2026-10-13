@@ -213,6 +213,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					.where('channel.id IN (:...channelIds)', { channelIds: channelId })
 					.getMany()) as TProperty[];
 
+				for (const property of properties) property.unit = resolvePropertyUnit(property);
+
 				this.logger.debug(`Found ${properties.length} properties for channelIds=${channelId.join(', ')}`);
 
 				return properties;
@@ -226,6 +228,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					.where('channel.id = :channelId', { channelId })
 					.getMany()) as TProperty[];
 
+				for (const property of properties) property.unit = resolvePropertyUnit(property);
+
 				this.logger.debug(`Found ${properties.length} properties for channelId=${channelId}`);
 
 				return properties;
@@ -235,6 +239,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		this.logger.debug('Fetching all properties');
 
 		const properties = (await repository.find({ relations: ['channel', 'channel.device'] })) as TProperty[];
+
+		for (const property of properties) property.unit = resolvePropertyUnit(property);
 
 		this.logger.debug(`Found ${properties.length} properties`);
 

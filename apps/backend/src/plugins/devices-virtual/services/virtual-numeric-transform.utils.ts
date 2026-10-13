@@ -2,6 +2,7 @@ export enum VirtualNumericTransformOperator {
 	AFFINE = 'affine',
 	PIECEWISE_LINEAR = 'piecewise_linear',
 	NTC_BETA = 'ntc_beta',
+	STEINHART_HART = 'steinhart_hart',
 }
 
 export interface VirtualNumericRange {
@@ -28,6 +29,15 @@ export type VirtualNumericTransformConfig = TransformDomain &
 				nominalResistance: number;
 				nominalTemperatureCelsius: number;
 				beta: number;
+				thermistorLeg: 'low' | 'high';
+		  }
+		| {
+				operator: VirtualNumericTransformOperator.STEINHART_HART;
+				referenceVoltage: number;
+				seriesResistance: number;
+				coefficientA: number;
+				coefficientB: number;
+				coefficientC: number;
 				thermistorLeg: 'low' | 'high';
 		  }
 	);
@@ -59,14 +69,16 @@ export function validateVirtualNumericTransform(config: VirtualNumericTransformC
 			? ['scale', 'offset']
 			: config.operator === VirtualNumericTransformOperator.PIECEWISE_LINEAR
 				? ['points']
-				: [
-						'referenceVoltage',
-						'seriesResistance',
-						'nominalResistance',
-						'nominalTemperatureCelsius',
-						'beta',
-						'thermistorLeg',
-					]),
+				: config.operator === VirtualNumericTransformOperator.STEINHART_HART
+					? ['referenceVoltage', 'seriesResistance', 'coefficientA', 'coefficientB', 'coefficientC', 'thermistorLeg']
+					: [
+							'referenceVoltage',
+							'seriesResistance',
+							'nominalResistance',
+							'nominalTemperatureCelsius',
+							'beta',
+							'thermistorLeg',
+						]),
 	];
 	if (Object.keys(config).some((key) => !allowed.includes(key) && config[key] !== undefined))
 		errors.push('unsupported_parameters');
@@ -111,6 +123,15 @@ export function validateVirtualNumericTransform(config: VirtualNumericTransformC
 				) ||
 				!Number.isFinite(config.nominalTemperatureCelsius) ||
 				config.nominalTemperatureCelsius <= -273.15 ||
+				!['low', 'high'].includes(config.thermistorLeg)
+			)
+				errors.push('invalid_thermistor_parameters');
+			break;
+		case VirtualNumericTransformOperator.STEINHART_HART:
+			if (
+				![config.referenceVoltage, config.seriesResistance].every((value) => Number.isFinite(value) && value > 0) ||
+				![config.coefficientA, config.coefficientB, config.coefficientC].every(Number.isFinite) ||
+				(config.coefficientA === 0 && config.coefficientB === 0 && config.coefficientC === 0) ||
 				!['low', 'high'].includes(config.thermistorLeg)
 			)
 				errors.push('invalid_thermistor_parameters');
@@ -166,6 +187,21 @@ export function evaluateVirtualNumericTransform(
 			const denominator =
 				1 / (config.nominalTemperatureCelsius + 273.15) +
 				(Math.log(resistance) - Math.log(config.nominalResistance)) / config.beta;
+			if (!Number.isFinite(denominator) || denominator <= 0) return unavailable('invalid_domain');
+			output = 1 / denominator - 273.15;
+			break;
+		}
+		case VirtualNumericTransformOperator.STEINHART_HART: {
+			if (input <= 0 || input >= config.referenceVoltage) return unavailable('invalid_domain');
+			const resistance =
+				config.thermistorLeg === 'low'
+					? (config.seriesResistance * input) / (config.referenceVoltage - input)
+					: (config.seriesResistance * (config.referenceVoltage - input)) / input;
+			if (!Number.isFinite(resistance) || resistance <= 0) return unavailable('invalid_domain');
+			const logResistance = Math.log(resistance);
+			const denominator =
+				config.coefficientA +
+				(config.coefficientB + config.coefficientC * logResistance * logResistance) * logResistance;
 			if (!Number.isFinite(denominator) || denominator <= 0) return unavailable('invalid_domain');
 			output = 1 / denominator - 273.15;
 			break;
