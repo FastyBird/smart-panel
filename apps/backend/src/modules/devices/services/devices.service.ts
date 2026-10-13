@@ -647,19 +647,26 @@ export class DevicesService {
 		// with the rollback still armed behind it. `insert()` always issues an INSERT, so the primary key
 		// constraint decides, and the database does not interleave. The check above stays for the message:
 		// a caller reusing an id deliberately gets a sentence rather than a constraint violation.
-		const inserted = await repository
-			.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
-			.catch((error: unknown) => {
-				if (isPrimaryKeyCollision(error)) {
-					this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
+		const inserted = await (
+			creation
+				? repository
+						.createQueryBuilder()
+						.insert()
+						.values(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+						.updateEntity(false)
+						.execute()
+				: repository.insert(device as unknown as Parameters<Repository<TDevice>['insert']>[0])
+		).catch((error: unknown) => {
+			if (isPrimaryKeyCollision(error)) {
+				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} was created concurrently by another request`);
 
-					throw new DevicesValidationException(
-						`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
-					);
-				}
+				throw new DevicesValidationException(
+					`Device with id=${device.id} already exists. Creating a device with an id already in use is not allowed.`,
+				);
+			}
 
-				throw error;
-			});
+			throw error;
+		});
 
 		// `@PrimaryGeneratedColumn('uuid')` generates in JS, so a request that supplied no id already has
 		// one on the entity by now; the returned identifier is read anyway rather than assumed, since it is

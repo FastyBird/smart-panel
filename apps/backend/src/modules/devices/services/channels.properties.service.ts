@@ -837,21 +837,28 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				// Inserted, not saved: the check above closes the collision only for a caller who is alone,
 				// and two requests carrying the same client-generated uuid can both pass it before either
 				// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
-				await writeRepository
-					.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
-					.catch((error: unknown) => {
-						if (isPrimaryKeyCollision(error)) {
-							this.logger.error(
-								`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
-							);
+				await (
+					creation
+						? writeRepository
+								.createQueryBuilder()
+								.insert()
+								.values(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+								.updateEntity(false)
+								.execute()
+						: writeRepository.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+				).catch((error: unknown) => {
+					if (isPrimaryKeyCollision(error)) {
+						this.logger.error(
+							`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
+						);
 
-							throw new DevicesValidationException(
-								`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
-							);
-						}
+						throw new DevicesValidationException(
+							`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+						);
+					}
 
-						throw error;
-					});
+					throw error;
+				});
 
 				return property;
 			};

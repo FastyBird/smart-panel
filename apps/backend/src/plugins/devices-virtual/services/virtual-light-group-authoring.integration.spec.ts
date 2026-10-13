@@ -59,14 +59,18 @@ describe('light group atomic authoring with real SQLite and core creation servic
 	let events: EventEmitter2;
 	let memberIds: string[];
 	let phase: string | undefined;
+	let previewing = false;
 	let admittedRunner: QueryRunner | undefined;
 	const publications: EventType[] = [];
 	const afterCreate = jest.fn();
+	const prematureCatalogLoads = jest.fn();
 	beforeEach(async () => {
 		phase = undefined;
+		previewing = false;
 		admittedRunner = undefined;
 		publications.length = 0;
 		afterCreate.mockClear();
+		prematureCatalogLoads.mockClear();
 		database = await new SqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -198,6 +202,12 @@ describe('light group atomic authoring with real SQLite and core creation servic
 				permissions: [PermissionType.READ_WRITE],
 			} as never);
 		}
+		database.subscribers.push({
+			listenTo: () => ChannelPropertyEntity,
+			afterLoad: (_entity, event) => {
+				if (previewing || event?.queryRunner?.isTransactionActive) prematureCatalogLoads();
+			},
+		});
 	});
 	afterEach(async () => {
 		producers?.onModuleDestroy();
@@ -218,6 +228,7 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		expect(await database.manager.count(VirtualLightGroupBindingEntity)).toBe(2);
 		expect(afterCreate).toHaveBeenCalled();
 		expect(publications).toContain(EventType.DEVICE_CREATED);
+		expect(prematureCatalogLoads).not.toHaveBeenCalled();
 		for (const property of await database.manager.find(VirtualChannelPropertyEntity))
 			if (property.valueOrigin === VirtualValueOrigin.DERIVED)
 				expect(producers.read(property.id)?.producer.quality).toBe('unavailable');
@@ -230,7 +241,16 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		expect(await database.manager.count(VirtualLightGroupBindingEntity)).toBe(0);
 		expect(publications).toEqual([]);
 		expect(afterCreate).not.toHaveBeenCalled();
+		expect(prematureCatalogLoads).not.toHaveBeenCalled();
 	});
+	it('previews structural metadata without property history hydration or publication', async () => {
+		previewing = true;
+		await authoring.preview(draft());
+		previewing = false;
+		expect(prematureCatalogLoads).not.toHaveBeenCalled();
+		expect(publications).toEqual([]);
+	});
+
 	it('rejects a stale preview before inserting catalog rows', async () => {
 		const dto = draft();
 		dto.expectedGraphRevision = 1;
