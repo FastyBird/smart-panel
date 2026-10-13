@@ -2097,6 +2097,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         t.role != LightTargetRole.hidden);
     final totalLights = configured.length;
     final lightsOn = _countLightsOn(configured.toList(), devicesService);
+    if ((_lightingState?.unknownLights ?? 0) > 0) return ThemeColors.warning;
     if (lightsOn == totalLights && totalLights > 0) return ThemeColors.success;
     if (lightsOn == 0) return ThemeColors.neutral;
     return ThemeColors.warning;
@@ -2152,6 +2153,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } else {
       // No intent or all lights off: show count
       subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
+    }
+
+    if ((state?.unknownLights ?? 0) > 0) {
+      subtitle = '$subtitle · ${localizations.filter_status_unknown}: ${state!.unknownLights}';
     }
 
     // Use actual light state for icon, not pending mode

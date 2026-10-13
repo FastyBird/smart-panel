@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_req_trigger_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_trigger_scene.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/scenes/constants.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/repositories/actions.dart';
@@ -167,11 +168,20 @@ class ScenesRepository extends Repository<SceneModel> {
         }
 
         final error = data?['error'] as String?;
+        final actionResults = data?['action_results'] ?? data?['actionResults'];
+        final composites = actionResults is List
+            ? actionResults.whereType<Map<String, dynamic>>()
+                .map((action) => action['composite'])
+                .whereType<Map<String, dynamic>>()
+                .map((value) => CompositeCommandOutcome.fromJson(value, requestId: ''))
+                .toList()
+            : <CompositeCommandOutcome>[];
 
         return TriggerSceneResult(
-          success: failureCount == 0,
+          success: failureCount == 0 && composites.every((outcome) => outcome.confirmed),
           successCount: successCount,
           failureCount: failureCount,
+          composites: composites,
           errorMessage: error,
         );
       } else {
@@ -219,6 +229,7 @@ class ScenesRepository extends Repository<SceneModel> {
           'successfulActions': result.successfulActions,
           'failedActions': result.failedActions,
           'error': result.error,
+          'action_results': (response.response.data['data'] as Map<String, dynamic>?)?['action_results'],
         };
       }
     } on DioException catch (e) {
@@ -245,12 +256,14 @@ class TriggerSceneResult {
   final String? errorMessage;
   final int successCount;
   final int failureCount;
+  final List<CompositeCommandOutcome> composites;
 
   TriggerSceneResult({
     required this.success,
     this.errorMessage,
     this.successCount = 0,
     this.failureCount = 0,
+    this.composites = const [],
   });
 
   factory TriggerSceneResult.error(String message) {

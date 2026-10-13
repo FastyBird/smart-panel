@@ -22,6 +22,22 @@ class IntentResultHandler {
       );
     }
     if (result == null) return false;
+    final incomplete = result.composites
+        .expand((parent) => parent.children)
+        .where((child) => child.status != 'confirmed')
+        .toList();
+    if (incomplete.isNotEmpty) {
+      final localizations = AppLocalizations.of(context)!;
+      final details = incomplete
+          .map((child) => '${child.memberIdentity ?? child.memberId}: ${child.status}')
+          .join(', ');
+      Toast.showWarning(
+        context,
+        message: '${localizations.light_state_failed}: $details',
+        duration: const Duration(seconds: 6),
+      );
+      return true;
+    }
     return _showOfflineAlert(
       context,
       result.skippedOfflineDevices,

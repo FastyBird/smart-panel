@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -1054,7 +1055,17 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       ],
     );
 
-    if (!(widget.config?.showHeader ?? true)) return body;
+    final composite = _devicesService.compositeCommands;
+    final compositeStatus = widget._device.isCompositeGroup && composite != null
+        ? AnimatedBuilder(
+            animation: composite,
+            builder: (context, _) => _buildCompositeStatus(composite.latestFor(widget._device.id)),
+          )
+        : const SizedBox.shrink();
+
+    if (!(widget.config?.showHeader ?? true)) {
+      return Column(children: [compositeStatus, Expanded(child: body)]);
+    }
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -1062,7 +1073,27 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         child: Column(
           children: [
             _buildHeader(context, isDark),
+            compositeStatus,
             Expanded(child: body),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompositeStatus(CompositeCommandOutcome? outcome) {
+    if (outcome == null) return const SizedBox.shrink();
+    return Semantics(
+      liveRegion: true,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Group command: ${outcome.status}'),
+            for (final child in outcome.children)
+              Text('${child.memberIdentity ?? child.memberId}: '
+                  '${child.status}${child.reason == null ? '' : ' · ${child.reason}'}'),
           ],
         ),
       ),
@@ -1239,8 +1270,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     } else {
       title = widget._device.name;
     }
-    final subtitle =
-        isOn ? localizations.on_state_on : localizations.on_state_off;
+    final groupUnknown = widget._device.isCompositeGroup &&
+        (_selectedController ?? _controller?.light)?.channel.onProp.value == null;
+    final subtitle = groupUnknown
+        ? localizations.filter_status_unknown
+        : (isOn ? localizations.on_state_on : localizations.on_state_off);
     final showBack = widget.config?.showBackButton ?? true;
     final iconData = widget.config?.iconOverride ?? buildDeviceIcon(widget._device.category, widget._device.icon);
 
