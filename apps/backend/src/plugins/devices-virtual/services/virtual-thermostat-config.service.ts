@@ -203,11 +203,9 @@ export class VirtualThermostatConfigService {
 			dto.reason.trim().length < 10
 		)
 			fail('An identified operator, disconnection acknowledgement and meaningful reason are required.');
-		return this.structureLock.runExclusive(async () => {
-			// Revoke captured ON authority before the first transactional metadata await.
-			this.claims.invalidate();
-			let restored = false;
-			try {
+		const releaseFence = this.claims.holdRecoveryFence();
+		try {
+			return await this.structureLock.runExclusive(async () => {
 				await this.graph.withStructuralWrite(async (manager) => {
 					const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 					const claim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claimId, controllerId });
@@ -278,13 +276,13 @@ export class VirtualThermostatConfigService {
 						}),
 					);
 				});
-				restored = true;
 				this.claims.revokeQualification(dto.physicalIdentity);
 				return this.afterCommit(controllerId);
-			} finally {
-				if (!restored) await this.claims.refresh();
-			}
-		});
+			});
+		} finally {
+			releaseFence();
+			await this.claims.refresh();
+		}
 	}
 	async recoveryEvents(controllerId: string) {
 		await this.get(controllerId);

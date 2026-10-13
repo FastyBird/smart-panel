@@ -435,7 +435,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId: old.id })).resolves.toBe(1);
 	});
 
-	it('revokes a pending ON authority before restoring a still catalogued endpoint', async () => {
+	it('revokes queued ON sends at restore entry and keeps them revoked after rollback or commit', async () => {
 		const controller = await owner();
 		const sensor = await ambient();
 		const relay = await actuator();
@@ -459,10 +459,6 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				independentProtectionQualified: true,
 			},
 		});
-		const stop = claims.registerRuntimeAdmission(() => true);
-		const pendingOn = claims.mintAuthority(claim.id, 'on');
-		const relayTarget = await target(relay, true);
-		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(true);
 		const alternateProperty = await actuator('A8032ABE5086');
 		await expect(
 			configs.restoreActuator(
@@ -479,21 +475,64 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				'operator',
 			),
 		).rejects.toThrow('retained alias reservation');
-		const restored = await configs.restoreActuator(
+		const stop = claims.registerRuntimeAdmission(() => true);
+		const relayTarget = await target(relay, true);
+		const restore = {
+			expectedRevision: configured.revision,
+			expectedClaimRevision: claim.revision,
+			physicalIdentity: claim.physical_identity,
+			sourcePropertyId: relay,
+			reason: 'The relay was disconnected and has returned under the same endpoint',
+			disconnectionAcknowledged: true as const,
+		};
+		const pendingOn = claims.mintAuthority(claim.id, 'on');
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(true);
+		let releaseReader!: () => void;
+		let readerEntered!: () => void;
+		const readerGate = new Promise<void>((resolve) => (releaseReader = resolve));
+		const readerStarted = new Promise<void>((resolve) => (readerEntered = resolve));
+		const reader = structure.runShared(async () => {
+			readerEntered();
+			await readerGate;
+		});
+		await readerStarted;
+		const failedRestore = configs.restoreActuator(
 			controller,
 			claim.id,
-			{
-				expectedRevision: configured.revision,
-				expectedClaimRevision: claim.revision,
-				physicalIdentity: claim.physical_identity,
-				sourcePropertyId: relay,
-				reason: 'The relay was disconnected and has returned under the same endpoint',
-				disconnectionAcknowledged: true,
-			},
+			{ ...restore, expectedClaimRevision: claim.revision + 1 },
 			'operator',
 		);
+		let guardedSends = 0;
+		if (claims.isAuthorized(pendingOn, relayTarget)) guardedSends++;
+		expect(guardedSends).toBe(0);
+		await claims.refresh();
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
+		releaseReader();
+		await reader;
+		await expect(failedRestore).rejects.toThrow('revision');
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		const nextOn = claims.mintAuthority(claim.id, 'on');
+		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(true);
+		const secondReaderGate = new Promise<void>((resolve) => (releaseReader = resolve));
+		const secondReaderStarted = new Promise<void>((resolve) => (readerEntered = resolve));
+		const secondReader = structure.runShared(async () => {
+			readerEntered();
+			await secondReaderGate;
+		});
+		await secondReaderStarted;
+		const restorePromise = configs.restoreActuator(controller, claim.id, restore, 'operator');
+		if (claims.isAuthorized(nextOn, relayTarget)) guardedSends++;
+		expect(guardedSends).toBe(0);
+		await claims.refresh();
+		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(false);
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
+		releaseReader();
+		await secondReader;
+		const restored = await restorePromise;
 		expect(restored.requested_mode).toBe('off');
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(false);
 		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
 		stop();
 	});
