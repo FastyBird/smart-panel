@@ -33,6 +33,17 @@ const ntc: VirtualNumericTransformConfig = {
 	beta: 3950,
 	thermistorLeg: 'low',
 };
+const steinhartHart: VirtualNumericTransformConfig = {
+	operator: Operator.STEINHART_HART,
+	inputRange: { minimum: 0, maximum: 10 },
+	outputRange: { minimum: -100, maximum: 150 },
+	referenceVoltage: 10,
+	seriesResistance: 10_000,
+	coefficientA: 0.0010351024725298568,
+	coefficientB: 0.0002338353574079741,
+	coefficientC: 7.917851073336009e-8,
+	thermistorLeg: 'low',
+};
 
 describe('virtual numeric transform operators', () => {
 	it.each([
@@ -152,6 +163,41 @@ describe('virtual numeric transform operators', () => {
 	it('rejects nonpositive Kelvin denominator and resistance overflow', () => {
 		expect(evaluate({ ...ntc, beta: 1 }, 0.1)).toEqual({ value: null, reason: 'invalid_domain' });
 		expect(evaluate({ ...ntc, seriesResistance: Number.MAX_VALUE }, 3)).toEqual({
+			value: null,
+			reason: 'invalid_domain',
+		});
+	});
+	it.each([
+		[2.5, 63.08],
+		[5, 34.48],
+		[6.68, 18.45],
+		[8, 4.07],
+	])('matches independent script Steinhart-Hart calibration at %s V', (voltage, expectedCelsius) => {
+		const result = evaluate(steinhartHart, voltage);
+		expect(result.reason).toBeNull();
+		expect(result.value).toBeCloseTo(expectedCelsius, 2);
+	});
+	it('uses the selected divider leg and refuses rails, invalid coefficients and denominator', () => {
+		expect(evaluate({ ...steinhartHart, thermistorLeg: 'high' }, 3.32).value).toBeCloseTo(18.45, 2);
+		for (const voltage of [0, 10, 11])
+			expect(evaluate({ ...steinhartHart, inputRange: { minimum: 0, maximum: 12 } }, voltage)).toEqual({
+				value: null,
+				reason: 'invalid_domain',
+			});
+		for (const override of [
+			{ coefficientA: NaN },
+			{ coefficientB: Infinity },
+			{ coefficientC: undefined },
+			{ referenceVoltage: 0 },
+			{ seriesResistance: -1 },
+			{ coefficientA: 0, coefficientB: 0, coefficientC: 0 },
+		])
+			expect(evaluate({ ...steinhartHart, ...override } as VirtualNumericTransformConfig, 6.68)).toEqual({
+				value: null,
+				reason: 'invalid_configuration',
+			});
+		expect(evaluate({ ...steinhartHart, coefficientA: -1 }, 6.68)).toEqual({ value: null, reason: 'invalid_domain' });
+		expect(evaluate({ ...steinhartHart, seriesResistance: Number.MAX_VALUE }, 9)).toEqual({
 			value: null,
 			reason: 'invalid_domain',
 		});

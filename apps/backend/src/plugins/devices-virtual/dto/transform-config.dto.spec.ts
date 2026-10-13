@@ -27,6 +27,25 @@ describe('versioned numeric transform authoring DTO', () => {
 		expect(dto.schemaVersion).toBe(1);
 		expect(dto.source.sourcePropertyId).toEqual(expect.any(String));
 	});
+	it('accepts a complete bounded Steinhart-Hart policy and rejects omitted coefficients', async () => {
+		const policy = {
+			operator: 'steinhart_hart',
+			inputRange: { minimum: 0, maximum: 10 },
+			outputRange: { minimum: -100, maximum: 150 },
+			referenceVoltage: 10,
+			seriesResistance: 10_000,
+			coefficientA: 0.0010351024725298568,
+			coefficientB: 0.0002338353574079741,
+			coefficientC: 7.917851073336009e-8,
+			thermistorLeg: 'low',
+		};
+		expect(await validate(plainToInstance(ConfigureVirtualTransformDto, { ...payload(), policy }))).toHaveLength(0);
+		const incomplete: Record<string, unknown> = { ...policy };
+		delete incomplete.coefficientC;
+		expect(
+			await validate(plainToInstance(ConfigureVirtualTransformDto, { ...payload(), policy: incomplete })),
+		).not.toHaveLength(0);
+	});
 
 	it.each([
 		{ schema_version: 2 },
