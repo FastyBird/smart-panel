@@ -21,7 +21,7 @@ export interface PropertyProducerEvaluation {
 }
 
 interface ProducerEntry {
-	readonly property: ChannelPropertyEntity;
+	property: ChannelPropertyEntity;
 	lease: PropertyProducerLease;
 	state: PropertyValueState;
 	epoch: number;
@@ -33,17 +33,24 @@ interface ProducerEntry {
 export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDestroy {
 	private readonly entries = new Map<string, ProducerEntry>();
 	private timer: NodeJS.Timeout | null = null;
+	private readonly refreshPropertyMetadata = (property: ChannelPropertyEntity): void => {
+		const entry = this.entries.get(property.id);
+		if (entry) entry.property = property;
+	};
 
 	constructor(@Optional() private readonly events?: EventEmitter2) {}
 
 	onModuleInit(): void {
 		if (this.timer) return;
+		// Metadata changes must take effect synchronously before another live-state event can be emitted.
+		this.events?.on(EventType.CHANNEL_PROPERTY_UPDATED, this.refreshPropertyMetadata);
 		this.timer = setInterval(() => this.sweep(), 1_000);
 		this.timer.unref();
 	}
 
 	onModuleDestroy(): void {
 		if (this.timer) clearInterval(this.timer);
+		this.events?.off(EventType.CHANNEL_PROPERTY_UPDATED, this.refreshPropertyMetadata);
 		this.timer = null;
 		this.entries.clear();
 	}
