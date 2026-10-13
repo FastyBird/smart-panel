@@ -54,6 +54,7 @@ describe('WledDevicePlatform', () => {
 				},
 			}),
 			getDeviceByIdentifier: jest.fn(),
+			captureDeviceIdentity: jest.fn(),
 			updateState: jest.fn(),
 			updateStateExtended: jest.fn(),
 			setNightlight: jest.fn(),
@@ -141,6 +142,67 @@ describe('WledDevicePlatform', () => {
 
 			expect(result).toBe(true);
 			expect(wledAdapter.updateStateExtended).toHaveBeenCalled();
+		});
+	});
+
+	describe('prepared composite identity', () => {
+		it('fences captured device identity and physical layout before dispatch', async () => {
+			const device = createMockDevice('wled-test');
+			device.mac = 'aabbccddeeff';
+			const registered = wledAdapter.getDevice(device.hostname);
+			if (!registered?.context) throw new Error('Missing test context');
+			wledAdapter.getDeviceByIdentifier.mockReturnValue(registered);
+			let current = true;
+			wledAdapter.captureDeviceIdentity.mockReturnValue(() => current);
+			const prepared = await platform.prepareCompositeBatch([
+				{
+					device,
+					channel: createMockChannel('light'),
+					property: createMockProperty('on', PropertyCategory.ON, DataTypeType.BOOL),
+					value: true,
+				},
+			]);
+			expect(prepared?.isCurrent()).toBe(true);
+			current = false;
+			expect(await prepared?.dispatch(() => true)).toBe(false);
+			expect(wledAdapter.updateStateExtended).not.toHaveBeenCalled();
+			current = true;
+			registered.context.state.segments[0].id = 7;
+			expect(prepared?.isCurrent()).toBe(false);
+		});
+		it('refuses legacy indexed segments whose actual ID differs and rechecks admission at the adapter', async () => {
+			const device = createMockDevice('wled-test');
+			device.mac = 'aabbccddeeff';
+			const registered = wledAdapter.getDevice(device.hostname);
+			if (!registered?.context) throw new Error('Missing test context');
+			wledAdapter.getDeviceByIdentifier.mockReturnValue(registered);
+			wledAdapter.captureDeviceIdentity.mockReturnValue(() => true);
+			registered.context.state.segments[0].id = 7;
+			expect(
+				await platform.prepareCompositeBatch([
+					{
+						device,
+						channel: createMockChannel('segment_0'),
+						property: createMockProperty('on', PropertyCategory.ON, DataTypeType.BOOL),
+						value: true,
+					},
+				]),
+			).toBeNull();
+			registered.context.state.segments[0].id = 0;
+			const prepared = await platform.prepareCompositeBatch([
+				{
+					device,
+					channel: createMockChannel('light'),
+					property: createMockProperty('on', PropertyCategory.ON, DataTypeType.BOOL),
+					value: true,
+				},
+			]);
+			wledAdapter.updateStateExtended.mockImplementation((_host, _update, canDispatch) =>
+				Promise.resolve(canDispatch?.() ?? false),
+			);
+			expect(await prepared?.dispatch(() => false)).toBe(false);
+			expect(wledAdapter.updateStateExtended).not.toHaveBeenCalled();
+			expect(await prepared?.dispatch(() => true)).toBe(true);
 		});
 	});
 
