@@ -4,6 +4,7 @@ import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	ChannelCategory,
@@ -24,6 +25,7 @@ import {
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
+import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualAggregateConfigEntity, VirtualAggregateInputEntity } from '../entities/virtual-producer.entity';
 
@@ -43,6 +45,7 @@ interface RuntimeOutput {
 /** Process-local fresh evidence only. Configuration and historical output UUIDs remain durable. */
 @Injectable()
 export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, OnModuleDestroy {
+	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualAggregateRuntimeService');
 	private readonly outputs = new Map<string, RuntimeOutput>();
 	private readonly diagnostics = new Map<string, AggregateEvaluation>();
 	private readonly stopListeners: (() => void)[] = [];
@@ -158,7 +161,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			this.running = this.drain().finally(() => {
 				this.running = undefined;
 			});
-			// Event listeners cannot await. Failure clears live authority; the next event/tick retries.
+			// Event listeners cannot await. Evaluation failures are contained by drain; the next event/tick retries.
 			void this.running.catch(() => undefined);
 		}
 	}
@@ -173,8 +176,12 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			try {
 				await this.evaluateAll(generation);
 			} catch (error) {
+				this.logger.error(
+					'Aggregate evaluation failed; retrying on the next event or tick.',
+					error instanceof Error ? error : String(error),
+				);
 				for (const output of this.outputs.values()) this.producers.invalidate(output.lease, ['runtime_error']);
-				throw error;
+				this.dirty.clear();
 			} finally {
 				this.completed = generation;
 			}
