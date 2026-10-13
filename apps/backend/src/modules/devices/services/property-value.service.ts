@@ -18,7 +18,11 @@ import {
 } from '../models/property-value-state.model';
 import { validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
-import { PropertyProducerLease, PropertyProducerRegistryService } from './property-producer.registry.service';
+import {
+	PropertyProducerEvaluation,
+	PropertyProducerLease,
+	PropertyProducerRegistryService,
+} from './property-producer.registry.service';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
@@ -321,6 +325,7 @@ export class PropertyValueService {
 		lease: PropertyProducerLease,
 		value: string | boolean | number | null,
 		publication: DerivedPropertyPublication,
+		evaluation?: PropertyProducerEvaluation,
 	): Promise<PropertyValueWriteResult> {
 		// Capture evaluation evidence before queuing: callers cannot revise pending work in place.
 		publication = Object.freeze({
@@ -332,11 +337,16 @@ export class PropertyValueService {
 		});
 
 		const key = this.valueSourceRegistry.resolve(property);
-		const epoch = this.producers?.version(lease) ?? null;
-		if (key !== property.id || lease.propertyId !== key || !this.producers?.canCommit(lease, publication, epoch))
+		const epoch = evaluation?.epoch ?? this.producers?.version(lease) ?? null;
+		if (
+			key !== property.id ||
+			lease.propertyId !== key ||
+			!this.producers?.canCommit(lease, publication, epoch, evaluation?.generation)
+		)
 			return { changed: false, state: null };
 		return this.withValueLock(key, async () => {
-			if (!this.producers.canCommit(lease, publication, epoch)) return { changed: false, state: null };
+			if (!this.producers.canCommit(lease, publication, epoch, evaluation?.generation))
+				return { changed: false, state: null };
 			if (!this.isSampleValueValid(property, value)) {
 				this.producers.invalidate(lease, ['invalid_value'], publication.evaluatedAt);
 				return { changed: false, state: this.producers.read(key) };
@@ -351,7 +361,7 @@ export class PropertyValueService {
 				false,
 				true,
 			);
-			if (!result.state || !this.producers.commit(lease, result.state, publication, epoch))
+			if (!result.state || !this.producers.commit(lease, result.state, publication, epoch, evaluation?.generation))
 				return { changed: false, state: this.producers.read(key) };
 			return { changed: result.changed, state: this.producers.read(key) };
 		});

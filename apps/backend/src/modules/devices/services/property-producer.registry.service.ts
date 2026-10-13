@@ -15,12 +15,17 @@ export interface PropertyProducerLease {
 	readonly revision: number;
 }
 
+export interface PropertyProducerEvaluation {
+	readonly epoch: number;
+	readonly generation: number;
+}
+
 interface ProducerEntry {
 	readonly property: ChannelPropertyEntity;
 	lease: PropertyProducerLease;
 	state: PropertyValueState;
 	epoch: number;
-	watermark: number | null;
+	generation: number;
 }
 
 /** Owns process-local live authority. Persisted history is never restart evidence. */
@@ -48,7 +53,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const lease = Object.freeze({ propertyId: property.id, revision });
 		const previous = this.entries.get(property.id);
 		const state = this.unavailable(revision, ['initializing'], new Date());
-		this.entries.set(property.id, { property, lease, state, epoch: (previous?.epoch ?? 0) + 1, watermark: null });
+		this.entries.set(property.id, { property, lease, state, epoch: (previous?.epoch ?? 0) + 1, generation: 0 });
 		this.emit(property, state);
 		return lease;
 	}
@@ -66,9 +71,36 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		return entry?.lease === lease ? entry.epoch : null;
 	}
 
-	canCommit(lease: PropertyProducerLease, publication: DerivedPropertyPublication, epoch: number | null): boolean {
+	beginEvaluation(lease: PropertyProducerLease): PropertyProducerEvaluation | null {
 		const entry = this.entries.get(lease.propertyId);
-		if (!entry || entry.lease !== lease || epoch !== entry.epoch || !['good', 'degraded'].includes(publication.quality))
+		if (!entry || entry.lease !== lease) return null;
+		return Object.freeze({ epoch: entry.epoch, generation: ++entry.generation });
+	}
+
+	isEvaluationCurrent(lease: PropertyProducerLease, evaluation: PropertyProducerEvaluation): boolean {
+		const entry = this.entries.get(lease.propertyId);
+		return (
+			!!entry &&
+			entry.lease === lease &&
+			entry.epoch === evaluation?.epoch &&
+			entry.generation === evaluation?.generation
+		);
+	}
+
+	canCommit(
+		lease: PropertyProducerLease,
+		publication: DerivedPropertyPublication,
+		epoch: number | null,
+		generation?: number,
+	): boolean {
+		const entry = this.entries.get(lease.propertyId);
+		if (
+			!entry ||
+			entry.lease !== lease ||
+			epoch !== entry.epoch ||
+			!['good', 'degraded'].includes(publication.quality) ||
+			(generation !== undefined && generation !== entry.generation)
+		)
 			return false;
 		const sampled = publication.sampledAt.getTime();
 		const evaluated = publication.evaluatedAt.getTime();
@@ -81,8 +113,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			evaluated <= Date.now() &&
 			expiry > Date.now() &&
 			expiry > evaluated &&
-			evaluated >= Date.parse(entry.state.producer.evaluatedAt) &&
-			(entry.watermark === null || sampled >= entry.watermark)
+			evaluated >= Date.parse(entry.state.producer.evaluatedAt)
 		);
 	}
 
@@ -91,8 +122,9 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		state: PropertyValueState,
 		publication: DerivedPropertyPublication,
 		epoch: number | null,
+		generation?: number,
 	): boolean {
-		if (!this.canCommit(lease, publication, epoch)) return false;
+		if (!this.canCommit(lease, publication, epoch, generation)) return false;
 		const entry = this.entries.get(lease.propertyId);
 		const next = clonePropertyValueState(state);
 		next.lastUpdated = publication.sampledAt.toISOString();
@@ -105,7 +137,6 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			revision: lease.revision,
 		});
 		entry.state = next;
-		entry.watermark = publication.sampledAt.getTime();
 		// Successful publications do not change the lifecycle epoch: queued newer evaluations remain valid.
 		this.emit(entry.property, next);
 		return true;
