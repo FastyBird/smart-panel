@@ -4069,4 +4069,125 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_display_screen_lock_never => 'Never';
+
+  @override
+  String virtual_measurement_quality(String quality) {
+    return 'Quality: $quality';
+  }
+
+  @override
+  String get virtual_measurement_members => 'Aggregate members';
+
+  @override
+  String get virtual_measurement_conversion => 'Converter input';
+
+  @override
+  String get virtual_measurement_retry => 'Retry diagnostics';
+
+  @override
+  String get virtual_measurement_state_good => 'Good';
+
+  @override
+  String get virtual_measurement_state_degraded => 'Reduced quality';
+
+  @override
+  String get virtual_measurement_state_input_degraded => 'Reduced quality';
+
+  @override
+  String get virtual_measurement_state_unavailable => 'Unavailable';
+
+  @override
+  String get virtual_measurement_state_runtime_unavailable => 'Unavailable';
+
+  @override
+  String get virtual_measurement_state_ready => 'Ready';
+
+  @override
+  String get virtual_measurement_state_configured => 'Ready';
+
+  @override
+  String get virtual_measurement_state_missing => 'Source missing';
+
+  @override
+  String get virtual_measurement_state_incompatible =>
+      'Incompatible measurement';
+
+  @override
+  String get virtual_measurement_state_incompatible_source =>
+      'Incompatible measurement';
+
+  @override
+  String get virtual_measurement_state_incompatible_output =>
+      'Incompatible measurement';
+
+  @override
+  String get virtual_measurement_state_incompatible_ntc_semantics =>
+      'Incompatible measurement';
+
+  @override
+  String get virtual_measurement_state_offline => 'Source offline';
+
+  @override
+  String get virtual_measurement_state_invalid => 'Invalid value';
+
+  @override
+  String get virtual_measurement_state_invalid_input => 'Invalid value';
+
+  @override
+  String get virtual_measurement_state_invalid_result => 'Invalid value';
+
+  @override
+  String get virtual_measurement_state_nonfinite_output => 'Invalid value';
+
+  @override
+  String get virtual_measurement_state_stale => 'Sample expired';
+
+  @override
+  String get virtual_measurement_state_expired => 'Sample expired';
+
+  @override
+  String get virtual_measurement_state_disabled => 'Disabled';
+
+  @override
+  String get virtual_measurement_state_output_disabled => 'Disabled';
+
+  @override
+  String get virtual_measurement_state_quorum_lost => 'Not enough valid inputs';
+
+  @override
+  String get virtual_measurement_state_invalid_policy =>
+      'Invalid configuration';
+
+  @override
+  String get virtual_measurement_state_invalid_configuration =>
+      'Invalid configuration';
+
+  @override
+  String get virtual_measurement_state_awaiting_fresh_sample =>
+      'Waiting for a fresh sample';
+
+  @override
+  String get virtual_measurement_state_runtime_error => 'Runtime error';
+
+  @override
+  String get virtual_measurement_state_graph_quarantined =>
+      'Dependency graph quarantined';
+
+  @override
+  String get virtual_measurement_state_input_out_of_range =>
+      'Value outside range';
+
+  @override
+  String get virtual_measurement_state_output_out_of_range =>
+      'Value outside range';
+
+  @override
+  String get virtual_measurement_state_invalid_domain =>
+      'Outside mathematical domain';
+
+  @override
+  String get virtual_measurement_state_producer_disposed => 'Producer stopped';
+
+  @override
+  String get virtual_measurement_state_unknown => 'Unknown diagnostic';
 }

@@ -34,6 +34,25 @@
 	</app-bar-button>
 
 	<app-breadcrumbs :items="breadcrumbs" />
+	<div
+		v-if="activeStep === 0"
+		class="mx-4 my-2"
+	>
+		<el-radio-group
+			:model-value="DevicesVirtualPluginDeviceMode.projection"
+			:aria-label="t('devicesVirtualPlugin.measurement.mode')"
+			@change="onMode"
+		>
+			<el-radio-button :value="DevicesVirtualPluginDeviceMode.projection">{{ t('devicesVirtualPlugin.measurement.projection') }}</el-radio-button>
+			<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_aggregate">
+				{{ t('devicesVirtualPlugin.measurement.aggregate') }}
+			</el-radio-button>
+			<el-radio-button :value="DevicesVirtualPluginDeviceMode.sensor_transform">
+				{{ t('devicesVirtualPlugin.measurement.transform') }}
+			</el-radio-button>
+			<el-radio-button :value="DevicesVirtualPluginDeviceMode.actuator_group">{{ t('devicesVirtualPlugin.measurement.group') }}</el-radio-button>
+		</el-radio-group>
+	</div>
 
 	<view-header
 		:heading="t('devicesVirtualPlugin.wizard.title')"
@@ -228,13 +247,13 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, onBeforeRouteLeave, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, ElScrollbar, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElCard, ElIcon, ElRadioButton, ElRadioGroup, ElScrollbar, ElStep, ElSteps } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
-import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { type DevicesModuleDeviceCategory, DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import VirtualWizardCategoryStep from '../components/wizard/virtual-wizard-category-step.vue';
 import VirtualWizardDetailsStep from '../components/wizard/virtual-wizard-details-step.vue';
 import VirtualWizardMappingStep from '../components/wizard/virtual-wizard-mapping-step.vue';
@@ -249,6 +268,11 @@ defineOptions({
 
 const { t } = useI18n();
 const router = useRouter();
+const onMode = (mode: unknown) => {
+	if (mode === DevicesVirtualPluginDeviceMode.actuator_group) void router.push({ name: RouteNames.LIGHT_GROUP_WIZARD });
+	else if (mode === DevicesVirtualPluginDeviceMode.sensor_aggregate || mode === DevicesVirtualPluginDeviceMode.sensor_transform)
+		void router.push({ name: RouteNames.MEASUREMENT_WIZARD, query: { mode } });
+};
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
