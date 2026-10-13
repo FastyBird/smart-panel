@@ -1,6 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { VirtualAggregateOperator, VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
@@ -30,6 +30,31 @@ export class VirtualProducerBindingModel {
 	@ApiProperty({ description: 'Source unit at configuration time', type: 'string', nullable: true })
 	@Expose()
 	unit: string | null;
+
+	@ApiPropertyOptional({ description: 'Current source numeric value', type: Number, nullable: true })
+	@Expose()
+	current_value?: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Original source sample timestamp',
+		type: String,
+		format: 'date-time',
+		nullable: true,
+	})
+	@Expose()
+	sampled_at?: string | null;
+
+	@ApiPropertyOptional({ description: 'Sample age at evaluation in seconds', type: Number, nullable: true })
+	@Expose()
+	age_seconds?: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Reason input was excluded',
+		enum: ['missing', 'incompatible', 'offline', 'invalid', 'stale'],
+		nullable: true,
+	})
+	@Expose()
+	exclusion?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataAggregateConfiguration' })
@@ -63,11 +88,11 @@ export class VirtualAggregateConfigurationModel {
 	graph_revision: number;
 
 	@ApiProperty({
-		description: 'Configuration is durable; runtime evaluation is not delivered at this stage',
-		enum: ['unavailable'],
+		description: 'Aggregate runtime availability in this process; live quality is exposed on the output property',
+		enum: ['ready', 'unavailable'],
 	})
 	@Expose()
-	runtime_readiness: 'unavailable';
+	runtime_readiness: 'ready' | 'unavailable';
 
 	@ApiProperty({
 		description: 'Input diagnostics, including missing member edges',

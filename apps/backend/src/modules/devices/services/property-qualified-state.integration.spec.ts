@@ -323,14 +323,28 @@ describe('qualified samples and producer state', () => {
 		expect((await values.readLatest(property))?.value).toBe(22);
 	});
 
-	it('rejects an older contributing timestamp even when evaluation is newer', async () => {
+	it('publishes the true oldest contributor when a newer evaluation restores an older member', async () => {
 		const lease = producers.register(property, 1);
-		jest.setSystemTime(base + 2_000);
-		await values.publishDerived(property, lease, 21, publication(base + 1_000));
-		jest.setSystemTime(base + 3_000);
-		await values.publishDerived(property, lease, 19, publication(base));
+		jest.setSystemTime(base + 10_000);
+		await values.publishDerived(property, lease, 20, publication(base));
+		jest.setSystemTime(base + 11_000);
+		await values.publishDerived(property, lease, 22, publication(base + 10_000));
+		jest.setSystemTime(base + 12_000);
+		await values.publishDerived(property, lease, 21, publication(base + 8_000));
+		expect(await values.readLatest(property)).toMatchObject({
+			value: 21,
+			lastUpdated: new Date(base + 8_000).toISOString(),
+		});
+		expect(storage.writePoints).toHaveBeenCalledTimes(3);
+	});
+
+	it('fences older asynchronous evaluations even at identical evaluation clocks', async () => {
+		const lease = producers.register(property, 1);
+		const old = producers.beginEvaluation(lease);
+		const current = producers.beginEvaluation(lease);
+		await values.publishDerived(property, lease, 21, publication(), current);
+		await values.publishDerived(property, lease, 19, publication(), old);
 		expect((await values.readLatest(property))?.value).toBe(21);
-		expect(storage.writePoints).toHaveBeenCalledTimes(1);
 	});
 
 	it('invalid computed values revoke only current properly ordered work', async () => {
@@ -338,7 +352,7 @@ describe('qualified samples and producer state', () => {
 		const lease = producers.register(property, 2);
 		await values.publishDerived(property, lease, 20, publication());
 		await values.publishDerived(property, old, NaN, publication());
-		await values.publishDerived(property, lease, NaN, publication(base - 1));
+		await values.publishDerived(property, lease, NaN, publication(base - 1, base - 1));
 		expect((await values.readLatest(property))?.value).toBe(20);
 		await values.publishDerived(property, lease, NaN, publication());
 		expect((await values.readLatest(property))?.producer).toMatchObject({

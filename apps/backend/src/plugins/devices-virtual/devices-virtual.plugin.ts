@@ -66,6 +66,7 @@ import { VirtualProjectionListener } from './listeners/virtual-projection.listen
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
@@ -112,6 +113,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualDependencyGraphService,
 		VirtualProducerConfigService,
 		VirtualProducerStateService,
+		VirtualAggregateRuntimeService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
