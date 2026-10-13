@@ -151,6 +151,15 @@ export class VirtualChannelEntity extends ChannelEntity {
 })
 @ChildEntity()
 export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
+	@ApiPropertyOptional({
+		name: 'measurement_quantity',
+		description: 'Persisted numeric transform quantity; present only for qualified transform metadata',
+		readOnly: true,
+		type: 'string',
+	})
+	@Expose({ name: 'measurement_quantity' })
+	measurementQuantity?: string;
+
 	@ApiProperty({
 		name: 'value_origin',
 		description: 'Whether the value comes from a source property or is stored by this property itself',

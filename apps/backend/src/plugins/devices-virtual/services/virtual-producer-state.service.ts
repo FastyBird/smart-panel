@@ -12,6 +12,7 @@ import {
 } from '../../../modules/devices/services/property-producer.registry.service';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
 import { VirtualAggregateConfigEntity, VirtualLightGroupConfigEntity } from '../entities/virtual-producer.entity';
+import { VirtualTransformConfigEntity } from '../entities/virtual-transform.entity';
 
 /** A durable producer always owns an unavailable live overlay until a later runtime claims it. */
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
@@ -41,12 +42,14 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 		const properties = await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
 			relations: ['channel', 'channel.device'],
 		});
+		const transforms = await this.dataSource.manager.find(VirtualTransformConfigEntity);
 		const aggregates = await this.dataSource.manager.find(VirtualAggregateConfigEntity);
 		const groups = await this.dataSource.manager.find(VirtualLightGroupConfigEntity);
 		for (const property of properties) {
 			if (!property.isDerived) continue;
 			const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
 			const revision =
+				transforms.find((config) => config.outputPropertyId === property.id)?.revision ??
 				aggregates.find((config) => config.outputPropertyId === property.id)?.revision ??
 				groups.find((config) => config.groupChannelId === channelId)?.revision ??
 				0;

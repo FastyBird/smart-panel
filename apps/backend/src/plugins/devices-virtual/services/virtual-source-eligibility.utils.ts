@@ -27,3 +27,23 @@ export const isEligibleVirtualMeasurement = (
 		(permission) => permission === PermissionType.READ_WRITE || permission === PermissionType.WRITE_ONLY,
 	) &&
 	property.dataType === DataTypeType.FLOAT;
+
+/** Reserved transform admission contract. Runtime qualification still requires its live producer overlay. */
+export const isEligibleVirtualTransformedTemperature = (
+	property: ChannelPropertyEntity,
+	channel: ChannelEntity,
+	device: DeviceEntity,
+): boolean =>
+	device.type === 'virtual' &&
+	(device as DeviceEntity & { mode?: VirtualDeviceMode }).mode === VirtualDeviceMode.SENSOR_TRANSFORM &&
+	device.category === DeviceCategory.SENSOR &&
+	channel.category === ChannelCategory.TEMPERATURE &&
+	property.category === PropertyCategory.TEMPERATURE &&
+	(property as ChannelPropertyEntity & { valueOrigin?: VirtualValueOrigin }).valueOrigin ===
+		VirtualValueOrigin.DERIVED &&
+	!(property as ChannelPropertyEntity & { sourcePropertyId?: string }).sourcePropertyId &&
+	property.permissions?.includes(PermissionType.READ_ONLY) &&
+	!property.permissions.some(
+		(permission) => permission === PermissionType.READ_WRITE || permission === PermissionType.WRITE_ONLY,
+	) &&
+	property.dataType === DataTypeType.FLOAT;

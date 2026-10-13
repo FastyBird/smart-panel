@@ -58,7 +58,9 @@ export class VirtualStatusListener {
 	}): Promise<void> {
 		if (
 			payload.device.type === DEVICES_VIRTUAL_TYPE &&
-			(payload.device as VirtualDeviceEntity).mode !== VirtualDeviceMode.SENSOR_AGGREGATE
+			![VirtualDeviceMode.SENSOR_AGGREGATE, VirtualDeviceMode.SENSOR_TRANSFORM].includes(
+				(payload.device as VirtualDeviceEntity).mode,
+			)
 		) {
 			return;
 		}

@@ -13,6 +13,7 @@ import {
 	VirtualLightGroupBindingEntity,
 	VirtualLightGroupMemberEntity,
 } from '../entities/virtual-producer.entity';
+import { VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 
@@ -40,7 +41,7 @@ export interface VirtualPropertyLink {
 	 */
 	sourceDeviceId: string | null;
 	bindingId?: string;
-	kind?: 'aggregate_input' | 'group_binding';
+	kind?: 'aggregate_input' | 'group_binding' | 'transform_source';
 	quarantined?: boolean;
 }
 
@@ -159,11 +160,12 @@ export class VirtualPropertyIndexService {
 		if (!manager?.connection?.hasMetadata(VirtualAggregateInputEntity)) return false;
 		const rows: { count: number }[] = await manager.query(
 			`SELECT (
+			(SELECT COUNT(*) FROM devices_virtual_transform_sources t JOIN devices_module_channels_properties p ON p.id = t.sourcePropertyId JOIN devices_module_channels c ON c.id = p.channelId WHERE c.deviceId = ?) +
 			(SELECT COUNT(*) FROM devices_virtual_aggregate_inputs a JOIN devices_module_channels_properties p ON p.id = a.sourcePropertyId JOIN devices_module_channels c ON c.id = p.channelId WHERE c.deviceId = ?) +
 			(SELECT COUNT(*) FROM devices_virtual_light_group_members m JOIN devices_module_channels c ON c.id = m.sourceChannelId WHERE c.deviceId = ?) +
 			(SELECT COUNT(*) FROM devices_virtual_light_group_bindings b JOIN devices_module_channels_properties p ON p.id = b.sourcePropertyId JOIN devices_module_channels c ON c.id = p.channelId WHERE c.deviceId = ?)
 		) AS count`,
-			[sourceDeviceId, sourceDeviceId, sourceDeviceId],
+			[sourceDeviceId, sourceDeviceId, sourceDeviceId, sourceDeviceId],
 		);
 		return rows[0].count > 0;
 	}
@@ -244,6 +246,7 @@ export class VirtualPropertyIndexService {
 		if (!manager?.connection?.hasMetadata(VirtualAggregateInputEntity)) return links;
 		for (const [table, kind] of [
 			['devices_virtual_aggregate_inputs', 'aggregate_input'],
+			['devices_virtual_transform_sources', 'transform_source'],
 			['devices_virtual_light_group_bindings', 'group_binding'],
 		] as const) {
 			const rows = await manager.query<VirtualPropertyLink[]>(
@@ -356,7 +359,7 @@ export class VirtualPropertyIndexService {
 				sourceId: string | null,
 				sourceDeviceId: string | undefined,
 				bindingId: string,
-				kind: 'aggregate_input' | 'group_binding',
+				kind: 'aggregate_input' | 'group_binding' | 'transform_source',
 			) => {
 				if (!ownerId) return;
 				this.indexByVirtualDevice(byVirtualDevice, ownerId, {
@@ -398,6 +401,33 @@ export class VirtualPropertyIndexService {
 					this.resolveDeviceId(sourceChannel),
 					input.id,
 					'aggregate_input',
+				);
+			}
+			const transforms = await manager.find(VirtualTransformSourceEntity, {
+				relations: [
+					'config',
+					'config.outputProperty',
+					'config.outputProperty.channel',
+					'config.outputProperty.channel.device',
+					'sourceProperty',
+					'sourceProperty.channel',
+					'sourceProperty.channel.device',
+				],
+			});
+			for (const input of transforms) {
+				const output = input.config?.outputProperty;
+				const outputChannel = output && typeof output.channel !== 'string' ? output.channel : undefined;
+				const sourceChannel =
+					input.sourceProperty && typeof input.sourceProperty.channel !== 'string'
+						? input.sourceProperty.channel
+						: undefined;
+				add(
+					input.outputPropertyId,
+					this.resolveDeviceId(outputChannel),
+					input.sourcePropertyId,
+					this.resolveDeviceId(sourceChannel),
+					input.id,
+					'transform_source',
 				);
 			}
 			const bindings = await manager.find(VirtualLightGroupBindingEntity, {
