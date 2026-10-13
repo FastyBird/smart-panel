@@ -545,16 +545,18 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 				expect(
 					sent.mock.calls.filter(([message]) => (JSON.parse(message) as { topic: string }).topic.endsWith('/set')),
 				).toHaveLength(0);
-				await sources.bindDevice(device.id, sources.getIdentity('floor'), [
-					{ property, mapping: { field: 'temperature', transformer: null } },
-					{ property: on, mapping: { field: 'state', transformer: null } },
-				]);
+				// Compatible re-adoption confirms only the requested switch after the registry moved to a new IEEE.
 				await sources.bindDevice(device.id, sources.getIdentity('floor'), [
 					{ property: on, mapping: { field: 'state', transformer: null } },
 				]);
 				expect((await sources.getReadiness(property.id)).quarantined).toBe(true);
 				expect((await sources.prepareDispatch(device.id, 'floor', [property.id])).allowed).toBe(false);
 				expect((await sources.prepareDispatch(device.id, 'floor', ['missing'])).allowed).toBe(false);
+				expect((await sources.prepareDispatch(device.id, 'floor', [on.id])).allowed).toBe(true);
+				const sourceRepository = database.getRepository(ZigbeeSampleSourceEntity);
+				await sourceRepository.update({ propertyId: on.id }, { ieeeAddress: ieee });
+				expect((await sources.prepareDispatch(device.id, 'floor', [on.id])).allowed).toBe(false);
+				await sourceRepository.update({ propertyId: on.id }, { ieeeAddress: replacement });
 				expect(await platform.process(update)).toBe(true);
 				const rebound = await platform.prepareCompositeBatch([update]);
 				expect(rebound.updates[0].property.id).toBe(on.id);
