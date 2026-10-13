@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { hsvToHex } from '../../../common/utils/color.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceContributionCoverage } from '../../../modules/devices/services/device-contribution.registry.service';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { LightingMode, LightingRole, RoleBrightnessRule } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
+import { LightingContributionPlannerService } from './lighting-contribution-planner.service';
 import { SpaceStateReadService } from './space-state-read.service';
 
 /**
@@ -95,6 +97,7 @@ export interface SpaceLightingState {
 	totalLights: number;
 	lightsOn: number;
 	averageBrightness: number | null;
+	unknownLights?: number;
 
 	// Per-role state
 	roles: Partial<Record<LightingRole, RoleAggregatedState>>;
@@ -109,6 +112,7 @@ export interface SpaceLightingState {
  * Internal light state for aggregation
  */
 interface LightState {
+	coverage?: DeviceContributionCoverage;
 	deviceId: string;
 	channelId: string;
 	role: LightingRole | null;
@@ -135,6 +139,7 @@ export class SpaceLightingStateService {
 		private readonly stateReads: SpaceStateReadService,
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
+		@Optional() private readonly contributions?: LightingContributionPlannerService,
 	) {}
 
 	/**
@@ -186,13 +191,17 @@ export class SpaceLightingStateService {
 		const summary = this.calculateSummary(lights);
 
 		// Detect current mode (prefer lastAppliedMode as tie-breaker)
-		const modeMatch = this.detectMode(roleStates, otherState, lights, lastAppliedMode);
+		const modeMatch = lights.some(
+			(light) => (light.coverage?.reported.unknown ?? 0) > 0 || light.coverage?.reported.mixed,
+		)
+			? null
+			: this.detectMode(roleStates, otherState, lights, lastAppliedMode);
 
 		// Calculate lights by role count
 		const lightsByRole: Record<string, number> = {};
 		for (const light of lights) {
 			const roleKey = light.role ?? 'unassigned';
-			lightsByRole[roleKey] = (lightsByRole[roleKey] ?? 0) + 1;
+			lightsByRole[roleKey] = (lightsByRole[roleKey] ?? 0) + (light.coverage?.reported.total ?? 1);
 		}
 
 		// Determine if mode was set by intent using mode validity tracking
@@ -227,6 +236,7 @@ export class SpaceLightingStateService {
 			totalLights: summary.totalLights,
 			lightsOn: summary.lightsOn,
 			averageBrightness: summary.averageBrightness,
+			unknownLights: summary.unknownLights,
 
 			roles: roleStates,
 			lightsByRole,
@@ -241,6 +251,19 @@ export class SpaceLightingStateService {
 		const devices = await this.stateReads.findDevicesBySpace(spaceId);
 		const roleMap = await this.stateReads.getLightingRoleMap(spaceId);
 
+		const candidates = devices.flatMap((device) =>
+			device.category === DeviceCategory.LIGHTING
+				? (device.channels ?? [])
+						.filter(
+							(channel) =>
+								channel.category === ChannelCategory.LIGHT &&
+								roleMap.get(`${device.id}:${channel.id}`)?.role !== LightingRole.HIDDEN,
+						)
+						.map((channel) => ({ channel }))
+				: [],
+		);
+		const plan = await this.contributions?.plan(candidates);
+		const selected = plan ? new Set(plan.targets.map((target) => target.channel.id)) : null;
 		const lights: LightState[] = [];
 
 		for (const device of devices) {
@@ -251,7 +274,25 @@ export class SpaceLightingStateService {
 			const lightChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.LIGHT) ?? [];
 
 			for (const channel of lightChannels) {
+				if (selected && !selected.has(channel.id)) continue;
 				const lightState = this.extractLightState(device, channel, roleMap);
+				if (lightState) {
+					lightState.coverage = plan?.coverage.get(channel.id);
+					for (const [field, category] of [
+						['brightness', PropertyCategory.BRIGHTNESS],
+						['colorTemperature', PropertyCategory.COLOR_TEMPERATURE],
+						['colorRed', PropertyCategory.COLOR_RED],
+						['colorGreen', PropertyCategory.COLOR_GREEN],
+						['colorBlue', PropertyCategory.COLOR_BLUE],
+						['colorHue', PropertyCategory.HUE],
+						['colorSaturation', PropertyCategory.SATURATION],
+					] as const) {
+						const value = lightState.coverage?.reported.properties.find(
+							(property) => property.category === category,
+						)?.value;
+						if (lightState.coverage) lightState[field] = typeof value === 'number' ? value : null;
+					}
+				}
 
 				if (lightState) {
 					// Skip HIDDEN lights - they should not appear in state
@@ -361,9 +402,11 @@ export class SpaceLightingStateService {
 	): RoleAggregatedState {
 		// On/off state
 		const onStates = lights.map((l) => l.isOn);
-		const devicesOn = onStates.filter((on) => on).length;
+		const devicesOn = lights.reduce((count, light) => count + (light.coverage?.reported.on ?? Number(light.isOn)), 0);
 		const isOn = devicesOn > 0;
-		const isOnMixed = !onStates.every((on) => on === onStates[0]);
+		const isOnMixed =
+			lights.some((light) => light.coverage?.reported.mixed || (light.coverage?.reported.unknown ?? 0) > 0) ||
+			!onStates.every((on) => on === onStates[0]);
 
 		// Brightness - uniform value or null if mixed (tolerance 5 on 0-100 scale)
 		const brightnessResult = this.getUniformValue(lights.map((l) => l.brightness));
@@ -391,12 +434,29 @@ export class SpaceLightingStateService {
 			colorTemperature: colorTempResult.value,
 			color: colorResult.value,
 			white: whiteResult.value,
-			isBrightnessMixed: brightnessResult.isMixed,
-			isColorTemperatureMixed: colorTempResult.isMixed,
-			isColorMixed: colorResult.isMixed,
+			isBrightnessMixed:
+				brightnessResult.isMixed ||
+				lights.some((light) => light.coverage?.reported.mixedProperties.includes(PropertyCategory.BRIGHTNESS)),
+			isColorTemperatureMixed:
+				colorTempResult.isMixed ||
+				lights.some((light) => light.coverage?.reported.mixedProperties.includes(PropertyCategory.COLOR_TEMPERATURE)),
+			isColorMixed:
+				colorResult.isMixed ||
+				lights.some((light) =>
+					light.coverage?.reported.mixedProperties.some((category) =>
+						[
+							PropertyCategory.COLOR_RED,
+							PropertyCategory.COLOR_GREEN,
+							PropertyCategory.COLOR_BLUE,
+							PropertyCategory.HUE,
+							PropertyCategory.SATURATION,
+							PropertyCategory.COLOR_WHITE,
+						].includes(category),
+					),
+				),
 			isWhiteMixed: whiteResult.isMixed,
 			lastIntent,
-			devicesCount: lights.length,
+			devicesCount: lights.reduce((count, light) => count + (light.coverage?.reported.total ?? 1), 0),
 			devicesOn,
 		};
 	}
@@ -425,9 +485,14 @@ export class SpaceLightingStateService {
 		}
 
 		const onStates = otherLights.map((l) => l.isOn);
-		const devicesOn = onStates.filter((on) => on).length;
+		const devicesOn = otherLights.reduce(
+			(count, light) => count + (light.coverage?.reported.on ?? Number(light.isOn)),
+			0,
+		);
 		const isOn = devicesOn > 0;
-		const isOnMixed = !onStates.every((on) => on === onStates[0]);
+		const isOnMixed =
+			otherLights.some((light) => light.coverage?.reported.mixed || (light.coverage?.reported.unknown ?? 0) > 0) ||
+			!onStates.every((on) => on === onStates[0]);
 
 		const brightnessResult = this.getUniformValue(otherLights.map((l) => l.brightness));
 		const colorTempResult = this.getUniformValue(
@@ -444,11 +509,30 @@ export class SpaceLightingStateService {
 			colorTemperature: colorTempResult.value,
 			color: colorResult.value,
 			white: whiteResult.value,
-			isBrightnessMixed: brightnessResult.isMixed,
-			isColorTemperatureMixed: colorTempResult.isMixed,
-			isColorMixed: colorResult.isMixed,
+			isBrightnessMixed:
+				brightnessResult.isMixed ||
+				otherLights.some((light) => light.coverage?.reported.mixedProperties.includes(PropertyCategory.BRIGHTNESS)),
+			isColorTemperatureMixed:
+				colorTempResult.isMixed ||
+				otherLights.some((light) =>
+					light.coverage?.reported.mixedProperties.includes(PropertyCategory.COLOR_TEMPERATURE),
+				),
+			isColorMixed:
+				colorResult.isMixed ||
+				otherLights.some((light) =>
+					light.coverage?.reported.mixedProperties.some((category) =>
+						[
+							PropertyCategory.COLOR_RED,
+							PropertyCategory.COLOR_GREEN,
+							PropertyCategory.COLOR_BLUE,
+							PropertyCategory.HUE,
+							PropertyCategory.SATURATION,
+							PropertyCategory.COLOR_WHITE,
+						].includes(category),
+					),
+				),
 			isWhiteMixed: whiteResult.isMixed,
-			devicesCount: otherLights.length,
+			devicesCount: otherLights.reduce((count, light) => count + (light.coverage?.reported.total ?? 1), 0),
 			devicesOn,
 		};
 	}
@@ -611,24 +695,27 @@ export class SpaceLightingStateService {
 	/**
 	 * Calculate overall summary
 	 */
-	private calculateSummary(lights: LightState[]): {
-		totalLights: number;
-		lightsOn: number;
-		averageBrightness: number | null;
-	} {
-		const lightsOn = lights.filter((l) => l.isOn).length;
-
-		const onBrightnessValues = lights.filter((l) => l.isOn && l.brightness !== null).map((l) => l.brightness);
-
-		const averageBrightness =
-			onBrightnessValues.length > 0
-				? Math.round(onBrightnessValues.reduce((a, b) => a + b, 0) / onBrightnessValues.length)
-				: null;
-
+	private calculateSummary(lights: LightState[]) {
+		let brightnessSum = 0;
+		let brightnessCount = 0;
+		for (const light of lights) {
+			if (light.coverage?.reported.onBrightness) {
+				brightnessSum += light.coverage.reported.onBrightness.sum;
+				brightnessCount += light.coverage.reported.onBrightness.count;
+				continue;
+			}
+			if (!light.isOn || light.brightness === null) continue;
+			const count =
+				light.coverage?.reported.properties.find((property) => property.category === PropertyCategory.BRIGHTNESS)
+					?.contributors ?? 1;
+			brightnessSum += light.brightness * count;
+			brightnessCount += count;
+		}
 		return {
-			totalLights: lights.length,
-			lightsOn,
-			averageBrightness,
+			totalLights: lights.reduce((count, light) => count + (light.coverage?.reported.total ?? 1), 0),
+			lightsOn: lights.reduce((count, light) => count + (light.coverage?.reported.on ?? Number(light.isOn)), 0),
+			unknownLights: lights.reduce((count, light) => count + (light.coverage?.reported.unknown ?? 0), 0),
+			averageBrightness: brightnessCount ? Math.round(brightnessSum / brightnessCount) : null,
 		};
 	}
 
@@ -1100,6 +1187,7 @@ export class SpaceLightingStateService {
 			totalLights: 0,
 			lightsOn: 0,
 			averageBrightness: null,
+			unknownLights: 0,
 			roles: {},
 			lightsByRole: {},
 			other: {

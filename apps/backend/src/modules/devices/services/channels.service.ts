@@ -379,9 +379,14 @@ export class ChannelsService {
 		// with. Asked of the base repository, because a collision with a channel of *another* type is the
 		// same collision: ids are unique across the table, not per subclass.
 		if (channel.id) {
-			const existing = await (creation ? creation.manager.getRepository(ChannelEntity) : this.repository).findOne({
-				where: { id: channel.id },
-			});
+			const existing = creation
+				? await creation.manager
+						.createQueryBuilder(ChannelEntity, 'row')
+						.select('row.id')
+						.where('row.id = :id', { id: channel.id })
+						.callListeners(false)
+						.getOne()
+				: await this.repository.findOne({ where: { id: channel.id } });
 
 			if (existing) {
 				this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} already exists, refusing to create over it`);

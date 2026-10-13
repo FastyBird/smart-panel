@@ -196,11 +196,8 @@ export class VirtualProducerConfigService {
 			let committedProperties: VirtualChannelPropertyEntity[] = [];
 			let committedRevision = 0;
 			await this.graph.withStructuralWrite(async (manager) => {
-				const prepared = await this.validateLightGroup(manager, groupChannelId, dto);
-				await manager.save(prepared.config);
-				await manager.delete(VirtualLightGroupMemberEntity, { groupChannelId });
-				await manager.save(prepared.members);
-				await manager.save(prepared.bindings);
+				const prepared = await this.prepareLightGroup(manager, groupChannelId, dto);
+				await this.persistLightGroup(manager, prepared);
 				outputs = [...new Set(prepared.bindings.map((binding) => binding.outputPropertyId))];
 				committedProperties = prepared.outputs;
 				committedRevision = prepared.config.revision;
@@ -211,12 +208,27 @@ export class VirtualProducerConfigService {
 		});
 	}
 
+	/** Caller owns the structural writer; publications happen only after COMMIT. */
+	async persistLightGroup(
+		manager: EntityManager,
+		prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareLightGroup']>>,
+	): Promise<void> {
+		await manager.save(prepared.config);
+		await manager.delete(VirtualLightGroupMemberEntity, { groupChannelId: prepared.config.groupChannelId });
+		await manager.save(prepared.members);
+		await manager.save(prepared.bindings);
+	}
+
+	installLightGroup(prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareLightGroup']>>): void {
+		for (const property of prepared.outputs) this.producerState.installUnavailable(property, prepared.config.revision);
+	}
+
 	async previewLightGroup(
 		groupChannelId: string,
 		dto: ConfigureVirtualLightGroupDto,
 	): Promise<VirtualLightGroupConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
-			const prepared = await this.validateLightGroup(this.dataSource.manager, groupChannelId, dto);
+			const prepared = await this.prepareLightGroup(this.dataSource.manager, groupChannelId, dto);
 			return this.groupModel(
 				prepared.config,
 				prepared.members,
@@ -245,7 +257,7 @@ export class VirtualProducerConfigService {
 		return this.groupModel(config, members, bindings, await this.graph.revision(), capabilities);
 	}
 
-	private async validateLightGroup(
+	async prepareLightGroup(
 		manager: EntityManager,
 		groupChannelId: string,
 		dto: ConfigureVirtualLightGroupDto,

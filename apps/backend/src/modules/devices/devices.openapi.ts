@@ -1,3 +1,4 @@
+import { PropertyCommandContextDto, PropertyCommandDto, PropertyCommandValueDto } from './dto/property-command.dto';
 /**
  * OpenAPI extra models for Devices module
  */
@@ -62,8 +63,13 @@ import {
 	UpdatesPerMinModel,
 	UpdatesTodayModel,
 } from './models/devices.model';
+import * as PropertyCommandModels from './models/property-command-response.model';
 
 export const DEVICES_SWAGGER_EXTRA_MODELS = [
+	...Object.values(PropertyCommandModels),
+	PropertyCommandDto,
+	PropertyCommandContextDto,
+	PropertyCommandValueDto,
 	// Module configuration
 	DevicesConfigModel,
 	UpdateDevicesConfigDto,

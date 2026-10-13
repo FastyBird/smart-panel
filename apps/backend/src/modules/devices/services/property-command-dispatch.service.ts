@@ -36,6 +36,8 @@ class CompositeAdmissionSnapshotChangedError extends Error {}
 export interface PropertyCommandDispatchOptions {
 	readonly intentId?: string;
 	readonly requestId?: string;
+	/** Internal room selection fence carried through provider queued dispatch. */
+	readonly isRequestCurrent?: () => boolean;
 	/** Minted internal request lifetime evidence; never read from a public DTO. */
 	readonly commandEntry?: PropertyCommandEntrySnapshot;
 	readonly ttlMs?: number;

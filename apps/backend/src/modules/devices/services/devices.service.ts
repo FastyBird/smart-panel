@@ -622,9 +622,14 @@ export class DevicesService {
 		// the mapped repository's own discriminator would hide exactly the case that is hardest to
 		// explain afterwards.
 		if (device.id) {
-			const existing = await (creation ? creation.manager.getRepository(DeviceEntity) : this.repository).findOne({
-				where: { id: device.id },
-			});
+			const existing = creation
+				? await creation.manager
+						.createQueryBuilder(DeviceEntity, 'row')
+						.select('row.id')
+						.where('row.id = :id', { id: device.id })
+						.callListeners(false)
+						.getOne()
+				: await this.repository.findOne({ where: { id: device.id } });
 
 			if (existing) {
 				this.logger.error(`[VALIDATION FAILED] Device id=${device.id} already exists, refusing to create over it`);
