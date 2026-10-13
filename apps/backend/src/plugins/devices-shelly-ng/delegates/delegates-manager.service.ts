@@ -25,7 +25,9 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import {
 	ShellyRawSample,
 	hasQualifiedFloorSourceIdentity,
+	hasQualifiedRawVoltageIdentity,
 	nativeTemperatureIdentity,
+	nativeVoltmeterVoltageIdentity,
 } from '../contracts/native-temperature.contract';
 import { ShellyProtectiveCommand, ShellyProtectiveCommandResult } from '../contracts/protective-switch.contract';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
@@ -2220,13 +2222,18 @@ export class DelegatesManagerService {
 			if (/^temperature:\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'tC';
-			} else if (hasQualifiedFloorSourceIdentity(channel.identifier)) {
+			} else if (
+				hasQualifiedFloorSourceIdentity(channel.identifier) ||
+				hasQualifiedRawVoltageIdentity(channel.identifier)
+			) {
 				componentKey = channel.identifier.split(':').slice(1, 3).join(':');
-				attribute = componentKey.startsWith('input:')
-					? 'xpercent'
-					: componentKey.startsWith('voltmeter:')
-						? 'xvoltage'
-						: 'tC';
+				attribute = hasQualifiedRawVoltageIdentity(channel.identifier)
+					? 'voltage'
+					: componentKey.startsWith('input:')
+						? 'xpercent'
+						: componentKey.startsWith('voltmeter:')
+							? 'xvoltage'
+							: 'tC';
 			} else if (/^(switch|light):\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'output';
@@ -2243,9 +2250,10 @@ export class DelegatesManagerService {
 					channel.id,
 				);
 			if (property) {
-				const sourceLease = hasQualifiedFloorSourceIdentity(channel.identifier)
-					? await this.sampleSourcesRegistry?.get(property.id)
-					: undefined;
+				const sourceLease =
+					hasQualifiedFloorSourceIdentity(channel.identifier) || hasQualifiedRawVoltageIdentity(channel.identifier)
+						? await this.sampleSourcesRegistry?.get(property.id)
+						: undefined;
 				sources.push({ channel, property, componentKey, attribute, sourceLease: sourceLease ?? undefined });
 			}
 			if (/^light:\d+$/.test(channel.identifier)) {
@@ -2268,6 +2276,9 @@ export class DelegatesManagerService {
 				const key = `${delegate.id}|${source.property.id}`;
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
 				this.sampleRevisions.set(key, revision);
+				const qualifiedIdentity =
+					hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+					hasQualifiedRawVoltageIdentity(source.channel.identifier);
 				const sourceIsCurrent = (): boolean =>
 					(this.sampleGenerations.get(delegate.id) ?? 0) === generation &&
 					(sample.evidence.sourceIsCurrent?.() ?? sample.evidence.isCurrent?.() ?? true);
@@ -2285,7 +2296,7 @@ export class DelegatesManagerService {
 					const sourceGuard = (): boolean =>
 						sourceIsCurrent() &&
 						(reported === null ||
-							!hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+							!qualifiedIdentity ||
 							(sourceProof &&
 								Boolean(lease && this.sampleSourcesRegistry?.isCurrent(lease, sample.evidence.observedAt))));
 					return this.admitRawSample(source.property, reported, {
@@ -2299,7 +2310,7 @@ export class DelegatesManagerService {
 				};
 				const task = (async (): Promise<void> => {
 					// Faults do not wait for configuration RPC or ordinary telemetry coalescing.
-					if (value !== null && hasQualifiedFloorSourceIdentity(source.channel.identifier)) {
+					if (value !== null && qualifiedIdentity) {
 						lease = await this.sampleSourcesRegistry?.get(source.property.id);
 						if (!isCurrent()) return;
 						if (
@@ -2315,7 +2326,15 @@ export class DelegatesManagerService {
 						const current = await delegate.readNativeTemperatureIdentity(source.componentKey);
 						if (!isCurrent()) return;
 						const identity =
-							current && nativeTemperatureIdentity(source.componentKey, current.config, current.peripherals);
+							current &&
+							(hasQualifiedRawVoltageIdentity(source.channel.identifier)
+								? nativeVoltmeterVoltageIdentity(
+										source.componentKey,
+										current.config,
+										current.peripherals,
+										device.canonicalMac,
+									)
+								: nativeTemperatureIdentity(source.componentKey, current.config, current.peripherals));
 						if (
 							!identity ||
 							identity.channelIdentifier !== source.channel.identifier ||

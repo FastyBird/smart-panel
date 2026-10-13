@@ -20,6 +20,8 @@ import { IDevicePropertyData } from '../../../modules/devices/platforms/device.p
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
+import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -437,12 +439,46 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(registry.assertAllowed(await target(relay, false))).rejects.toThrow('reserved');
 	});
 
-	it('admits a single-input transformed Celsius floor while retaining physical identity and conversion revision', async () => {
+	it('admits converted qualified volts as a floor while rejecting direct volts and tracking conversion revision', async () => {
 		const controller = await owner(),
 			sensor = await ambient(),
-			nativeFloor = await ambient(),
 			transformedFloor = await ambient(VirtualDeviceMode.SENSOR_TRANSFORM),
 			relay = await actuator();
+		const nativeFloor = uuid(),
+			nativeChannel = uuid(),
+			nativeDevice = uuid();
+		const voltage = nativeVoltmeterVoltageIdentity(
+			'voltmeter:100',
+			{ id: 100, range: 0, report_thr: 0.1, xvoltage: { expr: null, unit: null } },
+			{ voltmeter: { 'voltmeter:100': {} } },
+			'A8032ABE5085',
+		);
+		await database.manager.insert(ShellyNgDeviceEntity, {
+			id: nativeDevice,
+			name: 'Voltmeter',
+			category: DeviceCategory.SENSOR,
+			canonicalMac: 'A8032ABE5085',
+		} as never);
+		await database.manager.insert(ShellyNgChannelEntity, {
+			id: nativeChannel,
+			name: 'Raw voltage',
+			identifier: voltage.channelIdentifier,
+			category: ChannelCategory.ANALOG_INPUT,
+			device: nativeDevice,
+		} as never);
+		await database.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: nativeFloor,
+			channel: nativeChannel,
+			identifier: 'voltage',
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		const physical = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: nativeFloor },
+			relations: ['channel', 'channel.device'],
+		});
+		expect(resolvePropertyUnit(physical)).toBe('V');
 		await database.manager.insert(VirtualTransformConfigEntity, {
 			outputPropertyId: transformedFloor,
 			schemaVersion: 1,
@@ -453,10 +489,10 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			configuredAt: new Date(),
 			policy: {
 				operator: VirtualNumericTransformOperator.AFFINE,
-				inputRange: { minimum: -30, maximum: 100 },
+				inputRange: { minimum: 0, maximum: 12 },
 				outputRange: { minimum: -30, maximum: 100 },
-				scale: 1,
-				offset: 0,
+				scale: 10,
+				offset: -10,
 			},
 		});
 		await database.manager.insert(VirtualTransformSourceEntity, {
@@ -464,11 +500,14 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			outputPropertyId: transformedFloor,
 			sourcePropertyId: nativeFloor,
 			sourcePropertyIdentity: nativeFloor,
-			quantity: 'temperature',
-			unit: '°C',
+			quantity: 'value',
+			unit: 'V',
 		});
 		const input = dto(sensor, relay);
 		input.policy.floor = { limit: 30, recoveryHysteresis: 1 };
+		input.sources.push({ role: 'floor', sourcePropertyId: nativeFloor, maximumAgeSeconds: 300 });
+		await expect(configs.preview(controller, input)).rejects.toThrow('Temperature roles');
+		input.sources.pop();
 		input.sources.push({ role: 'floor', sourcePropertyId: transformedFloor, maximumAgeSeconds: 300 });
 		const configured = await configs.configure(controller, input);
 		const floor = configured.sources.find((source) => source.role === 'floor');

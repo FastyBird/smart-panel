@@ -28,6 +28,12 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
+import {
+	ShellyNgChannelEntity,
+	ShellyNgChannelPropertyEntity,
+	ShellyNgDeviceEntity,
+} from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
 import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
 import {
@@ -38,6 +44,7 @@ import {
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
 import { VirtualAggregateInputEntity, VirtualAggregateOperator } from '../entities/virtual-producer.entity';
+import { VirtualThermostatSourceEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 import { VirtualTransformMetadataSubscriber } from '../subscribers/virtual-transform-metadata.subscriber';
 
@@ -47,6 +54,8 @@ import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
+import { thermostatFingerprint, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { VirtualTransformConfigService } from './virtual-transform-config.service';
 import { VirtualTransformRuntimeService } from './virtual-transform-runtime.service';
 
@@ -178,6 +187,42 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			relations: ['channel', 'channel.device'],
 		});
 	};
+	const rawVolts = async (): Promise<ChannelPropertyEntity> => {
+		const device = uuid(),
+			channel = uuid(),
+			id = uuid();
+		const identity = nativeVoltmeterVoltageIdentity(
+			'voltmeter:100',
+			{ id: 100, range: 0, report_thr: 0.1, xvoltage: { expr: null, unit: null } },
+			{ voltmeter: { 'voltmeter:100': {} } },
+			'A8032ABE5085',
+		);
+		await database.manager.insert(ShellyNgDeviceEntity, {
+			id: device,
+			name: 'Voltmeter',
+			category: DeviceCategory.SENSOR,
+			canonicalMac: 'A8032ABE5085',
+		} as never);
+		await database.manager.insert(ShellyNgChannelEntity, {
+			id: channel,
+			device,
+			name: 'Raw voltage',
+			category: ChannelCategory.ANALOG_INPUT,
+			identifier: identity.channelIdentifier,
+		} as never);
+		await database.manager.insert(ShellyNgChannelPropertyEntity, {
+			id,
+			channel,
+			identifier: 'voltage',
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		return database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id },
+			relations: ['channel', 'channel.device'],
+		});
+	};
 	const configure = async (
 		output: ChannelPropertyEntity,
 		sources: ChannelPropertyEntity[],
@@ -266,31 +311,74 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		expect(outputState(aggregate)?.value).toBe(20.5);
 	});
 
-	it('requires live source evidence, preserves source age and expires without renewing on evaluation', async () => {
-		const source = await measurement(),
+	it('converts raw volts to Celsius while preserving source age and expiring without renewal', async () => {
+		const source = await rawVolts(),
 			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		expect(resolvePropertyUnit(source)).toBe('V');
 		await transform(source, output);
+		const configuredOutput = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: output.id },
+			relations: ['channel', 'channel.device'],
+		});
+		const config = await database.manager.findOneByOrFail(VirtualTransformConfigEntity, {
+			outputPropertyId: output.id,
+		});
+		const binding = await database.manager.findOneByOrFail(VirtualTransformSourceEntity, {
+			outputPropertyId: output.id,
+		});
+		const floor = Object.assign(new VirtualThermostatSourceEntity(), {
+			id: uuid(),
+			controllerId: uuid(),
+			role: 'floor' as const,
+			sourcePropertyId: output.id,
+			sourcePropertyIdentity: output.id,
+			physicalIdentity: `property:${source.id}`,
+			maximumAgeSeconds: 10,
+			contractFingerprint: thermostatFingerprint({
+				output: thermostatPropertyContract(
+					configuredOutput,
+					configuredOutput.channel as ChannelEntity,
+					(configuredOutput.channel as ChannelEntity).device as DeviceEntity,
+				),
+				transformRevision: config.revision,
+				transformPolicy: config.policy,
+				physicalIdentity: `property:${binding.sourcePropertyIdentity}`,
+				sourceQuantity: binding.quantity,
+				sourceUnit: binding.unit,
+			}),
+		});
+		const inputs = new VirtualThermostatInputsService(database, values);
+		const loaded = await inputs.load([floor]);
+		expect(loaded[0].compatible).toBe(true);
 		await start();
 		expect(outputState(output).value).toBeNull();
 		jest.setSystemTime(base + 4000);
-		await sample(source, 20, base + 1000);
+		await sample(source, 2, base + 1000);
 		expect(outputState(output)).toMatchObject({
-			value: 41,
+			value: 5,
 			producer: {
 				quality: 'good',
 				sampledAt: new Date(base + 1000).toISOString(),
 				expiresAt: new Date(base + 11000).toISOString(),
 			},
 		});
+		expect(inputs.read(loaded, base + 4000).floor).toBe(5);
 		jest.setSystemTime(base + 8000);
 		transformRuntime.requestRecompute();
 		await transformRuntime.flush();
 		expect(outputState(output).producer.expiresAt).toBe(new Date(base + 11000).toISOString());
 		jest.setSystemTime(base + 11000);
 		expect(outputState(output).value).toBeNull();
+		expect(inputs.read(loaded, base + 11000).floor).toBeNull();
 		transformRuntime.requestRecompute();
 		await transformRuntime.flush();
 		expect(transformRuntime.readDiagnostics(output.id).reasons).toContain('stale');
+		await database.manager.update(
+			VirtualTransformSourceEntity,
+			{ outputPropertyId: output.id },
+			{ sourcePropertyId: null },
+		);
+		expect((await inputs.load([floor]))[0].compatible).toBe(false);
 		expect(storage.writePoints).toHaveBeenCalledTimes(1);
 	});
 

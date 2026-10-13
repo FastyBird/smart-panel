@@ -6,7 +6,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
-import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -51,6 +51,7 @@ describe('native temperature adoption identity', () => {
 		const device = Object.assign(new ShellyNgDeviceEntity(), {
 			id: 'pilot',
 			identifier: 'physical',
+			canonicalMac: 'A8032ABE5085',
 			hasEthernet: false,
 		});
 		jest.spyOn(globalThis, 'fetch').mockImplementation((_url, request) => {
@@ -187,14 +188,32 @@ describe('native temperature adoption identity', () => {
 		);
 	});
 
-	it('refuses qualified floor binding for an unconfigured pilot voltmeter', async () => {
+	it('adopts qualified raw volts without a Celsius helper and changes identity with the input range', async () => {
 		componentKey = 'voltmeter:100';
-		sourceConfig = { id: 100, report_thr: 0.1, xvoltage: { expr: null, unit: null } };
+		sourceConfig = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: null, unit: null } };
 		peripherals = { voltmeter: { 'voltmeter:100': {} } };
 		await service.createOrUpdate('pilot');
 		expect(nativeTemperatureIdentity(componentKey, sourceConfig, peripherals)).toBeNull();
 		expect(channels.some((channel) => channel.identifier?.startsWith('helper-temperature:'))).toBe(false);
-		expect(bindSource).not.toHaveBeenCalled();
+		const first = nativeVoltmeterVoltageIdentity(componentKey, sourceConfig, peripherals, 'A8032ABE5085');
+		expect(channels).toContainEqual(
+			expect.objectContaining({ identifier: first.channelIdentifier, category: ChannelCategory.ANALOG_INPUT }),
+		);
+		expect(properties).toContainEqual(
+			expect.objectContaining({ category: PropertyCategory.VALUE, identifier: 'voltage', value: undefined }),
+		);
+		expect(properties).toContainEqual(expect.objectContaining({ category: PropertyCategory.UNIT, value: 'V' }));
+		expect(bindSource).toHaveBeenCalledWith(
+			expect.any(String),
+			'pilot',
+			expect.objectContaining({ fingerprint: first.fingerprint, unit: 'V', expression: null }),
+		);
+		sourceConfig = { ...sourceConfig, range: 1 };
+		await service.createOrUpdate('pilot');
+		expect(channels.map((channel) => channel.identifier)).toContain(first.channelIdentifier);
+		expect(channels.map((channel) => channel.identifier)).toContain(
+			nativeVoltmeterVoltageIdentity(componentKey, sourceConfig, peripherals, 'A8032ABE5085').channelIdentifier,
+		);
 	});
 
 	it('binds dynamic temperature to a physical probe address, and declines absent peripheral evidence', async () => {
