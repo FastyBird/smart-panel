@@ -603,6 +603,134 @@ describe('durable thermostat installation profiles', () => {
 		expect(claims.qualification(claim, false)).toBeNull();
 		expect((await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id })).armedAt).toBeNull();
 	});
+	it.each([
+		['stage_transaction', 'unchanged'],
+		['revoke_cas', 'unchanged'],
+		['revoke_transaction', 'unchanged'],
+		['revoke_cas', 'floor_changed'],
+		['stage_transaction', 'generation_changed'],
+	] as const)(
+		'cold restart after rejected %s preserves prior accepted intent, with %s safety contract',
+		async (failure, drift) => {
+			await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+			await loader.verify(claim.id, 1, 'operator');
+			claims.registerRuntimeAdmission(() => true);
+			const oldQualification = claims.qualification(claim, false);
+			const oldAuthority = claims.mintAuthority(claim.id, 'on');
+			const target = { ...(await bindings.resolve(db.manager, claim.id)).target, value: true };
+			// An opaque server-issued fixture proof belongs to the old process; it is not hardware evidence.
+			const oldProof = claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), {
+				outputConfirmedOff: true,
+				pendingOnDrained: true,
+				evidenceId: 'fixture-old-process-only',
+			});
+			const accepted = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			if (failure === 'revoke_cas')
+				await expect(profiles.revoke(claim.id, 999, 'operator')).rejects.toThrow(
+					'Reload the current revision and retry',
+				);
+			else {
+				await db.query(
+					"CREATE TRIGGER reject_restart_change BEFORE INSERT ON devices_virtual_thermostat_installation_audit BEGIN SELECT RAISE(ABORT, 'restart rollback fixture'); END",
+				);
+				const change =
+					failure === 'stage_transaction'
+						? profiles.stage(claim.id, 1, { ...setup, epochKey: 'rejected-change' }, attestations(), 'operator')
+						: profiles.revoke(claim.id, 1, 'operator');
+				await expect(change).rejects.toThrow('restart rollback fixture');
+				await db.query('DROP TRIGGER reject_restart_change');
+			}
+			const retained = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			expect(retained.revision).toBe(accepted.revision);
+			expect(retained.armedAt).toEqual(accepted.armedAt);
+			expect(retained.revokedAt).toBeNull();
+			expect(retained.setup).toEqual(accepted.setup);
+			expect(oldQualification.machineLeaseIsCurrent()).toBe(false);
+			expect(claims.isAuthorized(oldAuthority, target)).toBe(false);
+			const paused = await profiles.inspect(claim.id);
+			expect(paused.activation_requested).toBe(true);
+			expect(paused.reasons).toContain('stored_activation_paused_reload_and_retry_failed_change_or_explicitly_verify');
+			await loader.refresh();
+			expect(claims.qualification(claim, false)).toBeNull();
+			if (drift === 'floor_changed') {
+				const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: claim.controllerId,
+				});
+				config.policy.floor.limit++;
+				await db.manager.save(config);
+			} else if (drift === 'generation_changed')
+				await db.manager.update(
+					VirtualThermostatActuatorClaimEntity,
+					{ id: claim.id },
+					{ qualificationGeneration: uuid() },
+				);
+			loader.onModuleDestroy();
+			claims.onModuleDestroy();
+			await db.destroy();
+			db = await new SqliteDataSource({
+				type: 'sqlite',
+				database: join(directory, 'db.sqlite'),
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+			}).initialize();
+			lock = new DeviceStructureLockService();
+			events = new EventEmitter2();
+			claims = new VirtualThermostatClaimsService(
+				db,
+				lock,
+				new VirtualDependencyGraphService(db),
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+			);
+			await claims.onApplicationBootstrap();
+			profiles = new ThermostatInstallationService(db, lock, bindings, claims, runtime);
+			// A restarted runtime has no current OFF/drain fence. Metadata renewal alone must not mint ON.
+			claims.registerRuntimeAdmission(() => false);
+			let completeInspection: () => void;
+			inspect.mockClear();
+			inspect.mockImplementation(
+				(_metadata: unknown, _timeout: number, admitted: () => boolean) =>
+					new Promise((resolve) => {
+						completeInspection = () => resolve({ isCurrent: () => current && admitted() });
+					}),
+			);
+			const platform = Object.create(ShellyNgDevicePlatform.prototype) as ShellyNgDevicePlatform;
+			platform.prepareGuardRpcSession = () => ({ inspectInstallation: inspect }) as unknown as ShellyGuardRpcSession;
+			loader = new ThermostatInstallationLoaderService(
+				db,
+				bindings,
+				profiles,
+				claims,
+				{ get: () => platform } as unknown as PlatformRegistryService,
+				lock,
+				runtime,
+				events,
+			);
+			const bootstrap = loader.onApplicationBootstrap();
+			if (drift === 'unchanged') {
+				while (!completeInspection) await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(claims.qualification(claim, false)).toBeNull();
+				expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
+				completeInspection();
+				await bootstrap;
+				const fresh = claims.qualification(claim, false);
+				expect(fresh).not.toBeNull();
+				expect(fresh).not.toBe(oldQualification);
+				expect(fresh.machineLeaseIsCurrent()).toBe(true);
+				expect(inspect).toHaveBeenCalledTimes(1);
+			} else {
+				await bootstrap;
+				expect(inspect).not.toHaveBeenCalled();
+				expect(claims.qualification(claim, false)).toBeNull();
+				expect((await profiles.inspect(claim.id)).reasons).toContain('installation_bindings_changed');
+			}
+			expect((await profiles.inspect(claim.id)).activation_requested).toBe(true);
+			expect(oldQualification.machineLeaseIsCurrent()).toBe(false);
+			expect(claims.isAuthorized(oldAuthority, target)).toBe(false);
+			expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
+			await expect(claims.completeRelease(oldProof)).rejects.toThrow('Internal release proof');
+			await expect(claims.completeRelease({ ...oldProof })).rejects.toThrow('Internal release proof');
+		},
+	);
 	it('migration33 round trips without editing deployed earlier migrations', async () => {
 		const runner = db.createQueryRunner(),
 			migration = new AddThermostatInstallationProfiles1000000000033();

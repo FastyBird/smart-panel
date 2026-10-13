@@ -70,6 +70,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		private readonly events: EventEmitter2,
 		@Optional() private readonly configService: ConfigService = new ConfigService(),
 	) {
+		this.installations.isActivationPaused = (claimId) => this.pausedClaims.has(claimId);
 		this.installations.onChanging = (claimId) => {
 			this.pausedClaims.add(claimId);
 			this.invalidate();
@@ -87,6 +88,7 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		clearInterval(this.timer);
 		for (const event of EVENTS) this.events.off(event, this.changed);
 		this.installations.onChanging = undefined;
+		this.installations.isActivationPaused = undefined;
 		this.invalidate();
 	}
 	private schedule(): void {

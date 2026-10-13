@@ -22,6 +22,8 @@ import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.se
 export class ThermostatInstallationService {
 	/** The loader owns this synchronous invalidation hook; authoring never supplies machine proof. */
 	onChanging?: (claimId: string) => void;
+	/** Read-only diagnostic of the loader pause; durable accepted activation is a separate fact. */
+	isActivationPaused?: (claimId: string) => boolean;
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly lock: DeviceStructureLockService,
@@ -47,7 +49,9 @@ export class ThermostatInstallationService {
 					expectedRevision < 0 ||
 					(prior?.revision ?? 0) !== expectedRevision
 				)
-					throw new ConflictException('Installation revision changed; inspect again.');
+					throw new ConflictException(
+						'Installation change rejected; prior stored profile and activation remain unchanged. Reload the current revision and retry.',
+					);
 				this.invalidate(binding.claim.physicalIdentity, binding.claim.controllerId);
 				await this.dataSource.transaction(async (manager) => {
 					const row = manager.create(ThermostatInstallationEntity, {
@@ -75,7 +79,10 @@ export class ThermostatInstallationService {
 							{ claimId, revision: expectedRevision },
 							row,
 						);
-						if (result.affected !== 1) throw new ConflictException('Installation revision changed.');
+						if (result.affected !== 1)
+							throw new ConflictException(
+								'Installation change rejected; prior stored profile and activation remain unchanged. Reload the current revision and retry.',
+							);
 					} else await manager.insert(ThermostatInstallationEntity, row);
 					await manager.save(
 						ThermostatInstallationAuditEntity,
@@ -106,7 +113,9 @@ export class ThermostatInstallationService {
 			await this.lock.runExclusive(async () => {
 				const row = await this.dataSource.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId });
 				if (row.revision !== expectedRevision)
-					throw new ConflictException('Installation revision changed; inspect again.');
+					throw new ConflictException(
+						'Installation change rejected; prior stored profile and activation remain unchanged. Reload the current revision and retry.',
+					);
 				this.invalidate(row.physicalIdentity, row.controllerId);
 				await this.dataSource.transaction(async (manager) => {
 					const result = await manager.update(
@@ -121,7 +130,10 @@ export class ThermostatInstallationService {
 							lastMachineObservation: null,
 						},
 					);
-					if (result.affected !== 1) throw new ConflictException('Installation revision changed.');
+					if (result.affected !== 1)
+						throw new ConflictException(
+							'Installation change rejected; prior stored profile and activation remain unchanged. Reload the current revision and retry.',
+						);
 					await manager.save(
 						ThermostatInstallationAuditEntity,
 						manager.create(ThermostatInstallationAuditEntity, {
@@ -173,6 +185,8 @@ export class ThermostatInstallationService {
 		}
 		if (row.revokedAt) reasons.push('installation_revoked');
 		if (!row.armedAt) reasons.push('operator_activation_required');
+		else if (this.isActivationPaused?.(claimId))
+			reasons.push('stored_activation_paused_reload_and_retry_failed_change_or_explicitly_verify');
 		return {
 			claim: row.claimId,
 			revision: row.revision,

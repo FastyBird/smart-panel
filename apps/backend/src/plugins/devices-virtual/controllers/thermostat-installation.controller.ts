@@ -94,7 +94,7 @@ export class ThermostatInstallationController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Revoke installation',
 		description:
-			'CAS revoke ON eligibility before persisting revocation. Requests runtime safety release, retains ownership and never fabricates OFF/drain proof.',
+			'CAS revoke ON eligibility before persisting revocation. Requests runtime safety release, retains ownership and never fabricates OFF/drain proof. A rejected change leaves prior stored activation intact; reload the current profile and retry. Only the running process remains conservatively paused after failure.',
 		operationId: 'revoke-devices-virtual-plugin-thermostat-installation',
 	})
 	@ApiSuccessResponse(ThermostatInstallationResponseModel, 'Revoked installation')
