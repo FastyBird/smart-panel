@@ -28,4 +28,14 @@ export const PluginRoutes: RouteRecordRaw[] = [
 			icon: 'mdi:function-variant',
 		},
 	},
+	{
+		path: 'devices-virtual/thermostats/new',
+		name: RouteNames.THERMOSTAT_WIZARD,
+		component: () => import('../views/view-virtual-thermostat-wizard.vue'),
+		meta: {
+			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
+			title: 'Create virtual thermostat',
+			icon: 'mdi:thermostat',
+		},
+	},
 ];
