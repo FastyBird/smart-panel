@@ -620,6 +620,9 @@ watch(
 	},
 	{ deep: true }
 );
+watch(name, () => {
+	preview.value = null;
+});
 watch(
 	() => props.deviceId,
 	() => {
