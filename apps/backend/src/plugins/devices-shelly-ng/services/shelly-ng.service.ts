@@ -22,6 +22,7 @@ import { ShellyNgConfigModel } from '../models/config.model';
 
 import { DatabaseDiscovererService } from './database-discoverer.service';
 import { DeviceManagerService } from './device-manager.service';
+import { installGuardedShellyRpcFactory } from './guarded-shelly-rpc';
 import { PollPlacementDiagnosticsService } from './poll-placement-diagnostics.service';
 import { ShellyWsServerService } from './shelly-ws-server.service';
 
@@ -278,6 +279,8 @@ export class ShellyNgService extends BaseManagedExtensionService {
 				autoLoadConfig: true,
 				deviceOptions,
 			});
+
+			installGuardedShellyRpcFactory(this.shellies.websocket);
 
 			this.shellies
 				.on('add', this.handleAddedDevice)
