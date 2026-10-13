@@ -893,10 +893,13 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			}
 
 			if (creation)
-				creation.defer(async () => {
-					if (mapping.afterCreate) await mapping.afterCreate(savedProperty);
-					this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, await this.getOneOrThrow(savedProperty.id));
-				});
+				creation.defer(
+					async () => {
+						if (mapping.afterCreate) await mapping.afterCreate(savedProperty);
+						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, await this.getOneOrThrow(savedProperty.id));
+					},
+					savedProperty.type === 'virtual' && 'valueOrigin' in savedProperty && savedProperty.valueOrigin === 'derived',
+				);
 			else this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
 
 			return savedProperty;
