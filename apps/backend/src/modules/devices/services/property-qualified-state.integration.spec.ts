@@ -703,12 +703,55 @@ describe('qualified samples and producer state', () => {
 		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(22);
 	});
 
+	it.each(['publish', 'invalidate', 'expiry', 'clock rollback'] as const)(
+		'keeps updated catalog metadata when emitting derived %s state',
+		async (action) => {
+			producers.onModuleInit();
+			const lease = producers.register(property, 1);
+			await values.publishDerived(property, lease, 20, publication());
+			const updated = Object.assign(new SampleProperty(), property, {
+				name: 'renamed sensor',
+				identifier: 'updated-temperature',
+				format: [-50, 100],
+				permissions: ['read'],
+				invalid: -100,
+				step: 0.25,
+				unit: '°C',
+				updatedAt: new Date(base + 1_000),
+			});
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, updated);
+			expect(producers.isCurrent(lease)).toBe(true);
+			quality.mockClear();
+			if (action === 'publish') await values.publishDerived(property, lease, 21, publication());
+			else if (action === 'invalidate') producers.invalidate(lease, ['source_lost']);
+			else {
+				jest.setSystemTime(action === 'expiry' ? base + 10_000 : base - 1);
+				producers.sweep();
+			}
+			expect(quality).toHaveBeenCalledTimes(1);
+			const [snapshot] = quality.mock.calls[0] as unknown as [ChannelPropertyEntity];
+			expect(snapshot).toMatchObject({
+				name: updated.name,
+				identifier: updated.identifier,
+				format: updated.format,
+				permissions: updated.permissions,
+				invalid: updated.invalid,
+				step: updated.step,
+				unit: updated.unit,
+				updatedAt: updated.updatedAt,
+			});
+			expect(Object.isFrozen(snapshot)).toBe(true);
+		},
+	);
+
 	it('uses one unref expiry timer and cleans it up with module disposal', () => {
 		const interval = jest.spyOn(global, 'setInterval');
 		producers.onModuleInit();
 		producers.onModuleInit();
 		expect(interval).toHaveBeenCalledTimes(1);
+		expect(events.listenerCount(EventType.CHANNEL_PROPERTY_UPDATED)).toBe(1);
 		producers.onModuleDestroy();
 		expect(jest.getTimerCount()).toBe(0);
+		expect(events.listenerCount(EventType.CHANNEL_PROPERTY_UPDATED)).toBe(0);
 	});
 });
