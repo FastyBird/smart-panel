@@ -1030,16 +1030,14 @@ describe('ChannelsPropertiesService', () => {
 			const withStructuralWrite = jest
 				.fn()
 				.mockImplementation(async (operation: (manager: EntityManager) => Promise<unknown>) => operation(manager));
-			jest
-				.spyOn(mapper, 'getMapping')
-				.mockReturnValue({
-					type: 'mock',
-					class: MockChannelProperty,
-					createDto: CreateMockChannelPropertyDto,
-					updateDto: UpdateMockChannelPropertyDto,
-					beforeCreate,
-					withStructuralWrite,
-				});
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+				beforeCreate,
+				withStructuralWrite,
+			});
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 			jest.spyOn(repository, 'create').mockReturnValue(created);
 			const legacyInsert = jest.spyOn(repository, 'insert');

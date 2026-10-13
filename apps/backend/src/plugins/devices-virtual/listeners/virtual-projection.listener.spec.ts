@@ -110,12 +110,13 @@ describe('VirtualProjectionListener', () => {
 			});
 			index.findBySourceProperty.mockReturnValue([virtualA, virtualB]);
 			listener.handlePropertyValueStateChanged(source);
-			expect(eventEmitter.emit.mock.calls.map((call) => call[0])).toEqual([
+			expect(eventEmitter.emit.mock.calls.map((call: unknown[]) => call[0])).toEqual([
 				'DevicesModule.ChannelProperty.ValueStateChanged',
 				'DevicesModule.ChannelProperty.ValueStateChanged',
 			]);
-			const first = eventEmitter.emit.mock.calls[0][1];
-			const second = eventEmitter.emit.mock.calls[1][1];
+			type ProducerEvent = { id: string; value: { value: null; producer: { reasons: string[] } } };
+			const [, first] = eventEmitter.emit.mock.calls[0] as [string, ProducerEvent];
+			const [, second] = eventEmitter.emit.mock.calls[1] as [string, ProducerEvent];
 			expect(first.id).toBe('virt-a');
 			expect(first.value.value).toBeNull();
 			first.value.producer.reasons.push('mutated subscriber');
