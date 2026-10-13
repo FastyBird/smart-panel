@@ -117,7 +117,7 @@ export class PropertyValueService {
 	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
 	private readonly liveEpochs = new Set<string>();
-	private readonly samples = new Map<string, QualifiedPropertySample>();
+	private readonly samples = new Map<string, QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>>();
 	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
 
 	constructor(
@@ -192,7 +192,7 @@ export class PropertyValueService {
 		return this.withValueLock(
 			key,
 			async () => {
-				if (this.producers?.owns(key)) return { changed: false, state: null };
+				if (this.producers?.owns(key) || evidence.isCurrent?.() === false) return { changed: false, state: null };
 				const sampledAt = evidence.sampledAt.getTime();
 				const receivedAt = evidence.receivedAt.getTime();
 				const watermark = this.liveWatermarks.get(key);
@@ -230,6 +230,8 @@ export class PropertyValueService {
 					evidence.sampledAt,
 					!this.valueLock.isEnabled(),
 				);
+				// A generation may change while history I/O is pending. It cannot regain live authority.
+				if (evidence.isCurrent?.() === false) return { changed: false, state: null };
 				if (result.state !== null) {
 					const sample: AcceptedPropertySample = Object.freeze({
 						propertyId: key,
@@ -243,7 +245,7 @@ export class PropertyValueService {
 					if (live) {
 						this.liveEpochs.add(key);
 						this.liveWatermarks.set(key, { sampledAt, invalid: false });
-						this.samples.set(key, { ...sample, provenance: 'live' });
+						this.samples.set(key, { ...sample, provenance: 'live', isCurrent: evidence.isCurrent });
 					}
 					const snapshot = Object.assign(
 						Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
@@ -299,6 +301,7 @@ export class PropertyValueService {
 		const sample = this.samples.get(key);
 		if (
 			!sample ||
+			sample.isCurrent?.() === false ||
 			sample.sampledAt.getTime() > now.getTime() ||
 			sample.receivedAt.getTime() > now.getTime() ||
 			now.getTime() - sample.sampledAt.getTime() > maxAgeMs

@@ -149,6 +149,49 @@ describe('qualified samples and producer state', () => {
 		jest.useRealTimers();
 	});
 
+	it.each([21, null])('drops an obsolete provider generation before valid or fault admission: %s', async (value) => {
+		await report(20);
+		const handle = open(21);
+		jest.setSystemTime(base + 1_000);
+		await report(value, { ...evidence(base + 1_000), isCurrent: () => false });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		expect(windows.get(property.id)).toMatchObject({ generation: handle.generation, state: 'pending' });
+		expect(accepted).toHaveBeenCalledTimes(1);
+		expect(invalidated).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(1);
+	});
+
+	it('rechecks generation after asynchronous history admission before acceptance or command confirmation', async () => {
+		await report(20);
+		const handle = open(23);
+		jest.setSystemTime(base + 1_000);
+		let current = true;
+		const admitted = deferred<void>();
+		const release = deferred<void>();
+		storage.enqueueWritePoint.mockImplementation(async () => {
+			admitted.resolve(undefined);
+			await release.promise;
+		});
+		const pending = report(23, { ...evidence(base + 1_000), isCurrent: () => current });
+		await admitted.promise;
+		current = false;
+		release.resolve(undefined);
+		await pending;
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		expect(windows.get(property.id)).toMatchObject({ generation: handle.generation, state: 'pending' });
+		expect(accepted).toHaveBeenCalledTimes(1);
+		expect(scalar).toHaveBeenCalledTimes(1);
+	});
+
+	it('consults the accepted source generation at reads and omits its guard from sample events', async () => {
+		let current = true;
+		await report(20, { ...evidence(), isCurrent: () => current });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		expect(accepted.mock.calls[0][0].sample).not.toHaveProperty('isCurrent');
+		current = false;
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+	});
+
 	it('accepts unchanged heartbeats exactly once without history or energy scalar events', async () => {
 		await report(20);
 		jest.setSystemTime(base + 1_000);
