@@ -989,7 +989,11 @@ export class VirtualDevicesService {
 		return `Property id=${property.id} reserves ${describe(declared)} while its source id=${sourceProperty.id} reserves ${describe(sourceSentinel)}; a projection forwards its source's value unchanged and is what a command is validated against, so the two have to reserve the same sentinel`;
 	}
 
-	async assertProjectionCompatible(property: VirtualChannelPropertyEntity, channelId: string): Promise<void> {
+	async assertProjectionCompatible(
+		property: VirtualChannelPropertyEntity,
+		channelId: string,
+		manager?: EntityManager,
+	): Promise<void> {
 		// Cleared before anything is judged, and re-earned below by a row that still qualifies.
 		//
 		// The claim is a statement about what this property projects *now*, so every path that leaves
@@ -1036,10 +1040,33 @@ export class VirtualDevicesService {
 			return;
 		}
 
-		const sourceProperty = await this.channelsPropertiesService.findOne(sourcePropertyId);
+		const sourceProperty = manager
+			? await manager.findOne(ChannelPropertyEntity, {
+					where: { id: sourcePropertyId },
+					relations: ['channel', 'channel.device'],
+				})
+			: await this.channelsPropertiesService.findOne(sourcePropertyId);
 
 		if (!sourceProperty) {
+			if (manager)
+				throw new VirtualProjectionIncompatibleException('Source property disappeared before the reserved graph edit.');
 			return;
+		}
+
+		// DTO preview may predate a competing process's mutation. Recheck the typed virtual-source
+		// policy with this transaction's catalog, after the graph writer reservation.
+		if (manager) {
+			const sourceChannel = typeof sourceProperty.channel === 'string' ? null : sourceProperty.channel;
+			const sourceDevice = sourceChannel && typeof sourceChannel.device !== 'string' ? sourceChannel.device : null;
+			if (
+				this.graph?.isQuarantined(sourceProperty.id) ||
+				(sourceDevice?.type === DEVICES_VIRTUAL_TYPE &&
+					(!sourceChannel || !isEligibleVirtualMeasurement(sourceProperty, sourceChannel, sourceDevice)))
+			) {
+				throw new VirtualProjectionIncompatibleException(
+					'Source is not an eligible read-only materialized aggregate measurement.',
+				);
+			}
 		}
 
 		const specSlot = { category: device.category, channel: channel.category, property: property.category };

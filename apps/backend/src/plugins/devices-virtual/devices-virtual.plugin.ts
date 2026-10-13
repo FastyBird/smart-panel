@@ -279,7 +279,7 @@ export class DevicesVirtualPlugin {
 					// this write, and a direct API call never makes it at all. Checked here rather than on
 					// the DTO because the spec slot is resolved from the owning channel and its device,
 					// which the payload does not carry.
-					await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
+					await this.virtualDevicesService.assertProjectionCompatible(property, channelId, manager);
 				} catch (error) {
 					if (
 						error instanceof VirtualOwnerNotVirtualException ||
@@ -335,7 +335,7 @@ export class DevicesVirtualPlugin {
 
 					if (channelId) {
 						await this.virtualDevicesService.assertDerivedOutputSupported(property, channelId, manager);
-						await this.virtualDevicesService.assertProjectionCompatible(property, channelId);
+						await this.virtualDevicesService.assertProjectionCompatible(property, channelId, manager);
 					}
 				} catch (error) {
 					if (

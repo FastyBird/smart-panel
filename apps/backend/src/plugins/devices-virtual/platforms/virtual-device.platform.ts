@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
@@ -7,7 +7,8 @@ import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/p
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
-import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import { VirtualDependencyGraphService } from '../services/virtual-dependency-graph.service';
 
 @Injectable()
 export class VirtualDevicePlatform implements IDevicePlatform {
@@ -16,6 +17,7 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 	constructor(
 		private readonly graphs: DeviceCommandGraphService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		@Optional() private readonly dependencies?: VirtualDependencyGraphService,
 	) {}
 
 	getType(): string {
@@ -57,7 +59,7 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 
 			// Owned properties are read-only in this release — the only ones that exist are the
 			// synthesized device information strings. Writable setpoints arrive with controller support.
-			if (property.valueOrigin === VirtualValueOrigin.LOCAL) {
+			if (this.dependencies?.isQuarantined(property.id) || !property.isProjecting) {
 				this.logger.warn(`Property id=${property.id} is owned and not writable`);
 
 				return false;

@@ -41,6 +41,7 @@ export interface VirtualPropertyLink {
 	sourceDeviceId: string | null;
 	bindingId?: string;
 	kind?: 'aggregate_input' | 'group_binding';
+	quarantined?: boolean;
 }
 
 /**
@@ -509,7 +510,10 @@ export class VirtualPropertyIndexService {
 
 	private fingerprintLinks(links: VirtualPropertyLink[] | undefined): string {
 		return (links ?? [])
-			.map((link) => `${link.bindingId ?? link.propertyId}>${link.sourcePropertyId ?? ''}@${link.sourceDeviceId ?? ''}`)
+			.map(
+				(link) =>
+					`${link.bindingId ?? link.propertyId}>${link.sourcePropertyId ?? ''}@${link.sourceDeviceId ?? ''}#${link.quarantined ? 'quarantined' : ''}`,
+			)
 			.sort()
 			.join('|');
 	}
@@ -587,6 +591,7 @@ export class VirtualPropertyIndexService {
 			propertyId: property.id,
 			sourcePropertyId: property.sourcePropertyId,
 			sourceDeviceId: property.isOrphaned ? null : (sourceDeviceId ?? null),
+			...(this.graph?.isQuarantined(property.id) ? { quarantined: true } : {}),
 		};
 	}
 

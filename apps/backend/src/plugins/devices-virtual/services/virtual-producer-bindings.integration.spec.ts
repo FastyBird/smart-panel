@@ -17,10 +17,15 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { StorageService } from '../../../modules/storage/services/storage.service';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -30,6 +35,7 @@ import {
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
 import {
+	VirtualAggregateConfigEntity,
 	VirtualAggregateInputEntity,
 	VirtualAggregateOperator,
 	VirtualLightGroupBindingEntity,
@@ -38,6 +44,7 @@ import {
 } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
@@ -67,7 +74,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		await second.query('PRAGMA busy_timeout = 5000');
 		graph = new VirtualDependencyGraphService(database);
 		producers = new PropertyProducerRegistryService(new EventEmitter2());
-		producerState = new VirtualProducerStateService(database, producers);
+		producerState = new VirtualProducerStateService(database, producers, graph, new EventEmitter2());
 		configs = new VirtualProducerConfigService(
 			database,
 			new DeviceStructureLockService(),
@@ -78,6 +85,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 	});
 
 	afterEach(async () => {
+		producerState?.onModuleDestroy();
 		if (second?.isInitialized) await second.destroy();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
@@ -345,6 +353,139 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 				0,
 			),
 		).toBe(false);
+	});
+
+	it('quarantines only corrupted components across every core read boundary, preserves physical quality and clears repaired masks', async () => {
+		const physical = await measurement();
+		const other = await measurement();
+		const a = await measurement(VirtualDeviceMode.PROJECTION);
+		const b = await measurement(VirtualDeviceMode.PROJECTION);
+		const healthy = await measurement(VirtualDeviceMode.PROJECTION);
+		await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.update(a.propertyId, { valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId: b.propertyId });
+		await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.update(b.propertyId, { valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId: a.propertyId });
+		await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.update(healthy.propertyId, { valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId: other.propertyId });
+		// Imported malformed producer config connects the cycle to a physical leaf. That leaf must
+		// retain its own live authority, rather than being globally invalidated with the bad aliases.
+		await database.getRepository(VirtualAggregateConfigEntity).insert({
+			outputPropertyId: a.propertyId,
+			operator: VirtualAggregateOperator.MEAN,
+			minimumValidInputs: 1,
+			maximumAgeSeconds: 300,
+		});
+		await database.getRepository(VirtualAggregateInputEntity).insert({
+			id: uuid(),
+			outputPropertyId: a.propertyId,
+			sourcePropertyId: physical.propertyId,
+			sourcePropertyIdentity: physical.propertyId,
+			quantity: 'temperature',
+			unit: '°C',
+		});
+		await producerState.onModuleInit();
+		await graph.onApplicationBootstrap();
+		expect(graph.isQuarantined(a.propertyId)).toBe(true);
+		expect(graph.isQuarantined(healthy.propertyId)).toBe(false);
+		expect(producers.owns(physical.propertyId)).toBe(false);
+		const resolver = new PropertyValueSourceRegistryService();
+		resolver.register(new VirtualValueSourceService(graph));
+		const storage = {
+			isConnected: () => true,
+			query: async () => [],
+			enqueueWritePoint: () => undefined,
+			flushQueuedWrites: async () => undefined,
+		} as unknown as StorageService;
+		const values = new PropertyValueService(storage, resolver, new PropertyValueLockService(database), producers);
+		const source = await database
+			.getRepository(ChannelPropertyEntity)
+			.findOne({ where: { id: physical.propertyId }, relations: ['channel'] });
+		const alias = await database.getRepository(VirtualChannelPropertyEntity).findOneByOrFail({ id: a.propertyId });
+		await values.writeSampleWithState(source!, 21, {
+			sampledAt: new Date(Date.now() - 10),
+			receivedAt: new Date(),
+			provenance: 'live',
+		});
+		expect(values.readQualifiedSample(source!, 1000)?.value).toBe(21);
+		expect(values.readQualifiedSample(alias, 1000)).toBeNull();
+		expect((await values.readLatest(alias))?.producer).toMatchObject({
+			quality: 'unavailable',
+			reasons: ['graph_quarantined'],
+		});
+		expect((await values.readLatestStrict(alias))?.producer.quality).toBe('unavailable');
+		const many = await values.readLatestManyStrict([alias, source!]);
+		expect(many.get(alias.id)?.producer.quality).toBe('unavailable');
+		expect(many.get(source!.id)?.value).toBe(21);
+		const bounded = await values.readLatestManyBounded([alias, source!]);
+		expect(bounded.items.find((item) => item.propertyId === alias.id)?.state?.producer.quality).toBe('unavailable');
+		await graph.withStructuralWrite(async (manager) => {
+			await manager.delete(VirtualAggregateConfigEntity, { outputPropertyId: a.propertyId });
+			await graph.validateReplacement(
+				manager,
+				[a.propertyId, b.propertyId],
+				[a.propertyId, b.propertyId].map((outputPropertyId) => ({
+					outputPropertyId,
+					sourcePropertyId: physical.propertyId,
+				})),
+			);
+			await manager.update(VirtualChannelPropertyEntity, a.propertyId, { sourcePropertyId: physical.propertyId });
+			await manager.update(VirtualChannelPropertyEntity, b.propertyId, { sourcePropertyId: physical.propertyId });
+		}, 0);
+		expect(graph.isQuarantined(a.propertyId)).toBe(false);
+		expect(producers.owns(a.propertyId)).toBe(false);
+		const repaired = await database.getRepository(VirtualChannelPropertyEntity).findOneByOrFail({ id: a.propertyId });
+		expect((await values.readLatest(repaired))?.value).toBe(21);
+		expect(values.readQualifiedSample(repaired, 1000)?.value).toBe(21);
+		producerState.onModuleDestroy();
+	});
+
+	it('rechecks a previously eligible virtual source after reservation and rejects disappearance before persistence', async () => {
+		const source = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const destination = await measurement(VirtualDeviceMode.PROJECTION);
+		const propertyReader = {
+			findOne: (id: string) =>
+				database
+					.getRepository(ChannelPropertyEntity)
+					.findOne({ where: { id }, relations: ['channel', 'channel.device'] }),
+		} as unknown as ChannelsPropertiesService;
+		const channelReader = {
+			findOne: (id: string) => database.getRepository(ChannelEntity).findOne({ where: { id }, relations: ['device'] }),
+		} as unknown as ChannelsService;
+		const deviceReader = {
+			findOne: (id: string) => database.getRepository(DeviceEntity).findOneBy({ id }),
+		} as unknown as DevicesService;
+		const service = new VirtualDevicesService(
+			propertyReader,
+			channelReader,
+			deviceReader,
+			new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity)),
+			null as never,
+			graph,
+		);
+		await expect(service.assertSourceNotVirtual(source.propertyId)).resolves.toBeUndefined();
+		await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.update(source.propertyId, { valueOrigin: VirtualValueOrigin.SOURCE });
+		const target = await database
+			.getRepository(VirtualChannelPropertyEntity)
+			.findOneByOrFail({ id: destination.propertyId });
+		target.valueOrigin = VirtualValueOrigin.SOURCE;
+		target.sourcePropertyId = source.propertyId;
+		await expect(
+			graph.withStructuralWrite((manager) =>
+				service.assertProjectionCompatible(target, destination.channelId, manager),
+			),
+		).rejects.toThrow(/eligible/);
+		target.sourcePropertyId = uuid();
+		await expect(
+			graph.withStructuralWrite((manager) =>
+				service.assertProjectionCompatible(target, destination.channelId, manager),
+			),
+		).rejects.toThrow(/disappeared/);
+		expect(await graph.revision()).toBe(0);
 	});
 
 	it('builds identical binding column, FK, check and index contracts through migration and synchronize', async () => {

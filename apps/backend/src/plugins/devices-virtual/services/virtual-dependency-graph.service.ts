@@ -1,7 +1,9 @@
 import { DataSource, EntityManager, IsNull, Not } from 'typeorm';
 
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { getEnvValue } from '../../../common/utils/config.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import {
@@ -19,15 +21,22 @@ export interface VirtualDependencyEdge {
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
+	private readonly validationListeners = new Set<
+		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>
+	>();
+	private quarantineRevision = -1;
 
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+	) {}
 
 	async withStructuralWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
 		expectedGraphRevision?: number,
 	): Promise<T> {
 		// The caller already owns DeviceStructureLockService. Never acquire another lock from this transaction.
-		return this.dataSource.transaction(async (manager) => {
+		const result = await this.dataSource.transaction(async (manager) => {
 			// Even an ignored INSERT reserves SQLite's writer slot before a validation read. This also
 			// initializes synchronized databases, which do not run the migration's singleton seed.
 			await manager.query('INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
@@ -38,6 +47,8 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			await manager.increment(VirtualGraphRevisionEntity, { id: 1 }, 'revision', 1);
 			return operation(manager);
 		});
+		if (this.quarantined.size) await this.refreshQuarantine();
+		return result;
 	}
 
 	async revision(manager: EntityManager = this.dataSource.manager): Promise<number> {
@@ -144,15 +155,57 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.quarantined.has(propertyId);
 	}
 
+	observeValidation(listener: (revision: number, quarantined: ReadonlySet<string>) => Promise<void>): () => void {
+		this.validationListeners.add(listener);
+		return () => this.validationListeners.delete(listener);
+	}
+
 	async onApplicationBootstrap(): Promise<void> {
-		const edges = await this.edges(this.dataSource.manager);
-		try {
-			this.validate(edges);
-			this.quarantined.clear();
-		} catch (error) {
-			if (!(error instanceof DevicesValidationException)) throw error;
-			// Conservative quarantine prevents any malformed imported graph from propagating values.
-			this.quarantined = new Set(edges.flatMap((edge) => [edge.outputPropertyId, edge.sourcePropertyId]));
+		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
+		await this.refreshQuarantine();
+	}
+
+	async refreshQuarantine(): Promise<void> {
+		const snapshot = await this.dataSource.transaction(async (manager) => ({
+			edges: await this.edges(manager),
+			revision: await this.revision(manager),
+		}));
+		if (snapshot.revision < this.quarantineRevision) return;
+		const quarantined = new Set<string>();
+		const neighbors = new Map<string, Set<string>>();
+		for (const edge of snapshot.edges) {
+			for (const [node, neighbor] of [
+				[edge.outputPropertyId, edge.sourcePropertyId],
+				[edge.sourcePropertyId, edge.outputPropertyId],
+			]) {
+				const adjacent = neighbors.get(node) ?? new Set<string>();
+				adjacent.add(neighbor);
+				neighbors.set(node, adjacent);
+			}
 		}
+		const visited = new Set<string>();
+		for (const root of neighbors.keys()) {
+			if (visited.has(root)) continue;
+			const component = new Set<string>();
+			const queue = [root];
+			for (let index = 0; index < queue.length; index++) {
+				const node = queue[index];
+				if (component.has(node)) continue;
+				component.add(node);
+				visited.add(node);
+				queue.push(...(neighbors.get(node) ?? []));
+			}
+			try {
+				this.validate(snapshot.edges.filter((edge) => component.has(edge.outputPropertyId)));
+			} catch (error) {
+				if (!(error instanceof DevicesValidationException)) throw error;
+				for (const node of component) quarantined.add(node);
+			}
+		}
+		if (snapshot.edges.length > 8192 || neighbors.size > 4096)
+			for (const node of neighbors.keys()) quarantined.add(node);
+		this.quarantineRevision = snapshot.revision;
+		this.quarantined = quarantined;
+		for (const listener of this.validationListeners) await listener(snapshot.revision, quarantined);
 	}
 }

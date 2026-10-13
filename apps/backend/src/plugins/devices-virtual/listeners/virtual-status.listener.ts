@@ -179,7 +179,7 @@ export class VirtualStatusListener {
 		if (mode && mode !== VirtualDeviceMode.PROJECTION) return ConnectionState.UNKNOWN;
 		const links = this.index.findLinksByVirtualDevice(virtualDeviceId);
 
-		if (links.some((link) => link.sourcePropertyId === null)) {
+		if (links.some((link) => link.sourcePropertyId === null || link.quarantined)) {
 			return ConnectionState.DISCONNECTED;
 		}
 
