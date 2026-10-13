@@ -193,6 +193,31 @@ describe('qualified samples and producer state', () => {
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
 	});
 
+	it('keeps last qualified measurement while a newer packet is being verified under the same source identity', async () => {
+		let latestPacket = true;
+		let sourceIdentity = true;
+		await report(20, { ...evidence(), isCurrent: () => latestPacket, sourceIsCurrent: () => sourceIdentity });
+		latestPacket = false;
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		jest.setSystemTime(base + 1_000);
+		await report(null, { ...evidence(base + 1_000), isCurrent: () => true, sourceIsCurrent: () => sourceIdentity });
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		jest.setSystemTime(base + 2_000);
+		await report(21, { ...evidence(base + 2_000), isCurrent: () => true, sourceIsCurrent: () => sourceIdentity });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(21);
+		sourceIdentity = false;
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+	});
+
+	it('refuses admission when stable source identity is obsolete despite a current packet guard', async () => {
+		const handle = open(23);
+		await report(23, { ...evidence(), isCurrent: () => true, sourceIsCurrent: () => false });
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(windows.get(property.id)).toMatchObject({ generation: handle.generation, state: 'pending' });
+		expect(accepted).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+	});
+
 	it('accepts unchanged heartbeats exactly once without history or energy scalar events', async () => {
 		await report(20);
 		jest.setSystemTime(base + 1_000);
