@@ -29,9 +29,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
 
   factory ThirdPartyChannelPropertyModel.fromJson(Map<String, dynamic> json) {
     final rawValue = json['value'];
-    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
-        ? PropertyValueState.fromJson(rawValue)
-        : null;
+    final PropertyValueState? valueState = PropertyValueState.fromRaw(rawValue);
 
     return ThirdPartyChannelPropertyModel(
       channel: json['channel'],

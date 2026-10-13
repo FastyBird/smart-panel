@@ -28,6 +28,9 @@ class DevicesModuleConstants {
   static const String channelPropertyValueSetEvent =
       'DevicesModule.ChannelProperty.ValueSet';
 
+  static const String channelPropertyValueStateChangedEvent =
+      'DevicesModule.ChannelProperty.ValueStateChanged';
+
   // WebSocket command events
   static const String setPropertyEvent = 'DevicesModule.ChannelProperty.Set';
 }

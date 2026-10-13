@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceConnectionStatus, DeviceEntity } from '../entities/devices.entity';
-import { PropertyValueState } from '../models/property-value-state.model';
+import { clonePropertyValueState } from '../models/property-value-state.model';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 import { DeviceConnectionStateService, DeviceConnectionStateValue } from './device-connection-state.service';
@@ -68,7 +68,7 @@ export class DeviceCommandGraphService {
 		property.unit = resolvePropertyUnit(property);
 		try {
 			const value = await this.values.readLatest(property);
-			property.value = value === null ? null : new PropertyValueState(value.value, value.lastUpdated, value.trend);
+			property.value = value === null ? null : clonePropertyValueState(value);
 		} catch (error) {
 			// Match afterLoad's best-effort hydration; command admission retains its stricter baseline check.
 			this.logger.error(`Failed to load property value id=${property.id}: ${String(error)}`);

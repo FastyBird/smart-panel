@@ -270,7 +270,8 @@ class DevicesModuleService {
       /// Channel property CREATE/UPDATE
     } else if (event == DevicesModuleConstants.channelPropertyCreatedEvent ||
         event == DevicesModuleConstants.channelPropertyUpdatedEvent ||
-        event == DevicesModuleConstants.channelPropertyValueSetEvent) {
+        event == DevicesModuleConstants.channelPropertyValueSetEvent ||
+        event == DevicesModuleConstants.channelPropertyValueStateChangedEvent) {
       _channelPropertiesRepository.insert([payload]);
 
       /// Channel property DELETE

@@ -29,9 +29,7 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
 
   factory ShellyV1ChannelPropertyModel.fromJson(Map<String, dynamic> json) {
     final rawValue = json['value'];
-    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
-        ? PropertyValueState.fromJson(rawValue)
-        : null;
+    final PropertyValueState? valueState = PropertyValueState.fromRaw(rawValue);
 
     return ShellyV1ChannelPropertyModel(
       channel: json['channel'],

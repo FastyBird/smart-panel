@@ -22,6 +22,15 @@ type ApiChannelProperty = DevicesModuleChannelPropertySchema;
 // STORE STATE
 // ===========
 
+export const PropertyProducerStateSchema = z.object({
+	quality: z.enum(['good', 'degraded', 'unavailable']),
+	reasons: z.array(z.string()),
+	sampledAt: z.string().datetime({ offset: true }).nullable(),
+	evaluatedAt: z.string().datetime({ offset: true }),
+	expiresAt: z.string().datetime({ offset: true }).nullable(),
+	revision: z.number().int().nonnegative(),
+});
+
 export const ChannelPropertySchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
@@ -48,6 +57,7 @@ export const ChannelPropertySchema = z.object({
 					value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
 					lastUpdated: z.string().nullable().optional().default(null),
 					trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+					producer: PropertyProducerStateSchema.optional(),
 				})
 				.nullable()
 		)
@@ -97,6 +107,7 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 				value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
 				lastUpdated: z.string().nullable().optional().default(null),
 				trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+				producer: PropertyProducerStateSchema.optional(),
 			})
 			.nullable(),
 	}),

@@ -173,3 +173,35 @@ describe('transformChannelPropertyUpdateRequest omissions', () => {
 		).toEqual({ type: 'some-type', step: null });
 	});
 });
+
+describe('Property producer response compatibility', () => {
+	it.each([false, 0, 'legacy', null])('accepts legacy scalar or null value %s', (value) => {
+		const result = transformChannelPropertyResponse({ ...validChannelResponse, value } as unknown as IChannelPropertyRes, ChannelPropertySchema);
+		expect(result.value?.value ?? null).toBe(value);
+	});
+
+	it.each(['good', 'degraded', 'unavailable'])('preserves %s producer metadata and ignores unknown fields', (quality) => {
+		const producer = {
+			quality,
+			reasons: quality === 'good' ? [] : ['source_stale'],
+			sampled_at: null,
+			evaluated_at: '2026-10-13T10:00:00Z',
+			expires_at: null,
+			revision: 4,
+			future_field: true,
+		};
+		const result = transformChannelPropertyResponse(
+			{
+				...validChannelResponse,
+				value: { value: quality === 'unavailable' ? null : 21, last_updated: null, producer },
+			} as unknown as IChannelPropertyRes,
+			ChannelPropertySchema
+		);
+		expect(result.value).toEqual({
+			value: quality === 'unavailable' ? null : 21,
+			lastUpdated: null,
+			trend: null,
+			producer: { quality, reasons: producer.reasons, sampledAt: null, evaluatedAt: producer.evaluated_at, expiresAt: null, revision: 4 },
+		});
+	});
+});

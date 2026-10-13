@@ -322,6 +322,21 @@ describe('WebsocketGateway', () => {
 			onAnyCallback(event, payload);
 		};
 
+		it.each(['SampleAccepted', 'SampleInvalidated'])('keeps internal %s sample evidence off WebSocket', (event) => {
+			emitBusEvent(`DevicesModule.Internal.ChannelProperty.${event}`, { propertyId: 'source', provenance: 'live' });
+			expect(mockServer.to).not.toHaveBeenCalled();
+			expect(mockServer.emit).not.toHaveBeenCalled();
+		});
+
+		it('broadcasts explicit producer quality changes to exchange and panel clients', () => {
+			emitBusEvent('DevicesModule.ChannelProperty.ValueStateChanged', {
+				id: 'output',
+				value: { value: null, producer: { quality: 'unavailable', reasons: ['expired'] } },
+			});
+			expect(mockServer.to).toHaveBeenCalledWith(EXCHANGE_ROOM);
+			expect(mockServer.to).toHaveBeenCalledWith(DISPLAY_INTERNAL_ROOM);
+		});
+
 		it('never forwards unaccepted remote-access observations or their administrative metadata', () => {
 			emitBusEvent('RemoteAccessModule.Provider.Observation', {
 				status: { type: 'remote-access-tailscale', state: 'connected' },
