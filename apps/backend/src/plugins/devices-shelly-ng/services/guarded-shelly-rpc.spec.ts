@@ -37,7 +37,7 @@ class FixtureTransport extends GuardedShellyRpcHandler {
 	}
 }
 const flush = async (): Promise<void> => {
-	for (let index = 0; index < 12; index++) await Promise.resolve();
+	for (let index = 0; index < 32; index++) await Promise.resolve();
 };
 const fixture = (): FixtureTransport => {
 	const rpc = new FixtureTransport('fixture.invalid', {
@@ -52,6 +52,31 @@ const fixture = (): FixtureTransport => {
 };
 
 describe('guarded Shelly transport at real SDK send and authentication retry', () => {
+	it.each([false, true])(
+		'does not send a settled SDK request after connect resumes (authority=%s)',
+		async (guarded) => {
+			jest.useFakeTimers();
+			const rpc = fixture();
+			try {
+				const physical = new ShellyPlus1Pm({ id: 'physical', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+				let release: () => void;
+				rpc.gate = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				const invoke = () => physical.switch0.set(true, 5);
+				const result = Promise.resolve(guarded ? rpc.withSendGuard(() => true, invoke) : invoke()).catch(() => false);
+				await jest.advanceTimersByTimeAsync(2001);
+				expect(await result).toBe(false);
+				release();
+				await flush();
+				expect(rpc.frames).toEqual([]);
+			} finally {
+				await rpc.destroy();
+				jest.useRealTimers();
+			}
+		},
+	);
+
 	it('never sends queued Switch.set ON after its authority expires during connect', async () => {
 		const rpc = fixture();
 		const physical = new ShellyPlus1Pm({ id: 'physical', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);

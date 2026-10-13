@@ -18,10 +18,25 @@ export class GuardedShellyRpcHandler extends WebSocketRpcHandler {
 	}
 
 	override request<T>(method: string, params?: RpcParams): PromiseLike<T> {
-		if (!this.activeGuard) return super.request<T>(method, params);
+		// The SDK's client timeout does not cancel handleRequest's asynchronous connect wait.
+		// Fence every request at settlement, including ordinary pre-claim switch commands.
+		const authority = this.activeGuard;
+		let pending = true;
+		const timeoutMs = this.options.requestTimeout * 1000;
+		if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return Promise.reject(new Error('Invalid Shelly timeout'));
+		const expiresAt = Date.now() + timeoutMs;
 		const guarded: GuardedParams = { ...params };
-		Object.defineProperty(guarded, sendGuard, { value: this.activeGuard });
-		return super.request<T>(method, guarded);
+		Object.defineProperty(guarded, sendGuard, {
+			value: () => pending && Date.now() < expiresAt && (authority?.() ?? true),
+		});
+		let timer: ReturnType<typeof setTimeout>;
+		const timeout = new Promise<never>((_, reject) => {
+			timer = setTimeout(() => reject(new Error('Shelly request deadline expired')), timeoutMs);
+		});
+		return Promise.race([Promise.resolve(super.request<T>(method, guarded)), timeout]).finally(() => {
+			pending = false;
+			clearTimeout(timer);
+		});
 	}
 
 	protected override sendRequest(payload: RpcParams): Promise<void> {
