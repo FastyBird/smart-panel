@@ -1,11 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
-import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
-import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
+import {
+	AcceptedPropertySample,
+	DerivedPropertyPublication,
+	PropertySampleEvidence,
+	QualifiedPropertySample,
+} from '../models/property-sample.model';
+import {
+	PropertyValueState,
+	type PropertyValueTrend,
+	clonePropertyValueState,
+} from '../models/property-value-state.model';
 
+import { PropertyProducerLease, PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
@@ -103,10 +115,15 @@ export class PropertyValueService {
 	private readonly cacheVersions = new Map<ChannelPropertyEntity['id'], number>();
 	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
+	private readonly samples = new Map<string, QualifiedPropertySample>();
+	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
+
 	constructor(
 		private readonly storageService: StorageService,
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
 		private readonly valueLock: PropertyValueLockService,
+		@Optional() private readonly producers?: PropertyProducerRegistryService,
+		@Optional() private readonly events?: EventEmitter2,
 	) {}
 
 	/**
@@ -160,6 +177,183 @@ export class PropertyValueService {
 			() => this.writeInternal(property, key, value, false, undefined, valueTimestamp, true),
 			false,
 		);
+	}
+
+	/** Called only by admitted provider report writers; never by optimistic command writes. */
+	async writeSampleWithState(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		evidence: PropertySampleEvidence,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.resolveBestEffort(property, 'sample');
+		if (key === null || key !== property.id || this.producers?.owns(key)) return { changed: false, state: null };
+		return this.withValueLock(key, async () => {
+			const sampledAt = evidence.sampledAt.getTime();
+			const receivedAt = evidence.receivedAt.getTime();
+			const watermark = this.liveWatermarks.get(key);
+			const live = evidence.provenance === 'live';
+			// A non-live startup replay can populate ordinary display state, never the live epoch.
+			if (!live && watermark) return { changed: false, state: null };
+			if (watermark && (sampledAt < watermark.sampledAt || (sampledAt === watermark.sampledAt && watermark.invalid)))
+				return { changed: false, state: null };
+			const valid =
+				Number.isFinite(sampledAt) &&
+				Number.isFinite(receivedAt) &&
+				sampledAt <= receivedAt &&
+				receivedAt <= Date.now() &&
+				this.isSampleValueValid(property, value);
+			if (!valid) {
+				if (live && Number.isFinite(sampledAt) && (!watermark || sampledAt >= watermark.sampledAt)) {
+					this.liveWatermarks.set(key, { sampledAt, invalid: true });
+					this.samples.delete(key);
+					this.events?.emit(
+						EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
+						Object.freeze({ propertyId: key, evidence: this.cloneEvidence(evidence) }),
+					);
+				}
+				return { changed: false, state: null };
+			}
+			const result = await this.writeInternal(
+				property,
+				key,
+				value,
+				false,
+				undefined,
+				evidence.sampledAt,
+				!this.valueLock.isEnabled(),
+			);
+			if (result.state !== null) {
+				const sample: AcceptedPropertySample = Object.freeze({
+					propertyId: key,
+					value: result.state.value,
+					sampledAt: new Date(sampledAt),
+					receivedAt: new Date(receivedAt),
+					provenance: evidence.provenance,
+					quality: 'good',
+					reasons: Object.freeze([]),
+				});
+				if (live) {
+					this.liveWatermarks.set(key, { sampledAt, invalid: false });
+					this.samples.set(key, { ...sample, provenance: 'live' });
+				}
+				const snapshot = Object.assign(
+					Object.create(Object.getPrototypeOf(property)) as ChannelPropertyEntity,
+					property,
+				);
+				snapshot.value = clonePropertyValueState(result.state);
+				this.events?.emit(
+					EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
+					Object.freeze({ propertyId: key, property: snapshot, sample: this.cloneSample(sample) }),
+				);
+			}
+			return result;
+		});
+	}
+
+	readQualifiedSample(
+		property: ChannelPropertyEntity,
+		maxAgeMs: number,
+		now = new Date(),
+	): QualifiedPropertySample | null {
+		if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0 || !Number.isFinite(now.getTime())) return null;
+		const key = this.resolveBestEffort(property, 'qualified sample');
+		if (key === null) return null;
+		const produced = this.producers?.read(key);
+		if (produced) {
+			if (
+				produced.value === null ||
+				produced.producer.quality === 'unavailable' ||
+				produced.producer.sampledAt === null
+			)
+				return null;
+			const sampledAt = new Date(produced.producer.sampledAt);
+			if (sampledAt.getTime() > now.getTime() || now.getTime() - sampledAt.getTime() > maxAgeMs) return null;
+			return Object.freeze({
+				propertyId: key,
+				value: produced.value,
+				sampledAt,
+				receivedAt: new Date(produced.producer.evaluatedAt),
+				provenance: 'live',
+				quality: produced.producer.quality,
+				reasons: Object.freeze([...produced.producer.reasons]),
+				revision: produced.producer.revision,
+			});
+		}
+		const sample = this.samples.get(key);
+		if (!sample || sample.sampledAt.getTime() > now.getTime() || now.getTime() - sample.sampledAt.getTime() > maxAgeMs)
+			return null;
+		return this.cloneSample(sample);
+	}
+
+	async publishDerived(
+		property: ChannelPropertyEntity,
+		lease: PropertyProducerLease,
+		value: string | boolean | number | null,
+		publication: DerivedPropertyPublication,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.valueSourceRegistry.resolve(property);
+		const epoch = this.producers?.version(lease) ?? null;
+		if (key !== property.id || lease.propertyId !== key || !this.producers?.canCommit(lease, publication, epoch))
+			return { changed: false, state: null };
+		return this.withValueLock(key, async () => {
+			if (!this.producers.canCommit(lease, publication, epoch)) return { changed: false, state: null };
+			if (!this.isSampleValueValid(property, value)) {
+				this.producers.invalidate(lease, ['invalid_value'], publication.evaluatedAt);
+				return { changed: false, state: this.producers.read(key) };
+			}
+			const result = await this.writeInternal(property, key, value, false, undefined, publication.sampledAt);
+			if (!result.state || !this.producers.commit(lease, result.state, publication, epoch))
+				return { changed: false, state: this.producers.read(key) };
+			return { changed: result.changed, state: this.producers.read(key) };
+		});
+	}
+
+	invalidateDerived(
+		property: ChannelPropertyEntity,
+		lease: PropertyProducerLease,
+		reasons: readonly string[],
+		evaluatedAt = new Date(),
+	): boolean {
+		return (
+			lease.propertyId === property.id &&
+			this.valueSourceRegistry.resolve(property) === property.id &&
+			(this.producers?.invalidate(lease, reasons, evaluatedAt) ?? false)
+		);
+	}
+
+	private cloneEvidence(evidence: PropertySampleEvidence): PropertySampleEvidence {
+		return Object.freeze({
+			sampledAt: new Date(evidence.sampledAt),
+			receivedAt: new Date(evidence.receivedAt),
+			provenance: evidence.provenance,
+			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
+		});
+	}
+
+	private cloneSample<T extends AcceptedPropertySample>(sample: T): T {
+		return Object.freeze({
+			...sample,
+			sampledAt: new Date(sample.sampledAt),
+			receivedAt: new Date(sample.receivedAt),
+			reasons: Object.freeze([...sample.reasons]),
+		});
+	}
+
+	private isSampleValueValid(property: ChannelPropertyEntity, value: string | boolean | number | null): boolean {
+		if (value === null || value === undefined) return false;
+		if (property.invalid != null && this.isInvalidValue(property.invalid, value)) return false;
+		if (
+			this.isNumericDataType(property.dataType) &&
+			(typeof value === 'boolean' || (typeof value === 'string' && !value.trim()) || !Number.isFinite(Number(value)))
+		)
+			return false;
+		if (property.dataType === DataTypeType.BOOL && typeof value !== 'boolean') return false;
+		return this.validateValue(property, value) === null;
+	}
+
+	private overlay(property: ChannelPropertyEntity, state: PropertyValueState | null): PropertyValueState | null {
+		const key = this.resolveBestEffort(property, 'producer overlay');
+		return (key === null ? null : this.producers?.read(key)) ?? state;
 	}
 
 	flushHistory(): Promise<void> {
@@ -382,11 +576,11 @@ export class PropertyValueService {
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		return (await this.readLatestInternal(property, false)).state;
+		return this.overlay(property, (await this.readLatestInternal(property, false)).state);
 	}
 
 	async readLatestStrict(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		return (await this.readLatestInternal(property, true)).state;
+		return this.overlay(property, (await this.readLatestInternal(property, true)).state);
 	}
 
 	/**
@@ -408,7 +602,7 @@ export class PropertyValueService {
 			throw new Error('Persisted property value read did not bind a storage backend');
 		}
 
-		return { state: result.state, storageBinding: result.storageBinding };
+		return { state: this.overlay(property, result.state), storageBinding: result.storageBinding };
 	}
 
 	async readLatestManyStrict(
@@ -431,6 +625,8 @@ export class PropertyValueService {
 		}
 
 		if (missingByKey.size === 0) {
+			for (const property of properties)
+				states.set(property.id, this.overlay(property, states.get(property.id) ?? null));
 			return states;
 		}
 		if (!this.storageService.isConnected()) {
@@ -483,6 +679,8 @@ export class PropertyValueService {
 				}
 			}
 
+			for (const property of properties)
+				states.set(property.id, this.overlay(property, states.get(property.id) ?? null));
 			return states;
 		} catch (error) {
 			const err = error as Error;
@@ -550,6 +748,7 @@ export class PropertyValueService {
 		}
 
 		if (unresolvedBySource.size === 0) {
+			this.overlayBoundedItems(items, properties, sourcePropertyIds);
 			return this.buildBoundedResult(items, sourceResolutionFailed ? 'failed' : 'not_needed');
 		}
 
@@ -557,6 +756,7 @@ export class PropertyValueService {
 			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
 			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
 
+			this.overlayBoundedItems(items, properties, sourcePropertyIds);
 			return this.buildBoundedResult(items, 'timed_out');
 		}
 
@@ -564,6 +764,7 @@ export class PropertyValueService {
 			this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
 			this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
 
+			this.overlayBoundedItems(items, properties, sourcePropertyIds);
 			return this.buildBoundedResult(items, 'disconnected');
 		}
 
@@ -603,7 +804,21 @@ export class PropertyValueService {
 		this.refreshBoundedItemsFromCache(items, properties, sourcePropertyIds);
 		this.fillUnprocessedBoundedItems(items, properties, unresolvedBySource);
 
+		this.overlayBoundedItems(items, properties, sourcePropertyIds);
 		return this.buildBoundedResult(items, storageStatus);
+	}
+
+	private overlayBoundedItems(
+		items: Array<BoundedPropertyValueItem | undefined>,
+		properties: ChannelPropertyEntity[],
+		sourcePropertyIds: Array<string | null>,
+	): void {
+		for (const [index, property] of properties.entries()) {
+			const key = sourcePropertyIds[index];
+			if (key === null) continue;
+			const produced = this.producers?.read(key);
+			if (produced) items[index] = this.toBoundedItem(property.id, key, produced, items[index]?.source ?? 'cache');
+		}
 	}
 
 	private buildBoundedPropertyValueQuery(sourcePropertyIds: ChannelPropertyEntity['id'][]): string {
@@ -1049,6 +1264,9 @@ export class PropertyValueService {
 		}
 
 		// Always clear local cache
+		this.samples.delete(property.id);
+		this.liveWatermarks.delete(property.id);
+		this.producers?.remove(property.id);
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);
 		this.bumpCacheVersion(property.id);

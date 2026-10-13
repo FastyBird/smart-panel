@@ -347,6 +347,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	// Internal event prefixes that should NOT be forwarded to WebSocket clients
 	// These are used for internal communication between adapter services
 	private static readonly INTERNAL_EVENT_PREFIXES = [
+		'DevicesModule.Internal.ChannelProperty.Sample',
 		'z2m.', // Zigbee2MQTT adapter
 		'WledAdapter.', // WLED adapter
 		'WledMdns.', // WLED mDNS discovery
