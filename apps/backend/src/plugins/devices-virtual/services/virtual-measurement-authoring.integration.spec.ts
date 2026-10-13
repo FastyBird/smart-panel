@@ -56,6 +56,7 @@ import { CategoryAllowedConstraintValidator } from '../validators/category-allow
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualMeasurementAuthoringService } from './virtual-measurement-authoring.service';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
@@ -108,11 +109,13 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 			class: VirtualChannelPropertyEntity,
 			createDto: CreateVirtualChannelPropertyDto,
 			updateDto: UpdateVirtualChannelPropertyDto,
-			beforeCreate: (property, channelId, manager) => {
+			beforeCreate: async (property, channelId, manager) => {
 				expect(property.channel).toBe(channelId);
 				expect(manager?.queryRunner?.isTransactionActive).toBe(true);
 				admittedRunner = manager?.queryRunner;
 				if (phase === 'property') throw Error('property failure');
+				await virtualService.assertChannelOwnerIsVirtual(channelId, manager);
+				await virtualService.assertDerivedOutputSupported(property, channelId, manager);
 				return Promise.resolve();
 			},
 			afterCreate: (property) => {
@@ -171,17 +174,24 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 			database,
 			events,
 		);
+		const virtualService = new VirtualDevicesService(
+			properties,
+			channels,
+			devices,
+			{} as never,
+			{} as never,
+			graph,
+			database,
+		);
 		useContainer(
 			{
 				get: <T>(type: new () => T): T => {
-					if (
-						[
-							CategoryAllowedConstraintValidator,
-							DeviceIsVirtualConstraintValidator,
-							DeviceExistsConstraintValidator,
-						].includes(type as never)
-					)
-						return { validate: () => true } as T;
+					if (type === (CategoryAllowedConstraintValidator as never))
+						return new CategoryAllowedConstraintValidator(virtualService) as T;
+					if (type === (DeviceIsVirtualConstraintValidator as never))
+						return new DeviceIsVirtualConstraintValidator(virtualService) as T;
+					if (type === (DeviceExistsConstraintValidator as never))
+						return new DeviceExistsConstraintValidator(devices) as T;
 					return new type();
 				},
 			},
