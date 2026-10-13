@@ -140,7 +140,7 @@
 						:key="operator"
 						:value="operator"
 						:label="t(`devicesVirtualPlugin.measurement.operators.${operator}`)"
-						:disabled="operator === TransformOperator.ntc_beta && !ntcAllowed"
+						:disabled="[TransformOperator.ntc_beta, TransformOperator.steinhart_hart].includes(operator) && !thermistorAllowed"
 					/>
 				</el-select>
 				<el-select
@@ -224,10 +224,10 @@
 					</div>
 					<el-button @click="model.points.push({ x: 0, y: 0 })">{{ t('devicesVirtualPlugin.measurement.addPoint') }}</el-button>
 				</div>
-				<template v-if="model.operator === TransformOperator.ntc_beta">
+				<template v-if="model.operator === TransformOperator.ntc_beta || model.operator === TransformOperator.steinhart_hart">
 					<div class="grid grid-cols-2 gap-3">
 						<el-form-item
-							v-for="field in ntcFields"
+							v-for="field in model.operator === TransformOperator.ntc_beta ? ntcFields : steinhartFields"
 							:key="field"
 							:label="t(`devicesVirtualPlugin.measurement.${field}`)"
 						>
@@ -345,7 +345,7 @@ const loading = ref(false),
 const candidates = computed(() => measurementCandidates(props.mode, devices.findAll(), channels.findAll(), properties.findAll()));
 const availableCandidates = (index: number) =>
 	candidates.value.filter((candidate) => !model.inputs.some((input, other) => other !== index && input.source_property === candidate.id));
-const ntcAllowed = computed(
+const thermistorAllowed = computed(
 	() =>
 		model.temperature &&
 		candidates.value.some(
@@ -355,6 +355,7 @@ const ntcAllowed = computed(
 const rangeFields = ['inputMinimum', 'inputMaximum', 'outputMinimum', 'outputMaximum'] as const;
 const affineFields = ['scale', 'offset'] as const;
 const ntcFields = ['referenceVoltage', 'seriesResistance', 'nominalResistance', 'nominalTemperatureCelsius', 'beta'] as const;
+const steinhartFields = ['referenceVoltage', 'seriesResistance', 'coefficientA', 'coefficientB', 'coefficientC'] as const;
 const transformOperators = Object.values(TransformOperator),
 	aggregateOperators = Object.values(AggregateOperator);
 const message = (key: string | null) => (key?.startsWith('measurement') ? t(`devicesVirtualPlugin.measurement.${key}`) : (key ?? ''));

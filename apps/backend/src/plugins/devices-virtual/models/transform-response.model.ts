@@ -74,6 +74,18 @@ export class VirtualNumericTransformPolicyModel {
 	@Expose()
 	beta?: number;
 
+	@ApiPropertyOptional({ description: 'Steinhart-Hart A coefficient in inverse kelvin' })
+	@Expose()
+	coefficientA?: number;
+
+	@ApiPropertyOptional({ description: 'Steinhart-Hart B coefficient in inverse kelvin' })
+	@Expose()
+	coefficientB?: number;
+
+	@ApiPropertyOptional({ description: 'Steinhart-Hart C coefficient in inverse kelvin' })
+	@Expose()
+	coefficientC?: number;
+
 	@ApiPropertyOptional({ description: 'Thermistor divider orientation', enum: ['low', 'high'] })
 	@Expose()
 	thermistorLeg?: 'low' | 'high';

@@ -145,6 +145,24 @@ export class VirtualNumericTransformPolicyDto {
 	@IsNumber()
 	beta?: number;
 
+	@ApiPropertyOptional({ description: 'Steinhart-Hart A coefficient in inverse kelvin' })
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	coefficientA?: number;
+
+	@ApiPropertyOptional({ description: 'Steinhart-Hart B coefficient in inverse kelvin' })
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	coefficientB?: number;
+
+	@ApiPropertyOptional({ description: 'Steinhart-Hart C coefficient in inverse kelvin' })
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	coefficientC?: number;
+
 	@ApiPropertyOptional({
 		description: 'Strictly ordered calibration coordinates',
 		type: [VirtualCalibrationPointDto],

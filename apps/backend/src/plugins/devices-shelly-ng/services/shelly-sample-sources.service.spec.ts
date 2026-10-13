@@ -19,7 +19,7 @@ import {
 } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
-import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -162,6 +162,39 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		expect(
 			(await database.getRepository(ShellySampleSourceEntity).findOneByOrFail({ propertyId: replacementId })).active,
 		).toBe(true);
+	});
+
+	it('keeps raw volts and device-side Celsius helper leases independent on one physical voltmeter', async () => {
+		const voltmeter = { voltmeter: { 'voltmeter:100': {} } };
+		const config = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: 'x/2', unit: '°C' } };
+		const raw = nativeVoltmeterVoltageIdentity('voltmeter:100', config, voltmeter, 'A8032ABE5085');
+		const helper = nativeTemperatureIdentity('voltmeter:100', config, voltmeter);
+		const otherId = randomUUID();
+		await database.getRepository(ShellyNgChannelPropertyEntity).save({
+			id: otherId,
+			channel: { id: channelId },
+			category: PropertyCategory.VALUE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		});
+		await sources.bind(propertyId, deviceId, raw);
+		await sources.bind(otherId, deviceId, helper);
+		const rawLease = await sources.get(propertyId);
+		const helperLease = await sources.get(otherId);
+		expect(sources.isCurrent(rawLease, new Date(Date.now() + 1))).toBe(true);
+		expect(sources.isCurrent(helperLease, new Date(Date.now() + 1))).toBe(true);
+		await sources.invalidateComponent(deviceId, 'voltmeter:100', 'temperature');
+		expect(sources.isCurrent(rawLease, new Date(Date.now() + 1))).toBe(true);
+		expect(sources.isCurrent(helperLease, new Date(Date.now() + 1))).toBe(false);
+		await sources.bind(otherId, deviceId, helper);
+		const restored = await sources.get(otherId);
+		const changed = nativeVoltmeterVoltageIdentity('voltmeter:100', { ...config, range: 1 }, voltmeter, 'A8032ABE5085');
+		await sources.bind(propertyId, deviceId, changed);
+		expect(sources.isCurrent(rawLease, new Date(Date.now() + 1))).toBe(false);
+		expect(sources.isCurrent(restored, new Date(Date.now() + 1))).toBe(true);
+		expect((await database.getRepository(ShellySampleSourceEntity).findOneByOrFail({ propertyId })).fingerprint).toBe(
+			changed.fingerprint,
+		);
 	});
 
 	it('migration and synchronized metadata agree on columns and property deletion cascades', async () => {

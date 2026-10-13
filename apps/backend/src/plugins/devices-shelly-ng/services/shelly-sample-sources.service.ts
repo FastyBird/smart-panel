@@ -38,20 +38,23 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 		snapshot: NativeTemperatureSnapshot,
 	): Promise<ShellySampleSourceEntity> {
 		const mutationKey = `${deviceId}|${snapshot.componentKey}`;
+		const sameScope = (unit: string) => (unit === 'V') === (snapshot.unit === 'V');
 		this.mutating.add(mutationKey);
 		for (const [id, lease] of this.leases) {
 			if (
 				lease.metadata.deviceId === deviceId &&
 				lease.metadata.componentKey === snapshot.componentKey &&
+				sameScope(lease.metadata.unit) &&
 				lease.metadata.fingerprint !== snapshot.fingerprint
 			)
 				this.leases.delete(id);
 		}
 		this.generation++;
 		try {
-			const previous = await this.repository.find({
+			const componentRows = await this.repository.find({
 				where: { deviceId, componentKey: snapshot.componentKey, active: true },
 			});
+			const previous = componentRows.filter((row) => sameScope(row.unit));
 			const current = previous.find((row) => row.propertyId === propertyId && row.fingerprint === snapshot.fingerprint);
 			if (current) return current;
 			// Revoke process-local leases before awaiting persistence, fencing old configuration RPC callbacks.
@@ -93,15 +96,22 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 		}
 	}
 
-	async invalidateComponent(deviceId: string, componentKey: string): Promise<void> {
+	async invalidateComponent(deviceId: string, componentKey: string, unit?: 'V' | 'temperature'): Promise<void> {
 		const key = `${deviceId}|${componentKey}`;
+		const matches = (row: Pick<ShellySampleSourceEntity, 'unit'>) =>
+			unit === undefined || (row.unit === 'V') === (unit === 'V');
 		this.mutating.add(key);
 		this.generation++;
 		for (const [id, lease] of this.leases) {
-			if (lease.metadata.deviceId === deviceId && lease.metadata.componentKey === componentKey) this.leases.delete(id);
+			if (
+				lease.metadata.deviceId === deviceId &&
+				lease.metadata.componentKey === componentKey &&
+				matches(lease.metadata)
+			)
+				this.leases.delete(id);
 		}
 		try {
-			const rows = await this.repository.find({ where: { deviceId, componentKey, active: true } });
+			const rows = (await this.repository.find({ where: { deviceId, componentKey, active: true } })).filter(matches);
 			const observedAt = new Date();
 			for (const row of rows) {
 				await this.properties.reportSample(
@@ -110,7 +120,7 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 					{ sampledAt: observedAt, receivedAt: new Date(), observedAt, provenance: 'live' },
 				);
 			}
-			if (rows.length) await this.repository.update({ deviceId, componentKey, active: true }, { active: false });
+			for (const row of rows) await this.repository.update(row.propertyId, { active: false });
 		} finally {
 			this.mutating.delete(key);
 			this.generation++;
