@@ -98,7 +98,13 @@ export class ThermostatMachineObservationModel {
 	@ApiProperty({ type: [String] }) @Expose() reasons: string[];
 	@ApiPropertyOptional() @Expose() scriptHash?: string;
 	@ApiPropertyOptional() @Expose() firmware?: string;
-	@ApiProperty({ enum: [false] }) @Expose() physicalSafetyCertified: false;
+	@ApiProperty({
+		type: Boolean,
+		example: false,
+		description: 'Always false: metadata is not physical safety certification',
+	})
+	@Expose()
+	physicalSafetyCertified: false;
 }
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatInstallationAudit' })
 export class ThermostatInstallationAuditModel {
@@ -137,7 +143,13 @@ export class ThermostatInstallationModel {
 	@ApiProperty({ type: Object, nullable: true, description: 'Diagnostic only; never trusted at restart' })
 	@Expose()
 	machine_observation: ThermostatMachineObservationModel | null;
-	@ApiProperty({ enum: [false] }) @Expose() physical_safety_certified: false;
+	@ApiProperty({
+		type: Boolean,
+		example: false,
+		description: 'Always false: metadata is not physical safety certification',
+	})
+	@Expose()
+	physical_safety_certified: false;
 	@ApiProperty({ enum: ['blocked', 'metadata_verified_runtime_fence_required'] }) @Expose() readiness: string;
 	@ApiProperty({ type: [String] }) @Expose() reasons: string[];
 	@ApiProperty({ type: String, nullable: true, description: 'Review artifact; never automatically deployed' })
