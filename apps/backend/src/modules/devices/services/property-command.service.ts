@@ -486,7 +486,13 @@ export class PropertyCommandService {
 			}
 
 			// Complete the intent with results
-			this.intentsService.completeIntent(intent.id, intentResults);
+			const composites = [
+				...new Map(
+					results.filter((result) => result.composite).map((result) => [result.composite.id, result.composite]),
+				).values(),
+			];
+			if (composites.length) this.intentsService.completeIntent(intent.id, intentResults, composites);
+			else this.intentsService.completeIntent(intent.id, intentResults);
 
 			this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
 
@@ -521,6 +527,31 @@ export class PropertyCommandService {
 	private async resolveCommandIntentTtlMs(
 		groupedProperties: Readonly<Record<string, readonly PropertyCommandValueDto[]>>,
 	): Promise<number> {
+		if (this.composites?.hasPlanners()) {
+			try {
+				const updates: IDevicePropertyData[] = [];
+				for (const [deviceId, commands] of Object.entries(groupedProperties))
+					for (const command of commands) {
+						const property = await this.propertyMetadata.findOne(command.property);
+						const channel = property?.channel;
+						const device = channel && typeof channel !== 'string' ? channel.device : null;
+						if (
+							channel &&
+							typeof channel !== 'string' &&
+							channel.id === command.channel &&
+							device &&
+							typeof device !== 'string' &&
+							device.id === deviceId
+						)
+							updates.push({ property, channel, device, value: command.value });
+					}
+				const compositeBudget = await this.composites.estimateTimeoutMs(updates);
+				if (compositeBudget !== null) return compositeBudget;
+			} catch {
+				return DEFAULT_TTL_DEVICE_COMMAND;
+			}
+		}
+
 		const executions = [];
 
 		for (const [deviceId, commands] of Object.entries(groupedProperties)) {

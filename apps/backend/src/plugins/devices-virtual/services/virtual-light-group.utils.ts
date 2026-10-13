@@ -216,7 +216,11 @@ export function reportLightGroup(members: readonly LightGroupReportedMember[]): 
 		const contributors = on.filter((member) => typeof member.samples.get(category)?.value === 'number');
 		const samples = contributors.map((member) => member.samples.get(category));
 		const values = samples.map((sample) => Number(sample.value));
-		const mixed = values.length > 0 && Math.max(...values) - Math.min(...values) > lightGroupTolerance(category);
+		const mixed =
+			values.length > 0 &&
+			(category === PropertyCategory.BRIGHTNESS
+				? new Set(values).size > 1
+				: Math.max(...values) - Math.min(...values) > lightGroupTolerance(category));
 		// Partial color evidence is unknown. Brightness explicitly advertises its valid contributors.
 		const value =
 			values.length === 0

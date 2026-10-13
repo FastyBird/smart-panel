@@ -174,6 +174,7 @@ describe('property command convergence integration', () => {
 			readLatest: (property: ChannelPropertyEntity) => Promise.resolve(properties.get(property.id)?.value ?? null),
 			writeWithState,
 			writeLiveWithState: writeWithState,
+			writeSampleWithState: writeWithState,
 			flushHistory: jest.fn().mockResolvedValue(undefined),
 		};
 		const structureLocks = new DeviceStructureLockService();
@@ -369,5 +370,34 @@ describe('property command convergence integration', () => {
 		expect(complete).toHaveLength(1);
 		expect(complete[0]?.records.filter((record) => record.stage === 'update-entry')).toHaveLength(1);
 		expect(complete[0]?.records.filter((record) => record.stage === 'source-publication')).toHaveLength(1);
+	});
+	it('requires causal live provider evidence for composite windows while preserving ordinary convergence', async () => {
+		await commandDispatch.dispatchBatch([update(source, true)], { requiresLiveEvidence: true });
+		const window = windows.get(source.id);
+		await channelsProperties.update(source.id, { type: source.type, value: true });
+		expect(windows.get(source.id)?.state).toBe('pending');
+		expect(source.value?.value).toBe(false);
+		expect(history).toEqual([]);
+		const now = new Date();
+		await channelsProperties.update(
+			source.id,
+			{ type: source.type, value: true },
+			{
+				sampleEvidence: {
+					sampledAt: now,
+					receivedAt: now,
+					observedAt: new Date(window.openedAt - 1),
+					provenance: 'live',
+				},
+			},
+		);
+		expect(windows.get(source.id)?.state).toBe('pending');
+		await channelsProperties.update(
+			source.id,
+			{ type: source.type, value: true },
+			{ sampleEvidence: { sampledAt: now, receivedAt: now, observedAt: now, provenance: 'live' } },
+		);
+		expect(windows.get(source.id)?.state).toBe('confirmed_grace');
+		expect(source.value?.value).toBe(true);
 	});
 });

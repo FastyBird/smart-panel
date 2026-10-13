@@ -6,6 +6,25 @@ import type { CompositeChildStatus } from '../services/composite-property-comman
 
 @ApiSchema({ name: 'DevicesModuleDataCompositeCommandChildOutcome' })
 export class CompositeCommandChildOutcomeModel {
+	@ApiPropertyOptional({ description: 'Intended physical channel identity captured before remap or deletion' })
+	@Expose()
+	memberIdentity?: string;
+
+	@ApiPropertyOptional({
+		type: 'string',
+		nullable: true,
+		description: 'Original intended physical property identity, including a cleared live FK',
+	})
+	@Expose()
+	propertyIdentity?: string | null;
+
+	@ApiPropertyOptional({
+		oneOf: [{ type: 'number' }, { type: 'boolean' }, { type: 'string' }],
+		description: 'Exact prepared physical target value',
+	})
+	@Expose()
+	value?: string | number | boolean;
+
 	@ApiProperty({ description: 'Stable intended member identity' })
 	@Expose()
 	memberId: string;

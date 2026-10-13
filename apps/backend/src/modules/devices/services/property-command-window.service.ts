@@ -42,6 +42,7 @@ export interface PropertyCommandWindow {
 	readonly generation: string;
 	readonly intentId: string | null;
 	readonly commandedValue: PropertyCommandValue;
+	readonly requiresLiveEvidence: boolean;
 	readonly previousValue: PropertyCommandValue | null;
 	readonly lastReceipt: PropertyCommandReceipt | null;
 	readonly heldReceipt: PropertyCommandReceipt | null;
@@ -61,6 +62,8 @@ export interface OpenPropertyCommandWindowInput {
 	readonly requestedTargets: readonly PropertyCommandWindowTarget[];
 	readonly intentId?: string;
 	readonly commandedValue: PropertyCommandValue;
+	/** Internal composite/controller proof policy; ordinary windows retain their existing contract. */
+	readonly requiresLiveEvidence?: boolean;
 	readonly previousValue: PropertyCommandValue | null;
 	readonly ttlMs: number;
 }
@@ -85,6 +88,12 @@ interface RecoveryWindow {
 export class PropertyCommandWindowService {
 	private readonly windows = new Map<string, MutablePropertyCommandWindow>();
 	private readonly recoveries = new Map<string, RecoveryWindow>();
+	private readonly confirmationObservers = new Set<(handle: PropertyCommandWindowHandle) => void>();
+	/** Captures actual convergence while a provider acknowledgement is still in flight. */
+	observeConfirmation(observer: (handle: PropertyCommandWindowHandle) => void): () => void {
+		this.confirmationObservers.add(observer);
+		return () => this.confirmationObservers.delete(observer);
+	}
 	private readonly generationObservers = new Set<(propertyId: string, generation: string | null) => void>();
 
 	/** Internal composite lifecycle fencing; observation does not own or extend a window. */
@@ -118,6 +127,7 @@ export class PropertyCommandWindowService {
 			generation,
 			intentId: input.intentId ?? null,
 			commandedValue: input.commandedValue,
+			requiresLiveEvidence: input.requiresLiveEvidence ?? false,
 			previousValue,
 			lastReceipt: null,
 			heldReceipt: null,
@@ -166,6 +176,13 @@ export class PropertyCommandWindowService {
 			current.heldReceipt = null;
 			current.rollbackBaseline = null;
 			current.patchReceipt = null;
+			for (const observer of this.confirmationObservers) {
+				try {
+					observer(Object.freeze({ ...handle }));
+				} catch {
+					/* Observation cannot alter convergence. */
+				}
+			}
 		}
 
 		return this.toSnapshot(current);

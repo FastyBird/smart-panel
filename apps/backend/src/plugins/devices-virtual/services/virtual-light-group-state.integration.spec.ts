@@ -13,7 +13,9 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
@@ -36,6 +38,7 @@ import {
 import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualLightGroupCommandService } from './virtual-light-group-command.service';
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
@@ -252,12 +255,33 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		await runtime.refresh();
 		expect(producers.read(outputId)?.value).toBe(true);
 		expect(runtime.getReportedState(channelId)).toMatchObject({ total: 2, onCount: 1, offCount: 1, mixed: true });
+		const metadata = new PropertyMetadataService(database);
+		const commands = new VirtualLightGroupCommandService(
+			database,
+			new CompositePropertyCommandRegistryService(),
+			devices as never,
+			graph,
+			metadata,
+		);
+		const parent = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: outputId },
+			relations: ['channel', 'channel.device'],
+		});
+		const parentChannel = parent.channel as ChannelEntity;
+		expect(commands.canHandle(parent)).toBe(true);
+		const plan = await commands.plan([
+			{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: true },
+		]);
+		expect(plan.children).toHaveLength(2);
+		expect(await plan.isCurrent()).toBe(true);
 		offline.add(physical[0].deviceId);
 		await runtime.refresh();
 		expect(runtime.getReportedState(channelId)).toMatchObject({ on: null, unknownCount: 1 });
 		expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
 		offline.clear();
 		await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { dataType: DataTypeType.STRING });
+		expect(await plan.isCurrent()).toBe(false);
+		metadata.onModuleDestroy();
 		await runtime.refresh();
 		expect(runtime.getReportedState(channelId)?.unknownCount).toBe(1);
 		await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { dataType: DataTypeType.BOOL });

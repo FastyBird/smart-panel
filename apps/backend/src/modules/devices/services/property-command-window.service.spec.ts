@@ -222,4 +222,29 @@ describe('PropertyCommandWindowService', () => {
 		expect(service.cancelRecovery(handle.canonicalPropertyId)).toBe(false);
 		expect(service.getRecovery(handle)).toBeNull();
 	});
+	it('notifies active composite observers for new generations/cancellation but not confirmation-grace expiry', () => {
+		const observer = jest.fn();
+		const stop = service.observeGeneration(observer);
+		const first = open();
+		service.confirm(first, { value: true, receivedAt: Date.now() });
+		jest.advanceTimersByTime(PROPERTY_COMMAND_CONFIRMATION_GRACE_MS + 1);
+		expect(service.get(first.canonicalPropertyId)).toBeNull();
+		expect(observer).toHaveBeenCalledTimes(1);
+		const second = open();
+		expect(observer).toHaveBeenLastCalledWith('source', second.generation);
+		service.cancel('source');
+		expect(observer).toHaveBeenLastCalledWith('source', null);
+		stop();
+		open();
+		expect(observer).toHaveBeenCalledTimes(3);
+	});
+	it('isolates observer exceptions from physical admission and other observers', () => {
+		service.observeGeneration(() => {
+			throw new Error('observer failure');
+		});
+		const observer = jest.fn();
+		service.observeGeneration(observer);
+		expect(() => open()).not.toThrow();
+		expect(observer).toHaveBeenCalledTimes(1);
+	});
 });

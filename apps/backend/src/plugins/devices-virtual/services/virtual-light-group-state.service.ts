@@ -1,8 +1,10 @@
 import { DataSource } from 'typeorm';
 
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
+import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -49,9 +51,14 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly events: EventEmitter2,
 		private readonly structure: DeviceStructureLockService,
+		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 
 	async onModuleInit(): Promise<void> {
+		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') {
+			this.disposed = true;
+			return;
+		}
 		this.disposed = false;
 		await this.refresh();
 		this.timer = setInterval(() => {

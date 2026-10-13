@@ -24,8 +24,8 @@ The reported API separately exposes all-on, mixed, on/off/unknown counts and eac
 Brightness is the mean of valid on-member samples, with explicit contributors and mixed state. The diagnostic value
 keeps the arithmetic mean; publication rounds a representative onto the output's validated step/integer grid and
 records that rounding. Colors and color temperature select a contributor's consensus value, never an average of
-opposed colors. Absolute native-unit tolerances are 1 for brightness/RGB/saturation, 2 degrees for hue, and 25 K for
-color temperature. Any unknown/mixed color component makes its whole RGB/HS representation unknown.
+opposed colors. Brightness is mixed whenever contributing values differ. Absolute native-unit color tolerances are 1 for
+RGB/saturation, 2 degrees for hue, and 25 K for color temperature. Any unknown/mixed color component makes its whole RGB/HS representation unknown.
 
 ## Core command integration
 
@@ -35,8 +35,11 @@ read-only property. Parent target values still validate against the durable expo
 
 The planner snapshots all intended bindings and the graph/configuration revisions. Core expansion covers an entire
 mixed group/group/raw command request, normalizes canonical values, deduplicates equal leaves and rejects contradictory
-leaves before physical I/O. Core retains RGB/HS properties in a single physical channel batch, then uses ordinary
-physical admission, platform processing and command windows. No member platform loop lives in the virtual platform.
+leaves before physical I/O. Core retains RGB/HS properties in a single physical channel batch. An optional `prepareCompositeBatch` captures exact
+physical targets and an opaque provider identity lease; ordinary exact platform preparation remains supported. Core
+admits the prepared values and supplies an exact generation/deadline guard to the dispatch closure. Providers check
+that guard and their stable identity at actual queued publish, then report qualified live feedback. Composite windows
+require live causal evidence; ordinary windows retain their legacy convergence contract. No member platform loop lives in the virtual platform.
 
 Up to eight physical channel batches run concurrently, with at most 128 active parents, 2048 expanded children and a
 bounded total deadline (the existing intent budget, capped at 30 seconds). Independent members run despite another
@@ -50,6 +53,7 @@ cancellation notify active parents, including an already-confirmed early child; 
 not erase confirmation. Configuration remaps fence the parent. Observers are removed on completion, timeout and module
 shutdown. There is no promise of atomic hardware rollback after partial completion.
 
+Completed intents retain one correlated composite snapshot and derive partial status from confirmed children.
 Scenes count only confirmed parents as successful actions. A partial parent retains confirmed child outcomes in the
 scene result, produces partial scene completion and does not stop unrelated actions. Legacy platform boolean contracts
 remain unchanged.

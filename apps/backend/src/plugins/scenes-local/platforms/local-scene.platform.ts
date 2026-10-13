@@ -3,6 +3,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
@@ -57,16 +58,25 @@ export class LocalScenePlatform implements IScenePlatform {
 
 	async getCommandTtlMs(actions: readonly SceneActionEntity[]): Promise<number> {
 		const executions = [];
+		const compositeUpdates: IDevicePropertyData[] = [];
 
 		for (const action of actions) {
 			const validation = await this.validateActionWithDetails(action);
 
 			if (validation.valid && validation.device !== undefined) {
 				executions.push({ device: validation.device, commandCount: 1 });
+				if (this.composites?.get(validation.property) && isLocalSceneAction(action))
+					compositeUpdates.push({
+						device: validation.device,
+						channel: validation.channel,
+						property: validation.property,
+						value: action.value,
+					});
 			}
 		}
 
-		return this.platformRegistryService.getCommandTtlMs(executions, DEFAULT_TTL_SCENE);
+		const compositeBudget = compositeUpdates.length ? await this.composites.estimateTimeoutMs(compositeUpdates) : null;
+		return Math.max(compositeBudget ?? 0, this.platformRegistryService.getCommandTtlMs(executions, DEFAULT_TTL_SCENE));
 	}
 
 	/**
@@ -274,14 +284,14 @@ export class LocalScenePlatform implements IScenePlatform {
 				}
 
 				// Send command to device via platform
-				const { success, composite } = await this.propertyCommandDispatchService.dispatchBatch([
-					{
-						device,
-						channel,
-						property,
-						value: action.value,
-					},
-				]);
+				const ttlMs = this.composites?.get(property)
+					? await this.composites.estimateTimeoutMs([{ device, channel, property, value: action.value }])
+					: null;
+				const updates = [{ device, channel, property, value: action.value }];
+				const { success, composite } =
+					ttlMs === null
+						? await this.propertyCommandDispatchService.dispatchBatch(updates)
+						: await this.propertyCommandDispatchService.dispatchBatch(updates, { ttlMs });
 
 				results.push({
 					actionId: action.id,

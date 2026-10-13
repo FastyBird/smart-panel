@@ -6,7 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PermissionType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
-import { IDevicePropertyData } from '../platforms/device.platform';
+import { IDevicePropertyData, PreparedCompositeDeviceBatch } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
 import { ChannelsService } from './channels.service';
@@ -36,6 +36,8 @@ export interface PropertyCommandDispatchOptions {
 	readonly ttlMs?: number;
 	/** Internal absolute bound for a composite admission; never supplied by a public DTO. */
 	readonly deadlineAt?: number;
+	/** Internal stricter acknowledgement policy for expanded physical leaves. */
+	readonly requiresLiveEvidence?: boolean;
 	/** The caller already performed its platform-specific preparation. The dispatcher never prepares again. */
 	readonly prepared?: boolean;
 	/** A PATCH generation admitted before its optimistic local persistence. */
@@ -195,6 +197,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			return { success: false, reason: 'Composite size exceeds bounds' };
 		const outcomes: CompositeChildOutcome[] = plan.children.map((child) => ({
 			memberId: child.memberId,
+			memberIdentity: child.memberIdentity ?? child.update?.channel.id,
+			propertyIdentity: child.propertyIdentity ?? child.update?.property.id ?? null,
 			propertyId: child.update?.property.id ?? null,
 			status: child.update ? 'accepted' : 'unavailable',
 			reason: child.reason,
@@ -247,7 +251,26 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				});
 				continue;
 			}
-			const normalized = { ...child.update, value: validation.value };
+			const sourceChannel =
+				typeof source.channel === 'string' ? await this.channelsService.findOne(source.channel) : source.channel;
+			const sourceDeviceId =
+				typeof sourceChannel?.device === 'string' ? sourceChannel.device : sourceChannel?.device?.id;
+			const sourceDevice =
+				sourceDeviceId === child.update.device.id
+					? child.update.device
+					: sourceDeviceId
+						? await this.devicesService.findOne(sourceDeviceId)
+						: null;
+			if (!sourceChannel || !sourceDevice) {
+				Object.assign(outcomes[index], { status: 'unavailable', reason: 'Canonical device/channel is missing' });
+				continue;
+			}
+			const normalized: IDevicePropertyData = {
+				device: sourceDevice,
+				channel: sourceDevice.channels?.find((channel) => channel.id === sourceChannel.id) ?? sourceChannel,
+				property: source,
+				value: validation.value,
+			};
 			const existing = leaves.get(canonical);
 			if (existing && existing.update.value !== normalized.value)
 				return { success: false, reason: 'Contradictory canonical targets in composite command' };
@@ -262,6 +285,64 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			channels.set(key, channel);
 		}
 		const work = [...channels.values()];
+		const preparedBatches = new Map<(typeof work)[number], PreparedCompositeDeviceBatch>();
+		// Resolve every provider lease/target before any physical command starts. Preparation is
+		// bounded independently so one hanging provider does not consume all normal group budget.
+		let preparing = 0;
+		await Promise.all(
+			Array.from({ length: Math.min(8, work.length) }, async () => {
+				while (preparing < work.length) {
+					const channel = work[preparing++];
+					try {
+						const platform = this.platformRegistryService.get(channel[0].update.device);
+						if (!platform) throw new Error('Unsupported physical platform');
+						const requested = channel.map((leaf) => leaf.update);
+						let prepared: PreparedCompositeDeviceBatch | null;
+						if (platform.prepareCompositeBatch)
+							prepared = await this.withCompositeDeadline(
+								platform.prepareCompositeBatch(requested),
+								Math.min(deadline, Date.now() + 1_000),
+							);
+						else {
+							const targets = platform.prepareBatch ? platform.prepareBatch(requested) : requested;
+							prepared =
+								targets === null
+									? null
+									: {
+											updates: targets,
+											isCurrent: () => true,
+											dispatch: (isAdmitted) =>
+												isAdmitted() ? platform.processBatch(targets) : Promise.resolve(false),
+										};
+						}
+						if (!prepared || !prepared.isCurrent() || prepared.updates.length !== channel.length)
+							throw new Error('Physical batch preparation is unavailable or changed target cardinality');
+						const targets = new Map(
+							prepared.updates.map((target) => [this.valueSourceRegistry.resolve(target.property), target]),
+						);
+						if (targets.size !== channel.length) throw new Error('Prepared physical targets are not distinct');
+						for (const leaf of channel) {
+							const target = targets.get(this.valueSourceRegistry.resolve(leaf.update.property));
+							if (!target || target.device.id !== leaf.update.device.id || target.channel.id !== leaf.update.channel.id)
+								throw new Error('Prepared physical target identity changed');
+							const validation = validatePropertyCommandValue(target.property, target.value);
+							if (!validation.valid || validation.value === undefined)
+								throw new Error('Prepared physical target value is invalid');
+							leaf.update = { ...target, value: validation.value };
+							for (const index of leaf.indexes) outcomes[index].value = validation.value;
+						}
+						preparedBatches.set(channel, prepared);
+					} catch (error) {
+						for (const leaf of channel)
+							for (const index of leaf.indexes)
+								Object.assign(outcomes[index], {
+									status: 'unavailable',
+									reason: error instanceof Error ? error.message : 'Physical preparation failed',
+								});
+					}
+				}
+			}),
+		);
 		let cursor = 0;
 		let lastPublished = '';
 		const publish = () => {
@@ -279,7 +360,9 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			});
 		};
 		const ownedGenerations = new Map<string, { generation: string; indexes: number[] }>();
-		const stopObserving = this.commandWindowService.observeGeneration((propertyId, generation) => {
+		const observedConfirmations = new Map<string, string>();
+		const channelSettlements = new Map<string, () => void>();
+		const stopGenerations = this.commandWindowService.observeGeneration((propertyId, generation) => {
 			const owned = ownedGenerations.get(propertyId);
 			if (!owned || owned.generation === generation) return;
 			for (const index of owned.indexes)
@@ -288,8 +371,24 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						status: 'superseded',
 						reason: 'Physical generation superseded or cancelled',
 					});
+			channelSettlements.get(propertyId)?.();
 			publish();
 		});
+		const stopConfirmations = this.commandWindowService.observeConfirmation((handle) => {
+			if (!leaves.has(handle.canonicalPropertyId)) return;
+			observedConfirmations.set(handle.canonicalPropertyId, handle.generation);
+			const owned = ownedGenerations.get(handle.canonicalPropertyId);
+			if (!owned || owned.generation !== handle.generation) return;
+			for (const index of owned.indexes)
+				if (outcomes[index].status === 'accepted')
+					Object.assign(outcomes[index], { status: 'confirmed', generation: handle.generation });
+			channelSettlements.get(handle.canonicalPropertyId)?.();
+			publish();
+		});
+		const stopObserving = () => {
+			stopGenerations();
+			stopConfirmations();
+		};
 		const cleanup = () => {
 			stopObserving();
 			for (const child of outcomes)
@@ -297,12 +396,15 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					Object.assign(child, { status: 'superseded', reason: 'Composite dispatcher stopped' });
 			for (const [canonicalPropertyId, owned] of ownedGenerations)
 				this.commandWindowService.fail({ canonicalPropertyId, generation: owned.generation });
+			for (const signal of new Set(channelSettlements.values())) signal();
 		};
 		this.compositeCleanups.add(cleanup);
 		publish();
 		const workers = Array.from({ length: Math.min(8, work.length) }, async () => {
 			while (cursor < work.length) {
 				const channel = work[cursor++];
+				const prepared = preparedBatches.get(channel);
+				if (!prepared) continue;
 				const setLeaf = (
 					leaf: (typeof channel)[number],
 					status: CompositeChildOutcome['status'],
@@ -317,12 +419,13 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					publish();
 				};
 				let handles: readonly PropertyCommandWindowHandle[] = [];
+				let dispatchActive = true;
 				try {
 					if (this.disposed || Date.now() >= deadline) {
 						setPending('timed_out');
 						continue;
 					}
-					if (!(await this.withCompositeDeadline(plan.isCurrent(), deadline))) {
+					if (!prepared.isCurrent() || !(await this.withCompositeDeadline(plan.isCurrent(), deadline))) {
 						setPending('superseded', 'Binding revision changed');
 						continue;
 					}
@@ -330,7 +433,12 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					const admitted = await this.withCompositeDeadline(
 						this.admitWindows(
 							channel.map((leaf) => leaf.update),
-							{ intentId: options.intentId, ttlMs: deadline - Date.now(), deadlineAt: deadline },
+							{
+								intentId: options.intentId,
+								ttlMs: deadline - Date.now(),
+								deadlineAt: deadline,
+								requiresLiveEvidence: true,
+							},
 						),
 						deadline,
 					);
@@ -344,22 +452,59 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 							(handle) => handle.canonicalPropertyId === this.valueSourceRegistry.resolve(leaf.update.property),
 						);
 						ownedGenerations.set(handle.canonicalPropertyId, { generation: handle.generation, indexes: leaf.indexes });
-						setLeaf(leaf, 'accepted', undefined, handle.generation);
+						setLeaf(
+							leaf,
+							observedConfirmations.get(handle.canonicalPropertyId) === handle.generation ? 'confirmed' : 'accepted',
+							undefined,
+							handle.generation,
+						);
 					}
 					publish();
+					const allTerminal = () =>
+						!channel.some((leaf) => leaf.indexes.some((index) => outcomes[index].status === 'accepted'));
+					if (allTerminal()) continue;
+					const settlement = new Promise<PropertyCommandDispatchResult>((resolve) => {
+						const signal = () => {
+							if (allTerminal()) resolve({ success: true });
+						};
+						for (const handle of handles) channelSettlements.set(handle.canonicalPropertyId, signal);
+					});
 					const dispatched = await this.withCompositeDeadline(
-						this.dispatchBatch(
-							channel.map((leaf) => leaf.update),
-							{ ...options, windowHandles: handles },
-						),
+						Promise.race([
+							settlement,
+
+							this.dispatchPreparedComposite(
+								channel.map((leaf) => leaf.update),
+								handles,
+								prepared,
+								() =>
+									dispatchActive &&
+									!this.disposed &&
+									Date.now() < deadline &&
+									(plan.isDispatchCurrent?.() ?? true) &&
+									handles.every(
+										(handle) =>
+											this.commandWindowService.peekGeneration(handle.canonicalPropertyId) === handle.generation,
+									),
+							),
+						]),
 						deadline,
 					);
 					if (!dispatched.success) {
-						setPending('failed', dispatched.reason);
+						if (prepared.isCurrent() && (plan.isDispatchCurrent?.() ?? true))
+							for (const leaf of channel) {
+								const handle = handles.find(
+									(handle) => handle.canonicalPropertyId === this.valueSourceRegistry.resolve(leaf.update.property),
+								);
+								const window = this.commandWindowService.get(handle.canonicalPropertyId);
+								if (window?.generation === handle.generation && window.state === 'confirmed_grace')
+									setLeaf(leaf, 'confirmed', undefined, handle.generation);
+							}
+						setPending(prepared.isCurrent() ? 'failed' : 'superseded', dispatched.reason);
 						continue;
 					}
 					while (!this.disposed && Date.now() < deadline) {
-						if (!(await this.withCompositeDeadline(plan.isCurrent(), deadline))) {
+						if (!prepared.isCurrent() || !(await this.withCompositeDeadline(plan.isCurrent(), deadline))) {
 							setPending('superseded', 'Binding revision changed');
 							break;
 						}
@@ -384,6 +529,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						error instanceof Error ? error.message : 'Execution failed',
 					);
 				} finally {
+					dispatchActive = false;
+					for (const handle of handles) channelSettlements.delete(handle.canonicalPropertyId);
 					for (const leaf of channel)
 						if (leaf.indexes.some((index) => outcomes[index].status !== 'confirmed'))
 							this.failOwned(
@@ -431,6 +578,18 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			this.compositeCleanups.delete(cleanup);
 		}
 	}
+	private async dispatchPreparedComposite(
+		updates: readonly IDevicePropertyData[],
+		handles: readonly PropertyCommandWindowHandle[],
+		prepared: PreparedCompositeDeviceBatch,
+		isAdmitted: () => boolean,
+	): Promise<PropertyCommandDispatchResult> {
+		if (this.disposed || !prepared.isCurrent() || !(await this.verifyPreopenedWindows(updates, handles)))
+			return { success: false, reason: 'Prepared provider target changed before dispatch' };
+		const success = await prepared.dispatch(isAdmitted);
+		return success ? { success: true } : { success: false, reason: 'Execution failed' };
+	}
+
 	private async withCompositeDeadline<T>(operation: Promise<T>, deadline: number): Promise<T> {
 		let timer: NodeJS.Timeout;
 		try {
@@ -488,9 +647,15 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			const admitted: AdmittedWindow[] = [];
 
 			for (const [canonicalPropertyId, requestedUpdates] of requestedByCanonical) {
-				const admission = await this.propertyStateCoordinator.run(canonicalPropertyId, async () =>
-					this.createAdmission(canonicalPropertyId, requestedUpdates),
-				);
+				let admission: WindowAdmission | null;
+				try {
+					admission = await this.propertyStateCoordinator.run(canonicalPropertyId, () =>
+						this.createAdmission(canonicalPropertyId, requestedUpdates),
+					);
+				} catch (error) {
+					this.failOwned(admitted.map(({ handle }) => handle));
+					throw error;
+				}
 
 				if (admission === null) {
 					this.failOwned(admitted.map(({ handle }) => handle));
@@ -511,6 +676,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					requestedTargets: admission.requestedTargets,
 					intentId: options.intentId,
 					commandedValue: admission.commandedValue,
+					requiresLiveEvidence: options.requiresLiveEvidence,
 					previousValue: admission.previousValue,
 					ttlMs: options.ttlMs ?? 3_000,
 				});

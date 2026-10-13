@@ -12,6 +12,7 @@ import {
 	CompositePropertyCommandRegistryService,
 } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
+import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import {
 	VirtualChannelPropertyEntity,
@@ -34,6 +35,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 		private readonly registry: CompositePropertyCommandRegistryService,
 		private readonly devices: DeviceCommandGraphService,
 		private readonly graph: VirtualDependencyGraphService,
+		private readonly metadata: PropertyMetadataService,
 	) {}
 	onModuleInit(): void {
 		this.unregister = this.registry.register(this);
@@ -46,6 +48,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 		return (
 			property instanceof VirtualChannelPropertyEntity &&
 			property.isDerived &&
+			!!channel &&
 			typeof channel !== 'string' &&
 			typeof channel.device !== 'string' &&
 			channel.category === ChannelCategory.LIGHT &&
@@ -57,6 +60,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 	}
 	async plan(updates: readonly IDevicePropertyData[]): Promise<CompositeCommandPlan> {
 		const graphRevision = await this.graph.revision();
+		const metadataGeneration = this.metadata.getGeneration();
 		const revisions = new Map<string, number>();
 		const children: CompositeCommandChild[] = [];
 		const deviceCache = new Map<string, DeviceEntity | null>();
@@ -94,17 +98,23 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					property.dataType === update.property.dataType &&
 					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
 					property.permissions.includes(PermissionType.READ_WRITE);
+				if (children.length >= 2048) throw new Error('Composite size exceeds bounds');
 				children.push({
 					memberId: member.id,
+					memberIdentity: member.sourceChannelIdentity,
+					propertyIdentity: binding?.sourcePropertyIdentity ?? null,
 					update: available ? { property, channel, device, value: update.value } : null,
-					reason: available ? undefined : 'Member is missing, disabled or offline',
+					reason: available ? undefined : 'Member is missing, disabled, offline, incompatible or quarantined',
 				});
 			}
 		}
 		return {
 			revision: Math.max(...revisions.values()),
 			children,
+			isDispatchCurrent: () =>
+				this.metadata.getGeneration() === metadataGeneration && this.graph.isRevisionCurrent(graphRevision),
 			isCurrent: async () => {
+				if (this.metadata.getGeneration() !== metadataGeneration) return false;
 				if ((await this.graph.revision()) !== graphRevision) return false;
 				for (const [groupChannelId, revision] of revisions)
 					if (

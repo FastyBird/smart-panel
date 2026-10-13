@@ -4,6 +4,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { CompositeCommandOutcomeModel } from '../../devices/models/composite-command.model';
 import {
 	DEFAULT_TTL_DEVICE_COMMAND,
 	INTENTS_MODULE_NAME,
@@ -74,7 +75,11 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Complete an intent with results and emit the completed event
 	 */
-	completeIntent(intentId: string, results: IntentTargetResult[]): IntentRecord | null {
+	completeIntent(
+		intentId: string,
+		results: IntentTargetResult[],
+		composites: readonly CompositeCommandOutcomeModel[] = [],
+	): IntentRecord | null {
 		const intent = this.intents.get(intentId);
 
 		if (!intent) {
@@ -91,7 +96,18 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 		const now = new Date();
 
 		// Compute overall status from results
-		const status = this.computeOverallStatus(results);
+		let status = this.computeOverallStatus(results);
+		const children = composites.flatMap((parent) => parent.children);
+		if (children.some((child) => child.status !== 'confirmed'))
+			status =
+				status !== IntentStatus.COMPLETED_FAILED || children.some((child) => child.status === 'confirmed')
+					? IntentStatus.COMPLETED_PARTIAL
+					: IntentStatus.COMPLETED_FAILED;
+		if (composites.length)
+			intent.composites = composites.map((parent) => ({
+				...parent,
+				children: parent.children.map((child) => ({ ...child })),
+			}));
 
 		intent.status = status;
 		intent.completedAt = now;
@@ -274,6 +290,8 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 				...(r.error && { error: r.error }),
 			}));
 		}
+
+		if (intent.composites?.length) payload.composites = intent.composites;
 
 		this.eventEmitter.emit(eventType, payload);
 	}

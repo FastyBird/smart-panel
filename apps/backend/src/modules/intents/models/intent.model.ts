@@ -15,6 +15,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+import { CompositeCommandOutcomeModel } from '../../devices/models/composite-command.model';
 import { INTENT_ORIGINS, IntentOrigin, IntentStatus, IntentTargetStatus, IntentType } from '../intents.constants';
 import { IntentTargetValidator } from '../validators/intent-target.validator';
 
@@ -175,6 +178,17 @@ export class IntentRecord {
 	@IsDate()
 	@Type(() => Date)
 	completedAt?: Date;
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => CompositeCommandOutcomeModel)
+	@ApiPropertyOptional({
+		type: [CompositeCommandOutcomeModel],
+		description: 'Correlated prepared physical member outcomes',
+	})
+	composites?: CompositeCommandOutcomeModel[];
 
 	@Expose()
 	@IsOptional()
