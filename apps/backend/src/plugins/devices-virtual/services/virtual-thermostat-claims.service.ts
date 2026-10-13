@@ -26,6 +26,8 @@ export interface ThermostatCommandAuthority {
 }
 export interface ThermostatInstalledQualification {
 	readonly physicalIdentity: string;
+	/** Must match the retained claim after an operator restore; older durable profiles cannot be replayed. */
+	readonly qualificationGeneration?: string;
 	readonly profile: ShellyProtectiveQualification;
 	readonly upstreamWritersExcluded: boolean;
 	readonly opposedOutputsInterlocked: boolean;
@@ -166,6 +168,11 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		);
 		this.epoch++;
 	}
+	/** Recovery changes the binding contract. Old installation evidence cannot qualify the restored leaf. */
+	revokeQualification(physicalIdentity: string): void {
+		this.qualifications.delete(physicalIdentity);
+		this.invalidate();
+	}
 	qualification(
 		claim: VirtualThermostatActuatorClaimEntity,
 		opposed: boolean,
@@ -174,6 +181,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		opposed ||= [...this.reservations.values()].filter((row) => row.controllerId === claim.controllerId).length > 1;
 		if (
 			!evidence ||
+			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
 			(opposed && !evidence.opposedOutputsInterlocked) ||
 			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min ||
 			claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max
