@@ -1,4 +1,4 @@
-import { Device, RpcHandler, RpcParams, ShellyPlus1, ShellyPlusHt } from 'shellies-ds9';
+import { Device, RpcHandler, RpcParams, ShellyPlus1, ShellyPlus1Pm, ShellyPlusHt, Voltmeter } from 'shellies-ds9';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -125,13 +125,24 @@ afterEach(() => {
 });
 
 /** All persistence/catalog dependencies are fixtures; production components remain real. */
-const createManager = async (physical: ShellyPlus1 | ShellyPlusHt) => {
+const createManager = async (physical: ShellyPlus1 | ShellyPlus1Pm | ShellyPlusHt, analog = false) => {
 	const device = Object.assign(new ShellyNgDeviceEntity(), { id: 'device', identifier: physical.id, enabled: true });
 	const switchChannel = Object.assign(new ShellyNgChannelEntity(), { id: 'switch', identifier: 'switch:0', device });
 	const temperatureChannel = Object.assign(new ShellyNgChannelEntity(), {
 		id: 'temperature',
 		identifier: 'temperature:0',
 		device,
+	});
+	const inputChannel = Object.assign(new ShellyNgChannelEntity(), {
+		id: 'input',
+		identifier: 'input:0',
+		category: ChannelCategory.ANALOG_INPUT,
+		device,
+	});
+	const inputProperty = Object.assign(new ShellyNgChannelPropertyEntity(), {
+		id: 'helper-value',
+		category: PropertyCategory.VALUE,
+		channel: inputChannel,
 	});
 	const switchProperty = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'output',
@@ -164,12 +175,22 @@ const createManager = async (physical: ShellyPlus1 | ShellyPlusHt) => {
 											? switchChannel
 											: field === 'identifier' && value === 'temperature:0'
 												? temperatureChannel
-												: null,
+												: field === 'identifier' && value === 'input:0' && analog
+													? inputChannel
+													: null,
 								),
 						} as unknown as ChannelsService,
 						{
 							findOneBy: (_field: string, value: string) =>
-								Promise.resolve(value === 'output' ? switchProperty : value === 'tC' ? temperatureProperty : null),
+								Promise.resolve(
+									value === 'output'
+										? switchProperty
+										: value === 'tC'
+											? temperatureProperty
+											: value === String(PropertyCategory.VALUE) && analog
+												? inputProperty
+												: null,
+								),
 							update: writes,
 						} as unknown as ChannelsPropertiesService,
 						{ setConnectionState: () => Promise.resolve() } as unknown as DeviceConnectivityService,
@@ -398,6 +419,263 @@ describe('VD2-1 real Shelly library/delegate protocol evidence', () => {
 		expect(fixture.writes).toHaveBeenCalledTimes(1);
 		expect(fixture.writes).toHaveBeenCalledWith('floor', { type: 'devices-shelly-ng', value: 0 });
 		// Manager numeric coercion converts raw null to 0; neither path invalidates control quality.
+	});
+});
+
+describe('VD2-1 Plus1PM native analog helper characterization', () => {
+	let rpc: FixtureRpc;
+	let physical: ShellyPlus1Pm;
+	let delegate: ShellyDeviceDelegate | undefined;
+	let module: TestingModule | undefined;
+	let manager: DelegatesManagerService | undefined;
+
+	beforeEach(() => {
+		jest.useFakeTimers();
+		rpc = new FixtureRpc();
+		physical = new ShellyPlus1Pm({ id: 'fixture-plus1pm', mac: '000000000003', model: ShellyPlus1Pm.model }, rpc);
+	});
+
+	afterEach(async () => {
+		await manager?.detach();
+		manager = undefined;
+		await module?.close();
+		module = undefined;
+		delegate?.destroy();
+		delegate = undefined;
+		physical.removeAllListeners();
+		await rpc.destroy();
+		jest.useRealTimers();
+	});
+
+	it.each([
+		{ transformed: 25, value: 25, unit: '°C' },
+		{ transformed: null, value: 50, unit: '%' },
+		{ transformed: undefined, value: 50, unit: '%' },
+	])(
+		'NO-GO: adoption keeps helper as analog VALUE and falls back when unavailable %j',
+		async ({ transformed, value, unit }) => {
+			const device = Object.assign(new ShellyNgDeviceEntity(), {
+				id: 'pilot',
+				identifier: physical.id,
+				hasEthernet: false,
+			});
+			const channels: ShellyNgChannelEntity[] = [];
+			const properties: Array<{ channel: string; category: PropertyCategory; value?: unknown; identifier?: string }> =
+				[];
+			const requests: string[] = [];
+			jest.spyOn(globalThis, 'fetch').mockImplementation((_url, request) => {
+				const body = JSON.parse(request.body as string) as { method: string; params?: { id?: number } };
+				requests.push(body.method);
+				const payloads: Record<string, unknown> = {
+					'Shelly.GetDeviceInfo': { id: physical.id, model: physical.model, ver: 'fixture-only' },
+					'Shelly.GetComponents': { components: [{ key: 'input:100' }], offset: 0, total: 1 },
+					'Sys.GetConfig': { device: { name: 'floor fixture' } },
+					'WiFi.GetStatus': { rssi: -50 },
+					'Input.GetConfig': {
+						id: 100,
+						name: 'floor',
+						type: 'analog',
+						enable: true,
+						xpercent: { expr: 'x/2', unit: '°C' },
+					},
+					'Input.GetStatus': { id: 100, percent: 50, xpercent: transformed },
+				};
+				expect(Object.hasOwn(payloads, body.method)).toBe(true);
+				if (body.method.startsWith('Input.')) expect(body.params).toEqual({ id: 100 });
+				return Promise.resolve(new Response(JSON.stringify({ result: payloads[body.method] })));
+			});
+			module = await Test.createTestingModule({
+				providers: [
+					{
+						provide: DeviceManagerService,
+						useFactory: () =>
+							new DeviceManagerService(
+								new ShellyRpcClientService(),
+								{ findOne: () => Promise.resolve(device) } as unknown as DevicesService,
+								{
+									findOneBy: () => Promise.resolve(null),
+									create: (data: { category: ChannelCategory; identifier?: string }) => {
+										const channel = Object.assign(
+											new ShellyNgChannelEntity(),
+											{ category: data.category, identifier: data.identifier },
+											{
+												id: `channel-${channels.length}`,
+												device,
+											},
+										);
+										channels.push(channel);
+										return Promise.resolve(channel);
+									},
+									findAll: () => Promise.resolve(channels),
+								} as unknown as ChannelsService,
+								{
+									findOneBy: () => Promise.resolve(null),
+									findAll: () => Promise.resolve([]),
+									create: (
+										channel: string,
+										data: { category: PropertyCategory; value?: unknown; identifier?: string },
+									) => {
+										properties.push({ channel, ...data });
+										return Promise.resolve(
+											Object.assign(new ShellyNgChannelPropertyEntity(), {
+												category: data.category,
+												identifier: data.identifier,
+												id: `property-${properties.length}`,
+											}),
+										);
+									},
+								} as unknown as ChannelsPropertiesService,
+								{ findMatchingMapping: () => null } as unknown as MappingLoaderService,
+								absent(),
+								absent(),
+								{
+									enqueue: (_id: string, task: () => Promise<ShellyNgDeviceEntity>) => task(),
+								} as unknown as ConstructorParameters<typeof DeviceManagerService>[7],
+								{
+									getPreferredAddressOrMigrate: () => Promise.resolve('fixture.invalid'),
+								} as unknown as DeviceAddressService,
+							),
+					},
+				],
+			}).compile();
+			await module.get(DeviceManagerService).createOrUpdate(device.id);
+			const floor = channels.find((channel) => channel.identifier === 'input:100');
+			expect(floor.category).toBe(ChannelCategory.ANALOG_INPUT);
+			expect(properties).toContainEqual(
+				expect.objectContaining({ channel: floor.id, category: PropertyCategory.VALUE, value }),
+			);
+			expect(properties).toContainEqual(
+				expect.objectContaining({ channel: floor.id, category: PropertyCategory.UNIT, value: unit }),
+			);
+			expect(
+				properties.some(
+					(property) => property.channel === floor.id && property.category === PropertyCategory.TEMPERATURE,
+				),
+			).toBe(false);
+			expect(JSON.stringify(properties)).not.toContain('x/2'); // Expression/config identity is not persisted.
+			expect(requests).not.toContain('SensorAddon.GetPeripherals'); // Physical IO identity is not adopted.
+		},
+	);
+
+	it('real Input.GetConfig preserves helper expression/unit and peripheral IO without converting the result', async () => {
+		const config = { id: 100, type: 'analog', enable: true, xpercent: { expr: 'x/2', unit: '°C' } };
+		const peripherals = { analog_in: { 'input:100': { io: 0 } } };
+		const client = new ShellyRpcClientService();
+		const methods: string[] = [];
+		jest.spyOn(globalThis, 'fetch').mockImplementation((_url, request) => {
+			const body = JSON.parse(request.body as string) as { method: string; params: { id: number } };
+			methods.push(body.method);
+			const result = body.method === 'Input.GetConfig' ? config : peripherals;
+			if (body.method === 'Input.GetConfig') expect(body.params).toEqual({ id: 100 });
+			return Promise.resolve(new Response(JSON.stringify({ result })));
+		});
+		expect(await client.getInputConfig('fixture.invalid', 100)).toEqual(config);
+		expect(await client.call('fixture.invalid', 'SensorAddon.GetPeripherals')).toEqual(peripherals);
+		expect(methods).toEqual(['Input.GetConfig', 'SensorAddon.GetPeripherals']);
+		// Synthetic expression is protocol data, not the installed thermistor calibration.
+	});
+
+	it('NO-GO: Plus1PM discovery sees dynamic analog and voltmeter IDs but runtime ignores helper reports', async () => {
+		module = await Test.createTestingModule({
+			providers: [
+				{
+					provide: DeviceManagerService,
+					useFactory: () =>
+						new DeviceManagerService(
+							{
+								getDeviceInfo: () => Promise.resolve({ id: physical.id, model: physical.model }),
+								getComponents: () => Promise.resolve([{ key: 'input:100' }, { key: 'voltmeter:100' }]),
+								getSystemConfig: () => Promise.resolve({ device: { name: 'fixture' } }),
+							} as unknown as ShellyRpcClientService,
+							absent(),
+							absent(),
+							absent(),
+							absent(),
+							absent(),
+							absent(),
+							absent(),
+							absent(),
+						),
+				},
+			],
+		}).compile();
+		const discovered = await module.get(DeviceManagerService).getDeviceInfo('fixture.invalid', undefined);
+		expect(physical.model).toBe('SNSW-001P16EU');
+		expect(discovered.components).toEqual([
+			{ type: 'input', ids: [100] },
+			{ type: 'voltmeter', ids: [100] },
+		]);
+		delegate = new ShellyDeviceDelegate(physical);
+		const values = jest.fn();
+		delegate.on('value', values);
+		for (const transformed of [25, 25, 31, null]) {
+			const status = {
+				'input:100': { percent: 50, xpercent: transformed, ...(transformed === null ? { errors: ['read'] } : {}) },
+				'voltmeter:100': { voltage: 2.5, xvoltage: transformed, ...(transformed === null ? { errors: ['read'] } : {}) },
+			};
+			rpc.notify(status);
+			rpc.response = () => Promise.resolve(status);
+			await delegate.pollStatus();
+		}
+		expect(delegate.inputs.has(100)).toBe(false);
+		expect(values).not.toHaveBeenCalled();
+	});
+
+	it('NO-GO: known input prefers equal xpercent notifications but null/error repeats stale values and equal polls vanish', async () => {
+		// input:0 deliberately exercises a known component, not the add-on's input:100.
+		physical.input0.update({ percent: 50, xpercent: 25 });
+		const fixture = await createManager(physical, true);
+		module = fixture.module;
+		manager = fixture.manager;
+		delegate = manager.get(physical.id);
+		const values = jest.fn();
+		delegate.on('value', values);
+		for (let i = 0; i < 2; i++) {
+			rpc.notify({ 'input:0': { percent: 50, xpercent: 25 } });
+			await jest.advanceTimersByTimeAsync(250);
+		}
+		expect(fixture.writes).toHaveBeenCalledTimes(2);
+		expect(fixture.writes).toHaveBeenLastCalledWith('helper-value', { type: 'devices-shelly-ng', value: 25 });
+		fixture.writes.mockClear();
+		values.mockClear();
+		rpc.response = () => Promise.resolve({ 'input:0': { percent: 50, xpercent: 25 } });
+		await delegate.pollStatus();
+		expect(values).not.toHaveBeenCalled();
+		rpc.notify({ 'input:0': { percent: 62, xpercent: 31 } });
+		await jest.advanceTimersByTimeAsync(250);
+		expect(fixture.writes).toHaveBeenLastCalledWith('helper-value', { type: 'devices-shelly-ng', value: 31 });
+		rpc.notify({ 'input:0': { percent: 60, xpercent: null, errors: ['read'] } });
+		await jest.advanceTimersByTimeAsync(250);
+		expect(values).toHaveBeenCalledWith('input:0', 'xpercent', 31, 'notify');
+		expect(fixture.writes).toHaveBeenLastCalledWith('helper-value', { type: 'devices-shelly-ng', value: 31 });
+		delegate.emitNotificationValue('input:0', 'xpercent', null);
+		await jest.advanceTimersByTimeAsync(250);
+		expect(fixture.writes).toHaveBeenLastCalledWith('helper-value', { type: 'devices-shelly-ng', value: 0 });
+	});
+
+	it('NO-GO: helper appearing after insertion leaves the known input bound to raw percent', async () => {
+		physical.input0.update({ percent: 50 });
+		const fixture = await createManager(physical, true);
+		module = fixture.module;
+		manager = fixture.manager;
+		rpc.notify({ 'input:0': { percent: 60, xpercent: 30 } });
+		await jest.advanceTimersByTimeAsync(250);
+		expect(fixture.writes).toHaveBeenLastCalledWith('helper-value', { type: 'devices-shelly-ng', value: 60 });
+		expect(fixture.writes).not.toHaveBeenCalledWith('helper-value', { type: 'devices-shelly-ng', value: 30 });
+	});
+
+	it('real pinned Voltmeter exposes xvoltage/config but a standalone component does not register Plus1PM runtime support', async () => {
+		const component = new Voltmeter(physical, 100);
+		const config = { id: 100, name: 'floor helper', report_thr: 0.1, range: 0, xvoltage: { expr: 'x*10', unit: '°C' } };
+		rpc.response = () => Promise.resolve(config);
+		expect(await component.getConfig()).toEqual(config);
+		expect(rpc.requests.at(-1)).toEqual({ method: 'Voltmeter.GetConfig', params: { id: 100 } });
+		component.update({ voltage: 2.5, xvoltage: 25 });
+		expect(component.xvoltage).toBe(25);
+		component.update({ voltage: 2.6, xvoltage: null, errors: ['read'] });
+		expect(component.xvoltage).toBe(25); // NO-GO: same pinned null-retention behavior.
+		expect(physical.getComponent('voltmeter:100')).toBeUndefined();
+		component.removeAllListeners();
 	});
 });
 
