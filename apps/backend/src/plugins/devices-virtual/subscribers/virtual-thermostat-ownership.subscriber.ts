@@ -35,7 +35,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		this.installed = true;
 	}
 	private isCatalogMutation(query: string): boolean {
-		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_[a-z_]+)["`\]]?\b/i.test(
+		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings))["`\]]?\b/i.test(
 			query,
 		);
 	}

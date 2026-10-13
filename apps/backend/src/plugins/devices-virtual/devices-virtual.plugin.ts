@@ -66,6 +66,11 @@ import {
 } from './entities/devices-virtual.entity';
 import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
 import {
+	VirtualThermostatBranchRuntimeEntity,
+	VirtualThermostatCommandEntity,
+	VirtualThermostatRuntimeEntity,
+} from './entities/virtual-thermostat-runtime.entity';
+import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 	VirtualThermostatSettingEntity,
@@ -90,6 +95,9 @@ import { VirtualPropertyIndexService } from './services/virtual-property-index.s
 import { VirtualThermostatAuthoringService } from './services/virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
 import { VirtualThermostatConfigService } from './services/virtual-thermostat-config.service';
+import { VirtualThermostatInputsService } from './services/virtual-thermostat-inputs.service';
+import { VirtualThermostatRuntimeService } from './services/virtual-thermostat-runtime.service';
+import { VirtualThermostatTransportService } from './services/virtual-thermostat-transport.service';
 import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
 import { VirtualTransformRuntimeService } from './services/virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
@@ -120,6 +128,9 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			VirtualThermostatActuatorClaimEntity,
 			VirtualThermostatSourceEntity,
 			VirtualThermostatSettingEntity,
+			VirtualThermostatRuntimeEntity,
+			VirtualThermostatBranchRuntimeEntity,
+			VirtualThermostatCommandEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
@@ -133,6 +144,9 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
 		VirtualThermostatAuthoringService,
+		VirtualThermostatInputsService,
+		VirtualThermostatTransportService,
+		VirtualThermostatRuntimeService,
 		VirtualThermostatOwnershipSubscriber,
 		VirtualValueSourceService,
 		VirtualEnergyClaimService,

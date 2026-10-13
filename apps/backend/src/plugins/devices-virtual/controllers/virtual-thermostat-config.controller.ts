@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	NotFoundException,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	Put,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -11,13 +21,38 @@ import { ConfigureVirtualThermostatDto, RequestVirtualThermostatReleaseDto } fro
 import {
 	VirtualThermostatConfigurationModel,
 	VirtualThermostatConfigurationResponseModel,
+	VirtualThermostatRuntimeModel,
+	VirtualThermostatRuntimeResponseModel,
 } from '../models/thermostat-response.model';
 import { VirtualThermostatConfigService } from '../services/virtual-thermostat-config.service';
+import { VirtualThermostatRuntimeService } from '../services/virtual-thermostat-runtime.service';
 
 @ApiTags(DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME)
 @Controller('producers')
 export class VirtualThermostatConfigController {
-	constructor(private readonly configs: VirtualThermostatConfigService) {}
+	constructor(
+		private readonly configs: VirtualThermostatConfigService,
+		private readonly runtime: VirtualThermostatRuntimeService,
+	) {}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Read thermostat runtime',
+		description:
+			'Read requested comfort intent, qualified measurements, physical branch activity and independent inhibit reasons.',
+		operationId: 'get-devices-virtual-plugin-thermostat-runtime',
+	})
+	@ApiSuccessResponse(VirtualThermostatRuntimeResponseModel, 'Thermostat runtime')
+	@Get('thermostats/:id/runtime')
+	async getRuntime(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<VirtualThermostatRuntimeResponseModel> {
+		const runtime = await this.runtime.inspect(id);
+		if (!runtime) throw new NotFoundException('Thermostat configuration does not exist.');
+		const response = new VirtualThermostatRuntimeResponseModel();
+		response.data = Object.assign(new VirtualThermostatRuntimeModel(), runtime);
+		return response;
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],

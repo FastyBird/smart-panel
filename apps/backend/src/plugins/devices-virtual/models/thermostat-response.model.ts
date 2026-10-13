@@ -4,6 +4,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { VirtualThermostatConfigService } from '../services/virtual-thermostat-config.service';
+import { ThermostatRuntimeDiagnostic } from '../services/virtual-thermostat-runtime.service';
 
 type ThermostatConfiguration = Awaited<ReturnType<VirtualThermostatConfigService['get']>>;
 
@@ -290,4 +291,49 @@ export class VirtualThermostatConfigurationResponseModel extends BaseSuccessResp
 	@Expose()
 	@Type(() => VirtualThermostatConfigurationModel)
 	declare data: VirtualThermostatConfigurationModel;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatBranchRuntime' })
+export class VirtualThermostatBranchRuntimeModel {
+	@ApiProperty() @Expose() claim: string;
+	@ApiProperty({ enum: ['heating', 'cooling'] }) @Expose() role: 'heating' | 'cooling';
+	@ApiProperty({ enum: ['on', 'off', 'unknown'] }) @Expose() activity: 'on' | 'off' | 'unknown';
+	@ApiProperty() @Expose() pending_on: boolean;
+	@ApiProperty() @Expose() release_pending: boolean;
+	@ApiProperty() @Expose() release_attempts: number;
+	@ApiProperty({ type: String, nullable: true }) @Expose() next_release_at: string | null;
+	@ApiProperty() @Expose() release_proven: boolean;
+	@ApiProperty({ type: String, nullable: true }) @Expose() fault: string | null;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatRuntime' })
+export class VirtualThermostatRuntimeModel implements ThermostatRuntimeDiagnostic {
+	@ApiProperty({ enum: ['ready', 'suspended', 'unavailable'] })
+	@Expose()
+	readiness: ThermostatRuntimeDiagnostic['readiness'];
+	@ApiProperty({ enum: ['off', 'heat', 'cool', 'auto'] })
+	@Expose()
+	requested_mode: ThermostatRuntimeDiagnostic['requested_mode'];
+	@ApiProperty({ type: Number, nullable: true }) @Expose() heating_setpoint: number | null;
+	@ApiProperty({ type: Number, nullable: true }) @Expose() cooling_setpoint: number | null;
+	@ApiProperty({ type: Number, nullable: true }) @Expose() current_temperature: number | null;
+	@ApiProperty({ type: Number, nullable: true }) @Expose() floor_temperature: number | null;
+	@ApiProperty() @Expose() floor_latched: boolean;
+	@ApiProperty({ enum: ['off', 'heat', 'cool'] })
+	@Expose()
+	comfort_demand: ThermostatRuntimeDiagnostic['comfort_demand'];
+	@ApiProperty({ type: [String] }) @Expose() reasons: string[];
+	@ApiProperty({ type: String, nullable: true }) @Expose() headline_reason: string | null;
+	@ApiProperty({ type: [VirtualThermostatBranchRuntimeModel] })
+	@Expose()
+	@Type(() => VirtualThermostatBranchRuntimeModel)
+	branches: VirtualThermostatBranchRuntimeModel[];
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginResThermostatRuntime' })
+export class VirtualThermostatRuntimeResponseModel extends BaseSuccessResponseModel<VirtualThermostatRuntimeModel> {
+	@ApiProperty({ type: VirtualThermostatRuntimeModel })
+	@Expose()
+	@Type(() => VirtualThermostatRuntimeModel)
+	declare data: VirtualThermostatRuntimeModel;
 }
