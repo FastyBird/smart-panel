@@ -34,6 +34,7 @@ import {
 
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
+import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 import {
 	ThermostatInputBinding,
 	ThermostatInputFrame,
@@ -408,7 +409,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						? {
 								temperature: frame.ambient,
 								sampledAt: frame.ambientSample.sampledAt.getTime(),
-								basis: frame.basis,
+								basis: thermostatFingerprint({ input: frame.basis, configRevision: context.config.revision }),
 								quality: frame.ambientSample.quality,
 							}
 						: null,
@@ -512,6 +513,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			if (
 				desired &&
 				(!latest ||
+					(latest.status === 'confirmed' && context.branches.get(claim.id).activity === 'off') ||
 					(context.branches.get(claim.id).activity === 'on' &&
 						now - latest.preparedAt.getTime() >= claim.leaseSeconds * 500))
 			)

@@ -10,6 +10,7 @@ import {
 	ChannelCategory,
 	DataTypeType,
 	DeviceCategory,
+	EventType,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -24,12 +25,16 @@ import {
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
-import { VirtualThermostatCommandEntity } from '../entities/virtual-thermostat-runtime.entity';
+import {
+	VirtualThermostatCommandEntity,
+	VirtualThermostatRuntimeEntity,
+} from '../entities/virtual-thermostat-runtime.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
@@ -46,10 +51,15 @@ describe('virtual thermostat durable runtime', () => {
 	let controllerId: string;
 	let sensorId: string;
 	let relayId: string;
+	let makeRuntime: () => VirtualThermostatRuntimeService;
+	let events: EventEmitter2;
 	const samples = new Map<string, QualifiedPropertySample>();
 	const sends: boolean[] = [];
+	const sentTargets: { propertyId: string; on: boolean }[] = [];
 	let onGate: Promise<void> | null;
+	let afterOnGate: Promise<void> | null;
 	let allowLateOn: boolean;
+	let proofAllowed: (propertyId: string) => boolean;
 	const sample = (id: string, value: number | boolean): void => {
 		const at = new Date();
 		samples.set(id, {
@@ -72,8 +82,12 @@ describe('virtual thermostat durable runtime', () => {
 		}).initialize();
 		samples.clear();
 		sends.length = 0;
+		sentTargets.length = 0;
 		onGate = null;
+		afterOnGate = null;
 		allowLateOn = false;
+		proofAllowed = () => true;
+		events = new EventEmitter2();
 		controllerId = uuid();
 		sensorId = uuid();
 		relayId = uuid();
@@ -201,25 +215,27 @@ describe('virtual thermostat durable runtime', () => {
 		const values = {
 			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) => samples.get(property.id) ?? null),
 		} as unknown as PropertyValueService;
-		const qualification = {
-			physicalIdentity: thermostatActuatorIdentity(relay, relayChannel, relayChannel.device as DeviceEntity),
-		} as ThermostatInstalledQualification;
 		const claims = {
 			capture: () => ({ isCurrent: () => true }),
 			registerRuntimeAdmission: () => () => undefined,
-			qualification: () => qualification,
+			invalidate: jest.fn(),
+			refresh: jest.fn().mockResolvedValue(undefined),
+			qualification: (claim: VirtualThermostatActuatorClaimEntity) =>
+				({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
 			mintAuthority: () => ({}),
 			isAuthorized: () => true,
 		} as unknown as VirtualThermostatClaimsService;
 		const adapter: ThermostatActuationAdapter = {
 			canReconcile: () => true,
 			send: async (target, _claim, _qualification, isAdmitted) => {
-				if (target.value === true && onGate !== null) await onGate;
+				if (target.property.id === relayId && target.value === true && onGate !== null) await onGate;
 				if (!isAdmitted() && !(target.value === true && allowLateOn))
 					return { outcome: 'refused' as const, reasons: ['revoked'] };
-				const wasOn = samples.get(relayId)?.value === true;
+				const wasOn = samples.get(target.property.id)?.value === true;
 				sends.push(target.value as boolean);
-				sample(relayId, target.value as boolean);
+				sentTargets.push({ propertyId: target.property.id, on: target.value as boolean });
+				sample(target.property.id, target.value as boolean);
+				if (target.property.id === relayId && target.value === true && afterOnGate !== null) await afterOnGate;
 				return {
 					outcome: 'accepted' as const,
 					wasOn,
@@ -227,12 +243,12 @@ describe('virtual thermostat durable runtime', () => {
 					pendingOnDrained: false as const,
 				};
 			},
-			reconcile: (_target, ids, off, isCurrent) =>
+			reconcile: (target, ids, off, isCurrent) =>
 				Promise.resolve(
-					isCurrent()
+					isCurrent() && proofAllowed(target.property.id)
 						? {
 								proofId: uuid(),
-								physicalIdentity: qualification.physicalIdentity,
+								physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device) ?? '',
 								connectionIdentity: 'ordered-fake-connection',
 								coveredCommandIds: ids,
 								externalWriterBarrier: true,
@@ -243,22 +259,231 @@ describe('virtual thermostat durable runtime', () => {
 		};
 		const transport = { get: () => adapter } as unknown as VirtualThermostatTransportService;
 		const producers = { unregister: jest.fn() } as unknown as PropertyProducerRegistryService;
-		runtime = new VirtualThermostatRuntimeService(
-			database,
-			new DeviceStructureLockService(),
-			claims,
-			new VirtualThermostatInputsService(database, values),
-			transport,
-			values,
-			producers,
-			new EventEmitter2(),
-		);
+		makeRuntime = () =>
+			new VirtualThermostatRuntimeService(
+				database,
+				new DeviceStructureLockService(),
+				claims,
+				new VirtualThermostatInputsService(database, values),
+				transport,
+				values,
+				producers,
+				events,
+			);
+		runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
 		runtime?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
+	});
+	const waitForOnJournal = async (): Promise<VirtualThermostatCommandEntity> => {
+		for (let attempt = 0; attempt < 6; attempt++) {
+			await runtime.inspect(controllerId);
+			const command = (await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).find(
+				(row) => row.action === 'on',
+			);
+			if (command?.status === 'dispatching') return command;
+		}
+		throw new Error('ON did not reach the durable dispatch journal');
+	};
+
+	it('restarts a prepared ON before transport as unresolved and refuses energizing without drainage proof', async () => {
+		onGate = new Promise<void>(() => undefined);
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		const pending = await waitForOnJournal();
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		runtime.onModuleDestroy();
+		proofAllowed = () => false;
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		const restored = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: pending.id });
+		expect(restored.status).toBe('unknown');
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].pending_on).toBe(true);
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(
+			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
+		).toBe(1);
+	});
+
+	it('restarts after physical ON acceptance but before journal settlement without treating OFF as drainage', async () => {
+		afterOnGate = new Promise<void>(() => undefined);
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		const pending = await waitForOnJournal();
+		expect(samples.get(relayId)?.value).toBe(true);
+		runtime.onModuleDestroy();
+		proofAllowed = () => false;
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		const restored = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: pending.id });
+		expect(restored.status).toBe('unknown');
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].pending_on).toBe(true);
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+	});
+
+	it('revokes a queued ON when its ambient source disappears during transport authentication', async () => {
+		let resumeOn: () => void = () => undefined;
+		onGate = new Promise<void>((resolve) => {
+			resumeOn = resolve;
+		});
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await waitForOnJournal();
+		samples.delete(sensorId);
+		runtime.request(controllerId);
+		await runtime.flush();
+		resumeOn();
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		await runtime.flush();
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
+	});
+
+	it('blocks an opposed cooling branch across restart until the pending heating ON is drained', async () => {
+		runtime.onModuleDestroy();
+		const coolingDeviceId = uuid(),
+			coolingChannelId = uuid(),
+			coolingPropertyId = uuid();
+		await database.manager.insert(ShellyNgDeviceEntity, {
+			id: coolingDeviceId,
+			name: 'Cooling relay',
+			identifier: 'shellyplus1pm-a8032abe5099',
+			category: DeviceCategory.SWITCHER,
+			enabled: true,
+			canonicalMac: 'A8032ABE5099',
+		});
+		await database.manager.insert(ShellyNgChannelEntity, {
+			id: coolingChannelId,
+			device: coolingDeviceId,
+			name: 'Switch',
+			identifier: 'switch:0',
+			category: ChannelCategory.SWITCHER,
+		} as never);
+		await database.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: coolingPropertyId,
+			channel: coolingChannelId,
+			identifier: 'output',
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: coolingPropertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property.channel as ChannelEntity;
+		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+			id: uuid(),
+			controllerId,
+			role: 'cooling',
+			physicalIdentity: thermostatActuatorIdentity(property, channel, channel.device as DeviceEntity),
+			sourcePropertyId: coolingPropertyId,
+			sourcePropertyIdentity: coolingPropertyId,
+			sourceDeviceId: coolingDeviceId,
+			sourceDeviceIdentity: coolingDeviceId,
+			contractFingerprint: thermostatPropertyContract(property, channel, channel.device as DeviceEntity),
+			revision: 1,
+			state: 'reserved',
+			leaseSeconds: 30,
+			reason: null,
+			releaseRequestedAt: null,
+			releasedAt: null,
+			releaseEvidence: null,
+		});
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.policy.coolingSetpoint = 24;
+		config.requestedMode = 'auto';
+		config.revision++;
+		await database.manager.save(config);
+		sample(coolingPropertyId, false);
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+
+		afterOnGate = new Promise<void>(() => undefined);
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await waitForOnJournal();
+		expect(samples.get(relayId)?.value).toBe(true);
+		runtime.onModuleDestroy();
+		proofAllowed = (id) => id !== relayId;
+		sample(sensorId, 27);
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		await runtime.inspect(controllerId);
+		expect(
+			runtime.readDiagnostics(controllerId)?.branches.find((branch) => branch.role === 'heating')?.pending_on,
+		).toBe(true);
+		expect(sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)).toBe(false);
+
+		proofAllowed = () => true;
+		for (let attempt = 0; attempt < 5; attempt++) {
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+			if (sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)) break;
+		}
+		expect(sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)).toBe(true);
+	});
+
+	it('retains a disabled controller claim and its pending ON until qualified release evidence exists', async () => {
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		for (let attempt = 0; attempt < 4; attempt++) {
+			await runtime.flush();
+			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		}
+		expect(samples.get(relayId)?.value).toBe(true);
+		const claims = (runtime as unknown as { claims: VirtualThermostatClaimsService }).claims;
+		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		proofAllowed = () => false;
+		await database.manager.update(DeviceEntity, { id: controllerId }, { enabled: false });
+		runtime.request(controllerId);
+		await runtime.flush();
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		await runtime.flush();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		expect(claim.state).toBe('releasing');
+		expect(config.requestedMode).toBe('off');
+		expect(samples.get(relayId)?.value).toBe(false);
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+		expect(
+			await database.manager.countBy(VirtualThermostatCommandEntity, {
+				controllerId,
+				action: 'on',
+				status: 'accepted',
+			}),
+		).toBe(1);
+	});
+
+	it('revokes ON admission on reconnect until a new ordered release proof is established', async () => {
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		for (let attempt = 0; attempt < 4; attempt++) {
+			await runtime.inspect(controllerId);
+			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		}
+		expect(sentTargets.filter((send) => send.on)).toHaveLength(1);
+		proofAllowed = () => false;
+		events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: controllerId } });
+		await runtime.flush();
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		await runtime.flush();
+		expect(sentTargets.filter((send) => send.on)).toHaveLength(1);
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('release_ordering_unreconciled');
+		proofAllowed = () => true;
+		for (let attempt = 0; attempt < 5; attempt++) {
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+			if (sentTargets.filter((send) => send.on).length > 1) break;
+		}
+		expect(sentTargets.filter((send) => send.on)).toHaveLength(2);
 	});
 
 	it('persists release and ON before transport, then releases at the comfort boundary', async () => {
@@ -324,5 +549,267 @@ describe('virtual thermostat durable runtime', () => {
 		expect(samples.get(relayId)?.value).toBe(true);
 		expect(late?.branches[0].pending_on).toBe(true);
 		expect(late?.branches[0].release_proven).toBe(false);
+	});
+
+	it('latches a floor-limit release and resumes only below the strict recovery threshold', async () => {
+		const floorDeviceId = uuid(),
+			floorChannelId = uuid(),
+			floorPropertyId = uuid();
+		await database.manager.insert(DeviceEntity, {
+			id: floorDeviceId,
+			name: 'Floor probe',
+			category: DeviceCategory.SENSOR,
+			enabled: true,
+		});
+		await database.manager.insert(ChannelEntity, {
+			id: floorChannelId,
+			device: floorDeviceId,
+			name: 'Floor temperature',
+			identifier: 'temperature',
+			category: ChannelCategory.TEMPERATURE,
+		} as never);
+		await database.manager.insert(ChannelPropertyEntity, {
+			id: floorPropertyId,
+			channel: floorChannelId,
+			identifier: 'temperature',
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+			unit: '°C',
+		} as never);
+		const floor = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: floorPropertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const floorChannel = floor.channel as ChannelEntity;
+		await database.manager.insert(VirtualThermostatSourceEntity, {
+			id: uuid(),
+			controllerId,
+			role: 'floor',
+			sourcePropertyId: floorPropertyId,
+			sourcePropertyIdentity: floorPropertyId,
+			physicalIdentity: `property:${floorPropertyId}`,
+			contractFingerprint: thermostatPropertyContract(floor, floorChannel, floorChannel.device as DeviceEntity),
+			maximumAgeSeconds: 300,
+			openValue: null,
+			closedValue: null,
+		});
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.policy.floor = { limit: 28, recoveryHysteresis: 1 };
+		config.revision++;
+		await database.manager.save(config);
+		sample(sensorId, 18);
+		sample(floorPropertyId, 28);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
+		expect(sends).not.toContain(true);
+
+		sample(floorPropertyId, 27);
+		runtime.request(controllerId);
+		await runtime.flush();
+		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
+		expect(sends).not.toContain(true);
+
+		sample(floorPropertyId, 26.9);
+		runtime.request(controllerId);
+		await runtime.flush();
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		await runtime.flush();
+		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(false);
+		expect(sends).toContain(true);
+	});
+
+	it('revokes a queued ON when the floor reaches its boundary during transport authentication', async () => {
+		const floorDeviceId = uuid(),
+			floorChannelId = uuid(),
+			floorPropertyId = uuid();
+		await database.manager.insert(DeviceEntity, {
+			id: floorDeviceId,
+			name: 'Floor probe',
+			category: DeviceCategory.SENSOR,
+			enabled: true,
+		});
+		await database.manager.insert(ChannelEntity, {
+			id: floorChannelId,
+			device: floorDeviceId,
+			name: 'Floor',
+			identifier: 'temperature',
+			category: ChannelCategory.TEMPERATURE,
+		} as never);
+		await database.manager.insert(ChannelPropertyEntity, {
+			id: floorPropertyId,
+			channel: floorChannelId,
+			identifier: 'temperature',
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+			unit: '°C',
+		} as never);
+		const floor = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: floorPropertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const floorChannel = floor.channel as ChannelEntity;
+		await database.manager.insert(VirtualThermostatSourceEntity, {
+			id: uuid(),
+			controllerId,
+			role: 'floor',
+			sourcePropertyId: floorPropertyId,
+			sourcePropertyIdentity: floorPropertyId,
+			physicalIdentity: `property:${floorPropertyId}`,
+			contractFingerprint: thermostatPropertyContract(floor, floorChannel, floorChannel.device as DeviceEntity),
+			maximumAgeSeconds: 300,
+			openValue: null,
+			closedValue: null,
+		});
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.policy.floor = { limit: 28, recoveryHysteresis: 1 };
+		config.revision++;
+		await database.manager.save(config);
+		let resumeOn: () => void = () => undefined;
+		onGate = new Promise<void>((resolve) => {
+			resumeOn = resolve;
+		});
+		sample(sensorId, 18);
+		sample(floorPropertyId, 27);
+		runtime.request(controllerId);
+		await waitForOnJournal();
+		sample(floorPropertyId, 28);
+		runtime.request(controllerId);
+		await runtime.flush();
+		resumeOn();
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		await runtime.flush();
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('floor_overheat');
+	});
+
+	it('keeps a contact unknown until debounced closed and releases immediately on opening', async () => {
+		const contactDeviceId = uuid(),
+			contactChannelId = uuid(),
+			contactPropertyId = uuid();
+		await database.manager.insert(DeviceEntity, {
+			id: contactDeviceId,
+			name: 'Window',
+			category: DeviceCategory.SENSOR,
+			enabled: true,
+		});
+		await database.manager.insert(ChannelEntity, {
+			id: contactChannelId,
+			device: contactDeviceId,
+			name: 'Contact',
+			identifier: 'contact',
+			category: ChannelCategory.CONTACT,
+		} as never);
+		await database.manager.insert(ChannelPropertyEntity, {
+			id: contactPropertyId,
+			channel: contactChannelId,
+			identifier: 'detected',
+			category: PropertyCategory.DETECTED,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: contactPropertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property.channel as ChannelEntity;
+		await database.manager.insert(VirtualThermostatSourceEntity, {
+			id: uuid(),
+			controllerId,
+			role: 'contact',
+			sourcePropertyId: contactPropertyId,
+			sourcePropertyIdentity: contactPropertyId,
+			physicalIdentity: `property:${contactPropertyId}`,
+			contractFingerprint: thermostatPropertyContract(property, channel, channel.device as DeviceEntity),
+			maximumAgeSeconds: 300,
+			openValue: false,
+			closedValue: true,
+		});
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.contactClosingMs = 100;
+		config.revision++;
+		await database.manager.save(config);
+		sample(sensorId, 18);
+		sample(contactPropertyId, true);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+		expect(sends).not.toContain(true);
+		await new Promise((resolve) => setTimeout(resolve, 110));
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		await runtime.flush();
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		expect(sends).toContain(true);
+		sample(contactPropertyId, false);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('window_open');
+		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		expect(samples.get(relayId)?.value).toBe(false);
+		samples.delete(contactPropertyId);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+	});
+
+	it('retains a heuristic hold but rebaselines trend evidence across quality and user configuration changes', async () => {
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.heuristic = {
+			sampleWindowMs: 10_000,
+			minimumSamples: 3,
+			minimumSpanMs: 1,
+			maximumSampleAgeMs: 10_000,
+			slopeThresholdCPerMinute: 0.1,
+			confirmationMs: 1,
+			recoveryMs: 60_000,
+			maximumPauseMs: 60_000,
+			cooldownMs: 60_000,
+		};
+		config.revision++;
+		await database.manager.save(config);
+		for (const temperature of [20, 19, 18, 17]) {
+			sample(sensorId, temperature);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			await new Promise((resolve) => setTimeout(resolve, 3));
+		}
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('suspected_window_open');
+		const held = await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId });
+		expect(held.heuristicHold?.pausedUntil).toBeGreaterThan(Date.now());
+		const degraded = samples.get(sensorId);
+		if (!degraded) throw new Error('Missing ambient sample');
+		samples.set(sensorId, { ...degraded, quality: 'degraded' });
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		const trendAfterQuality = (runtime as unknown as { trends: Map<string, { frames: unknown[] }> }).trends.get(
+			controllerId,
+		);
+		expect(trendAfterQuality?.frames).toHaveLength(1);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('suspected_window_open');
+		config.requestedMode = 'off';
+		config.policy.heatingSetpoint = 22;
+		config.revision++;
+		await database.manager.save(config);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.requested_mode).toBe('off');
+		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toEqual(
+			expect.arrayContaining(['user_off', 'suspected_window_open']),
+		);
+		const trendAfterConfig = (runtime as unknown as { trends: Map<string, { frames: unknown[] }> }).trends.get(
+			controllerId,
+		);
+		expect(trendAfterConfig?.frames).toHaveLength(0);
+		runtime.onModuleDestroy();
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toEqual(
+			expect.arrayContaining(['user_off', 'suspected_window_open']),
+		);
 	});
 });
