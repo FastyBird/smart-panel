@@ -28,6 +28,8 @@ export interface CompositeCommandChild {
 	readonly memberId: string;
 	readonly update: IDevicePropertyData | null;
 	readonly reason?: string;
+	/** Internal synchronous snapshot consumption immediately before the physical window opens. */
+	readonly admissionCheck?: () => boolean;
 }
 export interface CompositeCommandPlan {
 	readonly revision: number;
@@ -36,6 +38,8 @@ export interface CompositeCommandPlan {
 	readonly isCurrent: () => Promise<boolean>;
 	/** Pure applied-revision guard for a provider queue at its actual publish boundary. */
 	readonly isDispatchCurrent?: () => boolean;
+	/** Release temporary planning observers on terminal/early failure. */
+	readonly dispose?: () => void;
 }
 export interface CompositePropertyCommandPlanner {
 	canHandle(property: ChannelPropertyEntity): boolean;
@@ -56,6 +60,7 @@ export class CompositePropertyCommandRegistryService {
 		const planner = updates.map((update) => this.get(update.property)).find(Boolean);
 		if (!planner) return null;
 		const plan = await planner.plan(updates.filter((update) => planner.canHandle(update.property)));
+		plan.dispose?.();
 		const channels = new Map<string, { device: IDevicePropertyData['device']; properties: Set<string> }>();
 		for (const child of [
 			...plan.children,

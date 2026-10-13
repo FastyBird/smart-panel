@@ -2,7 +2,13 @@ import { DataSource } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { ChannelCategory, DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
@@ -12,7 +18,9 @@ import {
 	CompositePropertyCommandRegistryService,
 } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
+import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import {
 	VirtualChannelPropertyEntity,
@@ -26,22 +34,28 @@ import {
 } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { LIGHT_GROUP_MAXIMUM_AGE_MS } from './virtual-light-group.utils';
 
 @Injectable()
 export class VirtualLightGroupCommandService implements CompositePropertyCommandPlanner, OnModuleInit, OnModuleDestroy {
 	private unregister?: () => void;
+	private readonly planningLeases = new Set<() => void>();
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly registry: CompositePropertyCommandRegistryService,
 		private readonly devices: DeviceCommandGraphService,
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly metadata: PropertyMetadataService,
+		private readonly values: PropertyValueService,
+		private readonly windows: PropertyCommandWindowService,
 	) {}
 	onModuleInit(): void {
 		this.unregister = this.registry.register(this);
 	}
 	onModuleDestroy(): void {
 		this.unregister?.();
+		for (const dispose of this.planningLeases) dispose();
+		this.planningLeases.clear();
 	}
 	canHandle(property: ChannelPropertyEntity): boolean {
 		const channel = property.channel;
@@ -59,6 +73,43 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 		);
 	}
 	async plan(updates: readonly IDevicePropertyData[]): Promise<CompositeCommandPlan> {
+		if (!updates.some((update) => update.property.category === PropertyCategory.BRIGHTNESS))
+			return this.planCurrent(updates);
+		if (this.planningLeases.size >= 128) throw new Error('Too many active brightness planning snapshots');
+		const changed = new Set<string>();
+		const admitted = new Set<string>();
+		let overflow = false;
+		let stopped = false;
+		const unsubscribe = this.windows.observeGeneration((propertyId) => {
+			if (overflow || admitted.has(propertyId)) return;
+			if (!changed.has(propertyId) && changed.size >= 2048) {
+				overflow = true;
+				return;
+			}
+			changed.add(propertyId);
+		});
+		const dispose = () => {
+			stopped = true;
+			unsubscribe();
+			clearTimeout(timer);
+			this.planningLeases.delete(dispose);
+		};
+		const timer = setTimeout(dispose, 30_000);
+		timer.unref();
+		this.planningLeases.add(dispose);
+		try {
+			const plan = await this.planCurrent(updates, { changed, admitted, isStopped: () => stopped || overflow });
+			return { ...plan, dispose };
+		} catch (error) {
+			dispose();
+			throw error;
+		}
+	}
+
+	private async planCurrent(
+		updates: readonly IDevicePropertyData[],
+		power?: { changed: Set<string>; admitted: Set<string>; isStopped: () => boolean },
+	): Promise<CompositeCommandPlan> {
 		const graphRevision = await this.graph.revision();
 		const metadataGeneration = this.metadata.getGeneration();
 		const revisions = new Map<string, number>();
@@ -99,13 +150,65 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
 					property.permissions.includes(PermissionType.READ_WRITE);
 				if (children.length >= 2048) throw new Error('Composite size exceeds bounds');
+				let preserved: CompositeCommandChild | null = null;
+				let powerAvailable = true;
+				if (
+					available &&
+					update.property.category === PropertyCategory.BRIGHTNESS &&
+					!updates.some(
+						(candidate) => candidate.channel.id === channelId && candidate.property.category === PropertyCategory.ON,
+					)
+				) {
+					const onBinding = await this.dataSource.manager.findOne(VirtualLightGroupBindingEntity, {
+						where: { memberId: member.id, quantity: PropertyCategory.ON },
+						relations: ['sourceProperty', 'sourceProperty.channel'],
+					});
+					const on = onBinding?.sourceProperty;
+					const sample = on ? this.values.readQualifiedSample(on, LIGHT_GROUP_MAXIMUM_AGE_MS) : null;
+					powerAvailable =
+						!!on &&
+						on.category === PropertyCategory.ON &&
+						on.dataType === DataTypeType.BOOL &&
+						on.permissions.includes(PermissionType.READ_WRITE) &&
+						(on.channel as ChannelEntity).id === channel.id &&
+						typeof sample?.value === 'boolean' &&
+						!power.isStopped() &&
+						!power.changed.has(on.id);
+					if (powerAvailable) {
+						const generation = this.windows.peekGeneration(on.id);
+						const baseline = sample.value;
+						preserved = {
+							memberId: member.id,
+							memberIdentity: member.sourceChannelIdentity,
+							propertyIdentity: onBinding.sourcePropertyIdentity,
+							update: { property: on, channel, device, value: baseline },
+							admissionCheck: () => {
+								const current = this.values.readQualifiedSample(on, LIGHT_GROUP_MAXIMUM_AGE_MS);
+								if (
+									power.isStopped() ||
+									power.changed.has(on.id) ||
+									(this.windows.peekGeneration(on.id) !== null && this.windows.peekGeneration(on.id) !== generation) ||
+									current?.value !== baseline
+								)
+									return false;
+								power.admitted.add(on.id);
+								return true;
+							},
+						};
+					}
+				}
 				children.push({
 					memberId: member.id,
 					memberIdentity: member.sourceChannelIdentity,
 					propertyIdentity: binding?.sourcePropertyIdentity ?? null,
-					update: available ? { property, channel, device, value: update.value } : null,
-					reason: available ? undefined : 'Member is missing, disabled, offline, incompatible or quarantined',
+					update: available && powerAvailable ? { property, channel, device, value: update.value } : null,
+					reason: !powerAvailable
+						? 'Qualified member power is unknown or changed during brightness planning'
+						: available
+							? undefined
+							: 'Member is missing, disabled, offline, incompatible or quarantined',
 				});
+				if (preserved) children.push(preserved);
 			}
 		}
 		return {

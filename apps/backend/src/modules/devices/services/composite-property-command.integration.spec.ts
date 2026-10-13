@@ -233,9 +233,16 @@ describe('core opt-in composite commands', () => {
 	});
 	it('disposes active parent generations on module shutdown and refuses new parents', async () => {
 		const fixture = setup([{ memberId: 'a', update: update('a') }]);
-		fixture.processBatch.mockImplementationOnce(() => Promise.resolve(true));
-		const pending = fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 100 });
-		while (!fixture.processBatch.mock.calls.length) await new Promise<void>((resolve) => setImmediate(resolve));
+		let entered: () => void = () => undefined;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		fixture.processBatch.mockImplementationOnce(() => {
+			entered();
+			return Promise.resolve(true);
+		});
+		const pending = fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 10_000 });
+		await started;
 		fixture.dispatch.onModuleDestroy();
 		const result = await pending;
 		expect(result.composite.children[0].status).toBe('superseded');
@@ -391,6 +398,16 @@ describe('core opt-in composite commands', () => {
 		expect(result.composite.children[0]).toMatchObject({
 			status: 'unavailable',
 			reason: 'Provider does not support the strict composite dispatch profile',
+		});
+		expect(fixture.processBatch).not.toHaveBeenCalled();
+		expect(fixture.windows.get('a')).toBeNull();
+	});
+	it('checks a preserved power snapshot immediately before window admission and refuses changed targets without I/O', async () => {
+		const fixture = setup([{ memberId: 'a', update: update('a'), admissionCheck: () => false }]);
+		const result = await fixture.dispatch.dispatchBatch([update('group')]);
+		expect(result.composite.children[0]).toMatchObject({
+			status: 'superseded',
+			reason: 'Preserved power snapshot changed before admission',
 		});
 		expect(fixture.processBatch).not.toHaveBeenCalled();
 		expect(fixture.windows.get('a')).toBeNull();

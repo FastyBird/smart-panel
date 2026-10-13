@@ -15,6 +15,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
@@ -256,12 +257,15 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		expect(producers.read(outputId)?.value).toBe(true);
 		expect(runtime.getReportedState(channelId)).toMatchObject({ total: 2, onCount: 1, offCount: 1, mixed: true });
 		const metadata = new PropertyMetadataService(database);
+		const windows = new PropertyCommandWindowService();
 		const commands = new VirtualLightGroupCommandService(
 			database,
 			new CompositePropertyCommandRegistryService(),
 			devices as never,
 			graph,
 			metadata,
+			values,
+			windows,
 		);
 		const parent = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
 			where: { id: outputId },
@@ -274,6 +278,70 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		]);
 		expect(plan.children).toHaveLength(2);
 		expect(await plan.isCurrent()).toBe(true);
+		const brightnessParent = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: brightnessOutput },
+			relations: ['channel', 'channel.device'],
+		});
+		const brightnessUpdate = {
+			property: brightnessParent,
+			channel: parentChannel,
+			device: parentChannel.device as DeviceEntity,
+			value: 45,
+		};
+		const brightnessPlan = await commands.plan([brightnessUpdate]);
+		expect(brightnessPlan.children).toHaveLength(4);
+		expect(
+			brightnessPlan.children
+				.filter((child) => child.update?.property.category === PropertyCategory.ON)
+				.map((child) => child.update.value),
+		).toEqual([true, false]);
+		const preserved = brightnessPlan.children.find((child) => child.update?.property.id === physical[0].propertyId);
+		const newer = windows.open({
+			canonicalTarget: {
+				deviceId: physical[0].deviceId,
+				channelId: physical[0].memberChannelId,
+				propertyId: physical[0].propertyId,
+			},
+			requestedTargets: [],
+			commandedValue: false,
+			previousValue: true,
+			ttlMs: 100,
+		});
+		windows.close(newer);
+		expect(preserved.admissionCheck()).toBe(false);
+		brightnessPlan.dispose();
+		const combined = await commands.plan([
+			brightnessUpdate,
+			{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: false },
+		]);
+		expect(combined.children).toHaveLength(4);
+		expect(
+			combined.children
+				.filter((child) => child.update?.property.category === PropertyCategory.ON)
+				.every((child) => child.update.value === false),
+		).toBe(true);
+		combined.dispose();
+		jest.spyOn(graph, 'revision').mockImplementationOnce(() => {
+			windows.open({
+				canonicalTarget: {
+					deviceId: physical[0].deviceId,
+					channelId: physical[0].memberChannelId,
+					propertyId: physical[0].propertyId,
+				},
+				requestedTargets: [],
+				commandedValue: false,
+				previousValue: true,
+				ttlMs: 100,
+			});
+			return Promise.resolve(2);
+		});
+		const changedDuringPlanning = await commands.plan([brightnessUpdate]);
+		expect(
+			changedDuringPlanning.children.find((child) => child.memberIdentity === physical[0].memberChannelId)?.update,
+		).toBeNull();
+		changedDuringPlanning.dispose();
+		commands.onModuleDestroy();
+
 		offline.add(physical[0].deviceId);
 		await runtime.refresh();
 		expect(runtime.getReportedState(channelId)).toMatchObject({ on: null, unknownCount: 1 });

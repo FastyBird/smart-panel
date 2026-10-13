@@ -30,6 +30,8 @@ import { PropertyStateCoordinatorService } from './property-state-coordinator.se
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
+class CompositeAdmissionSnapshotChangedError extends Error {}
+
 export interface PropertyCommandDispatchOptions {
 	readonly intentId?: string;
 	readonly requestId?: string;
@@ -193,8 +195,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		} catch (error) {
 			return { success: false, reason: error instanceof Error ? error.message : 'Invalid composite plan' };
 		}
-		if (!plan.children.length || plan.children.length > 2048)
+		if (!plan.children.length || plan.children.length > 2048) {
+			plan.dispose?.();
 			return { success: false, reason: 'Composite size exceeds bounds' };
+		}
 		const outcomes: CompositeChildOutcome[] = plan.children.map((child) => ({
 			memberId: child.memberId,
 			memberIdentity: child.memberIdentity ?? child.update?.channel.id,
@@ -241,6 +245,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					targets: updates.map(toTarget),
 					revision: plan.revision,
 				});
+				plan.dispose?.();
 				return { success: false, reason, composite };
 			}
 			requestedValues.set(canonical, targetValue);
@@ -272,8 +277,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				value: validation.value,
 			};
 			const existing = leaves.get(canonical);
-			if (existing && existing.update.value !== normalized.value)
+			if (existing && existing.update.value !== normalized.value) {
+				plan.dispose?.();
 				return { success: false, reason: 'Contradictory canonical targets in composite command' };
+			}
 			if (existing) existing.indexes.push(index);
 			else leaves.set(canonical, { update: normalized, indexes: [index] });
 		}
@@ -427,12 +434,28 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 								deadlineAt: deadline,
 								requiresLiveEvidence: true,
 							},
+							new Map(
+								channel.map((leaf) => [
+									this.valueSourceRegistry.resolve(leaf.update.property),
+									leaf.indexes.flatMap((index) =>
+										plan.children[index].admissionCheck ? [plan.children[index].admissionCheck] : [],
+									),
+								]),
+							),
 						),
 						deadline,
 					);
 					handles = admitted?.map((window) => window.handle) ?? [];
 					if (!admitted || handles.length !== channel.length) {
 						setPending('unavailable', 'No correlated physical readback admission');
+						continue;
+					}
+					if (
+						handles.some(
+							(handle) => this.commandWindowService.peekGeneration(handle.canonicalPropertyId) !== handle.generation,
+						)
+					) {
+						setPending('superseded', 'Physical command generation replaced during compound admission');
 						continue;
 					}
 					for (const leaf of channel) {
@@ -513,7 +536,11 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					setPending('timed_out');
 				} catch (error) {
 					setPending(
-						Date.now() >= deadline ? 'timed_out' : 'failed',
+						error instanceof CompositeAdmissionSnapshotChangedError
+							? 'superseded'
+							: Date.now() >= deadline
+								? 'timed_out'
+								: 'failed',
 						error instanceof Error ? error.message : 'Execution failed',
 					);
 				} finally {
@@ -564,6 +591,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		} finally {
 			stopObserving();
 			this.compositeCleanups.delete(cleanup);
+			plan.dispose?.();
 		}
 	}
 	private async dispatchPreparedComposite(
@@ -620,6 +648,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 	private async admitWindows(
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions,
+		checks?: ReadonlyMap<string, readonly (() => boolean)[]>,
 	): Promise<readonly AdmittedWindow[] | null> {
 		return this.structureLock.runShared(async () => {
 			const requestedByCanonical = new Map<string, IDevicePropertyData[]>();
@@ -659,6 +688,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					continue;
 				}
 
+				if (checks?.get(canonicalPropertyId)?.some((check) => !check())) {
+					this.failOwned(admitted.map(({ handle }) => handle));
+					throw new CompositeAdmissionSnapshotChangedError('Preserved power snapshot changed before admission');
+				}
 				const handle = this.commandWindowService.open({
 					canonicalTarget: admission.canonicalTarget,
 					requestedTargets: admission.requestedTargets,
