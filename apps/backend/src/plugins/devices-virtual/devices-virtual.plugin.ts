@@ -30,6 +30,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
+import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
 import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
@@ -75,6 +76,7 @@ import { VirtualLightGroupAuthoringService } from './services/virtual-light-grou
 import { VirtualLightGroupCommandService } from './services/virtual-light-group-command.service';
 import { VirtualLightGroupContributionService } from './services/virtual-light-group-contribution.service';
 import { VirtualLightGroupStateService } from './services/virtual-light-group-state.service';
+import { VirtualMeasurementAuthoringService } from './services/virtual-measurement-authoring.service';
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
@@ -129,6 +131,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualTransformMetadataSubscriber,
 		VirtualLightGroupStateService,
 		VirtualLightGroupCommandService,
+		VirtualMeasurementAuthoringService,
 		VirtualProjectionListener,
 		VirtualStatusListener,
 		VirtualIndexMaintenanceListener,
@@ -137,7 +140,12 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
-	controllers: [VirtualDevicesController, VirtualProducerConfigController, VirtualTransformConfigController],
+	controllers: [
+		VirtualMeasurementAuthoringController,
+		VirtualTransformConfigController,
+		VirtualDevicesController,
+		VirtualProducerConfigController,
+	],
 })
 export class DevicesVirtualPlugin {
 	constructor(

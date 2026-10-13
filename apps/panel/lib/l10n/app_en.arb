@@ -4799,5 +4799,48 @@
   "settings_display_screen_lock_never": "Never",
   "@settings_display_screen_lock_never": {
     "description": "Screen lock duration option for never"
-  }
+  },
+  "virtual_measurement_quality": "Quality: {quality}",
+  "virtual_measurement_members": "Aggregate members",
+  "virtual_measurement_conversion": "Converter input",
+  "virtual_measurement_retry": "Retry diagnostics",
+  "@virtual_measurement_quality": {
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_state_good": "Good",
+  "virtual_measurement_state_degraded": "Reduced quality",
+  "virtual_measurement_state_input_degraded": "Reduced quality",
+  "virtual_measurement_state_unavailable": "Unavailable",
+  "virtual_measurement_state_runtime_unavailable": "Unavailable",
+  "virtual_measurement_state_ready": "Ready",
+  "virtual_measurement_state_configured": "Ready",
+  "virtual_measurement_state_missing": "Source missing",
+  "virtual_measurement_state_incompatible": "Incompatible measurement",
+  "virtual_measurement_state_incompatible_source": "Incompatible measurement",
+  "virtual_measurement_state_incompatible_output": "Incompatible measurement",
+  "virtual_measurement_state_incompatible_ntc_semantics": "Incompatible measurement",
+  "virtual_measurement_state_offline": "Source offline",
+  "virtual_measurement_state_invalid": "Invalid value",
+  "virtual_measurement_state_invalid_input": "Invalid value",
+  "virtual_measurement_state_invalid_result": "Invalid value",
+  "virtual_measurement_state_nonfinite_output": "Invalid value",
+  "virtual_measurement_state_stale": "Sample expired",
+  "virtual_measurement_state_expired": "Sample expired",
+  "virtual_measurement_state_disabled": "Disabled",
+  "virtual_measurement_state_output_disabled": "Disabled",
+  "virtual_measurement_state_quorum_lost": "Not enough valid inputs",
+  "virtual_measurement_state_invalid_policy": "Invalid configuration",
+  "virtual_measurement_state_invalid_configuration": "Invalid configuration",
+  "virtual_measurement_state_awaiting_fresh_sample": "Waiting for a fresh sample",
+  "virtual_measurement_state_runtime_error": "Runtime error",
+  "virtual_measurement_state_graph_quarantined": "Dependency graph quarantined",
+  "virtual_measurement_state_input_out_of_range": "Value outside range",
+  "virtual_measurement_state_output_out_of_range": "Value outside range",
+  "virtual_measurement_state_invalid_domain": "Outside mathematical domain",
+  "virtual_measurement_state_producer_disposed": "Producer stopped",
+  "virtual_measurement_state_unknown": "Unknown diagnostic"
 }

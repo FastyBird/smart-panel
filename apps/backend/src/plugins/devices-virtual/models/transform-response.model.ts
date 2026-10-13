@@ -136,8 +136,41 @@ export class VirtualTransformSourceModel {
 	exclusion?: string | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataTransformPreview' })
+export class VirtualTransformPreviewModel {
+	@ApiProperty({ description: 'Hypothetical input value' })
+	@Expose()
+	input: number;
+
+	@ApiProperty({ description: 'Computed hypothetical output', type: Number, nullable: true })
+	@Expose()
+	value: number | null;
+
+	@ApiProperty({ description: 'Conversion failure code', type: String, nullable: true })
+	@Expose()
+	error: string | null;
+
+	@ApiProperty({
+		description: 'Preview cannot establish measurement qualification',
+		type: Boolean,
+		default: false,
+		readOnly: true,
+	})
+	@Expose()
+	qualified: false;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataTransformConfiguration' })
 export class VirtualTransformConfigurationModel {
+	@ApiPropertyOptional({
+		name: 'preview_result',
+		description: 'Hypothetical conversion result; never a live reading',
+		type: VirtualTransformPreviewModel,
+	})
+	@Expose()
+	@Type(() => VirtualTransformPreviewModel)
+	preview_result?: VirtualTransformPreviewModel;
+
 	@ApiProperty({ description: 'Stable materialized output property UUID', format: 'uuid' })
 	@Expose()
 	output_property: string;

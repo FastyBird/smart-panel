@@ -64,6 +64,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	async edges(manager: EntityManager): Promise<VirtualDependencyEdge[]> {
 		const projections = await manager
 			.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+			.select(['property.id', 'property.sourcePropertyId', 'property.valueOrigin'])
 			.where('property.sourcePropertyId IS NOT NULL')
 			.callListeners(false)
 			.getMany();

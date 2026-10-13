@@ -26,6 +26,7 @@ type ApiChannelProperty = DevicesVirtualPluginChannelPropertySchema;
 export const VirtualChannelPropertySchema = ChannelPropertySchema.extend({
 	valueOrigin: z.nativeEnum(DevicesVirtualPluginValueOrigin).default(DevicesVirtualPluginValueOrigin.source),
 	sourceProperty: z.string().uuid().nullable().default(null),
+	measurementQuantity: z.string().optional(),
 });
 
 // BACKEND API
@@ -52,5 +53,6 @@ export const VirtualChannelPropertyResSchema: ZodType<ApiChannelProperty> = Chan
 		type: z.literal(DEVICES_VIRTUAL_TYPE),
 		value_origin: z.nativeEnum(DevicesVirtualPluginValueOrigin),
 		source_property: z.string().uuid().nullable().optional(),
+		measurement_quantity: z.string().optional(),
 	})
 );

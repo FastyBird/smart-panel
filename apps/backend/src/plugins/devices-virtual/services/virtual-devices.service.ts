@@ -501,7 +501,7 @@ export class VirtualDevicesService {
 
 		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
 		const device =
-			catalog && channel && typeof channel.device !== 'string'
+			catalog && typeof channel.device !== 'string'
 				? channel.device
 				: deviceId
 					? await this.devicesService.findOne(deviceId)
