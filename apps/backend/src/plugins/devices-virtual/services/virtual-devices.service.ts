@@ -45,6 +45,7 @@ import {
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
+import { isTransformOutputSlot } from './virtual-transform-contract.utils';
 
 /**
  * A spec slot the wizard is trying to fill: one property, on one channel category, from the target
@@ -314,11 +315,18 @@ export class VirtualDevicesService {
 				: deviceId
 					? await this.devicesService.findOne(deviceId)
 					: null;
+		const transformProperty =
+			channel && device
+				? Object.assign(new ChannelPropertyEntity(), property, {
+						channel: Object.assign(new ChannelEntity(), channel, { device }),
+					})
+				: null;
 		if (
 			!channel ||
 			!device ||
 			!(
 				isEligibleVirtualMeasurement(property, channel, device) ||
+				(transformProperty && isTransformOutputSlot(transformProperty)) ||
 				(device.type === DEVICES_VIRTUAL_TYPE &&
 					(device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP &&
 					device.category === DeviceCategory.LIGHTING &&
@@ -331,7 +339,7 @@ export class VirtualDevicesService {
 			)
 		)
 			throw new DevicesValidationException(
-				'Derived outputs require a supported typed aggregate or light-group producer slot.',
+				'Derived outputs require a supported typed aggregate, transform or light-group producer slot.',
 			);
 	}
 

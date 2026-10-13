@@ -51,6 +51,29 @@ const validRange = (range: VirtualNumericRange): boolean =>
 export function validateVirtualNumericTransform(config: VirtualNumericTransformConfig): string[] {
 	if (!config) return ['missing_configuration'];
 	const errors: string[] = [];
+	const allowed = [
+		'operator',
+		'inputRange',
+		'outputRange',
+		...(config.operator === VirtualNumericTransformOperator.AFFINE
+			? ['scale', 'offset']
+			: config.operator === VirtualNumericTransformOperator.PIECEWISE_LINEAR
+				? ['points']
+				: [
+						'referenceVoltage',
+						'seriesResistance',
+						'nominalResistance',
+						'nominalTemperatureCelsius',
+						'beta',
+						'thermistorLeg',
+					]),
+	];
+	if (Object.keys(config).some((key) => !allowed.includes(key) && config[key] !== undefined))
+		errors.push('unsupported_parameters');
+	for (const range of [config.inputRange, config.outputRange])
+		if (range && Object.keys(range).some((key) => !['minimum', 'maximum'].includes(key)))
+			errors.push('unsupported_range_parameters');
+
 	if (!validRange(config.inputRange)) errors.push('invalid_input_range');
 	if (!validRange(config.outputRange)) errors.push('invalid_output_range');
 	switch (config.operator) {
@@ -67,6 +90,7 @@ export function validateVirtualNumericTransform(config: VirtualNumericTransformC
 				Array.from(points).some(
 					(point, index) =>
 						!point ||
+						Object.keys(point).some((key) => !['x', 'y'].includes(key)) ||
 						!Number.isFinite(point.x) ||
 						!Number.isFinite(point.y) ||
 						(index > 0 && point.x <= points[index - 1].x),
