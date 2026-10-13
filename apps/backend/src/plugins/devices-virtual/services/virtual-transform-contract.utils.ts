@@ -98,7 +98,9 @@ export function transformContractErrors(
 	)
 		errors.push('incompatible_source');
 	if (
-		config.policy?.operator === VirtualNumericTransformOperator.NTC_BETA &&
+		[VirtualNumericTransformOperator.NTC_BETA, VirtualNumericTransformOperator.STEINHART_HART].includes(
+			config.policy?.operator,
+		) &&
 		(String(source.category) !== String(PropertyCategory.VOLTAGE) ||
 			unit !== 'V' ||
 			config.quantity !== String(PropertyCategory.TEMPERATURE) ||

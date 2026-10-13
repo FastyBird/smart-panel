@@ -584,6 +584,37 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		expect(outputState(output).value).toBeCloseTo(25);
 	});
 
+	it('converts a qualified physical voltage with Steinhart-Hart and expires with its source', async () => {
+		const physical = await measurement();
+		const output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		await database.manager.update(ChannelPropertyEntity, physical.id, { category: PropertyCategory.VOLTAGE });
+		await database.manager.update(ChannelEntity, (physical.channel as ChannelEntity).id, {
+			category: ChannelCategory.ELECTRICAL_POWER,
+		});
+		const voltage = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: physical.id },
+			relations: ['channel', 'channel.device'],
+		});
+		const request = dto(voltage);
+		request.policy = {
+			operator: VirtualNumericTransformOperator.STEINHART_HART,
+			inputRange: { minimum: 0, maximum: 10 },
+			outputRange: { minimum: -100, maximum: 150 },
+			referenceVoltage: 10,
+			seriesResistance: 10_000,
+			coefficientA: 0.0010351024725298568,
+			coefficientB: 0.0002338353574079741,
+			coefficientC: 7.917851073336009e-8,
+			thermistorLeg: 'low',
+		};
+		await transforms.configure(output.id, request);
+		await start();
+		await sample(voltage, 6.68);
+		expect(outputState(output).value).toBeCloseTo(18.45, 2);
+		await sample(voltage, null);
+		expect(outputState(output).value).toBeNull();
+	});
+
 	it('migration and synchronization retain matching indexes, source nulling and owner cascades', async () => {
 		await database.manager.query('DROP TABLE devices_virtual_transform_sources');
 		await database.manager.query('DROP TABLE devices_virtual_transform_configs');
