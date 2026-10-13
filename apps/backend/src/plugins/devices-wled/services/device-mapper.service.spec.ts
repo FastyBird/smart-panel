@@ -191,6 +191,7 @@ describe('WledDeviceMapperService', () => {
 						findOneBy: jest.fn(),
 						create: jest.fn(),
 						update: jest.fn(),
+						reportSample: jest.fn(),
 					},
 				},
 				{
@@ -213,6 +214,75 @@ describe('WledDeviceMapperService', () => {
 		channelsPropertiesService = module.get(ChannelsPropertiesService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
 		hardwareIdentity = module.get(WledHardwareIdentityService);
+	});
+
+	describe('qualified live feedback', () => {
+		const observation = (fullSnapshot = true) => ({
+			mac: 'aabbccddeeff',
+			fullSnapshot,
+			evidence: {
+				sampledAt: new Date(),
+				receivedAt: new Date(),
+				observedAt: new Date(),
+				provenance: 'live' as const,
+				isCurrent: () => true,
+			},
+		});
+		beforeEach(() => {
+			devicesService.findOneBy.mockResolvedValue(createMockDevice('device-1', 'wled-test', '192.168.1.100'));
+			channelsService.findAll.mockResolvedValue([
+				createMockChannel('light-1', 'light', 'device-1'),
+				createMockChannel('segment-1', 'segment_0', 'device-1'),
+			]);
+			channelsPropertiesService.findOneBy.mockImplementation((field, value, channelId) =>
+				Promise.resolve(createMockProperty(String(channelId) + '-' + String(value), String(value), String(channelId))),
+			);
+		});
+		it('reports equal actual values through sample admission, without legacy writes', async () => {
+			await service.updateDeviceState('wled-test', mockWledState, observation());
+			await service.updateDeviceState('wled-test', mockWledState, observation());
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(20);
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+		it('reports missing full-snapshot fields as faults rather than synthetic on or brightness', async () => {
+			const state = { ...mockWledState, segments: [] };
+			await service.updateDeviceState('wled-test', state, observation());
+			const calls = channelsPropertiesService.reportSample.mock.calls;
+			expect(calls.filter(([id, dto]) => String(id).startsWith('segment-1') && dto.value === null)).toHaveLength(5);
+		});
+		it('does not renew fields absent from a partial packet', async () => {
+			await service.updateDeviceState(
+				'wled-test',
+				{ ...mockWledState, on: undefined, brightness: undefined, segments: [] } as unknown as WledState,
+				observation(false),
+			);
+			expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
+		});
+		it('refuses wrong MAC and packet identity revoked during catalog lookup', async () => {
+			await service.updateDeviceState('wled-test', mockWledState, { ...observation(), mac: '000000000000' });
+			let current = true;
+			channelsService.findAll.mockImplementation(() => {
+				current = false;
+				return Promise.resolve([createMockChannel('light-1', 'light', 'device-1')]);
+			});
+			await service.updateDeviceState('wled-test', mockWledState, {
+				...observation(),
+				evidence: { ...observation().evidence, isCurrent: () => current },
+			});
+			expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
+		});
+		it('invalidates indexed segment properties when their actual physical ID differs', async () => {
+			await service.updateDeviceState(
+				'wled-test',
+				{ ...mockWledState, segments: [{ ...mockWledState.segments[0], id: 7 }] },
+				observation(false),
+			);
+			expect(
+				channelsPropertiesService.reportSample.mock.calls.filter(
+					([id, dto]) => String(id).startsWith('segment-1') && dto.value === null,
+				),
+			).toHaveLength(5);
+		});
 	});
 
 	describe('mapDevice', () => {

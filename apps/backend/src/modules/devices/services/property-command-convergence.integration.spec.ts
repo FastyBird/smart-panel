@@ -10,6 +10,9 @@ import { LightbulbMapper } from '../../../plugins/devices-homekit/mappers/lightb
 import { HomeKitMapperRegistryService } from '../../../plugins/devices-homekit/services/homekit-mapper-registry.service';
 import { VirtualProjectionListener } from '../../../plugins/devices-virtual/listeners/virtual-projection.listener';
 import { VirtualPropertyIndexService } from '../../../plugins/devices-virtual/services/virtual-property-index.service';
+import { DEVICES_WLED_TYPE } from '../../../plugins/devices-wled/devices-wled.constants';
+import { WledState } from '../../../plugins/devices-wled/interfaces/wled.interface';
+import { WledDeviceMapperService } from '../../../plugins/devices-wled/services/device-mapper.service';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -26,6 +29,7 @@ import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import { CompositePropertyCommandRegistryService } from './composite-property-command.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
@@ -174,6 +178,7 @@ describe('property command convergence integration', () => {
 			readLatest: (property: ChannelPropertyEntity) => Promise.resolve(properties.get(property.id)?.value ?? null),
 			writeWithState,
 			writeLiveWithState: writeWithState,
+			writeSampleWithState: writeWithState,
 			flushHistory: jest.fn().mockResolvedValue(undefined),
 		};
 		const structureLocks = new DeviceStructureLockService();
@@ -369,5 +374,85 @@ describe('property command convergence integration', () => {
 		expect(complete).toHaveLength(1);
 		expect(complete[0]?.records.filter((record) => record.stage === 'update-entry')).toHaveLength(1);
 		expect(complete[0]?.records.filter((record) => record.stage === 'source-publication')).toHaveLength(1);
+	});
+	it('requires causal live provider evidence for composite windows while preserving ordinary convergence', async () => {
+		await commandDispatch.dispatchBatch([update(source, true)], { requiresLiveEvidence: true });
+		const window = windows.get(source.id);
+		await channelsProperties.update(source.id, { type: source.type, value: true });
+		expect(windows.get(source.id)?.state).toBe('pending');
+		expect(source.value?.value).toBe(false);
+		expect(history).toEqual([]);
+		const now = new Date();
+		await channelsProperties.update(
+			source.id,
+			{ type: source.type, value: true },
+			{
+				sampleEvidence: {
+					sampledAt: now,
+					receivedAt: now,
+					observedAt: new Date(window.openedAt - 1),
+					provenance: 'live',
+				},
+			},
+		);
+		expect(windows.get(source.id)?.state).toBe('pending');
+		await channelsProperties.update(
+			source.id,
+			{ type: source.type, value: true },
+			{ sampleEvidence: { sampledAt: now, receivedAt: now, observedAt: now, provenance: 'live' } },
+		);
+		expect(windows.get(source.id)?.state).toBe('confirmed_grace');
+		expect(source.value?.value).toBe(true);
+	});
+	it('confirms a composite leaf through the production WLED mapper and causal core sample admission', async () => {
+		device.enabled = true;
+		Object.assign(device, { mac: 'aabbccddeeff' });
+		channel.identifier = 'light';
+		source.identifier = 'on';
+		Object.defineProperty(source, 'type', { value: DEVICES_WLED_TYPE });
+		jest
+			.spyOn(channelsProperties, 'findOneBy')
+			.mockImplementation((_field, value) => Promise.resolve(value === 'on' ? source : null));
+		const mapper = new WledDeviceMapperService(
+			{ findOneBy: () => Promise.resolve(device) } as never,
+			{ findAll: () => Promise.resolve([channel]) } as never,
+			channelsProperties,
+			{} as never,
+			{} as never,
+			{} as never,
+		);
+		const registry = new CompositePropertyCommandRegistryService();
+		registry.register({
+			canHandle: (property) => property.id === aliasB.id,
+			plan: () =>
+				Promise.resolve({
+					revision: 1,
+					children: [{ memberId: 'wled', update: update(source, true) }],
+					isCurrent: () => Promise.resolve(true),
+				}),
+		});
+		Object.assign(commandDispatch, { composites: registry });
+		Object.assign(platform, {
+			prepareCompositeBatch: (targets: IDevicePropertyData[]) =>
+				Promise.resolve({
+					updates: targets,
+					isCurrent: () => true,
+					dispatch: (isAdmitted: () => boolean) =>
+						isAdmitted() ? platform.processBatch(targets) : Promise.resolve(false),
+				}),
+		});
+		platform.processBatch.mockImplementation(async () => {
+			const now = new Date();
+			await mapper.updateDeviceState('wled', { on: true, mainSegment: 0, segments: [] } as WledState, {
+				mac: 'aabbccddeeff',
+				fullSnapshot: false,
+				evidence: { sampledAt: now, receivedAt: now, observedAt: now, provenance: 'live', isCurrent: () => true },
+			});
+			return true;
+		});
+		const result = await commandDispatch.dispatchBatch([update(aliasB, true)], { ttlMs: 200 });
+		expect(result.composite.status).toBe('confirmed');
+		expect(result.composite.children[0]).toMatchObject({ memberId: 'wled', status: 'confirmed' });
+		expect(history).toEqual([true]);
 	});
 });

@@ -52,6 +52,11 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return result;
 	}
 
+	/** The applied validated graph revision, safe for an internal provider publish guard. */
+	isRevisionCurrent(revision: number): boolean {
+		return this.quarantineRevision === revision;
+	}
+
 	async revision(manager: EntityManager = this.dataSource.manager): Promise<number> {
 		return (await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }))?.revision ?? 0;
 	}

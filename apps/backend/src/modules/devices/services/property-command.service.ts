@@ -21,6 +21,10 @@ import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/pro
 
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import {
+	CompositeCommandOutcome,
+	CompositePropertyCommandRegistryService,
+} from './composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
@@ -47,6 +51,7 @@ export interface DevicePropertyCommandResult {
 	device: string;
 	success: boolean;
 	reason?: string;
+	composite?: CompositeCommandOutcome;
 }
 
 export interface SinglePropertyCommandResult extends DevicePropertyCommandResult {
@@ -76,6 +81,7 @@ export class PropertyCommandService {
 		private readonly propertyCommandWindowService: PropertyCommandWindowService,
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
+		@Optional() private readonly composites?: CompositePropertyCommandRegistryService,
 	) {}
 
 	async handleInternal(
@@ -160,6 +166,7 @@ export class PropertyCommandService {
 		}
 
 		if (
+			!this.composites?.get(property) &&
 			!property.permissions.some((permission) =>
 				[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 			)
@@ -207,6 +214,7 @@ export class PropertyCommandService {
 			property: property.id,
 			value: validation.value,
 			success: result?.success ?? false,
+			composite: result?.composite,
 			reason: result?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
 		};
 	}
@@ -299,6 +307,7 @@ export class PropertyCommandService {
 			}
 
 			if (
+				!this.composites?.get(property) &&
 				!property.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)
@@ -358,6 +367,7 @@ export class PropertyCommandService {
 			property: r.property.id,
 			value: r.value,
 			success: executionSuccess,
+			composite: deviceResult?.composite,
 			reason: deviceResult?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
 		}));
 
@@ -415,15 +425,50 @@ export class PropertyCommandService {
 
 		try {
 			// Process commands per device
-			for (const deviceId of Object.keys(groupedProperties)) {
-				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
+			const hasComposite =
+				this.composites?.hasPlanners() &&
+				(await Promise.all(commands.map((command) => this.propertyMetadata.findOne(command.property)))).some(
+					(property) => this.composites?.get(property),
+				);
+			if (hasComposite) {
+				const updates: IDevicePropertyData[] = [];
+				for (const command of commands) {
+					const property = await this.propertyMetadata.findOne(command.property);
+					const device = await this.deviceGraphs.findOne(command.device);
+					const channel = device?.channels.find((candidate) => candidate.id === command.channel);
+					const propertyChannel = typeof property?.channel === 'string' ? property.channel : property?.channel?.id;
+					if (
+						!property ||
+						!device ||
+						!device.enabled ||
+						!channel ||
+						propertyChannel !== channel.id ||
+						(!this.composites?.get(property) &&
+							!property.permissions.some((permission) =>
+								[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+							))
+					)
+						throw new Error('Invalid composite requested structure or permissions');
+					const validation = validatePropertyCommandValue(property, command.value);
+					if (!validation.valid || validation.value === undefined)
+						throw new Error(validation.reason ?? 'Invalid composite value');
+					updates.push({ device, channel, property, value: validation.value });
+				}
+				const dispatch = await this.propertyCommandDispatchService.dispatchBatch(updates, {
 					intentId: intent.id,
 					ttlMs,
-					windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
 				});
+				for (const device of Object.keys(groupedProperties)) results.push({ device, ...dispatch });
+			} else
+				for (const deviceId of Object.keys(groupedProperties)) {
+					const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
+						intentId: intent.id,
+						ttlMs,
+						windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
+					});
 
-				results.push(result);
-			}
+					results.push(result);
+				}
 
 			// Map results to IntentTargetResult format - create a result for each property
 			const intentResults: IntentTargetResult[] = [];
@@ -441,7 +486,13 @@ export class PropertyCommandService {
 			}
 
 			// Complete the intent with results
-			this.intentsService.completeIntent(intent.id, intentResults);
+			const composites = [
+				...new Map(
+					results.filter((result) => result.composite).map((result) => [result.composite.id, result.composite]),
+				).values(),
+			];
+			if (composites.length) this.intentsService.completeIntent(intent.id, intentResults, composites);
+			else this.intentsService.completeIntent(intent.id, intentResults);
 
 			this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
 
@@ -476,6 +527,31 @@ export class PropertyCommandService {
 	private async resolveCommandIntentTtlMs(
 		groupedProperties: Readonly<Record<string, readonly PropertyCommandValueDto[]>>,
 	): Promise<number> {
+		if (this.composites?.hasPlanners()) {
+			try {
+				const updates: IDevicePropertyData[] = [];
+				for (const [deviceId, commands] of Object.entries(groupedProperties))
+					for (const command of commands) {
+						const property = await this.propertyMetadata.findOne(command.property);
+						const channel = property?.channel;
+						const device = channel && typeof channel !== 'string' ? channel.device : null;
+						if (
+							channel &&
+							typeof channel !== 'string' &&
+							channel.id === command.channel &&
+							device &&
+							typeof device !== 'string' &&
+							device.id === deviceId
+						)
+							updates.push({ property, channel, device, value: command.value });
+					}
+				const compositeBudget = await this.composites.estimateTimeoutMs(updates);
+				if (compositeBudget !== null) return compositeBudget;
+			} catch {
+				return DEFAULT_TTL_DEVICE_COMMAND;
+			}
+		}
+
 		const executions = [];
 
 		for (const [deviceId, commands] of Object.entries(groupedProperties)) {
@@ -509,7 +585,7 @@ export class PropertyCommandService {
 		deviceId: string,
 		commands: PropertyCommandValueDto[],
 		dispatchOptions: { intentId: string; ttlMs: number; windowHandles?: readonly PropertyCommandWindowHandle[] },
-	): Promise<{ device: string; success: boolean; reason?: string }> {
+	): Promise<DevicePropertyCommandResult> {
 		const device = await this.deviceGraphs.findOne(deviceId);
 
 		if (!device) {
@@ -521,7 +597,17 @@ export class PropertyCommandService {
 		// Check device online status before processing commands
 		// Allow commands through if status is UNKNOWN (e.g., storage unavailable or no data)
 		// Only reject when device is definitively offline
-		if (!device.status.online && device.status.status !== ConnectionState.UNKNOWN) {
+		if (
+			!commands.some((command) =>
+				this.composites?.get(
+					device.channels
+						.find((channel) => channel.id === command.channel)
+						?.properties.find((property) => property.id === command.property),
+				),
+			) &&
+			!device.status.online &&
+			device.status.status !== ConnectionState.UNKNOWN
+		) {
 			this.logger.warn(`Device is offline id=${deviceId} status=${device.status.status}`);
 
 			return { device: deviceId, success: false, reason: 'Device is offline' };
@@ -559,6 +645,7 @@ export class PropertyCommandService {
 			}
 
 			if (
+				!this.composites?.get(property) &&
 				!property.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)
@@ -604,12 +691,17 @@ export class PropertyCommandService {
 		if (!dispatch.success) {
 			this.logger.error(`Batch command execution failed for deviceId=${device.id}`);
 
-			return { device: deviceId, success: false, reason: dispatch.reason ?? 'Execution failed' };
+			return {
+				device: deviceId,
+				success: false,
+				reason: dispatch.reason ?? 'Execution failed',
+				composite: dispatch.composite,
+			};
 		}
 
 		this.logger.log(`Successfully executed batch command for deviceId=${device.id}`);
 
-		return { device: deviceId, success: true };
+		return { device: deviceId, success: true, composite: dispatch.composite };
 	}
 
 	/**
@@ -654,6 +746,7 @@ export class PropertyCommandService {
 			if (resolvedDevice === null) {
 				return null;
 			}
+			if (this.composites?.get(property)) return null;
 			const ttlMs = await this.resolveCommandIntentTtlMs({
 				[resolvedDevice.id]: [{ device: resolvedDevice.id, channel: channel.id, property: property.id, value }],
 			});
@@ -677,6 +770,10 @@ export class PropertyCommandService {
 	/** Releases a receipt whose optimistic persistence failed before asynchronous dispatch could begin. */
 	failApiPropertyCommandReceipt(receipt: ApiPropertyCommandReceipt): void {
 		this.propertyCommandWindowService.fail(receipt.handle);
+	}
+
+	canExecuteCompositeProperty(property: ChannelPropertyEntity): boolean {
+		return this.composites?.get(property) !== null && this.composites?.get(property) !== undefined;
 	}
 
 	async usesAuthoritativePropertyReadback(

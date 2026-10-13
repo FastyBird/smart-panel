@@ -58,6 +58,7 @@ import { ChannelsPropertiesTypeMapperService } from './services/channels.propert
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
 import { CommandLatencyTraceCollectorService } from './services/command-latency-trace-collector.service';
+import { CompositePropertyCommandRegistryService } from './services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './services/device-command-graph.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
@@ -73,6 +74,7 @@ import { DevicesControlsService } from './services/devices.controls.service';
 import { DevicesService } from './services/devices.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
+import { PropertyCommandAdmissionRegistryService } from './services/property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from './services/property-command-dispatch.service';
 import { PropertyCommandWindowService } from './services/property-command-window.service';
 import { PropertyCommandService } from './services/property-command.service';
@@ -158,6 +160,8 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		PropertyCommandWindowService,
 		CommandLatencyTraceCollectorService,
 		PropertyCommandDispatchService,
+		CompositePropertyCommandRegistryService,
+		PropertyCommandAdmissionRegistryService,
 		PropertyCommandService,
 		DeviceConnectionStateService,
 		StatsService,
@@ -202,6 +206,8 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		PropertyCommandWindowService,
 		CommandLatencyTraceCollectorService,
 		PropertyCommandDispatchService,
+		CompositePropertyCommandRegistryService,
+		PropertyCommandAdmissionRegistryService,
 		PropertyCommandService,
 		PropertyCommandTargetConstraintValidator,
 		DeviceExistsConstraintValidator,

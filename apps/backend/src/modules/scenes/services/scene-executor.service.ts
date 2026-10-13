@@ -161,7 +161,7 @@ export class SceneExecutorService {
 				const uniqueReasons = [...new Set(actionResults.filter((r) => !r.success && r.error).map((r) => r.error))];
 				const reasonsSuffix = uniqueReasons.length > 0 ? `: ${uniqueReasons.join('; ')}` : '';
 
-				if (result.successfulActions > 0) {
+				if (result.successfulActions > 0 || actionResults.some((action) => action.composite?.status === 'partial')) {
 					result.status = SceneExecutionStatus.PARTIALLY_COMPLETED;
 					result.error = `${result.failedActions} action(s) failed${reasonsSuffix}`;
 				} else {
@@ -176,7 +176,9 @@ export class SceneExecutorService {
 			const intentResults = this.mapActionResultsToIntentResults(scene.id, actionResults, scene.actions || []);
 
 			// Complete the intent
-			this.intentsService.completeIntent(intent.id, intentResults);
+			const composites = actionResults.flatMap((action) => (action.composite ? [action.composite] : []));
+			if (composites.length) this.intentsService.completeIntent(intent.id, intentResults, composites);
+			else this.intentsService.completeIntent(intent.id, intentResults);
 
 			this.logger.log(`[TRIGGER] Completed intent ${intent.id} for scene ${sceneId}`);
 
@@ -332,7 +334,7 @@ export class SceneExecutorService {
 
 		// Add scene-level result based on overall outcome
 		const allSucceeded = actionResults.every((r) => r.success);
-		const anySucceeded = actionResults.some((r) => r.success);
+		const anySucceeded = actionResults.some((r) => r.success || r.composite?.status === 'partial');
 		const sceneStatus = allSucceeded
 			? IntentTargetStatus.SUCCESS
 			: anySucceeded

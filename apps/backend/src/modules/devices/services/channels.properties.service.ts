@@ -1224,8 +1224,9 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const activeWindow = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (
 			activeWindow &&
-			evidence &&
-			(evidence.provenance !== 'live' ||
+			(evidence || activeWindow.requiresLiveEvidence) &&
+			(!evidence ||
+				evidence.provenance !== 'live' ||
 				!evidence.observedAt ||
 				!Number.isFinite(evidence.observedAt.getTime()) ||
 				evidence.observedAt.getTime() < activeWindow.openedAt ||
