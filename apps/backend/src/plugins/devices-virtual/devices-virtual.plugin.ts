@@ -41,6 +41,7 @@ import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME,
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
+	VIRTUAL_THERMOSTAT_COMMAND_HANDLER,
 } from './devices-virtual.constants';
 import {
 	VirtualCategoryChangeUnsafeException,
@@ -147,6 +148,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualThermostatInputsService,
 		VirtualThermostatTransportService,
 		VirtualThermostatRuntimeService,
+		{ provide: VIRTUAL_THERMOSTAT_COMMAND_HANDLER, useExisting: VirtualThermostatConfigService },
 		VirtualThermostatOwnershipSubscriber,
 		VirtualValueSourceService,
 		VirtualEnergyClaimService,
