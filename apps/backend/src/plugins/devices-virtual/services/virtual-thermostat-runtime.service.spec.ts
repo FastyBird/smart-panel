@@ -40,7 +40,11 @@ import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
-import { ThermostatActuationAdapter, VirtualThermostatTransportService } from './virtual-thermostat-transport.service';
+import {
+	ThermostatActuationAdapter,
+	ThermostatReleaseOrderingEvidence,
+	VirtualThermostatTransportService,
+} from './virtual-thermostat-transport.service';
 
 jest.setTimeout(30_000);
 
@@ -60,6 +64,10 @@ describe('virtual thermostat durable runtime', () => {
 	let afterOnGate: Promise<void> | null;
 	let allowLateOn: boolean;
 	let proofAllowed: (propertyId: string) => boolean;
+	let proofCalls: number;
+	let installedQualifications: Map<string, ThermostatInstalledQualification>;
+	let providerCurrent: boolean;
+	let proofMutation: (proof: ThermostatReleaseOrderingEvidence) => ThermostatReleaseOrderingEvidence;
 	const sample = (id: string, value: number | boolean): void => {
 		const at = new Date();
 		samples.set(id, {
@@ -87,6 +95,10 @@ describe('virtual thermostat durable runtime', () => {
 		afterOnGate = null;
 		allowLateOn = false;
 		proofAllowed = () => true;
+		proofMutation = (proof) => proof;
+		proofCalls = 0;
+		installedQualifications = new Map();
+		providerCurrent = true;
 		events = new EventEmitter2();
 		controllerId = uuid();
 		sensorId = uuid();
@@ -220,8 +232,14 @@ describe('virtual thermostat durable runtime', () => {
 			registerRuntimeAdmission: () => () => undefined,
 			invalidate: jest.fn(),
 			refresh: jest.fn().mockResolvedValue(undefined),
-			qualification: (claim: VirtualThermostatActuatorClaimEntity) =>
-				({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+			qualification: (claim: VirtualThermostatActuatorClaimEntity) => {
+				if (!installedQualifications.has(claim.physicalIdentity))
+					installedQualifications.set(
+						claim.physicalIdentity,
+						Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+					);
+				return installedQualifications.get(claim.physicalIdentity);
+			},
 			mintAuthority: () => ({}),
 			isAuthorized: () => true,
 		} as unknown as VirtualThermostatClaimsService;
@@ -243,19 +261,27 @@ describe('virtual thermostat durable runtime', () => {
 					pendingOnDrained: false as const,
 				};
 			},
-			reconcile: (target, ids, off, isCurrent) =>
-				Promise.resolve(
+			reconcile: (target, ids, _off, isCurrent, scope) => {
+				proofCalls++;
+				const observedAt = new Date();
+				if (isCurrent() && proofAllowed(target.property.id)) sample(target.property.id, false);
+				return Promise.resolve(
 					isCurrent() && proofAllowed(target.property.id)
-						? {
+						? proofMutation({
 								proofId: uuid(),
+								scope,
+								observedAt,
+								isCurrent,
+								sourceIsCurrent: () => providerCurrent,
 								physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device) ?? '',
 								connectionIdentity: 'ordered-fake-connection',
 								coveredCommandIds: ids,
 								externalWriterBarrier: true,
-								offSample: off,
-							}
+								offSample: samples.get(target.property.id),
+							})
 						: null,
-				),
+				);
+			},
 		};
 		const transport = { get: () => adapter } as unknown as VirtualThermostatTransportService;
 		const producers = { unregister: jest.fn() } as unknown as PropertyProducerRegistryService;
@@ -288,6 +314,110 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		throw new Error('ON did not reach the durable dispatch journal');
 	};
+
+	const finishRestartReconciliation = async (): Promise<void> => {
+		for (let attempt = 0; attempt < 3; attempt++) {
+			await runtime.inspect(controllerId);
+			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+			await runtime.flush();
+		}
+	};
+
+	it('requires new drainage when installed qualification changes under the same claim identity and revision', async () => {
+		await finishRestartReconciliation();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+		installedQualifications.set(
+			claim.physicalIdentity,
+			Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+		);
+		proofAllowed = () => false;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await finishRestartReconciliation();
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		proofAllowed = () => true;
+		await finishRestartReconciliation();
+		expect(sentTargets.some((send) => send.on)).toBe(true);
+	});
+	it('revokes a queued ON after qualification replacement and retains its reservation', async () => {
+		let resume: () => void;
+		onGate = new Promise<void>((resolve) => {
+			resume = resolve;
+		});
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await waitForOnJournal();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		installedQualifications.set(
+			claim.physicalIdentity,
+			Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+		);
+		proofAllowed = () => false;
+		resume();
+		await finishRestartReconciliation();
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(
+			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
+		).toBe(1);
+	});
+	it('revokes the stored release barrier when its stable provider connection lease changes', async () => {
+		await finishRestartReconciliation();
+		providerCurrent = false;
+		proofAllowed = () => false;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await finishRestartReconciliation();
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+		expect(sentTargets.some((send) => send.on)).toBe(false);
+	});
+
+	it('accepts a newly admitted provider OFF sample instead of reusing pre-reconciliation timestamps', async () => {
+		runtime.onModuleDestroy();
+		const old = samples.get(relayId);
+		const at = new Date(Date.now() - 5000);
+		samples.set(relayId, { ...old, sampledAt: at, receivedAt: at });
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		await finishRestartReconciliation();
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+		expect(samples.get(relayId).receivedAt.getTime()).toBeGreaterThan(at.getTime());
+	});
+	it.each(['cached', 'retained', 'claim', 'config', 'contract', 'source', 'observation', 'unaccepted'])(
+		'rejects %s provider proof and retains the actuator reservation',
+		async (mode) => {
+			runtime.onModuleDestroy();
+			proofCalls = 0;
+			proofMutation = (proof) => {
+				if (mode === 'cached' || mode === 'retained')
+					return {
+						...proof,
+						offSample: { ...proof.offSample, provenance: mode },
+					} as unknown as ThermostatReleaseOrderingEvidence;
+				if (mode === 'claim')
+					return { ...proof, scope: { ...proof.scope, claimRevision: proof.scope.claimRevision + 1 } };
+				if (mode === 'config')
+					return { ...proof, scope: { ...proof.scope, controllerRevision: proof.scope.controllerRevision + 1 } };
+				if (mode === 'contract') return { ...proof, scope: { ...proof.scope, contractFingerprint: 'wrong' } };
+				if (mode === 'source') return { ...proof, isCurrent: () => false };
+				if (mode === 'observation') return { ...proof, observedAt: new Date(0) };
+				return {
+					...proof,
+					offSample: { ...proof.offSample, receivedAt: new Date(proof.offSample.receivedAt.getTime() - 1) },
+				};
+			};
+			runtime = makeRuntime();
+			await runtime.onApplicationBootstrap();
+			await finishRestartReconciliation();
+			expect(proofCalls).toBeGreaterThan(0);
+			expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+			expect(
+				await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
+			).toBe(1);
+			expect(sentTargets.some((send) => send.on)).toBe(false);
+		},
+	);
 
 	it('restarts a prepared ON before transport as unresolved and refuses energizing without drainage proof', async () => {
 		onGate = new Promise<void>(() => undefined);

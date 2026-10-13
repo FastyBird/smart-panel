@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 
+import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource, createSqliteDataSource } from '../../../common/database/sqlite-data-source';
@@ -189,7 +190,7 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 			new DeviceStructureLockService(),
 			new PropertyStateCoordinatorService(),
 			new PropertyCommandWindowService(),
-			{} as never,
+			database,
 			events,
 			undefined,
 			{ findOne: () => Promise.resolve(property) } as unknown as PropertyMetadataService,
@@ -244,6 +245,51 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 		adapter.feed('floor', { temperature: value });
 		await samplePending;
 	};
+
+	it('hydrates temperature units through every real findAll query before adoption', async () => {
+		for (const channelIds of [undefined, channel.id, [channel.id]]) {
+			const loaded = await reports.findAll<Zigbee2mqttChannelPropertyEntity>(channelIds, property.type);
+			expect(loaded[0].unit).toBe('°C');
+			await sources.bindDevice(device.id, sources.getIdentity('floor'), [
+				{ property: loaded[0], mapping: { field: 'temperature', transformer: null } },
+			]);
+			expect((await sources.getReadiness(property.id)).bound).toBe(true);
+		}
+	});
+
+	it('recovers after a transient registry SQL failure on an identical observation and keeps mismatches quarantined', async () => {
+		await bind();
+		const logger = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+		const repository = database.getRepository(ZigbeeSampleSourceEntity);
+		jest.spyOn(repository, 'find').mockRejectedValueOnce(new Error('SQLITE_BUSY'));
+		await sources.observeRegistry([zigbeeSourceIdentity(registry(ieee, '°F'))]);
+		expect(logger).toHaveBeenCalledWith(expect.stringContaining('SQLITE_BUSY'));
+		expect((await sources.prepareDispatch(device.id, 'floor', [property.id])).allowed).toBe(false);
+		await expect(bind()).rejects.toThrow('metadata changed');
+		await sources.observeRegistry([zigbeeSourceIdentity(registry(ieee, '°F'))]);
+		expect((await sources.getReadiness(property.id)).quarantined).toBe(true);
+		await sources.observeRegistry([zigbeeSourceIdentity(registry())]);
+		await bind();
+		expect((await sources.prepareDispatch(device.id, 'floor', [property.id])).allowed).toBe(true);
+		logger.mockRestore();
+	});
+
+	it('preserves unambiguous state and temperature when color variants share one property', async () => {
+		const entry = registry();
+		entry.definition.exposes.push({
+			type: 'light',
+			features: [
+				{ type: 'binary', property: 'state', name: 'state', access: 7, value_on: 'ON', value_off: 'OFF' },
+				{ type: 'composite', property: 'color', name: 'color_xy', access: 7, features: [] },
+				{ type: 'composite', property: 'color', name: 'color_hs', access: 7, features: [] },
+			],
+		});
+		const identity = zigbeeSourceIdentity(entry);
+		expect(identity.fields.map((field) => field.property)).toEqual(['state', 'temperature']);
+		await sources.observeRegistry([identity]);
+		await bind();
+		expect((await sources.getReadiness(property.id)).bound).toBe(true);
+	});
 
 	it('requires deliberate initial binding for legacy properties and never guesses identity from a friendly name', async () => {
 		jest.setSystemTime(base + 1_000);
@@ -503,6 +549,13 @@ describe('durable Zigbee physical source identity at real sample admission', () 
 					{ property, mapping: { field: 'temperature', transformer: null } },
 					{ property: on, mapping: { field: 'state', transformer: null } },
 				]);
+				await sources.bindDevice(device.id, sources.getIdentity('floor'), [
+					{ property: on, mapping: { field: 'state', transformer: null } },
+				]);
+				expect((await sources.getReadiness(property.id)).quarantined).toBe(true);
+				expect((await sources.prepareDispatch(device.id, 'floor', [property.id])).allowed).toBe(false);
+				expect((await sources.prepareDispatch(device.id, 'floor', ['missing'])).allowed).toBe(false);
+				expect(await platform.process(update)).toBe(true);
 				const rebound = await platform.prepareCompositeBatch([update]);
 				expect(rebound.updates[0].property.id).toBe(on.id);
 				expect(await rebound.dispatch(() => true)).toBe(true);

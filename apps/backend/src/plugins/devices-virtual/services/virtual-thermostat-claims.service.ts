@@ -10,6 +10,7 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
@@ -164,6 +165,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			!profile.releaseOrderingQualified ||
 			!profile.independentProtectionQualified ||
 			!evidence.upstreamWritersExcluded ||
+			(profile.guardScript !== undefined &&
+				(guardScriptReadiness(profile.guardScript).length > 0 ||
+					profile.guardScript.evidenceId !== profile.evidenceId)) ||
 			!Number.isSafeInteger(profile.revision) ||
 			profile.revision < 1 ||
 			!Number.isFinite(profile.testedLeaseSeconds.min) ||
@@ -176,7 +180,11 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			evidence.physicalIdentity,
 			Object.freeze({
 				...evidence,
-				profile: Object.freeze({ ...profile, testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }) }),
+				profile: Object.freeze({
+					...profile,
+					testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
+					...(profile.guardScript ? { guardScript: Object.freeze({ ...profile.guardScript }) } : {}),
+				}),
 			}),
 		);
 		this.epoch++;

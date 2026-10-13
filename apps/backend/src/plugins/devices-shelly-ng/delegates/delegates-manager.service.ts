@@ -25,9 +25,15 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import {
 	ShellyRawSample,
 	hasQualifiedFloorSourceIdentity,
+	hasQualifiedRawVoltageIdentity,
 	nativeTemperatureIdentity,
+	nativeVoltmeterVoltageIdentity,
 } from '../contracts/native-temperature.contract';
-import { ShellyProtectiveCommand, ShellyProtectiveCommandResult } from '../contracts/protective-switch.contract';
+import {
+	ShellyProtectiveCommand,
+	ShellyProtectiveCommandResult,
+	ShellyProtectiveQualification,
+} from '../contracts/protective-switch.contract';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
 	DevicesShellyNgException,
@@ -47,6 +53,7 @@ import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { PollPlacementDiagnosticsService } from '../services/poll-placement-diagnostics.service';
+import { ShellyGuardFenceReadback, ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { ShellySampleSourceLease, ShellySampleSourcesService } from '../services/shelly-sample-sources.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
@@ -1974,7 +1981,11 @@ export class DelegatesManagerService {
 						componentKey: source.componentKey,
 						values: {},
 						evidence: { sampledAt: new Date(), receivedAt: new Date(), observedAt: new Date(), provenance: 'live' },
-					});
+					}).catch((error: Error) =>
+						this.logger.error(
+							`Failed to invalidate Shelly sample for property=${source.property.id}: ${error.message}`,
+						),
+					);
 				}
 			}
 
@@ -1983,6 +1994,17 @@ export class DelegatesManagerService {
 
 			if (state === true) {
 				if (wasConnected) return;
+				for (const source of this.sampleSources.get(delegate.id) ?? []) {
+					if (
+						hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+						hasQualifiedRawVoltageIdentity(source.channel.identifier)
+					)
+						void this.sampleSourcesRegistry
+							?.get(source.property.id)
+							.catch((error: Error) =>
+								this.logger.error(`Failed to activate Shelly sample source=${source.property.id}: ${error.message}`),
+							);
+				}
 
 				this.delegateConnectedState.set(delegate.id, true);
 				this.pollPlacementDiagnostics.observeDelegate({
@@ -2191,11 +2213,14 @@ export class DelegatesManagerService {
 		this.sampleHandlers.delete(delegate.id);
 		delegate.setSampleComponentKeys([]);
 		for (const source of this.sampleSources.get(delegate.id) ?? []) {
+			this.sampleSourcesRegistry?.revoke(source.property.id);
 			await this.admitRawSample(source.property, null, {
 				componentKey: source.componentKey,
 				values: {},
 				evidence: { sampledAt: new Date(), receivedAt: new Date(), observedAt: new Date(), provenance: 'live' },
-			});
+			}).catch((error: Error) =>
+				this.logger.error(`Failed to invalidate Shelly sample for property=${source.property.id}: ${error.message}`),
+			);
 			this.sampleRevisions.delete(`${delegate.id}|${source.property.id}`);
 		}
 		this.sampleSources.delete(delegate.id);
@@ -2220,13 +2245,18 @@ export class DelegatesManagerService {
 			if (/^temperature:\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'tC';
-			} else if (hasQualifiedFloorSourceIdentity(channel.identifier)) {
+			} else if (
+				hasQualifiedFloorSourceIdentity(channel.identifier) ||
+				hasQualifiedRawVoltageIdentity(channel.identifier)
+			) {
 				componentKey = channel.identifier.split(':').slice(1, 3).join(':');
-				attribute = componentKey.startsWith('input:')
-					? 'xpercent'
-					: componentKey.startsWith('voltmeter:')
-						? 'xvoltage'
-						: 'tC';
+				attribute = hasQualifiedRawVoltageIdentity(channel.identifier)
+					? 'voltage'
+					: componentKey.startsWith('input:')
+						? 'xpercent'
+						: componentKey.startsWith('voltmeter:')
+							? 'xvoltage'
+							: 'tC';
 			} else if (/^(switch|light):\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'output';
@@ -2243,9 +2273,10 @@ export class DelegatesManagerService {
 					channel.id,
 				);
 			if (property) {
-				const sourceLease = hasQualifiedFloorSourceIdentity(channel.identifier)
-					? await this.sampleSourcesRegistry?.get(property.id)
-					: undefined;
+				const sourceLease =
+					hasQualifiedFloorSourceIdentity(channel.identifier) || hasQualifiedRawVoltageIdentity(channel.identifier)
+						? await this.sampleSourcesRegistry?.get(property.id)
+						: undefined;
 				sources.push({ channel, property, componentKey, attribute, sourceLease: sourceLease ?? undefined });
 			}
 			if (/^light:\d+$/.test(channel.identifier)) {
@@ -2263,11 +2294,17 @@ export class DelegatesManagerService {
 			const generation = this.sampleGenerations.get(delegate.id) ?? 0;
 			for (const source of sources.filter((item) => item.componentKey === sample.componentKey)) {
 				const errors = sample.values.errors;
-				const fault = Array.isArray(errors) && errors.length > 0;
+				const fault =
+					Array.isArray(errors) &&
+					errors.length > 0 &&
+					(source.attribute !== 'output' || errors.includes('source_missing'));
 				if (!Object.hasOwn(sample.values, source.attribute) && !fault) continue;
 				const key = `${delegate.id}|${source.property.id}`;
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
 				this.sampleRevisions.set(key, revision);
+				const qualifiedIdentity =
+					hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+					hasQualifiedRawVoltageIdentity(source.channel.identifier);
 				const sourceIsCurrent = (): boolean =>
 					(this.sampleGenerations.get(delegate.id) ?? 0) === generation &&
 					(sample.evidence.sourceIsCurrent?.() ?? sample.evidence.isCurrent?.() ?? true);
@@ -2285,7 +2322,7 @@ export class DelegatesManagerService {
 					const sourceGuard = (): boolean =>
 						sourceIsCurrent() &&
 						(reported === null ||
-							!hasQualifiedFloorSourceIdentity(source.channel.identifier) ||
+							!qualifiedIdentity ||
 							(sourceProof &&
 								Boolean(lease && this.sampleSourcesRegistry?.isCurrent(lease, sample.evidence.observedAt))));
 					return this.admitRawSample(source.property, reported, {
@@ -2299,7 +2336,7 @@ export class DelegatesManagerService {
 				};
 				const task = (async (): Promise<void> => {
 					// Faults do not wait for configuration RPC or ordinary telemetry coalescing.
-					if (value !== null && hasQualifiedFloorSourceIdentity(source.channel.identifier)) {
+					if (value !== null && qualifiedIdentity) {
 						lease = await this.sampleSourcesRegistry?.get(source.property.id);
 						if (!isCurrent()) return;
 						if (
@@ -2315,7 +2352,15 @@ export class DelegatesManagerService {
 						const current = await delegate.readNativeTemperatureIdentity(source.componentKey);
 						if (!isCurrent()) return;
 						const identity =
-							current && nativeTemperatureIdentity(source.componentKey, current.config, current.peripherals);
+							current &&
+							(hasQualifiedRawVoltageIdentity(source.channel.identifier)
+								? nativeVoltmeterVoltageIdentity(
+										source.componentKey,
+										current.config,
+										current.peripherals,
+										device.canonicalMac,
+									)
+								: nativeTemperatureIdentity(source.componentKey, current.config, current.peripherals));
 						if (
 							!identity ||
 							identity.channelIdentifier !== source.channel.identifier ||
@@ -2327,11 +2372,28 @@ export class DelegatesManagerService {
 						sourceProof = true;
 					}
 					if (!isCurrent()) return;
+					// Verified live ordinary reports may use capture time; probes retain invalid device-clock evidence.
+					const evidence = sample.evidence;
+					const observedAt = evidence.observedAt;
+					const invalidDeviceClock =
+						!Number.isFinite(evidence.sampledAt.getTime()) ||
+						evidence.sampledAt.getTime() > evidence.receivedAt.getTime();
+					const ordinarySample =
+						!qualifiedIdentity &&
+						invalidDeviceClock &&
+						evidence.provenance === 'live' &&
+						(evidence.sourceIsCurrent?.() ?? evidence.isCurrent?.()) === true &&
+						sourceIsCurrent() &&
+						observedAt instanceof Date &&
+						Number.isFinite(observedAt.getTime()) &&
+						observedAt.getTime() <= evidence.receivedAt.getTime()
+							? { ...sample, evidence: { ...evidence, sampledAt: observedAt } }
+							: sample;
 					// Legacy dynamic channels remain displayable; only the address-bound probe source is control-eligible.
 					const admitted =
 						value !== null && /^temperature:1\d\d$/.test(source.channel.identifier)
 							? { ...sample, evidence: { ...sample.evidence, provenance: 'cached' as const } }
-							: sample;
+							: ordinarySample;
 					await admit(value, admitted);
 				})();
 				let active = this.activeSamples.get(delegate.id);
@@ -2358,6 +2420,44 @@ export class DelegatesManagerService {
 			property.id,
 			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value }),
 			sample.evidence,
+		);
+	}
+
+	prepareGuardRpcSession(
+		device: ShellyNgDeviceEntity,
+		componentId: number,
+		qualification: ShellyProtectiveQualification,
+	): ShellyGuardRpcSession | null {
+		if (
+			!device.identifier ||
+			qualification.guardScript?.canonicalMac.toUpperCase() !== device.canonicalMac?.toUpperCase()
+		)
+			return null;
+		for (const id of this.identifierToDelegates.get(device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (!delegate?.guardedTransportActive || this.delegateDeviceIds.get(id) !== device.id) continue;
+			const generation = this.sampleGenerations.get(id) ?? 0;
+			const lease = delegate.prepareGuardRpcSession(
+				componentId,
+				qualification,
+				() =>
+					this.delegates.get(id) === delegate &&
+					this.delegateDeviceIds.get(id) === device.id &&
+					(this.sampleGenerations.get(id) ?? 0) === generation,
+			);
+			if (lease?.isCurrent()) return lease;
+		}
+		return null;
+	}
+	async admitGuardFenceSample(
+		property: ShellyNgChannelPropertyEntity,
+		readback: ShellyGuardFenceReadback,
+	): Promise<void> {
+		if (!readback.isCurrent()) return;
+		await this.channelsPropertiesService.reportSample(
+			property.id,
+			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value: false }),
+			readback.evidence,
 		);
 	}
 

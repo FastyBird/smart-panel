@@ -32,7 +32,7 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 
-import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 import {
@@ -107,9 +107,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly epochs = new Map<string, number>();
 	private readonly contexts = new Map<string, ControllerContext>();
 	private readonly diagnostics = new Map<string, ThermostatRuntimeDiagnostic>();
-	private readonly reconciled = new Set<string>();
+	private readonly reconciled = new Map<
+		string,
+		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
+	>();
 	private isReconciled(claim: VirtualThermostatActuatorClaimEntity): boolean {
-		return this.reconciled.has(`${claim.id}:${claim.revision}`);
+		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
+		const qualification = this.claims.qualification(claim, false);
+		return !!proof && !!qualification && proof.qualification === qualification && proof.sourceIsCurrent();
 	}
 	private readonly contacts = new Map<string, VirtualWindowContactState>();
 	private readonly trends = new Map<string, VirtualWindowTrendState>();
@@ -657,14 +662,40 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (off?.value !== false) return;
 		const pending = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
 		if (pending.some((command) => this.inFlight.has(command.id))) return;
+		const startedAt = new Date();
 		const proof = await this.transport.get(target).reconcile(
 			target,
 			pending.map((command) => command.id),
 			off,
 			() => this.canSend(context, claim, 'off'),
+			{
+				controllerId: context.config.controllerId,
+				controllerRevision: context.config.revision,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				contractFingerprint: claim.contractFingerprint,
+				qualification,
+			},
 		);
+		const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
+		const endedAt = new Date();
 		if (
 			!proof ||
+			!acceptedOff ||
+			acceptedOff.value !== false ||
+			acceptedOff.provenance !== 'live' ||
+			acceptedOff.quality !== 'good' ||
+			!proof.isCurrent?.() ||
+			!proof.sourceIsCurrent?.() ||
+			this.claims.qualification(claim, context.claims.length > 1) !== qualification ||
+			proof.scope?.controllerId !== context.config.controllerId ||
+			proof.scope.controllerRevision !== context.config.revision ||
+			proof.scope.claimId !== claim.id ||
+			proof.scope.claimRevision !== claim.revision ||
+			proof.scope.contractFingerprint !== claim.contractFingerprint ||
+			!Number.isFinite(proof.observedAt?.getTime()) ||
+			proof.observedAt.getTime() < startedAt.getTime() ||
+			proof.observedAt.getTime() > endedAt.getTime() ||
 			!this.canSend(context, claim, 'off') ||
 			!proof.proofId ||
 			!proof.connectionIdentity ||
@@ -674,15 +705,19 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			proof.offSample.propertyId !== target.property.id ||
 			proof.offSample.value !== false ||
 			proof.offSample.provenance !== 'live' ||
-			proof.offSample.sampledAt.getTime() !== off.sampledAt.getTime() ||
-			proof.offSample.receivedAt.getTime() !== off.receivedAt.getTime()
+			proof.offSample.quality !== 'good' ||
+			proof.offSample.sampledAt.getTime() < proof.observedAt.getTime() ||
+			proof.offSample.receivedAt.getTime() > endedAt.getTime() ||
+			proof.offSample.sampledAt.getTime() !== acceptedOff.sampledAt.getTime() ||
+			proof.offSample.receivedAt.getTime() !== acceptedOff.receivedAt.getTime() ||
+			proof.offSample.revision !== acceptedOff.revision
 		)
 			return;
 		const branch = context.branches.get(claim.id);
 		branch.releaseProofId = proof.proofId;
 		branch.activity = 'off';
 		if (!branch.lastVerifiedOffAt || pending.some((command) => command.action === 'on'))
-			branch.lastVerifiedOffAt = off.receivedAt;
+			branch.lastVerifiedOffAt = proof.offSample.receivedAt;
 		branch.releaseAttempts = 0;
 		branch.nextReleaseAt = null;
 		branch.fault = null;
@@ -697,7 +732,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				await manager.save(branch);
 			}),
 		);
-		this.reconciled.add(`${claim.id}:${claim.revision}`);
+		this.reconciled.set(`${claim.id}:${claim.revision}`, { qualification, sourceIsCurrent: proof.sourceIsCurrent });
 		if (claim.state === 'releasing') {
 			const authority = this.claims.mintAuthority(claim.id, 'off');
 			await this.claims.completeRelease(

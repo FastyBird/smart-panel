@@ -3,15 +3,30 @@ import { Injectable } from '@nestjs/common';
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ShellyProtectiveCommandResult } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
 import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
+import { thermostatActuatorIdentity } from './virtual-thermostat-contract.utils';
 
+export interface ThermostatReconciliationScope {
+	readonly controllerId: string;
+	readonly controllerRevision: number;
+	readonly claimId: string;
+	readonly claimRevision: number;
+	readonly contractFingerprint: string;
+	readonly qualification: ThermostatInstalledQualification;
+}
 export interface ThermostatReleaseOrderingEvidence {
 	readonly proofId: string;
+	readonly scope: Omit<ThermostatReconciliationScope, 'qualification'>;
+	readonly observedAt: Date;
+	readonly isCurrent: () => boolean;
+	/** Stable provider lease, independent of a single evaluation/command admission window. */
+	readonly sourceIsCurrent: () => boolean;
 	readonly physicalIdentity: string;
 	readonly connectionIdentity: string;
 	readonly coveredCommandIds: readonly string[];
@@ -33,6 +48,7 @@ export interface ThermostatActuationAdapter {
 		commandIds: readonly string[],
 		off: QualifiedPropertySample,
 		isCurrent: () => boolean,
+		scope: ThermostatReconciliationScope,
 	): Promise<ThermostatReleaseOrderingEvidence | null>;
 }
 
@@ -40,7 +56,10 @@ export interface ThermostatActuationAdapter {
 @Injectable()
 export class VirtualThermostatTransportService {
 	private readonly adapters = new Map<string, ThermostatActuationAdapter>();
-	constructor(private readonly platforms: PlatformRegistryService) {}
+	constructor(
+		private readonly platforms: PlatformRegistryService,
+		private readonly values: PropertyValueService,
+	) {}
 	register(type: string, adapter: ThermostatActuationAdapter): () => void {
 		if (this.adapters.has(type)) throw new Error('Thermostat transport already registered');
 		this.adapters.set(type, adapter);
@@ -52,20 +71,86 @@ export class VirtualThermostatTransportService {
 		const platform = this.platforms.get(target.device);
 		if (!(platform instanceof ShellyNgDevicePlatform)) return null;
 		return {
-			// Existing SDK supplies send-time fencing, but not qualified correlated drainage/readback.
-			canReconcile: () => false,
-			send: (target, claim, qualification, isAdmitted) =>
-				target.device instanceof ShellyNgDeviceEntity
-					? platform.processProtectiveCommand(
-							{ device: target.device, channel: target.channel, property: target.property },
-							target.value === true && qualification
-								? { on: true, leaseSeconds: claim.leaseSeconds, qualification: qualification.profile }
-								: { on: false },
-							1000,
-							isAdmitted,
-						)
-					: Promise.resolve({ outcome: 'refused' as const, reasons: ['unsupported_protective_leaf'] }),
-			reconcile: () => Promise.resolve(null),
+			canReconcile: (target, qualification) =>
+				qualification.upstreamWritersExcluded &&
+				qualification.profile.releaseOrderingQualified &&
+				qualification.profile.independentProtectionQualified &&
+				qualification.physicalIdentity === thermostatActuatorIdentity(target.property, target.channel, target.device) &&
+				!!platform.prepareGuardRpcSession(target, qualification.profile),
+			send: async (target, claim, qualification, isAdmitted) => {
+				if (!(target.device instanceof ShellyNgDeviceEntity))
+					return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
+				const session = qualification && platform.prepareGuardRpcSession(target, qualification.profile);
+				if (target.value === true) {
+					if (
+						!session ||
+						!qualification.upstreamWritersExcluded ||
+						!qualification.profile.releaseOrderingQualified ||
+						!qualification.profile.independentProtectionQualified ||
+						qualification.physicalIdentity !== claim.physicalIdentity
+					)
+						return { outcome: 'refused', reasons: ['ordered_script_qualification_missing'] };
+					return session.on(claim.leaseSeconds, 1000, isAdmitted);
+				}
+				if (session) {
+					const readback = await session.fence(1000, isAdmitted);
+					if (readback) {
+						await platform.admitGuardFenceSample(target, readback);
+						return { outcome: 'accepted', wasOn: readback.wasOn, outputConfirmed: false, pendingOnDrained: false };
+					}
+				}
+				// An unconfirmed script barrier still permits best-effort absolute native OFF.
+				return platform.processProtectiveCommand(
+					{ device: target.device, channel: target.channel, property: target.property },
+					{ on: false },
+					1000,
+					isAdmitted,
+				);
+			},
+			reconcile: async (target, commandIds, _off, isCurrent, scope) => {
+				const qualification = scope.qualification;
+				if (
+					!qualification.upstreamWritersExcluded ||
+					!qualification.profile.releaseOrderingQualified ||
+					!qualification.profile.independentProtectionQualified ||
+					qualification.physicalIdentity !== thermostatActuatorIdentity(target.property, target.channel, target.device)
+				)
+					return null;
+				const session = platform.prepareGuardRpcSession(target, qualification.profile);
+				if (!session) return null;
+				const readback = await session.fence(1000, isCurrent);
+				if (!readback || !readback.isCurrent() || typeof readback.evidence.sourceIsCurrent !== 'function') return null;
+				await platform.admitGuardFenceSample(target, readback);
+				const sample = this.values.readQualifiedSample(target.property, 30_000);
+				if (
+					!sample ||
+					sample.value !== false ||
+					sample.provenance !== 'live' ||
+					sample.quality !== 'good' ||
+					sample.sampledAt.getTime() !== readback.evidence.sampledAt.getTime() ||
+					sample.receivedAt.getTime() !== readback.evidence.receivedAt.getTime() ||
+					!readback.isCurrent()
+				)
+					return null;
+				return {
+					proofId: readback.proofId,
+					physicalIdentity: qualification.physicalIdentity,
+					connectionIdentity: readback.connectionIdentity,
+					coveredCommandIds: [...commandIds],
+					externalWriterBarrier: true,
+					offSample: sample,
+					observedAt: readback.evidence.observedAt,
+					isCurrent: readback.isCurrent,
+					sourceIsCurrent: readback.evidence.sourceIsCurrent,
+					scope: {
+						controllerId: scope.controllerId,
+						controllerRevision: scope.controllerRevision,
+						claimId: scope.claimId,
+						claimRevision: scope.claimRevision,
+						contractFingerprint: scope.contractFingerprint,
+					},
+				};
+			},
 		};
 	}
 }
