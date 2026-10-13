@@ -116,6 +116,7 @@ export class PropertyValueService {
 	private readonly cacheVersions = new Map<ChannelPropertyEntity['id'], number>();
 	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
+	private readonly liveEpochs = new Set<string>();
 	private readonly samples = new Map<string, QualifiedPropertySample>();
 	private readonly liveWatermarks = new Map<string, { sampledAt: number; invalid: boolean }>();
 
@@ -197,18 +198,21 @@ export class PropertyValueService {
 				const watermark = this.liveWatermarks.get(key);
 				const live = evidence.provenance === 'live';
 				// A non-live startup replay can populate ordinary display state, never the live epoch.
-				if (!live && watermark) return { changed: false, state: null };
+				if (!live && this.liveEpochs.has(key)) return { changed: false, state: null };
 				if (watermark && (sampledAt < watermark.sampledAt || (sampledAt === watermark.sampledAt && watermark.invalid)))
 					return { changed: false, state: null };
-				const valid =
+				const validClock =
 					Number.isFinite(sampledAt) &&
 					Number.isFinite(receivedAt) &&
 					sampledAt <= receivedAt &&
-					receivedAt <= Date.now() &&
-					this.isSampleValueValid(property, value);
-				if (!valid) {
-					if (live && Number.isFinite(sampledAt) && (!watermark || sampledAt >= watermark.sampledAt)) {
-						this.liveWatermarks.set(key, { sampledAt, invalid: true });
+					receivedAt <= Date.now();
+				if (!validClock || !this.isSampleValueValid(property, value)) {
+					if (live) {
+						this.liveEpochs.add(key);
+						// An invalid clock revokes eligibility, but supplies no trusted ordering evidence.
+						// Preserve the previous watermark (including any genuine value-fault tombstone)
+						// so corrected clocks can recover without waiting for a rejected future timestamp.
+						if (validClock) this.liveWatermarks.set(key, { sampledAt, invalid: true });
 						this.samples.delete(key);
 						this.events?.emit(
 							EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
@@ -237,6 +241,7 @@ export class PropertyValueService {
 						reasons: Object.freeze([]),
 					});
 					if (live) {
+						this.liveEpochs.add(key);
 						this.liveWatermarks.set(key, { sampledAt, invalid: false });
 						this.samples.set(key, { ...sample, provenance: 'live' });
 					}
@@ -275,6 +280,7 @@ export class PropertyValueService {
 			const sampledAt = new Date(produced.producer.sampledAt);
 			if (
 				sampledAt.getTime() > now.getTime() ||
+				Date.parse(produced.producer.evaluatedAt) > now.getTime() ||
 				now.getTime() - sampledAt.getTime() > maxAgeMs ||
 				(produced.producer.expiresAt !== null && Date.parse(produced.producer.expiresAt) <= now.getTime())
 			)
@@ -291,7 +297,12 @@ export class PropertyValueService {
 			});
 		}
 		const sample = this.samples.get(key);
-		if (!sample || sample.sampledAt.getTime() > now.getTime() || now.getTime() - sample.sampledAt.getTime() > maxAgeMs)
+		if (
+			!sample ||
+			sample.sampledAt.getTime() > now.getTime() ||
+			sample.receivedAt.getTime() > now.getTime() ||
+			now.getTime() - sample.sampledAt.getTime() > maxAgeMs
+		)
 			return null;
 		return this.cloneSample(sample);
 	}
@@ -1306,6 +1317,7 @@ export class PropertyValueService {
 		}
 
 		// Always clear local cache
+		this.liveEpochs.delete(property.id);
 		this.samples.delete(property.id);
 		this.liveWatermarks.delete(property.id);
 		this.producers?.remove(property.id);
