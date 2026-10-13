@@ -30,9 +30,11 @@ export interface ZigbeePropertyMapping {
 	readonly transformer: string | null;
 }
 
+/** Hash JSON-compatible contract data after its semantic fields have been normalized. */
 export const sourceFingerprint = (value: unknown): string =>
 	createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
+/** Extract report and command semantics, excluding presentation and volatile device state. */
 function fieldContract(expose: Z2mExpose): ZigbeeFieldContract | null {
 	if (!expose || typeof expose.property !== 'string' || !expose.property || typeof expose.type !== 'string')
 		return null;
@@ -82,6 +84,7 @@ function fieldContract(expose: Z2mExpose): ZigbeeFieldContract | null {
 	});
 }
 
+/** Bind an enabled supported device to its IEEE address and unambiguous exposed fields. */
 export function zigbeeSourceIdentity(
 	device: Z2mDevice | Z2mRegisteredDevice,
 	observedAt = new Date(),
@@ -107,18 +110,22 @@ export function zigbeeSourceIdentity(
 		}
 	};
 	collect(device.definition.exposes);
-	fields.sort((a, b) => a.property.localeCompare(b.property));
-	if (new Set(fields.map((field) => field.property)).size !== fields.length) return null;
+	const counts = new Map<string, number>();
+	for (const field of fields) counts.set(field.property, (counts.get(field.property) ?? 0) + 1);
+	// Ambiguous fields cannot bind; independent fields keep the physical identity usable.
+	const uniqueFields = fields.filter((field) => counts.get(field.property) === 1);
+	uniqueFields.sort((a, b) => a.property.localeCompare(b.property));
 	const ieeeAddress = ieee.toLowerCase();
 	return Object.freeze({
 		friendlyName: name,
 		ieeeAddress,
-		fields: Object.freeze(fields),
-		fingerprint: sourceFingerprint({ ieeeAddress, fields }),
+		fields: Object.freeze(uniqueFields),
+		fingerprint: sourceFingerprint({ ieeeAddress, fields: uniqueFields }),
 		observedAt: new Date(observedAt),
 	});
 }
 
+/** Snapshot the mapped property semantics whose changes invalidate a source binding. */
 export function propertySourceContract(property: ChannelPropertyEntity, mapping: ZigbeePropertyMapping) {
 	return {
 		field: mapping.field,
