@@ -65,7 +65,11 @@ Ordinary direct, scene, projection and expanded group commands consult the same 
 bypass flag. A future controller ownership implementation must add a registry-minted opaque command authority for its
 own release/control path rather than trust caller-supplied context.
 
-Room contribution selection and admin/panel authoring/presentation are separate integrations. Raw physical controls
-remain individually usable. Production availability depends on adapters submitting qualified live feedback; legacy
+Admin authoring previews the common native contract before atomic creation, and membership edits require a fresh
+revision preview. Repair conflicts preserve exposed output identities and their scene/tile references. Admin and panel
+group controls use the exposed native range/step grid, submit complete RGB/HS tuples together, and show unavailable
+controls when the exposed contract cannot be represented. Reported mixed/unknown state stays separate from requested
+values and correlated per-member outcomes. A timeout or reconnect never automatically replays a group command.
+Room contribution selection deduplicates group/member overlap while raw physical controls remain individually usable. Production availability depends on adapters submitting qualified live feedback; legacy
 adapters that write only values remain unknown. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.
