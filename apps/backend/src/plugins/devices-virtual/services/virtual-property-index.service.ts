@@ -652,8 +652,9 @@ export class VirtualPropertyIndexService {
 		virtualDeviceId: string,
 		link: VirtualPropertyLink,
 	): void {
+		const identity = link.bindingId ?? link.propertyId;
 		const siblings = (byVirtualDevice.get(virtualDeviceId) ?? []).filter(
-			(candidate) => candidate.propertyId !== link.propertyId,
+			(candidate) => (candidate.bindingId ?? candidate.propertyId) !== identity,
 		);
 
 		siblings.push(link);
