@@ -13,6 +13,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { IDevicePlatform } from '../../../modules/devices/platforms/device.platform';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { VIRTUAL_THERMOSTAT_COMMAND_HANDLER } from '../devices-virtual.constants';
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
@@ -154,6 +155,25 @@ describe('VirtualDevicePlatform', () => {
 		module = undefined;
 		await moduleToClose?.close();
 		jest.clearAllMocks();
+	});
+
+	it('injects the controller command port without invoking projection forwarding', async () => {
+		const handler = { command: jest.fn().mockResolvedValue(true) };
+		await module?.close();
+		module = await Test.createTestingModule({
+			providers: [
+				VirtualDevicePlatform,
+				{ provide: DeviceCommandGraphService, useValue: graphs },
+				{ provide: PlatformRegistryService, useValue: platformRegistryService },
+				{ provide: VIRTUAL_THERMOSTAT_COMMAND_HANDLER, useValue: handler },
+			],
+		}).compile();
+		const device = Object.assign(new VirtualDeviceEntity(), { mode: VirtualDeviceMode.CLIMATE_CONTROLLER });
+		const updates = [{ device, channel: virtualChannel, property: virtualProperty(), value: true }];
+		await expect(module.get(VirtualDevicePlatform).processBatch(updates)).resolves.toBe(true);
+		expect(handler.command).toHaveBeenCalledWith(updates);
+		expect(graphs.findPropertyTarget).not.toHaveBeenCalled();
+		expect(platformRegistryService.get).not.toHaveBeenCalled();
 	});
 
 	it.each([
