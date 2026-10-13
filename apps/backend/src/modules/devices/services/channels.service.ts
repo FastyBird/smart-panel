@@ -407,21 +407,26 @@ export class ChannelsService {
 			// and two requests carrying the same client-generated uuid can both pass it before either
 			// writes. `insert()` always issues an INSERT, so the primary key constraint decides. The check
 			// stays for the message — a caller reusing an id gets a sentence, not a constraint violation.
-			await repository
-				.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
-				.catch((error: unknown) => {
-					if (isPrimaryKeyCollision(error)) {
-						this.logger.error(
-							`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`,
-						);
+			await (
+				creation
+					? repository
+							.createQueryBuilder()
+							.insert()
+							.values(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+							.updateEntity(false)
+							.execute()
+					: repository.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+			).catch((error: unknown) => {
+				if (isPrimaryKeyCollision(error)) {
+					this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`);
 
-						throw new DevicesValidationException(
-							`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
-						);
-					}
+					throw new DevicesValidationException(
+						`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
+					);
+				}
 
-					throw error;
-				});
+				throw error;
+			});
 
 			try {
 				for (const propertyDtoInstance of createDto.properties ?? []) {

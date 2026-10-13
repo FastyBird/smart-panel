@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { useContainer } from 'class-validator';
-import { QueryRunner } from 'typeorm';
+import { LoadEvent, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -310,6 +310,20 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		expect(publications.filter((e) => e === EventType.CHANNEL_CREATED)).toHaveLength(2);
 		expect(publications.filter((e) => e === EventType.CHANNEL_PROPERTY_CREATED)).toHaveLength(5);
 		expect(producers.read(dto.outputPropertyId)?.producer.quality).toBe('unavailable');
+	});
+	it('does not invoke value-loading subscribers while inserting the admitted catalog', async () => {
+		const preCommitLoads = jest.fn();
+		const postCommitLoads = jest.fn();
+		database.subscribers.push({
+			listenTo: () => ChannelPropertyEntity,
+			afterLoad: (_property: ChannelPropertyEntity, event: LoadEvent<ChannelPropertyEntity>) => {
+				if (event.queryRunner.isTransactionActive) preCommitLoads();
+				else postCommitLoads();
+			},
+		});
+		await authoring.createTransform(draft());
+		expect(preCommitLoads).not.toHaveBeenCalled();
+		expect(postCommitLoads).toHaveBeenCalled();
 	});
 	it.each(['device', 'channel', 'property', 'config', 'source'])(
 		'rolls back a %s failure without rows, revisions, events or leases',
