@@ -30,9 +30,11 @@ export interface ZigbeePropertyMapping {
 	readonly transformer: string | null;
 }
 
+/** Hash JSON-compatible contract data after its semantic fields have been normalized. */
 export const sourceFingerprint = (value: unknown): string =>
 	createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
+/** Extract report and command semantics, excluding presentation and volatile device state. */
 function fieldContract(expose: Z2mExpose): ZigbeeFieldContract | null {
 	if (!expose || typeof expose.property !== 'string' || !expose.property || typeof expose.type !== 'string')
 		return null;
@@ -82,6 +84,7 @@ function fieldContract(expose: Z2mExpose): ZigbeeFieldContract | null {
 	});
 }
 
+/** Bind an enabled supported device to its IEEE address and unambiguous exposed fields. */
 export function zigbeeSourceIdentity(
 	device: Z2mDevice | Z2mRegisteredDevice,
 	observedAt = new Date(),
@@ -122,6 +125,7 @@ export function zigbeeSourceIdentity(
 	});
 }
 
+/** Snapshot the mapped property semantics whose changes invalidate a source binding. */
 export function propertySourceContract(property: ChannelPropertyEntity, mapping: ZigbeePropertyMapping) {
 	return {
 		field: mapping.field,
