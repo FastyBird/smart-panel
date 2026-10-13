@@ -11,7 +11,7 @@ export interface IDevicePropertyData {
 export interface PreparedCompositeDeviceBatch {
 	readonly updates: readonly IDevicePropertyData[];
 	readonly isCurrent: () => boolean;
-	readonly dispatch: () => Promise<boolean>;
+	readonly dispatch: (isAdmitted: () => boolean) => Promise<boolean>;
 }
 
 export interface IDevicePlatform {
