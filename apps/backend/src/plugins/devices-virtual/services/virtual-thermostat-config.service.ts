@@ -73,57 +73,63 @@ export class VirtualThermostatConfigService {
 	async configure(controllerId: string, dto: ConfigureVirtualThermostatDto) {
 		return this.structureLock.runExclusive(async () => {
 			await this.graph.withStructuralWrite(async (manager) => {
-				const prepared = await this.validate(manager, controllerId, dto);
-				await manager.save(prepared.config);
-				await manager.delete(VirtualThermostatSourceEntity, { controllerId });
-				await manager.save(prepared.sources);
-				const oldSettings = await manager.findBy(VirtualThermostatSettingEntity, { controllerId });
-				for (const setting of oldSettings)
-					if (!prepared.settings.some((row) => row.propertyId === setting.propertyId))
-						await manager.update(
-							VirtualChannelPropertyEntity,
-							{ id: setting.propertyId },
-							{ permissions: [PermissionType.READ_ONLY] },
-						);
-				for (const setting of prepared.settings)
-					await manager.update(
-						VirtualChannelPropertyEntity,
-						{ id: setting.propertyId },
-						{ permissions: [PermissionType.READ_WRITE] },
-					);
-				await manager.delete(VirtualThermostatSettingEntity, { controllerId });
-				await manager.save(prepared.settings);
-				await manager.save(prepared.actuators);
+				const prepared = await this.prepare(manager, controllerId, dto);
+				await this.persist(manager, controllerId, prepared);
 			}, dto.expectedGraphRevision);
-			this.claims.invalidate();
-			const current = await this.get(controllerId);
-			for (const setting of current.settings) {
-				const target = await this.property(this.dataSource.manager, setting.property);
-				const value =
-					setting.setting === 'heating_setpoint'
-						? current.policy.heatingSetpoint
-						: setting.setting === 'cooling_setpoint'
-							? current.policy.coolingSetpoint
-							: setting.setting === 'locked'
-								? current.locked
-								: setting.setting === 'heating_enabled'
-									? ['heat', 'auto'].includes(current.requested_mode)
-									: ['cool', 'auto'].includes(current.requested_mode);
-				await this.values.write(target.property, value);
-				target.property.value = await this.values.readLatest(target.property);
-				this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, target.property);
-			}
-			await this.claims.refresh();
-			this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
-			return current;
+			return this.afterCommit(controllerId);
 		});
+	}
+	/** Shared by existing configuration and an admitted atomic creation transaction. */
+	prepare(manager: EntityManager, controllerId: string, dto: ConfigureVirtualThermostatDto) {
+		return this.validate(manager, controllerId, dto);
+	}
+	async persist(manager: EntityManager, controllerId: string, prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>): Promise<void> {
+		await manager.save(prepared.config);
+		await manager.delete(VirtualThermostatSourceEntity, { controllerId });
+		await manager.save(prepared.sources);
+		const oldSettings = await manager.findBy(VirtualThermostatSettingEntity, { controllerId });
+		for (const setting of oldSettings)
+			if (!prepared.settings.some((row) => row.propertyId === setting.propertyId))
+				await manager.update(VirtualChannelPropertyEntity, { id: setting.propertyId }, { permissions: [PermissionType.READ_ONLY] });
+		for (const setting of prepared.settings)
+			await manager.update(VirtualChannelPropertyEntity, { id: setting.propertyId }, { permissions: [PermissionType.READ_WRITE] });
+		await manager.delete(VirtualThermostatSettingEntity, { controllerId });
+		await manager.save(prepared.settings);
+		await manager.save(prepared.actuators);
+	}
+	async describe(prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>) {
+		return this.model(prepared.config, prepared.sources, prepared.actuators, prepared.settings);
+	}
+	/** Must run only after the owning writer commits; no preview or rollback may publish. */
+	async afterCommit(controllerId: string) {
+		this.claims.invalidate();
+		const current = await this.get(controllerId);
+		for (const setting of current.settings) {
+			const target = await this.property(this.dataSource.manager, setting.property);
+			const value =
+				setting.setting === 'heating_setpoint'
+					? current.policy.heatingSetpoint
+					: setting.setting === 'cooling_setpoint'
+					? current.policy.coolingSetpoint
+					: setting.setting === 'locked'
+						? current.locked
+						: setting.setting === 'heating_enabled'
+							? ['heat', 'auto'].includes(current.requested_mode)
+							: ['cool', 'auto'].includes(current.requested_mode);
+			await this.values.write(target.property, value);
+			target.property.value = await this.values.readLatest(target.property);
+			this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, target.property);
+		}
+		await this.claims.refresh();
+		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+		return current;
 	}
 	async preview(controllerId: string, dto: ConfigureVirtualThermostatDto) {
 		return this.structureLock.runExclusive(async () => {
 			if (dto.expectedGraphRevision !== undefined && dto.expectedGraphRevision !== (await this.graph.revision()))
 				fail('Virtual graph revision changed.');
-			const prepared = await this.validate(this.dataSource.manager, controllerId, dto);
-			return this.model(prepared.config, prepared.sources, prepared.actuators, prepared.settings);
+			const prepared = await this.prepare(this.dataSource.manager, controllerId, dto);
+			return this.describe(prepared);
 		});
 	}
 	async get(controllerId: string) {
