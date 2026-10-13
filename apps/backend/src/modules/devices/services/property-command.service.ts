@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -28,12 +28,15 @@ import {
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyValueService } from './property-value.service';
 
 export interface PropertyCommandExecutionOptions {
 	requestId?: string;
+	/** Server-minted entry evidence, never selected from public context or DTO fields. */
+	commandEntry?: PropertyCommandEntrySnapshot;
 	context?: IntentContext;
 	/** Internal only: the controller already admitted this PATCH generation before local persistence. */
 	apiReceipt?: ApiPropertyCommandReceipt;
@@ -67,7 +70,52 @@ export interface PropertyBatchCommandResult {
 }
 
 @Injectable()
-export class PropertyCommandService {
+export class PropertyCommandService implements OnModuleDestroy {
+	private readonly requestEntries = new Set<PropertyCommandEntrySnapshot>();
+	private stopped = false;
+	onModuleDestroy(): void {
+		this.stopped = true;
+		for (const entry of this.requestEntries) entry.dispose();
+		this.requestEntries.clear();
+	}
+
+	/** Internal HTTP/socket boundary helper; callers own release when carrying it across validation. */
+	captureCommandEntry(): PropertyCommandEntrySnapshot | undefined {
+		if (!this.composites?.hasPlanners()) return undefined;
+		const entry = PropertyCommandEntrySnapshot.capture(
+			this.propertyCommandWindowService,
+			() => this.requestEntries.delete(entry),
+			this.stopped || this.requestEntries.size >= 128,
+		);
+		if (entry.isActive()) this.requestEntries.add(entry);
+		return entry;
+	}
+
+	releaseCommandEntry(entry: PropertyCommandEntrySnapshot | undefined): void {
+		entry?.release();
+		if (entry && !entry.isActive()) this.requestEntries.delete(entry);
+	}
+
+	private async withCommandEntry<T>(
+		options: PropertyCommandExecutionOptions,
+		operation: (options: PropertyCommandExecutionOptions) => Promise<T>,
+	): Promise<T> {
+		if (options.commandEntry) {
+			const retained = options.commandEntry.retain();
+			try {
+				return await operation(options);
+			} finally {
+				if (retained) this.releaseCommandEntry(options.commandEntry);
+			}
+		}
+		const entry = this.captureCommandEntry();
+		try {
+			return await operation(entry ? { ...options, commandEntry: entry } : options);
+		} finally {
+			this.releaseCommandEntry(entry);
+		}
+	}
+
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyCommandService');
 
 	constructor(
@@ -87,6 +135,14 @@ export class PropertyCommandService {
 	async handleInternal(
 		user: ClientUserDto,
 		payload?: object,
+	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
+		return this.withCommandEntry({}, (options) => this.handleInternalWithEntry(user, payload, options));
+	}
+
+	private async handleInternalWithEntry(
+		user: ClientUserDto,
+		payload: object | undefined,
+		options: PropertyCommandExecutionOptions,
 	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
 		// Allow display clients to control device properties via WebSocket
 		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
@@ -128,6 +184,7 @@ export class PropertyCommandService {
 		}
 
 		return this.executeCommands(dtoInstance.properties, {
+			...options,
 			requestId: dtoInstance.request_id,
 			context: intentContext,
 		});
@@ -137,6 +194,16 @@ export class PropertyCommandService {
 		propertyId: string,
 		rawValue: unknown,
 		options: PropertyCommandExecutionOptions = {},
+	): Promise<SinglePropertyCommandResult> {
+		return this.withCommandEntry(options, (entryOptions) =>
+			this.executePropertyCommandByIdWithEntry(propertyId, rawValue, entryOptions),
+		);
+	}
+
+	private async executePropertyCommandByIdWithEntry(
+		propertyId: string,
+		rawValue: unknown,
+		options: PropertyCommandExecutionOptions,
 	): Promise<SinglePropertyCommandResult> {
 		const property = await this.propertyMetadata.findOne(propertyId);
 
@@ -233,6 +300,15 @@ export class PropertyCommandService {
 	async executePropertyCommands(
 		commands: Array<{ propertyId: string; value: unknown }>,
 		options: PropertyCommandExecutionOptions = {},
+	): Promise<PropertyBatchCommandResult> {
+		return this.withCommandEntry(options, (entryOptions) =>
+			this.executePropertyCommandsWithEntry(commands, entryOptions),
+		);
+	}
+
+	private async executePropertyCommandsWithEntry(
+		commands: Array<{ propertyId: string; value: unknown }>,
+		options: PropertyCommandExecutionOptions,
 	): Promise<PropertyBatchCommandResult> {
 		if (commands.length === 0) {
 			return { success: true, results: [] };
@@ -402,7 +478,8 @@ export class PropertyCommandService {
 		});
 
 		// Create the intent with the value map and optional requestId for tracking
-		const ttlMs = options.apiReceipt?.ttlMs ?? (await this.resolveCommandIntentTtlMs(groupedProperties));
+		const ttlMs =
+			options.apiReceipt?.ttlMs ?? (await this.resolveCommandIntentTtlMs(groupedProperties, options.commandEntry));
 		const intent = this.intentsService.createIntent({
 			requestId: options.requestId,
 			type: IntentType.DEVICE_SET_PROPERTY,
@@ -457,6 +534,8 @@ export class PropertyCommandService {
 				const dispatch = await this.propertyCommandDispatchService.dispatchBatch(updates, {
 					intentId: intent.id,
 					ttlMs,
+					requestId: options.requestId,
+					commandEntry: options.commandEntry,
 				});
 				for (const device of Object.keys(groupedProperties)) results.push({ device, ...dispatch });
 			} else
@@ -526,6 +605,7 @@ export class PropertyCommandService {
 
 	private async resolveCommandIntentTtlMs(
 		groupedProperties: Readonly<Record<string, readonly PropertyCommandValueDto[]>>,
+		entry?: PropertyCommandEntrySnapshot,
 	): Promise<number> {
 		if (this.composites?.hasPlanners()) {
 			try {
@@ -545,7 +625,7 @@ export class PropertyCommandService {
 						)
 							updates.push({ property, channel, device, value: command.value });
 					}
-				const compositeBudget = await this.composites.estimateTimeoutMs(updates);
+				const compositeBudget = await this.composites.estimateTimeoutMs(updates, entry);
 				if (compositeBudget !== null) return compositeBudget;
 			} catch {
 				return DEFAULT_TTL_DEVICE_COMMAND;
@@ -714,10 +794,24 @@ export class PropertyCommandService {
 		propertyId: string,
 		value: string | number | boolean,
 		receipt?: ApiPropertyCommandReceipt,
+		entry?: PropertyCommandEntrySnapshot,
+	): Promise<void> {
+		return this.withCommandEntry({ context: { origin: 'api' }, apiReceipt: receipt, commandEntry: entry }, (options) =>
+			this.processApiPropertyCommandWithEntry(deviceId, channelId, propertyId, value, receipt, options),
+		);
+	}
+
+	private async processApiPropertyCommandWithEntry(
+		deviceId: string,
+		channelId: string,
+		propertyId: string,
+		value: string | number | boolean,
+		receipt: ApiPropertyCommandReceipt | undefined,
+		options: PropertyCommandExecutionOptions,
 	): Promise<void> {
 		const execution = await this.executeCommands(
 			[{ device: deviceId, channel: channelId, property: propertyId, value }],
-			{ context: { origin: 'api' }, apiReceipt: receipt },
+			options,
 		);
 		const result = Array.isArray(execution.results) ? execution.results[0] : undefined;
 

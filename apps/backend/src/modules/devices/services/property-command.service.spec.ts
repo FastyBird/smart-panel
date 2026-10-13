@@ -24,16 +24,20 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePlatform } from '../platforms/device.platform';
+import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandTargetConstraintValidator } from '../validators/property-command-target-constraint.validator';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import { CompositePropertyCommandRegistryService } from './composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandDispatchOptions } from './property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyCommandService } from './property-command.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -841,4 +845,82 @@ describe('PropertyCommandService', () => {
 			expect(result.results[1].success).toBe(true);
 		});
 	});
+	it('bounds entry observers, releases callers, and disposes all active entries on shutdown', () => {
+		const registry = new CompositePropertyCommandRegistryService();
+		registry.register({ canHandle: () => false, plan: jest.fn() });
+		Object.assign(service, { composites: registry });
+		const entries = Array.from({ length: 129 }, () => service.captureCommandEntry());
+		expect(entries.slice(0, 128).every((entry) => entry.isActive())).toBe(true);
+		expect(entries[128].isActive()).toBe(false);
+		service.releaseCommandEntry(entries[0]);
+		expect(entries[0].isActive()).toBe(false);
+		const replacement = service.captureCommandEntry();
+		expect(replacement.isActive()).toBe(true);
+		service.onModuleDestroy();
+		expect(entries.every((entry) => !entry.isActive())).toBe(true);
+		expect(replacement.isActive()).toBe(false);
+		expect(service.captureCommandEntry().isActive()).toBe(false);
+	});
+	it.each(['metadata', 'budget'])(
+		'retains later closed power generations across %s awaits and both planning passes',
+		async (phase) => {
+			const device = toInstance(MockDevice, mockDevice);
+			const channel = toInstance(MockChannel, mockChannel);
+			channel.device = device;
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.channel = channel;
+			property.dataType = DataTypeType.FLOAT;
+			property.category = PropertyCategory.BRIGHTNESS;
+			property.format = [0, 100];
+			property.permissions = [PermissionType.READ_ONLY];
+			channel.properties = [property];
+			device.channels = [channel];
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(channel);
+			const metadata = jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
+			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+			const power = uuid();
+			const replacePower = () => {
+				const handle = propertyCommandWindowService.open({
+					canonicalTarget: { deviceId: device.id, channelId: channel.id, propertyId: power },
+					requestedTargets: [],
+					commandedValue: false,
+					previousValue: true,
+					ttlMs: 1000,
+				});
+				propertyCommandWindowService.close(handle);
+			};
+			if (phase === 'metadata')
+				metadata.mockImplementationOnce(() => {
+					replacePower();
+					return Promise.resolve(property);
+				});
+			let first = true;
+			const plan = jest.fn((updates: readonly IDevicePropertyData[], entry?: PropertyCommandEntrySnapshot) => {
+				if (first && phase === 'budget') replacePower();
+				first = false;
+				return Promise.resolve({
+					revision: 1,
+					children: [{ memberId: 'member', update: entry.canPreservePower(power) ? updates[0] : null }],
+					isCurrent: () => Promise.resolve(true),
+				});
+			});
+			const registry = new CompositePropertyCommandRegistryService();
+			registry.register({ canHandle: (candidate) => candidate.id === property.id, plan });
+			Object.assign(service, { composites: registry });
+			jest
+				.spyOn(propertyCommandDispatchService, 'dispatchBatch')
+				.mockImplementation(async (updates, options: PropertyCommandDispatchOptions) => {
+					const prepared = await plan(updates, options.commandEntry);
+					expect(prepared.children[0].update).toBeNull();
+					return { success: false, reason: 'Preserved power changed during request' };
+				});
+			const result = await service.executePropertyCommandById(property.id, 45);
+			expect(result.success).toBe(false);
+			expect(plan).toHaveBeenCalledTimes(2);
+			expect(plan.mock.calls[0][1]).toBe(plan.mock.calls[1][1]);
+			expect(plan.mock.calls[0][1].isActive()).toBe(false);
+			expect(jest.spyOn(mockPlatform, 'processBatch')).not.toHaveBeenCalled();
+		},
+	);
 });

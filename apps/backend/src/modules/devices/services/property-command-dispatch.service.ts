@@ -20,6 +20,7 @@ import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
+import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import {
 	PropertyCommandWindowHandle,
 	PropertyCommandWindowService,
@@ -35,6 +36,8 @@ class CompositeAdmissionSnapshotChangedError extends Error {}
 export interface PropertyCommandDispatchOptions {
 	readonly intentId?: string;
 	readonly requestId?: string;
+	/** Minted internal request lifetime evidence; never read from a public DTO. */
+	readonly commandEntry?: PropertyCommandEntrySnapshot;
 	readonly ttlMs?: number;
 	/** Internal absolute bound for a composite admission; never supplied by a public DTO. */
 	readonly deadlineAt?: number;
@@ -172,14 +175,22 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions,
 	): Promise<PropertyCommandDispatchResult> {
+		if (options.commandEntry && !options.commandEntry.isActive())
+			return { success: false, reason: 'Command entry snapshot expired or exceeded bounds' };
 		const id = randomUUID();
-		const deadline = Date.now() + Math.min(Math.max(options.ttlMs ?? 10_000, 1), 30_000);
+		const deadline = Math.min(
+			options.commandEntry?.deadlineAt ?? Infinity,
+			Date.now() + Math.min(Math.max(options.ttlMs ?? 10_000, 1), 30_000),
+		);
 		const planner = updates.map((update) => this.composites.get(update.property)).find(Boolean);
 		let plan: Awaited<ReturnType<typeof planner.plan>>;
 		try {
 			plan = await this.withCompositeDeadline(
 				this.structureLock.runShared(() =>
-					planner.plan(updates.filter((update) => planner.canHandle(update.property))),
+					planner.plan(
+						updates.filter((update) => planner.canHandle(update.property)),
+						options.commandEntry,
+					),
 				),
 				deadline,
 			);
@@ -491,6 +502,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 								() =>
 									dispatchActive &&
 									!this.disposed &&
+									(options.commandEntry?.isActive() ?? true) &&
 									Date.now() < deadline &&
 									(plan.isDispatchCurrent?.() ?? true) &&
 									handles.every(

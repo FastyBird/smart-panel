@@ -5,6 +5,7 @@ import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { IDevicePropertyData } from '../platforms/device.platform';
 
 import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 
 export type CompositeChildStatus = 'accepted' | 'confirmed' | 'failed' | 'unavailable' | 'superseded' | 'timed_out';
 export interface CompositeChildOutcome {
@@ -43,7 +44,7 @@ export interface CompositeCommandPlan {
 }
 export interface CompositePropertyCommandPlanner {
 	canHandle(property: ChannelPropertyEntity): boolean;
-	plan(updates: readonly IDevicePropertyData[]): Promise<CompositeCommandPlan>;
+	plan(updates: readonly IDevicePropertyData[], entry?: PropertyCommandEntrySnapshot): Promise<CompositeCommandPlan>;
 }
 
 /** Registration is internal. Public command DTOs cannot opt an arbitrary derived property into writes. */
@@ -56,10 +57,16 @@ export class CompositePropertyCommandRegistryService {
 		return () => this.planners.delete(planner);
 	}
 	/** Budget hint only. Actual dispatch revalidates the complete intended plan under core admission. */
-	async estimateTimeoutMs(updates: readonly IDevicePropertyData[]): Promise<number | null> {
+	async estimateTimeoutMs(
+		updates: readonly IDevicePropertyData[],
+		entry?: PropertyCommandEntrySnapshot,
+	): Promise<number | null> {
 		const planner = updates.map((update) => this.get(update.property)).find(Boolean);
 		if (!planner) return null;
-		const plan = await planner.plan(updates.filter((update) => planner.canHandle(update.property)));
+		const plan = await planner.plan(
+			updates.filter((update) => planner.canHandle(update.property)),
+			entry,
+		);
 		plan.dispose?.();
 		const channels = new Map<string, { device: IDevicePropertyData['device']; properties: Set<string> }>();
 		for (const child of [

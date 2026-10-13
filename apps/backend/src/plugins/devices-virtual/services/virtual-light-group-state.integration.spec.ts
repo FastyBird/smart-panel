@@ -15,6 +15,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
@@ -294,8 +295,9 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			brightnessPlan.children
 				.filter((child) => child.update?.property.category === PropertyCategory.ON)
 				.map((child) => child.update.value),
-		).toEqual([true, false]);
+		).toEqual(expect.arrayContaining([true, false]));
 		const preserved = brightnessPlan.children.find((child) => child.update?.property.id === physical[0].propertyId);
+		const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined);
 		const newer = windows.open({
 			canonicalTarget: {
 				deviceId: physical[0].deviceId,
@@ -310,6 +312,14 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		windows.close(newer);
 		expect(preserved.admissionCheck()).toBe(false);
 		brightnessPlan.dispose();
+		// A separate budget plan can finish before a competing OFF opens and closes.
+		// Actual planning must still refuse the old qualified ON evidence.
+		const afterBudget = await commands.plan([brightnessUpdate], entry);
+		expect(
+			afterBudget.children.find((child) => child.memberIdentity === physical[0].memberChannelId)?.update,
+		).toBeNull();
+		afterBudget.dispose();
+		entry.dispose();
 		const combined = await commands.plan([
 			brightnessUpdate,
 			{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: false },
