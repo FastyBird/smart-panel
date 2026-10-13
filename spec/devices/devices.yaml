@@ -2413,6 +2413,12 @@ sensor:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Reports read-only numeric measurements with explicitly declared quantities and units.
 
 # =============================================================================
 # HOST DEVICES

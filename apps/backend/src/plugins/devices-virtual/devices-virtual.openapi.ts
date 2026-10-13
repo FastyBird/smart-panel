@@ -8,6 +8,7 @@ import { CreateVirtualDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateVirtualDeviceDto } from './dto/create-device.dto';
 import * as LightGroupDraftDtos from './dto/light-group-draft.dto';
 import * as ProducerDtos from './dto/producer-config.dto';
+import * as TransformDtos from './dto/transform-config.dto';
 import { UpdateVirtualChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateVirtualChannelDto } from './dto/update-channel.dto';
 import { VirtualUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -21,13 +22,16 @@ import { CompatibilityReportModel, CompatibilityResponseModel } from './models/c
 import { VirtualConfigModel } from './models/config.model';
 import * as LightGroupDraftModels from './models/light-group-draft.model';
 import * as ProducerModels from './models/producer-response.model';
+import * as TransformModels from './models/transform-response.model';
 import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
 
 export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	...Object.values(ProducerDtos),
+	...Object.values(TransformDtos),
 	...Object.values(LightGroupDraftDtos),
 	...Object.values(LightGroupDraftModels),
 	...Object.values(ProducerModels),
+	...Object.values(TransformModels),
 	// DTOs
 	CreateVirtualDeviceDto,
 	UpdateVirtualDeviceDto,

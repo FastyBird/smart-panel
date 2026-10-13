@@ -30,6 +30,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
+import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
@@ -66,6 +67,7 @@ import { VirtualProjectionListener } from './listeners/virtual-projection.listen
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
@@ -76,7 +78,10 @@ import { VirtualLightGroupStateService } from './services/virtual-light-group-st
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
+import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
+import { VirtualTransformRuntimeService } from './services/virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
+import { VirtualTransformMetadataSubscriber } from './subscribers/virtual-transform-metadata.subscriber';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from './validators/device-is-virtual-constraint.validator';
 import { SourceNotVirtualConstraintValidator } from './validators/source-not-virtual-constraint.validator';
@@ -118,6 +123,10 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualDependencyGraphService,
 		VirtualProducerConfigService,
 		VirtualProducerStateService,
+		VirtualAggregateRuntimeService,
+		VirtualTransformConfigService,
+		VirtualTransformRuntimeService,
+		VirtualTransformMetadataSubscriber,
 		VirtualLightGroupStateService,
 		VirtualLightGroupCommandService,
 		VirtualProjectionListener,
@@ -128,7 +137,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		DeviceIsVirtualConstraintValidator,
 		SourceNotVirtualConstraintValidator,
 	],
-	controllers: [VirtualDevicesController, VirtualProducerConfigController],
+	controllers: [VirtualDevicesController, VirtualProducerConfigController, VirtualTransformConfigController],
 })
 export class DevicesVirtualPlugin {
 	constructor(

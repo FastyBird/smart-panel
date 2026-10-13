@@ -23,7 +23,12 @@ export class CreateVirtualDeviceDto extends CreateDeviceDto {
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsEnum(VirtualDeviceMode)
-	@IsIn([VirtualDeviceMode.PROJECTION, VirtualDeviceMode.SENSOR_AGGREGATE, VirtualDeviceMode.ACTUATOR_GROUP])
+	@IsIn([
+		VirtualDeviceMode.PROJECTION,
+		VirtualDeviceMode.SENSOR_AGGREGATE,
+		VirtualDeviceMode.ACTUATOR_GROUP,
+		VirtualDeviceMode.SENSOR_TRANSFORM,
+	])
 	mode?: VirtualDeviceMode;
 
 	@ApiProperty({

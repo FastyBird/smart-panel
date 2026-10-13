@@ -11,6 +11,7 @@ import {
 	VirtualGraphRevisionEntity,
 	VirtualLightGroupBindingEntity,
 } from '../entities/virtual-producer.entity';
+import { VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
 export interface VirtualDependencyEdge {
 	outputPropertyId: string;
@@ -107,7 +108,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		const groupBindings = await manager.count(VirtualLightGroupBindingEntity, {
 			where: { outputPropertyId: property.id },
 		});
-		if (producerInputs || groupBindings)
+		const transformInputs = await manager.count(VirtualTransformSourceEntity, {
+			where: { outputPropertyId: property.id },
+		});
+		if (producerInputs || groupBindings || transformInputs)
 			throw new DevicesValidationException(
 				'A configured producer output must retain derived origin; edit or remove its producer configuration first.',
 			);

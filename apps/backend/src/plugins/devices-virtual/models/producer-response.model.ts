@@ -64,11 +64,11 @@ export class VirtualAggregateConfigurationModel {
 	graph_revision: number;
 
 	@ApiProperty({
-		description: 'Configuration is durable; runtime evaluation is not delivered at this stage',
-		enum: ['unavailable'],
+		description: 'Aggregate runtime availability in this process; live quality is reported separately',
+		enum: ['ready', 'unavailable'],
 	})
 	@Expose()
-	runtime_readiness: 'unavailable';
+	runtime_readiness: 'ready' | 'unavailable';
 
 	@ApiProperty({
 		description: 'Input diagnostics, including missing member edges',
