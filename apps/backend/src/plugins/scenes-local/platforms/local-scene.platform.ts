@@ -1,7 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -287,7 +287,11 @@ export class LocalScenePlatform implements IScenePlatform {
 					});
 					continue;
 				}
-				if (device.type === 'virtual' && (device as DeviceEntity & { mode?: string }).mode === 'climate_controller') {
+				if (
+					device.type === 'virtual' &&
+					(device as DeviceEntity & { mode?: string }).mode === 'climate_controller' &&
+					property.category !== PropertyCategory.LOCKED
+				) {
 					const grouped: Array<{ action: LocalSceneActionEntity; update: IDevicePropertyData }> = [
 						{ action, update: { device, channel, property, value: action.value } },
 					];
@@ -296,7 +300,13 @@ export class LocalScenePlatform implements IScenePlatform {
 						const next = actions[index + grouped.length];
 						if (!isLocalSceneAction(next) || next.deviceId !== device.id || propertyIds.has(next.propertyId)) break;
 						const resolved = await this.validateActionWithDetails(next);
-						if (!resolved.valid || !resolved.channel || !resolved.property) break;
+						if (
+							!resolved.valid ||
+							!resolved.channel ||
+							!resolved.property ||
+							resolved.property.category === PropertyCategory.LOCKED
+						)
+							break;
 						grouped.push({
 							action: next,
 							update: {

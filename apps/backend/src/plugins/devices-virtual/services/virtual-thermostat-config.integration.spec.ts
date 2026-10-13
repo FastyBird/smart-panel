@@ -22,7 +22,7 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
+import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
 import { SceneExecutorService } from '../../../modules/scenes/services/scene-executor.service';
 import {
 	ShellyNgChannelEntity,
@@ -490,7 +490,32 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		]);
 		expect(dispatchBatch.mock.calls.length).toBe(beforeLocked + 2);
 		expect((await configs.get(controller)).requested_mode).toBe('auto');
-		await configs.command([await target(locked, false)]);
+		// An explicit unlock is an ordered scene boundary; mode and bounds remain a following atomic batch.
+		byId.set(locked, await target(locked, false));
+		(sceneEntity as SceneEntity).actions = [
+			{
+				id: uuid(),
+				type: SCENES_LOCAL_TYPE,
+				deviceId: controller,
+				propertyId: locked,
+				value: false,
+				order: -1,
+				enabled: true,
+				configuration: { device_id: controller, property_id: locked },
+			} as unknown as SceneActionEntity,
+			...(sceneEntity.actions as SceneActionEntity[]),
+		];
+		const beforeUnlock = dispatchBatch.mock.calls.length;
+		expect((await executor.triggerScene(sceneEntity.id)).actionResults.map((result) => result.success)).toEqual([
+			true,
+			true,
+			true,
+			true,
+			true,
+		]);
+		expect(dispatchBatch.mock.calls.length).toBe(beforeUnlock + 2);
+		expect(dispatchBatch.mock.calls[beforeUnlock][0]).toHaveLength(1);
+		expect(dispatchBatch.mock.calls[beforeUnlock + 1][0]).toHaveLength(4);
 		const release = await configs.requestRelease(controller, (await configs.get(controller)).revision);
 		expect(release.actuators.every((actuator) => actuator.state === 'releasing')).toBe(true);
 		await intent.executeClimateIntent(uuid(), {
