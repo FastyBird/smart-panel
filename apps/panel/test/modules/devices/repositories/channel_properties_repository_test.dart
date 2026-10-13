@@ -4,7 +4,11 @@ import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
+import 'package:fastybird_smart_panel/plugins/devices-virtual/models/property.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeSocketService extends SocketService {
@@ -31,7 +35,79 @@ class _FakeSocketService extends SocketService {
   }
 }
 
+class _RecordingChannelPropertiesRepository extends ChannelPropertiesRepository {
+  final List<ChannelPropertyModel> replacements = [];
+
+  _RecordingChannelPropertiesRepository({
+    required super.apiClient,
+    required super.commandDispatch,
+  });
+
+  @override
+  bool replaceItem(ChannelPropertyModel item) {
+    replacements.add(item);
+    return super.replaceItem(item);
+  }
+}
+
 void main() {
+  test(
+    'quality-only virtual snapshots replace metadata and unavailable clears value',
+    () async {
+      registerChannelPropertyModelMapper(
+        'virtual',
+        VirtualChannelPropertyModel.fromJson,
+      );
+      addTearDown(() => channelPropertyModelMappers.remove('virtual'));
+      final repo = _RecordingChannelPropertiesRepository(
+        apiClient: DevicesModuleClient(Dio(), baseUrl: 'http://localhost'),
+        commandDispatch: CommandDispatchService(
+          socketService: _FakeSocketService(),
+        ),
+      );
+      addTearDown(repo.dispose);
+      const id = 'ce557266-3554-49f9-bd41-56f7c84b1691';
+      Map<String, dynamic> snapshot(
+        String quality,
+        dynamic value,
+        int revision,
+      ) => {
+        'id': id,
+        'channel': 'ce557266-3554-49f9-bd41-56f7c84b1692',
+        'type': 'virtual',
+        'category': 'generic',
+        'data_type': 'float',
+        'value_origin': 'local',
+        'value': {
+          'value': value,
+          'producer': {
+            'quality': quality,
+            'reasons': [],
+            'sampled_at': null,
+            'evaluated_at': '2026-10-13T10:00:00Z',
+            'expires_at': null,
+            'revision': revision,
+          },
+        },
+      };
+      repo.insert([snapshot('good', 21, 1)]);
+      repo.insert([snapshot('degraded', 21, 2)]);
+      expect(repo.getItem(id), isA<VirtualChannelPropertyModel>());
+      expect(repo.getItem(id)?.value?.value, 21);
+      expect(
+        repo.getItem(id)?.valueState?.producer?.quality,
+        PropertyProducerQuality.degraded,
+      );
+      await repo.setValue(id, 22);
+      expect(repo.replacements.first.value?.value, 22);
+      expect(repo.replacements.first.valueState?.producer?.revision, 2);
+      expect(repo.getItem(id)?.valueState?.producer?.revision, 2);
+      repo.insert([snapshot('unavailable', null, 3)]);
+      expect(repo.getItem(id)?.value, isNull);
+      expect(repo.getItem(id)?.valueState?.producer?.revision, 3);
+    },
+  );
+
   group('ChannelPropertiesRepository.setMultipleValues', () {
     test('builds payload with request_id, properties and context', () async {
       final apiClient = DevicesModuleClient(Dio(), baseUrl: 'http://localhost');

@@ -24,7 +24,8 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
-import { PropertyValueState } from '../models/property-value-state.model';
+import { PropertySampleEvidence } from '../models/property-sample.model';
+import { PropertyValueState, clonePropertyValueState } from '../models/property-value-state.model';
 import {
 	type PropertyCommandValue,
 	SUPPORTED_PROPERTY_COMMAND_DATA_TYPES,
@@ -116,6 +117,8 @@ export interface VisiblePropertySearchSummaryPage {
 }
 
 export interface ChannelPropertyUpdateOptions {
+	/** Internal provider evidence; excluded from public DTOs. */
+	sampleEvidence?: PropertySampleEvidence;
 	/** Provider discovery may use the value path when its validated metadata is unchanged. */
 	skipUnchangedMetadata?: boolean;
 	strictValuePersistence?: boolean;
@@ -853,6 +856,24 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return savedProperty;
 	}
 
+	/** Uses exactly the ordinary update/window admission path; evidence is not a public DTO field. */
+	reportSample<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
+		id: string,
+		updateDto: TUpdateDTO,
+		evidence: PropertySampleEvidence,
+		options: Pick<ChannelPropertyUpdateOptions, 'skipUnchangedMetadata'> = {},
+	): Promise<TProperty> {
+		const captured = Object.freeze({
+			sampledAt: new Date(evidence.sampledAt),
+			receivedAt: new Date(evidence.receivedAt),
+			provenance: evidence.provenance,
+			...(evidence.isCurrent ? { isCurrent: evidence.isCurrent } : {}),
+			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
+			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
+		});
+		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
+	}
+
 	async update<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
 		id: string,
 		updateDto: TUpdateDTO,
@@ -893,6 +914,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					updateDto,
 					valueOnlyMapping,
 					options.skipUnchangedMetadata,
+					options.sampleEvidence,
 				);
 
 				if ('property' in result) {
@@ -991,6 +1013,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					return null;
 				};
 				const writeWithoutWindow = async (): Promise<PropertyValueWriteResult> => {
+					if (options.sampleEvidence)
+						return this.propertyValueService.writeSampleWithState(raw, updateDto.value, options.sampleEvidence);
 					const strictResult = await writeStrictValue();
 
 					if (strictResult !== null) {
@@ -1003,16 +1027,23 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					};
 				};
 				const writeWithWindow = async (): Promise<PropertyValueWriteResult> => {
+					if (options.sampleEvidence)
+						return this.propertyValueService.writeSampleWithState(raw, updateDto.value, options.sampleEvidence);
 					const strictResult = await writeStrictValue();
 
 					return strictResult ?? this.propertyValueService.writeWithState(raw, updateDto.value, valueTimestamp);
 				};
 				const windowed =
 					options.commandOrigin === undefined
-						? await this.commitWindowedProviderValue(raw, updateDto.value, {
-								unwindowed: writeWithoutWindow,
-								windowed: writeWithWindow,
-							})
+						? await this.commitWindowedProviderValue(
+								raw,
+								updateDto.value,
+								{
+									unwindowed: writeWithoutWindow,
+									windowed: writeWithWindow,
+								},
+								options.sampleEvidence,
+							)
 						: await this.commitCommandOriginValue(raw, updateDto.value, options.commandOrigin, writeWithWindow);
 				valueChanged = windowed.changed;
 				persistedValueState = windowed.state;
@@ -1077,6 +1108,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		updateDto: TUpdateDTO,
 		knownMapping: ChannelPropertyTypeMapping<TProperty, any, TUpdateDTO> | undefined,
 		skipUnchangedMetadata = false,
+		evidence?: PropertySampleEvidence,
 	): Promise<{ property: TProperty } | { type: string }> {
 		return this.structureLock.runShared(() =>
 			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
@@ -1111,8 +1143,15 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				}
 				const commit = async (): Promise<{ property: TProperty }> => {
 					const write = (): Promise<PropertyValueWriteResult> =>
-						this.propertyValueService.writeLiveWithState(current, value);
-					const result = await this.commitWindowedProviderValue(current, value, { unwindowed: write, windowed: write });
+						evidence
+							? this.propertyValueService.writeSampleWithState(current, value, evidence)
+							: this.propertyValueService.writeLiveWithState(current, value);
+					const result = await this.commitWindowedProviderValue(
+						current,
+						value,
+						{ unwindowed: write, windowed: write },
+						evidence,
+					);
 					this.commandLatencyTraceCollector.recordWriteComplete(current, {
 						changed: result.changed,
 						held: result.held,
@@ -1154,14 +1193,30 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		property: ChannelPropertyEntity,
 		value: string | number | boolean | null,
 		writers: WindowedValueWriters,
+		evidence?: PropertySampleEvidence,
 	): Promise<WindowedValueCommitResult> {
 		const canonicalPropertyId = this.valueSourceRegistry.resolve(property);
+		if (evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false)
+			return { changed: false, state: null, held: true, forceValueEvent: false };
+		// Protective faults revoke qualification independently of command acknowledgement causality.
 		const validation = validatePropertyCommandValue(property, value);
 
 		if (!validation.valid || validation.value === undefined) {
 			const result = await writers.unwindowed();
 
 			return { ...result, held: false, forceValueEvent: false };
+		}
+		const activeWindow = this.propertyCommandWindowService.get(canonicalPropertyId);
+		if (
+			activeWindow &&
+			evidence &&
+			(evidence.provenance !== 'live' ||
+				!evidence.observedAt ||
+				!Number.isFinite(evidence.observedAt.getTime()) ||
+				evidence.observedAt.getTime() < activeWindow.openedAt ||
+				evidence.observedAt.getTime() > evidence.receivedAt.getTime())
+		) {
+			return { changed: false, state: null, held: true, forceValueEvent: false };
 		}
 
 		// A report that arrives at/after the deadline is fresher than a due recovery candidate. Retire
@@ -1175,6 +1230,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 			// Clients may still display the unconfirmed command even when the provider reports the
 			// unchanged stored value. Resolve that optimistic state without adding duplicate history.
+			if (evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false)
+				return { changed: false, state: null, held: false, forceValueEvent: false };
 			return { ...result, held: false, forceValueEvent: reconcilesCommand && result.state !== null };
 		}
 
@@ -1194,11 +1251,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			return { changed: false, state: null, held: true, forceValueEvent: false };
 		}
 
+		// Unchanged confirmation still resolves optimistic client state; ordinary heartbeats emit no scalar event.
 		const firstConfirmation = isConfirmation && window.state === 'pending';
 		const result = await writers.windowed();
 
-		if (result.state === null) {
-			return { ...result, held: false, forceValueEvent: false };
+		if (result.state === null || evidence?.isCurrent?.() === false || evidence?.sourceIsCurrent?.() === false) {
+			return { changed: false, state: null, held: false, forceValueEvent: false };
 		}
 
 		if (isConfirmation) {
@@ -1424,7 +1482,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	}
 
 	private snapshotValueState(state: PropertyValueState | null): PropertyValueState | null {
-		return state === null ? null : new PropertyValueState(state.value, state.lastUpdated, state.trend);
+		return state === null ? null : clonePropertyValueState(state);
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

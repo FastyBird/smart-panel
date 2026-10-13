@@ -165,6 +165,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         property = property.copyWith(
           valueState: PropertyValueState(
             value: BooleanValueType(_valueToBoolean(value)),
+            producer: property.valueState?.producer,
           ),
         );
       } on ArgumentError {
@@ -184,6 +185,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
         property = property.copyWith(
           valueState: PropertyValueState(
             value: NumberValueType(_valueToNumber(value)),
+            producer: property.valueState?.producer,
           ),
         );
       } on ArgumentError {
@@ -197,6 +199,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       property = property.copyWith(
         valueState: PropertyValueState(
           value: StringValueType(value.toString()),
+          producer: property.valueState?.producer,
         ),
       );
     } else {

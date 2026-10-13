@@ -249,6 +249,34 @@ describe('Channel property PATCH requests and snapshots', () => {
 		expect(store.findById(propertyId)).toMatchObject({ name: 'Socket title', value: { value: 'New value' } });
 	});
 
+	it('keeps quality-only events and unavailable clearing ahead of older REST snapshots', async () => {
+		const pending = deferred();
+		backendClient.GET.mockReturnValue(pending.promise);
+		const fetched = store.fetch({ channelId });
+		const snapshot = (quality: string, revision: number, value: string | null) =>
+			rawResponse({
+				value: {
+					value,
+					last_updated: null,
+					producer: {
+						quality,
+						reasons: quality === 'good' ? [] : ['source_stale'],
+						sampled_at: null,
+						evaluated_at: '2026-10-13T10:00:00Z',
+						expires_at: null,
+						revision,
+					},
+				},
+			} as unknown as Partial<IChannelPropertyRes>);
+		store.onEvent({ id: propertyId, type: 'some-property', data: snapshot('degraded', 2, 'Some value') });
+		expect(store.findById(propertyId)?.value?.producer?.quality).toBe('degraded');
+		store.onEvent({ id: propertyId, type: 'some-property', data: snapshot('unavailable', 3, null) });
+		pending.resolve(response([rawResponse()]));
+		await fetched;
+		expect(store.findById(propertyId)?.value?.value).toBeNull();
+		expect(store.findById(propertyId)?.value?.producer).toMatchObject({ quality: 'unavailable', revision: 3 });
+	});
+
 	it.each(['row', 'scope'])('keeps a %s deletion while its snapshot is in flight', async (kind) => {
 		const pending = deferred();
 		backendClient.GET.mockReturnValue(pending.promise);
