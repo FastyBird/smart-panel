@@ -7,9 +7,11 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
+import { PreviewVirtualTransformDto } from '../dto/measurement-authoring.dto';
 import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
 import { VirtualTransformConfigurationResponseModel } from '../models/transform-response.model';
 import { VirtualTransformConfigService } from '../services/virtual-transform-config.service';
+import { attachTransformPreview } from '../services/virtual-transform-preview.utils';
 
 @ApiTags(DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME)
 @Controller('producers')
@@ -65,10 +67,10 @@ export class VirtualTransformConfigController {
 	@Post('transforms/:id/preview')
 	async preview(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() dto: ConfigureVirtualTransformDto,
+		@Body() dto: PreviewVirtualTransformDto,
 	): Promise<VirtualTransformConfigurationResponseModel> {
 		const response = new VirtualTransformConfigurationResponseModel();
-		response.data = await this.execute(() => this.configs.preview(id, dto));
+		response.data = attachTransformPreview(await this.execute(() => this.configs.preview(id, dto)), dto.previewInput);
 		return response;
 	}
 

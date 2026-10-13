@@ -13,6 +13,12 @@ export interface PropertySampleEvidence {
 	readonly sourceIsCurrent?: () => boolean;
 }
 
+/** Exact process-local live acceptance incorporated by a derived publication; never persisted. */
+export interface IncorporatedPropertySample {
+	readonly propertyId: string;
+	readonly acceptanceGeneration: number;
+}
+
 export interface AcceptedPropertySample {
 	readonly propertyId: string;
 	readonly value: string | boolean | number;
@@ -22,6 +28,8 @@ export interface AcceptedPropertySample {
 	readonly quality: Exclude<PropertyProducerQuality, 'unavailable'>;
 	readonly reasons: readonly string[];
 	readonly revision?: number;
+	/** Monotonic identity of an accepted live report, independent of its sample clock. */
+	readonly acceptanceGeneration?: number;
 }
 
 export interface DerivedPropertyPublication {
@@ -30,6 +38,7 @@ export interface DerivedPropertyPublication {
 	readonly sampledAt: Date;
 	readonly evaluatedAt: Date;
 	readonly expiresAt: Date;
+	readonly sourceSample?: IncorporatedPropertySample;
 }
 
 export interface QualifiedPropertySample extends AcceptedPropertySample {

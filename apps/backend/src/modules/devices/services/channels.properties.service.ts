@@ -39,6 +39,7 @@ import {
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import { DeviceCreationContext } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -212,6 +213,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					.where('channel.id IN (:...channelIds)', { channelIds: channelId })
 					.getMany()) as TProperty[];
 
+				for (const property of properties) property.unit = resolvePropertyUnit(property);
+
 				this.logger.debug(`Found ${properties.length} properties for channelIds=${channelId.join(', ')}`);
 
 				return properties;
@@ -225,6 +228,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					.where('channel.id = :channelId', { channelId })
 					.getMany()) as TProperty[];
 
+				for (const property of properties) property.unit = resolvePropertyUnit(property);
+
 				this.logger.debug(`Found ${properties.length} properties for channelId=${channelId}`);
 
 				return properties;
@@ -234,6 +239,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		this.logger.debug('Fetching all properties');
 
 		const properties = (await repository.find({ relations: ['channel', 'channel.device'] })) as TProperty[];
+
+		for (const property of properties) property.unit = resolvePropertyUnit(property);
 
 		this.logger.debug(`Found ${properties.length} properties`);
 
@@ -723,8 +730,10 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	async create<TProperty extends ChannelPropertyEntity, TCreateDTO extends CreateChannelPropertyDto>(
 		channelId: string,
 		createDto: TCreateDTO,
+		creation?: DeviceCreationContext,
 	): Promise<TProperty> {
 		const { type } = createDto;
+		creation?.assertType(type);
 
 		if (!type) {
 			this.logger.error('Validation failed: Missing required "type" attribute in data.');
@@ -750,8 +759,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			throw new DevicesValidationException('Provided channel property data are invalid.');
 		}
 
-		const repository: Repository<TProperty> = this.dataSource.getRepository(mapping.class);
+		const repository: Repository<TProperty> = creation
+			? creation.manager.getRepository(mapping.class)
+			: this.dataSource.getRepository(mapping.class);
 
+		if (creation && createDto.value != null)
+			throw new DevicesValidationException('Atomic creation cannot seed property values.');
 		const property = repository.create(
 			toInstance(mapping.class, {
 				...dtoInstance,
@@ -789,7 +802,14 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		// the request had nothing to do with. Asked of the base repository, because a collision with a
 		// property of *another* type is the same collision: ids are unique across the table.
 		if (property.id) {
-			const existing = await this.repository.findOne({ where: { id: property.id } });
+			const existing = creation
+				? await creation.manager
+						.createQueryBuilder(ChannelPropertyEntity, 'row')
+						.select('row.id')
+						.where('row.id = :id', { id: property.id })
+						.callListeners(false)
+						.getOne()
+				: await this.repository.findOne({ where: { id: property.id } });
 
 			if (existing) {
 				this.logger.error(
@@ -823,39 +843,64 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				// Inserted, not saved: the check above closes the collision only for a caller who is alone,
 				// and two requests carrying the same client-generated uuid can both pass it before either
 				// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
-				await writeRepository
-					.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
-					.catch((error: unknown) => {
-						if (isPrimaryKeyCollision(error)) {
-							this.logger.error(
-								`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
-							);
+				await (
+					creation
+						? writeRepository
+								.createQueryBuilder()
+								.insert()
+								.values(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+								.updateEntity(false)
+								.execute()
+						: writeRepository.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+				).catch((error: unknown) => {
+					if (isPrimaryKeyCollision(error)) {
+						this.logger.error(
+							`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
+						);
 
-							throw new DevicesValidationException(
-								`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
-							);
-						}
+						throw new DevicesValidationException(
+							`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+						);
+					}
 
-						throw error;
-					});
+					throw error;
+				});
 
 				return property;
 			};
-			const raw = mapping.withStructuralWrite ? await mapping.withStructuralWrite(persist) : await persist();
+			const raw = creation
+				? await persist(creation.manager)
+				: mapping.withStructuralWrite
+					? await mapping.withStructuralWrite(persist)
+					: await persist();
 
-			if (typeof createDto.value !== 'undefined') {
+			if (!creation && typeof createDto.value !== 'undefined') {
 				await this.propertyValueService.write(raw, createDto.value);
 			}
 
-			let savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+			let savedProperty = creation
+				? await creation.manager
+						.createQueryBuilder(mapping.class, 'row')
+						.where('row.id = :id', { id: property.id })
+						.callListeners(false)
+						.getOneOrFail()
+				: ((await this.getOneOrThrow(property.id)) as TProperty);
 
-			if (mapping.afterCreate) {
+			if (mapping.afterCreate && !creation) {
 				await mapping.afterCreate(savedProperty);
 
 				savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
 			}
 
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
+			if (creation)
+				creation.defer(
+					async () => {
+						if (mapping.afterCreate) await mapping.afterCreate(savedProperty);
+						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, await this.getOneOrThrow(savedProperty.id));
+					},
+					savedProperty.type === 'virtual' && 'valueOrigin' in savedProperty && savedProperty.valueOrigin === 'derived',
+				);
+			else this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
 
 			return savedProperty;
 		});

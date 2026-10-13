@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -14,6 +15,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 
+import 'package:fastybird_smart_panel/plugins/devices-virtual/presentation/measurement_diagnostics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
@@ -48,6 +50,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
   bool _isLoadingTimeseries = false;
   PropertyTimeseries? _timeseries;
+  Timer? _producerExpiryTimer;
 
   late SensorData _currentSensorData;
 
@@ -127,6 +130,9 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     _currentSensorData = widget.sensor;
     _devicesService.addListener(_onDataChanged);
     _fetchTimeseries();
+    _producerExpiryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _currentSensorData.property?.valueState?.producer != null) setState(() {});
+    });
   }
 
   @override
@@ -142,6 +148,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
 
   @override
   void dispose() {
+    _producerExpiryTimer?.cancel();
     _devicesService.removeListener(_onDataChanged);
     super.dispose();
   }
@@ -263,6 +270,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       mainAxisSize: MainAxisSize.min,
       spacing: AppSpacings.pSm,
       children: [
+        if (_currentSensorData.property?.type == 'virtual' && _currentSensorData.property?.valueState?.producer != null)
+          VirtualMeasurementDiagnostics(property: _currentSensorData.property!),
         FittedBox(
           fit: BoxFit.scaleDown,
           child: RichText(

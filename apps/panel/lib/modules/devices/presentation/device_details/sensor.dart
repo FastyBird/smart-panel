@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/views/channels/analog_input.dart';
 // Sensor device detail UI: multi-channel sensor list with embedded detail.
 // See [SensorDeviceDetail], [SensorDetailPage].
 //
@@ -95,6 +96,8 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   List<SensorData> _getAllSensorChannels() {
     return [
       ..._getEnvironmentalSensors(),
+      for (final channel in widget._device.channels.whereType<AnalogInputChannelView>())
+        SensorUtils.buildSensorData(channel, localizations: AppLocalizations.of(context)!, label: channel.name, property: channel.valueProp),
       ..._getAirQualitySensors(),
       ..._getDetectionSensors(),
       ..._getDeviceInfoSensors(),

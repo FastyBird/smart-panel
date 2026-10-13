@@ -18,6 +18,7 @@ const AuthorableVirtualDeviceModeSchema = z.enum([
 	DevicesVirtualPluginDeviceMode.projection,
 	DevicesVirtualPluginDeviceMode.sensor_aggregate,
 	DevicesVirtualPluginDeviceMode.actuator_group,
+	DevicesVirtualPluginDeviceMode.sensor_transform,
 ]);
 
 export const VirtualDeviceSchema = DeviceSchema.extend({

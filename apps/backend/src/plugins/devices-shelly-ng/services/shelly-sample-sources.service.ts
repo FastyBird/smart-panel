@@ -23,6 +23,8 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 	private closed = false;
 	private generation = 0;
 	private readonly mutating = new Set<string>();
+	private readonly acquisitions = new Map<string, Promise<ShellySampleSourceLease | null>>();
+	private readonly revocations = new Map<string, number>();
 	private readonly leases = new Map<string, ShellySampleSourceLease>();
 
 	constructor(
@@ -45,7 +47,7 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 				lease.metadata.componentKey === snapshot.componentKey &&
 				lease.metadata.fingerprint !== snapshot.fingerprint
 			)
-				this.leases.delete(id);
+				this.revoke(id);
 		}
 		this.generation++;
 		try {
@@ -55,7 +57,7 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 			const current = previous.find((row) => row.propertyId === propertyId && row.fingerprint === snapshot.fingerprint);
 			if (current) return current;
 			// Revoke process-local leases before awaiting persistence, fencing old configuration RPC callbacks.
-			for (const row of previous) this.leases.delete(row.propertyId);
+			for (const row of previous) this.revoke(row.propertyId);
 			const identifiedAt = new Date();
 			const record = this.repository.create({
 				propertyId,
@@ -98,7 +100,7 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 		this.mutating.add(key);
 		this.generation++;
 		for (const [id, lease] of this.leases) {
-			if (lease.metadata.deviceId === deviceId && lease.metadata.componentKey === componentKey) this.leases.delete(id);
+			if (lease.metadata.deviceId === deviceId && lease.metadata.componentKey === componentKey) this.revoke(id);
 		}
 		try {
 			const rows = await this.repository.find({ where: { deviceId, componentKey, active: true } });
@@ -118,13 +120,34 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 	}
 
 	async get(propertyId: string, retries = 2): Promise<ShellySampleSourceLease | null> {
+		if (this.closed) return null;
 		const existing = this.leases.get(propertyId);
 		if (existing) return existing;
+		const pending = this.acquisitions.get(propertyId);
+		if (pending !== undefined) return pending;
+		// The activation boundary is connection/acquisition start, never repository completion.
+		const acquisition = this.loadLease(propertyId, retries, new Date(), this.revocations.get(propertyId) ?? 0);
+		this.acquisitions.set(propertyId, acquisition);
+		try {
+			return await acquisition;
+		} finally {
+			if (this.acquisitions.get(propertyId) === acquisition) this.acquisitions.delete(propertyId);
+		}
+	}
+
+	private async loadLease(
+		propertyId: string,
+		retries: number,
+		activatedAt: Date,
+		revocation: number,
+	): Promise<ShellySampleSourceLease | null> {
 		const generation = this.generation;
 		const row = await this.repository.findOne({ where: { propertyId, active: true } });
+		if (this.closed || revocation !== (this.revocations.get(propertyId) ?? 0)) return null;
 		if (!row || this.mutating.has(`${row.deviceId}|${row.componentKey}`)) return null;
-		if (generation !== this.generation) return retries > 0 ? this.get(propertyId, retries - 1) : null;
-		const lease = Object.freeze({ metadata: row, activatedAt: new Date() });
+		if (generation !== this.generation)
+			return retries > 0 ? this.loadLease(propertyId, retries - 1, new Date(), revocation) : null;
+		const lease = Object.freeze({ metadata: row, activatedAt });
 		this.leases.set(propertyId, lease);
 		return lease;
 	}
@@ -163,11 +186,14 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 	onModuleDestroy(): void {
 		this.closed = true;
 		this.leases.clear();
+		this.acquisitions.clear();
 		this.generation++;
 	}
 
 	/** Clear restart/connection authority without altering durable identity or history. */
 	revoke(propertyId: string): void {
 		this.leases.delete(propertyId);
+		this.acquisitions.delete(propertyId);
+		this.revocations.set(propertyId, (this.revocations.get(propertyId) ?? 0) + 1);
 	}
 }
