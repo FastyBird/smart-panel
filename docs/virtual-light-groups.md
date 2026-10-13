@@ -35,8 +35,9 @@ read-only property. Parent target values still validate against the durable expo
 
 The planner snapshots all intended bindings and the graph/configuration revisions. Core expansion covers an entire
 mixed group/group/raw command request, normalizes canonical values, deduplicates equal leaves and rejects contradictory
-leaves before physical I/O. Core retains RGB/HS properties in a single physical channel batch. An optional `prepareCompositeBatch` captures exact
-physical targets and an opaque provider identity lease; ordinary exact platform preparation remains supported. Core
+leaves before physical I/O. Core retains RGB/HS properties in a single physical channel batch. Strict composite dispatch requires `prepareCompositeBatch` to capture exact
+physical targets and an opaque provider identity lease. Providers without this profile are unavailable and receive no
+physical command; their ordinary controls retain the existing platform preparation and dispatch behavior. Core
 admits the prepared values and supplies an exact generation/deadline guard to the dispatch closure. Providers check
 that guard and their stable identity at actual queued publish, then report qualified live feedback. Composite windows
 require live causal evidence; ordinary windows retain their legacy convergence contract. No member platform loop lives in the virtual platform.
@@ -66,4 +67,5 @@ own release/control path rather than trust caller-supplied context.
 
 Room contribution selection and admin/panel authoring/presentation are separate integrations. Raw physical controls
 remain individually usable. Production availability depends on adapters submitting qualified live feedback; legacy
-adapters that write only values are explicitly unknown instead of laundering optimistic writes into feedback.
+adapters that write only values remain unknown. A provider without guarded composite preparation is also refused at
+dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.
