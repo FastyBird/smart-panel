@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
+import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import type {
 	DevicesVirtualPluginCreateDeviceSchema,
 	DevicesVirtualPluginDeviceSchema,
@@ -12,11 +13,15 @@ type ApiCreateDevice = DevicesVirtualPluginCreateDeviceSchema;
 type ApiUpdateDevice = DevicesVirtualPluginUpdateDeviceSchema;
 type ApiDevice = DevicesVirtualPluginDeviceSchema;
 
-export const VirtualDeviceModeSchema = z.enum(['projection', 'sensor_aggregate', 'actuator_group', 'climate_controller', 'sensor_transform']);
-const AuthorableVirtualDeviceModeSchema = z.enum(['projection', 'sensor_aggregate', 'actuator_group']);
+export const VirtualDeviceModeSchema = z.enum(DevicesVirtualPluginDeviceMode);
+const AuthorableVirtualDeviceModeSchema = z.enum([
+	DevicesVirtualPluginDeviceMode.projection,
+	DevicesVirtualPluginDeviceMode.sensor_aggregate,
+	DevicesVirtualPluginDeviceMode.actuator_group,
+]);
 
 export const VirtualDeviceSchema = DeviceSchema.extend({
-	mode: VirtualDeviceModeSchema.default('projection'),
+	mode: VirtualDeviceModeSchema.default(DevicesVirtualPluginDeviceMode.projection),
 });
 
 // BACKEND API
@@ -39,6 +44,6 @@ export const VirtualDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpda
 export const VirtualDeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_VIRTUAL_TYPE),
-		mode: VirtualDeviceModeSchema.default('projection'),
+		mode: VirtualDeviceModeSchema.default(DevicesVirtualPluginDeviceMode.projection),
 	})
 );
