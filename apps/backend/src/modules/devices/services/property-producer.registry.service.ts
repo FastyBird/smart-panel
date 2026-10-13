@@ -68,7 +68,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	canCommit(lease: PropertyProducerLease, publication: DerivedPropertyPublication, epoch: number | null): boolean {
 		const entry = this.entries.get(lease.propertyId);
-		if (!entry || entry.lease !== lease || epoch !== entry.epoch) return false;
+		if (!entry || entry.lease !== lease || epoch !== entry.epoch || !['good', 'degraded'].includes(publication.quality))
+			return false;
 		const sampled = publication.sampledAt.getTime();
 		const evaluated = publication.evaluatedAt.getTime();
 		const expiry = publication.expiresAt.getTime();
@@ -116,6 +117,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			!entry ||
 			entry.lease !== lease ||
 			!Number.isFinite(evaluatedAt.getTime()) ||
+			evaluatedAt.getTime() > Date.now() ||
 			evaluatedAt.getTime() < Date.parse(entry.state.producer.evaluatedAt)
 		)
 			return false;
@@ -168,8 +170,15 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 
 	private emit(property: ChannelPropertyEntity, state: PropertyValueState): void {
-		const snapshot = Object.assign(Object.create(Object.getPrototypeOf(property)) as ChannelPropertyEntity, property);
+		const snapshot = Object.assign(
+			Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
+			property,
+		);
 		snapshot.value = clonePropertyValueState(state);
+		Object.freeze(snapshot.value.producer.reasons);
+		Object.freeze(snapshot.value.producer);
+		Object.freeze(snapshot.value);
+		Object.freeze(snapshot);
 		this.events?.emit(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, snapshot);
 	}
 }

@@ -1194,6 +1194,14 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		evidence?: PropertySampleEvidence,
 	): Promise<WindowedValueCommitResult> {
 		const canonicalPropertyId = this.valueSourceRegistry.resolve(property);
+		// Protective faults revoke qualification independently of command acknowledgement causality.
+		const validation = validatePropertyCommandValue(property, value);
+
+		if (!validation.valid || validation.value === undefined) {
+			const result = await writers.unwindowed();
+
+			return { ...result, held: false, forceValueEvent: false };
+		}
 		const activeWindow = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (
 			activeWindow &&
@@ -1205,13 +1213,6 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				evidence.observedAt.getTime() > evidence.receivedAt.getTime())
 		) {
 			return { changed: false, state: null, held: true, forceValueEvent: false };
-		}
-		const validation = validatePropertyCommandValue(property, value);
-
-		if (!validation.valid || validation.value === undefined) {
-			const result = await writers.unwindowed();
-
-			return { ...result, held: false, forceValueEvent: false };
 		}
 
 		// A report that arrives at/after the deadline is fresher than a due recovery candidate. Retire
@@ -1244,6 +1245,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			return { changed: false, state: null, held: true, forceValueEvent: false };
 		}
 
+		// Unchanged confirmation still resolves optimistic client state; ordinary heartbeats emit no scalar event.
 		const firstConfirmation = isConfirmation && window.state === 'pending';
 		const result = await writers.windowed();
 

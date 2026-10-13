@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { instanceToPlain } from 'class-transformer';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -387,6 +386,162 @@ describe('qualified samples and producer state', () => {
 				revision: 3,
 			},
 		});
+	});
+
+	it('serves opt-in strict and batch initializing state with storage disconnected', async () => {
+		storage.isConnected.mockReturnValue(false);
+		producers.register(property, 1);
+		expect(await values.readLatestStrict(property)).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable' },
+		});
+		expect((await values.readLatestManyStrict([property])).get(property.id)).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable' },
+		});
+		expect((await values.readLatestManyBounded([property])).items[0].state).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable' },
+		});
+	});
+
+	it.each(['latest', 'strict'] as const)(
+		'applies initializing state registered while %s storage read is pending',
+		async (kind) => {
+			const query = deferred<Array<{ propertyId: string; numberValue: number; time: Date }>>();
+			storage.query.mockReturnValue(query.promise);
+			storage.queryStrict.mockReturnValue(query.promise);
+			const reading = kind === 'latest' ? values.readLatest(property) : values.readLatestStrict(property);
+			producers.register(property, 4);
+			query.resolve([{ propertyId: property.id, numberValue: 99, time: new Date(base) }]);
+			expect(await reading).toMatchObject({ value: null, producer: { quality: 'unavailable', revision: 4 } });
+		},
+	);
+
+	it('rechecks expiry of an earlier cache hit after a strict batch storage wait', async () => {
+		const lease = producers.register(property, 1);
+		await values.publishDerived(property, lease, 20, publication());
+		const cold = Object.assign(new SampleProperty(), property, { id: 'cold' });
+		const query = deferred<Array<{ propertyId: string; numberValue: number; time: Date }>>();
+		storage.queryStrict.mockReturnValue(query.promise);
+		const reading = values.readLatestManyStrict([property, cold]);
+		jest.setSystemTime(base + 10_000);
+		query.resolve([{ propertyId: cold.id, numberValue: 99, time: new Date(base) }]);
+		expect((await reading).get(property.id)).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable', reasons: ['expired'] },
+		});
+	});
+
+	it('rechecks expiry of an earlier cache hit after a bounded storage wait', async () => {
+		const lease = producers.register(property, 1);
+		await values.publishDerived(property, lease, 20, publication());
+		const cold = Object.assign(new SampleProperty(), property, { id: 'cold' });
+		const query = deferred<Array<{ propertyId: string; numberValue: number; time: Date }>>();
+		storage.queryStrict.mockReturnValue(query.promise);
+		const reading = values.readLatestManyBounded([property, cold]);
+		jest.setSystemTime(base + 10_000);
+		query.resolve([{ propertyId: cold.id, numberValue: 99, time: new Date(base) }]);
+		expect((await reading).items[0].state).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable', reasons: ['expired'] },
+		});
+	});
+
+	it('does not let generic writers mutate an owned producer series', async () => {
+		const lease = producers.register(property, 1);
+		await values.publishDerived(property, lease, 20, publication());
+		await values.write(property, 99);
+		await report(99);
+		expect((await values.readLatest(property))?.value).toBe(20);
+		expect(storage.writePoints).toHaveBeenCalledTimes(1);
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+	});
+
+	it('isolates notification timestamps from listeners that mutate Date objects', async () => {
+		events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, (payload: { sample: { sampledAt: Date } }) =>
+			payload.sample.sampledAt.setTime(0),
+		);
+		await report(20);
+		expect(values.readQualifiedSample(property, 10_000)?.sampledAt).toEqual(new Date(base));
+	});
+
+	it('rejects future-clock samples and stale invalid evaluations without revoking newer derived state', async () => {
+		await report(20, evidence(base + 1_000));
+		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+		expect(accepted).not.toHaveBeenCalled();
+		const lease = producers.register(property, 1);
+		await values.publishDerived(property, lease, 21, publication());
+		expect(values.invalidateDerived(property, lease, ['late_error'], new Date(base - 1))).toBe(false);
+		expect(values.invalidateDerived(property, lease, ['clock_error'], new Date(base + 1))).toBe(false);
+		expect((await values.readLatest(property))?.value).toBe(21);
+	});
+
+	it('publishes exactly one unchanged command confirmation without adding an energy/history measurement', async () => {
+		await report(20);
+		open(20);
+		jest.setSystemTime(base + 1_000);
+		scalar.mockClear();
+		accepted.mockClear();
+		storage.enqueueWritePoint.mockClear();
+		await report(20, evidence(base + 1_000, 'live', base + 1));
+		await report(20, evidence(base + 1_000, 'live', base + 1));
+		expect(windows.get(property.id)?.state).toBe('confirmed_grace');
+		expect(accepted).toHaveBeenCalledTimes(2);
+		expect(scalar).toHaveBeenCalledTimes(1);
+		expect(storage.enqueueWritePoint).not.toHaveBeenCalled();
+	});
+
+	it('respects expiry at the explicit consumer evaluation clock', async () => {
+		const lease = producers.register(property, 1);
+		await values.publishDerived(property, lease, 20, publication());
+		expect(values.readQualifiedSample(property, 100_000, new Date(base + 10_000))).toBeNull();
+	});
+
+	it('captures queued evaluation evidence and publishes immutable producer snapshots', async () => {
+		const lease = producers.register(property, 1);
+		const gate = deferred<void>();
+		storage.flushQueuedWrites.mockReturnValue(gate.promise);
+		const input = { ...publication(), reasons: ['original'] };
+		const pending = values.publishDerived(property, lease, 20, input);
+		input.sampledAt.setTime(base - 1_000);
+		input.evaluatedAt.setTime(base + 2_000);
+		input.reasons.push('mutated');
+		gate.resolve(undefined);
+		await pending;
+		const state = await values.readLatest(property);
+		expect(state.producer).toMatchObject({ sampledAt: new Date(base).toISOString(), reasons: ['original'] });
+		const lastCall: unknown = quality.mock.calls.at(-1);
+		const event = (lastCall as [ChannelPropertyEntity])[0];
+		expect(Object.isFrozen(event)).toBe(true);
+		expect(Object.isFrozen(event.value)).toBe(true);
+		expect(Object.isFrozen(event.value.producer.reasons)).toBe(true);
+	});
+
+	it.each([null, -999, NaN, Infinity, 151])(
+		'revokes active-window qualification on fault %s without observation evidence or command acknowledgement',
+		async (fault) => {
+			await report(20);
+			open();
+			jest.setSystemTime(base + 1_000);
+			await report(fault, { ...evidence(base + 1_000), observedAt: undefined });
+			expect(values.readQualifiedSample(property, 10_000)).toBeNull();
+			expect((await values.readLatest(property))?.value).toBe(20);
+			expect(windows.get(property.id)?.state).toBe('pending');
+			expect(invalidated).toHaveBeenCalledTimes(1);
+			expect(accepted).toHaveBeenCalledTimes(1);
+			expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it('does not revoke a newer live sample with an old active-window fault', async () => {
+		jest.setSystemTime(base + 1_000);
+		await report(20, evidence(base + 1_000));
+		open();
+		await report(null, { ...evidence(base), observedAt: undefined });
+		expect(values.readQualifiedSample(property, 10_000)?.value).toBe(20);
+		expect(windows.get(property.id)?.state).toBe('pending');
+		expect(invalidated).not.toHaveBeenCalled();
 	});
 
 	it('uses one unref expiry timer and cleans it up with module disposal', () => {
