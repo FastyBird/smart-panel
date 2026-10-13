@@ -50,7 +50,8 @@ required: matching derived any-on or brightness mean never confirms a command.
 Each child ends as confirmed, failed, unavailable, superseded or timed out. A parent is confirmed only when every
 intended child confirms, partial when some confirm, and failed when none confirm. New physical generations and
 cancellation notify active parents, including an already-confirmed early child; ordinary confirmation-grace expiry does
-not erase confirmation. Configuration remaps fence the parent. Observers are removed on completion, timeout and module
+not erase confirmation. Confirmation is recorded immediately even when a provider acknowledgement hangs.
+Configuration remaps fence the parent. Observers are removed on completion, timeout and module
 shutdown. There is no promise of atomic hardware rollback after partial completion.
 
 Completed intents retain one correlated composite snapshot and derive partial status from confirmed children.
