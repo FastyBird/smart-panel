@@ -35,6 +35,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ZoneSpaceEntity } from '../../spaces-home-control/entities/zone-space.entity';
 import { CreateVirtualChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateVirtualChannelDto } from '../dto/create-channel.dto';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
@@ -71,6 +72,7 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 	let producers: PropertyProducerRegistryService;
 	let events: EventEmitter2;
 	let transforms: VirtualTransformConfigService;
+	let state: VirtualProducerStateService;
 	let sourceId: string;
 	let phase: string | undefined;
 	let admittedRunner: QueryRunner | undefined;
@@ -80,7 +82,7 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		phase = undefined;
 		admittedRunner = undefined;
 		publications.length = 0;
-		afterCreate.mockClear();
+		afterCreate.mockReset();
 		database = await new SqliteDataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -98,7 +100,10 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		producers = new PropertyProducerRegistryService(events);
 		graph = new VirtualDependencyGraphService(database);
 		const lock = new DeviceStructureLockService();
-		const state = new VirtualProducerStateService(database, producers, graph, events);
+		state = new VirtualProducerStateService(database, producers, graph, events);
+		events.on(EventType.CHANNEL_PROPERTY_CREATED, (property: VirtualChannelPropertyEntity) =>
+			state.handlePropertyChanged(property),
+		);
 		transforms = new VirtualTransformConfigService(database, lock, graph, events, state);
 		const aggregates = new VirtualProducerConfigService(database, lock, graph, events, state);
 		const devicesMapper = new DevicesTypeMapperService();
@@ -118,9 +123,10 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 				await virtualService.assertDerivedOutputSupported(property, channelId, manager);
 				return Promise.resolve();
 			},
-			afterCreate: (property) => {
+			afterCreate: async (property) => {
 				expect(admittedRunner?.isTransactionActive).toBe(false);
-				afterCreate();
+				state.initializeOutput(property);
+				await afterCreate();
 				return Promise.resolve(property);
 			},
 		});
@@ -321,6 +327,33 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		expect(publications.filter((e) => e === EventType.CHANNEL_PROPERTY_CREATED)).toHaveLength(5);
 		expect(producers.read(dto.outputPropertyId)?.producer.quality).toBe('unavailable');
 	});
+	it('returns committed creation and continues catalog publications after a deferred hook rejects', async () => {
+		afterCreate.mockRejectedValueOnce(new Error('post-commit property claim failed'));
+		const dto = draft();
+		const result = await authoring.createTransform(dto);
+		expect(result.device.id).toBe(dto.device.id);
+		expect(result.configuration.revision).toBe(1);
+		expect(await database.getRepository(VirtualTransformConfigEntity).count()).toBe(1);
+		expect(afterCreate).toHaveBeenCalledTimes(5);
+		expect(publications.filter((event) => event === EventType.CHANNEL_PROPERTY_CREATED)).toHaveLength(4);
+		expect(publications).toContain(EventType.CHANNEL_CREATED);
+		expect(publications).toContain(EventType.DEVICE_CREATED);
+		expect(producers.read(dto.outputPropertyId)?.producer.quality).toBe('unavailable');
+	});
+	it('keeps a failed activation unclaimed while publishing the remaining committed catalog', async () => {
+		jest.spyOn(transforms, 'activate').mockImplementationOnce(() => {
+			throw new Error('activation failed');
+		});
+		const dto = draft();
+		const result = await authoring.createTransform(dto);
+		expect(result.device.id).toBe(dto.device.id);
+		expect(result.configuration.revision).toBe(1);
+		expect(await database.getRepository(VirtualTransformConfigEntity).count()).toBe(1);
+		expect(afterCreate).toHaveBeenCalledTimes(4);
+		expect(publications.filter((event) => event === EventType.CHANNEL_PROPERTY_CREATED)).toHaveLength(4);
+		expect(publications).toContain(EventType.DEVICE_CREATED);
+		expect(producers.owns(dto.outputPropertyId)).toBe(false);
+	});
 	it('does not invoke value-loading subscribers while inserting the admitted catalog', async () => {
 		const preCommitLoads = jest.fn();
 		const postCommitLoads = jest.fn();
@@ -334,6 +367,23 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		await authoring.createTransform(draft());
 		expect(preCommitLoads).not.toHaveBeenCalled();
 		expect(postCommitLoads).toHaveBeenCalled();
+	});
+	it('persists initial zones without loading device status before COMMIT', async () => {
+		const dto = draft();
+		const zoneId = uuid();
+		await database.getRepository(ZoneSpaceEntity).insert({ id: zoneId, name: 'Outdoor zone' });
+		dto.device.zone_ids = [zoneId];
+		const preCommitLoads = jest.fn();
+		database.subscribers.push({
+			listenTo: () => DeviceEntity,
+			afterLoad: (_device: DeviceEntity, event: LoadEvent<DeviceEntity>) => {
+				if (event.queryRunner.isTransactionActive) preCommitLoads();
+			},
+		});
+		const result = await authoring.createTransform(dto);
+		expect(result.device.id).toBe(dto.device.id);
+		expect(await database.getRepository(DeviceZoneEntity).countBy({ deviceId: dto.device.id, zoneId })).toBe(1);
+		expect(preCommitLoads).not.toHaveBeenCalled();
 	});
 	it.each(['device', 'channel', 'property', 'config', 'source'])(
 		'rolls back a %s failure without rows, revisions, events or leases',

@@ -312,6 +312,134 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		expect(outputState(aggregate)?.value).toBe(20.5);
 	});
 
+	it('requires exact leaf incorporation when transform publications share a millisecond', async () => {
+		const raw = await measurement(),
+			sibling = await measurement(),
+			transformed = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM),
+			aggregate = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await transforms.configure(transformed.id, dto(raw));
+		await configure(aggregate, [transformed, sibling]);
+		await start();
+		await sample(raw, 10);
+		await sample(sibling, 20);
+		expect(outputState(aggregate)).toMatchObject({ value: 20.5, producer: { quality: 'good' } });
+		runtime.requireFreshInputs(aggregate.id, [
+			{ sourceId: transformed.id, leafId: raw.id },
+			{ sourceId: sibling.id, leafId: sibling.id },
+		]);
+		runtime.requestRecompute();
+		await runtime.flush();
+		await sample(sibling, 20);
+		const observed: ChannelPropertyEntity[] = [];
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (property: ChannelPropertyEntity) => {
+			if (property.id === aggregate.id) observed.push(property);
+		});
+		const originalPublish = values.publishDerived.bind(values) as PropertyValueService['publishDerived'];
+		const publish = jest.spyOn(values, 'publishDerived');
+		/** Pauses after the transform captured its source sample, before live publication. */
+		const pauseTransform = () => {
+			let release: () => void;
+			let started: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const entered = new Promise<void>((resolve) => {
+				started = resolve;
+			});
+			publish.mockImplementation(async (...args) => {
+				if (args[0].id === transformed.id) {
+					publish.mockImplementation(originalPublish);
+					started();
+					await gate;
+				}
+				return originalPublish(...args);
+			});
+			return { entered, release: () => release() };
+		};
+		/** Admits another leaf report without advancing either sample or server clock. */
+		const acceptLeaf = (value: number) =>
+			values.writeSampleWithState(raw, value, {
+				sampledAt: new Date(base),
+				receivedAt: new Date(base),
+				provenance: 'live',
+			});
+		try {
+			const first = pauseTransform();
+			await acceptLeaf(11);
+			await first.entered;
+			await runtime.flush();
+			expect(outputState(transformed)?.value).toBe(21);
+			expect(outputState(aggregate)?.value).toBeNull();
+			expect(observed.some((property) => property.value?.producer?.quality === 'good')).toBe(false);
+			// A second acceptance fences the pending evaluation; its publication cannot claim this report.
+			await acceptLeaf(12);
+			await runtime.flush();
+			expect(outputState(aggregate)?.value).toBeNull();
+			first.release();
+			await transformRuntime.flush();
+			await runtime.flush();
+			expect(outputState(transformed)).toMatchObject({ value: 25, producer: { quality: 'good' } });
+			expect(outputState(aggregate)).toMatchObject({ value: 22.5, producer: { quality: 'good' } });
+			expect(
+				observed
+					.filter((property) => property.value?.producer?.quality === 'good')
+					.map((property) => property.value.value),
+			).toEqual([22.5]);
+			observed.length = 0;
+			// The incorporation guard stays armed after admission for another same-clock report.
+			const next = pauseTransform();
+			await acceptLeaf(13);
+			await next.entered;
+			await runtime.flush();
+			expect(outputState(transformed)?.value).toBe(25);
+			expect(outputState(aggregate)?.value).toBeNull();
+			expect(observed.some((property) => property.value?.producer?.quality === 'good')).toBe(false);
+			next.release();
+			await transformRuntime.flush();
+			await runtime.flush();
+			expect(outputState(aggregate)).toMatchObject({ value: 23.5, producer: { quality: 'good' } });
+			expect(outputState(aggregate).producer.sampledAt).toBe(new Date(base).toISOString());
+		} finally {
+			publish.mockRestore();
+		}
+	});
+
+	it('follows a transform source replacement without admitting its pre-admission cached leaf', async () => {
+		const raw = await measurement(),
+			replacement = await measurement(),
+			sibling = await measurement(),
+			transformed = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM),
+			aggregate = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await transform(raw, transformed);
+		await configure(aggregate, [transformed, sibling]);
+		await start();
+		await sample(raw, 10);
+		await sample(sibling, 20);
+		await sample(replacement, 15);
+		runtime.requireFreshInputs(aggregate.id, [{ sourceId: transformed.id, leafId: raw.id }]);
+		await transform(replacement, transformed, 1);
+		expect(outputState(aggregate)?.value).toBeNull();
+		await sample(replacement, 16);
+		expect(transformRuntime.readDiagnostics(transformed.id)).toMatchObject({ reasons: [] });
+		expect(outputState(transformed)).toMatchObject({ value: 33, producer: { quality: 'good' } });
+		expect(runtime.readDiagnostics(aggregate.id)).toMatchObject({ quality: 'good' });
+		expect(outputState(aggregate)).toMatchObject({ value: 26.5, producer: { quality: 'good' } });
+		await sample(raw, 30);
+		expect(outputState(aggregate)).toMatchObject({ value: 26.5, producer: { quality: 'good' } });
+		await database.manager.update(
+			VirtualTransformSourceEntity,
+			{ outputPropertyId: transformed.id },
+			{
+				sourcePropertyId: aggregate.id,
+				sourcePropertyIdentity: aggregate.id,
+			},
+		);
+		await graph.refreshQuarantine();
+		await transformRuntime.flush();
+		await runtime.flush();
+		expect(outputState(aggregate)?.value).toBeNull();
+	});
+
 	it('converts raw volts to Celsius while preserving source age and expiring without renewal', async () => {
 		const source = await rawVolts(),
 			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);

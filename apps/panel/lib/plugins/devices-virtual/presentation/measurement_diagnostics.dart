@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:flutter/material.dart';
 
+/// Explains a producer status or reason while retaining any member identity.
 String measurementDiagnosticLabel(AppLocalizations l, String value) {
   final parts = value.split(':');
   final label = switch (parts.first) {
@@ -68,6 +69,8 @@ class MeasurementInputDiagnostic {
     this.sampledAt,
     this.expiresAt,
   });
+
+  /// Returns a sample only while its timestamp, lease, and source are usable.
   num? valueAt(DateTime now) =>
       sampledAt != null &&
           !sampledAt!.isAfter(now) &&
@@ -98,6 +101,7 @@ class MeasurementDiagnostics {
 typedef MeasurementDiagnosticsLoader =
     Future<MeasurementDiagnostics> Function(String outputId);
 
+/// Fetches converter or aggregate diagnostics without updating live values.
 Future<MeasurementDiagnostics> loadMeasurementDiagnostics(String id) async {
   final client = locator<ApiClient>().devicesVirtualPlugin;
   try {
@@ -234,7 +238,7 @@ class _VirtualMeasurementDiagnosticsState
     final device = channel == null ? null : service.getDevice(channel.device);
     return device == null
         ? input.identity
-        : '${device.name} / ${channel!.name}';
+        : '${device.name} / ${channel!.name} / ${input.identity}';
   }
 
   @override

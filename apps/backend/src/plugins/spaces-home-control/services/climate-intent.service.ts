@@ -369,14 +369,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	/**
 	 * Set mode on a single device.
 	 */
-	private async setDeviceMode(device: PrimaryClimateDevice, mode: ClimateMode): Promise<boolean> {
-		const platform = this.platformRegistryService.get(device.device);
-
-		if (!platform) {
-			this.logger.warn(`No platform registered for device id=${device.device.id}`);
-			return false;
-		}
-
+	private buildModeCommands(device: PrimaryClimateDevice, mode: ClimateMode): IDevicePropertyData[] {
 		const commands: IDevicePropertyData[] = [];
 
 		// Track if heater or cooler will be turned on (for fan control)
@@ -479,6 +472,15 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				value: heaterOn || coolerOn,
 			});
 		}
+		return commands;
+	}
+
+	private async setDeviceMode(device: PrimaryClimateDevice, mode: ClimateMode): Promise<boolean> {
+		if (!this.platformRegistryService.get(device.device)) {
+			this.logger.warn(`No platform registered for device id=${device.device.id}`);
+			return false;
+		}
+		const commands = this.buildModeCommands(device, mode);
 
 		if (commands.length === 0) {
 			this.logger.debug(`No mode commands for device id=${device.device.id}`);
@@ -495,6 +497,63 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		} catch (error) {
 			this.logger.error(`Error executing mode command for device id=${device.device.id}: ${error}`);
 			return false;
+		}
+	}
+
+	/** A controller applies mode and bounds through one durable settings transaction. */
+	private async setVirtualControllerClimate(
+		device: PrimaryClimateDevice,
+		mode: ClimateMode,
+		heatingSetpoint: number | null,
+		coolingSetpoint: number | null,
+	): Promise<DeviceSetpointCommandResult> {
+		if (!this.platformRegistryService.get(device.device))
+			return { success: false, heatingSetpoint: null, coolingSetpoint: null };
+		const commands = this.buildModeCommands(device, mode);
+		if (commands.length === 0) return { success: false, heatingSetpoint: null, coolingSetpoint: null };
+		const role = device.role ?? ClimateRole.AUTO;
+		let appliedHeatingSetpoint: number | null = null;
+		let appliedCoolingSetpoint: number | null = null;
+		if (
+			heatingSetpoint !== null &&
+			device.supportsHeating &&
+			(role === ClimateRole.AUTO || role === ClimateRole.HEATING_ONLY) &&
+			device.heaterChannel &&
+			device.heaterSetpointProperty
+		) {
+			appliedHeatingSetpoint = this.clampSetpoint(heatingSetpoint, device.heaterMinSetpoint, device.heaterMaxSetpoint);
+			commands.push({
+				device: device.device,
+				channel: device.heaterChannel,
+				property: device.heaterSetpointProperty,
+				value: appliedHeatingSetpoint,
+			});
+		}
+		if (
+			coolingSetpoint !== null &&
+			device.supportsCooling &&
+			(role === ClimateRole.AUTO || role === ClimateRole.COOLING_ONLY) &&
+			device.coolerChannel &&
+			device.coolerSetpointProperty
+		) {
+			appliedCoolingSetpoint = this.clampSetpoint(coolingSetpoint, device.coolerMinSetpoint, device.coolerMaxSetpoint);
+			commands.push({
+				device: device.device,
+				channel: device.coolerChannel,
+				property: device.coolerSetpointProperty,
+				value: appliedCoolingSetpoint,
+			});
+		}
+		try {
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			return {
+				success,
+				heatingSetpoint: success ? appliedHeatingSetpoint : null,
+				coolingSetpoint: success ? appliedCoolingSetpoint : null,
+			};
+		} catch (error) {
+			this.logger.error(`Controller climate command failed for device id=${device.device.id}: ${error}`);
+			return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 		}
 	}
 
@@ -829,6 +888,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		let coolingSetpoint: number | null = null;
 		const appliedHeatingSetpoints: number[] = [];
 		const appliedCoolingSetpoints: number[] = [];
+		const combinedControllers = new Set<string>();
 
 		// Track per-device results: true = all operations succeeded, false = at least one failed, null = skipped
 		const deviceResults = new Map<string, boolean | null>();
@@ -836,6 +896,27 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		// Step 1: Set mode if provided
 		if (intent.mode !== undefined) {
 			for (const device of devices) {
+				if (
+					device.device.type === 'virtual' &&
+					(device.device as typeof device.device & { mode?: string }).mode === 'climate_controller' &&
+					(intent.heatingSetpoint !== undefined || intent.coolingSetpoint !== undefined)
+				) {
+					const command = await this.setVirtualControllerClimate(
+						device,
+						intent.mode,
+						intent.heatingSetpoint === undefined
+							? null
+							: this.clampSetpoint(intent.heatingSetpoint, climateState.minSetpoint, climateState.maxSetpoint),
+						intent.coolingSetpoint === undefined
+							? null
+							: this.clampSetpoint(intent.coolingSetpoint, climateState.minSetpoint, climateState.maxSetpoint),
+					);
+					combinedControllers.add(device.device.id);
+					deviceResults.set(device.device.id, command.success);
+					if (command.heatingSetpoint !== null) appliedHeatingSetpoints.push(command.heatingSetpoint);
+					if (command.coolingSetpoint !== null) appliedCoolingSetpoints.push(command.coolingSetpoint);
+					continue;
+				}
 				const success = await this.setDeviceMode(device, intent.mode);
 
 				// Track mode result for this device
@@ -876,6 +957,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			}
 
 			for (const device of devices) {
+				if (combinedControllers.has(device.device.id)) continue;
 				const role = device.role ?? ClimateRole.AUTO;
 
 				const shouldSetHeating =

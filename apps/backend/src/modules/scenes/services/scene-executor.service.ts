@@ -27,6 +27,9 @@ export interface IScenePlatform {
 	 */
 	execute(scene: SceneEntity, actions: SceneActionEntity[]): Promise<ActionExecutionResultModel[]>;
 
+	/** Adjacent actions may be passed together; the platform retains their order and per-action results. */
+	supportsAdjacentActions?(): boolean;
+
 	getCommandTtlMs?(actions: readonly SceneActionEntity[]): Promise<number>;
 
 	/**
@@ -362,8 +365,10 @@ export class SceneExecutorService {
 
 		const results: ActionExecutionResultModel[] = [];
 
-		for (const action of actions) {
+		for (let index = 0; index < actions.length; index++) {
+			const action = actions[index];
 			const startTime = Date.now();
+			const adjacent = [action];
 
 			try {
 				const platform = this.getPlatform(action.type);
@@ -372,31 +377,33 @@ export class SceneExecutorService {
 					throw new Error(`No platform registered for action type: ${action.type}`);
 				}
 
-				// Execute single action through platform
-				const actionResults = await platform.execute(scene, [action]);
-
-				if (actionResults.length > 0) {
-					results.push(actionResults[0]);
-				} else {
-					results.push({
-						actionId: action.id,
-						success: true,
-						error: null,
-						executionTimeMs: Date.now() - startTime,
-					});
-				}
+				if (platform.supportsAdjacentActions?.())
+					while (index + adjacent.length < actions.length && actions[index + adjacent.length].type === action.type)
+						adjacent.push(actions[index + adjacent.length]);
+				const actionResults = await platform.execute(scene, adjacent);
+				for (const member of adjacent)
+					results.push(
+						actionResults.find((result) => result.actionId === member.id) ?? {
+							actionId: member.id,
+							success: adjacent.length === 1,
+							error: adjacent.length === 1 ? null : 'Scene platform omitted action result',
+							executionTimeMs: Date.now() - startTime,
+						},
+					);
 			} catch (error) {
 				const err = error as Error;
 
 				this.logger.error(`[EXECUTE] Action ${action.id} failed: ${err.message}`);
 
-				results.push({
-					actionId: action.id,
-					success: false,
-					error: err.message,
-					executionTimeMs: Date.now() - startTime,
-				});
+				for (const member of adjacent)
+					results.push({
+						actionId: member.id,
+						success: false,
+						error: err.message,
+						executionTimeMs: Date.now() - startTime,
+					});
 			}
+			index += adjacent.length - 1;
 		}
 
 		return results;
