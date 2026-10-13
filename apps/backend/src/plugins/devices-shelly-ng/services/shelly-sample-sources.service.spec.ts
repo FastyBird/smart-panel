@@ -135,6 +135,59 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		);
 	});
 
+	it('shares reconnect acquisition and qualifies packets captured while the real repository read is pending', async () => {
+		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
+		jest.useFakeTimers({ now: Date.now() + 1000 });
+		try {
+			sources.revoke(propertyId);
+			const repository = database.getRepository(ShellySampleSourceEntity);
+			const row = await repository.findOneByOrFail({ propertyId });
+			let release: (value: ShellySampleSourceEntity) => void;
+			const read = jest.spyOn(repository, 'findOne').mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = resolve;
+					}),
+			);
+			const connectedAt = new Date();
+			const connected = sources.get(propertyId);
+			jest.setSystemTime(Date.now() + 1);
+			const observedAt = new Date();
+			const firstSample = sources.get(propertyId);
+			jest.setSystemTime(Date.now() + 100);
+			release(row);
+			const lease = await connected;
+			expect(await firstSample).toBe(lease);
+			expect(read).toHaveBeenCalledTimes(1);
+			expect(lease.activatedAt).toEqual(connectedAt);
+			expect(sources.isCurrent(lease, observedAt)).toBe(true);
+			expect(sources.isCurrent(lease, connectedAt)).toBe(false);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('a disconnect fences an in-flight acquisition before it can re-create authority', async () => {
+		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
+		sources.revoke(propertyId);
+		const repository = database.getRepository(ShellySampleSourceEntity);
+		const row = await repository.findOneByOrFail({ propertyId });
+		let release: (value: ShellySampleSourceEntity) => void;
+		jest.spyOn(repository, 'findOne').mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		const pending = sources.get(propertyId);
+		sources.revoke(propertyId);
+		release(row);
+		expect(await pending).toBeNull();
+		const current = await sources.get(propertyId);
+		expect(current).not.toBeNull();
+		expect(sources.isCurrent(current, new Date(current.activatedAt.getTime() + 1))).toBe(true);
+	});
+
 	it('identity changes revoke old leases and old scalar eligibility while preserving metadata for history/aliases', async () => {
 		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
 		const oldLease = await sources.get(propertyId);

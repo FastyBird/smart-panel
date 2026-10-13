@@ -148,6 +148,26 @@ describe('core opt-in composite commands', () => {
 		expect(result.composite.children[0].status).toBe('timed_out');
 		expect(fixture.windows.get('a')).toBeNull();
 	});
+	it('classifies a deadline timer that fires before the wall clock reaches its deadline', async () => {
+		jest.useFakeTimers({ doNotFake: ['Date'] });
+		const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+		const fixture = setup([{ memberId: 'a', update: update('a') }]);
+		fixture.processBatch.mockImplementationOnce(() => new Promise<boolean>(() => {}));
+		try {
+			const pending = fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 30 });
+			for (let step = 0; step < 100 && fixture.processBatch.mock.calls.length === 0; step++) await Promise.resolve();
+			expect(fixture.processBatch).toHaveBeenCalledTimes(1);
+			await jest.advanceTimersByTimeAsync(30);
+			const result = await pending;
+			expect(Date.now()).toBe(1000);
+			expect(result.composite.children[0].status).toBe('timed_out');
+			expect(fixture.windows.get('a')).toBeNull();
+		} finally {
+			fixture.dispatch.onModuleDestroy();
+			clock.mockRestore();
+			jest.useRealTimers();
+		}
+	});
 	it('preserves one compound physical channel batch rather than racing individual RGB writes', async () => {
 		const red = update('red');
 		const green = update('green');
