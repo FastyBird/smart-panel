@@ -224,6 +224,39 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		expect(await graph.revision()).toBe(1);
 	});
 
+	it('retains every aggregate link and reports removal and repair of a non-last input', async () => {
+		const sources = await Promise.all([measurement(), measurement(), measurement()]);
+		const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const configured = await configs.configureAggregate(
+			output.propertyId,
+			aggregateDto(sources.map((source) => source.propertyId)),
+		);
+		const index = new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity));
+		await index.rebuild();
+		const links = index.findLinksByVirtualDevice(output.deviceId);
+		expect(links).toHaveLength(3);
+		expect(links).toEqual(expect.arrayContaining(await index.loadLinksByVirtualDevice(output.deviceId)));
+		const removed = links[0];
+		await database.getRepository(ChannelPropertyEntity).delete(removed.sourcePropertyId);
+		expect((await index.rebuild()).rewiredVirtualDeviceIds).toContain(output.deviceId);
+		expect(index.findLinksByVirtualDevice(output.deviceId)).toHaveLength(3);
+		expect(index.findLinksByVirtualDevice(output.deviceId)).toContainEqual(
+			expect.objectContaining({ bindingId: removed.bindingId, sourcePropertyId: null }),
+		);
+		const replacement = await measurement();
+		const repair = aggregateDto(
+			sources.filter((source) => source.propertyId !== removed.sourcePropertyId).map((source) => source.propertyId),
+			configured.revision,
+		);
+		repair.inputs.push({ id: removed.bindingId, sourcePropertyId: replacement.propertyId });
+		await configs.configureAggregate(output.propertyId, repair);
+		expect((await index.rebuild()).rewiredVirtualDeviceIds).toContain(output.deviceId);
+		expect(index.findLinksByVirtualDevice(output.deviceId)).toHaveLength(3);
+		expect(index.findLinksByVirtualDevice(output.deviceId)).toEqual(
+			expect.arrayContaining(await index.loadLinksByVirtualDevice(output.deviceId)),
+		);
+	});
+
 	it('persists physical-light bindings and indexes references without treating members as projection aliases', async () => {
 		const groupId = uuid();
 		const groupChannelId = uuid();
@@ -282,10 +315,16 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		expect(result.members).toHaveLength(2);
 		const index = new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity));
 		await index.rebuild();
+		expect(index.findLinksByVirtualDevice(groupId)).toHaveLength(4);
+		expect(index.findLinksByVirtualDevice(groupId)).toEqual(
+			expect.arrayContaining(await index.loadLinksByVirtualDevice(groupId)),
+		);
 		expect(index.findBySourceProperty(members[0].bindings[0].sourcePropertyId)).toHaveLength(0);
 		expect(index.findDependentOutputIdsBySourceProperty(members[0].bindings[0].sourcePropertyId)).toEqual([outputId]);
 		expect(await index.isSourceDeviceReferenced(members[0].deviceId)).toBe(true);
 		await database.getRepository(ChannelEntity).delete(members[0].sourceChannelId);
+		expect((await index.rebuild()).rewiredVirtualDeviceIds).toContain(groupId);
+		expect(index.findLinksByVirtualDevice(groupId)).toHaveLength(4);
 		const missing = await configs.getLightGroup(groupChannelId);
 		expect(missing.members).toHaveLength(2);
 		expect(missing.members.find((member) => member.source_identity === members[0].sourceChannelId)).toMatchObject({
