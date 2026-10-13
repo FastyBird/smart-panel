@@ -40,6 +40,9 @@ export class CompositePropertyCommandRegistryService {
 		this.planners.add(planner);
 		return () => this.planners.delete(planner);
 	}
+	hasPlanners(): boolean {
+		return this.planners.size > 0;
+	}
 	get(property: ChannelPropertyEntity | undefined): CompositePropertyCommandPlanner | null {
 		if (!property) return null;
 		return [...this.planners].find((planner) => planner.canHandle(property)) ?? null;

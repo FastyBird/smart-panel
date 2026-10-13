@@ -101,7 +101,13 @@ describe('light group common capability contract', () => {
 		const b = property(PropertyCategory.BRIGHTNESS, { format: [10, 90], step: 5 });
 		expect(commonLightCapabilities([[a], [b]])[0]).toMatchObject({ format: [10, 90], step: 5 });
 		expect(
-			commonLightCapabilities([[property(PropertyCategory.BRIGHTNESS, { format: [0, 100], step: 2 })], [b]]),
+			commonLightCapabilities([[property(PropertyCategory.BRIGHTNESS, { format: [0, 100], step: 2 })], [b]])[0],
+		).toMatchObject({ format: [10, 90], step: 10 });
+		expect(
+			commonLightCapabilities([
+				[property(PropertyCategory.BRIGHTNESS, { format: [0, 100], step: 2 })],
+				[property(PropertyCategory.BRIGHTNESS, { format: [11, 90], step: 2 })],
+			]),
 		).toHaveLength(0);
 		expect(
 			commonLightCapabilities([

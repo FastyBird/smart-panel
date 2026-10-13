@@ -1,7 +1,7 @@
 import { DataSource, EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import {
@@ -35,12 +35,14 @@ import {
 } from '../entities/virtual-producer.entity';
 import {
 	VirtualAggregateConfigurationModel,
+	VirtualLightGroupCapabilityModel,
 	VirtualLightGroupConfigurationModel,
 	VirtualProducerBindingModel,
 } from '../models/producer-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { commonLightCapabilities } from './virtual-light-group.utils';
+import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
+import { LightGroupCapability, commonLightCapabilities } from './virtual-light-group.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
@@ -53,6 +55,7 @@ export class VirtualProducerConfigService {
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly producerState: VirtualProducerStateService,
+		@Optional() private readonly lightGroups?: VirtualLightGroupStateService,
 	) {}
 
 	async configureAggregate(
@@ -214,7 +217,13 @@ export class VirtualProducerConfigService {
 	): Promise<VirtualLightGroupConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
 			const prepared = await this.validateLightGroup(this.dataSource.manager, groupChannelId, dto);
-			return this.groupModel(prepared.config, prepared.members, prepared.bindings, await this.graph.revision());
+			return this.groupModel(
+				prepared.config,
+				prepared.members,
+				prepared.bindings,
+				await this.graph.revision(),
+				prepared.capabilities,
+			);
 		});
 	}
 
@@ -228,7 +237,12 @@ export class VirtualProducerConfigService {
 		const bindings = (await this.dataSource.manager.find(VirtualLightGroupBindingEntity)).filter((binding) =>
 			members.some((member) => member.id === binding.memberId),
 		);
-		return this.groupModel(config, members, bindings, await this.graph.revision());
+		const outputs = await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
+			where: { channel: { id: groupChannelId } },
+			relations: ['channel'],
+		});
+		const capabilities = await this.commonContract(this.dataSource.manager, members, bindings, outputs);
+		return this.groupModel(config, members, bindings, await this.graph.revision(), capabilities);
 	}
 
 	private async validateLightGroup(
@@ -240,6 +254,7 @@ export class VirtualProducerConfigService {
 		members: VirtualLightGroupMemberEntity[];
 		bindings: VirtualLightGroupBindingEntity[];
 		outputs: VirtualChannelPropertyEntity[];
+		capabilities: LightGroupCapability[];
 	}> {
 		if (
 			dto.profile !== VirtualLightGroupProfile.LIGHT ||
@@ -350,10 +365,15 @@ export class VirtualProducerConfigService {
 					source.dataType !== output.dataType ||
 					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
 					!source.permissions.includes(PermissionType.READ_WRITE)
-				)
+				) {
+					if (existing && output.category !== PropertyCategory.ON)
+						throw new ConflictException(
+							`Membership edit would remove capability ${output.category}; repair its scene/tile references and exposed contract explicitly.`,
+						);
 					throw new DevicesValidationException(
 						'Member property must belong to its physical channel and match output quantity/type/unit with read-write support.',
 					);
+				}
 				bindings.push(
 					manager.create(VirtualLightGroupBindingEntity, {
 						id: oldBinding?.id ?? uuid(),
@@ -373,14 +393,7 @@ export class VirtualProducerConfigService {
 			new Set(bindings.map((binding) => binding.id)).size !== bindings.length
 		)
 			throw new DevicesValidationException('Member identities and binding UUIDs must be distinct.');
-		const capabilities = commonLightCapabilities(
-			await Promise.all(
-				members.map(async (member) => {
-					if (!member.sourceChannelId) return [];
-					return manager.find(ChannelPropertyEntity, { where: { channel: { id: member.sourceChannelId } } });
-				}),
-			),
-		);
+		const capabilities = await this.commonContract(manager, members, bindings, exposed);
 		// Missing identities retain their last durable contract; live metadata is checked again at runtime.
 		for (const output of exposed) {
 			const liveSources = bindings.filter(
@@ -430,7 +443,39 @@ export class VirtualProducerConfigService {
 			members,
 			bindings,
 			outputs: exposed,
+			capabilities,
 		};
+	}
+
+	private async commonContract(
+		manager: EntityManager,
+		members: VirtualLightGroupMemberEntity[],
+		bindings: VirtualLightGroupBindingEntity[],
+		outputs: VirtualChannelPropertyEntity[],
+	): Promise<LightGroupCapability[]> {
+		return commonLightCapabilities(
+			await Promise.all(
+				members.map(async (member) => {
+					const physical = member.sourceChannelId
+						? await manager.find(ChannelPropertyEntity, {
+								where: { channel: { id: member.sourceChannelId } },
+								relations: ['channel'],
+							})
+						: [];
+					// Unavailable members never shrink the last validated intended contract. These placeholders
+					// are metadata only; runtimes still require the actual live FK and fresh physical feedback.
+					const missing = bindings.filter((binding) => binding.memberId === member.id && !binding.sourcePropertyId);
+					for (const binding of missing) {
+						const output = outputs.find((output) => output.id === binding.outputPropertyId);
+						if (output)
+							physical.push(
+								Object.assign(new ChannelPropertyEntity(), output, { permissions: [PermissionType.READ_WRITE] }),
+							);
+					}
+					return physical;
+				}),
+			),
+		);
 	}
 
 	private async property(manager: EntityManager, id: string): Promise<ChannelPropertyEntity> {
@@ -504,6 +549,7 @@ export class VirtualProducerConfigService {
 		members: VirtualLightGroupMemberEntity[],
 		bindings: VirtualLightGroupBindingEntity[],
 		graphRevision: number,
+		capabilities: LightGroupCapability[],
 	): VirtualLightGroupConfigurationModel {
 		return Object.assign(new VirtualLightGroupConfigurationModel(), {
 			group_channel: config.groupChannelId,
@@ -511,7 +557,17 @@ export class VirtualProducerConfigService {
 			profile: config.profile,
 			revision: config.revision,
 			graph_revision: graphRevision,
-			runtime_readiness: 'unavailable',
+			runtime_readiness: 'ready',
+			common_capabilities: capabilities.map((capability) =>
+				Object.assign(new VirtualLightGroupCapabilityModel(), {
+					category: capability.category,
+					data_type: capability.dataType,
+					unit: capability.unit,
+					format: capability.format,
+					step: capability.step,
+				}),
+			),
+			reported_state: this.lightGroups?.getReportedModel(config.groupChannelId) ?? null,
 			members: members.map((member) => ({
 				id: member.id,
 				source_channel: member.sourceChannelId,

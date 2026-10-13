@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { ChannelCategory, DeviceCategory, PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
@@ -11,6 +12,7 @@ import {
 	CompositePropertyCommandRegistryService,
 } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
+import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import {
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
@@ -46,13 +48,18 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 			property.isDerived &&
 			typeof channel !== 'string' &&
 			typeof channel.device !== 'string' &&
-			(channel.device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP
+			channel.category === ChannelCategory.LIGHT &&
+			channel.device.type === 'virtual' &&
+			channel.device.category === DeviceCategory.LIGHTING &&
+			(channel.device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP &&
+			property.permissions.includes(PermissionType.READ_ONLY)
 		);
 	}
 	async plan(updates: readonly IDevicePropertyData[]): Promise<CompositeCommandPlan> {
 		const graphRevision = await this.graph.revision();
 		const revisions = new Map<string, number>();
 		const children: CompositeCommandChild[] = [];
+		const deviceCache = new Map<string, DeviceEntity | null>();
 		for (const update of updates) {
 			const channelId = update.channel.id;
 			const config = await this.dataSource.manager.findOneBy(VirtualLightGroupConfigEntity, {
@@ -71,13 +78,22 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				});
 				const property = binding?.sourceProperty;
 				const channel = property?.channel as ChannelEntity;
-				const device = channel ? await this.devices.findOne((channel.device as DeviceEntity).id) : null;
+				const deviceId = channel ? (channel.device as DeviceEntity).id : null;
+				if (deviceId && !deviceCache.has(deviceId)) deviceCache.set(deviceId, await this.devices.findOne(deviceId));
+				const device = deviceId ? deviceCache.get(deviceId) : null;
 				const available =
 					member.sourceChannelId &&
 					property &&
 					channel.id === member.sourceChannelId &&
 					device?.enabled &&
-					device.status.online;
+					device.type !== 'virtual' &&
+					device.status.online &&
+					!this.graph.isQuarantined(property.id) &&
+					!this.graph.isQuarantined(update.property.id) &&
+					property.category === update.property.category &&
+					property.dataType === update.property.dataType &&
+					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
+					property.permissions.includes(PermissionType.READ_WRITE);
 				children.push({
 					memberId: member.id,
 					update: available ? { property, channel, device, value: update.value } : null,

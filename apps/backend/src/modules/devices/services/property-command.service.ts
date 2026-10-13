@@ -425,9 +425,11 @@ export class PropertyCommandService {
 
 		try {
 			// Process commands per device
-			const hasComposite = (
-				await Promise.all(commands.map((command) => this.propertyMetadata.findOne(command.property)))
-			).some((property) => this.composites?.get(property));
+			const hasComposite =
+				this.composites?.hasPlanners() &&
+				(await Promise.all(commands.map((command) => this.propertyMetadata.findOne(command.property)))).some(
+					(property) => this.composites?.get(property),
+				);
 			if (hasComposite) {
 				const updates: IDevicePropertyData[] = [];
 				for (const command of commands) {

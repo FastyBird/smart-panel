@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await -- Async platform/metadata fixture methods intentionally implement provider contracts. */
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { PermissionType } from '../devices.constants';
@@ -119,5 +120,78 @@ describe('core opt-in composite commands', () => {
 		expect(result.composite.status).toBe('failed');
 		expect(result.composite.children[0].status).toBe('timed_out');
 		expect(fixture.windows.get('a')).toBeNull();
+	});
+	it('preserves one compound physical channel batch rather than racing individual RGB writes', async () => {
+		const red = update('red');
+		const green = update('green');
+		const blue = update('blue');
+		for (const component of [green, blue]) {
+			component.device = red.device;
+			component.channel = red.channel;
+			component.property.channel = red.channel;
+		}
+		const fixture = setup([
+			{ memberId: 'light', update: red },
+			{ memberId: 'light', update: green },
+			{ memberId: 'light', update: blue },
+		]);
+		fixture.processBatch.mockImplementationOnce(async (targets) => {
+			for (const target of targets) {
+				const window = fixture.windows.get(target.property.id);
+				fixture.windows.confirm(
+					{ canonicalPropertyId: target.property.id, generation: window.generation },
+					{ value: target.value, receivedAt: Date.now() },
+				);
+			}
+			return true;
+		});
+		const result = await fixture.dispatch.dispatchBatch([update('group')]);
+		expect(result.composite.status).toBe('confirmed');
+		expect(fixture.processBatch).toHaveBeenCalledTimes(1);
+		expect(fixture.processBatch.mock.calls[0][0]).toHaveLength(3);
+	});
+	it('supersedes an early confirmed child when a newer direct command arrives before parent completion', async () => {
+		const fixture = setup([
+			{ memberId: 'a', update: update('a') },
+			{ memberId: 'b', update: update('b') },
+		]);
+		fixture.processBatch.mockImplementation(async (targets) => {
+			if (targets[0].property.id === 'a') {
+				const window = fixture.windows.get('a');
+				fixture.windows.confirm(
+					{ canonicalPropertyId: 'a', generation: window.generation },
+					{ value: targets[0].value, receivedAt: Date.now() },
+				);
+			}
+			return true;
+		});
+		const pending = fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 500 });
+		while (fixture.processBatch.mock.calls.length < 2) await new Promise<void>((resolve) => setImmediate(resolve));
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		await fixture.dispatch.dispatchBatch([update('a', false)]);
+		const b = fixture.windows.get('b');
+		fixture.windows.confirm(
+			{ canonicalPropertyId: 'b', generation: b.generation },
+			{ value: true, receivedAt: Date.now() },
+		);
+		const result = await pending;
+		expect(result.composite.status).toBe('partial');
+		expect(result.composite.children.map((child) => child.status)).toEqual(['superseded', 'confirmed']);
+	});
+	it('consults the same internal ownership admission hook for every expanded leaf', async () => {
+		const fixture = setup([
+			{ memberId: 'a', update: update('a') },
+			{ memberId: 'b', update: update('b') },
+		]);
+		const guard = {
+			assertAllowed: jest.fn(async (target: IDevicePropertyData) => {
+				if (target.property.id === 'a') throw new Error('Controller owns leaf');
+			}),
+		};
+		Object.assign(fixture.dispatch, { admissionGuards: guard });
+		const result = await fixture.dispatch.dispatchBatch([update('group')]);
+		expect(result.composite.status).toBe('partial');
+		expect(result.composite.children.map((child) => child.status)).toEqual(['failed', 'confirmed']);
+		expect(fixture.processBatch).toHaveBeenCalledTimes(1);
 	});
 });

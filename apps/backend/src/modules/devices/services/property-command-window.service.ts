@@ -85,6 +85,23 @@ interface RecoveryWindow {
 export class PropertyCommandWindowService {
 	private readonly windows = new Map<string, MutablePropertyCommandWindow>();
 	private readonly recoveries = new Map<string, RecoveryWindow>();
+	private readonly generationObservers = new Set<(propertyId: string, generation: string | null) => void>();
+
+	/** Internal composite lifecycle fencing; observation does not own or extend a window. */
+	observeGeneration(observer: (propertyId: string, generation: string | null) => void): () => void {
+		this.generationObservers.add(observer);
+		return () => this.generationObservers.delete(observer);
+	}
+
+	private notifyGeneration(propertyId: string, generation: string | null): void {
+		for (const observer of this.generationObservers) {
+			try {
+				observer(propertyId, generation);
+			} catch {
+				/* Observers cannot alter command admission. */
+			}
+		}
+	}
 
 	open(input: OpenPropertyCommandWindowInput): PropertyCommandWindowHandle {
 		const now = Date.now();
@@ -115,6 +132,8 @@ export class PropertyCommandWindowService {
 			confirmedAt: null,
 			confirmationExpiresAt: null,
 		});
+
+		this.notifyGeneration(canonicalPropertyId, generation);
 
 		return Object.freeze({ canonicalPropertyId, generation });
 	}
@@ -189,6 +208,7 @@ export class PropertyCommandWindowService {
 
 		if (current !== undefined && current.generation === handle.generation) {
 			this.windows.delete(handle.canonicalPropertyId);
+			this.notifyGeneration(handle.canonicalPropertyId, null);
 
 			return true;
 		}
@@ -273,11 +293,13 @@ export class PropertyCommandWindowService {
 	}
 
 	cancel(canonicalPropertyId: string): void {
+		this.notifyGeneration(canonicalPropertyId, null);
 		this.windows.delete(canonicalPropertyId);
 		this.recoveries.delete(canonicalPropertyId);
 	}
 
 	clear(): void {
+		for (const id of this.windows.keys()) this.notifyGeneration(id, null);
 		this.windows.clear();
 		this.recoveries.clear();
 	}
