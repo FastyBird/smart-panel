@@ -192,7 +192,8 @@ export class PropertyValueService {
 		return this.withValueLock(
 			key,
 			async () => {
-				if (this.producers?.owns(key) || evidence.isCurrent?.() === false) return { changed: false, state: null };
+				if (this.producers?.owns(key) || evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
+					return { changed: false, state: null };
 				const sampledAt = evidence.sampledAt.getTime();
 				const receivedAt = evidence.receivedAt.getTime();
 				const watermark = this.liveWatermarks.get(key);
@@ -231,7 +232,8 @@ export class PropertyValueService {
 					!this.valueLock.isEnabled(),
 				);
 				// A generation may change while history I/O is pending. It cannot regain live authority.
-				if (evidence.isCurrent?.() === false) return { changed: false, state: null };
+				if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false)
+					return { changed: false, state: null };
 				if (result.state !== null) {
 					const sample: AcceptedPropertySample = Object.freeze({
 						propertyId: key,
@@ -245,7 +247,11 @@ export class PropertyValueService {
 					if (live) {
 						this.liveEpochs.add(key);
 						this.liveWatermarks.set(key, { sampledAt, invalid: false });
-						this.samples.set(key, { ...sample, provenance: 'live', isCurrent: evidence.isCurrent });
+						this.samples.set(key, {
+							...sample,
+							provenance: 'live',
+							isCurrent: evidence.sourceIsCurrent ?? evidence.isCurrent,
+						});
 					}
 					const snapshot = Object.assign(
 						Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
