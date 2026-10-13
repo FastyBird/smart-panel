@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { DeviceCategory } from '../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../modules/devices/devices.exceptions';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
@@ -32,6 +33,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
+import { VirtualThermostatAuthoringController } from './controllers/virtual-thermostat-authoring.controller';
 import { VirtualThermostatConfigController } from './controllers/virtual-thermostat-config.controller';
 import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
@@ -85,6 +87,7 @@ import { VirtualMeasurementAuthoringService } from './services/virtual-measureme
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
+import { VirtualThermostatAuthoringService } from './services/virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
 import { VirtualThermostatConfigService } from './services/virtual-thermostat-config.service';
 import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
@@ -129,6 +132,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 	providers: [
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
+		VirtualThermostatAuthoringService,
 		VirtualThermostatOwnershipSubscriber,
 		VirtualValueSourceService,
 		VirtualEnergyClaimService,
@@ -155,6 +159,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 	],
 	controllers: [
 		VirtualThermostatConfigController,
+		VirtualThermostatAuthoringController,
 		VirtualMeasurementAuthoringController,
 		VirtualTransformConfigController,
 		VirtualDevicesController,
@@ -204,6 +209,8 @@ export class DevicesVirtualPlugin {
 						throw new DevicesValidationException(
 							'Virtual device mode is immutable; create the requested producer mode as a separate device.',
 						);
+					if (device.mode === VirtualDeviceMode.CLIMATE_CONTROLLER && device.category !== DeviceCategory.THERMOSTAT)
+						throw new DevicesValidationException('Climate-controller category must remain thermostat.');
 					await this.virtualDevicesService.assertCategoryChangeSafe(device, previous.category);
 				} catch (error) {
 					// Translated for the same reason the property hooks translate theirs: the plugin's own

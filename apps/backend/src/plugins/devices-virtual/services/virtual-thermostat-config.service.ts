@@ -80,19 +80,36 @@ export class VirtualThermostatConfigService {
 		});
 	}
 	/** Shared by existing configuration and an admitted atomic creation transaction. */
-	prepare(manager: EntityManager, controllerId: string, dto: ConfigureVirtualThermostatDto) {
-		return this.validate(manager, controllerId, dto);
+	prepare(
+		manager: EntityManager,
+		controllerId: string,
+		dto: ConfigureVirtualThermostatDto,
+		draft?: VirtualDeviceEntity,
+	) {
+		return this.validate(manager, controllerId, dto, draft);
 	}
-	async persist(manager: EntityManager, controllerId: string, prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>): Promise<void> {
+	async persist(
+		manager: EntityManager,
+		controllerId: string,
+		prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>,
+	): Promise<void> {
 		await manager.save(prepared.config);
 		await manager.delete(VirtualThermostatSourceEntity, { controllerId });
 		await manager.save(prepared.sources);
 		const oldSettings = await manager.findBy(VirtualThermostatSettingEntity, { controllerId });
 		for (const setting of oldSettings)
 			if (!prepared.settings.some((row) => row.propertyId === setting.propertyId))
-				await manager.update(VirtualChannelPropertyEntity, { id: setting.propertyId }, { permissions: [PermissionType.READ_ONLY] });
+				await manager.update(
+					VirtualChannelPropertyEntity,
+					{ id: setting.propertyId },
+					{ permissions: [PermissionType.READ_ONLY] },
+				);
 		for (const setting of prepared.settings)
-			await manager.update(VirtualChannelPropertyEntity, { id: setting.propertyId }, { permissions: [PermissionType.READ_WRITE] });
+			await manager.update(
+				VirtualChannelPropertyEntity,
+				{ id: setting.propertyId },
+				{ permissions: [PermissionType.READ_WRITE] },
+			);
 		await manager.delete(VirtualThermostatSettingEntity, { controllerId });
 		await manager.save(prepared.settings);
 		await manager.save(prepared.actuators);
@@ -110,12 +127,12 @@ export class VirtualThermostatConfigService {
 				setting.setting === 'heating_setpoint'
 					? current.policy.heatingSetpoint
 					: setting.setting === 'cooling_setpoint'
-					? current.policy.coolingSetpoint
-					: setting.setting === 'locked'
-						? current.locked
-						: setting.setting === 'heating_enabled'
-							? ['heat', 'auto'].includes(current.requested_mode)
-							: ['cool', 'auto'].includes(current.requested_mode);
+						? current.policy.coolingSetpoint
+						: setting.setting === 'locked'
+							? current.locked
+							: setting.setting === 'heating_enabled'
+								? ['heat', 'auto'].includes(current.requested_mode)
+								: ['cool', 'auto'].includes(current.requested_mode);
 			await this.values.write(target.property, value);
 			target.property.value = await this.values.readLatest(target.property);
 			this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, target.property);
@@ -238,11 +255,19 @@ export class VirtualThermostatConfigService {
 			setting.contractFingerprint === thermostatPropertyContract(property, target.channel, target.device)
 		);
 	}
-	private async property(manager: EntityManager, id: string) {
-		const property = await manager.findOne(ChannelPropertyEntity, {
-			where: { id },
-			relations: ['channel', 'channel.device'],
-		});
+	private async property(manager: EntityManager, id: string, previewOnly = false) {
+		const property = previewOnly
+			? await manager
+					.createQueryBuilder(ChannelPropertyEntity, 'property')
+					.leftJoinAndSelect('property.channel', 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
+					.where('property.id = :id', { id })
+					.callListeners(false)
+					.getOne()
+			: await manager.findOne(ChannelPropertyEntity, {
+					where: { id },
+					relations: ['channel', 'channel.device'],
+				});
 		if (!property) fail('Thermostat source or setting property does not exist.');
 		const channel = property.channel as ChannelEntity;
 		return { property, channel, device: channel.device as VirtualDeviceEntity };
@@ -257,8 +282,13 @@ export class VirtualThermostatConfigService {
 		)
 			fail(`Invalid thermostat mode/policy: ${errors.join(', ')}.`);
 	}
-	private async validate(manager: EntityManager, controllerId: string, dto: ConfigureVirtualThermostatDto) {
-		const owner = await manager.findOneBy(VirtualDeviceEntity, { id: controllerId });
+	private async validate(
+		manager: EntityManager,
+		controllerId: string,
+		dto: ConfigureVirtualThermostatDto,
+		draft?: VirtualDeviceEntity,
+	) {
+		const owner = draft ?? (await manager.findOneBy(VirtualDeviceEntity, { id: controllerId }));
 		if (!owner || owner.mode !== VirtualDeviceMode.CLIMATE_CONTROLLER || owner.category !== DeviceCategory.THERMOSTAT)
 			fail('Thermostat configuration requires a climate-controller thermostat device.');
 		const previous = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
@@ -299,7 +329,7 @@ export class VirtualThermostatConfigService {
 				);
 				continue;
 			}
-			const target = await this.property(manager, input.sourcePropertyId);
+			const target = await this.property(manager, input.sourcePropertyId, !!draft);
 			if (input.role === 'contact') {
 				const primitive = (value: unknown) =>
 					['string', 'number', 'boolean'].includes(typeof value) &&
@@ -329,7 +359,7 @@ export class VirtualThermostatConfigService {
 				});
 				const binding = await manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId: target.property.id });
 				const physical = binding?.sourcePropertyId
-					? (await this.property(manager, binding.sourcePropertyId)).property
+					? (await this.property(manager, binding.sourcePropertyId, !!draft)).property
 					: null;
 				if (
 					!transform ||
@@ -387,7 +417,7 @@ export class VirtualThermostatConfigService {
 			const old = oldClaims.find((claim) => claim.role === input.role);
 			if (old && old.sourcePropertyId !== input.sourcePropertyId)
 				fail('Request and prove release before actuator repair, remap or detach.');
-			const target = await this.property(manager, input.sourcePropertyId);
+			const target = await this.property(manager, input.sourcePropertyId, !!draft);
 			const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
 			if (
 				!identity ||
@@ -440,7 +470,12 @@ export class VirtualThermostatConfigService {
 			fail('Invalid or duplicate local setting registration.');
 		const settings: VirtualThermostatSettingEntity[] = [];
 		for (const input of dto.settings) {
-			const target = await this.property(manager, input.propertyId);
+			const draftProperty = draft?.channels
+				?.flatMap((channel) => channel.properties ?? [])
+				.find((property) => property.id === input.propertyId);
+			const target = draftProperty
+				? { property: draftProperty, channel: draftProperty.channel as ChannelEntity, device: draft }
+				: await this.property(manager, input.propertyId);
 			const expected = this.settingContract(input.setting);
 			const property = target.property as VirtualChannelPropertyEntity;
 			if (
