@@ -351,6 +351,7 @@ describe('atomic virtual thermostat authoring', () => {
 		).toBe(0);
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(0);
 		expect(publications).toEqual([]);
+		expect(values.write).not.toHaveBeenCalled();
 	});
 
 	it('commits the owner and canonical reservation together and rejects a second UUID alias', async () => {
