@@ -106,6 +106,26 @@ describe('virtual numeric transform operators', () => {
 		};
 		expect(evaluate(config, 5)).toEqual({ value: null, reason: 'nonfinite_output' });
 	});
+	it.each([0, 1])(
+		'rejects an infinite calibration span instead of publishing a false finite fraction at %s',
+		(input) => {
+			expect(
+				evaluate(
+					{
+						...piecewise,
+						inputRange: { minimum: -Number.MAX_VALUE, maximum: Number.MAX_VALUE },
+						outputRange: { minimum: 0, maximum: 100 },
+						points: [
+							{ x: -Number.MAX_VALUE, y: 0 },
+							{ x: Number.MAX_VALUE, y: 100 },
+						],
+					},
+					input,
+				),
+			).toEqual({ value: null, reason: 'nonfinite_output' });
+		},
+	);
+
 	it.each(['low', 'high'] as const)('uses explicit %s divider orientation at nominal temperature', (thermistorLeg) => {
 		expect(evaluate({ ...ntc, thermistorLeg }, 1.65).value).toBeCloseTo(25, 8);
 	});
