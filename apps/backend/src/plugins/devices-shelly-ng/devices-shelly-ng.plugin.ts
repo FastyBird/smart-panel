@@ -51,6 +51,7 @@ import {
 	ShellyNgDeviceEntity,
 } from './entities/devices-shelly-ng.entity';
 import { ShellyNgDeviceAddressEntity } from './entities/shelly-ng-device-address.entity';
+import { ShellySampleSourceEntity } from './entities/shelly-sample-source.entity';
 import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistry } from './mappings';
 import { ShellyNgConfigModel } from './models/config.model';
 import { ShellyNgDevicePlatform } from './platforms/shelly-ng.device.platform';
@@ -62,6 +63,7 @@ import { ShellyNgAdoptionService } from './services/shelly-ng-adoption.service';
 import { ShellyNgDiscoveryService } from './services/shelly-ng-discovery.service';
 import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
+import { ShellySampleSourcesService } from './services/shelly-sample-sources.service';
 import { ShellyWsServerService } from './services/shelly-ws-server.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
@@ -77,6 +79,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 			ShellyNgChannelEntity,
 			ShellyNgChannelPropertyEntity,
 			ShellyNgDeviceAddressEntity,
+			ShellySampleSourceEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
@@ -90,6 +93,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		PropertyMappingStorageService,
 		ShellyRpcClientService,
 		DeviceAddressService,
+		ShellySampleSourcesService,
 		DatabaseDiscovererService,
 		DelegatesManagerService,
 		DeviceManagerService,

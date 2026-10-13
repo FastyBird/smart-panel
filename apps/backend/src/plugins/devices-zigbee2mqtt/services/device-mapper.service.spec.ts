@@ -49,6 +49,7 @@ describe('Z2mDeviceMapperService', () => {
 		channelsPropertiesService = {
 			findAll: jest.fn(),
 			update: jest.fn().mockResolvedValue({}),
+			reportSample: jest.fn().mockResolvedValue({}),
 		} as unknown as jest.Mocked<ChannelsPropertiesService>;
 
 		channelInputOccurrencesService = {
@@ -231,13 +232,18 @@ describe('Z2mDeviceMapperService', () => {
 			channelsService.findAll.mockResolvedValue([genericChannel]);
 			channelsPropertiesService.findAll.mockResolvedValue([genericEventProp]);
 
-			await service.updateDeviceState('sonoff-button', { event: 'motion_detected' });
+			await service.updateDeviceState(
+				'sonoff-button',
+				{ event: 'motion_detected' },
+				{ measurementFieldsAreLive: true },
+			);
 
-			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledWith(
 				genericEventProp.id,
 				expect.objectContaining({
 					value: 'motion_detected',
 				}),
+				expect.objectContaining({ provenance: 'cached' }),
 			);
 		});
 	});
@@ -552,5 +558,112 @@ describe('Z2mDeviceMapperService', () => {
 		const moduleToClose = module;
 		module = undefined;
 		await moduleToClose?.close();
+	});
+	describe('measurement provenance', () => {
+		beforeEach(() => {
+			devicesService.findOneBy.mockResolvedValue(createMockDevice('ambient'));
+			channelsService.findAll.mockResolvedValue([
+				createMockChannel('sensor', 'temperature', ChannelCategory.TEMPERATURE),
+			]);
+			const property = createMockProperty('reading', 'temperature', PropertyCategory.TEMPERATURE, 'temperature');
+			property.permissions = [PermissionType.READ_ONLY];
+			property.dataType = DataTypeType.FLOAT;
+			channelsPropertiesService.findAll.mockResolvedValue([property]);
+		});
+
+		it('forwards equal reports but does not qualify an unbound identity; absent fields do not renew', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt, measurementFieldsAreLive: true });
+			await service.updateDeviceState('ambient', { battery: 80 }, { observedAt, measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenCalledTimes(2);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: 25 }),
+				expect.objectContaining({ observedAt, sampledAt: observedAt, provenance: 'cached' }),
+			);
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ isRetained: true, provenance: 'retained' },
+			{ isCached: true, provenance: 'cached' },
+		])('preserves replay age and provenance %j', async (metadata) => {
+			await service.updateDeviceState('ambient', { temperature: 25, last_seen: '2026-10-12T10:00:00+02:00' }, metadata);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: new Date('2026-10-12T08:00:00Z'), provenance: metadata.provenance }),
+			);
+			await service.updateDeviceState('ambient', { temperature: 25 }, metadata);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ sampledAt: new Date(0), provenance: metadata.provenance }),
+			);
+		});
+
+		it('passes null measurement through admission rather than substituting numeric zero', async () => {
+			await service.updateDeviceState('ambient', { temperature: null }, { measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: null }),
+				expect.objectContaining({ provenance: 'cached' }),
+			);
+		});
+
+		it('does not promote a merged battery heartbeat or an unknown report contract to live temperature', async () => {
+			const observedAt = new Date('2026-10-13T09:00:00Z');
+			await service.updateDeviceState(
+				'ambient',
+				{ temperature: 25, battery: 79, last_seen: observedAt.toISOString() },
+				{
+					observedAt,
+					measurementFieldsAreLive: false,
+					qualificationReason: 'zigbee_cache_state_merges_old_fields',
+				},
+			);
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: 25 }),
+				expect.objectContaining({ provenance: 'cached' }),
+			);
+			expect(service.getSampleProvenance('reading')).toMatchObject({
+				provenance: 'cached',
+				reason: 'zigbee_cache_state_merges_old_fields',
+			});
+			await service.updateDeviceState('ambient', { temperature: 25 }, { observedAt });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.anything(),
+				expect.objectContaining({ provenance: 'cached', sampledAt: new Date(0) }),
+			);
+		});
+
+		it('revokes a Celsius measurement when its registered transform is missing, without a raw fallback', async () => {
+			service.registerPropertyTransformer('reading', 'missing-celsius-transform', 'temperature');
+			await service.updateDeviceState('ambient', { temperature: 2.5 }, { measurementFieldsAreLive: true });
+			expect(channelsPropertiesService.reportSample).toHaveBeenLastCalledWith(
+				'reading',
+				expect.objectContaining({ value: null }),
+				expect.objectContaining({ provenance: 'cached' }),
+			);
+		});
+	});
+	it('does not admit samples from a replaced transport while property lookup is pending', async () => {
+		const device = createMockDevice('ambient');
+		let current = true;
+		let finish: (device: Zigbee2mqttDeviceEntity) => void;
+		devicesService.findOneBy.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const pending = service.updateDeviceState('ambient', { temperature: 25 }, { isCurrent: () => current });
+		current = false;
+		finish(device);
+		await pending;
+		expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
 	});
 });

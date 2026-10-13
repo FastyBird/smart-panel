@@ -46,6 +46,7 @@ jest.mock('shellies-ds9', () => {
 	}
 
 	class MockShellies {
+		public websocket: any;
 		public options: any;
 		public listeners: Record<string, Function[]> = {};
 		public registered: any[] = [];
@@ -67,6 +68,7 @@ jest.mock('shellies-ds9', () => {
 		}
 		constructor(options: any) {
 			this.options = options;
+			this.websocket = { defaultOptions: options.websocket, create: jest.fn() };
 			shelliesInstances.push(this);
 		}
 		on(evt: string, fn: Function) {
@@ -106,6 +108,7 @@ jest.mock('shellies-ds9', () => {
 	}
 
 	return {
+		...jest.requireActual('shellies-ds9'),
 		Shellies: MockShellies,
 		MdnsDeviceDiscoverer: MockMdnsDeviceDiscoverer,
 		DeviceDiscoverer,

@@ -93,8 +93,11 @@ export class Z2mDeviceAdoptionService {
 		// Check by friendly_name identifier
 		const existingByIdentifier = existingDevices.find((d) => d.identifier === z2mDevice.friendlyName);
 		if (existingByIdentifier) {
-			await this.devicesService.remove(existingByIdentifier.id);
+			return this.reAdoptCompatibleDevice(existingByIdentifier, request, z2mDevice);
 		}
+		const boundId = await this.deviceMapper.findBoundSourceDeviceId(request.ieeeAddress);
+		const existingByBoundIdentity = boundId && existingDevices.find((candidate) => candidate.id === boundId);
+		if (existingByBoundIdentity) return this.reAdoptCompatibleDevice(existingByBoundIdentity, request, z2mDevice);
 
 		// Also check by IEEE address in serial_number property to be thorough
 		for (const device of existingDevices) {
@@ -109,8 +112,7 @@ export class Z2mDeviceAdoptionService {
 				const properties = await this.channelsPropertiesService.findAll(infoChannel.id, DEVICES_ZIGBEE2MQTT_TYPE);
 				const serialProp = properties.find((p) => p.category === PropertyCategory.SERIAL_NUMBER);
 				if (serialProp?.value?.value === request.ieeeAddress) {
-					await this.devicesService.remove(device.id);
-					break; // Only one device should match
+					return this.reAdoptCompatibleDevice(device, request, z2mDevice);
 				}
 			}
 		}
@@ -157,6 +159,7 @@ export class Z2mDeviceAdoptionService {
 				}
 				await this.createChannel(device, channelDef, z2mDevice);
 			}
+			await this.deviceMapper.bindSourceContracts(device.id, z2mDevice.friendlyName);
 
 			// Set initial connection state
 			await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -192,6 +195,63 @@ export class Z2mDeviceAdoptionService {
 			}
 			throw error;
 		}
+	}
+
+	/** Explicit compatible re-adoption resets source proof while retaining UUIDs, history and virtual bindings. */
+	private async reAdoptCompatibleDevice(
+		device: Zigbee2mqttDeviceEntity,
+		request: AdoptDeviceRequestDto,
+		z2mDevice: Z2mRegisteredDevice,
+	): Promise<Zigbee2mqttDeviceEntity> {
+		this.preValidateDeviceStructure(request, z2mDevice);
+		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
+		const confirmedPropertyIds = new Set<string>();
+		for (const requested of request.channels) {
+			if (requested.category === ChannelCategory.DEVICE_INFORMATION) continue;
+			const channel = channels.find(
+				(candidate) =>
+					candidate.identifier === (requested.identifier ?? requested.category) &&
+					candidate.category === requested.category,
+			);
+			if (!channel)
+				throw new DevicesZigbee2mqttValidationException(
+					'Re-adoption requires the existing compatible channel mapping; existing history is retained',
+				);
+			const properties = await this.channelsPropertiesService.findAll<Zigbee2mqttChannelPropertyEntity>(
+				channel.id,
+				DEVICES_ZIGBEE2MQTT_TYPE,
+			);
+			for (const definition of requested.properties) {
+				const property = properties.find(
+					(candidate) =>
+						candidate.category === definition.category &&
+						this.deviceMapper.getPropertySampleMapping(candidate, channel).field === definition.z2mProperty,
+				);
+				if (
+					!property ||
+					property.dataType !== definition.dataType ||
+					JSON.stringify([...(property.permissions ?? [])].sort()) !==
+						JSON.stringify([...definition.permissions].sort()) ||
+					(definition.format !== undefined &&
+						JSON.stringify(property.format ?? null) !== JSON.stringify(definition.format))
+				)
+					throw new DevicesZigbee2mqttValidationException(
+						'Re-adoption cannot reinterpret an existing property or its historical units',
+					);
+				confirmedPropertyIds.add(property.id);
+			}
+		}
+		await this.devicesService.update(device.id, {
+			type: DEVICES_ZIGBEE2MQTT_TYPE,
+			identifier: z2mDevice.friendlyName,
+			name: request.name,
+			category: request.category,
+			description: request.description ?? null,
+			enabled: request.enabled ?? true,
+		});
+		await this.deviceMapper.bindSourceContracts(device.id, z2mDevice.friendlyName, confirmedPropertyIds);
+		await this.zigbee2mqttService.requestDeviceState(z2mDevice.friendlyName);
+		return this.devicesService.findOne<Zigbee2mqttDeviceEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
 	}
 
 	/**

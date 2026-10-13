@@ -1,8 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
-import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import {
+	IDevicePlatform,
+	IDevicePropertyData,
+	PreparedCompositeDeviceBatch,
+} from '../../../modules/devices/platforms/device.platform';
+import { sourceFingerprint } from '../contracts/sample-source.contract';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import {
 	Zigbee2mqttChannelEntity,
@@ -15,6 +20,7 @@ import { Z2mBaseClientAdapter } from '../services/base-client-adapter';
 import { Z2mDeviceMapperService } from '../services/device-mapper.service';
 import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
 import { Zigbee2mqttService } from '../services/zigbee2mqtt.service';
+import { ZigbeeSampleSourcesService } from '../services/zigbee-sample-sources.service';
 
 export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
 	device: Zigbee2mqttDeviceEntity;
@@ -39,6 +45,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 		private readonly configDrivenConverter: ConfigDrivenConverter,
 		private readonly deviceMapper: Z2mDeviceMapperService,
+		@Optional() private readonly sampleSources?: ZigbeeSampleSourcesService,
 	) {}
 
 	getType(): string {
@@ -47,6 +54,79 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 	async process({ device, channel, property, value }: IZigbee2mqttDevicePropertyData): Promise<boolean> {
 		return this.processBatch([{ device, channel, property, value }]);
+	}
+
+	async prepareCompositeBatch(updates: Array<IDevicePropertyData>): Promise<PreparedCompositeDeviceBatch | null> {
+		if (!this.sampleSources || updates.length === 0) return null;
+		const adapter = this.zigbee2mqttService.getActiveAdapter();
+		const exact: IZigbee2mqttDevicePropertyData[] = [];
+		const groups = new Map<
+			string,
+			{
+				device: Zigbee2mqttDeviceEntity;
+				channel: Zigbee2mqttChannelEntity;
+				properties: Array<{ property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>;
+			}
+		>();
+		for (const update of updates) {
+			const { device, channel, property, value } = update;
+			if (
+				!(device instanceof Zigbee2mqttDeviceEntity) ||
+				!(channel instanceof Zigbee2mqttChannelEntity) ||
+				!(property instanceof Zigbee2mqttChannelPropertyEntity) ||
+				!device.enabled ||
+				!device.identifier
+			)
+				return null;
+			const owner = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+			const parent = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+			if (owner !== device.id || parent !== channel.id) return null;
+			exact.push(Object.freeze({ device, channel, property, value }));
+			const key = `${device.id}|${channel.id}`;
+			const group = groups.get(key) ?? { device, channel, properties: [] };
+			group.properties.push({ property, value });
+			groups.set(key, group);
+		}
+		const prepared: Array<{ friendlyName: string; payload: Z2mSetPayload; isCurrent(): boolean }> = [];
+		for (const { device, channel, properties } of groups.values()) {
+			const friendlyName = device.identifier;
+			const identityGuard = adapter.getSourceIdentityGuard(friendlyName);
+			const mappingTag = sourceFingerprint(
+				properties.map(({ property }) => this.deviceMapper.getPropertySampleMapping(property, channel)),
+			);
+			const payload = this.buildPayload(channel, properties);
+			if (!Object.keys(payload).length) return null;
+			const source = await this.sampleSources.prepareDispatch(
+				device.id,
+				friendlyName,
+				properties.map(({ property }) => property.id),
+			);
+			const isCurrent = (): boolean =>
+				source.bound &&
+				source.isCurrent() &&
+				identityGuard() &&
+				device.identifier === friendlyName &&
+				this.zigbee2mqttService.getActiveAdapter() === adapter &&
+				adapter.isConnected() &&
+				mappingTag ===
+					sourceFingerprint(
+						properties.map(({ property }) => this.deviceMapper.getPropertySampleMapping(property, channel)),
+					);
+			if (!source.allowed || !isCurrent()) return null;
+			prepared.push({ friendlyName, payload, isCurrent });
+		}
+		const isCurrent = (): boolean => prepared.every((command) => command.isCurrent());
+		return {
+			updates: Object.freeze(exact),
+			isCurrent,
+			dispatch: async (isAdmitted: () => boolean = () => true): Promise<boolean> => {
+				const guard = (): boolean => isCurrent() && isAdmitted();
+				for (const command of prepared) {
+					if (!guard() || !(await adapter.publishCommand(command.friendlyName, command.payload, guard))) return false;
+				}
+				return true;
+			},
+		};
 	}
 
 	async processBatch(updates: Array<IZigbee2mqttDevicePropertyData>): Promise<boolean> {
@@ -150,6 +230,47 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		propertyUpdates: Array<{ property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>,
 		friendlyName: string,
 	): Promise<boolean> {
+		const identityGuard = adapter.getSourceIdentityGuard(friendlyName);
+		const mappingTag = sourceFingerprint(
+			propertyUpdates.map(({ property }) => this.deviceMapper.getPropertySampleMapping(property, channel)),
+		);
+		const payload = this.buildPayload(channel, propertyUpdates);
+		const source = await this.sampleSources?.prepareDispatch(
+			device.id,
+			friendlyName,
+			propertyUpdates.map(({ property }) => property.id),
+			{ allowUnbound: true },
+		);
+		const isCurrent = (): boolean =>
+			this.zigbee2mqttService.getActiveAdapter() === adapter &&
+			adapter.isConnected() &&
+			(source?.isCurrent() ?? true) &&
+			(!source?.bound || identityGuard()) &&
+			mappingTag ===
+				sourceFingerprint(
+					propertyUpdates.map(({ property }) => this.deviceMapper.getPropertySampleMapping(property, channel)),
+				);
+		if (!isCurrent()) return false;
+
+		if (Object.keys(payload).length === 0) {
+			return false;
+		}
+
+		this.logger.log(`Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
+
+		const success = await adapter.publishCommand(friendlyName, payload, isCurrent);
+
+		if (!success) {
+			this.logger.warn(`Failed to send command to ${friendlyName}`);
+		}
+
+		return success;
+	}
+
+	private buildPayload(
+		channel: Zigbee2mqttChannelEntity,
+		propertyUpdates: readonly { property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }[],
+	): Z2mSetPayload {
 		// Build Z2M set payload
 		const payload: Z2mSetPayload = {};
 
@@ -242,19 +363,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			payload.color = colorPayload;
 		}
 
-		if (Object.keys(payload).length === 0) {
-			return false;
-		}
-
-		this.logger.log(`Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
-
-		const success = await adapter.publishCommand(friendlyName, payload);
-
-		if (!success) {
-			this.logger.warn(`Failed to send command to ${friendlyName}`);
-		}
-
-		return success;
+		return payload;
 	}
 
 	/**
