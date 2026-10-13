@@ -488,11 +488,15 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			unit: '°C',
 			configuredAt: new Date(),
 			policy: {
-				operator: VirtualNumericTransformOperator.AFFINE,
-				inputRange: { minimum: 0, maximum: 12 },
-				outputRange: { minimum: -30, maximum: 100 },
-				scale: 10,
-				offset: -10,
+				operator: VirtualNumericTransformOperator.STEINHART_HART,
+				inputRange: { minimum: 0, maximum: 10 },
+				outputRange: { minimum: -100, maximum: 150 },
+				referenceVoltage: 10,
+				seriesResistance: 10_000,
+				coefficientA: 0.0010351024725298568,
+				coefficientB: 0.0002338353574079741,
+				coefficientC: 7.917851073336009e-8,
+				thermistorLeg: 'low',
 			},
 		});
 		await database.manager.insert(VirtualTransformSourceEntity, {

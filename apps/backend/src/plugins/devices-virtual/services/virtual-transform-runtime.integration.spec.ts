@@ -56,6 +56,7 @@ import { VirtualProducerConfigService } from './virtual-producer-config.service'
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { thermostatFingerprint, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
+import { evaluateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
 import { VirtualTransformConfigService } from './virtual-transform-config.service';
 import { VirtualTransformRuntimeService } from './virtual-transform-runtime.service';
 
@@ -584,17 +585,9 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		expect(outputState(output).value).toBeCloseTo(25);
 	});
 
-	it('converts a qualified physical voltage with Steinhart-Hart and expires with its source', async () => {
-		const physical = await measurement();
+	it('converts the qualified pilot raw voltage into a fail-closed Celsius floor', async () => {
+		const voltage = await rawVolts();
 		const output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
-		await database.manager.update(ChannelPropertyEntity, physical.id, { category: PropertyCategory.VOLTAGE });
-		await database.manager.update(ChannelEntity, (physical.channel as ChannelEntity).id, {
-			category: ChannelCategory.ELECTRICAL_POWER,
-		});
-		const voltage = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id: physical.id },
-			relations: ['channel', 'channel.device'],
-		});
 		const request = dto(voltage);
 		request.policy = {
 			operator: VirtualNumericTransformOperator.STEINHART_HART,
@@ -608,11 +601,102 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			thermistorLeg: 'low',
 		};
 		await transforms.configure(output.id, request);
+		const configuredOutput = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: output.id },
+			relations: ['channel', 'channel.device'],
+		});
+		const config = await database.manager.findOneByOrFail(VirtualTransformConfigEntity, {
+			outputPropertyId: output.id,
+		});
+		const binding = await database.manager.findOneByOrFail(VirtualTransformSourceEntity, {
+			outputPropertyId: output.id,
+		});
+		const floor = Object.assign(new VirtualThermostatSourceEntity(), {
+			id: uuid(),
+			controllerId: uuid(),
+			role: 'floor' as const,
+			sourcePropertyId: output.id,
+			sourcePropertyIdentity: output.id,
+			physicalIdentity: `property:${voltage.id}`,
+			maximumAgeSeconds: 10,
+			contractFingerprint: thermostatFingerprint({
+				output: thermostatPropertyContract(
+					configuredOutput,
+					configuredOutput.channel as ChannelEntity,
+					(configuredOutput.channel as ChannelEntity).device as DeviceEntity,
+				),
+				transformRevision: config.revision,
+				transformPolicy: config.policy,
+				physicalIdentity: `property:${binding.sourcePropertyIdentity}`,
+				sourceQuantity: binding.quantity,
+				sourceUnit: binding.unit,
+			}),
+		});
+		const inputs = new VirtualThermostatInputsService(database, values);
+		const loaded = await inputs.load([floor]);
+		expect(loaded[0]).toMatchObject({ compatible: true, producerRevision: 1 });
+		const heatDecision = (at: number) =>
+			evaluateVirtualThermostatPolicy(
+				{
+					heatingSetpoint: 20,
+					coolingSetpoint: null,
+					coldTolerance: 0.5,
+					hotTolerance: 0.5,
+					neutralMargin: 1,
+					minimumOffMs: 0,
+					changeoverMs: 0,
+					floor: { limit: 30, recoveryHysteresis: 1 },
+				},
+				{
+					now: at,
+					mode: 'heat',
+					ambient: 18,
+					floor: inputs.read(loaded, at).floor,
+					heating: { activity: 'off', pendingOn: false, releaseProven: true, canEnergize: true, offSince: 0 },
+					cooling: null,
+					previousDemand: 'off',
+					floorOverheatLatched: false,
+					windows: [],
+					heuristicWindowPause: false,
+					reconciled: true,
+				},
+			);
 		await start();
-		await sample(voltage, 6.68);
+		jest.setSystemTime(base + 4000);
+		await sample(voltage, 6.68, base + 1000);
 		expect(outputState(output).value).toBeCloseTo(18.45, 2);
+		expect(outputState(output).producer).toMatchObject({
+			sampledAt: new Date(base + 1000).toISOString(),
+			expiresAt: new Date(base + 11000).toISOString(),
+			revision: 1,
+		});
+		expect(inputs.read(loaded, base + 4000).floor).toBeCloseTo(18.45, 2);
+		expect(heatDecision(base + 4000).desiredHeating).toBe(true);
+		jest.setSystemTime(base + 5000);
+		await sample(voltage, 0);
+		expect(transformRuntime.readDiagnostics(output.id).reasons).toContain('invalid_domain');
+		expect(heatDecision(base + 5000)).toMatchObject({ desiredHeating: false, reasons: ['floor_unavailable'] });
+		jest.setSystemTime(base + 6000);
+		await sample(voltage, 10);
+		expect(transformRuntime.readDiagnostics(output.id).reasons).toContain('invalid_domain');
+		expect(heatDecision(base + 6000).desiredHeating).toBe(false);
+		jest.setSystemTime(base + 7000);
+		await sample(voltage, 6.68);
+		expect(heatDecision(base + 7000).desiredHeating).toBe(true);
+		jest.setSystemTime(base + 8000);
 		await sample(voltage, null);
 		expect(outputState(output).value).toBeNull();
+		expect(heatDecision(base + 8000).desiredHeating).toBe(false);
+		jest.setSystemTime(base + 9000);
+		await sample(voltage, 6.68);
+		jest.setSystemTime(base + 19000);
+		expect(heatDecision(base + 19000).desiredHeating).toBe(false);
+		await database.manager.update(
+			VirtualTransformSourceEntity,
+			{ outputPropertyId: output.id },
+			{ sourcePropertyId: null },
+		);
+		expect((await inputs.load([floor]))[0].compatible).toBe(false);
 	});
 
 	it('migration and synchronization retain matching indexes, source nulling and owner cascades', async () => {
