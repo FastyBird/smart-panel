@@ -96,6 +96,12 @@
 			</div>
 		</template>
 	</view-header>
+	<el-link
+		class="mb-3"
+		@click="router.push({ name: RouteNames.LIGHT_GROUP_WIZARD })"
+	>
+		{{ t('devicesVirtualPlugin.lightGroup.createTitle') }}
+	</el-link>
 
 	<div class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2">
 		<el-card
@@ -228,7 +234,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, onBeforeRouteLeave, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, ElScrollbar, ElStep, ElSteps } from 'element-plus';
+import { ElButton, ElCard, ElIcon, ElLink, ElScrollbar, ElStep, ElSteps } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

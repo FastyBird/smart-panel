@@ -1,5 +1,11 @@
 <template>
+	<virtual-light-group-detail
+		v-if="isLightGroup"
+		:key="props.device.id"
+		:device="props.device"
+	/>
 	<el-card
+		v-else
 		class="mt-2"
 		shadow="never"
 		data-test-id="virtual-device-sources"
@@ -126,12 +132,14 @@ import type { IVirtualChannelProperty } from '../store/channels.properties.store
 
 import VirtualDeviceRemapDialog from './virtual-device-remap-dialog.vue';
 import type { IVirtualDeviceSourcesProps, IVirtualSourceWarning } from './virtual-device-sources.types';
+import VirtualLightGroupDetail from './virtual-light-group-detail.vue';
 
 defineOptions({
 	name: 'VirtualDeviceSources',
 });
 
 const props = defineProps<IVirtualDeviceSourcesProps>();
+const isLightGroup = computed(() => 'mode' in props.device && props.device.mode === 'actuator_group');
 
 const { t } = useI18n();
 const router = useRouter();
@@ -278,9 +286,7 @@ watch(sourceLinks, (current: string, previous: string): void => {
 		return;
 	}
 
-	fetchSourceDevices().catch((err: unknown): void =>
-		logger.error('Failed to reload virtual device source devices after its links changed', err)
-	);
+	fetchSourceDevices().catch((err: unknown): void => logger.error('Failed to reload virtual device source devices after its links changed', err));
 });
 
 const onViewSourceDevice = (deviceId: IDevice['id']): void => {

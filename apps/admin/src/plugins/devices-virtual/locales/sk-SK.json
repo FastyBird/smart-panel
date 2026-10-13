@@ -138,5 +138,43 @@
 			"propertyGone": "Táto vlastnosť už neexistuje.",
 			"updateFailed": "Vlastnosť sa nepodarilo premapovať. Skúste to prosím znova."
 		}
+	},
+	"lightGroup": {
+		"apply": "Použiť",
+		"createTitle": "Vytvoriť skupinu svetiel",
+		"members": "Členovia",
+		"selectMembers": "Vyberte fyzické svetelné kanály",
+		"memberBounds": "Vyberte 2–256 rôznych fyzických kanálov. Členov možno naďalej ovládať jednotlivo.",
+		"room": "Miestnosť",
+		"preview": "Náhľad",
+		"previewRequired": "Pred uložením zobrazte náhľad návrhu.",
+		"create": "Vytvoriť",
+		"cancel": "Zrušiť",
+		"step": "Krok {value}",
+		"commonOnly": "Tieto voliteľné funkcie nie sú dostupné, pretože všetci členovia musia mať kompatibilné vlastnosti.",
+		"loadFailed": "Skupinu svetiel sa nepodarilo načítať.",
+		"revisionConflict": "Konfigurácia sa zmenila alebo treba opraviť používanú funkciu. Pred ďalším pokusom ju znova načítajte.",
+		"editTitle": "Upraviť skupinu svetiel",
+		"save": "Uložiť",
+		"reload": "Znova načítať",
+		"missingMember": "Chýbajúci člen: {identity}",
+		"reportedState": "Hlásený stav členov",
+		"mixed": "Zmiešaný",
+		"unknown": "Neznámy",
+		"onCount": "{on} zapnutých, {off} vypnutých, {unknown} neznámych z {total}",
+		"commands": "Výsledky príkazov členov",
+		"none": "Zatiaľ žiadne výsledky príkazov.",
+		"status": {
+			"accepted": "Prijaté",
+			"confirmed": "Potvrdené",
+			"failed": "Zlyhalo",
+			"unavailable": "Nedostupné",
+			"superseded": "Nahradené",
+			"timed_out": "Vypršal čas",
+			"partial": "Čiastočné"
+		},
+		"turnOn": "Zapnúť",
+		"turnOff": "Vypnúť",
+		"commandUncertain": "Výsledok príkazu je neistý. Pred ďalším príkazom obnovte hlásený stav."
 	}
 }

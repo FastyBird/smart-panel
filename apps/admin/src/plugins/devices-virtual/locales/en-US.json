@@ -138,5 +138,43 @@
 			"propertyGone": "This property no longer exists.",
 			"updateFailed": "The property could not be remapped. Please try again."
 		}
+	},
+	"lightGroup": {
+		"apply": "Apply",
+		"createTitle": "Create light group",
+		"members": "Members",
+		"selectMembers": "Select physical light channels",
+		"memberBounds": "Select 2–256 distinct physical channels. Members remain individually controllable.",
+		"room": "Room",
+		"preview": "Preview",
+		"previewRequired": "Preview this draft before saving.",
+		"create": "Create",
+		"cancel": "Cancel",
+		"step": "Step {value}",
+		"commonOnly": "These optional controls are unavailable because every member must support a compatible contract.",
+		"loadFailed": "The light group could not be loaded.",
+		"revisionConflict": "Configuration changed or a referenced control needs repair. Reload explicitly before trying again.",
+		"editTitle": "Edit light group",
+		"save": "Save",
+		"reload": "Reload",
+		"missingMember": "Missing member: {identity}",
+		"reportedState": "Reported member state",
+		"mixed": "Mixed",
+		"unknown": "Unknown",
+		"onCount": "{on} on, {off} off, {unknown} unknown of {total}",
+		"commands": "Member command outcomes",
+		"none": "No command results yet.",
+		"status": {
+			"accepted": "Accepted",
+			"confirmed": "Confirmed",
+			"failed": "Failed",
+			"unavailable": "Unavailable",
+			"superseded": "Superseded",
+			"timed_out": "Timed out",
+			"partial": "Partial"
+		},
+		"turnOn": "Turn on",
+		"turnOff": "Turn off",
+		"commandUncertain": "The command result is uncertain. Refresh the reported state before issuing another command."
 	}
 }
