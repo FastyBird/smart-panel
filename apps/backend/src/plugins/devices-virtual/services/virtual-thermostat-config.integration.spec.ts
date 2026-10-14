@@ -792,7 +792,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		if (claims.isAuthorized(pendingOn, relayTarget)) guardedSends++;
 		expect(guardedSends).toBe(0);
 		expect(runtimeAdmission.isCurrent()).toBe(false);
-		await claims.refresh();
+		const blockedRefresh = claims.refresh();
 		expect(claims.capture().isCurrent()).toBe(false);
 		expect(claims.capture().isRequestCurrent?.()).toBe(true);
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
@@ -800,6 +800,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		releaseReader();
 		await reader;
 		await expect(failedRestore).rejects.toThrow('revision');
+		await blockedRefresh;
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
 		expect(runtimeAdmission.isCurrent()).toBe(false);
 		expect(claims.capture().isCurrent()).toBe(true);
@@ -815,12 +816,13 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const restorePromise = configs.restoreActuator(controller, claim.id, restore, 'operator');
 		if (claims.isAuthorized(nextOn, relayTarget)) guardedSends++;
 		expect(guardedSends).toBe(0);
-		await claims.refresh();
+		const restoredRefresh = claims.refresh();
 		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(false);
 		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
 		releaseReader();
 		await secondReader;
 		const restored = await restorePromise;
+		await restoredRefresh;
 		expect(restored.requested_mode).toBe('off');
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
 		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(false);
