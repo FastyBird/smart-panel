@@ -256,6 +256,7 @@ class LightingStateModel {
   final DateTime? lastAppliedAt;
   final int totalLights;
   final int lightsOn;
+  final int unknownLights;
   final double? averageBrightness;
   final Map<LightingStateRole, RoleAggregatedState> roles;
   final Map<LightingStateRole, int> lightsByRole;
@@ -272,6 +273,7 @@ class LightingStateModel {
     this.lastAppliedAt,
     required this.totalLights,
     required this.lightsOn,
+    this.unknownLights = 0,
     this.averageBrightness,
     required this.roles,
     required this.lightsByRole,
@@ -279,8 +281,8 @@ class LightingStateModel {
   });
 
   bool get anyOn => lightsOn > 0;
-  bool get allOn => totalLights > 0 && lightsOn == totalLights;
-  bool get allOff => totalLights > 0 && lightsOn == 0;
+  bool get allOn => totalLights > 0 && lightsOn == totalLights && unknownLights == 0;
+  bool get allOff => totalLights > 0 && lightsOn == 0 && unknownLights == 0;
 
   /// Get the state for a specific role
   RoleAggregatedState? getRoleState(LightingStateRole role) => roles[role];
@@ -327,6 +329,7 @@ class LightingStateModel {
           : null,
       totalLights: json['total_lights'] as int? ?? 0,
       lightsOn: json['lights_on'] as int? ?? 0,
+      unknownLights: json['unknown_lights'] as int? ?? 0,
       averageBrightness: (json['average_brightness'] as num?)?.toDouble(),
       roles: rolesMap,
       lightsByRole: lightsByRoleMap,
@@ -345,6 +348,7 @@ class LightingStateModel {
       isModeFromIntent: false,
       totalLights: 0,
       lightsOn: 0,
+      unknownLights: 0,
       roles: {},
       lightsByRole: {},
       other: OtherLightsState(

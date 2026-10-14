@@ -230,5 +230,43 @@
 			"producer_disposed": "Produzent gestoppt",
 			"unknown": "Unbekannte Diagnose"
 		}
+	},
+	"lightGroup": {
+		"apply": "Anwenden",
+		"createTitle": "Lichtgruppe erstellen",
+		"members": "Mitglieder",
+		"selectMembers": "Physische Lichtkanäle auswählen",
+		"memberBounds": "2–256 verschiedene physische Kanäle auswählen. Mitglieder bleiben einzeln steuerbar.",
+		"room": "Raum",
+		"preview": "Vorschau",
+		"previewRequired": "Den Entwurf vor dem Speichern prüfen.",
+		"create": "Erstellen",
+		"cancel": "Abbrechen",
+		"step": "Schritt {value}",
+		"commonOnly": "Diese optionalen Funktionen sind nicht verfügbar, da alle Mitglieder kompatible Eigenschaften benötigen.",
+		"loadFailed": "Die Lichtgruppe konnte nicht geladen werden.",
+		"revisionConflict": "Die Konfiguration hat sich geändert oder eine verwendete Funktion muss repariert werden. Vor einem neuen Versuch neu laden.",
+		"editTitle": "Lichtgruppe bearbeiten",
+		"save": "Speichern",
+		"reload": "Neu laden",
+		"missingMember": "Fehlendes Mitglied: {identity}",
+		"reportedState": "Gemeldeter Mitgliederzustand",
+		"mixed": "Gemischt",
+		"unknown": "Unbekannt",
+		"onCount": "{on} an, {off} aus, {unknown} unbekannt von {total}",
+		"commands": "Befehlsergebnisse der Mitglieder",
+		"none": "Noch keine Befehlsergebnisse.",
+		"status": {
+			"accepted": "Angenommen",
+			"confirmed": "Bestätigt",
+			"failed": "Fehlgeschlagen",
+			"unavailable": "Nicht verfügbar",
+			"superseded": "Ersetzt",
+			"timed_out": "Zeit abgelaufen",
+			"partial": "Teilweise"
+		},
+		"turnOn": "Einschalten",
+		"turnOff": "Ausschalten",
+		"commandUncertain": "Das Befehlergebnis ist ungewiss. Aktualisieren Sie den gemeldeten Zustand vor einem weiteren Befehl."
 	}
 }

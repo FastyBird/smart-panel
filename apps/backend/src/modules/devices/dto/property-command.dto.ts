@@ -1,5 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 import {
+	ArrayMaxSize,
 	IsArray,
 	IsBoolean,
 	IsIn,
@@ -13,11 +14,12 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { INTENT_ORIGINS, IntentOrigin } from '../../intents/intents.constants';
 import { ValidatePropertyCommandTarget } from '../validators/property-command-target-constraint.validator';
 
+@ApiSchema({ name: 'DevicesModulePropertyCommandContext' })
 export class PropertyCommandContextDto {
 	@ApiPropertyOptional({
 		description: 'Origin of the command (where it was initiated from)',
@@ -72,15 +74,19 @@ export class PropertyCommandContextDto {
 	extra?: Record<string, unknown>;
 }
 
+@ApiSchema({ name: 'DevicesModulePropertyCommandValue' })
 export class PropertyCommandValueDto {
+	@ApiProperty({ type: 'string', format: 'uuid' })
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	device: string;
 
+	@ApiProperty({ type: 'string', format: 'uuid' })
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	channel: string;
 
+	@ApiProperty({ type: 'string', format: 'uuid' })
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
 	@ValidatePropertyCommandTarget()
@@ -102,6 +108,7 @@ export class PropertyCommandValueDto {
 	value: string | boolean | number;
 }
 
+@ApiSchema({ name: 'DevicesModulePropertyCommand' })
 export class PropertyCommandDto {
 	@ApiProperty({
 		description: 'Request ID for tracking command responses',
@@ -123,8 +130,10 @@ export class PropertyCommandDto {
 	@Type(() => PropertyCommandContextDto)
 	context?: PropertyCommandContextDto;
 
+	@ApiProperty({ type: [PropertyCommandValueDto], maxItems: 256 })
 	@Expose()
 	@IsArray()
+	@ArrayMaxSize(256)
 	@ValidateNested({ each: true })
 	@Type(() => PropertyCommandValueDto)
 	properties: PropertyCommandValueDto[];
