@@ -230,5 +230,43 @@
 			"producer_disposed": "Producent zastaven",
 			"unknown": "Neznámá diagnostika"
 		}
+	},
+	"lightGroup": {
+		"apply": "Použít",
+		"createTitle": "Vytvořit skupinu světel",
+		"members": "Členové",
+		"selectMembers": "Vyberte fyzické světelné kanály",
+		"memberBounds": "Vyberte 2–256 různých fyzických kanálů. Členy lze nadále ovládat jednotlivě.",
+		"room": "Místnost",
+		"preview": "Náhled",
+		"previewRequired": "Před uložením zobrazte náhled návrhu.",
+		"create": "Vytvořit",
+		"cancel": "Zrušit",
+		"step": "Krok {value}",
+		"commonOnly": "Tyto volitelné funkce nejsou dostupné, protože všichni členové musí mít kompatibilní vlastnosti.",
+		"loadFailed": "Skupinu světel se nepodařilo načíst.",
+		"revisionConflict": "Konfigurace se změnila nebo je nutné opravit používanou funkci. Před dalším pokusem ji znovu načtěte.",
+		"editTitle": "Upravit skupinu světel",
+		"save": "Uložit",
+		"reload": "Znovu načíst",
+		"missingMember": "Chybějící člen: {identity}",
+		"reportedState": "Hlásený stav členů",
+		"mixed": "Smíšený",
+		"unknown": "Neznámý",
+		"onCount": "{on} zapnuto, {off} vypnuto, {unknown} neznámých z {total}",
+		"commands": "Výsledky příkazů členů",
+		"none": "Zatím žádné výsledky příkazů.",
+		"status": {
+			"accepted": "Přijato",
+			"confirmed": "Potvrzeno",
+			"failed": "Selhalo",
+			"unavailable": "Nedostupné",
+			"superseded": "Nahrazeno",
+			"timed_out": "Vypršel čas",
+			"partial": "Částečné"
+		},
+		"turnOn": "Zapnout",
+		"turnOff": "Vypnout",
+		"commandUncertain": "Výsledek příkazu není jistý. Před dalším příkazem obnovte hlášený stav."
 	}
 }

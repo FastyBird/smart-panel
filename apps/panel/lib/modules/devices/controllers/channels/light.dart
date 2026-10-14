@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
@@ -21,6 +22,7 @@ class LightChannelController {
   final DeviceControlStateService _controlState;
   final DevicesService _devicesService;
   final ControllerErrorCallback? _onError;
+  final bool compositeGroup;
 
   /// Group ID for color properties (RGB or HSV).
   static const String colorGroupId = 'color';
@@ -31,6 +33,7 @@ class LightChannelController {
     required DeviceControlStateService controlState,
     required DevicesService devicesService,
     ControllerErrorCallback? onError,
+    this.compositeGroup = false,
   })  : _controlState = controlState,
         _devicesService = devicesService,
         _onError = onError;
@@ -307,6 +310,11 @@ class LightChannelController {
 
     if (redProp == null || greenProp == null || blueProp == null) return;
 
+    if (compositeGroup) {
+      _runComposite([(redProp.id, red), (greenProp.id, green), (blueProp.id, blue)]);
+      return;
+    }
+
     _controlState.setGroupPending(
       deviceId,
       colorGroupId,
@@ -388,6 +396,15 @@ class LightChannelController {
 
     if (properties.isEmpty) return;
 
+    if (compositeGroup) {
+      _runComposite([
+        if (hueProp != null) (hueProp.id, hue),
+        if (satProp != null) (satProp.id, saturation),
+        if (brightProp != null) (brightProp.id, brightness),
+      ]);
+      return;
+    }
+
     // 1. Set pending state FIRST (before starting API calls)
     _controlState.setGroupPending(deviceId, colorGroupId, properties);
     final commandGeneration =
@@ -446,6 +463,10 @@ class LightChannelController {
     dynamic value,
     String failureMessage,
   ) {
+    if (compositeGroup) {
+      _runComposite([(propertyId, value)]);
+      return;
+    }
     _controlState.setPending(deviceId, channel.id, propertyId, value);
     final commandGeneration = _controlState
         .getState(deviceId, channel.id, propertyId)
@@ -463,6 +484,25 @@ class LightChannelController {
       if (!_isCurrentPropertyGeneration(propertyId, commandGeneration)) return;
       _controlState.clear(deviceId, channel.id, propertyId);
       _onError?.call(propertyId, error);
+    });
+  }
+
+  void _runComposite(List<(String, dynamic)> values) {
+    if (values.isEmpty) return;
+    _devicesService.setCompositeProperties(
+      deviceId: deviceId,
+      properties: values.map((entry) => PropertyCommandItem(
+        deviceId: deviceId,
+        channelId: channel.id,
+        propertyId: entry.$1,
+        value: entry.$2,
+      )).toList(),
+    ).then((outcome) {
+      if (!outcome.confirmed) {
+        _onError?.call(values.first.$1, StateError('Composite command ${outcome.status}'));
+      }
+    }).catchError((Object error) {
+      _onError?.call(values.first.$1, error);
     });
   }
 

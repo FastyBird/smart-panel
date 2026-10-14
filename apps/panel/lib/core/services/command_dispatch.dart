@@ -113,6 +113,7 @@ class CommandDispatchService {
     required String event,
     required String handler,
     required Map<String, dynamic> payload,
+    Duration timeout = kWebSocketCommandTimeout,
   }) async {
     final completer = Completer<CommandDispatchResult>();
 
@@ -131,6 +132,7 @@ class CommandDispatchService {
           completer.complete(CommandDispatchResult(
             success: false,
             reason: response.message,
+            data: response.data,
             channel: CommandDispatchChannel.websocket,
           ));
         } else {
@@ -146,7 +148,7 @@ class CommandDispatchService {
 
     // Add timeout for WebSocket response
     return completer.future.timeout(
-      kWebSocketCommandTimeout,
+      timeout,
       onTimeout: () {
         if (kDebugMode) {
           debugPrint('[COMMAND DISPATCH] WebSocket command timed out');
@@ -158,6 +160,42 @@ class CommandDispatchService {
         );
       },
     );
+  }
+
+  /// Composite execution can consume the backend's full 30-second parent budget.
+  /// A failed or timed-out socket acknowledgement cannot be safely replayed.
+  Future<CommandDispatchResult> dispatchComposite({
+    required String event,
+    required String handler,
+    required Map<String, dynamic> payload,
+    required ApiFallbackCallback<Map<String, dynamic>> apiFallback,
+  }) async {
+    if (_socketService.isConnected) {
+      try {
+        return await _dispatchViaWebSocket(
+          event: event,
+          handler: handler,
+          payload: payload,
+          timeout: const Duration(seconds: 35),
+        ).timeout(const Duration(seconds: 35));
+      } catch (error) {
+        return CommandDispatchResult(
+          success: false,
+          reason: error.toString(),
+          channel: CommandDispatchChannel.websocket,
+        );
+      }
+    }
+    try {
+      return await _dispatchViaApi(apiFallback)
+          .timeout(const Duration(seconds: 35));
+    } catch (error) {
+      return CommandDispatchResult(
+        success: false,
+        reason: error.toString(),
+        channel: CommandDispatchChannel.api,
+      );
+    }
   }
 
   /// Dispatch command via API fallback

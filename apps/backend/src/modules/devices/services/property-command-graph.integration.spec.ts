@@ -130,7 +130,13 @@ describe('Property command preparation with a fresh SQLite device graph', () => 
 			properties as unknown as PropertyMetadataService,
 			{ readLatest: () => Promise.resolve(null) } as unknown as PropertyValueService,
 			{ get: () => ({}), getCommandTtlMs: () => 3000 } as unknown as PlatformRegistryService,
-			{ createIntent: () => ({ id: 'intent' }), completeIntent } as unknown as IntentsService,
+			{
+				createIntent: ({ ttlMs }: { ttlMs: number }) => ({
+					id: 'intent',
+					expiresAt: new Date(Date.now() + ttlMs),
+				}),
+				completeIntent,
+			} as unknown as IntentsService,
 			{ dispatchBatch } as unknown as PropertyCommandDispatchService,
 			{} as PropertyCommandWindowService,
 		);

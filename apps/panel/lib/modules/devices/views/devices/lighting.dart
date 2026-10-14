@@ -19,6 +19,8 @@ class LightingDeviceView extends DeviceView
         DeviceIlluminanceMixin,
         DeviceButtonMixin,
         DeviceBinaryInputMixin {
+  final bool isCompositeGroup;
+
   LightingDeviceView({
     required super.id,
     required super.type,
@@ -34,6 +36,7 @@ class LightingDeviceView extends DeviceView
     super.lastStateChange,
     super.isValid,
     super.validationIssues,
+    this.isCompositeGroup = false,
   });
 
   @override
