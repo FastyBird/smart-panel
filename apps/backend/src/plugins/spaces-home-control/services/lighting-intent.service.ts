@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -9,9 +11,16 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { CompositeCommandOutcomeModel } from '../../../modules/devices/models/composite-command.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
+import {
+	COMPOSITE_INTENT_FINISH_MARGIN_MS,
+	PropertyCommandDispatchService,
+} from '../../../modules/devices/services/property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
+import { PropertyCommandService } from '../../../modules/devices/services/property-command.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentContext, IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -30,6 +39,7 @@ import {
 } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
+import { LightingContributionPlannerService } from './lighting-contribution-planner.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
@@ -146,6 +156,13 @@ export function selectLightsForMode(
  */
 @Injectable()
 export class LightingIntentService extends SpaceIntentBaseService {
+	private readonly commandContext = new AsyncLocalStorage<{
+		id: string;
+		deadline: number;
+		outcomes: CompositeCommandOutcomeModel[];
+		entry?: PropertyCommandEntrySnapshot;
+		selectionCurrent?: () => boolean;
+	}>();
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'LightingIntentService');
 
 	constructor(
@@ -160,6 +177,9 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		private readonly lightingStateService: SpaceLightingStateService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 		private readonly intentsService: IntentsService,
+		@Optional() private readonly contributions?: LightingContributionPlannerService,
+		@Optional() private readonly compositeCommands?: CompositePropertyCommandRegistryService,
+		@Optional() private readonly commands?: PropertyCommandService,
 	) {
 		super();
 	}
@@ -169,6 +189,21 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
 	async executeLightingIntent(
+		spaceId: string,
+		intent: LightingIntentDto,
+		executionContext?: IntentContext,
+	): Promise<IntentExecutionResult | null> {
+		const entry = this.commands?.captureCommandEntry();
+		try {
+			return await this.commandContext.run({ id: '', deadline: 0, outcomes: [], entry }, () =>
+				this.executeRoomLightingIntent(spaceId, intent, executionContext),
+			);
+		} finally {
+			this.commands?.releaseCommandEntry(entry);
+		}
+	}
+
+	private async executeRoomLightingIntent(
 		spaceId: string,
 		intent: LightingIntentDto,
 		executionContext?: IntentContext,
@@ -243,6 +278,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			value: this.buildLightingIntentValue(intent),
 			ttlMs: this.getLightingIntentTtlMs(lights),
 		});
+		this.commandContext.getStore().id = intentRecord.id;
+		this.commandContext.getStore().deadline = intentRecord.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
 
 		// Capture snapshot for undo BEFORE executing the intent
 		await this.captureUndoSnapshot(spaceId, intent);
@@ -333,7 +370,10 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		result.failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
 
 		// Complete intent with results (emits Intent.Completed event)
-		this.intentsService.completeIntent(intentRecord.id, targetResults);
+		const compositeOutcomes = this.commandContext.getStore().outcomes;
+		if (compositeOutcomes.length) result.composites = compositeOutcomes;
+		if (compositeOutcomes.length) this.intentsService.completeIntent(intentRecord.id, targetResults, compositeOutcomes);
+		else this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
 		if (result.success) {
@@ -369,6 +409,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	}
 
 	private getLightingIntentTtlMs(lights: readonly LightDevice[]): number {
+		if (lights.some((light) => this.compositeCommands?.get(light.onProperty))) return 30_000;
 		return this.platformRegistryService.getCommandTtlMs(
 			lights.map((light) => ({
 				device: light.device,
@@ -690,7 +731,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const { success } = await this.dispatchRoomCommands(commands);
 
 			if (!success) {
 				this.logger.error(`Rule execution failed for device id=${light.device.id}`);
@@ -811,12 +852,48 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			}
 		}
 
-		return lights;
+		if (!this.contributions) return lights;
+		const plan = await this.contributions.plan(lights.map((light) => ({ ...light, channel: light.lightChannel })));
+		const context = this.commandContext.getStore();
+		if (context) context.selectionCurrent = plan.isCurrent;
+		return plan.targets;
+	}
+
+	private async dispatchRoomCommands(commands: IDevicePropertyData[]) {
+		const context = this.commandContext.getStore();
+		if (context?.deadline && context.deadline <= Date.now())
+			return { success: false, reason: 'Room command deadline expired' };
+		if (context?.selectionCurrent && !context.selectionCurrent())
+			return { success: false, reason: 'Room contribution membership changed; reload and retry' };
+		const composite = commands.some((target) => this.compositeCommands?.get(target.property));
+		const deadlineAt = context?.deadline;
+		const result = composite
+			? await this.propertyCommandDispatchService.dispatchBatch(commands, {
+					intentId: context?.id,
+					commandEntry: context?.entry,
+					isRequestCurrent: context?.selectionCurrent,
+					deadlineAt,
+					ttlMs: Math.min(
+						await this.compositeCommands.estimateTimeoutMs(commands, context?.entry),
+						deadlineAt ? Math.max(1, deadlineAt - Date.now()) : 30_000,
+					),
+				})
+			: await this.propertyCommandDispatchService.dispatchBatch(commands, {
+					intentId: context?.id,
+					commandEntry: context?.entry,
+					isRequestCurrent: context?.selectionCurrent,
+					deadlineAt,
+				});
+		if (result.composite && context) context.outcomes.push(result.composite);
+		return result;
 	}
 
 	private isWritableProperty(property: ChannelPropertyEntity): boolean {
-		return property.permissions.some((permission) =>
-			[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+		return (
+			!!this.compositeCommands?.get(property) ||
+			property.permissions.some((permission) =>
+				[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+			)
 		);
 	}
 
@@ -882,7 +959,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const { success } = await this.dispatchRoomCommands(commands);
 
 			if (!success) {
 				this.logger.error(`Command execution failed for device id=${light.device.id}`);
@@ -1406,7 +1483,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const { success } = await this.dispatchRoomCommands(commands);
 
 			if (!success) {
 				this.logger.error(`Role intent execution failed for device id=${light.device.id}`);
@@ -1437,7 +1514,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 		for (const light of lights) {
 			// Only treat devices as online if status.online is explicitly true
-			if (light.device.status.online) {
+			if (this.compositeCommands?.get(light.onProperty) || light.device.status.online) {
 				online.push(light);
 			} else {
 				offlineIdSet.add(light.device.id);

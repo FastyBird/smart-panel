@@ -28,7 +28,11 @@ import {
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
-import { COMPOSITE_INTENT_FINISH_MARGIN_MS, PropertyCommandDispatchService } from './property-command-dispatch.service';
+import {
+	COMPOSITE_INTENT_FINISH_MARGIN_MS,
+	PropertyCommandDispatchOptions,
+	PropertyCommandDispatchService,
+} from './property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -301,7 +305,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 	 * @returns A promise resolving to the batch command result and individual outcomes.
 	 */
 	async executePropertyCommands(
-		commands: Array<{ propertyId: string; value: unknown }>,
+		commands: Array<{ propertyId: string; value: unknown; requestedDeviceId?: string; requestedChannelId?: string }>,
 		options: PropertyCommandExecutionOptions = {},
 	): Promise<PropertyBatchCommandResult> {
 		return this.withCommandEntry(options, (entryOptions) =>
@@ -310,7 +314,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 	}
 
 	private async executePropertyCommandsWithEntry(
-		commands: Array<{ propertyId: string; value: unknown }>,
+		commands: Array<{ propertyId: string; value: unknown; requestedDeviceId?: string; requestedChannelId?: string }>,
 		options: PropertyCommandExecutionOptions,
 	): Promise<PropertyBatchCommandResult> {
 		if (commands.length === 0) {
@@ -367,6 +371,24 @@ export class PropertyCommandService implements OnModuleDestroy {
 						success: false,
 						property: c.propertyId,
 						reason: c.propertyId === cmd.propertyId ? 'Device not found' : 'Batch aborted due to invalid device',
+					})),
+				};
+			}
+
+			if (
+				(cmd.requestedDeviceId !== undefined && cmd.requestedDeviceId !== device.id) ||
+				(cmd.requestedChannelId !== undefined && cmd.requestedChannelId !== channel.id)
+			) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: device.id,
+						success: false,
+						property: c.propertyId,
+						reason:
+							c.propertyId === cmd.propertyId
+								? 'Requested device or channel does not own the property'
+								: 'Batch aborted due to target mismatch',
 					})),
 				};
 			}
@@ -546,9 +568,12 @@ export class PropertyCommandService implements OnModuleDestroy {
 				for (const device of Object.keys(groupedProperties)) results.push({ device, ...dispatch });
 			} else
 				for (const deviceId of Object.keys(groupedProperties)) {
+					const deadlineAt = intent.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
 					const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
 						intentId: intent.id,
 						ttlMs,
+						deadlineAt,
+						commandEntry: options.commandEntry,
 						windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
 					});
 
@@ -670,7 +695,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 	private async processDeviceCommands(
 		deviceId: string,
 		commands: PropertyCommandValueDto[],
-		dispatchOptions: { intentId: string; ttlMs: number; windowHandles?: readonly PropertyCommandWindowHandle[] },
+		dispatchOptions: PropertyCommandDispatchOptions & { intentId: string },
 	): Promise<DevicePropertyCommandResult> {
 		const device = await this.deviceGraphs.findOne(deviceId);
 

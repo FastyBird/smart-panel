@@ -122,12 +122,13 @@ describe('devicesVirtualPlugin', () => {
 
 		DevicesVirtualPlugin.install({} as App, options);
 
-		const [, registeredRoute] = (options.router.addRoute as ReturnType<typeof vi.fn>).mock.calls[0] as [
+		const registeredRoute = ((options.router.addRoute as ReturnType<typeof vi.fn>).mock.calls as [
 			string,
 			{ name: string; component: () => unknown },
-		];
+		][]).find(([, route]) => route.name === VirtualRouteNames.WIZARD)?.[1];
 
-		expect(registeredRoute.name).toBe(VirtualRouteNames.WIZARD);
+		expect(registeredRoute).toBeDefined();
+		if (!registeredRoute) throw new Error('Virtual device wizard route was not registered');
 		// The route's component is a lazy import — resolving it proves it points at the wizard view
 		// this task creates rather than at a placeholder.
 		await expect(registeredRoute.component()).resolves.toMatchObject({ default: expect.objectContaining({ name: 'ViewVirtualDeviceWizard' }) });
