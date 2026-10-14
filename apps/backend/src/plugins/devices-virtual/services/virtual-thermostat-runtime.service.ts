@@ -59,6 +59,11 @@ import {
 } from './virtual-window-trend.utils';
 
 const unresolved = (command: VirtualThermostatCommandEntity) => !['confirmed', 'cancelled'].includes(command.status);
+/** Stable journal ordering also covers commands prepared in the same millisecond. */
+const newestCommandFirst = (a: VirtualThermostatCommandEntity, b: VirtualThermostatCommandEntity): number =>
+	b.preparedAt.getTime() - a.preparedAt.getTime() ||
+	b.decisionRevision - a.decisionRevision ||
+	(b.id > a.id ? 1 : b.id < a.id ? -1 : 0);
 const retryDelaysMs = [1000, 2000, 4000, 8000, 16000];
 export interface ThermostatBranchDiagnostic {
 	claim: string;
@@ -303,7 +308,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			});
 			const rows = await this.dataSource.manager.findBy(VirtualThermostatSourceEntity, { controllerId });
 			const bindings = await this.inputs.load(rows);
-			const commands = await this.dataSource.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			const commands = await this.loadDecisionCommands(controllerId, claims);
 			const state =
 				(await this.dataSource.manager.findOneBy(VirtualThermostatRuntimeEntity, { controllerId })) ??
 				this.dataSource.manager.create(VirtualThermostatRuntimeEntity, {
@@ -363,6 +368,36 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				},
 			};
 		});
+	}
+	/**
+	 * Keep every unresolved identity for drainage, including commands belonging to retired claims.
+	 * Settled history contributes only the newest noncancelled ON per live claim for lease renewal.
+	 * Literal settled-status predicates match the partial indexes on the append-only journal.
+	 */
+	private async loadDecisionCommands(
+		controllerId: string,
+		claims: VirtualThermostatActuatorClaimEntity[],
+	): Promise<VirtualThermostatCommandEntity[]> {
+		const commands = await this.dataSource.manager
+			.createQueryBuilder(VirtualThermostatCommandEntity, 'command')
+			.where('command.controllerId = :controllerId', { controllerId })
+			.andWhere("command.status NOT IN ('confirmed', 'cancelled')")
+			.getMany();
+		const byId = new Map(commands.map((command) => [command.id, command]));
+		for (const claim of claims) {
+			const latest = await this.dataSource.manager
+				.createQueryBuilder(VirtualThermostatCommandEntity, 'command')
+				.where('command.controllerId = :controllerId', { controllerId })
+				.andWhere('command.claimId = :claimId', { claimId: claim.id })
+				.andWhere("command.action = 'on' AND command.status <> 'cancelled'")
+				.orderBy('command.preparedAt', 'DESC')
+				.addOrderBy('command.decisionRevision', 'DESC')
+				.addOrderBy('command.id', 'DESC')
+				.limit(1)
+				.getOne();
+			if (latest && !byId.has(latest.id)) byId.set(latest.id, latest);
+		}
+		return [...byId.values()];
 	}
 	private evidence(
 		context: ControllerContext,
@@ -537,8 +572,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		for (const claim of context.claims) {
 			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
 			const latest = context.commands
-				.filter((command) => command.claimId === claim.id && command.action === 'on')
-				.sort((a, b) => b.preparedAt.getTime() - a.preparedAt.getTime())[0];
+				.filter((command) => command.claimId === claim.id && command.action === 'on' && command.status !== 'cancelled')
+				.sort(newestCommandFirst)[0];
 			if (
 				desired &&
 				(!latest ||

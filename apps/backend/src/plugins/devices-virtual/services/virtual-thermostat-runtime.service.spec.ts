@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { IndexVirtualThermostatCommands1000000000035 } from '../../../migrations/1000000000035-IndexVirtualThermostatCommands';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -347,6 +348,208 @@ describe('virtual thermostat durable runtime', () => {
 		} as never);
 		return propertyId;
 	};
+
+	const settle = async (): Promise<void> => {
+		for (let attempt = 0; attempt < 5; attempt++) {
+			await runtime.flush();
+			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+		}
+		await runtime.flush();
+	};
+
+	it('loads bounded settled history and every unresolved identity with indexed SQLite lookups', async () => {
+		await settle();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		claim.revision = 2;
+		await database.manager.save(claim);
+		const retiredClaim = database.manager.create(VirtualThermostatActuatorClaimEntity, {
+			...claim,
+			id: uuid(),
+			state: 'released',
+		});
+		await database.manager.insert(VirtualThermostatActuatorClaimEntity, retiredClaim);
+		const otherClaim = database.manager.create(VirtualThermostatActuatorClaimEntity, {
+			...claim,
+			id: uuid(),
+			role: 'cooling',
+			state: 'suspended',
+			physicalIdentity: `retired-target:${uuid()}`,
+			sourcePropertyId: null,
+		});
+		await database.manager.insert(VirtualThermostatActuatorClaimEntity, otherClaim);
+		const preparedAt = new Date(Date.now() - 60_000);
+		const command = (id: string, status: VirtualThermostatCommandEntity['status']) =>
+			database.manager.create(VirtualThermostatCommandEntity, {
+				id,
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: 1,
+				decisionRevision: 1,
+				action: 'on',
+				status,
+				preparedAt,
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			});
+		const settled = Array.from({ length: 5000 }, (_, index) => command(uuid(), index % 2 ? 'confirmed' : 'cancelled'));
+		for (let offset = 0; offset < settled.length; offset += 50)
+			await database.manager.insert(VirtualThermostatCommandEntity, settled.slice(offset, offset + 50));
+		const latest = command('ffffffff-ffff-ffff-ffff-ffffffffffff', 'confirmed');
+		latest.preparedAt = new Date();
+		const tied = command('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'confirmed');
+		tied.preparedAt = latest.preparedAt;
+		const cancelled = command(uuid(), 'cancelled');
+		cancelled.preparedAt = new Date(Date.now() + 1000);
+		const pending = ['prepared', 'dispatching', 'accepted', 'unknown'].map((status) =>
+			command(uuid(), status as VirtualThermostatCommandEntity['status']),
+		);
+		pending[1].action = 'off';
+		pending[2].claimRevision = 1; // Older revisions still require drainage.
+		pending[3].claimId = retiredClaim.id;
+		const otherLatest = command(uuid(), 'confirmed');
+		otherLatest.claimId = otherClaim.id;
+		await database.manager.insert(VirtualThermostatCommandEntity, [latest, tied, cancelled, otherLatest, ...pending]);
+		const loader = runtime as unknown as {
+			loadDecisionCommands(
+				controllerId: string,
+				claims: VirtualThermostatActuatorClaimEntity[],
+			): Promise<VirtualThermostatCommandEntity[]>;
+		};
+		const loaded = await loader.loadDecisionCommands(controllerId, [claim, otherClaim]);
+		expect(loaded.map((row) => row.id).sort()).toEqual(
+			[...pending.map((row) => row.id), latest.id, otherLatest.id].sort(),
+		);
+		expect(loaded).toHaveLength(6);
+		proofAllowed = () => false;
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.branches.find((branch) => branch.claim === claim.id)).toMatchObject({
+			pending_on: true,
+			release_pending: true,
+			release_proven: false,
+		});
+
+		const runner = database.createQueryRunner();
+		const migration = new IndexVirtualThermostatCommands1000000000035();
+		try {
+			await migration.down(runner);
+			await migration.up(runner);
+			const unresolvedPlan = (await runner.query(
+				`EXPLAIN QUERY PLAN SELECT * FROM "devices_virtual_thermostat_command_journal"
+				 WHERE "controllerId" = ? AND "status" NOT IN ('confirmed', 'cancelled')`,
+				[controllerId],
+			)) as { detail: string }[];
+			const latestPlan = (await runner.query(
+				`EXPLAIN QUERY PLAN SELECT * FROM "devices_virtual_thermostat_command_journal"
+				 WHERE "controllerId" = ? AND "claimId" = ? AND "action" = 'on' AND "status" <> 'cancelled'
+				 ORDER BY "preparedAt" DESC, "decisionRevision" DESC, "id" DESC LIMIT 1`,
+				[controllerId, claim.id],
+			)) as { detail: string }[];
+			expect(unresolvedPlan.map((row) => row.detail).join(' ')).toContain('IDX_virtual_thermostat_commands_unresolved');
+			expect(latestPlan.map((row) => row.detail).join(' ')).toContain('IDX_virtual_thermostat_commands_latest_on');
+			expect(latestPlan.map((row) => row.detail).join(' ')).not.toContain('TEMP B-TREE');
+		} finally {
+			await runner.release();
+		}
+	});
+
+	it('uses the retained latest ON timestamp for the lease renewal boundary', async () => {
+		await settle();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		let now = Date.now();
+		const clock = jest.spyOn(Date, 'now').mockImplementation(() => now);
+		try {
+			await database.manager.insert(VirtualThermostatCommandEntity, {
+				id: uuid(),
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: 1,
+				decisionRevision: 1,
+				action: 'on',
+				status: 'confirmed',
+				preparedAt: new Date(now - claim.leaseSeconds * 500 + 1),
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			});
+			sample(sensorId, 18);
+			sample(relayId, true);
+			await runtime.inspect(controllerId);
+			await settle();
+			expect(sends.filter(Boolean)).toHaveLength(0);
+			now++;
+			await runtime.inspect(controllerId);
+			await settle();
+			expect(sends.filter(Boolean)).toHaveLength(1);
+		} finally {
+			clock.mockRestore();
+		}
+	});
+
+	it('cancels ON on an accepted sample between preparation and dispatch then sends ON from a fresh evaluation', async () => {
+		await settle();
+		const internals = runtime as unknown as {
+			dispatch(...args: unknown[]): Promise<void>;
+		};
+		const dispatch = internals.dispatch.bind(runtime) as (...args: unknown[]) => Promise<void>;
+		let cancelledId: string | null = null;
+		jest.spyOn(internals, 'dispatch').mockImplementation(async (...args: unknown[]) => {
+			const prepared = args[3] as VirtualThermostatCommandEntity;
+			if (prepared.action === 'on' && cancelledId === null) {
+				cancelledId = prepared.id;
+				sample(sensorId, 18);
+				events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: sensorId });
+			}
+			await dispatch(...args);
+		});
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(cancelledId).not.toBeNull();
+		const cancelled = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: cancelledId });
+		expect(cancelled.status).toBe('cancelled');
+		expect(cancelled.dispatchedAt).toBeNull();
+		const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+		expect(journal.some((row) => row.id !== cancelledId && row.action === 'on' && row.status === 'accepted')).toBe(
+			true,
+		);
+		expect(sends.filter(Boolean)).toHaveLength(1);
+	});
+
+	it('ignores a newer cancelled ON after restart while retaining the earlier confirmed ON', async () => {
+		await settle();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		await database.manager.insert(
+			VirtualThermostatCommandEntity,
+			['confirmed', 'cancelled'].map((status, index) => ({
+				id: uuid(),
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: 1,
+				decisionRevision: index + 1,
+				action: 'on' as const,
+				status: status as VirtualThermostatCommandEntity['status'],
+				preparedAt: new Date(Date.now() - 2000 + index * 1000),
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			})),
+		);
+		runtime.onModuleDestroy();
+		sample(sensorId, 18);
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		await runtime.inspect(controllerId);
+		await settle();
+		expect(sends.filter(Boolean)).toHaveLength(1);
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].activity).toBe('on');
+	});
 
 	it('closes local output and diagnostic authority until a fresh evaluation after graph validation retry', async () => {
 		const outputId = await createTemperatureOutput();

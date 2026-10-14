@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 
 import { VirtualThermostatActuatorClaimEntity, VirtualThermostatConfigEntity } from './virtual-thermostat.entity';
 
@@ -50,6 +50,16 @@ export class VirtualThermostatBranchRuntimeEntity {
 export type ThermostatJournalStatus = 'prepared' | 'dispatching' | 'accepted' | 'unknown' | 'cancelled' | 'confirmed';
 
 /** Append-only command identity; timeout or deletion never erases an unresolved energizing command. */
+@Index('IDX_virtual_thermostat_commands_unresolved', ['controllerId', 'status'], {
+	where: `"status" NOT IN ('confirmed', 'cancelled')`,
+})
+@Index(
+	'IDX_virtual_thermostat_commands_latest_on',
+	['controllerId', 'claimId', 'preparedAt', 'decisionRevision', 'id'],
+	{
+		where: `"action" = 'on' AND "status" <> 'cancelled'`,
+	},
+)
 @Entity('devices_virtual_thermostat_command_journal')
 export class VirtualThermostatCommandEntity {
 	@PrimaryColumn({ type: 'varchar' })
