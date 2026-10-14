@@ -1253,5 +1253,7 @@
   "virtual_measurement_state_output_out_of_range": "Valor fuera del rango",
   "virtual_measurement_state_invalid_domain": "Fuera del dominio matemático",
   "virtual_measurement_state_producer_disposed": "Productor detenido",
-  "virtual_measurement_state_unknown": "Diagnóstico desconocido"
+  "virtual_measurement_state_unknown": "Diagnóstico desconocido",
+  "climate_temperature_coverage_conflict": "Los sensores de temperatura de la habitación se solapan. Selecciona un representante en los ajustes de participación en el clima de la habitación.",
+  "climate_temperature_coverage_unavailable": "La temperatura de la habitación no está disponible. Comprueba la configuración y la disponibilidad de los sensores."
 }

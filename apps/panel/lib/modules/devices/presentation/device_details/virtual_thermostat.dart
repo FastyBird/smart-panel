@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_commands.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +25,15 @@ class VirtualThermostatDeviceDetail extends StatefulWidget {
 class _VirtualThermostatDeviceDetailState
     extends State<VirtualThermostatDeviceDetail> {
   Timer? _refreshTimer;
+  Timer? _freshnessTimer;
+  Timer? _resyncTimer;
+  SocketService? _socket;
+  static const _runtimeEvent = 'DevicesVirtualPlugin.Thermostat.RuntimeChanged';
+  Map<String, dynamic>? _latestHint;
+  int _hintSerial = 0;
+  bool _hintRefreshNeeded = false;
+  bool _configurationMismatchSeen = false;
+  DateTime? _runtimeReceivedAt;
   Map<String, dynamic>? _configuration;
   Map<String, dynamic>? _runtime;
   String? _error;
@@ -36,7 +47,15 @@ class _VirtualThermostatDeviceDetailState
   @override
   void initState() {
     super.initState();
+    if (locator.isRegistered<SocketService>()) {
+      _socket = locator<SocketService>();
+      _socket!.registerEventHandler(_runtimeEvent, _runtimeChanged);
+      _socket!.addConnectionListener(_connectionChanged);
+    }
     unawaited(_refresh());
+    _freshnessTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 5),
       (_) => unawaited(_refresh()),
@@ -48,6 +67,10 @@ class _VirtualThermostatDeviceDetailState
     _refreshGeneration++;
     _refreshInFlightFor = null;
     _refreshTimer?.cancel();
+    _freshnessTimer?.cancel();
+    _resyncTimer?.cancel();
+    _socket?.unregisterEventHandler(_runtimeEvent, _runtimeChanged);
+    _socket?.removeConnectionListener(_connectionChanged);
     super.dispose();
   }
 
@@ -56,6 +79,10 @@ class _VirtualThermostatDeviceDetailState
     super.didUpdateWidget(oldWidget);
     if (oldWidget.device.id == widget.device.id) return;
     _refreshGeneration++;
+    _resyncTimer?.cancel();
+    _latestHint = null;
+    _hintRefreshNeeded = false;
+    _configurationMismatchSeen = false;
     _configuration = null;
     _runtime = null;
     _error = null;
@@ -63,11 +90,56 @@ class _VirtualThermostatDeviceDetailState
     unawaited(_refresh());
   }
 
+  bool _coversHint(Map<String, dynamic>? runtime, Map<String, dynamic>? hint) =>
+      runtime != null &&
+      hint != null &&
+      runtime['epoch'] is String &&
+      runtime['epoch'] == hint['epoch'] &&
+      runtime['sequence'] is num &&
+      hint['sequence'] is num &&
+      (runtime['sequence'] as num) >= (hint['sequence'] as num);
+
+  void _runtimeChanged(String event, Map<String, dynamic> payload) {
+    if (!mounted || payload['controller'] != widget.device.id) return;
+    // Events are invalidation hints only. They never overwrite an HTTP snapshot.
+    if (_coversHint(_runtime, payload) || _coversHint(_latestHint, payload)) {
+      return;
+    }
+    _latestHint = Map<String, dynamic>.from(payload);
+    _hintSerial++;
+    _hintRefreshNeeded = true;
+    _scheduleResync();
+  }
+
+  void _connectionChanged(bool connected) {
+    if (!mounted || !connected) return;
+    // A new connection may represent a new server epoch. Fence older HTTP work.
+    _refreshGeneration++;
+    _refreshInFlightFor = null;
+    _latestHint = null;
+    _hintSerial++;
+    _hintRefreshNeeded = true;
+    _scheduleResync();
+  }
+
+  void _scheduleResync() {
+    if (!mounted ||
+        _busy ||
+        _refreshInFlightFor != null ||
+        _resyncTimer?.isActive == true) {
+      return;
+    }
+    _resyncTimer = Timer(const Duration(milliseconds: 100), () {
+      if (mounted && _hintRefreshNeeded) unawaited(_refresh(force: true));
+    });
+  }
+
   Future<void> _refresh({bool force = false}) async {
     if (!locator.isRegistered<Dio>() || _busy) return;
     final path = _path;
     if (!force && _refreshInFlightFor == path) return;
     final generation = ++_refreshGeneration;
+    final hintSerial = _hintSerial;
     _refreshInFlightFor = path;
     try {
       final dio = locator<Dio>();
@@ -76,21 +148,53 @@ class _VirtualThermostatDeviceDetailState
         dio.get<Map<String, dynamic>>('$path/runtime'),
       ]);
       if (!mounted || generation != _refreshGeneration) return;
+      final candidate = Map<String, dynamic>.from(
+        responses[1].data?['data'] as Map? ?? {},
+      );
+      // A runtime GET also publishes an event. Its matching stamp acknowledges
+      // that hint, preventing a fetch/event loop while rejecting older snapshots.
+      if (_hintSerial != hintSerial && !_coversHint(candidate, _latestHint)) {
+        return;
+      }
+      final configuration = Map<String, dynamic>.from(
+        responses[0].data?['data'] as Map? ?? {},
+      );
+      final configurationRevision = configuration['revision'];
+      final runtimeRevision = candidate['configuration_revision'];
+      if (configurationRevision is num &&
+          runtimeRevision is num &&
+          runtimeRevision > 0 &&
+          configurationRevision != runtimeRevision) {
+        // Concurrent GETs can straddle an edit. Retry once promptly, then let
+        // the bounded poll resync if authoring continues to change underneath us.
+        _hintRefreshNeeded = !_configurationMismatchSeen;
+        _configurationMismatchSeen = true;
+        return;
+      }
+      _configurationMismatchSeen = false;
+      _hintRefreshNeeded = false;
       setState(() {
-        _configuration = Map<String, dynamic>.from(
-          responses[0].data?['data'] as Map? ?? {},
-        );
+        _configuration = configuration;
         _runtime = Map<String, dynamic>.from(
           responses[1].data?['data'] as Map? ?? {},
         );
+        _runtimeReceivedAt = DateTime.now();
         _error = null;
       });
     } catch (error) {
       if (mounted && generation == _refreshGeneration) {
-        setState(() => _error = error.toString());
+        // The bounded poll retries failed HTTP reads.
+        _hintRefreshNeeded = false;
+        setState(() {
+          _error = error.toString();
+          _runtime = null;
+        });
       }
     } finally {
-      if (generation == _refreshGeneration) _refreshInFlightFor = null;
+      if (generation == _refreshGeneration) {
+        _refreshInFlightFor = null;
+        if (_hintRefreshNeeded) _scheduleResync();
+      }
     }
   }
 
@@ -147,6 +251,7 @@ class _VirtualThermostatDeviceDetailState
     } finally {
       if (mounted && widget.device.id == deviceId) {
         setState(() => _busy = false);
+        if (_hintRefreshNeeded) _scheduleResync();
       }
     }
   }
@@ -212,8 +317,25 @@ class _VirtualThermostatDeviceDetailState
     // Desired settings remain editable during a protective pause. Runtime
     // readiness still gates physical output at the backend.
     final canControl = config != null && config['locked'] != true && !_busy;
-    final ambient = _number(runtime?['current_temperature']);
-    final floor = _number(runtime?['floor_temperature']);
+    final now = DateTime.now();
+    final elapsed = _runtimeReceivedAt == null
+        ? Duration.zero
+        : now.difference(_runtimeReceivedAt!);
+    final inputs =
+        (runtime?['inputs'] is List ? runtime!['inputs'] as List : const [])
+            .whereType<Map>()
+            .map(VirtualThermostatInput.fromJson)
+            .toList();
+    bool roleFresh(String role) => !inputs.any(
+      (input) =>
+          input.role == role && input.currentStatus(elapsed, now) != 'fresh',
+    );
+    final ambient = roleFresh('ambient')
+        ? _number(runtime?['current_temperature'])
+        : null;
+    final floor = roleFresh('floor')
+        ? _number(runtime?['floor_temperature'])
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.device.name)),
@@ -236,6 +358,30 @@ class _VirtualThermostatDeviceDetailState
             if (runtime?['floor_latched'] == true)
               const Text('Floor protection is holding heating OFF.'),
             for (final reason in reasons) Text('Inhibited: $reason'),
+            if (inputs.isNotEmpty) ...[
+              const Divider(),
+              const Text('Input freshness'),
+              for (final input in inputs)
+                ListTile(
+                  title: Text(
+                    '${input.role}: ${input.currentStatus(elapsed, now)} (${input.sourceKind})',
+                  ),
+                  subtitle: Text(
+                    [
+                      'Quality: ${input.quality}',
+                      if (input.age(elapsed) != null)
+                        'Sample age: ${input.age(elapsed)!.toStringAsFixed(0)} s',
+                      if (input.maximumAgeSeconds != null)
+                        'Allowed age: ${input.maximumAgeSeconds!.toStringAsFixed(0)} s',
+                      if (input.sampledAt != null)
+                        'Sampled: ${input.sampledAt!.toUtc().toIso8601String()}',
+                      if (input.expiresAt != null)
+                        'Expires: ${input.expiresAt!.toUtc().toIso8601String()}',
+                      ...input.reasons,
+                    ].join(' • '),
+                  ),
+                ),
+            ],
             if (_settingProperty('locked') != null)
               SwitchListTile(
                 title: const Text('Lock thermostat controls'),

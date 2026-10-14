@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -297,6 +298,40 @@ void main() {
         final lightsCard = model.domainCards.firstWhere((c) => c.domain == DomainType.lights);
         expect(lightsCard.primaryValue, 'Custom');
         expect(lightsCard.isActive, true);
+      });
+
+      test('withheld climate readings cannot fall back to a raw overview value', () {
+        for (final status in ['coverage_conflict', 'coverage_stale', 'ok']) {
+          final input = RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+            temperature: 21.5,
+            climateState: ClimateStateModel.fromJson({
+              'has_climate': true,
+              'current_temperature': null,
+              'temperature_contribution': {
+                'status': status,
+                'selected_property_ids': ['aggregate'],
+                'unavailable_property_ids': ['aggregate'],
+              },
+            }, spaceId: _roomUuid),
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+          );
+          final model = buildRoomOverviewModel(input);
+          final card = model.domainCards.firstWhere(
+            (card) => card.domain == DomainType.climate,
+          );
+          expect(card.primaryValue.contains('21.5'), isFalse);
+          expect(card.isActive, isFalse);
+          expect(card.subtitle, status == 'coverage_conflict'
+              ? _l.climate_temperature_coverage_conflict
+              : _l.climate_temperature_coverage_unavailable);
+          expect(model.sensorReadings.where((reading) =>
+              reading.label == _l.device_temperature), isEmpty);
+        }
       });
 
       test('should show temperature with unit as climate primary value', () {

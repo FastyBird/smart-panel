@@ -5,12 +5,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { DeviceContributionRegistryService } from '../../../modules/devices/services/device-contribution.registry.service';
 import { IntentStatus } from '../../../modules/intents/intents.constants';
 import {
 	IntentTimeseriesService,
 	LastAppliedClimateState,
 } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
+import * as climateConstants from '../spaces-home-control.constants';
 import {
 	ClimateMode,
 	ClimateRole,
@@ -19,6 +21,7 @@ import {
 	SETPOINT_CONSENSUS_TOLERANCE,
 } from '../spaces-home-control.constants';
 
+import { ClimateContributionPlannerService } from './climate-contribution-planner.service';
 import { SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceStateReadService } from './space-state-read.service';
 
@@ -170,6 +173,8 @@ describe('SpaceClimateStateService', () => {
 		module = await Test.createTestingModule({
 			providers: [
 				SpaceClimateStateService,
+				DeviceContributionRegistryService,
+				ClimateContributionPlannerService,
 				{
 					provide: SpaceStateReadService,
 					useValue: {
@@ -197,6 +202,7 @@ describe('SpaceClimateStateService', () => {
 		module = undefined;
 		await moduleToClose?.close();
 		jest.clearAllMocks();
+		jest.restoreAllMocks();
 	});
 
 	describe('getClimateState', () => {
@@ -547,6 +553,127 @@ describe('SpaceClimateStateService', () => {
 			const result = await service.getPrimaryClimateDevicesInSpace(mockSpaceId);
 
 			expect(result).toHaveLength(1);
+		});
+	});
+
+	describe('integrated room temperature coverage and participation roles', () => {
+		const prepare = () => {
+			const primary = createMockClimateDevice({
+				category: DeviceCategory.THERMOSTAT,
+				hasHeater: true,
+				temperature: 10,
+			});
+			const sensor = createMockClimateDevice({ category: DeviceCategory.SENSOR, temperature: 24 });
+			const raw = primary.channels[0].properties[0];
+			const derived = sensor.channels[0].properties[0];
+			module.get(DeviceContributionRegistryService).registerMeasurement({
+				getMeasurementCoverage: (property) =>
+					Promise.resolve(
+						property.id === derived.id
+							? {
+									leaves: [raw.id],
+									representedProperties: [],
+									isCurrent: () => true,
+									readValue: () => 24,
+								}
+							: null,
+					),
+			});
+			stateReads.findDevicesBySpace.mockResolvedValue([primary, sensor]);
+			return { primary, sensor, raw, derived };
+		};
+		it('preserves PRIMARY_ONLY even when an aggregate sensor is explicitly assigned SENSOR', async () => {
+			const { sensor, raw } = prepare();
+			stateReads.getClimateRoleMap.mockResolvedValue(
+				new Map([[`${sensor.id}:${sensor.channels[0].id}`, { role: ClimateRole.SENSOR } as SpaceClimateRoleEntity]]),
+			);
+			const state = await service.getClimateState(mockSpaceId);
+			expect(state.currentTemperature).toBe(10);
+			expect(state.temperatureContribution.selectedPropertyIds).toEqual([raw.id]);
+		});
+		it('ALL_SOURCES selects the SENSOR aggregate and suppresses the covered primary temperature', async () => {
+			jest.replaceProperty(
+				climateConstants,
+				'TEMPERATURE_AVERAGING_STRATEGY',
+				climateConstants.TemperatureAveragingStrategy.ALL_SOURCES,
+			);
+			const { sensor, raw, derived } = prepare();
+			stateReads.getClimateRoleMap.mockResolvedValue(
+				new Map([[`${sensor.id}:${sensor.channels[0].id}`, { role: ClimateRole.SENSOR } as SpaceClimateRoleEntity]]),
+			);
+			const state = await service.getClimateState(mockSpaceId);
+			expect(state.currentTemperature).toBe(24);
+			expect(state.temperatureContribution).toMatchObject({
+				selectedPropertyIds: [derived.id],
+				excludedPropertyIds: [raw.id],
+			});
+			expect(state.supportsHeating).toBe(true);
+		});
+		it('an unassigned or HIDDEN sensor cannot suppress an eligible primary reading', async () => {
+			jest.replaceProperty(
+				climateConstants,
+				'TEMPERATURE_AVERAGING_STRATEGY',
+				climateConstants.TemperatureAveragingStrategy.ALL_SOURCES,
+			);
+			const { sensor, raw } = prepare();
+			for (const role of [null, ClimateRole.HIDDEN]) {
+				stateReads.getClimateRoleMap.mockResolvedValue(
+					role ? new Map([[`${sensor.id}:${sensor.channels[0].id}`, { role } as SpaceClimateRoleEntity]]) : new Map(),
+				);
+				const state = await service.getClimateState(mockSpaceId);
+				expect(state.currentTemperature).toBe(10);
+				expect(state.temperatureContribution.selectedPropertyIds).toEqual([raw.id]);
+			}
+		});
+		it('honors device HIDDEN and primary channel HIDDEN exclusions before planning', async () => {
+			jest.replaceProperty(
+				climateConstants,
+				'TEMPERATURE_AVERAGING_STRATEGY',
+				climateConstants.TemperatureAveragingStrategy.ALL_SOURCES,
+			);
+			const { primary, sensor } = prepare();
+			stateReads.getClimateRoleMap.mockResolvedValue(
+				new Map([
+					[`${sensor.id}:${sensor.channels[0].id}`, { role: ClimateRole.SENSOR } as SpaceClimateRoleEntity],
+					[sensor.id, { role: ClimateRole.HIDDEN } as SpaceClimateRoleEntity],
+					[`${primary.id}:${primary.channels[0].id}`, { role: ClimateRole.HIDDEN } as SpaceClimateRoleEntity],
+				]),
+			);
+			const state = await service.getClimateState(mockSpaceId);
+			expect(state.currentTemperature).toBeNull();
+			expect(state.temperatureContribution.selectedPropertyIds).toEqual([]);
+			expect(state.supportsHeating).toBe(true);
+		});
+		it('keeps a conflict visible through room state and resolves it when a representative is hidden', async () => {
+			const first = createMockClimateDevice({ category: DeviceCategory.THERMOSTAT, hasHeater: true, temperature: 20 });
+			const second = createMockClimateDevice({ category: DeviceCategory.THERMOSTAT, hasHeater: true, temperature: 30 });
+			const ids = [first, second].map((device) => device.channels[0].properties[0].id);
+			module.get(DeviceContributionRegistryService).registerMeasurement({
+				getMeasurementCoverage: (property) =>
+					Promise.resolve(
+						ids.includes(property.id)
+							? {
+									leaves: ['same-physical-input'],
+									representedProperties: [],
+									isCurrent: () => true,
+									readValue: () => 25,
+								}
+							: null,
+					),
+			});
+			stateReads.findDevicesBySpace.mockResolvedValue([first, second]);
+			expect(await service.getClimateState(mockSpaceId)).toMatchObject({
+				currentTemperature: null,
+				supportsHeating: true,
+				temperatureContribution: { status: 'coverage_conflict' },
+			});
+			stateReads.getClimateRoleMap.mockResolvedValue(
+				createRoleMap([{ deviceId: second.id, role: ClimateRole.HIDDEN }]),
+			);
+			expect(await service.getClimateState(mockSpaceId)).toMatchObject({
+				currentTemperature: 25,
+				temperatureContribution: { status: 'ok' },
+			});
 		});
 	});
 

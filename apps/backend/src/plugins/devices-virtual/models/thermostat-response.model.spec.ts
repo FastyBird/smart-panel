@@ -5,7 +5,12 @@ import { ModelPropertiesAccessor } from '@nestjs/swagger/dist/services/model-pro
 import { SchemaObjectFactory } from '@nestjs/swagger/dist/services/schema-object-factory';
 import { SwaggerTypesMapper } from '@nestjs/swagger/dist/services/swagger-types-mapper';
 
-import { VirtualThermostatRecoveriesResponseModel, VirtualThermostatRecoveryModel } from './thermostat-response.model';
+import {
+	VirtualThermostatRecoveriesResponseModel,
+	VirtualThermostatRecoveryModel,
+	VirtualThermostatRuntimeModel,
+	VirtualThermostatRuntimeResponseModel,
+} from './thermostat-response.model';
 
 describe('thermostat recovery response contract', () => {
 	const row = {
@@ -66,5 +71,44 @@ describe('thermostat recovery response contract', () => {
 		expect(Object.keys(schema.properties ?? {}).sort()).toEqual(Object.keys(expected).sort());
 		expect(schema.required?.slice().sort()).toEqual(Object.keys(expected).sort());
 		expect(schema.properties?.created_at).toMatchObject({ type: 'string', format: 'date-time' });
+	});
+});
+
+describe('thermostat input freshness HTTP contract', () => {
+	it('retains typed nested snake_case diagnostics under the HTTP serializer', () => {
+		const input = {
+			binding: 'ambient',
+			role: 'ambient',
+			source_property: 'sensor',
+			source_kind: 'physical',
+			status: 'stale',
+			quality: 'unavailable',
+			sampled_at: '2026-10-14T10:00:00.000Z',
+			age_seconds: 120,
+			maximum_age_seconds: 60,
+			expires_at: '2026-10-14T10:01:00.000Z',
+			reasons: ['expired'],
+		};
+		const response = new VirtualThermostatRuntimeResponseModel();
+		response.data = Object.assign(new VirtualThermostatRuntimeModel(), {
+			inputs: [input],
+			epoch: 'process-epoch',
+			sequence: 12,
+			configuration_revision: 3,
+			decision_revision: 4,
+		});
+		expect(
+			instanceToPlain(response, { excludeExtraneousValues: true, exposeUnsetFields: false, groups: ['api'] }),
+		).toEqual({
+			data: { inputs: [input], epoch: 'process-epoch', sequence: 12, configuration_revision: 3, decision_revision: 4 },
+		});
+		const schemas: Record<string, SchemaObject> = {};
+		new SchemaObjectFactory(new ModelPropertiesAccessor(), new SwaggerTypesMapper()).exploreModelSchema(
+			VirtualThermostatRuntimeResponseModel,
+			schemas,
+		);
+		expect(Object.keys(schemas.DevicesVirtualPluginDataThermostatInputRuntime.properties ?? {}).sort()).toEqual(
+			Object.keys(input).sort(),
+		);
 	});
 });

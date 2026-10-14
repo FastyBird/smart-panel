@@ -563,6 +563,11 @@ DomainCardInfo _buildClimateCard(
 ) {
   final l = input.localizations;
   final cs = input.climateState;
+  final contribution = cs?.temperatureContribution;
+  final currentTemperature = contribution?.isUnavailable == true
+      ? null
+      : cs?.currentTemperature ??
+          (contribution == null ? input.temperature : null);
   // Locale-aware number formatting
   final tempUnit = input.displayUnits.temperature;
 
@@ -574,7 +579,7 @@ DomainCardInfo _buildClimateCard(
     final target = cs!.effectiveTargetTemperature!;
     primaryValue = '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
   } else {
-    final temp = cs?.currentTemperature ?? input.temperature;
+    final temp = currentTemperature;
     if (temp != null) {
       primaryValue = '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
     } else {
@@ -606,8 +611,12 @@ DomainCardInfo _buildClimateCard(
       break;
   }
 
-  final subtitle = l.room_overview_device_count(count);
-  final temp = cs?.currentTemperature ?? input.temperature;
+  final subtitle = contribution?.isUnavailable == true
+      ? contribution!.hasConflict
+          ? l.climate_temperature_coverage_conflict
+          : l.climate_temperature_coverage_unavailable
+      : l.room_overview_device_count(count);
+  final temp = currentTemperature;
   final isActive = cs != null ? (cs.mode != ClimateMode.off && cs.mode != null) : temp != null;
 
   return DomainCardInfo(
@@ -807,7 +816,12 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
   final env = input.sensorState?.environment;
   final displayUnits = input.displayUnits;
 
-  final temp = env?.averageTemperature ?? input.temperature;
+  final temp = env?.averageTemperature ??
+      (input.climateState?.temperatureContribution == null
+          ? input.temperature
+          : input.climateState!.temperatureContribution!.isUnavailable
+              ? null
+              : input.climateState!.currentTemperature);
   if (temp != null) {
     readings.add(SensorReading(
       icon: MdiIcons.thermometer,

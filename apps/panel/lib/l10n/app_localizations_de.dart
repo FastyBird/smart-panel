@@ -4236,4 +4236,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get virtual_measurement_state_unknown => 'Unbekannte Diagnose';
+
+  @override
+  String get climate_temperature_coverage_conflict =>
+      'Die Temperatursensoren des Raums überschneiden sich. Wählen Sie in den Raumklima-Einstellungen einen Vertreter aus.';
+
+  @override
+  String get climate_temperature_coverage_unavailable =>
+      'Die Raumtemperatur ist nicht verfügbar. Prüfen Sie die Sensorkonfiguration und Verfügbarkeit.';
 }

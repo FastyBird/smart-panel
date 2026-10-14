@@ -37,8 +37,8 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 - [x] VD2-5 [#1416](https://github.com/FastyBird/smart-panel/issues/1416): group membership, capability contract, state and correlated command expansion
 - [x] VD2-6 [#1417](https://github.com/FastyBird/smart-panel/issues/1417): light-group admin/panel and scene/room control
 - [x] VD2-7 [#1418](https://github.com/FastyBird/smart-panel/issues/1418): thermostat configuration, actuator claims and local command path
-- [ ] VD2-8 [#1419](https://github.com/FastyBird/smart-panel/issues/1419): heat/cool/auto/off runtime, durable interlock and restart recovery
-- [ ] VD2-9 [#1420](https://github.com/FastyBird/smart-panel/issues/1420): floor overheat and physical/automatic window policies
+- [x] VD2-8 [#1419](https://github.com/FastyBird/smart-panel/issues/1419): heat/cool/auto/off runtime, durable interlock and restart recovery
+- [x] VD2-9 [#1420](https://github.com/FastyBird/smart-panel/issues/1420): floor overheat and physical/automatic window policies
 - [ ] VD2-10 [#1421](https://github.com/FastyBird/smart-panel/issues/1421): thermostat authoring, floor/guard diagnostics, panel and climate intents
 - [ ] VD2-11 [#1422](https://github.com/FastyBird/smart-panel/issues/1422): end-to-end acceptance, existing-feature regression and documentation
 - [x] VD2-12 [#1425](https://github.com/FastyBird/smart-panel/issues/1425): separate numeric conversion sensor backend
@@ -48,11 +48,11 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 
 - [ ] A user can create, edit and repair every minimum device type through admin.
 - [ ] An aggregate temperature sensor is an ordinary readable device with history and can feed a virtual thermostat.
-- [ ] A thermostat supports heating/cooling according to configured outputs, including automatic changeover without
+- [x] A thermostat supports heating/cooling according to configured outputs, including automatic changeover without
       simultaneous opposed actuation.
-- [ ] When enabled for a heating branch, floor protection has a configured threshold, immediate heat release, valid-input
+- [x] When enabled for a heating branch, floor protection has a configured threshold, immediate heat release, valid-input
       requirement and recovery hysteresis.
-- [ ] Physical window contact support and automatic detection are minimum capabilities. Automatic detection pauses and
+- [x] Physical window contact support and automatic detection are minimum capabilities. Automatic detection pauses and
       recovers without a physical contact; configured contacts also pause and recover. Neither restores obsolete user
       commands.
 - [x] A light group exposes compatible common controls, mixed/partial state and member-level outcomes.
@@ -65,19 +65,28 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 - [ ] API/spec clients are generated from source, migrations are incremental, and no arbitrary scripting dependency is added.
 - [ ] Every delivery PR has green current-head CI and a non-blocking main CodeRabbit review or operator authorization.
 
-## Acceptance evidence at the composed candidate
+## Merged software evidence and remaining acceptance
 
-VD2-6 was delivered through PR #1436 after green CI and completed non-blocking CodeRabbit review. The prepared VD2-7 through VD2-11 changes are being integrated on a candidate branch. The checkboxes above reflect **merged and closed tracking tasks**, not merely code present in that branch. The candidate still needs exact-head tests, generated-client review, CI and review gates before delivery. This matrix records the evidence to attach to that review; “pending” is not a pass.
+Production features through PR #1443 are merged on `10e9c206d68f12966d5bb7d5a0777ed5f0f26a3c`.
+The identical composed source tree at `f84be26b257ad225c0cd6816a428da2059e252da` passed all 15 hosted
+checks and completed CodeRabbit review with Minimal risk and no blocking finding before merge.
+[PR #1443 checks and review](https://github.com/FastyBird/smart-panel/pull/1443) record that baseline.
+The protocol evidence PR #1424 and the remaining #1421 improvements retain their own exact-head CI/review gates.
 
-| Acceptance slice | Evidence required on the composed head | Current status |
-| --- | --- | --- |
-| Admin authoring and repair for aggregate, converter, group and thermostat | Focused wizard/store tests and an API round trip preserving output identity and revision conflict handling | Composed admin route tests 55/55 pass; API round-trip evidence pending |
-| Measurement composition and data quality | Aggregate quorum/freshness/history, calibrated transform domain/age, invalidation and graph remap tests | Included in 49 composed backend suites, 768 tests passing; three-source aggregate/controller case in separate runtime suite 28/28 passing |
-| Group commands and room contribution | Common-control preview, mixed/unknown state, per-child partial outcomes in REST/WebSocket/panel, room/scene dispatch and physical-member dedup tests | Included in 49 composed backend suites, 768 tests passing; focused panel controls/outcomes included in 31/31 passing |
-| Thermostat and climate intents | Ambient aggregate-to-controller, qualified output admission, opposed-output exclusion, floor equality/stale/strict-hysteresis, physical/automatic window with latest settings, and requested-vs-actual diagnostics tests | Composed runtime tests 28/28 pass: SQLite three-source aggregate through heat, quorum release/recovery, floor 28/27/26.9 °C boundary, 11-second source aging, contact and heuristic pause/latest settings across restart; other evidence pending |
-| Lifecycle and regression | Stop/restart/unknown command recovery, delete/remap, ordinary physical controls, legacy projection, hidden provenance, energy attribution and resource teardown tests | Backend graph/migration/lifecycle, scene, hidden and energy checks included in 49 suites, 768 tests passing; current-head CI and broader ordinary-control regression pending |
-| Generated contracts and UI | OpenAPI/spec generation, admin type check and focused tests, panel analyzer/widget tests, website build | Generated composed client/specs; admin `vue-tsc --build` pass; focused panel tests 31/31 pass; panel analyzer (10 items) reports no issues; website build pass. Current-head CI pending |
-| Installed equipment | Operator-approved procedure and recorded physical calibration, writer isolation, local execution/restart bounds, endpoint authentication and independent protection; opposed interlock where used | Not performed on supplied pilot |
+The runtime and protective-policy tasks #1419 and #1420 are closed as tested software implementations.
+That closure does not establish installed hardware qualification. #1421 remains open for explicit source freshness
+presentation, room climate contribution coverage/conflicts and convergence acceptance. #1422 remains open until
+its composed acceptance evidence and completion tracking are reconciled with those changes.
+
+| Acceptance slice                     | Evidence on the merged baseline                                                                                                                                                                                                                  | Remaining work                                                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin authoring and repair           | Aggregate/converter/group/thermostat authoring services, SQLite catalog and binding integration, wizard/store tests, preview revision conflicts                                                                                                  | Finish the cross-surface acceptance inventory; preserve output identity and repair behavior                                                                     |
+| Measurement composition and quality  | Aggregate runtime tests cover unchanged reports, expiry, quorum, remap/history and transform age; SQLite thermostat runtime composes three ambient sources through heat, quorum loss and recovery                                                | Verify contribution coverage when raw and aggregate readings are selected in the same room                                                                      |
+| Group commands and room contribution | Composite command integration includes prepared Shelly/Zigbee platforms, partial outcomes, deduplication and socket serialization; group authoring tests cover remap, hidden provenance and energy; panel/admin outcome tests cover presentation | Reconcile the exact cross-surface acceptance mapping                                                                                                            |
+| Thermostat regulation and guards     | Durable SQLite runtime covers pre-dispatch persistence, crash/restart, delayed ON, refused OFF, opposed exclusion and reconnect; floor equality/staleness/strict recovery, contact debounce and heuristic hold/latest settings are tested        | Add explicit input freshness presentation and complete convergence evidence under #1421                                                                         |
+| Lifecycle and existing features      | Hosted baseline CI covers backend/admin/panel/schema checks; focused source suites cover graph/migrations, ordinary commands, wiring/projection, hidden provenance, energy and teardown                                                          | Run current-head checks again for the completion follow-up                                                                                                      |
+| Generated contracts and UI           | Baseline OpenAPI/spec generation, admin types/tests, panel analysis/tests and website build passed hosted CI                                                                                                                                     | Regenerate changed additive response contracts from backend sources and validate their consumers                                                                |
+| Installed equipment                  | Read-only device/script observations and a staged installation/verification workflow are documented separately                                                                                                                                   | Calibration, writer isolation, local execution/restart bounds, endpoint authentication, independent protection and actual physical commissioning are unverified |
 
 Software tests and protocol fixtures cannot establish actual electrical isolation, floor calibration or physical OFF. The [climate architecture](../../docs/climate-architecture.md), [user guide](../../apps/website/app/docs/admin-management/virtual-devices/page.mdx) and [pilot commissioning record](../../docs/work/virtual-thermostat/shelly-commissioning.md) describe the boundary.
 

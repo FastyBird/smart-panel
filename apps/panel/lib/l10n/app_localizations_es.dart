@@ -4230,4 +4230,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get virtual_measurement_state_unknown => 'Diagnóstico desconocido';
+
+  @override
+  String get climate_temperature_coverage_conflict =>
+      'Los sensores de temperatura de la habitación se solapan. Selecciona un representante en los ajustes de participación en el clima de la habitación.';
+
+  @override
+  String get climate_temperature_coverage_unavailable =>
+      'La temperatura de la habitación no está disponible. Comprueba la configuración y la disponibilidad de los sensores.';
 }

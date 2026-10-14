@@ -1253,5 +1253,7 @@
   "virtual_measurement_state_output_out_of_range": "Hodnota mimo rozsahu",
   "virtual_measurement_state_invalid_domain": "Mimo matematického oboru",
   "virtual_measurement_state_producer_disposed": "Producent zastavený",
-  "virtual_measurement_state_unknown": "Neznáma diagnostika"
+  "virtual_measurement_state_unknown": "Neznáma diagnostika",
+  "climate_temperature_coverage_conflict": "Teplotné senzory miestnosti sa prekrývajú. V nastavení účasti na klíme miestnosti vyberte jedného zástupcu.",
+  "climate_temperature_coverage_unavailable": "Teplotu miestnosti nemožno určiť. Skontrolujte nastavenie a dostupnosť senzorov."
 }

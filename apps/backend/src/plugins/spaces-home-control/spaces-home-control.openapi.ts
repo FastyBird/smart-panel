@@ -45,6 +45,7 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
+import { ClimateContributionConflictModel, ClimateContributionModel } from './models/climate-contribution.model';
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import {
 	DerivedMediaCapabilitiesModel,
@@ -213,6 +214,8 @@ export const SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS: (
 	BulkLightingRolesResultDataModel,
 	BulkLightingRolesResponseModel,
 	// Climate response models
+	ClimateContributionModel,
+	ClimateContributionConflictModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
 	ClimateIntentResultDataModel,

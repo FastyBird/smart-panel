@@ -315,8 +315,40 @@ export class VirtualThermostatBranchRuntimeModel {
 	@ApiProperty({ type: String, nullable: true }) @Expose() fault: string | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatInputRuntime' })
+export class VirtualThermostatInputRuntimeModel {
+	@ApiProperty() @Expose() binding: string;
+	@ApiProperty({ enum: ['ambient', 'floor', 'contact'] }) @Expose() role: 'ambient' | 'floor' | 'contact';
+	@ApiProperty({ type: String, nullable: true }) @Expose() source_property: string | null;
+	@ApiProperty({ enum: ['physical', 'derived', 'unknown'] }) @Expose() source_kind: 'physical' | 'derived' | 'unknown';
+	@ApiProperty({ enum: ['fresh', 'stale', 'missing', 'incompatible', 'unavailable'] }) @Expose() status:
+		| 'fresh'
+		| 'stale'
+		| 'missing'
+		| 'incompatible'
+		| 'unavailable';
+	@ApiProperty({ enum: ['good', 'degraded', 'unavailable'] }) @Expose() quality: 'good' | 'degraded' | 'unavailable';
+	@ApiProperty({ type: String, format: 'date-time', nullable: true }) @Expose() sampled_at: string | null;
+	@ApiProperty({ type: Number, nullable: true }) @Expose() age_seconds: number | null;
+	@ApiProperty() @Expose() maximum_age_seconds: number;
+	@ApiProperty({ type: String, format: 'date-time', nullable: true }) @Expose() expires_at: string | null;
+	@ApiProperty({ type: [String] }) @Expose() reasons: string[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatRuntime' })
 export class VirtualThermostatRuntimeModel implements ThermostatRuntimeDiagnostic {
+	@ApiProperty({ description: 'Process epoch for runtime invalidation hints' }) @Expose() epoch: string;
+	@ApiProperty() @Expose() sequence: number;
+	@ApiProperty() @Expose() configuration_revision: number;
+	@ApiProperty() @Expose() decision_revision: number;
+	@ApiProperty({
+		type: [VirtualThermostatInputRuntimeModel],
+		description: 'Current configured input freshness; historical values never establish availability',
+	})
+	@Expose()
+	@Type(() => VirtualThermostatInputRuntimeModel)
+	inputs: VirtualThermostatInputRuntimeModel[];
+
 	@ApiProperty({ enum: ['ready', 'suspended', 'unavailable'] })
 	@Expose()
 	readiness: ThermostatRuntimeDiagnostic['readiness'];

@@ -15,7 +15,18 @@ Climate intents for a space and local virtual thermostat control share the devic
 
 ## Space climate state and physical devices
 
-`SpaceClimateStateService` reads the space's devices and role map, then selects primary thermostat, heating-unit and air-conditioner devices. The roles control participation: `AUTO` permits both capabilities, `HEATING_ONLY` or `COOLING_ONLY` restricts the branch, `AUXILIARY` denotes a supplementary control, `SENSOR` supplies readings, and `HIDDEN` excludes a device from the climate UI and space control. The current `PRIMARY_ONLY` averaging strategy uses temperatures from primary climate devices; `ALL_SOURCES` can additionally include `SENSOR`-role temperature devices. The service averages available temperature and humidity values and returns null readings when none are available. It derives supported branches and setpoint bounds from the participating devices, preferring the intersection of their ranges and falling back to the union when ranges do not overlap.
+`SpaceClimateStateService` reads the space's devices and role map, then selects primary thermostat, heating-unit and air-conditioner devices. The roles control participation: `AUTO` permits both capabilities, `HEATING_ONLY` or `COOLING_ONLY` restricts the branch, `AUXILIARY` denotes a supplementary control, `SENSOR` supplies readings, and `HIDDEN` excludes a device from the climate UI and space control. The current `PRIMARY_ONLY` averaging strategy uses temperatures from primary climate devices; `ALL_SOURCES` can additionally include `SENSOR`-role temperature devices. The service plans temperature contributors before reading them, and averages the selected available temperature readings and humidity values. It returns null readings when none are available. It derives supported branches and setpoint bounds from the participating devices, preferring the intersection of their ranges and falling back to the union when ranges do not overlap.
+
+`ClimateContributionPlannerService` obtains measurement coverage from the device contribution registry. The virtual
+measurement provider resolves durable projection, transform and aggregate bindings to physical property identities;
+a virtual thermostat temperature represents only its configured ambient source, never its protective floor input.
+The existing role and averaging strategy still select candidates: a sensor-role aggregate participates under
+`ALL_SOURCES`, while `PRIMARY_ONLY` continues using primary climate devices. A selected composite suppresses its
+represented raw or transformed candidates even while unavailable. Two selected composites covering the same physical
+leaf produce `temperature_contribution.status = coverage_conflict` and a null room temperature. The operator resolves
+this by choosing one representative through existing climate participation roles. Missing providers or stale/invalid
+coverage likewise withhold the room temperature instead of falling back to cached derived values. Other climate
+controls remain available. The panel explains withheld readings and preserves individual device controls.
 
 The returned `mode` is detected from heater/cooler **ON** properties, while `isHeating` and `isCooling` require their respective **STATUS** property to report activity. Both branches ON produce an observed `AUTO` mode; this observation is distinct from two branches actively heating and cooling. `lastAppliedMode` and `lastAppliedAt` come from intent history. Historical heating/cooling setpoints take priority over device consensus; without a historical value, a branch's physical setpoints must agree within the 0.5 °C consensus tolerance or the displayed setpoint is null. `isMixed` indicates disagreement with the selected setpoint or between devices. A requested or historical value is not an actuator acknowledgement.
 
@@ -28,6 +39,14 @@ For ordinary physical devices, `AUTO` is a space intent routed through their nat
 ## Virtual thermostat and derived inputs
 
 The space intent records a requested mode or setpoint and targets eligible climate devices. A virtual thermostat persists its latest requested settings and reevaluates them against its _current_ inputs and guards. `requested_mode` is therefore different from reported actuator activity. UI clients should display actual activity and inhibit/fault diagnostics separately from the user's requested setting. A queued, timed-out or unconfirmed physical command is not proof of heating or cooling. The runtime and claim/interlock path keep opposed heating and cooling outputs from being energized together, including across a restart.
+
+The runtime response lists each configured ambient, floor and contact binding with its current freshness status,
+quality, sample time, age, allowed age and expiry. These diagnostics use process-local accepted evidence and do not
+renew a sample, mutate expiry or promote history to live authority. Missing/incompatible bindings remain visible.
+The panel listens to `DevicesVirtualPlugin.Thermostat.RuntimeChanged` as an invalidation hint and refetches HTTP state.
+HTTP and event snapshots share process epoch and sequence stamps, so a fetch covers its own notification without a
+refresh loop; newer hints, commands, reconnects or device replacement fence older pending responses. Socket payloads
+are not treated as actuator acknowledgement or independent control evidence.
 
 ## Input graph and measurements
 

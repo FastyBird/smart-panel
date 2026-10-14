@@ -1,10 +1,5 @@
 /// Climate mode enum
-enum ClimateMode {
-  heat,
-  cool,
-  auto,
-  off,
-}
+enum ClimateMode { heat, cool, auto, off }
 
 /// Parse ClimateMode from string
 ClimateMode? parseClimateMode(String? mode) {
@@ -37,6 +32,40 @@ String climateModeToString(ClimateMode mode) {
   }
 }
 
+/// Why a selected set of room temperature measurements cannot be combined.
+class ClimateTemperatureContribution {
+  final String status;
+  final List<String> selectedPropertyIds;
+  final List<String> excludedPropertyIds;
+  final List<String> unavailablePropertyIds;
+
+  const ClimateTemperatureContribution({
+    required this.status,
+    this.selectedPropertyIds = const [],
+    this.excludedPropertyIds = const [],
+    this.unavailablePropertyIds = const [],
+  });
+
+  bool get hasConflict => status == 'coverage_conflict';
+  bool get isUnavailable =>
+      status != 'ok' ||
+      (selectedPropertyIds.isNotEmpty &&
+          selectedPropertyIds.every(unavailablePropertyIds.contains));
+
+  factory ClimateTemperatureContribution.fromJson(Map<String, dynamic> json) {
+    List<String> ids(String key) =>
+        (json[key] is List ? json[key] as List : const [])
+            .whereType<String>()
+            .toList(growable: false);
+    return ClimateTemperatureContribution(
+      status: json['status'] is String ? json['status'] as String : 'unknown',
+      selectedPropertyIds: ids('selected_property_ids'),
+      excludedPropertyIds: ids('excluded_property_ids'),
+      unavailablePropertyIds: ids('unavailable_property_ids'),
+    );
+  }
+}
+
 /// Aggregated climate state for a space
 class ClimateStateModel {
   final String spaceId;
@@ -44,6 +73,7 @@ class ClimateStateModel {
   final ClimateMode? mode;
   final double? currentTemperature;
   final double? currentHumidity;
+  final ClimateTemperatureContribution? temperatureContribution;
 
   /// Heating setpoint - target temperature for heating (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
@@ -73,6 +103,7 @@ class ClimateStateModel {
     this.mode,
     this.currentTemperature,
     this.currentHumidity,
+    this.temperatureContribution,
     this.heatingSetpoint,
     this.coolingSetpoint,
     required this.minSetpoint,
@@ -100,7 +131,8 @@ class ClimateStateModel {
   bool get isOff => mode == ClimateMode.off;
 
   /// Check if temperature can be adjusted
-  bool get canAdjustTemperature => hasClimate && (supportsHeating || supportsCooling);
+  bool get canAdjustTemperature =>
+      hasClimate && (supportsHeating || supportsCooling);
 
   /// Get the effective target temperature based on mode
   double? get effectiveTargetTemperature {
@@ -125,12 +157,21 @@ class ClimateStateModel {
     Map<String, dynamic> json, {
     required String spaceId,
   }) {
+    final rawContribution = json['temperature_contribution'];
+    final contribution = rawContribution is Map
+        ? ClimateTemperatureContribution.fromJson(
+            Map<String, dynamic>.from(rawContribution),
+          )
+        : null;
     return ClimateStateModel(
       spaceId: spaceId,
       hasClimate: json['has_climate'] as bool? ?? false,
       mode: parseClimateMode(json['mode'] as String?),
-      currentTemperature: (json['current_temperature'] as num?)?.toDouble(),
+      currentTemperature: contribution?.isUnavailable == true
+          ? null
+          : (json['current_temperature'] as num?)?.toDouble(),
       currentHumidity: (json['current_humidity'] as num?)?.toDouble(),
+      temperatureContribution: contribution,
       heatingSetpoint: (json['heating_setpoint'] as num?)?.toDouble(),
       coolingSetpoint: (json['cooling_setpoint'] as num?)?.toDouble(),
       minSetpoint: (json['min_setpoint'] as num?)?.toDouble() ?? 5.0,

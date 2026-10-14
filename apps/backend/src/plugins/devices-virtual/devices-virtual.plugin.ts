@@ -101,6 +101,7 @@ import { VirtualLightGroupCommandService } from './services/virtual-light-group-
 import { VirtualLightGroupContributionService } from './services/virtual-light-group-contribution.service';
 import { VirtualLightGroupStateService } from './services/virtual-light-group-state.service';
 import { VirtualMeasurementAuthoringService } from './services/virtual-measurement-authoring.service';
+import { VirtualMeasurementContributionService } from './services/virtual-measurement-contribution.service';
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
@@ -169,6 +170,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualThermostatOwnershipSubscriber,
 		VirtualLightGroupAuthoringService,
 		VirtualLightGroupContributionService,
+		VirtualMeasurementContributionService,
 		VirtualValueSourceService,
 		VirtualEnergyClaimService,
 		VirtualDevicePlatform,

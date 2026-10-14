@@ -4190,4 +4190,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get virtual_measurement_state_unknown => 'Unknown diagnostic';
+
+  @override
+  String get climate_temperature_coverage_conflict =>
+      'Room temperature sensors overlap. Select one representative using room climate participation settings.';
+
+  @override
+  String get climate_temperature_coverage_unavailable =>
+      'Room temperature is unavailable. Check sensor configuration and availability.';
 }

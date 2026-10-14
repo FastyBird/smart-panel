@@ -5,6 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modu
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
+import { ClimateContributionModel } from '../models/climate-contribution.model';
 import {
 	CLIMATE_PRIMARY_DEVICE_CATEGORIES,
 	ClimateMode,
@@ -17,6 +18,7 @@ import {
 	TemperatureAveragingStrategy,
 } from '../spaces-home-control.constants';
 
+import { ClimateContributionPlannerService } from './climate-contribution-planner.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';
 import { SpaceStateReadService } from './space-state-read.service';
 
@@ -63,6 +65,7 @@ export interface PrimaryClimateDevice {
  * Full climate state for a space, including multi-device aggregated values.
  */
 export interface ClimateState {
+	temperatureContribution?: ClimateContributionModel;
 	hasClimate: boolean;
 	mode: ClimateMode;
 	currentTemperature: number | null;
@@ -95,6 +98,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	constructor(
 		private readonly stateReads: SpaceStateReadService,
 		private readonly intentTimeseriesService: IntentTimeseriesService,
+		private readonly contributionPlanner: ClimateContributionPlannerService,
 	) {
 		super();
 	}
@@ -111,6 +115,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	async getClimateState(spaceId: string): Promise<ClimateState | null> {
 		const defaultState: ClimateState = {
 			hasClimate: false,
+			temperatureContribution: (await this.contributionPlanner.plan([])).read().diagnostics,
 			mode: ClimateMode.OFF,
 			currentTemperature: null,
 			currentHumidity: null,
@@ -155,7 +160,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		}
 
 		// Aggregate temperature readings
-		const temperatures: number[] = [];
+		const temperatureProperties: ChannelPropertyEntity[] = [];
 		const humidities: number[] = [];
 
 		// Check if we should include sensors based on strategy
@@ -163,10 +168,11 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 		for (const device of primaryDevices) {
 			// Get temperature from this device
-			const temp = this.getPropertyNumericValue(device.temperatureProperty);
-			if (temp !== null) {
-				temperatures.push(temp);
-			}
+			if (
+				device.temperatureProperty &&
+				roleMap.get(`${device.device.id}:${device.temperatureChannel.id}`)?.role !== ClimateRole.HIDDEN
+			)
+				temperatureProperties.push(device.temperatureProperty);
 
 			// Get humidity from this device
 			const humidity = this.getPropertyNumericValue(device.humidityProperty);
@@ -177,13 +183,11 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 		// If including sensors, also get temperature from SENSOR role devices (reuse fetched data)
 		if (includeSensors) {
-			const sensorTemperatures = this.extractSensorTemperatures(devices, roleMap);
-			temperatures.push(...sensorTemperatures);
+			temperatureProperties.push(...this.extractSensorTemperatureProperties(devices, roleMap));
 		}
 
 		// Calculate averages
-		const currentTemperature =
-			temperatures.length > 0 ? temperatures.reduce((a, b) => a + b, 0) / temperatures.length : null;
+		const contributionPlan = await this.contributionPlanner.plan(temperatureProperties);
 		const currentHumidity = humidities.length > 0 ? humidities.reduce((a, b) => a + b, 0) / humidities.length : null;
 
 		// Determine capabilities and collect setpoints
@@ -295,7 +299,10 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 		// Detect mixed state (setpoints or modes out of sync)
 		const isMixed = this.detectMixedState(heatingSetpoint, heatingSetpoints, coolingSetpoint, coolingSetpoints);
 
+		const { temperature: currentTemperature, diagnostics: temperatureContribution } = contributionPlan.read();
+
 		return {
+			temperatureContribution,
 			hasClimate: true,
 			mode: detectedMode,
 			currentTemperature: currentTemperature !== null ? Math.round(currentTemperature * 10) / 10 : null,
@@ -542,11 +549,14 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	 *
 	 * @internal Use this when you already have devices and roleMap from other operations
 	 */
-	private extractSensorTemperatures(devices: DeviceEntity[], roleMap: Map<string, { role: ClimateRole }>): number[] {
-		const temperatures: number[] = [];
+	private extractSensorTemperatureProperties(
+		devices: DeviceEntity[],
+		roleMap: Map<string, { role: ClimateRole }>,
+	): ChannelPropertyEntity[] {
+		const properties: ChannelPropertyEntity[] = [];
 
 		for (const device of devices) {
-			if (device.category !== DeviceCategory.SENSOR) {
+			if (device.category !== DeviceCategory.SENSOR || roleMap.get(device.id)?.role === ClimateRole.HIDDEN) {
 				continue;
 			}
 
@@ -561,15 +571,12 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 				// Only include sensors with SENSOR role (not HIDDEN)
 				if (role?.role === ClimateRole.SENSOR) {
 					const tempProp = channel.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE);
-					const temp = this.getPropertyNumericValue(tempProp);
-					if (temp !== null) {
-						temperatures.push(temp);
-					}
+					if (tempProp) properties.push(tempProp);
 				}
 			}
 		}
 
-		return temperatures;
+		return properties;
 	}
 
 	/**
