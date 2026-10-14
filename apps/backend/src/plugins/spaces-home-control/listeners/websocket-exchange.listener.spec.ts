@@ -166,6 +166,23 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			expect(result.success).toBe(true);
 		});
 
+		it('retains partial group member outcomes in the lighting acknowledgement', async () => {
+			const composite = {
+				id: 'parent',
+				status: 'partial' as const,
+				children: [{ memberId: 'member', propertyId: 'power', status: 'confirmed' as const }],
+			};
+			spacesService.findOne.mockResolvedValue(mockSpace as SpaceEntity);
+			spaceIntentService.executeLightingIntent.mockResolvedValue({
+				success: false,
+				affectedDevices: 1,
+				failedDevices: 1,
+				composites: [composite],
+			});
+			const result = await handleLightingIntent(createMockUser(), { spaceId: mockSpace.id, intent: { type: 'on' } });
+			expect(result).toMatchObject({ success: true, data: { success: false, composites: [composite] } });
+		});
+
 		it('should allow admin user', async () => {
 			const user = createMockUser({ type: 'user', role: UserRole.ADMIN, ownerType: undefined });
 

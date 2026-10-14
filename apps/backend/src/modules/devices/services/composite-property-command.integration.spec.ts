@@ -336,6 +336,20 @@ describe('core opt-in composite commands', () => {
 		expect(progress).toHaveBeenCalledTimes(count);
 		expect(result.composite.children[0].status).toBe('confirmed');
 	});
+	it('publishes snake case child identities in direct socket events', async () => {
+		const fixture = setup([{ memberId: 'a', memberIdentity: 'Kitchen', update: update('a') }]);
+		const completed = jest.fn();
+		fixture.events.on('DevicesModule.CompositeCommand.Completed', completed);
+		await fixture.dispatch.dispatchBatch([update('group')]);
+		expect(completed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				children: [expect.objectContaining({ member_id: 'a', member_identity: 'Kitchen', property_id: 'a' })],
+			}),
+		);
+		const completedCalls = completed.mock.calls as unknown as Array<[{ children: Array<Record<string, unknown>> }]>;
+		const completedPayload = completedCalls[0]?.[0];
+		expect(completedPayload.children[0]).not.toHaveProperty('memberId');
+	});
 	it('disposes active parent generations on module shutdown and refuses new parents', async () => {
 		const fixture = setup([{ memberId: 'a', update: update('a') }]);
 		let entered: () => void = () => undefined;

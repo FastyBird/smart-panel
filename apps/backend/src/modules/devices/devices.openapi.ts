@@ -1,6 +1,7 @@
 /**
  * OpenAPI extra models for Devices module
  */
+import { PropertyCommandContextDto, PropertyCommandDto, PropertyCommandValueDto } from './dto/property-command.dto';
 import { UpdateDevicesConfigDto } from './dto/update-config.dto';
 import {
 	ChannelControlEntity,
@@ -62,8 +63,13 @@ import {
 	UpdatesPerMinModel,
 	UpdatesTodayModel,
 } from './models/devices.model';
+import * as PropertyCommandModels from './models/property-command-response.model';
 
 export const DEVICES_SWAGGER_EXTRA_MODELS = [
+	...Object.values(PropertyCommandModels),
+	PropertyCommandDto,
+	PropertyCommandContextDto,
+	PropertyCommandValueDto,
 	// Module configuration
 	DevicesConfigModel,
 	UpdateDevicesConfigDto,
