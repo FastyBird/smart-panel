@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -73,6 +73,7 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 		this.invalidateAll();
 	}
 	getReportedState(channelId: string, expectedRevision?: number): LightGroupReportedState | null {
+		if (!this.graph.isValidated()) return null;
 		if (expectedRevision !== undefined && this.stateRevisions.get(channelId) !== expectedRevision) return null;
 		return this.states.get(channelId) ?? null;
 	}
@@ -137,11 +138,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				where: { channel: { id: config.groupChannelId } },
 				relations: ['channel', 'channel.device'],
 			});
-			const bindings = (
-				await this.dataSource.manager.find(VirtualLightGroupBindingEntity, {
-					relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
-				})
-			).filter((binding) => members.some((member) => member.id === binding.memberId));
+			const bindings = members.length
+				? await this.dataSource.manager.find(VirtualLightGroupBindingEntity, {
+						where: { memberId: In(members.map((member) => member.id)) },
+						relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
+					})
+				: [];
 			const now = new Date();
 			const snapshots = [];
 			for (const member of members) {
@@ -200,12 +202,16 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 			for (const output of outputs.filter((property) => property.isDerived)) {
 				active.add(output.id);
 				let lease = this.leases.get(output.id);
-				if (!lease || lease.revision !== config.revision || !this.producers.isCurrent(lease)) {
-					lease = this.producers.register(output, config.revision);
+				if (!lease || lease.revision !== config.revision || !this.producers.isAvailable(lease)) {
+					lease = this.producers.register(output, config.revision, {
+						isCurrent: this.graph.capturePublishGuard(),
+						reason: 'graph_validation_pending',
+					});
 					this.leases.set(output.id, lease);
 				}
 				const reported = state.properties.get(output.category);
 				if (
+					!this.graph.isValidated() ||
 					this.graph.isQuarantined(output.id) ||
 					!(output.channel as ChannelEntity).device ||
 					!((output.channel as ChannelEntity).device as DeviceEntity).enabled ||
@@ -250,11 +256,8 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 			}
 	}
 	private invalidateAll(): void {
-		const previous = [...this.stateRevisions];
 		this.states.clear();
 		this.stateRevisions.clear();
 		for (const lease of this.leases.values()) this.producers.invalidate(lease, ['runtime_unavailable']);
-		for (const [groupChannelId, revision] of previous)
-			this.events.emit(LIGHT_GROUP_REPORTED_STATE_CHANGED, { groupChannelId, revision, state: null });
 	}
 }

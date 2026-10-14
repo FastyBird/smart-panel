@@ -25,8 +25,8 @@ void main() {
           'id': 'parent',
           'status': 'partial',
           'children': [
-            {'memberId': 'kitchen', 'status': 'confirmed'},
-            {'memberId': 'hall', 'memberIdentity': 'Hall', 'status': 'unavailable'},
+            {'member_id': 'kitchen', 'status': 'confirmed'},
+            {'member_id': 'hall', 'member_identity': 'Hall', 'status': 'unavailable'},
           ],
         },
       ],

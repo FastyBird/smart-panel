@@ -21,10 +21,10 @@ class CompositeChildOutcome {
 
   factory CompositeChildOutcome.fromJson(Map<String, dynamic> json) =>
       CompositeChildOutcome(
-        memberId: json['memberId'] as String? ?? '',
-        memberIdentity: json['memberIdentity'] as String?,
-        propertyId: json['propertyId'] as String?,
-        propertyIdentity: json['propertyIdentity'] as String?,
+        memberId: json['member_id'] as String? ?? '',
+        memberIdentity: json['member_identity'] as String?,
+        propertyId: json['property_id'] as String?,
+        propertyIdentity: json['property_identity'] as String?,
         status: json['status'] as String? ?? 'unavailable',
         reason: json['reason'] as String?,
         value: json['value'],

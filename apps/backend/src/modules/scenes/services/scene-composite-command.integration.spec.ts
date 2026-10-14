@@ -64,7 +64,19 @@ describe('scene correlated composite outcomes', () => {
 		expect(result.actionResults[0].composite.children[0].status).toBe('confirmed');
 		expect(execute).toHaveBeenCalledTimes(unrelated ? 2 : 1);
 		expect(completed).toHaveBeenCalledWith(
-			expect.objectContaining({ status: IntentStatus.COMPLETED_PARTIAL, composites: [partial] }),
+			expect.objectContaining({
+				status: IntentStatus.COMPLETED_PARTIAL,
+				composites: [
+					{
+						id: 'parent',
+						status: 'partial',
+						children: [
+							{ member_id: 'live', property_id: 'leaf', status: 'confirmed' },
+							{ member_id: 'missing', property_id: null, status: 'unavailable' },
+						],
+					},
+				],
+			}),
 		);
 	});
 });

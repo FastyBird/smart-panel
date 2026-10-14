@@ -83,18 +83,11 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				result.status === SceneExecutionStatus.COMPLETED || result.status === SceneExecutionStatus.PARTIALLY_COMPLETED;
 
 			return {
-				success: success || result.actionResults.some((action) => !!action.composite),
+				success,
 				data: {
 					success,
 					scene_id: result.sceneId,
 					status: result.status,
-					action_results: result.actionResults.map((action) => ({
-						action_id: action.actionId,
-						success: action.success,
-						error: action.error,
-						execution_time_ms: action.executionTimeMs,
-						composite: action.composite,
-					})),
 					total_actions: result.totalActions,
 					successful_actions: result.successfulActions,
 					failed_actions: result.failedActions,

@@ -5,10 +5,10 @@ import { z } from 'zod';
 import { injectSockets } from '../../../common';
 
 const ChildSchema = z.object({
-	memberId: z.string(),
-	propertyId: z.string().nullable(),
-	memberIdentity: z.string().optional(),
-	propertyIdentity: z.string().nullable().optional(),
+	member_id: z.string(),
+	property_id: z.string().nullable(),
+	member_identity: z.string().optional(),
+	property_identity: z.string().nullable().optional(),
 	reason: z.string().optional(),
 	generation: z.string().optional(),
 	value: z.union([z.string(), z.number(), z.boolean()]).optional(),

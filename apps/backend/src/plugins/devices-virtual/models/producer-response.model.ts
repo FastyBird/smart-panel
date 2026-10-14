@@ -89,7 +89,7 @@ export class VirtualAggregateConfigurationModel {
 	graph_revision: number;
 
 	@ApiProperty({
-		description: 'Aggregate runtime availability in this process; live quality is reported separately',
+		description: 'Aggregate runtime availability in this process; live quality is exposed on the output property',
 		enum: ['ready', 'unavailable'],
 	})
 	@Expose()

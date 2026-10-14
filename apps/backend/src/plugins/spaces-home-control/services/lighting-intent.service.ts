@@ -15,7 +15,10 @@ import { CompositeCommandOutcomeModel } from '../../../modules/devices/models/co
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
+import {
+	COMPOSITE_INTENT_FINISH_MARGIN_MS,
+	PropertyCommandDispatchService,
+} from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { PropertyCommandService } from '../../../modules/devices/services/property-command.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
@@ -275,13 +278,13 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			value: this.buildLightingIntentValue(intent),
 			ttlMs: this.getLightingIntentTtlMs(lights),
 		});
+		this.commandContext.getStore().id = intentRecord.id;
+		this.commandContext.getStore().deadline = intentRecord.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
 
 		// Capture snapshot for undo BEFORE executing the intent
 		await this.captureUndoSnapshot(spaceId, intent);
 
 		let result: IntentExecutionResult;
-		this.commandContext.getStore().id = intentRecord.id;
-		this.commandContext.getStore().deadline = Date.now() + this.getLightingIntentTtlMs(lights);
 		const targetResults: IntentTargetResult[] = [];
 
 		// Add SKIPPED results for offline devices that were actually targeted
@@ -863,18 +866,23 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		if (context?.selectionCurrent && !context.selectionCurrent())
 			return { success: false, reason: 'Room contribution membership changed; reload and retry' };
 		const composite = commands.some((target) => this.compositeCommands?.get(target.property));
+		const deadlineAt = context?.deadline;
 		const result = composite
 			? await this.propertyCommandDispatchService.dispatchBatch(commands, {
 					intentId: context?.id,
 					commandEntry: context?.entry,
 					isRequestCurrent: context?.selectionCurrent,
+					deadlineAt,
 					ttlMs: Math.min(
 						await this.compositeCommands.estimateTimeoutMs(commands, context?.entry),
-						context?.deadline ? Math.max(1, context.deadline - Date.now()) : 30_000,
+						deadlineAt ? Math.max(1, deadlineAt - Date.now()) : 30_000,
 					),
 				})
 			: await this.propertyCommandDispatchService.dispatchBatch(commands, {
+					intentId: context?.id,
+					commandEntry: context?.entry,
 					isRequestCurrent: context?.selectionCurrent,
+					deadlineAt,
 				});
 		if (result.composite && context) context.outcomes.push(result.composite);
 		return result;

@@ -121,9 +121,9 @@ void main() {
       ],
       'children': [
         {
-          'memberId': 'member',
-          'memberIdentity': 'Kitchen',
-          'propertyId': 'physical-on',
+          'member_id': 'member',
+          'member_identity': 'Kitchen',
+          'property_id': 'physical-on',
           'status': 'accepted',
         },
       ],
@@ -149,13 +149,13 @@ void main() {
       'status': 'partial',
       'children': [
         {
-          'memberId': 'member',
-          'memberIdentity': 'Kitchen',
+          'member_id': 'member',
+          'member_identity': 'Kitchen',
           'status': 'confirmed',
         },
         {
-          'memberId': 'offline',
-          'memberIdentity': 'Hall',
+          'member_id': 'offline',
+          'member_identity': 'Hall',
           'status': 'unavailable',
           'reason': 'Offline',
         },
@@ -212,7 +212,7 @@ void main() {
               'id': 'parent',
               'status': 'partial',
               'children': [
-                {'memberId': 'member', 'status': 'timed_out'},
+                {'member_id': 'member', 'status': 'timed_out'},
               ],
             },
           ],
@@ -249,8 +249,8 @@ void main() {
               'id': 'rest-parent',
               'status': 'partial',
               'children': [
-                {'memberId': 'member', 'status': 'confirmed'},
-                {'memberId': 'offline', 'status': 'unavailable'},
+                {'member_id': 'member', 'status': 'confirmed'},
+                {'member_id': 'offline', 'status': 'unavailable'},
               ],
             },
           ],

@@ -23,7 +23,7 @@ const emit = (id: string, sequence: number, epoch = 'epoch-a', status?: string) 
 			epoch,
 			...(status ? { status } : {}),
 			targets: [{ deviceId: 'group' }],
-			children: [{ memberId: id, propertyId: 'power', value: sequence, status: status === 'confirmed' ? 'confirmed' : 'accepted' }],
+			children: [{ member_id: id, property_id: 'power', value: sequence, status: status === 'confirmed' ? 'confirmed' : 'accepted' }],
 		},
 	});
 const setup = () => {
@@ -44,7 +44,7 @@ describe('light group parent outcome ordering', () => {
 		emit('former', 1);
 		emit('current', 2);
 		emit('former', 3, 'epoch-a', 'confirmed');
-		expect(outcomes.progress.value[0].memberId).toBe('current');
+		expect(outcomes.progress.value[0].member_id).toBe('current');
 		expect(outcomes.terminal.value).toMatchObject([{ id: 'former', status: 'confirmed' }]);
 		emit('current', 4, 'epoch-a', 'confirmed');
 		emit('former', 5);
@@ -56,7 +56,7 @@ describe('light group parent outcome ordering', () => {
 		emit('former', 1);
 		emit('current', 4);
 		emit('former', 3, 'epoch-a', 'partial');
-		expect(outcomes.progress.value[0].memberId).toBe('current');
+		expect(outcomes.progress.value[0].member_id).toBe('current');
 		expect(outcomes.terminal.value).toMatchObject([{ id: 'former', status: 'partial' }]);
 		emit('former', 8, 'epoch-a', 'partial');
 		emit('current', 6);
@@ -69,7 +69,7 @@ describe('light group parent outcome ordering', () => {
 		emit('old-server', 7);
 		emit('new-server', 1, 'epoch-b');
 		emit('old-server', 99);
-		expect(outcomes.progress.value[0].memberId).toBe('new-server');
+		expect(outcomes.progress.value[0].member_id).toBe('new-server');
 		handlers.get('disconnect')?.(undefined);
 		expect(outcomes.progress.value).toEqual([]);
 		wrapper.unmount();

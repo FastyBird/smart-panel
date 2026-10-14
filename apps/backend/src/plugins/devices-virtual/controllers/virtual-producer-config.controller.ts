@@ -1,14 +1,4 @@
-import {
-	Body,
-	Controller,
-	Get,
-	Optional,
-	Param,
-	ParseUUIDPipe,
-	Post,
-	Put,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Body, Controller, Get, Optional, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -150,8 +140,7 @@ export class VirtualProducerConfigController {
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Preview a new light group',
-		description:
-			'Validate physical members and the common control contract without creating, hiding or qualifying any device.',
+		description: 'Validate physical members and the common control contract before creation.',
 		operationId: 'preview-devices-virtual-plugin-light-group-draft',
 	})
 	@ApiUnprocessableEntityResponse('Members or requested capability contract are incompatible')
@@ -166,12 +155,11 @@ export class VirtualProducerConfigController {
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Create a light group atomically',
-		description:
-			'Revalidate the preview graph, physical members and common capability contract in the same transaction as the virtual device and bindings. Failed admission leaves no draft rows.',
+		description: 'Revalidate the preview graph and physical members in the same transaction as the device and bindings.',
 		operationId: 'create-devices-virtual-plugin-light-group-draft',
 	})
 	@ApiUnprocessableEntityResponse('Members, capability contract or preview revision changed')
-	@ApiCreatedSuccessResponse(CreatedLightGroupResponseModel, 'Committed device and light group configuration')
+	@ApiCreatedSuccessResponse(CreatedLightGroupResponseModel, 'Committed light group')
 	@Post('light-groups')
 	async createLightGroupDraft(@Body() dto: CreateLightGroupDraftDto): Promise<CreatedLightGroupResponseModel> {
 		const response = new CreatedLightGroupResponseModel();

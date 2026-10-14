@@ -12,6 +12,7 @@ import {
 	QualifiedPropertySample,
 } from '../models/property-sample.model';
 import {
+	PropertyProducerState,
 	PropertyValueState,
 	type PropertyValueTrend,
 	clonePropertyValueState,
@@ -286,7 +287,13 @@ export class PropertyValueService {
 		maxAgeMs: number,
 		now = new Date(),
 	): QualifiedPropertySample | null {
-		if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0 || !Number.isFinite(now.getTime())) return null;
+		if (
+			!Number.isFinite(maxAgeMs) ||
+			maxAgeMs < 0 ||
+			!Number.isFinite(now.getTime()) ||
+			this.valueSourceRegistry.unavailableReason(property) !== null
+		)
+			return null;
 		const key = this.resolveBestEffort(property, 'qualified sample');
 		if (key === null) return null;
 		const produced = this.producers?.read(key);
@@ -360,12 +367,16 @@ export class PropertyValueService {
 		const epoch = evaluation?.epoch ?? this.producers?.version(lease) ?? null;
 		if (
 			key !== property.id ||
+			this.valueSourceRegistry.unavailableReason(property) !== null ||
 			lease.propertyId !== key ||
 			!this.producers?.canCommit(lease, publication, epoch, evaluation?.generation)
 		)
 			return { changed: false, state: null };
 		return this.withValueLock(key, async () => {
-			if (!this.producers.canCommit(lease, publication, epoch, evaluation?.generation))
+			if (
+				this.valueSourceRegistry.unavailableReason(property) !== null ||
+				!this.producers.canCommit(lease, publication, epoch, evaluation?.generation)
+			)
 				return { changed: false, state: null };
 			if (!this.isSampleValueValid(property, value)) {
 				this.producers.invalidate(lease, ['invalid_value'], publication.evaluatedAt);
@@ -428,7 +439,21 @@ export class PropertyValueService {
 
 	private overlay(property: ChannelPropertyEntity, state: PropertyValueState | null): PropertyValueState | null {
 		const key = this.resolveBestEffort(property, 'producer overlay');
-		return (key === null ? null : this.producers?.read(key)) ?? state;
+		const produced = key === null ? null : this.producers?.read(key);
+		const reason = this.valueSourceRegistry.unavailableReason(property);
+		if (reason) {
+			const blocked = new PropertyValueState();
+			blocked.producer = Object.assign(new PropertyProducerState(), {
+				quality: 'unavailable',
+				reasons: [reason],
+				sampledAt: null,
+				evaluatedAt: new Date().toISOString(),
+				expiresAt: null,
+				revision: produced?.producer?.revision ?? 0,
+			});
+			return blocked;
+		}
+		return produced ?? state;
 	}
 
 	flushHistory(): Promise<void> {
@@ -702,7 +727,7 @@ export class PropertyValueService {
 		for (const property of properties) {
 			const key = this.valueSourceRegistry.resolve(property);
 			keyByProperty.set(property.id, key);
-			const produced = this.producers?.read(key);
+			const produced = this.overlay(property, null);
 			if (produced) {
 				states.set(property.id, produced);
 				continue;
@@ -823,6 +848,11 @@ export class PropertyValueService {
 				};
 				continue;
 			}
+			const produced = this.overlay(property, null);
+			if (produced) {
+				items[index] = this.toBoundedItem(property.id, sourcePropertyId, produced, 'cache');
+				continue;
+			}
 			const cached = this.valuesMap.get(sourcePropertyId);
 
 			if (cached) {
@@ -908,7 +938,7 @@ export class PropertyValueService {
 		for (const [index, property] of properties.entries()) {
 			const key = sourcePropertyIds[index];
 			if (key === null) continue;
-			const produced = this.producers?.read(key);
+			const produced = this.overlay(property, null);
 			if (produced) items[index] = this.toBoundedItem(property.id, key, produced, items[index]?.source ?? 'cache');
 		}
 	}

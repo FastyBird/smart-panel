@@ -242,7 +242,7 @@ export class VirtualProducerConfigService {
 		});
 	}
 
-	/** Caller owns the structural writer; publications happen only after COMMIT. */
+	/** Caller owns the structural writer; publish state only after commit. */
 	async persistLightGroup(
 		manager: EntityManager,
 		prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareLightGroup']>>,

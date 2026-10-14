@@ -16,10 +16,10 @@
 			<ul>
 				<li
 					v-for="child in command.children"
-					:key="`${child.memberId}:${child.propertyId ?? child.propertyIdentity}`"
-					:data-test-id="`member-outcome-${child.memberId}`"
+					:key="`${child.member_id}:${child.property_id ?? child.property_identity}`"
+					:data-test-id="`member-outcome-${child.member_id}`"
 				>
-					{{ names?.[child.memberIdentity ?? child.memberId] ?? child.memberIdentity ?? child.memberId }}
+					{{ names?.[child.member_identity ?? child.member_id] ?? child.member_identity ?? child.member_id }}
 					— {{ t(`devicesVirtualPlugin.lightGroup.status.${child.status}`) }}
 					<el-text
 						v-if="child.reason"
@@ -42,10 +42,10 @@ defineProps<{
 		id: string;
 		status: string;
 		children: Array<{
-			memberId: string;
-			memberIdentity?: string;
-			propertyId: string | null;
-			propertyIdentity?: string | null;
+			member_id: string;
+			member_identity?: string;
+			property_id: string | null;
+			property_identity?: string | null;
 			status: string;
 			reason?: string;
 		}>;

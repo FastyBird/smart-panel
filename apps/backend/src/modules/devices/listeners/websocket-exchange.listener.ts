@@ -74,15 +74,12 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			const result = await this.propertyCommandService.handleInternal(user, payload as object | undefined);
 
 			return {
-				success: result.composites?.length ? true : result.success,
+				success: result.success,
 				reason: typeof result.results === 'string' ? result.results : undefined,
 				data:
 					typeof result.results !== 'string'
 						? {
-								success: result.success,
 								results: result.results,
-								request_id: result.requestId,
-								composites: result.composites,
 							}
 						: undefined,
 			};

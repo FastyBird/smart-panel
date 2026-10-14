@@ -165,7 +165,12 @@ import { lightGroupChannelCandidates } from '../utils/light-group-candidates.uti
 import VirtualLightGroupMembers from './virtual-light-group-members.vue';
 import VirtualLightGroupOutcomes from './virtual-light-group-outcomes.vue';
 
-type Configuration = components['schemas']['DevicesVirtualPluginDataLightGroupConfiguration'];
+type GeneratedConfiguration = components['schemas']['DevicesVirtualPluginDataLightGroupConfiguration'];
+// The producer deliberately publishes null until the current graph has been validated.
+// Swagger's referenced schema loses nullable in the generated client.
+type Configuration = Omit<GeneratedConfiguration, 'reported_state'> & {
+	reported_state?: GeneratedConfiguration['reported_state'] | null;
+};
 type Configure = components['schemas']['DevicesVirtualPluginConfigureLightGroup'];
 const props = defineProps<{ device: IDevice }>();
 const { t } = useI18n();

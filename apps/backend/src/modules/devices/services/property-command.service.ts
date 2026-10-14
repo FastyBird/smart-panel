@@ -28,7 +28,11 @@ import {
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
-import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import {
+	COMPOSITE_INTENT_FINISH_MARGIN_MS,
+	PropertyCommandDispatchOptions,
+	PropertyCommandDispatchService,
+} from './property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -70,13 +74,6 @@ export interface PropertyBatchCommandResult {
 	results: SinglePropertyCommandResult[];
 }
 
-export interface PropertySocketCommandResult {
-	success: boolean;
-	results: DevicePropertyCommandResult[] | string;
-	requestId?: string;
-	composites?: CompositeCommandOutcome[];
-}
-
 @Injectable()
 export class PropertyCommandService implements OnModuleDestroy {
 	private readonly requestEntries = new Set<PropertyCommandEntrySnapshot>();
@@ -102,6 +99,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 
 	releaseCommandEntry(entry: PropertyCommandEntrySnapshot | undefined): void {
 		entry?.release();
+		if (entry && !entry.isActive()) this.requestEntries.delete(entry);
 	}
 
 	private async withCommandEntry<T>(
@@ -141,7 +139,10 @@ export class PropertyCommandService implements OnModuleDestroy {
 		@Optional() private readonly admissionGuards?: PropertyCommandAdmissionRegistryService,
 	) {}
 
-	async handleInternal(user: ClientUserDto, payload?: object): Promise<PropertySocketCommandResult> {
+	async handleInternal(
+		user: ClientUserDto,
+		payload?: object,
+	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
 		return this.withCommandEntry({}, (options) => this.handleInternalWithEntry(user, payload, options));
 	}
 
@@ -149,7 +150,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 		user: ClientUserDto,
 		payload: object | undefined,
 		options: PropertyCommandExecutionOptions,
-	): Promise<PropertySocketCommandResult> {
+	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
 		// Allow display clients to control device properties via WebSocket
 		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
 
@@ -189,25 +190,11 @@ export class PropertyCommandService implements OnModuleDestroy {
 			};
 		}
 
-		const result = await this.executeCommands(dtoInstance.properties, {
+		return this.executeCommands(dtoInstance.properties, {
 			...options,
 			requestId: dtoInstance.request_id,
 			context: intentContext,
 		});
-		return {
-			...result,
-			requestId: dtoInstance.request_id,
-			composites:
-				typeof result.results === 'string'
-					? []
-					: [
-							...new Map(
-								result.results
-									.filter((target) => target.composite)
-									.map((target) => [target.composite.id, target.composite]),
-							).values(),
-						],
-		};
 	}
 
 	async executePropertyCommandById(
@@ -394,12 +381,14 @@ export class PropertyCommandService implements OnModuleDestroy {
 			) {
 				return {
 					success: false,
-					results: commands.map((command) => ({
-						device: command.requestedDeviceId ?? device.id,
-						channel: command.requestedChannelId,
-						property: command.propertyId,
+					results: commands.map((c) => ({
+						device: device.id,
 						success: false,
-						reason: 'Requested property owner changed or does not match',
+						property: c.propertyId,
+						reason:
+							c.propertyId === cmd.propertyId
+								? 'Requested device or channel does not own the property'
+								: 'Batch aborted due to target mismatch',
 					})),
 				};
 			}
@@ -567,18 +556,24 @@ export class PropertyCommandService implements OnModuleDestroy {
 						throw new Error(validation.reason ?? 'Invalid composite value');
 					updates.push({ device, channel, property, value: validation.value });
 				}
+				// Reserve time to record partial child outcomes before parent cleanup.
+				const deadlineAt = intent.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
 				const dispatch = await this.propertyCommandDispatchService.dispatchBatch(updates, {
 					intentId: intent.id,
-					ttlMs,
+					ttlMs: deadlineAt - Date.now(),
+					deadlineAt,
 					requestId: options.requestId,
 					commandEntry: options.commandEntry,
 				});
 				for (const device of Object.keys(groupedProperties)) results.push({ device, ...dispatch });
 			} else
 				for (const deviceId of Object.keys(groupedProperties)) {
+					const deadlineAt = intent.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
 					const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
 						intentId: intent.id,
 						ttlMs,
+						deadlineAt,
+						commandEntry: options.commandEntry,
 						windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
 					});
 
@@ -700,7 +695,7 @@ export class PropertyCommandService implements OnModuleDestroy {
 	private async processDeviceCommands(
 		deviceId: string,
 		commands: PropertyCommandValueDto[],
-		dispatchOptions: { intentId: string; ttlMs: number; windowHandles?: readonly PropertyCommandWindowHandle[] },
+		dispatchOptions: PropertyCommandDispatchOptions & { intentId: string },
 	): Promise<DevicePropertyCommandResult> {
 		const device = await this.deviceGraphs.findOne(deviceId);
 

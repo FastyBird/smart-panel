@@ -9,7 +9,12 @@ import { CreateVirtualDeviceDto } from './dto/create-device.dto';
 import * as LightGroupDraftDtos from './dto/light-group-draft.dto';
 import * as MeasurementAuthoringDtos from './dto/measurement-authoring.dto';
 import * as ProducerDtos from './dto/producer-config.dto';
-import * as TransformDtos from './dto/transform-config.dto';
+import {
+	ConfigureVirtualTransformDto,
+	VirtualCalibrationPointDto,
+	VirtualNumericRangeDto,
+	VirtualNumericTransformPolicyDto,
+} from './dto/transform-config.dto';
 import { UpdateVirtualChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateVirtualChannelDto } from './dto/update-channel.dto';
 import { VirtualUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -28,14 +33,17 @@ import * as TransformModels from './models/transform-response.model';
 import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
 
 export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
-	...Object.values(MeasurementAuthoringDtos),
-	...Object.values(MeasurementAuthoringModels),
-	...Object.values(ProducerDtos),
-	...Object.values(TransformDtos),
 	...Object.values(LightGroupDraftDtos),
 	...Object.values(LightGroupDraftModels),
-	...Object.values(ProducerModels),
+	...Object.values(MeasurementAuthoringDtos),
+	...Object.values(MeasurementAuthoringModels),
+	ConfigureVirtualTransformDto,
+	VirtualNumericTransformPolicyDto,
+	VirtualNumericRangeDto,
+	VirtualCalibrationPointDto,
 	...Object.values(TransformModels),
+	...Object.values(ProducerDtos),
+	...Object.values(ProducerModels),
 	// DTOs
 	CreateVirtualDeviceDto,
 	UpdateVirtualDeviceDto,

@@ -90,8 +90,8 @@ describe('light group actual state and command detail', () => {
 							id: 'parent',
 							status: 'partial',
 							children: [
-								{ memberId: 'a', memberIdentity: 'a', propertyId: 'a-on', status: 'confirmed' },
-								{ memberId: 'b', memberIdentity: 'b', propertyId: 'b-on', status: 'failed' },
+								{ member_id: 'a', member_identity: 'a', property_id: 'a-on', status: 'confirmed' },
+								{ member_id: 'b', member_identity: 'b', property_id: 'b-on', status: 'failed' },
 							],
 						},
 					],

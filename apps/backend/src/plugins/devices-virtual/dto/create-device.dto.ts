@@ -16,7 +16,6 @@ export class CreateVirtualDeviceDto extends CreateDeviceDto {
 	@ApiPropertyOptional({
 		description: 'Virtual producer mode; omitted means projection',
 		enum: VirtualDeviceMode,
-		enumName: 'DevicesVirtualPluginCreateDeviceMode',
 		default: VirtualDeviceMode.PROJECTION,
 	})
 	@Expose()

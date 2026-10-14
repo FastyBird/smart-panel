@@ -1,7 +1,7 @@
-import { PropertyCommandContextDto, PropertyCommandDto, PropertyCommandValueDto } from './dto/property-command.dto';
 /**
  * OpenAPI extra models for Devices module
  */
+import { PropertyCommandContextDto, PropertyCommandDto, PropertyCommandValueDto } from './dto/property-command.dto';
 import { UpdateDevicesConfigDto } from './dto/update-config.dto';
 import {
 	ChannelControlEntity,
