@@ -1182,6 +1182,8 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('keeps a contact unknown until debounced closed and releases immediately on opening', async () => {
+		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+		await settle();
 		const contactDeviceId = uuid(),
 			contactChannelId = uuid(),
 			contactPropertyId = uuid();
@@ -1227,36 +1229,85 @@ describe('virtual thermostat durable runtime', () => {
 		config.contactClosingMs = 100;
 		config.revision++;
 		await database.manager.save(config);
-		sample(sensorId, 18);
-		sample(contactPropertyId, true);
-		runtime.request(controllerId);
-		await runtime.inspect(controllerId);
-		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
-		expect(sends).not.toContain(true);
-		await new Promise((resolve) => setTimeout(resolve, 110));
-		runtime.request(controllerId);
-		await runtime.inspect(controllerId);
-		await runtime.flush();
-		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
-		expect(sends).toContain(true);
-		config.contactClosingMs = 250;
-		config.revision++;
-		await database.manager.save(config);
-		runtime.request(controllerId);
-		await runtime.inspect(controllerId);
-		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
-		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
-		expect(samples.get(relayId)?.value).toBe(false);
-		sample(contactPropertyId, false);
-		runtime.request(controllerId);
-		await runtime.inspect(controllerId);
-		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('window_open');
-		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
-		expect(samples.get(relayId)?.value).toBe(false);
-		samples.delete(contactPropertyId);
-		runtime.request(controllerId);
-		await runtime.inspect(controllerId);
-		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+		const startedAt = Date.now();
+		// Freeze Date construction and Date.now together; native SQL and all timer APIs remain real.
+		jest.useFakeTimers({
+			now: startedAt,
+			doNotFake: [
+				'nextTick',
+				'queueMicrotask',
+				'hrtime',
+				'performance',
+				'setImmediate',
+				'clearImmediate',
+				'setTimeout',
+				'clearTimeout',
+				'setInterval',
+				'clearInterval',
+			],
+		});
+		try {
+			sample(sensorId, 18);
+			sample(contactPropertyId, true);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+			expect(sends).not.toContain(true);
+
+			jest.setSystemTime(startedAt + 99);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+			expect(sends).not.toContain(true);
+
+			jest.setSystemTime(startedAt + 100);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			await settle();
+			expect(sends).toContain(true);
+			expect(samples.get(relayId)?.value).toBe(true);
+
+			config.contactClosingMs = 250;
+			config.revision++;
+			await database.manager.save(config);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(false);
+
+			jest.setSystemTime(startedAt + 349);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			await settle();
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+			expect(samples.get(relayId)?.value).toBe(false);
+
+			jest.setSystemTime(startedAt + 350);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			await settle();
+			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('contact_unknown');
+			expect(samples.get(relayId)?.value).toBe(true);
+
+			jest.setSystemTime(startedAt + 351);
+			sample(contactPropertyId, false);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('window_open');
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(false);
+
+			jest.setSystemTime(startedAt + 352);
+			samples.delete(contactPropertyId);
+			runtime.request(controllerId);
+			await runtime.inspect(controllerId);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(false);
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it('retains a heuristic hold but rebaselines trend evidence across quality and user configuration changes', async () => {
