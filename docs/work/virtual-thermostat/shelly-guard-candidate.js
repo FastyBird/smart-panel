@@ -17,18 +17,23 @@ let floorValue = null;
 let fault = null;
 let info = Shelly.getDeviceInfo();
 
+/** Reject NaN and infinities using arithmetic supported by the embedded script runtime. */
 function finiteNumber(n) {
 	return typeof n === 'number' && n === n && n - n === 0;
 }
+/** Bound epochs and millisecond expiries to the nonnegative integer range used by this protocol. */
 function integer(n) {
 	return typeof n === 'number' && n === Math.floor(n) && n >= 0 && n < 2147483647;
 }
+/** Use device uptime for lease and sensor age checks, independent of backend clocks. */
 function now() {
 	return Shelly.getUptimeMs();
 }
+/** Return a protocol error without claiming that earlier local ON work has drained. */
 function reject(request, reason) {
 	request.error(-1, reason);
 }
+/** Require finite installed Steinhart-Hart parameters before treating raw voltage as floor temperature. */
 function conversionQualified() {
 	let conversion = cfg.floorConversion;
 	return (
@@ -48,6 +53,7 @@ function conversionQualified() {
 		conversion.outputRange && finiteNumber(conversion.outputRange.minimum) && finiteNumber(conversion.outputRange.maximum) && conversion.outputRange.minimum <= conversion.outputRange.maximum
 	);
 }
+/** Convert qualified divider voltage to Celsius; invalid electrical or conversion values yield no sample. */
 function floorCelsius(value) {
 	if (!finiteNumber(value)) return null;
 	if (cfg.floorAttribute !== 'voltage') return value;
@@ -63,6 +69,7 @@ function floorCelsius(value) {
 	return finiteNumber(temperature) && temperature >= conversion.outputRange.minimum && temperature <= conversion.outputRange.maximum ? temperature : null;
 }
 
+/** Require unchanged installed sensor configuration, a fresh value and a cleared overtemperature latch. */
 function floorSafe() {
 	let floorConfig = Shelly.getComponentConfig(cfg.floorComponentType, cfg.floorComponentId);
 	let helper = floorConfig && floorConfig[cfg.floorAttribute];
@@ -81,6 +88,7 @@ function floorSafe() {
 		now() - floorObservedAt < cfg.floorMaxAgeMs
 	);
 }
+/** Record an actual floor report and update the fail-closed temperature latch with hysteresis. */
 function observeFloor(status) {
 	let value = floorCelsius(status && status[cfg.floorAttribute]);
 	floorObservedAt = now();
@@ -93,6 +101,7 @@ function observeFloor(status) {
 		else if (value < cfg.floorLimitC - cfg.floorHysteresisC) floorLatched = false;
 	}
 }
+/** Expose current identity, epoch, lease-readiness and output status for backend inspection. */
 function view() {
 	let output = Shelly.getComponentStatus('switch', cfg.componentId);
 	return {
@@ -111,6 +120,7 @@ function view() {
 		output: output && typeof output.output === 'boolean' ? output.output : null,
 	};
 }
+/** Revoke readiness and the lease, rejecting pending replies without asserting physical OFF or drainage. */
 function fail(reason) {
 	fault = reason;
 	ready = false;
@@ -124,6 +134,7 @@ function fail(reason) {
 		pendingFence = null;
 	}
 }
+/** Acknowledge a persisted fence only after matched OFF readback from an OFF cycle in its current epoch. */
 function readBack(result, code, message, cycleEpoch) {
 	busy = false;
 	if (code !== 0 || !result || result.id !== cfg.componentId || result.output !== false) {
@@ -149,6 +160,7 @@ function readBack(result, code, message, cycleEpoch) {
 		driveOff();
 	}
 }
+/** After acknowledged absolute OFF, request status readback; unknown execution faults without minting proof. */
 function offDone(result, code, message, cycleEpoch) {
 	if (code !== 0 || !result || typeof result.was_on !== 'boolean') {
 		busy = false;
@@ -157,9 +169,11 @@ function offDone(result, code, message, cycleEpoch) {
 	}
 	Shelly.call('Switch.GetStatus', { id: cfg.componentId }, readBack, cycleEpoch);
 }
+/** Allow another best-effort emergency OFF attempt; its callback supplies no serial drainage proof. */
 function emergencyDone() {
 	emergencyBusy = false;
 }
+/** Revoke the lease and drive absolute OFF, using emergency attempts while serial work or epoch persistence is pending. */
 function driveOff() {
 	until = 0;
 	if (pendingFence && !fencePersisted) {
@@ -183,6 +197,7 @@ function driveOff() {
 	// OFF never receives a flip-back timer. Native auto_on must be disabled by qualification.
 	Shelly.call('Switch.Set', { id: cfg.componentId, on: false }, offDone, pendingFence && fencePersisted ? epoch : null);
 }
+/** Acknowledge ON only while its lease and floor remain valid; failed or superseded completion triggers OFF. */
 function onDone(result, code) {
 	busy = false;
 	let request = pendingOn;
@@ -200,6 +215,7 @@ function onDone(result, code) {
 	}
 	if (request) request.result({ epoch: epoch, accepted: true, untilMs: until });
 }
+/** Enable serial OFF/readback after durable epoch persistence without stealing an existing IO cycle. */
 function persistedFence(result, code) {
 	if (code !== 0) {
 		busy = false;
@@ -211,6 +227,7 @@ function persistedFence(result, code) {
 	// Existing ON/OFF/readback owns busy until completion. Never overwrite its ownership.
 	if (!busy) driveOff();
 }
+/** Advance and persist the epoch before acknowledging correlated OFF and local ON drainage. */
 function fence(request) {
 	if (!ready || pendingFence || epoch >= 2147483646) {
 		reject(request, 'fence_unavailable');
@@ -224,6 +241,7 @@ function fence(request) {
 	// must not run OFF/readback before this persistence operation has completed.
 	Shelly.call('KVS.Set', { key: cfg.epochKey, value: epoch }, persistedFence);
 }
+/** Admit one current-epoch ON with a safe floor and bounded absolute expiry, backed by native flip-back. */
 function energize(request, params) {
 	if (!ready || fault || busy || pendingFence || !params || params.epoch !== epoch || !floorSafe()) {
 		reject(request, 'on_not_admitted');
@@ -240,14 +258,30 @@ function energize(request, params) {
 	// Native flip-back remains a second bound if this script crashes after dispatch.
 	Shelly.call('Switch.Set', { id: cfg.componentId, on: true, toggle_after: remaining / 1000 }, onDone);
 }
+/** Drive OFF for revoked or expired leases, unsafe floor data and unknown output while leaving idle confirmed OFF alone. */
 function watchdog() {
-	if (!floorSafe() || now() >= until || fault) driveOff();
+	if (fault || pendingFence || (pendingOn && until === 0)) {
+		driveOff();
+		return;
+	}
+	let hasLease = until > 0;
+	if (hasLease && (now() >= until || !floorSafe())) {
+		driveOff();
+		return;
+	}
+	let output = Shelly.getComponentStatus('switch', cfg.componentId);
+	// Pending ON owns its valid lease even while the cached output is still OFF;
+	// revoked pending ON keeps requesting emergency OFF until its callback drains.
+	// Unknown output fails closed; idle confirmed OFF needs no serial IO cycle.
+	if (!output || typeof output.output !== 'boolean' || (!hasLease && output.output)) driveOff();
 }
+/** Process reports from the configured floor component and request OFF whenever floor safety is lost. */
 function floorUpdate(event) {
 	if (event.component !== cfg.floorComponentType + ':' + cfg.floorComponentId) return;
 	observeFloor(event.delta);
 	if (!floorSafe()) driveOff();
 }
+/** Enable readiness only after startup status reports the configured switch output as OFF. */
 function startupOff(result, code) {
 	if (code !== 0 || !result || result.id !== cfg.componentId || result.output !== false) {
 		fail('startup_off_unconfirmed');
@@ -256,6 +290,7 @@ function startupOff(result, code) {
 	busy = false;
 	ready = true;
 }
+/** Require acknowledged startup OFF before requesting the live status needed to enable readiness. */
 function startupSet(result, code) {
 	if (code !== 0 || !result || typeof result.was_on !== 'boolean') {
 		fail('startup_off_execution_unknown');
@@ -263,6 +298,7 @@ function startupSet(result, code) {
 	}
 	Shelly.call('Switch.GetStatus', { id: cfg.componentId }, startupOff);
 }
+/** After persisting the boot epoch, issue absolute OFF before the startup readiness readback. */
 function startupPersist(result, code) {
 	if (code !== 0) {
 		fail('epoch_persistence_failed');
@@ -271,6 +307,7 @@ function startupPersist(result, code) {
 	busy = true;
 	Shelly.call('Switch.Set', { id: cfg.componentId, on: false }, startupSet);
 }
+/** Require commissioned epoch storage and persist its successor so packets from an earlier boot cannot reuse the epoch. */
 function startupEpoch(result, code) {
 	// The key must have been initialized during commissioning. Missing/reset storage
 	// cannot silently establish a fresh epoch and admit packets from an earlier boot.
@@ -281,6 +318,7 @@ function startupEpoch(result, code) {
 	epoch = result.value + 1;
 	Shelly.call('KVS.Set', { key: cfg.epochKey, value: epoch }, startupPersist);
 }
+/** Restrict correlation tokens to a bounded alphabet accepted unchanged by the HTTP query parser. */
 function validNonce(nonce) {
 	if (typeof nonce !== 'string' || nonce.length < 1 || nonce.length > 64) return false;
 	let allowed = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-';
@@ -288,14 +326,17 @@ function validNonce(nonce) {
 	return true;
 }
 
+/** Validate unique action parameters and nonce, then route one uncached correlated status, fence or ON reply. */
 function handleHttp(request, response) {
 	let params = {};
 	let reply = {
+		/** Correlate a successful action result with the exact request nonce. */
 		result: function (value) {
 			response.code = 200;
 			response.body = JSON.stringify({ result: value, nonce: params.nonce });
 			response.send();
 		},
+		/** Return a correlated protocol error without representing it as successful OFF evidence. */
 		error: function (code, reason) {
 			response.code = 409;
 			response.body = JSON.stringify({ error: reason, nonce: params.nonce });
@@ -342,6 +383,7 @@ function handleHttp(request, response) {
 	else reject(reply, 'invalid_action');
 }
 
+/** Validate device identity, declared installation prerequisites and bounds; declarations alone are not commissioning evidence. */
 function validConfig() {
 	return (
 		cfg &&

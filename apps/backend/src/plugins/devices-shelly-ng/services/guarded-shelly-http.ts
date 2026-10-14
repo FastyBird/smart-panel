@@ -1,11 +1,16 @@
 import { request as httpRequest } from 'node:http';
 
-/** Request creation may open a socket; end() is the actual header send and is fenced after connect. */
+/**
+ * Send one nonce-correlated guard request within the caller's absolute deadline and live authority.
+ * Recheck authority after connect, then notify onSend immediately before end() can send headers.
+ * A matching response identifies this request; callers must still validate its action-specific evidence.
+ */
 export async function guardedShellyHttp<T>(
 	url: URL,
 	deadline: number,
 	isCurrent: () => boolean,
 	createRequest: typeof httpRequest = httpRequest,
+	onSend?: () => void,
 ): Promise<T> {
 	if (url.protocol !== 'http:' || url.username || url.password || !isCurrent() || Date.now() >= deadline)
 		throw new Error('Shelly HTTP request is not admitted');
@@ -38,6 +43,7 @@ export async function guardedShellyHttp<T>(
 				}
 			});
 		});
+		/** Settle once and retire the deadline timer so late response events cannot change the result. */
 		function finish(error: Error | null, value?: T): void {
 			if (!pending) return;
 			pending = false;
@@ -45,12 +51,20 @@ export async function guardedShellyHttp<T>(
 			if (error) reject(error);
 			else resolve(value);
 		}
+		/** Fence the header write after connect; once onSend runs, a failed write may still have reached the device. */
 		const send = (): void => {
-			if (!pending || !isCurrent() || Date.now() >= deadline) {
-				request.destroy(new Error('Shelly HTTP authority expired before send'));
-				return;
+			try {
+				if (!pending || !isCurrent() || Date.now() >= deadline) {
+					request.destroy(new Error('Shelly HTTP authority expired before send'));
+					return;
+				}
+				// From this boundary onward, an exception cannot prove that headers were not sent.
+				onSend?.();
+				request.end();
+			} catch (error) {
+				finish(error instanceof Error ? error : new Error('Shelly HTTP send failed'));
+				request.destroy();
 			}
-			request.end();
 		};
 		request.on('error', (error) => finish(error));
 		request.once('socket', (socket) => {

@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
+import crypto, { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { Server, createServer } from 'node:http';
+import http, { ClientRequest, IncomingMessage, RequestOptions, Server, createServer } from 'node:http';
 import { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
 
@@ -17,6 +17,7 @@ class FixtureRpc extends GuardedShellyRpcHandler {
 	peripherals = { ds18b20: { 'temperature:100': { addr: 'fixture' } } };
 	switchConfig = { id: 0, initial_state: 'off', in_locked: true };
 	methods: string[] = [];
+	failedMethod: string | null = null;
 	protected override createSocket(): WebSocket {
 		return Object.assign(new EventEmitter(), {
 			readyState: WebSocket.OPEN,
@@ -24,6 +25,16 @@ class FixtureRpc extends GuardedShellyRpcHandler {
 				const frame = JSON.parse(data) as { id: number; method: string };
 				callback();
 				this.methods.push(frame.method);
+				if (frame.method === this.failedMethod) {
+					queueMicrotask(() =>
+						this.client.receive({
+							jsonrpc: '2.0',
+							id: frame.id,
+							error: { code: -1, message: 'Inspection failed' },
+						}),
+					);
+					return;
+				}
 				const result =
 					frame.method === 'Shelly.GetDeviceInfo'
 						? { id: 'physical', model: 'SNSW-001P16EU', fw_id: this.firmware, mac: '000000000001' }
@@ -53,16 +64,28 @@ describe('guarded SDK identity plus qualified Shelly 1.7 HTTP guard bridge', () 
 	let epoch: number;
 	let resultOverride: Record<string, unknown>;
 	let requests: URL[];
+	let httpFailureAction: string | null;
+	let holdOnReply: boolean;
+	let onOverride: Record<string, unknown>;
 	let qualification: ShellyProtectiveQualification;
 	beforeEach(async () => {
 		current = true;
 		epoch = 10;
 		resultOverride = {};
 		requests = [];
+		httpFailureAction = null;
+		holdOnReply = false;
+		onOverride = {};
 		server = createServer((request, response) => {
 			const url = new URL(request.url, 'http://fixture.invalid');
 			requests.push(url);
 			const action = url.searchParams.get('action');
+			if (action === 'on' && holdOnReply) return;
+			if (action === httpFailureAction) {
+				response.writeHead(503);
+				response.end();
+				return;
+			}
 			const result =
 				action === 'status'
 					? {
@@ -90,7 +113,12 @@ describe('guarded SDK identity plus qualified Shelly 1.7 HTTP guard bridge', () 
 								localOnDrained: true,
 							};
 			response.setHeader('Content-Type', 'application/json');
-			response.end(JSON.stringify({ nonce: url.searchParams.get('nonce'), result: { ...result, ...resultOverride } }));
+			response.end(
+				JSON.stringify({
+					nonce: url.searchParams.get('nonce'),
+					result: { ...result, ...resultOverride, ...(action === 'on' ? onOverride : {}) },
+				}),
+			);
 		});
 		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 		const hostname = `127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -122,6 +150,7 @@ describe('guarded SDK identity plus qualified Shelly 1.7 HTTP guard bridge', () 
 		session = new ShellyGuardRpcSession(rpc, 0, qualification, () => current);
 	});
 	afterEach(async () => {
+		jest.restoreAllMocks();
 		await rpc.destroy();
 		await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 	});
@@ -175,6 +204,123 @@ describe('guarded SDK identity plus qualified Shelly 1.7 HTTP guard bridge', () 
 		expect(requests[1].searchParams.get('epoch')).toBe('10');
 		expect(requests[1].searchParams.get('untilMs')).toBe('6000');
 	});
+	it.each(['Shelly.GetDeviceInfo', 'Script.GetCode'])(
+		'refuses failed %s inspection without sending ON',
+		async (method) => {
+			rpc.failedMethod = method;
+			expect(await session.on(5, 1000, () => true)).toEqual({
+				outcome: 'refused',
+				reasons: ['ordered_script_not_ready'],
+			});
+			expect(requests).toEqual([]);
+		},
+	);
+	it('refuses failed status inspection without sending ON', async () => {
+		httpFailureAction = 'status';
+		expect(await session.on(5, 1000, () => true)).toEqual({
+			outcome: 'refused',
+			reasons: ['ordered_script_not_ready'],
+		});
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status']);
+	});
+	it('refuses an expired inspection deadline before any ON request', async () => {
+		expect(await session.on(5, 0, () => true)).toEqual({
+			outcome: 'refused',
+			reasons: ['ordered_script_not_ready'],
+		});
+		expect(requests).toEqual([]);
+	});
+	it('refuses nonce creation failures before ON can be sent', async () => {
+		const nonce = crypto.randomUUID;
+		jest
+			.spyOn(crypto, 'randomUUID')
+			.mockImplementationOnce(nonce)
+			.mockImplementationOnce(() => {
+				throw new Error('Nonce creation failed');
+			});
+		expect(await session.on(5, 1000, () => true)).toEqual({
+			outcome: 'refused',
+			reasons: ['ordered_script_not_ready'],
+		});
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status']);
+	});
+	it('refuses serialization failures before ON can be sent', async () => {
+		// eslint-disable-next-line @typescript-eslint/unbound-method -- Jest supplies the original URLSearchParams receiver.
+		const serialize = URLSearchParams.prototype.toString;
+		jest
+			.spyOn(URLSearchParams.prototype, 'toString')
+			.mockImplementationOnce(serialize)
+			.mockImplementationOnce(() => {
+				throw new Error('Serialization failed');
+			});
+		expect(await session.on(5, 1000, () => true)).toEqual({
+			outcome: 'refused',
+			reasons: ['ordered_script_not_ready'],
+		});
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status']);
+	});
+	it.each(['denied', 'throws'])('refuses admission that %s while the ON socket connects', async (failure) => {
+		const createRequest = http.request;
+		const end = jest.fn();
+		let connectingOn = false;
+		jest.spyOn(http, 'request').mockImplementation(((
+			url: URL,
+			options: RequestOptions,
+			callback: (response: IncomingMessage) => void,
+		) => {
+			if (url.searchParams.get('action') !== 'on') return createRequest(url, options, callback);
+			const request = Object.assign(new EventEmitter(), {
+				end,
+				destroy: (error?: Error) => {
+					if (error) request.emit('error', error);
+				},
+			});
+			queueMicrotask(() => {
+				connectingOn = true;
+				request.emit('socket', { connecting: false });
+			});
+			return request as unknown as ClientRequest;
+		}) as typeof http.request);
+		expect(
+			await session.on(5, 1000, () => {
+				if (!connectingOn) return true;
+				if (failure === 'throws') throw new Error('Admission failed');
+				return false;
+			}),
+		).toEqual({ outcome: 'refused', reasons: ['ordered_script_not_ready'] });
+		expect(end).not.toHaveBeenCalled();
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status']);
+	});
+	it('keeps an HTTP failure after sending ON unknown', async () => {
+		httpFailureAction = 'on';
+		expect(await session.on(5, 1000, () => true)).toEqual({
+			outcome: 'unknown',
+			outputConfirmed: false,
+			pendingOnDrained: false,
+		});
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status', 'on']);
+	});
+	it('keeps a deadline with a lost acknowledgement after sending ON unknown', async () => {
+		holdOnReply = true;
+		expect(await session.on(5, 1000, () => true)).toEqual({
+			outcome: 'unknown',
+			outputConfirmed: false,
+			pendingOnDrained: false,
+		});
+		expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status', 'on']);
+	});
+	it.each([{ accepted: false }, { epoch: 11 }, { untilMs: 6001 }])(
+		'keeps an unmatched ON acknowledgement %j unknown',
+		async (override) => {
+			onOverride = override;
+			expect(await session.on(5, 1000, () => true)).toEqual({
+				outcome: 'unknown',
+				outputConfirmed: false,
+				pendingOnDrained: false,
+			});
+			expect(requests.map((url) => url.searchParams.get('action'))).toEqual(['status', 'on']);
+		},
+	);
 	it('returns a fresh OFF readback only after matched script epoch, identity, and drainage acknowledgement', async () => {
 		const before = Date.now();
 		const readback = await session.fence(1000, () => true);

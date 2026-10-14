@@ -53,6 +53,10 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		return { supported: reasons.length === 0, reasons };
 	}
 
+	/**
+	 * Validate database relationships and a readable/writable boolean switch leaf for the qualified component.
+	 * Return a delegate-bound guard session only when the ordered-script metadata is eligible.
+	 */
 	prepareGuardRpcSession(
 		target: IDevicePropertyData,
 		qualification: ShellyProtectiveQualification,
@@ -78,6 +82,7 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		if (deviceId !== device.id || channelId !== channel.id) return null;
 		return this.delegatesManagerService.prepareGuardRpcSession(device, Number(component[1]), qualification);
 	}
+	/** Route a guard OFF readback for a Shelly property to the delegate manager's lease-checked sample admission. */
 	async admitGuardFenceSample(target: IDevicePropertyData, readback: ShellyGuardFenceReadback): Promise<void> {
 		if (target.property instanceof ShellyNgChannelPropertyEntity)
 			await this.delegatesManagerService.admitGuardFenceSample(target.property, readback);
