@@ -19,7 +19,10 @@ import {
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
-import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
+import {
+	PropertyCommandAdmissionRegistryService,
+	PropertyCommandAdmissionSnapshot,
+} from './property-command-admission.registry.service';
 import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import {
 	PropertyCommandWindowHandle,
@@ -118,6 +121,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		@Optional() private readonly admissionGuards?: PropertyCommandAdmissionRegistryService,
 	) {}
 
+	/** Dispatches ordinary batches or composite leaves under captured request and ownership fences. */
 	async dispatchBatch(
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions = {},
@@ -127,14 +131,16 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			(options.commandEntry?.isActive() ?? true) &&
 			(options.isRequestCurrent?.() ?? true) &&
 			(options.deadlineAt === undefined || Date.now() < options.deadlineAt) &&
-			(admission?.isCurrent() ?? true);
+			(admission?.isRequestCurrent?.() ?? admission?.isCurrent() ?? true);
+		const isLeafCurrent = (update: IDevicePropertyData) =>
+			isCurrent() && (options.commandEntry?.isActive(update) ?? true) && (admission?.isCurrent(update) ?? true);
 		if (!isCurrent()) return { success: false, reason: 'Command admission changed or expired' };
 		if (updates.length === 0) {
 			return { success: true };
 		}
 
 		const planner = updates.map((update) => this.composites?.get(update.property)).find(Boolean);
-		if (planner) return this.dispatchComposite(updates, { ...options, isRequestCurrent: isCurrent });
+		if (planner) return this.dispatchComposite(updates, { ...options, isRequestCurrent: isCurrent }, admission);
 
 		const platform = this.platformRegistryService.get(updates[0].device);
 
@@ -166,7 +172,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				this.failOwned(handles);
 				return { success: false, reason: 'Physical target changed before dispatch' };
 			}
-			for (const update of canonicalUpdates) {
+			const admissionUpdates = [...updates, ...canonicalUpdates];
+			for (const update of admissionUpdates) {
 				await options.commandEntry?.assertAllowed(update);
 				await admission?.assertAllowed(update);
 			}
@@ -188,6 +195,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					const prepared = await this.platformRegistryService.get(batch[0].device)?.prepareCompositeBatch?.(batch);
 					const guard = () =>
 						isCurrent() &&
+						admissionUpdates.every(isLeafCurrent) &&
 						Date.now() < deadline &&
 						!!prepared?.isCurrent() &&
 						handles.every(
@@ -198,7 +206,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						break;
 					}
 				}
-			} else success = isCurrent() && (await platform.processBatch([...updates]));
+			} else success = admissionUpdates.every(isLeafCurrent) && (await platform.processBatch([...updates]));
 
 			if (!success) {
 				this.failOwned(handles);
@@ -241,12 +249,13 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 	private async dispatchComposite(
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions,
+		admission?: PropertyCommandAdmissionSnapshot,
 	): Promise<PropertyCommandDispatchResult> {
 		if (this.disposed || this.activeComposites >= 128)
 			return { success: false, reason: 'Composite dispatcher unavailable or at capacity' };
 		this.activeComposites++;
 		try {
-			return await this.executeComposite(updates, options);
+			return await this.executeComposite(updates, options, admission);
 		} finally {
 			this.activeComposites--;
 		}
@@ -255,6 +264,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 	private async executeComposite(
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions,
+		admission?: PropertyCommandAdmissionSnapshot,
 	): Promise<PropertyCommandDispatchResult> {
 		if (options.commandEntry && !options.commandEntry.isActive())
 			return { success: false, reason: 'Command entry snapshot expired or exceeded bounds' };
@@ -523,6 +533,15 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						setPending('superseded', 'Binding revision changed');
 						continue;
 					}
+					// Check captured ownership for both requested aliases and prepared canonical leaves.
+					const admissionUpdates = channel.flatMap((leaf) => [
+						leaf.update,
+						...leaf.indexes.flatMap((index) => (plan.children[index].update ? [plan.children[index].update] : [])),
+					]);
+					for (const update of admissionUpdates) {
+						await options.commandEntry?.assertAllowed(update);
+						await admission?.assertAllowed(update);
+					}
 					// Keep compound RGB/HS requests in the same prepared physical channel batch.
 					const admitted = await this.withCompositeDeadline(
 						this.admitWindows(
@@ -590,7 +609,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 								() =>
 									dispatchActive &&
 									!this.disposed &&
-									(options.commandEntry?.isActive() ?? true) &&
+									admissionUpdates.every(
+										(update) =>
+											(options.commandEntry?.isActive(update) ?? true) && (admission?.isCurrent(update) ?? true),
+									) &&
 									(options.isRequestCurrent?.() ?? true) &&
 									Date.now() < deadline &&
 									(plan.isDispatchCurrent?.() ?? true) &&
@@ -889,6 +911,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			return null;
 		}
 
+		for (const requested of requestedUpdates) await this.admissionGuards?.assertAllowed(requested);
 		await this.admissionGuards?.assertAllowed({
 			device: sourceDevice,
 			channel: sourceChannel,

@@ -163,7 +163,8 @@ export class SwaggerDocumentService {
 	}
 
 	/**
-	 * Transform allOf arrays containing only a single $ref into direct $ref.
+	 * Transform non-nullable allOf arrays containing only a single $ref into direct $ref.
+	 * Nullable single references become explicit null unions for OpenAPI 3.1.
 	 * This fixes a bug in openapi-typescript that doesn't handle allOf with single $ref correctly.
 	 * The discriminator is removed as it's already applied to the referenced schema.
 	 */
@@ -182,7 +183,24 @@ export class SwaggerDocumentService {
 					if (typeof propSchema === 'object' && propSchema !== null && 'allOf' in propSchema) {
 						const allOf = propSchema.allOf;
 						if (
-							// A direct reference cannot carry nullable; preserve the wrapper for generated clients.
+							propSchema.nullable === true &&
+							Array.isArray(allOf) &&
+							allOf.length === 1 &&
+							typeof allOf[0] === 'object' &&
+							allOf[0] !== null &&
+							'$ref' in allOf[0]
+						) {
+							const metadata = { ...propSchema };
+							delete metadata.allOf;
+							delete metadata.nullable;
+							schema.properties[propName] = {
+								...metadata,
+								anyOf: [allOf[0], { type: 'null' }],
+							};
+							continue;
+						}
+						if (
+							// Flatten only non-nullable references.
 							!propSchema.nullable &&
 							Array.isArray(allOf) &&
 							allOf.length === 1 &&

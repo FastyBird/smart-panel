@@ -55,18 +55,22 @@ export class PropertyCommandEntrySnapshot {
 		return new PropertyCommandEntrySnapshot(windows, onDispose, saturated, admission);
 	}
 
-	isActive(): boolean {
+	/** Checks lifetime bounds, and captured ownership when a physical leaf is supplied. */
+	isActive(update?: IDevicePropertyData): boolean {
 		return (
 			minted.has(this) &&
 			!this.stopped &&
 			!this.overflow &&
-			(this.admission?.isCurrent() ?? true) &&
+			(update
+				? (this.admission?.isCurrent(update) ?? true)
+				: (this.admission?.isRequestCurrent?.() ?? this.admission?.isCurrent() ?? true)) &&
 			Date.now() < this.deadlineAt
 		);
 	}
 
+	/** Validates captured ownership without extending the request lifetime. */
 	async assertAllowed(update: IDevicePropertyData): Promise<void> {
-		if (!this.isActive()) throw new Error('Command entry admission changed or expired');
+		if (!this.isActive(update)) throw new Error('Command entry admission changed or expired');
 		await this.admission?.assertAllowed(update);
 	}
 

@@ -771,6 +771,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		};
 		const pendingOn = claims.mintAuthority(claim.id, 'on');
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(true);
+		const runtimeAdmission = claims.capture();
+		expect(runtimeAdmission.isCurrent()).toBe(true);
 		let releaseReader!: () => void;
 		let readerEntered!: () => void;
 		const readerGate = new Promise<void>((resolve) => (releaseReader = resolve));
@@ -789,13 +791,18 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		let guardedSends = 0;
 		if (claims.isAuthorized(pendingOn, relayTarget)) guardedSends++;
 		expect(guardedSends).toBe(0);
+		expect(runtimeAdmission.isCurrent()).toBe(false);
 		await claims.refresh();
+		expect(claims.capture().isCurrent()).toBe(false);
+		expect(claims.capture().isRequestCurrent?.()).toBe(true);
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
 		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
 		releaseReader();
 		await reader;
 		await expect(failedRestore).rejects.toThrow('revision');
 		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		expect(runtimeAdmission.isCurrent()).toBe(false);
+		expect(claims.capture().isCurrent()).toBe(true);
 		const nextOn = claims.mintAuthority(claim.id, 'on');
 		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(true);
 		const secondReaderGate = new Promise<void>((resolve) => (releaseReader = resolve));
