@@ -35,7 +35,7 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 - [x] VD2-3 [#1414](https://github.com/FastyBird/smart-panel/issues/1414): aggregate temperature sensor backend
 - [x] VD2-4 [#1415](https://github.com/FastyBird/smart-panel/issues/1415): aggregate sensor authoring, repair and panel presentation
 - [x] VD2-5 [#1416](https://github.com/FastyBird/smart-panel/issues/1416): group membership, capability contract, state and correlated command expansion
-- [ ] VD2-6 [#1417](https://github.com/FastyBird/smart-panel/issues/1417): light-group admin/panel and scene/room control
+- [x] VD2-6 [#1417](https://github.com/FastyBird/smart-panel/issues/1417): light-group admin/panel and scene/room control
 - [ ] VD2-7 [#1418](https://github.com/FastyBird/smart-panel/issues/1418): thermostat configuration, actuator claims and local command path
 - [ ] VD2-8 [#1419](https://github.com/FastyBird/smart-panel/issues/1419): heat/cool/auto/off runtime, durable interlock and restart recovery
 - [ ] VD2-9 [#1420](https://github.com/FastyBird/smart-panel/issues/1420): floor overheat and physical/automatic window policies
@@ -55,7 +55,7 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 - [ ] Physical window contact support and automatic detection are minimum capabilities. Automatic detection pauses and
       recovers without a physical contact; configured contacts also pause and recover. Neither restores obsolete user
       commands.
-- [ ] A light group exposes compatible common controls, mixed/partial state and member-level outcomes.
+- [x] A light group exposes compatible common controls, mixed/partial state and member-level outcomes.
 - [ ] A user can author, preview, edit and repair a numeric converter; qualified temperature outputs can feed an
       aggregate or thermostat without hiding source faults or renewing old data.
 - [ ] Shelly 1PM Gen2 analog helper output in Celsius is ingested with its unit and quality, without falling back to raw voltage.
@@ -67,7 +67,7 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 
 ## Acceptance evidence at the composed candidate
 
-The prepared VD2-6 through VD2-10 and VD2-11 changes are being integrated on a candidate branch. The checkboxes above reflect **merged and closed tracking tasks**, not merely code present in that branch. The candidate still needs exact-head tests, generated-client review, CI and review gates before delivery. This matrix records the evidence to attach to that review; “pending” is not a pass.
+VD2-6 was delivered through PR #1436 after green CI and completed non-blocking CodeRabbit review. The prepared VD2-7 through VD2-11 changes are being integrated on a candidate branch. The checkboxes above reflect **merged and closed tracking tasks**, not merely code present in that branch. The candidate still needs exact-head tests, generated-client review, CI and review gates before delivery. This matrix records the evidence to attach to that review; “pending” is not a pass.
 
 | Acceptance slice | Evidence required on the composed head | Current status |
 | --- | --- | --- |
