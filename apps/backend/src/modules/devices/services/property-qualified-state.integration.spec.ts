@@ -338,6 +338,37 @@ describe('qualified samples and producer state', () => {
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
 	});
 
+	it('cannot publish an in-flight derived sample after its captured lifecycle closes and a retry reopens authority', async () => {
+		let validated = true;
+		let generation = 0;
+		const guard = { isCurrent: () => validated && generation === 0, reason: 'validation_pending' };
+		const lease = producers.register(property, 1, guard);
+		await values.publishDerived(property, lease, 20, publication());
+		const entered = deferred<void>();
+		const release = deferred<void>();
+		storage.writePoints.mockImplementationOnce(() => {
+			entered.resolve();
+			return release.promise;
+		});
+		const pending = values.publishDerived(property, lease, 21, publication());
+		await entered.promise;
+		validated = false;
+		generation++;
+		Object.assign(guard, { isCurrent: () => true, reason: 'mutated' });
+		expect(producers.read(property.id)).toMatchObject({ value: null, producer: { reasons: ['validation_pending'] } });
+		expect(values.readQualifiedSample(property, 10000)).toBeNull();
+		validated = true;
+		expect(producers.isAvailable(lease)).toBe(false);
+		release.resolve();
+		await expect(pending).resolves.toMatchObject({ changed: false, state: { value: null } });
+		expect(values.readQualifiedSample(property, 10000)).toBeNull();
+		const fresh = producers.register(property, 1, {
+			isCurrent: () => validated && generation === 1,
+			reason: 'validation_pending',
+		});
+		await values.publishDerived(property, fresh, 22, publication());
+		expect(values.readQualifiedSample(property, 10000)?.value).toBe(22);
+	});
 	it('serves an initializing overlay instead of old persisted history', async () => {
 		storage.query.mockResolvedValue([{ propertyId: property.id, numberValue: 99, time: new Date(base) }]);
 		producers.register(property, 1);

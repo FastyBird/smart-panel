@@ -60,7 +60,10 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 	installUnavailable(property: VirtualChannelPropertyEntity, revision: number): void {
 		if (!property.isDerived) return;
 		this.configRevisions.set(property.id, revision);
-		const lease = this.producers.register(property, revision);
+		const lease = this.producers.register(property, revision, {
+			isCurrent: this.graph.capturePublishGuard(),
+			reason: 'graph_validation_pending',
+		});
 		this.producers.invalidate(lease, ['runtime_unavailable']);
 		property.value = this.producers.read(property.id);
 	}
@@ -79,7 +82,10 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 		for (const property of properties) {
 			if (revision !== this.appliedGraphRevision) return;
 			if (quarantined.has(property.id)) {
-				const lease = this.producers.register(property, this.configRevisions.get(property.id) ?? revision);
+				const lease = this.producers.register(property, this.configRevisions.get(property.id) ?? revision, {
+					isCurrent: this.graph.capturePublishGuard(),
+					reason: 'graph_validation_pending',
+				});
 				this.producers.invalidate(lease, ['graph_quarantined']);
 				this.quarantineLeases.set(property.id, lease);
 			} else if (this.quarantineLeases.has(property.id)) {

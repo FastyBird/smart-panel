@@ -60,8 +60,8 @@ export class VirtualProducerConfigService {
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly producerState: VirtualProducerStateService,
-		@Optional() private readonly aggregateRuntime?: VirtualAggregateRuntimeService,
 		@Optional() private readonly lightGroups?: VirtualLightGroupStateService,
+		@Optional() private readonly aggregateRuntime?: VirtualAggregateRuntimeService,
 	) {}
 
 	async configureAggregate(

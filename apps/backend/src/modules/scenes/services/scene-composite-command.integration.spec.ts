@@ -6,7 +6,7 @@ import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { SceneExecutionStatus } from '../scenes.constants';
 
-import { SceneExecutorService } from './scene-executor.service';
+import { SceneExecutionContext, SceneExecutorService } from './scene-executor.service';
 
 const partial: CompositeCommandOutcomeModel = {
 	id: 'parent',
@@ -34,8 +34,10 @@ describe('scene correlated composite outcomes', () => {
 			intents,
 		);
 		const order: string[][] = [];
-		const execute = (_scene: SceneEntity, members: SceneActionEntity[]) => {
+		const contexts: SceneExecutionContext[] = [];
+		const execute = (_scene: SceneEntity, members: SceneActionEntity[], context?: SceneExecutionContext) => {
 			order.push(members.map((member) => member.id));
+			if (context) contexts.push(context);
 			return Promise.resolve(
 				members.map((member) => ({
 					actionId: member.id,
@@ -56,6 +58,8 @@ describe('scene correlated composite outcomes', () => {
 		const result = await service.triggerScene(scene.id);
 
 		expect(order).toEqual([['local-1', 'local-2'], ['other'], ['local-3']]);
+		expect(contexts).toHaveLength(3);
+		expect(contexts.every((context) => context === contexts[0])).toBe(true);
 		expect(result.actionResults.map((action) => action.actionId)).toEqual(actions.map((action) => action.id));
 	});
 
@@ -105,7 +109,19 @@ describe('scene correlated composite outcomes', () => {
 		expect(result.actionResults[0].composite.children[0].status).toBe('confirmed');
 		expect(execute).toHaveBeenCalledTimes(unrelated ? 2 : 1);
 		expect(completed).toHaveBeenCalledWith(
-			expect.objectContaining({ status: IntentStatus.COMPLETED_PARTIAL, composites: [partial] }),
+			expect.objectContaining({
+				status: IntentStatus.COMPLETED_PARTIAL,
+				composites: [
+					{
+						id: 'parent',
+						status: 'partial',
+						children: [
+							{ member_id: 'live', property_id: 'leaf', status: 'confirmed' },
+							{ member_id: 'missing', property_id: null, status: 'unavailable' },
+						],
+					},
+				],
+			}),
 		);
 	});
 });
