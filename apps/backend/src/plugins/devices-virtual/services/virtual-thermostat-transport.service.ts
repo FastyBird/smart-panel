@@ -77,6 +77,7 @@ export class VirtualThermostatTransportService {
 				qualification.profile.independentProtectionQualified &&
 				qualification.physicalIdentity === thermostatActuatorIdentity(target.property, target.channel, target.device) &&
 				!!platform.prepareGuardRpcSession(target, qualification.profile),
+			/** Refuse ON before energizing or report a possible send as unknown; OFF acceptance alone cannot release a claim. */
 			send: async (target, claim, qualification, isAdmitted) => {
 				if (!(target.device instanceof ShellyNgDeviceEntity))
 					return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
@@ -107,6 +108,7 @@ export class VirtualThermostatTransportService {
 					isAdmitted,
 				);
 			},
+			/** Bind drainage to the installed qualification, live connection lease and freshly admitted OFF sample. */
 			reconcile: async (target, commandIds, _off, isCurrent, scope) => {
 				const qualification = scope.qualification;
 				if (

@@ -38,31 +38,76 @@ describe('guarded Shelly HTTP actual request header send', () => {
 	it('does not write an ON request after authority changes during connect', async () => {
 		const fixture = new HttpFixture();
 		let admitted = true;
+		const onSend = jest.fn();
 		const request = guardedShellyHttp(
 			new URL('http://fixture.invalid/script/1/spguard?action=on&nonce=fixture'),
 			Date.now() + 1000,
 			() => admitted,
 			fixture.factory,
+			onSend,
 		).catch(() => null);
 		admitted = false;
 		fixture.connect();
 		expect(await request).toBeNull();
 		expect(fixture.ends).not.toHaveBeenCalled();
+		expect(onSend).not.toHaveBeenCalled();
+	});
+	it('does not mark an ON send when admission throws before headers are sent', async () => {
+		const fixture = new HttpFixture();
+		const onSend = jest.fn();
+		let inspecting = true;
+		const request = guardedShellyHttp(
+			new URL('http://fixture.invalid/script/1/spguard?action=on&nonce=fixture'),
+			Date.now() + 1000,
+			() => {
+				if (!inspecting) throw new Error('Admission failed');
+				return true;
+			},
+			fixture.factory,
+			onSend,
+		).catch(() => null);
+		inspecting = false;
+		fixture.connect();
+		expect(await request).toBeNull();
+		expect(onSend).not.toHaveBeenCalled();
+		expect(fixture.ends).not.toHaveBeenCalled();
+	});
+	it('marks possible send before end, including a synchronous end failure', async () => {
+		const fixture = new HttpFixture();
+		const onSend = jest.fn();
+		fixture.ends.mockImplementation(() => {
+			expect(onSend).toHaveBeenCalledTimes(1);
+			throw new Error('Write failed');
+		});
+		const request = guardedShellyHttp(
+			new URL('http://fixture.invalid/script/1/spguard?action=on&nonce=fixture'),
+			Date.now() + 1000,
+			() => true,
+			fixture.factory,
+			onSend,
+		).catch(() => null);
+		fixture.connect();
+		expect(await request).toBeNull();
+		expect(onSend).toHaveBeenCalledTimes(1);
+		expect(fixture.ends).toHaveBeenCalledTimes(1);
 	});
 	it('bounds connect waits and prevents a timed-out request from being sent later', async () => {
 		jest.useFakeTimers();
 		const fixture = new HttpFixture();
+		const onSend = jest.fn();
 		try {
 			const request = guardedShellyHttp(
 				new URL('http://fixture.invalid/script/1/spguard?action=on&nonce=fixture'),
 				Date.now() + 1000,
 				() => true,
 				fixture.factory,
+				onSend,
 			).catch(() => null);
 			await jest.advanceTimersByTimeAsync(1001);
 			expect(await request).toBeNull();
 			fixture.connect();
 			expect(fixture.ends).not.toHaveBeenCalled();
+			expect(onSend).not.toHaveBeenCalled();
 		} finally {
 			jest.useRealTimers();
 		}

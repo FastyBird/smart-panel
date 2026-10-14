@@ -89,6 +89,9 @@ describe('virtual thermostat durable runtime', () => {
 	const samples = new Map<string, QualifiedPropertySample>();
 	const sends: boolean[] = [];
 	const sentTargets: { propertyId: string; on: boolean }[] = [];
+	const actuationAttempts: boolean[] = [];
+	let onOutcome: 'accepted' | 'refused' | 'unknown';
+	let offOutcome: 'accepted' | 'refused' | 'unknown';
 	let onGate: Promise<void> | null;
 	let offGate: Promise<void> | null;
 	let beforeProof: (() => Promise<void>) | null;
@@ -123,6 +126,9 @@ describe('virtual thermostat durable runtime', () => {
 		samples.clear();
 		sends.length = 0;
 		sentTargets.length = 0;
+		actuationAttempts.length = 0;
+		onOutcome = 'accepted';
+		offOutcome = 'accepted';
 		onGate = null;
 		offGate = null;
 		beforeProof = null;
@@ -298,15 +304,19 @@ describe('virtual thermostat durable runtime', () => {
 		const adapter: ThermostatActuationAdapter = {
 			canReconcile: () => true,
 			send: async (target, _claim, _qualification, isAdmitted) => {
+				actuationAttempts.push(target.value === true);
 				if (target.property.id === relayId && target.value === true && onGate !== null) await onGate;
 				if (target.value === false && offGate !== null) await offGate;
 				if (!isAdmitted() && !(target.value === true && allowLateOn))
 					return { outcome: 'refused' as const, reasons: ['revoked'] };
+				const outcome = target.value === true ? onOutcome : offOutcome;
+				if (outcome === 'refused') return { outcome, reasons: ['known_no_send'] };
 				const wasOn = samples.get(target.property.id)?.value === true;
 				sends.push(target.value as boolean);
 				sentTargets.push({ propertyId: target.property.id, on: target.value as boolean });
 				sample(target.property.id, target.value as boolean);
 				if (target.property.id === relayId && target.value === true && afterOnGate !== null) await afterOnGate;
+				if (outcome === 'unknown') return { outcome, outputConfirmed: false, pendingOnDrained: false };
 				return {
 					outcome: 'accepted' as const,
 					wasOn,
@@ -405,6 +415,93 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		await runtime.flush();
 	};
+
+	it('cancels known-unsent ON without a command loop and retries on the poll and a fresh sample', async () => {
+		await settle();
+		runtime.onModuleDestroy();
+		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
+		try {
+			runtime = makeRuntime();
+			await runtime.onApplicationBootstrap();
+			await settle();
+			onOutcome = 'refused';
+			sample(sensorId, 18);
+			runtime.request(controllerId);
+			await settle();
+			const onCommands = () => database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			expect(await onCommands()).toEqual([expect.objectContaining({ status: 'cancelled', fault: 'known_no_send' })]);
+			expect(sends).not.toContain(true);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('heating_unresolved_on');
+			await settle();
+			expect(await onCommands()).toHaveLength(1);
+			jest.advanceTimersByTime(999);
+			await settle();
+			expect(await onCommands()).toHaveLength(1);
+			jest.advanceTimersByTime(1);
+			await settle();
+			expect(await onCommands()).toHaveLength(2);
+			expect((await onCommands()).every((command) => command.status === 'cancelled')).toBe(true);
+			expect(actuationAttempts.filter(Boolean)).toHaveLength(2);
+			onOutcome = 'accepted';
+			sample(sensorId, 18);
+			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: sensorId });
+			await settle();
+			expect(await onCommands()).toHaveLength(3);
+			expect((await onCommands()).filter((command) => command.status === 'accepted')).toHaveLength(1);
+			expect(sends.filter(Boolean)).toEqual([true]);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('heating_unresolved_on');
+			expect(runtime.readDiagnostics(controllerId)?.branches[0].activity).toBe('on');
+		} finally {
+			runtime.onModuleDestroy();
+			jest.useRealTimers();
+		}
+	});
+
+	it('retains a potentially sent ON as unknown and immediately attempts mandatory OFF', async () => {
+		await settle();
+		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+		onOutcome = 'unknown';
+		proofAllowed = () => false;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })).toEqual([
+			expect.objectContaining({ status: 'unknown', fault: 'command_execution_unknown' }),
+		]);
+		expect(sends).toEqual([false, true, false]);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('heating_unresolved_on');
+		expect(runtime.readDiagnostics(controllerId)?.branches[0]).toMatchObject({
+			pending_on: true,
+			release_proven: false,
+		});
+	});
+
+	it('retains a refused OFF and its releasing claim until qualified release proof exists', async () => {
+		await settle();
+		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(samples.get(relayId)?.value).toBe(true);
+		offOutcome = 'refused';
+		proofAllowed = () => false;
+		await database.manager.update(VirtualThermostatActuatorClaimEntity, { controllerId }, { state: 'releasing' });
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId }, { requestedMode: 'off' });
+		runtime.request(controllerId);
+		await settle();
+		expect(
+			await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'off', status: 'unknown' }),
+		).toEqual([expect.objectContaining({ fault: 'known_no_send' })]);
+		expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId })).state).toBe(
+			'releasing',
+		);
+		expect(samples.get(relayId)?.value).toBe(true);
+		expect(runtime.readDiagnostics(controllerId)?.branches[0]).toMatchObject({
+			release_pending: true,
+			release_proven: false,
+		});
+		expect(actuationAttempts).toEqual([false, true, false]);
+	});
 
 	it('loads bounded settled-history witnesses and retains all unresolved identities for lazy drainage', async () => {
 		await settle();

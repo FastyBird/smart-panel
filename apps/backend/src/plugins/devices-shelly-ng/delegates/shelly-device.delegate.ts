@@ -273,6 +273,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.descriptor = matchedDescriptor;
 	}
 
+	/**
+	 * Capture a connected guarded RPC handler and switch instance under the current connection generation.
+	 * Handler/component replacement, reconnect or a changed device identity invalidates the session source.
+	 */
 	prepareGuardRpcSession(
 		componentId: number,
 		qualification: ShellyProtectiveQualification,
