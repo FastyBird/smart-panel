@@ -27,6 +27,8 @@ class _VirtualThermostatDeviceDetailState
   Map<String, dynamic>? _runtime;
   String? _error;
   bool _busy = false;
+  int _refreshGeneration = 0;
+  String? _refreshInFlightFor;
 
   String get _path =>
       '/plugins/devices-virtual/producers/thermostats/${widget.device.id}';
@@ -43,19 +45,37 @@ class _VirtualThermostatDeviceDetailState
 
   @override
   void dispose() {
+    _refreshGeneration++;
+    _refreshInFlightFor = null;
     _refreshTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _refresh() async {
+  @override
+  void didUpdateWidget(covariant VirtualThermostatDeviceDetail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.device.id == widget.device.id) return;
+    _refreshGeneration++;
+    _configuration = null;
+    _runtime = null;
+    _error = null;
+    _busy = false;
+    unawaited(_refresh());
+  }
+
+  Future<void> _refresh({bool force = false}) async {
     if (!locator.isRegistered<Dio>() || _busy) return;
+    final path = _path;
+    if (!force && _refreshInFlightFor == path) return;
+    final generation = ++_refreshGeneration;
+    _refreshInFlightFor = path;
     try {
       final dio = locator<Dio>();
       final responses = await Future.wait([
-        dio.get<Map<String, dynamic>>(_path),
-        dio.get<Map<String, dynamic>>('$_path/runtime'),
+        dio.get<Map<String, dynamic>>(path),
+        dio.get<Map<String, dynamic>>('$path/runtime'),
       ]);
-      if (!mounted) return;
+      if (!mounted || generation != _refreshGeneration) return;
       setState(() {
         _configuration = Map<String, dynamic>.from(
           responses[0].data?['data'] as Map? ?? {},
@@ -66,7 +86,11 @@ class _VirtualThermostatDeviceDetailState
         _error = null;
       });
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted && generation == _refreshGeneration) {
+        setState(() => _error = error.toString());
+      }
+    } finally {
+      if (generation == _refreshGeneration) _refreshInFlightFor = null;
     }
   }
 
@@ -104,6 +128,7 @@ class _VirtualThermostatDeviceDetailState
     if (_busy || commands.isEmpty || !locator.isRegistered<DevicesService>()) {
       return;
     }
+    final deviceId = widget.device.id;
     setState(() => _busy = true);
     try {
       final accepted = await locator<DevicesService>()
@@ -112,20 +137,26 @@ class _VirtualThermostatDeviceDetailState
             context: const PropertyCommandContext(origin: 'panel.device'),
             requireAtomicBatch: requireAtomicBatch,
           );
+      if (!mounted || widget.device.id != deviceId) return;
       if (!accepted) throw StateError('Thermostat command was rejected.');
       await _refreshAfterCommand();
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted && widget.device.id == deviceId) {
+        setState(() => _error = error.toString());
+      }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && widget.device.id == deviceId) {
+        setState(() => _busy = false);
+      }
     }
   }
 
   Future<void> _refreshAfterCommand() async {
     // The server accepts desired settings before physical readback settles.
     // Preserve the distinction by always fetching both contracts again.
+    if (!mounted) return;
     setState(() => _busy = false);
-    await _refresh();
+    await _refresh(force: true);
   }
 
   void _setMode(String mode) {

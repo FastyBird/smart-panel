@@ -117,6 +117,16 @@ export class VirtualThermostatConfigService {
 	async describe(prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>) {
 		return this.model(prepared.config, prepared.sources, prepared.actuators, prepared.settings);
 	}
+	/** Capture the persisted response inside the creating transaction, before fallible publication. */
+	async snapshot(manager: EntityManager, controllerId: string) {
+		const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		const [sources, actuators, settings] = await Promise.all([
+			manager.findBy(VirtualThermostatSourceEntity, { controllerId }),
+			manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: Not('released') }),
+			manager.findBy(VirtualThermostatSettingEntity, { controllerId }),
+		]);
+		return this.model(config, sources, actuators, settings, manager);
+	}
 	/** Must run only after the owning writer commits; no preview or rollback may publish. */
 	async afterCommit(controllerId: string) {
 		this.claims.invalidate();
@@ -538,6 +548,7 @@ export class VirtualThermostatConfigService {
 		sources: VirtualThermostatSourceEntity[],
 		actuators: VirtualThermostatActuatorClaimEntity[],
 		settings: VirtualThermostatSettingEntity[],
+		manager?: EntityManager,
 	) {
 		const reasons = ['controller_runtime_unavailable'];
 		for (const claim of actuators) {
@@ -551,7 +562,7 @@ export class VirtualThermostatConfigService {
 			controller: config.controllerId,
 			schema_version: 1,
 			revision: config.revision,
-			graph_revision: await this.graph.revision(),
+			graph_revision: await this.graph.revision(manager),
 			requested_mode: config.requestedMode,
 			locked: config.locked,
 			policy: config.policy,
