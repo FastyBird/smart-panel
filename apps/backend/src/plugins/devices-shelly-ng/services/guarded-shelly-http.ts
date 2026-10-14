@@ -1,6 +1,10 @@
 import { request as httpRequest } from 'node:http';
 
-/** Request creation may open a socket; end() is the actual header send and is fenced after connect. */
+/**
+ * Send one nonce-correlated guard request within the caller's absolute deadline and live authority.
+ * Recheck authority after connect, then notify onSend immediately before end() can send headers.
+ * A matching response identifies this request; callers must still validate its action-specific evidence.
+ */
 export async function guardedShellyHttp<T>(
 	url: URL,
 	deadline: number,
@@ -39,6 +43,7 @@ export async function guardedShellyHttp<T>(
 				}
 			});
 		});
+		/** Settle once and retire the deadline timer so late response events cannot change the result. */
 		function finish(error: Error | null, value?: T): void {
 			if (!pending) return;
 			pending = false;
@@ -46,6 +51,7 @@ export async function guardedShellyHttp<T>(
 			if (error) reject(error);
 			else resolve(value);
 		}
+		/** Fence the header write after connect; once onSend runs, a failed write may still have reached the device. */
 		const send = (): void => {
 			try {
 				if (!pending || !isCurrent() || Date.now() >= deadline) {
