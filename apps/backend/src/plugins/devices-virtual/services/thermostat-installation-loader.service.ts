@@ -45,6 +45,8 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	private queue: Promise<void> = Promise.resolve();
 	private scheduled = false;
 	private readonly pausedClaims = new Set<string>();
+	private readonly verifications = new Map<string, symbol>();
+	private readonly humanVerifications = new Map<string, symbol>();
 	private readonly active = new Map<
 		string,
 		{
@@ -95,8 +97,15 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		if (this.scheduled || this.stopped) return;
 		this.scheduled = true;
 		this.queue = this.queue
-			.then(() => (this.stopped ? undefined : this.refresh()))
-			.catch(() => this.invalidate())
+			.then(async () => {
+				if (this.stopped) return;
+				const epoch = this.epoch;
+				try {
+					await this.refresh();
+				} catch {
+					if (epoch === this.epoch) this.invalidate();
+				}
+			})
 			.finally(() => {
 				this.scheduled = false;
 			});
@@ -115,22 +124,40 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	}
 	/** Explicit human activation fences before every await; background refresh only renews already armed intent. */
 	async verify(claimId: string, expectedRevision?: number, actorId: string | null = null): Promise<void> {
-		if (actorId === null) return this.verifyProfile(claimId, expectedRevision, null);
-		const release = this.claims.holdRecoveryFence();
-		this.claims.revokeAllQualifications();
-		this.pausedClaims.add(claimId);
-		this.invalidate();
+		// A renewal cannot supersede the human operation that is still establishing armed intent.
+		if (actorId === null && this.humanVerifications.has(claimId)) return;
+		let release: (() => void) | undefined;
+		if (actorId !== null) {
+			release = this.claims.holdRecoveryFence();
+			this.claims.revokeAllQualifications();
+			this.pausedClaims.add(claimId);
+			this.invalidate();
+		}
+		const operation = Symbol();
+		const epoch = this.epoch;
+		this.verifications.set(claimId, operation);
+		if (actorId !== null) this.humanVerifications.set(claimId, operation);
+		const isCurrent = () => epoch === this.epoch && this.verifications.get(claimId) === operation && !this.stopped;
 		try {
-			await this.verifyProfile(claimId, expectedRevision, actorId);
+			await this.verifyProfile(claimId, expectedRevision, actorId, isCurrent);
+		} catch (error) {
+			const current = isCurrent();
+			if (current) this.invalidate();
+			if (actorId !== null || current) throw error;
 		} finally {
-			release();
-			await this.claims.refresh();
+			if (this.verifications.get(claimId) === operation) this.verifications.delete(claimId);
+			if (this.humanVerifications.get(claimId) === operation) this.humanVerifications.delete(claimId);
+			if (release) {
+				release();
+				await this.claims.refresh();
+			}
 		}
 	}
 	private async verifyProfile(
 		claimId: string,
 		expectedRevision: number | undefined,
 		actorId: string | null,
+		isCurrent: () => boolean,
 	): Promise<void> {
 		const epoch = this.epoch;
 		const row = await this.dataSource.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId });
@@ -176,109 +203,108 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 		} catch (error) {
 			reasons.push(error instanceof Error ? error.message : 'installation_verification_failed');
 		}
-		await this.lock
-			.runExclusive(async () => {
-				const current = await this.dataSource.manager.findOneBy(ThermostatInstallationEntity, { claimId });
-				if (!current || current.revision !== row.revision || epoch !== this.epoch || this.stopped) return;
-				let verifiedBinding: Awaited<ReturnType<ThermostatInstallationBindingsService['resolve']>>;
-				try {
-					verifiedBinding = await this.bindings.resolve(this.dataSource.manager, claimId);
-					if (verifiedConfigurationRevision !== verifiedBinding.config.revision)
-						reasons.push('configuration_changed_during_inspection');
-					if (verifiedBinding.fingerprint !== row.bindingFingerprint)
-						reasons.push('installation_bindings_changed_during_inspection');
-				} catch {
-					reasons.push('installation_bindings_unavailable');
-				}
-				if (!lease?.isCurrent() && reasons.length === 0) reasons.push('machine_lease_expired');
-				const observation: ThermostatMachineObservation = {
-					observedAt: new Date().toISOString(),
-					configurationRevision: verifiedConfigurationRevision,
-					state: reasons.length ? 'blocked' : 'verified_metadata',
-					reasons,
-					...(reasons.length === 0 ? { scriptHash: hash, firmware: row.setup.firmware } : {}),
-					physicalSafetyCertified: false,
-				};
-				// Qualification is published only after durable observation/explicit activation commit succeeds.
-				if (
-					actorId ||
-					JSON.stringify({ ...current.lastMachineObservation, observedAt: null }) !==
-						JSON.stringify({ ...observation, observedAt: null })
-				) {
-					await this.dataSource.transaction(async (manager) => {
-						const result = await manager.update(
-							ThermostatInstallationEntity,
-							{ claimId, revision: row.revision },
-							{
-								lastMachineObservation: observation,
-								...(actorId && reasons.length === 0 ? { armedAt: current.armedAt ?? new Date() } : {}),
+		await this.lock.runExclusive(async () => {
+			const current = await this.dataSource.manager.findOneBy(ThermostatInstallationEntity, { claimId });
+			if (!current || current.revision !== row.revision || !isCurrent()) return;
+			let verifiedBinding: Awaited<ReturnType<ThermostatInstallationBindingsService['resolve']>>;
+			try {
+				verifiedBinding = await this.bindings.resolve(this.dataSource.manager, claimId);
+				if (verifiedConfigurationRevision !== verifiedBinding.config.revision)
+					reasons.push('configuration_changed_during_inspection');
+				if (verifiedBinding.fingerprint !== row.bindingFingerprint)
+					reasons.push('installation_bindings_changed_during_inspection');
+			} catch {
+				reasons.push('installation_bindings_unavailable');
+			}
+			if (!isCurrent()) return;
+			if (!lease?.isCurrent() && reasons.length === 0) reasons.push('machine_lease_expired');
+			const observation: ThermostatMachineObservation = {
+				observedAt: new Date().toISOString(),
+				configurationRevision: verifiedConfigurationRevision,
+				state: reasons.length ? 'blocked' : 'verified_metadata',
+				reasons,
+				...(reasons.length === 0 ? { scriptHash: hash, firmware: row.setup.firmware } : {}),
+				physicalSafetyCertified: false,
+			};
+			// Qualification is published only after durable observation/explicit activation commit succeeds.
+			if (
+				actorId ||
+				JSON.stringify({ ...current.lastMachineObservation, observedAt: null }) !==
+					JSON.stringify({ ...observation, observedAt: null })
+			) {
+				await this.dataSource.transaction(async (manager) => {
+					const result = await manager.update(
+						ThermostatInstallationEntity,
+						{ claimId, revision: row.revision },
+						{
+							lastMachineObservation: observation,
+							...(actorId && reasons.length === 0 ? { armedAt: current.armedAt ?? new Date() } : {}),
+						},
+					);
+					if (result.affected !== 1) throw new ConflictException('Installation revision changed during verification.');
+					if (!isCurrent()) throw new ConflictException('Installation verification superseded.');
+					await manager.save(
+						ThermostatInstallationAuditEntity,
+						manager.create(ThermostatInstallationAuditEntity, {
+							claimId,
+							revision: row.revision,
+							action: reasons.length ? 'metadata_blocked' : actorId ? 'activated' : 'metadata_verified',
+							actorId,
+							occurredAt: new Date(),
+							snapshot: {
+								setup: row.setup,
+								attestations: row.attestations,
+								bindingFingerprint: row.bindingFingerprint,
+								expectedScriptHash: row.expectedScriptHash,
+								observation,
 							},
-						);
-						if (result.affected !== 1)
-							throw new ConflictException('Installation revision changed during verification.');
-						await manager.save(
-							ThermostatInstallationAuditEntity,
-							manager.create(ThermostatInstallationAuditEntity, {
-								claimId,
-								revision: row.revision,
-								action: reasons.length ? 'metadata_blocked' : actorId ? 'activated' : 'metadata_verified',
-								actorId,
-								occurredAt: new Date(),
-								snapshot: {
-									setup: row.setup,
-									attestations: row.attestations,
-									bindingFingerprint: row.bindingFingerprint,
-									expectedScriptHash: row.expectedScriptHash,
-									observation,
-								},
-							}),
-						);
-					});
-				}
-				if (epoch !== this.epoch || this.stopped) return;
-				const existing = this.active.get(claimId);
-				if (reasons.length || !lease?.isCurrent()) {
-					this.claims.revokeQualification(row.physicalIdentity);
-					this.active.delete(claimId);
-					if (existing) this.runtime.request(row.controllerId);
-					return;
-				}
-				if (actorId) this.pausedClaims.delete(claimId);
-				if (this.pausedClaims.has(claimId)) return;
-				const entry = {
-					revision: row.revision,
-					configurationRevision: verifiedConfigurationRevision,
-					identity: row.physicalIdentity,
-					controllerId: row.controllerId,
-					isCurrent: lease.isCurrent,
-				};
+						}),
+					);
+					if (!isCurrent()) throw new ConflictException('Installation verification superseded.');
+					if (reasons.length === 0 && !lease?.isCurrent())
+						throw new ConflictException('Installation machine lease expired during verification.');
+				});
+			}
+			if (!isCurrent()) return;
+			const existing = this.active.get(claimId);
+			if (reasons.length || !lease?.isCurrent()) {
+				this.claims.revokeQualification(row.physicalIdentity);
+				this.active.delete(claimId);
+				if (existing) this.runtime.request(row.controllerId);
+				return;
+			}
+			if (actorId) this.pausedClaims.delete(claimId);
+			if (this.pausedClaims.has(claimId)) return;
+			const entry = {
+				revision: row.revision,
+				configurationRevision: verifiedConfigurationRevision,
+				identity: row.physicalIdentity,
+				controllerId: row.controllerId,
+				isCurrent: lease.isCurrent,
+			};
+			if (
+				!existing ||
+				existing.revision !== row.revision ||
+				existing.configurationRevision !== verifiedConfigurationRevision ||
+				!existing.isCurrent()
+			) {
 				this.active.set(claimId, entry);
-				if (
-					!existing ||
-					existing.revision !== row.revision ||
-					existing.configurationRevision !== verifiedConfigurationRevision ||
-					!existing.isCurrent()
-				) {
-					const artifact = thermostatInstallationArtifact(row, verifiedBinding);
-					this.claims.recordQualification({
-						physicalIdentity: row.physicalIdentity,
-						qualificationGeneration: verifiedBinding.claim.qualificationGeneration ?? undefined,
-						profile: artifact.qualification,
-						upstreamWritersExcluded: true,
-						opposedOutputsInterlocked:
-							!verifiedBinding.opposed || row.attestations.some((item) => item.kind === 'opposed_interlock'),
-						machineLeaseIsCurrent: () =>
-							epoch === this.epoch &&
-							!this.pausedClaims.has(claimId) &&
-							this.active.get(claimId)?.revision === row.revision &&
-							this.active.get(claimId).isCurrent(),
-					});
-					this.runtime.request(row.controllerId);
-				}
-			})
-			.catch((error: unknown) => {
-				this.invalidate();
-				throw error;
-			});
+				const artifact = thermostatInstallationArtifact(row, verifiedBinding);
+				this.claims.recordQualification({
+					physicalIdentity: row.physicalIdentity,
+					qualificationGeneration: verifiedBinding.claim.qualificationGeneration ?? undefined,
+					profile: artifact.qualification,
+					upstreamWritersExcluded: true,
+					opposedOutputsInterlocked:
+						!verifiedBinding.opposed || row.attestations.some((item) => item.kind === 'opposed_interlock'),
+					machineLeaseIsCurrent: () =>
+						epoch === this.epoch &&
+						!this.pausedClaims.has(claimId) &&
+						this.active.get(claimId) === entry &&
+						entry.isCurrent(),
+				});
+				this.runtime.request(row.controllerId);
+			}
+		});
 	}
 }
