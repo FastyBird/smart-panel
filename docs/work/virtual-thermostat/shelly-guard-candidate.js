@@ -237,7 +237,20 @@ function energize(request, params) {
 	Shelly.call('Switch.Set', { id: cfg.componentId, on: true, toggle_after: remaining / 1000 }, onDone);
 }
 function watchdog() {
-	if (!floorSafe() || now() >= until || fault) driveOff();
+	if (fault || pendingFence || (pendingOn && until === 0)) {
+		driveOff();
+		return;
+	}
+	let hasLease = until > 0;
+	if (hasLease && (now() >= until || !floorSafe())) {
+		driveOff();
+		return;
+	}
+	let output = Shelly.getComponentStatus('switch', cfg.componentId);
+	// Pending ON owns its valid lease even while the cached output is still OFF;
+	// revoked pending ON keeps requesting emergency OFF until its callback drains.
+	// Unknown output fails closed; idle confirmed OFF needs no serial IO cycle.
+	if (!output || typeof output.output !== 'boolean' || (!hasLease && output.output)) driveOff();
 }
 function floorUpdate(event) {
 	if (event.component !== cfg.floorComponentType + ':' + cfg.floorComponentId) return;

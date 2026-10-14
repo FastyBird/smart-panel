@@ -75,7 +75,9 @@ three coefficients. Non-finite/missing readings, voltage outside `(0, referenceV
 non-positive inverse Kelvin inhibit heat immediately. Calibration and component snapshot are part of the installed
 script hash; no parameters or limits default from the existing script. Invalid/stale/error input inhibits heat. Floor >=
 limit immediately requests OFF; recovery requires a value **strictly below** limit minus hysteresis.
-The configured watchdog issues OFF after stale floor/absolute expiry even with a stalled ON callback. Reading
+The configured watchdog issues OFF after stale floor/absolute expiry even with a stalled ON callback. An
+idle confirmed OFF output does not issue serial IO, and a pending ON keeps its valid lease. Unknown output,
+unexpected ON without a lease, faults and pending fences still request OFF; uncertain execution faults stay latched.
 `Shelly.getComponentStatus` provides an internal cached snapshot, not a new physical measurement. This candidate
 never refreshes freshness from that snapshot: actual source reports are required, and equal-report/measurement
 notification behavior must be qualified. The local raw-floor calculation shares those report timestamps.

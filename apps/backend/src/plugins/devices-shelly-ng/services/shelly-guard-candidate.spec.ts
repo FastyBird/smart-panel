@@ -40,6 +40,7 @@ interface LocalCall {
 class DeviceFixture {
 	time = 1000;
 	output = false;
+	switchStatus: Record<string, unknown> | null | undefined;
 	storedEpoch = 10;
 	floor = 20;
 	floorConfiguration: Record<string, unknown> = { id: 100, offset: 0 };
@@ -59,7 +60,12 @@ class DeviceFixture {
 				getDeviceInfo: () => ({ id: config.deviceId, model: config.model, fw_id: config.firmware }),
 				getUptimeMs: () => this.time,
 				getComponentConfig: () => this.floorConfiguration,
-				getComponentStatus: (type: string) => (type === 'temperature' ? { tC: this.floor } : { output: this.output }),
+				getComponentStatus: (type: string) =>
+					type === 'temperature'
+						? { tC: this.floor }
+						: this.switchStatus === undefined
+							? { output: this.output }
+							: this.switchStatus,
 				call: (method: string, params: LocalCall['params'], callback: LocalCall['callback'], userdata?: unknown) =>
 					this.calls.push({ method, params, callback, userdata }),
 				addStatusHandler: (handler: DeviceFixture['statusHandler']) => {
@@ -74,8 +80,8 @@ class DeviceFixture {
 			Timer: { set: (_period: number, _repeat: boolean, handler: () => void) => this.timers.push(handler) },
 		});
 	}
-	complete(method: string, code = 0): LocalCall {
-		const index = this.calls.findIndex((call) => call.method === method);
+	complete(method: string, code = 0, on?: boolean): LocalCall {
+		const index = this.calls.findIndex((call) => call.method === method && (on === undefined || call.params.on === on));
 		if (index < 0) throw new Error(`No pending ${method}`);
 		const [call] = this.calls.splice(index, 1);
 		let result: unknown = {};
@@ -146,6 +152,146 @@ describe('offline Shelly guard protocol candidate', () => {
 			expect(device.handlers.size).toBe(0);
 			expect(device.calls).toEqual([]);
 		}
+	});
+	it('keeps repeated healthy idle watchdog ticks free of serial IO and admits the next ON', () => {
+		const device = fixture();
+		for (let tick = 0; tick < 10; tick++) {
+			device.time += config.watchdogMs;
+			device.timers[0]();
+			expect(device.calls).toEqual([]);
+			expect(device.request('SPGuardStatus').result).toMatchObject({ ready: true, busy: false, fault: null });
+		}
+		const on = device.on();
+		device.complete('Switch.Set');
+		expect(on.result).toMatchObject({ accepted: true });
+	});
+	it('keeps idle confirmed OFF quiet after floor freshness expires while refusing ON', () => {
+		const device = fixture();
+		device.time += config.floorMaxAgeMs;
+		for (let tick = 0; tick < 3; tick++) device.timers[0]();
+		expect(device.calls).toEqual([]);
+		expect(device.request('SPGuardStatus').result).toMatchObject({ ready: true, floorSafe: false, fault: null });
+		expect(device.on().error).toBe('on_not_admitted');
+	});
+	it('preserves a valid pending ON and accepted active lease across watchdog ticks', () => {
+		const device = fixture();
+		const deadline = device.time + 5000;
+		const on = device.on(device.storedEpoch, deadline);
+		for (let tick = 0; tick < 3; tick++) {
+			device.time += config.watchdogMs;
+			device.timers[0]();
+			expect(device.calls.map((call) => call.params.on)).toEqual([true]);
+		}
+		device.complete('Switch.Set');
+		expect(on.result).toMatchObject({ accepted: true, untilMs: deadline });
+		device.timers[0]();
+		expect(device.output).toBe(true);
+		expect(device.calls).toEqual([]);
+	});
+	it.each(['expired lease', 'stale floor', 'changed floor configuration'])(
+		'cancels and drains pending ON on %s',
+		(reason) => {
+			const device = fixture();
+			const on = device.on(device.storedEpoch, device.time + (reason === 'expired lease' ? 1000 : 10000));
+			if (reason === 'expired lease') device.time += 1000;
+			else if (reason === 'stale floor') device.time += config.floorMaxAgeMs;
+			else device.floorConfiguration = { id: 100, offset: 1 };
+			device.timers[0]();
+			expect(device.calls.map((call) => call.params.on)).toEqual([true, false]);
+			device.complete('Switch.Set'); // Late ON must still be drained after emergency OFF dispatch.
+			expect(on.error).toBe('on_superseded');
+			device.complete('Switch.Set'); // Emergency OFF alone is not serial readback.
+			device.complete('Switch.Set');
+			device.complete('Switch.GetStatus');
+			expect(device.output).toBe(false);
+			expect(device.calls).toEqual([]);
+		},
+	);
+	it('keeps a pending ON canceled when an unsafe floor report is followed by recovery before its callback', () => {
+		const device = fixture();
+		const on = device.on();
+		device.floorReport(config.floorLimitC);
+		device.floorReport(20);
+		device.timers[0]();
+		expect(device.calls.map((call) => call.params.on)).toEqual([true, false]);
+		device.complete('Switch.Set');
+		expect(on.error).toBe('on_superseded');
+		device.complete('Switch.Set');
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		expect(device.output).toBe(false);
+	});
+	it('retries emergency OFF for a revoked pending ON even after earlier emergency OFF confirms idle output', () => {
+		const device = fixture();
+		const on = device.on();
+		device.time += 5000;
+		for (let tick = 0; tick < 3; tick++) {
+			device.timers[0]();
+			expect(device.calls.map((call) => call.params.on)).toEqual([true, false]);
+			device.complete('Switch.Set', 0, false);
+			expect(device.output).toBe(false);
+			expect(on.result).toBeUndefined();
+		}
+		device.complete('Switch.Set');
+		expect(on.error).toBe('on_superseded');
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		expect(device.output).toBe(false);
+		expect(device.calls).toEqual([]);
+	});
+	it.each([null, {}, { output: null }, { output: 'false' }, { output: true }])(
+		'drives idle unknown or unexpectedly energized output %j OFF',
+		(status) => {
+			const device = fixture();
+			device.switchStatus = status;
+			device.timers[0]();
+			expect(device.calls.map((call) => call.params)).toEqual([{ id: 0, on: false }]);
+			device.complete('Switch.Set');
+			device.complete('Switch.GetStatus');
+			expect(device.output).toBe(false);
+		},
+	);
+	it('fails closed on unknown output while ON is pending and drains its late callback', () => {
+		const device = fixture();
+		const on = device.on();
+		device.switchStatus = null;
+		device.timers[0]();
+		expect(device.calls.map((call) => call.params.on)).toEqual([true, false]);
+		device.complete('Switch.Set');
+		expect(on.error).toBe('on_superseded');
+		device.complete('Switch.Set');
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		expect(device.output).toBe(false);
+	});
+	it('keeps watchdog emergency OFF separate from the persisted fence barrier during pending ON', () => {
+		const device = fixture();
+		const on = device.on();
+		const fence = device.request('SPGuardFence');
+		device.timers[0]();
+		expect(device.calls.map((call) => call.method)).toEqual(['Switch.Set', 'KVS.Set', 'Switch.Set']);
+		device.complete('Switch.Set');
+		expect(on.error).toBe('on_superseded');
+		device.complete('Switch.Set');
+		expect(fence.result).toBeUndefined();
+		expect(device.calls.map((call) => call.method)).toEqual(['KVS.Set']);
+		device.complete('KVS.Set');
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		expect(fence.result).toMatchObject({ output: false, localOnDrained: true });
+	});
+	it('retries OFF for a real execution fault without clearing its admission latch after readback', () => {
+		const device = fixture();
+		device.output = true;
+		device.timers[0]();
+		device.complete('Switch.Set', -1);
+		expect(device.request('SPGuardStatus').result).toMatchObject({ ready: false, fault: 'off_execution_unknown' });
+		device.timers[0]();
+		expect(device.calls.map((call) => call.params.on)).toEqual([false]);
+		device.complete('Switch.Set');
+		device.complete('Switch.GetStatus');
+		expect(device.request('SPGuardStatus').result).toMatchObject({ ready: false, fault: 'off_execution_unknown' });
+		expect(device.on().error).toBe('on_not_admitted');
 	});
 	it('requires earlier ON completion, persisted epoch, and matched OFF readback before a barrier acknowledgement', () => {
 		const device = fixture();
