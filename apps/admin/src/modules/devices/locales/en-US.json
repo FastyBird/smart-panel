@@ -852,6 +852,7 @@
 			"event": "Event",
 			"fault": "Fault",
 			"fault_description": "Fault description",
+			"floor_temperature": "Floor temperature",
 			"firmware_revision": "Firmware revision",
 			"frequency": "Frequency",
 			"grid_export": "Grid export",

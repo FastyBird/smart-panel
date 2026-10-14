@@ -1,7 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -54,6 +54,10 @@ export class LocalScenePlatform implements IScenePlatform {
 
 	getType(): string {
 		return SCENES_LOCAL_TYPE;
+	}
+
+	supportsAdjacentActions(): boolean {
+		return true;
 	}
 
 	async getCommandTtlMs(actions: readonly SceneActionEntity[]): Promise<number> {
@@ -242,7 +246,8 @@ export class LocalScenePlatform implements IScenePlatform {
 	): Promise<ActionExecutionResultModel[]> {
 		const results: ActionExecutionResultModel[] = [];
 
-		for (const action of actions) {
+		for (let index = 0; index < actions.length; index++) {
+			const action = actions[index];
 			const startTime = Date.now();
 
 			try {
@@ -260,7 +265,7 @@ export class LocalScenePlatform implements IScenePlatform {
 				// Validate action first
 				const validation = await this.validateActionWithDetails(action);
 
-				if (!validation.valid || !validation.device || !validation.property) {
+				if (!validation.valid || !validation.device || !validation.channel || !validation.property) {
 					results.push({
 						actionId: action.id,
 						success: false,
@@ -285,6 +290,64 @@ export class LocalScenePlatform implements IScenePlatform {
 						executionTimeMs: Date.now() - startTime,
 					});
 					continue;
+				}
+				if (
+					device.type === 'virtual' &&
+					(device as DeviceEntity & { mode?: string }).mode === 'climate_controller' &&
+					property.category !== PropertyCategory.LOCKED
+				) {
+					const grouped: Array<{ action: LocalSceneActionEntity; update: IDevicePropertyData }> = [
+						{ action, update: { device, channel, property, value: action.value } },
+					];
+					const propertyIds = new Set([property.id]);
+					while (index + grouped.length < actions.length) {
+						const next = actions[index + grouped.length];
+						if (!isLocalSceneAction(next) || next.deviceId !== device.id || propertyIds.has(next.propertyId)) break;
+						const resolved = await this.validateActionWithDetails(next);
+						if (
+							!resolved.valid ||
+							!resolved.channel ||
+							!resolved.property ||
+							resolved.property.category === PropertyCategory.LOCKED
+						)
+							break;
+						grouped.push({
+							action: next,
+							update: {
+								device: resolved.device,
+								channel: resolved.channel,
+								property: resolved.property,
+								value: next.value,
+							},
+						});
+						propertyIds.add(next.propertyId);
+					}
+					if (grouped.length > 1) {
+						let success = false;
+						let error: string | null = 'Command execution failed';
+						try {
+							const updates = grouped.map(({ update }) => update);
+							const dispatched = context
+								? await this.propertyCommandDispatchService.dispatchBatch(updates, {
+										...context,
+										ttlMs: context.deadlineAt - Date.now(),
+									})
+								: await this.propertyCommandDispatchService.dispatchBatch(updates);
+							success = dispatched.success;
+							if (success) error = null;
+						} catch (failure) {
+							error = failure instanceof Error ? failure.message : 'Command execution failed';
+						}
+						for (const { action: member } of grouped)
+							results.push({
+								actionId: member.id,
+								success,
+								error,
+								executionTimeMs: Date.now() - startTime,
+							});
+						index += grouped.length - 1;
+						continue;
+					}
 				}
 
 				// Send command to device via platform

@@ -157,6 +157,7 @@ definitions:
       - fault
       - fault_description
       - firmware_revision
+      - floor_temperature
       - frequency
       - grid_export
       - grid_import

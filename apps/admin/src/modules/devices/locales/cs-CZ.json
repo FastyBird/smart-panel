@@ -852,6 +852,7 @@
 			"event": "Událost",
 			"fault": "Porucha",
 			"fault_description": "Popis poruchy",
+			"floor_temperature": "Teplota podlahy",
 			"firmware_revision": "Revize firmwaru",
 			"frequency": "Frekvence",
 			"grid_export": "Dodávka do sítě",

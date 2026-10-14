@@ -116,6 +116,11 @@
 		</div>
 	</el-card>
 
+	<virtual-thermostat-editor
+		v-if="props.device.category === DevicesModuleDeviceCategory.thermostat && 'mode' in props.device && props.device.mode === DevicesVirtualPluginDeviceMode.climate_controller"
+		:device-id="props.device.id"
+	/>
+
 	<virtual-device-remap-dialog
 		v-if="remapTarget"
 		:property-id="remapTarget.propertyId"
@@ -139,12 +144,13 @@ import type { IChannel, IDevice } from '../../../modules/devices';
 import { DeviceSchema, RouteNames as DevicesRouteNames, transformDeviceResponse } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../../../modules/devices/store/keys';
 import type { DevicesVirtualPluginGetDeviceSourceDevicesOperation } from '../../../openapi.constants';
-import { DevicesVirtualPluginDeviceMode, DevicesVirtualPluginValueOrigin } from '../../../openapi.constants';
+import { DevicesModuleDeviceCategory, DevicesVirtualPluginDeviceMode, DevicesVirtualPluginValueOrigin } from '../../../openapi.constants';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import type { IVirtualChannelProperty } from '../store/channels.properties.store.types';
 import type { MeasurementMode } from '../utils/measurement-authoring.utils';
 
 import VirtualDeviceRemapDialog from './virtual-device-remap-dialog.vue';
+import VirtualThermostatEditor from './virtual-thermostat-editor.vue';
 import type { IVirtualDeviceSourcesProps, IVirtualSourceWarning } from './virtual-device-sources.types';
 import VirtualLightGroupDetail from './virtual-light-group-detail.vue';
 

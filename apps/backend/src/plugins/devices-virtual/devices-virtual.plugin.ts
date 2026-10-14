@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { DeviceCategory } from '../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../modules/devices/devices.exceptions';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
@@ -32,12 +33,15 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
+import { VirtualThermostatAuthoringController } from './controllers/virtual-thermostat-authoring.controller';
+import { VirtualThermostatConfigController } from './controllers/virtual-thermostat-config.controller';
 import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME,
 	DEVICES_VIRTUAL_PLUGIN_NAME,
 	DEVICES_VIRTUAL_TYPE,
+	VIRTUAL_THERMOSTAT_COMMAND_HANDLER,
 } from './devices-virtual.constants';
 import {
 	VirtualCategoryChangeUnsafeException,
@@ -62,6 +66,17 @@ import {
 	VirtualDeviceMode,
 } from './entities/devices-virtual.entity';
 import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
+import {
+	VirtualThermostatBranchRuntimeEntity,
+	VirtualThermostatCommandEntity,
+	VirtualThermostatRuntimeEntity,
+} from './entities/virtual-thermostat-runtime.entity';
+import {
+	VirtualThermostatActuatorClaimEntity,
+	VirtualThermostatConfigEntity,
+	VirtualThermostatSettingEntity,
+	VirtualThermostatSourceEntity,
+} from './entities/virtual-thermostat.entity';
 import { VirtualDeviceInformationListener } from './listeners/virtual-device-information.listener';
 import { VirtualIndexMaintenanceListener } from './listeners/virtual-index-maintenance.listener';
 import { VirtualProjectionListener } from './listeners/virtual-projection.listener';
@@ -80,9 +95,16 @@ import { VirtualMeasurementAuthoringService } from './services/virtual-measureme
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
+import { VirtualThermostatAuthoringService } from './services/virtual-thermostat-authoring.service';
+import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
+import { VirtualThermostatConfigService } from './services/virtual-thermostat-config.service';
+import { VirtualThermostatInputsService } from './services/virtual-thermostat-inputs.service';
+import { VirtualThermostatRuntimeService } from './services/virtual-thermostat-runtime.service';
+import { VirtualThermostatTransportService } from './services/virtual-thermostat-transport.service';
 import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
 import { VirtualTransformRuntimeService } from './services/virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
+import { VirtualThermostatOwnershipSubscriber } from './subscribers/virtual-thermostat-ownership.subscriber';
 import { VirtualTransformMetadataSubscriber } from './subscribers/virtual-transform-metadata.subscriber';
 import { CategoryAllowedConstraintValidator } from './validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from './validators/device-is-virtual-constraint.validator';
@@ -105,6 +127,13 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			VirtualChannelPropertyEntity,
 			DeviceEntity,
 			...VIRTUAL_PRODUCER_ENTITIES,
+			VirtualThermostatConfigEntity,
+			VirtualThermostatActuatorClaimEntity,
+			VirtualThermostatSourceEntity,
+			VirtualThermostatSettingEntity,
+			VirtualThermostatRuntimeEntity,
+			VirtualThermostatBranchRuntimeEntity,
+			VirtualThermostatCommandEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
@@ -115,6 +144,14 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		VirtualThermostatClaimsService,
+		VirtualThermostatConfigService,
+		VirtualThermostatAuthoringService,
+		VirtualThermostatInputsService,
+		VirtualThermostatTransportService,
+		VirtualThermostatRuntimeService,
+		{ provide: VIRTUAL_THERMOSTAT_COMMAND_HANDLER, useExisting: VirtualThermostatConfigService },
+		VirtualThermostatOwnershipSubscriber,
 		VirtualLightGroupAuthoringService,
 		VirtualLightGroupContributionService,
 		VirtualValueSourceService,
@@ -141,6 +178,8 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		SourceNotVirtualConstraintValidator,
 	],
 	controllers: [
+		VirtualThermostatConfigController,
+		VirtualThermostatAuthoringController,
 		VirtualMeasurementAuthoringController,
 		VirtualTransformConfigController,
 		VirtualDevicesController,
@@ -166,6 +205,7 @@ export class DevicesVirtualPlugin {
 		private readonly virtualDevicesService: VirtualDevicesService,
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly producerState: VirtualProducerStateService,
+		private readonly thermostats: VirtualThermostatConfigService,
 	) {}
 
 	onModuleInit() {
@@ -189,6 +229,8 @@ export class DevicesVirtualPlugin {
 						throw new DevicesValidationException(
 							'Virtual device mode is immutable; create the requested producer mode as a separate device.',
 						);
+					if (device.mode === VirtualDeviceMode.CLIMATE_CONTROLLER && device.category !== DeviceCategory.THERMOSTAT)
+						throw new DevicesValidationException('Climate-controller category must remain thermostat.');
 					await this.virtualDevicesService.assertCategoryChangeSafe(device, previous.category);
 				} catch (error) {
 					// Translated for the same reason the property hooks translate theirs: the plugin's own
@@ -348,7 +390,8 @@ export class DevicesVirtualPlugin {
 						await this.graph.validateProperty(manager, property);
 					}
 					this.virtualDevicesService.assertValueOriginPairSupported(property);
-					this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
+					if (!(await this.thermostats.isRegisteredSetting(property, manager)))
+						this.virtualDevicesService.assertOwnedPropertyNotWritable(property);
 
 					// A remap is the other way an incompatible projection gets stored, and the one the
 					// wizard's preview covers least well: the source can change permissions or data type

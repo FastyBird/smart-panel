@@ -51,6 +51,7 @@
 				{{ t('devicesVirtualPlugin.measurement.transform') }}
 			</el-radio-button>
 			<el-radio-button :value="DevicesVirtualPluginDeviceMode.actuator_group">{{ t('devicesVirtualPlugin.measurement.group') }}</el-radio-button>
+			<el-radio-button :value="DevicesVirtualPluginDeviceMode.climate_controller">Thermostat controller</el-radio-button>
 		</el-radio-group>
 	</div>
 
@@ -270,6 +271,7 @@ const { t } = useI18n();
 const router = useRouter();
 const onMode = (mode: unknown) => {
 	if (mode === DevicesVirtualPluginDeviceMode.actuator_group) void router.push({ name: RouteNames.LIGHT_GROUP_WIZARD });
+	else if (mode === DevicesVirtualPluginDeviceMode.climate_controller) void router.push({ name: RouteNames.THERMOSTAT_WIZARD });
 	else if (mode === DevicesVirtualPluginDeviceMode.sensor_aggregate || mode === DevicesVirtualPluginDeviceMode.sensor_transform)
 		void router.push({ name: RouteNames.MEASUREMENT_WIZARD, query: { mode } });
 };

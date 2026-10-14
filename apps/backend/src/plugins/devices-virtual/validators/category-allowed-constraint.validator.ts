@@ -9,6 +9,7 @@ import { Injectable } from '@nestjs/common';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { VirtualCategoryNotSupportedException } from '../devices-virtual.exceptions';
+import { VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 
 /**
@@ -28,7 +29,12 @@ import { VirtualDevicesService } from '../services/virtual-devices.service';
 export class CategoryAllowedConstraintValidator implements ValidatorConstraintInterface {
 	constructor(private readonly virtualDevicesService: VirtualDevicesService) {}
 
-	validate(category: DeviceCategory | undefined | null): boolean {
+	validate(category: DeviceCategory | undefined | null, args?: ValidationArguments): boolean {
+		if (
+			category === DeviceCategory.THERMOSTAT &&
+			(args?.object as { mode?: VirtualDeviceMode })?.mode === VirtualDeviceMode.CLIMATE_CONTROLLER
+		)
+			return true;
 		// Empty values are @IsOptional/@IsNotEmpty's business, not ours.
 		if (!category) {
 			return true;
