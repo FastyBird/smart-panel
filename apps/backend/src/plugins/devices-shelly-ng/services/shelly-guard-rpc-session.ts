@@ -78,6 +78,7 @@ export class ShellyGuardRpcSession {
 		params: Record<string, number>,
 		guard: () => boolean,
 		deadline: number,
+		onSend?: () => void,
 	): Promise<T> {
 		const script = this.qualification.guardScript;
 		if (!script || !this.isCurrent() || !guard()) throw new Error('Guard HTTP lease expired');
@@ -87,7 +88,7 @@ export class ShellyGuardRpcSession {
 			nonce: randomUUID(),
 			...Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])),
 		}).toString();
-		return guardedShellyHttp<T>(url, deadline, () => this.isCurrent() && guard());
+		return guardedShellyHttp<T>(url, deadline, () => this.isCurrent() && guard(), undefined, onSend);
 	}
 
 	private async inspect(isCurrent: () => boolean, deadline: number): Promise<GuardStatus | null> {
@@ -148,6 +149,7 @@ export class ShellyGuardRpcSession {
 	async on(leaseSeconds: number, timeoutMs: number, isAdmitted: () => boolean): Promise<ShellyProtectiveCommandResult> {
 		const deadline = Date.now() + timeoutMs;
 		const guard = () => this.isCurrent() && isAdmitted() && Date.now() < deadline;
+		let onSendStarted = false;
 		try {
 			const status = await this.inspect(guard, deadline);
 			const bounds = this.qualification.testedLeaseSeconds;
@@ -167,11 +169,15 @@ export class ShellyGuardRpcSession {
 				{ epoch: status.epoch, untilMs },
 				guard,
 				deadline,
+				() => {
+					onSendStarted = true;
+				},
 			);
 			if (!guard() || result?.accepted !== true || result.epoch !== status.epoch || result.untilMs !== untilMs)
 				return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
 			return { outcome: 'accepted', wasOn: status.output, outputConfirmed: false, pendingOnDrained: false };
 		} catch {
+			if (!onSendStarted) return { outcome: 'refused', reasons: ['ordered_script_not_ready'] };
 			return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
 		}
 	}

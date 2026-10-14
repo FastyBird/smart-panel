@@ -6,6 +6,7 @@ export async function guardedShellyHttp<T>(
 	deadline: number,
 	isCurrent: () => boolean,
 	createRequest: typeof httpRequest = httpRequest,
+	onSend?: () => void,
 ): Promise<T> {
 	if (url.protocol !== 'http:' || url.username || url.password || !isCurrent() || Date.now() >= deadline)
 		throw new Error('Shelly HTTP request is not admitted');
@@ -46,11 +47,18 @@ export async function guardedShellyHttp<T>(
 			else resolve(value);
 		}
 		const send = (): void => {
-			if (!pending || !isCurrent() || Date.now() >= deadline) {
-				request.destroy(new Error('Shelly HTTP authority expired before send'));
-				return;
+			try {
+				if (!pending || !isCurrent() || Date.now() >= deadline) {
+					request.destroy(new Error('Shelly HTTP authority expired before send'));
+					return;
+				}
+				// From this boundary onward, an exception cannot prove that headers were not sent.
+				onSend?.();
+				request.end();
+			} catch (error) {
+				finish(error instanceof Error ? error : new Error('Shelly HTTP send failed'));
+				request.destroy();
 			}
-			request.end();
 		};
 		request.on('error', (error) => finish(error));
 		request.once('socket', (socket) => {
