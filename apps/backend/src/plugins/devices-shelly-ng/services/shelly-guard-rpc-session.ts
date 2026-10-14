@@ -26,6 +26,7 @@ interface GuardStatus {
 	floorSafe: boolean;
 	output: boolean;
 }
+/** Matched live OFF and local ON-drain acknowledgement, valid only while the captured source remains current. */
 export interface ShellyGuardFenceReadback {
 	readonly proofId: string;
 	readonly connectionIdentity: string;
@@ -38,12 +39,14 @@ export interface ShellyGuardFenceReadback {
 /** Captured real provider lease. Unknown responses and changed source/configuration never mint proof. */
 export class ShellyGuardRpcSession {
 	readonly connectionIdentity = randomUUID();
+	/** Capture the provider, switch component and qualification with a source lease that can invalidate them. */
 	constructor(
 		private readonly rpc: GuardedShellyRpcHandler,
 		private readonly componentId: number,
 		private readonly qualification: ShellyProtectiveQualification,
 		private readonly sourceIsCurrent: () => boolean,
 	) {}
+	/** Check source, connection and qualification metadata; installed identity and code are verified by inspect. */
 	isCurrent(): boolean {
 		return (
 			this.sourceIsCurrent() &&
@@ -61,6 +64,7 @@ export class ShellyGuardRpcSession {
 			this.rpc.hostname === this.qualification.guardScript.endpointHostname
 		);
 	}
+	/** Run an inspection RPC under send-time source/admission fencing and the operation's shared deadline. */
 	private async execute<T>(method: string, params: RpcParams, isCurrent: () => boolean, deadline: number): Promise<T> {
 		if (!this.isCurrent() || !isCurrent()) throw new Error('Guard RPC lease expired');
 		const request = this.rpc.withSendGuard(
@@ -73,11 +77,16 @@ export class ShellyGuardRpcSession {
 		});
 		return Promise.race([Promise.resolve(request), timeout]).finally(() => clearTimeout(timer));
 	}
+	/**
+	 * Correlate one script action with a fresh nonce and recheck the captured source and caller authority at send.
+	 * onSend exposes the possible-send boundary without treating endpoint acceptance as output proof.
+	 */
 	private async guardRequest<T>(
 		action: 'status' | 'on' | 'fence',
 		params: Record<string, number>,
 		guard: () => boolean,
 		deadline: number,
+		onSend?: () => void,
 	): Promise<T> {
 		const script = this.qualification.guardScript;
 		if (!script || !this.isCurrent() || !guard()) throw new Error('Guard HTTP lease expired');
@@ -87,9 +96,13 @@ export class ShellyGuardRpcSession {
 			nonce: randomUUID(),
 			...Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])),
 		}).toString();
-		return guardedShellyHttp<T>(url, deadline, () => this.isCurrent() && guard());
+		return guardedShellyHttp<T>(url, deadline, () => this.isCurrent() && guard(), undefined, onSend);
 	}
 
+	/**
+	 * Re-read physical identity, hash the complete installed script and validate its current status.
+	 * This inspection sends no ON; mismatched evidence returns null and transport failures propagate.
+	 */
 	private async inspect(isCurrent: () => boolean, deadline: number): Promise<GuardStatus | null> {
 		const script = this.qualification.guardScript;
 		if (!script || !this.isCurrent()) return null;
@@ -145,9 +158,15 @@ export class ShellyGuardRpcSession {
 			return null;
 		return status;
 	}
+	/**
+	 * Request ON with an absolute expiry derived from the inspected device clock, never acknowledgement time.
+	 * Refusal guarantees no possible ON send; failures after that boundary remain unknown.
+	 * Acceptance confirms only the matched epoch/expiry acknowledgement, not output or pending-ON drainage.
+	 */
 	async on(leaseSeconds: number, timeoutMs: number, isAdmitted: () => boolean): Promise<ShellyProtectiveCommandResult> {
 		const deadline = Date.now() + timeoutMs;
 		const guard = () => this.isCurrent() && isAdmitted() && Date.now() < deadline;
+		let onSendStarted = false;
 		try {
 			const status = await this.inspect(guard, deadline);
 			const bounds = this.qualification.testedLeaseSeconds;
@@ -167,14 +186,22 @@ export class ShellyGuardRpcSession {
 				{ epoch: status.epoch, untilMs },
 				guard,
 				deadline,
+				() => {
+					onSendStarted = true;
+				},
 			);
 			if (!guard() || result?.accepted !== true || result.epoch !== status.epoch || result.untilMs !== untilMs)
 				return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
 			return { outcome: 'accepted', wasOn: status.output, outputConfirmed: false, pendingOnDrained: false };
 		} catch {
+			if (!onSendStarted) return { outcome: 'refused', reasons: ['ordered_script_not_ready'] };
 			return { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false };
 		}
 	}
+	/**
+	 * Advance the inspected epoch and require a matched live OFF plus local ON-drain acknowledgement.
+	 * Mint readback evidence only while source and admission remain current; ambiguity yields no proof.
+	 */
 	async fence(timeoutMs: number, isAdmitted: () => boolean): Promise<ShellyGuardFenceReadback | null> {
 		const deadline = Date.now() + timeoutMs;
 		const guard = () => this.isCurrent() && isAdmitted() && Date.now() < deadline;

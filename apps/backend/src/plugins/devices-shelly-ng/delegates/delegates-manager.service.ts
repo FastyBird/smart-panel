@@ -2423,6 +2423,10 @@ export class DelegatesManagerService {
 		);
 	}
 
+	/**
+	 * Select the MAC-matched guarded delegate and bind its session to the current device mapping and sample generation.
+	 * Replacement delegates or restarted sample sources invalidate the captured lease.
+	 */
 	prepareGuardRpcSession(
 		device: ShellyNgDeviceEntity,
 		componentId: number,
@@ -2449,6 +2453,7 @@ export class DelegatesManagerService {
 		}
 		return null;
 	}
+	/** Publish the fence's live OFF evidence through normal sample admission only while its lease remains current. */
 	async admitGuardFenceSample(
 		property: ShellyNgChannelPropertyEntity,
 		readback: ShellyGuardFenceReadback,

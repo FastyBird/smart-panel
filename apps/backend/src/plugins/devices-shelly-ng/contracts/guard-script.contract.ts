@@ -15,6 +15,10 @@ export interface ShellyGuardScriptQualification {
 	readonly localExecutionBoundsEvidenceId: string;
 	readonly protocol: 'sp-guard-candidate-1';
 }
+/**
+ * Validate installation metadata and a literal IP endpoint before a guard session is eligible.
+ * Evidence identifiers reference commissioning results; their presence alone does not prove hardware safety.
+ */
 export function guardScriptReadiness(value: ShellyGuardScriptQualification | undefined): readonly string[] {
 	if (!value) return ['ordered_script_qualification_missing'];
 	const identifiers = [

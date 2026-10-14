@@ -19,6 +19,7 @@ export type ShellyProtectiveCommand =
 	| { readonly on: true; readonly leaseSeconds: number; readonly qualification: ShellyProtectiveQualification }
 	| { readonly on: false };
 
+/** Refused ON guarantees no energizing request was sent. Possible ON sends are unknown; OFF still needs release proof. */
 export type ShellyProtectiveCommandResult =
 	| { readonly outcome: 'refused'; readonly reasons: readonly string[] }
 	| {
