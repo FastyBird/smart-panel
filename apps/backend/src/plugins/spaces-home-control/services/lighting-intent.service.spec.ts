@@ -168,7 +168,10 @@ describe('LightingIntentService', () => {
 				{
 					provide: IntentsService,
 					useValue: {
-						createIntent: jest.fn().mockReturnValue({ id: mockIntentId }),
+						createIntent: jest.fn((input: { ttlMs: number }) => ({
+							id: mockIntentId,
+							expiresAt: new Date(Date.now() + input.ttlMs),
+						})),
 						completeIntent: jest.fn(),
 					},
 				},

@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { CompositeCommandOutcomeModel } from '../../../modules/devices/models/composite-command.model';
 
 /**
  * Base result interface for intent execution.
  */
 export interface IntentExecutionResult {
 	success: boolean;
+	composites?: CompositeCommandOutcomeModel[];
 	affectedDevices: number;
 	failedDevices: number;
 	skippedOfflineDevices?: number;

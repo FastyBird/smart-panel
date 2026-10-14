@@ -4,7 +4,9 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/composite_command_service.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
@@ -14,6 +16,7 @@ class DevicesService extends ChangeNotifier {
   final ChannelPropertiesRepository _channelPropertiesRepository;
   final ChannelControlsRepository _channelControlsRepository;
   final DeviceValidationRepository _validationRepository;
+  final CompositeCommandService? compositeCommands;
 
   Map<String, DeviceView> _devices = {};
   Map<String, ChannelView> _channels = {};
@@ -28,12 +31,29 @@ class DevicesService extends ChangeNotifier {
     required ChannelPropertiesRepository channelPropertiesRepository,
     required ChannelControlsRepository channelControlsRepository,
     required DeviceValidationRepository validationRepository,
-  }) : _devicesRepository = devicesRepository,
-       _devicesControlsRepository = devicesControlsRepository,
-       _channelsRepository = channelsRepository,
-       _channelPropertiesRepository = channelPropertiesRepository,
-       _channelControlsRepository = channelControlsRepository,
-       _validationRepository = validationRepository;
+    this.compositeCommands,
+  })  : _devicesRepository = devicesRepository,
+        _devicesControlsRepository = devicesControlsRepository,
+        _channelsRepository = channelsRepository,
+        _channelPropertiesRepository = channelPropertiesRepository,
+        _channelControlsRepository = channelControlsRepository,
+        _validationRepository = validationRepository;
+
+  CompositeCommandOutcome? latestCompositeFor(String deviceId) =>
+      compositeCommands?.latestFor(deviceId);
+
+  Future<CompositeCommandOutcome> setCompositeProperties({
+    required String deviceId,
+    required List<PropertyCommandItem> properties,
+  }) {
+    final commands = compositeCommands;
+    if (commands == null) throw StateError('Composite command transport unavailable');
+    return commands.send(
+      deviceId: deviceId,
+      properties: properties,
+      context: const PropertyCommandContext(origin: 'panel.device'),
+    );
+  }
 
   Future<void> initialize() async {
     // Fetch devices - embedded channels and properties are auto-extracted

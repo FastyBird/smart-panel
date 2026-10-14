@@ -1,23 +1,30 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, Optional, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import {
+	ApiCreatedSuccessResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
+import { CreateLightGroupDraftDto, LightGroupDraftDto } from '../dto/light-group-draft.dto';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
+import { CreatedLightGroupResponseModel, LightGroupDraftResponseModel } from '../models/light-group-draft.model';
 import {
 	VirtualAggregateConfigurationResponseModel,
 	VirtualLightGroupConfigurationResponseModel,
 } from '../models/producer-response.model';
+import { VirtualLightGroupAuthoringService } from '../services/virtual-light-group-authoring.service';
 import { VirtualProducerConfigService } from '../services/virtual-producer-config.service';
 
 @ApiTags(DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME)
 @Controller('producers')
 export class VirtualProducerConfigController {
-	constructor(private readonly configs: VirtualProducerConfigService) {}
+	constructor(
+		private readonly configs: VirtualProducerConfigService,
+		@Optional() private readonly groupAuthoring?: VirtualLightGroupAuthoringService,
+	) {}
 
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
@@ -130,6 +137,36 @@ export class VirtualProducerConfigController {
 		response.data = await this.execute(() => this.configs.previewLightGroup(id, dto));
 		return response;
 	}
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Preview a new light group',
+		description: 'Validate physical members and the common control contract before creation.',
+		operationId: 'preview-devices-virtual-plugin-light-group-draft',
+	})
+	@ApiUnprocessableEntityResponse('Members or requested capability contract are incompatible')
+	@ApiSuccessResponse(LightGroupDraftResponseModel, 'Validated light group draft')
+	@Post('light-groups/draft-preview')
+	async previewLightGroupDraft(@Body() dto: LightGroupDraftDto): Promise<LightGroupDraftResponseModel> {
+		const response = new LightGroupDraftResponseModel();
+		response.data = await this.execute(() => this.groupAuthoring.preview(dto));
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Create a light group atomically',
+		description: 'Revalidate the preview graph and physical members in the same transaction as the device and bindings.',
+		operationId: 'create-devices-virtual-plugin-light-group-draft',
+	})
+	@ApiUnprocessableEntityResponse('Members, capability contract or preview revision changed')
+	@ApiCreatedSuccessResponse(CreatedLightGroupResponseModel, 'Committed light group')
+	@Post('light-groups')
+	async createLightGroupDraft(@Body() dto: CreateLightGroupDraftDto): Promise<CreatedLightGroupResponseModel> {
+		const response = new CreatedLightGroupResponseModel();
+		response.data = await this.execute(() => this.groupAuthoring.create(dto));
+		return response;
+	}
+
 	private async execute<T>(operation: () => Promise<T>): Promise<T> {
 		try {
 			return await operation();

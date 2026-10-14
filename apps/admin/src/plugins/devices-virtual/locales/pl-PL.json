@@ -234,5 +234,43 @@
 			"producer_disposed": "Producent zatrzymany",
 			"unknown": "Nieznana diagnostyka"
 		}
+	},
+	"lightGroup": {
+		"apply": "Zastosuj",
+		"createTitle": "Utwórz grupę świateł",
+		"members": "Członkowie",
+		"selectMembers": "Wybierz fizyczne kanały oświetlenia",
+		"memberBounds": "Wybierz 2–256 różnych fizycznych kanałów. Członkowie nadal mogą być sterowani osobno.",
+		"room": "Pomieszczenie",
+		"preview": "Podgląd",
+		"previewRequired": "Sprawdź projekt przed zapisaniem.",
+		"create": "Utwórz",
+		"cancel": "Anuluj",
+		"step": "Krok {value}",
+		"commonOnly": "Te opcjonalne funkcje są niedostępne, ponieważ wszyscy członkowie muszą mieć zgodne właściwości.",
+		"loadFailed": "Nie można załadować grupy świateł.",
+		"revisionConflict": "Konfiguracja zmieniła się lub używana funkcja wymaga naprawy. Przed kolejną próbą załaduj ją ponownie.",
+		"editTitle": "Edytuj grupę świateł",
+		"save": "Zapisz",
+		"reload": "Załaduj ponownie",
+		"missingMember": "Brakujący członek: {identity}",
+		"reportedState": "Zgłoszony stan członków",
+		"mixed": "Mieszany",
+		"unknown": "Nieznany",
+		"onCount": "{on} włączonych, {off} wyłączonych, {unknown} nieznanych z {total}",
+		"commands": "Wyniki poleceń członków",
+		"none": "Nie ma jeszcze wyników poleceń.",
+		"status": {
+			"accepted": "Przyjęte",
+			"confirmed": "Potwierdzone",
+			"failed": "Nieudane",
+			"unavailable": "Niedostępne",
+			"superseded": "Zastąpione",
+			"timed_out": "Przekroczony czas",
+			"partial": "Częściowe"
+		},
+		"turnOn": "Włącz",
+		"turnOff": "Wyłącz",
+		"commandUncertain": "Wynik polecenia jest niepewny. Odśwież zgłoszony stan przed wysłaniem kolejnego polecenia."
 	}
 }

@@ -112,6 +112,12 @@ class IntentsService extends ChangeNotifier {
     try {
       final result = await _scenesService.triggerScene(sceneId);
 
+      final memberDetails = result.composites
+          .expand((parent) => parent.children)
+          .where((child) => child.status != 'confirmed')
+          .map((child) => '${child.memberIdentity ?? child.memberId}: ${child.status}')
+          .join(', ');
+
       if (result.success) {
         if (result.failureCount > 0) {
           return IntentResult.partialSuccess(
@@ -131,6 +137,22 @@ class IntentsService extends ChangeNotifier {
           data: {
             'sceneId': sceneId,
             'successCount': result.successCount,
+          },
+        );
+      }
+
+      if (result.successCount > 0 ||
+          result.composites.any((parent) => parent.status == 'partial')) {
+        return IntentResult.partialSuccess(
+          IntentType.activateScene,
+          message: memberDetails.isEmpty
+              ? localizations.space_scene_partial_success
+              : '${localizations.space_scene_partial_success}: $memberDetails',
+          data: {
+            'sceneId': sceneId,
+            'successCount': result.successCount,
+            'failureCount': result.failureCount,
+            'composites': result.composites,
           },
         );
       }

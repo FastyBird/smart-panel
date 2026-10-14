@@ -29,6 +29,7 @@ import { DevicesChannelsControlsController } from './controllers/devices.channel
 import { DevicesChannelsPropertiesController } from './controllers/devices.channels.properties.controller';
 import { DevicesController } from './controllers/devices.controller';
 import { DevicesControlsController } from './controllers/devices.controls.controller';
+import { PropertyCommandController } from './controllers/property-command.controller';
 import {
 	DEVICES_MODULE_API_TAG_DESCRIPTION,
 	DEVICES_MODULE_API_TAG_NAME,
@@ -62,6 +63,7 @@ import { CommandLatencyTraceCollectorService } from './services/command-latency-
 import { CompositePropertyCommandRegistryService } from './services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './services/device-command-graph.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
+import { DeviceContributionRegistryService } from './services/device-contribution.registry.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
 import { DeviceControlToolService } from './services/device-control-tool.service';
 import { DeviceProvisionQueueService } from './services/device-provision-queue.service';
@@ -125,6 +127,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		WebsocketModule,
 	],
 	providers: [
+		DeviceContributionRegistryService,
 		PropertyCommandEntryInterceptor,
 		DeviceControlToolService,
 		DevicesTypeMapperService,
@@ -176,6 +179,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		ChannelInputOccurrencesService,
 	],
 	controllers: [
+		PropertyCommandController,
 		DevicesController,
 		DevicesControlsController,
 		DevicesChannelsController,
@@ -186,6 +190,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		ChannelsPropertiesController,
 	],
 	exports: [
+		DeviceContributionRegistryService,
 		DevicesService,
 		DevicesBulkService,
 		DevicesControlsService,
