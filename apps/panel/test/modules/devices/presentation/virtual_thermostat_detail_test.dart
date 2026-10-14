@@ -85,6 +85,137 @@ void main() {
   );
   staleDeviceResponseTest();
   disposePendingCommandTest();
+  commandSupersedesPollTest();
+}
+
+void commandSupersedesPollTest() {
+  testWidgets('accepted command refresh supersedes an older pending poll', (
+    tester,
+  ) async {
+    final service = MockDevicesService();
+    when(
+      () => service.setMultiplePropertyValues(
+        properties: any(named: 'properties'),
+        context: any(named: 'context'),
+        requireAtomicBatch: any(named: 'requireAtomicBatch'),
+      ),
+    ).thenAnswer((_) async => true);
+    locator.registerSingleton<DevicesService>(service);
+    addTearDown(() => locator.unregister<DevicesService>());
+
+    final heldPoll = <String, RequestInterceptorHandler>{};
+    var holdPoll = false;
+    var afterCommand = false;
+    var requests = 0;
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          requests++;
+          if (holdPoll && !afterCommand) {
+            heldPoll[options.path] = handler;
+            return;
+          }
+          handler.resolve(
+            Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'data': options.path.endsWith('/runtime')
+                    ? {
+                        'requested_mode': afterCommand ? 'heat' : 'off',
+                        'readiness': 'draft',
+                        'reasons': [],
+                      }
+                    : {
+                        'requested_mode': afterCommand ? 'heat' : 'off',
+                        'locked': false,
+                        'policy': {
+                          'heatingSetpoint': null,
+                          'coolingSetpoint': null,
+                        },
+                        'settings': [
+                          {'setting': 'locked', 'property': 'locked'},
+                        ],
+                      },
+              },
+            ),
+          );
+        },
+      ),
+    );
+    locator.registerSingleton<Dio>(dio);
+    addTearDown(() => locator.unregister<Dio>());
+
+    final device = ThermostatDeviceView(
+      id: 'controller',
+      type: 'virtual',
+      name: 'Thermostat',
+      channels: [
+        ThermostatChannelView(
+          id: 'thermostat',
+          type: 'virtual',
+          device: 'controller',
+          properties: [
+            LockedChannelPropertyView(
+              id: 'locked',
+              type: 'virtual',
+              channel: 'thermostat',
+              permission: const [DevicesModulePermissionType.rw],
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: VirtualThermostatDeviceDetail(device: device)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Requested mode: off'), findsOneWidget);
+    expect(requests, 2);
+
+    holdPoll = true;
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(heldPoll, hasLength(2));
+    expect(requests, 4);
+
+    afterCommand = true;
+    await tester.tap(find.text('Lock thermostat controls'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(requests, 6);
+    expect(find.text('Requested mode: heat'), findsOneWidget);
+
+    for (final entry in heldPoll.entries) {
+      entry.value.resolve(
+        Response<Map<String, dynamic>>(
+          requestOptions: RequestOptions(path: entry.key),
+          statusCode: 200,
+          data: {
+            'data': entry.key.endsWith('/runtime')
+                ? {'requested_mode': 'off', 'readiness': 'draft', 'reasons': []}
+                : {
+                    'requested_mode': 'off',
+                    'locked': false,
+                    'policy': {
+                      'heatingSetpoint': null,
+                      'coolingSetpoint': null,
+                    },
+                    'settings': [
+                      {'setting': 'locked', 'property': 'locked'},
+                    ],
+                  },
+          },
+        ),
+      );
+    }
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Requested mode: heat'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 void disposePendingCommandTest() {

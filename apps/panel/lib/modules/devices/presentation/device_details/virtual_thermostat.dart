@@ -63,10 +63,10 @@ class _VirtualThermostatDeviceDetailState
     unawaited(_refresh());
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool force = false}) async {
     if (!locator.isRegistered<Dio>() || _busy) return;
     final path = _path;
-    if (_refreshInFlightFor == path) return;
+    if (!force && _refreshInFlightFor == path) return;
     final generation = ++_refreshGeneration;
     _refreshInFlightFor = path;
     try {
@@ -156,7 +156,7 @@ class _VirtualThermostatDeviceDetailState
     // Preserve the distinction by always fetching both contracts again.
     if (!mounted) return;
     setState(() => _busy = false);
-    await _refresh();
+    await _refresh(force: true);
   }
 
   void _setMode(String mode) {
