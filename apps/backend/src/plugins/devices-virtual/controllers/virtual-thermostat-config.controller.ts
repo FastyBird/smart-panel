@@ -1,26 +1,38 @@
 import {
 	Body,
 	Controller,
+	ForbiddenException,
 	Get,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Post,
 	Put,
+	Req,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { AuthenticatedRequest } from '../../../modules/auth/guards/auth.guard';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import {
+	ApiForbiddenResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { Roles } from '../../../modules/users/guards/roles.guard';
+import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
-import { ConfigureVirtualThermostatDto, RequestVirtualThermostatReleaseDto } from '../dto/thermostat-config.dto';
+import {
+	ConfigureVirtualThermostatDto,
+	RequestVirtualThermostatReleaseDto,
+	RestoreVirtualThermostatActuatorDto,
+} from '../dto/thermostat-config.dto';
 import {
 	VirtualThermostatConfigurationModel,
 	VirtualThermostatConfigurationResponseModel,
+	VirtualThermostatRecoveriesResponseModel,
+	VirtualThermostatRecoveryModel,
 	VirtualThermostatRuntimeModel,
 	VirtualThermostatRuntimeResponseModel,
 } from '../models/thermostat-response.model';
@@ -117,6 +129,50 @@ export class VirtualThermostatConfigController {
 		@Body() dto: RequestVirtualThermostatReleaseDto,
 	): Promise<VirtualThermostatConfigurationResponseModel> {
 		return this.response(() => this.configs.requestRelease(id, dto.expectedRevision));
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Restore a missing thermostat actuator endpoint',
+		description:
+			'Owner or administrator re-adopts only the same canonical physical switch. Forces requested OFF, revokes prior hardware qualification and retains the reservation; operator acknowledgement is not release proof.',
+		operationId: 'restore-devices-virtual-plugin-thermostat-actuator',
+	})
+	@ApiForbiddenResponse('Owner or administrator user session required')
+	@ApiUnprocessableEntityResponse('Claim revision, canonical identity or endpoint conflict')
+	@ApiSuccessResponse(VirtualThermostatConfigurationResponseModel, 'Restored reservation awaiting new qualification')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Post('thermostats/:id/claims/:claimId/restore')
+	async restoreActuator(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('claimId', new ParseUUIDPipe({ version: '4' })) claimId: string,
+		@Body() dto: RestoreVirtualThermostatActuatorDto,
+		@Req() req: AuthenticatedRequest,
+	): Promise<VirtualThermostatConfigurationResponseModel> {
+		if (req.auth?.type !== 'user') throw new ForbiddenException('An identified operator user session is required.');
+		const actorId = req.auth.id;
+		return this.response(() => this.configs.restoreActuator(id, claimId, dto, actorId));
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Read thermostat actuator recovery audit',
+		description:
+			'Read retained operator recovery declarations, distinct from machine-verified OFF and drainage evidence.',
+		operationId: 'get-devices-virtual-plugin-thermostat-recoveries',
+	})
+	@ApiForbiddenResponse('Owner or administrator access required')
+	@ApiSuccessResponse(VirtualThermostatRecoveriesResponseModel, 'Recovery audit entries')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Get('thermostats/:id/recoveries')
+	async recoveries(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<VirtualThermostatRecoveriesResponseModel> {
+		const response = new VirtualThermostatRecoveriesResponseModel();
+		response.data = (await this.configs.recoveryEvents(id)).map((row) =>
+			Object.assign(new VirtualThermostatRecoveryModel(), row),
+		);
+		return response;
 	}
 
 	private async response(

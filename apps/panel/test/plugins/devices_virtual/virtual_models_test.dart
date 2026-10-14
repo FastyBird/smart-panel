@@ -1,3 +1,7 @@
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/api/models/devices_virtual_plugin_data_channel_property_value_origin.dart';
 import 'package:fastybird_smart_panel/plugins/devices-virtual/models/device.dart';
 import 'package:fastybird_smart_panel/plugins/devices-virtual/models/property.dart';
@@ -53,6 +57,38 @@ void main() {
       VirtualDeviceModel.fromJson({...deviceJson, 'mode': 'future_mode'}).mode,
       VirtualDeviceMode.unknown,
     );
+  });
+
+  test('composed mapper retains group commands and thermostat diagnostics', () {
+    final group = buildDeviceView(
+      VirtualDeviceModel.fromJson({
+        ...deviceJson,
+        'category': 'lighting',
+        'mode': 'actuator_group',
+      }),
+      const [],
+    );
+    expect(group, isA<LightingDeviceView>());
+    expect((group as LightingDeviceView).isCompositeGroup, isTrue);
+    final thermostat = buildDeviceView(
+      VirtualDeviceModel.fromJson({
+        ...deviceJson,
+        'category': 'thermostat',
+        'mode': 'climate_controller',
+      }),
+      const [],
+    );
+    expect(thermostat, isA<ThermostatDeviceView>());
+    expect(buildDeviceWidget(thermostat), isA<VirtualThermostatDeviceDetail>());
+    final projection = buildDeviceView(
+      VirtualDeviceModel.fromJson({
+        ...deviceJson,
+        'category': 'lighting',
+        'mode': 'projection',
+      }),
+      const [],
+    );
+    expect((projection as LightingDeviceView).isCompositeGroup, isFalse);
   });
 
   test('derived origin owns its series and survives copyWith', () {

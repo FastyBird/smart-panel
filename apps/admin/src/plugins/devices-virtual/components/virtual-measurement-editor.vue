@@ -320,7 +320,6 @@ import { injectStoresManager } from '../../../common';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import {
 	DevicesVirtualPluginConfigureAggregateOperator as AggregateOperator,
-	DevicesVirtualPluginNumericTransformPolicyThermistorLeg as Divider,
 	DevicesVirtualPluginNumericTransformPolicyOperator as TransformOperator,
 } from '../../../openapi';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
@@ -353,6 +352,7 @@ const thermistorAllowed = computed(
 			(candidate) => candidate.id === model.inputs[0]?.source_property && candidate.quantity === 'voltage' && candidate.unit === 'V'
 		)
 );
+const Divider = { low: 'low', high: 'high' } as const;
 const rangeFields = ['inputMinimum', 'inputMaximum', 'outputMinimum', 'outputMaximum'] as const;
 const affineFields = ['scale', 'offset'] as const;
 const ntcFields = ['referenceVoltage', 'seriesResistance', 'nominalResistance', 'nominalTemperatureCelsius', 'beta'] as const;
