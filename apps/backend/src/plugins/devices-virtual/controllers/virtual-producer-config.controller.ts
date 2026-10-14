@@ -1,14 +1,4 @@
-import {
-	Body,
-	Controller,
-	Get,
-	Optional,
-	Param,
-	ParseUUIDPipe,
-	Post,
-	Put,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -33,7 +23,7 @@ import { VirtualProducerConfigService } from '../services/virtual-producer-confi
 export class VirtualProducerConfigController {
 	constructor(
 		private readonly configs: VirtualProducerConfigService,
-		@Optional() private readonly groupAuthoring?: VirtualLightGroupAuthoringService,
+		private readonly groupAuthoring: VirtualLightGroupAuthoringService,
 	) {}
 
 	@ApiOperation({

@@ -54,10 +54,12 @@ export class VirtualLightGroupContributionService implements DeviceContributionP
 				this.metadata.getGeneration() === metadataGeneration && this.graph.isRevisionCurrent(config.graph_revision),
 			leaves: config.members.map((member) => member.source_identity),
 			reported: {
-				onBrightness: {
-					sum: brightness?.samples.reduce((sum, sample) => sum + Number(sample.value), 0) ?? 0,
-					count: brightness?.samples.length ?? 0,
-				},
+				onBrightness: brightness?.samples.length
+					? {
+							sum: brightness.samples.reduce((sum, sample) => sum + Number(sample.value), 0),
+							count: brightness.samples.length,
+						}
+					: undefined,
 				total: config.members.length,
 				on: state?.on_count ?? 0,
 				unknown: state?.unknown_count ?? config.members.length,

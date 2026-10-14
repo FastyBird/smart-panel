@@ -10,6 +10,7 @@ import {
 	ChannelCategory,
 	DataTypeType,
 	DeviceCategory,
+	DeviceHiddenBy,
 	EventType,
 	PermissionType,
 	PropertyCategory,
@@ -32,6 +33,7 @@ import { CreateVirtualChannelPropertyDto } from '../dto/create-channel-property.
 import { CreateVirtualChannelDto } from '../dto/create-channel.dto';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
 import { CreateLightGroupDraftDto } from '../dto/light-group-draft.dto';
+import { ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import { UpdateVirtualChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { UpdateVirtualChannelDto } from '../dto/update-channel.dto';
 import { UpdateVirtualDeviceDto } from '../dto/update-device.dto';
@@ -41,7 +43,11 @@ import {
 	VirtualDeviceEntity,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
-import { VirtualLightGroupBindingEntity, VirtualLightGroupConfigEntity } from '../entities/virtual-producer.entity';
+import {
+	VirtualLightGroupBindingEntity,
+	VirtualLightGroupConfigEntity,
+	VirtualLightGroupProfile,
+} from '../entities/virtual-producer.entity';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
@@ -55,6 +61,7 @@ jest.setTimeout(30000);
 describe('light group atomic authoring with real SQLite and core creation services', () => {
 	let database: SqliteDataSource;
 	let authoring: VirtualLightGroupAuthoringService;
+	let configs: VirtualProducerConfigService;
 	let graph: VirtualDependencyGraphService;
 	let producers: PropertyProducerRegistryService;
 	let events: EventEmitter2;
@@ -91,6 +98,7 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		const lock = new DeviceStructureLockService();
 		const state = new VirtualProducerStateService(database, producers, graph, events);
 		const aggregates = new VirtualProducerConfigService(database, lock, graph, events, state);
+		configs = aggregates;
 		const devicesMapper = new DevicesTypeMapperService();
 		const channelsMapper = new ChannelsTypeMapperService();
 		const propertiesMapper = new ChannelsPropertiesTypeMapperService();
@@ -242,6 +250,128 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		for (const property of await database.manager.find(VirtualChannelPropertyEntity))
 			if (property.valueOrigin === VirtualValueOrigin.DERIVED)
 				expect(producers.read(property.id)?.producer.quality).toBe('unavailable');
+	});
+
+	it('preserves user/system hiding, projection provenance and energy claims through creation, edits, remap and deletion', async () => {
+		const sources = await database
+			.getRepository(ChannelEntity)
+			.find({ where: memberIds.map((id) => ({ id })), relations: ['device', 'properties'] });
+		await database
+			.getRepository(DeviceEntity)
+			.update((sources[0].device as DeviceEntity).id, { hidden: true, hiddenBy: DeviceHiddenBy.USER });
+		await database
+			.getRepository(DeviceEntity)
+			.update((sources[1].device as DeviceEntity).id, { hidden: true, hiddenBy: DeviceHiddenBy.SYSTEM });
+		const visibleDeviceId = uuid(),
+			visibleChannelId = uuid(),
+			visiblePropertyId = uuid();
+		await database
+			.getRepository(DeviceEntity)
+			.insert({ id: visibleDeviceId, name: 'Visible replacement', category: DeviceCategory.LIGHTING });
+		await database.getRepository(ChannelEntity).insert({
+			id: visibleChannelId,
+			device: visibleDeviceId,
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		} as never);
+		await database.getRepository(ChannelPropertyEntity).insert({
+			id: visiblePropertyId,
+			channel: visibleChannelId,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		const projectionId = uuid(),
+			projectionChannelId = uuid(),
+			projectedPropertyId = uuid(),
+			energySourceId = uuid(),
+			energyProjectionId = uuid();
+		await database.getRepository(ChannelPropertyEntity).insert({
+			id: energySourceId,
+			channel: sources[1].id,
+			category: PropertyCategory.CONSUMPTION,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		await database
+			.getRepository(VirtualDeviceEntity)
+			.insert({ id: projectionId, name: 'Existing projection', category: DeviceCategory.GENERIC });
+		await database.getRepository(VirtualChannelEntity).insert({
+			id: projectionChannelId,
+			device: projectionId,
+			name: 'Projection',
+			category: ChannelCategory.GENERIC,
+		} as never);
+		await database.getRepository(VirtualChannelPropertyEntity).insert({
+			id: projectedPropertyId,
+			channel: projectionChannelId,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+			valueOrigin: VirtualValueOrigin.SOURCE,
+			sourcePropertyId: sources[1].properties[0].id,
+		} as never);
+		await database.getRepository(VirtualChannelPropertyEntity).insert({
+			id: energyProjectionId,
+			channel: projectionChannelId,
+			category: PropertyCategory.CONSUMPTION,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+			valueOrigin: VirtualValueOrigin.SOURCE,
+			sourcePropertyId: energySourceId,
+			energyClaimPropertyId: energySourceId,
+		} as never);
+		const deviceIds = [...sources.map((source) => (source.device as DeviceEntity).id), visibleDeviceId];
+		const snapshot = async () => ({
+			devices: await database
+				.getRepository(DeviceEntity)
+				.find({ where: deviceIds.map((id) => ({ id })), order: { id: 'ASC' } }),
+			projections: await database
+				.getRepository(VirtualChannelPropertyEntity)
+				.find({ where: [{ id: projectedPropertyId }, { id: energyProjectionId }], order: { id: 'ASC' } }),
+		});
+		const before = await snapshot();
+		const result = await authoring.create(draft());
+		expect(await snapshot()).toEqual(before);
+		const groupChannelId = result.configuration.group_channel;
+		const output = (
+			await database.getRepository(VirtualChannelPropertyEntity).find({ where: { channel: { id: groupChannelId } } })
+		).find((property) => property.category === PropertyCategory.ON);
+		const members = result.configuration.members.map((member) => ({
+			id: member.id,
+			sourceChannelId: member.source_channel,
+			bindings: member.bindings.map((binding) => ({
+				id: binding.id,
+				outputPropertyId: output.id,
+				sourcePropertyId: binding.source_property,
+			})),
+		}));
+		await configs.configureLightGroup(
+			groupChannelId,
+			Object.assign(new ConfigureVirtualLightGroupDto(), {
+				profile: VirtualLightGroupProfile.LIGHT,
+				expectedRevision: 1,
+				members: [...members].reverse(),
+			}),
+		);
+		expect(await snapshot()).toEqual(before);
+		members[1] = {
+			...members[1],
+			sourceChannelId: visibleChannelId,
+			bindings: members[1].bindings.map((binding) => ({ ...binding, sourcePropertyId: visiblePropertyId })),
+		};
+		await configs.configureLightGroup(
+			groupChannelId,
+			Object.assign(new ConfigureVirtualLightGroupDto(), {
+				profile: VirtualLightGroupProfile.LIGHT,
+				expectedRevision: 2,
+				members,
+			}),
+		);
+		expect(await snapshot()).toEqual(before);
+		await database.getRepository(VirtualDeviceEntity).delete(result.device.id);
+		expect(await database.getRepository(VirtualLightGroupConfigEntity).count()).toBe(0);
+		expect(await snapshot()).toEqual(before);
 	});
 	it('rolls back catalog, memberships and buffered publications after a nested property failure', async () => {
 		phase = 'property';
