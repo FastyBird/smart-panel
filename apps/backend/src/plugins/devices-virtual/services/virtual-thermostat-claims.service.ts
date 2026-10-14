@@ -1,3 +1,4 @@
+import { AsyncResource } from 'node:async_hooks';
 import { DataSource, Not } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
@@ -52,11 +53,16 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	private epoch = 0;
 	private ready = false;
 	private unregister?: () => void;
-	private refreshQueue: Promise<void> = Promise.resolve();
+	private refreshInFlight?: Promise<void>;
+	private retryTimer?: ReturnType<typeof setTimeout>;
+	private retryDelay = 1000;
+	private destroyed = false;
+	// Retry callbacks must not inherit an exclusive writer's re-entrant structure-lock lease.
+	private readonly retryContext = new AsyncResource('thermostat-claims-retry');
 	private readonly onStructure = () => {
 		// Revoke captured absence and owner leases synchronously before any asynchronous reload.
 		this.invalidate();
-		this.refreshQueue = this.refreshQueue.then(() => this.refresh()).catch(() => this.invalidate());
+		void this.refresh().catch(() => undefined);
 	};
 	private runtimeAdmission?: (claim: VirtualThermostatActuatorClaimEntity) => boolean;
 
@@ -84,6 +90,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		await this.refresh();
 	}
 	onModuleDestroy(): void {
+		this.destroyed = true;
+		this.cancelRetry();
+		this.retryContext.emitDestroy();
 		this.unregister?.();
 		for (const event of [
 			EventType.DEVICE_UPDATED,
@@ -101,18 +110,65 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.epoch++;
 	}
 	async refresh(): Promise<void> {
-		const epoch = this.epoch;
-		const rows = await this.dataSource.manager.find(VirtualThermostatActuatorClaimEntity, {
-			where: { state: Not('released') },
+		// Acquire before coalescing: a writer's post-commit refresh must never join a reader queued behind it.
+		await this.structureLock.runShared(async () => {
+			if (this.destroyed) return;
+			if (this.refreshInFlight !== undefined) return this.refreshInFlight;
+			const epoch = this.epoch;
+			const refresh = this.reload(epoch);
+			this.refreshInFlight = refresh;
+			try {
+				await refresh;
+			} finally {
+				this.refreshInFlight = undefined;
+			}
 		});
-		if (epoch !== this.epoch) return;
-		this.reservations.clear();
-		this.byProperty.clear();
-		for (const row of rows) {
-			this.reservations.set(row.physicalIdentity, row);
-			this.byProperty.set(row.sourcePropertyIdentity, row);
+	}
+	private async reload(epoch: number): Promise<void> {
+		try {
+			const rows = await this.dataSource.manager.find(VirtualThermostatActuatorClaimEntity, {
+				where: { state: Not('released') },
+			});
+			if (this.destroyed) return;
+			if (epoch !== this.epoch) {
+				this.scheduleRetry();
+				return;
+			}
+			this.reservations.clear();
+			this.byProperty.clear();
+			for (const row of rows) {
+				this.reservations.set(row.physicalIdentity, row);
+				this.byProperty.set(row.sourcePropertyIdentity, row);
+			}
+			this.ready = true;
+			// Retry completion tracks fresh membership, independently of any future recovery admission fence.
+			this.cancelRetry();
+			this.retryDelay = 1000;
+		} catch (error) {
+			if (!this.destroyed && epoch === this.epoch) {
+				this.invalidate();
+				this.scheduleRetry();
+			} else if (!this.destroyed) {
+				this.scheduleRetry();
+			}
+			throw error;
 		}
-		this.ready = true;
+	}
+	private scheduleRetry(): void {
+		if (this.destroyed || this.retryTimer || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
+		const delay = this.retryDelay;
+		this.retryDelay = Math.min(delay * 2, 30000);
+		this.retryTimer = this.retryContext.runInAsyncScope(() =>
+			setTimeout(() => {
+				this.retryTimer = undefined;
+				if (!this.destroyed) void this.refresh().catch(() => undefined);
+			}, delay),
+		);
+		this.retryTimer.unref();
+	}
+	private cancelRetry(): void {
+		if (this.retryTimer) clearTimeout(this.retryTimer);
+		this.retryTimer = undefined;
 	}
 	/** Captures absence and ownership; unrelated leaves do not depend on catalog reconciliation. */
 	capture(): PropertyCommandAdmissionSnapshot {
