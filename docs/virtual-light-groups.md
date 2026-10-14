@@ -19,6 +19,11 @@ live feedback using the core sample evidence contract. Database history, optimis
 snapshots do not qualify. Each configured input expires after 300 seconds. Missing, disabled, offline, quarantined or
 incompatible sources are unknown. A backend restart starts without qualified physical samples.
 
+A structural write that has committed stays committed if the subsequent graph validation read or listener fails.
+The committed catalog can activate, while live virtual outputs and command guards remain unavailable until a complete
+validation refresh succeeds. Pending publications from the previous validation lifecycle cannot become current again
+when validation recovers. Physical source samples retain their independent authority.
+
 ON is true when any member is confirmed on, false only when every intended member is confirmed off, and otherwise null.
 The reported API separately exposes all-on, mixed, on/off/unknown counts and each member's diagnostic reasons.
 Brightness is the mean of valid on-member samples, with explicit contributors and mixed state. The diagnostic value
@@ -73,5 +78,6 @@ own release/control path rather than trust caller-supplied context.
 
 Room contribution selection and admin/panel authoring/presentation are separate integrations. Raw physical controls
 remain individually usable. Production availability depends on adapters submitting qualified live feedback; legacy
-adapters that write only values remain unknown. A provider without guarded composite preparation is also refused at
+adapters that write only values remain unknown. WLED partial observations preserve omitted main RGB values; only full
+snapshots or explicitly unsafe main-segment identities invalidate those colors. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.
