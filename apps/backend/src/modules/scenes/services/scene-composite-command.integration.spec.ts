@@ -6,7 +6,7 @@ import { IntentsService } from '../../intents/services/intents.service';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { SceneExecutionStatus } from '../scenes.constants';
 
-import { SceneExecutorService } from './scene-executor.service';
+import { SceneExecutionContext, SceneExecutorService } from './scene-executor.service';
 
 const partial: CompositeCommandOutcomeModel = {
 	id: 'parent',
@@ -18,6 +18,51 @@ const partial: CompositeCommandOutcomeModel = {
 };
 
 describe('scene correlated composite outcomes', () => {
+	it('passes adjacent local actions together and preserves later platform order', async () => {
+		const events = new EventEmitter2();
+		const intents = new IntentsService(events, { storeIntentCompletion: () => Promise.resolve() } as never);
+		const actions = [
+			{ id: 'local-1', type: 'local', order: 0 },
+			{ id: 'local-2', type: 'local', order: 1 },
+			{ id: 'other', type: 'other', order: 2 },
+			{ id: 'local-3', type: 'local', order: 3 },
+		].map((action) => Object.assign(new SceneActionEntity(), action));
+		const scene = Object.assign(new SceneEntity(), { id: 'scene', name: 'Scene', actions });
+		const service = new SceneExecutorService(
+			{ getOneOrThrow: () => Promise.resolve(scene), updateLastTriggered: () => Promise.resolve() } as never,
+			events,
+			intents,
+		);
+		const order: string[][] = [];
+		const contexts: SceneExecutionContext[] = [];
+		const execute = (_scene: SceneEntity, members: SceneActionEntity[], context?: SceneExecutionContext) => {
+			order.push(members.map((member) => member.id));
+			if (context) contexts.push(context);
+			return Promise.resolve(
+				members.map((member) => ({
+					actionId: member.id,
+					success: true,
+					error: null,
+					executionTimeMs: 1,
+				})),
+			);
+		};
+		service.registerPlatform({
+			getType: () => 'local',
+			supportsAdjacentActions: () => true,
+			validateAction: () => Promise.resolve(true),
+			execute,
+		});
+		service.registerPlatform({ getType: () => 'other', validateAction: () => Promise.resolve(true), execute });
+
+		const result = await service.triggerScene(scene.id);
+
+		expect(order).toEqual([['local-1', 'local-2'], ['other'], ['local-3']]);
+		expect(contexts).toHaveLength(3);
+		expect(contexts.every((context) => context === contexts[0])).toBe(true);
+		expect(result.actionResults.map((action) => action.actionId)).toEqual(actions.map((action) => action.id));
+	});
+
 	it.each([false, true])('retains confirmed members and runs unrelated actions (unrelated=%s)', async (unrelated) => {
 		const events = new EventEmitter2();
 		const completed = jest.fn();

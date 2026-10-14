@@ -32,12 +32,12 @@ class DevicesService extends ChangeNotifier {
     required ChannelControlsRepository channelControlsRepository,
     required DeviceValidationRepository validationRepository,
     this.compositeCommands,
-  })  : _devicesRepository = devicesRepository,
-        _devicesControlsRepository = devicesControlsRepository,
-        _channelsRepository = channelsRepository,
-        _channelPropertiesRepository = channelPropertiesRepository,
-        _channelControlsRepository = channelControlsRepository,
-        _validationRepository = validationRepository;
+  }) : _devicesRepository = devicesRepository,
+       _devicesControlsRepository = devicesControlsRepository,
+       _channelsRepository = channelsRepository,
+       _channelPropertiesRepository = channelPropertiesRepository,
+       _channelControlsRepository = channelControlsRepository,
+       _validationRepository = validationRepository;
 
   CompositeCommandOutcome? latestCompositeFor(String deviceId) =>
       compositeCommands?.latestFor(deviceId);
@@ -47,7 +47,9 @@ class DevicesService extends ChangeNotifier {
     required List<PropertyCommandItem> properties,
   }) {
     final commands = compositeCommands;
-    if (commands == null) throw StateError('Composite command transport unavailable');
+    if (commands == null) {
+      throw StateError('Composite command transport unavailable');
+    }
     return commands.send(
       deviceId: deviceId,
       properties: properties,
@@ -133,7 +135,9 @@ class DevicesService extends ChangeNotifier {
   }
 
   /// Get all devices matching any of the specified categories
-  List<DeviceView> getDevicesByCategories(List<DevicesModuleDeviceCategory> categories) {
+  List<DeviceView> getDevicesByCategories(
+    List<DevicesModuleDeviceCategory> categories,
+  ) {
     return _devices.values
         .where((d) => categories.contains(d.category))
         .toList();
@@ -160,8 +164,9 @@ class DevicesService extends ChangeNotifier {
           ),
         )
         .where(
-            (property) =>
-                property.category == DevicesModulePropertyCategory.valueOn)
+          (property) =>
+              property.category == DevicesModulePropertyCategory.valueOn,
+        )
         .toList();
     return properties.isNotEmpty;
   }
@@ -176,14 +181,13 @@ class DevicesService extends ChangeNotifier {
     final properties = device.channels
         .expand(
           (channel) => _channelPropertiesRepository.getItems(
-            channel.properties
-                .map(
-                  (property) => property.id,
-                )
-                .toList(),
+            channel.properties.map((property) => property.id).toList(),
           ),
         )
-        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
+        .where(
+          (property) =>
+              property.category == DevicesModulePropertyCategory.valueOn,
+        )
         .toList();
 
     for (var property in properties) {
@@ -227,10 +231,12 @@ class DevicesService extends ChangeNotifier {
   Future<bool> setMultiplePropertyValues({
     required List<PropertyCommandItem> properties,
     PropertyCommandContext? context,
+    bool requireAtomicBatch = false,
   }) async {
     return await _channelPropertiesRepository.setMultipleValues(
       properties: properties,
       context: context,
+      requireAtomicBatch: requireAtomicBatch,
     );
   }
 
@@ -279,10 +285,7 @@ class DevicesService extends ChangeNotifier {
           .toList();
 
       try {
-        newChannelsViews[channel.id] = buildChannelView(
-          channel,
-          properties,
-        );
+        newChannelsViews[channel.id] = buildChannelView(channel, properties);
       } catch (e) {
         if (kDebugMode) {
           debugPrint(
@@ -308,16 +311,20 @@ class DevicesService extends ChangeNotifier {
       // Get validation result for this device
       final validationResult = _validationRepository.getForDevice(device.id);
       final isValid = validationResult?.isValid ?? true;
-      final deviceIssues = validationResult?.issues
+      final deviceIssues =
+          validationResult?.issues
               .where((issue) => issue.channelId == null)
               .toList() ??
           [];
 
       // Create validated channel views and update the global map
-      final List<ChannelView> channelsWithValidation =
-          deviceChannels.map((channel) {
-        final channelIssues =
-            _validationRepository.getIssuesForChannel(device.id, channel.id);
+      final List<ChannelView> channelsWithValidation = deviceChannels.map((
+        channel,
+      ) {
+        final channelIssues = _validationRepository.getIssuesForChannel(
+          device.id,
+          channel.id,
+        );
         final channelIsValid = !channelIssues.any((issue) => issue.isError);
 
         // Get the channel model from the repository to rebuild with validation

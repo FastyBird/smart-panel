@@ -45,5 +45,6 @@ export const VIRTUAL_SELECTABLE_CATEGORIES: readonly DevicesModuleDeviceCategory
 export const RouteNames = {
 	WIZARD: 'devices_virtual-wizard',
 	MEASUREMENT_WIZARD: 'devices_virtual-measurement_wizard',
+	THERMOSTAT_WIZARD: 'devices_virtual-thermostat_wizard',
 	LIGHT_GROUP_WIZARD: 'devices_virtual-light_group_wizard',
 };

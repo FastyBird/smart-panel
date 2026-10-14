@@ -559,6 +559,15 @@ export class DevicesService {
 		const mapping = this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
+		// The climate-controller virtual category has writable local settings and
+		// exclusive physical claims. Its only creation ingress is the admitted
+		// producer writer that installs all three atomically.
+		if (
+			type === 'virtual' &&
+			(dtoInstance as TCreateDTO & { mode?: string }).mode === 'climate_controller' &&
+			!creation
+		)
+			throw new DevicesValidationException('Climate-controller devices require atomic thermostat producer creation.');
 
 		// Validate room assignment if provided
 		if (dtoInstance.room_id) {

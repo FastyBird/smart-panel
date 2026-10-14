@@ -9,6 +9,7 @@ import { CreateVirtualDeviceDto } from './dto/create-device.dto';
 import * as LightGroupDraftDtos from './dto/light-group-draft.dto';
 import * as MeasurementAuthoringDtos from './dto/measurement-authoring.dto';
 import * as ProducerDtos from './dto/producer-config.dto';
+import { CreateVirtualThermostatProducerDto } from './dto/thermostat-authoring.dto';
 import * as ThermostatDtos from './dto/thermostat-config.dto';
 import {
 	ConfigureVirtualTransformDto,
@@ -30,6 +31,7 @@ import { VirtualConfigModel } from './models/config.model';
 import * as LightGroupDraftModels from './models/light-group-draft.model';
 import * as MeasurementAuthoringModels from './models/measurement-authoring-response.model';
 import * as ProducerModels from './models/producer-response.model';
+import * as ThermostatAuthoringModels from './models/thermostat-authoring-response.model';
 import * as ThermostatModels from './models/thermostat-response.model';
 import * as TransformModels from './models/transform-response.model';
 import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
@@ -45,7 +47,9 @@ export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	VirtualCalibrationPointDto,
 	...Object.values(TransformModels),
 	...Object.values(ThermostatDtos),
+	CreateVirtualThermostatProducerDto,
 	...Object.values(ThermostatModels),
+	...Object.values(ThermostatAuthoringModels),
 	...Object.values(ProducerDtos),
 	...Object.values(ProducerModels),
 	// DTOs
