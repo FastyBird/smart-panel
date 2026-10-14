@@ -30,6 +30,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { ThermostatInstallationController } from './controllers/thermostat-installation.controller';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
@@ -65,6 +66,10 @@ import {
 	VirtualDeviceEntity,
 	VirtualDeviceMode,
 } from './entities/devices-virtual.entity';
+import {
+	ThermostatInstallationAuditEntity,
+	ThermostatInstallationEntity,
+} from './entities/thermostat-installation.entity';
 import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
 import {
 	VirtualThermostatBranchRuntimeEntity,
@@ -84,6 +89,9 @@ import { VirtualProjectionListener } from './listeners/virtual-projection.listen
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { ThermostatInstallationBindingsService } from './services/thermostat-installation-bindings.service';
+import { ThermostatInstallationLoaderService } from './services/thermostat-installation-loader.service';
+import { ThermostatInstallationService } from './services/thermostat-installation.service';
 import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
@@ -128,6 +136,8 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			VirtualChannelPropertyEntity,
 			DeviceEntity,
 			...VIRTUAL_PRODUCER_ENTITIES,
+			ThermostatInstallationEntity,
+			ThermostatInstallationAuditEntity,
 			VirtualThermostatConfigEntity,
 			VirtualThermostatActuatorClaimEntity,
 			VirtualThermostatRecoveryEntity,
@@ -146,6 +156,9 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		ThermostatInstallationService,
+		ThermostatInstallationBindingsService,
+		ThermostatInstallationLoaderService,
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
 		VirtualThermostatAuthoringService,
@@ -180,6 +193,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		SourceNotVirtualConstraintValidator,
 	],
 	controllers: [
+		ThermostatInstallationController,
 		VirtualThermostatConfigController,
 		VirtualThermostatAuthoringController,
 		VirtualMeasurementAuthoringController,

@@ -13,6 +13,13 @@ export interface ShellyGuardScriptQualification {
 	readonly endpointAuthenticationEvidenceId: string;
 	readonly restartDrainEvidenceId: string;
 	readonly localExecutionBoundsEvidenceId: string;
+	readonly installationMetadata?: {
+		readonly componentType: string;
+		readonly componentId: number;
+		readonly configurationJson: string;
+		readonly switchConfigurationJson: string;
+		readonly peripheralsJson: string;
+	};
 	readonly protocol: 'sp-guard-candidate-1';
 }
 /**

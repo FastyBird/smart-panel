@@ -2,6 +2,8 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { runInNewContext } from 'vm';
 
+import { SHELLY_GUARD_SOURCE } from '../contracts/guard-script-source';
+
 // Execute the exact standalone candidate, not a reimplementation of its state machine.
 const source = readFileSync(
 	resolve(__dirname, '../../../../../../docs/work/virtual-thermostat/shelly-guard-candidate.js'),
@@ -139,6 +141,12 @@ const fixture = (): DeviceFixture => {
 	device.boot();
 	return device;
 };
+
+describe('packaged reviewed artifact', () => {
+	it('matches the exact offline candidate', () => {
+		expect(SHELLY_GUARD_SOURCE).toBe(source);
+	});
+});
 
 describe('offline Shelly guard protocol candidate', () => {
 	it('requires exact installed identity, restart drainage, and writer exclusion before exposing commands', () => {
@@ -424,6 +432,9 @@ describe('offline Shelly guard protocol candidate', () => {
 				a: 0.0010351024725298568,
 				b: 0.0002338353574079741,
 				c: 7.917851073336009e-8,
+				thermistorLeg: 'low',
+				inputRange: { minimum: 0.1, maximum: 9.9 },
+				outputRange: { minimum: -40, maximum: 100 },
 			},
 		});
 		device.boot();

@@ -137,6 +137,8 @@ export class ShellyGuardRpcSession {
 			if (chunk === 63) return null;
 		}
 		if (hash.digest('hex') !== script.sourceHash) return null;
+		if (script.installationMetadata && !(await this.inspectMetadata(script.installationMetadata, isCurrent, deadline)))
+			return null;
 		const status = await this.guardRequest<GuardStatus>('status', {}, isCurrent, deadline);
 		if (
 			!status ||
@@ -157,6 +159,40 @@ export class ShellyGuardRpcSession {
 		)
 			return null;
 		return status;
+	}
+	private async inspectMetadata(
+		floor: NonNullable<ShellyProtectiveQualification['guardScript']['installationMetadata']>,
+		guard: () => boolean,
+		deadline: number,
+	): Promise<boolean> {
+		const method = { temperature: 'Temperature.GetConfig', voltmeter: 'Voltmeter.GetConfig', input: 'Input.GetConfig' }[
+			floor.componentType
+		];
+		if (!method) return false;
+		const floorConfig = await this.execute<unknown>(method, { id: floor.componentId }, guard, deadline);
+		const peripherals = await this.execute<unknown>('SensorAddon.GetPeripherals', {}, guard, deadline);
+		const switchConfig = await this.execute<unknown>('Switch.GetConfig', { id: this.componentId }, guard, deadline);
+		return (
+			JSON.stringify(floorConfig) === floor.configurationJson &&
+			JSON.stringify(switchConfig) === floor.switchConfigurationJson &&
+			JSON.stringify(peripherals) === floor.peripheralsJson &&
+			guard()
+		);
+	}
+	/** Read-only metadata inspection. Never issues fence/ON/OFF or claims physical safety. */
+	async inspectInstallation(
+		floor: NonNullable<ShellyProtectiveQualification['guardScript']['installationMetadata']>,
+		timeoutMs: number,
+		isAdmitted: () => boolean,
+	): Promise<{ isCurrent: () => boolean } | null> {
+		const deadline = Date.now() + timeoutMs;
+		const guard = () => this.isCurrent() && isAdmitted() && Date.now() < deadline;
+		try {
+			if (!(await this.inspect(guard, deadline)) || !(await this.inspectMetadata(floor, guard, deadline))) return null;
+			return Object.freeze({ isCurrent: () => this.isCurrent() && isAdmitted() });
+		} catch {
+			return null;
+		}
 	}
 	/**
 	 * Request ON with an absolute expiry derived from the inspected device clock, never acknowledgement time.

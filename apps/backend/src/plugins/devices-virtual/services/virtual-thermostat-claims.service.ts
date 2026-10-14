@@ -39,6 +39,8 @@ export interface ThermostatInstalledQualification {
 	readonly profile: ShellyProtectiveQualification;
 	readonly upstreamWritersExcluded: boolean;
 	readonly opposedOutputsInterlocked: boolean;
+	/** Captured metadata/provider epoch, supplied only by the installation loader. */
+	readonly machineLeaseIsCurrent?: () => boolean;
 }
 export interface ThermostatReleaseProof {
 	readonly claimId: string;
@@ -127,7 +129,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.ready = false;
 		this.epoch++;
 	}
-	/** Keep command admission closed from restore entry until its commit or rollback has been reloaded. */
+	/** Keep command admission closed from ownership/installation operation entry through reloaded commit or rollback. */
 	holdRecoveryFence(): () => void {
 		this.recoveryFences++;
 		this.invalidate();
@@ -269,16 +271,30 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				profile: Object.freeze({
 					...profile,
 					testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
-					...(profile.guardScript ? { guardScript: Object.freeze({ ...profile.guardScript }) } : {}),
+					...(profile.guardScript
+						? {
+								guardScript: Object.freeze({
+									...profile.guardScript,
+									...(profile.guardScript.installationMetadata
+										? { installationMetadata: Object.freeze({ ...profile.guardScript.installationMetadata }) }
+										: {}),
+								}),
+							}
+						: {}),
 				}),
 			}),
 		);
 		this.epoch++;
 	}
-	/** Recovery changes the binding contract. Old installation evidence cannot qualify the restored leaf. */
+	/** Revoke dispatch leases without discarding unchanged durable reservations. Recovery invalidates its bindings separately. */
 	revokeQualification(physicalIdentity: string): void {
 		this.qualifications.delete(physicalIdentity);
-		this.invalidate();
+		this.epoch++;
+	}
+	/** Installation operations revoke every captured qualification before entering any async lock/read. */
+	revokeAllQualifications(): void {
+		this.qualifications.clear();
+		this.epoch++;
 	}
 	qualification(
 		claim: VirtualThermostatActuatorClaimEntity,
@@ -289,6 +305,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		if (
 			!evidence ||
 			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
+			(evidence.machineLeaseIsCurrent && !evidence.machineLeaseIsCurrent()) ||
 			(opposed && !evidence.opposedOutputsInterlocked) ||
 			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min ||
 			claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max

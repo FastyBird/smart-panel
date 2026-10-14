@@ -47,7 +47,10 @@ function conversionQualified() {
 		conversion.seriesResistance > 0 &&
 		finiteNumber(conversion.a) &&
 		finiteNumber(conversion.b) &&
-		finiteNumber(conversion.c)
+		finiteNumber(conversion.c) &&
+		(conversion.thermistorLeg === 'low' || conversion.thermistorLeg === 'high') &&
+		conversion.inputRange && finiteNumber(conversion.inputRange.minimum) && finiteNumber(conversion.inputRange.maximum) && conversion.inputRange.minimum <= conversion.inputRange.maximum &&
+		conversion.outputRange && finiteNumber(conversion.outputRange.minimum) && finiteNumber(conversion.outputRange.maximum) && conversion.outputRange.minimum <= conversion.outputRange.maximum
 	);
 }
 /** Convert qualified divider voltage to Celsius; invalid electrical or conversion values yield no sample. */
@@ -56,13 +59,14 @@ function floorCelsius(value) {
 	if (cfg.floorAttribute !== 'voltage') return value;
 	if (!conversionQualified() || value <= 0 || value >= cfg.floorConversion.referenceVoltage) return null;
 	let conversion = cfg.floorConversion;
-	let resistance = (conversion.seriesResistance * value) / (conversion.referenceVoltage - value);
+	if (value < conversion.inputRange.minimum || value > conversion.inputRange.maximum) return null;
+	let resistance = conversion.thermistorLeg === 'low' ? (conversion.seriesResistance * value) / (conversion.referenceVoltage - value) : (conversion.seriesResistance * (conversion.referenceVoltage - value)) / value;
 	if (!finiteNumber(resistance) || resistance <= 0) return null;
 	let logarithm = Math.log(resistance);
 	let inverse = conversion.a + (conversion.b + conversion.c * logarithm * logarithm) * logarithm;
 	if (!finiteNumber(inverse) || inverse <= 0) return null;
 	let temperature = 1 / inverse - 273.15;
-	return finiteNumber(temperature) ? temperature : null;
+	return finiteNumber(temperature) && temperature >= conversion.outputRange.minimum && temperature <= conversion.outputRange.maximum ? temperature : null;
 }
 
 /** Require unchanged installed sensor configuration, a fresh value and a cleared overtemperature latch. */
