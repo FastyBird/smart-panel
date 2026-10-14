@@ -43,6 +43,7 @@ import {
 } from '../entities/devices-virtual.entity';
 import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 import {
+	VirtualThermostatBranchRuntimeEntity,
 	VirtualThermostatCommandEntity,
 	VirtualThermostatRuntimeEntity,
 } from '../entities/virtual-thermostat-runtime.entity';
@@ -290,6 +291,7 @@ describe('virtual thermostat durable runtime', () => {
 			registerRuntimeAdmission: () => () => undefined,
 			invalidate: jest.fn(),
 			refresh: jest.fn().mockResolvedValue(undefined),
+			isQualifiedReleaseWrite: () => false,
 			qualification: (claim: VirtualThermostatActuatorClaimEntity) => {
 				if (!installedQualifications.has(claim.physicalIdentity))
 					installedQualifications.set(
@@ -1041,6 +1043,102 @@ describe('virtual thermostat durable runtime', () => {
 			expect(sentTargets.some((send) => send.on)).toBe(false);
 		},
 	);
+	it.each([
+		['journal', 'source'],
+		['journal', 'qualification'],
+		['journal', 'off_sample'],
+		['branch', 'source'],
+		['branch', 'qualification'],
+		['branch', 'off_sample'],
+	])('rolls back %s settlement if %s changes during its awaited write', async (stage, mode) => {
+		await settle();
+		runtime.onModuleDestroy();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		const oldBranch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
+			claimId: claim.id,
+		});
+		const qualification = installedQualifications.get(claim.physicalIdentity);
+		const command = database.manager.create(VirtualThermostatCommandEntity, {
+			id: uuid(),
+			controllerId,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: 1,
+			decisionRevision: 1,
+			action: 'on',
+			status: 'accepted',
+			preparedAt: new Date(),
+		});
+		await database.manager.insert(VirtualThermostatCommandEntity, command);
+		const createRunner = database.createQueryRunner.bind(database) as typeof database.createQueryRunner;
+		const watched = new WeakSet<object>();
+		let invalidated = false;
+		let settlingProofId: string | null = null;
+		proofMutation = (proof) => {
+			settlingProofId = proof.proofId;
+			return proof;
+		};
+		const hook = jest.spyOn(database, 'createQueryRunner').mockImplementation((...parameters) => {
+			const runner = createRunner(...parameters);
+			if (!watched.has(runner)) {
+				watched.add(runner);
+				const query = runner.query.bind(runner) as typeof runner.query;
+				jest.spyOn(runner, 'query').mockImplementation(async (...args: Parameters<typeof runner.query>) => {
+					const result: unknown = await query(...args);
+					const table =
+						stage === 'journal'
+							? 'devices_virtual_thermostat_command_journal'
+							: 'devices_virtual_thermostat_branch_runtime';
+					if (
+						!invalidated &&
+						typeof args[0] === 'string' &&
+						Array.isArray(args[1]) &&
+						args[0].startsWith(`UPDATE "${table}"`) &&
+						(stage === 'branch'
+							? !!settlingProofId && args[1]?.includes(settlingProofId)
+							: args[1]?.includes('confirmed'))
+					) {
+						invalidated = true;
+						proofAllowed = () => false;
+						if (mode === 'source') providerCurrent = false;
+						else if (mode === 'qualification')
+							installedQualifications.set(claim.physicalIdentity, { ...qualification });
+						else sample(relayId, true);
+					}
+					return result;
+				});
+			}
+			return runner;
+		});
+		try {
+			runtime = makeRuntime();
+			await runtime.onApplicationBootstrap();
+			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+			await settle();
+			expect(invalidated).toBe(true);
+			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
+				'accepted',
+			);
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id }))
+					.releaseProofId,
+			).toBe(oldBranch.releaseProofId);
+			expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+			expect((runtime as unknown as { reconciled: Map<string, unknown> }).reconciled.size).toBe(0);
+		} finally {
+			hook.mockRestore();
+		}
+		providerCurrent = true;
+		installedQualifications.set(claim.physicalIdentity, qualification);
+		sample(relayId, false);
+		proofAllowed = () => true;
+		runtime.request(controllerId);
+		await settle();
+		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
+			'confirmed',
+		);
+		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+	});
 	it.each(['cached', 'retained', 'claim', 'config', 'contract', 'source', 'observation', 'unaccepted'])(
 		'rejects %s provider proof and retains the actuator reservation',
 		async (mode) => {
