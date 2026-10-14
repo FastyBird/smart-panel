@@ -33,6 +33,7 @@ import {
 	VirtualChannelPropertyEntity,
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
+import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { SimulatorDevicePlatform } from '../src/plugins/simulator/platforms/simulator-device.platform';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
@@ -1467,6 +1468,68 @@ describe('devices-virtual plugin (e2e)', () => {
 			// And it projects: the source was created holding `true`, and this reads through to it rather
 			// than to the virtual property's own (never-written) series.
 			expect(onProperty?.value?.value).toBe(true);
+		});
+
+		it('returns committed nested wiring as unavailable when post-commit graph validation fails', async () => {
+			const graph = moduleRef.get(VirtualDependencyGraphService);
+			const propertyId = uuid();
+			const failure = new Error('injected nested post-commit validation failure');
+			const rejectedValidation = jest.fn();
+			const stop = graph.observeValidation(async () => {
+				if (await dataSource.getRepository(VirtualChannelPropertyEntity).countBy({ id: propertyId })) {
+					rejectedValidation();
+					throw failure;
+				}
+			});
+			let deviceId: string | undefined;
+			try {
+				const response = await authPost('/modules/devices/devices')
+					.send({
+						data: {
+							type: DEVICES_VIRTUAL_TYPE,
+							category: DeviceCategory.LIGHTING,
+							name: 'Committed unavailable wiring',
+							channels: [
+								{
+									type: DEVICES_VIRTUAL_TYPE,
+									category: ChannelCategory.LIGHT,
+									identifier: 'light',
+									name: 'Light',
+									properties: [
+										{
+											id: propertyId,
+											type: DEVICES_VIRTUAL_TYPE,
+											category: PropertyCategory.ON,
+											identifier: 'on',
+											name: 'On',
+											permissions: [PermissionType.READ_WRITE],
+											data_type: DataTypeType.BOOL,
+											source_property: atomicSourcePropertyId,
+										},
+									],
+								},
+							],
+						},
+					})
+					.expect(201);
+				const body = response.body as { data: DeviceBody };
+				deviceId = body.data.id;
+				const property = body.data.channels
+					.flatMap((channel) => channel.properties)
+					.find((candidate) => candidate.id === propertyId);
+				expect(property?.source_property).toBe(atomicSourcePropertyId);
+				expect(property?.value?.value).toBeNull();
+				expect(graph.isValidated()).toBe(false);
+				expect(rejectedValidation).toHaveBeenCalled();
+				expect(
+					(await dataSource.getRepository(VirtualChannelPropertyEntity).findOneByOrFail({ id: propertyId }))
+						.sourcePropertyId,
+				).toBe(atomicSourcePropertyId);
+			} finally {
+				stop();
+				await graph.refreshQuarantine();
+				if (deviceId) await ensureDeviceDeleted(authGet, authDelete, deviceId);
+			}
 		});
 
 		// The device_information synthesis has to survive being raced by the nested property's own
