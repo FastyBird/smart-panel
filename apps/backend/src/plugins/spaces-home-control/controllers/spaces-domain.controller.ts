@@ -496,6 +496,7 @@ export class SpacesDomainController {
 		}
 
 		const resultData = new LightingIntentResultDataModel();
+		resultData.composites = result.composites;
 		resultData.success = result.success;
 		resultData.affectedDevices = result.affectedDevices;
 		resultData.failedDevices = result.failedDevices;

@@ -76,8 +76,23 @@ Ordinary direct, scene, projection and expanded group commands consult the same 
 bypass flag. A future controller ownership implementation must add a registry-minted opaque command authority for its
 own release/control path rather than trust caller-supplied context.
 
-Room contribution selection and admin/panel authoring/presentation are separate integrations. Raw physical controls
-remain individually usable. Production availability depends on adapters submitting qualified live feedback; legacy
+Room lighting state and commands use the same physical-leaf contribution planner. A selected group represents its
+members; raw channels covered by it are excluded from the room calculation and dispatch selection. Unclaimed raw
+channels continue to contribute and remain directly controllable.
+
+If two room groups overlap, state and commands report `lighting_contribution_conflict` before dispatch. Repair this
+in the room's lighting roles editor: keep one group participating as the representative and set the other group's role
+to **Hidden**. The equivalent API is `POST /api/v1/modules/spaces/spaces/{id}/lighting/roles` with
+`data.device_id`, `data.channel_id`, and `data.role: "hidden"`. Both state and command selection exclude that room role
+before contribution planning. The role target listing retains the excluded group, so its participation can be restored
+explicitly; restoring overlapping participation reports the conflict again. Changing a lighting role does not change the
+device's `hidden` flag or `hiddenBy` provenance, its group membership, or direct member controls.
+
+Focused regressions are `apps/backend/src/plugins/spaces-home-control/services/light-group-room-role-repair.integration.spec.ts`
+(saved role repair, room counts and dispatch selection) and
+`apps/backend/src/plugins/devices-virtual/services/virtual-light-group-authoring.integration.spec.ts`
+(group create/edit/remap/delete preserve source hiding, projection links and energy claims).
+Production availability depends on adapters submitting qualified live feedback; legacy
 adapters that write only values remain unknown. WLED partial observations preserve omitted main RGB values; only full
 snapshots or explicitly unsafe main-segment identities invalidate those colors. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.

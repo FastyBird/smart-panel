@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/input_contro
 import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/generic_device.dart';
+import 'package:fastybird_smart_panel/plugins/devices-virtual/models/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/av_receiver.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
@@ -185,7 +186,24 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
     return _createDeviceView(device, channels, isValid, validationIssues, WaterHeaterDeviceView.new);
   },
   DevicesModuleDeviceCategory.lighting: (device, channels, isValid, validationIssues) {
-    return _createDeviceView(device, channels, isValid, validationIssues, LightingDeviceView.new);
+    return LightingDeviceView(
+      id: device.id,
+      type: device.type,
+      category: device.category,
+      name: device.name,
+      description: device.description,
+      icon: buildDeviceIcon(device.category),
+      roomId: device.roomId,
+      zoneIds: device.zoneIds,
+      channels: channels,
+      enabled: device.enabled,
+      isOnline: device.isOnline,
+      lastStateChange: device.lastStateChange,
+      isValid: isValid,
+      validationIssues: validationIssues,
+      isCompositeGroup: device is VirtualDeviceModel &&
+          device.mode == VirtualDeviceMode.actuatorGroup,
+    );
   },
   DevicesModuleDeviceCategory.lock: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, LockDeviceView.new);

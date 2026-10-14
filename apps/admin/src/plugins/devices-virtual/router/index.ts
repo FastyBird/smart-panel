@@ -5,6 +5,17 @@ import { RouteNames } from '../devices-virtual.constants';
 
 export const PluginRoutes: RouteRecordRaw[] = [
 	{
+		path: 'devices-virtual/light-groups/new',
+		name: RouteNames.LIGHT_GROUP_WIZARD,
+		component: () => import('../views/view-light-group-wizard.vue'),
+		meta: {
+			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
+			title: 'Create light group',
+			icon: 'mdi:lightbulb-group',
+		},
+	},
+
+	{
 		path: 'devices-virtual/wizard',
 		name: RouteNames.WIZARD,
 		component: () => import('../views/view-virtual-device-wizard.vue'),

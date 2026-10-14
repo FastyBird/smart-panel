@@ -15,6 +15,7 @@ import {
 	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
+	DevicesVirtualPluginDeviceMode,
 } from '../../../openapi.constants';
 import VirtualWizardDetailsStep from '../components/wizard/virtual-wizard-details-step.vue';
 import VirtualWizardMappingStep from '../components/wizard/virtual-wizard-mapping-step.vue';
@@ -395,6 +396,19 @@ describe('ViewVirtualDeviceWizard', () => {
 
 		expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'devices_module-devices' });
 		expect(mocks.routerReplace).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		[DevicesVirtualPluginDeviceMode.actuator_group, 'devices_virtual-light_group_wizard'],
+		[DevicesVirtualPluginDeviceMode.sensor_aggregate, 'devices_virtual-measurement_wizard'],
+		[DevicesVirtualPluginDeviceMode.sensor_transform, 'devices_virtual-measurement_wizard'],
+	])('routes mode %s to its authoring wizard', async (mode, name) => {
+		const wrapper = mount(ViewVirtualDeviceWizard);
+
+		wrapper.findComponent({ name: 'ElRadioGroup' }).vm.$emit('change', mode);
+		await nextTick();
+
+		expect(mocks.routerPush).toHaveBeenCalledWith(mode === DevicesVirtualPluginDeviceMode.actuator_group ? { name } : { name, query: { mode } });
 	});
 
 	it('sets the page title via useMeta', () => {

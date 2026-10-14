@@ -1,6 +1,11 @@
 <template>
+	<virtual-light-group-detail
+		v-if="isLightGroup"
+		:key="props.device.id"
+		:device="props.device"
+	/>
 	<virtual-measurement-editor
-		v-if="measurementMode && measurementOutput"
+		v-else-if="measurementMode && measurementOutput"
 		:key="measurementOutput"
 		:mode="measurementMode"
 		:output-id="measurementOutput"
@@ -141,6 +146,7 @@ import type { MeasurementMode } from '../utils/measurement-authoring.utils';
 
 import VirtualDeviceRemapDialog from './virtual-device-remap-dialog.vue';
 import type { IVirtualDeviceSourcesProps, IVirtualSourceWarning } from './virtual-device-sources.types';
+import VirtualLightGroupDetail from './virtual-light-group-detail.vue';
 
 const VirtualMeasurementEditor = defineAsyncComponent(() => import('./virtual-measurement-editor.vue'));
 
@@ -149,6 +155,7 @@ defineOptions({
 });
 
 const props = defineProps<IVirtualDeviceSourcesProps>();
+const isLightGroup = computed(() => 'mode' in props.device && props.device.mode === 'actuator_group');
 
 const { t } = useI18n();
 const router = useRouter();
