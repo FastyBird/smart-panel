@@ -1,4 +1,13 @@
-import { Body, Controller, Post, UnprocessableEntityException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	NotFoundException,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -9,7 +18,10 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
 import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.dto';
-import { VirtualCreatedThermostatResponseModel } from '../models/thermostat-authoring-response.model';
+import {
+	VirtualCreatedThermostatResponseModel,
+	VirtualThermostatPropertyBindingResponseModel,
+} from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationResponseModel } from '../models/thermostat-response.model';
 import { VirtualThermostatAuthoringService } from '../services/virtual-thermostat-authoring.service';
 
@@ -17,6 +29,24 @@ import { VirtualThermostatAuthoringService } from '../services/virtual-thermosta
 @Controller('producers/thermostats')
 export class VirtualThermostatAuthoringController {
 	constructor(private readonly authoring: VirtualThermostatAuthoringService) {}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Resolve a thermostat binding property',
+		description: 'Resolve the owning channel and device of a saved thermostat binding by property UUID.',
+		operationId: 'get-devices-virtual-plugin-thermostat-property-binding',
+	})
+	@ApiSuccessResponse(VirtualThermostatPropertyBindingResponseModel, 'Thermostat binding path')
+	@Get('binding-properties/:id')
+	async propertyBinding(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<VirtualThermostatPropertyBindingResponseModel> {
+		const binding = await this.authoring.propertyBinding(id);
+		if (!binding) throw new NotFoundException('Thermostat binding property does not exist.');
+		const response = new VirtualThermostatPropertyBindingResponseModel();
+		response.data = binding;
+		return response;
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
