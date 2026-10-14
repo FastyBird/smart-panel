@@ -818,6 +818,10 @@ describe('durable thermostat installation profiles', () => {
 			await loader.verify(claim.id, 1, 'operator');
 			claims.registerRuntimeAdmission(() => true);
 			const oldQualification = claims.qualification(claim, false);
+			if (!oldQualification) throw new Error('Expected the verified installation qualification');
+			const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+				controllerId: claim.controllerId,
+			});
 			const oldAuthority = claims.mintAuthority(claim.id, 'on');
 			const target = { ...(await bindings.resolve(db.manager, claim.id)).target, value: true };
 			// An opaque server-issued fixture proof belongs to the old process; it is not hardware evidence.
@@ -825,6 +829,11 @@ describe('durable thermostat installation profiles', () => {
 				outputConfirmedOff: true,
 				pendingOnDrained: true,
 				evidenceId: 'fixture-old-process-only',
+				qualification: oldQualification,
+				isCurrent: () =>
+					claims.qualification(claim, false) === oldQualification &&
+					oldQualification.machineLeaseIsCurrent?.() === true,
+				controllerRevision: config.revision,
 			});
 			const accepted = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
 			if (failure === 'revoke_cas')
