@@ -159,6 +159,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 	});
 
 	it('shares preview/persistence validation and preserves the revision on rollback', async () => {
+		await graph.onApplicationBootstrap();
 		const a = await measurement();
 		const b = await measurement();
 		const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
@@ -180,6 +181,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			(await database.getRepository(ChannelPropertyEntity).findOneByOrFail({ id: output.propertyId })).name,
 		).not.toBe('must roll back');
 		expect(await graph.revision()).toBe(0);
+		expect(graph.isRevisionCurrent(0)).toBe(true);
 	});
 
 	it('reserves the writer slot before validating reciprocal edges through two independent SQLite connections', async () => {
@@ -479,6 +481,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			await manager.update(VirtualChannelPropertyEntity, b.propertyId, { sourcePropertyId: physical.propertyId });
 		}, 0);
 		expect(graph.isQuarantined(a.propertyId)).toBe(false);
+		expect(graph.isRevisionCurrent(1)).toBe(true);
 		expect(producers.owns(a.propertyId)).toBe(false);
 		const repaired = await database.getRepository(VirtualChannelPropertyEntity).findOneByOrFail({ id: a.propertyId });
 		expect((await values.readLatest(repaired))?.value).toBe(21);

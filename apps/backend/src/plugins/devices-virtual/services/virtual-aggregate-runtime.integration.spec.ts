@@ -588,7 +588,7 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		}
 	});
 
-	it('returns a committed configuration when graph refresh encounters an evaluation fault', async () => {
+	it('returns a committed configuration when post-activation evaluation fails and recovers on the next report', async () => {
 		const a = await measurement(),
 			b = await measurement(),
 			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
@@ -630,7 +630,12 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 			expect(updated.revision).toBe(2);
 			expect(logged).toHaveBeenCalledTimes(1);
 			expect(invalidate).toHaveBeenCalledWith(expect.anything(), ['runtime_error']);
-			expect(outputState(output)).toMatchObject({ value: 22, producer: { quality: 'good', revision: 2 } });
+			expect(graph.isRevisionCurrent(await graph.revision())).toBe(true);
+			expect(graph.isQuarantined(output.id)).toBe(false);
+			expect(outputState(output)).toMatchObject({
+				value: null,
+				producer: { quality: 'unavailable', revision: 2, reasons: ['runtime_error'] },
+			});
 			await sample(a, 24);
 			expect(outputState(output)).toMatchObject({ value: 24, producer: { quality: 'good', revision: 2 } });
 		} finally {

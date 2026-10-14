@@ -9,16 +9,20 @@ import {
 	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
+	EventType,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyStateCoordinatorService } from '../../../modules/devices/services/property-state-coordinator.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
@@ -32,11 +36,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
-import {
-	VirtualLightGroupBindingEntity,
-	VirtualLightGroupConfigEntity,
-	VirtualLightGroupMemberEntity,
-} from '../entities/virtual-producer.entity';
+import { VirtualLightGroupConfigEntity, VirtualLightGroupMemberEntity } from '../entities/virtual-producer.entity';
 import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
@@ -119,13 +119,11 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			permissions: [PermissionType.READ_ONLY],
 			valueOrigin: VirtualValueOrigin.DERIVED,
 		} as never);
-		await database.manager.insert(VirtualLightGroupConfigEntity, { groupChannelId: channelId, revision: 1 });
 		const physical: Array<{ deviceId: string; memberChannelId: string; propertyId: string }> = [];
 		for (let index = 0; index < 2; index++) {
 			const deviceId = uuid();
 			const memberChannelId = uuid();
 			const propertyId = uuid();
-			const memberId = uuid();
 			await database.manager.insert(DeviceEntity, {
 				id: deviceId,
 				name: 'Physical',
@@ -144,20 +142,6 @@ describe('light group actual feedback with real SQLite bindings', () => {
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_WRITE],
 			} as never);
-			await database.manager.insert(VirtualLightGroupMemberEntity, {
-				id: memberId,
-				groupChannelId: channelId,
-				sourceChannelId: memberChannelId,
-				sourceChannelIdentity: memberChannelId,
-			});
-			await database.manager.insert(VirtualLightGroupBindingEntity, {
-				id: uuid(),
-				memberId,
-				outputPropertyId: outputId,
-				sourcePropertyId: propertyId,
-				sourcePropertyIdentity: propertyId,
-				quantity: PropertyCategory.ON,
-			});
 			physical.push({ deviceId, memberChannelId, propertyId });
 		}
 		const brightnessOutput = uuid();
@@ -185,15 +169,23 @@ describe('light group actual feedback with real SQLite bindings', () => {
 				permissions: [PermissionType.READ_WRITE],
 			} as never);
 		}
-		const configs = new VirtualProducerConfigService(
+		const producerState = new VirtualProducerStateService(database, producers, graph, events);
+		await producerState.onModuleInit();
+		await graph.onApplicationBootstrap();
+		runtime = new VirtualLightGroupStateService(
 			database,
-			structure,
+			values,
+			producers,
+			devices as never,
 			graph,
 			events,
-			new VirtualProducerStateService(database, producers, graph, events),
+			structure,
 		);
+		await runtime.onModuleInit();
+		events.on(EventType.CHANNEL_PROPERTY_UPDATED, () => runtime.changed());
+		const configs = new VirtualProducerConfigService(database, structure, graph, events, producerState);
 		const configuration = Object.assign(new ConfigureVirtualLightGroupDto(), {
-			expectedRevision: 1,
+			expectedRevision: 0,
 			profile: VirtualLightGroupProfile.LIGHT,
 			members: physical.map((member, index) => ({
 				sourceChannelId: member.memberChannelId,
@@ -204,6 +196,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			})),
 		});
 		const configured = await configs.configureLightGroup(channelId, configuration);
+		expect(graph.isRevisionCurrent(configured.graph_revision)).toBe(true);
 		expect(configured.common_capabilities.map((capability) => capability.category)).toEqual([
 			PropertyCategory.ON,
 			PropertyCategory.BRIGHTNESS,
@@ -220,24 +213,15 @@ describe('light group actual feedback with real SQLite bindings', () => {
 			value: 75,
 		} as never);
 		await database.manager.update(ChannelPropertyEntity, brightnessSources[1], { format: [0, 50] });
-		configuration.expectedRevision = 2;
+		configuration.expectedRevision = 1;
 		await expect(configs.configureLightGroup(channelId, configuration)).rejects.toThrow(
 			/repair its scene\/tile references/,
 		);
 		expect(
 			(await database.manager.findOneByOrFail(VirtualLightGroupConfigEntity, { groupChannelId: channelId })).revision,
-		).toBe(2);
+		).toBe(1);
 		expect((await database.manager.findOneByOrFail(LocalSceneActionEntity, { id: actionId })).propertyId).toBe(
 			brightnessOutput,
-		);
-		runtime = new VirtualLightGroupStateService(
-			database,
-			values,
-			producers,
-			devices as never,
-			graph,
-			events,
-			structure,
 		);
 		await runtime.refresh();
 		expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
@@ -259,9 +243,10 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		expect(runtime.getReportedState(channelId)).toMatchObject({ total: 2, onCount: 1, offCount: 1, mixed: true });
 		const metadata = new PropertyMetadataService(database);
 		const windows = new PropertyCommandWindowService();
+		const registry = new CompositePropertyCommandRegistryService();
 		const commands = new VirtualLightGroupCommandService(
 			database,
-			new CompositePropertyCommandRegistryService(),
+			registry,
 			devices as never,
 			graph,
 			metadata,
@@ -279,6 +264,70 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		]);
 		expect(plan.children).toHaveLength(2);
 		expect(await plan.isCurrent()).toBe(true);
+		expect(plan.isDispatchCurrent()).toBe(true);
+		commands.onModuleInit();
+		const physicalDispatch = jest.fn((targets: readonly IDevicePropertyData[], guard: () => boolean) => {
+			if (!guard()) return Promise.resolve(false);
+			for (const target of targets) {
+				const window = windows.get(target.property.id);
+				windows.confirm(
+					{ canonicalPropertyId: target.property.id, generation: window.generation },
+					{ value: target.value, receivedAt: Date.now() },
+				);
+			}
+			return Promise.resolve(true);
+		});
+		const dispatch = new PropertyCommandDispatchService(
+			metadata,
+			values,
+			{} as never,
+			devices as never,
+			{
+				get: () => ({
+					prepareCompositeBatch: (targets: readonly IDevicePropertyData[]) =>
+						Promise.resolve({
+							updates: targets,
+							isCurrent: () => true,
+							dispatch: (guard: () => boolean) => physicalDispatch(targets, guard),
+						}),
+				}),
+				usesAuthoritativePropertyReadback: () => false,
+			} as never,
+			sources,
+			structure,
+			new PropertyStateCoordinatorService(),
+			windows,
+			undefined,
+			registry,
+			events,
+		);
+		const sendGroup = () =>
+			dispatch.dispatchBatch(
+				[{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: true }],
+				{ ttlMs: 1000 },
+			);
+		expect((await sendGroup()).composite.children.map((child) => child.status)).toEqual(['confirmed', 'confirmed']);
+		expect(physicalDispatch).toHaveBeenCalledTimes(2);
+		await database.manager.update(ChannelPropertyEntity, brightnessSources[1], { format: [0, 100] });
+		configuration.expectedRevision = 1;
+		const reconfigured = await configs.configureLightGroup(channelId, configuration);
+		expect(graph.isRevisionCurrent(reconfigured.graph_revision)).toBe(true);
+		expect(plan.isDispatchCurrent()).toBe(false);
+		expect((await sendGroup()).composite.children.map((child) => child.status)).toEqual(['confirmed', 'confirmed']);
+		expect(physicalDispatch).toHaveBeenCalledTimes(4);
+		configuration.expectedRevision = 2;
+		const stableRevision = await graph.revision();
+		await expect(
+			configs.configureLightGroup(
+				channelId,
+				Object.assign(new ConfigureVirtualLightGroupDto(), configuration, {
+					members: [configuration.members[0], configuration.members[0]],
+				}),
+			),
+		).rejects.toThrow(/distinct/);
+		expect(await graph.revision()).toBe(stableRevision);
+		expect(graph.isRevisionCurrent(stableRevision)).toBe(true);
+		dispatch.onModuleDestroy();
 		const brightnessParent = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
 			where: { id: brightnessOutput },
 			relations: ['channel', 'channel.device'],
@@ -351,6 +400,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		).toBeNull();
 		changedDuringPlanning.dispose();
 		commands.onModuleDestroy();
+		producerState.onModuleDestroy();
 
 		offline.add(physical[0].deviceId);
 		await runtime.refresh();

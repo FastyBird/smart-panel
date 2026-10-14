@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -135,11 +135,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				where: { channel: { id: config.groupChannelId } },
 				relations: ['channel', 'channel.device'],
 			});
-			const bindings = (
-				await this.dataSource.manager.find(VirtualLightGroupBindingEntity, {
-					relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
-				})
-			).filter((binding) => members.some((member) => member.id === binding.memberId));
+			const bindings = members.length
+				? await this.dataSource.manager.find(VirtualLightGroupBindingEntity, {
+						where: { memberId: In(members.map((member) => member.id)) },
+						relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
+					})
+				: [];
 			const now = new Date();
 			const snapshots = [];
 			for (const member of members) {

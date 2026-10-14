@@ -163,10 +163,13 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			this.stopListeners.push(() => this.events.off(event, listener));
 		}
 		this.stopListeners.push(
-			this.graph.observeValidation(async () => {
-				this.requestRecompute();
-				await this.flush();
-			}),
+			this.graph.observeValidation(
+				async () => {
+					this.requestRecompute();
+					await this.flush();
+				},
+				{ requiresActivation: true },
+			),
 		);
 		// Precise input deadlines are evaluated with the fixed sample clock; bounded backstop handles
 		// expiry and connectivity even if an integration fails to emit an expected event.

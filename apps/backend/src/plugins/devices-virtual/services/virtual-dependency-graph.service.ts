@@ -22,8 +22,9 @@ export interface VirtualDependencyEdge {
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
-	private readonly validationListeners = new Set<
-		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>
+	private readonly validationListeners = new Map<
+		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
+		{ requiresActivation?: boolean }
 	>();
 	private quarantineRevision = -1;
 
@@ -32,6 +33,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 
+	/** Applies committed validation before returning; runtime evaluation waits for the caller's activation events. */
 	async withStructuralWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
 		expectedGraphRevision?: number,
@@ -48,7 +50,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			await manager.increment(VirtualGraphRevisionEntity, { id: 1 }, 'revision', 1);
 			return operation(manager);
 		});
-		if (this.quarantined.size) await this.refreshQuarantine();
+		await this.refreshValidation(false);
 		return result;
 	}
 
@@ -172,8 +174,15 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.quarantined.has(propertyId);
 	}
 
-	observeValidation(listener: (revision: number, quarantined: ReadonlySet<string>) => Promise<void>): () => void {
-		this.validationListeners.add(listener);
+	/**
+	 * Quarantine masks run before structural writers return. Evaluators that require activation must
+	 * instead observe the caller's subsequent catalog events, after fresh-input barriers are installed.
+	 */
+	observeValidation(
+		listener: (revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
+		options: { requiresActivation?: boolean } = {},
+	): () => void {
+		this.validationListeners.set(listener, options);
 		return () => this.validationListeners.delete(listener);
 	}
 
@@ -182,7 +191,13 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		await this.refreshQuarantine();
 	}
 
+	/** Explicit/startup validation also refreshes activated runtime outputs. */
 	async refreshQuarantine(): Promise<void> {
+		await this.refreshValidation(true);
+	}
+
+	/** Validates one committed snapshot without evaluating outputs before their writer activates them. */
+	private async refreshValidation(activated: boolean): Promise<void> {
 		const snapshot = await this.dataSource.transaction(async (manager) => ({
 			edges: await this.edges(manager),
 			revision: await this.revision(manager),
@@ -223,6 +238,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			for (const node of neighbors.keys()) quarantined.add(node);
 		this.quarantineRevision = snapshot.revision;
 		this.quarantined = quarantined;
-		for (const listener of this.validationListeners) await listener(snapshot.revision, quarantined);
+		for (const [listener, options] of this.validationListeners)
+			if (activated || !options.requiresActivation) await listener(snapshot.revision, quarantined);
 	}
 }
