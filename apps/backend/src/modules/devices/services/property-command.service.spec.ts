@@ -748,9 +748,9 @@ describe('PropertyCommandService', () => {
 			Object.assign(service, { composites: registry });
 			const entry = service.captureCommandEntry();
 			expect(entry?.isActive()).toBe(true);
-			jest.spyOn(channelsPropertiesService, 'findOne').mockImplementation(async () => {
+			jest.spyOn(channelsPropertiesService, 'findOne').mockImplementation(() => {
 				entry?.dispose();
-				return property;
+				return Promise.resolve(property);
 			});
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties([property]));

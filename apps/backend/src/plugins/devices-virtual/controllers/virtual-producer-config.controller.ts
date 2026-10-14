@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Optional, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Optional,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	Put,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -155,7 +165,8 @@ export class VirtualProducerConfigController {
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Create a light group atomically',
-		description: 'Revalidate the preview graph and physical members in the same transaction as the device and bindings.',
+		description:
+			'Revalidate the preview graph and physical members in the same transaction as the device and bindings.',
 		operationId: 'create-devices-virtual-plugin-light-group-draft',
 	})
 	@ApiUnprocessableEntityResponse('Members, capability contract or preview revision changed')
