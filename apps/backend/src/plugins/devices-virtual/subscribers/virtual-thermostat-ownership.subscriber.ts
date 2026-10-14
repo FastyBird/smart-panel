@@ -57,8 +57,7 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		try {
 			await this.claims.refresh();
 		} catch (error) {
-			// SQL has already committed or rolled back. Preserve that outcome and close admission until recovery.
-			this.claims.invalidate();
+			// SQL has already committed or rolled back. Claims manages fail-closed retry without changing that outcome.
 			this.logger.error(`Thermostat claim reconciliation failed after ${boundary}`, error);
 		}
 	}

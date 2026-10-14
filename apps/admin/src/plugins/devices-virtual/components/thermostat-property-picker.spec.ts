@@ -1,4 +1,5 @@
 import { nextTick } from 'vue';
+import { defineComponent, h } from 'vue';
 
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,11 +23,17 @@ const devicesStore = {
 	findAll: vi.fn(() => [{ id: 'device-a', name: 'A' }, { id: 'device-b', name: 'B' }]),
 	fetch: vi.fn(),
 };
+const channelRows: Array<{ id: string; name: string; device: string }> = [];
 const channelsStore = {
 	findById: vi.fn(() => null),
-	findForDevice: vi.fn(() => []),
+	findForDevice: vi.fn((deviceId: string) => channelRows.filter((channel) => channel.device === deviceId)),
 	get: vi.fn(async ({ id }: { id: string }) => ({ id, name: id, device: `device-${id.slice(-1)}` })),
-	fetch: vi.fn(),
+	fetch: vi.fn(async ({ deviceId }: { deviceId: string }) => {
+		channelRows.splice(0, channelRows.length,
+			{ id: 'channel-a', name: 'A channel', device: deviceId },
+			{ id: 'channel-a-sibling', name: 'A sibling', device: deviceId },
+		);
+	}),
 };
 const propertiesStore = {
 	findById: vi.fn(() => null),
@@ -52,13 +59,29 @@ const binding = (property: string, suffix: string) => ({
 });
 const mounted = (id: string) => mount(ThermostatPropertyPicker, {
 	props: { modelValue: id, kind: 'setting' },
-	global: { stubs: { ElSelect: true, ElOption: true, ElText: true } },
+	global: { stubs },
 });
+const stubs = {
+	// eslint-disable-next-line vue/one-component-per-file -- render select slots so the sibling channel option is observable.
+	ElSelect: defineComponent({
+		name: 'ElSelect',
+		props: { modelValue: { type: String, default: null } },
+		setup(_, { slots }) { return () => h('div', slots.default?.()); },
+	}),
+	// eslint-disable-next-line vue/one-component-per-file -- render select slots so the sibling channel option is observable.
+	ElOption: defineComponent({
+		name: 'ElOption',
+		props: { value: { type: String, required: true }, label: { type: String, required: true } },
+		setup(props) { return () => h('span', { 'data-value': props.value }, props.label); },
+	}),
+	ElText: true,
+};
 const selected = (wrapper: ReturnType<typeof mounted>) => wrapper.findAllComponents({ name: 'ElSelect' })
 	.map((select) => select.props('modelValue'));
 
 beforeEach(() => {
 	mocks.requests.length = 0;
+	channelRows.length = 0;
 	vi.clearAllMocks();
 });
 
@@ -72,7 +95,9 @@ describe('thermostat property picker', () => {
 		expect(channelsStore.get).toHaveBeenCalledWith({ id: 'channel-a' });
 		expect(propertiesStore.get).toHaveBeenCalledWith({ id: 'property-a', channelId: 'channel-a' });
 		expect(selected(wrapper).slice(0, 2)).toEqual(['device-a', 'channel-a']);
-		expect(channelsStore.fetch).not.toHaveBeenCalled();
+		expect(channelsStore.fetch).toHaveBeenCalledWith({ deviceId: 'device-a' });
+		expect(wrapper.findAllComponents({ name: 'ElOption' }).map((option) => option.props('value')))
+			.toContain('channel-a-sibling');
 		wrapper.unmount();
 	});
 
@@ -107,6 +132,24 @@ describe('thermostat property picker', () => {
 		await flushPromises();
 		expect(channelsStore.get).not.toHaveBeenCalled();
 		mocks.requests[1].resolve(binding('property-a', 'b'));
+		await flushPromises();
+		expect(selected(wrapper).slice(0, 2)).toEqual(['device-b', 'channel-b']);
+		wrapper.unmount();
+	});
+
+	it('keeps a newer binding when an older device channel fetch rejects', async () => {
+		let rejectOldFetch: ((error: Error) => void) | undefined;
+		channelsStore.fetch.mockImplementation(({ deviceId }: { deviceId: string }) => deviceId === 'device-a'
+			? new Promise((_, reject) => { rejectOldFetch = reject; })
+			: Promise.resolve());
+		const wrapper = mounted('property-a');
+		await flushPromises();
+		mocks.requests[0].resolve(binding('property-a', 'a'));
+		await flushPromises();
+		await wrapper.setProps({ modelValue: 'property-b' });
+		mocks.requests[1].resolve(binding('property-b', 'b'));
+		await flushPromises();
+		rejectOldFetch?.(new Error('stale channel fetch failed'));
 		await flushPromises();
 		expect(selected(wrapper).slice(0, 2)).toEqual(['device-b', 'channel-b']);
 		wrapper.unmount();
