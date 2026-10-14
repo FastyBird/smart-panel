@@ -17,7 +17,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceProvisionQueueService } from '../../../modules/devices/services/device-provision-queue.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
-import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import {
 	ComponentType,
 	DESCRIPTORS,
@@ -1620,16 +1620,61 @@ export class DeviceManagerService {
 								{ id: key },
 								{ password },
 							);
+							const componentKey = `voltmeter:${key}`;
+							let peripherals: Record<string, unknown>;
+							try {
+								peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
+									host,
+									'SensorAddon.GetPeripherals',
+									undefined,
+									{ password },
+								);
+							} catch {
+								// Missing qualification revokes both raw volts and Celsius authority. Existing
+								// qualified channels retain their history through the pruning rules below.
+								await this.sampleSources?.invalidateComponent(device.id, componentKey);
+								continue;
+							}
 							const channel = await this.ensureNativeHelperTemperature(
 								device,
 								host,
 								password,
-								`voltmeter:${key}`,
+								componentKey,
 								config,
+								peripherals,
 							);
 							if (channel) channelsIds.push(channel.id);
+							const voltage = nativeVoltmeterVoltageIdentity(componentKey, config, peripherals, device.canonicalMac);
+							if (!voltage) await this.sampleSources?.invalidateComponent(device.id, componentKey, 'V');
+							else {
+								const raw = await this.ensureChannel(
+									device,
+									'identifier',
+									voltage.channelIdentifier,
+									ChannelCategory.ANALOG_INPUT,
+									`Voltage: ${componentKey}`,
+								);
+								const property = await this.ensureProperty(
+									raw,
+									PropertyCategory.VALUE,
+									'identifier',
+									'voltage',
+									undefined,
+									{
+										data_type: DataTypeType.FLOAT,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+								await this.ensureProperty(raw, PropertyCategory.UNIT, 'category', PropertyCategory.UNIT, 'V', {
+									data_type: DataTypeType.STRING,
+									permissions: [PermissionType.READ_ONLY],
+								});
+								await this.sampleSources?.bind(property.id, device.id, voltage);
+								channelsIds.push(raw.id);
+							}
 						} catch {
 							hasComponentFailures = true;
+							await this.sampleSources?.invalidateComponent(device.id, `voltmeter:${key}`);
 						}
 					}
 				} else if (type === String(ComponentType.DEVICE_POWER)) {
@@ -2363,7 +2408,8 @@ export class DeviceManagerService {
 				// Keep previous helper identity/history and aliases for explicit repair. Runtime rejects mismatched config.
 				if (
 					channel.identifier?.startsWith('helper-temperature:') ||
-					channel.identifier?.startsWith('probe-temperature:')
+					channel.identifier?.startsWith('probe-temperature:') ||
+					channel.identifier?.startsWith('raw-voltage:')
 				)
 					continue;
 				if (!channelsIds.includes(channel.id)) {
@@ -2559,22 +2605,29 @@ export class DeviceManagerService {
 		password: string | null | undefined,
 		componentKey: string,
 		config: Record<string, unknown>,
+		knownPeripherals?: Record<string, unknown>,
 	): Promise<ShellyNgChannelEntity | null> {
 		let peripherals: Record<string, unknown>;
 		try {
-			peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
-				host,
-				'SensorAddon.GetPeripherals',
-				undefined,
-				{ password },
-			);
+			peripherals =
+				knownPeripherals ??
+				(await this.shellyRpcClientService.call<Record<string, unknown>>(
+					host,
+					'SensorAddon.GetPeripherals',
+					undefined,
+					{ password },
+				));
 		} catch {
 			await this.sampleSources?.invalidateComponent(device.id, componentKey);
 			return null;
 		}
 		const identity = nativeTemperatureIdentity(componentKey, config, peripherals);
 		if (!identity) {
-			await this.sampleSources?.invalidateComponent(device.id, componentKey);
+			await this.sampleSources?.invalidateComponent(
+				device.id,
+				componentKey,
+				componentKey.startsWith('voltmeter:') ? 'temperature' : undefined,
+			);
 			return null;
 		}
 		const channel = await this.ensureChannel(

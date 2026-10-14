@@ -6,7 +6,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
-import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -25,6 +25,9 @@ describe('native temperature adoption identity', () => {
 	let sourceConfig: Record<string, unknown>;
 	let sourceStatus: Record<string, unknown>;
 	let peripherals: Record<string, unknown>;
+	let additionalComponentKeys: string[];
+	let failingRpcMethods: Set<string>;
+	let peripheralLookupFailures: number;
 	let channels: ShellyNgChannelEntity[];
 	let properties: { channel: string; category: PropertyCategory; identifier?: string; value?: unknown }[];
 	let service: DeviceManagerService;
@@ -34,6 +37,9 @@ describe('native temperature adoption identity', () => {
 
 	beforeEach(() => {
 		componentKey = 'input:100';
+		additionalComponentKeys = [];
+		failingRpcMethods = new Set();
+		peripheralLookupFailures = 0;
 		sourceConfig = {
 			id: 100,
 			type: 'analog',
@@ -51,18 +57,29 @@ describe('native temperature adoption identity', () => {
 		const device = Object.assign(new ShellyNgDeviceEntity(), {
 			id: 'pilot',
 			identifier: 'physical',
+			canonicalMac: 'A8032ABE5085',
 			hasEthernet: false,
 		});
 		jest.spyOn(globalThis, 'fetch').mockImplementation((_url, request) => {
 			const body = JSON.parse(request.body as string) as { method: string; params?: { id?: number } };
+			if (body.method === 'SensorAddon.GetPeripherals' && peripheralLookupFailures > 0) {
+				peripheralLookupFailures--;
+				return Promise.reject(new Error('Fixture peripheral lookup failed'));
+			}
+			if (failingRpcMethods.has(body.method)) return Promise.reject(new Error('Fixture RPC lookup failed'));
+			const componentKeys = [componentKey, ...additionalComponentKeys];
 			const payloads: Record<string, unknown> = {
 				'Shelly.GetDeviceInfo': { id: device.identifier, model: ShellyPlus1Pm.model, ver: 'fixture-only' },
-				'Shelly.GetComponents': { components: [{ key: componentKey }], offset: 0, total: 1 },
+				'Shelly.GetComponents': {
+					components: componentKeys.map((key) => ({ key })),
+					offset: 0,
+					total: componentKeys.length,
+				},
 				'Sys.GetConfig': { device: { name: 'floor fixture' } },
 				'WiFi.GetStatus': { rssi: -50 },
 				'Input.GetConfig': sourceConfig,
 				'Input.GetStatus': sourceStatus,
-				'Voltmeter.GetConfig': sourceConfig,
+				'Voltmeter.GetConfig': { ...sourceConfig, id: body.params?.id },
 				'Temperature.GetConfig': sourceConfig,
 				'Temperature.GetStatus': sourceStatus,
 				'SensorAddon.GetPeripherals': peripherals,
@@ -74,8 +91,8 @@ describe('native temperature adoption identity', () => {
 			new ShellyRpcClientService(),
 			{ findOne: () => Promise.resolve(device) } as unknown as DevicesService,
 			{
-				findOneBy: (_field: string, identifier: string) =>
-					Promise.resolve(channels.find((channel) => channel.identifier === identifier) ?? null),
+				findOneBy: (field: 'category' | 'identifier', identifier: string) =>
+					Promise.resolve(channels.find((channel) => channel[field] === identifier) ?? null),
 				create: (data: { category: ChannelCategory; identifier?: string }) => {
 					const channel = Object.assign(
 						new ShellyNgChannelEntity(),
@@ -187,14 +204,81 @@ describe('native temperature adoption identity', () => {
 		);
 	});
 
-	it('refuses qualified floor binding for an unconfigured pilot voltmeter', async () => {
+	it('adopts qualified raw volts without a Celsius helper and changes identity with the input range', async () => {
 		componentKey = 'voltmeter:100';
-		sourceConfig = { id: 100, report_thr: 0.1, xvoltage: { expr: null, unit: null } };
+		sourceConfig = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: null, unit: null } };
 		peripherals = { voltmeter: { 'voltmeter:100': {} } };
 		await service.createOrUpdate('pilot');
 		expect(nativeTemperatureIdentity(componentKey, sourceConfig, peripherals)).toBeNull();
 		expect(channels.some((channel) => channel.identifier?.startsWith('helper-temperature:'))).toBe(false);
-		expect(bindSource).not.toHaveBeenCalled();
+		const first = nativeVoltmeterVoltageIdentity(componentKey, sourceConfig, peripherals, 'A8032ABE5085');
+		expect(channels).toContainEqual(
+			expect.objectContaining({ identifier: first.channelIdentifier, category: ChannelCategory.ANALOG_INPUT }),
+		);
+		expect(properties).toContainEqual(
+			expect.objectContaining({ category: PropertyCategory.VALUE, identifier: 'voltage', value: undefined }),
+		);
+		expect(properties).toContainEqual(expect.objectContaining({ category: PropertyCategory.UNIT, value: 'V' }));
+		expect(bindSource).toHaveBeenCalledWith(
+			expect.any(String),
+			'pilot',
+			expect.objectContaining({ fingerprint: first.fingerprint, unit: 'V', expression: null }),
+		);
+		sourceConfig = { ...sourceConfig, range: 1 };
+		await service.createOrUpdate('pilot');
+		expect(channels.map((channel) => channel.identifier)).toContain(first.channelIdentifier);
+		expect(channels.map((channel) => channel.identifier)).toContain(
+			nativeVoltmeterVoltageIdentity(componentKey, sourceConfig, peripherals, 'A8032ABE5085').channelIdentifier,
+		);
+	});
+
+	it('revokes both voltmeter sources after a peripheral lookup failure while pruning unrelated stale channels', async () => {
+		componentKey = 'voltmeter:100';
+		sourceConfig = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: 'x/2', unit: '°C' } };
+		peripherals = { voltmeter: { 'voltmeter:100': {} } };
+		await service.createOrUpdate('pilot');
+		const qualifiedChannels = channels.filter(
+			(channel) =>
+				channel.identifier?.startsWith('raw-voltage:') || channel.identifier?.startsWith('helper-temperature:'),
+		);
+		expect(qualifiedChannels).toHaveLength(2);
+		expect(bindSource.mock.calls.map((call: unknown[]) => (call[2] as { unit: string }).unit)).toEqual(
+			expect.arrayContaining(['V', '°C']),
+		);
+		channels.push(Object.assign(new ShellyNgChannelEntity(), { id: 'stale-channel', identifier: 'humidity:999' }));
+		additionalComponentKeys = ['temperature:0', 'voltmeter:101'];
+		peripherals = { voltmeter: { 'voltmeter:100': {}, 'voltmeter:101': {} } };
+		sourceStatus = { id: 0, tC: 22 };
+		peripheralLookupFailures = 1;
+		bindSource.mockClear();
+		invalidateSource.mockClear();
+		await service.createOrUpdate('pilot');
+		// No unit filter: both previously bound source leases lose authority.
+		expect(invalidateSource).toHaveBeenCalledTimes(1);
+		expect(invalidateSource).toHaveBeenCalledWith('pilot', componentKey);
+		expect(bindSource).toHaveBeenCalledTimes(2);
+		for (const call of bindSource.mock.calls as unknown[][]) {
+			expect(call[2]).toEqual(expect.objectContaining({ componentKey: 'voltmeter:101' }));
+		}
+		expect(removed).toHaveBeenCalledTimes(1);
+		expect(removed).toHaveBeenCalledWith('stale-channel');
+		for (const channel of qualifiedChannels) expect(removed).not.toHaveBeenCalledWith(channel.id);
+		const otherComponent = channels.find((channel) => channel.identifier === 'temperature:0');
+		expect(properties).toContainEqual(
+			expect.objectContaining({ channel: otherComponent.id, identifier: 'tC', value: 22 }),
+		);
+	});
+
+	it.each(['config', 'binding'])('still skips stale pruning after a genuine voltmeter %s failure', async (failure) => {
+		componentKey = 'voltmeter:100';
+		sourceConfig = { id: 100, report_thr: 0.1, range: 0, xvoltage: { expr: 'x/2', unit: '°C' } };
+		peripherals = { voltmeter: { 'voltmeter:100': {} } };
+		channels.push(Object.assign(new ShellyNgChannelEntity(), { id: 'stale-channel', identifier: 'humidity:999' }));
+		if (failure === 'config') failingRpcMethods.add('Voltmeter.GetConfig');
+		else bindSource.mockRejectedValueOnce(new Error('Fixture source persistence failed'));
+		await service.createOrUpdate('pilot');
+		expect(invalidateSource).toHaveBeenCalledWith('pilot', componentKey);
+		expect(removed).not.toHaveBeenCalled();
 	});
 
 	it('binds dynamic temperature to a physical probe address, and declines absent peripheral evidence', async () => {
