@@ -77,6 +77,11 @@ export interface ThermostatBranchDiagnostic {
 	fault: string | null;
 }
 export interface ThermostatRuntimeDiagnostic {
+	epoch: string;
+	sequence: number;
+	configuration_revision: number;
+	decision_revision: number;
+	inputs: ThermostatInputFrame['inputs'];
 	readiness: 'ready' | 'suspended' | 'unavailable';
 	current_temperature: number | null;
 	floor_temperature: number | null;
@@ -250,10 +255,21 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				comfort_demand: 'off',
 				reasons: ['graph_validation_pending'],
 				headline_reason: 'graph_validation_pending',
+				inputs: result.inputs.map((input) => ({
+					...input,
+					status: 'unavailable',
+					quality: 'unavailable',
+					reasons: ['graph_validation_pending'],
+				})),
 				branches: result.branches.map((branch) => ({ ...branch, activity: 'unknown', release_proven: false })),
 			};
 		return result
-			? { ...result, reasons: [...result.reasons], branches: result.branches.map((branch) => ({ ...branch })) }
+			? {
+					...result,
+					inputs: result.inputs.map((input) => ({ ...input, reasons: [...input.reasons] })),
+					reasons: [...result.reasons],
+					branches: result.branches.map((branch) => ({ ...branch })),
+				}
 			: null;
 	}
 	async inspect(controllerId: string): Promise<ThermostatRuntimeDiagnostic | null> {
@@ -271,6 +287,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			.then(() => this.evaluate(controllerId))
 			.catch(() => {
 				this.diagnostics.set(controllerId, {
+					epoch: this.epoch,
+					sequence: ++this.sequence,
+					configuration_revision: 0,
+					decision_revision: 0,
 					readiness: 'unavailable',
 					requested_mode: 'off',
 					heating_setpoint: null,
@@ -281,6 +301,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					comfort_demand: 'off',
 					reasons: ['runtime_error'],
 					headline_reason: 'runtime_error',
+					inputs: [],
 					branches: [],
 				});
 			});
@@ -959,11 +980,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			'suspected_window_open',
 		];
 		const runtime: ThermostatRuntimeDiagnostic = {
+			epoch: this.epoch,
+			sequence: ++this.sequence,
+			configuration_revision: context.config.revision,
+			decision_revision: context.state.decisionRevision,
 			readiness: reasons.some((reason) =>
 				['hardware_qualification_missing', 'release_ordering_unreconciled', 'startup_unreconciled'].includes(reason),
 			)
 				? 'suspended'
 				: 'ready',
+			inputs: frame.inputs,
 			requested_mode: context.config.requestedMode,
 			heating_setpoint: context.config.policy.heatingSetpoint,
 			cooling_setpoint: context.config.policy.coolingSetpoint,
@@ -982,7 +1008,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			configuration_revision: context.config.revision,
 			decision_revision: context.state.decisionRevision,
 			epoch: this.epoch,
-			sequence: ++this.sequence,
+			sequence: runtime.sequence,
 			runtime,
 		});
 		const properties = await this.dataSource.manager.find(VirtualChannelPropertyEntity, {

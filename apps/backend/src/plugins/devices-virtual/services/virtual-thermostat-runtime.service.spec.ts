@@ -272,6 +272,17 @@ describe('virtual thermostat durable runtime', () => {
 		producers = new PropertyProducerRegistryService(events);
 		values = {
 			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) => samples.get(property.id) ?? null),
+			readSampleFreshness: jest.fn((property: ChannelPropertyEntity) => {
+				const sample = samples.get(property.id);
+				return {
+					status: sample ? 'fresh' : 'unavailable',
+					quality: sample?.quality ?? 'unavailable',
+					sampled_at: sample?.sampledAt.toISOString() ?? null,
+					age_seconds: sample ? 0 : null,
+					expires_at: null,
+					reasons: [],
+				};
+			}),
 			publishDerived: jest.fn(
 				async (...[property, lease, value, publication]: Parameters<PropertyValueService['publishDerived']>) => {
 					const epoch = producers.version(lease);
@@ -417,6 +428,42 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		await runtime.flush();
 	};
+
+	it('publishes detached binding freshness with the same HTTP and event stamp', async () => {
+		const snapshots: {
+			epoch: string;
+			sequence: number;
+			runtime: ReturnType<VirtualThermostatRuntimeService['readDiagnostics']>;
+		}[] = [];
+		events.on('DevicesVirtualPlugin.Thermostat.RuntimeChanged', (payload: (typeof snapshots)[number]) =>
+			snapshots.push(payload),
+		);
+		runtime.request(controllerId);
+		await settle();
+		const diagnostics = runtime.readDiagnostics(controllerId);
+		expect(snapshots.at(-1)).toMatchObject({
+			epoch: diagnostics.epoch,
+			sequence: diagnostics.sequence,
+			runtime: diagnostics,
+		});
+		expect(diagnostics.epoch).toEqual(expect.any(String));
+		expect(diagnostics.sequence).toBeGreaterThan(0);
+		expect(diagnostics.configuration_revision).toBeGreaterThan(0);
+		expect(diagnostics.decision_revision).toBeGreaterThan(0);
+		expect(diagnostics.inputs).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					role: 'ambient',
+					source_property: sensorId,
+					maximum_age_seconds: expect.any(Number) as number,
+				}),
+			]),
+		);
+		if (diagnostics.inputs.length) diagnostics.inputs[0].reasons.push('caller_mutation');
+		expect(runtime.readDiagnostics(controllerId).inputs.flatMap((input) => input.reasons)).not.toContain(
+			'caller_mutation',
+		);
+	});
 
 	it('cancels known-unsent ON without a command loop and retries on the poll and a fresh sample', async () => {
 		await settle();

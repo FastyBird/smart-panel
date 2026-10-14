@@ -34,9 +34,12 @@ import {
 	SuggestionType,
 } from '../spaces-home-control.constants';
 
+import { ClimateContributionModel } from './climate-contribution.model';
+
 /**
  * Proposed space data model
  */
+
 @ApiSchema({ name: 'SpacesModuleDataProposedSpace' })
 export class ProposedSpaceDataModel {
 	@ApiProperty({
@@ -186,6 +189,11 @@ export class LightingIntentResponseModel extends BaseSuccessResponseModel<Lighti
  */
 @ApiSchema({ name: 'SpacesModuleDataClimateState' })
 export class ClimateStateDataModel {
+	@ApiProperty({ name: 'temperature_contribution', type: () => ClimateContributionModel })
+	@Expose({ name: 'temperature_contribution' })
+	@Type(() => ClimateContributionModel)
+	temperatureContribution: ClimateContributionModel;
+
 	@ApiProperty({
 		name: 'has_climate',
 		description: 'Whether the space has climate-capable devices',

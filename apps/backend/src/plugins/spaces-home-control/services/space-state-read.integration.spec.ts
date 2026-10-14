@@ -24,6 +24,7 @@ import {
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
+import { DeviceContributionRegistryService } from '../../../modules/devices/services/device-contribution.registry.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -46,6 +47,7 @@ import { SpaceSensorStateListener } from '../listeners/space-sensor-state.listen
 import { ClimateRole, EventType, LightingRole, SensorRole } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec/intent-spec-loader.service';
 
+import { ClimateContributionPlannerService } from './climate-contribution-planner.service';
 import { SpaceClimateStateService } from './space-climate-state.service';
 import { SpaceLightingStateService } from './space-lighting-state.service';
 import { SpaceSensorStateService } from './space-sensor-state.service';
@@ -173,6 +175,8 @@ describe('Runtime space state configuration with SQLite and real aggregate calcu
 				SpaceStateReadService,
 				SpaceLightingStateService,
 				SpaceClimateStateService,
+				DeviceContributionRegistryService,
+				ClimateContributionPlannerService,
 				SpaceSensorStateService,
 				SpaceLightingStateListener,
 				SpaceClimateStateListener,

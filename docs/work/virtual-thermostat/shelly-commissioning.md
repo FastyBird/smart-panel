@@ -29,3 +29,16 @@ The artifact and its expected hash are persisted for review; a changed packaged 
 The known pilot is Plus1PM SNSW-001P16EU, firmware `20260311-095847/1.7.5-g9979d16`, and already has Script 1 `NTC Conversion`. Preserve that script. Its observed conversion constants are Vref=10 V, Rseries=10000 ohm, A=0.0010351024725298568, B=0.0002338353574079741, C=7.917851073336009e-8, low thermistor leg. They do not establish the permissible floor limit, watchdog budget, calibration domains or physical protection. The existing script logs converted voltage every 30 seconds and cuts off strictly above 30 C; missing/invalid input and equality are insufficient protection. The supplied device currently has an unlocked follow input and disabled native automatic OFF. No installed candidate code, qualified external writer barrier, sensor equal-report cadence, measured bounded native IO/restart drainage, endpoint isolation, independent protective hardware, or opposed interlock has been certified.
 
 Before approving an installation action, the operator must review the exact artifact/hash/slot, preserve existing scripts, identify wiring and independent limit equipment, describe exclusion of physical input/cloud/MQTT/other scripts/native RPC writers, test queued ON versus persisted fence/restart under the exact firmware, measure bounded local OFF/readback and watchdog behavior, and establish original sensor report cadence and failure behavior. These software and offline VM/SQLite tests do not replace that evidence. Missing-device recovery is the separate retained-claim workflow; restoring a claim rotates its generation and old profiles cannot regain eligibility across restart.
+
+## Draft bathroom equipment profile
+
+The user identified the supplied installation as an electric heating mat in a bathroom with ceramic tiles and asked
+for a starting point based on general recommendations. A proposed review-only profile trips at **30 °C on the floor
+probe** and permits recovery only **below 28 °C** (2 K recovery hysteresis), subject to every other guard being clear.
+These are proposed configuration values, not verified manufacturer limits, surface temperatures or installed settings.
+The probe beneath the tiles may differ from the walking surface; the mat, adhesive, waterproofing and floor construction
+limits and sensor calibration remain unverified. General [DEVI design guidance](https://www.devi.com/en/heating-solutions/underfloor-heating/total-electric-heating)
+requires compatibility with the floor finish and its manufacturer's limits rather than a universal tile-floor maximum.
+
+Independent overtemperature protection has not been identified; do not infer either its presence or absence. No
+installation profile is activated from these draft values, and the existing script and relay settings remain unchanged.

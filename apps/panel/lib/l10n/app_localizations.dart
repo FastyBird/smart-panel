@@ -7587,6 +7587,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown diagnostic'**
   String get virtual_measurement_state_unknown;
+
+  /// No description provided for @climate_temperature_coverage_conflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Room temperature sensors overlap. Select one representative using room climate participation settings.'**
+  String get climate_temperature_coverage_conflict;
+
+  /// No description provided for @climate_temperature_coverage_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Room temperature is unavailable. Check sensor configuration and availability.'**
+  String get climate_temperature_coverage_unavailable;
 }
 
 class _AppLocalizationsDelegate

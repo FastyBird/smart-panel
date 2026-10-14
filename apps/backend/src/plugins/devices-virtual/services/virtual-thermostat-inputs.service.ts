@@ -18,7 +18,21 @@ export interface ThermostatInputBinding {
 	compatible: boolean;
 	producerRevision: number | null;
 }
+export interface ThermostatInputDiagnostic {
+	binding: string;
+	role: 'ambient' | 'floor' | 'contact';
+	source_property: string | null;
+	source_kind: 'physical' | 'derived' | 'unknown';
+	status: 'fresh' | 'stale' | 'missing' | 'incompatible' | 'unavailable';
+	quality: 'good' | 'degraded' | 'unavailable';
+	sampled_at: string | null;
+	age_seconds: number | null;
+	maximum_age_seconds: number;
+	expires_at: string | null;
+	reasons: string[];
+}
 export interface ThermostatInputFrame {
+	inputs: ThermostatInputDiagnostic[];
 	ambient: number | null;
 	floor: number | null;
 	ambientSample: QualifiedPropertySample | null;
@@ -79,12 +93,55 @@ export class VirtualThermostatInputsService {
 			floorSample: QualifiedPropertySample | null = null;
 		let basis = '';
 		const contacts: ThermostatInputFrame['contacts'] = [];
+		const inputs: ThermostatInputDiagnostic[] = [];
 		for (const { binding, property, compatible, producerRevision } of bindings) {
+			// Capture metadata before qualification may expire a derived publication.
+			const freshness =
+				compatible && property
+					? this.values.readSampleFreshness(property, binding.maximumAgeSeconds * 1000, new Date(now))
+					: null;
 			const sample =
 				compatible && property
 					? this.values.readQualifiedSample(property, binding.maximumAgeSeconds * 1000, new Date(now))
 					: null;
 			const qualified = sample && (producerRevision === null || sample.revision === producerRevision) ? sample : null;
+			const device = (property?.channel as ChannelEntity | undefined)?.device as
+				| (DeviceEntity & { mode?: VirtualDeviceMode })
+				| undefined;
+			const usable =
+				binding.role === 'contact'
+					? qualified?.value === binding.openValue || qualified?.value === binding.closedValue
+					: typeof qualified?.value === 'number';
+			inputs.push({
+				binding: binding.id,
+				role: binding.role,
+				source_property: binding.sourcePropertyId,
+				source_kind: !device
+					? 'unknown'
+					: [VirtualDeviceMode.SENSOR_TRANSFORM, VirtualDeviceMode.SENSOR_AGGREGATE].includes(device.mode)
+						? 'derived'
+						: 'physical',
+				status: !property
+					? 'missing'
+					: !compatible
+						? 'incompatible'
+						: freshness?.status === 'stale'
+							? 'stale'
+							: usable
+								? 'fresh'
+								: 'unavailable',
+				quality: usable ? qualified.quality : 'unavailable',
+				sampled_at: freshness?.sampled_at ?? null,
+				age_seconds: freshness?.age_seconds ?? null,
+				maximum_age_seconds: binding.maximumAgeSeconds,
+				expires_at: freshness?.expires_at ?? null,
+				reasons: [
+					...(freshness?.reasons ?? []),
+					...(sample && producerRevision !== null && sample.revision !== producerRevision
+						? ['producer_revision_mismatch']
+						: []),
+				],
+			});
 			if (binding.role === 'contact')
 				contacts.push({
 					id: binding.id,
@@ -116,6 +173,7 @@ export class VirtualThermostatInputsService {
 			}
 		}
 		return {
+			inputs,
 			ambient: (ambientSample?.value as number) ?? null,
 			floor: (floorSample?.value as number) ?? null,
 			ambientSample,

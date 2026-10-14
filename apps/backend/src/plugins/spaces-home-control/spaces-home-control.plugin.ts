@@ -45,6 +45,7 @@ import { SpaceLightingStateListener } from './listeners/space-lighting-state.lis
 import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesHomeControlConfigModel } from './models/config.model';
+import { ClimateContributionPlannerService } from './services/climate-contribution-planner.service';
 import { ClimateIntentService } from './services/climate-intent.service';
 import { CoversIntentService } from './services/covers-intent.service';
 import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
@@ -136,6 +137,7 @@ import { IntentSpecLoaderService } from './spec';
 	],
 	providers: [
 		LightingContributionPlannerService,
+		ClimateContributionPlannerService,
 		// Resolvers + loader
 		HomeControlHomePageResolver,
 		HomeControlSpacesService,

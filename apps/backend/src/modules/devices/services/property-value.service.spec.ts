@@ -15,6 +15,7 @@ import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
+import { PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
@@ -40,6 +41,7 @@ describe('PropertyValueService', () => {
 		module = await Test.createTestingModule({
 			providers: [
 				PropertyValueService,
+				PropertyProducerRegistryService,
 				{
 					provide: PropertyValueLockService,
 					useValue: {
@@ -69,6 +71,87 @@ describe('PropertyValueService', () => {
 		module = undefined;
 		await moduleToClose?.close();
 		jest.clearAllMocks();
+	});
+
+	describe('current input freshness diagnostics', () => {
+		const property = {
+			id: 'freshness-property',
+			dataType: DataTypeType.FLOAT,
+			invalid: null,
+			format: null,
+			step: null,
+		} as ChannelPropertyEntity;
+		it('reports derived expiry and revoked lifecycle without mutating producer admission or emitting expiry', () => {
+			const producers = module.get(PropertyProducerRegistryService);
+			let current = true;
+			const lease = producers.register(property, 3, { isCurrent: () => current, reason: 'graph_validation_pending' });
+			const now = Date.now();
+			expect(
+				producers.commit(
+					lease,
+					new PropertyValueState(21),
+					{
+						quality: 'degraded',
+						reasons: ['partial'],
+						sampledAt: new Date(now - 500),
+						evaluatedAt: new Date(now),
+						expiresAt: new Date(now + 1000),
+					},
+					producers.version(lease),
+				),
+			).toBe(true);
+			const version = producers.version(lease);
+			expect(service.readSampleFreshness(property, 10000, new Date(now + 2000))).toMatchObject({
+				status: 'stale',
+				quality: 'degraded',
+				age_seconds: 2.5,
+				expires_at: new Date(now + 1000).toISOString(),
+			});
+			expect(producers.version(lease)).toBe(version);
+			expect(producers.readDiagnosticState(property.id).producer.quality).toBe('degraded');
+			current = false;
+			expect(service.readSampleFreshness(property, 10000, new Date(now))).toMatchObject({
+				status: 'unavailable',
+				sampled_at: null,
+				age_seconds: null,
+				reasons: ['graph_validation_pending'],
+			});
+			expect(producers.version(lease)).toBe(version);
+		});
+		it('never turns a cached/historical value into a live sample', async () => {
+			await service.write(property, 21, new Date());
+			expect(service.readSampleFreshness(property, 10000)).toMatchObject({
+				status: 'unavailable',
+				sampled_at: null,
+				age_seconds: null,
+			});
+		});
+		it('preserves sample age, accepts equal reports, and removes faulted live authority', async () => {
+			const now = Date.now();
+			const report = (value: number | null, at: number) =>
+				service.writeSampleWithState(property, value, {
+					sampledAt: new Date(at),
+					receivedAt: new Date(at),
+					provenance: 'live',
+				});
+			await report(21, now - 20000);
+			expect(service.readSampleFreshness(property, 10000, new Date(now))).toMatchObject({
+				status: 'stale',
+				age_seconds: 20,
+				sampled_at: new Date(now - 20000).toISOString(),
+			});
+			await report(21, now);
+			expect(service.readSampleFreshness(property, 10000, new Date(now))).toMatchObject({
+				status: 'fresh',
+				age_seconds: 0,
+			});
+			await report(null, now);
+			expect(service.readSampleFreshness(property, 10000, new Date(now))).toMatchObject({
+				status: 'unavailable',
+				sampled_at: null,
+				age_seconds: null,
+			});
+		});
 	});
 
 	describe('write', () => {

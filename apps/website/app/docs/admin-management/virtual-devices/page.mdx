@@ -59,3 +59,14 @@ After saving, open the thermostat detail to inspect the requested mode, actual h
   under a concrete approved procedure. Record the qualification against the
   installed profile before activation.
 </Callout>
+
+## Room readings and input freshness
+
+Room climate readings count an aggregate's physical sources once. To include a sensor-role aggregate, use the room's
+all-sources averaging strategy. When selected aggregates overlap, the room temperature is withheld and the panel
+explains the conflict. Change climate participation so one measurement represents each physical source; individual
+device controls remain available.
+
+The thermostat detail lists the freshness of each configured room, floor and window input, including its sample age
+and allowed age. Missing, stale or incompatible sources remain visible. Runtime updates and reconnects refresh these
+diagnostics without allowing an older HTTP response to replace newer state.

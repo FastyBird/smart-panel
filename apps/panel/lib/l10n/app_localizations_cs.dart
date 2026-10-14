@@ -4228,4 +4228,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get virtual_measurement_state_unknown => 'Neznámá diagnostika';
+
+  @override
+  String get climate_temperature_coverage_conflict =>
+      'Teplotní senzory místnosti se překrývají. V nastavení účasti na klimatu místnosti vyberte jednoho zástupce.';
+
+  @override
+  String get climate_temperature_coverage_unavailable =>
+      'Teplotu místnosti nelze určit. Zkontrolujte nastavení a dostupnost senzorů.';
 }

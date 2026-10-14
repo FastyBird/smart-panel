@@ -212,6 +212,15 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		this.entries.delete(propertyId);
 	}
 
+	/** Detached diagnostic snapshot; does not expire publications or emit events. Never admission authority. */
+	readDiagnosticState(propertyId: string): PropertyValueState | null {
+		const entry = this.entries.get(propertyId);
+		if (!entry) return null;
+		return entry.guard?.isCurrent() === false
+			? this.unavailable(entry.lease.revision, [entry.guard.reason], new Date())
+			: clonePropertyValueState(entry.state);
+	}
+
 	read(propertyId: string): PropertyValueState | null {
 		const entry = this.entries.get(propertyId);
 		if (!entry) return null;

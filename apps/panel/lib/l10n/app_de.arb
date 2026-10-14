@@ -1253,5 +1253,7 @@
   "virtual_measurement_state_output_out_of_range": "Wert außerhalb des Bereichs",
   "virtual_measurement_state_invalid_domain": "Außerhalb des mathematischen Bereichs",
   "virtual_measurement_state_producer_disposed": "Produzent gestoppt",
-  "virtual_measurement_state_unknown": "Unbekannte Diagnose"
+  "virtual_measurement_state_unknown": "Unbekannte Diagnose",
+  "climate_temperature_coverage_conflict": "Die Temperatursensoren des Raums überschneiden sich. Wählen Sie in den Raumklima-Einstellungen einen Vertreter aus.",
+  "climate_temperature_coverage_unavailable": "Die Raumtemperatur ist nicht verfügbar. Prüfen Sie die Sensorkonfiguration und Verfügbarkeit."
 }

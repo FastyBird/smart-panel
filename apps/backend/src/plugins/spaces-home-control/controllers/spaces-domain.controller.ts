@@ -534,6 +534,7 @@ export class SpacesDomainController {
 
 		const stateData = new ClimateStateDataModel();
 		stateData.hasClimate = state.hasClimate;
+		stateData.temperatureContribution = state.temperatureContribution;
 		stateData.mode = state.mode;
 		stateData.currentTemperature = state.currentTemperature;
 		stateData.currentHumidity = state.currentHumidity;
@@ -1730,6 +1731,7 @@ export class SpacesDomainController {
 		// Transform climate state to response model
 		const climateState = new ClimateStateDataModel();
 		climateState.hasClimate = snapshot.climate.hasClimate;
+		climateState.temperatureContribution = snapshot.climate.temperatureContribution;
 		climateState.mode = snapshot.climate.mode;
 		climateState.currentTemperature = snapshot.climate.currentTemperature;
 		climateState.currentHumidity = snapshot.climate.currentHumidity;

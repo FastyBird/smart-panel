@@ -4,11 +4,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { v4 as uuid } from 'uuid';
 
+import { ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
 import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations/1000000000034-AddVirtualThermostatRecoveries';
+import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
+import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -38,6 +45,7 @@ import { SCENES_LOCAL_TYPE } from '../../scenes-local/scenes-local.constants';
 import { ClimateIntentService } from '../../spaces-home-control/services/climate-intent.service';
 import { PrimaryClimateDevice } from '../../spaces-home-control/services/space-climate-state.service';
 import { ClimateIntentType, ClimateMode, ClimateRole } from '../../spaces-home-control/spaces-home-control.constants';
+import { VirtualThermostatConfigController } from '../controllers/virtual-thermostat-config.controller';
 import { ConfigureVirtualThermostatDto } from '../dto/thermostat-config.dto';
 import {
 	VirtualChannelEntity,
@@ -51,8 +59,10 @@ import {
 	VirtualThermostatConfigEntity,
 	VirtualThermostatRecoveryEntity,
 	VirtualThermostatSettingEntity,
+	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
@@ -64,6 +74,7 @@ import {
 	VirtualThermostatClaimsService,
 } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
 
 jest.setTimeout(30_000);
 
@@ -221,6 +232,166 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		sources: [{ role: 'ambient', sourcePropertyId: sensor, maximumAgeSeconds: 300 }],
 		actuators: [{ role: 'heating', sourcePropertyId: heat, leaseSeconds: 30 }],
 		settings: [],
+	});
+
+	it('roundtrips draft authoring over HTTP with durable identities, exclusive claims and revision validation', async () => {
+		const controller = await owner(),
+			competitor = await owner(),
+			sensor = await ambient(),
+			floor = await ambient(),
+			relay = await actuator(),
+			heatingSetting = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE);
+		const input = dto(sensor, relay);
+		const payload = {
+			schema_version: input.schemaVersion,
+			expected_revision: input.expectedRevision,
+			requested_mode: input.requestedMode,
+			policy: { ...input.policy, floor: { limit: 30, recoveryHysteresis: 1 } },
+			contact_opening_ms: input.contactOpeningMs,
+			contact_closing_ms: input.contactClosingMs,
+			sources: [
+				{ role: 'ambient', source_property: sensor, maximum_age_seconds: 300 },
+				{ role: 'floor', source_property: floor, maximum_age_seconds: 120 },
+			],
+			actuators: [{ role: 'heating', source_property: relay, lease_seconds: 30 }],
+			settings: [{ property: heatingSetting, setting: 'heating_setpoint' }],
+		};
+		// These authoring routes do not inspect or activate runtime; auth guards are outside this harness.
+		const module = await Test.createTestingModule({
+			controllers: [VirtualThermostatConfigController],
+			providers: [
+				{ provide: VirtualThermostatConfigService, useValue: configs },
+				{ provide: VirtualThermostatRuntimeService, useValue: {} },
+			],
+		}).compile();
+		const app = module.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+		try {
+			const reflector = module.get(Reflector);
+			app.useGlobalInterceptors(new OpenApiResponseInterceptor(reflector), new TransformResponseInterceptor(reflector));
+			app.useGlobalPipes(
+				new ValidationPipe({
+					transform: true,
+					whitelist: true,
+					forbidNonWhitelisted: true,
+					transformOptions: { enableImplicitConversion: true },
+					exceptionFactory: (errors) => ValidationExceptionFactory.createException(errors),
+				}),
+			);
+			await app.init();
+			const url = `/producers/thermostats/${controller}`;
+			const preview = await app.inject({ method: 'POST', url: `${url}/preview`, payload });
+			expect(preview.statusCode).toBe(201);
+			expect(preview.json<{ data: VirtualThermostatConfigurationModel }>().data).toMatchObject({
+				controller,
+				readiness: 'draft',
+				policy: payload.policy,
+			});
+			for (const entity of [
+				VirtualThermostatConfigEntity,
+				VirtualThermostatSourceEntity,
+				VirtualThermostatActuatorClaimEntity,
+				VirtualThermostatSettingEntity,
+			])
+				expect(await database.manager.count(entity)).toBe(0);
+			expect((await target(heatingSetting, 20)).property.permissions).toEqual([PermissionType.READ_ONLY]);
+
+			const configured = await app.inject({ method: 'PUT', url, payload });
+			expect(configured.statusCode).toBe(200);
+			const created = configured.json<{ data: VirtualThermostatConfigurationModel }>().data;
+			expect(created).toMatchObject({
+				controller,
+				schema_version: 1,
+				revision: 1,
+				requested_mode: 'off',
+				readiness: 'draft',
+				policy: payload.policy,
+				sources: expect.arrayContaining([
+					expect.objectContaining({
+						id: expect.any(String),
+						role: 'ambient',
+						source_property: sensor,
+						source_identity: sensor,
+						physical_identity: `property:${sensor}`,
+						maximum_age_seconds: 300,
+					}),
+					expect.objectContaining({ role: 'floor', source_property: floor, maximum_age_seconds: 120 }),
+				]),
+				actuators: [
+					expect.objectContaining({
+						id: expect.any(String),
+						source_property: relay,
+						source_identity: relay,
+						physical_identity: expect.any(String),
+						revision: 1,
+						state: 'reserved',
+						lease_seconds: 30,
+					}),
+				],
+				settings: payload.settings,
+			});
+			expect(created.reasons).toContain('heating_hardware_qualification_missing');
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+			expect(
+				await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: controller }),
+			).toMatchObject({
+				id: created.actuators[0].id,
+				physicalIdentity: created.actuators[0].physical_identity,
+				state: 'reserved',
+			});
+			const read = await app.inject({ method: 'GET', url });
+			expect(read.statusCode).toBe(200);
+			expect(read.json<{ data: VirtualThermostatConfigurationModel }>().data).toEqual(created);
+
+			const conflict = await app.inject({
+				method: 'PUT',
+				url: `/producers/thermostats/${competitor}`,
+				payload: { ...payload, settings: [] },
+			});
+			expect(conflict.statusCode).toBe(422);
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+			expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+
+			const editedPayload = {
+				...payload,
+				expected_revision: 1,
+				policy: { ...payload.policy, heatingSetpoint: 21 },
+				sources: payload.sources.map((source) => ({
+					...source,
+					id: created.sources.find((binding) => binding.role === source.role).id,
+				})),
+			};
+			const edit = await app.inject({ method: 'PUT', url, payload: editedPayload });
+			expect(edit.statusCode).toBe(200);
+			const edited = edit.json<{ data: VirtualThermostatConfigurationModel }>().data;
+			expect(edited.revision).toBe(2);
+			expect(edited.policy.heatingSetpoint).toBe(21);
+			expect(edited.sources).toEqual(created.sources);
+			expect(edited.actuators.map((claim) => claim.id)).toEqual(created.actuators.map((claim) => claim.id));
+			expect(edited.settings).toEqual(created.settings);
+
+			const stale = await app.inject({ method: 'PUT', url, payload: editedPayload });
+			expect(stale.statusCode).toBe(422);
+			expect(stale.json<{ message: string }>().message).toMatch(/revision/i);
+			const invalid = await app.inject({
+				method: 'PUT',
+				url,
+				payload: {
+					...editedPayload,
+					expected_revision: 2,
+					sources: [{ ...editedPayload.sources[0], maximum_age_seconds: 0 }],
+				},
+			});
+			expect(invalid.statusCode).toBe(400);
+			expect(invalid.json<{ message: string[] }>().message.join(' ')).toContain('maximumAgeSeconds');
+			const invalidId = await app.inject({ method: 'GET', url: '/producers/thermostats/not-a-uuid' });
+			expect(invalidId.statusCode).toBe(400);
+			const afterRejected = await app.inject({ method: 'GET', url });
+			expect(afterRejected.statusCode).toBe(200);
+			expect(afterRejected.json<{ data: VirtualThermostatConfigurationModel }>().data).toEqual(edited);
+			expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+		} finally {
+			await app.close();
+		}
 	});
 
 	it('previews without writes; OFF and absent hardware evidence retain exclusive reservation and fail energizing closed', async () => {

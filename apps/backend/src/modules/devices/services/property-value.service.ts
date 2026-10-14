@@ -281,6 +281,57 @@ export class PropertyValueService {
 		return this.sampleGeneration;
 	}
 
+	/** Diagnostics use only process-local accepted evidence, never stored history or property.value. */
+	readSampleFreshness(property: ChannelPropertyEntity, maxAgeMs: number, now = new Date()) {
+		const key = this.resolveBestEffort(property, 'sample freshness');
+		const unavailable = this.valueSourceRegistry.unavailableReason(property);
+		const produced = key === null ? null : this.producers?.readDiagnosticState(key)?.producer;
+		const physical = key === null ? null : this.samples.get(key);
+		const incorporated = key === null ? null : this.producers?.readIncorporatedSample(key);
+		const source = incorporated ? this.samples.get(incorporated.propertyId) : null;
+		const current =
+			!unavailable &&
+			(produced
+				? !incorporated ||
+					(source?.acceptanceGeneration === incorporated.acceptanceGeneration && source?.isCurrent?.() !== false)
+				: physical?.isCurrent?.() !== false);
+		const timestamp = produced?.sampledAt ?? physical?.sampledAt.toISOString() ?? null;
+		const sampled = timestamp === null ? NaN : Date.parse(timestamp);
+		const clockValid =
+			Number.isFinite(now.getTime()) &&
+			sampled <= now.getTime() &&
+			(produced
+				? Date.parse(produced.evaluatedAt) <= now.getTime()
+				: (physical?.receivedAt.getTime() ?? Infinity) <= now.getTime());
+		const evidence =
+			Number.isFinite(maxAgeMs) &&
+			maxAgeMs >= 0 &&
+			current &&
+			clockValid &&
+			(!produced || produced.quality !== 'unavailable');
+		const age = evidence ? now.getTime() - sampled : null;
+		const expiry = evidence
+			? Math.min(sampled + maxAgeMs, produced?.expiresAt ? Date.parse(produced.expiresAt) : Infinity)
+			: null;
+		const reasons = unavailable ? [unavailable] : [...(produced?.reasons ?? [])];
+		const stale =
+			(age !== null &&
+				(age > maxAgeMs ||
+					(produced?.expiresAt !== null &&
+						produced?.expiresAt !== undefined &&
+						Date.parse(produced.expiresAt) <= now.getTime()))) ||
+			reasons.some((reason) => ['expired', 'stale'].includes(reason));
+		return {
+			status: stale ? ('stale' as const) : evidence ? ('fresh' as const) : ('unavailable' as const),
+			quality: evidence ? (produced?.quality ?? physical?.quality ?? 'unavailable') : ('unavailable' as const),
+			sampled_at: evidence ? timestamp : null,
+			age_seconds: age === null ? null : age / 1000,
+			expires_at:
+				expiry !== null && Number.isFinite(new Date(expiry).getTime()) ? new Date(expiry).toISOString() : null,
+			reasons,
+		};
+	}
+
 	/** Qualifies current live evidence; derived samples must still incorporate the current source acceptance. */
 	readQualifiedSample(
 		property: ChannelPropertyEntity,

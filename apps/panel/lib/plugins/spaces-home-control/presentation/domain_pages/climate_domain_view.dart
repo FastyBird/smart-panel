@@ -61,6 +61,7 @@ import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/climate_temperature_notice.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -1920,6 +1921,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             child: Column(
               children: [
                 _buildHeader(context),
+                ClimateTemperatureNotice(
+                  contribution: _spacesService
+                      ?.getClimateState(_roomId)
+                      ?.temperatureContribution,
+                ),
                 Expanded(
                   child: OrientationBuilder(
                     builder: (context, orientation) {

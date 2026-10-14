@@ -38,6 +38,34 @@ void main() {
                           'floor_latched': true,
                           'readiness': 'suspended',
                           'reasons': ['floor limit reached'],
+                          'inputs': [
+                            {
+                              'binding': 'ambient',
+                              'role': 'ambient',
+                              'source_kind': 'physical',
+                              'status': 'stale',
+                              'quality': 'unavailable',
+                              'age_seconds': 120,
+                              'maximum_age_seconds': 60,
+                            },
+                            {
+                              'binding': 'floor',
+                              'role': 'floor',
+                              'source_kind': 'derived',
+                              'status': 'unavailable',
+                              'quality': 'unavailable',
+                              'maximum_age_seconds': 30,
+                              'reasons': ['source_fault'],
+                            },
+                            {
+                              'binding': 'contact',
+                              'role': 'contact',
+                              'source_kind': 'unknown',
+                              'status': 'missing',
+                              'quality': 'unavailable',
+                              'maximum_age_seconds': 60,
+                            },
+                          ],
                           'branches': [
                             {'role': 'heating', 'activity': 'off'},
                           ],
@@ -80,6 +108,11 @@ void main() {
       );
       expect(find.text('Inhibited: floor limit reached'), findsOneWidget);
       expect(find.text('off'), findsOneWidget);
+      expect(find.text('ambient: stale (physical)'), findsOneWidget);
+      expect(find.text('floor: unavailable (derived)'), findsOneWidget);
+      expect(find.text('contact: missing (unknown)'), findsOneWidget);
+      expect(find.textContaining('Allowed age: 60 s'), findsWidgets);
+      expect(find.textContaining('Ambient: 19.5'), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

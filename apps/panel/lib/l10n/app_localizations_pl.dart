@@ -4269,4 +4269,12 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get virtual_measurement_state_unknown => 'Nieznana diagnostyka';
+
+  @override
+  String get climate_temperature_coverage_conflict =>
+      'Czujniki temperatury pomieszczenia nakładają się. Wybierz jednego przedstawiciela w ustawieniach udziału w klimacie pomieszczenia.';
+
+  @override
+  String get climate_temperature_coverage_unavailable =>
+      'Temperatura pomieszczenia jest niedostępna. Sprawdź konfigurację i dostępność czujników.';
 }
