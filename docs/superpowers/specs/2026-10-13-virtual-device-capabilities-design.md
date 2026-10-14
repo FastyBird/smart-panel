@@ -76,11 +76,14 @@ equipment protections are qualification inputs, not guarantees inferred from the
 and v1 protocol capabilities and record which concrete profiles it proves. It must not operate the user's live hardware
 without an explicit hardware test task.
 
-The user has now identified the actuator as Shelly 1PM Gen2 and the floor probe as a thermistor on its analog input.
-Shelly's helper already returns Celsius, but the current integration exposes the raw voltage instead. VD2-1b must
-adopt and observe the functional helper output with its quantity/unit/configuration identity, rather than repeat that
-conversion in the thermostat. Confirm exact model ID, firmware, peripheral/component and helper configuration before
-hardware qualification. DS18B20 fixtures demonstrate a separate supported protocol, not this installation's probe.
+The user identified the actuator as Shelly 1PM Gen2 and the floor probe as a thermistor on its analog input. Later
+read-only inspection of the supplied Plus 1PM on firmware 1.7.5 found `voltmeter:100` with native `xvoltage` expression
+and unit both null. Its NTC script computes Celsius but only logs the result; the exposed measurement is voltage.
+For this pilot, a separate converter must apply the script's explicit Steinhart–Hart calibration and preserve voltage
+source age and invalid-input behavior. This conversion remains outside the thermostat. When a native helper actually
+exports Celsius, VD2-1b ingests its quantity/unit/configuration identity without repeating the conversion. DS18B20
+fixtures demonstrate a separate supported protocol, not this installation's probe. Read-only inspection does not
+qualify relay behavior, writer exclusion or installed protection.
 For native analog helpers, validate transformed `xpercent`/`xvoltage` and configured unit/expression together; a
 missing/null/error transformed result must never silently fall back to raw percent or voltage under a Celsius label.
 Do not assume script-managed `Number` virtual components exist on every Gen2 model.
@@ -251,8 +254,8 @@ detail section. Preserve output property identity and history when members are r
 
 Keep conversion outside the thermostat and outside aggregate operators. A persistent `sensor_transform` owns an
 ordinary read-only numeric output, its quantity/unit, one physical source and a versioned typed operator. Initial
-operators are affine `Y = scale * X + offset`, piecewise linear interpolation from explicit calibration points, and an
-NTC beta profile for raw divider voltage. They are bounded configuration, not JavaScript or arbitrary executable text.
+operators are affine `Y = scale * X + offset`, piecewise linear interpolation from explicit calibration points, and explicit
+NTC beta or Steinhart–Hart profiles for raw divider voltage. They are bounded configuration, not JavaScript or arbitrary executable text.
 Reusable pure numeric helpers may be shared with integration transformers, while source eligibility, quality and
 persistence remain plugin responsibilities.
 
@@ -263,6 +266,8 @@ electrical or probe parameters are guessed. For an NTC on the low leg, use
 `R = Rseries * V / (Vref - V)`; for the high leg use `R = Rseries * (Vref - V) / V`. Then
 `Tkelvin = 1 / (1 / T0kelvin + ln(R / R0) / beta)` and convert to Celsius. Reject zero/rail voltage, invalid resistance,
 nonpositive Kelvin/denominator and nonfinite results. A declared valid input/output range is enforced without clamping.
+For Steinhart–Hart, explicit coefficients define `Tkelvin = 1 / (A + B * ln(R) + C * ln(R)^3)`, using the same
+validated divider resistance and Kelvin/domain checks. The pilot coefficients are installation evidence, not defaults.
 Every operator must reject nonfinite computed outputs before publication, including affine overflow and piecewise
 interpolation overflow. Retain the NTC-specific domain checks and report computation failure as unavailable.
 
@@ -551,9 +556,10 @@ acceptance and its conventional PR title before delegation.
 
 Core acceptance scenarios:
 
-0. Shelly 1PM Gen2 analog helper reports Celsius as a temperature source. Helper null/error disables floor eligibility
-   rather than substituting voltage. A separate numeric transform also produces a qualified temperature that can feed
-   an aggregate or thermostat, with original sample age and tested domain/error behavior.
+0. A configured Shelly 1PM Gen2 analog helper that actually reports Celsius is a temperature source; helper null/error
+   disables floor eligibility rather than substituting voltage. The supplied pilot instead exposes voltage at `voltmeter:100`,
+   so its explicitly calibrated Steinhart–Hart numeric transform must produce a qualified temperature that can feed an
+   aggregate or thermostat, preserving original sample age and tested domain/error behavior.
 
 1. Three physical temperatures form one median/mean sensor; the thermostat consumes it. An unchanged fresh report
    refreshes freshness, a timer expires old data, and quorum loss releases active heat instead of reading a cached number.
@@ -569,6 +575,10 @@ Core acceptance scenarios:
    manual hiding. Source replacement preserves virtual output identity and historical readings.
 7. Ordinary wiring and physical devices preserve their existing contracts. Groups/derived sensors do not duplicate
    energy billing or cause recursive value/occurrence propagation. Test modules, timers and subscriptions close cleanly.
+
+## Evidence and installation boundary
+
+The [epic acceptance matrix](../../../tasks/epics/EPIC-VIRTUAL-DEVICE-CAPABILITIES.md) records composed-head software evidence separately from installed-equipment qualification. Prepared VD2-6 through VD2-10 implementation is not a merged, reviewed or activated installation merely because it exists on a candidate branch. A source-compatible OpenAPI client, passing simulations and a complete admin workflow establish software contracts only. The supplied Plus 1PM remains read-only inspected; the [pilot commissioning record](../../work/virtual-thermostat/shelly-commissioning.md) requires operator attestations and fresh machine verification before explicit activation. No floor threshold, timing budget, calibration domain or independent protection is inferred from its script logs.
 
 ## External references
 

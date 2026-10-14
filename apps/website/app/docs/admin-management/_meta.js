@@ -5,6 +5,7 @@ export default {
     title: "Devices Management",
   },
   devices: "Devices",
+  "virtual-devices": "Virtual Devices",
   "home-management": {
     type: "separator",
     title: "Home Management",

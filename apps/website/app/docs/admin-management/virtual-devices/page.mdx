@@ -1,0 +1,59 @@
+import { Callout, Steps } from "nextra/components";
+
+# Virtual Devices
+
+Virtual devices give an existing measurement or several physical devices one reusable device identity. They appear in ordinary device and room views, while their details retain the physical source and current quality. From [Devices](/docs/admin-management/devices), the **Virtual** device wizard offers an existing projection and four additional types: aggregate sensor, numeric converter, light group, and thermostat controller.
+
+<Callout type="warning">
+  A virtual thermostat controls real outputs only after its actuator profile and
+  installed equipment are qualified and explicitly activated. A saved controller
+  can remain a draft. The UI's requested mode is not proof that a relay is
+  active or safe.
+</Callout>
+
+## Create and repair a measurement
+
+<Steps>
+	### Choose the type
+
+    In **Devices**, select **Add Device**, then **Virtual**. Choose **Aggregate sensor** to combine temperature readings, or **Numeric converter** to transform one physical numeric input. Use the existing **Projection** option for a mapped view of an existing device.
+
+    ### Select and preview inputs
+
+    For an aggregate, select compatible physical temperature sources and configure its operator, maximum source age and minimum valid source count. The preview explains excluded, missing or stale sources. For a converter, select one physical numeric source, declare the output quantity and unit, and choose the typed conversion policy. Affine, piecewise, NTC beta and Steinhart–Hart are available; use calibrated coefficients and valid input/output domains for a thermistor. Check the preview with representative samples before saving.
+
+    ### Save and inspect
+
+    Open the created device's detail page to read its value, unit, source quality, age and binding diagnostics. An unavailable current value does not erase its previous history. A converted temperature can feed an aggregate or thermostat only when its declared quantity, unit and quality are valid.
+
+    ### Edit or repair
+
+    Use the device's **Edit** or **Repair** action when a source is replaced or disappears. Rebind the source and review the preview before saving. A repair retains the virtual output identity and history; it does not turn old samples into fresh ones.
+
+</Steps>
+
+A voltage input is not itself a temperature. Use a converter with explicit calibration when the physical source reports voltage; use a native temperature helper only when it actually exposes a valid Celsius value, unit and quality.
+
+## Create and use a light group
+
+Choose **Light group** in the Virtual wizard, name it and select physical light channels. Preview the capabilities shared by every member, then choose which common controls to expose. The group detail lets you inspect its members and edit or repair the binding when a physical channel changes. Controls for power, brightness or color appear only when compatible with all selected members.
+
+A group may show **mixed** or **unknown** state. After a command, inspect member outcomes if the parent reports **partial** success; a successful member must not conceal a failed or offline one. The same common controls are available in the panel and from room or scene control. If a physical light and its group are both assigned to a room, that physical light contributes once to room state. Group membership does not create an extra energy meter or replace physical-device provenance.
+
+## Create a thermostat controller
+
+Choose **Thermostat controller** in the Virtual wizard. Select a valid ambient temperature source: a physical sensor, aggregate, or qualified numeric converter. Bind only supported heating and cooling outputs. Configure the actual installation's setpoints and deadband, and preview the actuator profile before saving. Unsupported or conflicting output combinations are rejected.
+
+For a heating installation with floor protection, select a **separate** floor temperature input and supply the installed system's floor limit and recovery hysteresis. At or above the limit the controller releases heat; invalid or stale mandatory floor input inhibits heating. Heat can resume only with a fresh floor reading strictly below the limit minus hysteresis and with every other guard clear. Do not use a room average as the floor probe or assume a default safe floor temperature.
+
+You can bind physical window contacts and configure automatic window detection independently. An open contact or detected window event pauses output. When the pause clears, the controller reevaluates the **latest** mode and setpoint, including changes made while paused. **Off**, input faults, floor protection and uncertain output state take priority over comfort demand. Heating and cooling outputs must not be active together.
+
+After saving, open the thermostat detail to inspect the requested mode, actual heating/cooling activity, floor reading, protective reason, and installation status. Use **Edit** or **Repair** to replace a sensor or output and recheck the profile. A controller without completed qualification remains a draft; configuration or UI preview alone never energizes it. The panel and room climate controls use the same requested-setting path and should be checked against the reported activity and diagnostics.
+
+<Callout type="warning">
+  For a live installation, the operator must verify physical input behavior,
+  sensor calibration and age, output isolation, bounded command/restart
+  behavior, independent equipment protection, and any opposed-output interlock
+  under a concrete approved procedure. Record the qualification against the
+  installed profile before activation.
+</Callout>

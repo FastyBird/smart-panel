@@ -1,251 +1,54 @@
-# Climate Domain Architecture
+# Climate domain architecture
 
-This document describes the architecture of the climate control system in the Smart Panel backend.
+Climate intents for a space and local virtual thermostat control share the device property command path, but serve different scopes. The spaces home-control plugin gathers climate-capable devices in a space and applies a user intent. The virtual devices plugin owns a configured thermostat's input bindings, actuator claims, guard evaluation and physical output dispatch. A thermostat can consume a physical temperature, a read-only aggregate, or a qualified numeric conversion output. A floor input is a separate protective role; it is never averaged into ambient temperature.
 
-## Overview
+## Current implementation map
 
-The climate domain provides multi-device climate control with support for:
-- **Thermostats** - Combined heating/cooling with setpoint control
-- **Heating Units** - Dedicated heaters with temperature setpoints
-- **Air Conditioners** - Cooling devices with optional fan control
+| Concern                                                 | Source                                                                                                                                                                    |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Space intent HTTP entry                                 | `apps/backend/src/plugins/spaces-home-control/controllers/spaces-domain.controller.ts` (`POST /modules/spaces/spaces/{id}/intents/climate`)                               |
+| Space intent and room state                             | `apps/backend/src/plugins/spaces-home-control/services/climate-intent.service.ts`, `space-climate-state.service.ts`                                                       |
+| Virtual thermostat configuration and binding validation | `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-config.service.ts`                                                                                  |
+| Input selection, runtime and output ownership           | `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-inputs.service.ts`, `virtual-thermostat-runtime.service.ts`, `virtual-thermostat-claims.service.ts` |
+| Device commands and acknowledgements                    | `apps/backend/src/modules/devices/services/property-command.service.ts` and the device command dispatcher                                                                 |
+| Generated wire contracts                                | `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, `apps/panel/lib/api/` (regenerate from backend source; do not edit)                                              |
 
-## Service Architecture
+## Space climate state and physical devices
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        SpacesController                          │
-│                     POST /spaces/:id/climate                     │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      ClimateIntentService                        │
-│  - executeClimateIntent()                                        │
-│  - Intent routing (SET_MODE, SETPOINT_SET, etc.)                │
-│  - Per-device command execution                                  │
-│  - InfluxDB storage                                              │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                ┌───────────────┼───────────────┐
-                ▼               ▼               ▼
-┌───────────────────┐ ┌─────────────────┐ ┌──────────────────────┐
-│ SpaceClimateState │ │ PlatformRegistry│ │ IntentTimeseries     │
-│     Service       │ │    Service      │ │     Service          │
-│ - getClimateState │ │ - get(device)   │ │ - storeClimateMode   │
-│ - getPrimaryDevices│ │ - processBatch()│ │   Change()           │
-└───────────────────┘ └─────────────────┘ └──────────────────────┘
-```
+`SpaceClimateStateService` reads the space's devices and role map, then selects primary thermostat, heating-unit and air-conditioner devices. The roles control participation: `AUTO` permits both capabilities, `HEATING_ONLY` or `COOLING_ONLY` restricts the branch, `AUXILIARY` denotes a supplementary control, `SENSOR` supplies readings, and `HIDDEN` excludes a device from the climate UI and space control. The current `PRIMARY_ONLY` averaging strategy uses temperatures from primary climate devices; `ALL_SOURCES` can additionally include `SENSOR`-role temperature devices. The service averages available temperature and humidity values and returns null readings when none are available. It derives supported branches and setpoint bounds from the participating devices, preferring the intersection of their ranges and falling back to the union when ranges do not overlap.
 
-## Key Services
+The returned `mode` is detected from heater/cooler **ON** properties, while `isHeating` and `isCooling` require their respective **STATUS** property to report activity. Both branches ON produce an observed `AUTO` mode; this observation is distinct from two branches actively heating and cooling. `lastAppliedMode` and `lastAppliedAt` come from intent history. Historical heating/cooling setpoints take priority over device consensus; without a historical value, a branch's physical setpoints must agree within the 0.5 °C consensus tolerance or the displayed setpoint is null. `isMixed` indicates disagreement with the selected setpoint or between devices. A requested or historical value is not an actuator acknowledgement.
 
-### ClimateIntentService
+`ClimateIntentService` accepts `set_mode`, `setpoint_set`, `setpoint_delta` and combined `climate_set` intents. It creates an intent with per-device targets before dispatch, captures an undo snapshot, skips offline devices, and completes the intent with success, failure or skipped target results. Partial success is possible: at least one affected device can make the overall request successful while failed targets remain visible. For ordinary physical devices, the service prepares property batches through the registered platform so platform-specific setpoint projection is reflected in its result. Successful climate changes are stored asynchronously in the intent time series, including counts of targeted, affected and failed devices. The combined virtual-controller path sends mode and setpoints together to the controller's command contract.
 
-**Location:** `apps/backend/src/modules/spaces/services/climate-intent.service.ts`
+For ordinary physical devices, `AUTO` is a space intent routed through their native platform. The space-level mode label and prepared property commands do not establish the installed platform's output behavior. The virtual thermostat applies an independent guarded changeover and reports actual activity separately.
 
-Handles all climate intent operations:
+`SpaceClimateStateListener` watches relevant property value, update and qualified-value-state events for temperature, ON, STATUS, humidity and lock state. It resolves current channel/device membership, schedules one recalculation per room after a 100 ms debounce, and emits `CLIMATE_STATE_CHANGED` for an existing climate space. It clears pending timers on module shutdown. These events refresh the space view; they do not turn a historical reading into a fresh controller input.
 
-1. **SET_MODE** - Change climate mode (HEAT, COOL, AUTO, OFF)
-2. **SETPOINT_SET** - Set specific temperature setpoint
-3. **SETPOINT_DELTA** - Adjust setpoint by delta (SMALL: 0.5°C, MEDIUM: 1°C, LARGE: 2°C)
-4. **CLIMATE_SET** - Atomic mode + setpoint change
+## Virtual thermostat and derived inputs
 
-Each intent:
-- Creates an Intent record for tracking
-- Executes commands on all applicable devices
-- Persists the exact setpoints prepared by each device platform when an upstream contract requires projection
-- Stores results to InfluxDB for historical tracking
-- Emits WebSocket events for real-time UI updates
+The space intent records a requested mode or setpoint and targets eligible climate devices. A virtual thermostat persists its latest requested settings and reevaluates them against its _current_ inputs and guards. `requested_mode` is therefore different from reported actuator activity. UI clients should display actual activity and inhibit/fault diagnostics separately from the user's requested setting. A queued, timed-out or unconfirmed physical command is not proof of heating or cooling. The runtime and claim/interlock path keep opposed heating and cooling outputs from being energized together, including across a restart.
 
-### SpaceClimateStateService
+## Input graph and measurements
 
-**Location:** `apps/backend/src/modules/spaces/services/space-climate-state.service.ts`
+Virtual measurement bindings are durable graph edges. An aggregate reports a read-only temperature from compatible sources according to its configured operator, freshness and quorum. The output has its own identity and history, while source identity, timestamp and quality remain visible for diagnostics. Losing quorum or seeing only stale inputs makes the current output unavailable; history is not treated as a live reading.
 
-Calculates aggregated climate state for a space:
+A numeric converter binds one numeric physical source and declares its output quantity and unit. Typed policies include affine and piecewise conversion, NTC beta and explicitly calibrated Steinhart–Hart. Domain errors, unknown units, stale input and invalid samples make the derived output unavailable. Conversion preserves source age; it cannot create a fresh temperature by recalculating old voltage. Only a validated temperature output is eligible for an ambient or floor role. Graph validation prevents cycles and unsafe derived-source composition.
 
-- **Mode Detection** - Determines current mode from device states
-- **Temperature Averaging** - Averages readings from multiple sensors
-- **Setpoint Consensus** - Detects if devices have consistent setpoints
-- **Capability Aggregation** - Combines heating/cooling support across devices
+The supplied Shelly Plus 1PM Gen2 pilot exposes its analog floor input as voltage at `voltmeter:100`; its existing NTC script logs Celsius but does not currently expose a Celsius RPC property. The prepared pilot path uses a separate converter with the script's explicit Steinhart–Hart coefficients. A separately configured native Shelly helper that _does_ report Celsius can be used as temperature, with its unit and quality, but raw voltage must not be silently substituted for temperature.
 
-### SpaceClimateStateListener
+## Protective control
 
-**Location:** `apps/backend/src/modules/spaces/listeners/space-climate-state.listener.ts`
+The operator supplies setpoints, deadband and any enabled floor limit and recovery hysteresis for the installed equipment. No universal protective floor threshold is assumed. A heating floor guard releases heat when the valid floor reading is **at or above** its configured limit. Missing, invalid or stale mandatory floor data inhibits heating. Recovery requires a fresh valid reading **strictly below** `limit - hysteresis`, plus all other gates being clear. A new, lower limit is evaluated against the current reading; it does not await another sensor event.
 
-Reacts to device property changes and emits `CLIMATE_STATE_CHANGED` events.
+A configured physical window contact and automatic temperature-change detection are independent pause policies. Either can inhibit output. A contact closing or heuristic pause expiring triggers a fresh evaluation of the latest user mode and setpoint; it does not replay the settings that existed when the pause began. User OFF, input faults, floor protection, window pauses, cycle/changeover waits and actuator uncertainty take precedence over comfort demand. Protective release must be confirmed or remain visible as uncertain; a virtual status alone cannot qualify an installed protective system.
 
-**Triggering Properties:**
-- `TEMPERATURE` - Temperature readings or setpoints
-- `ON` - Heater/cooler power state
-- `STATUS` - Active heating/cooling status
-- `HUMIDITY` - Humidity readings
-- `LOCKED` - Child lock status
+Actuator claims bind a qualified physical output to one controller and refuse unsupported or conflicting configurations at preview and persistence. Stop, restart and binding changes reconcile outstanding commands and claims before output may resume. The controller's software safeguards still require independent equipment protection and an operator-approved installation qualification before a live heating or cooling output is activated.
 
-**Event Flow:**
-```
-Device Property Change
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  SpaceClimateStateListener            │
-│  @OnEvent(CHANNEL_PROPERTY_VALUE_SET) │
-│  @OnEvent(CHANNEL_PROPERTY_UPDATED)   │
-└───────────────────────────────────────┘
-        │
-        ▼ (if climate-relevant)
-┌───────────────────────────────────────┐
-│  SpaceClimateStateService             │
-│  getClimateState(roomId)              │
-└───────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  EventEmitter2                        │
-│  emit(CLIMATE_STATE_CHANGED, ...)     │
-└───────────────────────────────────────┘
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  WebSocket Gateway                    │
-│  Broadcasts to connected clients      │
-└───────────────────────────────────────┘
-```
+## Groups, spaces and provenance
 
-## Climate Modes
+A virtual light group exposes only compatible common controls from its physical members. Its reported state may be mixed or unknown, and a parent command may have confirmed, partial or failed member outcomes. Space and scene commands expand through the same command path; room contribution must count a physical light only once when it and its group both belong to the room. Group and derived sensor values are views of physical sources, so they do not create additional energy consumption or erase physical provenance. Hidden physical sources retain their own history and attribution.
 
-| Mode | Description | Heater | Cooler |
-|------|-------------|--------|--------|
-| OFF  | All climate devices off | OFF | OFF |
-| HEAT | Heating active | ON | OFF |
-| COOL | Cooling active | OFF | ON |
-| AUTO | Both available | ON | ON |
+## Verification boundary
 
-## Device Roles
-
-Devices can be assigned roles to control their participation in climate commands:
-
-| Role | Description |
-|------|-------------|
-| AUTO | Responds to all climate modes |
-| HEATING_ONLY | Only responds to HEAT mode |
-| COOLING_ONLY | Only responds to COOL mode |
-| SENSOR | Temperature reading only, no control |
-| HIDDEN | Excluded from climate state calculation |
-
-## Climate State Calculation
-
-```typescript
-interface ClimateState {
-  hasClimate: boolean;           // Space has climate devices
-  mode: ClimateMode;             // Current detected mode
-  currentTemperature: number;    // Averaged temperature
-  currentHumidity: number;       // Averaged humidity
-  heatingSetpoint: number;       // Consensus heating setpoint
-  coolingSetpoint: number;       // Consensus cooling setpoint
-  minSetpoint: number;           // Minimum allowed setpoint
-  maxSetpoint: number;           // Maximum allowed setpoint
-  supportsHeating: boolean;      // Any device supports heating
-  supportsCooling: boolean;      // Any device supports cooling
-  isHeating: boolean;            // Any device actively heating
-  isCooling: boolean;            // Any device actively cooling
-  isMixed: boolean;              // Devices have different setpoints
-  devicesCount: number;          // Number of climate devices
-  lastAppliedMode: ClimateMode;  // Last user-applied mode (from InfluxDB)
-  lastAppliedAt: Date;           // When mode was last applied
-}
-```
-
-### Mode Detection Algorithm
-
-```
-1. For each device:
-   - Check heater.on AND heater.status → isHeating
-   - Check cooler.on AND cooler.status → isCooling
-
-2. Aggregate across devices:
-   - Any device heating AND cooling → AUTO
-   - Any device only heating → HEAT
-   - Any device only cooling → COOL
-   - No active devices → OFF
-```
-
-### Setpoint Consensus
-
-When multiple devices have setpoints:
-1. Calculate average setpoint
-2. Check if all devices are within `SETPOINT_CONSENSUS_TOLERANCE` (0.5°C)
-3. If not → mark `isMixed: true`
-
-## Constants
-
-```typescript
-// Setpoint precision for rounding (degrees Celsius)
-export const SETPOINT_PRECISION = 0.5;
-
-// Setpoint consensus tolerance (degrees Celsius)
-export const SETPOINT_CONSENSUS_TOLERANCE = 0.5;
-
-// Default setpoint range
-export const DEFAULT_MIN_SETPOINT = 5;
-export const DEFAULT_MAX_SETPOINT = 35;
-
-// Absolute limits
-export const ABSOLUTE_MIN_SETPOINT = -10;
-export const ABSOLUTE_MAX_SETPOINT = 50;
-```
-
-## InfluxDB Storage
-
-Climate mode changes are stored in InfluxDB for historical tracking:
-
-**Measurement:** `space_intent`
-**Tags:**
-- `space_id` - Space UUID
-- `type` - Intent type (e.g., `climate.setMode`)
-
-**Fields:**
-- `mode` - Climate mode
-- `heating_setpoint` - Heating setpoint value
-- `cooling_setpoint` - Cooling setpoint value
-- `total_devices` - Number of targeted devices
-- `affected_devices` - Successfully updated devices
-- `failed_devices` - Failed device updates
-
-## Error Handling
-
-1. **Device failures** - Partial success allowed (at least one device must succeed)
-2. **Platform not found** - Device skipped, counted as failed
-3. **Property change events** - Errors logged, event processing continues
-4. **InfluxDB writes** - Fire-and-forget with internal error handling
-
-## Performance Optimizations
-
-The climate domain is optimized for low-resource devices:
-
-### Query Optimization
-- **Parallel data fetching** - `getClimateState()` fetches devices, role map, and InfluxDB state in parallel using `Promise.all()`
-- **Data reuse** - Internal methods reuse already-fetched devices and role maps to avoid redundant database queries
-- **Early exits** - Returns early when space has no devices or no climate capabilities
-
-### Event Debouncing
-- **SpaceClimateStateListener** debounces `CLIMATE_STATE_CHANGED` events (100ms delay)
-- Prevents WebSocket flooding when devices update multiple properties simultaneously
-- Single state recalculation per debounce window regardless of property change count
-
-### Code Design
-- **Synchronous extraction** - `extractPrimaryClimateDevices()` and `extractSensorTemperatures()` are synchronous when data is already fetched
-- **Fire-and-forget InfluxDB writes** - Non-blocking storage of mode changes
-- **Minimal allocations** - Reuses data structures where possible
-
-## Testing
-
-Unit tests cover all critical services:
-
-- `climate-intent.service.spec.ts` - Intent execution tests
-- `space-climate-state.service.spec.ts` - State calculation tests
-- `space-climate-state.listener.spec.ts` - Event handling tests
-
-Run tests:
-```bash
-cd apps/backend
-npx jest "climate" --no-coverage
-```
+The [virtual devices epic](../tasks/epics/EPIC-VIRTUAL-DEVICE-CAPABILITIES.md) tracks composed-head software acceptance and the separate installed-hardware gate. Focused tests cover measurement freshness/quality, converter domains, graph repair, group child outcomes, controller guard and restart behavior, and ordinary physical command regressions. Passing those tests establishes software behavior, not installed floor calibration, actuator isolation or independent protective equipment. The [Shelly commissioning record](work/virtual-thermostat/shelly-commissioning.md) holds the pilot evidence and remaining operator qualification procedure.
