@@ -63,8 +63,8 @@ import { CommandLatencyTraceCollectorService } from './services/command-latency-
 import { CompositePropertyCommandRegistryService } from './services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './services/device-command-graph.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
-import { DeviceContributionRegistryService } from './services/device-contribution.registry.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
+import { DeviceContributionRegistryService } from './services/device-contribution.registry.service';
 import { DeviceControlToolService } from './services/device-control-tool.service';
 import { DeviceProvisionQueueService } from './services/device-provision-queue.service';
 import { DeviceStructureLockService } from './services/device-structure-lock.service';

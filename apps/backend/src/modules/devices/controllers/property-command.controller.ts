@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, HttpCode, Post, Req, UseInterceptors } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
@@ -7,6 +7,10 @@ import { ApiSuccessResponse } from '../../swagger/decorators/api-documentation.d
 import { UserRole } from '../../users/users.constants';
 import { DEVICES_MODULE_API_TAG_NAME } from '../devices.constants';
 import { PropertyCommandDto } from '../dto/property-command.dto';
+import {
+	PropertyCommandEntryInterceptor,
+	readPropertyCommandEntry,
+} from '../interceptors/property-command-entry.interceptor';
 import { PropertyCommandResponseModel, PropertyCommandResultModel } from '../models/property-command-response.model';
 import { PropertyCommandService } from '../services/property-command.service';
 
@@ -23,6 +27,7 @@ export class PropertyCommandController {
 		operationId: 'execute-devices-module-property-command',
 	})
 	@ApiSuccessResponse(PropertyCommandResponseModel, 'Terminal correlated command result')
+	@UseInterceptors(PropertyCommandEntryInterceptor)
 	@Post()
 	@HttpCode(200)
 	async execute(
@@ -42,6 +47,7 @@ export class PropertyCommandController {
 			})),
 			{
 				requestId: dto.request_id,
+				commandEntry: readPropertyCommandEntry(req),
 				context: {
 					origin: dto.context?.origin ?? (display ? 'panel.device' : 'admin'),
 					displayId: display && auth.type === 'token' ? (auth.ownerId ?? undefined) : dto.context?.display_id,
