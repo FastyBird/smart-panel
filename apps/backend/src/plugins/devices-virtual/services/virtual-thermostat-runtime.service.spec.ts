@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	EventType,
@@ -17,14 +18,19 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
+import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { StorageService } from '../../../modules/storage/services/storage.service';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
@@ -32,6 +38,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 import {
 	VirtualThermostatCommandEntity,
 	VirtualThermostatRuntimeEntity,
@@ -43,7 +50,10 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualProducerConfigService } from './virtual-producer-config.service';
+import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
@@ -63,7 +73,10 @@ describe('virtual thermostat durable runtime', () => {
 	let controllerId: string;
 	let sensorId: string;
 	let relayId: string;
-	let makeRuntime: () => VirtualThermostatRuntimeService;
+	let makeRuntime: (
+		graph?: VirtualDependencyGraphService,
+		aggregate?: VirtualAggregateRuntimeService,
+	) => VirtualThermostatRuntimeService;
 	let events: EventEmitter2;
 	let producers: PropertyProducerRegistryService;
 	let values: PropertyValueService;
@@ -321,22 +334,23 @@ describe('virtual thermostat durable runtime', () => {
 				return () => graphValidated && generation === graphGeneration;
 			},
 		} as unknown as VirtualDependencyGraphService;
-		makeRuntime = () =>
+		makeRuntime = (runtimeGraph = graph, aggregate) =>
 			new VirtualThermostatRuntimeService(
 				database,
 				new DeviceStructureLockService(),
 				claims,
-				new VirtualThermostatInputsService(database, values),
+				new VirtualThermostatInputsService(database, values, aggregate),
 				transport,
 				values,
 				producers,
 				events,
-				graph,
+				runtimeGraph,
 			);
 		runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
+		jest.restoreAllMocks();
 		runtime?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
@@ -789,6 +803,179 @@ describe('virtual thermostat durable runtime', () => {
 		expect(late?.branches[0].release_proven).toBe(false);
 	});
 
+	it('composes three physical temperatures, aggregate quorum, floor release, stale inhibition and strict recovery', async () => {
+		runtime.onModuleDestroy();
+		const graph = new VirtualDependencyGraphService(database);
+		const state = new VirtualProducerStateService(database, producers, graph, events);
+		const configs = new VirtualProducerConfigService(database, new DeviceStructureLockService(), graph, events, state);
+		const realValues = new PropertyValueService(
+			{
+				isConnected: () => true,
+				writePoints: jest.fn().mockResolvedValue(undefined),
+				enqueueWritePoint: jest.fn().mockResolvedValue(undefined),
+				flushQueuedWrites: jest.fn().mockResolvedValue(undefined),
+				query: jest.fn().mockResolvedValue([]),
+			} as unknown as StorageService,
+			new PropertyValueSourceRegistryService(),
+			new PropertyValueLockService({} as never),
+			producers,
+			events,
+		);
+		const aggregate = new VirtualAggregateRuntimeService(
+			database,
+			producers,
+			realValues,
+			{
+				readLatest: () => Promise.resolve({ status: ConnectionState.CONNECTED }),
+			} as unknown as DeviceConnectionStateService,
+			graph,
+			events,
+		);
+		const createMeasurement = async (virtual = false) => {
+			const deviceId = uuid(),
+				channelId = uuid(),
+				id = uuid();
+			await database.manager.insert(virtual ? VirtualDeviceEntity : DeviceEntity, {
+				id: deviceId,
+				name: 'Acceptance temperature',
+				category: DeviceCategory.SENSOR,
+				enabled: true,
+				...(virtual ? { mode: VirtualDeviceMode.SENSOR_AGGREGATE } : {}),
+			} as never);
+			await database.manager.insert(virtual ? VirtualChannelEntity : ChannelEntity, {
+				id: channelId,
+				device: deviceId,
+				name: 'Temperature',
+				category: ChannelCategory.TEMPERATURE,
+			} as never);
+			await database.manager.insert(virtual ? VirtualChannelPropertyEntity : ChannelPropertyEntity, {
+				id,
+				channel: channelId,
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: '°C',
+				...(virtual ? { valueOrigin: VirtualValueOrigin.DERIVED } : {}),
+			} as never);
+			return database.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id },
+				relations: ['channel', 'channel.device'],
+			});
+		};
+		try {
+			const sources = await Promise.all([createMeasurement(), createMeasurement(), createMeasurement()]);
+			const output = await createMeasurement(true);
+			const floor = await createMeasurement();
+			await configs.configureAggregate(
+				output.id,
+				Object.assign(new ConfigureVirtualAggregateDto(), {
+					expectedRevision: 0,
+					operator: VirtualAggregateOperator.MEAN,
+					minimumValidInputs: 3,
+					maximumAgeSeconds: 10,
+					inputs: sources.map((source) => ({ sourcePropertyId: source.id })),
+				}),
+			);
+			const channel = output.channel as ChannelEntity;
+			await database.manager.update(
+				VirtualThermostatSourceEntity,
+				{ controllerId, role: 'ambient' },
+				{
+					sourcePropertyId: output.id,
+					sourcePropertyIdentity: output.id,
+					physicalIdentity: `property:${output.id}`,
+					contractFingerprint: thermostatPropertyContract(output, channel, channel.device as DeviceEntity),
+				},
+			);
+			const floorChannel = floor.channel as ChannelEntity;
+			await database.manager.insert(VirtualThermostatSourceEntity, {
+				id: uuid(),
+				controllerId,
+				role: 'floor',
+				sourcePropertyId: floor.id,
+				sourcePropertyIdentity: floor.id,
+				physicalIdentity: `property:${floor.id}`,
+				contractFingerprint: thermostatPropertyContract(floor, floorChannel, floorChannel.device as DeviceEntity),
+				maximumAgeSeconds: 10,
+				openValue: null,
+				closedValue: null,
+			});
+			const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			config.policy.floor = { limit: 28, recoveryHysteresis: 1 };
+			config.revision++;
+			await database.manager.save(config);
+			await state.onModuleInit();
+			await graph.onApplicationBootstrap();
+			await aggregate.onApplicationBootstrap();
+			const readQualifiedSample = realValues.readQualifiedSample.bind(
+				realValues,
+			) as PropertyValueService['readQualifiedSample'];
+			jest
+				.spyOn(realValues, 'readQualifiedSample')
+				.mockImplementation((property, maximumAgeMs, now) =>
+					property.id === relayId ? (samples.get(relayId) ?? null) : readQualifiedSample(property, maximumAgeMs, now),
+				);
+			values = realValues;
+			runtime = makeRuntime(graph, aggregate);
+			await runtime.onApplicationBootstrap();
+			const report = async (property: ChannelPropertyEntity, value: number | null) => {
+				await realValues.writeSampleWithState(property, value, {
+					sampledAt: new Date(Date.now()),
+					receivedAt: new Date(Date.now()),
+					provenance: 'live',
+				});
+				await aggregate.flush();
+			};
+			const settle = async () => {
+				runtime.request(controllerId);
+				await runtime.inspect(controllerId);
+				await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+				await runtime.flush();
+			};
+			await report(floor, 26);
+			for (const [index, property] of sources.entries()) await report(property, 17 + index);
+			await settle();
+			expect(producers.read(output.id).value).toBe(18);
+			expect(runtime.readDiagnostics(controllerId)?.current_temperature).toBe(18);
+			expect(samples.get(relayId)?.value).toBe(true);
+			await report(sources[1], null);
+			await settle();
+			expect(producers.read(output.id).producer.quality).toBe('unavailable');
+			expect(samples.get(relayId)?.value).toBe(false);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
+			await report(sources[1], 18);
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(true);
+			await report(floor, 28);
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(false);
+			expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
+			await report(floor, 27);
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(false);
+			await report(floor, 26.9);
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(true);
+			jest.useFakeTimers({
+				doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'],
+			});
+			jest.setSystemTime(Date.now() + 11_000);
+			for (const [index, property] of sources.entries()) await report(property, 17 + index);
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(false);
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('floor_unavailable');
+			await report(floor, 26);
+			await settle();
+			expect(samples.get(relayId)?.value).toBe(true);
+		} finally {
+			jest.useRealTimers();
+			jest.restoreAllMocks();
+			runtime.onModuleDestroy();
+			aggregate.onModuleDestroy();
+			state.onModuleDestroy();
+		}
+	});
+
 	it('latches a floor-limit release and resumes only below the strict recovery threshold', async () => {
 		const floorDeviceId = uuid(),
 			floorChannelId = uuid(),
@@ -1000,6 +1187,21 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await runtime.inspect(controllerId);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
+		config.requestedMode = 'off';
+		config.policy.heatingSetpoint = 22;
+		config.revision++;
+		await database.manager.save(config);
+		sample(contactPropertyId, true);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		await new Promise((resolve) => setTimeout(resolve, 260));
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		await runtime.flush();
+		expect(runtime.readDiagnostics(controllerId)?.requested_mode).toBe('off');
+		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('window_open');
+		expect(samples.get(relayId)?.value).toBe(false);
 	});
 
 	it('retains a heuristic hold but rebaselines trend evidence across quality and user configuration changes', async () => {
@@ -1057,5 +1259,12 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toEqual(
 			expect.arrayContaining(['user_off', 'suspected_window_open']),
 		);
+		jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_001);
+		runtime.request(controllerId);
+		await runtime.inspect(controllerId);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('suspected_window_open');
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('user_off');
+		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
+		expect(samples.get(relayId)?.value).toBe(false);
 	});
 });
