@@ -153,6 +153,9 @@ jobs:
       - name: "Run Homey Compatibility Spike"
         run: "pnpm --filter @fastybird/smart-panel-backend test:homey-spike"
 
+      - name: "Run Virtual Thermostat Qualification Spike"
+        run: "pnpm --filter @fastybird/smart-panel-backend test:virtual-thermostat-spike"
+
   testing-analyze:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'
