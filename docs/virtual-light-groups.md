@@ -40,10 +40,14 @@ physical targets and an opaque provider identity lease. Providers without this p
 physical command; their ordinary controls retain the existing platform preparation and dispatch behavior. Core
 admits the prepared values and supplies an exact generation/deadline guard to the dispatch closure. Providers check
 that guard and their stable identity at actual queued publish, then report qualified live feedback. Composite windows
-require live causal evidence; ordinary windows retain their legacy convergence contract. No member platform loop lives in the virtual platform.
+require live causal evidence; ordinary windows retain their legacy convergence contract. Reports without evidence are
+held for ordinary recovery after expiry and cannot confirm a composite generation or establish qualified samples.
+No member platform loop lives in the virtual platform.
 
 Up to eight physical channel batches run concurrently, with at most 128 active parents, 2048 expanded children and a
-bounded total deadline (the existing intent budget, capped at 30 seconds). Independent members run despite another
+bounded total deadline (the existing intent budget, capped at 30 seconds). The absolute parent intent expiry caps
+planning and dispatch with a 100 ms margin for completion reporting; metadata delays cannot restart that budget.
+Independent members run despite another
 member's exception or unavailable metadata. Progress/completion events include the parent id, intent/request correlation,
 requested targets and binding revision. Unavailable members stay in outcomes. Exact physical window confirmation is
 required: matching derived any-on or brightness mean never confirms a command.
@@ -56,6 +60,8 @@ Configuration remaps fence the parent. Observers are removed on completion, time
 shutdown. There is no promise of atomic hardware rollback after partial completion.
 
 Completed intents retain one correlated composite snapshot and derive partial status from confirmed children.
+REST responses and websocket intent events expose child identity fields as `member_id`, `property_id`,
+`member_identity` and `property_identity`; the original identities survive cleared live references.
 Scenes count only confirmed parents as successful actions. A partial parent retains confirmed child outcomes in the
 scene result, produces partial scene completion and does not stop unrelated actions. Legacy platform boolean contracts
 remain unchanged.
