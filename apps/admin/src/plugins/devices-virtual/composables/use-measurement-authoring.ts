@@ -53,6 +53,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		nominalResistance: undefined as number | undefined,
 		nominalTemperatureCelsius: undefined as number | undefined,
 		beta: undefined as number | undefined,
+		coefficientA: undefined as number | undefined,
+		coefficientB: undefined as number | undefined,
+		coefficientC: undefined as number | undefined,
 		thermistorLeg: undefined as DevicesVirtualPluginNumericTransformPolicyThermistorLeg | undefined,
 		previewInput: undefined as number | undefined,
 		inputs: [] as { id?: string; source_property: string | null; identity?: string }[],
@@ -79,7 +82,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 			Object.assign(result, { scale: finite(model.scale), offset: finite(model.offset) });
 		else if (model.operator === DevicesVirtualPluginNumericTransformPolicyOperator.piecewise_linear)
 			result.points = model.points.map(({ x, y }) => ({ x: finite(x), y: finite(y) }));
-		else {
+		else if (model.operator === DevicesVirtualPluginNumericTransformPolicyOperator.ntc_beta) {
 			if (!model.thermistorLeg) throw new Error('measurementDivider');
 			Object.assign(result, {
 				referenceVoltage: finite(model.referenceVoltage),
@@ -87,6 +90,16 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				nominalResistance: finite(model.nominalResistance),
 				nominalTemperatureCelsius: finite(model.nominalTemperatureCelsius),
 				beta: finite(model.beta),
+				thermistorLeg: model.thermistorLeg,
+			});
+		} else {
+			if (!model.thermistorLeg) throw new Error('measurementDivider');
+			Object.assign(result, {
+				referenceVoltage: finite(model.referenceVoltage),
+				seriesResistance: finite(model.seriesResistance),
+				coefficientA: finite(model.coefficientA),
+				coefficientB: finite(model.coefficientB),
+				coefficientC: finite(model.coefficientC),
 				thermistorLeg: model.thermistorLeg,
 			});
 		}
@@ -170,6 +183,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					'nominalResistance',
 					'nominalTemperatureCelsius',
 					'beta',
+					'coefficientA',
+					'coefficientB',
+					'coefficientC',
 					'thermistorLeg',
 				] as const)
 					Object.assign(model, { [key]: value.policy[key] });

@@ -98,6 +98,45 @@ describe('measurement authoring API lifecycle', () => {
 		expect(client.POST.mock.calls[1][1].body).not.toHaveProperty('preview_input');
 		expect(client.POST.mock.calls[1][1].body.configuration.expected_graph_revision).toBe(3);
 	});
+	it('authors and reloads explicit Steinhart-Hart coefficients without beta parameters', async () => {
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform);
+		Object.assign(authoring.model, {
+			name: 'Floor thermistor',
+			operator: DevicesVirtualPluginNumericTransformPolicyOperator.steinhart_hart,
+			inputMinimum: 0,
+			inputMaximum: 10,
+			outputMinimum: -100,
+			outputMaximum: 150,
+			referenceVoltage: 10,
+			seriesResistance: 10000,
+			coefficientA: 0.0010351024725298568,
+			coefficientB: 0.0002338353574079741,
+			coefficientC: 7.917851073336009e-8,
+			thermistorLeg: 'low',
+			previewInput: 6.68,
+			inputs: [{ source_property: 'physical-voltage' }],
+		});
+		client.POST.mockResolvedValueOnce({ data: { data: { ...config(), graph_revision: 3 } } });
+		await authoring.previewDraft();
+		const policy = client.POST.mock.calls[0][1].body.configuration.policy;
+		expect(policy).toMatchObject({
+			operator: 'steinhart_hart',
+			coefficientA: 0.0010351024725298568,
+			coefficientB: 0.0002338353574079741,
+			coefficientC: 7.917851073336009e-8,
+			thermistorLeg: 'low',
+		});
+		expect(policy).not.toHaveProperty('beta');
+		client.GET.mockResolvedValueOnce({ data: { data: { ...config(), policy } } });
+		const reopened = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await reopened.load();
+		expect(reopened.model).toMatchObject({
+			operator: DevicesVirtualPluginNumericTransformPolicyOperator.steinhart_hart,
+			coefficientA: policy.coefficientA,
+			coefficientB: policy.coefficientB,
+			coefficientC: policy.coefficientC,
+		});
+	});
 	it('shows a revision conflict and preserves the local repair until explicit reload', async () => {
 		client.GET.mockResolvedValue({ data: { data: config() } });
 		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');

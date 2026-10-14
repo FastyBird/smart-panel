@@ -10,7 +10,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { nativeTemperatureIdentity } from '../contracts/native-temperature.contract';
+import { nativeTemperatureIdentity, nativeVoltmeterVoltageIdentity } from '../contracts/native-temperature.contract';
 import { ShellyProtectiveQualification, protectiveReadiness } from '../contracts/protective-switch.contract';
 import {
 	ShellyNgChannelEntity,
@@ -97,14 +97,19 @@ const voltmeterPeripheral = { voltmeter: { 'voltmeter:100': {} } };
 
 const managerFixture = async (
 	physical: ShellyPlus1Pm | ShellyPlusHt | ShellyPlusDimmer,
-	helper: boolean | 'probe' | 'voltmeter' | 'switch' | 'light' = false,
+	helper: boolean | 'probe' | 'voltmeter' | 'raw-voltmeter' | 'switch' | 'light' = false,
 	sourceFactory?: (
 		property: ShellyNgChannelPropertyEntity,
 		channel: ShellyNgChannelEntity,
 		device: ShellyNgDeviceEntity,
 	) => ShellySampleSourcesService,
 ) => {
-	const device = Object.assign(new ShellyNgDeviceEntity(), { id: 'physical', identifier: physical.id, enabled: true });
+	const device = Object.assign(new ShellyNgDeviceEntity(), {
+		id: 'physical',
+		identifier: physical.id,
+		canonicalMac: '000000000001',
+		enabled: true,
+	});
 	const channel = Object.assign(new ShellyNgChannelEntity(), {
 		id: 'sensor',
 		device,
@@ -113,34 +118,46 @@ const managerFixture = async (
 				? ChannelCategory.LIGHT
 				: helper === 'switch'
 					? ChannelCategory.SWITCHER
-					: ChannelCategory.TEMPERATURE,
+					: helper === 'raw-voltmeter'
+						? ChannelCategory.ANALOG_INPUT
+						: ChannelCategory.TEMPERATURE,
 		identifier:
 			helper === 'light'
 				? 'light:0'
 				: helper === 'switch'
 					? 'switch:0'
-					: helper === 'voltmeter'
-						? nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral).channelIdentifier
-						: helper === 'probe'
-							? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
-							: helper
-								? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
-								: physical instanceof ShellyPlusHt
-									? 'temperature:0'
-									: 'temperature:100',
+					: helper === 'raw-voltmeter'
+						? nativeVoltmeterVoltageIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral, '000000000001')
+								.channelIdentifier
+						: helper === 'voltmeter'
+							? nativeTemperatureIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral).channelIdentifier
+							: helper === 'probe'
+								? nativeTemperatureIdentity('temperature:100', probeConfig, probePeripheral).channelIdentifier
+								: helper
+									? nativeTemperatureIdentity('input:100', helperConfig, helperPeripheral).channelIdentifier
+									: physical instanceof ShellyPlusHt
+										? 'temperature:0'
+										: 'temperature:100',
 	});
 	const property = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'temperature',
 		channel,
-		category: helper === 'switch' || helper === 'light' ? PropertyCategory.ON : PropertyCategory.TEMPERATURE,
+		category:
+			helper === 'switch' || helper === 'light'
+				? PropertyCategory.ON
+				: helper === 'raw-voltmeter'
+					? PropertyCategory.VALUE
+					: PropertyCategory.TEMPERATURE,
 		identifier:
 			helper === 'switch' || helper === 'light'
 				? 'output'
-				: helper === 'voltmeter'
-					? 'xvoltage'
-					: helper === true
-						? 'xpercent'
-						: 'tC',
+				: helper === 'raw-voltmeter'
+					? 'voltage'
+					: helper === 'voltmeter'
+						? 'xvoltage'
+						: helper === true
+							? 'xpercent'
+							: 'tC',
 	});
 	const brightness = Object.assign(new ShellyNgChannelPropertyEntity(), {
 		id: 'brightness',
@@ -188,7 +205,11 @@ const managerFixture = async (
 							propertyId: property.id,
 							fingerprint: channel.identifier.split(':').at(-1),
 							componentKey:
-								helper === 'probe' ? 'temperature:100' : helper === 'voltmeter' ? 'voltmeter:100' : 'input:100',
+								helper === 'probe'
+									? 'temperature:100'
+									: helper === 'voltmeter' || helper === 'raw-voltmeter'
+										? 'voltmeter:100'
+										: 'input:100',
 							deviceId: device.id,
 						}),
 						activatedAt: new Date(Date.now() - 1),
@@ -412,6 +433,39 @@ describe('qualified Shelly adapter boundaries', () => {
 		);
 	});
 
+	it('accepts only fresh configured raw volts and nulls a changed range or sensor fault', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		const rawConfig = { ...voltmeterConfig, xvoltage: { expr: null, unit: null } };
+		rpc.response = (method) => Promise.resolve(method === 'Voltmeter.GetConfig' ? rawConfig : voltmeterPeripheral);
+		const fixture = await managerFixture(physical, 'raw-voltmeter');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ 'voltmeter:100': { voltage: 2.47 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: 2.47 }),
+			expect.objectContaining({ provenance: 'live' }),
+		);
+		rpc.response = (method) =>
+			Promise.resolve(method === 'Voltmeter.GetConfig' ? { ...rawConfig, range: 1 } : voltmeterPeripheral);
+		rpc.notify({ 'voltmeter:100': { voltage: 2.5 } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+		rpc.response = (method) => Promise.resolve(method === 'Voltmeter.GetConfig' ? rawConfig : voltmeterPeripheral);
+		rpc.notify({ 'voltmeter:100': { voltage: 2.52, errors: ['sensor_fault'] } });
+		await flush();
+		expect(fixture.reportSample).toHaveBeenLastCalledWith(
+			'temperature',
+			expect.objectContaining({ value: null }),
+			expect.anything(),
+		);
+	});
+
 	it('revokes a changed helper config and fences a pending valid response after immediate null', async () => {
 		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
 		const fixture = await managerFixture(physical, true);
@@ -516,6 +570,37 @@ describe('qualified Shelly adapter boundaries', () => {
 				{ voltmeter: { 'voltmeter:100': { io: 0 } } },
 			).attribute,
 		).toBe('xvoltage');
+		const raw = nativeVoltmeterVoltageIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral, '000000000001');
+		expect(raw).toMatchObject({ attribute: 'voltage', unit: 'V', expression: null });
+		expect(
+			nativeVoltmeterVoltageIdentity(
+				'voltmeter:100',
+				{ ...voltmeterConfig, xvoltage: { expr: null, unit: null } },
+				voltmeterPeripheral,
+				'000000000001',
+			).fingerprint,
+		).toBe(raw.fingerprint);
+		for (const changed of [
+			nativeVoltmeterVoltageIdentity(
+				'voltmeter:100',
+				{ ...voltmeterConfig, range: 1 },
+				voltmeterPeripheral,
+				'000000000001',
+			),
+			nativeVoltmeterVoltageIdentity(
+				'voltmeter:100',
+				voltmeterConfig,
+				{ voltmeter: { 'voltmeter:100': { io: 1 } } },
+				'000000000001',
+			),
+			nativeVoltmeterVoltageIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral, '000000000002'),
+		])
+			expect(changed.fingerprint).not.toBe(raw.fingerprint);
+		expect(
+			nativeVoltmeterVoltageIdentity('voltmeter:100', { id: 100 }, voltmeterPeripheral, '000000000001'),
+		).toBeNull();
+		expect(nativeVoltmeterVoltageIdentity('voltmeter:100', voltmeterConfig, {}, '000000000001')).toBeNull();
+		expect(nativeVoltmeterVoltageIdentity('voltmeter:100', voltmeterConfig, voltmeterPeripheral, null)).toBeNull();
 	});
 	it('accepts address-bound add-on probes and revokes peripheral replacement', async () => {
 		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
@@ -838,6 +923,26 @@ describe('qualified Shelly adapter boundaries', () => {
 		},
 	);
 
+	it('keeps a future device clock on qualified raw volts instead of substituting capture time', async () => {
+		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+		rpc.response = (method) =>
+			Promise.resolve(
+				method === 'Voltmeter.GetConfig'
+					? { ...voltmeterConfig, xvoltage: { expr: null, unit: null } }
+					: voltmeterPeripheral,
+			);
+		const fixture = await managerFixture(physical, 'raw-voltmeter');
+		manager = fixture.manager;
+		delegate = fixture.delegate;
+		rpc.notify({ ts: Date.now() / 1000 + 3600, 'voltmeter:100': { voltage: 6.68 } });
+		await flush();
+		const [propertyId, reported, evidence] = sampleReports(fixture.reportSample)[0];
+		expect(propertyId).toBe(fixture.property.id);
+		expect(reported).toMatchObject({ value: 6.68 });
+		expect(evidence.sampledAt.getTime()).toBeGreaterThan(evidence.receivedAt.getTime());
+		expect(evidence.sampledAt).not.toEqual(evidence.observedAt);
+	});
+
 	it('handles invalidation failures per leaf and still tears down every handler', async () => {
 		const physical = new ShellyPlusDimmer({ id: 'dimmer', mac: '000000000003', model: ShellyPlusDimmer.model }, rpc);
 		const fixture = await managerFixture(physical, 'light');
@@ -856,51 +961,69 @@ describe('qualified Shelly adapter boundaries', () => {
 		manager = undefined;
 	});
 
-	it('accepts the first post-reconnect probe packet with the real registry while acquisition is pending', async () => {
-		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
-		rpc.response = (method) => Promise.resolve(method === 'Input.GetConfig' ? helperConfig : helperPeripheral);
-		let row: ShellySampleSourceEntity;
-		const findOne = jest.fn(() => Promise.resolve(row));
-		const fixture = await managerFixture(physical, true, (property, channel, device) => {
-			row = Object.assign(new ShellySampleSourceEntity(), {
-				propertyId: property.id,
-				deviceId: device.id,
-				componentKey: 'input:100',
-				fingerprint: channel.identifier.split(':').at(-1),
-				active: true,
-				identifiedAt: new Date(Date.now() - 1),
+	it.each([true, 'raw-voltmeter'] as const)(
+		'accepts the first post-reconnect %s packet with the real registry while acquisition is pending',
+		async (source) => {
+			const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);
+			const raw = source === 'raw-voltmeter';
+			rpc.response = (method) =>
+				Promise.resolve(
+					method === (raw ? 'Voltmeter.GetConfig' : 'Input.GetConfig')
+						? raw
+							? { ...voltmeterConfig, xvoltage: { expr: null, unit: null } }
+							: helperConfig
+						: raw
+							? voltmeterPeripheral
+							: helperPeripheral,
+				);
+			let row: ShellySampleSourceEntity;
+			const findOne = jest.fn(() => Promise.resolve(row));
+			let registry: ShellySampleSourcesService;
+			const fixture = await managerFixture(physical, source, (property, channel, device) => {
+				row = Object.assign(new ShellySampleSourceEntity(), {
+					propertyId: property.id,
+					deviceId: device.id,
+					componentKey: raw ? 'voltmeter:100' : 'input:100',
+					fingerprint: channel.identifier.split(':').at(-1),
+					active: true,
+					identifiedAt: new Date(Date.now() - 1),
+				});
+				registry = new ShellySampleSourcesService(
+					{ findOne } as unknown as Repository<ShellySampleSourceEntity>,
+					{} as never,
+				);
+				return registry;
 			});
-			return new ShellySampleSourcesService(
-				{ findOne } as unknown as Repository<ShellySampleSourceEntity>,
-				{} as never,
+			manager = fixture.manager;
+			delegate = fixture.delegate;
+			delegate.emit('connected', false);
+			await flush();
+			fixture.reportSample.mockClear();
+			let release: (value: ShellySampleSourceEntity) => void;
+			findOne.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						release = resolve;
+					}),
 			);
-		});
-		manager = fixture.manager;
-		delegate = fixture.delegate;
-		delegate.emit('connected', false);
-		await flush();
-		fixture.reportSample.mockClear();
-		let release: (value: ShellySampleSourceEntity) => void;
-		findOne.mockImplementationOnce(
-			() =>
-				new Promise((resolve) => {
-					release = resolve;
-				}),
-		);
-		delegate.emit('connected', true);
-		jest.setSystemTime(Date.now() + 1);
-		rpc.notify({ 'input:100': { xpercent: 25 } });
-		await flush();
-		expect(fixture.reportSample).not.toHaveBeenCalled();
-		release(row);
-		await flush();
-		expect(fixture.reportSample).toHaveBeenLastCalledWith(
-			'temperature',
-			expect.objectContaining({ value: 25 }),
-			expect.objectContaining({ provenance: 'live' }),
-		);
-		expect((sampleReports(fixture.reportSample)[0][2] as { isCurrent(): boolean }).isCurrent()).toBe(true);
-	});
+			delegate.emit('connected', true);
+			jest.setSystemTime(Date.now() + 1);
+			rpc.notify(raw ? { 'voltmeter:100': { voltage: 6.68 } } : { 'input:100': { xpercent: 25 } });
+			await flush();
+			expect(fixture.reportSample).not.toHaveBeenCalled();
+			release(row);
+			await flush();
+			expect(fixture.reportSample).toHaveBeenLastCalledWith(
+				'temperature',
+				expect.objectContaining({ value: raw ? 6.68 : 25 }),
+				expect.objectContaining({ provenance: 'live' }),
+			);
+			const evidence = sampleReports(fixture.reportSample)[0][2] as { isCurrent(): boolean };
+			expect(evidence.isCurrent()).toBe(true);
+			registry.revoke(fixture.property.id);
+			expect(evidence.isCurrent()).toBe(false);
+		},
+	);
 
 	it('routes switch output exclusively through raw sample admission, including equal reports and null', async () => {
 		const physical = new ShellyPlus1Pm({ id: 'pilot', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);

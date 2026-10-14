@@ -2,6 +2,8 @@ import { createHash } from 'crypto';
 
 import { PropertySampleEvidence } from '../../../modules/devices/models/property-sample.model';
 
+export { hasQualifiedRawVoltageIdentity } from '../../../modules/devices/utils/property-metadata.utils';
+
 export interface ShellyRawSample {
 	readonly componentKey: string;
 	readonly values: Readonly<Record<string, unknown>>;
@@ -12,7 +14,7 @@ export interface NativeTemperatureSnapshot {
 	readonly componentKey: string;
 	readonly fingerprint: string;
 	readonly channelIdentifier: string;
-	readonly attribute: 'xpercent' | 'xvoltage' | 'tC';
+	readonly attribute: 'xpercent' | 'xvoltage' | 'tC' | 'voltage';
 	readonly unit: string;
 	readonly expression: string | null;
 	readonly configuration: {
@@ -123,6 +125,54 @@ export function nativeTemperatureIdentity(
 		attribute,
 		unit,
 		expression,
+		configuration,
+		peripheral,
+	};
+}
+
+/** The unconverted voltage is qualified independently of any optional device-side Celsius helper. */
+export function nativeVoltmeterVoltageIdentity(
+	componentKey: string,
+	config: Readonly<Record<string, unknown>>,
+	peripherals: Readonly<Record<string, unknown>>,
+	canonicalMac: string | null | undefined,
+): NativeTemperatureSnapshot | null {
+	const match = /^voltmeter:(\d+)$/.exec(componentKey);
+	if (!match || !Number.isSafeInteger(Number(match[1])) || config.id !== Number(match[1])) return null;
+	if (!canonicalMac || !/^[\da-f]{12}$/i.test(canonicalMac)) return null;
+	if (!Number.isInteger(config.range) || (config.range as number) < 0) return null;
+	if (
+		config.report_thr !== undefined &&
+		config.report_thr !== null &&
+		(typeof config.report_thr !== 'number' || !Number.isFinite(config.report_thr))
+	)
+		return null;
+	const links = peripherals.voltmeter as Record<string, { io?: unknown }> | undefined;
+	const link = links?.[componentKey];
+	if (!link || typeof link !== 'object' || Array.isArray(link)) return null;
+	const io = link.io === undefined ? 0 : link.io;
+	if (!Number.isInteger(io) || (io as number) < 0) return null;
+	const configuration: NativeTemperatureSnapshot['configuration'] = {
+		enabled: true,
+		inverted: false,
+		rangeMap: null,
+		inputRange: config.range as number,
+		reportThreshold: typeof config.report_thr === 'number' ? config.report_thr : null,
+		offset: null,
+	};
+	const peripheral: NativeTemperatureSnapshot['peripheral'] = { kind: 'voltmeter', io: io as number, address: null };
+	const fingerprint = createHash('sha256')
+		.update(
+			JSON.stringify({ canonicalMac: canonicalMac.toUpperCase(), componentKey, unit: 'V', configuration, peripheral }),
+		)
+		.digest('hex');
+	return {
+		componentKey,
+		fingerprint,
+		channelIdentifier: `raw-voltage:${componentKey}:${fingerprint}`,
+		attribute: 'voltage',
+		unit: 'V',
+		expression: null,
 		configuration,
 		peripheral,
 	};
