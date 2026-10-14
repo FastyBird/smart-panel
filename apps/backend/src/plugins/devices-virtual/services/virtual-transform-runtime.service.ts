@@ -163,10 +163,13 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			this.stopListeners.push(() => this.events.off(event, listener));
 		}
 		this.stopListeners.push(
-			this.graph.observeValidation(async () => {
-				this.requestRecompute();
-				await this.flush();
-			}),
+			this.graph.observeValidation(
+				async () => {
+					this.requestRecompute();
+					await this.flush();
+				},
+				{ requiresActivation: true },
+			),
 		);
 		// Precise input deadlines are evaluated with the fixed sample clock; bounded backstop handles
 		// expiry and connectivity even if an integration fails to emit an expected event.
@@ -293,8 +296,15 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!property) continue;
 			let output = this.outputs.get(property.id);
-			if (!output || output.revision !== config.revision || !this.producers.isCurrent(output.lease)) {
-				output = { property, revision: config.revision, lease: this.producers.register(property, config.revision) };
+			if (!output || output.revision !== config.revision || !this.producers.isAvailable(output.lease)) {
+				output = {
+					property,
+					revision: config.revision,
+					lease: this.producers.register(property, config.revision, {
+						isCurrent: this.graph.capturePublishGuard(),
+						reason: 'graph_validation_pending',
+					}),
+				};
 				this.outputs.set(property.id, output);
 			}
 			output.property = property;
@@ -351,6 +361,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 				property.measurementQuantity = config.quantity;
 			}
 			if (outputDisabled) result.reasons = ['output_disabled'];
+			else if (!this.graph.isValidated()) result.reasons = ['graph_validation_pending'];
 			else if (this.graph.isQuarantined(property.id)) result.reasons = ['graph_quarantined'];
 			else if (contractErrors.length) result.reasons = contractErrors;
 			else if (!binding || !source) result.reasons = ['missing'];

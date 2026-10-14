@@ -32,6 +32,7 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
@@ -92,6 +93,7 @@ interface ControllerContext {
 	targets: Map<string, IDevicePropertyData>;
 	commands: VirtualThermostatCommandEntity[];
 	admission: { isCurrent(): boolean };
+	publishGuard: () => boolean;
 	state: VirtualThermostatRuntimeEntity;
 	decision: VirtualThermostatDecision;
 	epoch: number;
@@ -111,6 +113,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		string,
 		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
 	>();
+	private readonly diagnosticGuards = new Map<string, () => boolean>();
 	private isReconciled(claim: VirtualThermostatActuatorClaimEntity): boolean {
 		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
 		const qualification = this.claims.qualification(claim, false);
@@ -158,6 +161,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		private readonly values: PropertyValueService,
 		private readonly producers: PropertyProducerRegistryService,
 		private readonly events: EventEmitter2,
+		private readonly graph: VirtualDependencyGraphService,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 
@@ -221,6 +225,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		for (const stop of this.stops.splice(0)) stop();
 		for (const output of this.outputs.values()) this.producers.unregister(output.lease);
 		this.outputs.clear();
+		this.diagnosticGuards.clear();
 		this.contexts.clear();
 		this.contacts.clear();
 		this.trends.clear();
@@ -229,6 +234,17 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 	readDiagnostics(controllerId: string): ThermostatRuntimeDiagnostic | null {
 		const result = this.diagnostics.get(controllerId);
+		if (result && (!this.graph.isValidated() || this.diagnosticGuards.get(controllerId)?.() === false))
+			return {
+				...result,
+				readiness: 'unavailable',
+				current_temperature: null,
+				floor_temperature: null,
+				comfort_demand: 'off',
+				reasons: ['graph_validation_pending'],
+				headline_reason: 'graph_validation_pending',
+				branches: result.branches.map((branch) => ({ ...branch, activity: 'unknown', release_proven: false })),
+			};
 		return result
 			? { ...result, reasons: [...result.reasons], branches: result.branches.map((branch) => ({ ...branch })) }
 			: null;
@@ -280,6 +296,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private async load(controllerId: string): Promise<ControllerContext | null> {
 		return this.structure.runShared(async () => {
 			const admission = this.claims.capture();
+			const publishGuard = this.graph.capturePublishGuard();
 			const config = await this.dataSource.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			if (!config) return null;
 			const owner = config.ownerDeviceId
@@ -332,6 +349,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}
 			return {
 				admission,
+				publishGuard,
 				config,
 				owner,
 				claims,
@@ -450,6 +468,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				if (claim.role === 'heating') decision.desiredHeating = false;
 				else decision.desiredCooling = false;
 			}
+		if (!context.publishGuard()) {
+			decision.desiredHeating = false;
+			decision.desiredCooling = false;
+			decision.comfortDemand = 'off';
+			decision.reasons.push('graph_validation_pending');
+		}
 		return decision;
 	}
 	private canSend(
@@ -471,6 +495,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			return false;
 		if (action === 'off') return true;
 		if (
+			!context.publishGuard() ||
 			current.config.revision !== context.config.revision ||
 			context.epoch !== this.epochs.get(context.config.controllerId)
 		)
@@ -745,6 +770,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		}
 	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {
+		if (!context.publishGuard()) return;
 		const branches = context.claims.map((claim): ThermostatBranchDiagnostic => {
 			const branch = context.branches.get(claim.id),
 				commands = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
@@ -802,6 +828,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			branches,
 		};
 		this.diagnostics.set(context.config.controllerId, runtime);
+		this.diagnosticGuards.set(context.config.controllerId, context.publishGuard);
 		this.events.emit('DevicesVirtualPlugin.Thermostat.RuntimeChanged', {
 			controller: context.config.controllerId,
 			configuration_revision: context.config.revision,
@@ -814,6 +841,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			where: { channel: { device: { id: context.config.controllerId } } },
 			relations: ['channel'],
 		});
+		if (!context.publishGuard()) return;
 		for (const property of properties) {
 			if (
 				property.valueOrigin !== VirtualValueOrigin.LOCAL ||
@@ -844,8 +872,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				sample = null;
 			} else continue;
 			let output = this.outputs.get(property.id);
-			if (!output || output.lease.revision !== context.config.revision) {
-				output = { property, lease: this.producers.register(property, context.config.revision) };
+			if (!output || output.lease.revision !== context.config.revision || !this.producers.isAvailable(output.lease)) {
+				output = {
+					property,
+					lease: this.producers.register(property, context.config.revision, {
+						isCurrent: context.publishGuard,
+						reason: 'graph_validation_pending',
+					}),
+				};
 				this.outputs.set(property.id, output);
 			}
 			if (value === null) {

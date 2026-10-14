@@ -177,8 +177,8 @@ describe('property command convergence integration', () => {
 		const propertyValueService = {
 			readLatest: (property: ChannelPropertyEntity) => Promise.resolve(properties.get(property.id)?.value ?? null),
 			writeWithState,
-			writeLiveWithState: writeWithState,
-			writeSampleWithState: writeWithState,
+			writeLiveWithState: jest.fn(writeWithState),
+			writeSampleWithState: jest.fn(writeWithState),
 			flushHistory: jest.fn().mockResolvedValue(undefined),
 		};
 		const structureLocks = new DeviceStructureLockService();
@@ -347,6 +347,38 @@ describe('property command convergence integration', () => {
 		expect(published).toEqual([aliasA.id, aliasB.id, source.id]);
 		expect(windows.get(source.id)).toBeNull();
 		expect(writeWithState).toHaveBeenCalledTimes(1);
+	});
+
+	it('recovers an evidence-less composite report without confirming its generation', async () => {
+		jest.useFakeTimers();
+		jest.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
+		const confirmations = jest.fn();
+		windows.observeConfirmation(confirmations);
+		await commandDispatch.dispatchBatch([update(source, true)], { ttlMs: 100, requiresLiveEvidence: true });
+		await channelsProperties.update(source.id, { type: source.type, value: true });
+		expect(windows.get(source.id)?.state).toBe('pending');
+		expect(windows.get(source.id)?.heldReceipt?.value).toBe(true);
+		expect(writeWithState).not.toHaveBeenCalled();
+		expect(history).toEqual([]);
+		expect(confirmations).not.toHaveBeenCalled();
+
+		jest.advanceTimersByTime(100);
+		await (
+			channelsProperties as unknown as { recoverExpiredCommandWindows: () => Promise<void> }
+		).recoverExpiredCommandWindows();
+		expect(windows.get(source.id)).toBeNull();
+		expect(history).toEqual([true]);
+		expect(source.value?.value).toBe(true);
+		// Recovery uses ordinary storage writes, never the live/evidenced provider path.
+		expect(writeWithState).toHaveBeenCalledTimes(1);
+		expect(confirmations).not.toHaveBeenCalled();
+		const values = (
+			channelsProperties as unknown as {
+				propertyValueService: { writeLiveWithState: jest.Mock; writeSampleWithState: jest.Mock };
+			}
+		).propertyValueService;
+		expect(values.writeLiveWithState).not.toHaveBeenCalled();
+		expect(values.writeSampleWithState).not.toHaveBeenCalled();
 	});
 
 	it('keeps one outer server invocation across the type-less value-only fallback', async () => {
