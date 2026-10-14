@@ -148,7 +148,8 @@ export class VirtualThermostatConfigService {
 			target.property.value = await this.values.readLatest(target.property);
 			this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, target.property);
 		}
-		await this.claims.refresh();
+		// The structural write has committed. Reload fails closed and schedules retry without changing that outcome.
+		await this.claims.refresh().catch(() => undefined);
 		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
 		return current;
 	}
@@ -255,19 +256,20 @@ export class VirtualThermostatConfigService {
 					});
 					if (conflict?.id !== claim.id) fail('Canonical physical actuator is reserved by another claim.');
 					const priorProperty = claim.sourcePropertyIdentity;
+					const releaseRequestedAt = claim.releaseRequestedAt ?? config.releaseRequestedAt;
+					const releaseRequested = claim.state === 'releasing' || releaseRequestedAt !== null;
 					config.revision++;
 					config.requestedMode = 'off';
-					config.releaseRequestedAt = null;
 					claim.revision++;
 					claim.qualificationGeneration = uuid();
-					claim.state = 'reserved';
+					claim.state = releaseRequested ? 'releasing' : 'reserved';
 					claim.sourcePropertyId = target.property.id;
 					claim.sourcePropertyIdentity = target.property.id;
 					claim.sourceDeviceId = target.device.id;
 					claim.sourceDeviceIdentity = target.device.id;
 					claim.contractFingerprint = thermostatPropertyContract(target.property, target.channel, target.device);
-					claim.reason = 'operator_restored_same_physical_actuator';
-					claim.releaseRequestedAt = null;
+					claim.reason = releaseRequested ? claim.reason : 'operator_restored_same_physical_actuator';
+					claim.releaseRequestedAt = releaseRequestedAt;
 					claim.releasedAt = null;
 					claim.releaseEvidence = null;
 					await manager.save(config);
@@ -293,7 +295,8 @@ export class VirtualThermostatConfigService {
 			});
 		} finally {
 			releaseFence();
-			await this.claims.refresh();
+			// Reload schedules its own retry; preserve the committed result or original validation error.
+			await this.claims.refresh().catch(() => undefined);
 		}
 	}
 	async recoveryEvents(controllerId: string) {
