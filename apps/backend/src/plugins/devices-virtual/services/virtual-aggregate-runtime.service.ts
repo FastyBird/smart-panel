@@ -249,8 +249,15 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!property) continue;
 			let output = this.outputs.get(property.id);
-			if (!output || output.revision !== config.revision || !this.producers.isCurrent(output.lease)) {
-				output = { property, revision: config.revision, lease: this.producers.register(property, config.revision) };
+			if (!output || output.revision !== config.revision || !this.producers.isAvailable(output.lease)) {
+				output = {
+					property,
+					revision: config.revision,
+					lease: this.producers.register(property, config.revision, {
+						isCurrent: this.graph.capturePublishGuard(),
+						reason: 'graph_validation_pending',
+					}),
+				};
 				this.outputs.set(property.id, output);
 			}
 			output.property = property;
@@ -263,6 +270,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 
 			if (
 				config.schemaVersion !== 1 ||
+				!this.graph.isValidated() ||
 				this.graph.isQuarantined(property.id) ||
 				!isEligibleVirtualMeasurement(property, channel, channel.device as DeviceEntity)
 			) {
@@ -301,7 +309,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				const status = device ? (await this.connectivity.readLatest(device)).status : ConnectionState.UNKNOWN;
 				sources.push({ input, property: source, status });
 			}
-			if (!this.current(generation) || !this.producers.isCurrent(output.lease)) return;
+			if (!this.current(generation) || !this.producers.isAvailable(output.lease)) return;
 			const now = new Date();
 			const evidence: AggregateInputEvidence[] = sources.map(({ input, property: source, status }) => {
 				const sourceChannel = source?.channel as ChannelEntity;

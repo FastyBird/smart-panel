@@ -7,6 +7,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import { AddVirtualProducerBindings1000000000027 } from '../../../migrations/1000000000027-AddVirtualProducerBindings';
 import {
 	ChannelCategory,
@@ -126,6 +127,77 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			inputs: ids.map((sourcePropertyId) => ({ sourcePropertyId })),
 		});
 
+	it('keeps producer authority closed before the first successful graph validation', async () => {
+		const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const property = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: output.propertyId });
+		const beforeBootstrap = graph.capturePublishGuard();
+		const lease = producers.register(property, 1, { isCurrent: beforeBootstrap, reason: 'graph_validation_pending' });
+		expect(graph.isValidated()).toBe(false);
+		expect(beforeBootstrap()).toBe(false);
+		expect(producers.isAvailable(lease)).toBe(false);
+		expect(producers.read(property.id)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+		await graph.onApplicationBootstrap();
+		expect(graph.isRevisionCurrent(0)).toBe(true);
+		expect(beforeBootstrap()).toBe(false);
+		expect(graph.capturePublishGuard()()).toBe(true);
+	});
+	it('suspends an unleased projection across failed validation without poisoning its physical source or cached history', async () => {
+		const physical = await measurement(),
+			projection = await measurement(VirtualDeviceMode.PROJECTION);
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelPropertyEntity, projection.propertyId, {
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId: physical.propertyId,
+			}),
+		);
+		const sources = new PropertyValueSourceRegistryService();
+		sources.register(new VirtualValueSourceService(graph));
+		const values = new PropertyValueService(
+			{
+				isConnected: () => true,
+				query: () => Promise.resolve([]),
+				enqueueWritePoint: () => undefined,
+				flushQueuedWrites: () => Promise.resolve(undefined),
+			} as never,
+			sources,
+			new PropertyValueLockService(database),
+			producers,
+		);
+		const source = await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: physical.propertyId });
+		const alias = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: projection.propertyId });
+		// Simulate older owned-series evidence, so falling back to the alias UUID cannot admit history.
+		await values.writeSampleWithState(Object.assign(new ChannelPropertyEntity(), source, { id: alias.id }), 99, {
+			sampledAt: new Date(),
+			receivedAt: new Date(),
+			provenance: 'live',
+		});
+		await values.writeSampleWithState(source, 21, {
+			sampledAt: new Date(),
+			receivedAt: new Date(),
+			provenance: 'live',
+		});
+		expect(producers.owns(alias.id)).toBe(false);
+		expect(values.readQualifiedSample(alias, 10000)?.value).toBe(21);
+		const reads = jest.spyOn(graph, 'edges').mockRejectedValueOnce(new Error('post-commit snapshot failed'));
+		const logged = jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation();
+		try {
+			await expect(graph.withStructuralWrite(() => Promise.resolve('committed'))).resolves.toBe('committed');
+			expect(values.readQualifiedSample(alias, 10000)).toBeNull();
+			expect(values.readQualifiedSample(source, 10000)?.value).toBe(21);
+			expect(await values.readLatest(alias)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+			expect(await values.readLatestStrict(alias)).toMatchObject({ value: null });
+			expect((await values.readLatestManyStrict([alias, source])).get(alias.id)?.value).toBeNull();
+			expect(
+				(await values.readLatestManyBounded([alias, source])).items.find((item) => item.propertyId === alias.id)?.state
+					?.value,
+			).toBeNull();
+			await graph.refreshQuarantine();
+			expect(values.readQualifiedSample(alias, 10000)?.value).toBe(21);
+		} finally {
+			reads.mockRestore();
+			logged.mockRestore();
+		}
+	});
 	it('persists typed policy, retains missing input/quorum, repairs the same binding and cascades owner deletion', async () => {
 		const a = await measurement();
 		const b = await measurement();

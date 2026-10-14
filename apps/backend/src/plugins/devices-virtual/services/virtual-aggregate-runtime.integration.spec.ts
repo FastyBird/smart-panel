@@ -588,6 +588,91 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		}
 	});
 
+	it.each(['read', 'listener'] as const)(
+		'returns persisted configuration after a post-commit %s failure while reads and publication stay closed until retry',
+		async (failureStage) => {
+			const a = await measurement(),
+				b = await measurement();
+			const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			const other = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configure(output, [a, b]);
+			await configure(other, [a, b]);
+			await start();
+			await sample(a, 20);
+			await sample(b, 22);
+			expect(values.readQualifiedSample(other, 10000)?.value).toBe(21);
+			const priorRevision = await graph.revision();
+			const priorGuard = graph.capturePublishGuard();
+			const failure = new Error('injected post-commit ' + failureStage + ' failure');
+			const logged = jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation();
+			const edges = graph.edges.bind(graph) as VirtualDependencyGraphService['edges'];
+			const reads = jest.spyOn(graph, 'edges');
+			let stop: (() => void) | undefined;
+			if (failureStage === 'read') reads.mockImplementationOnce(edges).mockRejectedValueOnce(failure);
+			else stop = graph.observeValidation(() => Promise.reject(failure));
+			try {
+				const updated = await configs.configureAggregate(
+					output.id,
+					Object.assign(new ConfigureVirtualAggregateDto(), {
+						expectedRevision: 1,
+						operator: VirtualAggregateOperator.MAX,
+						minimumValidInputs: 2,
+						maximumAgeSeconds: 10,
+						inputs: [{ sourcePropertyId: a.id }, { sourcePropertyId: b.id }],
+					}),
+				);
+				expect(updated.revision).toBe(2);
+				expect(
+					(await database.manager.findOneByOrFail(VirtualAggregateConfigEntity, { outputPropertyId: output.id }))
+						.operator,
+				).toBe(VirtualAggregateOperator.MAX);
+				expect(await graph.revision()).toBe(priorRevision + 1);
+				expect(logged).toHaveBeenCalledTimes(1);
+				expect(graph.isValidated()).toBe(false);
+				expect(graph.isRevisionCurrent(priorRevision)).toBe(false);
+				expect(graph.isRevisionCurrent(priorRevision + 1)).toBe(false);
+				expect(priorGuard()).toBe(false);
+				const failedGuard = graph.capturePublishGuard();
+				// Assert immediately, before a timer or an awaited runtime evaluation can install a mask.
+				expect(outputState(other)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+				expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable', revision: 2 } });
+				expect(values.readQualifiedSample(other, 10000)).toBeNull();
+				expect(values.readQualifiedSample(output, 10000)).toBeNull();
+				expect(values.readQualifiedSample(a, 10000)?.value).toBe(20);
+				await runtime.flush();
+				expect(outputState(output)?.value).toBeNull();
+				if (failureStage === 'listener') {
+					await expect(graph.refreshQuarantine()).rejects.toBe(failure);
+					expect(graph.isValidated()).toBe(false);
+				}
+				stop?.();
+				await graph.refreshQuarantine();
+				expect(graph.isRevisionCurrent(priorRevision + 1)).toBe(true);
+				expect(priorGuard()).toBe(false);
+				expect(failedGuard()).toBe(false);
+				expect(values.readQualifiedSample(output, 10000)?.value).toBe(22);
+				expect(values.readQualifiedSample(other, 10000)?.value).toBe(21);
+				const recoveredGuard = graph.capturePublishGuard();
+				await expect(
+					graph.withStructuralWrite(async (manager) => {
+						await manager.update(
+							VirtualAggregateConfigEntity,
+							{ outputPropertyId: output.id },
+							{ operator: VirtualAggregateOperator.MIN },
+						);
+						throw new Error('rolled back before commit');
+					}),
+				).rejects.toThrow('rolled back before commit');
+				expect(await graph.revision()).toBe(priorRevision + 1);
+				expect(recoveredGuard()).toBe(true);
+				expect(values.readQualifiedSample(output, 10000)?.value).toBe(22);
+			} finally {
+				stop?.();
+				reads.mockRestore();
+				logged.mockRestore();
+			}
+		},
+	);
 	it('returns a committed configuration when post-activation evaluation fails and recovers on the next report', async () => {
 		const a = await measurement(),
 			b = await measurement(),

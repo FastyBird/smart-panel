@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -327,6 +328,34 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		).rejects.toThrow(/distinct/);
 		expect(await graph.revision()).toBe(stableRevision);
 		expect(graph.isRevisionCurrent(stableRevision)).toBe(true);
+		const currentPlan = await commands.plan([
+			{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: true },
+		]);
+		const snapshotFailure = jest
+			.spyOn(graph, 'edges')
+			.mockRejectedValueOnce(new Error('validation snapshot unavailable'));
+		const logged = jest.spyOn(ExtensionLoggerService.prototype, 'error').mockImplementation();
+		try {
+			await structure.runExclusive(() => graph.withStructuralWrite(() => Promise.resolve()));
+			expect(runtime.getReportedState(channelId)).toBeNull();
+			expect(runtime.getReportedModel(channelId)).toBeNull();
+			expect((await configs.getLightGroup(channelId)).reported_state).toBeNull();
+			expect(currentPlan.isDispatchCurrent()).toBe(false);
+			expect(await currentPlan.isCurrent()).toBe(false);
+			const failedPlan = await commands.plan([
+				{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: true },
+			]);
+			expect(failedPlan.isDispatchCurrent()).toBe(false);
+			expect(await failedPlan.isCurrent()).toBe(false);
+			expect((await sendGroup()).success).toBe(false);
+			expect(physicalDispatch).toHaveBeenCalledTimes(4);
+			await graph.refreshQuarantine();
+			expect((await sendGroup()).composite.children.map((child) => child.status)).toEqual(['confirmed', 'confirmed']);
+			expect(physicalDispatch).toHaveBeenCalledTimes(6);
+		} finally {
+			snapshotFailure.mockRestore();
+			logged.mockRestore();
+		}
 		dispatch.onModuleDestroy();
 		const brightnessParent = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
 			where: { id: brightnessOutput },

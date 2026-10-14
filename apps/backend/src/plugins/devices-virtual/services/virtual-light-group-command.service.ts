@@ -225,6 +225,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 			isDispatchCurrent: () =>
 				this.metadata.getGeneration() === metadataGeneration && this.graph.isRevisionCurrent(graphRevision),
 			isCurrent: async () => {
+				if (!this.graph.isRevisionCurrent(graphRevision)) return false;
 				if (this.metadata.getGeneration() !== metadataGeneration) return false;
 				if ((await this.graph.revision()) !== graphRevision) return false;
 				for (const [groupChannelId, revision] of revisions)
