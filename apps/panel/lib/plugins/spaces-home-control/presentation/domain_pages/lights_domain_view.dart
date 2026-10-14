@@ -2097,6 +2097,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         t.role != LightTargetRole.hidden);
     final totalLights = configured.length;
     final lightsOn = _countLightsOn(configured.toList(), devicesService);
+    if ((_lightingState?.unknownLights ?? 0) > 0) return ThemeColors.warning;
     if (lightsOn == totalLights && totalLights > 0) return ThemeColors.success;
     if (lightsOn == 0) return ThemeColors.neutral;
     return ThemeColors.warning;
@@ -2152,6 +2153,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } else {
       // No intent or all lights off: show count
       subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
+    }
+
+    if ((state?.unknownLights ?? 0) > 0) {
+      subtitle = '$subtitle · ${localizations.filter_status_unknown}: ${state!.unknownLights}';
     }
 
     // Use actual light state for icon, not pending mode
@@ -3694,10 +3699,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         result = await _intentsService!.activateScene(scene.id, localizations: AppLocalizations.of(context)!);
       } else if (_scenesService != null) {
         final triggerResult = await _scenesService!.triggerScene(scene.id);
+        final partialGroup = triggerResult.composites.any(
+          (parent) => parent.status == 'partial',
+        );
+        final memberDetails = triggerResult.composites
+            .expand((parent) => parent.children)
+            .where((child) => child.status != 'confirmed')
+            .map((child) => '${child.memberIdentity ?? child.memberId}: ${child.status}')
+            .join(', ');
         result = triggerResult.success
             ? IntentResult.success(IntentType.activateScene)
-            : (triggerResult.successCount > 0
-                ? IntentResult.partialSuccess(IntentType.activateScene, message: triggerResult.errorMessage)
+            : (triggerResult.successCount > 0 || partialGroup
+                ? IntentResult.partialSuccess(
+                    IntentType.activateScene,
+                    message: memberDetails.isEmpty ? triggerResult.errorMessage : memberDetails,
+                  )
                 : IntentResult.failure(IntentType.activateScene, message: triggerResult.errorMessage));
       }
 

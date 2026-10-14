@@ -4,6 +4,8 @@ import 'package:fastybird_smart_panel/api/models/devices_module_channel_category
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -42,6 +44,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(<PropertyConfig>[]);
+      registerFallbackValue(<PropertyCommandItem>[]);
     });
 
     setUp(() {
@@ -639,6 +642,34 @@ void main() {
         verifyNever(() => mockControlState.setGroupPending(any(), any(), any()));
         verifyNever(() => mockDevicesService.setPropertyValue(any(), any()));
       });
+    });
+
+    test('virtual group sends RGB in one batch without optimistic confirmation', () async {
+      final submitted = <List<PropertyCommandItem>>[];
+      when(() => mockDevicesService.setCompositeProperties(
+        deviceId: deviceId,
+        properties: any(named: 'properties'),
+      )).thenAnswer((invocation) async {
+        submitted.add(invocation.namedArguments[#properties] as List<PropertyCommandItem>);
+        return const CompositeCommandOutcome(
+          id: 'parent', requestId: 'request', status: 'partial',
+          children: [CompositeChildOutcome(memberId: 'missing', status: 'unavailable')],
+        );
+      });
+      final groupController = LightChannelController(
+        deviceId: deviceId,
+        channel: lightChannel,
+        controlState: mockControlState,
+        devicesService: mockDevicesService,
+        compositeGroup: true,
+      );
+      groupController.setColorRGB(1, 2, 3);
+      await Future<void>.delayed(Duration.zero);
+      expect(submitted.single.map((item) => item.propertyId).toList(), [
+        colorRedPropId, colorGreenPropId, colorBluePropId,
+      ]);
+      verifyNever(() => mockControlState.setGroupPending(any(), any(), any()));
+      verifyNever(() => mockDevicesService.setPropertyValue(any(), any()));
     });
   });
 }

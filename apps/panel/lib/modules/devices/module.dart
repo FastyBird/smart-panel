@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart'
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/composite_command_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
@@ -37,6 +38,7 @@ class DevicesModuleService {
   late DeviceControlStateService _deviceControlStateService;
 
   late DevicesService _devicesService;
+  late CompositeCommandService _compositeCommands;
 
   bool _isLoading = true;
 
@@ -109,6 +111,10 @@ class DevicesModuleService {
       intentsRepository: intentsRepository,
     );
 
+    _compositeCommands = CompositeCommandService(
+      socketService: socketService,
+      dispatch: CommandDispatchService(socketService: socketService),
+    );
     _devicesService = DevicesService(
       devicesRepository: _devicesRepository,
       devicesControlsRepository: _deviceControlsRepository,
@@ -116,6 +122,7 @@ class DevicesModuleService {
       channelPropertiesRepository: _channelPropertiesRepository,
       channelControlsRepository: _channelControlsRepository,
       validationRepository: _validationRepository,
+      compositeCommands: _compositeCommands,
     );
 
     // Note: IntentOverlayService is now provided by the IntentsModule
@@ -182,6 +189,7 @@ class DevicesModuleService {
   }
 
   void dispose() {
+    _compositeCommands.dispose();
     _socketService.unregisterEventHandler(
       DevicesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
