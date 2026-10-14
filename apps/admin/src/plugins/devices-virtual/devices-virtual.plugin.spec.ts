@@ -122,16 +122,37 @@ describe('devicesVirtualPlugin', () => {
 
 		DevicesVirtualPlugin.install({} as App, options);
 
-		const registeredRoute = ((options.router.addRoute as ReturnType<typeof vi.fn>).mock.calls as [
-			string,
-			{ name: string; component: () => unknown },
-		][]).find(([, route]) => route.name === VirtualRouteNames.WIZARD)?.[1];
+		const registeredRoute = (
+			(options.router.addRoute as ReturnType<typeof vi.fn>).mock.calls as [string, { name: string; component: () => unknown }][]
+		).find(([, route]) => route.name === VirtualRouteNames.WIZARD)?.[1];
 
 		expect(registeredRoute).toBeDefined();
 		if (!registeredRoute) throw new Error('Virtual device wizard route was not registered');
 		// The route's component is a lazy import — resolving it proves it points at the wizard view
 		// this task creates rather than at a placeholder.
 		await expect(registeredRoute.component()).resolves.toMatchObject({ default: expect.objectContaining({ name: 'ViewVirtualDeviceWizard' }) });
+	});
+
+	it.each([
+		[VirtualRouteNames.MEASUREMENT_WIZARD, '/devices/devices-virtual/measurements/new'],
+		[VirtualRouteNames.LIGHT_GROUP_WIZARD, '/devices/devices-virtual/light-groups/new'],
+		[VirtualRouteNames.THERMOSTAT_WIZARD, '/devices/devices-virtual/thermostats/new'],
+	])('registers the combined capability route %s with an executable view and plugin gate', async (name, path) => {
+		const router = createRouter({
+			history: createMemoryHistory(),
+			routes: [{ path: '/devices', name: DevicesRouteNames.DEVICES, component: { template: '<div />' } }],
+		});
+		const options = createOptions([]);
+		options.router = router;
+		DevicesVirtualPlugin.install({} as App, options);
+		expect(router.resolve({ name }).path).toBe(path);
+		await router.push({ name });
+		await router.isReady();
+		expect(router.currentRoute.value.name).toBe(name);
+		mocks.configStore.findByType.mockReturnValue({ enabled: false });
+		await router.push({ name: DevicesRouteNames.DEVICES });
+		await router.push({ name });
+		expect(router.currentRoute.value.name).toBe(DevicesRouteNames.DEVICES);
 	});
 
 	it('registers the plugin even when the devices list route is not present yet', () => {

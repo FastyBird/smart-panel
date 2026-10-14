@@ -222,13 +222,19 @@ describe('Homey SHS startup compatibility probe', () => {
 
 			return Promise.resolve();
 		});
-		const report = await probeHomeyShsStartup(config, () => runtime, wait, recoveryWindow);
+		const dateNow = jest.spyOn(Date, 'now').mockReturnValue(0);
 
-		expect(report).toStrictEqual(completeReport('offline-recovery'));
-		expect(recoveryWindow).toHaveBeenCalledTimes(1);
-		expect(wait).toHaveBeenCalledWith(100);
-		expect(runtime.stopCount).toBe(1);
-		expect(() => assertHomeyShsStartupReportSafe(report, config)).not.toThrow();
+		try {
+			const report = await probeHomeyShsStartup(config, () => runtime, wait, recoveryWindow);
+
+			expect(report).toStrictEqual(completeReport('offline-recovery'));
+			expect(recoveryWindow).toHaveBeenCalledTimes(1);
+			expect(wait).toHaveBeenCalledWith(100);
+			expect(runtime.stopCount).toBe(1);
+			expect(() => assertHomeyShsStartupReportSafe(report, config)).not.toThrow();
+		} finally {
+			dateNow.mockRestore();
+		}
 	});
 
 	it('fails closed on a mismatched initial state or missing authoritative inventory and still cleans up', async () => {
