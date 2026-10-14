@@ -78,6 +78,88 @@ describe('durable thermostat installation profiles', () => {
 			testedAt: '2026-01-01T00:00:00Z',
 			...(kind === 'local_execution_bounds' ? { maximumObservedMs: 50 } : {}),
 		}));
+	/** A distinct physical relay/controller using the same offline native-floor contract. */
+	const additionalInstallation = async (suffix: number) => {
+		const original = await bindings.resolve(db.manager, claim.id);
+		const deviceId = uuid(),
+			switchChannel = uuid(),
+			propertyId = uuid(),
+			floorChannel = uuid(),
+			floorProperty = uuid();
+		const controllerId = uuid();
+		const hardwareId = `fixture-hardware-${suffix}`;
+		await db.manager.insert(ShellyNgDeviceEntity, {
+			id: deviceId,
+			identifier: hardwareId,
+			name: `1PM fixture ${suffix}`,
+			enabled: true,
+			canonicalMac: `00000000000${suffix}`,
+			category: DeviceCategory.SWITCHER,
+		});
+		await db.manager.insert(ShellyNgChannelEntity, {
+			id: switchChannel,
+			identifier: 'switch:0',
+			name: 'Switch',
+			category: ChannelCategory.SWITCHER,
+			device: deviceId,
+		} as never);
+		await db.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: propertyId,
+			identifier: 'output',
+			channel: switchChannel,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		await db.manager.insert(ShellyNgChannelEntity, {
+			id: floorChannel,
+			identifier: (original.floorLeaf.channel as ChannelEntity).identifier,
+			name: 'Floor',
+			category: ChannelCategory.TEMPERATURE,
+			device: deviceId,
+		} as never);
+		await db.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: floorProperty,
+			identifier: 'tC',
+			channel: floorChannel,
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			unit: '°C',
+			permissions: [PermissionType.READ_ONLY],
+		} as never);
+		await db.manager.insert(VirtualThermostatConfigEntity, { ...original.config, controllerId });
+		const leaf = await db.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: propertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = leaf.channel as ChannelEntity,
+			device = channel.device as ShellyNgDeviceEntity;
+		const added = await db.manager.save(
+			VirtualThermostatActuatorClaimEntity,
+			db.manager.create(VirtualThermostatActuatorClaimEntity, {
+				...claim,
+				id: uuid(),
+				controllerId,
+				sourcePropertyId: propertyId,
+				sourcePropertyIdentity: propertyId,
+				sourceDeviceId: deviceId,
+				sourceDeviceIdentity: deviceId,
+				physicalIdentity: thermostatActuatorIdentity(leaf, channel, device),
+				contractFingerprint: thermostatPropertyContract(leaf, channel, device),
+			}),
+		);
+		await db.manager.insert(VirtualThermostatSourceEntity, {
+			controllerId,
+			role: 'floor',
+			sourcePropertyId: floorProperty,
+			sourcePropertyIdentity: floorProperty,
+			physicalIdentity: floorProperty,
+			contractFingerprint: 'fixture',
+			maximumAgeSeconds: 5,
+		});
+		await profiles.stage(added.id, 0, { ...setup, deviceHardwareId: hardwareId }, attestations(), 'operator');
+		return added;
+	};
 	beforeEach(async () => {
 		directory = await mkdtemp(join(tmpdir(), 'thermostat-installation-'));
 		db = await new SqliteDataSource({
@@ -238,6 +320,8 @@ describe('durable thermostat installation profiles', () => {
 	afterEach(async () => {
 		loader.onModuleDestroy();
 		claims.onModuleDestroy();
+		jest.restoreAllMocks();
+		jest.useRealTimers();
 		await db.destroy();
 		await rm(directory, { recursive: true, force: true });
 	});
@@ -441,30 +525,34 @@ describe('durable thermostat installation profiles', () => {
 			await background;
 		}
 	});
-	it('a stale background profile-query failure cannot invalidate fresh human activation', async () => {
-		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
-		let fail: () => void;
-		const read = jest.spyOn(db.manager, 'findOneByOrFail').mockImplementationOnce(
-			() =>
-				new Promise((_resolve, reject) => {
-					fail = () => reject(new Error('stale profile query failed'));
-				}),
-		);
-		const background = loader.verify(claim.id);
-		try {
+	it.each(['human', 'background'] as const)(
+		'a stale background profile-query failure cannot invalidate fresh %s verification',
+		async (newer) => {
+			await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
 			await loader.verify(claim.id, 1, 'operator');
-			const fresh = claims.qualification(claim, false);
-			expect(fresh).not.toBeNull();
-			fail();
-			await background;
-			expect(claims.qualification(claim, false)).toBe(fresh);
-			expect(fresh.machineLeaseIsCurrent()).toBe(true);
-		} finally {
-			fail();
-			read.mockRestore();
-			await background;
-		}
-	});
+			let fail: () => void;
+			const read = jest.spyOn(db.manager, 'findOneByOrFail').mockImplementationOnce(
+				() =>
+					new Promise((_resolve, reject) => {
+						fail = () => reject(new Error('stale profile query failed'));
+					}),
+			);
+			const background = loader.verify(claim.id);
+			try {
+				await loader.verify(claim.id, 1, newer === 'human' ? 'operator' : null);
+				const fresh = claims.qualification(claim, false);
+				expect(fresh).not.toBeNull();
+				fail();
+				await background;
+				expect(claims.qualification(claim, false)).toBe(fresh);
+				expect(fresh.machineLeaseIsCurrent()).toBe(true);
+			} finally {
+				fail();
+				read.mockRestore();
+				await background;
+			}
+		},
+	);
 	it('background verification skips profile reads until the newest overlapping human operation finishes', async () => {
 		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
 		let entered: () => void;
@@ -551,6 +639,145 @@ describe('durable thermostat installation profiles', () => {
 		expect(fresh.machineLeaseIsCurrent()).toBe(true);
 		expect(original.machineLeaseIsCurrent()).toBe(false);
 	});
+	it('contains an actual SQLite renewal failure at startup and later cycles while renewing other claims', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		const healthy = await additionalInstallation(2);
+		const expired = await additionalInstallation(3);
+		await loader.verify(claim.id, 1, 'operator');
+		await loader.verify(healthy.id, 1, 'operator');
+		let oldLeaseCurrent = true;
+		inspect.mockImplementationOnce(() => Promise.resolve({ isCurrent: () => oldLeaseCurrent }));
+		await loader.verify(expired.id, 1, 'operator');
+		await loader.refresh();
+		const failedLease = claims.qualification(claim, false);
+		const healthyLease = claims.qualification(healthy, false);
+		const expiredLease = claims.qualification(expired, false);
+		oldLeaseCurrent = false;
+		await db.manager.update(ThermostatInstallationEntity, { claimId: claim.id }, { lastMachineObservation: null });
+		await db.query(
+			`CREATE TRIGGER reject_renewal_audit BEFORE INSERT ON devices_virtual_thermostat_installation_audit
+			 WHEN NEW.claimId = '${claim.id}' BEGIN SELECT RAISE(ABORT, 'fixture renewal audit failure'); END`,
+		);
+		const interval = jest.spyOn(global, 'setInterval');
+		await expect(loader.onApplicationBootstrap()).resolves.toBeUndefined();
+		expect(interval).toHaveBeenCalledTimes(1);
+		expect(failedLease.machineLeaseIsCurrent()).toBe(false);
+		expect(claims.qualification(claim, false)).toBeNull();
+		expect(claims.qualification(healthy, false)).toBe(healthyLease);
+		expect(healthyLease.machineLeaseIsCurrent()).toBe(true);
+		const renewed = claims.qualification(expired, false);
+		expect(renewed).not.toBeNull();
+		expect(renewed).not.toBe(expiredLease);
+		expect(renewed.machineLeaseIsCurrent()).toBe(true);
+		expect(expiredLease.machineLeaseIsCurrent()).toBe(false);
+		// Repeat through the real scheduler catch path: a per-claim error must never reach global invalidation.
+		(interval.mock.calls[0][0] as () => void)();
+		await loader['queue'];
+		expect(claims.qualification(healthy, false)).toBe(healthyLease);
+		expect(claims.qualification(expired, false)).toBe(renewed);
+		expect(healthyLease.machineLeaseIsCurrent()).toBe(true);
+		expect(renewed.machineLeaseIsCurrent()).toBe(true);
+		await db.query('DROP TRIGGER reject_renewal_audit');
+		await loader.refresh();
+		expect(claims.qualification(claim, false)).not.toBeNull();
+	});
+	it('retains startup renewal timer after a catalog read failure and keeps all old leases revoked', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await loader.verify(claim.id, 1, 'operator');
+		const old = claims.qualification(claim, false);
+		const read = jest.spyOn(db.manager, 'find').mockRejectedValueOnce(new Error('installation catalog unavailable'));
+		const interval = jest.spyOn(global, 'setInterval');
+		await expect(loader.onApplicationBootstrap()).resolves.toBeUndefined();
+		expect(interval).toHaveBeenCalledTimes(1);
+		expect(old.machineLeaseIsCurrent()).toBe(false);
+		expect(claims.qualification(claim, false)).toBeNull();
+		read.mockRestore();
+		(interval.mock.calls[0][0] as () => void)();
+		await loader['queue'];
+		const fresh = claims.qualification(claim, false);
+		expect(fresh).not.toBeNull();
+		expect(fresh).not.toBe(old);
+		expect(fresh.machineLeaseIsCurrent()).toBe(true);
+		expect(old.machineLeaseIsCurrent()).toBe(false);
+		jest.spyOn(db.manager, 'find').mockRejectedValueOnce(new Error('later installation catalog unavailable'));
+		(interval.mock.calls[0][0] as () => void)();
+		await loader['queue'];
+		expect(claims.qualification(claim, false)).toBeNull();
+		expect(fresh.machineLeaseIsCurrent()).toBe(false);
+	});
+	it.each(['stage', 'revoke', 'verify'] as const)(
+		'preserves %s commit, validation and SQL rollback outcomes when its cleanup reload fails',
+		async (action) => {
+			await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+			await loader.verify(claim.id, 1, 'operator');
+			const target = { ...(await bindings.resolve(db.manager, claim.id)).target, value: true };
+			jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+			const originalFind = db.manager.find.bind(db.manager) as typeof db.manager.find;
+			let failReload = false;
+			const holdFence = claims.holdRecoveryFence.bind(claims) as typeof claims.holdRecoveryFence;
+			jest.spyOn(claims, 'holdRecoveryFence').mockImplementation(() => {
+				failReload = false;
+				const release = holdFence();
+				return () => {
+					release();
+					failReload = true;
+				};
+			});
+			jest.spyOn(db.manager, 'find').mockImplementation(async (...args) => {
+				if (failReload && args[0] === VirtualThermostatActuatorClaimEntity)
+					throw new Error('cleanup reload unavailable');
+				return (await originalFind(...args)) as Record<string, unknown>[];
+			});
+			const operate = (revision: number) =>
+				action === 'stage'
+					? profiles.stage(claim.id, revision, setup, attestations(), 'operator')
+					: action === 'revoke'
+						? profiles.revoke(claim.id, revision, 'operator')
+						: loader.verify(claim.id, revision, 'operator');
+			const retry = async () => {
+				expect(() => claims.assertAllowed(target)).toThrow('reconciling');
+				expect(() => claims.mintAuthority(claim.id, 'off')).toThrow('not admitted');
+				expect(jest.getTimerCount()).toBe(1);
+				failReload = false;
+				const refresh = jest.spyOn(claims, 'refresh');
+				await jest.advanceTimersByTimeAsync(1000);
+				expect(refresh).toHaveBeenCalledTimes(1);
+				await (refresh.mock.results[0].value as Promise<void>);
+				refresh.mockRestore();
+				expect(jest.getTimerCount()).toBe(0);
+				expect(() => claims.assertAllowed(target)).toThrow('reserved');
+				expect(() => claims.mintAuthority(claim.id, 'off')).not.toThrow();
+			};
+			// A committed transaction stays successful even though subsequent membership reload cannot read.
+			await expect(operate(1)).resolves.toBeUndefined();
+			let row = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			expect(row.revision).toBe(action === 'verify' ? 1 : 2);
+			expect(row.armedAt !== null).toBe(action === 'verify');
+			expect(row.revokedAt !== null).toBe(action === 'revoke');
+			await retry();
+			failReload = true;
+			// The original conflict must survive the same failing cleanup read.
+			const rejected = operate(999);
+			await expect(rejected).rejects.toBeInstanceOf(ConflictException);
+			await expect(rejected).rejects.toThrow(action === 'verify' ? 'inspect again' : 'Reload the current revision');
+			await retry();
+			// Real SQLite audit rejection must survive cleanup too, and leave the row/audit transaction rolled back.
+			if (action === 'verify') {
+				await profiles.stage(claim.id, row.revision, setup, attestations(), 'operator');
+				row = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+				await retry();
+			}
+			const audits = await db.manager.count(ThermostatInstallationAuditEntity);
+			await db.query(
+				"CREATE TRIGGER reject_cleanup_audit BEFORE INSERT ON devices_virtual_thermostat_installation_audit BEGIN SELECT RAISE(ABORT, 'original SQL rollback failure'); END",
+			);
+			failReload = true;
+			await expect(operate(row.revision)).rejects.toThrow('original SQL rollback failure');
+			expect(await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id })).toEqual(row);
+			expect(await db.manager.count(ThermostatInstallationAuditEntity)).toBe(audits);
+			await retry();
+		},
+	);
 	it('requires exact explicit Steinhart-Hart coefficients, domains, leg and physical voltage configuration', async () => {
 		const binding = await bindings.resolve(db.manager, claim.id);
 		const conversion = {

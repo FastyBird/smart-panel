@@ -140,8 +140,13 @@ export class ThermostatInstallationModel {
 	@Expose()
 	@Type(() => ThermostatOperatorAttestationModel)
 	operator_attestations: ThermostatOperatorAttestationModel[];
-	@ApiProperty({ type: Object, nullable: true, description: 'Diagnostic only; never trusted at restart' })
+	@ApiProperty({
+		type: ThermostatMachineObservationModel,
+		nullable: true,
+		description: 'Diagnostic only; never trusted at restart',
+	})
 	@Expose()
+	@Type(() => ThermostatMachineObservationModel)
 	machine_observation: ThermostatMachineObservationModel | null;
 	@ApiProperty({
 		type: Boolean,

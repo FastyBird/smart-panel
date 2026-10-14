@@ -104,7 +104,8 @@ export class ThermostatInstallationService {
 			});
 		} finally {
 			release();
-			await this.claims.refresh();
+			// Reload closes admission and schedules retry itself; preserve the committed/rejected operation outcome.
+			await this.claims.refresh().catch(() => undefined);
 		}
 	}
 	async revoke(claimId: string, expectedRevision: number, actorId: string): Promise<void> {
@@ -153,7 +154,8 @@ export class ThermostatInstallationService {
 			});
 		} finally {
 			release();
-			await this.claims.refresh();
+			// Reload closes admission and schedules retry itself; preserve the committed/rejected operation outcome.
+			await this.claims.refresh().catch(() => undefined);
 		}
 	}
 	private beginMutation(claimId: string): () => void {

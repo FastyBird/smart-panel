@@ -1,8 +1,11 @@
+import { EntityNotFoundError } from 'typeorm';
+
 import {
 	Body,
 	Controller,
 	ForbiddenException,
 	Get,
+	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Post,
@@ -14,7 +17,10 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedRequest } from '../../../modules/auth/guards/auth.guard';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ApiSuccessResponse } from '../../../modules/swagger/decorators/api-documentation.decorator';
+import {
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
@@ -42,6 +48,7 @@ export class ThermostatInstallationController {
 		operationId: 'inspect-devices-virtual-plugin-thermostat-installation',
 	})
 	@ApiSuccessResponse(ThermostatInstallationResponseModel, 'Installation review')
+	@ApiNotFoundResponse('No installation profile; stage equipment details first.')
 	@Get(':claim')
 	async inspect(
 		@Param('claim', new ParseUUIDPipe({ version: '4' })) claim: string,
@@ -58,6 +65,7 @@ export class ThermostatInstallationController {
 		operationId: 'stage-devices-virtual-plugin-thermostat-installation',
 	})
 	@ApiSuccessResponse(ThermostatInstallationResponseModel, 'Staged installation')
+	@ApiNotFoundResponse('Thermostat claim or installation not found.')
 	@Put(':claim')
 	async stage(
 		@Param('claim', new ParseUUIDPipe({ version: '4' })) claim: string,
@@ -69,6 +77,8 @@ export class ThermostatInstallationController {
 			await this.profiles.stage(claim, dto.expected_revision, dto.setup, dto.operator_attestations, actor);
 		} catch (error) {
 			if (error instanceof DevicesValidationException) throw new UnprocessableEntityException(error.message);
+			if (error instanceof EntityNotFoundError)
+				throw new NotFoundException('Thermostat claim or installation not found.');
 			throw error;
 		}
 		return this.response(claim);
@@ -81,13 +91,21 @@ export class ThermostatInstallationController {
 		operationId: 'verify-devices-virtual-plugin-thermostat-installation',
 	})
 	@ApiSuccessResponse(ThermostatInstallationResponseModel, 'Installation diagnostics')
+	@ApiNotFoundResponse('Thermostat claim or installation not found.')
 	@Post(':claim/verify')
 	async verify(
 		@Param('claim', new ParseUUIDPipe({ version: '4' })) claim: string,
 		@Body() dto: ThermostatInstallationRevisionDto,
 		@Req() req: AuthenticatedRequest,
 	): Promise<ThermostatInstallationResponseModel> {
-		await this.loader.verify(claim, dto.expected_revision, this.actor(req));
+		const actor = this.actor(req);
+		try {
+			await this.loader.verify(claim, dto.expected_revision, actor);
+		} catch (error) {
+			if (error instanceof EntityNotFoundError)
+				throw new NotFoundException('Thermostat claim or installation not found.');
+			throw error;
+		}
 		return this.response(claim);
 	}
 	@ApiOperation({
@@ -98,13 +116,21 @@ export class ThermostatInstallationController {
 		operationId: 'revoke-devices-virtual-plugin-thermostat-installation',
 	})
 	@ApiSuccessResponse(ThermostatInstallationResponseModel, 'Revoked installation')
+	@ApiNotFoundResponse('Thermostat claim or installation not found.')
 	@Post(':claim/revoke')
 	async revoke(
 		@Param('claim', new ParseUUIDPipe({ version: '4' })) claim: string,
 		@Body() dto: ThermostatInstallationRevisionDto,
 		@Req() req: AuthenticatedRequest,
 	): Promise<ThermostatInstallationResponseModel> {
-		await this.profiles.revoke(claim, dto.expected_revision, this.actor(req));
+		const actor = this.actor(req);
+		try {
+			await this.profiles.revoke(claim, dto.expected_revision, actor);
+		} catch (error) {
+			if (error instanceof EntityNotFoundError)
+				throw new NotFoundException('Thermostat claim or installation not found.');
+			throw error;
+		}
 		return this.response(claim);
 	}
 	private actor(req: AuthenticatedRequest): string {
