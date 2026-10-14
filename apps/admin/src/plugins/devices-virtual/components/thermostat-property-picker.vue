@@ -90,7 +90,10 @@ const resolveCurrent = async (): Promise<void> => {
 		if (!current() || property.channel !== channel.id) return;
 		deviceId.value = channel.device;
 		channelId.value = channel.id;
-		await propertiesStore.fetch({ channelId: channel.id });
+		await Promise.all([
+			channelsStore.fetch({ deviceId: channel.device }).catch(() => undefined),
+			propertiesStore.fetch({ channelId: channel.id }).catch(() => undefined),
+		]);
 	} catch {
 		if (!current()) return;
 		deviceId.value = ownerDeviceId ?? null;
