@@ -36,6 +36,21 @@ describe('room physical contribution presentation', () => {
 			averageBrightness: 100,
 		});
 	});
+	it('uses reported group brightness when there are no qualified ON samples', () => {
+		const light = {
+			...composite(),
+			coverage: { ...composite().coverage, reported: { ...composite().coverage.reported, onBrightness: undefined } },
+		};
+		expect(service['calculateSummary']([light as never]).averageBrightness).toBe(50);
+	});
+	it('keeps switch-only groups without brightness out of the average', () => {
+		const light = {
+			...composite(),
+			brightness: null,
+			coverage: { ...composite().coverage, reported: { ...composite().coverage.reported, onBrightness: undefined } },
+		};
+		expect(service['calculateSummary']([light as never]).averageBrightness).toBeNull();
+	});
 	it.each([
 		PropertyCategory.COLOR_GREEN,
 		PropertyCategory.COLOR_BLUE,
