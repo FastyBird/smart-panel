@@ -119,6 +119,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
 	>();
 	private readonly diagnosticGuards = new Map<string, () => boolean>();
+	/** A stored release barrier is usable only while its exact installed qualification and source lease stay live. */
 	private isReconciled(claim: VirtualThermostatActuatorClaimEntity): boolean {
 		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
 		const qualification = this.claims.qualification(claim, false);
@@ -668,6 +669,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.inFlight.set(command.id, operation);
 		void operation.catch(() => undefined);
 	}
+	/** Journal before transport; known-unsent ON is terminal and waits for fresh work, while uncertain sends need OFF proof. */
 	private async dispatch(
 		context: ControllerContext,
 		claim: VirtualThermostatActuatorClaimEntity,
@@ -675,6 +677,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		command: VirtualThermostatCommandEntity,
 	): Promise<void> {
 		let enteredTransport = false;
+		let refusedOn = false;
 		try {
 			if (!this.canSend(context, claim, command.action)) {
 				command.status = 'cancelled';
@@ -698,7 +701,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const result = await this.transport
 				.get(update)
 				.send(update, claim, this.claims.qualification(claim, context.claims.length > 1), guard);
-			command.status = result.outcome === 'accepted' ? 'accepted' : 'unknown';
+			refusedOn = command.action === 'on' && result.outcome === 'refused';
+			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
 			command.settledAt = new Date();
 			command.fault =
 				result.outcome === 'refused'
@@ -708,12 +712,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						: null;
 			await this.write(command);
 		} catch (error) {
-			command.status = enteredTransport ? 'unknown' : 'cancelled';
+			command.status = enteredTransport && !refusedOn ? 'unknown' : 'cancelled';
 			command.fault = error instanceof Error ? error.message : 'dispatch_error';
 			await this.write(command);
 			if (!enteredTransport) await this.retryOffImmediately(context, command);
 		} finally {
-			if (this.active) this.request(claim.controllerId);
+			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
+			if (this.active && !refusedOn) this.request(claim.controllerId);
 		}
 	}
 	private async retryOffImmediately(
@@ -736,6 +741,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}),
 		);
 	}
+	/** Settle the full current journal only under an exclusive recheck of scoped proof, qualification, source lease and OFF sample. */
 	private async reconcile(context: ControllerContext, claim: VirtualThermostatActuatorClaimEntity): Promise<void> {
 		const target = context.targets.get(claim.id),
 			qualification = this.claims.qualification(claim, context.claims.length > 1);
