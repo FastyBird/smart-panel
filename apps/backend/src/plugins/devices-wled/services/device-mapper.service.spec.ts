@@ -258,6 +258,39 @@ describe('WledDeviceMapperService', () => {
 			);
 			expect(channelsPropertiesService.reportSample).not.toHaveBeenCalled();
 		});
+		it('preserves previously qualified main RGB samples when a partial packet omits mainSegment', async () => {
+			await service.updateDeviceState('wled-test', mockWledState, observation());
+			const priorSampleCount = channelsPropertiesService.reportSample.mock.calls.length;
+
+			await service.updateDeviceState(
+				'wled-test',
+				{ ...mockWledState, mainSegment: undefined } as unknown as WledState,
+				observation(false),
+			);
+
+			const partialSamples = channelsPropertiesService.reportSample.mock.calls.slice(priorSampleCount);
+			expect(partialSamples.some(([id]) => String(id).startsWith('light-1-color_'))).toBe(false);
+			expect(partialSamples.some(([id]) => String(id).startsWith('segment-1-color_'))).toBe(true);
+		});
+		const expectMainRgbInvalidated = async (mainSegment: number | undefined): Promise<void> => {
+			await service.updateDeviceState(
+				'wled-test',
+				{ ...mockWledState, mainSegment } as unknown as WledState,
+				observation(),
+			);
+
+			const mainColorSamples = channelsPropertiesService.reportSample.mock.calls.filter(([id]) =>
+				String(id).startsWith('light-1-color_'),
+			);
+			expect(mainColorSamples).toHaveLength(3);
+			expect(mainColorSamples.every(([, dto]) => dto.value === null)).toBe(true);
+		};
+		it('invalidates main RGB for a full snapshot with missing mainSegment', async () => {
+			await expectMainRgbInvalidated(undefined);
+		});
+		it('invalidates main RGB for an explicit nonzero mainSegment', async () => {
+			await expectMainRgbInvalidated(1);
+		});
 		it('refuses wrong MAC and packet identity revoked during catalog lookup', async () => {
 			await service.updateDeviceState('wled-test', mockWledState, { ...observation(), mac: '000000000000' });
 			let current = true;

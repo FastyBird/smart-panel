@@ -90,5 +90,15 @@ describe('LocalScenePlatform', () => {
 			expect.objectContaining({ property: setpoint, value: 23 }),
 		]);
 		expect(repeated.map((result) => result.actionId)).toEqual(['first', 'second', 'third']);
+		const context = { intentId: 'scene-parent', deadlineAt: Date.now() + 250 };
+		await platform.execute({} as any, actions, context);
+		expect(dispatchBatch).toHaveBeenNthCalledWith(
+			4,
+			[expect.objectContaining({ property: on }), expect.objectContaining({ property: setpoint })],
+			expect.objectContaining({ ...context, ttlMs: expect.any(Number) }),
+		);
+		const options = dispatchBatch.mock.calls[3][1] as { ttlMs: number };
+		expect(options.ttlMs).toBeLessThanOrEqual(250);
+		expect(options.ttlMs).toBeGreaterThan(0);
 	});
 });

@@ -794,20 +794,21 @@ export class DevicesService {
 			throw error;
 		}
 
-		// Retrieve the saved device with its full relations
+		// Hydrate the response after queued structural writers finish. Their validation gate may be
+		// temporarily closed while asynchronous device-information properties are being synthesized.
 		let savedDevice = creation
 			? await creation.manager
 					.createQueryBuilder(mapping.class, 'row')
 					.where('row.id = :id', { id: device.id })
 					.callListeners(false)
 					.getOneOrFail()
-			: ((await this.getOneOrThrow(device.id)) as TDevice);
+			: ((await this.structureLock.runShared(() => this.getOneOrThrow(device.id))) as TDevice);
 
 		if (mapping.afterCreate && !creation) {
 			await mapping.afterCreate(savedDevice, dtoInstance);
 
 			// Reload a potentially updated device
-			savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+			savedDevice = (await this.structureLock.runShared(() => this.getOneOrThrow(device.id))) as TDevice;
 		}
 
 		this.logger.debug(`Successfully created device with id=${savedDevice.id}`);

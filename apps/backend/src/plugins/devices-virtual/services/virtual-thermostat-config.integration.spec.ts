@@ -76,6 +76,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 	let events: EventEmitter2;
 	let values: PropertyValueService;
 	let structure: DeviceStructureLockService;
+	let graph: VirtualDependencyGraphService;
 	beforeEach(async () => {
 		directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-'));
 		const options = {
@@ -90,7 +91,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		registry = new PropertyCommandAdmissionRegistryService();
 		events = new EventEmitter2();
 		structure = new DeviceStructureLockService();
-		const graph = new VirtualDependencyGraphService(database);
+		graph = new VirtualDependencyGraphService(database);
 		claims = new VirtualThermostatClaimsService(database, structure, graph, registry, events);
 		values = {
 			write: jest.fn().mockResolvedValue(true),
@@ -246,6 +247,40 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				evidenceId: 'readback-only',
 			}),
 		).toThrow('drainage');
+	});
+
+	it('holds shared structural access through response hydration', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			relay = await actuator();
+		await configs.configure(controller, dto(sensor, relay));
+		let release: () => void;
+		const gate = new Promise<void>((resolve) => (release = resolve));
+		let started: () => void;
+		const hydrated = new Promise<void>((resolve) => (started = resolve));
+		const qualification = jest.spyOn(claims, 'qualification').mockImplementation(() => {
+			started();
+			return null;
+		});
+		const revision = await graph.revision();
+		jest.spyOn(graph, 'revision').mockImplementation(async () => {
+			await gate;
+			return revision;
+		});
+		const reading = configs.get(controller);
+		await hydrated;
+		let written = false;
+		const writer = structure.runExclusive(() => {
+			written = true;
+			return Promise.resolve();
+		});
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(written).toBe(false);
+		release();
+		await reading;
+		await writer;
+		expect(written).toBe(true);
+		qualification.mockRestore();
 	});
 
 	it('arbitrates concurrent controller creation across two SQLite connections and rolls losing config back', async () => {

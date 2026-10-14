@@ -184,6 +184,12 @@ export interface LightGroupReportedState {
 	>;
 }
 
+/**
+ * Derives reported group state from qualified member samples, retaining unknown members and
+ * native-unit differences instead of treating a command's intended value as confirmed state.
+ * @param members Physical members with their available qualified samples.
+ * @returns Member counts and common reported controls, including mixed and unavailable values.
+ */
 export function reportLightGroup(members: readonly LightGroupReportedMember[]): LightGroupReportedState {
 	const on = members.filter((member) => member.samples.get(PropertyCategory.ON)?.value === true);
 	const off = members.filter((member) => member.samples.get(PropertyCategory.ON)?.value === false);
