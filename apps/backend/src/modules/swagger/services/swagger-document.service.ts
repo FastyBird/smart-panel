@@ -182,6 +182,23 @@ export class SwaggerDocumentService {
 					if (typeof propSchema === 'object' && propSchema !== null && 'allOf' in propSchema) {
 						const allOf = propSchema.allOf;
 						if (
+							propSchema.nullable === true &&
+							Array.isArray(allOf) &&
+							allOf.length === 1 &&
+							typeof allOf[0] === 'object' &&
+							allOf[0] !== null &&
+							'$ref' in allOf[0]
+						) {
+							const metadata = { ...propSchema };
+							delete metadata.allOf;
+							delete metadata.nullable;
+							schema.properties[propName] = {
+								...metadata,
+								anyOf: [allOf[0], { type: 'null' }],
+							};
+							continue;
+						}
+						if (
 							// A direct reference cannot carry nullable; preserve the wrapper for generated clients.
 							!propSchema.nullable &&
 							Array.isArray(allOf) &&
