@@ -40,6 +40,8 @@ Choose **Light group** in the Virtual wizard, name it and select physical light 
 
 A group may show **mixed** or **unknown** state. After a command, inspect member outcomes if the parent reports **partial** success; a successful member must not conceal a failed or offline one. The same common controls are available in the panel and from room or scene control. If a physical light and its group are both assigned to a room, that physical light contributes once to room state. Group membership does not create an extra energy meter or replace physical-device provenance.
 
+If two groups in the same room share a physical light, room lighting reports an overlap conflict and refuses the room command. Open the room's **Lighting roles** dialog, keep one group participating, and set the other group's role to **Hidden**. This excludes that group from the room's lighting state and commands. The group remains listed in the roles dialog so you can restore its participation; restoring an overlap brings the conflict back. This room role preserves group membership, direct device controls and device visibility settings.
+
 ## Create a thermostat controller
 
 Choose **Thermostat controller** in the Virtual wizard. Select a valid ambient temperature source: a physical sensor, aggregate, or qualified numeric converter. Bind only supported heating and cooling outputs. Configure the actual installation's setpoints and deadband, and preview the actuator profile before saving. Unsupported or conflicting output combinations are rejected.
