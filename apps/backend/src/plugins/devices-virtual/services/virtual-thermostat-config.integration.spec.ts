@@ -498,7 +498,10 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const executor = new SceneExecutorService(
 			{ getOneOrThrow: () => Promise.resolve(sceneEntity), updateLastTriggered: () => Promise.resolve() } as never,
 			events,
-			{ createIntent: jest.fn().mockReturnValue({ id: uuid() }), completeIntent: jest.fn() } as never,
+			{
+				createIntent: jest.fn().mockReturnValue({ id: uuid(), expiresAt: new Date(Date.now() + 10_000) }),
+				completeIntent: jest.fn(),
+			} as never,
 		);
 		executor.registerPlatform(scene);
 		const beforeScene = dispatchBatch.mock.calls.length;
