@@ -359,17 +359,39 @@ export class VirtualThermostatRecoveryModel implements Pick<
 	| 'reason'
 	| 'createdAt'
 > {
-	@ApiProperty() @Expose() id: string;
-	@ApiProperty() @Expose() claimId: string;
-	@ApiProperty() @Expose() physicalIdentity: string;
-	@ApiProperty() @Expose() previousPropertyIdentity: string;
-	@ApiProperty() @Expose() restoredPropertyId: string;
-	@ApiProperty() @Expose() actorId: string;
-	@ApiProperty() @Expose() reason: string;
-	@ApiProperty() @Expose() createdAt: Date;
-	@ApiProperty() @Expose() disconnectionAcknowledged: boolean;
-	@ApiProperty() @Expose() configurationRevision: number;
-	@ApiProperty() @Expose() claimRevision: number;
+	@ApiProperty()
+	@Expose()
+	id: string;
+	@ApiProperty({ name: 'claim' })
+	@Expose({ name: 'claim' })
+	claimId: string;
+	@ApiProperty({ name: 'physical_identity' })
+	@Expose({ name: 'physical_identity' })
+	physicalIdentity: string;
+	@ApiProperty({ name: 'previous_property_identity' })
+	@Expose({ name: 'previous_property_identity' })
+	previousPropertyIdentity: string;
+	@ApiProperty({ name: 'restored_property' })
+	@Expose({ name: 'restored_property' })
+	restoredPropertyId: string;
+	@ApiProperty({ name: 'actor' })
+	@Expose({ name: 'actor' })
+	actorId: string;
+	@ApiProperty()
+	@Expose()
+	reason: string;
+	@ApiProperty({ name: 'created_at' })
+	@Expose({ name: 'created_at' })
+	createdAt: Date;
+	@ApiProperty({ name: 'disconnection_acknowledged' })
+	@Expose({ name: 'disconnection_acknowledged' })
+	disconnectionAcknowledged: boolean;
+	@ApiProperty({ name: 'configuration_revision' })
+	@Expose({ name: 'configuration_revision' })
+	configurationRevision: number;
+	@ApiProperty({ name: 'claim_revision' })
+	@Expose({ name: 'claim_revision' })
+	claimRevision: number;
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginResThermostatRecoveries' })
