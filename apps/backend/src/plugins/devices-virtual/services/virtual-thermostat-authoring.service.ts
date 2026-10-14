@@ -2,7 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DataSource, EntityManager } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -17,6 +17,7 @@ import { DeviceCreationContext } from '../../../modules/devices/services/device-
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { buildDeviceGraphQuery } from '../../../modules/devices/utils/device-graph-query.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../../modules/spaces/spaces.constants';
@@ -41,6 +42,8 @@ const fail = (message: string): never => {
 
 @Injectable()
 export class VirtualThermostatAuthoringService {
+	private readonly logger = new Logger(VirtualThermostatAuthoringService.name);
+
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly lock: DeviceStructureLockService,
@@ -68,7 +71,7 @@ export class VirtualThermostatAuthoringService {
 
 	async create(dto: CreateVirtualThermostatProducerDto): Promise<VirtualCreatedThermostatModel> {
 		return this.lock.runExclusive(async () => {
-			const committed = await DeviceCreationContext.run<{ device: VirtualDeviceEntity }>(
+			const committed = await DeviceCreationContext.run<VirtualCreatedThermostatModel>(
 				(operation) => this.graph.withStructuralWrite(operation, dto.configuration.expectedGraphRevision),
 				'virtual',
 				async (context) => {
@@ -77,15 +80,37 @@ export class VirtualThermostatAuthoringService {
 					const device = await this.devices.create<VirtualDeviceEntity, CreateVirtualDeviceDto>(draft.dto, context);
 					const prepared = await this.configurations.prepare(context.manager, device.id, dto.configuration);
 					await this.configurations.persist(context.manager, device.id, prepared);
-					return { device };
+					const persistedDevice = await buildDeviceGraphQuery(context.manager.getRepository(VirtualDeviceEntity))
+						.where('device.id = :id', { id: device.id })
+						.getOneOrFail();
+					const configuration = await this.configurations.snapshot(context.manager, device.id);
+					return Object.assign(new VirtualCreatedThermostatModel(), { device: persistedDevice, configuration });
 				},
 				() => undefined,
 			);
-			return Object.assign(new VirtualCreatedThermostatModel(), {
-				device: await this.devices.findOne(committed.device.id),
-				configuration: await this.configurations.afterCommit(committed.device.id),
-			});
+			try {
+				await this.configurations.afterCommit(committed.device.id);
+			} catch (error) {
+				this.logger.error('Thermostat committed but post-commit publication failed', error);
+			}
+			try {
+				const refreshed = await this.devices.findOne<VirtualDeviceEntity>(committed.device.id);
+				if (refreshed) committed.device = refreshed;
+			} catch (error) {
+				this.logger.error('Thermostat committed but post-commit device hydration failed', error);
+			}
+			return committed;
 		});
+	}
+
+	async propertyBinding(id: string): Promise<{ property: string; channel: string; device: string } | null> {
+		const property = await this.dataSource.manager.findOne(ChannelPropertyEntity, {
+			where: { id },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property?.channel;
+		if (!channel || typeof channel === 'string' || typeof channel.device === 'string' || !channel.device) return null;
+		return { property: property.id, channel: channel.id, device: channel.device.id };
 	}
 
 	private async draft(manager: EntityManager, request: CreateVirtualThermostatProducerDto) {

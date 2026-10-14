@@ -62,6 +62,7 @@ import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 
 jest.setTimeout(30000);
 
@@ -71,6 +72,7 @@ describe('atomic virtual thermostat authoring', () => {
 	let registry: PropertyCommandAdmissionRegistryService;
 	let claims: VirtualThermostatClaimsService;
 	let configs: VirtualThermostatConfigService;
+	let devices: DevicesService;
 	let events: EventEmitter2;
 	let ambientId: string;
 	let relayId: string;
@@ -155,7 +157,7 @@ describe('atomic virtual thermostat authoring', () => {
 			database.getRepository(SpaceEntity),
 			events,
 		);
-		const devices = new DevicesService(
+		devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
 			deviceMapper,
@@ -354,6 +356,20 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(values.write).not.toHaveBeenCalled();
 	});
 
+	it('resolves a saved property directly to its channel and device', async () => {
+		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: ambientId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property.channel as ChannelEntity;
+		expect(await authoring.propertyBinding(ambientId)).toEqual({
+			property: ambientId,
+			channel: channel.id,
+			device: (channel.device as DeviceEntity).id,
+		});
+		expect(await authoring.propertyBinding(uuid())).toBeNull();
+	});
+
 	it('commits the owner and canonical reservation together and rejects a second UUID alias', async () => {
 		const first = request(relayId);
 		const created = await authoring.create(first);
@@ -369,6 +385,45 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
 		expect(publications).toEqual([]);
 	});
+
+	it.each(['value write', 'claims refresh', 'event publication', 'device hydration'])(
+		'returns the persisted thermostat when post-commit %s fails',
+		async (failure) => {
+			const input = request(relayId);
+			if (failure === 'value write') jest.spyOn(values, 'write').mockRejectedValueOnce(new Error('value write failed'));
+			if (failure === 'claims refresh')
+				jest.spyOn(claims, 'refresh').mockRejectedValueOnce(new Error('refresh failed'));
+			if (failure === 'event publication')
+				jest.spyOn(events, 'emit').mockImplementation((event: string | symbol, ...args: unknown[]) => {
+					if (event === THERMOSTAT_CONFIG_CHANGED) throw new Error('publication failed');
+					return Boolean(EventEmitter2.prototype.emit.call(events, event, ...args));
+				});
+			if (failure === 'device hydration')
+				jest.spyOn(devices, 'findOne').mockRejectedValueOnce(new Error('hydration failed'));
+			const created = await authoring.create(input);
+			expect(created.device.id).toBe(input.device.id);
+			expect(created.device.channels).toHaveLength(input.device.channels.length);
+			expect(created.configuration.controller).toBe(input.device.id);
+			expect(created.configuration.revision).toBe(1);
+			expect(created.configuration.actuators).toEqual([
+				expect.objectContaining({ source_property: relayId, state: 'reserved', revision: 1 }),
+			]);
+			expect(created.configuration.readiness).toBe('draft');
+			const settingId = input.configuration.settings.find(
+				(setting) => setting.setting === 'heating_enabled',
+			).propertyId;
+			const committedSetting = created.device.channels
+				.flatMap((channel) => channel.properties)
+				.find((property) => property.id === settingId);
+			expect(committedSetting?.permissions).toEqual([PermissionType.READ_WRITE]);
+			expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: settingId })).permissions).toEqual([
+				PermissionType.READ_WRITE,
+			]);
+			expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+			expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+		},
+	);
 
 	it('rolls back the full graph and claim if persistence fails after real creation hooks', async () => {
 		const input = request(relayId);
