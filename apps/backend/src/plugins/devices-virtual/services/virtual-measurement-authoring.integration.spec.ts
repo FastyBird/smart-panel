@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	EventType,
@@ -16,6 +17,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { DeviceZoneEntity } from '../../../modules/devices/entities/device-zone.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsTypeMapperService } from '../../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -27,7 +29,9 @@ import { DeviceZonesService } from '../../../modules/devices/services/device-zon
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { DeviceExistsConstraintValidator } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import {
@@ -56,6 +60,7 @@ import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../e
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
+import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualMeasurementAuthoringService } from './virtual-measurement-authoring.service';
@@ -63,6 +68,8 @@ import { VirtualNumericTransformOperator } from './virtual-numeric-transform.uti
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualTransformConfigService } from './virtual-transform-config.service';
+import { VirtualTransformRuntimeService } from './virtual-transform-runtime.service';
+import { VirtualValueSourceService } from './virtual-value-source.service';
 
 jest.setTimeout(30000);
 describe('measurement atomic authoring with real SQLite and core creation services', () => {
@@ -74,6 +81,10 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 	let transforms: VirtualTransformConfigService;
 	let state: VirtualProducerStateService;
 	let sourceId: string;
+	let lock: DeviceStructureLockService;
+	let devices: DevicesService;
+	let aggregateRuntime: VirtualAggregateRuntimeService;
+	let transformRuntime: VirtualTransformRuntimeService;
 	let phase: string | undefined;
 	let admittedRunner: QueryRunner | undefined;
 	const publications: EventType[] = [];
@@ -99,7 +110,7 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 			events.on(event, () => publications.push(event));
 		producers = new PropertyProducerRegistryService(events);
 		graph = new VirtualDependencyGraphService(database);
-		const lock = new DeviceStructureLockService();
+		lock = new DeviceStructureLockService();
 		state = new VirtualProducerStateService(database, producers, graph, events);
 		events.on(EventType.CHANNEL_PROPERTY_CREATED, (property: VirtualChannelPropertyEntity) =>
 			state.handlePropertyChanged(property),
@@ -168,7 +179,7 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 			database.getRepository(SpaceEntity),
 			events,
 		);
-		const devices = new DevicesService(
+		devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
 			devicesMapper,
@@ -235,6 +246,9 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		} as never);
 	});
 	afterEach(async () => {
+		aggregateRuntime?.onModuleDestroy();
+		transformRuntime?.onModuleDestroy();
+		state?.onModuleDestroy();
 		producers?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 		useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });
@@ -327,6 +341,127 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		expect(publications.filter((e) => e === EventType.CHANNEL_PROPERTY_CREATED)).toHaveLength(5);
 		expect(producers.read(dto.outputPropertyId)?.producer.quality).toBe('unavailable');
 	});
+	it.each(['transform', 'aggregate'] as const)(
+		'keeps cached temperature unavailable throughout %s creation with active validation observers',
+		async (kind) => {
+			const sources = new PropertyValueSourceRegistryService();
+			sources.register(new VirtualValueSourceService(graph));
+			const values = new PropertyValueService(
+				{
+					isConnected: () => true,
+					query: jest.fn().mockResolvedValue([]),
+					enqueueWritePoint: jest.fn(),
+					flushQueuedWrites: jest.fn().mockResolvedValue(undefined),
+				} as never,
+				sources,
+				new PropertyValueLockService(database),
+				producers,
+				events,
+			);
+			const connectivity = { readLatest: () => Promise.resolve({ status: ConnectionState.CONNECTED }) };
+			aggregateRuntime = new VirtualAggregateRuntimeService(
+				database,
+				producers,
+				values,
+				connectivity as never,
+				graph,
+				events,
+			);
+			transformRuntime = new VirtualTransformRuntimeService(
+				database,
+				producers,
+				values,
+				connectivity as never,
+				graph,
+				events,
+			);
+			transforms = new VirtualTransformConfigService(database, lock, graph, events, state, transformRuntime);
+			const aggregates = new VirtualProducerConfigService(
+				database,
+				lock,
+				graph,
+				events,
+				state,
+				undefined,
+				aggregateRuntime,
+			);
+			authoring = new VirtualMeasurementAuthoringService(
+				database,
+				lock,
+				graph,
+				devices,
+				new DeviceValidationService(devices),
+				aggregates,
+				transforms,
+				state,
+				aggregateRuntime,
+			);
+			const secondId = uuid();
+			const original = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: sourceId },
+				relations: ['channel'],
+			});
+			await database.manager.insert(ChannelPropertyEntity, {
+				id: secondId,
+				channel: original.channel,
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+			} as never);
+			await state.onModuleInit();
+			await graph.onApplicationBootstrap();
+			await transformRuntime.onApplicationBootstrap();
+			await aggregateRuntime.onApplicationBootstrap();
+			const sampledAt = new Date();
+			const report = async (id: string, value: number) => {
+				const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+					where: { id },
+					relations: ['channel', 'channel.device'],
+				});
+				await values.writeSampleWithState(property, value, {
+					sampledAt,
+					receivedAt: new Date(),
+					provenance: 'live',
+				});
+			};
+			await report(sourceId, 12);
+			await report(secondId, 16);
+			const dto = draft();
+			const observed: PropertyValueState[] = [];
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (property: ChannelPropertyEntity) => {
+				if (property.id === dto.outputPropertyId) observed.push(property.value);
+			});
+			if (kind === 'aggregate') {
+				dto.device.mode = VirtualDeviceMode.SENSOR_AGGREGATE;
+				await authoring.createAggregate(
+					Object.assign(new CreateVirtualAggregateProducerDto(), {
+						device: dto.device,
+						outputPropertyId: dto.outputPropertyId,
+						configuration: {
+							expectedRevision: 0,
+							operator: VirtualAggregateOperator.MEAN,
+							minimumValidInputs: 2,
+							maximumAgeSeconds: 10,
+							inputs: [{ sourcePropertyId: sourceId }, { sourcePropertyId: secondId }],
+						},
+					}),
+				);
+			} else await authoring.createTransform(dto);
+			await transformRuntime.flush();
+			await aggregateRuntime.flush();
+			expect(graph.isRevisionCurrent(1)).toBe(true);
+			expect(observed.length).toBeGreaterThan(0);
+			expect(observed.every((sample) => sample.producer.quality === 'unavailable' && sample.value === null)).toBe(true);
+			expect(producers.read(dto.outputPropertyId)?.producer.quality).toBe('unavailable');
+			// A newly accepted report with the same timestamp/value still satisfies the generation fence.
+			await report(sourceId, 12);
+			await report(secondId, 16);
+			await transformRuntime.flush();
+			await aggregateRuntime.flush();
+			expect(producers.read(dto.outputPropertyId)?.producer.quality).toBe('good');
+			expect(producers.read(dto.outputPropertyId)?.value).toBe(kind === 'aggregate' ? 14 : 25);
+		},
+	);
 	it('returns committed creation and continues catalog publications after a deferred hook rejects', async () => {
 		afterCreate.mockRejectedValueOnce(new Error('post-commit property claim failed'));
 		const dto = draft();

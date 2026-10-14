@@ -3,8 +3,10 @@ import { DataSource, EntityManager, IsNull, Not } from 'typeorm';
 import { Injectable, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
+import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import {
 	VirtualAggregateInputEntity,
@@ -22,16 +24,22 @@ export interface VirtualDependencyEdge {
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
-	private readonly validationListeners = new Set<
-		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>
+	private readonly validationListeners = new Map<
+		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
+		{ requiresActivation?: boolean }
 	>();
 	private quarantineRevision = -1;
+	// Module initialization may install leases before bootstrap validates the durable graph.
+	private validationPending = true;
+	private validationGeneration = 0;
+	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualDependencyGraphService');
 
 	constructor(
 		private readonly dataSource: DataSource,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 
+	/** Applies committed validation before returning; runtime evaluation waits for the caller's activation events. */
 	async withStructuralWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
 		expectedGraphRevision?: number,
@@ -48,8 +56,33 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			await manager.increment(VirtualGraphRevisionEntity, { id: 1 }, 'revision', 1);
 			return operation(manager);
 		});
-		if (this.quarantined.size) await this.refreshQuarantine();
+		try {
+			await this.refreshValidation(false);
+		} catch (error) {
+			// The owning COMMIT succeeded. Returning its result allows the caller to activate the
+			// persisted catalog while validation guards keep live authority unavailable until retry.
+			this.logger.error(
+				'Virtual structural write committed, but graph validation failed; live authority remains unavailable until validation succeeds.',
+				error instanceof Error ? error : new Error('Post-commit graph validation rejected', { cause: error }),
+			);
+		}
 		return result;
+	}
+
+	/** The applied validated graph revision, safe for an internal provider publish guard. */
+	isRevisionCurrent(revision: number): boolean {
+		return !this.validationPending && this.quarantineRevision === revision;
+	}
+
+	/** Whether a complete graph snapshot and every validation listener have succeeded. */
+	isValidated(): boolean {
+		return !this.validationPending && this.quarantineRevision >= 0;
+	}
+
+	/** Captures one validation lifecycle so pending publications cannot survive a failed refresh/retry. */
+	capturePublishGuard(): () => boolean {
+		const generation = this.validationGeneration;
+		return () => this.isValidated() && generation === this.validationGeneration;
 	}
 
 	async revision(manager: EntityManager = this.dataSource.manager): Promise<number> {
@@ -167,8 +200,15 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.quarantined.has(propertyId);
 	}
 
-	observeValidation(listener: (revision: number, quarantined: ReadonlySet<string>) => Promise<void>): () => void {
-		this.validationListeners.add(listener);
+	/**
+	 * Quarantine masks run before structural writers return. Evaluators that require activation must
+	 * instead observe the caller's subsequent catalog events, after fresh-input barriers are installed.
+	 */
+	observeValidation(
+		listener: (revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
+		options: { requiresActivation?: boolean } = {},
+	): () => void {
+		this.validationListeners.set(listener, options);
 		return () => this.validationListeners.delete(listener);
 	}
 
@@ -177,47 +217,72 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		await this.refreshQuarantine();
 	}
 
+	/** Explicit/startup validation also refreshes activated runtime outputs. */
 	async refreshQuarantine(): Promise<void> {
-		const snapshot = await this.dataSource.transaction(async (manager) => ({
-			edges: await this.edges(manager),
-			revision: await this.revision(manager),
-		}));
-		if (snapshot.revision < this.quarantineRevision) return;
-		const quarantined = new Set<string>();
-		const neighbors = new Map<string, Set<string>>();
-		for (const edge of snapshot.edges) {
-			for (const [node, neighbor] of [
-				[edge.outputPropertyId, edge.sourcePropertyId],
-				[edge.sourcePropertyId, edge.outputPropertyId],
-			]) {
-				const adjacent = neighbors.get(node) ?? new Set<string>();
-				adjacent.add(neighbor);
-				neighbors.set(node, adjacent);
+		await this.refreshValidation(true);
+	}
+
+	/** Validates one committed snapshot without evaluating outputs before their writer activates them. */
+	private async refreshValidation(activated: boolean): Promise<void> {
+		const generation = ++this.validationGeneration;
+		this.validationPending = true;
+		try {
+			const snapshot = await this.dataSource.transaction(async (manager) => ({
+				edges: await this.edges(manager),
+				revision: await this.revision(manager),
+			}));
+			if (generation !== this.validationGeneration) return;
+			if (snapshot.revision < this.quarantineRevision)
+				throw new Error('Graph validation snapshot is older than the applied revision');
+			const quarantined = new Set<string>();
+			const neighbors = new Map<string, Set<string>>();
+			for (const edge of snapshot.edges) {
+				for (const [node, neighbor] of [
+					[edge.outputPropertyId, edge.sourcePropertyId],
+					[edge.sourcePropertyId, edge.outputPropertyId],
+				]) {
+					const adjacent = neighbors.get(node) ?? new Set<string>();
+					adjacent.add(neighbor);
+					neighbors.set(node, adjacent);
+				}
 			}
+			const visited = new Set<string>();
+			for (const root of neighbors.keys()) {
+				if (visited.has(root)) continue;
+				const component = new Set<string>();
+				const queue = [root];
+				for (let index = 0; index < queue.length; index++) {
+					const node = queue[index];
+					if (component.has(node)) continue;
+					component.add(node);
+					visited.add(node);
+					queue.push(...(neighbors.get(node) ?? []));
+				}
+				try {
+					this.validate(snapshot.edges.filter((edge) => component.has(edge.outputPropertyId)));
+				} catch (error) {
+					if (!(error instanceof DevicesValidationException)) throw error;
+					for (const node of component) quarantined.add(node);
+				}
+			}
+			if (snapshot.edges.length > 8192 || neighbors.size > 4096)
+				for (const node of neighbors.keys()) quarantined.add(node);
+			this.quarantined = quarantined;
+			for (const [listener, options] of this.validationListeners) {
+				if (generation !== this.validationGeneration) return;
+				if (!options.requiresActivation) await listener(snapshot.revision, quarantined);
+			}
+			if (generation !== this.validationGeneration) return;
+			this.quarantineRevision = snapshot.revision;
+			this.validationPending = false;
+			if (activated)
+				for (const [listener, options] of this.validationListeners) {
+					if (generation !== this.validationGeneration) return;
+					if (options.requiresActivation) await listener(snapshot.revision, quarantined);
+				}
+		} catch (error) {
+			if (generation === this.validationGeneration) this.validationPending = true;
+			throw error;
 		}
-		const visited = new Set<string>();
-		for (const root of neighbors.keys()) {
-			if (visited.has(root)) continue;
-			const component = new Set<string>();
-			const queue = [root];
-			for (let index = 0; index < queue.length; index++) {
-				const node = queue[index];
-				if (component.has(node)) continue;
-				component.add(node);
-				visited.add(node);
-				queue.push(...(neighbors.get(node) ?? []));
-			}
-			try {
-				this.validate(snapshot.edges.filter((edge) => component.has(edge.outputPropertyId)));
-			} catch (error) {
-				if (!(error instanceof DevicesValidationException)) throw error;
-				for (const node of component) quarantined.add(node);
-			}
-		}
-		if (snapshot.edges.length > 8192 || neighbors.size > 4096)
-			for (const node of neighbors.keys()) quarantined.add(node);
-		this.quarantineRevision = snapshot.revision;
-		this.quarantined = quarantined;
-		for (const listener of this.validationListeners) await listener(snapshot.revision, quarantined);
 	}
 }

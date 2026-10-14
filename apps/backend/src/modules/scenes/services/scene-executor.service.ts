@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { COMPOSITE_INTENT_FINISH_MARGIN_MS } from '../../devices/services/property-command-dispatch.service';
 import { DEFAULT_TTL_SCENE, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentContext, IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
@@ -11,6 +12,11 @@ import { EventType, SCENES_MODULE_NAME, SceneExecutionStatus } from '../scenes.c
 import { ScenesExecutionException, ScenesNotTriggerableException } from '../scenes.exceptions';
 
 import { ScenesService } from './scenes.service';
+
+export interface SceneExecutionContext {
+	readonly intentId: string;
+	readonly deadlineAt: number;
+}
 
 /**
  * Interface for scene execution platforms.
@@ -25,7 +31,11 @@ export interface IScenePlatform {
 	/**
 	 * Execute scene actions
 	 */
-	execute(scene: SceneEntity, actions: SceneActionEntity[]): Promise<ActionExecutionResultModel[]>;
+	execute(
+		scene: SceneEntity,
+		actions: SceneActionEntity[],
+		context?: SceneExecutionContext,
+	): Promise<ActionExecutionResultModel[]>;
 
 	getCommandTtlMs?(actions: readonly SceneActionEntity[]): Promise<number>;
 
@@ -148,7 +158,10 @@ export class SceneExecutorService {
 
 		try {
 			// Execute actions
-			const actionResults = await this.executeActions(scene);
+			const actionResults = await this.executeActions(scene, {
+				intentId: intent.id,
+				deadlineAt: intent.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS,
+			});
 
 			result.actionResults = actionResults;
 			result.successfulActions = actionResults.filter((r) => r.success).length;
@@ -161,7 +174,7 @@ export class SceneExecutorService {
 				const uniqueReasons = [...new Set(actionResults.filter((r) => !r.success && r.error).map((r) => r.error))];
 				const reasonsSuffix = uniqueReasons.length > 0 ? `: ${uniqueReasons.join('; ')}` : '';
 
-				if (result.successfulActions > 0) {
+				if (result.successfulActions > 0 || actionResults.some((action) => action.composite?.status === 'partial')) {
 					result.status = SceneExecutionStatus.PARTIALLY_COMPLETED;
 					result.error = `${result.failedActions} action(s) failed${reasonsSuffix}`;
 				} else {
@@ -176,7 +189,9 @@ export class SceneExecutorService {
 			const intentResults = this.mapActionResultsToIntentResults(scene.id, actionResults, scene.actions || []);
 
 			// Complete the intent
-			this.intentsService.completeIntent(intent.id, intentResults);
+			const composites = actionResults.flatMap((action) => (action.composite ? [action.composite] : []));
+			if (composites.length) this.intentsService.completeIntent(intent.id, intentResults, composites);
+			else this.intentsService.completeIntent(intent.id, intentResults);
 
 			this.logger.log(`[TRIGGER] Completed intent ${intent.id} for scene ${sceneId}`);
 
@@ -332,7 +347,7 @@ export class SceneExecutorService {
 
 		// Add scene-level result based on overall outcome
 		const allSucceeded = actionResults.every((r) => r.success);
-		const anySucceeded = actionResults.some((r) => r.success);
+		const anySucceeded = actionResults.some((r) => r.success || r.composite?.status === 'partial');
 		const sceneStatus = allSucceeded
 			? IntentTargetStatus.SUCCESS
 			: anySucceeded
@@ -351,7 +366,10 @@ export class SceneExecutorService {
 	/**
 	 * Execute scene actions in order
 	 */
-	private async executeActions(scene: SceneEntity): Promise<ActionExecutionResultModel[]> {
+	private async executeActions(
+		scene: SceneEntity,
+		context: SceneExecutionContext,
+	): Promise<ActionExecutionResultModel[]> {
 		const actions = (scene.actions || []).filter((a) => a.enabled).sort((a, b) => a.order - b.order);
 
 		if (actions.length === 0) {
@@ -371,7 +389,7 @@ export class SceneExecutorService {
 				}
 
 				// Execute single action through platform
-				const actionResults = await platform.execute(scene, [action]);
+				const actionResults = await platform.execute(scene, [action], context);
 
 				if (actionResults.length > 0) {
 					results.push(actionResults[0]);

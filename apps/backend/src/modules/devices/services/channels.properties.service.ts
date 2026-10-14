@@ -1269,13 +1269,22 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const activeWindow = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (
 			activeWindow &&
-			evidence &&
-			(evidence.provenance !== 'live' ||
+			(evidence || activeWindow.requiresLiveEvidence) &&
+			(!evidence ||
+				evidence.provenance !== 'live' ||
 				!evidence.observedAt ||
 				!Number.isFinite(evidence.observedAt.getTime()) ||
 				evidence.observedAt.getTime() < activeWindow.openedAt ||
 				evidence.observedAt.getTime() > evidence.receivedAt.getTime())
 		) {
+			// Preserve a legacy report for ordinary recovery, without granting live sample authority
+			// or confirming a composite generation from an evidence-less value.
+			if (!evidence && activeWindow.state === 'pending') {
+				this.propertyCommandWindowService.hold(
+					{ canonicalPropertyId, generation: activeWindow.generation },
+					{ value: validation.value, receivedAt: Date.now() },
+				);
+			}
 			return { changed: false, state: null, held: true, forceValueEvent: false };
 		}
 

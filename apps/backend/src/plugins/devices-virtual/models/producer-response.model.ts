@@ -3,6 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+import { DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { VirtualAggregateOperator, VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataProducerBinding' })
@@ -131,6 +132,132 @@ export class VirtualLightGroupMemberModel {
 	bindings: VirtualProducerBindingModel[];
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupReportedProperty' })
+export class VirtualLightGroupReportedPropertyModel {
+	@ApiProperty({ enum: PropertyCategory })
+	@Expose()
+	category: PropertyCategory;
+
+	@ApiProperty({
+		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+		description: 'Feedback representative; brightness is the raw mean of valid on members',
+	})
+	@Expose()
+	value: number | boolean | null;
+
+	@ApiPropertyOptional({
+		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		description: 'Published representative rounded onto the validated output grid',
+	})
+	@Expose()
+	representative_value?: number | boolean;
+
+	@ApiPropertyOptional({ description: 'Raw representative needed rounding onto the output grid' })
+	@Expose()
+	rounded?: boolean;
+
+	@ApiProperty({ description: 'Contributors disagree outside documented native-unit tolerance' })
+	@Expose()
+	mixed: boolean;
+
+	@ApiProperty({ type: [String], description: 'Actual contributing physical channel identities' })
+	@Expose()
+	contributors: string[];
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupReportedMember' })
+export class VirtualLightGroupReportedMemberModel {
+	@ApiProperty({ description: 'Intended physical channel identity retained after deletion' })
+	@Expose()
+	source_identity: string;
+
+	@ApiProperty({ type: 'boolean', nullable: true })
+	@Expose()
+	on: boolean | null;
+
+	@ApiProperty({
+		type: [String],
+		description: 'Missing, disabled, offline, incompatible or absent fresh provider evidence',
+	})
+	@Expose()
+	reasons: string[];
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupReportedState' })
+export class VirtualLightGroupReportedStateModel {
+	@ApiProperty({
+		type: 'boolean',
+		nullable: true,
+		description: 'Three-valued any-on; null when no on member and some unknown',
+	})
+	@Expose()
+	on: boolean | null;
+
+	@ApiProperty({ type: 'boolean', nullable: true })
+	@Expose()
+	all_on: boolean | null;
+
+	@ApiProperty()
+	@Expose()
+	mixed: boolean;
+
+	@ApiProperty({ description: 'Every configured member, including missing identities' })
+	@Expose()
+	total: number;
+
+	@ApiProperty()
+	@Expose()
+	on_count: number;
+
+	@ApiProperty()
+	@Expose()
+	off_count: number;
+
+	@ApiProperty()
+	@Expose()
+	unknown_count: number;
+
+	@ApiProperty({ type: [VirtualLightGroupReportedMemberModel] })
+	@Expose()
+	@Type(() => VirtualLightGroupReportedMemberModel)
+	members: VirtualLightGroupReportedMemberModel[];
+
+	@ApiProperty({ type: [VirtualLightGroupReportedPropertyModel] })
+	@Expose()
+	@Type(() => VirtualLightGroupReportedPropertyModel)
+	properties: VirtualLightGroupReportedPropertyModel[];
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupCapability' })
+export class VirtualLightGroupCapabilityModel {
+	@ApiProperty({ enum: PropertyCategory })
+	@Expose()
+	category: PropertyCategory;
+
+	@ApiProperty({ enum: DataTypeType })
+	@Expose()
+	data_type: DataTypeType;
+
+	@ApiProperty({ type: 'string', nullable: true })
+	@Expose()
+	unit: string | null;
+
+	@ApiProperty({
+		oneOf: [
+			{ type: 'array', items: { type: 'number' } },
+			{ type: 'array', items: { type: 'string' } },
+		],
+		nullable: true,
+	})
+	@Expose()
+	format: number[] | string[] | null;
+
+	@ApiProperty({ type: 'number', nullable: true })
+	@Expose()
+	step: number | null;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupConfiguration' })
 export class VirtualLightGroupConfigurationModel {
 	@ApiProperty({ description: 'Owning group channel UUID', format: 'uuid' })
@@ -154,11 +281,24 @@ export class VirtualLightGroupConfigurationModel {
 	graph_revision: number;
 
 	@ApiProperty({
-		description: 'Configuration is durable; group evaluation/commands are not delivered at this stage',
-		enum: ['unavailable'],
+		description: 'Configured group runtime is implemented; reported quality remains separate',
+		enum: ['ready'],
 	})
 	@Expose()
-	runtime_readiness: 'unavailable';
+	runtime_readiness: 'ready';
+
+	@ApiProperty({
+		type: [VirtualLightGroupCapabilityModel],
+		description: 'Intersection across intended members; missing members retain the last validated exposed contract',
+	})
+	@Expose()
+	@Type(() => VirtualLightGroupCapabilityModel)
+	common_capabilities: VirtualLightGroupCapabilityModel[];
+
+	@ApiPropertyOptional({ type: VirtualLightGroupReportedStateModel, nullable: true })
+	@Expose()
+	@Type(() => VirtualLightGroupReportedStateModel)
+	reported_state?: VirtualLightGroupReportedStateModel | null;
 
 	@ApiProperty({ description: 'Physical members and bindings', type: [VirtualLightGroupMemberModel] })
 	@Expose()

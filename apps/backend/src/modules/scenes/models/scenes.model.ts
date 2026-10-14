@@ -3,6 +3,7 @@ import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, IsUUID, ValidateNeste
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
+import { CompositeCommandOutcomeModel } from '../../devices/models/composite-command.model';
 import { SceneExecutionStatus } from '../scenes.constants';
 
 /**
@@ -10,6 +11,14 @@ import { SceneExecutionStatus } from '../scenes.constants';
  */
 @ApiSchema({ name: 'ScenesModuleDataActionExecutionResult' })
 export class ActionExecutionResultModel {
+	/** Correlated member outcomes; partial group actions retain successful members. */
+	@ApiPropertyOptional({
+		description: 'Detailed group members, including partial completion',
+		type: CompositeCommandOutcomeModel,
+	})
+	@Expose()
+	@Type(() => CompositeCommandOutcomeModel)
+	composite?: CompositeCommandOutcomeModel;
 	@ApiProperty({
 		name: 'action_id',
 		description: 'ID of the executed action',

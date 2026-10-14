@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
@@ -15,7 +17,7 @@ import {
 	ScenesActionValidationException,
 	ScenesSpaceValidationException,
 } from '../../../modules/scenes/scenes.exceptions';
-import { IScenePlatform } from '../../../modules/scenes/services/scene-executor.service';
+import { IScenePlatform, SceneExecutionContext } from '../../../modules/scenes/services/scene-executor.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { LocalSceneActionEntity } from '../entities/scenes-local.entity';
@@ -47,6 +49,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly spacesService: SpacesService,
+		@Optional() private readonly composites?: CompositePropertyCommandRegistryService,
 	) {}
 
 	getType(): string {
@@ -55,16 +58,25 @@ export class LocalScenePlatform implements IScenePlatform {
 
 	async getCommandTtlMs(actions: readonly SceneActionEntity[]): Promise<number> {
 		const executions = [];
+		const compositeUpdates: IDevicePropertyData[] = [];
 
 		for (const action of actions) {
 			const validation = await this.validateActionWithDetails(action);
 
 			if (validation.valid && validation.device !== undefined) {
 				executions.push({ device: validation.device, commandCount: 1 });
+				if (this.composites?.get(validation.property) && isLocalSceneAction(action))
+					compositeUpdates.push({
+						device: validation.device,
+						channel: validation.channel,
+						property: validation.property,
+						value: action.value,
+					});
 			}
 		}
 
-		return this.platformRegistryService.getCommandTtlMs(executions, DEFAULT_TTL_SCENE);
+		const compositeBudget = compositeUpdates.length ? await this.composites.estimateTimeoutMs(compositeUpdates) : null;
+		return Math.max(compositeBudget ?? 0, this.platformRegistryService.getCommandTtlMs(executions, DEFAULT_TTL_SCENE));
 	}
 
 	/**
@@ -162,7 +174,7 @@ export class LocalScenePlatform implements IScenePlatform {
 			(p) => p === PermissionType.READ_WRITE || p === PermissionType.WRITE_ONLY,
 		);
 
-		if (!isWritable) {
+		if (!isWritable && !this.composites?.get(property)) {
 			return {
 				valid: false,
 				error: 'Referenced property is not writable',
@@ -223,7 +235,11 @@ export class LocalScenePlatform implements IScenePlatform {
 	/**
 	 * Execute scene actions by sending commands to devices
 	 */
-	async execute(scene: SceneEntity, actions: SceneActionEntity[]): Promise<ActionExecutionResultModel[]> {
+	async execute(
+		scene: SceneEntity,
+		actions: SceneActionEntity[],
+		context?: SceneExecutionContext,
+	): Promise<ActionExecutionResultModel[]> {
 		const results: ActionExecutionResultModel[] = [];
 
 		for (const action of actions) {
@@ -272,19 +288,29 @@ export class LocalScenePlatform implements IScenePlatform {
 				}
 
 				// Send command to device via platform
-				const { success } = await this.propertyCommandDispatchService.dispatchBatch([
-					{
-						device,
-						channel,
-						property,
-						value: action.value,
-					},
-				]);
+				const ttlMs = this.composites?.get(property)
+					? await this.composites.estimateTimeoutMs([{ device, channel, property, value: action.value }])
+					: null;
+				const updates = [{ device, channel, property, value: action.value }];
+				const { success, composite } =
+					ttlMs === null
+						? context
+							? await this.propertyCommandDispatchService.dispatchBatch(updates, {
+									...context,
+									ttlMs: context.deadlineAt - Date.now(),
+								})
+							: await this.propertyCommandDispatchService.dispatchBatch(updates)
+						: await this.propertyCommandDispatchService.dispatchBatch(updates, {
+								intentId: context?.intentId,
+								ttlMs: Math.min(ttlMs, context ? context.deadlineAt - Date.now() : Infinity),
+								deadlineAt: context?.deadlineAt,
+							});
 
 				results.push({
 					actionId: action.id,
 					success,
 					error: success ? null : 'Command execution failed',
+					composite,
 					executionTimeMs: Date.now() - startTime,
 				});
 			} catch (error) {

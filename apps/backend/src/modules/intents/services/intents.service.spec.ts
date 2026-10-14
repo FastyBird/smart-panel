@@ -138,6 +138,63 @@ describe('IntentsService', () => {
 	});
 
 	describe('completeIntent', () => {
+		it('records confirmed composite members as partial without claiming the parent target succeeded', () => {
+			const emit = jest.spyOn(eventEmitter, 'emit');
+			const intent = service.createIntent({
+				type: IntentType.DEVICE_SET_PROPERTY,
+				targets: [{ deviceId: 'group' }],
+				value: true,
+			});
+			const completed = service.completeIntent(
+				intent.id,
+				[{ deviceId: 'group', status: IntentTargetStatus.FAILED }],
+				[
+					{
+						id: 'parent',
+						status: 'partial',
+						children: [
+							{
+								memberId: 'live',
+								memberIdentity: 'physical-channel',
+								propertyId: 'leaf',
+								propertyIdentity: 'physical-property',
+								value: true,
+								generation: 'generation',
+								status: 'confirmed',
+							},
+							{ memberId: 'missing', propertyId: null, status: 'unavailable' },
+						],
+					},
+				],
+			);
+			expect(completed.status).toBe(IntentStatus.COMPLETED_PARTIAL);
+			expect(completed.results[0].status).toBe(IntentTargetStatus.FAILED);
+			expect(emit).toHaveBeenLastCalledWith(
+				IntentEventType.COMPLETED,
+				expect.objectContaining({
+					status: IntentStatus.COMPLETED_PARTIAL,
+					composites: [
+						{
+							id: 'parent',
+							status: 'partial',
+							children: [
+								{
+									member_id: 'live',
+									member_identity: 'physical-channel',
+									property_id: 'leaf',
+									property_identity: 'physical-property',
+									value: true,
+									generation: 'generation',
+									status: 'confirmed',
+								},
+								{ member_id: 'missing', property_id: null, status: 'unavailable' },
+							],
+						},
+					],
+				}),
+			);
+		});
+
 		it('should complete intent with success status when all targets succeed', () => {
 			const intent = service.createIntent({
 				type: IntentType.LIGHT_SET_BRIGHTNESS,

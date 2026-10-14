@@ -14,6 +14,16 @@ export class VirtualValueSourceService implements IPropertyValueSource {
 		return DEVICES_VIRTUAL_TYPE;
 	}
 
+	/** Projection reads also need validation even when no producer lease owns their alias. */
+	unavailableReason(property: ChannelPropertyEntity): string | null {
+		return property instanceof VirtualChannelPropertyEntity &&
+			(property.isProjecting || property.isDerived) &&
+			this.graph &&
+			!this.graph.isValidated()
+			? 'graph_validation_pending'
+			: null;
+	}
+
 	resolve(property: ChannelPropertyEntity): string | null {
 		if (!(property instanceof VirtualChannelPropertyEntity)) {
 			return null;

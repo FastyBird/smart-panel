@@ -1,3 +1,5 @@
+import { PropertySampleEvidence } from '../../../modules/devices/models/property-sample.model';
+
 /**
  * WLED device state interface
  * Represents the current state of a WLED device
@@ -171,10 +173,17 @@ export interface WledDeviceDisconnectedEvent {
 /**
  * WLED device state changed event
  */
+export interface WledStateObservation {
+	readonly evidence: PropertySampleEvidence;
+	readonly fullSnapshot: boolean;
+	readonly mac: string;
+}
+
 export interface WledDeviceStateChangedEvent {
 	host: string;
 	state: WledState;
 	previousState?: WledState;
+	observation?: WledStateObservation;
 }
 
 /**

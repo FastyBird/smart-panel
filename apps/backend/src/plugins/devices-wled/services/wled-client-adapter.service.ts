@@ -17,6 +17,7 @@ import {
 	WledNightlightUpdate,
 	WledSegment,
 	WledState,
+	WledStateObservation,
 	WledStateUpdate,
 	WledStateUpdateExtended,
 	WledUdpSyncUpdate,
@@ -122,6 +123,8 @@ export class WledClientAdapterService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_WLED_PLUGIN_NAME, 'ClientAdapter');
 
 	private readonly devices = new Map<string, RegisteredWledDevice>();
+	private readonly sampleSequences = new WeakMap<RegisteredWledDevice, number>();
+	private readonly sourceEpochs = new WeakMap<RegisteredWledDevice, number>();
 	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
 	private readonly debounceResolvers = new Map<string, Array<(result: boolean) => void>>();
 	private readonly debounceUpdates = new Map<string, WledStateUpdate>();
@@ -271,6 +274,21 @@ export class WledClientAdapterService {
 		return undefined;
 	}
 
+	/** Captured process-local hardware/connection identity for exact composite dispatch. */
+	captureDeviceIdentity(identifier: string, expectedMac: string): (() => boolean) | null {
+		const device = this.getDeviceByIdentifier(identifier);
+		const mac = expectedMac.replace(/:/g, '').toLowerCase();
+		if (!device?.context || !/^[0-9a-f]{12}$/.test(mac)) return null;
+		const epoch = this.sourceEpochs.get(device) ?? 0;
+		const current = () =>
+			this.devices.get(device.host) === device &&
+			device.connected &&
+			device.enabled &&
+			(this.sourceEpochs.get(device) ?? 0) === epoch &&
+			device.context?.info.mac.replace(/:/g, '').toLowerCase() === mac;
+		return current() ? current : null;
+	}
+
 	/**
 	 * Get all registered devices
 	 */
@@ -299,8 +317,10 @@ export class WledClientAdapterService {
 			return null;
 		}
 
+		const capture = this.captureObservation(device);
 		try {
 			const state = await this.fetchState(host, timeout);
+			if (!capture.isCurrent()) return null;
 			const previousState = device.context?.state;
 
 			if (device.context) {
@@ -315,6 +335,7 @@ export class WledClientAdapterService {
 				host,
 				state,
 				previousState,
+				observation: capture.observation(state, true),
 			});
 
 			return state;
@@ -323,7 +344,9 @@ export class WledClientAdapterService {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
+			if (!capture.isCurrent()) return null;
 			device.connected = false;
+			this.revokeSource(device);
 
 			// Invoke error callback
 			void this.callbacks.onDeviceError?.({
@@ -401,15 +424,22 @@ export class WledClientAdapterService {
 	 * Execute a state update immediately
 	 */
 	private async executeStateUpdate(host: string, update: WledStateUpdate): Promise<boolean> {
+		const device = this.devices.get(host);
+		if (!device) return false;
+		const capture = this.captureObservation(device);
 		try {
-			const apiPayload = this.convertStateUpdateToApi(update);
+			const apiPayload = { ...this.convertStateUpdateToApi(update), v: true };
 
 			this.logger.debug(`Sending state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
-			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
+			const response = await this.post<WledApiState & { success?: boolean }>(`http://${host}/json/state`, apiPayload);
 
+			// An acceptance-only response is not reported state and cannot confirm physical convergence.
+			if (response.success === true) return true;
+
+			if (!capture.isIdentityCurrent()) return false;
+			if (!capture.isCurrent()) return true;
 			// Update local state with the response
-			const device = this.devices.get(host);
 
 			if (device?.context) {
 				const newState = this.convertApiStateToState(response);
@@ -421,6 +451,7 @@ export class WledClientAdapterService {
 				void this.callbacks.onDeviceStateChanged?.({
 					host,
 					state: newState,
+					observation: capture.observation(newState, true),
 				});
 			}
 
@@ -576,7 +607,11 @@ export class WledClientAdapterService {
 	/**
 	 * Update state with extended options (nightlight, sync, live override)
 	 */
-	async updateStateExtended(host: string, update: WledStateUpdateExtended): Promise<boolean> {
+	async updateStateExtended(
+		host: string,
+		update: WledStateUpdateExtended,
+		canDispatch: () => boolean = () => true,
+	): Promise<boolean> {
 		const device = this.devices.get(host);
 
 		if (!device) {
@@ -584,13 +619,20 @@ export class WledClientAdapterService {
 			return false;
 		}
 
+		const capture = this.captureObservation(device);
 		try {
-			const apiPayload = this.convertExtendedStateUpdateToApi(update);
+			const apiPayload = { ...this.convertExtendedStateUpdateToApi(update), v: true };
 
 			this.logger.debug(`Sending extended state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
-			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
+			if (!canDispatch() || !capture.isCurrent()) return false;
+			const response = await this.post<WledApiState & { success?: boolean }>(`http://${host}/json/state`, apiPayload);
 
+			// An acceptance-only response is not reported state and cannot confirm physical convergence.
+			if (response.success === true) return true;
+
+			if (!capture.isIdentityCurrent()) return false;
+			if (!capture.isCurrent()) return true;
 			if (device.context) {
 				const newState = this.convertApiStateToState(response);
 				device.context.state = newState;
@@ -600,6 +642,7 @@ export class WledClientAdapterService {
 				void this.callbacks.onDeviceStateChanged?.({
 					host,
 					state: newState,
+					observation: capture.observation(newState, true),
 				});
 			}
 
@@ -681,9 +724,16 @@ export class WledClientAdapterService {
 					if (message.state) {
 						const device = this.devices.get(host);
 						if (device?.context) {
+							const capture = this.captureObservation(device);
 							const newState = this.convertApiStateToState(message.state);
 							const previousState = device.context.state;
-							device.context.state = newState;
+							device.context.state = {
+								...newState,
+								on: newState.on ?? previousState.on,
+								brightness: newState.brightness ?? previousState.brightness,
+								mainSegment: newState.mainSegment ?? previousState.mainSegment,
+								segments: message.state.seg === undefined ? previousState.segments : newState.segments,
+							};
 							device.lastSeen = new Date();
 
 							// Invoke state changed callback
@@ -691,6 +741,7 @@ export class WledClientAdapterService {
 								host,
 								state: newState,
 								previousState,
+								observation: capture.observation(newState, false),
 							});
 						}
 					}
@@ -712,6 +763,7 @@ export class WledClientAdapterService {
 				const device = this.devices.get(host);
 				if (device) {
 					device.websocket = undefined;
+					this.revokeSource(device);
 				}
 
 				// Schedule reconnection if device is still registered and enabled
@@ -807,19 +859,19 @@ export class WledClientAdapterService {
 			preset: apiState.ps,
 			playlist: apiState.pl,
 			nightlight: {
-				on: apiState.nl.on,
-				duration: apiState.nl.dur,
-				mode: apiState.nl.mode,
-				targetBrightness: apiState.nl.tbri,
-				remaining: apiState.nl.rem,
+				on: apiState.nl?.on,
+				duration: apiState.nl?.dur,
+				mode: apiState.nl?.mode,
+				targetBrightness: apiState.nl?.tbri,
+				remaining: apiState.nl?.rem,
 			},
 			udp: {
-				send: apiState.udpn.send,
-				receive: apiState.udpn.recv,
+				send: apiState.udpn?.send,
+				receive: apiState.udpn?.recv,
 			},
 			liveOverride: apiState.lor,
 			mainSegment: apiState.mainseg,
-			segments: apiState.seg.map((seg) => this.convertApiSegmentToSegment(seg)),
+			segments: (apiState.seg ?? []).map((seg) => this.convertApiSegmentToSegment(seg)),
 		};
 	}
 
@@ -1005,6 +1057,49 @@ export class WledClientAdapterService {
 		}
 
 		return apiPayload;
+	}
+
+	private revokeSource(device: RegisteredWledDevice): void {
+		this.sourceEpochs.set(device, (this.sourceEpochs.get(device) ?? 0) + 1);
+	}
+
+	/** Packet order fences queued work; the stable contract survives ordinary equal-value heartbeats. */
+	private captureObservation(device: RegisteredWledDevice) {
+		const observedAt = new Date();
+		const sequence = (this.sampleSequences.get(device) ?? 0) + 1;
+		this.sampleSequences.set(device, sequence);
+		const epoch = this.sourceEpochs.get(device) ?? 0;
+		const mac = device.context?.info.mac.replace(/:/g, '').toLowerCase() ?? '';
+		const identityCurrent = () =>
+			this.devices.get(device.host) === device &&
+			device.enabled &&
+			(this.sourceEpochs.get(device) ?? 0) === epoch &&
+			device.context?.info.mac.replace(/:/g, '').toLowerCase() === mac;
+		const isCurrent = () => identityCurrent() && this.sampleSequences.get(device) === sequence;
+		return {
+			isIdentityCurrent: identityCurrent,
+			isCurrent,
+			observation: (state: WledState, fullSnapshot: boolean): WledStateObservation => {
+				const contract = (value: WledState) =>
+					JSON.stringify([value.mainSegment, value.segments.map(({ id, start, stop }) => [id, start, stop])]);
+				const layout = contract(device.context?.state ?? state);
+				const sourceIsCurrent = () =>
+					identityCurrent() && device.connected && !!device.context && contract(device.context.state) === layout;
+				const receivedAt = new Date();
+				return {
+					mac,
+					fullSnapshot,
+					evidence: {
+						sampledAt: observedAt,
+						receivedAt,
+						observedAt,
+						provenance: 'live',
+						isCurrent: () => isCurrent() && sourceIsCurrent(),
+						sourceIsCurrent,
+					},
+				};
+			},
+		};
 	}
 
 	/**
