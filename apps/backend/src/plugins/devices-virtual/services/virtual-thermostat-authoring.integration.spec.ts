@@ -54,6 +54,7 @@ import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
@@ -61,8 +62,7 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
-import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
-import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
+import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
 jest.setTimeout(30000);
 
@@ -424,6 +424,69 @@ describe('atomic virtual thermostat authoring', () => {
 			expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
 		},
 	);
+
+	it('returns the durable creation when commit subscriber reconciliation fails closed', async () => {
+		const subscriber = new VirtualThermostatOwnershipSubscriber(database, claims);
+		await subscriber.onApplicationBootstrap();
+		const commitRefresh = jest.spyOn(subscriber, 'afterTransactionCommit');
+		await claims.refresh();
+		const input = request(relayId);
+		const target = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: relayId },
+			relations: ['channel', 'channel.device'],
+		});
+		const admission = {
+			property: target,
+			channel: target.channel as ChannelEntity,
+			device: (target.channel as ChannelEntity).device as DeviceEntity,
+			value: true,
+		};
+		await claims.assertAllowed(admission);
+		const originalRefresh = claims.refresh.bind(claims);
+		let failRefresh = true;
+		const refresh = jest.spyOn(claims, 'refresh').mockImplementation(async () => {
+			if (failRefresh) throw new Error('commit reconciliation failed');
+			await originalRefresh();
+		});
+		const created = await authoring.create(input);
+		expect(commitRefresh).toHaveBeenCalled();
+		expect(refresh).toHaveBeenCalled();
+		expect(created.device.id).toBe(input.device.id);
+		expect(created.configuration.controller).toBe(input.device.id);
+		expect(created.configuration.actuators).toEqual([
+			expect.objectContaining({ source_property: relayId, state: 'reserved' }),
+		]);
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+		expect(() => claims.assertAllowed(admission)).toThrow('reconciling');
+		failRefresh = false;
+		await claims.refresh();
+		expect(() => claims.assertAllowed(admission)).toThrow('reserved');
+	});
+
+	it('preserves a nontransactional catalog write when reconciliation fails', async () => {
+		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		jest.spyOn(claims, 'refresh').mockRejectedValue(new Error('reconciliation failed'));
+		await database.manager.update(ChannelPropertyEntity, { id: ambientId }, { name: 'Renamed ambient' });
+		expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambientId })).name).toBe(
+			'Renamed ambient',
+		);
+	});
+
+	it('preserves the original transaction error when rollback reconciliation fails', async () => {
+		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		jest.spyOn(claims, 'refresh').mockRejectedValue(new Error('reconciliation failed'));
+		await expect(
+			database.transaction(async (manager) => {
+				await manager.update(ChannelPropertyEntity, { id: ambientId }, { name: 'Rolled back' });
+				throw new Error('original transaction failure');
+			}),
+		).rejects.toThrow('original transaction failure');
+		expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambientId })).name).not.toBe(
+			'Rolled back',
+		);
+	});
 
 	it('rolls back the full graph and claim if persistence fails after real creation hooks', async () => {
 		const input = request(relayId);
