@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { v4 as uuid } from 'uuid';
 
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
@@ -21,6 +22,7 @@ import { QualifiedPropertySample } from '../../../modules/devices/models/propert
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
@@ -1237,6 +1239,49 @@ describe('virtual thermostat durable runtime', () => {
 		expect(samples.get(relayId)?.value).toBe(true);
 		expect(late?.branches[0].pending_on).toBe(true);
 		expect(late?.branches[0].release_proven).toBe(false);
+	});
+
+	it('keeps idle SQLite claim retries closed through a recovery fence and revokes earlier admission', async () => {
+		runtime.onModuleDestroy();
+		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+		const claims = new VirtualThermostatClaimsService(
+			database,
+			new DeviceStructureLockService(),
+			new VirtualDependencyGraphService(database),
+			new PropertyCommandAdmissionRegistryService(),
+			new EventEmitter2(),
+			new ConfigService({ FB_CLI: 'off' }),
+		);
+		try {
+			await claims.onApplicationBootstrap();
+			const beforeRecovery = claims.capture();
+			expect(beforeRecovery.isCurrent()).toBe(true);
+			const release = claims.holdRecoveryFence();
+			const find = jest
+				.spyOn(database.manager, 'find')
+				.mockRejectedValueOnce(new Error('temporary SQLite read failure'));
+			await expect(claims.refresh()).rejects.toThrow('temporary SQLite read failure');
+			expect(claims.capture().isCurrent()).toBe(false);
+			expect(jest.getTimerCount()).toBe(1);
+			await jest.advanceTimersByTimeAsync(1000);
+			expect(find.mock.calls.length).toBeGreaterThanOrEqual(2);
+			// Wait for a registry read to settle; the timer alone does not prove SQLite read completion.
+			await claims.refresh();
+			expect(jest.getTimerCount()).toBe(0);
+			const whileHeld = claims.capture();
+			expect(whileHeld.isCurrent()).toBe(false);
+			expect(whileHeld.isRequestCurrent?.()).toBe(true);
+			expect(beforeRecovery.isCurrent()).toBe(false);
+			release();
+			expect(claims.capture().isCurrent()).toBe(false);
+			await claims.refresh();
+			expect(claims.capture().isCurrent()).toBe(true);
+			expect(whileHeld.isCurrent()).toBe(false);
+			expect(beforeRecovery.isCurrent()).toBe(false);
+		} finally {
+			claims.onModuleDestroy();
+			jest.useRealTimers();
+		}
 	});
 
 	it('composes three physical temperatures, aggregate quorum, floor release, stale inhibition and strict recovery', async () => {
