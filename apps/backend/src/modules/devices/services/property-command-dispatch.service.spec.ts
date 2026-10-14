@@ -1,9 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method */
-import { DataTypeType, PermissionType } from '../devices.constants';
+import { DataSource } from 'typeorm';
+
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
+import { ShellyNgDeviceEntity } from '../../../plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { VirtualThermostatActuatorClaimEntity } from '../../../plugins/devices-virtual/entities/virtual-thermostat.entity';
+import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
+import { VirtualThermostatClaimsService } from '../../../plugins/devices-virtual/services/virtual-thermostat-claims.service';
+import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../platforms/device.platform';
 
 import { ChannelsService } from './channels.service';
+import { CompositePropertyCommandRegistryService } from './composite-property-command.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
@@ -18,6 +27,7 @@ import { PropertyValueService } from './property-value.service';
 
 describe('PropertyCommandDispatchService', () => {
 	let service: PropertyCommandDispatchService;
+	let composites: CompositePropertyCommandRegistryService;
 	let admission: PropertyCommandAdmissionRegistryService;
 	let windows: PropertyCommandWindowService;
 	let platform: jest.Mocked<IDevicePlatform>;
@@ -48,6 +58,7 @@ describe('PropertyCommandDispatchService', () => {
 	beforeEach(() => {
 		windows = new PropertyCommandWindowService();
 		admission = new PropertyCommandAdmissionRegistryService();
+		composites = new CompositePropertyCommandRegistryService();
 		sources = new Map();
 		properties = { findOne: jest.fn().mockResolvedValue(sourceProperty) };
 		platform = {
@@ -79,7 +90,7 @@ describe('PropertyCommandDispatchService', () => {
 			new PropertyStateCoordinatorService(),
 			windows,
 			undefined,
-			undefined,
+			composites,
 			undefined,
 			admission,
 		);
@@ -363,5 +374,263 @@ describe('PropertyCommandDispatchService', () => {
 		release();
 		await expect(command).resolves.toMatchObject({ success: false });
 		expect(actualSend).not.toHaveBeenCalled();
+	});
+	describe('thermostat admission scope at physical dispatch', () => {
+		let claims: VirtualThermostatClaimsService;
+		let rows: VirtualThermostatActuatorClaimEntity[];
+		let readClaims: jest.Mock;
+		const relayDevice = Object.assign(new ShellyNgDeviceEntity(), {
+			id: 'relay-device',
+			canonicalMac: 'A8032ABE5084',
+		});
+		const relayChannel = Object.assign(new ChannelEntity(), {
+			id: 'relay-channel',
+			identifier: 'switch:0',
+			device: relayDevice,
+		});
+		const relayProperty = Object.assign(new ChannelPropertyEntity(), {
+			...sourceProperty,
+			id: 'relay-property',
+			identifier: 'output',
+			category: PropertyCategory.ON,
+			channel: relayChannel,
+		});
+		const relay = (): IDevicePropertyData => ({
+			device: relayDevice,
+			channel: relayChannel,
+			property: relayProperty,
+			value: true,
+		});
+		const claim = (propertyId = relayProperty.id) => {
+			rows = [
+				{
+					id: 'claim',
+					controllerId: 'thermostat',
+					sourcePropertyIdentity: propertyId,
+					physicalIdentity: 'shelly-ng:A8032ABE5084:switch:0:output',
+					state: 'reserved',
+				} as VirtualThermostatActuatorClaimEntity,
+			];
+			claims.invalidate();
+		};
+		beforeEach(async () => {
+			rows = [];
+			readClaims = jest.fn(() => Promise.resolve(rows));
+			claims = new VirtualThermostatClaimsService(
+				{ manager: { find: readClaims } } as unknown as DataSource,
+				new DeviceStructureLockService(),
+				{} as VirtualDependencyGraphService,
+				admission,
+				new EventEmitter2(),
+			);
+			admission.register(claims);
+			await claims.refresh();
+			properties.findOne.mockImplementation((id) =>
+				Promise.resolve(id === relayProperty.id ? relayProperty : sourceProperty),
+			);
+		});
+
+		it.each(['not-ready', 'paused-refresh', 'failed-refresh', 'epoch-change'])(
+			'dispatches an unrelated output with a pre-await entry during %s',
+			async (state) => {
+				if (state === 'not-ready') claims.invalidate();
+				const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, admission.capture());
+				let complete: (value: VirtualThermostatActuatorClaimEntity[]) => void;
+				let refreshing: Promise<void> | undefined;
+				claims.invalidate();
+				if (state === 'paused-refresh') {
+					readClaims.mockImplementationOnce(
+						() =>
+							new Promise<VirtualThermostatActuatorClaimEntity[]>((resolve) => {
+								complete = resolve;
+							}),
+					);
+					refreshing = claims.refresh();
+				} else if (state === 'failed-refresh') {
+					readClaims.mockRejectedValueOnce(new Error('catalog unavailable'));
+					await expect(claims.refresh()).rejects.toThrow('catalog unavailable');
+				} else if (state === 'epoch-change') await claims.refresh();
+				try {
+					await expect(service.dispatchBatch([update()], { commandEntry: entry })).resolves.toEqual({ success: true });
+					expect(platform.processBatch).toHaveBeenCalledTimes(1);
+					expect(admission.capture().isCurrent()).toBe(state === 'epoch-change');
+				} finally {
+					entry.dispose();
+					if (refreshing !== undefined) {
+						complete([]);
+						await refreshing;
+					}
+				}
+			},
+		);
+
+		it('rejects claimable outputs and by-property aliases during reconciliation', async () => {
+			claim(sourceProperty.id);
+			await claims.refresh();
+			claims.invalidate();
+			expect(claims.requiresGuardedDispatch(update())).toBe(true);
+			await expect(service.dispatchBatch([update()])).rejects.toThrow('reconciling');
+			await expect(service.dispatchBatch([relay()])).rejects.toThrow('reconciling');
+			expect(platform.processBatch).not.toHaveBeenCalled();
+		});
+
+		it('rejects an alias whose canonical source is claimable during reconciliation', async () => {
+			sources.set(sourceProperty.id, relayProperty.id);
+			claims.invalidate();
+			await expect(service.dispatchBatch([update()])).rejects.toThrow('reconciling');
+			expect(platform.processBatch).not.toHaveBeenCalled();
+		});
+
+		it('rejects an ordinary mixed batch before any unrelated output is sent', async () => {
+			claims.invalidate();
+			await expect(service.dispatchBatch([update(), relay()])).rejects.toThrow('reconciling');
+			expect(platform.processBatch).not.toHaveBeenCalled();
+		});
+
+		it('revokes a captured property alias even after its old claim disappears', async () => {
+			claim(sourceProperty.id);
+			await claims.refresh();
+			const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, admission.capture());
+			rows = [];
+			claims.invalidate();
+			await claims.refresh();
+			try {
+				await expect(service.dispatchBatch([update()], { commandEntry: entry })).rejects.toThrow('changed or expired');
+				expect(platform.processBatch).not.toHaveBeenCalled();
+			} finally {
+				entry.dispose();
+			}
+		});
+
+		it('rejects a newly claimed property alias after capturing unrelated absence', async () => {
+			const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, admission.capture());
+			properties.findOne.mockImplementationOnce(async () => {
+				claim(sourceProperty.id);
+				await claims.refresh();
+				return sourceProperty;
+			});
+			try {
+				await expect(service.dispatchBatch([update()], { commandEntry: entry })).rejects.toThrow('reserved');
+				expect(platform.processBatch).not.toHaveBeenCalled();
+			} finally {
+				entry.dispose();
+			}
+		});
+
+		it('rejects a claimable capture after catalog epochs change during metadata awaits', async () => {
+			const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, admission.capture());
+			properties.findOne.mockImplementationOnce(async () => {
+				claims.invalidate();
+				await claims.refresh();
+				return relayProperty;
+			});
+			try {
+				await expect(service.dispatchBatch([relay()], { commandEntry: entry })).rejects.toThrow('changed or expired');
+				expect(platform.processBatch).not.toHaveBeenCalled();
+			} finally {
+				entry.dispose();
+			}
+		});
+
+		it.each([false, true])('fences a queued claimable send after new ownership (composite: %s)', async (composite) => {
+			let queued: () => void, release: () => void;
+			const ready = new Promise<void>((resolve) => {
+				queued = resolve;
+			});
+			const barrier = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const actualSend = jest.fn();
+			platform.prepareCompositeBatch = jest.fn((updates) =>
+				Promise.resolve({
+					updates,
+					isCurrent: () => true,
+					dispatch: async (guard) => {
+						queued();
+						await barrier;
+						if (!guard()) return false;
+						actualSend();
+						return true;
+					},
+				}),
+			);
+			if (composite)
+				composites.register({
+					canHandle: (property) => property.id === sourceProperty.id,
+					plan: () =>
+						Promise.resolve({
+							revision: 1,
+							isCurrent: () => Promise.resolve(true),
+							children: [{ memberId: 'relay', update: relay() }],
+						}),
+				});
+			const command = service.dispatchBatch([composite ? update() : relay()], { ttlMs: 1000 });
+			await ready;
+			claim();
+			await claims.refresh();
+			release();
+			await expect(command).resolves.toMatchObject({ success: false });
+			expect(actualSend).not.toHaveBeenCalled();
+		});
+
+		it('confirms unrelated composite members while claimable members remain closed', async () => {
+			claims.invalidate();
+			const aggregate = { ...sourceProperty, id: 'aggregate' } as ChannelPropertyEntity;
+			composites.register({
+				canHandle: (property) => property.id === aggregate.id,
+				plan: () =>
+					Promise.resolve({
+						revision: 1,
+						isCurrent: () => Promise.resolve(true),
+						children: [
+							{ memberId: 'unrelated', update: update() },
+							{ memberId: 'relay', update: relay() },
+						],
+					}),
+			});
+			const sent: string[] = [];
+			platform.prepareCompositeBatch = jest.fn((updates) =>
+				Promise.resolve({
+					updates,
+					isCurrent: () => true,
+					dispatch: (guard) => {
+						if (!guard()) return Promise.resolve(false);
+						for (const leaf of updates) {
+							sent.push(leaf.property.id);
+							windows.confirm(
+								{ canonicalPropertyId: leaf.property.id, generation: windows.peekGeneration(leaf.property.id) },
+								{ value: leaf.value, receivedAt: Date.now() },
+							);
+						}
+						return Promise.resolve(true);
+					},
+				}),
+			);
+			const result = await service.dispatchBatch([{ ...update(), property: aggregate }], { ttlMs: 1000 });
+			expect(result.composite).toMatchObject({
+				status: 'partial',
+				children: [
+					{ memberId: 'unrelated', status: 'confirmed' },
+					{ memberId: 'relay', status: 'failed' },
+				],
+			});
+			expect(sent).toEqual([sourceProperty.id]);
+		});
+
+		it('rejects stale registry membership even if the same guard is removed and re-added', async () => {
+			const guard = { assertAllowed: () => Promise.resolve() };
+			const unregister = admission.register(guard);
+			const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, admission.capture());
+			unregister();
+			admission.register(guard);
+			try {
+				await expect(service.dispatchBatch([update()], { commandEntry: entry })).resolves.toMatchObject({
+					success: false,
+				});
+				expect(platform.processBatch).not.toHaveBeenCalled();
+			} finally {
+				entry.dispose();
+			}
+		});
 	});
 });
