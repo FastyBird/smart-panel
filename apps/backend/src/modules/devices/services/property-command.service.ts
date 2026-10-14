@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -21,15 +21,23 @@ import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/pro
 
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import {
+	CompositeCommandOutcome,
+	CompositePropertyCommandRegistryService,
+} from './composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
-import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
+import { COMPOSITE_INTENT_FINISH_MARGIN_MS, PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyValueService } from './property-value.service';
 
 export interface PropertyCommandExecutionOptions {
 	requestId?: string;
+	/** Server-minted entry evidence, never selected from public context or DTO fields. */
+	commandEntry?: PropertyCommandEntrySnapshot;
 	context?: IntentContext;
 	/** Internal only: the controller already admitted this PATCH generation before local persistence. */
 	apiReceipt?: ApiPropertyCommandReceipt;
@@ -47,6 +55,7 @@ export interface DevicePropertyCommandResult {
 	device: string;
 	success: boolean;
 	reason?: string;
+	composite?: CompositeCommandOutcome;
 }
 
 export interface SinglePropertyCommandResult extends DevicePropertyCommandResult {
@@ -62,7 +71,53 @@ export interface PropertyBatchCommandResult {
 }
 
 @Injectable()
-export class PropertyCommandService {
+export class PropertyCommandService implements OnModuleDestroy {
+	private readonly requestEntries = new Set<PropertyCommandEntrySnapshot>();
+	private stopped = false;
+	onModuleDestroy(): void {
+		this.stopped = true;
+		for (const entry of this.requestEntries) entry.dispose();
+		this.requestEntries.clear();
+	}
+
+	/** Internal HTTP/socket boundary helper; callers own release when carrying it across validation. */
+	captureCommandEntry(): PropertyCommandEntrySnapshot | undefined {
+		if (!this.composites?.hasPlanners() && !this.admissionGuards?.hasGuards()) return undefined;
+		const entry = PropertyCommandEntrySnapshot.capture(
+			this.propertyCommandWindowService,
+			() => this.requestEntries.delete(entry),
+			this.stopped || this.requestEntries.size >= 128,
+			this.admissionGuards?.capture(),
+		);
+		if (entry.isActive()) this.requestEntries.add(entry);
+		return entry;
+	}
+
+	releaseCommandEntry(entry: PropertyCommandEntrySnapshot | undefined): void {
+		entry?.release();
+		if (entry && !entry.isActive()) this.requestEntries.delete(entry);
+	}
+
+	private async withCommandEntry<T>(
+		options: PropertyCommandExecutionOptions,
+		operation: (options: PropertyCommandExecutionOptions) => Promise<T>,
+	): Promise<T> {
+		if (options.commandEntry) {
+			const retained = options.commandEntry.retain();
+			try {
+				return await operation(options);
+			} finally {
+				if (retained) this.releaseCommandEntry(options.commandEntry);
+			}
+		}
+		const entry = this.captureCommandEntry();
+		try {
+			return await operation(entry ? { ...options, commandEntry: entry } : options);
+		} finally {
+			this.releaseCommandEntry(entry);
+		}
+	}
+
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyCommandService');
 
 	constructor(
@@ -76,11 +131,21 @@ export class PropertyCommandService {
 		private readonly propertyCommandWindowService: PropertyCommandWindowService,
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
+		@Optional() private readonly composites?: CompositePropertyCommandRegistryService,
+		@Optional() private readonly admissionGuards?: PropertyCommandAdmissionRegistryService,
 	) {}
 
 	async handleInternal(
 		user: ClientUserDto,
 		payload?: object,
+	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
+		return this.withCommandEntry({}, (options) => this.handleInternalWithEntry(user, payload, options));
+	}
+
+	private async handleInternalWithEntry(
+		user: ClientUserDto,
+		payload: object | undefined,
+		options: PropertyCommandExecutionOptions,
 	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
 		// Allow display clients to control device properties via WebSocket
 		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
@@ -122,6 +187,7 @@ export class PropertyCommandService {
 		}
 
 		return this.executeCommands(dtoInstance.properties, {
+			...options,
 			requestId: dtoInstance.request_id,
 			context: intentContext,
 		});
@@ -131,6 +197,16 @@ export class PropertyCommandService {
 		propertyId: string,
 		rawValue: unknown,
 		options: PropertyCommandExecutionOptions = {},
+	): Promise<SinglePropertyCommandResult> {
+		return this.withCommandEntry(options, (entryOptions) =>
+			this.executePropertyCommandByIdWithEntry(propertyId, rawValue, entryOptions),
+		);
+	}
+
+	private async executePropertyCommandByIdWithEntry(
+		propertyId: string,
+		rawValue: unknown,
+		options: PropertyCommandExecutionOptions,
 	): Promise<SinglePropertyCommandResult> {
 		const property = await this.propertyMetadata.findOne(propertyId);
 
@@ -160,6 +236,7 @@ export class PropertyCommandService {
 		}
 
 		if (
+			!this.composites?.get(property) &&
 			!property.permissions.some((permission) =>
 				[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 			)
@@ -207,6 +284,7 @@ export class PropertyCommandService {
 			property: property.id,
 			value: validation.value,
 			success: result?.success ?? false,
+			composite: result?.composite,
 			reason: result?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
 		};
 	}
@@ -225,6 +303,15 @@ export class PropertyCommandService {
 	async executePropertyCommands(
 		commands: Array<{ propertyId: string; value: unknown }>,
 		options: PropertyCommandExecutionOptions = {},
+	): Promise<PropertyBatchCommandResult> {
+		return this.withCommandEntry(options, (entryOptions) =>
+			this.executePropertyCommandsWithEntry(commands, entryOptions),
+		);
+	}
+
+	private async executePropertyCommandsWithEntry(
+		commands: Array<{ propertyId: string; value: unknown }>,
+		options: PropertyCommandExecutionOptions,
 	): Promise<PropertyBatchCommandResult> {
 		if (commands.length === 0) {
 			return { success: true, results: [] };
@@ -299,6 +386,7 @@ export class PropertyCommandService {
 			}
 
 			if (
+				!this.composites?.get(property) &&
 				!property.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)
@@ -358,6 +446,7 @@ export class PropertyCommandService {
 			property: r.property.id,
 			value: r.value,
 			success: executionSuccess,
+			composite: deviceResult?.composite,
 			reason: deviceResult?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
 		}));
 
@@ -392,7 +481,8 @@ export class PropertyCommandService {
 		});
 
 		// Create the intent with the value map and optional requestId for tracking
-		const ttlMs = options.apiReceipt?.ttlMs ?? (await this.resolveCommandIntentTtlMs(groupedProperties));
+		const ttlMs =
+			options.apiReceipt?.ttlMs ?? (await this.resolveCommandIntentTtlMs(groupedProperties, options.commandEntry));
 		const intent = this.intentsService.createIntent({
 			requestId: options.requestId,
 			type: IntentType.DEVICE_SET_PROPERTY,
@@ -415,15 +505,55 @@ export class PropertyCommandService {
 
 		try {
 			// Process commands per device
-			for (const deviceId of Object.keys(groupedProperties)) {
-				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
+			const hasComposite =
+				this.composites?.hasPlanners() &&
+				(await Promise.all(commands.map((command) => this.propertyMetadata.findOne(command.property)))).some(
+					(property) => this.composites?.get(property),
+				);
+			if (hasComposite) {
+				const updates: IDevicePropertyData[] = [];
+				for (const command of commands) {
+					const property = await this.propertyMetadata.findOne(command.property);
+					const device = await this.deviceGraphs.findOne(command.device);
+					const channel = device?.channels.find((candidate) => candidate.id === command.channel);
+					const propertyChannel = typeof property?.channel === 'string' ? property.channel : property?.channel?.id;
+					if (
+						!property ||
+						!device ||
+						!device.enabled ||
+						!channel ||
+						propertyChannel !== channel.id ||
+						(!this.composites?.get(property) &&
+							!property.permissions.some((permission) =>
+								[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+							))
+					)
+						throw new Error('Invalid composite requested structure or permissions');
+					const validation = validatePropertyCommandValue(property, command.value);
+					if (!validation.valid || validation.value === undefined)
+						throw new Error(validation.reason ?? 'Invalid composite value');
+					updates.push({ device, channel, property, value: validation.value });
+				}
+				// Reserve time to record partial child outcomes before parent cleanup.
+				const deadlineAt = intent.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
+				const dispatch = await this.propertyCommandDispatchService.dispatchBatch(updates, {
 					intentId: intent.id,
-					ttlMs,
-					windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
+					ttlMs: deadlineAt - Date.now(),
+					deadlineAt,
+					requestId: options.requestId,
+					commandEntry: options.commandEntry,
 				});
+				for (const device of Object.keys(groupedProperties)) results.push({ device, ...dispatch });
+			} else
+				for (const deviceId of Object.keys(groupedProperties)) {
+					const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
+						intentId: intent.id,
+						ttlMs,
+						windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
+					});
 
-				results.push(result);
-			}
+					results.push(result);
+				}
 
 			// Map results to IntentTargetResult format - create a result for each property
 			const intentResults: IntentTargetResult[] = [];
@@ -441,7 +571,13 @@ export class PropertyCommandService {
 			}
 
 			// Complete the intent with results
-			this.intentsService.completeIntent(intent.id, intentResults);
+			const composites = [
+				...new Map(
+					results.filter((result) => result.composite).map((result) => [result.composite.id, result.composite]),
+				).values(),
+			];
+			if (composites.length) this.intentsService.completeIntent(intent.id, intentResults, composites);
+			else this.intentsService.completeIntent(intent.id, intentResults);
 
 			this.logger.log(`Completed intent ${intent.id} with ${intentResults.length} result(s)`);
 
@@ -475,7 +611,33 @@ export class PropertyCommandService {
 
 	private async resolveCommandIntentTtlMs(
 		groupedProperties: Readonly<Record<string, readonly PropertyCommandValueDto[]>>,
+		entry?: PropertyCommandEntrySnapshot,
 	): Promise<number> {
+		if (this.composites?.hasPlanners()) {
+			try {
+				const updates: IDevicePropertyData[] = [];
+				for (const [deviceId, commands] of Object.entries(groupedProperties))
+					for (const command of commands) {
+						const property = await this.propertyMetadata.findOne(command.property);
+						const channel = property?.channel;
+						const device = channel && typeof channel !== 'string' ? channel.device : null;
+						if (
+							channel &&
+							typeof channel !== 'string' &&
+							channel.id === command.channel &&
+							device &&
+							typeof device !== 'string' &&
+							device.id === deviceId
+						)
+							updates.push({ property, channel, device, value: command.value });
+					}
+				const compositeBudget = await this.composites.estimateTimeoutMs(updates, entry);
+				if (compositeBudget !== null) return compositeBudget;
+			} catch {
+				return DEFAULT_TTL_DEVICE_COMMAND;
+			}
+		}
+
 		const executions = [];
 
 		for (const [deviceId, commands] of Object.entries(groupedProperties)) {
@@ -509,7 +671,7 @@ export class PropertyCommandService {
 		deviceId: string,
 		commands: PropertyCommandValueDto[],
 		dispatchOptions: { intentId: string; ttlMs: number; windowHandles?: readonly PropertyCommandWindowHandle[] },
-	): Promise<{ device: string; success: boolean; reason?: string }> {
+	): Promise<DevicePropertyCommandResult> {
 		const device = await this.deviceGraphs.findOne(deviceId);
 
 		if (!device) {
@@ -521,7 +683,17 @@ export class PropertyCommandService {
 		// Check device online status before processing commands
 		// Allow commands through if status is UNKNOWN (e.g., storage unavailable or no data)
 		// Only reject when device is definitively offline
-		if (!device.status.online && device.status.status !== ConnectionState.UNKNOWN) {
+		if (
+			!commands.some((command) =>
+				this.composites?.get(
+					device.channels
+						.find((channel) => channel.id === command.channel)
+						?.properties.find((property) => property.id === command.property),
+				),
+			) &&
+			!device.status.online &&
+			device.status.status !== ConnectionState.UNKNOWN
+		) {
 			this.logger.warn(`Device is offline id=${deviceId} status=${device.status.status}`);
 
 			return { device: deviceId, success: false, reason: 'Device is offline' };
@@ -559,6 +731,7 @@ export class PropertyCommandService {
 			}
 
 			if (
+				!this.composites?.get(property) &&
 				!property.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)
@@ -604,12 +777,17 @@ export class PropertyCommandService {
 		if (!dispatch.success) {
 			this.logger.error(`Batch command execution failed for deviceId=${device.id}`);
 
-			return { device: deviceId, success: false, reason: dispatch.reason ?? 'Execution failed' };
+			return {
+				device: deviceId,
+				success: false,
+				reason: dispatch.reason ?? 'Execution failed',
+				composite: dispatch.composite,
+			};
 		}
 
 		this.logger.log(`Successfully executed batch command for deviceId=${device.id}`);
 
-		return { device: deviceId, success: true };
+		return { device: deviceId, success: true, composite: dispatch.composite };
 	}
 
 	/**
@@ -622,10 +800,24 @@ export class PropertyCommandService {
 		propertyId: string,
 		value: string | number | boolean,
 		receipt?: ApiPropertyCommandReceipt,
+		entry?: PropertyCommandEntrySnapshot,
+	): Promise<void> {
+		return this.withCommandEntry({ context: { origin: 'api' }, apiReceipt: receipt, commandEntry: entry }, (options) =>
+			this.processApiPropertyCommandWithEntry(deviceId, channelId, propertyId, value, receipt, options),
+		);
+	}
+
+	private async processApiPropertyCommandWithEntry(
+		deviceId: string,
+		channelId: string,
+		propertyId: string,
+		value: string | number | boolean,
+		receipt: ApiPropertyCommandReceipt | undefined,
+		options: PropertyCommandExecutionOptions,
 	): Promise<void> {
 		const execution = await this.executeCommands(
 			[{ device: deviceId, channel: channelId, property: propertyId, value }],
-			{ context: { origin: 'api' }, apiReceipt: receipt },
+			options,
 		);
 		const result = Array.isArray(execution.results) ? execution.results[0] : undefined;
 
@@ -654,6 +846,7 @@ export class PropertyCommandService {
 			if (resolvedDevice === null) {
 				return null;
 			}
+			if (this.composites?.get(property)) return null;
 			const ttlMs = await this.resolveCommandIntentTtlMs({
 				[resolvedDevice.id]: [{ device: resolvedDevice.id, channel: channel.id, property: property.id, value }],
 			});
@@ -677,6 +870,10 @@ export class PropertyCommandService {
 	/** Releases a receipt whose optimistic persistence failed before asynchronous dispatch could begin. */
 	failApiPropertyCommandReceipt(receipt: ApiPropertyCommandReceipt): void {
 		this.propertyCommandWindowService.fail(receipt.handle);
+	}
+
+	canExecuteCompositeProperty(property: ChannelPropertyEntity): boolean {
+		return this.composites?.get(property) !== null && this.composites?.get(property) !== undefined;
 	}
 
 	async usesAuthoritativePropertyReadback(

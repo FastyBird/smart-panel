@@ -42,6 +42,7 @@ export interface PropertyCommandWindow {
 	readonly generation: string;
 	readonly intentId: string | null;
 	readonly commandedValue: PropertyCommandValue;
+	readonly requiresLiveEvidence: boolean;
 	readonly previousValue: PropertyCommandValue | null;
 	readonly lastReceipt: PropertyCommandReceipt | null;
 	readonly heldReceipt: PropertyCommandReceipt | null;
@@ -61,6 +62,8 @@ export interface OpenPropertyCommandWindowInput {
 	readonly requestedTargets: readonly PropertyCommandWindowTarget[];
 	readonly intentId?: string;
 	readonly commandedValue: PropertyCommandValue;
+	/** Internal composite/controller proof policy; ordinary windows retain their existing contract. */
+	readonly requiresLiveEvidence?: boolean;
 	readonly previousValue: PropertyCommandValue | null;
 	readonly ttlMs: number;
 }
@@ -85,6 +88,39 @@ interface RecoveryWindow {
 export class PropertyCommandWindowService {
 	private readonly windows = new Map<string, MutablePropertyCommandWindow>();
 	private readonly recoveries = new Map<string, RecoveryWindow>();
+	private readonly confirmationObservers = new Set<(handle: PropertyCommandWindowHandle) => void>();
+	/** Internal bounded snapshot before any asynchronous target resolution. */
+	snapshotPendingProperties(limit: number): { ids: ReadonlySet<string>; overflow: boolean } {
+		const ids = new Set<string>();
+		for (const [id, window] of this.windows) {
+			if (window.state !== 'pending' || this.isExpired(window, Date.now())) continue;
+			if (ids.size >= limit) return { ids, overflow: true };
+			ids.add(id);
+		}
+		return { ids, overflow: false };
+	}
+	/** Captures actual convergence while a provider acknowledgement is still in flight. */
+	observeConfirmation(observer: (handle: PropertyCommandWindowHandle) => void): () => void {
+		this.confirmationObservers.add(observer);
+		return () => this.confirmationObservers.delete(observer);
+	}
+	private readonly generationObservers = new Set<(propertyId: string, generation: string | null) => void>();
+
+	/** Internal composite lifecycle fencing; observation does not own or extend a window. */
+	observeGeneration(observer: (propertyId: string, generation: string | null) => void): () => void {
+		this.generationObservers.add(observer);
+		return () => this.generationObservers.delete(observer);
+	}
+
+	private notifyGeneration(propertyId: string, generation: string | null): void {
+		for (const observer of this.generationObservers) {
+			try {
+				observer(propertyId, generation);
+			} catch {
+				/* Observers cannot alter command admission. */
+			}
+		}
+	}
 
 	open(input: OpenPropertyCommandWindowInput): PropertyCommandWindowHandle {
 		const now = Date.now();
@@ -101,6 +137,7 @@ export class PropertyCommandWindowService {
 			generation,
 			intentId: input.intentId ?? null,
 			commandedValue: input.commandedValue,
+			requiresLiveEvidence: input.requiresLiveEvidence ?? false,
 			previousValue,
 			lastReceipt: null,
 			heldReceipt: null,
@@ -115,6 +152,8 @@ export class PropertyCommandWindowService {
 			confirmedAt: null,
 			confirmationExpiresAt: null,
 		});
+
+		this.notifyGeneration(canonicalPropertyId, generation);
 
 		return Object.freeze({ canonicalPropertyId, generation });
 	}
@@ -147,6 +186,13 @@ export class PropertyCommandWindowService {
 			current.heldReceipt = null;
 			current.rollbackBaseline = null;
 			current.patchReceipt = null;
+			for (const observer of this.confirmationObservers) {
+				try {
+					observer(Object.freeze({ ...handle }));
+				} catch {
+					/* Observation cannot alter convergence. */
+				}
+			}
 		}
 
 		return this.toSnapshot(current);
@@ -189,6 +235,7 @@ export class PropertyCommandWindowService {
 
 		if (current !== undefined && current.generation === handle.generation) {
 			this.windows.delete(handle.canonicalPropertyId);
+			this.notifyGeneration(handle.canonicalPropertyId, null);
 
 			return true;
 		}
@@ -273,11 +320,13 @@ export class PropertyCommandWindowService {
 	}
 
 	cancel(canonicalPropertyId: string): void {
+		this.notifyGeneration(canonicalPropertyId, null);
 		this.windows.delete(canonicalPropertyId);
 		this.recoveries.delete(canonicalPropertyId);
 	}
 
 	clear(): void {
+		for (const id of this.windows.keys()) this.notifyGeneration(id, null);
 		this.windows.clear();
 		this.recoveries.clear();
 	}

@@ -7,7 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import WebSocket from 'ws';
 
-import { WledAdapterCallbacks, WledDeviceContext } from '../interfaces/wled.interface';
+import { WledAdapterCallbacks, WledDeviceContext, WledDeviceStateChangedEvent } from '../interfaces/wled.interface';
 
 import { WledClientAdapterService } from './wled-client-adapter.service';
 
@@ -319,7 +319,7 @@ describe('WledClientAdapterService', () => {
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
 					method: 'POST',
-					body: JSON.stringify({ on: false }),
+					body: JSON.stringify({ on: false, v: true }),
 				}),
 			);
 		});
@@ -348,7 +348,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ on: true }),
+					body: JSON.stringify({ on: true, v: true }),
 				}),
 			);
 		});
@@ -362,7 +362,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ on: false }),
+					body: JSON.stringify({ on: false, v: true }),
 				}),
 			);
 		});
@@ -385,7 +385,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ bri: 200 }),
+					body: JSON.stringify({ bri: 200, v: true }),
 				}),
 			);
 		});
@@ -398,7 +398,7 @@ describe('WledClientAdapterService', () => {
 			expect(global.fetch).toHaveBeenCalledWith(
 				'http://192.168.1.100/json/state',
 				expect.objectContaining({
-					body: JSON.stringify({ bri: 255 }),
+					body: JSON.stringify({ bri: 255, v: true }),
 				}),
 			);
 		});
@@ -423,6 +423,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, col: [[255, 128, 64]] }],
+						v: true,
 					}),
 				}),
 			);
@@ -439,6 +440,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, col: [[255, 128, 64, 32]] }],
+						v: true,
 					}),
 				}),
 			);
@@ -464,6 +466,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, fx: 5 }],
+						v: true,
 					}),
 				}),
 			);
@@ -480,6 +483,7 @@ describe('WledClientAdapterService', () => {
 				expect.objectContaining({
 					body: JSON.stringify({
 						seg: [{ id: 0, fx: 5, sx: 200, ix: 150 }],
+						v: true,
 					}),
 				}),
 			);
@@ -514,6 +518,140 @@ describe('WledClientAdapterService', () => {
 
 			expect(state).toBeNull();
 		});
+	});
+
+	describe('verbose command feedback', () => {
+		beforeEach(async () => {
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
+			await service.connect('192.168.1.100', 'wled-test');
+			jest.clearAllMocks();
+		});
+
+		it.each(['ordinary', 'extended'] as const)(
+			'requests full state for %s POST and never treats a bare acceptance as feedback',
+			async (kind) => {
+				mockFetchSuccess({ success: true });
+				const result =
+					kind === 'ordinary'
+						? await service.updateState('192.168.1.100', { on: true }, 0)
+						: await service.updateStateExtended('192.168.1.100', { on: true });
+				expect(result).toBe(true);
+				const call = (global.fetch as jest.Mock).mock.calls[0] as [string, { body: string }];
+				const options = call[1];
+				expect(JSON.parse(options.body)).toMatchObject({ on: true, v: true });
+				expect(callbacks.onDeviceStateChanged).not.toHaveBeenCalled();
+			},
+		);
+
+		it('publishes actual reported state from a verbose response', async () => {
+			mockFetchSuccess({ ...mockWledState, on: false });
+			expect(await service.updateState('192.168.1.100', { on: true }, 0)).toBe(true);
+			const callback = callbacks.onDeviceStateChanged;
+			const event = callback.mock.calls[0] as [{ state: { on: boolean } }];
+			expect(event[0].state.on).toBe(false);
+		});
+	});
+
+	describe('qualified observation ordering', () => {
+		beforeEach(async () => {
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
+			await service.connect('192.168.1.100', 'wled-test');
+			jest.clearAllMocks();
+		});
+		it('keeps stable source authority through unchanged heartbeats and revokes it on disconnect', async () => {
+			mockFetchSuccess(mockWledState);
+			await service.refreshState('192.168.1.100');
+			const [first] = callbacks.onDeviceStateChanged.mock.calls[0] as [WledDeviceStateChangedEvent];
+			await service.refreshState('192.168.1.100');
+			expect(first.observation?.evidence.isCurrent?.()).toBe(false);
+			expect(first.observation?.evidence.sourceIsCurrent?.()).toBe(true);
+			service.disconnect('192.168.1.100');
+			expect(first.observation?.evidence.sourceIsCurrent?.()).toBe(false);
+		});
+		it('drops a delayed old poll after a newer report and after host replacement', async () => {
+			let release!: (response: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+			const pending = new Promise((resolve) => {
+				release = resolve;
+			});
+			(global.fetch as jest.Mock).mockImplementationOnce(() => pending);
+			const oldPoll = service.refreshState('192.168.1.100');
+			mockFetchSuccess({ ...mockWledState, on: false });
+			await service.refreshState('192.168.1.100');
+			release({ ok: true, status: 200, json: async () => mockWledState });
+			expect(await oldPoll).toBeNull();
+			expect(service.getDevice('192.168.1.100')?.context?.state.on).toBe(false);
+			expect(callbacks.onDeviceStateChanged).toHaveBeenCalledTimes(1);
+			const [event] = callbacks.onDeviceStateChanged.mock.calls[0] as [WledDeviceStateChangedEvent];
+			const context = service.getDevice('192.168.1.100')?.context;
+			service.connectWithContext('192.168.1.100', 'replacement', context);
+			expect(event.observation?.evidence.sourceIsCurrent?.()).toBe(false);
+		});
+		it('rechecks composite admission at actual POST and refuses mismatched captured MAC', async () => {
+			expect(service.captureDeviceIdentity('wled-test', '000000000000')).toBeNull();
+			const identity = service.captureDeviceIdentity('wled-test', 'aabbccddeeff');
+			expect(identity?.()).toBe(true);
+			expect(await service.updateStateExtended('192.168.1.100', { on: true }, () => false)).toBe(false);
+			expect(global.fetch).not.toHaveBeenCalled();
+			service.disconnect('192.168.1.100');
+			expect(identity?.()).toBe(false);
+		});
+
+		it.each(['ordinary', 'extended'] as const)(
+			'accepts a successful %s POST superseded by a newer poll without publishing its response',
+			async (kind) => {
+				let resolvePost!: (response: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+				const pendingPost = new Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>((resolve) => {
+					resolvePost = resolve;
+				});
+				(global.fetch as jest.Mock).mockImplementationOnce(() => pendingPost);
+
+				const command =
+					kind === 'ordinary'
+						? service.updateState('192.168.1.100', { on: true }, 0)
+						: service.updateStateExtended('192.168.1.100', { on: true });
+				mockFetchSuccess({ ...mockWledState, on: false });
+				await service.refreshState('192.168.1.100');
+				const publishedEvents = callbacks.onDeviceStateChanged.mock.calls.length;
+
+				resolvePost({ ok: true, status: 200, json: async () => ({ ...mockWledState, on: true }) });
+				expect(await command).toBe(true);
+				expect(callbacks.onDeviceStateChanged).toHaveBeenCalledTimes(publishedEvents);
+				expect(service.getDevice('192.168.1.100')?.context?.state.on).toBe(false);
+			},
+		);
+
+		it.each(['ordinary', 'extended'] as const)('%s POST failure remains a failure', async (kind) => {
+			mockFetchError();
+			const result =
+				kind === 'ordinary'
+					? await service.updateState('192.168.1.100', { on: true }, 0)
+					: await service.updateStateExtended('192.168.1.100', { on: true });
+			expect(result).toBe(false);
+			expect(callbacks.onDeviceStateChanged).not.toHaveBeenCalled();
+		});
+
+		it.each(['ordinary', 'extended'] as const)(
+			'rejects a verbose %s response after device replacement',
+			async (kind) => {
+				let resolvePost!: (response: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+				const pendingPost = new Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>((resolve) => {
+					resolvePost = resolve;
+				});
+				(global.fetch as jest.Mock).mockImplementationOnce(() => pendingPost);
+
+				const command =
+					kind === 'ordinary'
+						? service.updateState('192.168.1.100', { on: true }, 0)
+						: service.updateStateExtended('192.168.1.100', { on: true });
+				const context = service.getDevice('192.168.1.100')?.context;
+				expect(context).toBeDefined();
+				service.connectWithContext('192.168.1.100', 'replacement', context);
+				resolvePost({ ok: true, status: 200, json: async () => mockWledState });
+
+				expect(await command).toBe(false);
+				expect(callbacks.onDeviceStateChanged).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('isConnected', () => {

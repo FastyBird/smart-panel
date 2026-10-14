@@ -72,6 +72,8 @@ import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-run
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
+import { VirtualLightGroupCommandService } from './services/virtual-light-group-command.service';
+import { VirtualLightGroupStateService } from './services/virtual-light-group-state.service';
 import { VirtualMeasurementAuthoringService } from './services/virtual-measurement-authoring.service';
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
@@ -120,6 +122,8 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualProducerConfigService,
 		VirtualProducerStateService,
 		VirtualAggregateRuntimeService,
+		VirtualLightGroupStateService,
+		VirtualLightGroupCommandService,
 		VirtualTransformConfigService,
 		VirtualMeasurementAuthoringService,
 		VirtualTransformMetadataSubscriber,

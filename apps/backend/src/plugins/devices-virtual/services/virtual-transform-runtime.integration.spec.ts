@@ -394,6 +394,48 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		expect(outputState(aggregate)?.value).toBeNull();
 	});
 
+	it('keeps a repaired cyclic transform unavailable until a report after reconfiguration admission', async () => {
+		const source = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		await transform(source, output);
+		await start();
+		await sample(source, 12);
+		const alias = await measurement(VirtualDeviceMode.PROJECTION);
+		await database.manager.update(VirtualChannelPropertyEntity, alias.id, {
+			valueOrigin: VirtualValueOrigin.SOURCE,
+			sourcePropertyId: output.id,
+		});
+		await database.manager.update(
+			VirtualTransformSourceEntity,
+			{ outputPropertyId: output.id },
+			{
+				sourcePropertyId: alias.id,
+				sourcePropertyIdentity: alias.id,
+			},
+		);
+		await graph.refreshQuarantine();
+		expect(graph.isQuarantined(alias.id)).toBe(true);
+		expect(outputState(output)?.value).toBeNull();
+		const observed: (number | null)[] = [];
+		const restored = jest.fn();
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (property: ChannelPropertyEntity) => {
+			if (property.id === output.id) observed.push(property.value?.value as number | null);
+		});
+		events.on(EventType.CHANNEL_PROPERTY_UPDATED, (property: ChannelPropertyEntity) => {
+			if (property.id === alias.id) restored();
+		});
+		await transforms.configure(output.id, dto(source, 1));
+		await transformRuntime.flush();
+		await runtime.flush();
+		expect(restored).toHaveBeenCalledTimes(1);
+		expect(graph.isRevisionCurrent(await graph.revision())).toBe(true);
+		expect(graph.isQuarantined(alias.id)).toBe(false);
+		expect(observed.length).toBeGreaterThan(0);
+		expect(observed.every((value) => value === null)).toBe(true);
+		expect(outputState(output)?.value).toBeNull();
+		await sample(source, 12);
+		expect(outputState(output)).toMatchObject({ value: 25, producer: { quality: 'good', revision: 2 } });
+	});
 	it('requires live source evidence, preserves source age and expires without renewing on evaluation', async () => {
 		const source = await measurement(),
 			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);

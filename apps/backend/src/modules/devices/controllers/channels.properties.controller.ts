@@ -17,6 +17,7 @@ import {
 	Req,
 	Res,
 	UnprocessableEntityException,
+	UseInterceptors,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
@@ -43,6 +44,10 @@ import { CreateChannelPropertyDto, ReqCreateChannelPropertyDto } from '../dto/cr
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
 import { ReqUpdateChannelPropertyDto, UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
+import {
+	PropertyCommandEntryInterceptor,
+	readPropertyCommandEntry,
+} from '../interceptors/property-command-entry.interceptor';
 import {
 	ChannelPropertiesResponseModel,
 	ChannelPropertyResponseModel,
@@ -319,11 +324,13 @@ export class ChannelsPropertiesController {
 	@ApiNotFoundResponse('Channel or property not found')
 	@ApiUnprocessableEntityResponse('Channel property could not be updated')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@UseInterceptors(PropertyCommandEntryInterceptor)
 	@Patch(':id')
 	async update(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: UpdateChannelPropertyDto },
+		@Req() req?: Request,
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(`Incoming update request for property id=${id} for channelId=${channelId}`);
 
@@ -382,6 +389,7 @@ export class ChannelsPropertiesController {
 
 		if (typeof commandValue !== 'undefined' && commandValue !== null) {
 			if (
+				!this.propertyCommandService.canExecuteCompositeProperty?.(property) &&
 				!property.permissions.some((permission) =>
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)
@@ -426,13 +434,23 @@ export class ChannelsPropertiesController {
 			if (typeof commandValue !== 'undefined' && commandValue !== null) {
 				const deviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
 
-				const command = this.propertyCommandService.processApiPropertyCommand(
-					deviceId,
-					channel.id,
-					updatedProperty.id,
-					commandValue,
-					commandReceipt ?? undefined,
-				);
+				const entry = readPropertyCommandEntry(req);
+				const command = entry
+					? this.propertyCommandService.processApiPropertyCommand(
+							deviceId,
+							channel.id,
+							updatedProperty.id,
+							commandValue,
+							commandReceipt ?? undefined,
+							entry,
+						)
+					: this.propertyCommandService.processApiPropertyCommand(
+							deviceId,
+							channel.id,
+							updatedProperty.id,
+							commandValue,
+							commandReceipt ?? undefined,
+						);
 
 				command.catch((err: Error) => {
 					this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
