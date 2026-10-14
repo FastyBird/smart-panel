@@ -1480,7 +1480,25 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('composes three physical temperatures, aggregate quorum, floor release, stale inhibition and strict recovery', async () => {
+		await settle();
 		runtime.onModuleDestroy();
+		const startedAt = Date.now();
+		// Advance freshness deliberately; database latency must not age otherwise fresh acceptance inputs.
+		jest.useFakeTimers({
+			now: startedAt,
+			doNotFake: [
+				'nextTick',
+				'queueMicrotask',
+				'hrtime',
+				'performance',
+				'setImmediate',
+				'clearImmediate',
+				'setTimeout',
+				'clearTimeout',
+				'setInterval',
+				'clearInterval',
+			],
+		});
 		const graph = new VirtualDependencyGraphService(database);
 		const state = new VirtualProducerStateService(database, producers, graph, events);
 		const configs = new VirtualProducerConfigService(database, new DeviceStructureLockService(), graph, events, state);
@@ -1595,6 +1613,8 @@ describe('virtual thermostat durable runtime', () => {
 			runtime = makeRuntime(graph, aggregate);
 			await runtime.onApplicationBootstrap();
 			const report = async (property: ChannelPropertyEntity, value: number | null) => {
+				// Every new physical report has a newer watermark; SQL and proof writes keep that fixed sample clock.
+				jest.setSystemTime(Date.now() + 1);
 				await realValues.writeSampleWithState(property, value, {
 					sampledAt: new Date(Date.now()),
 					receivedAt: new Date(Date.now()),
@@ -1604,9 +1624,13 @@ describe('virtual thermostat durable runtime', () => {
 			};
 			const settle = async () => {
 				runtime.request(controllerId);
-				await runtime.inspect(controllerId);
-				await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+				// A completed OFF can queue a fresh ON; await each finite follow-up rather than one I/O snapshot.
+				for (let attempt = 0; attempt < 5; attempt++) {
+					await runtime.flush();
+					await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
+				}
 				await runtime.flush();
+				expect((runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.size).toBe(0);
 			};
 			await report(floor, 26);
 			for (const [index, property] of sources.entries()) await report(property, 17 + index);
@@ -1632,16 +1656,25 @@ describe('virtual thermostat durable runtime', () => {
 			await report(floor, 26.9);
 			await settle();
 			expect(samples.get(relayId)?.value).toBe(true);
-			jest.useFakeTimers({
-				doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'],
-			});
-			jest.setSystemTime(Date.now() + 11_000);
+			jest.setSystemTime(startedAt + 11_000);
 			for (const [index, property] of sources.entries()) await report(property, 17 + index);
 			await settle();
 			expect(samples.get(relayId)?.value).toBe(false);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('floor_unavailable');
 			await report(floor, 26);
 			await settle();
+			expect(samples.get(relayId)?.value).toBe(true);
+			jest.setSystemTime(startedAt + 22_000);
+			await report(floor, 26.9);
+			await settle();
+			expect(realValues.readQualifiedSample(floor, 10_000)?.value).toBe(26.9);
+			expect(realValues.readQualifiedSample(output, 10_000)).toBeNull();
+			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
+			expect(samples.get(relayId)?.value).toBe(false);
+			for (const [index, property] of sources.entries()) await report(property, 17 + index);
+			await settle();
+			expect(producers.read(output.id).value).toBe(18);
+			expect(runtime.readDiagnostics(controllerId)?.current_temperature).toBe(18);
 			expect(samples.get(relayId)?.value).toBe(true);
 		} finally {
 			jest.useRealTimers();
