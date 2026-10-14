@@ -121,6 +121,9 @@ export class VirtualThermostatActuatorClaimEntity {
 	contractFingerprint: string;
 	@Column({ type: 'integer', default: 1 })
 	revision: number;
+	/** A restore rotates this durable generation; older installation evidence cannot qualify after restart. */
+	@Column({ type: 'varchar', nullable: true })
+	qualificationGeneration: string | null;
 	@Column({ type: 'text' })
 	state: ThermostatClaimState;
 	@Column({ type: 'double precision' })
@@ -133,6 +136,36 @@ export class VirtualThermostatActuatorClaimEntity {
 	releasedAt: Date | null;
 	@Column({ type: 'simple-json', nullable: true })
 	releaseEvidence: Record<string, string | number | boolean> | null;
+}
+
+/** Operator intent is retained separately from machine-verified release evidence. */
+@Entity('devices_virtual_thermostat_recoveries')
+@Index('IDX_virtual_thermostat_recovery_claim', ['claimId', 'createdAt'])
+export class VirtualThermostatRecoveryEntity {
+	@PrimaryGeneratedColumn('uuid')
+	id: string;
+	@Column({ type: 'varchar' })
+	controllerId: string;
+	@Column({ type: 'varchar' })
+	claimId: string;
+	@Column({ type: 'text' })
+	physicalIdentity: string;
+	@Column({ type: 'varchar' })
+	previousPropertyIdentity: string;
+	@Column({ type: 'varchar' })
+	restoredPropertyId: string;
+	@Column({ type: 'varchar' })
+	actorId: string;
+	@Column({ type: 'text' })
+	reason: string;
+	@Column({ type: 'boolean' })
+	disconnectionAcknowledged: boolean;
+	@Column({ type: 'integer' })
+	configurationRevision: number;
+	@Column({ type: 'integer' })
+	claimRevision: number;
+	@Column({ type: 'datetime' })
+	createdAt: Date;
 }
 
 /** Only these explicitly registered local endpoints have writable owned-value semantics. */

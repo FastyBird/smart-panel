@@ -6,7 +6,9 @@ import {
 	IsInt,
 	IsNumber,
 	IsOptional,
+	IsString,
 	IsUUID,
+	Length,
 	Max,
 	Min,
 	ValidateNested,
@@ -367,4 +369,47 @@ export class RequestVirtualThermostatReleaseDto {
 	@IsInt()
 	@Min(1)
 	expectedRevision: number;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginRestoreThermostatActuator' })
+export class RestoreVirtualThermostatActuatorDto {
+	@ApiProperty({ name: 'expected_revision', description: 'Current thermostat configuration revision' })
+	@Expose({ name: 'expected_revision' })
+	@IsInt()
+	@Min(1)
+	expectedRevision: number;
+
+	@ApiProperty({ name: 'expected_claim_revision', description: 'Current retained claim revision' })
+	@Expose({ name: 'expected_claim_revision' })
+	@IsInt()
+	@Min(1)
+	expectedClaimRevision: number;
+
+	@ApiProperty({ name: 'physical_identity', description: 'Exact canonical identity printed by the retained claim' })
+	@Expose({ name: 'physical_identity' })
+	@IsString()
+	@Length(1, 256)
+	physicalIdentity: string;
+
+	@ApiProperty({ name: 'source_property', description: 'Newly discovered property UUID of that same physical switch' })
+	@Expose({ name: 'source_property' })
+	@IsUUID('4')
+	sourcePropertyId: string;
+
+	@ApiProperty({ description: 'Operator reason retained in the audit log' })
+	@Expose()
+	@IsString()
+	@Length(10, 1000)
+	reason: string;
+
+	@ApiProperty({
+		name: 'disconnection_acknowledged',
+		type: Boolean,
+		example: true,
+		description:
+			'Must be true: operator acknowledges that the old endpoint was disconnected; this is not OFF or drainage proof',
+	})
+	@Expose({ name: 'disconnection_acknowledged' })
+	@IsIn([true])
+	disconnectionAcknowledged: true;
 }

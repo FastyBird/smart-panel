@@ -22,7 +22,7 @@ import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { ConfigureVirtualThermostatDto } from '../dto/thermostat-config.dto';
+import { ConfigureVirtualThermostatDto, RestoreVirtualThermostatActuatorDto } from '../dto/thermostat-config.dto';
 import {
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
@@ -33,6 +33,7 @@ import {
 	ThermostatSetting,
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
+	VirtualThermostatRecoveryEntity,
 	VirtualThermostatSettingEntity,
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
@@ -147,7 +148,8 @@ export class VirtualThermostatConfigService {
 			target.property.value = await this.values.readLatest(target.property);
 			this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, target.property);
 		}
-		await this.claims.refresh();
+		// The structural write has committed. Reload fails closed and schedules retry without changing that outcome.
+		await this.claims.refresh().catch(() => undefined);
 		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
 		return current;
 	}
@@ -198,6 +200,110 @@ export class VirtualThermostatConfigService {
 			await this.claims.refresh();
 			this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
 			return this.get(controllerId);
+		});
+	}
+	/** Rebind a lost database endpoint only to the same reserved physical switch. Operator intent is not release proof. */
+	async restoreActuator(
+		controllerId: string,
+		claimId: string,
+		dto: RestoreVirtualThermostatActuatorDto,
+		actorId: string,
+	) {
+		if (
+			!actorId ||
+			dto.disconnectionAcknowledged !== true ||
+			typeof dto.reason !== 'string' ||
+			dto.reason.trim().length < 10
+		)
+			fail('An identified operator, disconnection acknowledgement and meaningful reason are required.');
+		const releaseFence = this.claims.holdRecoveryFence();
+		try {
+			return await this.structureLock.runExclusive(async () => {
+				await this.graph.withStructuralWrite(async (manager) => {
+					const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+					const claim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claimId, controllerId });
+					if (
+						!config ||
+						!claim ||
+						config.revision !== dto.expectedRevision ||
+						claim.revision !== dto.expectedClaimRevision
+					)
+						fail('Thermostat or claim revision changed; reload the retained reservation.');
+					if (claim.state === 'released' || claim.physicalIdentity !== dto.physicalIdentity)
+						fail('Only this exact retained canonical claim can be restored.');
+					if (claim.sourcePropertyId) {
+						if (claim.sourcePropertyId !== dto.sourcePropertyId)
+							fail('The old endpoint still exists; replacing its property requires a retained alias reservation.');
+						const previous = await this.property(manager, claim.sourcePropertyId);
+						if (
+							thermostatActuatorIdentity(previous.property, previous.channel, previous.device) !==
+							claim.physicalIdentity
+						)
+							fail('Existing endpoint no longer matches the reserved canonical hardware.');
+					}
+					const target = await this.property(manager, dto.sourcePropertyId);
+					const identity = thermostatActuatorIdentity(target.property, target.channel, target.device);
+					if (
+						identity !== claim.physicalIdentity ||
+						!(target.channel instanceof ShellyNgChannelEntity) ||
+						!(target.property instanceof ShellyNgChannelPropertyEntity) ||
+						target.property.identifier !== 'output'
+					)
+						fail('Restored property must be the same canonical readable and writable Shelly output.');
+					const conflict = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, {
+						physicalIdentity: identity,
+						state: Not('released'),
+					});
+					if (conflict?.id !== claim.id) fail('Canonical physical actuator is reserved by another claim.');
+					const priorProperty = claim.sourcePropertyIdentity;
+					const releaseRequestedAt = claim.releaseRequestedAt ?? config.releaseRequestedAt;
+					const releaseRequested = claim.state === 'releasing' || releaseRequestedAt !== null;
+					config.revision++;
+					config.requestedMode = 'off';
+					claim.revision++;
+					claim.qualificationGeneration = uuid();
+					claim.state = releaseRequested ? 'releasing' : 'reserved';
+					claim.sourcePropertyId = target.property.id;
+					claim.sourcePropertyIdentity = target.property.id;
+					claim.sourceDeviceId = target.device.id;
+					claim.sourceDeviceIdentity = target.device.id;
+					claim.contractFingerprint = thermostatPropertyContract(target.property, target.channel, target.device);
+					claim.reason = releaseRequested ? claim.reason : 'operator_restored_same_physical_actuator';
+					claim.releaseRequestedAt = releaseRequestedAt;
+					claim.releasedAt = null;
+					claim.releaseEvidence = null;
+					await manager.save(config);
+					await manager.save(claim);
+					await manager.save(
+						manager.create(VirtualThermostatRecoveryEntity, {
+							controllerId,
+							claimId: claim.id,
+							physicalIdentity: identity,
+							previousPropertyIdentity: priorProperty,
+							restoredPropertyId: target.property.id,
+							actorId,
+							reason: dto.reason.trim(),
+							disconnectionAcknowledged: true,
+							configurationRevision: config.revision,
+							claimRevision: claim.revision,
+							createdAt: new Date(),
+						}),
+					);
+				});
+				this.claims.revokeQualification(dto.physicalIdentity);
+				return this.afterCommit(controllerId);
+			});
+		} finally {
+			releaseFence();
+			// Reload schedules its own retry; preserve the committed result or original validation error.
+			await this.claims.refresh().catch(() => undefined);
+		}
+	}
+	async recoveryEvents(controllerId: string) {
+		await this.get(controllerId);
+		return this.dataSource.manager.find(VirtualThermostatRecoveryEntity, {
+			where: { controllerId },
+			order: { createdAt: 'DESC' },
 		});
 	}
 	/** Atomic merged settings validation: a single bound cannot create an overlapping persisted deadband. */
@@ -460,6 +566,7 @@ export class VirtualThermostatConfigService {
 					sourceDeviceIdentity: target.device.id,
 					contractFingerprint: fingerprint,
 					revision: (old?.revision ?? 0) + 1,
+					qualificationGeneration: old?.qualificationGeneration ?? null,
 					state: old?.state ?? 'reserved',
 					leaseSeconds: input.leaseSeconds,
 					reason: old?.reason ?? null,
@@ -589,6 +696,7 @@ export class VirtualThermostatConfigService {
 				source_identity: claim.sourcePropertyIdentity,
 				physical_identity: claim.physicalIdentity,
 				revision: claim.revision,
+				qualification_generation: claim.qualificationGeneration,
 				state: claim.state,
 				lease_seconds: claim.leaseSeconds,
 				reason: claim.reason,

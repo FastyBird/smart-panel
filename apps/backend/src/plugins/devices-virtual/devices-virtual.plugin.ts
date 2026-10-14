@@ -74,6 +74,7 @@ import {
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
+	VirtualThermostatRecoveryEntity,
 	VirtualThermostatSettingEntity,
 	VirtualThermostatSourceEntity,
 } from './entities/virtual-thermostat.entity';
@@ -129,6 +130,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			...VIRTUAL_PRODUCER_ENTITIES,
 			VirtualThermostatConfigEntity,
 			VirtualThermostatActuatorClaimEntity,
+			VirtualThermostatRecoveryEntity,
 			VirtualThermostatSourceEntity,
 			VirtualThermostatSettingEntity,
 			VirtualThermostatRuntimeEntity,

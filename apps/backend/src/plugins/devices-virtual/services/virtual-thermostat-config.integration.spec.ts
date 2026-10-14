@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
+import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations/1000000000034-AddVirtualThermostatRecoveries';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -16,6 +17,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
@@ -47,6 +49,7 @@ import {
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
+	VirtualThermostatRecoveryEntity,
 	VirtualThermostatSettingEntity,
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
@@ -55,8 +58,12 @@ import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-the
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
-import { ThermostatCommandAuthority, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
-import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import {
+	ThermostatCommandAuthority,
+	ThermostatInstalledQualification,
+	VirtualThermostatClaimsService,
+} from './virtual-thermostat-claims.service';
+import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
 jest.setTimeout(30_000);
 
@@ -617,6 +624,367 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(registry.assertAllowed(await target(replacement, true))).rejects.toThrow('reserved');
 	});
 
+	it('restores only the same canonical missing endpoint with CAS, audit and fresh qualification', async () => {
+		const controller = await owner();
+		const sensor = await ambient();
+		const oldProperty = await actuator();
+		const configured = await configs.configure(controller, dto(sensor, oldProperty));
+		const oldClaim = configured.actuators[0];
+		const priorQualification: ThermostatInstalledQualification = {
+			physicalIdentity: oldClaim.physical_identity,
+			upstreamWritersExcluded: true,
+			opposedOutputsInterlocked: false,
+			profile: {
+				deviceId: 'shellyplus1pm-a8032abe5084',
+				model: 'SNSW-001P16EU',
+				firmware: 'qualified-test-firmware',
+				componentId: 0,
+				evidenceId: 'prior-installation',
+				revision: 1,
+				testedLeaseSeconds: { min: 1, max: 60 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+			},
+		};
+		claims.recordQualification(priorQualification);
+		await database.query('DROP TRIGGER "virtual_thermostat_property_delete"');
+		await database.manager.delete(ChannelPropertyEntity, { id: oldProperty });
+		await claims.refresh();
+		const old = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: oldClaim.id });
+		expect(old.sourcePropertyId).toBeNull();
+		const channel = await database.manager.findOneByOrFail(ShellyNgChannelEntity, { identifier: 'switch:0' });
+		const replacement = uuid();
+		await database.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: replacement,
+			channel: channel.id,
+			identifier: 'output',
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		const restore = {
+			expectedRevision: configured.revision,
+			expectedClaimRevision: old.revision,
+			physicalIdentity: old.physicalIdentity,
+			sourcePropertyId: replacement,
+			reason: 'Rediscovered the same physical relay after database endpoint loss',
+			disconnectionAcknowledged: true as const,
+		};
+		await expect(
+			configs.restoreActuator(controller, old.id, { ...restore, expectedClaimRevision: 999 }, 'operator'),
+		).rejects.toThrow('revision');
+		await expect(
+			configs.restoreActuator(controller, old.id, { ...restore, physicalIdentity: 'different' }, 'operator'),
+		).rejects.toThrow('canonical');
+		const foreign = await actuator('A8032ABE5085');
+		await expect(
+			configs.restoreActuator(controller, old.id, { ...restore, sourcePropertyId: foreign }, 'operator'),
+		).rejects.toThrow('same canonical');
+		const restored = await configs.restoreActuator(controller, old.id, restore, 'operator');
+		expect(restored.requested_mode).toBe('off');
+		expect(restored.actuators[0]).toMatchObject({
+			id: old.id,
+			state: 'reserved',
+			source_property: replacement,
+			physical_identity: old.physicalIdentity,
+			revision: old.revision + 1,
+		});
+		expect(
+			claims.qualification(
+				await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: old.id }),
+				false,
+			),
+		).toBeNull();
+		await expect(registry.assertAllowed(await target(replacement, true))).rejects.toThrow('reserved');
+		const audit = await database.manager.findOneByOrFail(VirtualThermostatRecoveryEntity, { claimId: old.id });
+		expect(audit).toMatchObject({
+			actorId: 'operator',
+			previousPropertyIdentity: oldProperty,
+			restoredPropertyId: replacement,
+			disconnectionAcknowledged: true,
+		});
+		await expect(configs.restoreActuator(controller, old.id, restore, 'operator')).rejects.toThrow('revision');
+		const restarted = new VirtualThermostatClaimsService(
+			second,
+			new DeviceStructureLockService(),
+			new VirtualDependencyGraphService(second),
+			new PropertyCommandAdmissionRegistryService(),
+			new EventEmitter2(),
+		);
+		await restarted.refresh();
+		const restoredClaim = await second.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: old.id });
+		restarted.recordQualification(priorQualification);
+		expect(restarted.qualification(restoredClaim, false)).toBeNull();
+		restarted.recordQualification({
+			...priorQualification,
+			qualificationGeneration: restoredClaim.qualificationGeneration,
+			profile: { ...priorQualification.profile, evidenceId: 'new-installation' },
+		});
+		expect(restarted.qualification(restoredClaim, false)?.profile.evidenceId).toBe('new-installation');
+		const restoredTarget = await target(replacement, true);
+		expect(() => restarted.assertAllowed(restoredTarget)).toThrow('reserved');
+		await expect(second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId: old.id })).resolves.toBe(1);
+	});
+
+	it.each([
+		{ endpointMissing: false, demand: 'both' },
+		{ endpointMissing: true, demand: 'both' },
+		{ endpointMissing: true, demand: 'config' },
+		{ endpointMissing: true, demand: 'claim' },
+		{ endpointMissing: false, demand: 'state' },
+	])('preserves $demand release demand when restoring (endpointMissing=$endpointMissing)', async (scenario) => {
+		const controller = await owner();
+		const sensor = await ambient();
+		const relay = await actuator();
+		const input = dto(sensor, relay);
+		input.requestedMode = 'heat';
+		const configured = await configs.configure(controller, input);
+		const requested = await configs.requestRelease(controller, configured.revision);
+		const claimId = requested.actuators[0].id;
+		let restoredProperty = relay;
+		if (scenario.endpointMissing) {
+			await database.query('DROP TRIGGER "virtual_thermostat_property_delete"');
+			await database.manager.delete(ChannelPropertyEntity, { id: relay });
+			const channel = await database.manager.findOneByOrFail(ShellyNgChannelEntity, { identifier: 'switch:0' });
+			restoredProperty = uuid();
+			await database.manager.insert(ShellyNgChannelPropertyEntity, {
+				id: restoredProperty,
+				channel: channel.id,
+				identifier: 'output',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			} as never);
+		}
+		if (scenario.demand === 'config' || scenario.demand === 'state')
+			await database.manager.update(
+				VirtualThermostatActuatorClaimEntity,
+				{ id: claimId },
+				{ releaseRequestedAt: null },
+			);
+		if (scenario.demand === 'claim' || scenario.demand === 'state')
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: controller },
+				{ releaseRequestedAt: null },
+			);
+		if (scenario.endpointMissing)
+			await database.manager.update(VirtualThermostatActuatorClaimEntity, { id: claimId }, { state: 'missing' });
+		const priorConfig = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: controller,
+		});
+		const priorClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
+		const restored = await configs.restoreActuator(
+			controller,
+			claimId,
+			{
+				expectedRevision: priorConfig.revision,
+				expectedClaimRevision: priorClaim.revision,
+				physicalIdentity: priorClaim.physicalIdentity,
+				sourcePropertyId: restoredProperty,
+				reason: 'The same physical relay has returned after discovery loss',
+				disconnectionAcknowledged: true,
+			},
+			'operator',
+		);
+		expect(restored.requested_mode).toBe('off');
+		expect(restored.actuators[0]).toMatchObject({ id: claimId, state: 'releasing', source_property: restoredProperty });
+		const savedConfig = await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: controller,
+		});
+		const savedClaim = await second.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
+		expect(savedConfig.releaseRequestedAt).toEqual(priorConfig.releaseRequestedAt);
+		expect(savedClaim.releaseRequestedAt).toEqual(priorClaim.releaseRequestedAt ?? priorConfig.releaseRequestedAt);
+		expect(savedClaim.reason).toBe(priorClaim.reason);
+		expect(savedClaim.releaseEvidence).toBeNull();
+		expect(savedClaim.qualificationGeneration).not.toBe(priorClaim.qualificationGeneration);
+		expect(() => claims.mintAuthority(claimId, 'on')).toThrow('not admitted');
+		await expect(registry.assertAllowed(await target(restoredProperty, true))).rejects.toThrow('reserved');
+	});
+
+	it.each([
+		{ outcome: 'commit', failure: 'post-commit' },
+		{ outcome: 'commit', failure: 'final' },
+		{ outcome: 'validation', failure: 'final' },
+	])('preserves the restore $outcome outcome when the $failure reload fails', async ({ outcome, failure }) => {
+		const controller = await owner();
+		const sensor = await ambient();
+		const relay = await actuator();
+		const configured = await configs.configure(controller, dto(sensor, relay));
+		const claim = configured.actuators[0];
+		const relayTarget = await target(relay, true);
+		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+		const originalFind: typeof database.manager.find = database.manager.find.bind(database.manager);
+		let failRefresh = outcome === 'validation';
+		const refresh = jest.spyOn(database.manager, 'find').mockImplementation(async (...args) => {
+			if (failRefresh && args[0] === VirtualThermostatActuatorClaimEntity) throw new Error('final reload unavailable');
+			return (await originalFind(...args)) as Record<string, unknown>[];
+		});
+		if (outcome === 'commit' && failure === 'post-commit') {
+			const afterCommit: typeof configs.afterCommit = configs.afterCommit.bind(configs);
+			jest.spyOn(configs, 'afterCommit').mockImplementationOnce((id) => {
+				failRefresh = true;
+				return afterCommit(id);
+			});
+		} else if (outcome === 'commit') {
+			events.once(THERMOSTAT_CONFIG_CHANGED, () => (failRefresh = true));
+		}
+		try {
+			const restore = configs.restoreActuator(
+				controller,
+				claim.id,
+				{
+					expectedRevision: configured.revision + (outcome === 'validation' ? 1 : 0),
+					expectedClaimRevision: claim.revision,
+					physicalIdentity: claim.physical_identity,
+					sourcePropertyId: relay,
+					reason: 'The same physical relay has returned after discovery loss',
+					disconnectionAcknowledged: true,
+				},
+				'operator',
+			);
+			if (outcome === 'commit') {
+				await expect(restore).resolves.toMatchObject({ revision: configured.revision + 1, requested_mode: 'off' });
+			} else {
+				await expect(restore).rejects.toBeInstanceOf(DevicesValidationException);
+				await expect(restore).rejects.toThrow('revision changed');
+			}
+			expect(refresh).toHaveBeenCalled();
+			expect(() => claims.assertAllowed(relayTarget)).toThrow('reconciling');
+			expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
+			expect(jest.getTimerCount()).toBe(1);
+			expect(await second.manager.countBy(VirtualThermostatRecoveryEntity, { claimId: claim.id })).toBe(
+				outcome === 'commit' ? 1 : 0,
+			);
+			expect(
+				(await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+			).toBe(configured.revision + (outcome === 'commit' ? 1 : 0));
+			failRefresh = false;
+			const retryRefresh = jest.spyOn(claims, 'refresh');
+			await jest.advanceTimersByTimeAsync(1000);
+			expect(retryRefresh).toHaveBeenCalledTimes(1);
+			await (retryRefresh.mock.results[0].value as Promise<void>);
+			expect(jest.getTimerCount()).toBe(0);
+			// A successful retry proves the recovery fence was released, including on rollback.
+			expect(() => claims.assertAllowed(relayTarget)).toThrow('reserved');
+		} finally {
+			refresh.mockRestore();
+			claims.onModuleDestroy();
+			jest.useRealTimers();
+		}
+	});
+
+	it('revokes queued ON sends at restore entry and keeps them revoked after rollback or commit', async () => {
+		const controller = await owner();
+		const sensor = await ambient();
+		const relay = await actuator();
+		const input = dto(sensor, relay);
+		input.requestedMode = 'heat';
+		const configured = await configs.configure(controller, input);
+		const claim = configured.actuators[0];
+		claims.recordQualification({
+			physicalIdentity: claim.physical_identity,
+			upstreamWritersExcluded: true,
+			opposedOutputsInterlocked: false,
+			profile: {
+				deviceId: 'shellyplus1pm-a8032abe5084',
+				model: 'SNSW-001P16EU',
+				firmware: 'qualified-test-firmware',
+				componentId: 0,
+				evidenceId: 'prior-installation',
+				revision: 1,
+				testedLeaseSeconds: { min: 1, max: 60 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+			},
+		});
+		const alternateProperty = await actuator('A8032ABE5086');
+		await expect(
+			configs.restoreActuator(
+				controller,
+				claim.id,
+				{
+					expectedRevision: configured.revision,
+					expectedClaimRevision: claim.revision,
+					physicalIdentity: claim.physical_identity,
+					sourcePropertyId: alternateProperty,
+					reason: 'The old endpoint was disconnected and must be restored',
+					disconnectionAcknowledged: true,
+				},
+				'operator',
+			),
+		).rejects.toThrow('retained alias reservation');
+		const stop = claims.registerRuntimeAdmission(() => true);
+		const relayTarget = await target(relay, true);
+		const restore = {
+			expectedRevision: configured.revision,
+			expectedClaimRevision: claim.revision,
+			physicalIdentity: claim.physical_identity,
+			sourcePropertyId: relay,
+			reason: 'The relay was disconnected and has returned under the same endpoint',
+			disconnectionAcknowledged: true as const,
+		};
+		const pendingOn = claims.mintAuthority(claim.id, 'on');
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(true);
+		const runtimeAdmission = claims.capture();
+		expect(runtimeAdmission.isCurrent()).toBe(true);
+		let releaseReader!: () => void;
+		let readerEntered!: () => void;
+		const readerGate = new Promise<void>((resolve) => (releaseReader = resolve));
+		const readerStarted = new Promise<void>((resolve) => (readerEntered = resolve));
+		const reader = structure.runShared(async () => {
+			readerEntered();
+			await readerGate;
+		});
+		await readerStarted;
+		const failedRestore = configs.restoreActuator(
+			controller,
+			claim.id,
+			{ ...restore, expectedClaimRevision: claim.revision + 1 },
+			'operator',
+		);
+		let guardedSends = 0;
+		if (claims.isAuthorized(pendingOn, relayTarget)) guardedSends++;
+		expect(guardedSends).toBe(0);
+		expect(runtimeAdmission.isCurrent()).toBe(false);
+		const blockedRefresh = claims.refresh();
+		expect(claims.capture().isCurrent()).toBe(false);
+		expect(claims.capture().isRequestCurrent?.()).toBe(true);
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
+		releaseReader();
+		await reader;
+		await expect(failedRestore).rejects.toThrow('revision');
+		await blockedRefresh;
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		expect(runtimeAdmission.isCurrent()).toBe(false);
+		expect(claims.capture().isCurrent()).toBe(true);
+		const nextOn = claims.mintAuthority(claim.id, 'on');
+		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(true);
+		const secondReaderGate = new Promise<void>((resolve) => (releaseReader = resolve));
+		const secondReaderStarted = new Promise<void>((resolve) => (readerEntered = resolve));
+		const secondReader = structure.runShared(async () => {
+			readerEntered();
+			await secondReaderGate;
+		});
+		await secondReaderStarted;
+		const restorePromise = configs.restoreActuator(controller, claim.id, restore, 'operator');
+		if (claims.isAuthorized(nextOn, relayTarget)) guardedSends++;
+		expect(guardedSends).toBe(0);
+		const restoredRefresh = claims.refresh();
+		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(false);
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
+		releaseReader();
+		await secondReader;
+		const restored = await restorePromise;
+		await restoredRefresh;
+		expect(restored.requested_mode).toBe('off');
+		expect(claims.isAuthorized(pendingOn, relayTarget)).toBe(false);
+		expect(claims.isAuthorized(nextOn, relayTarget)).toBe(false);
+		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow('not admitted');
+		stop();
+	});
+
 	it('disabled owners demand release and keep reservations; removal requires explicit qualified proof', async () => {
 		const controller = await owner(),
 			sensor = await ambient(),
@@ -1025,6 +1393,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 
 	it('migration matches synchronized reservation constraints and stable SET NULL foreign keys', async () => {
 		const runner = database.createQueryRunner();
+		await runner.dropTable('devices_virtual_thermostat_recoveries');
 		for (const table of [
 			'devices_virtual_thermostat_settings',
 			'devices_virtual_thermostat_actuator_claims',
@@ -1034,6 +1403,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			await runner.dropTable(table);
 		const migration = new AddVirtualThermostatClaims1000000000031();
 		await migration.up(runner);
+		const recoveryMigration = new AddVirtualThermostatRecoveries1000000000034();
+		await recoveryMigration.up(runner);
 		const indexes = await runner.query('PRAGMA index_list("devices_virtual_thermostat_actuator_claims")');
 		expect(indexes).toEqual(
 			expect.arrayContaining([
@@ -1050,6 +1421,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: controller }))
 				.sourcePropertyId,
 		).toBeNull();
+		await recoveryMigration.down(runner);
 		await migration.down(runner);
 		await runner.release();
 	});

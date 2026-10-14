@@ -167,6 +167,39 @@ describe('thermostat claim reconciliation recovery', () => {
 		await jest.advanceTimersByTimeAsync(30000);
 		expect(find).toHaveBeenCalledTimes(3);
 	});
+	it('cancels retries after fresh membership without reopening a held recovery fence', async () => {
+		const captured = service.capture();
+		const release = service.holdRecoveryFence();
+		find.mockRejectedValueOnce(new Error('offline')).mockResolvedValue([claim]);
+		await expect(service.refresh()).rejects.toThrow('offline');
+		expect(jest.getTimerCount()).toBe(1);
+		await jest.advanceTimersByTimeAsync(1000);
+		expect(service.capture().isCurrent()).toBe(false);
+		expect(() => service.assertAllowed(output)).toThrow('reconciling');
+		await expect(service.assertAllowed(unrelated)).resolves.toBeUndefined();
+		expect(jest.getTimerCount()).toBe(0);
+		await jest.advanceTimersByTimeAsync(30000);
+		expect(find).toHaveBeenCalledTimes(3);
+		release();
+		await service.refresh();
+		expect(service.capture().isCurrent()).toBe(true);
+		expect(captured.isCurrent()).toBe(false);
+		expect(() => service.assertAllowed(output)).toThrow('reserved');
+	});
+	it('requires every recovery fence to be released before successful refresh opens admission', async () => {
+		const releaseFirst = service.holdRecoveryFence();
+		const releaseSecond = service.holdRecoveryFence();
+		await service.refresh();
+		expect(service.capture().isCurrent()).toBe(false);
+		releaseFirst();
+		releaseFirst();
+		await service.refresh();
+		expect(service.capture().isCurrent()).toBe(false);
+		expect(jest.getTimerCount()).toBe(0);
+		releaseSecond();
+		await service.refresh();
+		expect(service.capture().isCurrent()).toBe(true);
+	});
 
 	it('waits for committed structure and permits nested writer refresh without a reader deadlock', async () => {
 		const release = deferred<void>();

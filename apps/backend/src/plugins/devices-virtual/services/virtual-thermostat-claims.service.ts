@@ -34,6 +34,8 @@ export interface ThermostatCommandAuthority {
 }
 export interface ThermostatInstalledQualification {
 	readonly physicalIdentity: string;
+	/** Must match the retained claim after an operator restore; older durable profiles cannot be replayed. */
+	readonly qualificationGeneration?: string;
 	readonly profile: ShellyProtectiveQualification;
 	readonly upstreamWritersExcluded: boolean;
 	readonly opposedOutputsInterlocked: boolean;
@@ -67,6 +69,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	private readonly byProperty = new Map<string, VirtualThermostatActuatorClaimEntity>();
 	private epoch = 0;
 	private ready = false;
+	private recoveryFences = 0;
 	private unregister?: () => void;
 	private refreshInFlight?: Promise<void>;
 	private retryTimer?: ReturnType<typeof setTimeout>;
@@ -124,6 +127,18 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.ready = false;
 		this.epoch++;
 	}
+	/** Keep command admission closed from restore entry until its commit or rollback has been reloaded. */
+	holdRecoveryFence(): () => void {
+		this.recoveryFences++;
+		this.invalidate();
+		let released = false;
+		return () => {
+			if (released) return;
+			released = true;
+			this.recoveryFences--;
+			this.invalidate();
+		};
+	}
 	async refresh(): Promise<void> {
 		// Acquire before coalescing: a writer's post-commit refresh must never join a reader queued behind it.
 		await this.structureLock.runShared(async () => {
@@ -155,8 +170,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				this.reservations.set(row.physicalIdentity, row);
 				this.byProperty.set(row.sourcePropertyIdentity, row);
 			}
-			this.ready = true;
-			// Retry completion tracks fresh membership, independently of any future recovery admission fence.
+			this.ready = this.recoveryFences === 0;
+			// Retry completion tracks fresh membership, independently of the recovery admission fence.
 			this.cancelRetry();
 			this.retryDelay = 1000;
 		} catch (error) {
@@ -260,6 +275,11 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		);
 		this.epoch++;
 	}
+	/** Recovery changes the binding contract. Old installation evidence cannot qualify the restored leaf. */
+	revokeQualification(physicalIdentity: string): void {
+		this.qualifications.delete(physicalIdentity);
+		this.invalidate();
+	}
 	qualification(
 		claim: VirtualThermostatActuatorClaimEntity,
 		opposed: boolean,
@@ -268,6 +288,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		opposed ||= [...this.reservations.values()].filter((row) => row.controllerId === claim.controllerId).length > 1;
 		if (
 			!evidence ||
+			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
 			(opposed && !evidence.opposedOutputsInterlocked) ||
 			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min ||
 			claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max
