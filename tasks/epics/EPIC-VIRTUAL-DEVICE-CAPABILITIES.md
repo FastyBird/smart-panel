@@ -67,6 +67,8 @@ CodeRabbit review gates; a prepared feature branch does not count as delivered.
 
 ## Merged software evidence and remaining acceptance
 
+The [requirement-by-requirement evidence ledger](../../docs/work/virtual-device-capabilities-acceptance.md) links named source/test cases and states the limits of each proof.
+
 Production features through PR #1443 are merged on `10e9c206d68f12966d5bb7d5a0777ed5f0f26a3c`.
 The identical composed source tree at `f84be26b257ad225c0cd6816a428da2059e252da` passed all 15 hosted
 checks and completed CodeRabbit review with Minimal risk and no blocking finding before merge.
