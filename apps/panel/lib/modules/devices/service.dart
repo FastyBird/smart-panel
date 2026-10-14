@@ -32,12 +32,12 @@ class DevicesService extends ChangeNotifier {
     required ChannelControlsRepository channelControlsRepository,
     required DeviceValidationRepository validationRepository,
     this.compositeCommands,
-  })  : _devicesRepository = devicesRepository,
-        _devicesControlsRepository = devicesControlsRepository,
-        _channelsRepository = channelsRepository,
-        _channelPropertiesRepository = channelPropertiesRepository,
-        _channelControlsRepository = channelControlsRepository,
-        _validationRepository = validationRepository;
+  }) : _devicesRepository = devicesRepository,
+       _devicesControlsRepository = devicesControlsRepository,
+       _channelsRepository = channelsRepository,
+       _channelPropertiesRepository = channelPropertiesRepository,
+       _channelControlsRepository = channelControlsRepository,
+       _validationRepository = validationRepository;
 
   CompositeCommandOutcome? latestCompositeFor(String deviceId) =>
       compositeCommands?.latestFor(deviceId);
@@ -47,7 +47,9 @@ class DevicesService extends ChangeNotifier {
     required List<PropertyCommandItem> properties,
   }) {
     final commands = compositeCommands;
-    if (commands == null) throw StateError('Composite command transport unavailable');
+    if (commands == null) {
+      throw StateError('Composite command transport unavailable');
+    }
     return commands.send(
       deviceId: deviceId,
       properties: properties,
