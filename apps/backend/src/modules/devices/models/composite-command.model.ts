@@ -6,16 +6,20 @@ import type { CompositeChildStatus } from '../services/composite-property-comman
 
 @ApiSchema({ name: 'DevicesModuleDataCompositeCommandChildOutcome' })
 export class CompositeCommandChildOutcomeModel {
-	@ApiPropertyOptional({ description: 'Intended physical channel identity captured before remap or deletion' })
-	@Expose()
+	@ApiPropertyOptional({
+		name: 'member_identity',
+		description: 'Intended physical channel identity captured before remap or deletion',
+	})
+	@Expose({ name: 'member_identity' })
 	memberIdentity?: string;
 
 	@ApiPropertyOptional({
+		name: 'property_identity',
 		type: 'string',
 		nullable: true,
 		description: 'Original intended physical property identity, including a cleared live FK',
 	})
-	@Expose()
+	@Expose({ name: 'property_identity' })
 	propertyIdentity?: string | null;
 
 	@ApiPropertyOptional({
@@ -25,16 +29,17 @@ export class CompositeCommandChildOutcomeModel {
 	@Expose()
 	value?: string | number | boolean;
 
-	@ApiProperty({ description: 'Stable intended member identity' })
-	@Expose()
+	@ApiProperty({ name: 'member_id', description: 'Stable intended member identity' })
+	@Expose({ name: 'member_id' })
 	memberId: string;
 
 	@ApiProperty({
+		name: 'property_id',
 		description: 'Canonical property, null for a missing intended member',
 		type: 'string',
 		nullable: true,
 	})
-	@Expose()
+	@Expose({ name: 'property_id' })
 	propertyId: string | null;
 
 	@ApiProperty({ enum: ['accepted', 'confirmed', 'failed', 'unavailable', 'superseded', 'timed_out'] })
