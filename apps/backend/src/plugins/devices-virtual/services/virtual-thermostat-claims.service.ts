@@ -1,5 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
-import { DataSource, Not } from 'typeorm';
+import { DataSource, Not, QueryRunner } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -16,7 +16,10 @@ import {
 } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
-import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
+import {
+	VirtualThermostatActuatorClaimEntity,
+	VirtualThermostatConfigEntity,
+} from '../entities/virtual-thermostat.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
@@ -48,8 +51,20 @@ export interface ThermostatReleaseProof {
 export class VirtualThermostatClaimsService implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly authorities = new WeakSet<object>();
 	private readonly authorityEpochs = new WeakMap<object, number>();
-	private readonly proofs = new WeakSet<object>();
+	private readonly proofs = new WeakMap<
+		object,
+		{
+			authority: ThermostatCommandAuthority;
+			qualification: ThermostatInstalledQualification;
+			isCurrent: () => boolean;
+			controllerRevision: number;
+			sourcePropertyId: string;
+			sourceDeviceId: string;
+			contractFingerprint: string;
+		}
+	>();
 	private readonly qualifications = new Map<string, ThermostatInstalledQualification>();
+	private readonly releaseWrites = new WeakMap<QueryRunner, { query: string; parameters: readonly unknown[] }>();
 	private readonly reservations = new Map<string, VirtualThermostatActuatorClaimEntity>();
 	private readonly byProperty = new Map<string, VirtualThermostatActuatorClaimEntity>();
 	private epoch = 0;
@@ -334,10 +349,17 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		);
 	}
 
-	/** Accepted transport/OFF readback alone cannot construct proof: durable runtime must also prove ON drainage. */
+	/** Bind durable ON drainage to the original qualification and live proof guard; OFF readback alone cannot release ownership. */
 	recordQualifiedRelease(
 		authority: ThermostatCommandAuthority,
-		evidence: { outputConfirmedOff: boolean; pendingOnDrained: boolean; evidenceId: string },
+		evidence: {
+			outputConfirmedOff: boolean;
+			pendingOnDrained: boolean;
+			evidenceId: string;
+			qualification: ThermostatInstalledQualification;
+			isCurrent: () => boolean;
+			controllerRevision: number;
+		},
 	): ThermostatReleaseProof {
 		const claim = this.reservations.get(authority?.physicalIdentity);
 		if (
@@ -348,35 +370,90 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			!claim ||
 			claim.id !== authority.claimId ||
 			claim.revision !== authority.revision ||
-			!this.qualification(claim, false) ||
+			!evidence.qualification ||
+			this.qualification(claim, false) !== evidence.qualification ||
+			typeof evidence.isCurrent !== 'function' ||
+			!evidence.isCurrent() ||
+			!Number.isSafeInteger(evidence.controllerRevision) ||
+			evidence.controllerRevision < 1 ||
 			!evidence.outputConfirmedOff ||
 			!evidence.pendingOnDrained ||
 			!evidence.evidenceId
 		)
 			throw new DevicesValidationException('Qualified OFF and pending ON drainage proof is required.');
 		const proof = Object.freeze({ claimId: claim.id, revision: claim.revision, evidenceId: evidence.evidenceId });
-		this.proofs.add(proof);
+		this.proofs.set(proof, {
+			authority,
+			qualification: evidence.qualification,
+			isCurrent: evidence.isCurrent,
+			controllerRevision: evidence.controllerRevision,
+			sourcePropertyId: claim.sourcePropertyId,
+			sourceDeviceId: claim.sourceDeviceId,
+			contractFingerprint: claim.contractFingerprint,
+		});
 		return proof;
 	}
+	/** Only the exact guarded release statement may retain its own admission during the awaited SQL write. */
+	isQualifiedReleaseWrite(runner: QueryRunner, query: string, parameters: readonly unknown[] = []): boolean {
+		const write = this.releaseWrites.get(runner);
+		return (
+			!!write &&
+			write.query === query &&
+			write.parameters.length === parameters.length &&
+			write.parameters.every((parameter, index) => Object.is(parameter, parameters[index]))
+		);
+	}
+	/** Consume one bound proof and roll back if its live source or installed qualification changes during release. */
 	async completeRelease(proof: ThermostatReleaseProof): Promise<void> {
-		if (!this.proofs.has(proof)) throw new DevicesValidationException('Internal release proof is required.');
+		const binding = this.proofs.get(proof);
+		if (!binding) throw new DevicesValidationException('Internal release proof is required.');
+		// An attempted release consumes this proof even when its transaction rolls back; retry needs fresh evidence.
+		this.proofs.delete(proof);
+		const assertCurrent = (claim: VirtualThermostatActuatorClaimEntity): void => {
+			if (
+				!this.ready ||
+				this.authorityEpochs.get(binding.authority) !== this.epoch ||
+				claim.revision !== proof.revision ||
+				claim.state !== 'releasing' ||
+				claim.physicalIdentity !== binding.authority.physicalIdentity ||
+				claim.controllerId !== binding.authority.controllerId ||
+				claim.sourcePropertyId !== binding.sourcePropertyId ||
+				claim.sourceDeviceId !== binding.sourceDeviceId ||
+				claim.contractFingerprint !== binding.contractFingerprint ||
+				this.qualification(claim, false) !== binding.qualification ||
+				!binding.isCurrent()
+			)
+				throw new DevicesValidationException('Qualified release proof is no longer current.');
+		};
 		await this.structureLock.runExclusive(async () => {
 			await this.graph.withStructuralWrite(async (manager) => {
 				const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: proof.claimId });
-				if (claim.revision !== proof.revision || claim.state !== 'releasing')
-					throw new DevicesValidationException('Claim revision or release state changed.');
-				await manager.update(
-					VirtualThermostatActuatorClaimEntity,
-					{ id: claim.id, revision: proof.revision },
-					{
+				const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
+				if (config?.revision !== binding.controllerRevision)
+					throw new DevicesValidationException('Qualified release configuration scope changed.');
+				assertCurrent(claim);
+				const update = manager
+					.createQueryBuilder()
+					.update(VirtualThermostatActuatorClaimEntity)
+					.set({
 						state: claim.reason === 'device_disabled' ? 'suspended' : 'released',
 						revision: claim.revision + 1,
 						releasedAt: new Date(),
 						releaseEvidence: { evidenceId: proof.evidenceId, outputConfirmedOff: true, pendingOnDrained: true },
-					},
-				);
+					})
+					.where({ id: claim.id, revision: proof.revision, state: 'releasing' });
+				const [query, parameters] = update.getQueryAndParameters();
+				const runner = manager.queryRunner;
+				if (!runner) throw new DevicesValidationException('Release transaction is required.');
+				this.releaseWrites.set(runner, { query, parameters });
+				try {
+					const result = await update.execute();
+					assertCurrent(claim);
+					if (result.affected !== 1) throw new DevicesValidationException('Claim revision or release state changed.');
+				} finally {
+					this.releaseWrites.delete(runner);
+				}
 			});
-			this.proofs.delete(proof);
 			this.invalidate();
 			await this.refresh();
 		});
