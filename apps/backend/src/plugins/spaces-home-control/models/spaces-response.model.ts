@@ -4,6 +4,7 @@ import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaP
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { CompositeCommandOutcomeModel } from '../../../modules/devices/models/composite-command.model';
 import {
 	ALL_SPACE_CATEGORIES,
 	SpaceRoomCategory,
@@ -102,6 +103,14 @@ export class ProposedSpacesResponseModel extends BaseSuccessResponseModel<Propos
  */
 @ApiSchema({ name: 'SpacesModuleDataLightingIntentResult' })
 export class LightingIntentResultDataModel {
+	@ApiPropertyOptional({
+		type: [CompositeCommandOutcomeModel],
+		description: 'Correlated physical member outcomes; only confirmed parents count as full success',
+	})
+	@Expose()
+	@Type(() => CompositeCommandOutcomeModel)
+	composites?: CompositeCommandOutcomeModel[];
+
 	@ApiProperty({
 		description: 'Whether the intent was successfully executed',
 		type: 'boolean',
@@ -3074,6 +3083,14 @@ export class RolesStateMapDataModel {
  */
 @ApiSchema({ name: 'SpacesModuleDataLightingState' })
 export class LightingStateDataModel {
+	@ApiPropertyOptional({
+		name: 'unknown_lights',
+		description: 'Intended light members without qualified current on/off feedback',
+		type: 'integer',
+	})
+	@Expose({ name: 'unknown_lights' })
+	unknownLights?: number;
+
 	@ApiProperty({
 		name: 'has_lights',
 		description: 'Whether the space has any controllable lights',
@@ -3208,6 +3225,7 @@ export class LightingStateDataModel {
 		model.lastAppliedMode = state.lastAppliedMode;
 		model.lastAppliedAt = state.lastAppliedAt;
 		model.totalLights = state.totalLights;
+		model.unknownLights = state.unknownLights ?? 0;
 		model.lightsOn = state.lightsOn;
 		model.averageBrightness = state.averageBrightness;
 		// Store class instances - the WebSocket gateway's transformPayload will serialize them

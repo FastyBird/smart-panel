@@ -786,31 +786,21 @@ export { RemoteAccessTailscalePluginDataSetupJobState as RemoteAccessTailscalePl
 
 // Remote Access Cloudflare Tunnel Plugin Schemas
 // =================================================
-export type RemoteAccessCloudflareTunnelPluginConfigSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginDataConfig'];
-export type RemoteAccessCloudflareTunnelPluginUpdateConfigSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginUpdateConfig'];
-export type RemoteAccessCloudflareTunnelPluginStatusSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginDataStatus'];
-export type RemoteAccessCloudflareTunnelPluginInstallSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginDataInstall'];
-export type RemoteAccessCloudflareTunnelPluginRequirementSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginDataRequirement'];
+export type RemoteAccessCloudflareTunnelPluginConfigSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginDataConfig'];
+export type RemoteAccessCloudflareTunnelPluginUpdateConfigSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginUpdateConfig'];
+export type RemoteAccessCloudflareTunnelPluginStatusSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginDataStatus'];
+export type RemoteAccessCloudflareTunnelPluginInstallSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginDataInstall'];
+export type RemoteAccessCloudflareTunnelPluginRequirementSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginDataRequirement'];
 export type RemoteAccessCloudflareTunnelPluginRequirementRemedySchema =
 	components['schemas']['RemoteAccessCloudflareTunnelPluginDataRequirementRemedy'];
-export type RemoteAccessCloudflareTunnelPluginSetupJobSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginDataSetupJob'];
-export type RemoteAccessCloudflareTunnelPluginPrivilegedSetupSchema =
-	components['schemas']['RemoteAccessCloudflareTunnelPluginDataPrivilegedSetup'];
+export type RemoteAccessCloudflareTunnelPluginSetupJobSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginDataSetupJob'];
+export type RemoteAccessCloudflareTunnelPluginPrivilegedSetupSchema = components['schemas']['RemoteAccessCloudflareTunnelPluginDataPrivilegedSetup'];
 
 // Remote Access Cloudflare Tunnel Plugin Operations
 // ====================================================
-export type RemoteAccessCloudflareTunnelPluginGetStatusOperation =
-	operations['get-remote-access-cloudflare-tunnel-plugin-status'];
-export type RemoteAccessCloudflareTunnelPluginCreateInstallOperation =
-	operations['create-remote-access-cloudflare-tunnel-plugin-install'];
-export type RemoteAccessCloudflareTunnelPluginCreateResetOperation =
-	operations['create-remote-access-cloudflare-tunnel-plugin-reset'];
+export type RemoteAccessCloudflareTunnelPluginGetStatusOperation = operations['get-remote-access-cloudflare-tunnel-plugin-status'];
+export type RemoteAccessCloudflareTunnelPluginCreateInstallOperation = operations['create-remote-access-cloudflare-tunnel-plugin-install'];
+export type RemoteAccessCloudflareTunnelPluginCreateResetOperation = operations['create-remote-access-cloudflare-tunnel-plugin-reset'];
 
 // Remote Access Cloudflare Tunnel Plugin Enums
 // ================================================

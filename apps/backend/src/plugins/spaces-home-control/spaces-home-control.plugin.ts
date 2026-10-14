@@ -50,6 +50,7 @@ import { CoversIntentService } from './services/covers-intent.service';
 import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
 import { HomeControlSpacesService } from './services/home-control-spaces.service';
+import { LightingContributionPlannerService } from './services/lighting-contribution-planner.service';
 import { LightingIntentService } from './services/lighting-intent.service';
 import { MediaCapabilityService } from './services/media-capability.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
@@ -134,6 +135,7 @@ import { IntentSpecLoaderService } from './spec';
 		WebsocketModule,
 	],
 	providers: [
+		LightingContributionPlannerService,
 		// Resolvers + loader
 		HomeControlHomePageResolver,
 		HomeControlSpacesService,

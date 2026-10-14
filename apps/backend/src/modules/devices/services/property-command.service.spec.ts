@@ -736,6 +736,56 @@ describe('PropertyCommandService', () => {
 	});
 
 	describe('executePropertyCommands', () => {
+		it('does not dispatch an ordinary REST batch after its captured entry expires during metadata work', async () => {
+			const property = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-a',
+				channel: mockChannel.id,
+				permissions: [PermissionType.READ_WRITE],
+			});
+			const registry = new CompositePropertyCommandRegistryService();
+			registry.register({ canHandle: () => false, plan: jest.fn() });
+			Object.assign(service, { composites: registry });
+			const entry = service.captureCommandEntry();
+			expect(entry?.isActive()).toBe(true);
+			jest.spyOn(channelsPropertiesService, 'findOne').mockImplementation(() => {
+				entry?.dispose();
+				return Promise.resolve(property);
+			});
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties([property]));
+			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+			const processBatch = jest.spyOn(mockPlatform, 'processBatch');
+			const result = await service.executePropertyCommands([{ propertyId: 'prop-a', value: true }], {
+				commandEntry: entry,
+			});
+			expect(result.success).toBe(false);
+			expect(processBatch).not.toHaveBeenCalled();
+		});
+
+		it('rejects a claimed device or channel that does not own the property before dispatch', async () => {
+			const property = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-a',
+				channel: mockChannel.id,
+				permissions: [PermissionType.READ_WRITE],
+			});
+			jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties([property]));
+			const dispatch = jest.spyOn(propertyCommandDispatchService, 'dispatchBatch');
+
+			for (const mismatch of [
+				{ requestedDeviceId: 'other-device', requestedChannelId: mockChannel.id },
+				{ requestedDeviceId: mockDevice.id, requestedChannelId: 'other-channel' },
+			]) {
+				const result = await service.executePropertyCommands([{ propertyId: 'prop-a', value: true, ...mismatch }]);
+				expect(result.success).toBe(false);
+				expect(result.results[0].reason).toContain('does not own the property');
+			}
+			expect(dispatch).not.toHaveBeenCalled();
+		});
+
 		it('should reject batch commands across multiple devices', async () => {
 			const deviceA = toInstance(MockDevice, { ...mockDevice, id: 'dev-a' });
 			const deviceB = toInstance(MockDevice, { ...mockDevice, id: 'dev-b' });
