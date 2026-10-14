@@ -33,3 +33,26 @@ export class VirtualCreatedThermostatResponseModel extends BaseSuccessResponseMo
 	@Type(() => VirtualCreatedThermostatModel)
 	declare data: VirtualCreatedThermostatModel;
 }
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatPropertyBinding' })
+export class VirtualThermostatPropertyBindingModel {
+	@ApiProperty({ description: 'Bound property UUID', format: 'uuid' })
+	@Expose()
+	property: string;
+
+	@ApiProperty({ description: 'Owning channel UUID', format: 'uuid' })
+	@Expose()
+	channel: string;
+
+	@ApiProperty({ description: 'Owning device UUID', format: 'uuid' })
+	@Expose()
+	device: string;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginResThermostatPropertyBinding' })
+export class VirtualThermostatPropertyBindingResponseModel extends BaseSuccessResponseModel<VirtualThermostatPropertyBindingModel> {
+	@ApiProperty({ type: VirtualThermostatPropertyBindingModel })
+	@Expose()
+	@Type(() => VirtualThermostatPropertyBindingModel)
+	declare data: VirtualThermostatPropertyBindingModel;
+}

@@ -54,6 +54,7 @@ import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
 
@@ -61,7 +62,7 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
-import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
 jest.setTimeout(30000);
 
@@ -71,6 +72,7 @@ describe('atomic virtual thermostat authoring', () => {
 	let registry: PropertyCommandAdmissionRegistryService;
 	let claims: VirtualThermostatClaimsService;
 	let configs: VirtualThermostatConfigService;
+	let devices: DevicesService;
 	let events: EventEmitter2;
 	let ambientId: string;
 	let relayId: string;
@@ -155,7 +157,7 @@ describe('atomic virtual thermostat authoring', () => {
 			database.getRepository(SpaceEntity),
 			events,
 		);
-		const devices = new DevicesService(
+		devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
 			deviceMapper,
@@ -354,6 +356,20 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(values.write).not.toHaveBeenCalled();
 	});
 
+	it('resolves a saved property directly to its channel and device', async () => {
+		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: ambientId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property.channel as ChannelEntity;
+		expect(await authoring.propertyBinding(ambientId)).toEqual({
+			property: ambientId,
+			channel: channel.id,
+			device: (channel.device as DeviceEntity).id,
+		});
+		expect(await authoring.propertyBinding(uuid())).toBeNull();
+	});
+
 	it('commits the owner and canonical reservation together and rejects a second UUID alias', async () => {
 		const first = request(relayId);
 		const created = await authoring.create(first);
@@ -368,6 +384,108 @@ describe('atomic virtual thermostat authoring', () => {
 		).toBe(1);
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
 		expect(publications).toEqual([]);
+	});
+
+	it.each(['value write', 'claims refresh', 'event publication', 'device hydration'])(
+		'returns the persisted thermostat when post-commit %s fails',
+		async (failure) => {
+			const input = request(relayId);
+			if (failure === 'value write') jest.spyOn(values, 'write').mockRejectedValueOnce(new Error('value write failed'));
+			if (failure === 'claims refresh')
+				jest.spyOn(claims, 'refresh').mockRejectedValueOnce(new Error('refresh failed'));
+			if (failure === 'event publication')
+				jest.spyOn(events, 'emit').mockImplementation((event: string | symbol, ...args: unknown[]) => {
+					if (event === THERMOSTAT_CONFIG_CHANGED) throw new Error('publication failed');
+					return Boolean(EventEmitter2.prototype.emit.call(events, event, ...args));
+				});
+			if (failure === 'device hydration')
+				jest.spyOn(devices, 'findOne').mockRejectedValueOnce(new Error('hydration failed'));
+			const created = await authoring.create(input);
+			expect(created.device.id).toBe(input.device.id);
+			expect(created.device.channels).toHaveLength(input.device.channels.length);
+			expect(created.configuration.controller).toBe(input.device.id);
+			expect(created.configuration.revision).toBe(1);
+			expect(created.configuration.actuators).toEqual([
+				expect.objectContaining({ source_property: relayId, state: 'reserved', revision: 1 }),
+			]);
+			expect(created.configuration.readiness).toBe('draft');
+			const settingId = input.configuration.settings.find(
+				(setting) => setting.setting === 'heating_enabled',
+			).propertyId;
+			const committedSetting = created.device.channels
+				.flatMap((channel) => channel.properties)
+				.find((property) => property.id === settingId);
+			expect(committedSetting?.permissions).toEqual([PermissionType.READ_WRITE]);
+			expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: settingId })).permissions).toEqual([
+				PermissionType.READ_WRITE,
+			]);
+			expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+			expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+			expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+		},
+	);
+
+	it('returns the durable creation when commit subscriber reconciliation fails closed', async () => {
+		const subscriber = new VirtualThermostatOwnershipSubscriber(database, claims);
+		await subscriber.onApplicationBootstrap();
+		const commitRefresh = jest.spyOn(subscriber, 'afterTransactionCommit');
+		await claims.refresh();
+		const input = request(relayId);
+		const target = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: relayId },
+			relations: ['channel', 'channel.device'],
+		});
+		const admission = {
+			property: target,
+			channel: target.channel as ChannelEntity,
+			device: (target.channel as ChannelEntity).device as DeviceEntity,
+			value: true,
+		};
+		await claims.assertAllowed(admission);
+		const originalRefresh = claims.refresh.bind(claims);
+		let failRefresh = true;
+		const refresh = jest.spyOn(claims, 'refresh').mockImplementation(async () => {
+			if (failRefresh) throw new Error('commit reconciliation failed');
+			await originalRefresh();
+		});
+		const created = await authoring.create(input);
+		expect(commitRefresh).toHaveBeenCalled();
+		expect(refresh).toHaveBeenCalled();
+		expect(created.device.id).toBe(input.device.id);
+		expect(created.configuration.controller).toBe(input.device.id);
+		expect(created.configuration.actuators).toEqual([
+			expect.objectContaining({ source_property: relayId, state: 'reserved' }),
+		]);
+		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+		expect(() => claims.assertAllowed(admission)).toThrow('reconciling');
+		failRefresh = false;
+		await claims.refresh();
+		expect(() => claims.assertAllowed(admission)).toThrow('reserved');
+	});
+
+	it('preserves a nontransactional catalog write when reconciliation fails', async () => {
+		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		jest.spyOn(claims, 'refresh').mockRejectedValue(new Error('reconciliation failed'));
+		await database.manager.update(ChannelPropertyEntity, { id: ambientId }, { name: 'Renamed ambient' });
+		expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambientId })).name).toBe(
+			'Renamed ambient',
+		);
+	});
+
+	it('preserves the original transaction error when rollback reconciliation fails', async () => {
+		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
+		jest.spyOn(claims, 'refresh').mockRejectedValue(new Error('reconciliation failed'));
+		await expect(
+			database.transaction(async (manager) => {
+				await manager.update(ChannelPropertyEntity, { id: ambientId }, { name: 'Rolled back' });
+				throw new Error('original transaction failure');
+			}),
+		).rejects.toThrow('original transaction failure');
+		expect((await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: ambientId })).name).not.toBe(
+			'Rolled back',
+		);
 	});
 
 	it('rolls back the full graph and claim if persistence fails after real creation hooks', async () => {

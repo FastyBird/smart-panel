@@ -16,17 +16,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { ElOption, ElSelect, ElText } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
+import { injectStoresManager, useBackend } from '../../../common';
 import type { IChannel, IChannelProperty, IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
+import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 
 const props = defineProps<{ modelValue: string | null; ownerDeviceId?: string; kind: 'ambient' | 'floor' | 'contact' | 'actuator' | 'setting' }>();
 const emit = defineEmits<{ (event: 'update:modelValue', value: string | null): void }>();
 const stores = injectStoresManager();
+const backend = useBackend();
 const devicesStore = stores.getStore(devicesStoreKey);
 const channelsStore = stores.getStore(channelsStoreKey);
 const propertiesStore = stores.getStore(channelsPropertiesStoreKey);
@@ -47,43 +50,52 @@ const properties = computed<IChannelProperty[]>(() => channelId.value
 	: []);
 
 const onDevice = (value: string | null): void => {
+	resolveGeneration++;
 	deviceId.value = value;
 	channelId.value = null;
 	emit('update:modelValue', null);
 	if (value) void channelsStore.fetch({ deviceId: value });
 };
 const onChannel = (value: string | null): void => {
+	resolveGeneration++;
 	channelId.value = value;
 	emit('update:modelValue', null);
 	if (value) void propertiesStore.fetch({ channelId: value });
 };
 const onProperty = (value: string | null): void => emit('update:modelValue', value);
 
+let resolveGeneration = 0;
 const resolveCurrent = async (): Promise<void> => {
-	if (!props.modelValue) return;
-	let property = propertiesStore.findById(props.modelValue);
-	if (!property) {
-		// Configuration only retains the property UUID. Rehydrate its device/channel
-		// path so existing cross-device bindings remain visible when the editor opens.
-		const candidates = props.ownerDeviceId
-			? devicesStore.findAll().filter((device) => device.id === props.ownerDeviceId)
-			: devicesStore.findAll().filter((device) => device.id !== props.ownerDeviceId);
-		for (const device of candidates) {
-			await channelsStore.fetch({ deviceId: device.id });
-			for (const channel of channelsStore.findForDevice(device.id)) {
-				await propertiesStore.fetch({ channelId: channel.id });
-				property = propertiesStore.findById(props.modelValue);
-				if (property) break;
-			}
-			if (property) break;
-		}
+	const generation = ++resolveGeneration;
+	const id = props.modelValue;
+	const ownerDeviceId = props.ownerDeviceId;
+	const current = () => generation === resolveGeneration && props.modelValue === id && props.ownerDeviceId === ownerDeviceId;
+	if (!id) {
+		deviceId.value = ownerDeviceId ?? null;
+		channelId.value = null;
+		return;
 	}
-	if (!property) return;
-	const channel = channelsStore.findById(property.channel);
-	if (!channel) return;
-	deviceId.value = channel.device;
-	channelId.value = channel.id;
-	await propertiesStore.fetch({ channelId: channel.id });
+	try {
+		const { data } = await backend.client.GET(
+			`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/thermostats/binding-properties/{id}`,
+			{ params: { path: { id } } },
+		);
+		if (!current()) return;
+		if (!data || data.data.property !== id) throw new Error('Binding property is unavailable.');
+		const binding = data.data;
+		if (ownerDeviceId && binding.device !== ownerDeviceId) return;
+		const channel = channelsStore.findById(binding.channel) ?? await channelsStore.get({ id: binding.channel });
+		if (!current() || channel.device !== binding.device) return;
+		const property = propertiesStore.findById(id) ?? await propertiesStore.get({ id, channelId: channel.id });
+		if (!current() || property.channel !== channel.id) return;
+		deviceId.value = channel.device;
+		channelId.value = channel.id;
+		await propertiesStore.fetch({ channelId: channel.id });
+	} catch {
+		if (!current()) return;
+		deviceId.value = ownerDeviceId ?? null;
+		channelId.value = null;
+	}
 };
 
 onMounted(async () => {
@@ -91,5 +103,6 @@ onMounted(async () => {
 	if (props.ownerDeviceId) await channelsStore.fetch({ deviceId: props.ownerDeviceId });
 	await resolveCurrent();
 });
-watch(() => props.modelValue, () => { void resolveCurrent(); });
+watch(() => [props.modelValue, props.ownerDeviceId], () => { void resolveCurrent(); });
+onBeforeUnmount(() => { resolveGeneration++; });
 </script>

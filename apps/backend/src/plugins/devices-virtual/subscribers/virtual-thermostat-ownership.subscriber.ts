@@ -10,7 +10,7 @@ import {
 	UpdateEvent,
 } from 'typeorm';
 
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
@@ -21,6 +21,7 @@ import { THERMOSTAT_OWNERSHIP_TRIGGERS } from '../services/virtual-thermostat-ow
 /** Runs at the persistence boundary, including adapter metadata/pruning paths outside REST controllers. */
 @Injectable()
 export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInterface, OnApplicationBootstrap {
+	private readonly logger = new Logger(VirtualThermostatOwnershipSubscriber.name);
 	private installed = false;
 	constructor(
 		private readonly dataSource: DataSource,
@@ -44,13 +45,22 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
 		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))
-			await this.claims.refresh();
+			await this.refreshAfterWrite('catalog write');
 	}
 	async afterTransactionCommit(event: TransactionCommitEvent): Promise<void> {
-		if (this.installed && !event.queryRunner.isTransactionActive) await this.claims.refresh();
+		if (this.installed && !event.queryRunner.isTransactionActive) await this.refreshAfterWrite('transaction commit');
 	}
 	async afterTransactionRollback(event: TransactionRollbackEvent): Promise<void> {
-		if (this.installed && !event.queryRunner.isTransactionActive) await this.claims.refresh();
+		if (this.installed && !event.queryRunner.isTransactionActive) await this.refreshAfterWrite('transaction rollback');
+	}
+	private async refreshAfterWrite(boundary: string): Promise<void> {
+		try {
+			await this.claims.refresh();
+		} catch (error) {
+			// SQL has already committed or rolled back. Preserve that outcome and close admission until recovery.
+			this.claims.invalidate();
+			this.logger.error(`Thermostat claim reconciliation failed after ${boundary}`, error);
+		}
 	}
 
 	async beforeRemove(event: RemoveEvent<DeviceEntity | ChannelEntity | ChannelPropertyEntity>): Promise<void> {
