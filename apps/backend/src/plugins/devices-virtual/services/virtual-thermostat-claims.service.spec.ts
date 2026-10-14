@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { BeforeQueryEvent, DataSource, QueryRunner } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -10,6 +10,7 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
@@ -77,6 +78,34 @@ describe('thermostat claim reconciliation recovery', () => {
 		jest.useRealTimers();
 	});
 
+	it('exempts only the armed release runner, exact SQL and parameters from catalog revocation', () => {
+		const dataSource = { subscribers: [] } as unknown as DataSource;
+		const subscriber = new VirtualThermostatOwnershipSubscriber(dataSource, service);
+		(subscriber as unknown as { installed: boolean }).installed = true;
+		const runner = {} as QueryRunner;
+		const query = 'UPDATE "devices_virtual_thermostat_actuator_claims" SET "state" = ? WHERE "id" = ?';
+		const parameters = ['released', 'claim'];
+		const writes = (
+			service as unknown as { releaseWrites: WeakMap<QueryRunner, { query: string; parameters: unknown[] }> }
+		).releaseWrites;
+		writes.set(runner, { query, parameters });
+		const invalidate = jest.spyOn(service, 'invalidate');
+		const before = (queryRunner: QueryRunner, sql = query, values = parameters) =>
+			subscriber.beforeQuery({
+				queryRunner,
+				query: sql,
+				parameters: values,
+			} as BeforeQueryEvent<unknown>);
+		before(runner);
+		expect(invalidate).not.toHaveBeenCalled();
+		before({} as QueryRunner);
+		before(runner, query, ['released', 'other-claim']);
+		before(runner, 'UPDATE "devices_virtual_thermostat_configs" SET "revision" = 3');
+		expect(invalidate).toHaveBeenCalledTimes(3);
+		writes.delete(runner);
+		before(runner);
+		expect(invalidate).toHaveBeenCalledTimes(4);
+	});
 	it('recovers while idle, keeps guarded commands closed and leaves unrelated outputs available', async () => {
 		const captured = service.capture();
 		find.mockRejectedValueOnce(new Error('database unavailable')).mockResolvedValue([claim]);

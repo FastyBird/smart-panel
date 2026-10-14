@@ -231,6 +231,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(registry.assertAllowed(await target(relay, false))).rejects.toThrow('reserved');
 		expect(() => claims.mintAuthority(result.actuators[0].id, 'on')).toThrow('not admitted');
 		const off = claims.mintAuthority(result.actuators[0].id, 'off');
+		const reservation = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			id: result.actuators[0].id,
+		});
 		expect(claims.isAuthorized(off, await target(relay, false))).toBe(true);
 		expect(claims.isAuthorized({ ...off } as ThermostatCommandAuthority, await target(relay, false))).toBe(false);
 		expect(claims.isAuthorized(off, await target(relay, true))).toBe(false);
@@ -239,6 +242,9 @@ describe('thermostat persistent ownership and draft configuration', () => {
 				outputConfirmedOff: true,
 				pendingOnDrained: false,
 				evidenceId: 'readback-only',
+				controllerRevision: 1,
+				qualification: claims.qualification(reservation, false),
+				isCurrent: () => true,
 			}),
 		).toThrow('drainage');
 	});
@@ -837,23 +843,184 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			},
 		});
 		const off = claims.mintAuthority(claim.id, 'off');
+		const reservation = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id });
+		const qualification = claims.qualification(reservation, false);
+		const controllerRevision = (
+			await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })
+		).revision;
 		expect(() =>
 			claims.recordQualifiedRelease(off, {
 				outputConfirmedOff: true,
 				pendingOnDrained: false,
 				evidenceId: 'unrelated-readback',
+				controllerRevision,
+				qualification,
+				isCurrent: () => true,
 			}),
 		).toThrow('drainage');
 		const proof = claims.recordQualifiedRelease(off, {
 			outputConfirmedOff: true,
 			pendingOnDrained: true,
 			evidenceId: 'fixture-ordered-release',
+			controllerRevision,
+			qualification,
+			isCurrent: () => true,
 		});
 		await claims.completeRelease(proof);
 		await expect(registry.assertAllowed(await target(relay, true))).resolves.toBeUndefined();
 		expect(
 			(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id })).releaseEvidence,
 		).toMatchObject({ pendingOnDrained: true });
+	});
+
+	it.each(['source', 'qualification', 'revoked'])(
+		'rolls back claim release when %s expires during the awaited UPDATE',
+		async (mode) => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				relay = await actuator();
+			await configs.configure(controller, dto(sensor, relay));
+			const pending = await configs.requestRelease(controller, 1);
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				id: pending.actuators[0].id,
+			});
+			claims.recordQualification({
+				physicalIdentity: claim.physicalIdentity,
+				upstreamWritersExcluded: true,
+				opposedOutputsInterlocked: false,
+				profile: {
+					deviceId: 'shellyplus1pm-a8032abe5084',
+					model: 'SNSW-001P16EU',
+					firmware: 'fixture-firmware',
+					componentId: 0,
+					evidenceId: 'fixture-installed-profile',
+					revision: 1,
+					testedLeaseSeconds: { min: 10, max: 60 },
+					releaseOrderingQualified: true,
+					independentProtectionQualified: true,
+				},
+			});
+			const qualification = claims.qualification(claim, false);
+			let sourceCurrent = true;
+			const evidence = {
+				outputConfirmedOff: true,
+				pendingOnDrained: true,
+				evidenceId: 'ordered-release',
+				controllerRevision: (
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })
+				).revision,
+				qualification,
+				isCurrent: () => sourceCurrent,
+			};
+			const proof = claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), evidence);
+			const createRunner = database.createQueryRunner.bind(database) as typeof database.createQueryRunner;
+			const watched = new WeakSet<object>();
+			let invalidated = false;
+			const hook = jest.spyOn(database, 'createQueryRunner').mockImplementation((...parameters) => {
+				const runner = createRunner(...parameters);
+				if (!watched.has(runner)) {
+					watched.add(runner);
+					const query = runner.query.bind(runner) as typeof runner.query;
+					jest.spyOn(runner, 'query').mockImplementation(async (...args: Parameters<typeof runner.query>) => {
+						const result: unknown = await query(...args);
+						if (
+							!invalidated &&
+							typeof args[0] === 'string' &&
+							Array.isArray(args[1]) &&
+							args[0].startsWith('UPDATE "devices_virtual_thermostat_actuator_claims"') &&
+							args[1]?.includes('released')
+						) {
+							invalidated = true;
+							if (mode === 'source') sourceCurrent = false;
+							else if (mode === 'qualification') claims.recordQualification({ ...qualification });
+							else
+								(claims as unknown as { qualifications: Map<string, unknown> }).qualifications.delete(
+									claim.physicalIdentity,
+								);
+						}
+						return result;
+					});
+				}
+				return runner;
+			});
+			try {
+				await expect(claims.completeRelease(proof)).rejects.toThrow('no longer current');
+			} finally {
+				hook.mockRestore();
+			}
+			expect(invalidated).toBe(true);
+			expect(
+				await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id }),
+			).toMatchObject({ state: 'releasing', revision: claim.revision, releaseEvidence: null, releasedAt: null });
+			await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow('reserved');
+			await expect(claims.completeRelease(proof)).rejects.toThrow('Internal release proof');
+			sourceCurrent = true;
+			claims.recordQualification(qualification);
+			const fresh = claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), {
+				...evidence,
+				qualification: claims.qualification(claim, false),
+				evidenceId: 'fresh-ordered-release',
+			});
+			await claims.completeRelease(fresh);
+			expect(
+				await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id }),
+			).toMatchObject({ state: 'released', releaseEvidence: { evidenceId: 'fresh-ordered-release' } });
+			await expect(registry.assertAllowed(await target(relay, true))).resolves.toBeUndefined();
+		},
+	);
+
+	it('requires a current exact qualification at proof recording and retains disabled reservations as suspended', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			relay = await actuator();
+		await configs.configure(controller, dto(sensor, relay));
+		await database.manager.update(VirtualDeviceEntity, { id: controller }, { enabled: false });
+		await claims.refresh();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			controllerId: controller,
+		});
+		expect(claim).toMatchObject({ state: 'releasing', reason: 'device_disabled' });
+		claims.recordQualification({
+			physicalIdentity: claim.physicalIdentity,
+			upstreamWritersExcluded: true,
+			opposedOutputsInterlocked: false,
+			profile: {
+				deviceId: 'shellyplus1pm-a8032abe5084',
+				model: 'SNSW-001P16EU',
+				firmware: 'fixture-firmware',
+				componentId: 0,
+				evidenceId: 'fixture-installed-profile',
+				revision: 1,
+				testedLeaseSeconds: { min: 10, max: 60 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+			},
+		});
+		const qualification = claims.qualification(claim, false);
+		const evidence = {
+			outputConfirmedOff: true,
+			pendingOnDrained: true,
+			evidenceId: 'disabled-ordered-release',
+			controllerRevision: (
+				await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })
+			).revision,
+			qualification,
+			isCurrent: () => true,
+		};
+		expect(() =>
+			claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), { ...evidence, isCurrent: () => false }),
+		).toThrow('drainage');
+		claims.recordQualification({ ...qualification });
+		expect(() => claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), evidence)).toThrow('drainage');
+		const fresh = claims.recordQualifiedRelease(claims.mintAuthority(claim.id, 'off'), {
+			...evidence,
+			qualification: claims.qualification(claim, false),
+		});
+		await claims.completeRelease(fresh);
+		expect(
+			await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id }),
+		).toMatchObject({ state: 'suspended', releaseEvidence: { evidenceId: 'disabled-ordered-release' } });
+		await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow('reserved');
 	});
 
 	it('migration matches synchronized reservation constraints and stable SET NULL foreign keys', async () => {

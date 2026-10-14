@@ -41,7 +41,12 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		);
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
-		if (this.installed && this.isCatalogMutation(event.query)) this.claims.invalidate();
+		if (
+			this.installed &&
+			this.isCatalogMutation(event.query) &&
+			!this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)
+		)
+			this.claims.invalidate();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
 		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))
