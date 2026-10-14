@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
@@ -6,7 +6,12 @@ import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
+import type { VirtualThermostatCommandHandler } from '../contracts/thermostat-command.contract';
+import {
+	DEVICES_VIRTUAL_PLUGIN_NAME,
+	DEVICES_VIRTUAL_TYPE,
+	VIRTUAL_THERMOSTAT_COMMAND_HANDLER,
+} from '../devices-virtual.constants';
 import {
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
@@ -22,6 +27,9 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		private readonly graphs: DeviceCommandGraphService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		@Optional() private readonly dependencies?: VirtualDependencyGraphService,
+		@Optional()
+		@Inject(VIRTUAL_THERMOSTAT_COMMAND_HANDLER)
+		private readonly thermostats?: VirtualThermostatCommandHandler,
 	) {}
 
 	getType(): string {
@@ -42,6 +50,11 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		// Checked across the whole batch and before a single source is resolved, so a disabled device
 		// never partially applies — the same all-or-nothing discipline as the platform-resolution
 		// pre-pass below. `find` rather than `updates[0]` because an empty batch has no first element.
+		if (
+			updates.length &&
+			updates.every((update) => (update.device as VirtualDeviceEntity).mode === VirtualDeviceMode.CLIMATE_CONTROLLER)
+		)
+			return this.thermostats?.command(updates) ?? false;
 		const inactiveProducer = updates.find((update) => {
 			const mode = (update.device as VirtualDeviceEntity).mode ?? VirtualDeviceMode.PROJECTION;
 			return mode !== VirtualDeviceMode.PROJECTION;
