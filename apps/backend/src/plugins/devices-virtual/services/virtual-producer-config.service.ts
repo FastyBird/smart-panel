@@ -230,11 +230,8 @@ export class VirtualProducerConfigService {
 			let committedProperties: VirtualChannelPropertyEntity[] = [];
 			let committedRevision = 0;
 			await this.graph.withStructuralWrite(async (manager) => {
-				const prepared = await this.validateLightGroup(manager, groupChannelId, dto);
-				await manager.save(prepared.config);
-				await manager.delete(VirtualLightGroupMemberEntity, { groupChannelId });
-				await manager.save(prepared.members);
-				await manager.save(prepared.bindings);
+				const prepared = await this.prepareLightGroup(manager, groupChannelId, dto);
+				await this.persistLightGroup(manager, prepared);
 				outputs = [...new Set(prepared.bindings.map((binding) => binding.outputPropertyId))];
 				committedProperties = prepared.outputs;
 				committedRevision = prepared.config.revision;
@@ -245,12 +242,27 @@ export class VirtualProducerConfigService {
 		});
 	}
 
+	/** Caller owns the structural writer; publish state only after commit. */
+	async persistLightGroup(
+		manager: EntityManager,
+		prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareLightGroup']>>,
+	): Promise<void> {
+		await manager.save(prepared.config);
+		await manager.delete(VirtualLightGroupMemberEntity, { groupChannelId: prepared.config.groupChannelId });
+		await manager.save(prepared.members);
+		await manager.save(prepared.bindings);
+	}
+
+	installLightGroup(prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareLightGroup']>>): void {
+		for (const property of prepared.outputs) this.producerState.installUnavailable(property, prepared.config.revision);
+	}
+
 	async previewLightGroup(
 		groupChannelId: string,
 		dto: ConfigureVirtualLightGroupDto,
 	): Promise<VirtualLightGroupConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
-			const prepared = await this.validateLightGroup(this.dataSource.manager, groupChannelId, dto);
+			const prepared = await this.prepareLightGroup(this.dataSource.manager, groupChannelId, dto);
 			return this.groupModel(
 				prepared.config,
 				prepared.members,
@@ -279,7 +291,7 @@ export class VirtualProducerConfigService {
 		return this.groupModel(config, members, bindings, await this.graph.revision(), capabilities);
 	}
 
-	private async validateLightGroup(
+	async prepareLightGroup(
 		manager: EntityManager,
 		groupChannelId: string,
 		dto: ConfigureVirtualLightGroupDto,
@@ -297,7 +309,12 @@ export class VirtualProducerConfigService {
 			dto.members.length > 256
 		)
 			throw new DevicesValidationException('A light group requires the light profile and 2–256 members.');
-		const group = await manager.findOne(ChannelEntity, { where: { id: groupChannelId }, relations: ['device'] });
+		const group = await manager
+			.createQueryBuilder(ChannelEntity, 'channel')
+			.leftJoinAndSelect('channel.device', 'device')
+			.where('channel.id = :id', { id: groupChannelId })
+			.callListeners(false)
+			.getOne();
 		const device = group?.device as VirtualDeviceEntity;
 		if (
 			!group ||
@@ -315,10 +332,13 @@ export class VirtualProducerConfigService {
 		const previousBindings = (await manager.find(VirtualLightGroupBindingEntity)).filter((binding) =>
 			previousMembers.some((member) => member.id === binding.memberId),
 		);
-		const outputs = await manager.find(VirtualChannelPropertyEntity, {
-			where: { channel: { id: groupChannelId } },
-			relations: ['channel', 'channel.device'],
-		});
+		const outputs = await manager
+			.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+			.leftJoinAndSelect('property.channel', 'channel')
+			.leftJoinAndSelect('channel.device', 'device')
+			.where('channel.id = :id', { id: groupChannelId })
+			.callListeners(false)
+			.getMany();
 		if (
 			!outputs.some(
 				(property) => property.category === PropertyCategory.ON && property.valueOrigin === VirtualValueOrigin.DERIVED,
@@ -346,7 +366,12 @@ export class VirtualProducerConfigService {
 				: previousMembers.find((member) => member.sourceChannelIdentity === proposed.sourceChannelId);
 			if (proposed.id && !old) throw new DevicesValidationException('Member UUID is not owned by this light group.');
 			const sourceChannel = proposed.sourceChannelId
-				? await manager.findOne(ChannelEntity, { where: { id: proposed.sourceChannelId }, relations: ['device'] })
+				? await manager
+						.createQueryBuilder(ChannelEntity, 'channel')
+						.leftJoinAndSelect('channel.device', 'device')
+						.where('channel.id = :id', { id: proposed.sourceChannelId })
+						.callListeners(false)
+						.getOne()
 				: null;
 			if (
 				proposed.sourceChannelId &&
@@ -391,7 +416,7 @@ export class VirtualProducerConfigService {
 					bindings.push(oldBinding);
 					continue;
 				}
-				const source = await this.property(manager, proposedBinding.sourcePropertyId);
+				const source = await this.property(manager, proposedBinding.sourcePropertyId, true);
 				if (
 					!sourceChannel ||
 					(source.channel as ChannelEntity).id !== sourceChannel.id ||
@@ -491,10 +516,12 @@ export class VirtualProducerConfigService {
 			await Promise.all(
 				members.map(async (member) => {
 					const physical = member.sourceChannelId
-						? await manager.find(ChannelPropertyEntity, {
-								where: { channel: { id: member.sourceChannelId } },
-								relations: ['channel'],
-							})
+						? await manager
+								.createQueryBuilder(ChannelPropertyEntity, 'property')
+								.leftJoinAndSelect('property.channel', 'channel')
+								.where('channel.id = :id', { id: member.sourceChannelId })
+								.callListeners(false)
+								.getMany()
 						: [];
 					// Unavailable members never shrink the last validated intended contract. These placeholders
 					// are metadata only; runtimes still require the actual live FK and fresh physical feedback.
@@ -623,7 +650,7 @@ export class VirtualProducerConfigService {
 					step: capability.step,
 				}),
 			),
-			reported_state: this.lightGroups?.getReportedModel(config.groupChannelId) ?? null,
+			reported_state: this.lightGroups?.getReportedModel(config.groupChannelId, config.revision) ?? null,
 			members: members.map((member) => ({
 				id: member.id,
 				source_channel: member.sourceChannelId,

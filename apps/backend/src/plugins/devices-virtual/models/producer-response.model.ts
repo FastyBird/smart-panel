@@ -295,7 +295,7 @@ export class VirtualLightGroupConfigurationModel {
 	@Type(() => VirtualLightGroupCapabilityModel)
 	common_capabilities: VirtualLightGroupCapabilityModel[];
 
-	@ApiPropertyOptional({ type: VirtualLightGroupReportedStateModel, nullable: true })
+	@ApiPropertyOptional({ allOf: [{ $ref: getSchemaPath(VirtualLightGroupReportedStateModel) }], nullable: true })
 	@Expose()
 	@Type(() => VirtualLightGroupReportedStateModel)
 	reported_state?: VirtualLightGroupReportedStateModel | null;

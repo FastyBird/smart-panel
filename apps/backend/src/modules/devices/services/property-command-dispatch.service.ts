@@ -336,6 +336,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 					epoch: this.eventEpoch,
 					sequence: ++this.eventSequence,
 					...composite,
+					children: composite.children.map(toEventChild),
 					intentId: options.intentId,
 					requestId: options.requestId,
 					targets: updates.map(toTarget),
@@ -449,7 +450,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				targets: updates.map(toTarget),
 				revision: plan.revision,
 				deadlineAt: deadline,
-				children: outcomes.map((child) => ({ ...child })),
+				children: outcomes.map(toEventChild),
 			});
 		};
 		const ownedGenerations = new Map<string, { generation: string; indexes: number[] }>();
@@ -683,6 +684,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				epoch: this.eventEpoch,
 				sequence: ++this.eventSequence,
 				...composite,
+				children: composite.children.map(toEventChild),
 				intentId: options.intentId,
 				requestId: options.requestId,
 				targets: updates.map(toTarget),
@@ -965,6 +967,17 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		}
 	}
 }
+
+const toEventChild = (child: CompositeChildOutcome) => ({
+	member_id: child.memberId,
+	property_id: child.propertyId,
+	member_identity: child.memberIdentity,
+	property_identity: child.propertyIdentity,
+	status: child.status,
+	reason: child.reason,
+	value: child.value,
+	generation: child.generation,
+});
 
 const toTarget = ({
 	device,

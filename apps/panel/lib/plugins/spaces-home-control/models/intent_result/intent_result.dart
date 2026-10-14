@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/climate_state/climate_state.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 
 /// Result of a lighting intent execution
 class LightingIntentResult {
@@ -8,6 +9,7 @@ class LightingIntentResult {
   final int? skippedOfflineDevices;
   final List<String>? offlineDeviceIds;
   final List<String>? failedTargets;
+  final List<CompositeCommandOutcome> composites;
 
   LightingIntentResult({
     required this.success,
@@ -16,6 +18,7 @@ class LightingIntentResult {
     this.skippedOfflineDevices,
     this.offlineDeviceIds,
     this.failedTargets,
+    this.composites = const [],
   });
 
   factory LightingIntentResult.fromJson(Map<String, dynamic> json) {
@@ -29,6 +32,10 @@ class LightingIntentResult {
           .toList(),
       failedTargets: (json['failed_targets'] as List<dynamic>?)
           ?.map((e) => e as String)
+          .toList(),
+      composites: (json['composites'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map((entry) => CompositeCommandOutcome.fromJson(entry, requestId: ''))
           .toList(),
     );
   }

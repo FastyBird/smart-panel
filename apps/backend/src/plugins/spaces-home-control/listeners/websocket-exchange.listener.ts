@@ -171,6 +171,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					skipped_offline_devices: result.skippedOfflineDevices,
 					offline_device_ids: result.offlineDeviceIds,
 					failed_targets: result.failedTargets,
+					composites: result.composites,
 				},
 			};
 		} catch (error) {

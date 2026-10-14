@@ -31,6 +31,7 @@ class LightingDeviceController {
         controlState: _controlState,
         devicesService: _devicesService,
         onError: _onError,
+        compositeGroup: device.isCompositeGroup,
       );
     }).toList();
   }
