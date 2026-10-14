@@ -3,7 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { IDevicePropertyData } from '../platforms/device.platform';
 
 export interface PropertyCommandAdmissionSnapshot {
-	isCurrent(): boolean;
+	/** Checks captured ownership for one leaf, or all guard state when no leaf is supplied. */
+	isCurrent(update?: IDevicePropertyData): boolean;
+	/** Checks request-wide fences before canonical leaves are known. */
+	isRequestCurrent?(): boolean;
 	assertAllowed(update: IDevicePropertyData): Promise<void>;
 }
 
@@ -18,9 +21,14 @@ export interface PropertyCommandAdmissionGuard {
 @Injectable()
 export class PropertyCommandAdmissionRegistryService {
 	private readonly guards = new Set<PropertyCommandAdmissionGuard>();
+	private revision = 0;
+	/** Registers a policy guard and invalidates captures whenever membership changes. */
 	register(guard: PropertyCommandAdmissionGuard): () => void {
+		if (!this.guards.has(guard)) this.revision++;
 		this.guards.add(guard);
-		return () => this.guards.delete(guard);
+		return () => {
+			if (this.guards.delete(guard)) this.revision++;
+		};
 	}
 	hasGuards(): boolean {
 		return this.guards.size > 0;
@@ -28,15 +36,20 @@ export class PropertyCommandAdmissionRegistryService {
 	requiresGuardedDispatch(update: IDevicePropertyData): boolean {
 		return [...this.guards].some((guard) => guard.requiresGuardedDispatch?.(update));
 	}
+	/** Captures guard membership and per-leaf policy before asynchronous preparation. */
 	capture(): PropertyCommandAdmissionSnapshot {
 		const guards = [...this.guards];
 		const snapshots = guards.map((guard) => guard.capture?.());
+		const revision = this.revision;
+		const hasCurrentMembership = () => revision === this.revision;
 		return {
-			isCurrent: () =>
-				guards.length === this.guards.size &&
-				guards.every((guard) => this.guards.has(guard)) &&
-				snapshots.every((snapshot) => snapshot?.isCurrent() ?? true),
+			isCurrent: (update) =>
+				hasCurrentMembership() && snapshots.every((snapshot) => snapshot?.isCurrent(update) ?? true),
+			isRequestCurrent: () =>
+				hasCurrentMembership() &&
+				snapshots.every((snapshot) => snapshot?.isRequestCurrent?.() ?? snapshot?.isCurrent() ?? true),
 			assertAllowed: async (update) => {
+				if (!hasCurrentMembership()) throw new Error('Command admission guard membership changed');
 				for (const [index, guard] of guards.entries()) await (snapshots[index] ?? guard).assertAllowed(update);
 			},
 		};

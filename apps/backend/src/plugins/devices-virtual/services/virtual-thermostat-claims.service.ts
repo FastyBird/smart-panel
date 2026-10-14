@@ -9,7 +9,10 @@ import { EventType } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
-import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import {
+	PropertyCommandAdmissionRegistryService,
+	PropertyCommandAdmissionSnapshot,
+} from '../../../modules/devices/services/property-command-admission.registry.service';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
@@ -110,23 +113,35 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		}
 		this.ready = true;
 	}
-	/** Captures absence as well as ownership before command metadata/budget awaits. */
-	capture() {
+	/** Captures absence and ownership; unrelated leaves do not depend on catalog reconciliation. */
+	capture(): PropertyCommandAdmissionSnapshot {
 		const epoch = this.epoch;
 		const ready = this.ready;
+		const claimedProperties = new Set(this.byProperty.keys());
+		const isCurrent = (update?: IDevicePropertyData) =>
+			!!update && !claimedProperties.has(update.property.id) && !this.requiresGuardedDispatch(update)
+				? true
+				: ready && this.ready && epoch === this.epoch;
 		return {
-			isCurrent: () => ready && this.ready && epoch === this.epoch,
+			isCurrent,
+			isRequestCurrent: () => true,
 			assertAllowed: async (update: IDevicePropertyData): Promise<void> => {
-				if (!ready || !this.ready || epoch !== this.epoch)
+				if (!isCurrent(update))
 					throw new DevicesValidationException('Actuator ownership changed before dispatch; retry the command.');
 				await this.assertAllowed(update);
 			},
 		};
 	}
+	/** Claimable hardware and reserved property aliases require transport-time admission guards. */
 	requiresGuardedDispatch(update: IDevicePropertyData): boolean {
-		return !!thermostatActuatorIdentity(update.property, update.channel, update.device);
+		return (
+			!!thermostatActuatorIdentity(update.property, update.channel, update.device) ||
+			this.byProperty.has(update.property.id)
+		);
 	}
+	/** Rejects ordinary commands to reserved leaves and closes claimable outputs during reconciliation. */
 	assertAllowed(update: IDevicePropertyData): Promise<void> {
+		if (!this.requiresGuardedDispatch(update)) return Promise.resolve();
 		if (!this.ready) throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
 		const identity = thermostatActuatorIdentity(update.property, update.channel, update.device);
 		const claim = (identity && this.reservations.get(identity)) || this.byProperty.get(update.property.id);
