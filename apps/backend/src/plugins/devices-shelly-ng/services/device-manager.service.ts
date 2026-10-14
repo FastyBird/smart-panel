@@ -1621,12 +1621,20 @@ export class DeviceManagerService {
 								{ password },
 							);
 							const componentKey = `voltmeter:${key}`;
-							const peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
-								host,
-								'SensorAddon.GetPeripherals',
-								undefined,
-								{ password },
-							);
+							let peripherals: Record<string, unknown>;
+							try {
+								peripherals = await this.shellyRpcClientService.call<Record<string, unknown>>(
+									host,
+									'SensorAddon.GetPeripherals',
+									undefined,
+									{ password },
+								);
+							} catch {
+								// Missing qualification revokes both raw volts and Celsius authority. Existing
+								// qualified channels retain their history through the pruning rules below.
+								await this.sampleSources?.invalidateComponent(device.id, componentKey);
+								continue;
+							}
 							const channel = await this.ensureNativeHelperTemperature(
 								device,
 								host,
