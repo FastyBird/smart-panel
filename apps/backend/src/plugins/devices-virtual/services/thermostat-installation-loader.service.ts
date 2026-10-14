@@ -1,6 +1,13 @@
 import { DataSource } from 'typeorm';
 
-import { ConflictException, Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
+import {
+	ConflictException,
+	Injectable,
+	Logger,
+	OnApplicationBootstrap,
+	OnModuleDestroy,
+	Optional,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -39,6 +46,7 @@ const EVENTS = [
 /** Durable expected installation and human attestations never substitute for a fresh captured provider lease. */
 @Injectable()
 export class ThermostatInstallationLoaderService implements OnApplicationBootstrap, OnModuleDestroy {
+	private readonly logger = new Logger(ThermostatInstallationLoaderService.name);
 	private epoch = 0;
 	private stopped = false;
 	private timer?: ReturnType<typeof setInterval>;
@@ -81,7 +89,13 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
 		for (const event of EVENTS) this.events.on(event, this.changed);
-		await this.refresh();
+		const epoch = this.epoch;
+		try {
+			await this.refresh();
+		} catch (error) {
+			if (epoch === this.epoch) this.invalidate();
+			this.logger.error('Installation renewal failed during startup; retrying on the next cycle', error);
+		}
 		this.timer = setInterval(() => this.schedule(), 10000);
 		this.timer.unref();
 	}
@@ -120,7 +134,14 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 	}
 	async refresh(): Promise<void> {
 		const rows = await this.dataSource.manager.find(ThermostatInstallationEntity);
-		for (const row of rows) await this.verify(row.claimId, undefined, null);
+		for (const row of rows) {
+			try {
+				await this.verify(row.claimId, undefined, null);
+			} catch (error) {
+				// verify revokes only the current failing claim; other renewals must continue.
+				this.logger.error(`Installation renewal failed for claim=${row.claimId}`, error);
+			}
+		}
 	}
 	/** Explicit human activation fences before every await; background refresh only renews already armed intent. */
 	async verify(claimId: string, expectedRevision?: number, actorId: string | null = null): Promise<void> {
@@ -142,16 +163,27 @@ export class ThermostatInstallationLoaderService implements OnApplicationBootstr
 			await this.verifyProfile(claimId, expectedRevision, actorId, isCurrent);
 		} catch (error) {
 			const current = isCurrent();
-			if (current) this.invalidate();
+			if (current) {
+				if (actorId !== null) this.invalidate();
+				else this.invalidateClaim(claimId);
+			}
 			if (actorId !== null || current) throw error;
 		} finally {
 			if (this.verifications.get(claimId) === operation) this.verifications.delete(claimId);
 			if (this.humanVerifications.get(claimId) === operation) this.humanVerifications.delete(claimId);
 			if (release) {
 				release();
-				await this.claims.refresh();
+				// Reload closes admission and schedules retry itself; preserve the verification outcome.
+				await this.claims.refresh().catch(() => undefined);
 			}
 		}
+	}
+	private invalidateClaim(claimId: string): void {
+		const entry = this.active.get(claimId);
+		if (!entry) return;
+		this.active.delete(claimId);
+		this.claims.revokeQualification(entry.identity);
+		this.runtime.request(entry.controllerId);
 	}
 	private async verifyProfile(
 		claimId: string,
