@@ -396,6 +396,161 @@ describe('durable thermostat installation profiles', () => {
 		await loader.verify(claim.id, 1, 'operator');
 		expect(inspect).not.toHaveBeenCalled();
 	});
+	it.each([
+		['verified', 'human'],
+		['blocked', 'human'],
+		['failed', 'human'],
+		['verified', 'background'],
+		['blocked', 'background'],
+		['failed', 'background'],
+	] as const)('ignores a stale %s background inspection after fresh %s verification', async (result, newer) => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await loader.verify(claim.id, 1, 'operator');
+		let finish: () => void, entered: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		inspect.mockImplementationOnce(
+			() =>
+				new Promise((resolve, reject) => {
+					finish = () =>
+						result === 'failed'
+							? reject(new Error('stale inspection failed'))
+							: resolve({ isCurrent: () => result === 'verified' });
+					entered();
+				}),
+		);
+		const background = loader.verify(claim.id);
+		await started;
+		try {
+			await loader.verify(claim.id, 1, newer === 'human' ? 'operator' : null);
+			const fresh = claims.qualification(claim, false);
+			expect(fresh).not.toBeNull();
+			const accepted = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			const audits = await db.manager.count(ThermostatInstallationAuditEntity);
+			finish();
+			await background;
+			expect(claims.qualification(claim, false)).toBe(fresh);
+			expect(fresh.machineLeaseIsCurrent()).toBe(true);
+			expect(
+				(await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id })).lastMachineObservation,
+			).toEqual(accepted.lastMachineObservation);
+			expect(await db.manager.count(ThermostatInstallationAuditEntity)).toBe(audits);
+		} finally {
+			finish();
+			await background;
+		}
+	});
+	it('a stale background profile-query failure cannot invalidate fresh human activation', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		let fail: () => void;
+		const read = jest.spyOn(db.manager, 'findOneByOrFail').mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					fail = () => reject(new Error('stale profile query failed'));
+				}),
+		);
+		const background = loader.verify(claim.id);
+		try {
+			await loader.verify(claim.id, 1, 'operator');
+			const fresh = claims.qualification(claim, false);
+			expect(fresh).not.toBeNull();
+			fail();
+			await background;
+			expect(claims.qualification(claim, false)).toBe(fresh);
+			expect(fresh.machineLeaseIsCurrent()).toBe(true);
+		} finally {
+			fail();
+			read.mockRestore();
+			await background;
+		}
+	});
+	it('background verification skips profile reads until the newest overlapping human operation finishes', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		let entered: () => void;
+		let started: Promise<void>;
+		const completions: (() => void)[] = [];
+		inspect.mockImplementation(
+			(_metadata: unknown, _timeout: number, admitted: () => boolean) =>
+				new Promise((resolve) => {
+					completions.push(() => resolve({ isCurrent: admitted }));
+					entered();
+				}),
+		);
+		started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const first = loader.verify(claim.id, 1, 'first');
+		await started;
+		started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const second = loader.verify(claim.id, 1, 'second');
+		await started;
+		const read = jest.spyOn(db.manager, 'findOneByOrFail');
+		try {
+			completions[0]();
+			await first;
+			await loader.verify(claim.id);
+			expect(read).not.toHaveBeenCalled();
+			expect(inspect).toHaveBeenCalledTimes(2);
+			expect(claims.qualification(claim, false)).toBeNull();
+			completions[1]();
+			await second;
+			expect(claims.qualification(claim, false)).not.toBeNull();
+		} finally {
+			for (const complete of completions) complete();
+			read.mockRestore();
+			await Promise.all([first, second]);
+		}
+	});
+	it('a stale background structure-lock failure cannot revoke fresh human activation', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		let fail: () => void, entered: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const exclusive = jest.spyOn(lock, 'runExclusive').mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					fail = () => reject(new Error('stale structure-lock failure'));
+					entered();
+				}),
+		);
+		const background = loader.verify(claim.id);
+		await started;
+		try {
+			await loader.verify(claim.id, 1, 'operator');
+			const fresh = claims.qualification(claim, false);
+			expect(fresh).not.toBeNull();
+			fail();
+			await background;
+			expect(claims.qualification(claim, false)).toBe(fresh);
+			expect(fresh.machineLeaseIsCurrent()).toBe(true);
+		} finally {
+			fail();
+			exclusive.mockRestore();
+			await background;
+		}
+	});
+	it('successful background renewals preserve current qualification without reviving expired captured leases', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		let originalLeaseCurrent = true;
+		inspect.mockImplementationOnce(() => Promise.resolve({ isCurrent: () => originalLeaseCurrent }));
+		await loader.verify(claim.id, 1, 'operator');
+		const original = claims.qualification(claim, false);
+		await loader.refresh();
+		await loader.refresh();
+		expect(claims.qualification(claim, false)).toBe(original);
+		originalLeaseCurrent = false;
+		expect(original.machineLeaseIsCurrent()).toBe(false);
+		await loader.refresh();
+		const fresh = claims.qualification(claim, false);
+		expect(fresh).not.toBeNull();
+		expect(fresh).not.toBe(original);
+		expect(fresh.machineLeaseIsCurrent()).toBe(true);
+		expect(original.machineLeaseIsCurrent()).toBe(false);
+	});
 	it('requires exact explicit Steinhart-Hart coefficients, domains, leg and physical voltage configuration', async () => {
 		const binding = await bindings.resolve(db.manager, claim.id);
 		const conversion = {
@@ -513,13 +668,17 @@ describe('durable thermostat installation profiles', () => {
 		});
 		await entered;
 		const update = profiles.stage(claim.id, 999, setup, attestations(), 'operator');
-		expect(claims.isAuthorized(authority, target)).toBe(false);
-		expect(old.machineLeaseIsCurrent()).toBe(false);
-		await claims.refresh();
-		expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
-		unlock();
-		await held;
-		await expect(update).rejects.toBeInstanceOf(ConflictException);
+		const rejected = expect(update).rejects.toBeInstanceOf(ConflictException);
+		const refresh = claims.refresh();
+		try {
+			expect(claims.isAuthorized(authority, target)).toBe(false);
+			expect(old.machineLeaseIsCurrent()).toBe(false);
+			expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
+		} finally {
+			unlock();
+			await held;
+			await Promise.all([rejected, refresh]);
+		}
 		await loader.refresh();
 		expect(claims.isAuthorized(authority, target)).toBe(false);
 		expect(claims.qualification(claim, false)).toBeNull();
@@ -543,12 +702,16 @@ describe('durable thermostat installation profiles', () => {
 			});
 			const operation =
 				action === 'revoke' ? profiles.revoke(claim.id, 999, 'operator') : loader.verify(claim.id, 999, 'operator');
-			expect(claims.isAuthorized(authority, target)).toBe(false);
-			await claims.refresh();
-			expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
-			releaseRead();
-			await expect(operation).rejects.toBeInstanceOf(ConflictException);
-			read.mockRestore();
+			const rejected = expect(operation).rejects.toBeInstanceOf(ConflictException);
+			const refresh = claims.refresh();
+			try {
+				expect(claims.isAuthorized(authority, target)).toBe(false);
+				expect(() => claims.mintAuthority(claim.id, 'on')).toThrow();
+			} finally {
+				releaseRead();
+				read.mockRestore();
+				await Promise.all([rejected, refresh]);
+			}
 			await loader.refresh();
 			expect(claims.qualification(claim, false)).toBeNull();
 			expect(claims.isAuthorized(authority, target)).toBe(false);
@@ -603,6 +766,45 @@ describe('durable thermostat installation profiles', () => {
 		expect(claims.qualification(claim, false)).toBeNull();
 		expect((await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id })).armedAt).toBeNull();
 	});
+	it('machine lease expiry during the activation audit rolls back durable armed intent', async () => {
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		db.subscribers.push({
+			afterInsert: (event) => {
+				if (
+					event.metadata.target === ThermostatInstallationAuditEntity &&
+					(event.entity as ThermostatInstallationAuditEntity).action === 'activated'
+				)
+					current = false;
+			},
+		});
+		await expect(loader.verify(claim.id, 1, 'operator')).rejects.toThrow('machine lease expired');
+		expect(claims.qualification(claim, false)).toBeNull();
+		const row = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+		expect(row.armedAt).toBeNull();
+		expect(row.lastMachineObservation).toBeNull();
+		expect(await db.manager.count(ThermostatInstallationAuditEntity)).toBe(1);
+	});
+	it.each(['profile_update', 'activation_audit'] as const)(
+		'verification invalidation during %s rolls back durable armed intent',
+		async (step) => {
+			await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+			db.subscribers.push({
+				afterUpdate: (event) => {
+					if (step === 'profile_update' && event.metadata.target === ThermostatInstallationEntity) loader.invalidate();
+				},
+				afterInsert: (event) => {
+					if (step === 'activation_audit' && event.metadata.target === ThermostatInstallationAuditEntity)
+						loader.invalidate();
+				},
+			});
+			await expect(loader.verify(claim.id, 1, 'operator')).rejects.toThrow('verification superseded');
+			expect(claims.qualification(claim, false)).toBeNull();
+			const row = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+			expect(row.armedAt).toBeNull();
+			expect(row.lastMachineObservation).toBeNull();
+			expect(await db.manager.count(ThermostatInstallationAuditEntity)).toBe(1);
+		},
+	);
 	it.each([
 		['stage_transaction', 'unchanged'],
 		['revoke_cas', 'unchanged'],
