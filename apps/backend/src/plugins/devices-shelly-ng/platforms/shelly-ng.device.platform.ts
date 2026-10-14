@@ -8,6 +8,7 @@ import {
 	PreparedCompositeDeviceBatch,
 } from '../../../modules/devices/platforms/device.platform';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
+import { guardScriptReadiness } from '../contracts/guard-script.contract';
 import {
 	ShellyProtectiveCommand,
 	ShellyProtectiveCommandResult,
@@ -22,6 +23,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { ShellyGuardFenceReadback, ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 
 export type IShellyNgDevicePropertyData = IDevicePropertyData & {
 	device: ShellyNgDeviceEntity;
@@ -49,6 +51,41 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		if (!this.delegatesManagerService.hasGuardedTransport(identity.deviceId))
 			reasons.push('guarded_transport_unavailable');
 		return { supported: reasons.length === 0, reasons };
+	}
+
+	/**
+	 * Validate database relationships and a readable/writable boolean switch leaf for the qualified component.
+	 * Return a delegate-bound guard session only when the ordered-script metadata is eligible.
+	 */
+	prepareGuardRpcSession(
+		target: IDevicePropertyData,
+		qualification: ShellyProtectiveQualification,
+	): ShellyGuardRpcSession | null {
+		const { device, channel, property } = target;
+		const component = /^switch:(\d+)$/.exec(channel.identifier ?? '');
+		if (
+			!(device instanceof ShellyNgDeviceEntity) ||
+			!(channel instanceof ShellyNgChannelEntity) ||
+			!(property instanceof ShellyNgChannelPropertyEntity) ||
+			!component ||
+			guardScriptReadiness(qualification.guardScript).length > 0 ||
+			qualification.componentId !== Number(component[1]) ||
+			property.category !== PropertyCategory.ON ||
+			property.dataType !== DataTypeType.BOOL ||
+			!['output', 'on'].includes(property.identifier) ||
+			!permissionSatisfied(PermissionType.READ_ONLY, new Set(property.permissions ?? [])) ||
+			!permissionSatisfied(PermissionType.WRITE_ONLY, new Set(property.permissions ?? []))
+		)
+			return null;
+		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+		if (deviceId !== device.id || channelId !== channel.id) return null;
+		return this.delegatesManagerService.prepareGuardRpcSession(device, Number(component[1]), qualification);
+	}
+	/** Route a guard OFF readback for a Shelly property to the delegate manager's lease-checked sample admission. */
+	async admitGuardFenceSample(target: IDevicePropertyData, readback: ShellyGuardFenceReadback): Promise<void> {
+		if (target.property instanceof ShellyNgChannelPropertyEntity)
+			await this.delegatesManagerService.admitGuardFenceSample(target.property, readback);
 	}
 
 	/** Internal claim-authorized entrypoint; public generic setters never construct this command. */

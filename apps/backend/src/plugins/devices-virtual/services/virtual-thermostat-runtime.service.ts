@@ -33,7 +33,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 import {
@@ -114,10 +114,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly epochs = new Map<string, number>();
 	private readonly contexts = new Map<string, ControllerContext>();
 	private readonly diagnostics = new Map<string, ThermostatRuntimeDiagnostic>();
+	private readonly reconciled = new Map<
+		string,
+		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
+	>();
 	private readonly diagnosticGuards = new Map<string, () => boolean>();
-	private readonly reconciled = new Set<string>();
+	/** A stored release barrier is usable only while its exact installed qualification and source lease stay live. */
 	private isReconciled(claim: VirtualThermostatActuatorClaimEntity): boolean {
-		return this.reconciled.has(`${claim.id}:${claim.revision}`);
+		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
+		const qualification = this.claims.qualification(claim, false);
+		return !!proof && !!qualification && proof.qualification === qualification && proof.sourceIsCurrent();
 	}
 	private readonly contacts = new Map<string, VirtualWindowContactState>();
 	private readonly trends = new Map<string, VirtualWindowTrendState>();
@@ -663,6 +669,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.inFlight.set(command.id, operation);
 		void operation.catch(() => undefined);
 	}
+	/** Journal before transport; known-unsent ON is terminal and waits for fresh work, while uncertain sends need OFF proof. */
 	private async dispatch(
 		context: ControllerContext,
 		claim: VirtualThermostatActuatorClaimEntity,
@@ -670,6 +677,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		command: VirtualThermostatCommandEntity,
 	): Promise<void> {
 		let enteredTransport = false;
+		let refusedOn = false;
 		try {
 			if (!this.canSend(context, claim, command.action)) {
 				command.status = 'cancelled';
@@ -693,7 +701,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const result = await this.transport
 				.get(update)
 				.send(update, claim, this.claims.qualification(claim, context.claims.length > 1), guard);
-			command.status = result.outcome === 'accepted' ? 'accepted' : 'unknown';
+			refusedOn = command.action === 'on' && result.outcome === 'refused';
+			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
 			command.settledAt = new Date();
 			command.fault =
 				result.outcome === 'refused'
@@ -703,12 +712,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						: null;
 			await this.write(command);
 		} catch (error) {
-			command.status = enteredTransport ? 'unknown' : 'cancelled';
+			command.status = enteredTransport && !refusedOn ? 'unknown' : 'cancelled';
 			command.fault = error instanceof Error ? error.message : 'dispatch_error';
 			await this.write(command);
 			if (!enteredTransport) await this.retryOffImmediately(context, command);
 		} finally {
-			if (this.active) this.request(claim.controllerId);
+			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
+			if (this.active && !refusedOn) this.request(claim.controllerId);
 		}
 	}
 	private async retryOffImmediately(
@@ -731,6 +741,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}),
 		);
 	}
+	/** Settle the full current journal only under an exclusive recheck of scoped proof, qualification, source lease and OFF sample. */
 	private async reconcile(context: ControllerContext, claim: VirtualThermostatActuatorClaimEntity): Promise<void> {
 		const target = context.targets.get(claim.id),
 			qualification = this.claims.qualification(claim, context.claims.length > 1);
@@ -740,15 +751,41 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if ([...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)) return;
 		const pending = await this.structure.runShared(() => this.loadUnresolvedCommands(claim.controllerId, claim.id));
 		if (pending.some((command) => this.inFlight.has(command.id))) return;
+		const startedAt = new Date();
 		const proof = await this.transport.get(target).reconcile(
 			target,
 			pending.map((command) => command.id),
 			off,
 			() => this.canSend(context, claim, 'off'),
+			{
+				controllerId: context.config.controllerId,
+				controllerRevision: context.config.revision,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				contractFingerprint: claim.contractFingerprint,
+				qualification,
+			},
 		);
+		const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
+		const endedAt = new Date();
 		const covered = new Set(proof?.coveredCommandIds ?? []);
 		if (
 			!proof ||
+			!acceptedOff ||
+			acceptedOff.value !== false ||
+			acceptedOff.provenance !== 'live' ||
+			acceptedOff.quality !== 'good' ||
+			!proof.isCurrent?.() ||
+			!proof.sourceIsCurrent?.() ||
+			this.claims.qualification(claim, context.claims.length > 1) !== qualification ||
+			proof.scope?.controllerId !== context.config.controllerId ||
+			proof.scope.controllerRevision !== context.config.revision ||
+			proof.scope.claimId !== claim.id ||
+			proof.scope.claimRevision !== claim.revision ||
+			proof.scope.contractFingerprint !== claim.contractFingerprint ||
+			!Number.isFinite(proof.observedAt?.getTime()) ||
+			proof.observedAt.getTime() < startedAt.getTime() ||
+			proof.observedAt.getTime() > endedAt.getTime() ||
 			!this.canSend(context, claim, 'off') ||
 			!proof.proofId ||
 			!proof.connectionIdentity ||
@@ -758,53 +795,113 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			proof.offSample.propertyId !== target.property.id ||
 			proof.offSample.value !== false ||
 			proof.offSample.provenance !== 'live' ||
-			proof.offSample.sampledAt.getTime() !== off.sampledAt.getTime() ||
-			proof.offSample.receivedAt.getTime() !== off.receivedAt.getTime()
+			proof.offSample.quality !== 'good' ||
+			proof.offSample.sampledAt.getTime() < proof.observedAt.getTime() ||
+			proof.offSample.receivedAt.getTime() > endedAt.getTime() ||
+			proof.offSample.sampledAt.getTime() !== acceptedOff.sampledAt.getTime() ||
+			proof.offSample.receivedAt.getTime() !== acceptedOff.receivedAt.getTime() ||
+			proof.offSample.revision !== acceptedOff.revision
 		)
 			return;
+		// This exact proof binding must survive every awaited write, including reservation release.
+		const isProofCurrent = (): boolean => {
+			const currentOff = this.values.readQualifiedSample(target.property, 30_000);
+			return (
+				this.canSend(context, claim, 'off') &&
+				proof.isCurrent() &&
+				proof.sourceIsCurrent() &&
+				this.claims.qualification(claim, context.claims.length > 1) === qualification &&
+				this.contexts.get(claim.controllerId)?.config.revision === proof.scope.controllerRevision &&
+				!!currentOff &&
+				currentOff.value === false &&
+				currentOff.provenance === 'live' &&
+				currentOff.quality === 'good' &&
+				currentOff.sampledAt.getTime() === proof.offSample.sampledAt.getTime() &&
+				currentOff.receivedAt.getTime() === proof.offSample.receivedAt.getTime() &&
+				currentOff.revision === proof.offSample.revision &&
+				!!this.transport.get(target)?.canReconcile(target, qualification)
+			);
+		};
 		const branch = context.branches.get(claim.id);
+		const staleProof = new Error('Qualified release proof expired during journal settlement');
+		type JournalSettlement = {
+			branch: VirtualThermostatBranchRuntimeEntity;
+			currentIds: Set<string>;
+			settledAt: Date;
+		};
 		const settled = await this.structure.runExclusive(() =>
-			this.dataSource.transaction(async (manager) => {
-				// Re-read under the write lock: a proof cannot settle an unseen command added during I/O.
-				const current = await this.loadUnresolvedCommands(claim.controllerId, claim.id, manager);
-				const currentQualification = this.claims.qualification(claim, context.claims.length > 1);
-				if (
-					!this.canSend(context, claim, 'off') ||
-					!currentQualification ||
-					thermostatFingerprint(currentQualification) !== thermostatFingerprint(qualification) ||
-					!this.transport.get(target)?.canReconcile(target, currentQualification) ||
-					current.some((command) => this.inFlight.has(command.id) || !covered.has(command.id))
-				)
-					return false;
-				branch.releaseProofId = proof.proofId;
-				branch.activity = 'off';
-				if (!branch.lastVerifiedOffAt || current.some((command) => command.action === 'on'))
-					branch.lastVerifiedOffAt = off.receivedAt;
-				branch.releaseAttempts = 0;
-				branch.nextReleaseAt = null;
-				branch.fault = null;
-				const settledAt = new Date();
-				for (let offset = 0; offset < current.length; offset += 500) {
-					await manager
-						.createQueryBuilder()
-						.update(VirtualThermostatCommandEntity)
-						.set({ status: 'confirmed', proofId: proof.proofId, settledAt })
-						.where('id IN (:...ids)', { ids: current.slice(offset, offset + 500).map((command) => command.id) })
-						.execute();
-				}
-				const currentIds = new Set(current.map((command) => command.id));
-				for (const command of context.commands)
-					if (currentIds.has(command.id) && unresolved(command)) {
-						command.status = 'confirmed';
-						command.proofId = proof.proofId;
-						command.settledAt = settledAt;
+			this.dataSource
+				.transaction<JournalSettlement | null>(async (manager) => {
+					// Re-read under the write lock: a proof cannot settle an unseen command added during I/O.
+					const current = await this.loadUnresolvedCommands(claim.controllerId, claim.id, manager);
+					const currentConfig = await manager.findOneBy(VirtualThermostatConfigEntity, {
+						controllerId: claim.controllerId,
+					});
+					const currentClaim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claim.id });
+					const currentQualification = this.claims.qualification(claim, context.claims.length > 1);
+					const currentOff = this.values.readQualifiedSample(target.property, 30_000);
+					if (
+						!this.canSend(context, claim, 'off') ||
+						!proof.isCurrent?.() ||
+						!proof.sourceIsCurrent?.() ||
+						currentConfig?.revision !== proof.scope.controllerRevision ||
+						!currentClaim ||
+						currentClaim.state === 'released' ||
+						currentClaim.revision !== proof.scope.claimRevision ||
+						currentClaim.contractFingerprint !== proof.scope.contractFingerprint ||
+						currentClaim.sourcePropertyId !== target.property.id ||
+						currentClaim.physicalIdentity !== proof.physicalIdentity ||
+						currentQualification !== qualification ||
+						!currentOff ||
+						currentOff.value !== false ||
+						currentOff.provenance !== 'live' ||
+						currentOff.quality !== 'good' ||
+						currentOff.sampledAt.getTime() !== proof.offSample.sampledAt.getTime() ||
+						currentOff.receivedAt.getTime() !== proof.offSample.receivedAt.getTime() ||
+						currentOff.revision !== proof.offSample.revision ||
+						!this.transport.get(target)?.canReconcile(target, currentQualification) ||
+						current.some((command) => this.inFlight.has(command.id) || !covered.has(command.id))
+					)
+						return null;
+					const settledBranch = manager.create(VirtualThermostatBranchRuntimeEntity, {
+						...branch,
+						releaseProofId: proof.proofId,
+						activity: 'off',
+						lastVerifiedOffAt:
+							!branch.lastVerifiedOffAt || current.some((command) => command.action === 'on')
+								? proof.offSample.receivedAt
+								: branch.lastVerifiedOffAt,
+						releaseAttempts: 0,
+						nextReleaseAt: null,
+						fault: null,
+					});
+					const settledAt = new Date();
+					for (let offset = 0; offset < current.length; offset += 500) {
+						await manager
+							.createQueryBuilder()
+							.update(VirtualThermostatCommandEntity)
+							.set({ status: 'confirmed', proofId: proof.proofId, settledAt })
+							.where('id IN (:...ids)', { ids: current.slice(offset, offset + 500).map((command) => command.id) })
+							.execute();
 					}
-				await manager.save(branch);
-				return true;
-			}),
+					await manager.save(settledBranch);
+					if (!isProofCurrent()) throw staleProof;
+					return { branch: settledBranch, currentIds: new Set(current.map((command) => command.id)), settledAt };
+				})
+				.catch((error: unknown): JournalSettlement | null => {
+					if (error === staleProof) return null;
+					throw error;
+				}),
 		);
 		if (!settled) return;
-		this.reconciled.add(`${claim.id}:${claim.revision}`);
+		Object.assign(branch, settled.branch);
+		for (const command of context.commands)
+			if (settled.currentIds.has(command.id) && unresolved(command)) {
+				command.status = 'confirmed';
+				command.proofId = proof.proofId;
+				command.settledAt = settled.settledAt;
+			}
+		if (!isProofCurrent()) return;
 		if (claim.state === 'releasing') {
 			const authority = this.claims.mintAuthority(claim.id, 'off');
 			await this.claims.completeRelease(
@@ -812,9 +909,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					outputConfirmedOff: true,
 					pendingOnDrained: true,
 					evidenceId: proof.proofId,
+					qualification,
+					isCurrent: isProofCurrent,
+					controllerRevision: proof.scope.controllerRevision,
 				}),
 			);
 		}
+		this.reconciled.set(`${claim.id}:${claim.revision}`, { qualification, sourceIsCurrent: proof.sourceIsCurrent });
 	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {
 		if (!context.publishGuard()) return;

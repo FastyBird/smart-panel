@@ -1,3 +1,5 @@
+import { ShellyGuardScriptQualification } from './guard-script.contract';
+
 /** Internal only. Installed hardware evidence must be supplied by the qualification registry. */
 export interface ShellyProtectiveQualification {
 	/** Shelly.GetDeviceInfo.id (hardware identity), not the panel database device UUID. */
@@ -10,12 +12,14 @@ export interface ShellyProtectiveQualification {
 	readonly testedLeaseSeconds: { readonly min: number; readonly max: number };
 	readonly releaseOrderingQualified: boolean;
 	readonly independentProtectionQualified: boolean;
+	readonly guardScript?: ShellyGuardScriptQualification;
 }
 
 export type ShellyProtectiveCommand =
 	| { readonly on: true; readonly leaseSeconds: number; readonly qualification: ShellyProtectiveQualification }
 	| { readonly on: false };
 
+/** Refused ON guarantees no energizing request was sent. Possible ON sends are unknown; OFF still needs release proof. */
 export type ShellyProtectiveCommandResult =
 	| { readonly outcome: 'refused'; readonly reasons: readonly string[] }
 	| {
