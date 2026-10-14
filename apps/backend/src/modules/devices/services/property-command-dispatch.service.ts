@@ -31,6 +31,8 @@ import { PropertyStateCoordinatorService } from './property-state-coordinator.se
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
+export const COMPOSITE_INTENT_FINISH_MARGIN_MS = 100;
+
 class CompositeAdmissionSnapshotChangedError extends Error {}
 class CompositeDeadlineExceededError extends Error {}
 
@@ -124,6 +126,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		const isCurrent = () =>
 			(options.commandEntry?.isActive() ?? true) &&
 			(options.isRequestCurrent?.() ?? true) &&
+			(options.deadlineAt === undefined || Date.now() < options.deadlineAt) &&
 			(admission?.isCurrent() ?? true);
 		if (!isCurrent()) return { success: false, reason: 'Command admission changed or expired' };
 		if (updates.length === 0) {
@@ -258,8 +261,10 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		const id = randomUUID();
 		const deadline = Math.min(
 			options.commandEntry?.deadlineAt ?? Infinity,
-			Date.now() + Math.min(Math.max(options.ttlMs ?? 10_000, 1), 30_000),
+			options.deadlineAt ?? Infinity,
+			Date.now() + Math.min(options.ttlMs ?? 10_000, 30_000),
 		);
+		if (Date.now() >= deadline) return { success: false, reason: 'Composite command deadline exceeded' };
 		const planner = updates.map((update) => this.composites.get(update.property)).find(Boolean);
 		let plan: Awaited<ReturnType<typeof planner.plan>>;
 		try {

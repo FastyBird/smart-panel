@@ -437,7 +437,8 @@ export class WledClientAdapterService {
 			// An acceptance-only response is not reported state and cannot confirm physical convergence.
 			if (response.success === true) return true;
 
-			if (!capture.isCurrent()) return false;
+			if (!capture.isIdentityCurrent()) return false;
+			if (!capture.isCurrent()) return true;
 			// Update local state with the response
 
 			if (device?.context) {
@@ -630,7 +631,8 @@ export class WledClientAdapterService {
 			// An acceptance-only response is not reported state and cannot confirm physical convergence.
 			if (response.success === true) return true;
 
-			if (!capture.isCurrent()) return false;
+			if (!capture.isIdentityCurrent()) return false;
+			if (!capture.isCurrent()) return true;
 			if (device.context) {
 				const newState = this.convertApiStateToState(response);
 				device.context.state = newState;
@@ -1075,6 +1077,7 @@ export class WledClientAdapterService {
 			device.context?.info.mac.replace(/:/g, '').toLowerCase() === mac;
 		const isCurrent = () => identityCurrent() && this.sampleSequences.get(device) === sequence;
 		return {
+			isIdentityCurrent: identityCurrent,
 			isCurrent,
 			observation: (state: WledState, fullSnapshot: boolean): WledStateObservation => {
 				const contract = (value: WledState) =>

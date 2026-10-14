@@ -239,7 +239,10 @@ describe('PropertyCommandService', () => {
 				{
 					provide: IntentsService,
 					useValue: {
-						createIntent: jest.fn().mockReturnValue({ id: 'mock-intent-id' }),
+						createIntent: jest.fn().mockImplementation(({ ttlMs }: { ttlMs: number }) => ({
+							id: 'mock-intent-id',
+							expiresAt: new Date(Date.now() + ttlMs),
+						})),
 						completeIntent: jest.fn(),
 					},
 				},

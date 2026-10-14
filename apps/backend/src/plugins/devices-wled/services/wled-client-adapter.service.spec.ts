@@ -595,6 +595,63 @@ describe('WledClientAdapterService', () => {
 			service.disconnect('192.168.1.100');
 			expect(identity?.()).toBe(false);
 		});
+
+		it.each(['ordinary', 'extended'] as const)(
+			'accepts a successful %s POST superseded by a newer poll without publishing its response',
+			async (kind) => {
+				let resolvePost!: (response: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+				const pendingPost = new Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>((resolve) => {
+					resolvePost = resolve;
+				});
+				(global.fetch as jest.Mock).mockImplementationOnce(() => pendingPost);
+
+				const command =
+					kind === 'ordinary'
+						? service.updateState('192.168.1.100', { on: true }, 0)
+						: service.updateStateExtended('192.168.1.100', { on: true });
+				mockFetchSuccess({ ...mockWledState, on: false });
+				await service.refreshState('192.168.1.100');
+				const publishedEvents = callbacks.onDeviceStateChanged.mock.calls.length;
+
+				resolvePost({ ok: true, status: 200, json: async () => ({ ...mockWledState, on: true }) });
+				expect(await command).toBe(true);
+				expect(callbacks.onDeviceStateChanged).toHaveBeenCalledTimes(publishedEvents);
+				expect(service.getDevice('192.168.1.100')?.context?.state.on).toBe(false);
+			},
+		);
+
+		it.each(['ordinary', 'extended'] as const)('%s POST failure remains a failure', async (kind) => {
+			mockFetchError();
+			const result =
+				kind === 'ordinary'
+					? await service.updateState('192.168.1.100', { on: true }, 0)
+					: await service.updateStateExtended('192.168.1.100', { on: true });
+			expect(result).toBe(false);
+			expect(callbacks.onDeviceStateChanged).not.toHaveBeenCalled();
+		});
+
+		it.each(['ordinary', 'extended'] as const)(
+			'rejects a verbose %s response after device replacement',
+			async (kind) => {
+				let resolvePost!: (response: { ok: boolean; status: number; json: () => Promise<unknown> }) => void;
+				const pendingPost = new Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>((resolve) => {
+					resolvePost = resolve;
+				});
+				(global.fetch as jest.Mock).mockImplementationOnce(() => pendingPost);
+
+				const command =
+					kind === 'ordinary'
+						? service.updateState('192.168.1.100', { on: true }, 0)
+						: service.updateStateExtended('192.168.1.100', { on: true });
+				const context = service.getDevice('192.168.1.100')?.context;
+				expect(context).toBeDefined();
+				service.connectWithContext('192.168.1.100', 'replacement', context);
+				resolvePost({ ok: true, status: 200, json: async () => mockWledState });
+
+				expect(await command).toBe(false);
+				expect(callbacks.onDeviceStateChanged).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('isConnected', () => {

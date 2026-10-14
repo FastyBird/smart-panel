@@ -209,9 +209,10 @@ export class WledDeviceMapperService {
 			};
 			report('on', isMain ? state.on : segment?.on, true);
 			report('brightness', isMain ? state.brightness : segment?.brightness, false, true);
+			const mainColorUnknown = isMain && state.mainSegment === undefined && !observation.fullSnapshot;
 			const mainColorSafe = !isMain || state.mainSegment === 0;
 			for (const [i, key] of ['color_red', 'color_green', 'color_blue'].entries())
-				report(key, mainColorSafe ? segment?.colors?.[0]?.[i] : null);
+				report(key, mainColorUnknown ? undefined : mainColorSafe ? segment?.colors?.[0]?.[i] : null);
 			// A present mismatched segment is an identity fault even in a partial notification.
 			if (!isMain && state.segments[index] && !segment)
 				for (const key of ['on', 'brightness', 'color_red', 'color_green', 'color_blue']) values[key] = null;
