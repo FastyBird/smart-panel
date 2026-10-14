@@ -1,3 +1,4 @@
+import { instanceToPlain } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
@@ -291,7 +292,11 @@ export class IntentsService implements OnModuleInit, OnModuleDestroy {
 			}));
 		}
 
-		if (intent.composites?.length) payload.composites = intent.composites;
+		if (intent.composites?.length) {
+			payload.composites = intent.composites.map((composite) =>
+				instanceToPlain(Object.assign(new CompositeCommandOutcomeModel(), composite)),
+			);
+		}
 
 		this.eventEmitter.emit(eventType, payload);
 	}

@@ -17,7 +17,7 @@ import {
 	ScenesActionValidationException,
 	ScenesSpaceValidationException,
 } from '../../../modules/scenes/scenes.exceptions';
-import { IScenePlatform } from '../../../modules/scenes/services/scene-executor.service';
+import { IScenePlatform, SceneExecutionContext } from '../../../modules/scenes/services/scene-executor.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { LocalSceneActionEntity } from '../entities/scenes-local.entity';
@@ -239,7 +239,11 @@ export class LocalScenePlatform implements IScenePlatform {
 	/**
 	 * Execute scene actions by sending commands to devices
 	 */
-	async execute(scene: SceneEntity, actions: SceneActionEntity[]): Promise<ActionExecutionResultModel[]> {
+	async execute(
+		scene: SceneEntity,
+		actions: SceneActionEntity[],
+		context?: SceneExecutionContext,
+	): Promise<ActionExecutionResultModel[]> {
 		const results: ActionExecutionResultModel[] = [];
 
 		for (let index = 0; index < actions.length; index++) {
@@ -322,9 +326,13 @@ export class LocalScenePlatform implements IScenePlatform {
 						let success = false;
 						let error: string | null = 'Command execution failed';
 						try {
-							const dispatched = await this.propertyCommandDispatchService.dispatchBatch(
-								grouped.map(({ update }) => update),
-							);
+							const updates = grouped.map(({ update }) => update);
+							const dispatched = context
+								? await this.propertyCommandDispatchService.dispatchBatch(updates, {
+										...context,
+										ttlMs: context.deadlineAt - Date.now(),
+									})
+								: await this.propertyCommandDispatchService.dispatchBatch(updates);
 							success = dispatched.success;
 							if (success) error = null;
 						} catch (failure) {
@@ -349,8 +357,17 @@ export class LocalScenePlatform implements IScenePlatform {
 				const updates = [{ device, channel, property, value: action.value }];
 				const { success, composite } =
 					ttlMs === null
-						? await this.propertyCommandDispatchService.dispatchBatch(updates)
-						: await this.propertyCommandDispatchService.dispatchBatch(updates, { ttlMs });
+						? context
+							? await this.propertyCommandDispatchService.dispatchBatch(updates, {
+									...context,
+									ttlMs: context.deadlineAt - Date.now(),
+								})
+							: await this.propertyCommandDispatchService.dispatchBatch(updates)
+						: await this.propertyCommandDispatchService.dispatchBatch(updates, {
+								intentId: context?.intentId,
+								ttlMs: Math.min(ttlMs, context ? context.deadlineAt - Date.now() : Infinity),
+								deadlineAt: context?.deadlineAt,
+							});
 
 				results.push({
 					actionId: action.id,

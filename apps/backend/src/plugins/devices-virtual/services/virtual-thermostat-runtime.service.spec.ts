@@ -16,6 +16,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
@@ -24,7 +25,13 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
-import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
 import {
 	VirtualThermostatCommandEntity,
 	VirtualThermostatRuntimeEntity,
@@ -36,6 +43,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
@@ -53,6 +61,11 @@ describe('virtual thermostat durable runtime', () => {
 	let relayId: string;
 	let makeRuntime: () => VirtualThermostatRuntimeService;
 	let events: EventEmitter2;
+	let producers: PropertyProducerRegistryService;
+	let values: PropertyValueService;
+	let graphValidated: boolean;
+	let graphGeneration: number;
+	let publicationGate: Promise<void> | null;
 	const samples = new Map<string, QualifiedPropertySample>();
 	const sends: boolean[] = [];
 	const sentTargets: { propertyId: string; on: boolean }[] = [];
@@ -87,6 +100,9 @@ describe('virtual thermostat durable runtime', () => {
 		afterOnGate = null;
 		allowLateOn = false;
 		proofAllowed = () => true;
+		graphValidated = true;
+		graphGeneration = 0;
+		publicationGate = null;
 		events = new EventEmitter2();
 		controllerId = uuid();
 		sensorId = uuid();
@@ -212,8 +228,22 @@ describe('virtual thermostat durable runtime', () => {
 		});
 		sample(sensorId, 21);
 		sample(relayId, false);
-		const values = {
+		producers = new PropertyProducerRegistryService(events);
+		values = {
 			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) => samples.get(property.id) ?? null),
+			publishDerived: jest.fn(
+				async (...[property, lease, value, publication]: Parameters<PropertyValueService['publishDerived']>) => {
+					const epoch = producers.version(lease);
+					if (publicationGate !== null) await publicationGate;
+					const changed = producers.commit(
+						lease,
+						Object.assign(new PropertyValueState(), { value }),
+						publication,
+						epoch,
+					);
+					return { changed, state: producers.read(property.id) };
+				},
+			),
 		} as unknown as PropertyValueService;
 		const claims = {
 			capture: () => ({ isCurrent: () => true }),
@@ -258,7 +288,13 @@ describe('virtual thermostat durable runtime', () => {
 				),
 		};
 		const transport = { get: () => adapter } as unknown as VirtualThermostatTransportService;
-		const producers = { unregister: jest.fn() } as unknown as PropertyProducerRegistryService;
+		const graph = {
+			isValidated: () => graphValidated,
+			capturePublishGuard: () => {
+				const generation = graphGeneration;
+				return () => graphValidated && generation === graphGeneration;
+			},
+		} as unknown as VirtualDependencyGraphService;
 		makeRuntime = () =>
 			new VirtualThermostatRuntimeService(
 				database,
@@ -269,6 +305,7 @@ describe('virtual thermostat durable runtime', () => {
 				values,
 				producers,
 				events,
+				graph,
 			);
 		runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
@@ -288,6 +325,77 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		throw new Error('ON did not reach the durable dispatch journal');
 	};
+	const createTemperatureOutput = async (): Promise<string> => {
+		const channelId = uuid(),
+			propertyId = uuid();
+		await database.manager.insert(VirtualChannelEntity, {
+			id: channelId,
+			device: controllerId,
+			name: 'Current temperature',
+			identifier: 'temperature',
+			category: ChannelCategory.TEMPERATURE,
+		} as never);
+		await database.manager.insert(VirtualChannelPropertyEntity, {
+			id: propertyId,
+			channel: channelId,
+			identifier: 'temperature',
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+			unit: '°C',
+			valueOrigin: VirtualValueOrigin.LOCAL,
+		} as never);
+		return propertyId;
+	};
+
+	it('closes local output and diagnostic authority until a fresh evaluation after graph validation retry', async () => {
+		const outputId = await createTemperatureOutput();
+		await runtime.inspect(controllerId);
+		expect(producers.read(outputId)?.value).toBe(21);
+		graphValidated = false;
+		graphGeneration++;
+		expect(producers.read(outputId)?.producer.reasons).toEqual(['graph_validation_pending']);
+		expect(runtime.readDiagnostics(controllerId)?.current_temperature).toBeNull();
+		graphValidated = true;
+		expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
+		expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+		await runtime.inspect(controllerId);
+		expect(producers.read(outputId)?.value).toBe(21);
+		expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('ready');
+	});
+
+	it('rejects a pending output publication captured before a failed graph validation and retry', async () => {
+		const originalRequest = runtime.request.bind(runtime) as VirtualThermostatRuntimeService['request'];
+		const request = jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
+		await runtime.flush();
+		const outputId = await createTemperatureOutput();
+		request.mockImplementationOnce(originalRequest);
+		let release: () => void;
+		publicationGate = new Promise<void>((resolve) => (release = resolve));
+		const inspection = runtime.inspect(controllerId);
+		while (!producers.owns(outputId)) await new Promise<void>((resolve) => setImmediate(resolve));
+		graphValidated = false;
+		graphGeneration++;
+		graphValidated = true;
+		release();
+		await inspection;
+		expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
+		expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+		publicationGate = null;
+		request.mockRestore();
+		await runtime.inspect(controllerId);
+		expect(producers.read(outputId)?.producer.quality).toBe('good');
+	});
+
+	it('refuses thermostat energizing while graph validation is unavailable', async () => {
+		graphValidated = false;
+		graphGeneration++;
+		sample(sensorId, 18);
+		await runtime.inspect(controllerId);
+		await runtime.inspect(controllerId);
+		expect(sentTargets.some((target) => target.on)).toBe(false);
+		expect(runtime.readDiagnostics(controllerId)?.reasons).toEqual(['graph_validation_pending']);
+	});
 
 	it('restarts a prepared ON before transport as unresolved and refuses energizing without drainage proof', async () => {
 		onGate = new Promise<void>(() => undefined);

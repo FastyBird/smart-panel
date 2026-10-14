@@ -35,7 +35,7 @@ import {
 } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
-import { DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
@@ -934,6 +934,68 @@ describe('DevicesService', () => {
 			);
 		});
 
+		it.each([true, false])(
+			'hydrates the completed create after a queued writer finishes, validated=%s',
+			async (validated) => {
+				const structure = module.get(DeviceStructureLockService);
+				let release: () => void;
+				let entered: () => void;
+				let validationPending = true;
+				const writerEntered = new Promise<void>((resolve) => {
+					entered = resolve;
+				});
+				const writerRelease = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: MockDevice,
+					createDto: CreateMockDeviceDto,
+					updateDto: UpdateMockDeviceDto,
+				});
+				jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+				jest.spyOn(repository, 'create').mockReturnValue(toInstance(MockDevice, mockDevice));
+				let writer: Promise<void>;
+				channelsService.create.mockImplementationOnce(() => {
+					writer = structure.runExclusive(async () => {
+						entered();
+						await writerRelease;
+						validationPending = !validated;
+					});
+					return Promise.resolve(new ChannelEntity());
+				});
+				const hydrate = jest
+					.spyOn(service, 'getOneOrThrow')
+					.mockImplementation(() =>
+						Promise.resolve(
+							toInstance(MockDevice, { ...mockDevice, mockValue: validationPending ? 'unavailable' : 'live' }),
+						),
+					);
+				let settled = false;
+				const creating = service
+					.create({
+						type: 'mock',
+						category: DeviceCategory.GENERIC,
+						name: 'Nested',
+						mock_value: 'fixture',
+						channels: [{ type: 'mock', category: ChannelCategory.GENERIC, name: 'Nested channel' }],
+					})
+					.then((result) => {
+						settled = true;
+						return result as MockDevice;
+					});
+				await writerEntered;
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				try {
+					expect(settled).toBe(false);
+					expect(hydrate).not.toHaveBeenCalled();
+				} finally {
+					release();
+				}
+				await writer;
+				expect((await creating).mockValue).toBe(validated ? 'live' : 'unavailable');
+			},
+		);
 		it('should throw DevicesException if the device type is not provided', async () => {
 			const createDto: Partial<CreateDeviceDto> = {
 				category: DeviceCategory.GENERIC,

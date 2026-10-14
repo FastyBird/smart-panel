@@ -20,6 +20,13 @@ export interface PropertyProducerEvaluation {
 	readonly generation: number;
 }
 
+export interface PropertyProducerGuard {
+	/** Lifecycle authority captured when a producer lease is installed. */
+	readonly isCurrent: () => boolean;
+	/** Unavailability reason exposed when the captured lifecycle closes. */
+	readonly reason: string;
+}
+
 interface ProducerEntry {
 	property: ChannelPropertyEntity;
 	lease: PropertyProducerLease;
@@ -27,6 +34,7 @@ interface ProducerEntry {
 	epoch: number;
 	generation: number;
 	sourceSample?: IncorporatedPropertySample;
+	guard?: PropertyProducerGuard;
 }
 
 /** Owns process-local live authority. Persisted history is never restart evidence. */
@@ -56,12 +64,20 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		this.entries.clear();
 	}
 
-	register(property: ChannelPropertyEntity, revision: number): PropertyProducerLease {
+	/** Installs a live lease, optionally bounded by its owner's captured validation lifecycle. */
+	register(property: ChannelPropertyEntity, revision: number, guard?: PropertyProducerGuard): PropertyProducerLease {
 		if (!Number.isSafeInteger(revision) || revision < 0) throw new Error('Invalid producer revision');
 		const lease = Object.freeze({ propertyId: property.id, revision });
 		const previous = this.entries.get(property.id);
 		const state = this.unavailable(revision, ['initializing'], new Date());
-		this.entries.set(property.id, { property, lease, state, epoch: (previous?.epoch ?? 0) + 1, generation: 0 });
+		this.entries.set(property.id, {
+			property,
+			lease,
+			state,
+			epoch: (previous?.epoch ?? 0) + 1,
+			generation: 0,
+			guard: guard ? Object.freeze({ ...guard }) : undefined,
+		});
 		this.emit(property, state);
 		return lease;
 	}
@@ -74,6 +90,12 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		return this.entries.get(lease.propertyId)?.lease === lease;
 	}
 
+	/** Identity and external lifecycle must both remain available before a runtime reuses a lease. */
+	isAvailable(lease: PropertyProducerLease): boolean {
+		const entry = this.entries.get(lease.propertyId);
+		return entry?.lease === lease && (entry.guard?.isCurrent() ?? true);
+	}
+
 	version(lease: PropertyProducerLease): number | null {
 		const entry = this.entries.get(lease.propertyId);
 		return entry?.lease === lease ? entry.epoch : null;
@@ -82,7 +104,9 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	/** Returns immutable process-local source incorporation evidence for the current live publication. */
 	readIncorporatedSample(propertyId: string): IncorporatedPropertySample | null {
 		const entry = this.entries.get(propertyId);
-		return entry?.state.producer.quality !== 'unavailable' ? (entry?.sourceSample ?? null) : null;
+		return entry && (entry.guard?.isCurrent() ?? true) && entry.state.producer.quality !== 'unavailable'
+			? (entry?.sourceSample ?? null)
+			: null;
 	}
 
 	beginEvaluation(lease: PropertyProducerLease): PropertyProducerEvaluation | null {
@@ -110,6 +134,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const entry = this.entries.get(lease.propertyId);
 		if (
 			!entry ||
+			entry.guard?.isCurrent() === false ||
 			entry.lease !== lease ||
 			epoch !== entry.epoch ||
 			!['good', 'degraded'].includes(publication.quality) ||
@@ -190,6 +215,10 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	read(propertyId: string): PropertyValueState | null {
 		const entry = this.entries.get(propertyId);
 		if (!entry) return null;
+		if (entry.guard?.isCurrent() === false) {
+			const state = this.unavailable(entry.lease.revision, [entry.guard.reason], new Date());
+			return clonePropertyValueState(state);
+		}
 		const now = Date.now();
 		if (
 			entry.state.producer.quality !== 'unavailable' &&
