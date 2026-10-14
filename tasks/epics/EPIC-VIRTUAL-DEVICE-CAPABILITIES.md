@@ -28,7 +28,7 @@ permit heating. Recovery requires hysteresis and fresh valid inputs.
 Completed tasks below have been merged and their tracking issues closed. The remaining tasks retain their CI and
 CodeRabbit review gates; a prepared feature branch does not count as delivered.
 
-- [ ] VD2-1 [#1410](https://github.com/FastyBird/smart-panel/issues/1410): design decisions and actuator-platform qualification spike
+- [x] VD2-1 [#1410](https://github.com/FastyBird/smart-panel/issues/1410): design decisions and actuator-platform qualification spike
 - [x] VD2-1b [#1412](https://github.com/FastyBird/smart-panel/issues/1412): production Shelly timed-ON/add-on temperature and Shelly/Zigbee measurement provenance adapters
 - [x] VD2-2a [#1411](https://github.com/FastyBird/smart-panel/issues/1411): core accepted-sample signal, derived invalidation/quality and regenerated client parsing
 - [x] VD2-2b [#1413](https://github.com/FastyBird/smart-panel/issues/1413): durable bindings, graph revisions/serialization and restricted derived-source composition
@@ -73,9 +73,9 @@ Production features through PR #1443 are merged on `10e9c206d68f12966d5bb7d5a077
 The identical composed source tree at `f84be26b257ad225c0cd6816a428da2059e252da` passed all 15 hosted
 checks and completed CodeRabbit review with Minimal risk and no blocking finding before merge.
 [PR #1443 checks and review](https://github.com/FastyBird/smart-panel/pull/1443) record that baseline.
-The protocol evidence PR #1424 and the remaining #1421 improvements retain their own exact-head CI/review gates.
+Protocol evidence PR #1424 merged as `35e8ef6bab56e302f64bef5f05b318ffe99836ac` after all 16 checks passed and its completed CodeRabbit review covered exact source `0e64c3227bfd2e0889eaae5fecf32d98da9be864` with Minimal risk and no actionable finding. The remaining #1421 improvements in PR #1444 retain their own exact-head CI/review gates.
 
-The runtime and protective-policy tasks #1419 and #1420 are closed as tested software implementations.
+The protocol spike #1410 and the runtime and protective-policy tasks #1419 and #1420 are closed as tested software implementations.
 That closure does not establish installed hardware qualification. #1421 remains open for explicit source freshness
 presentation, room climate contribution coverage/conflicts and convergence acceptance. #1422 remains open until
 its composed acceptance evidence and completion tracking are reconciled with those changes.
