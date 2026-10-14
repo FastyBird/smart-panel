@@ -220,6 +220,7 @@ describe('atomic virtual thermostat authoring', () => {
 	afterEach(async () => {
 		claims?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
+		jest.useRealTimers();
 		useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });
 	});
 	async function actuator(existingDevice?: string) {
@@ -442,11 +443,13 @@ describe('atomic virtual thermostat authoring', () => {
 			value: true,
 		};
 		await claims.assertAllowed(admission);
-		const originalRefresh = claims.refresh.bind(claims);
+		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+		const originalFind = database.manager.find.bind(database.manager);
 		let failRefresh = true;
-		const refresh = jest.spyOn(claims, 'refresh').mockImplementation(async () => {
-			if (failRefresh) throw new Error('commit reconciliation failed');
-			await originalRefresh();
+		const refresh = jest.spyOn(database.manager, 'find').mockImplementation(async (...args) => {
+			if (failRefresh && args[0] === VirtualThermostatActuatorClaimEntity)
+				throw new Error('commit reconciliation failed');
+			return (await originalFind(...args)) as Record<string, unknown>[];
 		});
 		const created = await authoring.create(input);
 		expect(commitRefresh).toHaveBeenCalled();
@@ -460,8 +463,13 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
 		expect(() => claims.assertAllowed(admission)).toThrow('reconciling');
+		expect(jest.getTimerCount()).toBe(1);
 		failRefresh = false;
-		await claims.refresh();
+		const retryRefresh = jest.spyOn(claims, 'refresh');
+		await jest.advanceTimersByTimeAsync(1000);
+		expect(retryRefresh).toHaveBeenCalledTimes(1);
+		await (retryRefresh.mock.results[0].value as Promise<void>);
+		expect(jest.getTimerCount()).toBe(0);
 		expect(() => claims.assertAllowed(admission)).toThrow('reserved');
 	});
 
