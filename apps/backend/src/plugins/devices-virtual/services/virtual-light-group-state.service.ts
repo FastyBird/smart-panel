@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -72,11 +72,11 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 		this.invalidateAll();
 	}
 	getReportedState(channelId: string): LightGroupReportedState | null {
-		return this.states.get(channelId) ?? null;
+		return this.graph.isValidated() ? (this.states.get(channelId) ?? null) : null;
 	}
 
 	getReportedModel(channelId: string): VirtualLightGroupReportedStateModel | null {
-		const state = this.states.get(channelId);
+		const state = this.graph.isValidated() ? this.states.get(channelId) : null;
 		if (!state) return null;
 		return Object.assign(new VirtualLightGroupReportedStateModel(), {
 			on: state.on,
@@ -135,11 +135,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				where: { channel: { id: config.groupChannelId } },
 				relations: ['channel', 'channel.device'],
 			});
-			const bindings = (
-				await this.dataSource.manager.find(VirtualLightGroupBindingEntity, {
-					relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
-				})
-			).filter((binding) => members.some((member) => member.id === binding.memberId));
+			const bindings = members.length
+				? await this.dataSource.manager.find(VirtualLightGroupBindingEntity, {
+						where: { memberId: In(members.map((member) => member.id)) },
+						relations: ['sourceProperty', 'sourceProperty.channel', 'sourceProperty.channel.device'],
+					})
+				: [];
 			const now = new Date();
 			const snapshots = [];
 			for (const member of members) {
@@ -197,12 +198,16 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 			for (const output of outputs.filter((property) => property.isDerived)) {
 				active.add(output.id);
 				let lease = this.leases.get(output.id);
-				if (!lease || lease.revision !== config.revision || !this.producers.isCurrent(lease)) {
-					lease = this.producers.register(output, config.revision);
+				if (!lease || lease.revision !== config.revision || !this.producers.isAvailable(lease)) {
+					lease = this.producers.register(output, config.revision, {
+						isCurrent: this.graph.capturePublishGuard(),
+						reason: 'graph_validation_pending',
+					});
 					this.leases.set(output.id, lease);
 				}
 				const reported = state.properties.get(output.category);
 				if (
+					!this.graph.isValidated() ||
 					this.graph.isQuarantined(output.id) ||
 					!(output.channel as ChannelEntity).device ||
 					!((output.channel as ChannelEntity).device as DeviceEntity).enabled ||

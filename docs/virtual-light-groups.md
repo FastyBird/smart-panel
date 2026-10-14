@@ -19,6 +19,11 @@ live feedback using the core sample evidence contract. Database history, optimis
 snapshots do not qualify. Each configured input expires after 300 seconds. Missing, disabled, offline, quarantined or
 incompatible sources are unknown. A backend restart starts without qualified physical samples.
 
+A structural write that has committed stays committed if the subsequent graph validation read or listener fails.
+The committed catalog can activate, while live virtual outputs and command guards remain unavailable until a complete
+validation refresh succeeds. Pending publications from the previous validation lifecycle cannot become current again
+when validation recovers. Physical source samples retain their independent authority.
+
 ON is true when any member is confirmed on, false only when every intended member is confirmed off, and otherwise null.
 The reported API separately exposes all-on, mixed, on/off/unknown counts and each member's diagnostic reasons.
 Brightness is the mean of valid on-member samples, with explicit contributors and mixed state. The diagnostic value
@@ -40,10 +45,14 @@ physical targets and an opaque provider identity lease. Providers without this p
 physical command; their ordinary controls retain the existing platform preparation and dispatch behavior. Core
 admits the prepared values and supplies an exact generation/deadline guard to the dispatch closure. Providers check
 that guard and their stable identity at actual queued publish, then report qualified live feedback. Composite windows
-require live causal evidence; ordinary windows retain their legacy convergence contract. No member platform loop lives in the virtual platform.
+require live causal evidence; ordinary windows retain their legacy convergence contract. Reports without evidence are
+held for ordinary recovery after expiry and cannot confirm a composite generation or establish qualified samples.
+No member platform loop lives in the virtual platform.
 
 Up to eight physical channel batches run concurrently, with at most 128 active parents, 2048 expanded children and a
-bounded total deadline (the existing intent budget, capped at 30 seconds). Independent members run despite another
+bounded total deadline (the existing intent budget, capped at 30 seconds). The absolute parent intent expiry caps
+planning and dispatch with a 100 ms margin for completion reporting; metadata delays cannot restart that budget.
+Independent members run despite another
 member's exception or unavailable metadata. Progress/completion events include the parent id, intent/request correlation,
 requested targets and binding revision. Unavailable members stay in outcomes. Exact physical window confirmation is
 required: matching derived any-on or brightness mean never confirms a command.
@@ -56,6 +65,8 @@ Configuration remaps fence the parent. Observers are removed on completion, time
 shutdown. There is no promise of atomic hardware rollback after partial completion.
 
 Completed intents retain one correlated composite snapshot and derive partial status from confirmed children.
+REST responses and websocket intent events expose child identity fields as `member_id`, `property_id`,
+`member_identity` and `property_identity`; the original identities survive cleared live references.
 Scenes count only confirmed parents as successful actions. A partial parent retains confirmed child outcomes in the
 scene result, produces partial scene completion and does not stop unrelated actions. Legacy platform boolean contracts
 remain unchanged.
@@ -67,5 +78,6 @@ own release/control path rather than trust caller-supplied context.
 
 Room contribution selection and admin/panel authoring/presentation are separate integrations. Raw physical controls
 remain individually usable. Production availability depends on adapters submitting qualified live feedback; legacy
-adapters that write only values remain unknown. A provider without guarded composite preparation is also refused at
+adapters that write only values remain unknown. WLED partial observations preserve omitted main RGB values; only full
+snapshots or explicitly unsafe main-segment identities invalidate those colors. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.

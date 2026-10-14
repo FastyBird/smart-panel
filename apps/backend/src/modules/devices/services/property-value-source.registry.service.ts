@@ -17,6 +17,9 @@ export interface IPropertyValueSource {
 
 	/** Storage key for the property, or null to use the property's own id. */
 	resolve(property: ChannelPropertyEntity): string | null;
+
+	/** Optional lifecycle gate for aliases or derived outputs, without changing their canonical storage key. */
+	unavailableReason?(property: ChannelPropertyEntity): string | null;
 }
 
 @Injectable()
@@ -47,6 +50,11 @@ export class PropertyValueSourceRegistryService {
 	 */
 	resolve(property: ChannelPropertyEntity): string {
 		return this.sources[property.type]?.resolve(property) ?? property.id;
+	}
+
+	/** A source can suspend qualified and reported authority while retaining its canonical physical series. */
+	unavailableReason(property: ChannelPropertyEntity): string | null {
+		return this.sources[property.type]?.unavailableReason?.(property) ?? null;
 	}
 
 	/** True when the property's value is stored under a different property's key. */

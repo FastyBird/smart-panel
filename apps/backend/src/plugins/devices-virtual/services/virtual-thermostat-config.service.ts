@@ -127,15 +127,17 @@ export class VirtualThermostatConfigService {
 		});
 	}
 	async get(controllerId: string) {
-		const manager = this.dataSource.manager;
-		const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
-		if (!config) throw new NotFoundException('Thermostat configuration does not exist.');
-		const [sources, actuators, settings] = await Promise.all([
-			manager.findBy(VirtualThermostatSourceEntity, { controllerId }),
-			manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: Not('released') }),
-			manager.findBy(VirtualThermostatSettingEntity, { controllerId }),
-		]);
-		return this.model(config, sources, actuators, settings);
+		return this.structureLock.runShared(async () => {
+			const manager = this.dataSource.manager;
+			const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+			if (!config) throw new NotFoundException('Thermostat configuration does not exist.');
+			const [sources, actuators, settings] = await Promise.all([
+				manager.findBy(VirtualThermostatSourceEntity, { controllerId }),
+				manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: Not('released') }),
+				manager.findBy(VirtualThermostatSettingEntity, { controllerId }),
+			]);
+			return this.model(config, sources, actuators, settings);
+		});
 	}
 	/** Durable release demand. Detach/remap/delete remains forbidden until qualified proof is recorded. */
 	async requestRelease(controllerId: string, expectedRevision: number) {

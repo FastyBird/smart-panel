@@ -28,7 +28,7 @@ import {
 import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from './property-command-admission.registry.service';
-import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { COMPOSITE_INTENT_FINISH_MARGIN_MS, PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from './property-command-entry-snapshot';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -534,9 +534,12 @@ export class PropertyCommandService implements OnModuleDestroy {
 						throw new Error(validation.reason ?? 'Invalid composite value');
 					updates.push({ device, channel, property, value: validation.value });
 				}
+				// Reserve time to record partial child outcomes before parent cleanup.
+				const deadlineAt = intent.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;
 				const dispatch = await this.propertyCommandDispatchService.dispatchBatch(updates, {
 					intentId: intent.id,
-					ttlMs,
+					ttlMs: deadlineAt - Date.now(),
+					deadlineAt,
 					requestId: options.requestId,
 					commandEntry: options.commandEntry,
 				});
