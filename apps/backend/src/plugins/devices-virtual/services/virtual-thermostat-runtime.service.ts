@@ -654,7 +654,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const decision = evaluateVirtualThermostatPolicy(
 			{
 				...context.config.policy,
-				floor: context.memberBindings.length && !context.bindings.some((row) => row.binding.role === 'floor') ? null : context.config.policy.floor,
+				floor:
+					context.memberBindings.length && !context.bindings.some((row) => row.binding.role === 'floor')
+						? null
+						: context.config.policy.floor,
 				heatingSetpoint: effective.heating_setpoint,
 				coolingSetpoint: effective.cooling_setpoint,
 			},

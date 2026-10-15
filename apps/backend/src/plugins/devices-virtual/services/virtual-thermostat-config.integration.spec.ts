@@ -433,7 +433,11 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			string,
 			unknown
 		>[];
-		expect(afterConfig.map(({ controlStrategy: _strategy, comfort: _comfort, displayFloorClaimId: _display, ...row }) => row)).toEqual(beforeConfig);
+		expect(
+			afterConfig.map(
+				({ controlStrategy: _strategy, comfort: _comfort, displayFloorClaimId: _display, ...row }) => row,
+			),
+		).toEqual(beforeConfig);
 
 		expect(afterConfig[0].comfort).toBeNull();
 		expect(await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"')).toEqual(beforeJournal);
