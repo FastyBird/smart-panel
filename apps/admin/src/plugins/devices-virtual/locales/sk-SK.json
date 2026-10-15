@@ -124,16 +124,16 @@
 		"loadFailed": "Zdrojové zariadenia sa nepodarilo načítať.",
 		"retry": "Skúsiť znova",
 		"warning": {
-			"title": "<channel> · <TYPE-property>: stratený zdroj",
+			"title": "{channel} · {property}: stratený zdroj",
 			"description": "Zdrojová vlastnosť bola odstránená. Toto zariadenie zostáva offline, kým nebude znova namapované.",
 			"remap": "Premapovať"
 		}
 	},
 	"remap": {
-		"title": "Premapovať <TYPE-property>",
+		"title": "Premapovať {property}",
 		"description": "Vyberte nový zdroj pre túto vlastnosť. Potvrdiť možno iba kompatibilný zdroj.",
 		"confirm": "Premapovať",
-		"success": "<TYPE-property> teraz čerpá z nového zdroja",
+		"success": "{property} teraz čerpá z nového zdroja",
 		"errors": {
 			"propertyGone": "Táto vlastnosť už neexistuje.",
 			"updateFailed": "Vlastnosť sa nepodarilo premapovať. Skúste to prosím znova."

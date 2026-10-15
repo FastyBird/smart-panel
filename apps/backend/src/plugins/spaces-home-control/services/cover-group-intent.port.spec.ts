@@ -55,7 +55,12 @@ describe('covers room port to core composites', () => {
 			port.release(snapshot);
 			expect(plan).toHaveBeenCalledWith(expect.any(Array), 'covers');
 			expect(dispatchBatch).toHaveBeenCalledWith(
-				[expect.objectContaining({ property: group.commandProperty, value: type })],
+				[
+					expect.objectContaining({
+						property: expect.objectContaining({ id: group.commandProperty.id }) as unknown,
+						value: type,
+					}),
+				],
 				expect.objectContaining({
 					intentId: intent.id,
 					commandEntry: entry,

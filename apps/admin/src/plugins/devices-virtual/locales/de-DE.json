@@ -124,16 +124,16 @@
 		"loadFailed": "Quellgeräte konnten nicht geladen werden.",
 		"retry": "Erneut versuchen",
 		"warning": {
-			"title": "<channel> · <TYPE-property>: Quelle verloren",
+			"title": "{channel} · {property}: Quelle verloren",
 			"description": "Die Quelleigenschaft wurde gelöscht. Dieses Gerät bleibt offline, bis sie neu zugeordnet wird.",
 			"remap": "Neu zuordnen"
 		}
 	},
 	"remap": {
-		"title": "<TYPE-property> neu zuordnen",
+		"title": "{property} neu zuordnen",
 		"description": "Wählen Sie eine neue Quelle für diese Eigenschaft. Bestätigt werden kann nur eine kompatible Quelle.",
 		"confirm": "Neu zuordnen",
-		"success": "<TYPE-property> bezieht jetzt Werte aus einer neuen Quelle",
+		"success": "{property} bezieht jetzt Werte aus einer neuen Quelle",
 		"errors": {
 			"propertyGone": "Diese Eigenschaft existiert nicht mehr.",
 			"updateFailed": "Die Eigenschaft konnte nicht neu zugeordnet werden. Bitte versuchen Sie es erneut."

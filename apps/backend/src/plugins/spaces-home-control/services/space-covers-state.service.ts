@@ -542,7 +542,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 	 * Find all window covering devices in a space with their channels, properties, and roles.
 	 * Excludes covers with HIDDEN role as they should not be controlled by intents.
 	 */
-	async getCoversInSpace(spaceId: string): Promise<CoverDevice[]> {
+	async getCoversInSpace(spaceId: string, selectContributions = true): Promise<CoverDevice[]> {
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
 		const covers: CoverDevice[] = [];
 
@@ -595,7 +595,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			}
 		}
 
-		if (!this.contributions) return covers;
+		if (!this.contributions || !selectContributions) return covers;
 		const plan = await this.contributions.plan(
 			covers.map((cover) => ({ ...cover, channel: cover.coverChannel })),
 			'covers',

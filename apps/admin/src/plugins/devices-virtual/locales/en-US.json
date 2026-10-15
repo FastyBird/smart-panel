@@ -124,16 +124,16 @@
 		"loadFailed": "Source devices could not be loaded.",
 		"retry": "Retry",
 		"warning": {
-			"title": "<channel> · <TYPE-property>: source lost",
+			"title": "{channel} · {property}: source lost",
 			"description": "The source property was deleted. This device stays offline until it is remapped.",
 			"remap": "Remap"
 		}
 	},
 	"remap": {
-		"title": "Remap <TYPE-property>",
+		"title": "Remap {property}",
 		"description": "Choose a new source for this property. Only a compatible source can be confirmed.",
 		"confirm": "Remap",
-		"success": "<TYPE-property> now draws from a new source",
+		"success": "{property} now draws from a new source",
 		"errors": {
 			"propertyGone": "This property no longer exists.",
 			"updateFailed": "The property could not be remapped. Please try again."

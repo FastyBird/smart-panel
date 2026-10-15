@@ -206,7 +206,7 @@ describe('CoversIntentService', () => {
 		});
 		expect(dispatchBatch).toHaveBeenCalledTimes(1);
 		expect(dispatchBatch).toHaveBeenCalledWith(
-			[expect.objectContaining({ property: cover.commandProperty, value: 'open' })],
+			[expect.objectContaining({ property: expect.objectContaining({ id: cover.commandProperty.id }), value: 'open' })],
 			expect.objectContaining({ commandEntry: entry, deadlineAt: expiresAt.getTime() - 100 }),
 		);
 		expect(completeIntent).toHaveBeenCalledWith(mockIntentId, expect.any(Array), [composite]);
@@ -220,6 +220,31 @@ describe('CoversIntentService', () => {
 		expect(dispatchBatch).not.toHaveBeenCalled();
 		expect(storeModeValidity).not.toHaveBeenCalled();
 	});
+
+	it.each([CoversIntentType.POSITION_DELTA, CoversIntentType.SET_MODE])(
+		'preserves ordinary physical-only %s position-first room behavior',
+		async (type) => {
+			const cover = createMockCoverDevice({
+				positionProperty: {
+					id: uuid(),
+					category: PropertyCategory.POSITION,
+					unit: '%',
+					format: [0, 100],
+					value: { value: 50 },
+				} as ChannelPropertyEntity,
+				commandProperty: { id: uuid(), category: PropertyCategory.COMMAND } as ChannelPropertyEntity,
+			});
+			coversStateService.getCoversInSpace.mockResolvedValue([cover]);
+			const result = await service.executeCoversIntent(mockSpaceId, { type, mode: CoversMode.OPEN });
+			expect(result).toMatchObject({ success: true, affectedDevices: 1, failedDevices: 0 });
+			expect(mockPlatform.processBatch).toHaveBeenCalledWith([
+				expect.objectContaining({
+					property: cover.positionProperty,
+					value: type === CoversIntentType.POSITION_DELTA ? 75 : 100,
+				}),
+			]);
+		},
+	);
 
 	describe('offline device handling', () => {
 		it('skips offline devices and reports them in result', async () => {

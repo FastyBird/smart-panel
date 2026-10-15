@@ -124,16 +124,16 @@
 		"loadFailed": "No se pudieron cargar los dispositivos de origen.",
 		"retry": "Reintentar",
 		"warning": {
-			"title": "<channel> · <TYPE-property>: origen perdido",
+			"title": "{channel} · {property}: origen perdido",
 			"description": "La propiedad de origen se eliminó. Este dispositivo permanece sin conexión hasta que se vuelva a asignar.",
 			"remap": "Reasignar"
 		}
 	},
 	"remap": {
-		"title": "Reasignar <TYPE-property>",
+		"title": "Reasignar {property}",
 		"description": "Elija un nuevo origen para esta propiedad. Solo se puede confirmar un origen compatible.",
 		"confirm": "Reasignar",
-		"success": "<TYPE-property> ahora toma valores de un nuevo origen",
+		"success": "{property} ahora toma valores de un nuevo origen",
 		"errors": {
 			"propertyGone": "Esta propiedad ya no existe.",
 			"updateFailed": "No se pudo reasignar la propiedad. Inténtelo de nuevo."

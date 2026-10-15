@@ -159,7 +159,19 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElResult, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
+import {
+	ElAlert,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElInputNumber,
+	ElOption,
+	ElResult,
+	ElSelect,
+	ElSwitch,
+	type FormInstance,
+	type FormRules,
+} from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
 import {

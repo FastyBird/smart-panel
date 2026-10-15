@@ -12,7 +12,7 @@ import { GroupCatalogModel } from '../models/group-catalog.model';
 import { coverContractReasons } from './virtual-cover-contract.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { groupCapabilityChange } from './virtual-group-contract.utils';
-import { GROUP_PROFILES, commonGroupCapabilities, requiredGroupFields } from './virtual-group-profile';
+import { GROUP_PROFILES, commonGroupCapabilities, groupField, requiredGroupFields } from './virtual-group-profile';
 
 /** Shared structural metadata policy only. Neither candidate eligibility nor a preview grants command authority. */
 @Injectable()
@@ -107,7 +107,13 @@ export class VirtualGroupCatalogService {
 					name: `${(channel.device as DeviceEntity).name} / ${channel.name}`,
 					eligible: reasons.length === 0,
 					reasons: [...new Set(reasons)],
-					common_capabilities: common.map(({ dataType, ...field }) => ({ ...field, data_type: dataType })),
+					common_capabilities: common.map(({ dataType, ...field }) => ({
+						...field,
+						data_type: dataType,
+						...(profile === VirtualLightGroupProfile.LIGHT
+							? {}
+							: { access: groupField(profile, field.category)?.access }),
+					})),
 				};
 			}),
 		};

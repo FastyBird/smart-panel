@@ -245,11 +245,16 @@ whose storage permission is read-only. Cover scene choices include only ready na
 control is advertised as usable. Scene execution remains in `LocalScenePlatform` and core composite dispatch with the
 scene's existing absolute deadline, estimated group budget and per-member outcomes. There is no second command engine.
 
-The existing covers room domain now dispatches OPEN/CLOSE/STOP as native COMMAND operations when groups participate.
+The existing covers room domain dispatches group OPEN/CLOSE/STOP as native COMMAND operations.
 It uses shared canonical-leaf contribution selection to exclude represented raw members and reject overlapping groups.
 Repair overlap by changing membership or the existing cover participation role (HIDDEN excludes a representative).
+Unrelated ordinary covers keep their existing position-first controls and dispatch independently of group convergence,
+under the captured intent authority and absolute deadline. A refused or timed-out group does not suppress their sends.
 Room controls display agreement/mixed/unknown actual position, source expiry, readiness/refusal and composite outcomes.
-Group-containing rooms offer no relative-position, preset-mode or guessed position-to-command conversion. Explicit
+Group-containing rooms offer no relative-position, preset-mode or guessed position-to-command conversion. Room-wide
+relative-position and mode requests fail for every target before any dispatch, including in mixed rooms. A group outside
+a role-specific target does not block that role's ordinary controls. The shading page removes mode popups and also guards
+retained popup callbacks when a room changes to grouped controls. Explicit
 position requests still reach core validation and remain unavailable on the current qualified adapter. Ordinary
 physical-only covers and the existing light room domain retain their policies.
 

@@ -124,16 +124,16 @@
 		"loadFailed": "Nie udało się wczytać urządzeń źródłowych.",
 		"retry": "Spróbuj ponownie",
 		"warning": {
-			"title": "<channel> · <TYPE-property>: utracono źródło",
+			"title": "{channel} · {property}: utracono źródło",
 			"description": "Właściwość źródłowa została usunięta. To urządzenie pozostaje offline, dopóki nie zostanie ponownie przypisana.",
 			"remap": "Przypisz ponownie"
 		}
 	},
 	"remap": {
-		"title": "Przypisz ponownie <TYPE-property>",
+		"title": "Przypisz ponownie {property}",
 		"description": "Wybierz nowe źródło dla tej właściwości. Potwierdzić można tylko zgodne źródło.",
 		"confirm": "Przypisz ponownie",
-		"success": "<TYPE-property> teraz pobiera wartości z nowego źródła",
+		"success": "{property} teraz pobiera wartości z nowego źródła",
 		"errors": {
 			"propertyGone": "Ta właściwość już nie istnieje.",
 			"updateFailed": "Nie udało się ponownie przypisać właściwości. Spróbuj ponownie."

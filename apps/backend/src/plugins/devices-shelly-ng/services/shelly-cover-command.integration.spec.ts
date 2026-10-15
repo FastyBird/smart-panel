@@ -23,6 +23,7 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
@@ -45,6 +46,11 @@ import { VirtualLightGroupStateService } from '../../devices-virtual/services/vi
 import { VirtualProducerConfigService } from '../../devices-virtual/services/virtual-producer-config.service';
 import { VirtualProducerStateService } from '../../devices-virtual/services/virtual-producer-state.service';
 import { VirtualValueSourceService } from '../../devices-virtual/services/virtual-value-source.service';
+import { CoverGroupIntentPort } from '../../spaces-home-control/services/cover-group-intent.port';
+import { CoversIntentService } from '../../spaces-home-control/services/covers-intent.service';
+import { LightingContributionPlannerService } from '../../spaces-home-control/services/lighting-contribution-planner.service';
+import { CoverDevice } from '../../spaces-home-control/services/space-covers-state.service';
+import { CoversIntentType, CoversMode, CoversRole } from '../../spaces-home-control/spaces-home-control.constants';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
 import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -147,6 +153,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	let manager: DelegatesManagerService;
 	let configuration: ConfigureVirtualLightGroupDto;
 	let platform: ShellyNgDevicePlatform;
+	let platforms: PlatformRegistryService;
 	let guards: PropertyCommandAdmissionRegistryService;
 	let sources: PropertyValueSourceRegistryService;
 	let events: EventEmitter2;
@@ -230,7 +237,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			},
 		});
 		platform = new ShellyNgDevicePlatform(manager);
-		const platforms = new PlatformRegistryService();
+		platforms = new PlatformRegistryService();
 		platforms.register(platform);
 		transports = [];
 		physical = [];
@@ -419,6 +426,154 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			);
 		}
 	});
+	it.each(['confirmed', 'timeout', 'refusal'] as const)(
+		'mixed room preserves nonprepared position-first ordinary dispatch independently of a %s qualified group',
+		async (outcome) => {
+			const legacyId = uuid(),
+				channelId = uuid(),
+				positionId = uuid();
+			await db.manager.insert(ShellyNgDeviceEntity, {
+				id: legacyId,
+				name: 'Legacy provider',
+				identifier: 'legacy',
+				category: DeviceCategory.WINDOW_COVERING,
+			});
+			await db.manager.insert(ShellyNgChannelEntity, {
+				id: channelId,
+				device: legacyId,
+				name: 'Legacy',
+				identifier: 'legacy',
+				category: ChannelCategory.WINDOW_COVERING,
+			} as never);
+			await db.manager.insert(ShellyNgChannelPropertyEntity, {
+				id: positionId,
+				channel: channelId,
+				identifier: 'position',
+				category: PropertyCategory.POSITION,
+				dataType: DataTypeType.UCHAR,
+				format: [0, 100],
+				permissions: [PermissionType.READ_WRITE],
+			} as never);
+			const legacySend = jest.fn(() => Promise.resolve(true));
+			const originalGet = platforms.get.bind(platforms) as PlatformRegistryService['get'];
+			jest
+				.spyOn(platforms, 'get')
+				.mockImplementation((device) =>
+					(device as DeviceEntity).id === legacyId ? ({ processBatch: legacySend } as never) : originalGet(device),
+				);
+			const asCover = async (channel: string): Promise<CoverDevice> => {
+				const entity = await db.manager.findOneOrFail(ChannelEntity, {
+					where: { id: channel },
+					relations: ['device', 'properties'],
+				});
+				const device = entity.device as DeviceEntity;
+				device.status = { online: true, status: ConnectionState.CONNECTED, lastChanged: null };
+				return {
+					device,
+					coverChannel: entity,
+					positionProperty: entity.properties.find((p) => p.category === PropertyCategory.POSITION) ?? null,
+					commandProperty: entity.properties.find((p) => p.category === PropertyCategory.COMMAND) ?? null,
+					tiltProperty: null,
+					role: channel === group ? CoversRole.BLACKOUT : CoversRole.PRIMARY,
+				};
+			};
+			const covers = await Promise.all([group, physical[0].channel.id, channelId].map(asCover));
+			const contributionPlan = new LightingContributionPlannerService({
+				getCoverage: (channel: ChannelEntity) =>
+					Promise.resolve(
+						channel.id === group ? { leaves: physical.map((p) => p.channel.id), isCurrent: () => true } : null,
+					),
+			} as never);
+			const plan = jest.spyOn(contributionPlan, 'plan');
+			const port = new CoverGroupIntentPort(
+				{
+					captureCommandEntry: () =>
+						PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, guards.capture()),
+					releaseCommandEntry: (entry: PropertyCommandEntrySnapshot) => entry.dispose(),
+				} as never,
+				dispatcher,
+				contributionPlan,
+			);
+			let expiresAt = new Date(0);
+			const completeIntent = jest.fn();
+			const room = new CoversIntentService(
+				{ findOne: () => Promise.resolve({ id: 'room' }) } as never,
+				platforms,
+				dispatcher,
+				{ getCoversInSpace: () => Promise.resolve(covers), getCoversState: () => Promise.resolve(null) } as never,
+				events,
+				{ captureSnapshot: () => Promise.resolve(null) } as never,
+				{} as never,
+				{ storeModeValidity: () => Promise.resolve() } as never,
+				{
+					createIntent: () => ({
+						id: 'room-intent',
+						expiresAt: (expiresAt = new Date(Date.now() + (outcome === 'confirmed' ? 5000 : 1500))),
+					}),
+					completeIntent,
+				} as never,
+				port,
+			);
+			for (const type of [CoversIntentType.POSITION_DELTA, CoversIntentType.SET_MODE]) {
+				const refused = await room.executeCoversIntent('room', { type, mode: CoversMode.OPEN });
+				expect(refused).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 3 });
+				expect(legacySend).not.toHaveBeenCalled();
+				expect(transports.flatMap((rpc) => rpc.frames).filter((frame) => frame.method !== 'Cover.GetStatus')).toEqual(
+					[],
+				);
+			}
+			covers[0].device.status = { ...covers[0].device.status, online: false };
+			const offlineGroupRefusal = await room.executeCoversIntent('room', { type: CoversIntentType.POSITION_DELTA });
+			expect(offlineGroupRefusal).toMatchObject({
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 3,
+				skippedOfflineDevices: 0,
+			});
+			expect(legacySend).not.toHaveBeenCalled();
+			covers[0].device.status = { ...covers[0].device.status, online: true };
+			expect(plan).not.toHaveBeenCalled();
+			// A non-targeted group cannot block an ordinary role-specific request.
+			covers[1].role = CoversRole.BLACKOUT;
+			await room.executeCoversIntent('room', {
+				type: CoversIntentType.ROLE_POSITION,
+				role: CoversRole.PRIMARY,
+				position: 35,
+			});
+			expect(legacySend).toHaveBeenCalledWith([
+				expect.objectContaining({ value: 35, property: expect.objectContaining({ id: positionId }) as unknown }),
+			]);
+			legacySend.mockClear();
+			if (outcome === 'timeout') for (const rpc of transports) rpc.post = () => HOLD;
+			if (outcome === 'refusal') for (const rpc of transports) rpc.pre = (raw) => ({ ...raw, pos_control: false });
+			const pending = room.executeCoversIntent('room', { type: CoversIntentType.OPEN });
+			await until(() => legacySend.mock.calls.length === 1);
+			expect(Date.now()).toBeLessThan(expiresAt.getTime() - 100);
+			expect(legacySend).toHaveBeenCalledWith([
+				expect.objectContaining({ value: 100, property: expect.objectContaining({ id: positionId }) as unknown }),
+			]);
+			const result = await pending;
+			if (outcome === 'confirmed')
+				expect(result?.composites).toEqual([expect.objectContaining({ status: 'confirmed' })]);
+			expect(plan).toHaveBeenCalledTimes(1);
+			expect(result).toMatchObject({
+				success: outcome === 'confirmed',
+				affectedDevices: outcome === 'confirmed' ? 2 : 1,
+				failedDevices: outcome === 'confirmed' ? 0 : 1,
+			});
+			expect(transports.map((rpc) => rpc.frames.filter((frame) => frame.method === 'Cover.Open').length)).toEqual(
+				outcome === 'refusal' ? [0, 0] : [1, 1],
+			);
+			expect(completeIntent).toHaveBeenLastCalledWith(
+				'room-intent',
+				expect.arrayContaining([
+					expect.objectContaining({ channelId: physical[0].channel.id, error: 'represented_by_cover_group' }),
+				]),
+				expect.any(Array),
+			);
+		},
+	);
+
 	const emitRaw = (i: number, raw: Record<string, unknown>) => {
 		transports[i].emit('statusUpdate', { 'cover:0': raw, ts: Date.now() / 1000 });
 	};

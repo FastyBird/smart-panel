@@ -319,6 +319,7 @@ describe('light group atomic authoring with real SQLite and core creation servic
 									PermissionType.WRITE_ONLY,
 								],
 								[PropertyCategory.OBSTRUCTION, DataTypeType.BOOL, null, null, PermissionType.READ_ONLY],
+								[PropertyCategory.TILT, DataTypeType.UCHAR, [0, 100], 1, PermissionType.READ_WRITE],
 							];
 				for (const [category, dataType, format, step, permission] of fields)
 					await database.manager.insert(ChannelPropertyEntity, {
@@ -337,6 +338,22 @@ describe('light group atomic authoring with real SQLite and core creation servic
 			expect(candidates.candidates).toHaveLength(2);
 			const dto = Object.assign(draft(), { profile });
 			const preview = await authoring.preview(dto);
+			for (const candidate of candidates.candidates)
+				expect(candidate.common_capabilities).toEqual(preview.common_capabilities);
+			for (const field of preview.common_capabilities)
+				expect(field.access).toBe(
+					[
+						PropertyCategory.TYPE,
+						PropertyCategory.STATUS,
+						PropertyCategory.OBSTRUCTION,
+						PropertyCategory.IN_USE,
+					].includes(field.category)
+						? 'ro'
+						: field.category === PropertyCategory.COMMAND
+							? 'wo'
+							: 'rw',
+				);
+
 			expect(
 				preview.common_capabilities.find(
 					(field) =>
@@ -405,6 +422,22 @@ describe('light group atomic authoring with real SQLite and core creation servic
 			expect(candidates.candidates).toHaveLength(2);
 			const dto = Object.assign(draft(), { profile });
 			const preview = await authoring.preview(dto);
+			for (const candidate of candidates.candidates)
+				expect(candidate.common_capabilities).toEqual(preview.common_capabilities);
+			for (const field of preview.common_capabilities)
+				expect(field.access).toBe(
+					[
+						PropertyCategory.TYPE,
+						PropertyCategory.STATUS,
+						PropertyCategory.OBSTRUCTION,
+						PropertyCategory.IN_USE,
+					].includes(field.category)
+						? 'ro'
+						: field.category === PropertyCategory.COMMAND
+							? 'wo'
+							: 'rw',
+				);
+
 			expect(preview.common_capabilities.map((capability) => capability.category)).toEqual(
 				profile === VirtualLightGroupProfile.OUTLET
 					? [PropertyCategory.ON, PropertyCategory.IN_USE]

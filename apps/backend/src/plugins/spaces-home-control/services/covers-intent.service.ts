@@ -4,7 +4,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
+import {
+	PropertyCommandDispatchOptions,
+	PropertyCommandDispatchService,
+} from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
@@ -159,12 +162,17 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		// Get all covers in the space
-		const allCovers = await this.coversStateService.getCoversInSpace(spaceId);
+		const allCovers = await this.coversStateService.getCoversInSpace(spaceId, false);
 
 		if (allCovers.length === 0) {
 			this.logger.debug(`No covers found in space id=${spaceId}`);
 			return { success: true, affectedDevices: 0, failedDevices: 0, skippedOfflineDevices: 0, newPosition: null };
 		}
+
+		// A room-wide operation without group semantics refuses every target, including offline groups.
+		const refuseWholeOperation =
+			[CoversIntentType.POSITION_DELTA, CoversIntentType.SET_MODE].includes(intent.type) &&
+			allCovers.some((cover) => this.groups?.isGroup(cover));
 
 		// Filter out offline devices
 		const { online: covers, offlineIds } = this.filterOfflineCoverDevices(allCovers);
@@ -174,7 +182,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		// Filter offline IDs by role for role-specific intents (applied early for all-offline check)
-		const targetedOfflineIds = this.filterOfflineIdsByRole(allCovers, offlineIds, intent);
+		const targetedOfflineIds = refuseWholeOperation ? [] : this.filterOfflineIdsByRole(allCovers, offlineIds, intent);
 
 		// For role-specific intents, also check if there are any online devices with the target role
 		const hasOnlineTargetedDevices =
@@ -235,65 +243,89 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			}
 		}
 
-		const groupExecution = await this.groups?.execute(covers, intent, intentRecord, entry);
-		const remainingCovers = groupExecution?.remaining ?? covers;
-		if (groupExecution) targetResults.push(...groupExecution.results);
-
-		switch (intent.type) {
-			case CoversIntentType.OPEN:
-				result = await this.executePositionIntentWithResults(remainingCovers, 100, targetResults);
-				break;
-
-			case CoversIntentType.CLOSE:
-				result = await this.executePositionIntentWithResults(remainingCovers, 0, targetResults);
-				break;
-
-			case CoversIntentType.STOP:
-				result = await this.executeStopIntentWithResults(remainingCovers, targetResults);
-				break;
-
-			case CoversIntentType.SET_POSITION:
-				result = await this.executePositionIntentWithResults(remainingCovers, intent.position ?? 0, targetResults);
-				break;
-
-			case CoversIntentType.POSITION_DELTA:
-				result = await this.executePositionDeltaIntentWithResults(
-					remainingCovers,
-					intent.delta,
-					intent.increase,
-					targetResults,
-				);
-				break;
-
-			case CoversIntentType.ROLE_POSITION:
-				result = await this.executeRolePositionIntentWithResults(
-					remainingCovers,
-					intent.role,
-					intent.position ?? 0,
-					targetResults,
-				);
-				break;
-
-			case CoversIntentType.SET_MODE:
-				if (groupExecution) {
-					result = { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
+		const groupPlan = await this.groups?.prepare(
+			refuseWholeOperation ? allCovers : covers,
+			intent,
+			intentRecord,
+			entry,
+		);
+		const remainingCovers = groupPlan?.remaining ?? covers;
+		const options = groupPlan?.ordinaryOptions;
+		const executeOrdinary = async (): Promise<CoversIntentResult> => {
+			switch (intent.type) {
+				case CoversIntentType.OPEN:
+					result = await this.executePositionIntentWithResults(remainingCovers, 100, targetResults, options);
 					break;
-				}
-				result = await this.executeModeIntentWithResults(spaceId, remainingCovers, intent.mode, targetResults);
-				break;
 
-			default:
-				this.logger.warn(`Unknown covers intent type: ${String(intent.type)}`);
-				this.intentsService.completeIntent(intentRecord.id, targetResults);
-				return {
-					success: false,
-					affectedDevices: 0,
-					failedDevices: 0,
-					skippedOfflineDevices: targetedOfflineIds.length,
-					offlineDeviceIds: targetedOfflineIds.length > 0 ? targetedOfflineIds : undefined,
-					newPosition: null,
-				};
-		}
+				case CoversIntentType.CLOSE:
+					result = await this.executePositionIntentWithResults(remainingCovers, 0, targetResults, options);
+					break;
+
+				case CoversIntentType.STOP:
+					result = await this.executeStopIntentWithResults(remainingCovers, targetResults, options);
+					break;
+
+				case CoversIntentType.SET_POSITION:
+					result = await this.executePositionIntentWithResults(
+						remainingCovers,
+						intent.position ?? 0,
+						targetResults,
+						options,
+					);
+					break;
+
+				case CoversIntentType.POSITION_DELTA:
+					result = await this.executePositionDeltaIntentWithResults(
+						remainingCovers,
+						intent.delta,
+						intent.increase,
+						targetResults,
+						options,
+					);
+					break;
+
+				case CoversIntentType.ROLE_POSITION:
+					result = await this.executeRolePositionIntentWithResults(
+						remainingCovers,
+						intent.role,
+						intent.position ?? 0,
+						targetResults,
+						options,
+					);
+					break;
+
+				case CoversIntentType.SET_MODE:
+					if (groupPlan) {
+						result = { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
+						break;
+					}
+					result = await this.executeModeIntentWithResults(
+						spaceId,
+						remainingCovers,
+						intent.mode,
+						targetResults,
+						options,
+					);
+					break;
+
+				default:
+					this.logger.warn(`Unknown covers intent type: ${String(intent.type)}`);
+					return {
+						success: false,
+						affectedDevices: 0,
+						failedDevices: 0,
+						skippedOfflineDevices: targetedOfflineIds.length,
+						offlineDeviceIds: targetedOfflineIds.length > 0 ? targetedOfflineIds : undefined,
+						newPosition: null,
+					};
+			}
+
+			return result;
+		};
+		// Ordinary physical providers retain their position-first dispatcher path and do not wait for group convergence.
+		const [ordinaryResult, groupExecution] = await Promise.all([executeOrdinary(), groupPlan?.run()]);
+		result = ordinaryResult;
+		if (groupExecution) targetResults.push(...groupExecution.results);
 
 		if (groupExecution) {
 			result = {
@@ -506,12 +538,13 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		covers: CoverDevice[],
 		position: number,
 		targetResults: IntentTargetResult[],
+		options?: PropertyCommandDispatchOptions,
 	): Promise<CoversIntentResult> {
 		let affectedDevices = 0;
 		let failedDevices = 0;
 
 		for (const cover of covers) {
-			const success = await this.setCoverPosition(cover, position);
+			const success = await this.setCoverPosition(cover, position, options);
 
 			targetResults.push({
 				deviceId: cover.device.id,
@@ -587,6 +620,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		delta: PositionDelta | undefined,
 		increase: boolean | undefined,
 		targetResults: IntentTargetResult[],
+		options?: PropertyCommandDispatchOptions,
 	): Promise<CoversIntentResult> {
 		const deltaValue = POSITION_DELTA_STEPS[delta ?? PositionDelta.MEDIUM] ?? 25;
 		const shouldIncrease = increase ?? true;
@@ -600,7 +634,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			let newPosition = shouldIncrease ? currentPosition + deltaValue : currentPosition - deltaValue;
 			newPosition = this.clampValue(newPosition, 0, 100);
 
-			const success = await this.setCoverPosition(cover, newPosition);
+			const success = await this.setCoverPosition(cover, newPosition, options);
 
 			targetResults.push({
 				deviceId: cover.device.id,
@@ -675,6 +709,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		role: CoversRole | undefined,
 		position: number,
 		targetResults: IntentTargetResult[],
+		options?: PropertyCommandDispatchOptions,
 	): Promise<CoversIntentResult> {
 		const targetRole = role ?? CoversRole.PRIMARY;
 		const roleCovers = allCovers.filter((cover) => cover.role === targetRole);
@@ -688,7 +723,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		let failedDevices = 0;
 
 		for (const cover of roleCovers) {
-			const success = await this.setCoverPosition(cover, position);
+			const success = await this.setCoverPosition(cover, position, options);
 
 			targetResults.push({
 				deviceId: cover.device.id,
@@ -718,12 +753,13 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	private async executeStopIntentWithResults(
 		covers: CoverDevice[],
 		targetResults: IntentTargetResult[],
+		options?: PropertyCommandDispatchOptions,
 	): Promise<CoversIntentResult> {
 		let affectedDevices = 0;
 		let failedDevices = 0;
 
 		for (const cover of covers) {
-			const success = await this.stopCover(cover);
+			const success = await this.stopCover(cover, options);
 
 			targetResults.push({
 				deviceId: cover.device.id,
@@ -810,6 +846,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		covers: CoverDevice[],
 		mode: CoversMode | undefined,
 		targetResults: IntentTargetResult[],
+		options?: PropertyCommandDispatchOptions,
 	): Promise<CoversIntentResult> {
 		const targetMode = mode ?? CoversMode.OPEN;
 		const selections = selectCoversForMode(covers, targetMode);
@@ -823,7 +860,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		let positionCount = 0;
 
 		for (const selection of selections) {
-			const success = await this.setCoverPosition(selection.cover, selection.rule.position);
+			const success = await this.setCoverPosition(selection.cover, selection.rule.position, options);
 
 			targetResults.push({
 				deviceId: selection.cover.device.id,
@@ -863,7 +900,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	/**
 	 * Set position on a single cover device.
 	 */
-	private async setCoverPosition(cover: CoverDevice, position: number): Promise<boolean> {
+	private async setCoverPosition(
+		cover: CoverDevice,
+		position: number,
+		options?: PropertyCommandDispatchOptions,
+	): Promise<boolean> {
 		const platform = this.platformRegistryService.get(cover.device);
 
 		if (!platform) {
@@ -904,7 +945,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands, options);
 
 			if (!success) {
 				this.logger.error(`Command execution failed for device id=${cover.device.id}`);
@@ -922,7 +963,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	/**
 	 * Stop movement on a single cover device.
 	 */
-	private async stopCover(cover: CoverDevice): Promise<boolean> {
+	private async stopCover(cover: CoverDevice, options?: PropertyCommandDispatchOptions): Promise<boolean> {
 		const platform = this.platformRegistryService.get(cover.device);
 
 		if (!platform) {
@@ -946,7 +987,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		];
 
 		try {
-			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands, options);
 
 			if (!success) {
 				this.logger.error(`Stop command execution failed for device id=${cover.device.id}`);

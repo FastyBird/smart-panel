@@ -143,7 +143,17 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		}
 
 		const planner = updates.map((update) => this.composites?.get(update.property)).find(Boolean);
-		if (planner || updates.some(isCoverControl))
+		// Group leaves always require strict proof. Direct legacy providers retain ordinary semantics;
+		// cover-effect adapters keep the shared motor generation and causal proof path.
+		if (
+			planner ||
+			updates.some(
+				(update) =>
+					isCoverControl(update) &&
+					(this.valueSourceRegistry.resolve(update.property) !== update.property.id ||
+						typeof this.platformRegistryService.get(update.device)?.getCoverEffectScope === 'function'),
+			)
+		)
 			return this.dispatchComposite(updates, { ...options, isRequestCurrent: isCurrent }, admission);
 
 		const platform = this.platformRegistryService.get(updates[0].device);

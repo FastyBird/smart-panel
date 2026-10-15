@@ -540,7 +540,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   void _registerModeConfig({CoversMode? modeOverride}) {
-    if (!_isActivePage || _isLoading) return;
+    if (!_isActivePage) return;
+    if (_coversState?.groupOperations != null) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
+    if (_isLoading) return;
 
     final targets = _coversTargets;
     final hasConfiguredCovers = targets.any(
@@ -613,10 +618,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             isMatched: matchedValue == mode.value,
             isLastIntent: lastIntentValue == mode.value,
             isLocked: isModeLocked,
-            onTap: () {
-              _setCoversMode(mode.value);
-              _registerModeConfig(modeOverride: mode.value);
+            onTap: () async {
               dismiss();
+              await _setCoversMode(mode.value);
+              if (mounted) _registerModeConfig();
             },
           ),
       ],
@@ -1569,6 +1574,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   Future<void> _setCoversMode(CoversMode mode) async {
+    // A retained popup callback is not authority after a room changes to grouped controls.
+    if (_coversState?.groupOperations != null) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
     // Guard against concurrent execution
     if (_modeControlStateService.isLocked(ShadingConstants.modeChannelId)) {
       return;
@@ -1585,7 +1595,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     try {
       final result = await _spacesService?.setCoversMode(_roomId, mode);
-      final success = result != null;
+      final success = result?.success == true;
 
       if (mounted) {
         IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
