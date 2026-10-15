@@ -6,7 +6,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import {
 	ChannelCategory,
-	DataTypeType,
 	DeviceCategory,
 	EventType,
 	PermissionType,
@@ -40,16 +39,15 @@ import {
 	VirtualProducerBindingModel,
 } from '../models/producer-response.model';
 
+import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability, commonLightCapabilities } from './virtual-light-group.utils';
 import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
+import { isEligibleAggregateSource } from './virtual-numeric-profile.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
-import {
-	isEligibleVirtualMeasurement,
-	isEligibleVirtualTransformedTemperature,
-} from './virtual-source-eligibility.utils';
+import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
 @Injectable()
@@ -159,35 +157,22 @@ export class VirtualProducerConfigService {
 			if (!proposed.sourcePropertyId) {
 				if (!old || old.sourcePropertyId !== null)
 					throw new DevicesValidationException('Only an existing missing input can retain a null source.');
-				inputs.push(old);
+				inputs.push(manager.create(VirtualAggregateInputEntity, { ...old, weight: proposed.weight ?? 1 }));
 			} else {
 				const source = await this.property(manager, proposed.sourcePropertyId, previewOnly);
 				const sourceChannel = source.channel as ChannelEntity;
 				const sourceDevice = sourceChannel.device as VirtualDeviceEntity;
-				// Aggregate nesting and alias chains remain excluded. Only canonical, read-only
-				// transformed measurements are reserved as an upstream producer extension.
-				if (
-					sourceDevice.type === 'virtual' &&
-					!isEligibleVirtualTransformedTemperature(source, sourceChannel, sourceDevice)
-				)
+				if (!isEligibleAggregateSource(source, sourceChannel, sourceDevice))
 					throw new DevicesValidationException(
-						'Aggregate inputs require physical temperatures or read-only canonical transformed temperatures.',
+						sourceDevice.type === 'virtual'
+							? 'Aggregate inputs require physical temperatures or read-only canonical transformed temperatures.'
+							: 'Aggregate input must be a readable canonical Celsius temperature.',
 					);
-				if (
-					sourceChannel.category !== ChannelCategory.TEMPERATURE ||
-					source.category !== PropertyCategory.TEMPERATURE ||
-					source.dataType !== DataTypeType.FLOAT ||
-					(!source.permissions.includes(PermissionType.READ_ONLY) &&
-						!source.permissions.includes(PermissionType.READ_WRITE)) ||
-					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
-					(source.unit != null && source.unit !== resolvePropertyUnit(source)) ||
-					(output.unit != null && output.unit !== resolvePropertyUnit(output))
-				) {
-					throw new DevicesValidationException('Aggregate input must be a readable canonical Celsius temperature.');
-				}
+
 				inputs.push(
 					manager.create(VirtualAggregateInputEntity, {
 						id: old?.id ?? uuid(),
+						weight: proposed.weight ?? 1,
 						outputPropertyId,
 						sourcePropertyId: source.id,
 						sourcePropertyIdentity: source.id,
@@ -214,6 +199,7 @@ export class VirtualProducerConfigService {
 			outputPropertyId,
 			schemaVersion: 1,
 			operator: dto.operator,
+			outlierFilter: dto.outlierFilter ?? null,
 			minimumValidInputs: dto.minimumValidInputs,
 			maximumAgeSeconds: dto.maximumAgeSeconds,
 			revision: (existing?.revision ?? 0) + 1,
@@ -561,6 +547,17 @@ export class VirtualProducerConfigService {
 	}
 
 	private assertPolicy(dto: ConfigureVirtualAggregateDto): void {
+		if (!isValidAggregateFilter(dto.outlierFilter))
+			throw new DevicesValidationException(
+				'Aggregate outlier filter requires a supported kind and a positive finite canonical-unit threshold.',
+			);
+		if (
+			Array.isArray(dto.inputs) &&
+			dto.inputs.some((input) => !isValidAggregateWeight(input.weight === undefined ? 1 : input.weight))
+		)
+			throw new DevicesValidationException(
+				'Aggregate input weight must be finite and between 0.000001 and 1000000 (inclusive).',
+			);
 		if (
 			!Object.values(VirtualAggregateOperator).includes(dto.operator) ||
 			!Array.isArray(dto.inputs) ||
@@ -605,6 +602,7 @@ export class VirtualProducerConfigService {
 			output_property: config.outputPropertyId,
 			schema_version: config.schemaVersion,
 			operator: config.operator,
+			outlier_filter: config.outlierFilter ?? null,
 			minimum_valid_inputs: config.minimumValidInputs,
 			maximum_age_seconds: config.maximumAgeSeconds,
 			revision: config.revision,
@@ -612,6 +610,7 @@ export class VirtualProducerConfigService {
 			runtime_readiness: this.aggregateRuntime?.isActive() ? 'ready' : 'unavailable',
 			inputs: inputs.map((input) => {
 				const model = this.bindingModel(input);
+				model.weight = input.weight ?? 1;
 				const diagnostic = this.aggregateRuntime
 					?.readDiagnostics(config.outputPropertyId)
 					?.inputs.find((candidate) => candidate.id === input.id);

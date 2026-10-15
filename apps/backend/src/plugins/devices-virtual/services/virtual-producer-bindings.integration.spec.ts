@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import { AddVirtualProducerBindings1000000000027 } from '../../../migrations/1000000000027-AddVirtualProducerBindings';
+import { AddVirtualAggregatePolicies1000000000036 } from '../../../migrations/1000000000036-AddVirtualAggregatePolicies';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -37,6 +38,7 @@ import {
 } from '../entities/devices-virtual.entity';
 import {
 	VirtualAggregateConfigEntity,
+	VirtualAggregateFilterKind,
 	VirtualAggregateInputEntity,
 	VirtualAggregateOperator,
 	VirtualLightGroupBindingEntity,
@@ -256,6 +258,89 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 		expect(graph.isRevisionCurrent(0)).toBe(true);
 	});
 
+	it('roundtrips weighted/filter policies through preview and persistence and rejects the same invalid boundaries', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const dto = aggregateDto([a.propertyId, b.propertyId]);
+		dto.operator = VirtualAggregateOperator.WEIGHTED_MEAN;
+		dto.inputs[0].weight = 0.000001;
+		dto.inputs[1].weight = 1000000;
+		dto.outlierFilter = { kind: VirtualAggregateFilterKind.ABSOLUTE_DEVIATION_FROM_MEDIAN, threshold: 2 };
+		const preview = await configs.previewAggregate(output.propertyId, dto);
+		expect(await graph.revision()).toBe(0);
+		const saved = await configs.configureAggregate(output.propertyId, dto);
+		expect(saved.outlier_filter).toEqual(preview.outlier_filter);
+		expect(saved.inputs.map((input) => input.weight).sort()).toEqual([0.000001, 1000000]);
+		expect((await configs.getAggregate(output.propertyId)).outlier_filter).toEqual(dto.outlierFilter);
+		for (const weight of [0, -1, Infinity, NaN, 0.0000001, 1000001]) {
+			dto.expectedRevision = 1;
+			dto.inputs[0].weight = weight;
+			await expect(configs.previewAggregate(output.propertyId, dto)).rejects.toThrow();
+			await expect(configs.configureAggregate(output.propertyId, dto)).rejects.toThrow();
+		}
+		dto.inputs[0].weight = 1;
+		for (const threshold of [0, -1, Infinity, NaN]) {
+			dto.outlierFilter.threshold = threshold;
+			await expect(configs.previewAggregate(output.propertyId, dto)).rejects.toThrow();
+			await expect(configs.configureAggregate(output.propertyId, dto)).rejects.toThrow();
+		}
+		expect((await configs.getAggregate(output.propertyId)).revision).toBe(1);
+		expect(await graph.revision()).toBe(1);
+	});
+	it('upgrades old rows to weight one without changing identities or revisions', async () => {
+		const migrated = await new DataSource({ type: 'sqlite', database: ':memory:' }).initialize();
+		try {
+			await migrated.query('CREATE TABLE devices_module_devices (id varchar PRIMARY KEY)');
+			await migrated.query('CREATE TABLE devices_module_channels (id varchar PRIMARY KEY)');
+			await migrated.query('CREATE TABLE devices_module_channels_properties (id varchar PRIMARY KEY)');
+			await new AddVirtualProducerBindings1000000000027().up(migrated.createQueryRunner());
+			await migrated.query("INSERT INTO devices_module_channels_properties (id) VALUES ('output'), ('source')");
+			await migrated.query(
+				"INSERT INTO devices_virtual_aggregate_configs (outputPropertyId, operator, minimumValidInputs, maximumAgeSeconds, revision) VALUES ('output', 'mean', 1, 30, 7)",
+			);
+			await migrated.query(
+				"INSERT INTO devices_virtual_aggregate_inputs (id, outputPropertyId, sourcePropertyId, sourcePropertyIdentity, quantity, unit) VALUES ('binding', 'output', 'source', 'source', 'temperature', '°C')",
+			);
+			const migration = new AddVirtualAggregatePolicies1000000000036();
+			await migration.up(migrated.createQueryRunner());
+			expect(
+				await migrated.query(
+					'SELECT id, sourcePropertyId, sourcePropertyIdentity, weight FROM devices_virtual_aggregate_inputs',
+				),
+			).toEqual([{ id: 'binding', sourcePropertyId: 'source', sourcePropertyIdentity: 'source', weight: 1 }]);
+			expect(
+				await migrated.query(
+					'SELECT outputPropertyId, operator, revision, outlierFilter FROM devices_virtual_aggregate_configs',
+				),
+			).toEqual([{ outputPropertyId: 'output', operator: 'mean', revision: 7, outlierFilter: null }]);
+			await migration.down(migrated.createQueryRunner());
+			await migration.up(migrated.createQueryRunner());
+			expect(await migrated.query('SELECT weight FROM devices_virtual_aggregate_inputs')).toEqual([{ weight: 1 }]);
+		} finally {
+			await migrated.destroy();
+		}
+	});
+
+	it('uses the same canonical numeric profile for preview, persistence and graph output quarantine', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const dto = aggregateDto([a.propertyId, b.propertyId]);
+		await configs.configureAggregate(output.propertyId, dto);
+		dto.expectedRevision = 1;
+		await database.manager.update(ChannelPropertyEntity, a.propertyId, { dataType: DataTypeType.INT });
+		await expect(configs.previewAggregate(output.propertyId, dto)).rejects.toThrow(/canonical/);
+		await expect(configs.configureAggregate(output.propertyId, dto)).rejects.toThrow(/canonical/);
+		expect(await graph.revision()).toBe(1);
+		await database.manager.update(ChannelPropertyEntity, output.propertyId, { dataType: DataTypeType.INT });
+		await graph.refreshQuarantine();
+		expect(graph.isQuarantined(output.propertyId)).toBe(true);
+		expect(graph.isQuarantined(a.propertyId)).toBe(false);
+		await database.manager.update(ChannelPropertyEntity, output.propertyId, { dataType: DataTypeType.FLOAT });
+		await graph.refreshQuarantine();
+		expect(graph.isQuarantined(output.propertyId)).toBe(false);
+	});
 	it('reserves the writer slot before validating reciprocal edges through two independent SQLite connections', async () => {
 		const a = await measurement(VirtualDeviceMode.PROJECTION);
 		const b = await measurement(VirtualDeviceMode.PROJECTION);
@@ -615,6 +700,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			await migrated.query('CREATE TABLE devices_module_channels_properties (id varchar PRIMARY KEY)');
 			const migration = new AddVirtualProducerBindings1000000000027();
 			await migration.up(migrated.createQueryRunner());
+			await new AddVirtualAggregatePolicies1000000000036().up(migrated.createQueryRunner());
 			for (const table of [
 				'devices_virtual_graph_revision',
 				'devices_virtual_aggregate_configs',
@@ -650,7 +736,9 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 						.filter((index) => !index.name.startsWith('sqlite_autoindex'))
 						.map(({ name, unique }) => ({ name, unique }))
 						.sort((a, b) => a.name.localeCompare(b.name));
-				expect(await columns(migrated)).toEqual(await columns(database));
+				expect((await columns(migrated)).sort((a, b) => a.name.localeCompare(b.name))).toEqual(
+					(await columns(database)).sort((a, b) => a.name.localeCompare(b.name)),
+				);
 				expect(await fks(migrated)).toEqual(await fks(database));
 				expect(await indexes(migrated)).toEqual(await indexes(database));
 			}

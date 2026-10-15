@@ -1,12 +1,15 @@
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { PropertyProducerQuality } from '../../../modules/devices/models/property-value-state.model';
-import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
+import { VirtualAggregateFilter, VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 
-export type AggregateExclusion = 'missing' | 'incompatible' | 'offline' | 'invalid' | 'stale' | 'disabled';
+import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
+
+export type AggregateExclusion = 'missing' | 'incompatible' | 'offline' | 'invalid' | 'stale' | 'disabled' | 'outlier';
 export interface AggregateInputEvidence {
 	readonly id: string;
 	readonly sourceIdentity: string;
 	readonly sample: QualifiedPropertySample | null;
+	readonly weight?: number;
 	readonly expiresAt?: Date;
 	readonly exclusion?: AggregateExclusion;
 }
@@ -30,10 +33,38 @@ export interface AggregateEvaluation {
 /** Typed extension point: operators receive only qualified finite canonical measurements. */
 export interface AggregateOperator {
 	readonly kind: VirtualAggregateOperator;
-	evaluate(values: readonly number[]): number;
+	evaluate(values: readonly number[], weights?: readonly number[]): number;
 }
 
-export const aggregateOperators: ReadonlyMap<VirtualAggregateOperator, AggregateOperator> = new Map([
+/** Scale both values and weights before compensated summation, avoiding finite-product/sum overflow. */
+function weightedMean(values: readonly number[], weights: readonly number[] = values.map(() => 1)): number {
+	const maximumWeight = Math.max(...weights);
+	const normalized = weights.map((weight) => weight / maximumWeight);
+	const total = stableSum(normalized);
+	const scale = Math.max(...values.map(Math.abs));
+	if (scale === 0) return 0;
+	const sum = stableSum(values.map((value, index) => (value / scale) * (normalized[index] / total)));
+	// Convex results cannot exceed the largest magnitude; contain final floating-point overshoot.
+	return Math.max(-1, Math.min(1, sum)) * scale;
+}
+
+function stableSum(values: readonly number[]): number {
+	let sum = 0;
+	let correction = 0;
+	for (const value of values) {
+		const term = value - correction;
+		const next = sum + term;
+		correction = next - sum - term;
+		sum = next;
+	}
+	return sum;
+}
+
+export const aggregateOperators: ReadonlyMap<VirtualAggregateOperator, AggregateOperator> = new Map<
+	VirtualAggregateOperator,
+	AggregateOperator
+>([
+	[VirtualAggregateOperator.WEIGHTED_MEAN, { kind: VirtualAggregateOperator.WEIGHTED_MEAN, evaluate: weightedMean }],
 	[
 		VirtualAggregateOperator.MEAN,
 		{
@@ -67,7 +98,7 @@ export const aggregateOperators: ReadonlyMap<VirtualAggregateOperator, Aggregate
 	[VirtualAggregateOperator.MAX, { kind: VirtualAggregateOperator.MAX, evaluate: (values) => Math.max(...values) }],
 ]);
 
-/** One fixed clock, fixed membership/quorum and no implicit outlier rejection or sample-time refresh. */
+/** One fixed clock, fixed membership/quorum and explicit opt-in outlier rejection or sample-time refresh. */
 export function evaluateAggregate(
 	operator: VirtualAggregateOperator,
 	minimumValidInputs: number,
@@ -75,8 +106,10 @@ export function evaluateAggregate(
 	evidence: readonly AggregateInputEvidence[],
 	now: Date,
 	step?: number | null,
+	outlierFilter?: VirtualAggregateFilter | null,
 ): AggregateEvaluation {
-	const included: { value: number; sampled: number; expiry: number; degraded: boolean }[] = [];
+	let included: { id: string; value: number; weight: number; sampled: number; expiry: number; degraded: boolean }[] =
+		[];
 	const inputs = [...evidence]
 		.sort((a, b) => a.id.localeCompare(b.id))
 		.map((input): AggregateInputDiagnostic => {
@@ -99,6 +132,8 @@ export function evaluateAggregate(
 			if (!exclusion && (!Number.isFinite(expiry) || expiry <= now.getTime())) exclusion = 'stale';
 			if (!exclusion)
 				included.push({
+					id: input.id,
+					weight: input.weight ?? 1,
 					value: input.sample.value as number,
 					sampled,
 					expiry,
@@ -114,8 +149,26 @@ export function evaluateAggregate(
 				exclusion,
 			};
 		});
+	const filterValid = isValidAggregateFilter(outlierFilter);
+	// Excluded comparisons still determine median/cohort admission; their expiry must fence the result.
+	const comparisonExpiry = outlierFilter != null ? Math.min(...included.map((input) => input.expiry)) : Infinity;
+	const insufficientCohort = filterValid && outlierFilter != null && included.length < 3;
+	if (filterValid && outlierFilter != null && !insufficientCohort) {
+		const median = aggregateOperators.get(VirtualAggregateOperator.MEDIAN).evaluate(
+			included.map((input) => input.value),
+			included.map((input) => input.weight),
+		);
+		const excluded = new Set(
+			included.filter((input) => Math.abs(input.value - median) > outlierFilter.threshold).map((input) => input.id),
+		);
+		included = included.filter((input) => !excluded.has(input.id));
+		for (let index = 0; index < inputs.length; index++)
+			if (excluded.has(inputs[index].id)) inputs[index] = { ...inputs[index], exclusion: 'outlier' };
+	}
 	const reasons = inputs.filter((input) => input.exclusion).map((input) => `${input.exclusion}:${input.id}`);
 	const policyValid =
+		filterValid &&
+		evidence.every((input) => isValidAggregateWeight(input.weight === undefined ? 1 : input.weight)) &&
 		evidence.length >= 2 &&
 		evidence.length <= 256 &&
 		new Set(evidence.map((input) => input.id)).size === evidence.length &&
@@ -128,16 +181,22 @@ export function evaluateAggregate(
 		maximumAgeSeconds <= 86400 &&
 		aggregateOperators.has(operator) &&
 		Number.isFinite(now.getTime());
-	if (!policyValid || included.length < minimumValidInputs)
+	if (!policyValid || insufficientCohort || included.length < minimumValidInputs)
 		return {
 			value: null,
 			quality: 'unavailable',
-			reasons: [policyValid ? 'quorum_lost' : 'invalid_policy', ...reasons],
+			reasons: [
+				!policyValid ? 'invalid_policy' : insufficientCohort ? 'insufficient_comparison_cohort' : 'quorum_lost',
+				...reasons,
+			],
 			sampledAt: null,
 			expiresAt: null,
 			inputs,
 		};
-	let value = aggregateOperators.get(operator).evaluate(included.map((input) => input.value));
+	let value = aggregateOperators.get(operator).evaluate(
+		included.map((input) => input.value),
+		included.map((input) => input.weight),
+	);
 	if (Number.isFinite(step) && step > 0)
 		value = Math.round(value / step + Number.EPSILON * Math.abs(value / step)) * step;
 	if (!Number.isFinite(value))
@@ -156,7 +215,7 @@ export function evaluateAggregate(
 		quality: degraded ? 'degraded' : 'good',
 		reasons,
 		sampledAt: new Date(Math.min(...included.map((input) => input.sampled))),
-		expiresAt: new Date(Math.min(...included.map((input) => input.expiry))),
+		expiresAt: new Date(Math.min(comparisonExpiry, ...included.map((input) => input.expiry))),
 		inputs,
 	};
 }

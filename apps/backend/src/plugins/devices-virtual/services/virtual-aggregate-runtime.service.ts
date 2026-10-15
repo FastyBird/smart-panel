@@ -6,15 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
-import {
-	ChannelCategory,
-	ConnectionState,
-	DataTypeType,
-	EventType,
-	OnlineDeviceState,
-	PermissionType,
-	PropertyCategory,
-} from '../../../modules/devices/devices.constants';
+import { ConnectionState, EventType, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import {
@@ -31,10 +23,8 @@ import { VirtualAggregateConfigEntity, VirtualAggregateInputEntity } from '../en
 
 import { AggregateEvaluation, AggregateInputEvidence, evaluateAggregate } from './virtual-aggregate-evaluator';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import {
-	isEligibleVirtualMeasurement,
-	isEligibleVirtualTransformedTemperature,
-} from './virtual-source-eligibility.utils';
+import { isEligibleAggregateSource } from './virtual-numeric-profile.utils';
+import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 interface RuntimeOutput {
 	property: VirtualChannelPropertyEntity;
@@ -317,18 +307,10 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				const unit = source ? resolvePropertyUnit(source) : null;
 				const incompatible =
 					source &&
-					((device?.type === 'virtual' && !isEligibleVirtualTransformedTemperature(source, sourceChannel, device)) ||
-						sourceChannel?.category !== ChannelCategory.TEMPERATURE ||
-						source.category !== PropertyCategory.TEMPERATURE ||
-						source.dataType !== DataTypeType.FLOAT ||
-						!source.permissions?.some((permission) =>
-							[PermissionType.READ_ONLY, PermissionType.READ_WRITE].includes(permission),
-						) ||
-						input.quantity !== String(PropertyCategory.TEMPERATURE) ||
+					(!isEligibleAggregateSource(source, sourceChannel, device) ||
+						input.quantity !== String(source.category) ||
 						input.unit !== unit ||
 						unit !== resolvePropertyUnit(property) ||
-						(source.unit != null && source.unit !== unit) ||
-						(property.unit != null && property.unit !== resolvePropertyUnit(property)) ||
 						this.graph.isQuarantined(source.id));
 				let sample =
 					source && !incompatible ? this.values.readQualifiedSample(source, Number.MAX_SAFE_INTEGER, now) : null;
@@ -342,6 +324,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				return {
 					id: input.id,
 					sourceIdentity: input.sourcePropertyIdentity,
+					weight: input.weight,
 					sample,
 					expiresAt:
 						source && this.producers.owns(source.id)
@@ -372,6 +355,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				evidence,
 				now,
 				property.step,
+				config.outlierFilter,
 			);
 			if (!this.current(generation)) return;
 			if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) continue;

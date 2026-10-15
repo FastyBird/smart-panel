@@ -6,15 +6,18 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import {
+	VirtualAggregateConfigEntity,
 	VirtualAggregateInputEntity,
 	VirtualGraphRevisionEntity,
 	VirtualLightGroupBindingEntity,
 } from '../entities/virtual-producer.entity';
 import { VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+
+import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 export interface VirtualDependencyEdge {
 	outputPropertyId: string;
@@ -273,10 +276,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		try {
 			const snapshot = await this.dataSource.transaction(async (manager) => ({
 				edges: await this.edges(manager),
+				aggregates: await manager.find(VirtualAggregateConfigEntity),
 				knownProperties: await this.readProjectionSources(manager),
 				properties: await manager
 					.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
 					.leftJoinAndSelect('property.channel', 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
 					.callListeners(false)
 					.getMany(),
 				revision: await this.revision(manager),
@@ -317,6 +322,16 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			}
 			if (snapshot.edges.length > 8192 || neighbors.size > 4096)
 				for (const node of neighbors.keys()) quarantined.add(node);
+			for (const config of snapshot.aggregates) {
+				const property = snapshot.properties.find((candidate) => candidate.id === config.outputPropertyId);
+				const channel = property?.channel as ChannelEntity;
+				if (
+					!property ||
+					!channel?.device ||
+					!isEligibleVirtualMeasurement(property, channel, channel.device as DeviceEntity)
+				)
+					quarantined.add(config.outputPropertyId);
+			}
 			this.quarantined = quarantined;
 			this.knownProperties = new Set(snapshot.knownProperties.map((property) => property.id));
 			this.valueSources = new Map(

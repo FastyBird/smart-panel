@@ -4,10 +4,23 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { VirtualAggregateOperator, VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
+import {
+	VirtualAggregateFilter,
+	VirtualAggregateFilterKind,
+	VirtualAggregateOperator,
+	VirtualLightGroupProfile,
+} from '../entities/virtual-producer.entity';
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataProducerBinding' })
 export class VirtualProducerBindingModel {
+	@ApiPropertyOptional({
+		description: 'Aggregate relative input weight; defaults to 1',
+		minimum: 0.000001,
+		maximum: 1000000,
+	})
+	@Expose()
+	weight?: number;
+
 	@ApiProperty({ description: 'Stable binding UUID', format: 'uuid' })
 	@Expose()
 	id: string;
@@ -51,15 +64,39 @@ export class VirtualProducerBindingModel {
 
 	@ApiPropertyOptional({
 		description: 'Reason input was excluded',
-		enum: ['missing', 'incompatible', 'offline', 'invalid', 'stale', 'disabled'],
+		enum: ['missing', 'incompatible', 'offline', 'invalid', 'stale', 'disabled', 'outlier'],
 		nullable: true,
 	})
 	@Expose()
 	exclusion?: string | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataAggregateOutlierFilter' })
+export class VirtualAggregateOutlierFilterModel implements VirtualAggregateFilter {
+	@ApiProperty({ enum: VirtualAggregateFilterKind })
+	@Expose()
+	kind: VirtualAggregateFilterKind;
+
+	@ApiProperty({
+		description: 'Absolute deviation threshold in canonical units, equality included',
+		minimum: 0,
+		exclusiveMinimum: true,
+	})
+	@Expose()
+	threshold: number;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataAggregateConfiguration' })
 export class VirtualAggregateConfigurationModel {
+	@ApiProperty({
+		description: 'Explicit outlier filter, null when disabled',
+		type: VirtualAggregateOutlierFilterModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => VirtualAggregateOutlierFilterModel)
+	outlier_filter: VirtualAggregateOutlierFilterModel | null;
+
 	@ApiProperty({ description: 'Materialized output UUID', format: 'uuid' })
 	@Expose()
 	output_property: string;
