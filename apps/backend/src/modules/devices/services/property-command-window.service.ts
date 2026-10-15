@@ -43,6 +43,8 @@ export interface PropertyCommandWindow {
 	readonly intentId: string | null;
 	readonly commandedValue: PropertyCommandValue;
 	readonly requiresLiveEvidence: boolean;
+	readonly proofKind?: 'cover_action';
+	readonly effectScope?: string;
 	readonly previousValue: PropertyCommandValue | null;
 	readonly lastReceipt: PropertyCommandReceipt | null;
 	readonly heldReceipt: PropertyCommandReceipt | null;
@@ -64,6 +66,8 @@ export interface OpenPropertyCommandWindowInput {
 	readonly commandedValue: PropertyCommandValue;
 	/** Internal composite/controller proof policy; ordinary windows retain their existing contract. */
 	readonly requiresLiveEvidence?: boolean;
+	readonly proofKind?: 'cover_action';
+	readonly effectScope?: string;
 	readonly previousValue: PropertyCommandValue | null;
 	readonly ttlMs: number;
 }
@@ -89,6 +93,23 @@ export class PropertyCommandWindowService {
 	private readonly windows = new Map<string, MutablePropertyCommandWindow>();
 	private readonly recoveries = new Map<string, RecoveryWindow>();
 	private readonly confirmationObservers = new Set<(handle: PropertyCommandWindowHandle) => void>();
+	private readonly coverEffects = new Map<string, string>();
+	/** One physical motor scope across direct/group COMMAND, POSITION and shared-drive TILT. */
+	beginCoverEffect(channelId: string): string | null {
+		if (!this.coverEffects.has(channelId) && this.coverEffects.size >= 4096) return null;
+		const epoch = randomUUID();
+		this.coverEffects.set(channelId, epoch);
+		for (const [id, window] of this.windows) {
+			if (window.effectScope === channelId) this.cancel(id);
+		}
+		return epoch;
+	}
+	releaseCoverEffect(channelId: string, epoch: string): void {
+		if (this.coverEffects.get(channelId) === epoch) this.coverEffects.delete(channelId);
+	}
+	isCoverEffectCurrent(channelId: string, epoch: string): boolean {
+		return this.coverEffects.get(channelId) === epoch;
+	}
 	/** Internal bounded snapshot before any asynchronous target resolution. */
 	snapshotPendingProperties(limit: number): { ids: ReadonlySet<string>; overflow: boolean } {
 		const ids = new Set<string>();
@@ -138,6 +159,8 @@ export class PropertyCommandWindowService {
 			intentId: input.intentId ?? null,
 			commandedValue: input.commandedValue,
 			requiresLiveEvidence: input.requiresLiveEvidence ?? false,
+			proofKind: input.proofKind,
+			effectScope: input.effectScope,
 			previousValue,
 			lastReceipt: null,
 			heldReceipt: null,

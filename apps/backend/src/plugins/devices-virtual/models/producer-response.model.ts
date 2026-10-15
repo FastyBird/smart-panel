@@ -265,6 +265,13 @@ export class VirtualLightGroupMemberModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupReportedProperty' })
 export class VirtualLightGroupReportedPropertyModel {
+	@ApiPropertyOptional({
+		enum: ['configured'],
+		description: 'Configuration metadata; never a physical sample or timestamp',
+	})
+	@Expose()
+	provenance?: 'configured';
+
 	@ApiProperty({ enum: PropertyCategory })
 	@Expose()
 	category: PropertyCategory;
@@ -396,8 +403,42 @@ export class VirtualLightGroupCapabilityModel {
 	step: number | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoverOperationMemberReadiness' })
+export class CoverOperationMemberReadinessModel {
+	@ApiProperty({ type: 'string' })
+	@Expose()
+	source_identity: string;
+	@ApiProperty({ type: 'boolean' })
+	@Expose()
+	commandable: boolean;
+	@ApiProperty({ type: [String] })
+	@Expose()
+	reasons: string[];
+}
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoverOperationReadiness' })
+export class CoverOperationReadinessModel {
+	@ApiProperty({ enum: ['open', 'close', 'stop', 'position', 'tilt'] })
+	@Expose()
+	operation: 'open' | 'close' | 'stop' | 'position' | 'tilt';
+	@ApiProperty({ type: 'boolean', description: 'Current adapter readiness; dispatch revalidates every member' })
+	@Expose()
+	commandable: boolean;
+	@ApiProperty({ type: [CoverOperationMemberReadinessModel] })
+	@Expose()
+	@Type(() => CoverOperationMemberReadinessModel)
+	members: CoverOperationMemberReadinessModel[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupConfiguration' })
 export class VirtualLightGroupConfigurationModel {
+	@ApiPropertyOptional({
+		type: [CoverOperationReadinessModel],
+		description: 'Operational cover capabilities, separate from structural field access',
+	})
+	@Expose()
+	@Type(() => CoverOperationReadinessModel)
+	operations?: CoverOperationReadinessModel[];
+
 	@ApiProperty({ description: 'Owning group channel UUID', format: 'uuid' })
 	@Expose()
 	group_channel: string;

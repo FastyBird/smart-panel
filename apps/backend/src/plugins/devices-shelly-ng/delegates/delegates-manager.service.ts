@@ -13,15 +13,23 @@ import {
 import {
 	ChannelCategory,
 	ConnectionState,
+	DataTypeType,
 	DeviceCategory,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import {
+	CoverActionDispatchContext,
+	IDevicePropertyData,
+	PreparedCompositeDeviceBatch,
+} from '../../../modules/devices/platforms/device.platform';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { configuredCoverType, coverStatusReason, nativeCoverStatus } from '../contracts/cover-action.contract';
 import {
 	ShellyRawSample,
 	hasQualifiedFloorSourceIdentity,
@@ -53,6 +61,7 @@ import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
 import { PollPlacementDiagnosticsService } from '../services/poll-placement-diagnostics.service';
+import { ShellyCoverOrderingService } from '../services/shelly-cover-ordering.service';
 import { ShellyGuardFenceReadback, ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { ShellySampleSourceLease, ShellySampleSourcesService } from '../services/shelly-sample-sources.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
@@ -251,6 +260,8 @@ export class DelegatesManagerService {
 		@Optional()
 		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 		@Optional() private readonly sampleSourcesRegistry?: ShellySampleSourcesService,
+		@Optional() private readonly coverValues?: PropertyValueService,
+		@Optional() private readonly coverOrdering?: ShellyCoverOrderingService,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -2213,6 +2224,8 @@ export class DelegatesManagerService {
 		this.sampleHandlers.delete(delegate.id);
 		delegate.setSampleComponentKeys([]);
 		for (const source of this.sampleSources.get(delegate.id) ?? []) {
+			const owner = this.delegateDeviceIds.get(delegate.id);
+			if (owner) this.coverIssues.delete(`${owner}|${source.channel.id}`);
 			this.sampleSourcesRegistry?.revoke(source.property.id);
 			await this.admitRawSample(source.property, null, {
 				componentKey: source.componentKey,
@@ -2257,6 +2270,9 @@ export class DelegatesManagerService {
 						: componentKey.startsWith('voltmeter:')
 							? 'xvoltage'
 							: 'tC';
+			} else if (/^cover:\d+$/.test(channel.identifier)) {
+				componentKey = channel.identifier;
+				attribute = 'state';
 			} else if (/^(switch|light):\d+$/.test(channel.identifier)) {
 				componentKey = channel.identifier;
 				attribute = 'output';
@@ -2279,6 +2295,14 @@ export class DelegatesManagerService {
 						: undefined;
 				sources.push({ channel, property, componentKey, attribute, sourceLease: sourceLease ?? undefined });
 			}
+			if (/^cover:\d+$/.test(channel.identifier)) {
+				const position = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'current_pos',
+					channel.id,
+				);
+				if (position) sources.push({ channel, property: position, componentKey, attribute: 'current_pos' });
+			}
 			if (/^light:\d+$/.test(channel.identifier)) {
 				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 					'identifier',
@@ -2298,7 +2322,8 @@ export class DelegatesManagerService {
 					Array.isArray(errors) &&
 					errors.length > 0 &&
 					(source.attribute !== 'output' || errors.includes('source_missing'));
-				if (!Object.hasOwn(sample.values, source.attribute) && !fault) continue;
+				if (!Object.hasOwn(sample.values, source.attribute) && !fault && !/^cover:\d+$/.test(source.componentKey))
+					continue;
 				const key = `${delegate.id}|${source.property.id}`;
 				const revision = (this.sampleRevisions.get(key) ?? 0) + 1;
 				this.sampleRevisions.set(key, revision);
@@ -2310,10 +2335,25 @@ export class DelegatesManagerService {
 					(sample.evidence.sourceIsCurrent?.() ?? sample.evidence.isCurrent?.() ?? true);
 				const isCurrent = (): boolean => sourceIsCurrent() && this.sampleRevisions.get(key) === revision;
 				const raw = sample.values[source.attribute];
-				const value =
-					!fault &&
-					((source.attribute === 'output' && typeof raw === 'boolean') ||
-						(typeof raw === 'number' && Number.isFinite(raw)))
+				const cover = /^cover:\d+$/.test(source.componentKey)
+					? nativeCoverStatus(sample.values, Number(source.componentKey.split(':')[1]))
+					: null;
+				if (/^cover:\d+$/.test(source.componentKey)) {
+					const key = `${device.id}|${source.channel.id}`;
+					if (cover) this.coverIssues.delete(key);
+					else this.coverIssues.set(key, coverStatusReason(sample.values));
+				}
+				const value = /^cover:\d+$/.test(source.componentKey)
+					? cover
+						? source.attribute === 'state'
+							? cover.state === 'open'
+								? 'opened'
+								: cover.state
+							: cover.current_pos
+						: null
+					: !fault &&
+						  ((source.attribute === 'output' && typeof raw === 'boolean') ||
+								(typeof raw === 'number' && Number.isFinite(raw)))
 						? raw
 						: null;
 				let lease: ShellySampleSourceLease | null | undefined;
@@ -2419,7 +2459,19 @@ export class DelegatesManagerService {
 		await this.channelsPropertiesService.reportSample(
 			property.id,
 			toInstance(UpdateShellyNgChannelPropertyDto, { type: DEVICES_SHELLY_NG_TYPE, value }),
-			sample.evidence,
+			{
+				...sample.evidence,
+				...(property.category === PropertyCategory.STATUS &&
+				/^cover:\d+$/.test(sample.componentKey) &&
+				nativeCoverStatus(sample.values, Number(sample.componentKey.split(':')[1]))
+					? {
+							semanticOrigin: 'native_cover_status' as const,
+							nativeCoverTagPresent:
+								Object.hasOwn(sample.values, 'tag') &&
+								(sample.values.tag === null || typeof sample.values.tag === 'string'),
+						}
+					: {}),
+			},
 		);
 	}
 
@@ -2621,6 +2673,175 @@ export class DelegatesManagerService {
 		);
 	}
 
+	private readonly coverIssues = new Map<string, string>();
+	async coverCommandReadiness(update: IDevicePropertyData): Promise<{ commandable: boolean; reasons: string[] }> {
+		if (update.property.category !== PropertyCategory.COMMAND)
+			return { commandable: false, reasons: ['qualified_cover_position_or_tilt_adapter_unavailable'] };
+		const properties = await this.channelsPropertiesService.findAll<ShellyNgChannelPropertyEntity>(update.channel.id);
+		const issue = this.coverIssues.get(`${update.device.id}|${update.channel.id}`);
+		if (issue) return { commandable: false, reasons: [issue] };
+		if (!configuredCoverType(properties)) return { commandable: false, reasons: ['cover_type_unconfigured'] };
+		const status = properties.find((property) => property.category === PropertyCategory.STATUS);
+		if (!status || this.coverValues?.readQualifiedSample(status, 300_000)?.nativeCoverTagPresent !== true)
+			return { commandable: false, reasons: ['cover_action_tag_field_not_observed_in_qualified_status'] };
+
+		for (const id of this.identifierToDelegates.get(update.device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (!delegate || this.delegateDeviceIds.get(id) !== update.device.id) continue;
+			const componentId = Number(update.channel.identifier?.split(':')[1]);
+			const component = delegate.covers.get(componentId);
+			if (component && !nativeCoverStatus(component, componentId))
+				return { commandable: false, reasons: [coverStatusReason(component as unknown as Record<string, unknown>)] };
+		}
+		const prepared = await this.prepareCoverAction(update);
+		if (!prepared) return { commandable: false, reasons: ['qualified_cover_adapter_or_ordering_unavailable'] };
+		prepared.dispose?.();
+		return { commandable: true, reasons: [] };
+	}
+	/** Exact native cover command preparation; POSITION/TILT remain explicitly unsupported in this adapter. */
+	async prepareCoverAction(update: IDevicePropertyData): Promise<PreparedCompositeDeviceBatch | null> {
+		if (
+			!this.coverValues ||
+			!this.coverOrdering ||
+			update.property.category !== PropertyCategory.COMMAND ||
+			!['open', 'close', 'stop'].includes(String(update.value)) ||
+			!/^cover:\d+$/.test(update.channel.identifier ?? '')
+		)
+			return null;
+		const properties = await this.channelsPropertiesService.findAll<ShellyNgChannelPropertyEntity>(update.channel.id);
+		const status = properties.find((property) => property.category === PropertyCategory.STATUS);
+		const position = properties.find((property) => property.category === PropertyCategory.POSITION);
+		const command = properties.find((property) => property.id === update.property.id);
+		if (
+			!configuredCoverType(properties) ||
+			!status ||
+			!position ||
+			!command ||
+			status.identifier !== 'state' ||
+			status.dataType !== DataTypeType.ENUM ||
+			position.identifier !== 'current_pos' ||
+			position.dataType !== DataTypeType.UCHAR ||
+			JSON.stringify(position.format) !== '[0,100]' ||
+			command.dataType !== DataTypeType.ENUM ||
+			JSON.stringify(command.format) !== '["open","close","stop"]'
+		)
+			return null;
+		if (this.coverValues.readQualifiedSample(status, 300_000)?.nativeCoverTagPresent !== true) return null;
+		for (const id of this.identifierToDelegates.get(update.device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (!delegate || this.delegateDeviceIds.get(id) !== update.device.id) continue;
+			const componentId = Number(update.channel.identifier.split(':')[1]);
+			const component = delegate.covers.get(componentId);
+			if (!nativeCoverStatus(component, componentId)) continue;
+			const canonicalMac = (update.device as ShellyNgDeviceEntity).canonicalMac;
+			if (!canonicalMac || (await this.coverOrdering.blocked(`${canonicalMac.toUpperCase()}|cover:${componentId}`)))
+				continue;
+			const session = delegate.prepareCoverSession(update.channel.identifier, canonicalMac, this.coverOrdering);
+			if (!session?.isReady()) continue;
+			const generation = this.sampleGenerations.get(id) ?? 0;
+			const mappings = () =>
+				JSON.stringify(
+					properties.map((property) => ({
+						id: property.id,
+						category: property.category,
+						dataType: property.dataType,
+						format: property.format,
+						step: property.step,
+						permissions: property.permissions,
+						identifier: property.identifier,
+						mapping: this.propertyMappingStorage.get(property.id),
+					})),
+				);
+			const snapshot = mappings();
+			let disposed = false;
+			const sourceCurrent = () =>
+				snapshot === mappings() &&
+				this.delegates.get(id) === delegate &&
+				this.delegateDeviceIds.get(id) === update.device.id &&
+				(this.sampleGenerations.get(id) ?? 0) === generation &&
+				delegate.guardedTransportActive &&
+				update.device.enabled;
+			const isCurrent = () => !disposed && sourceCurrent();
+			const action = {
+				kind: 'cover_action' as const,
+				effectScope: `shelly-ng:${canonicalMac.toUpperCase()}|cover:${componentId}`,
+				commandPropertyId: command.id,
+				status,
+				position,
+				effects: properties.filter((property) =>
+					[PropertyCategory.POSITION, PropertyCategory.TILT].includes(property.category),
+				),
+			};
+			return {
+				updates: [update],
+				coverAction: action,
+				isCurrent,
+				dispose: () => {
+					disposed = true;
+				},
+				dispatch: async (guard, context?: CoverActionDispatchContext) => {
+					if (!context || !guard() || !isCurrent()) return false;
+					const current = () => isCurrent() && guard() && context.isCurrent();
+					return session.dispatch(
+						update.value as 'open' | 'close' | 'stop',
+						{ ...context, isCurrent: current },
+						async (raw, observedAt, preflightState) => {
+							if (!current()) return false;
+							this.coverIssues.delete(`${update.device.id}|${update.channel.id}`);
+							const acceptanceBoundary = this.coverValues.currentSampleGeneration();
+							const sample = {
+								componentKey: update.channel.identifier,
+								values: raw as unknown as Record<string, unknown>,
+								evidence: {
+									sampledAt: observedAt,
+									observedAt,
+									receivedAt: new Date(),
+									provenance: 'live' as const,
+									isCurrent: current,
+									sourceIsCurrent: sourceCurrent,
+									commandObservation: context.observationToken,
+								},
+							};
+							await this.admitRawSample(status, raw.state === 'open' ? 'opened' : raw.state, sample);
+							await this.admitRawSample(position, raw.current_pos, sample);
+							const statusSample = this.coverValues.readQualifiedSample(status, 30_000);
+							const positionSample = this.coverValues.readQualifiedSample(position, 30_000);
+							if (!current() || !statusSample || !positionSample) return false;
+							return context.observe({
+								state: raw.state,
+								position: raw.current_pos,
+								tag: raw.tag,
+								observedAt,
+								preflightState,
+								acceptanceBoundary,
+								statusAcceptance: statusSample.acceptanceGeneration,
+								positionAcceptance: positionSample.acceptanceGeneration,
+							});
+						},
+						async (raw, observedAt) => {
+							if (!current()) return;
+							this.coverIssues.set(`${update.device.id}|${update.channel.id}`, coverStatusReason(raw));
+							const sample = {
+								componentKey: update.channel.identifier,
+								values: raw,
+								evidence: {
+									observedAt,
+									sampledAt: observedAt,
+									receivedAt: new Date(),
+									provenance: 'live' as const,
+									isCurrent: current,
+									sourceIsCurrent: sourceCurrent,
+								},
+							};
+							await this.admitRawSample(status, null, sample);
+							await this.admitRawSample(position, null, sample);
+						},
+					);
+				},
+			};
+		}
+		return null;
+	}
 	async prepareLightingCommand(
 		device: ShellyNgDeviceEntity,
 		componentKey: string,

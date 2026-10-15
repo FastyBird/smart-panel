@@ -271,6 +271,9 @@ describe('typed fan/cover SQLite and core composite lifecycle', () => {
 					sampledAt: new Date(),
 					receivedAt: new Date(),
 					provenance: 'live',
+					...(profile === VirtualLightGroupProfile.COVER && category === PropertyCategory.STATUS
+						? { semanticOrigin: 'native_cover_status' as const }
+						: {}),
 				});
 			};
 			const send = async (category = quantity, value: string | number | boolean = 60) => {
@@ -280,7 +283,7 @@ describe('typed fan/cover SQLite and core composite lifecycle', () => {
 				});
 				const channel = property.channel as ChannelEntity;
 				return dispatch.dispatchBatch([{ property, channel, device: channel.device as DeviceEntity, value }], {
-					ttlMs: 200,
+					ttlMs: 1500,
 				});
 			};
 			try {

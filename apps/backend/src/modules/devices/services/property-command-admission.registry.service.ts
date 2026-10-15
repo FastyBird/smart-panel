@@ -2,9 +2,17 @@ import { Injectable } from '@nestjs/common';
 
 import { IDevicePropertyData } from '../platforms/device.platform';
 
+/** A physical side effect reservation check, never a sibling write or guessed numeric target. */
+export interface PropertyCommandEffect extends Pick<IDevicePropertyData, 'device' | 'channel' | 'property'> {
+	readonly kind: 'cover_action';
+	readonly action: 'open' | 'close' | 'stop';
+}
+
 export interface PropertyCommandAdmissionSnapshot {
 	/** Checks captured ownership for one leaf, or all guard state when no leaf is supplied. */
 	isCurrent(update?: IDevicePropertyData): boolean;
+	isEffectCurrent?(effect: PropertyCommandEffect): boolean;
+	assertEffectAllowed?(effect: PropertyCommandEffect): Promise<void>;
 	/** Checks request-wide fences before canonical leaves are known. */
 	isRequestCurrent?(): boolean;
 	assertAllowed(update: IDevicePropertyData): Promise<void>;
@@ -12,6 +20,8 @@ export interface PropertyCommandAdmissionSnapshot {
 
 export interface PropertyCommandAdmissionGuard {
 	capture?(): PropertyCommandAdmissionSnapshot;
+	isEffectCurrent?(effect: PropertyCommandEffect): boolean;
+	assertEffectAllowed?(effect: PropertyCommandEffect): Promise<void>;
 	requiresGuardedDispatch?(update: IDevicePropertyData): boolean;
 	/** Internal policy hook: ordinary user/group/scene commands all consult the same canonical leaf. */
 	assertAllowed(update: IDevicePropertyData): Promise<void>;
@@ -42,7 +52,20 @@ export class PropertyCommandAdmissionRegistryService {
 		const snapshots = guards.map((guard) => guard.capture?.());
 		const revision = this.revision;
 		const hasCurrentMembership = () => revision === this.revision;
+		const effectsCurrent = (effect: PropertyCommandEffect) =>
+			hasCurrentMembership() &&
+			guards.every((guard, index) => (snapshots[index] ?? guard).isEffectCurrent?.(effect) === true);
+
 		return {
+			isEffectCurrent: effectsCurrent,
+			assertEffectAllowed: async (effect) => {
+				if (!effectsCurrent(effect)) throw new Error('Cover effect admission changed or is unsupported');
+				for (const [index, guard] of guards.entries()) {
+					const policy = snapshots[index] ?? guard;
+					if (!policy.assertEffectAllowed) throw new Error('Guard does not support cover effect admission');
+					await policy.assertEffectAllowed(effect);
+				}
+			},
 			isCurrent: (update) =>
 				hasCurrentMembership() && snapshots.every((snapshot) => snapshot?.isCurrent(update) ?? true),
 			isRequestCurrent: () =>

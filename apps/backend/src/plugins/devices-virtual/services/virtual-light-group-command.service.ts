@@ -29,6 +29,7 @@ import {
 	VirtualLightGroupProfile,
 } from '../entities/virtual-producer.entity';
 
+import { loadCoverMemberContract } from './virtual-cover-contract.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	GROUP_PROFILES,
@@ -158,28 +159,19 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				const deviceId = channel ? (channel.device as DeviceEntity).id : null;
 				if (deviceId && !deviceCache.has(deviceId)) deviceCache.set(deviceId, await this.devices.findOne(deviceId));
 				const device = deviceId ? deviceCache.get(deviceId) : null;
-				let coverTypeCompatible = true;
-				if (config.profile === VirtualLightGroupProfile.COVER) {
-					const typeBinding = await this.dataSource.manager.findOne(VirtualLightGroupBindingEntity, {
-						where: { memberId: member.id, quantity: PropertyCategory.TYPE },
-						relations: ['sourceProperty', 'sourceProperty.channel'],
-					});
-					const typeOutput = typeBinding
-						? await this.dataSource.manager.findOneBy(VirtualChannelPropertyEntity, {
-								id: typeBinding.outputPropertyId,
+				const coverOutputs =
+					config.profile === VirtualLightGroupProfile.COVER
+						? await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
+								where: { channel: { id: channelId } },
+								relations: ['channel'],
 							})
+						: [];
+				const coverContract =
+					config.profile === VirtualLightGroupProfile.COVER
+						? await loadCoverMemberContract(this.dataSource.manager, member.id, member.sourceChannelId, coverOutputs)
 						: null;
-					if (typeOutput) typeOutput.channel = update.channel;
-					coverTypeCompatible =
-						!!typeBinding?.sourceProperty &&
-						!!typeOutput &&
-						typedGroupSourceMatchesOutput(
-							config.profile,
-							groupField(config.profile, PropertyCategory.TYPE),
-							typeBinding.sourceProperty,
-							typeOutput,
-						);
-				}
+				const coverTypeCompatible = !coverContract?.reasons.length;
+
 				const available =
 					coverTypeCompatible &&
 					member.sourceChannelId &&
@@ -254,18 +246,14 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					memberId: member.id,
 					memberIdentity: member.sourceChannelIdentity,
 					propertyIdentity: binding?.sourcePropertyIdentity ?? null,
-					update:
-						available && powerAvailable && field.access !== 'wo'
-							? { property, channel, device, value: update.value }
-							: null,
-					reason:
-						field.access === 'wo'
-							? 'Write-only cover commands require a qualified correlated stopped/readback adapter; acknowledgement cannot confirm completion'
-							: !powerAvailable
-								? 'Qualified member power is unknown or changed during brightness planning'
-								: available
-									? undefined
-									: 'Member is missing, disabled, offline, incompatible or quarantined',
+					update: available && powerAvailable ? { property, channel, device, value: update.value } : null,
+					reason: coverContract?.reasons.length
+						? coverContract.reasons.join(', ')
+						: !powerAvailable
+							? 'Qualified member power is unknown or changed during brightness planning'
+							: available
+								? undefined
+								: 'Member is missing, disabled, offline, incompatible or quarantined',
 				});
 				if (preserved) children.push(preserved);
 			}

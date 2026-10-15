@@ -1,11 +1,12 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { VirtualDeviceEntity } from '../entities/devices-virtual.entity';
 
+import { CoverOperationReadinessModel } from './producer-response.model';
 import { VirtualLightGroupConfigurationModel } from './producer-response.model';
 import { VirtualLightGroupCapabilityModel } from './producer-response.model';
 
@@ -26,6 +27,11 @@ export class LightGroupDraftMemberModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupDraft' })
 export class LightGroupDraftModel {
+	@ApiPropertyOptional({ type: [CoverOperationReadinessModel] })
+	@Expose()
+	@Type(() => CoverOperationReadinessModel)
+	operations?: CoverOperationReadinessModel[];
+
 	@ApiProperty()
 	@Expose()
 	graph_revision: number;

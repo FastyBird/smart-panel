@@ -38,6 +38,8 @@ import {
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
+import { ShellyCoverOrderingService } from '../services/shelly-cover-ordering.service';
+import { ShellyCoverSession } from '../services/shelly-cover-session';
 import { ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { emitFlattenedValue } from '../utils/transform.utils';
 
@@ -363,6 +365,46 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		return { outcome: 'accepted', wasOn: response.value.was_on, outputConfirmed: false, pendingOnDrained: false };
 	}
 
+	private readonly coverSessions = new Map<number, ShellyCoverSession>();
+	/** Session identity remains pinned across action and distinct post-response status RPCs. */
+	prepareCoverSession(
+		componentKey: string,
+		canonicalMac: string,
+		ordering: ShellyCoverOrderingService,
+	): ShellyCoverSession | null {
+		const match = /^cover:(\d+)$/.exec(componentKey);
+		const rpc = this.shelly.rpcHandler;
+		if (
+			!match ||
+			!(rpc instanceof GuardedShellyRpcHandler) ||
+			!rpc.connected ||
+			!canonicalMac ||
+			this.shelly.macAddress?.toUpperCase() !== canonicalMac.toUpperCase()
+		)
+			return null;
+		const id = Number(match[1]);
+		const component = this.covers.get(id);
+		if (!component) return null;
+		const old = this.coverSessions.get(id);
+		// Never replace an uncertain session merely because a newer request wants to use it.
+		if (old?.identityIsCurrent()) return old;
+		const generation = this.connectionGeneration;
+		const model = this.shelly.model;
+		const session = new ShellyCoverSession(
+			rpc,
+			id,
+			() =>
+				this.shelly.rpcHandler === rpc &&
+				generation === this.connectionGeneration &&
+				this.shelly.model === model &&
+				this.shelly.macAddress?.toUpperCase() === canonicalMac.toUpperCase() &&
+				this.covers.get(id) === component,
+			ordering,
+			`${canonicalMac.toUpperCase()}|cover:${id}`,
+		);
+		this.coverSessions.set(id, session);
+		return session;
+	}
 	/** Strict ordinary lighting: exact explicit effects, guarded at every actual SDK send. */
 	prepareLightingCommand(
 		componentKey: string,
@@ -703,7 +745,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		values: Record<string, unknown>,
 		evidence: ShellyRawSample['evidence'],
 	): void {
-		if (/^(temperature|input|voltmeter|switch|light):\d+$/.test(componentKey)) {
+		if (/^(temperature|input|voltmeter|switch|light|cover):\d+$/.test(componentKey)) {
 			const generation = this.connectionGeneration;
 			this.emit('sample', {
 				componentKey,

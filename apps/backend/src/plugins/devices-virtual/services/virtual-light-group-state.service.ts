@@ -26,6 +26,7 @@ import {
 } from '../entities/virtual-producer.entity';
 import { VirtualLightGroupReportedStateModel } from '../models/producer-response.model';
 
+import { loadCoverMemberContract } from './virtual-cover-contract.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	GROUP_PROFILES,
@@ -34,7 +35,11 @@ import {
 	groupSourceSupports,
 	reportGroup,
 } from './virtual-group-profile';
-import { LIGHT_GROUP_MAXIMUM_AGE_MS, LightGroupReportedState } from './virtual-light-group.utils';
+import {
+	LIGHT_GROUP_MAXIMUM_AGE_MS,
+	LightGroupReportedMember,
+	LightGroupReportedState,
+} from './virtual-light-group.utils';
 import { typedGroupSourceMatchesOutput } from './virtual-typed-group.utils';
 
 export const LIGHT_GROUP_REPORTED_STATE_CHANGED = 'DevicesVirtual.LightGroup.ReportedStateChanged';
@@ -102,6 +107,7 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				value: reported.value,
 				representative_value: reported.representativeValue,
 				rounded: reported.rounded,
+				provenance: reported.provenance,
 				mixed: reported.mixed,
 				contributors: [...reported.contributors],
 			})),
@@ -148,33 +154,25 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 					})
 				: [];
 			const now = new Date();
-			const snapshots = [];
+			const snapshots: LightGroupReportedMember[] = [];
 			for (const member of members) {
 				const samples = new Map<PropertyCategory, QualifiedPropertySample>();
 				const reasons = new Set<string>();
 				if (!member.sourceChannelId) reasons.add('missing_channel');
-				const typeBinding =
+				const coverContract =
 					config.profile === VirtualLightGroupProfile.COVER
-						? bindings.find(
-								(binding) => binding.memberId === member.id && binding.quantity === String(PropertyCategory.TYPE),
-							)
+						? await loadCoverMemberContract(this.dataSource.manager, member.id, member.sourceChannelId, outputs)
 						: null;
-				const typeOutput = typeBinding ? outputs.find((output) => output.id === typeBinding.outputPropertyId) : null;
-				const coverTypeCompatible =
-					config.profile !== VirtualLightGroupProfile.COVER ||
-					(!!typeBinding?.sourceProperty &&
-						!!typeOutput &&
-						typedGroupSourceMatchesOutput(
-							config.profile,
-							groupField(config.profile, PropertyCategory.TYPE),
-							typeBinding.sourceProperty,
-							typeOutput,
-						));
+				const coverTypeCompatible = !coverContract?.reasons.length;
+				for (const reason of coverContract?.reasons ?? []) reasons.add(reason);
+
 				for (const binding of bindings.filter((binding) => binding.memberId === member.id)) {
 					if (!coverTypeCompatible) {
 						reasons.add('cover_type_incompatible');
 						continue;
 					}
+					if (config.profile === VirtualLightGroupProfile.COVER && binding.quantity === String(PropertyCategory.TYPE))
+						continue;
 					const property = binding.sourceProperty;
 					if (!member.sourceChannelId || !property) {
 						reasons.add('missing_property');
@@ -229,6 +227,9 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 					const sample = this.values.readQualifiedSample(property, LIGHT_GROUP_MAXIMUM_AGE_MS, now);
 					if (
 						sample &&
+						(config.profile !== VirtualLightGroupProfile.COVER ||
+							property.category !== PropertyCategory.STATUS ||
+							sample.semanticOrigin === 'native_cover_status') &&
 						validatePropertyCommandValue(property, sample.value).valid &&
 						(![VirtualLightGroupProfile.FAN, VirtualLightGroupProfile.COVER].includes(config.profile) ||
 							validatePropertyCommandValue(output, sample.value).valid)
@@ -239,6 +240,32 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				snapshots.push({ identity: member.sourceChannelIdentity, samples, reasons: [...reasons] });
 			}
 			const state = reportGroup(config.profile, snapshots);
+			if (config.profile === VirtualLightGroupProfile.COVER) {
+				const declared = members.map((member) => {
+					const binding = bindings.find(
+						(binding) => binding.memberId === member.id && binding.quantity === String(PropertyCategory.TYPE),
+					);
+					const snapshot = snapshots.find((snapshot) => snapshot.identity === member.sourceChannelIdentity);
+					return {
+						identity: member.sourceChannelIdentity,
+						value: snapshot?.reasons.some(
+							(reason: string) => reason.startsWith('cover_contract') || reason === 'missing_channel',
+						)
+							? null
+							: (binding?.sourceProperty?.format?.[0] ?? null),
+					};
+				});
+				const mixed = new Set(declared.filter((item) => item.value !== null).map((item) => item.value)).size > 1;
+				state.properties.set(PropertyCategory.TYPE, {
+					value:
+						!mixed && declared.length > 0 && declared.every((item) => item.value !== null) ? declared[0].value : null,
+					mixed,
+					samples: [],
+					contributors: declared.filter((item) => item.value !== null).map((item) => item.identity),
+					provenance: 'configured',
+				});
+			}
+
 			const current = await this.dataSource.manager.findOneBy(VirtualLightGroupConfigEntity, {
 				groupChannelId: config.groupChannelId,
 			});
@@ -266,7 +293,11 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 					!reported.samples.length
 				) {
 					this.producers.invalidate(lease, [
-						this.graph.isQuarantined(output.id) ? 'graph_quarantined' : 'member_evidence_unavailable',
+						this.graph.isQuarantined(output.id)
+							? 'graph_quarantined'
+							: reported?.provenance === 'configured'
+								? 'configured_metadata_no_physical_sample'
+								: 'member_evidence_unavailable',
 					]);
 					continue;
 				}
@@ -288,7 +319,7 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 					quality: unavailable || reported.mixed ? 'degraded' : 'good',
 					reasons: [...(unavailable ? ['members_unavailable'] : []), ...(reported.mixed ? ['mixed'] : [])],
 					sampledAt,
-					evaluatedAt: now,
+					evaluatedAt: new Date(),
 					expiresAt: new Date(sampledAt.getTime() + LIGHT_GROUP_MAXIMUM_AGE_MS),
 				});
 			}

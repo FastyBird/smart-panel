@@ -33,10 +33,10 @@ This also fences previously materialized invalid rows. The legacy light profile 
 The existing group endpoints accept `fan` and `cover`. Both require 2–256 homogeneous physical members.
 The `LightGroup` API/storage names remain compatibility aliases; UI authoring and HomeKit/HA mappings are separate work.
 
-| Profile | Required fields | Optional fields | Source access |
-|---|---|---|---|
-| Fan | `on` boolean | `speed`, `swing`, `direction`, `mode` | Read/write |
-| Cover | `type`, `status`, `position`, `command` | `tilt`, `obstruction` | Type/status/obstruction read; position/tilt read/write; command write |
+| Profile | Required fields                         | Optional fields                       | Source access                                                         |
+| ------- | --------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| Fan     | `on` boolean                            | `speed`, `swing`, `direction`, `mode` | Read/write                                                            |
+| Cover   | `type`, `status`, `position`, `command` | `tilt`, `obstruction`                 | Type/status/obstruction read; position/tilt read/write; command write |
 
 Fan speed uses either native percentage (`uchar`, %) or discrete enum levels; these representations cannot mix.
 Cover position likewise preserves percentage versus discrete states. Tilt uses native degrees. Numeric fields require
@@ -53,11 +53,54 @@ value/mixed/contributors and member reasons for covering feedback. Freshness rem
 for fresh evidence. Membership repair preserves output UUIDs and the exact exposed range/grid/enum contract.
 
 Commands use the existing prepared canonical-leaf core path with revision, claims, deadline and per-member outcomes.
-The current core has no qualified adapter linking a write-only covering command to causally related status feedback.
-Consequently **all write-only covering commands (including STOP) are refused as unavailable before physical dispatch**.
-An acknowledgement never establishes stopped state. Position/tilt remain commandable when their read/write native
-contract and the provider's prepared composite dispatch/readback contract qualify. Observed `stopped` is reported only
-when every member supplies fresh agreeing stopped feedback; opening/closing conflicts and missing feedback stay unknown.
+Shelly NG now supplies the first qualified `cover_action` adapter for calibrated covers. Other adapters remain
+unavailable for strict cover commands: generic Zigbee `STOP` mapping, ordinary HA updates and Shelly V1 are not proof.
+
+For Shelly NG, select the physical cover TYPE explicitly through the existing property metadata API: set the TYPE
+property's `format` to a singleton supported type (for example `['blind']`). This is operator configuration on the
+canonical physical component, not an inferred model/name/default or live measurement. Rediscovery preserves it.
+Unconfigured or broad TYPE declarations remain visible but ineligible. The group reports TYPE with
+`provenance: configured`, without a physical sample timestamp or derived history publication.
+
+Preview and configuration responses expose per-operation `operations` readiness, with per-member refusal reasons.
+Structural `rw`/`wo` field access is separate from current commandability. Shelly POSITION and TILT commands are
+explicitly unavailable in this adapter; their truthful observations remain available. Full required TYPE/STATUS/
+POSITION/COMMAND and exposed optional metadata are checked together during creation, repair, planning and reporting.
+Drift or deletion excludes the entire affected member, preserving intended identities and unknowns.
+
+The native field contract follows the [Shelly Cover API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Cover/), including its nullable status tag and optional action tag. The pinned SDK cover helpers omit action tags, so the adapter uses its guarded native RPC transport.
+
+COMMAND confirmation uses the same pinned guarded RPC session for a tagged action and a distinct post-response
+`Cover.GetStatus`. OPEN/CLOSE confirm **motion begun in the requested direction**, or a freshly observed correct terminal
+endpoint. They do not claim full travel completed. Child reasons distinguish `cover_action_begun`,
+`cover_target_observed` and `cover_stopped`. Group STATUS/POSITION always come from actual samples, never the requested
+terminal target. STOP requires explicit native `open`, `closed` or `stopped`; unchanged position cannot prove cessation.
+A fresh idle no-op STOP is accepted only after the serialized successful action response and fresh matching idle state.
+Cover STATUS reporting also requires the internal native-status semantic classification; a generic live packet or imperative STOP mapping cannot establish stopped state.
+Moving confirmation requires the exact unique action tag. Incorrect tags cannot prove motion; freshly correct terminal endpoints and ordered idle STOP no-ops may retain an earlier tag. Calibration, malformed/out-of-range
+position, faults, cached data and pre-action replies cannot confirm a command. Readiness requires a fresh qualified native status that actually exposes the tag field. An opaque process-local observation token and acceptance boundary bind proof to the exact admitted STATUS/POSITION samples, never unrelated equal values. Raw validation precedes transformation;
+invalid/uncalibrated input immediately invalidates qualified position rather than clamping it into evidence.
+
+The existing absolute composite/intent deadline remains bounded by 30 seconds, without renewal. Every command and
+readback checks its core generation, physical motor effect scope, provider session/mapping, metadata and graph fences.
+Direct COMMAND/POSITION/shared-drive TILT requests supersede pending group observations for that motor, including when
+an unsupported new control is refused. Sibling motor effects consult the existing ownership admission guards too.
+Timeout, remap, deletion, disconnect and shutdown revoke confirmation authority and stop further polling/sends;
+late physical replies cannot repair terminal outcomes. SDK authentication retries and queued sends retain send guards.
+
+Migration `1000000000038` adds a durable unresolved-submission journal keyed by physical MAC/component, without a
+cascading device FK. Submission is journaled before send; only a matched successful action response retires a sent
+entry. An uncertain earlier action blocks newer qualification across rediscovery and restart. No command is replayed,
+and restart never restores process-local confirmation or physical sample authority. The pinned SDK collapses remote
+errors and transport failures to ordinary errors; this adapter conservatively retains the journal for either. There is
+no automatic journal reset or fabricated drain barrier; unresolved installations require separately qualified recovery.
+
+Acceptance uses mock RPC transport with the real pinned SDK, production Shelly adapter/delegate, real SQLite,
+normal qualified sample admission and core composite windows. It covers tagged motion/no-op endpoints/STOP, malformed
+and missing evidence, ACK-only/late responses, partial members, direct/group supersession, ownership effects,
+configuration/metadata/deletion/disconnect/shutdown fences, normal raw reports, TYPE persistence/readiness and journal
+migration/restart behavior. This is backend software evidence; UI #1453, installed equipment qualification and hardware
+acceptance remain separate work.
 
 ## Feedback and quality
 
@@ -82,7 +125,7 @@ RGB/saturation, 2 degrees for hue, and 25 K for color temperature. Any unknown/m
 ## Core command integration
 
 `CompositePropertyCommandRegistryService` is an internal opt-in planner registry. The virtual plugin registers only
-validated derived light outputs in a lighting actuator-group owner. Public DTOs cannot select planners or bypass a
+validated derived typed-group outputs in an actuator-group owner. Public DTOs cannot select planners or bypass a
 read-only property. Parent target values still validate against the durable exposed contract.
 
 The planner snapshots all intended bindings and the graph/configuration revisions. Core expansion covers an entire

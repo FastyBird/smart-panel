@@ -472,6 +472,7 @@ export class DeviceManagerService {
 							channelsIds.push(chan.id);
 
 							// Apply transformers from mapping
+							await this.ensureProperty(chan, PropertyCategory.TYPE, 'category', PropertyCategory.TYPE);
 							const statusPropertyMapping = this.findPropertyMapping(coverChannelDef, PropertyCategory.STATUS);
 							const transformedState = this.applyTransformer(statusPropertyMapping, coverStatus.state, 'read');
 							await this.ensureProperty(
@@ -2705,6 +2706,8 @@ export class DeviceManagerService {
 			channel.id,
 		);
 
+		// TYPE is an operator-owned singleton metadata declaration. Rediscovery cannot overwrite it.
+		if (prop && channel.category === ChannelCategory.WINDOW_COVERING && category === PropertyCategory.TYPE) return prop;
 		if (prop === null) {
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(

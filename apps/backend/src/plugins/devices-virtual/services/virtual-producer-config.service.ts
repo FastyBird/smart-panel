@@ -8,6 +8,7 @@ import { EventType, PermissionType, PropertyCategory } from '../../../modules/de
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
@@ -40,6 +41,8 @@ import {
 import { evaluateAggregate } from './virtual-aggregate-evaluator';
 import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
+import { coverContractReasons, loadCoverMemberContract } from './virtual-cover-contract.utils';
+import { coverOperationReadiness } from './virtual-cover-readiness.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	GROUP_PROFILES,
@@ -73,6 +76,7 @@ export class VirtualProducerConfigService {
 		private readonly producerState: VirtualProducerStateService,
 		@Optional() private readonly lightGroups?: VirtualLightGroupStateService,
 		@Optional() private readonly aggregateRuntime?: VirtualAggregateRuntimeService,
+		@Optional() private readonly platforms?: PlatformRegistryService,
 	) {}
 
 	listAggregateProfiles(): VirtualAggregateProfileModel[] {
@@ -438,7 +442,28 @@ export class VirtualProducerConfigService {
 			relations: ['channel'],
 		});
 		const capabilities = await this.commonContract(this.dataSource.manager, members, bindings, outputs, config.profile);
-		return this.groupModel(config, members, bindings, await this.graph.revision(), capabilities);
+		const model = this.groupModel(config, members, bindings, await this.graph.revision(), capabilities);
+		if (config.profile === VirtualLightGroupProfile.COVER) {
+			const readinessMembers = await Promise.all(
+				members.map(async (member) => {
+					const channel = member.sourceChannelId
+						? await this.dataSource.manager.findOne(ChannelEntity, {
+								where: { id: member.sourceChannelId },
+								relations: ['device', 'properties'],
+							})
+						: null;
+					const contract = await loadCoverMemberContract(
+						this.dataSource.manager,
+						member.id,
+						member.sourceChannelId,
+						outputs,
+					);
+					return { identity: member.sourceChannelIdentity, channel, reasons: contract.reasons };
+				}),
+			);
+			model.operations = await coverOperationReadiness(this.platforms, readinessMembers);
+		}
+		return model;
 	}
 
 	async prepareLightGroup(
@@ -615,6 +640,17 @@ export class VirtualProducerConfigService {
 			new Set(bindings.map((binding) => binding.id)).size !== bindings.length
 		)
 			throw new DevicesValidationException('Member identities and binding UUIDs must be distinct.');
+		if (dto.profile === VirtualLightGroupProfile.COVER) {
+			for (const member of members) {
+				const memberBindings = bindings.filter((binding) => binding.memberId === member.id);
+				if (memberBindings.some((binding) => !binding.sourcePropertyId)) continue; // retained missing identities, never runtime authority
+				const properties = await Promise.all(
+					memberBindings.map((binding) => this.property(manager, binding.sourcePropertyId, true)),
+				);
+				const reasons = coverContractReasons(properties, exposed);
+				if (reasons.length) throw new DevicesValidationException(reasons.join(', '));
+			}
+		}
 		const capabilities = await this.commonContract(manager, members, bindings, exposed, dto.profile);
 		// Missing identities retain their last durable contract; live metadata is checked again at runtime.
 		for (const output of exposed) {

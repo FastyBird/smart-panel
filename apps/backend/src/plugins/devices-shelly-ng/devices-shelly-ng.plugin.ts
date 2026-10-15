@@ -50,6 +50,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from './entities/devices-shelly-ng.entity';
+import { ShellyCoverOrderingEntity } from './entities/shelly-cover-ordering.entity';
 import { ShellyNgDeviceAddressEntity } from './entities/shelly-ng-device-address.entity';
 import { ShellySampleSourceEntity } from './entities/shelly-sample-source.entity';
 import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistry } from './mappings';
@@ -59,6 +60,7 @@ import { DatabaseDiscovererService } from './services/database-discoverer.servic
 import { DeviceAddressService } from './services/device-address.service';
 import { DeviceManagerService } from './services/device-manager.service';
 import { PollPlacementDiagnosticsService } from './services/poll-placement-diagnostics.service';
+import { ShellyCoverOrderingService } from './services/shelly-cover-ordering.service';
 import { ShellyNgAdoptionService } from './services/shelly-ng-adoption.service';
 import { ShellyNgDiscoveryService } from './services/shelly-ng-discovery.service';
 import { ShellyNgService } from './services/shelly-ng.service';
@@ -80,6 +82,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 			ShellyNgChannelPropertyEntity,
 			ShellyNgDeviceAddressEntity,
 			ShellySampleSourceEntity,
+			ShellyCoverOrderingEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
@@ -94,6 +97,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ShellyRpcClientService,
 		DeviceAddressService,
 		ShellySampleSourcesService,
+		ShellyCoverOrderingService,
 		DatabaseDiscovererService,
 		DelegatesManagerService,
 		DeviceManagerService,

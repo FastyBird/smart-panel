@@ -176,6 +176,7 @@ export interface LightGroupReportedState {
 		{
 			value: string | number | boolean | null;
 			representativeValue?: string | number | boolean;
+			provenance?: 'configured';
 			rounded?: boolean;
 			mixed: boolean;
 			contributors: string[];
