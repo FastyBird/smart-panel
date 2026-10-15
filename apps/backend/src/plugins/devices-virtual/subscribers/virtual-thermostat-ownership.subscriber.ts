@@ -17,7 +17,10 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
-import { THERMOSTAT_OWNERSHIP_TRIGGERS } from '../services/virtual-thermostat-ownership.sql';
+import {
+	THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
+	THERMOSTAT_OWNERSHIP_TRIGGERS,
+} from '../services/virtual-thermostat-ownership.sql';
 
 /** Runs at the persistence boundary, including adapter metadata/pruning paths outside REST controllers. */
 @Injectable()
@@ -33,7 +36,10 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 	}
 	async onApplicationBootstrap(): Promise<void> {
 		if (!(await this.dataSource.createQueryRunner().hasTable('devices_virtual_thermostat_actuator_claims'))) return;
-		for (const [name, sql] of Object.entries(THERMOSTAT_OWNERSHIP_TRIGGERS))
+		for (const [name, sql] of Object.entries({
+			...THERMOSTAT_OWNERSHIP_TRIGGERS,
+			...THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
+		}))
 			await this.dataSource.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);
 		this.installed = true;
 	}

@@ -20,6 +20,10 @@ import {
 	PropertyProducerRegistryService,
 } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import {
+	thermostatBranchGroupIdentity,
+	thermostatHasOpposedBranches,
+} from '../contracts/thermostat-actuation.contract';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import {
 	VirtualThermostatBranchRuntimeEntity,
@@ -33,6 +37,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { thermostatBranchActivity, thermostatBranchEvidence } from './virtual-thermostat-branch.utils';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
@@ -67,6 +72,11 @@ const newestCommandFirst = (a: VirtualThermostatCommandEntity, b: VirtualThermos
 const retryDelaysMs = [1000, 2000, 4000, 8000, 16000];
 export interface ThermostatBranchDiagnostic {
 	claim: string;
+	group_identity: string;
+	physical_identity: string;
+	claim_state: VirtualThermostatActuatorClaimEntity['state'];
+	last_verified_off_at: string | null;
+	release_evidence: VirtualThermostatActuatorClaimEntity['releaseEvidence'];
 	role: 'heating' | 'cooling';
 	activity: 'on' | 'off' | 'unknown';
 	pending_on: boolean;
@@ -119,6 +129,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly epochs = new Map<string, number>();
 	private readonly contexts = new Map<string, ControllerContext>();
 	private readonly diagnostics = new Map<string, ThermostatRuntimeDiagnostic>();
+	/** Settlement failures fence every loaded context until this exact member generation is qualified OFF/drained. */
+	private readonly memberFaults = new Map<string, string>();
 	private readonly reconciled = new Map<
 		string,
 		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
@@ -242,6 +254,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.contacts.clear();
 		this.trends.clear();
 		this.reconciled.clear();
+		this.memberFaults.clear();
 		for (const id of this.epochs.keys()) this.epochs.set(id, (this.epochs.get(id) ?? 0) + 1);
 	}
 	readDiagnostics(controllerId: string): ThermostatRuntimeDiagnostic | null {
@@ -315,11 +328,20 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 
 	private async write(entity: VirtualThermostatCommandEntity | VirtualThermostatBranchRuntimeEntity): Promise<void> {
+		// Publish before and after SQL: another context may load while this writer waits for its lock.
+		const publishOutcome = () => {
+			if (entity instanceof VirtualThermostatCommandEntity) {
+				const current = this.contexts.get(entity.controllerId)?.commands.find((command) => command.id === entity.id);
+				if (current) Object.assign(current, entity);
+			}
+		};
+		publishOutcome();
 		await this.structure.runExclusive(() =>
 			this.dataSource.transaction(async (manager) => {
 				await manager.save(entity);
 			}),
 		);
+		publishOutcome();
 	}
 	private async load(controllerId: string): Promise<ControllerContext | null> {
 		return this.structure.runShared(async () => {
@@ -457,8 +479,26 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			target = context.targets.get(claim.id);
 		const feedback = target ? this.values.readQualifiedSample(target.property, 30_000, new Date(now)) : null;
 		branch.activity = typeof feedback?.value === 'boolean' ? (feedback.value ? 'on' : 'off') : 'unknown';
-		const pending = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
-		const qualification = this.claims.qualification(claim, context.claims.length > 1);
+		// Detached I/O outcomes override a context loaded before their journal write acquired its lock.
+		const latest = new Map(context.commands.map((command) => [command.id, command]));
+		for (const command of this.inFlightCommands.values())
+			if (command.claimId === claim.id) latest.set(command.id, command);
+		const pending = [...latest.values()].filter((command) => command.claimId === claim.id && unresolved(command));
+		const qualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
+		const parallel = context.claims.filter((member) => member.role === claim.role).length > 1;
+		// Acceptance is not observation: a mandatory member that has settled without fresh ON feedback
+		// inhibits the whole branch. Its journal remains unresolved until its own qualified OFF/drain proof.
+		const unobservedOn =
+			parallel &&
+			pending.some(
+				(command) =>
+					command.action === 'on' &&
+					command.status === 'accepted' &&
+					(!feedback ||
+						feedback.value !== true ||
+						!command.dispatchedAt ||
+						feedback.receivedAt.getTime() < command.dispatchedAt.getTime()),
+			);
 		return {
 			activity: branch.activity,
 			pendingOn: pending.some((command) => command.action === 'on'),
@@ -469,8 +509,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				claim.state === 'reserved' &&
 				!!target?.device.enabled &&
 				!!qualification &&
-				!!this.transport.get(target)?.canReconcile(target, qualification) &&
+				!!this.transport.get(target, claim)?.canReconcile(target, qualification) &&
 				this.isReconciled(claim) &&
+				!branch.fault &&
+				!this.memberFaults.has(`${claim.id}:${claim.revision}`) &&
+				!unobservedOn &&
+				(branch.activity === 'on' ||
+					(branch.lastVerifiedOffAt !== null &&
+						now >= branch.lastVerifiedOffAt.getTime() + context.config.policy.minimumOffMs)) &&
 				!pending.some((command) => command.action === 'off'),
 		};
 	}
@@ -522,15 +568,17 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				})
 			: null;
 		if (advance && heuristic) this.trends.set(context.config.controllerId, heuristic.state);
-		const heating = context.claims.find((claim) => claim.role === 'heating'),
-			cooling = context.claims.find((claim) => claim.role === 'cooling');
+		const branchEvidence = (role: 'heating' | 'cooling') =>
+			thermostatBranchEvidence(
+				context.claims.filter((claim) => claim.role === role).map((claim) => this.evidence(context, claim, now)),
+			);
 		const decision = evaluateVirtualThermostatPolicy(context.config.policy, {
 			now,
 			mode: context.owner?.enabled ? context.config.requestedMode : 'off',
 			ambient: frame.ambient,
 			floor: frame.floor,
-			heating: heating ? this.evidence(context, heating, now) : null,
-			cooling: cooling ? this.evidence(context, cooling, now) : null,
+			heating: branchEvidence('heating'),
+			cooling: branchEvidence('cooling'),
 			previousDemand: context.state.previousDemand,
 			floorOverheatLatched: context.state.floorLatched,
 			windows,
@@ -648,7 +696,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		)
 			return;
 		const target = context.targets.get(claim.id),
-			adapter = target && this.transport.get(target);
+			adapter = target && this.transport.get(target, claim);
 		if (!target || !adapter) {
 			branch.fault = 'actuator_missing_or_unsupported';
 			await this.write(branch);
@@ -690,6 +738,21 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.inFlight.set(command.id, operation);
 		void operation.catch(() => undefined);
 	}
+	/** Publish a mandatory failure synchronously to both captured and current decisions before any awaited SQL. */
+	private recordMemberFault(
+		context: ControllerContext,
+		claim: VirtualThermostatActuatorClaimEntity,
+		reason: string,
+	): VirtualThermostatBranchRuntimeEntity | null {
+		if (context.claims.filter((member) => member.role === claim.role).length < 2) return null;
+		this.memberFaults.set(`${claim.id}:${claim.revision}`, reason);
+		const current = this.contexts.get(claim.controllerId);
+		if (current?.claims.find((member) => member.id === claim.id)?.revision !== claim.revision) return null;
+		const branch = current.branches.get(claim.id);
+		branch.fault = reason;
+		context.branches.get(claim.id).fault = reason;
+		return branch;
+	}
 	/** Journal before transport; known-unsent ON is terminal and waits for fresh work, while uncertain sends need OFF proof. */
 	private async dispatch(
 		context: ControllerContext,
@@ -720,8 +783,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}
 			enteredTransport = true;
 			const result = await this.transport
-				.get(update)
-				.send(update, claim, this.claims.qualification(claim, context.claims.length > 1), guard);
+				.get(update, claim)
+				.send(update, claim, this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)), guard);
 			refusedOn = command.action === 'on' && result.outcome === 'refused';
 			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
 			command.settledAt = new Date();
@@ -731,15 +794,26 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					: result.outcome === 'unknown'
 						? 'command_execution_unknown'
 						: null;
+			if (command.action === 'on' && result.outcome !== 'accepted') {
+				const branch = this.recordMemberFault(context, claim, command.fault ?? 'mandatory_member_refused');
+				if (branch) await this.write(branch);
+			}
 			await this.write(command);
 		} catch (error) {
 			command.status = enteredTransport && !refusedOn ? 'unknown' : 'cancelled';
 			command.fault = error instanceof Error ? error.message : 'dispatch_error';
+			if (command.action === 'on') this.recordMemberFault(context, claim, command.fault);
 			await this.write(command);
 			if (!enteredTransport) await this.retryOffImmediately(context, command);
 		} finally {
 			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
-			if (this.active && !refusedOn) this.request(claim.controllerId);
+			if (this.active && !refusedOn)
+				// Settlement is feedback, not a new setting request. Do not revoke sibling sends from this decision.
+				// Their final guards still re-read every member, fault, input, mapping and configuration fence.
+				this.request(
+					claim.controllerId,
+					!context.claims.some((member) => context.claims.filter((other) => other.role === member.role).length > 1),
+				);
 		}
 	}
 	private async retryOffImmediately(
@@ -765,15 +839,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	/** Settle the full current journal only under an exclusive recheck of scoped proof, qualification, source lease and OFF sample. */
 	private async reconcile(context: ControllerContext, claim: VirtualThermostatActuatorClaimEntity): Promise<void> {
 		const target = context.targets.get(claim.id),
-			qualification = this.claims.qualification(claim, context.claims.length > 1);
-		if (!target || !qualification || !this.transport.get(target)?.canReconcile(target, qualification)) return;
+			qualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
+		if (!target || !qualification || !this.transport.get(target, claim)?.canReconcile(target, qualification)) return;
 		const off = this.values.readQualifiedSample(target.property, 30_000);
 		if (off?.value !== false) return;
 		if ([...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)) return;
 		const pending = await this.structure.runShared(() => this.loadUnresolvedCommands(claim.controllerId, claim.id));
 		if (pending.some((command) => this.inFlight.has(command.id))) return;
 		const startedAt = new Date();
-		const proof = await this.transport.get(target).reconcile(
+		const proof = await this.transport.get(target, claim).reconcile(
 			target,
 			pending.map((command) => command.id),
 			off,
@@ -798,7 +872,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			acceptedOff.quality !== 'good' ||
 			!proof.isCurrent?.() ||
 			!proof.sourceIsCurrent?.() ||
-			this.claims.qualification(claim, context.claims.length > 1) !== qualification ||
+			this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) !== qualification ||
 			proof.scope?.controllerId !== context.config.controllerId ||
 			proof.scope.controllerRevision !== context.config.revision ||
 			proof.scope.claimId !== claim.id ||
@@ -831,7 +905,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				this.canSend(context, claim, 'off') &&
 				proof.isCurrent() &&
 				proof.sourceIsCurrent() &&
-				this.claims.qualification(claim, context.claims.length > 1) === qualification &&
+				this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) === qualification &&
 				this.contexts.get(claim.controllerId)?.config.revision === proof.scope.controllerRevision &&
 				!!currentOff &&
 				currentOff.value === false &&
@@ -840,7 +914,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				currentOff.sampledAt.getTime() === proof.offSample.sampledAt.getTime() &&
 				currentOff.receivedAt.getTime() === proof.offSample.receivedAt.getTime() &&
 				currentOff.revision === proof.offSample.revision &&
-				!!this.transport.get(target)?.canReconcile(target, qualification)
+				!!this.transport.get(target, claim)?.canReconcile(target, qualification)
 			);
 		};
 		const branch = context.branches.get(claim.id);
@@ -859,7 +933,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						controllerId: claim.controllerId,
 					});
 					const currentClaim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claim.id });
-					const currentQualification = this.claims.qualification(claim, context.claims.length > 1);
+					const currentQualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
 					const currentOff = this.values.readQualifiedSample(target.property, 30_000);
 					if (
 						!this.canSend(context, claim, 'off') ||
@@ -880,7 +954,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						currentOff.sampledAt.getTime() !== proof.offSample.sampledAt.getTime() ||
 						currentOff.receivedAt.getTime() !== proof.offSample.receivedAt.getTime() ||
 						currentOff.revision !== proof.offSample.revision ||
-						!this.transport.get(target)?.canReconcile(target, currentQualification) ||
+						!this.transport.get(target, claim)?.canReconcile(target, currentQualification) ||
 						current.some((command) => this.inFlight.has(command.id) || !covered.has(command.id))
 					)
 						return null;
@@ -923,6 +997,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				command.settledAt = settled.settledAt;
 			}
 		if (!isProofCurrent()) return;
+		this.memberFaults.delete(`${claim.id}:${claim.revision}`);
 		if (claim.state === 'releasing') {
 			const authority = this.claims.mintAuthority(claim.id, 'off');
 			await this.claims.completeRelease(
@@ -943,8 +1018,23 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const branches = context.claims.map((claim): ThermostatBranchDiagnostic => {
 			const branch = context.branches.get(claim.id),
 				commands = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
+			const target = context.targets.get(claim.id);
+			const readinessFault = !target
+				? 'actuator_missing'
+				: !this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))
+					? 'hardware_qualification_missing'
+					: !this.values.readQualifiedSample(target.property, 30_000)
+						? 'feedback_unavailable'
+						: claim.state !== 'reserved'
+							? `actuator_${claim.state}`
+							: null;
 			return {
 				claim: claim.id,
+				group_identity: thermostatBranchGroupIdentity(claim.controllerId, claim.role),
+				physical_identity: claim.physicalIdentity,
+				claim_state: claim.state,
+				last_verified_off_at: branch.lastVerifiedOffAt?.toISOString() ?? null,
+				release_evidence: claim.releaseEvidence,
 				role: claim.role,
 				activity: commands.some(
 					(command) =>
@@ -962,11 +1052,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				next_release_at: branch.nextReleaseAt?.toISOString() ?? null,
 				release_proven:
 					branch.activity === 'off' && !commands.some((command) => command.action === 'on') && this.isReconciled(claim),
-				fault: branch.fault ?? commands.find((command) => command.fault)?.fault ?? null,
+				fault:
+					this.memberFaults.get(`${claim.id}:${claim.revision}`) ??
+					branch.fault ??
+					commands.find((command) => command.fault)?.fault ??
+					readinessFault,
 			};
 		});
 		const reasons = [...context.decision.reasons];
-		if (context.claims.some((claim) => !this.claims.qualification(claim, context.claims.length > 1)))
+		if (context.claims.some((claim) => !this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))))
 			reasons.push('hardware_qualification_missing');
 		if (context.claims.some((claim) => !this.isReconciled(claim))) reasons.push('release_ordering_unreconciled');
 		const priority = [
@@ -1039,10 +1133,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				property.category === PropertyCategory.STATUS &&
 				[ChannelCategory.HEATER, ChannelCategory.COOLER].includes(channel.category)
 			) {
-				const branch = branches.find(
-					(branch) => branch.role === (channel.category === ChannelCategory.HEATER ? 'heating' : 'cooling'),
+				const activity = thermostatBranchActivity(
+					branches.filter(
+						(branch) => branch.role === (channel.category === ChannelCategory.HEATER ? 'heating' : 'cooling'),
+					),
 				);
-				value = branch?.activity === 'unknown' || !branch ? null : branch.activity === 'on';
+				value = activity === 'unknown' ? null : activity === 'on';
 				sample = null;
 			} else continue;
 			let output = this.outputs.get(property.id);

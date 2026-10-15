@@ -6,6 +6,7 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { thermostatHasOpposedBranches } from '../contracts/thermostat-actuation.contract';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -103,7 +104,7 @@ export class ThermostatInstallationBindingsService {
 			where: { controllerId: claim.controllerId, state: Not('released') },
 			order: { id: 'ASC' },
 		});
-		const opposed = topology.length > 1;
+		const opposed = thermostatHasOpposedBranches(topology);
 		return {
 			claim,
 			config,

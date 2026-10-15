@@ -268,6 +268,16 @@ export class VirtualThermostatSettingDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginConfigureThermostat' })
 export class ConfigureVirtualThermostatDto {
+	@ApiPropertyOptional({
+		name: 'control_strategy',
+		enum: ['guarded_branches'],
+		description: 'Legacy configurations default to guarded branches; native-unit adapters are not implemented',
+	})
+	@Expose({ name: 'control_strategy' })
+	@IsOptional()
+	@IsIn(['guarded_branches'])
+	controlStrategy?: 'guarded_branches';
+
 	@ApiProperty({ name: 'schema_version', enum: [1], description: 'Typed configuration version' })
 	@Expose({ name: 'schema_version' })
 	@IsIn([1])
@@ -339,13 +349,13 @@ export class ConfigureVirtualThermostatDto {
 	@Type(() => VirtualThermostatSourceDto)
 	sources: VirtualThermostatSourceDto[];
 	@ApiProperty({
-		description: 'Exclusive physical heating and/or cooling branches',
+		description: 'Mandatory physical members grouped by heating/cooling role; legacy singleton arrays retain identity',
 		type: [VirtualThermostatActuatorDto],
-		maxItems: 2,
+		maxItems: 8,
 	})
 	@Expose()
 	@IsArray()
-	@ArrayMaxSize(2)
+	@ArrayMaxSize(8)
 	@ValidateNested({ each: true })
 	@Type(() => VirtualThermostatActuatorDto)
 	actuators: VirtualThermostatActuatorDto[];

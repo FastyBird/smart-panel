@@ -88,6 +88,7 @@ describe('virtual thermostat durable runtime', () => {
 	let graphGeneration: number;
 	let publicationGate: Promise<void> | null;
 	const samples = new Map<string, QualifiedPropertySample>();
+	const unavailableMembers = new Set<string>();
 	const sends: boolean[] = [];
 	const sentTargets: { propertyId: string; on: boolean }[] = [];
 	const actuationAttempts: boolean[] = [];
@@ -99,6 +100,7 @@ describe('virtual thermostat durable runtime', () => {
 	const reconciledCommandIds: string[][] = [];
 	let afterOnGate: Promise<void> | null;
 	let allowLateOn: boolean;
+	let acceptedWithoutFeedback: string | null;
 	let proofAllowed: (propertyId: string) => boolean;
 	let proofCalls: number;
 	let installedQualifications: Map<string, ThermostatInstalledQualification>;
@@ -125,6 +127,7 @@ describe('virtual thermostat durable runtime', () => {
 			synchronize: true,
 		}).initialize();
 		samples.clear();
+		unavailableMembers.clear();
 		sends.length = 0;
 		sentTargets.length = 0;
 		actuationAttempts.length = 0;
@@ -136,6 +139,7 @@ describe('virtual thermostat durable runtime', () => {
 		reconciledCommandIds.length = 0;
 		afterOnGate = null;
 		allowLateOn = false;
+		acceptedWithoutFeedback = null;
 		proofAllowed = () => true;
 		proofMutation = (proof) => proof;
 		proofCalls = 0;
@@ -271,7 +275,9 @@ describe('virtual thermostat durable runtime', () => {
 		sample(relayId, false);
 		producers = new PropertyProducerRegistryService(events);
 		values = {
-			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) => samples.get(property.id) ?? null),
+			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) =>
+				unavailableMembers.has(property.id) ? null : (samples.get(property.id) ?? null),
+			),
 			readSampleFreshness: jest.fn((property: ChannelPropertyEntity) => {
 				const sample = samples.get(property.id);
 				return {
@@ -315,6 +321,8 @@ describe('virtual thermostat durable runtime', () => {
 			isAuthorized: () => true,
 		} as unknown as VirtualThermostatClaimsService;
 		const adapter: ThermostatActuationAdapter = {
+			contractVersion: 1,
+			providerProfile: { id: 'shelly-ng.guarded-switch', version: 1 },
 			canReconcile: () => true,
 			send: async (target, _claim, _qualification, isAdmitted) => {
 				actuationAttempts.push(target.value === true);
@@ -327,7 +335,8 @@ describe('virtual thermostat durable runtime', () => {
 				const wasOn = samples.get(target.property.id)?.value === true;
 				sends.push(target.value as boolean);
 				sentTargets.push({ propertyId: target.property.id, on: target.value as boolean });
-				sample(target.property.id, target.value as boolean);
+				if (target.value !== true || target.property.id !== acceptedWithoutFeedback)
+					sample(target.property.id, target.value as boolean);
 				if (target.property.id === relayId && target.value === true && afterOnGate !== null) await afterOnGate;
 				if (outcome === 'unknown') return { outcome, outputConfirmed: false, pendingOnDrained: false };
 				return {
@@ -1272,6 +1281,287 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.flush();
 		expect(sentTargets.some((send) => send.on)).toBe(false);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
+	});
+
+	const addMandatoryMember = async (role: 'heating' | 'cooling' = 'heating', mac = 'A8032ABE5099'): Promise<string> => {
+		const deviceId = uuid(),
+			channelId = uuid(),
+			propertyId = uuid();
+		await database.manager.insert(ShellyNgDeviceEntity, {
+			id: deviceId,
+			name: 'Cooling relay',
+			identifier: 'shellyplus1pm-' + mac.toLowerCase(),
+			category: DeviceCategory.SWITCHER,
+			enabled: true,
+			canonicalMac: mac,
+		});
+		await database.manager.insert(ShellyNgChannelEntity, {
+			id: channelId,
+			device: deviceId,
+			name: 'Switch',
+			identifier: 'switch:0',
+			category: ChannelCategory.SWITCHER,
+		} as never);
+		await database.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: propertyId,
+			channel: channelId,
+			identifier: 'output',
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: propertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property.channel as ChannelEntity;
+		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+			id: uuid(),
+			controllerId,
+			role,
+			physicalIdentity: thermostatActuatorIdentity(property, channel, channel.device as DeviceEntity),
+			sourcePropertyId: propertyId,
+			sourcePropertyIdentity: propertyId,
+			sourceDeviceId: deviceId,
+			sourceDeviceIdentity: deviceId,
+			contractFingerprint: thermostatPropertyContract(property, channel, channel.device as DeviceEntity),
+			revision: 1,
+			state: 'reserved',
+			leaseSeconds: 30,
+			reason: null,
+			releaseRequestedAt: null,
+			releasedAt: null,
+			releaseEvidence: null,
+		});
+		sample(propertyId, false);
+		return propertyId;
+	};
+
+	it('dispatches same-mode mandatory leaves with shared decision identity and retains each journal', async () => {
+		const sibling = await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(
+			sentTargets
+				.filter((send) => send.on)
+				.map((send) => send.propertyId)
+				.sort(),
+		).toEqual([relayId, sibling].sort());
+		const commands = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+		expect(commands).toHaveLength(2);
+		expect(new Set(commands.map((command) => command.decisionRevision)).size).toBe(1);
+		expect(new Set(commands.map((command) => command.claimId)).size).toBe(2);
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'on')).toBe(true);
+	});
+
+	it.each(['missing', 'offline'] as const)(
+		'inhibits and releases every sibling when a mandatory member is %s instead of shrinking capacity',
+		async (failure) => {
+			const sibling = await addMandatoryMember();
+			runtime.request(controllerId);
+			await settle();
+			sample(sensorId, 18);
+			runtime.request(controllerId);
+			await settle();
+			if (failure === 'offline') unavailableMembers.add(sibling);
+			else
+				await database.manager.update(
+					VirtualThermostatActuatorClaimEntity,
+					{ sourcePropertyId: sibling },
+					{ sourcePropertyId: null, state: 'missing', revision: 2 },
+				);
+			runtime.request(controllerId);
+			await settle();
+			expect(sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+			expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
+			expect(runtime.readDiagnostics(controllerId).reasons).toContain(
+				failure === 'missing' ? 'startup_unreconciled' : 'heating_not_ready',
+			);
+		},
+	);
+
+	it('keeps a partial late ON unresolved per leaf while releasing the rest of its group', async () => {
+		const sibling = await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		let resumeOn!: () => void;
+		onGate = new Promise<void>((resolve) => {
+			resumeOn = resolve;
+		});
+		allowLateOn = true;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await waitForOnJournal();
+		await runtime.flush();
+		proofAllowed = (id) => id !== relayId;
+		samples.delete(sibling);
+		runtime.request(controllerId);
+		await runtime.flush();
+		resumeOn();
+		onGate = null;
+		await settle();
+		const pending = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+		expect(pending.some((command) => command.status !== 'cancelled' && command.status !== 'confirmed')).toBe(true);
+		const diagnostics = runtime.readDiagnostics(controllerId);
+		expect(diagnostics.branches).toHaveLength(2);
+		expect(diagnostics.branches.some((branch) => branch.pending_on)).toBe(true);
+		expect(sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+	});
+
+	it('waits for every opposed member to drain and measures changeover from the last qualified OFF', async () => {
+		const sibling = await addMandatoryMember();
+		const cooling = await addMandatoryMember('cooling', 'A8032ABE5098');
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.policy.coolingSetpoint = 24;
+		config.requestedMode = 'auto';
+		config.policy.changeoverMs = 60_000;
+		await database.manager.save(config);
+		runtime.request(controllerId);
+		await settle();
+		proofAllowed = (id) => id !== sibling;
+		// An earlier ON on the second heating leaf must be covered independently.
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			sourcePropertyId: sibling,
+		});
+		await database.manager.insert(VirtualThermostatCommandEntity, {
+			id: uuid(),
+			controllerId,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: config.revision,
+			decisionRevision: 0,
+			action: 'on',
+			status: 'unknown',
+			preparedAt: new Date(),
+			dispatchedAt: new Date(),
+		});
+		sample(sensorId, 26);
+		runtime.request(controllerId);
+		await settle();
+		expect(sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(false);
+		proofAllowed = () => true;
+		for (let phase = 0; phase < 3; phase++) {
+			runtime.request(controllerId, false);
+			await settle();
+		}
+		expect(sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(false);
+		expect(runtime.readDiagnostics(controllerId).reasons).toContain('cooling_changeover_wait');
+		const rows = await database.manager.find(VirtualThermostatBranchRuntimeEntity);
+		for (const row of rows) {
+			row.lastVerifiedOffAt = new Date(Date.now() - 120_000);
+			await database.manager.save(row);
+		}
+		runtime.request(controllerId);
+		await settle();
+		expect(sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(true);
+	});
+
+	it('retains each parallel pending ON across restart and drains siblings independently before resuming', async () => {
+		const sibling = await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+		expect(new Set(original.map((command) => command.claimId)).size).toBe(2);
+		runtime.onModuleDestroy();
+		sample(relayId, false);
+		sample(sibling, false);
+		proofAllowed = (id) => id !== sibling;
+		runtime = makeRuntime();
+		await runtime.onApplicationBootstrap();
+		await settle();
+		const pending = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+		expect(pending).toHaveLength(original.length);
+		expect(pending.some((command) => command.status === 'confirmed')).toBe(true);
+		expect(pending.some((command) => command.status !== 'confirmed' && command.status !== 'cancelled')).toBe(true);
+		expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
+		proofAllowed = () => true;
+		for (let phase = 0; phase < 3; phase++) {
+			runtime.request(controllerId, false);
+			await settle();
+		}
+		expect(original.every((command) => pending.some((row) => row.id === command.id))).toBe(true);
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'on')).toBe(true);
+	});
+
+	it('rechecks a parallel member generation before final send and cancels its stale queued ON', async () => {
+		await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		let resumeOn!: () => void;
+		onGate = new Promise<void>((resolve) => {
+			resumeOn = resolve;
+		});
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		const command = await waitForOnJournal();
+		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: command.claimId });
+		await database.manager.update(
+			VirtualThermostatActuatorClaimEntity,
+			{ id: claim.id },
+			{ revision: claim.revision + 1, qualificationGeneration: 'restored-generation', state: 'releasing' },
+		);
+		runtime.request(controllerId);
+		await runtime.flush();
+		resumeOn();
+		onGate = null;
+		await settle();
+		expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
+			'cancelled',
+		);
+		expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
+	});
+
+	it('treats an accepted but unobserved parallel member as incomplete capacity and releases its siblings', async () => {
+		const sibling = await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		acceptedWithoutFeedback = sibling;
+		proofAllowed = (id) => id !== sibling;
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(true);
+		expect(sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+		const diagnostics = runtime.readDiagnostics(controllerId);
+		expect(diagnostics.branches.find((branch) => branch.pending_on)).toBeDefined();
+		expect(diagnostics.reasons).toContain('heating_not_ready');
+	});
+
+	it('fences a mandatory refusal across a newly loaded context and releases the already-running sibling', async () => {
+		const sibling = await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		let resumeOn!: () => void;
+		onGate = new Promise<void>((resolve) => {
+			resumeOn = resolve;
+		});
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		const blocked = await waitForOnJournal();
+		await runtime.flush();
+		const inFlight = (runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight;
+		await Promise.all([...inFlight].filter(([id]) => id !== blocked.id).map(([, operation]) => operation));
+		expect(sentTargets.some((send) => send.propertyId === sibling && send.on)).toBe(true);
+		await runtime.inspect(controllerId);
+		onOutcome = 'refused';
+		proofAllowed = (id) => id !== relayId;
+		resumeOn();
+		onGate = null;
+		await settle();
+		runtime.request(controllerId, false);
+		await settle();
+		expect(sentTargets.filter((send) => send.on)).toEqual([{ propertyId: sibling, on: true }]);
+		expect(sentTargets.some((send) => send.propertyId === sibling && !send.on)).toBe(true);
+		expect(runtime.readDiagnostics(controllerId).branches.some((branch) => branch.fault === 'known_no_send')).toBe(
+			true,
+		);
 	});
 
 	it('blocks an opposed cooling branch across restart until the pending heating ON is drained', async () => {

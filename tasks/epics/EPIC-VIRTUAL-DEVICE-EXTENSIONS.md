@@ -93,3 +93,12 @@ Track calibration/limits, equipment protection, writer isolation, local release/
 supported native HA/Zigbee devices and real HomeKit pairing. The existing
 [Shelly commissioning record](../../docs/work/virtual-thermostat/shelly-commissioning.md) stays unqualified until evidence
 is recorded; software checkmarks do not establish installed safety or imply relay/script writes occurred.
+
+## VD3-10 local backend delivery
+
+The provider-neutral mandatory-branch backend foundation is implemented locally on the PR #1464 base; see the
+[implementation and validation record](../../docs/work/virtual-thermostat/parallel-branches-validation.md).
+Migration 40 retains singleton claim/journal identities and unresolved ownership. Independent parent review of
+ownership/concurrency/protection and multi-member Admin/Panel authoring/diagnostics remain before alpha delivery.
+The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
+qualification is claimed by this backend slice.

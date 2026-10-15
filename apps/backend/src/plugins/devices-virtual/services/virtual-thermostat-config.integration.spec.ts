@@ -13,7 +13,9 @@ import { Test } from '@nestjs/testing';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
+import { AddVirtualThermostatRuntime1000000000032 } from '../../../migrations/1000000000032-AddVirtualThermostatRuntime';
 import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations/1000000000034-AddVirtualThermostatRecoveries';
+import { AddThermostatBranchGroups1000000000040 } from '../../../migrations/1000000000040-AddThermostatBranchGroups';
 import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import {
@@ -232,6 +234,197 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		sources: [{ role: 'ambient', sourcePropertyId: sensor, maximumAgeSeconds: 300 }],
 		actuators: [{ role: 'heating', sourcePropertyId: heat, leaseSeconds: 30 }],
 		settings: [],
+	});
+
+	it('bounds mandatory members across both branches and preserves same-mode identities without opposed qualification', async () => {
+		const controller = await owner(),
+			sensor = await ambient();
+		const members = await Promise.all(
+			Array.from({ length: 9 }, (_, index) => actuator(`A8032ABE50${String(index).padStart(2, '0')}`)),
+		);
+		const input = dto(sensor, members[0]);
+		input.actuators = members.map((sourcePropertyId) => ({ role: 'heating', sourcePropertyId, leaseSeconds: 30 }));
+		await expect(configs.configure(controller, input)).rejects.toThrow('branches');
+		const mixed: ConfigureVirtualThermostatDto = {
+			...input,
+			policy: { ...input.policy, coolingSetpoint: 24 },
+			actuators: input.actuators.map((member, index) => ({ ...member, role: index < 4 ? 'heating' : 'cooling' })),
+		};
+		await expect(configs.preview(controller, mixed)).rejects.toThrow('branches');
+		mixed.actuators.pop();
+		expect((await configs.preview(controller, mixed)).actuators).toHaveLength(8);
+		input.actuators.pop();
+		const configured = await configs.configure(controller, input);
+		expect(configured.actuators).toHaveLength(8);
+		const retained = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			id: configured.actuators[0].id,
+		});
+		claims.recordQualification({
+			physicalIdentity: retained.physicalIdentity,
+			upstreamWritersExcluded: true,
+			opposedOutputsInterlocked: false,
+			profile: {
+				deviceId: 'installed-fixture',
+				model: 'SNSW-001P16EU',
+				firmware: 'fixture-only',
+				componentId: 0,
+				evidenceId: 'installed-fixture',
+				revision: 1,
+				testedLeaseSeconds: { min: 1, max: 60 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+			},
+		});
+		expect(claims.qualification(retained, false)).not.toBeNull();
+		await expect(
+			database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+				...retained,
+				id: uuid(),
+				physicalIdentity: 'ninth-physical-member',
+			}),
+		).rejects.toThrow('eight');
+
+		expect(new Set(configured.actuators.map((claim) => claim.group_identity)).size).toBe(1);
+		const changed = await configs.configure(controller, { ...input, expectedRevision: configured.revision });
+		expect(changed.actuators.map((claim) => claim.id)).toEqual(configured.actuators.map((claim) => claim.id));
+		await expect(registry.assertAllowed(await target(members[7], true))).rejects.toThrow('reserved');
+		const duplicate = dto(sensor, members[8]);
+		duplicate.actuators.push({ ...duplicate.actuators[0] });
+		await expect(configs.preview(await owner(), duplicate)).rejects.toThrow('same physical actuator');
+		const detached = { ...input, expectedRevision: changed.revision, actuators: input.actuators.slice(1) };
+		await expect(configs.configure(controller, detached)).rejects.toThrow('cannot be detached');
+		const opposed = dto(sensor, members[8]);
+		opposed.policy.coolingSetpoint = 24;
+		opposed.actuators.push({ ...opposed.actuators[0], role: 'cooling' });
+		await expect(configs.preview(await owner(), opposed)).rejects.toThrow('same physical actuator');
+	});
+
+	it('upgrades actual legacy singleton rows in place with unresolved journal, release state and qualification generation', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			relay = await actuator();
+		const runner = database.createQueryRunner();
+		for (const table of [
+			'devices_virtual_thermostat_command_journal',
+			'devices_virtual_thermostat_branch_runtime',
+			'devices_virtual_thermostat_runtime',
+			'devices_virtual_thermostat_recoveries',
+			'devices_virtual_thermostat_settings',
+			'devices_virtual_thermostat_sources',
+			'devices_virtual_thermostat_actuator_claims',
+			'devices_virtual_thermostat_configs',
+		])
+			await runner.query(`DROP TABLE "${table}"`);
+		await new AddVirtualThermostatClaims1000000000031().up(runner);
+		await new AddVirtualThermostatRuntime1000000000032().up(runner);
+		await new AddVirtualThermostatRecoveries1000000000034().up(runner);
+		const policy = dto(sensor, relay).policy,
+			claimId = uuid();
+		const physical = await target(relay, false);
+		const identity = `shelly-ng:A8032ABE5084:switch:0:output`;
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_configs" ("controllerId", "ownerDeviceId", "schemaVersion", "revision", "requestedMode", "locked", "policy", "contactOpeningMs", "contactClosingMs", "configuredAt", "releaseRequestedAt") VALUES (?, ?, 1, 7, 'off', 0, ?, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			[controller, controller, JSON.stringify(policy)],
+		);
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_actuator_claims" ("id", "controllerId", "role", "physicalIdentity", "sourcePropertyId", "sourcePropertyIdentity", "sourceDeviceId", "sourceDeviceIdentity", "contractFingerprint", "revision", "qualificationGeneration", "state", "leaseSeconds", "reason", "releaseRequestedAt", "releaseEvidence") VALUES (?, ?, 'heating', ?, ?, ?, ?, ?, 'legacy-contract', 9, 'legacy-generation', 'releasing', 30, 'explicit_release_requested', CURRENT_TIMESTAMP, ?)`,
+			[
+				claimId,
+				controller,
+				identity,
+				relay,
+				relay,
+				physical.device.id,
+				physical.device.id,
+				JSON.stringify({ evidenceId: 'previous-proof' }),
+			],
+		);
+		const commandId = uuid();
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_command_journal" ("id", "controllerId", "claimId", "claimRevision", "configurationRevision", "decisionRevision", "action", "status", "preparedAt", "dispatchedAt", "fault") VALUES (?, ?, ?, 8, 6, 12, 'on', 'unknown', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'late_on')`,
+			[commandId, controller, claimId],
+		);
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_branch_runtime" ("claimId", "activity", "lastVerifiedOffAt", "releaseProofId", "releaseAttempts", "nextReleaseAt", "fault") VALUES (?, 'unknown', CURRENT_TIMESTAMP, 'earlier-proof', 3, CURRENT_TIMESTAMP, 'release_pending')`,
+			[claimId],
+		);
+		const beforeBranch: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime"');
+		const beforeConfig: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_configs"');
+		const beforeClaims: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_actuator_claims"');
+		const beforeJournal: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"');
+		await new AddThermostatBranchGroups1000000000040().up(runner);
+		expect(await runner.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime"')).toEqual(beforeBranch);
+		const afterConfig = (await runner.query('SELECT * FROM "devices_virtual_thermostat_configs"')) as Record<
+			string,
+			unknown
+		>[];
+		expect(afterConfig.map(({ controlStrategy: _strategy, ...row }) => row)).toEqual(beforeConfig);
+
+		expect(await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"')).toEqual(beforeJournal);
+		const afterClaims = (await runner.query('SELECT * FROM "devices_virtual_thermostat_actuator_claims"')) as Record<
+			string,
+			unknown
+		>[];
+		expect(afterClaims.map(({ providerProfile: _profile, providerProfileVersion: _version, ...row }) => row)).toEqual(
+			beforeClaims,
+		);
+		await claims.refresh();
+		expect((await configs.get(controller)).actuators[0]).toMatchObject({
+			id: claimId,
+			revision: 9,
+			qualification_generation: 'legacy-generation',
+			state: 'releasing',
+			provider_profile: 'shelly-ng.guarded-switch',
+			group_identity: `${controller}:heating`,
+		});
+		await expect(registry.assertAllowed(await target(relay, false))).rejects.toThrow('reserved');
+		await runner.release();
+	});
+
+	it('retains sibling ownership and release demand through parallel disable, delete refusal, remap refusal and member recovery', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			first = await actuator(),
+			second = await actuator('A8032ABE5099');
+		const input = dto(sensor, first);
+		input.actuators.push({ role: 'heating', sourcePropertyId: second, leaseSeconds: 30 });
+		const configured = await configs.configure(controller, input);
+		await expect(database.manager.delete(DeviceEntity, { id: controller })).rejects.toThrow('reserved');
+		await expect(
+			configs.configure(controller, {
+				...input,
+				expectedRevision: configured.revision,
+				actuators: [input.actuators[0]],
+			}),
+		).rejects.toThrow('cannot be detached');
+		await database.manager.update(DeviceEntity, { id: controller }, { enabled: false });
+		const disabled = await configs.get(controller);
+		expect(disabled.actuators.every((claim) => claim.state === 'releasing')).toBe(true);
+		const firstClaim = disabled.actuators.find((claim) => claim.source_property === first);
+		const siblingClaim = disabled.actuators.find((claim) => claim.source_property === second);
+		const restored = await configs.restoreActuator(
+			controller,
+			firstClaim.id,
+			{
+				expectedRevision: disabled.revision,
+				expectedClaimRevision: firstClaim.revision,
+				physicalIdentity: firstClaim.physical_identity,
+				sourcePropertyId: first,
+				reason: 'operator checked the same retained physical actuator',
+				disconnectionAcknowledged: true,
+			},
+			'operator',
+		);
+		expect(restored.actuators.find((claim) => claim.id === siblingClaim.id)).toEqual(siblingClaim);
+		expect(restored.actuators.find((claim) => claim.id === firstClaim.id)).toMatchObject({
+			id: firstClaim.id,
+			state: 'releasing',
+			physical_identity: firstClaim.physical_identity,
+		});
+		expect(restored.actuators.find((claim) => claim.id === firstClaim.id).qualification_generation).not.toBe(
+			firstClaim.qualification_generation,
+		);
+		await expect(registry.assertAllowed(await target(second, true))).rejects.toThrow('reserved');
 	});
 
 	it('roundtrips draft authoring over HTTP with durable identities, exclusive claims and revision validation', async () => {
@@ -1576,6 +1769,8 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await migration.up(runner);
 		const recoveryMigration = new AddVirtualThermostatRecoveries1000000000034();
 		await recoveryMigration.up(runner);
+		const branchMigration = new AddThermostatBranchGroups1000000000040();
+		await branchMigration.up(runner);
 		const indexes = await runner.query('PRAGMA index_list("devices_virtual_thermostat_actuator_claims")');
 		expect(indexes).toEqual(
 			expect.arrayContaining([
@@ -1592,8 +1787,11 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: controller }))
 				.sourcePropertyId,
 		).toBeNull();
-		await recoveryMigration.down(runner);
-		await migration.down(runner);
+		await branchMigration.down(runner);
+		const cleanupRunner = database.createQueryRunner();
+		await recoveryMigration.down(cleanupRunner);
+		await migration.down(cleanupRunner);
+		await cleanupRunner.release();
 		await runner.release();
 	});
 });

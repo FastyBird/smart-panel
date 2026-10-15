@@ -64,6 +64,50 @@ A configured physical window contact and automatic temperature-change detection 
 
 Actuator claims bind a qualified physical output to one controller and refuse unsupported or conflicting configurations at preview and persistence. Stop, restart and binding changes reconcile outstanding commands and claims before output may resume. The controller's software safeguards still require independent equipment protection and an operator-approved installation qualification before a live heating or cooling output is activated.
 
+## Mandatory parallel thermostat branches
+
+Guarded controllers group physical actuator claims by the stable `(controllerId, role)` identity. The existing
+`actuators` request/response array remains compatible: repeating `heating` or `cooling` adds a mandatory parallel
+member to that branch. At most eight total non-released members are admitted across both roles, including missing,
+releasing and suspended reservations. Singleton upgrades change neither physical claim IDs nor their qualification
+generation, lease, revision, release state or command journal. Migration `1000000000040` removes only the singleton
+role uniqueness constraint and adds the installed provider profile/version and explicit `guarded_branches` strategy.
+The shared journal decision identity remains the existing `(controllerId, decisionRevision)` tuple; every leaf gets
+its own persisted command identity before transport entry.
+
+The versioned internal actuation contract separates transport acceptance, causal observation, local protective
+qualification and qualified OFF/drain evidence. Shelly remains the only implemented guarded adapter. A profile/version
+mismatch or an unsupported provider cannot qualify a protected branch by registering an adapter or acknowledging a
+service call. `native_unit` is a typed, mutually exclusive strategy seam binding one canonical HA/Zigbee physical unit;
+its adapters, requested bundle and observations are outside this backend foundation and cannot be activated here.
+
+Demand uses all mandatory members. Same-mode siblings require no opposed-output attestation merely because they are
+parallel. Unknown, unavailable, unqualified or failed members inhibit the demanded branch and drive release of its
+remaining members. Acceptance without fresh ON observation does not establish completed parallel capacity. Each
+uncertain/late ON remains unresolved in its own journal until its own qualified drainage proof. Final send guards
+recheck the complete branch, physical ownership, input evidence and configuration/mapping/request fences. Settlement
+feedback can reevaluate a parallel decision without revoking its siblings; external changes still revoke admission.
+
+An opposed branch must have every member freshly OFF and every earlier ON drained. Its changeover clock starts at
+the last member's qualified OFF, not the earliest sibling. Reported aggregate activity requires unanimous fresh member
+observations; mixed/unknown activity remains unavailable. Runtime diagnostics remain per physical claim, including
+group/canonical identity, reservation state, pending ON, release attempts and last qualified OFF. Configuration also
+returns `released_actuators` with retained per-member completion evidence; recovery audit remains claim-specific.
+Disable/delete/remap/restart preserve unresolved identities and reservations rather than reducing branch capacity.
+
+Installation qualification is unchanged: the current Shelly loader requires each guarded output's floor input to be
+local to that physical Shelly. A shared virtual floor input does not qualify additional relay hardware. Multi-device
+installations therefore remain ineligible unless every member satisfies the actual installed local protective profile.
+Because a controller currently has one floor binding, the existing installation workflow cannot qualify a
+multi-Shelly floor-protected group using that shared binding. A reviewed per-member protective-input/profile design
+is required to remove that limitation. This software work supplies no installed evidence and performs no physical
+actuation.
+
+Before the extension milestone's alpha release, Admin still needs multi-member creation/edit/repair with the total
+limit and retained missing members; Admin/Panel need per-member readiness, uncertainty, release/recovery evidence and
+truthful mixed activity. The existing singleton controls remain compatible. Those client changes and native-unit
+adapters require their own implementation and composed review; the backend foundation does not mark them complete.
+
 ## Groups, spaces and provenance
 
 A virtual light group exposes only compatible common controls from its physical members. Its reported state may be mixed or unknown, and a parent command may have confirmed, partial or failed member outcomes. Space and scene commands expand through the same command path; room contribution must count a physical light only once when it and its group both belong to the room. Group and derived sensor values are views of physical sources, so they do not create additional energy consumption or erase physical provenance. Hidden physical sources retain their own history and attribution.

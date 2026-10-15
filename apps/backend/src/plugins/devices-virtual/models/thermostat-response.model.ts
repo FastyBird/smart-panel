@@ -159,6 +159,31 @@ export class VirtualThermostatSourceModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatClaim' })
 export class VirtualThermostatClaimModel {
+	@ApiProperty({ type: String, nullable: true, description: 'Durable release demand time' })
+	@Expose()
+	release_requested_at: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Machine-verified release completion time' })
+	@Expose()
+	released_at: string | null;
+	@ApiProperty({
+		type: 'object',
+		additionalProperties: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+		nullable: true,
+		description: 'Retained qualified OFF/drain evidence for this member',
+	})
+	@Expose()
+	release_evidence: Record<string, string | number | boolean> | null;
+
+	@ApiProperty({ description: 'Stable controller/role group identity; every physical member is mandatory' })
+	@Expose()
+	group_identity: string;
+	@ApiProperty({ description: 'Installed protective adapter profile identifier' })
+	@Expose()
+	provider_profile: string;
+	@ApiProperty({ description: 'Installed protective adapter profile version' })
+	@Expose()
+	provider_profile_version: number;
+
 	@ApiProperty({ description: 'Durable reservation UUID' })
 	@Expose()
 	id: string;
@@ -223,6 +248,13 @@ export class VirtualThermostatSettingModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatConfiguration' })
 export class VirtualThermostatConfigurationModel implements ThermostatConfiguration {
+	@ApiProperty({
+		enum: ['guarded_branches'],
+		description: 'Control strategy; legacy configurations upgrade to guarded branches',
+	})
+	@Expose()
+	control_strategy: 'guarded_branches';
+
 	@ApiProperty({ description: 'Stable controller device UUID' })
 	@Expose()
 	controller: string;
@@ -285,6 +317,13 @@ export class VirtualThermostatConfigurationModel implements ThermostatConfigurat
 	@Expose()
 	@Type(() => VirtualThermostatClaimModel)
 	actuators: VirtualThermostatClaimModel[];
+	@ApiProperty({
+		type: [VirtualThermostatClaimModel],
+		description: 'Released historical reservations and their per-member evidence; excluded from active capacity',
+	})
+	@Expose()
+	@Type(() => VirtualThermostatClaimModel)
+	released_actuators: VirtualThermostatClaimModel[];
 	@ApiProperty({ description: 'Registered local writable setting endpoints', type: [VirtualThermostatSettingModel] })
 	@Expose()
 	@Type(() => VirtualThermostatSettingModel)
@@ -304,6 +343,23 @@ export class VirtualThermostatConfigurationResponseModel extends BaseSuccessResp
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatBranchRuntime' })
 export class VirtualThermostatBranchRuntimeModel {
+	@ApiProperty({ description: 'Stable group identity; this diagnostic represents one mandatory physical member' })
+	@Expose()
+	group_identity: string;
+	@ApiProperty() @Expose() physical_identity: string;
+	@ApiProperty({ enum: ['reserved', 'releasing', 'suspended', 'missing', 'released'] })
+	@Expose()
+	claim_state: ThermostatRuntimeDiagnostic['branches'][number]['claim_state'];
+	@ApiProperty({ type: String, nullable: true }) @Expose() last_verified_off_at: string | null;
+	@ApiProperty({
+		type: 'object',
+		additionalProperties: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+		nullable: true,
+		description: 'Machine-verified release evidence retained independently for this member',
+	})
+	@Expose()
+	release_evidence: Record<string, string | number | boolean> | null;
+
 	@ApiProperty() @Expose() claim: string;
 	@ApiProperty({ enum: ['heating', 'cooling'] }) @Expose() role: 'heating' | 'cooling';
 	@ApiProperty({ enum: ['on', 'off', 'unknown'] }) @Expose() activity: 'on' | 'off' | 'unknown';
