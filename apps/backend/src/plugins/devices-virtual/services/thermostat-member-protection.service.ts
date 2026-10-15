@@ -47,7 +47,14 @@ export interface ThermostatMemberProtectionDiagnostic {
 export class ThermostatMemberProtectionService {
 	private readonly latches = new Map<
 		string,
-		{ basis: string; latched: boolean; after: number; expires: number; sourceGuard?: () => boolean }
+		{
+			basis: string;
+			latched: boolean;
+			after: number;
+			expires: number;
+			releaseAfter: number | null;
+			sourceGuard?: () => boolean;
+		}
 	>();
 	private boundary = Date.now();
 	private readonly controllerClaims = new Map<string, Set<string>>();
@@ -68,7 +75,25 @@ export class ThermostatMemberProtectionService {
 			if (state) {
 				state.latched = true;
 				state.after = Date.now();
+				state.releaseAfter = state.after;
 				state.expires = 0;
+			}
+		}
+	}
+	/** A latched trip cannot consume recovery evidence until the runtime proves the entire heating branch drained. */
+	requiredReleaseAfter(bindings: ThermostatMemberProtectionBinding[]): number | null {
+		const barriers = bindings
+			.map((entry) => this.latches.get(entry.claimId)?.releaseAfter)
+			.filter((time): time is number => time != null);
+		return barriers.length ? Math.max(...barriers) : null;
+	}
+	/** Internal runtime acknowledgement only, after current all-leaf qualified OFF/drain evidence. */
+	acknowledgeRelease(bindings: ThermostatMemberProtectionBinding[], now: number): void {
+		for (const entry of bindings) {
+			const state = this.latches.get(entry.claimId);
+			if (state?.basis === entry.basis && state.releaseAfter !== null) {
+				state.releaseAfter = null;
+				state.after = Math.max(state.after, now);
 			}
 		}
 	}
@@ -138,7 +163,13 @@ export class ThermostatMemberProtectionService {
 			const { binding, source, cutoff, hysteresis } = entry;
 			let state = this.latches.get(entry.claimId);
 			if (!state || state.basis !== entry.basis) {
-				state = { basis: entry.basis, latched: true, after: Math.max(this.boundary, now), expires: 0 };
+				state = {
+					basis: entry.basis,
+					latched: true,
+					after: Math.max(this.boundary, now),
+					expires: 0,
+					releaseAfter: Math.max(this.boundary, now),
+				};
 				this.latches.set(entry.claimId, state);
 			}
 			const freshness =
@@ -175,6 +206,7 @@ export class ThermostatMemberProtectionService {
 			)
 				reasons.push('member_protection_profile_required');
 			if (state.sourceGuard?.() === false) {
+				state.releaseAfter = Math.max(state.after, now);
 				state.latched = true;
 				state.after = Math.max(state.after, now);
 				state.expires = 0;
@@ -183,11 +215,13 @@ export class ThermostatMemberProtectionService {
 			const expired = state.expires > 0 && now >= state.expires;
 			// A gap cannot be healed by recomputing an older retained report. Require a post-gap live report.
 			if (expired) {
+				state.releaseAfter = state.releaseAfter ?? now;
 				state.latched = true;
 				state.after = Math.max(state.after, state.expires);
 				state.expires = 0;
 			}
 			if (reasons.length) {
+				if (!state.latched) state.releaseAfter = now;
 				state.latched = true;
 				state.after = Math.max(state.after, now);
 				state.expires = 0;
@@ -195,8 +229,11 @@ export class ThermostatMemberProtectionService {
 				state.sourceGuard = this.values.captureSampleSourceGuard(source.leaf);
 				const value = sample.value as number;
 				const observed = Math.min(sample.receivedAt.getTime(), leaf.receivedAt.getTime());
-				if (value >= cutoff) state.latched = true;
-				else if (value < cutoff - hysteresis && observed > state.after) state.latched = false;
+				if (value >= cutoff) {
+					if (!state.latched) state.releaseAfter = now;
+					state.latched = true;
+				} else if (state.releaseAfter === null && value < cutoff - hysteresis && observed > state.after)
+					state.latched = false;
 				state.expires =
 					Math.min(
 						sample.sampledAt.getTime(),
@@ -206,6 +243,7 @@ export class ThermostatMemberProtectionService {
 					) +
 					binding.maximumAgeSeconds * 1000;
 			}
+			if (state.releaseAfter !== null) reasons.push('member_floor_release_required');
 			if (state.latched) reasons.push('member_floor_latched');
 			return {
 				claim: entry.claimId,

@@ -143,7 +143,7 @@ export function protectionBoundsValid(
 		hysteresis > 0 &&
 		cutoff <= domain.maximum &&
 		cutoff > domain.minimum &&
-		cutoff - hysteresis >= domain.minimum
+		cutoff - hysteresis > domain.minimum
 	);
 }
 

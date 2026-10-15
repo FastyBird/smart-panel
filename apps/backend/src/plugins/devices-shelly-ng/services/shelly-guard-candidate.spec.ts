@@ -514,10 +514,22 @@ describe('member floor artifact admission', () => {
 			expect(device.on().error).toBe('on_not_admitted');
 		}
 	});
+	it('accepts a strictly interior recovery boundary with an admitted below-recovery sample', () => {
+		const device = new DeviceFixture();
+		device.start(
+			{ floorDomainC: { minimum: -55, maximum: 125 }, floorLimitC: -53 + 0.000001, floorHysteresisC: 2 },
+			SHELLY_MEMBER_GUARD_SOURCE,
+		);
+		expect(device.handlers.size).toBe(1);
+		device.boot();
+		device.floorReport(-55);
+		expect(device.request('SPGuardStatus').result.floorSafe).toBe(true);
+	});
 	it('refuses cutoff and recovery boundaries outside the identical local domain', () => {
 		for (const overrides of [
 			{ floorLimitC: 126 },
 			{ floorLimitC: -54, floorHysteresisC: 2 },
+			{ floorLimitC: -53, floorHysteresisC: 2 },
 			{ floorDomainC: { minimum: 40, maximum: 30 } },
 		]) {
 			const device = new DeviceFixture();

@@ -69,7 +69,7 @@ import { VirtualProducerConfigService } from './virtual-producer-config.service'
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
-import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
@@ -1635,6 +1635,61 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.protection.ready)).toBe(true);
 	});
 
+	it.each(['trip', 'source-gap', 'reconfiguration'] as const)(
+		'retains the whole-branch trip barrier across immediate recovery and %s with an energized sibling and queued ON',
+		async (interruption) => {
+			const sibling = await addMandatoryMember();
+			runtime.request(controllerId);
+			await settle();
+			let resumeOn!: () => void;
+			onGate = new Promise<void>((resolve) => (resumeOn = resolve));
+			sample(sensorId, 18);
+			runtime.request(controllerId);
+			await waitForOnJournal();
+			await runtime.flush();
+			expect(sentTargets.some((send) => send.propertyId === sibling && send.on)).toBe(true);
+			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			expect(original).toHaveLength(2);
+			const boundary = sentTargets.length;
+			proofAllowed = (id) => id !== sibling;
+			const [probe] = [...protectionProbes];
+			// Both reports arrive synchronously before the queued evaluation gets any opportunity to run.
+			sample(probe, 30);
+			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: probe });
+			if (interruption === 'source-gap')
+				events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED, { propertyId: probe });
+			if (interruption === 'reconfiguration') events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+			sample(probe, 20);
+			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: probe });
+			resumeOn();
+			await settle();
+			expect(sentTargets.slice(boundary)).toContainEqual({ propertyId: sibling, on: false });
+			expect(sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
+			expect(
+				runtime
+					.readDiagnostics(controllerId)
+					.reasons.some((reason) => reason.startsWith('member_floor_release_required:')),
+			).toBe(true);
+			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			expect(original.every((command) => retained.some((row) => row.id === command.id))).toBe(true);
+			expect(retained.some((command) => command.status !== 'confirmed' && command.status !== 'cancelled')).toBe(true);
+			// One leaf's proof cannot discharge the barrier for the whole branch.
+			proofAllowed = () => true;
+			runtime.request(controllerId);
+			await settle();
+			runtime.request(controllerId);
+			await settle();
+			expect(sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
+			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+			// Pre-drain recovery reports remain unusable. Only a new post-drain report clears the latch.
+			for (const source of protectionProbes) sample(source, 20);
+			runtime.request(controllerId);
+			await settle();
+			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'on')).toBe(true);
+		},
+	);
+
 	it.each(['trip', 'missing', 'degraded'] as const)(
 		'rechecks every member protection at final queued ON after %s without a new evaluation request',
 		async (failure) => {
@@ -1942,6 +1997,10 @@ describe('virtual thermostat durable runtime', () => {
 			await settle();
 		}
 		expect(original.every((command) => pending.some((row) => row.id === command.id))).toBe(true);
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+		for (const probe of protectionProbes) sample(probe, 20);
+		runtime.request(controllerId);
+		await settle();
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'on')).toBe(true);
 	});
 

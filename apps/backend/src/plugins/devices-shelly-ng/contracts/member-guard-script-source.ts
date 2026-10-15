@@ -11,5 +11,5 @@ export const SHELLY_MEMBER_GUARD_SOURCE = SHELLY_GUARD_SOURCE.replace(
 	)
 	.replace(
 		'cfg.floorHysteresisC > 0\n',
-		'cfg.floorHysteresisC > 0 && cfg.floorDomainC && finiteNumber(cfg.floorDomainC.minimum) && finiteNumber(cfg.floorDomainC.maximum) && cfg.floorDomainC.minimum < cfg.floorDomainC.maximum && cfg.floorLimitC <= cfg.floorDomainC.maximum && cfg.floorLimitC > cfg.floorDomainC.minimum && cfg.floorLimitC - cfg.floorHysteresisC >= cfg.floorDomainC.minimum\n',
+		'cfg.floorHysteresisC > 0 && cfg.floorDomainC && finiteNumber(cfg.floorDomainC.minimum) && finiteNumber(cfg.floorDomainC.maximum) && cfg.floorDomainC.minimum < cfg.floorDomainC.maximum && cfg.floorLimitC <= cfg.floorDomainC.maximum && cfg.floorLimitC > cfg.floorDomainC.minimum && cfg.floorLimitC - cfg.floorHysteresisC > cfg.floorDomainC.minimum\n',
 	);

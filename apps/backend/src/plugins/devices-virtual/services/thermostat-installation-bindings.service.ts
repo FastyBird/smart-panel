@@ -34,7 +34,19 @@ export class ThermostatInstallationBindingsService {
 		}
 	> {
 		const member = await manager.findOneBy(ThermostatMemberProtectionEntity, { claimId });
-		if (!member) return this.legacy(manager, claimId);
+		if (!member) {
+			const legacyClaim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
+			const heating = await manager.countBy(VirtualThermostatActuatorClaimEntity, {
+				controllerId: legacyClaim.controllerId,
+				role: 'heating',
+				state: Not('released'),
+			});
+			if (heating > 1)
+				throw new DevicesValidationException(
+					'Every nonreleased parallel heating member requires explicit local protection before installation.',
+				);
+			return this.legacy(manager, claimId);
+		}
 		const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claimId });
 		const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
 		if (claim.state === 'released' || claim.role !== 'heating' || !member.sourcePropertyId || !config.policy.floor)

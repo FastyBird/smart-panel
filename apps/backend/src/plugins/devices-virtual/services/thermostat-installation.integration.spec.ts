@@ -1190,6 +1190,77 @@ describe('durable thermostat installation profiles', () => {
 		expect(await db.manager.count(ThermostatInstallationEntity)).toBe(1);
 		await runner.release();
 	});
+	it.each(['reserved', 'missing', 'releasing', 'suspended'] as const)(
+		'refuses legacy installation for same-Shelly parallel heating including a %s reservation',
+		async (state) => {
+			await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+			await loader.verify(claim.id, 1, 'operator');
+			const channelId = uuid(),
+				propertyId = uuid();
+			await db.manager.insert(ShellyNgChannelEntity, {
+				id: channelId,
+				device: claim.sourceDeviceId,
+				identifier: 'switch:1',
+				name: 'Same physical Shelly second output',
+				category: ChannelCategory.SWITCHER,
+			} as never);
+			await db.manager.insert(ShellyNgChannelPropertyEntity, {
+				id: propertyId,
+				channel: channelId,
+				identifier: 'output',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			} as never);
+			const target = await db.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: propertyId },
+				relations: ['channel', 'channel.device'],
+			});
+			const channel = target.channel as ChannelEntity;
+			const sibling = db.manager.create(VirtualThermostatActuatorClaimEntity, {
+				...claim,
+				id: uuid(),
+				physicalIdentity: thermostatActuatorIdentity(target, channel, channel.device as ShellyNgDeviceEntity),
+				sourcePropertyId: state === 'missing' ? null : propertyId,
+				sourcePropertyIdentity: propertyId,
+				contractFingerprint: thermostatPropertyContract(target, channel, channel.device as ShellyNgDeviceEntity),
+				state,
+			});
+			await db.manager.insert(VirtualThermostatActuatorClaimEntity, sibling);
+			for (const member of [claim, sibling]) {
+				await expect(
+					profiles.stage(member.id, member.id === claim.id ? 1 : 0, setup, attestations(), 'operator'),
+				).rejects.toThrow('parallel heating');
+				await expect(bindings.resolve(db.manager, member.id)).rejects.toThrow('parallel heating');
+			}
+			expect((await profiles.inspect(claim.id)).readiness).toBe('blocked');
+			const inspections = inspect.mock.calls.length;
+			await loader.verify(claim.id, 1, 'operator');
+			await loader.refresh(); // Background renewal must refuse the same topology before machine inspection.
+			expect(inspect).toHaveBeenCalledTimes(inspections);
+			expect(claims.qualification(claim, false)).toBeNull();
+			expect((await profiles.inspect(claim.id)).reasons.some((reason) => reason.includes('parallel heating'))).toBe(
+				true,
+			);
+			expect(await db.manager.countBy(ThermostatInstallationEntity, { claimId: sibling.id })).toBe(0);
+		},
+	);
+	it('rejects an unreachable effective recovery boundary and accepts the immediately reachable interior domain', async () => {
+		await adopt(claim);
+		const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: claim.controllerId,
+		});
+		config.policy.floor = { limit: -53, recoveryHysteresis: 2 };
+		await db.manager.save(config);
+		await expect(profiles.stage(claim.id, 0, memberInstallationSetup(), attestations(), 'operator')).rejects.toThrow(
+			'domains',
+		);
+		config.policy.floor.limit = -53 + 0.000001;
+		await db.manager.save(config);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(), attestations(), 'operator');
+		expect((await profiles.inspect(claim.id)).source_hash).toHaveLength(64);
+	});
+
 	const adopt = async (member: VirtualThermostatActuatorClaimEntity, converted = false) => {
 		const probe = await createProtectionProbe(db, member.sourcePropertyId, converted);
 		const source = await resolveThermostatProtectionSource(db.manager, probe.sourceId, member.physicalIdentity);
@@ -1318,38 +1389,41 @@ describe('durable thermostat installation profiles', () => {
 					...(probe.sourceId !== probe.physicalId && id === probe.sourceId ? { revision: 1 } : {}),
 				});
 		};
+		const recoverAfterRelease = (time: number) => {
+			service.acknowledgeRelease(frame, time); // Runtime integration tests establish the required all-leaf proof.
+			report(first, 24, time + 1);
+			report(second, 27, time + 1);
+			expect(service.read(frame, time + 1).every((entry) => entry.ready)).toBe(true);
+		};
 		expect(service.read(frame, start).every((entry) => entry.latched)).toBe(true);
-		report(first, 25, start + 1);
-		report(second, 28, start + 1);
+		report(first, 24, start + 1);
+		report(second, 27, start + 1);
 		expect(service.read(frame, start + 1).every((entry) => entry.latched)).toBe(true);
-		report(first, 24.9, start + 2);
-		report(second, 27.9, start + 2);
-		expect(service.read(frame, start + 2).every((entry) => entry.ready)).toBe(true);
-		report(first, 27, start + 3);
-		expect(service.read(frame, start + 3)[0].latched).toBe(true);
-		report(first, 24, start + 4);
-		expect(service.read(frame, start + 4).every((entry) => entry.ready)).toBe(true);
-		// Stale gap re-arms even if the next valid reading is below cutoff but inside hysteresis.
+		recoverAfterRelease(start + 2);
+		report(first, 27, start + 4);
+		expect(service.read(frame, start + 4)[0].latched).toBe(true);
+		report(first, 24, start + 5);
+		expect(service.read(frame, start + 5)[0].latched).toBe(true);
+		service.acknowledgeRelease(frame, start + 6);
+		expect(service.read(frame, start + 6)[0].latched).toBe(true); // Pre-release recovery report cannot clear.
+		report(first, 25, start + 7);
+		expect(service.read(frame, start + 7)[0].latched).toBe(true);
+		recoverAfterRelease(start + 8);
 		service.read(frame, start + 6000);
 		report(first, 26, start + 6001);
 		report(second, 29, start + 6001);
 		expect(service.read(frame, start + 6001).every((entry) => entry.latched)).toBe(true);
-		report(first, 24, start + 6002);
-		report(second, 27, start + 6002);
-		expect(service.read(frame, start + 6002).every((entry) => entry.ready)).toBe(true);
+		recoverAfterRelease(start + 6002);
 		lease = false;
-		expect(service.read(frame, start + 6003).every((entry) => entry.latched)).toBe(true);
-		lease = true;
-		report(first, 26, start + 6004);
-		report(second, 29, start + 6004);
 		expect(service.read(frame, start + 6004).every((entry) => entry.latched)).toBe(true);
+		lease = true;
+		service.read(frame, start + 6005);
+		recoverAfterRelease(start + 6006);
 		service.reset();
-		expect(service.read(frame, start + 6005).every((entry) => entry.latched)).toBe(true);
-		report(first, 24, start + 6006);
-		report(second, 27, start + 6006);
-		expect(service.read(frame, start + 6006).every((entry) => entry.ready)).toBe(true);
+		expect(service.read(frame, start + 6008).every((entry) => entry.latched)).toBe(true);
+		recoverAfterRelease(start + 6009);
 		samples.delete(second.physicalId);
-		expect(service.read(frame, start + 6007)[1].ready).toBe(false);
+		expect(service.read(frame, start + 6011)[1].ready).toBe(false);
 	});
 	it('invalidates every sibling fingerprint on topology and common policy changes without losing reservations', async () => {
 		const sibling = await additionalInstallation(2);

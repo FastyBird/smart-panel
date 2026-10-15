@@ -151,3 +151,78 @@ Local logs (ignored, retained in this worktree):
 - `apps/backend/test/support/thermostat-protection-fixture.ts`
 - `docs/climate-architecture.md`
 - `docs/work/virtual-thermostat/per-member-protection-validation.md`
+
+
+## Safety-review follow-up after `23a00e3`
+
+The three confirmed findings are fixed locally in the same 016 worktree:
+
+- A process-local trip barrier survives an immediate below-recovery report. Only the runtime can acknowledge it,
+  after every nonreleased heating leaf has a current, post-barrier qualified OFF/drain proof, no unresolved ON and
+  no in-flight command. The acknowledgement re-arms the sample boundary; a new strictly below-recovery report is
+  required afterward. Scheduling an evaluation never acknowledges release. Startup, reconnect, source invalidation,
+  stale gaps and binding/configuration changes conservatively establish the barrier again. Existing final-send
+  epoch/graph/configuration/claim/qualification checks still fence queued ON; unsafe OFF remains available.
+- Both backend bounds and the generated version-two local script require recovery strictly inside the lower domain
+  boundary. Equality is rejected because the admitted sample domain otherwise cannot supply a recovering value.
+  The version-two source hash intentionally changes and requires reviewed restaging/explicit activation for an old
+  version-two artifact. Legacy source, artifact hashes and upgrade behavior remain unchanged.
+- Legacy fallback refuses any controller with more than one nonreleased heating claim, counting missing, releasing
+  and suspended claims. Stage, inspection, explicit verification and background renewal fail closed before machine
+  inspection. True singleton and existing cooling/opposed legacy regression behavior remains intact.
+
+Fresh focused validation (all commands run from this worktree root, with no hardware or server actions):
+
+```sh
+pnpm --filter @fastybird/smart-panel-backend exec jest --runInBand virtual-thermostat-runtime.service.spec.ts thermostat-installation.integration.spec.ts shelly-guard-candidate.spec.ts
+pnpm --filter @fastybird/smart-panel-backend exec jest --runInBand virtual-thermostat-config.integration.spec.ts virtual-thermostat-claims.service.spec.ts virtual-thermostat-transport.service.spec.ts virtual-thermostat-authoring.integration.spec.ts virtual-thermostat-ownership.subscriber.spec.ts shelly-sample-sources.service.spec.ts qualified-adoption.spec.ts property-qualified-state.integration.spec.ts shelly-guard-rpc-session.spec.ts guarded-shelly-http.spec.ts guarded-shelly-rpc.spec.ts
+# Final installation rerun includes an additional explicit no-machine-inspection assertion for background renewal.
+pnpm --filter @fastybird/smart-panel-backend exec jest --runInBand thermostat-installation.integration.spec.ts
+```
+
+The first run passed 157 tests / three suites (`.vd1454-review-focused.log`); the second passed 209 tests / eleven
+suites (`.vd1454-review-regressions.log`). New runtime cases energize a sibling while another ON is queued, deliver
+trip then recovery in one synchronous event turn, and verify a new sibling OFF, refusal of the queued ON, retained
+journals, one-leaf proof insufficiency, no cached recovery and eventual safe resumption after all-leaf proof plus a
+new recovery report. Source-gap and reconfiguration variants and restart reconciliation are covered. Bounds tests
+exercise exact equality rejection and a just-inside reachable boundary in both backend staging and generated local
+artifact execution. SQLite tests preserve the legacy upgrade/artifact/activation/UUID/generation/journal assertions.
+
+No API DTO/model/decorator/schema or generated client contract changes in this follow-up; unchanged Admin/Panel
+and client generation are not rerun. Coordinated authoring/diagnostics UI completion described above remains needed
+before alpha; physical commissioning remains after published alpha. No new migration is added, and migration 41,
+migration 40 and the canonical legacy script bytes are unchanged. Fresh independent safety review remains required.
+
+The final installation rerun passed **54 tests / one suite** (`.vd1454-review-installation-final.log`). All 14 focused
+suites passed: 366 distinct tests, plus the final 54-test installation rerun after adding the renewal assertion.
+No failed test remains unresolved.
+
+Final static checks passed:
+
+```sh
+# Run from apps/backend with the eight changed TypeScript paths listed below, relative to apps/backend.
+pnpm exec prettier --check <changed TypeScript files>
+pnpm exec eslint --max-warnings 0 <changed TypeScript files>
+# Run from worktree root.
+pnpm --filter @fastybird/smart-panel-backend run type-check
+pnpm --filter @fastybird/smart-panel-backend run lint:api
+pnpm --filter @fastybird/smart-panel-backend run lint:openapi:spec
+git diff --exit-code 23a00e3 -- apps/backend/src/migrations apps/backend/src/plugins/devices-shelly-ng/contracts/guard-script-source.ts docs/work/virtual-thermostat/shelly-guard-candidate.js
+git diff --check
+```
+
+Logs: `.vd1454-review-format.log`, `.vd1454-review-lint.log` (zero warnings), `.vd1454-review-types.log`,
+`.vd1454-review-api.log`, `.vd1454-review-spectral.log` (strict warning threshold). Prettier initially formatted the
+changed TypeScript files, then its final check passed. All logs are ignored local files retained in this worktree.
+
+Nine files changed relative to `23a00e3f3466643e264ca7a634b97ecf9ef1f98c`:
+
+- `apps/backend/src/plugins/devices-shelly-ng/contracts/member-guard-script-source.ts`
+- `apps/backend/src/plugins/devices-shelly-ng/services/shelly-guard-candidate.spec.ts`
+- `apps/backend/src/plugins/devices-virtual/services/thermostat-installation-bindings.service.ts`
+- `apps/backend/src/plugins/devices-virtual/services/thermostat-installation.integration.spec.ts`
+- `apps/backend/src/plugins/devices-virtual/services/thermostat-member-protection.service.ts`
+- `apps/backend/src/plugins/devices-virtual/services/thermostat-protection-source.utils.ts`
+- `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts`
+- `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts`
+- `docs/work/virtual-thermostat/per-member-protection-validation.md`

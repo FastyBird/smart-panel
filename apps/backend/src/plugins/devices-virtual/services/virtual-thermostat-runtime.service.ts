@@ -170,7 +170,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly memberFaults = new Map<string, string>();
 	private readonly reconciled = new Map<
 		string,
-		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean }
+		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean; observedAt: number }
 	>();
 	private readonly diagnosticGuards = new Map<string, () => boolean>();
 	/** A stored release barrier is usable only while its exact installed qualification and source lease stay live. */
@@ -778,6 +778,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				await this.prepare(context, claim, 'off');
 		}
 		for (const claim of context.claims) await this.reconcile(context, claim);
+		this.acknowledgeMemberRelease(context);
 		for (const claim of context.claims) {
 			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
 			const latest = context.commands
@@ -793,6 +794,36 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				await this.prepare(context, claim, 'on');
 		}
 		await this.publish(context, frame);
+	}
+	/** Never acknowledge scheduling: every relevant leaf needs a post-trip, current qualified OFF/drain proof. */
+	private acknowledgeMemberRelease(context: ControllerContext): void {
+		const after = this.memberProtection.requiredReleaseAfter(context.memberBindings);
+		if (
+			after === null ||
+			!context.admission.isCurrent() ||
+			!context.publishGuard() ||
+			this.contexts.get(context.config.controllerId) !== context ||
+			context.epoch !== this.epochs.get(context.config.controllerId)
+		)
+			return;
+		const heating = context.claims.filter((claim) => claim.role === 'heating');
+		if (
+			!heating.length ||
+			!heating.every((claim) => {
+				const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
+				const evidence = this.evidence(context, claim, Date.now());
+				return (
+					proof &&
+					proof.observedAt > after &&
+					evidence.activity === 'off' &&
+					!evidence.pendingOn &&
+					evidence.releaseProven &&
+					![...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)
+				);
+			})
+		)
+			return;
+		this.memberProtection.acknowledgeRelease(context.memberBindings, Date.now());
 	}
 	private async prepare(
 		context: ControllerContext,
@@ -1123,7 +1154,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				}),
 			);
 		}
-		this.reconciled.set(`${claim.id}:${claim.revision}`, { qualification, sourceIsCurrent: proof.sourceIsCurrent });
+		this.reconciled.set(`${claim.id}:${claim.revision}`, {
+			qualification,
+			sourceIsCurrent: proof.sourceIsCurrent,
+			observedAt: proof.offSample.receivedAt.getTime(),
+		});
 	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {
 		if (!context.publishGuard()) return;
