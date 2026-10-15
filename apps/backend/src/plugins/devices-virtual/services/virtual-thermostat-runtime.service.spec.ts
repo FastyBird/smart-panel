@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createProtectionProbe, memberInstallationSetup } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { IndexVirtualThermostatCommands1000000000035 } from '../../../migrations/1000000000035-IndexVirtualThermostatCommands';
 import {
@@ -41,6 +42,8 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatInstallationEntity } from '../entities/thermostat-installation.entity';
+import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 import {
 	VirtualThermostatBranchRuntimeEntity,
@@ -55,6 +58,11 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { thermostatInstallationArtifact } from './thermostat-installation-artifact';
+import { ThermostatInstallationBindingsService } from './thermostat-installation-bindings.service';
+import { resolveInstallationSetup } from './thermostat-installation.service';
+import { ThermostatMemberProtectionService } from './thermostat-member-protection.service';
+import { resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
@@ -113,8 +121,10 @@ describe('virtual thermostat durable runtime', () => {
 	let installedQualifications: Map<string, ThermostatInstalledQualification>;
 	let providerCurrent: boolean;
 	let proofMutation: (proof: ThermostatReleaseOrderingEvidence) => ThermostatReleaseOrderingEvidence;
+	const protectionProbes = new Set<string>();
 	const sample = (id: string, value: number | boolean): void => {
 		const at = new Date();
+		if (id === sensorId) for (const probe of protectionProbes) sample(probe, 20);
 		samples.set(id, {
 			propertyId: id,
 			value,
@@ -134,6 +144,7 @@ describe('virtual thermostat durable runtime', () => {
 			synchronize: true,
 		}).initialize();
 		samples.clear();
+		protectionProbes.clear();
 		unavailableMembers.clear();
 		sends.length = 0;
 		sentTargets.length = 0;
@@ -291,6 +302,7 @@ describe('virtual thermostat durable runtime', () => {
 			readLatest: jest.fn((property: ChannelPropertyEntity) =>
 				Promise.resolve(Object.assign(new PropertyValueState(), { value: samples.get(property.id)?.value })),
 			),
+			captureSampleSourceGuard: () => () => providerCurrent,
 			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) =>
 				unavailableMembers.has(property.id) ? null : (samples.get(property.id) ?? null),
 			),
@@ -1512,8 +1524,141 @@ describe('virtual thermostat durable runtime', () => {
 			releaseEvidence: null,
 		});
 		sample(propertyId, false);
+		if (role === 'heating') {
+			const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			config.policy.floor = { limit: 30, recoveryHysteresis: 2 };
+			await database.manager.save(config);
+			const members = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, {
+				controllerId,
+				role: 'heating',
+			});
+			for (const member of members) {
+				if (await database.manager.findOneBy(ThermostatMemberProtectionEntity, { claimId: member.id })) continue;
+				const probe = await createProtectionProbe(database, member.sourcePropertyId);
+				const source = await resolveThermostatProtectionSource(
+					database.manager,
+					probe.sourceId,
+					member.physicalIdentity,
+				);
+				protectionProbes.add(probe.sourceId);
+				await database.manager.insert(ThermostatMemberProtectionEntity, {
+					claimId: member.id,
+					schemaVersion: 1,
+					kind: 'local_floor',
+					revision: 1,
+					sourcePropertyId: probe.sourceId,
+					sourcePropertyIdentity: probe.sourceId,
+					physicalPropertyIdentity: probe.physicalId,
+					contractFingerprint: source.fingerprint,
+					maximumAgeSeconds: 5,
+				});
+			}
+			for (const member of members) {
+				const binding = await new ThermostatInstallationBindingsService().resolve(database.manager, member.id);
+				const setup = resolveInstallationSetup(memberInstallationSetup(), binding);
+				const row = database.manager.create(ThermostatInstallationEntity, {
+					claimId: member.id,
+					revision: 1,
+					controllerId,
+					physicalIdentity: member.physicalIdentity,
+					claimRevision: member.revision,
+					configurationRevision: config.revision,
+					bindingFingerprint: binding.fingerprint,
+					setup,
+					attestations: [],
+					updatedBy: 'offline-fixture',
+					updatedAt: new Date(),
+					armedAt: null,
+					revokedAt: null,
+					lastMachineObservation: null,
+				});
+				const artifact = thermostatInstallationArtifact(row, binding);
+				row.expectedScriptHash = artifact.sourceHash;
+				row.artifactSource = artifact.source;
+				await database.manager.save(row);
+			}
+			const protection = (runtime as unknown as { memberProtection: ThermostatMemberProtectionService })
+				.memberProtection;
+			protection.read(await protection.load(config, members), Date.now() - 1);
+			for (const probe of protectionProbes) sample(probe, 20);
+		}
 		return propertyId;
 	};
+
+	it('releases the whole demanded branch when any actual member floor trips and keeps individual evidence', async () => {
+		const sibling = await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(
+			sentTargets
+				.filter((send) => send.on)
+				.map((send) => send.propertyId)
+				.sort(),
+		).toEqual([relayId, sibling].sort());
+		const [probe] = [...protectionProbes];
+		sample(probe, 30);
+		runtime.request(controllerId);
+		await settle();
+		const diagnostic = runtime.readDiagnostics(controllerId);
+		expect(diagnostic.branches.some((branch) => branch.protection?.latched)).toBe(true);
+		expect(diagnostic.branches.every((branch) => branch.activity === 'off')).toBe(true);
+		expect(diagnostic.reasons.some((reason) => reason.startsWith('member_floor_latched:'))).toBe(true);
+		expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })).toHaveLength(
+			2,
+		);
+		expect(
+			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
+		).toBe(2);
+	});
+	it('retains a synchronous input fault across rapid recovery inside hysteresis before evaluation', async () => {
+		await addMandatoryMember();
+		runtime.request(controllerId);
+		await settle();
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		const [probe] = [...protectionProbes];
+		events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED, { propertyId: probe });
+		sample(probe, 29); // No above-cutoff report is needed to re-arm after the observation fault.
+		await settle();
+		expect(
+			runtime.readDiagnostics(controllerId).branches.find((branch) => branch.protection.source_property === probe)
+				.protection.latched,
+		).toBe(true);
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+		sample(probe, 27.9);
+		runtime.request(controllerId);
+		await settle();
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.protection.ready)).toBe(true);
+	});
+
+	it.each(['trip', 'missing', 'degraded'] as const)(
+		'rechecks every member protection at final queued ON after %s without a new evaluation request',
+		async (failure) => {
+			await addMandatoryMember();
+			runtime.request(controllerId);
+			await settle();
+			let resume: () => void = () => undefined;
+			onGate = new Promise<void>((resolve) => {
+				resume = resolve;
+			});
+			sample(sensorId, 18);
+			runtime.request(controllerId);
+			await waitForOnJournal();
+			const [probe] = [...protectionProbes];
+			if (failure === 'trip') sample(probe, 30);
+			else if (failure === 'missing') samples.delete(probe);
+			else samples.set(probe, { ...samples.get(probe), quality: 'degraded' });
+			resume();
+			await settle();
+			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+			expect(runtime.readDiagnostics(controllerId).branches.some((branch) => !branch.protection.ready)).toBe(true);
+		},
+	);
 
 	it('dispatches same-mode mandatory leaves with shared decision identity and retains each journal', async () => {
 		const sibling = await addMandatoryMember();
@@ -1790,6 +1935,8 @@ describe('virtual thermostat durable runtime', () => {
 		expect(pending.some((command) => command.status !== 'confirmed' && command.status !== 'cancelled')).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
 		proofAllowed = () => true;
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.protection.latched)).toBe(true);
+		for (const probe of protectionProbes) sample(probe, 20);
 		for (let phase = 0; phase < 3; phase++) {
 			runtime.request(controllerId, false);
 			await settle();

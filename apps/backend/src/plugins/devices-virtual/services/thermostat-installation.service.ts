@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import {
 	ThermostatInstallationAuditEntity,
@@ -14,7 +15,12 @@ import {
 	validateThermostatInstallation,
 } from './thermostat-installation-artifact';
 import { ThermostatInstallationBindingsService } from './thermostat-installation-bindings.service';
-import { ThermostatGuardSetup, ThermostatOperatorAttestation } from './thermostat-installation.types';
+import {
+	ThermostatGuardSetup,
+	ThermostatMemberGuardSetup,
+	ThermostatOperatorAttestation,
+} from './thermostat-installation.types';
+import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
 
@@ -34,7 +40,7 @@ export class ThermostatInstallationService {
 	async stage(
 		claimId: string,
 		expectedRevision: number,
-		setup: ThermostatGuardSetup,
+		setup: ThermostatGuardSetup | ThermostatMemberGuardSetup,
 		attestations: ThermostatOperatorAttestation[],
 		actorId: string,
 	): Promise<void> {
@@ -42,7 +48,8 @@ export class ThermostatInstallationService {
 		try {
 			await this.lock.runExclusive(async () => {
 				const binding = await this.bindings.resolve(this.dataSource.manager, claimId);
-				validateThermostatInstallation(setup, attestations, binding);
+				const resolvedSetup = resolveInstallationSetup(setup, binding);
+				validateThermostatInstallation(resolvedSetup, attestations, binding);
 				const prior = await this.dataSource.manager.findOneBy(ThermostatInstallationEntity, { claimId });
 				if (
 					!Number.isSafeInteger(expectedRevision) ||
@@ -62,7 +69,7 @@ export class ThermostatInstallationService {
 						claimRevision: binding.claim.revision,
 						configurationRevision: binding.config.revision,
 						bindingFingerprint: binding.fingerprint,
-						setup,
+						setup: resolvedSetup,
 						attestations,
 						updatedBy: actorId,
 						updatedAt: new Date(),
@@ -93,7 +100,7 @@ export class ThermostatInstallationService {
 							actorId,
 							occurredAt: new Date(),
 							snapshot: {
-								setup,
+								setup: resolvedSetup,
 								attestations,
 								bindingFingerprint: binding.fingerprint,
 								expectedScriptHash: row.expectedScriptHash,
@@ -162,6 +169,7 @@ export class ThermostatInstallationService {
 		const release = this.claims.holdRecoveryFence();
 		this.claims.revokeAllQualifications();
 		this.onChanging?.(claimId);
+		this.runtime.fenceMember?.(claimId);
 		return release;
 	}
 	private invalidate(identity: string, controllerId: string): void {
@@ -208,4 +216,69 @@ export class ThermostatInstallationService {
 			}),
 		};
 	}
+}
+
+/** Resolve once under the structural lock; validation and stored artifact consume this exact snapshot. */
+export function resolveInstallationSetup(
+	setup: ThermostatGuardSetup | ThermostatMemberGuardSetup,
+	binding: Awaited<ReturnType<ThermostatInstallationBindingsService['resolve']>>,
+): ThermostatGuardSetup {
+	if (!binding.memberProtection) {
+		if (setup.formatVersion !== undefined)
+			throw new DevicesValidationException('Member format requires explicit protection adoption.');
+		return setup as ThermostatGuardSetup;
+	}
+	if (setup.formatVersion !== 2 || !binding.protectionSource?.metadata.installationSnapshot)
+		throw new DevicesValidationException(
+			'Explicit member format and current complete source catalog snapshot required.',
+		);
+	const allowed = [
+		'formatVersion',
+		'installedFloorCeilingC',
+		'deviceHardwareId',
+		'firmware',
+		'endpointHostname',
+		'scriptId',
+		'epochKey',
+		'heatingSetpointRange',
+		'coolingSetpointRange',
+		'minimumLeaseSeconds',
+		'maximumLeaseSeconds',
+		'watchdogMs',
+		'switchConfigurationJson',
+	];
+	if (Object.keys(setup).some((key) => !allowed.includes(key)))
+		throw new DevicesValidationException('Member installation sensor metadata is derived, not authored.');
+	const source = binding.protectionSource;
+	const [component, id] = source.metadata.componentKey.split(':');
+	if (!['temperature', 'input', 'voltmeter'].includes(component))
+		throw new DevicesValidationException('Unsupported floor component.');
+	const candidate = source.transform?.policy;
+	const policy = candidate?.operator === VirtualNumericTransformOperator.STEINHART_HART ? candidate : null;
+	return {
+		...setup,
+		floorDomainC: source.domain,
+		effectiveFloorCutoffC: Math.min(binding.config.policy.floor.limit, setup.installedFloorCeilingC),
+		floorMaximumAgeMs: binding.floorMaximumAgeMs,
+		floorComponentType: component as ThermostatGuardSetup['floorComponentType'],
+		floorComponentId: Number(id),
+		floorAttribute: source.leaf.identifier as ThermostatGuardSetup['floorAttribute'],
+		floorConfigurationJson: JSON.stringify(source.metadata.installationSnapshot.configuration),
+		peripheralsJson: JSON.stringify(source.metadata.installationSnapshot.peripherals),
+		...(policy
+			? {
+					floorConversion: {
+						kind: 'steinhart_hart' as const,
+						referenceVoltage: policy.referenceVoltage,
+						seriesResistance: policy.seriesResistance,
+						a: policy.coefficientA,
+						b: policy.coefficientB,
+						c: policy.coefficientC,
+						thermistorLeg: policy.thermistorLeg,
+						inputRange: policy.inputRange,
+						outputRange: policy.outputRange,
+					},
+				}
+			: {}),
+	};
 }

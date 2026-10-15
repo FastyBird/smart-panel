@@ -47,7 +47,9 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 				lease.metadata.deviceId === deviceId &&
 				lease.metadata.componentKey === snapshot.componentKey &&
 				sameScope(lease.metadata.unit) &&
-				lease.metadata.fingerprint !== snapshot.fingerprint
+				(lease.metadata.fingerprint !== snapshot.fingerprint ||
+					JSON.stringify(lease.metadata.installationSnapshot ?? null) !==
+						JSON.stringify(snapshot.installationSnapshot ?? null))
 			)
 				this.revoke(id);
 		}
@@ -58,11 +60,16 @@ export class ShellySampleSourcesService implements OnModuleDestroy {
 			});
 			const previous = componentRows.filter((row) => sameScope(row.unit));
 			const current = previous.find((row) => row.propertyId === propertyId && row.fingerprint === snapshot.fingerprint);
-			if (current) return current;
+			if (
+				current &&
+				JSON.stringify(current.installationSnapshot ?? null) === JSON.stringify(snapshot.installationSnapshot ?? null)
+			)
+				return current;
 			// Revoke process-local leases before awaiting persistence, fencing old configuration RPC callbacks.
 			for (const row of previous) this.revoke(row.propertyId);
 			const identifiedAt = new Date();
 			const record = this.repository.create({
+				installationSnapshot: snapshot.installationSnapshot ?? null,
 				propertyId,
 				deviceId,
 				componentKey: snapshot.componentKey,

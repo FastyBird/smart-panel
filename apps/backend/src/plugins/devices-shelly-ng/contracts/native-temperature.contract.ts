@@ -11,6 +11,10 @@ export interface ShellyRawSample {
 }
 
 export interface NativeTemperatureSnapshot {
+	readonly installationSnapshot?: {
+		configuration: Readonly<Record<string, unknown>>;
+		peripherals: Readonly<Record<string, unknown>>;
+	};
 	readonly componentKey: string;
 	readonly fingerprint: string;
 	readonly channelIdentifier: string;
@@ -30,6 +34,71 @@ export interface NativeTemperatureSnapshot {
 		readonly io: number;
 		readonly address: string | null;
 	};
+}
+
+/** Complete snapshots are retained only for reviewed public component/peripheral shapes, never credentials. */
+function installationSnapshot(
+	componentKey: string,
+	configuration: Readonly<Record<string, unknown>>,
+	peripherals: Readonly<Record<string, unknown>>,
+): NativeTemperatureSnapshot['installationSnapshot'] {
+	const common = ['id', 'name', 'enable', 'invert', 'range', 'range_map', 'report_thr', 'offset'];
+	const allowed = componentKey.startsWith('temperature:')
+		? ['id', 'name', 'report_thr_C', 'offset_C']
+		: [...common, 'type', 'factory_reset', 'xpercent', 'xvoltage'];
+	if (Object.keys(configuration).some((key) => !allowed.includes(key))) return undefined;
+	for (const key of ['xpercent', 'xvoltage']) {
+		const helper = configuration[key];
+		if (
+			helper != null &&
+			(typeof helper !== 'object' ||
+				Array.isArray(helper) ||
+				Object.entries(helper).some(
+					([field, value]) => !['expr', 'unit'].includes(field) || (value !== null && typeof value !== 'string'),
+				))
+		)
+			return undefined;
+	}
+	for (const [key, value] of Object.entries(configuration)) {
+		if (['xpercent', 'xvoltage'].includes(key)) continue;
+		if (key === 'range_map') {
+			if (
+				value != null &&
+				(!Array.isArray(value) || !value.every((entry: unknown) => typeof entry === 'number' && Number.isFinite(entry)))
+			)
+				return undefined;
+			continue;
+		}
+		if (value !== null && !['string', 'boolean', 'number'].includes(typeof value)) return undefined;
+		if (typeof value === 'number' && !Number.isFinite(value)) return undefined;
+	}
+	for (const [kind, links] of Object.entries(peripherals)) {
+		if (
+			!['analog_in', 'voltmeter', 'ds18b20'].includes(kind) ||
+			!links ||
+			typeof links !== 'object' ||
+			Array.isArray(links)
+		)
+			return undefined;
+		for (const link of Object.values(links as Record<string, unknown>))
+			if (
+				!link ||
+				typeof link !== 'object' ||
+				Array.isArray(link) ||
+				Object.entries(link).some(([key, value]) =>
+					key === 'io'
+						? !Number.isSafeInteger(value) || (value as number) < 0
+						: key === 'addr'
+							? typeof value !== 'string'
+							: true,
+				)
+			)
+				return undefined;
+	}
+	const serialized = JSON.stringify({ configuration, peripherals });
+	return serialized.length <= 8192
+		? (JSON.parse(serialized) as NativeTemperatureSnapshot['installationSnapshot'])
+		: undefined;
 }
 
 /** Whitelisted sensor configuration only; expressions are metadata and are never evaluated. */
@@ -119,6 +188,7 @@ export function nativeTemperatureIdentity(
 		.update(JSON.stringify({ componentKey, unit, expression, configuration, peripheral }))
 		.digest('hex');
 	return {
+		installationSnapshot: installationSnapshot(componentKey, config, peripherals),
 		componentKey,
 		fingerprint,
 		channelIdentifier: `${type === 'temperature' ? 'probe-temperature' : 'helper-temperature'}:${componentKey}:${fingerprint}`,
@@ -167,6 +237,7 @@ export function nativeVoltmeterVoltageIdentity(
 		)
 		.digest('hex');
 	return {
+		installationSnapshot: installationSnapshot(componentKey, config, peripherals),
 		componentKey,
 		fingerprint,
 		channelIdentifier: `raw-voltage:${componentKey}:${fingerprint}`,

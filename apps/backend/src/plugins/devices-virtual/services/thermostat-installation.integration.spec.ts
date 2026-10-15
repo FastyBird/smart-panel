@@ -7,8 +7,10 @@ import { v4 as uuid } from 'uuid';
 import { ConflictException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createProtectionProbe, memberInstallationSetup } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddThermostatInstallationProfiles1000000000033 } from '../../../migrations/1000000000033-AddThermostatInstallationProfiles';
+import { AddThermostatMemberProtection1000000000041 } from '../../../migrations/1000000000041-AddThermostatMemberProtection';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -18,9 +20,11 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import {
 	nativeTemperatureIdentity,
 	nativeVoltmeterVoltageIdentity,
@@ -30,12 +34,18 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ShellySampleSourceEntity } from '../../devices-shelly-ng/entities/shelly-sample-source.entity';
 import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
 import { ShellyGuardRpcSession } from '../../devices-shelly-ng/services/shelly-guard-rpc-session';
 import {
 	ThermostatInstallationAuditEntity,
 	ThermostatInstallationEntity,
 } from '../entities/thermostat-installation.entity';
+import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
+import {
+	VirtualThermostatBranchRuntimeEntity,
+	VirtualThermostatCommandEntity,
+} from '../entities/virtual-thermostat-runtime.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -48,6 +58,8 @@ import { ThermostatInstallationBindingsService } from './thermostat-installation
 import { ThermostatInstallationLoaderService } from './thermostat-installation-loader.service';
 import { ThermostatInstallationService } from './thermostat-installation.service';
 import { THERMOSTAT_ATTESTATION_KINDS, ThermostatGuardSetup } from './thermostat-installation.types';
+import { ThermostatMemberProtectionService } from './thermostat-member-protection.service';
+import { resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
@@ -1177,5 +1189,259 @@ describe('durable thermostat installation profiles', () => {
 		await profiles.stage(claim.id, 0, setup, [], 'operator');
 		expect(await db.manager.count(ThermostatInstallationEntity)).toBe(1);
 		await runner.release();
+	});
+	const adopt = async (member: VirtualThermostatActuatorClaimEntity, converted = false) => {
+		const probe = await createProtectionProbe(db, member.sourcePropertyId, converted);
+		const source = await resolveThermostatProtectionSource(db.manager, probe.sourceId, member.physicalIdentity);
+		await db.manager.insert(ThermostatMemberProtectionEntity, {
+			claimId: member.id,
+			schemaVersion: 1,
+			kind: 'local_floor',
+			revision: 1,
+			sourcePropertyId: probe.sourceId,
+			sourcePropertyIdentity: probe.sourceId,
+			physicalPropertyIdentity: probe.physicalId,
+			contractFingerprint: source.fingerprint,
+			maximumAgeSeconds: 5,
+		});
+		return probe;
+	};
+	it('upgrades actual legacy SQLite rows without changing artifact, activation, UUID, generation or unresolved ON', async () => {
+		claim.qualificationGeneration = uuid();
+		await db.manager.save(claim);
+		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
+		await loader.verify(claim.id, 1, 'operator');
+		await db.manager.insert(VirtualThermostatCommandEntity, {
+			id: uuid(),
+			controllerId: claim.controllerId,
+			claimId: claim.id,
+			claimRevision: 1,
+			configurationRevision: 1,
+			decisionRevision: 7,
+			action: 'on',
+			status: 'unknown',
+			preparedAt: new Date(),
+			dispatchedAt: new Date(),
+			fault: 'retained-late-on',
+		});
+		await db.manager.insert(VirtualThermostatBranchRuntimeEntity, {
+			claimId: claim.id,
+			activity: 'unknown',
+			releaseAttempts: 3,
+		});
+		const beforeBinding = await bindings.resolve(db.manager, claim.id);
+		const before = await profiles.inspect(claim.id);
+		const runner = db.createQueryRunner();
+		await runner.query('DROP TABLE "devices_virtual_thermostat_member_protection"');
+		await runner.query('ALTER TABLE "devices_virtual_thermostat_branch_runtime" DROP COLUMN "floorLatched"');
+		await runner.query('ALTER TABLE "devices_virtual_thermostat_configs" DROP COLUMN "displayFloorClaimId"');
+		await runner.query('ALTER TABLE "devices_shelly_ng_sample_sources" DROP COLUMN "installationSnapshot"');
+		const tables = [
+			'devices_virtual_thermostat_actuator_claims',
+			'devices_virtual_thermostat_command_journal',
+			'devices_virtual_thermostat_installations',
+			'devices_virtual_thermostat_installation_audit',
+		];
+		const retained = await Promise.all(tables.map((table) => runner.query(`SELECT * FROM "${table}"`)));
+		await runner.startTransaction();
+		await new AddThermostatMemberProtection1000000000041().up(runner);
+		await runner.commitTransaction();
+		expect(await Promise.all(tables.map((table) => runner.query(`SELECT * FROM "${table}"`)))).toEqual(retained);
+		expect(await db.manager.count(ThermostatMemberProtectionEntity)).toBe(0);
+		expect((await bindings.resolve(db.manager, claim.id)).fingerprint).toBe(beforeBinding.fingerprint);
+		const after = await profiles.inspect(claim.id);
+		expect(after.artifact).toBe(before.artifact);
+		expect(after.source_hash).toBe(before.source_hash);
+		expect(after.activation_requested).toBe(true);
+		await runner.release();
+	});
+	it('stages two distinct local Shelly probes/converters with independently capped artifacts and mandatory global guard', async () => {
+		const sibling = await additionalInstallation(2);
+		await db.manager.update(VirtualThermostatActuatorClaimEntity, sibling.id, { controllerId: claim.controllerId });
+		sibling.controllerId = claim.controllerId;
+		const first = await adopt(claim);
+		const second = await adopt(sibling, true);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(27), attestations(), 'operator');
+		await profiles.stage(sibling.id, 1, memberInstallationSetup(35), attestations(), 'operator');
+		const a = await profiles.inspect(claim.id),
+			b = await profiles.inspect(sibling.id);
+		expect(a.setup.floorComponentType).toBe('temperature');
+		expect(b.setup.floorComponentType).toBe('voltmeter');
+		expect(a.artifact).toContain('"floorLimitC":27');
+		expect(b.artifact).toContain('"floorLimitC":30');
+		expect(b.artifact).toContain('"kind":"steinhart_hart"');
+		expect(a.artifact).toContain('floorDomainC.minimum');
+		expect(a.activation_requested).toBe(false);
+		expect(b.activation_requested).toBe(false);
+		expect(first.device.canonicalMac).not.toBe(second.device.canonicalMac);
+		expect(
+			await db.manager.countBy(VirtualThermostatSourceEntity, { controllerId: claim.controllerId, role: 'floor' }),
+		).toBe(1);
+		await expect(profiles.stage(claim.id, 1, setup, attestations(), 'operator')).rejects.toThrow('member format');
+	});
+	it('uses conservative per-member latches through strict boundaries, observation gaps, restart and one faulty input', async () => {
+		const sibling = await additionalInstallation(2);
+		await db.manager.update(VirtualThermostatActuatorClaimEntity, sibling.id, { controllerId: claim.controllerId });
+		sibling.controllerId = claim.controllerId;
+		const first = await adopt(claim),
+			second = await adopt(sibling, true);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(27), attestations(), 'operator');
+		await profiles.stage(sibling.id, 1, memberInstallationSetup(35), attestations(), 'operator');
+		const samples = new Map<string, QualifiedPropertySample>();
+		let lease = true;
+		const values = {
+			readQualifiedSample: (property: ChannelPropertyEntity, age: number, now: Date) => {
+				const value = samples.get(property.id);
+				return value && now.getTime() - value.sampledAt.getTime() < age ? value : null;
+			},
+			captureSampleSourceGuard: () => {
+				const current = lease;
+				return () => current && lease;
+			},
+		} as unknown as PropertyValueService;
+		const service = new ThermostatMemberProtectionService(db, values);
+		const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: claim.controllerId,
+		});
+		const frame = await service.load(config, [claim, sibling]);
+		const start = Date.now();
+		const report = (probe: typeof first, value: number, time: number) => {
+			for (const id of new Set([probe.sourceId, probe.physicalId]))
+				samples.set(id, {
+					propertyId: id,
+					value: id === probe.physicalId && probe.sourceId !== probe.physicalId ? 1.65 : value,
+					sampledAt: new Date(time),
+					receivedAt: new Date(time),
+					quality: 'good',
+					provenance: 'live',
+					reasons: [],
+					...(probe.sourceId !== probe.physicalId && id === probe.sourceId ? { revision: 1 } : {}),
+				});
+		};
+		expect(service.read(frame, start).every((entry) => entry.latched)).toBe(true);
+		report(first, 25, start + 1);
+		report(second, 28, start + 1);
+		expect(service.read(frame, start + 1).every((entry) => entry.latched)).toBe(true);
+		report(first, 24.9, start + 2);
+		report(second, 27.9, start + 2);
+		expect(service.read(frame, start + 2).every((entry) => entry.ready)).toBe(true);
+		report(first, 27, start + 3);
+		expect(service.read(frame, start + 3)[0].latched).toBe(true);
+		report(first, 24, start + 4);
+		expect(service.read(frame, start + 4).every((entry) => entry.ready)).toBe(true);
+		// Stale gap re-arms even if the next valid reading is below cutoff but inside hysteresis.
+		service.read(frame, start + 6000);
+		report(first, 26, start + 6001);
+		report(second, 29, start + 6001);
+		expect(service.read(frame, start + 6001).every((entry) => entry.latched)).toBe(true);
+		report(first, 24, start + 6002);
+		report(second, 27, start + 6002);
+		expect(service.read(frame, start + 6002).every((entry) => entry.ready)).toBe(true);
+		lease = false;
+		expect(service.read(frame, start + 6003).every((entry) => entry.latched)).toBe(true);
+		lease = true;
+		report(first, 26, start + 6004);
+		report(second, 29, start + 6004);
+		expect(service.read(frame, start + 6004).every((entry) => entry.latched)).toBe(true);
+		service.reset();
+		expect(service.read(frame, start + 6005).every((entry) => entry.latched)).toBe(true);
+		report(first, 24, start + 6006);
+		report(second, 27, start + 6006);
+		expect(service.read(frame, start + 6006).every((entry) => entry.ready)).toBe(true);
+		samples.delete(second.physicalId);
+		expect(service.read(frame, start + 6007)[1].ready).toBe(false);
+	});
+	it('invalidates every sibling fingerprint on topology and common policy changes without losing reservations', async () => {
+		const sibling = await additionalInstallation(2);
+		await db.manager.update(VirtualThermostatActuatorClaimEntity, sibling.id, { controllerId: claim.controllerId });
+		sibling.controllerId = claim.controllerId;
+		await adopt(claim);
+		await adopt(sibling);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(), attestations(), 'operator');
+		await profiles.stage(sibling.id, 1, memberInstallationSetup(), attestations(), 'operator');
+		const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: claim.controllerId,
+		});
+		config.policy.floor.limit = 29;
+		config.revision++;
+		await db.manager.save(config);
+		for (const member of [claim, sibling])
+			expect((await profiles.inspect(member.id)).reasons).toContain('installation_bindings_changed');
+		expect(await db.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId: claim.controllerId })).toBe(
+			2,
+		);
+	});
+
+	it('rejects wrong device, changed peripheral, calibration, source age and converter domain drift', async () => {
+		const sibling = await additionalInstallation(2);
+		const local = await adopt(claim, true);
+		const other = await createProtectionProbe(db, sibling.sourcePropertyId);
+		await expect(resolveThermostatProtectionSource(db.manager, other.sourceId, claim.physicalIdentity)).rejects.toThrow(
+			'actuator Shelly',
+		);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(27), attestations(), 'operator');
+		const binding = await bindings.resolve(db.manager, claim.id);
+		const profile = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+		for (const change of [
+			{ floorMaximumAgeMs: 5001 },
+			{ floorDomainC: { minimum: -39, maximum: 100 } },
+			{ floorConversion: { ...profile.setup.floorConversion, a: profile.setup.floorConversion.a * 1.001 } },
+			{ installedFloorCeilingC: Number.POSITIVE_INFINITY },
+			{ effectiveFloorCutoffC: 28 },
+		])
+			expect(() => validateThermostatInstallation({ ...profile.setup, ...change }, attestations(), binding)).toThrow();
+		const metadata = await db.manager.findOneByOrFail(ShellySampleSourceEntity, { propertyId: local.physicalId });
+		metadata.installationSnapshot.peripherals = { voltmeter: { 'voltmeter:100': { io: 1 } } };
+		await db.manager.save(metadata);
+		await expect(bindings.resolve(db.manager, claim.id)).rejects.toThrow('actuator Shelly');
+		expect((await profiles.inspect(claim.id)).readiness).toBe('blocked');
+	});
+	it('keeps staged metadata ineligible after binding CAS, source deletion and topology changes during inspection', async () => {
+		const local = await adopt(claim);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(), attestations(), 'operator');
+		let resume: () => void = () => undefined;
+		const gate = new Promise<void>((resolve) => {
+			resume = resolve;
+		});
+		let signal: () => void;
+		const entered = new Promise<void>((resolve) => {
+			signal = resolve;
+		});
+		inspect.mockImplementationOnce(async (_metadata: unknown, _timeout: number, admitted: () => boolean) => {
+			signal();
+			await gate;
+			return { isCurrent: () => admitted() };
+		});
+		const verifying = loader.verify(claim.id, 1, 'operator');
+		await entered;
+		const binding = await db.manager.findOneByOrFail(ThermostatMemberProtectionEntity, { claimId: claim.id });
+		binding.revision++;
+		binding.maximumAgeSeconds = 4;
+		await db.manager.save(binding);
+		resume();
+		await verifying;
+		expect(claims.qualification(claim, false)).toBeNull();
+		expect((await profiles.inspect(claim.id)).activation_requested).toBe(false);
+		await db.manager.delete(ChannelPropertyEntity, { id: local.sourceId });
+		const retained = await db.manager.findOneByOrFail(ThermostatMemberProtectionEntity, { claimId: claim.id });
+		expect(retained.sourcePropertyId).toBeNull();
+		expect(retained.sourcePropertyIdentity).toBe(local.sourceId);
+		expect((await profiles.inspect(claim.id)).readiness).toBe('blocked');
+		expect(
+			(await db.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: claim.id })).physicalIdentity,
+		).toBe(claim.physicalIdentity);
+	});
+	it('validates the effective cutoff rather than rejecting a higher common request capped by a reviewed member ceiling', async () => {
+		await adopt(claim, true);
+		const config = await db.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+			controllerId: claim.controllerId,
+		});
+		config.policy.floor.limit = 110;
+		await db.manager.save(config);
+		await profiles.stage(claim.id, 0, memberInstallationSetup(27), attestations(), 'operator');
+		expect((await profiles.inspect(claim.id)).setup.effectiveFloorCutoffC).toBe(27);
+		await expect(profiles.stage(claim.id, 1, memberInstallationSetup(120), attestations(), 'operator')).rejects.toThrow(
+			'domains',
+		);
 	});
 });

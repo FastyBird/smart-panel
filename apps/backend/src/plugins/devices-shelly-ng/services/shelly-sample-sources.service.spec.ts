@@ -117,6 +117,33 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		expect(reportSample).not.toHaveBeenCalled();
 	});
 
+	it('retains complete reviewed public snapshots and revokes a changed snapshot lease before persistence', async () => {
+		const publicConfig = {
+			id: 100,
+			type: 'analog',
+			enable: true,
+			invert: false,
+			xpercent: { expr: 'x/2', unit: 'Celsius' },
+		};
+		const publicPeripheral = { analog_in: { 'input:100': { io: 0 } } };
+		const snapshot = nativeTemperatureIdentity('input:100', publicConfig, publicPeripheral);
+		await sources.bind(propertyId, deviceId, snapshot);
+		const lease = await sources.get(propertyId);
+		expect(lease.metadata.installationSnapshot).toEqual({ configuration: publicConfig, peripherals: publicPeripheral });
+		const changed = nativeTemperatureIdentity(
+			'input:100',
+			{ ...publicConfig, name: 'Reviewed name change' },
+			publicPeripheral,
+		);
+		expect(changed.fingerprint).toBe(snapshot.fingerprint);
+		const saving = sources.bind(propertyId, deviceId, changed);
+		expect(sources.isCurrent(lease, new Date(Date.now() + 1))).toBe(false);
+		await saving;
+		expect((await sources.get(propertyId)).metadata.installationSnapshot.configuration.name).toBe(
+			'Reviewed name change',
+		);
+	});
+
 	it('a new or restarted source refuses packets observed before identity/connection activation', async () => {
 		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
 		const lease = await sources.get(propertyId);
@@ -257,6 +284,8 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 			await runner.dropTable('devices_shelly_ng_sample_sources');
 			const migration = new AddShellySampleSources1000000000028();
 			await migration.up(runner);
+			// Migration 41 adds the nullable installation catalog snapshot without rewriting legacy rows.
+			await runner.query('ALTER TABLE "devices_shelly_ng_sample_sources" ADD COLUMN "installationSnapshot" text');
 			const migrated = await runner.getTable('devices_shelly_ng_sample_sources');
 			expect(
 				migrated.columns.map((column) => ({

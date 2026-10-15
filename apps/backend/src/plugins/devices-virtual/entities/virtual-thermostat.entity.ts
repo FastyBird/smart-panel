@@ -21,6 +21,9 @@ export type ThermostatSetting =
 export class VirtualThermostatConfigEntity {
 	@PrimaryColumn({ type: 'varchar' })
 	controllerId: string;
+	/** Presentation only; never replaces a mandatory global or member floor guard. */
+	@Column({ type: 'varchar', nullable: true })
+	displayFloorClaimId: string | null;
 	@Column({ type: 'varchar', nullable: true })
 	ownerDeviceId: string | null;
 	@ManyToOne(() => DeviceEntity, { nullable: true, onDelete: 'SET NULL' })

@@ -74,7 +74,15 @@ export class ThermostatInstallationController {
 	): Promise<ThermostatInstallationResponseModel> {
 		const actor = this.actor(req);
 		try {
-			await this.profiles.stage(claim, dto.expected_revision, dto.setup, dto.operator_attestations, actor);
+			if (!!dto.setup === !!dto.member_setup)
+				throw new DevicesValidationException('Exactly one legacy setup or member_setup is required.');
+			await this.profiles.stage(
+				claim,
+				dto.expected_revision,
+				dto.member_setup ?? dto.setup,
+				dto.operator_attestations,
+				actor,
+			);
 		} catch (error) {
 			if (error instanceof DevicesValidationException) throw new UnprocessableEntityException(error.message);
 			if (error instanceof EntityNotFoundError)

@@ -138,13 +138,43 @@ group/canonical identity, reservation state, pending ON, release attempts and la
 returns `released_actuators` with retained per-member completion evidence; recovery audit remains claim-specific.
 Disable/delete/remap/restart preserve unresolved identities and reservations rather than reducing branch capacity.
 
-Installation qualification is unchanged: the current Shelly loader requires each guarded output's floor input to be
-local to that physical Shelly. A shared virtual floor input does not qualify additional relay hardware. Multi-device
-installations therefore remain ineligible unless every member satisfies the actual installed local protective profile.
-Because a controller currently has one floor binding, the existing installation workflow cannot qualify a
-multi-Shelly floor-protected group using that shared binding. A reviewed per-member protective-input/profile design
-is required to remove that limitation. This software work supplies no installed evidence and performs no physical
-actuation.
+Each parallel heating member now requires an explicit version-one `local_floor` protection binding. Its Celsius
+source must be a qualified sensor on that actuator's canonical Shelly, or the reviewed Steinhart–Hart converter over
+one qualified physical voltage input on that same Shelly. Aggregates, projections, nested converters, controller
+outputs and unsupported protective profiles remain ineligible. One ambient source regulates the entire branch.
+
+Migration `1000000000041` adds retained claim-keyed safety dependencies, nullable diagnostic latch/display fields and
+a nullable full Shelly catalog snapshot. It rewrites no claim, journal, generation, installation, activation or audit.
+Without a member-binding row, the singleton resolver, fingerprint and artifact source remain exactly the legacy path.
+Previously ineligible groups do not activate through migration or registration.
+
+The version-two `member_setup` installation request derives sensor/component/peripheral/calibration metadata from
+the catalog under the structural lock. Operators supply the existing equipment evidence, native switch snapshot,
+endpoint/script slot, watchdog/lease bounds and an installed floor ceiling. The reviewed artifact enforces
+`min(common requested floor limit, installed member ceiling)` with the common hysteresis and an identical finite
+native/converter domain in backend and local script. Thresholds are immutable artifact configuration, never ON
+parameters. Changing bindings, calibration, topology or common safety policy invalidates applicable sibling profiles;
+explicit restaging and activation are required. Staging retains the real guarded queue/session/epoch/retry and
+OFF/drain proof, existing attestation requirements and the distinction between metadata and physical qualification.
+
+Every member latch starts set after startup, reconnect, contract/lease changes and observation gaps. Only a new
+qualified sample strictly below effective cutoff minus hysteresis clears it. Persisted clear state grants no startup
+authority. Missing, stale, degraded, incompatible, nonfinite or faulted input inhibits and releases the entire heating
+branch, including at final queued/authentication-retry sends. Each leaf retains its independent unresolved ON and
+reservation. Positive local `floorSafe`, metadata inspection and ACKs do not refresh backend measurements; unsafe
+floors do not prevent protective OFF/drain reconciliation. Consumer dependencies include converter leaves and remain
+separate from ambient measurement provenance.
+
+An existing controller `sources.floor` remains an additional mandatory global guard. Explicit removal is a fenced
+safety configuration change. `display_floor_claim` selects only a member's displayed floor reading and cannot remove
+or replace a safety dependency. Configuration includes retained member bindings; runtime branches expose individual
+reading/age, effective cutoff, latch and blockers alongside pending ON and release/recovery evidence.
+
+This software supplies no installed qualification evidence and performs no commissioning. Each floor-protected relay
+still needs an actual supported local sensor/calibration and the existing per-device isolation, execution-bound,
+restart-drain and independent equipment-protection evidence. Network loss cannot promise instantaneous cross-device
+shutdown; local protection and bounded leases remain essential. Hardware deployment/qualification follows a published
+alpha. HA/Zigbee native-unit protection and non-floor protective profiles remain unsupported.
 
 Before the extension milestone's alpha release, Admin still needs multi-member creation/edit/repair with the total
 limit and retained missing members; Admin/Panel need per-member readiness, uncertainty, release/recovery evidence and

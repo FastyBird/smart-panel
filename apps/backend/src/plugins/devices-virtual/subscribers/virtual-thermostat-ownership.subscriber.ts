@@ -44,15 +44,21 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		this.installed = true;
 	}
 	private isCatalogMutation(query: string): boolean {
-		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings))["`\]]?\b/i.test(
+		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings|member_protection)|devices_virtual_transform_[a-z_]+|devices_shelly_ng_sample_sources)["`\]]?\b/i.test(
 			query,
 		);
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
 		if (!this.installed || !this.isCatalogMutation(event.query)) return;
 		this.dirtyRunners.add(event.queryRunner);
-		if (!this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters))
-			this.claims.invalidate();
+		if (this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)) return;
+		this.claims.invalidate();
+		if (
+			/devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)|transform_)|devices_shelly_ng_sample_sources/i.test(
+				event.query,
+			)
+		)
+			this.claims.revokeAllQualifications();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
 		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))

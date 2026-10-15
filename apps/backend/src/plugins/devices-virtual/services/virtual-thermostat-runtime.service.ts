@@ -36,6 +36,11 @@ import {
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 
+import {
+	ThermostatMemberProtectionBinding,
+	ThermostatMemberProtectionDiagnostic,
+	ThermostatMemberProtectionService,
+} from './thermostat-member-protection.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { thermostatBranchActivity, thermostatBranchEvidence } from './virtual-thermostat-branch.utils';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
@@ -91,7 +96,30 @@ export interface ThermostatBranchDiagnostic {
 	next_release_at: string | null;
 	release_proven: boolean;
 	fault: string | null;
+	protection: ThermostatMemberProtectionDiagnostic | null;
 }
+const copyBranchDiagnostic = (branch: ThermostatBranchDiagnostic, unavailable = false): ThermostatBranchDiagnostic => ({
+	...branch,
+	...(unavailable ? { activity: 'unknown' as const, release_proven: false } : {}),
+	protection: branch.protection
+		? {
+				...branch.protection,
+				reasons: unavailable
+					? ['graph_or_runtime_unavailable', ...branch.protection.reasons]
+					: [...branch.protection.reasons],
+				...(unavailable
+					? {
+							ready: false,
+							latched: true,
+							temperature: null,
+							status: 'unavailable' as const,
+							quality: 'unavailable' as const,
+						}
+					: {}),
+			}
+		: null,
+});
+
 export interface ThermostatRuntimeDiagnostic {
 	epoch: string;
 	sequence: number;
@@ -115,6 +143,8 @@ interface ControllerContext {
 	config: VirtualThermostatConfigEntity;
 	owner: DeviceEntity | null;
 	bindings: ThermostatInputBinding[];
+	memberBindings: ThermostatMemberProtectionBinding[];
+	memberProtection: ThermostatMemberProtectionDiagnostic[];
 	claims: VirtualThermostatActuatorClaimEntity[];
 	branches: Map<string, VirtualThermostatBranchRuntimeEntity>;
 	targets: Map<string, IDevicePropertyData>;
@@ -167,11 +197,20 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			if (
 				!propertyId ||
 				context.bindings.some((binding) => binding.property?.id === propertyId) ||
+				context.memberBindings.some(
+					(entry) =>
+						entry.binding?.sourcePropertyId === propertyId || entry.binding?.physicalPropertyIdentity === propertyId,
+				) ||
 				context.claims.some((claim) => claim.sourcePropertyId === propertyId)
-			)
+			) {
+				// Observe invalid/degraded producer intervals synchronously, even if a later report
+				// reaches the queue before the scheduled evaluation can load its new context.
+				this.memberProtection.read(context.memberBindings, Date.now());
 				this.request(id);
+			}
 	};
 	private reset = () => {
+		this.memberProtection.reset();
 		this.reconciled.clear();
 		this.contacts.clear();
 		for (const [id, trend] of this.trends)
@@ -195,6 +234,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly comfort: VirtualThermostatComfortService,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+		@Optional()
+		private readonly memberProtection: ThermostatMemberProtectionService = new ThermostatMemberProtectionService(
+			dataSource,
+			values,
+		),
 	) {}
 
 	async onApplicationBootstrap(): Promise<void> {
@@ -204,11 +248,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const context = this.contexts.get(claim.controllerId);
 			return !!context && this.canSend(context, claim, 'on');
 		});
-		for (const event of [
-			EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
-			EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
-			EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
-		]) {
+		const invalidated = (payload: { propertyId: string }) => {
+			this.memberProtection.invalidateSource(payload.propertyId);
+			this.listener(payload);
+		};
+		this.events.on(EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED, invalidated);
+		this.stops.push(() => this.events.off(EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED, invalidated));
+		for (const event of [EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED]) {
 			this.events.on(event, this.listener);
 			this.stops.push(() => this.events.off(event, this.listener));
 		}
@@ -224,7 +270,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			this.events.on(event, this.reset);
 			this.stops.push(() => this.events.off(event, this.reset));
 		}
-		const configured = (id: string) => this.request(id);
+		const configured = (id: string) => {
+			this.memberProtection.reset();
+			this.request(id);
+		};
 		this.events.on(THERMOSTAT_CONFIG_CHANGED, configured);
 		this.stops.push(() => this.events.off(THERMOSTAT_CONFIG_CHANGED, configured));
 		await this.structure.runExclusive(() =>
@@ -263,6 +312,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.trends.clear();
 		this.reconciled.clear();
 		this.memberFaults.clear();
+		this.memberProtection.reset();
 		for (const id of this.epochs.keys()) this.epochs.set(id, (this.epochs.get(id) ?? 0) + 1);
 	}
 	readDiagnostics(controllerId: string): ThermostatRuntimeDiagnostic | null {
@@ -283,7 +333,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					quality: 'unavailable',
 					reasons: ['graph_validation_pending'],
 				})),
-				branches: result.branches.map((branch) => ({ ...branch, activity: 'unknown', release_proven: false })),
+				branches: result.branches.map((branch) => copyBranchDiagnostic(branch, true)),
 			};
 		return result
 			? {
@@ -291,7 +341,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					effective_comfort: { ...result.effective_comfort },
 					inputs: result.inputs.map((input) => ({ ...input, reasons: [...input.reasons] })),
 					reasons: [...result.reasons],
-					branches: result.branches.map((branch) => ({ ...branch })),
+					branches: result.branches.map((branch) => copyBranchDiagnostic(branch)),
 				}
 			: null;
 	}
@@ -333,13 +383,19 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					reasons: ['runtime_error'],
 					headline_reason: 'runtime_error',
 					inputs: [],
-					branches: [],
+					branches:
+						this.diagnostics.get(controllerId)?.branches.map((branch) => copyBranchDiagnostic(branch, true)) ?? [],
 				});
 			});
 		this.queues.set(controllerId, next);
 		void next.finally(() => {
 			if (this.queues.get(controllerId) === next) this.queues.delete(controllerId);
 		});
+	}
+	/** Synchronous revocation hook for a claim-addressed installation mutation. */
+	fenceMember(claimId: string): void {
+		for (const [id, context] of this.contexts)
+			if (context.claims.some((claim) => claim.id === claimId)) this.request(id);
 	}
 	async flush(): Promise<void> {
 		while (this.queues.size) await Promise.all([...this.queues.values()]);
@@ -377,6 +433,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			});
 			const rows = await this.dataSource.manager.findBy(VirtualThermostatSourceEntity, { controllerId });
 			const bindings = await this.inputs.load(rows);
+			const memberBindings = await this.memberProtection.load(config, claims);
 			const commands = await this.loadDecisionCommands(controllerId, claims);
 			const state =
 				(await this.dataSource.manager.findOneBy(VirtualThermostatRuntimeEntity, { controllerId })) ??
@@ -423,6 +480,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				owner,
 				claims,
 				bindings,
+				memberBindings,
+				memberProtection: [],
 				commands,
 				state,
 				branches,
@@ -595,6 +654,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const decision = evaluateVirtualThermostatPolicy(
 			{
 				...context.config.policy,
+				floor: context.memberBindings.length && !context.bindings.some((row) => row.binding.role === 'floor') ? null : context.config.policy.floor,
 				heatingSetpoint: effective.heating_setpoint,
 				coolingSetpoint: effective.cooling_setpoint,
 			},
@@ -612,6 +672,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				reconciled: context.claims.length > 0 && context.claims.every((claim) => this.isReconciled(claim)),
 			},
 		);
+		// The same evaluator runs again in final canSend after queueing, inspection and authentication retries.
+		context.memberProtection = this.memberProtection.read(context.memberBindings, now);
+		for (const member of context.memberProtection) {
+			const branch = context.branches.get(member.claim);
+			if (branch) branch.floorLatched = member.latched;
+			if (!member.ready) {
+				decision.desiredHeating = false;
+				decision.reasons.push(...member.reasons.map((reason) => `${reason}:${member.claim}`));
+			}
+		}
 		for (const claim of context.claims)
 			if (
 				context.commands.some(
@@ -1068,6 +1138,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 							? `actuator_${claim.state}`
 							: null;
 			return {
+				protection: context.memberProtection.find((entry) => entry.claim === claim.id) ?? null,
 				claim: claim.id,
 				group_identity: thermostatBranchGroupIdentity(claim.controllerId, claim.role),
 				physical_identity: claim.physicalIdentity,
@@ -1117,8 +1188,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			sequence: ++this.sequence,
 			configuration_revision: context.config.revision,
 			decision_revision: context.state.decisionRevision,
-			readiness: reasons.some((reason) =>
-				['hardware_qualification_missing', 'release_ordering_unreconciled', 'startup_unreconciled'].includes(reason),
+			readiness: reasons.some(
+				(reason) =>
+					['hardware_qualification_missing', 'release_ordering_unreconciled', 'startup_unreconciled'].includes(
+						reason,
+					) || reason.startsWith('member_'),
 			)
 				? 'suspended'
 				: 'ready',
@@ -1128,7 +1202,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			heating_setpoint: context.config.policy.heatingSetpoint,
 			cooling_setpoint: context.config.policy.coolingSetpoint,
 			current_temperature: frame.ambient,
-			floor_temperature: frame.floor,
+			floor_temperature: context.config.displayFloorClaimId
+				? (context.memberProtection.find((row) => row.claim === context.config.displayFloorClaimId)?.temperature ??
+					null)
+				: frame.floor,
 			floor_latched: context.state.floorLatched,
 			comfort_demand: context.decision.comfortDemand,
 			reasons: [...new Set(reasons)],
@@ -1167,8 +1244,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				channel.category === ChannelCategory.THERMOSTAT &&
 				property.category === PropertyCategory.FLOOR_TEMPERATURE
 			) {
-				value = frame.floor;
-				sample = frame.floorSample;
+				const selected =
+					context.config.displayFloorClaimId &&
+					context.memberBindings.find((entry) => entry.claimId === context.config.displayFloorClaimId);
+				sample = selected
+					? selected.source &&
+						this.values.readQualifiedSample(selected.source.property, selected.binding.maximumAgeSeconds * 1000)
+					: frame.floorSample;
+				value = sample && typeof sample.value === 'number' ? sample.value : null;
 			} else if (
 				property.category === PropertyCategory.STATUS &&
 				[ChannelCategory.HEATER, ChannelCategory.COOLER].includes(channel.category)

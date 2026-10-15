@@ -229,8 +229,54 @@ export class VirtualThermostatSourceDto {
 	closedValue?: string | number | boolean;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginThermostatMemberProtection' })
+export class ThermostatMemberProtectionDto {
+	@ApiProperty({ name: 'schema_version', enum: [1], description: 'Explicit member protection contract version' })
+	@Expose({ name: 'schema_version' })
+	@IsIn([1])
+	schemaVersion: 1;
+	@ApiProperty({
+		enum: ['local_floor'],
+		description: 'Device-local floor protection; no unprotected strategy is supported',
+	})
+	@Expose()
+	@IsIn(['local_floor'])
+	kind: 'local_floor';
+	@ApiProperty({
+		name: 'source_property',
+		nullable: true,
+		type: String,
+		description: 'Qualified local Celsius property; null only retains an already missing binding',
+	})
+	@Expose({ name: 'source_property' })
+	@IsOptional()
+	@IsUUID('4')
+	sourcePropertyId: string | null;
+	@ApiProperty({
+		name: 'maximum_age_seconds',
+		minimum: 1,
+		maximum: 86400,
+		description: 'Maximum original physical sample age',
+	})
+	@Expose({ name: 'maximum_age_seconds' })
+	@IsInt()
+	@Min(1)
+	@Max(86400)
+	maximumAgeSeconds: number;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatActuator' })
 export class VirtualThermostatActuatorDto {
+	@ApiPropertyOptional({
+		type: ThermostatMemberProtectionDto,
+		description: 'Mandatory for every parallel heating member; omission preserves only an existing legacy singleton',
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ThermostatMemberProtectionDto)
+	protection?: ThermostatMemberProtectionDto;
+
 	@ApiProperty({
 		enum: ['heating', 'cooling'],
 		description: 'Physical branch controlled exclusively by this controller',
@@ -270,6 +316,17 @@ export class VirtualThermostatSettingDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginConfigureThermostat' })
 export class ConfigureVirtualThermostatDto {
+	@ApiPropertyOptional({
+		name: 'display_floor_claim',
+		nullable: true,
+		type: String,
+		description: 'Presentation-only member claim UUID; does not remove any protective input',
+	})
+	@Expose({ name: 'display_floor_claim' })
+	@IsOptional()
+	@IsUUID('4')
+	displayFloorClaimId?: string | null;
+
 	@ApiPropertyOptional({
 		name: 'control_strategy',
 		enum: ['guarded_branches'],

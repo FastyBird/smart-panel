@@ -71,6 +71,7 @@ import {
 	ThermostatInstallationAuditEntity,
 	ThermostatInstallationEntity,
 } from './entities/thermostat-installation.entity';
+import { ThermostatMemberProtectionEntity } from './entities/thermostat-member-protection.entity';
 import { VIRTUAL_PRODUCER_ENTITIES } from './entities/virtual-producer.entity';
 import {
 	VirtualThermostatBranchRuntimeEntity,
@@ -93,6 +94,7 @@ import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
 import { ThermostatInstallationBindingsService } from './services/thermostat-installation-bindings.service';
 import { ThermostatInstallationLoaderService } from './services/thermostat-installation-loader.service';
 import { ThermostatInstallationService } from './services/thermostat-installation.service';
+import { ThermostatMemberProtectionService } from './services/thermostat-member-protection.service';
 import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
@@ -139,6 +141,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			VirtualChannelPropertyEntity,
 			DeviceEntity,
 			...VIRTUAL_PRODUCER_ENTITIES,
+			ThermostatMemberProtectionEntity,
 			ThermostatInstallationEntity,
 			ThermostatInstallationAuditEntity,
 			VirtualThermostatConfigEntity,
@@ -159,6 +162,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		ThermostatMemberProtectionService,
 		ThermostatInstallationService,
 		ThermostatInstallationBindingsService,
 		ThermostatInstallationLoaderService,

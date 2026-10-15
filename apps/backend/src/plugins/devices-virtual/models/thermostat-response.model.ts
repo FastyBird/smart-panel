@@ -159,8 +159,80 @@ export class VirtualThermostatSourceModel {
 	closed_value: string | number | boolean | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatMemberProtection' })
+export class ThermostatMemberProtectionModel {
+	@ApiProperty({ enum: [1], description: 'Protection contract version' }) @Expose() schema_version: 1;
+	@ApiProperty({ enum: ['local_floor'], description: 'Required independent local floor guard' })
+	@Expose()
+	kind: 'local_floor';
+	@ApiProperty({ description: 'Binding CAS revision' }) @Expose() revision: number;
+	@ApiProperty({ type: String, nullable: true, description: 'Current source property, null when missing' })
+	@Expose()
+	source_property: string | null;
+	@ApiProperty({ description: 'Retained source property UUID' }) @Expose() source_identity: string;
+	@ApiProperty({ description: 'Retained physical leaf UUID' }) @Expose() physical_property: string;
+	@ApiProperty({ description: 'Maximum original physical observation age' }) @Expose() maximum_age_seconds: number;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatMemberProtectionRuntime' })
+export class ThermostatMemberProtectionRuntimeModel {
+	@ApiProperty({
+		enum: ['fresh', 'stale', 'missing', 'incompatible', 'unavailable'],
+		description: 'Individual original observation readiness, independent of the latch',
+	})
+	@Expose()
+	status: 'fresh' | 'stale' | 'missing' | 'incompatible' | 'unavailable';
+	@ApiProperty({ enum: ['good', 'degraded', 'unavailable'], description: 'Current protective measurement quality' })
+	@Expose()
+	quality: 'good' | 'degraded' | 'unavailable';
+	@ApiProperty({
+		type: String,
+		nullable: true,
+		description: 'Original observation expiry, never renewed by guard status or ACK',
+	})
+	@Expose()
+	expires_at: string | null;
+
+	@ApiProperty({ description: 'Stable actuator claim UUID' }) @Expose() claim: string;
+	@ApiProperty({ type: String, nullable: true, description: 'Current protective source property' })
+	@Expose()
+	source_property: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Retained protective source identity' })
+	@Expose()
+	source_identity: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Physical observation leaf' }) @Expose() physical_property:
+		| string
+		| null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Maximum physical sample age' })
+	@Expose()
+	maximum_age_seconds: number | null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Individual Celsius reading; never averaged' })
+	@Expose()
+	temperature: number | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Original qualified sample time' }) @Expose() sampled_at:
+		| string
+		| null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Age of original sample' }) @Expose() age_seconds:
+		| number
+		| null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Minimum of requested limit and installed ceiling' })
+	@Expose()
+	effective_cutoff: number | null;
+	@ApiProperty({ description: 'Conservative per-member floor latch' }) @Expose() latched: boolean;
+	@ApiProperty({ description: 'All individual protection gates satisfied' }) @Expose() ready: boolean;
+	@ApiProperty({ type: [String], description: 'Individual protection blockers' }) @Expose() reasons: string[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatClaim' })
 export class VirtualThermostatClaimModel {
+	@ApiProperty({
+		type: ThermostatMemberProtectionModel,
+		nullable: true,
+		description: 'Retained explicit protection; null preserves legacy singleton behavior',
+	})
+	@Expose()
+	@Type(() => ThermostatMemberProtectionModel)
+	protection: ThermostatMemberProtectionModel | null;
 	@ApiProperty({ type: String, nullable: true, description: 'Durable release demand time' })
 	@Expose()
 	release_requested_at: string | null;
@@ -250,6 +322,13 @@ export class VirtualThermostatSettingModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatConfiguration' })
 export class VirtualThermostatConfigurationModel implements ThermostatConfiguration {
+	@ApiProperty({
+		type: String,
+		nullable: true,
+		description: 'Presentation-only selected member; all guards remain mandatory',
+	})
+	@Expose()
+	display_floor_claim: string | null;
 	@ApiProperty({
 		enum: ['guarded_branches'],
 		description: 'Control strategy; legacy configurations upgrade to guarded branches',
@@ -345,6 +424,14 @@ export class VirtualThermostatConfigurationResponseModel extends BaseSuccessResp
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatBranchRuntime' })
 export class VirtualThermostatBranchRuntimeModel {
+	@ApiProperty({
+		type: ThermostatMemberProtectionRuntimeModel,
+		nullable: true,
+		description: 'Individual safety input and latch diagnostics',
+	})
+	@Expose()
+	@Type(() => ThermostatMemberProtectionRuntimeModel)
+	protection: ThermostatMemberProtectionRuntimeModel | null;
 	@ApiProperty({ description: 'Stable group identity; this diagnostic represents one mandatory physical member' })
 	@Expose()
 	group_identity: string;
