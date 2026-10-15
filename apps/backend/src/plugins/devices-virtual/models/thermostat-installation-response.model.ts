@@ -36,6 +36,31 @@ export class ThermostatFloorConversionModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatGuardSetup' })
 export class ThermostatGuardSetupModel implements ThermostatGuardSetup {
+	@ApiPropertyOptional({
+		name: 'format_version',
+		enum: [2],
+		description: 'Absent for legacy byte-compatible installations',
+	})
+	@Expose({ name: 'format_version' })
+	formatVersion?: 2;
+	@ApiPropertyOptional({ name: 'installed_floor_ceiling_c', description: 'Reviewed per-member equipment ceiling' })
+	@Expose({ name: 'installed_floor_ceiling_c' })
+	installedFloorCeilingC?: number;
+	@ApiPropertyOptional({
+		name: 'floor_domain_c',
+		type: ThermostatInstallationRangeModel,
+		description: 'Catalog-derived domain enforced by backend and script',
+	})
+	@Expose({ name: 'floor_domain_c' })
+	@Type(() => ThermostatInstallationRangeModel)
+	floorDomainC?: ThermostatInstallationRangeModel;
+
+	@ApiPropertyOptional({
+		name: 'effective_floor_cutoff_c',
+		description: 'Immutable cutoff enforced by this reviewed artifact',
+	})
+	@Expose({ name: 'effective_floor_cutoff_c' })
+	effectiveFloorCutoffC?: number;
 	@ApiProperty({}) @Expose() deviceHardwareId: string;
 	@ApiProperty({}) @Expose() firmware: string;
 	@ApiProperty({}) @Expose() endpointHostname: string;

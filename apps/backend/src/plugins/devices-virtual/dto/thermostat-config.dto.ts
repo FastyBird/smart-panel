@@ -19,6 +19,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { ThermostatActuatorRole, ThermostatSetting, ThermostatSourceRole } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatMode } from '../services/virtual-thermostat-policy.utils';
 
+import { ThermostatComfortDefinitionDto } from './thermostat-comfort.dto';
+
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatFloorGuard' })
 export class VirtualThermostatFloorGuardDto {
 	@ApiProperty({ description: 'Floor temperature heating release threshold in Celsius' })
@@ -227,8 +229,54 @@ export class VirtualThermostatSourceDto {
 	closedValue?: string | number | boolean;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginThermostatMemberProtection' })
+export class ThermostatMemberProtectionDto {
+	@ApiProperty({ name: 'schema_version', enum: [1], description: 'Explicit member protection contract version' })
+	@Expose({ name: 'schema_version' })
+	@IsIn([1])
+	schemaVersion: 1;
+	@ApiProperty({
+		enum: ['local_floor'],
+		description: 'Device-local floor protection; no unprotected strategy is supported',
+	})
+	@Expose()
+	@IsIn(['local_floor'])
+	kind: 'local_floor';
+	@ApiProperty({
+		name: 'source_property',
+		nullable: true,
+		type: String,
+		description: 'Qualified local Celsius property; null only retains an already missing binding',
+	})
+	@Expose({ name: 'source_property' })
+	@IsOptional()
+	@IsUUID('4')
+	sourcePropertyId: string | null;
+	@ApiProperty({
+		name: 'maximum_age_seconds',
+		minimum: 1,
+		maximum: 86400,
+		description: 'Maximum original physical sample age',
+	})
+	@Expose({ name: 'maximum_age_seconds' })
+	@IsInt()
+	@Min(1)
+	@Max(86400)
+	maximumAgeSeconds: number;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatActuator' })
 export class VirtualThermostatActuatorDto {
+	@ApiPropertyOptional({
+		type: ThermostatMemberProtectionDto,
+		description: 'Mandatory for every parallel heating member; omission preserves only an existing legacy singleton',
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ThermostatMemberProtectionDto)
+	protection?: ThermostatMemberProtectionDto;
+
 	@ApiProperty({
 		enum: ['heating', 'cooling'],
 		description: 'Physical branch controlled exclusively by this controller',
@@ -268,6 +316,38 @@ export class VirtualThermostatSettingDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginConfigureThermostat' })
 export class ConfigureVirtualThermostatDto {
+	@ApiPropertyOptional({
+		name: 'display_floor_claim',
+		nullable: true,
+		type: String,
+		description: 'Presentation-only member claim UUID; does not remove any protective input',
+	})
+	@Expose({ name: 'display_floor_claim' })
+	@IsOptional()
+	@IsUUID('4')
+	displayFloorClaimId?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'control_strategy',
+		enum: ['guarded_branches'],
+		description: 'Legacy configurations default to guarded branches; native-unit adapters are not implemented',
+	})
+	@Expose({ name: 'control_strategy' })
+	@IsOptional()
+	@IsIn(['guarded_branches'])
+	controlStrategy?: 'guarded_branches';
+
+	@ApiPropertyOptional({
+		description:
+			'Explicit comfort replacement for atomic branch/range reconfiguration; omitted preserves installed comfort configuration',
+		type: ThermostatComfortDefinitionDto,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ThermostatComfortDefinitionDto)
+	comfort?: ThermostatComfortDefinitionDto;
+
 	@ApiProperty({ name: 'schema_version', enum: [1], description: 'Typed configuration version' })
 	@Expose({ name: 'schema_version' })
 	@IsIn([1])
@@ -339,13 +419,13 @@ export class ConfigureVirtualThermostatDto {
 	@Type(() => VirtualThermostatSourceDto)
 	sources: VirtualThermostatSourceDto[];
 	@ApiProperty({
-		description: 'Exclusive physical heating and/or cooling branches',
+		description: 'Mandatory physical members grouped by heating/cooling role; legacy singleton arrays retain identity',
 		type: [VirtualThermostatActuatorDto],
-		maxItems: 2,
+		maxItems: 8,
 	})
 	@Expose()
 	@IsArray()
-	@ArrayMaxSize(2)
+	@ArrayMaxSize(8)
 	@ValidateNested({ each: true })
 	@Type(() => VirtualThermostatActuatorDto)
 	actuators: VirtualThermostatActuatorDto[];

@@ -45,6 +45,9 @@ export class VirtualThermostatBranchRuntimeEntity {
 	nextReleaseAt: Date | null;
 	@Column({ type: 'text', nullable: true })
 	fault: string | null;
+	/** Diagnostic only: a persisted clear latch never grants post-restart authority. */
+	@Column({ type: 'boolean', nullable: true })
+	floorLatched: boolean | null;
 }
 
 export type ThermostatJournalStatus = 'prepared' | 'dispatching' | 'accepted' | 'unknown' | 'cancelled' | 'confirmed';

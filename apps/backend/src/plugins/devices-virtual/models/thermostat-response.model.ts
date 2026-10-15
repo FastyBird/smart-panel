@@ -7,6 +7,8 @@ import { VirtualThermostatRecoveryEntity } from '../entities/virtual-thermostat.
 import { VirtualThermostatConfigService } from '../services/virtual-thermostat-config.service';
 import { ThermostatRuntimeDiagnostic } from '../services/virtual-thermostat-runtime.service';
 
+import { ThermostatEffectiveComfortModel } from './thermostat-comfort-response.model';
+
 type ThermostatConfiguration = Awaited<ReturnType<VirtualThermostatConfigService['get']>>;
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatFloorGuard' })
@@ -157,8 +159,105 @@ export class VirtualThermostatSourceModel {
 	closed_value: string | number | boolean | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatMemberProtection' })
+export class ThermostatMemberProtectionModel {
+	@ApiProperty({ enum: [1], description: 'Protection contract version' }) @Expose() schema_version: 1;
+	@ApiProperty({ enum: ['local_floor'], description: 'Required independent local floor guard' })
+	@Expose()
+	kind: 'local_floor';
+	@ApiProperty({ description: 'Binding CAS revision' }) @Expose() revision: number;
+	@ApiProperty({ type: String, nullable: true, description: 'Current source property, null when missing' })
+	@Expose()
+	source_property: string | null;
+	@ApiProperty({ description: 'Retained source property UUID' }) @Expose() source_identity: string;
+	@ApiProperty({ description: 'Retained physical leaf UUID' }) @Expose() physical_property: string;
+	@ApiProperty({ description: 'Maximum original physical observation age' }) @Expose() maximum_age_seconds: number;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataThermostatMemberProtectionRuntime' })
+export class ThermostatMemberProtectionRuntimeModel {
+	@ApiProperty({
+		enum: ['fresh', 'stale', 'missing', 'incompatible', 'unavailable'],
+		description: 'Individual original observation readiness, independent of the latch',
+	})
+	@Expose()
+	status: 'fresh' | 'stale' | 'missing' | 'incompatible' | 'unavailable';
+	@ApiProperty({ enum: ['good', 'degraded', 'unavailable'], description: 'Current protective measurement quality' })
+	@Expose()
+	quality: 'good' | 'degraded' | 'unavailable';
+	@ApiProperty({
+		type: String,
+		nullable: true,
+		description: 'Original observation expiry, never renewed by guard status or ACK',
+	})
+	@Expose()
+	expires_at: string | null;
+
+	@ApiProperty({ description: 'Stable actuator claim UUID' }) @Expose() claim: string;
+	@ApiProperty({ type: String, nullable: true, description: 'Current protective source property' })
+	@Expose()
+	source_property: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Retained protective source identity' })
+	@Expose()
+	source_identity: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Physical observation leaf' }) @Expose() physical_property:
+		| string
+		| null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Maximum physical sample age' })
+	@Expose()
+	maximum_age_seconds: number | null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Individual Celsius reading; never averaged' })
+	@Expose()
+	temperature: number | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Original qualified sample time' }) @Expose() sampled_at:
+		| string
+		| null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Age of original sample' }) @Expose() age_seconds:
+		| number
+		| null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Minimum of requested limit and installed ceiling' })
+	@Expose()
+	effective_cutoff: number | null;
+	@ApiProperty({ description: 'Conservative per-member floor latch' }) @Expose() latched: boolean;
+	@ApiProperty({ description: 'All individual protection gates satisfied' }) @Expose() ready: boolean;
+	@ApiProperty({ type: [String], description: 'Individual protection blockers' }) @Expose() reasons: string[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatClaim' })
 export class VirtualThermostatClaimModel {
+	@ApiProperty({
+		type: ThermostatMemberProtectionModel,
+		nullable: true,
+		description: 'Retained explicit protection; null preserves legacy singleton behavior',
+	})
+	@Expose()
+	@Type(() => ThermostatMemberProtectionModel)
+	protection: ThermostatMemberProtectionModel | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Durable release demand time' })
+	@Expose()
+	release_requested_at: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Machine-verified release completion time' })
+	@Expose()
+	released_at: string | null;
+	@ApiProperty({
+		type: 'object',
+		additionalProperties: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+		nullable: true,
+		description: 'Retained qualified OFF/drain evidence for this member',
+	})
+	@Expose()
+	release_evidence: Record<string, string | number | boolean> | null;
+
+	@ApiProperty({ description: 'Stable controller/role group identity; every physical member is mandatory' })
+	@Expose()
+	group_identity: string;
+	@ApiProperty({ description: 'Installed protective adapter profile identifier' })
+	@Expose()
+	provider_profile: string;
+	@ApiProperty({ description: 'Installed protective adapter profile version' })
+	@Expose()
+	provider_profile_version: number;
+
 	@ApiProperty({ description: 'Durable reservation UUID' })
 	@Expose()
 	id: string;
@@ -223,6 +322,20 @@ export class VirtualThermostatSettingModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatConfiguration' })
 export class VirtualThermostatConfigurationModel implements ThermostatConfiguration {
+	@ApiProperty({
+		type: String,
+		nullable: true,
+		description: 'Presentation-only selected member; all guards remain mandatory',
+	})
+	@Expose()
+	display_floor_claim: string | null;
+	@ApiProperty({
+		enum: ['guarded_branches'],
+		description: 'Control strategy; legacy configurations upgrade to guarded branches',
+	})
+	@Expose()
+	control_strategy: 'guarded_branches';
+
 	@ApiProperty({ description: 'Stable controller device UUID' })
 	@Expose()
 	controller: string;
@@ -285,6 +398,13 @@ export class VirtualThermostatConfigurationModel implements ThermostatConfigurat
 	@Expose()
 	@Type(() => VirtualThermostatClaimModel)
 	actuators: VirtualThermostatClaimModel[];
+	@ApiProperty({
+		type: [VirtualThermostatClaimModel],
+		description: 'Released historical reservations and their per-member evidence; excluded from active capacity',
+	})
+	@Expose()
+	@Type(() => VirtualThermostatClaimModel)
+	released_actuators: VirtualThermostatClaimModel[];
 	@ApiProperty({ description: 'Registered local writable setting endpoints', type: [VirtualThermostatSettingModel] })
 	@Expose()
 	@Type(() => VirtualThermostatSettingModel)
@@ -304,9 +424,66 @@ export class VirtualThermostatConfigurationResponseModel extends BaseSuccessResp
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatBranchRuntime' })
 export class VirtualThermostatBranchRuntimeModel {
+	@ApiProperty({
+		type: ThermostatMemberProtectionRuntimeModel,
+		nullable: true,
+		description: 'Individual safety input and latch diagnostics',
+	})
+	@Expose()
+	@Type(() => ThermostatMemberProtectionRuntimeModel)
+	protection: ThermostatMemberProtectionRuntimeModel | null;
+	@ApiProperty({ description: 'Stable group identity; this diagnostic represents one mandatory physical member' })
+	@Expose()
+	group_identity: string;
+	@ApiProperty() @Expose() physical_identity: string;
+	@ApiProperty({ enum: ['reserved', 'releasing', 'suspended', 'missing', 'released'] })
+	@Expose()
+	claim_state: ThermostatRuntimeDiagnostic['branches'][number]['claim_state'];
+	@ApiProperty({ type: String, nullable: true }) @Expose() last_verified_off_at: string | null;
+	@ApiProperty({
+		type: 'object',
+		additionalProperties: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+		nullable: true,
+		description: 'Machine-verified release evidence retained independently for this member',
+	})
+	@Expose()
+	release_evidence: Record<string, string | number | boolean> | null;
+
 	@ApiProperty() @Expose() claim: string;
 	@ApiProperty({ enum: ['heating', 'cooling'] }) @Expose() role: 'heating' | 'cooling';
-	@ApiProperty({ enum: ['on', 'off', 'unknown'] }) @Expose() activity: 'on' | 'off' | 'unknown';
+	@ApiProperty({
+		enum: ['on', 'off', 'unknown'],
+		description:
+			'Current good physical boolean feedback; unknown when unavailable, expired or superseded by a newer ON dispatch. Never inferred from journal history or command acceptance.',
+	})
+	@Expose()
+	activity: 'on' | 'off' | 'unknown';
+	@ApiProperty({
+		type: Boolean,
+		nullable: true,
+		description:
+			'Current installed guard qualification and target availability only; not full controller admission, installation readiness or physical certification. Null when current proof is unavailable.',
+	})
+	@Expose()
+	qualification_ready: boolean | null;
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		nullable: true,
+		description:
+			'Original sample time of the same current good physical boolean feedback used for activity; never journal, ACK or historical OFF evidence.',
+	})
+	@Expose()
+	activity_sampled_at: string | null;
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		nullable: true,
+		description:
+			'Original physical activity sample time plus the existing 30-second feedback window; publication does not extend it.',
+	})
+	@Expose()
+	activity_expires_at: string | null;
 	@ApiProperty() @Expose() pending_on: boolean;
 	@ApiProperty() @Expose() release_pending: boolean;
 	@ApiProperty() @Expose() release_attempts: number;
@@ -337,6 +514,14 @@ export class VirtualThermostatInputRuntimeModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatRuntime' })
 export class VirtualThermostatRuntimeModel implements ThermostatRuntimeDiagnostic {
+	@ApiProperty({
+		description: 'Effective comfort intent, distinct from requested settings and actual activity',
+		type: ThermostatEffectiveComfortModel,
+	})
+	@Expose()
+	@Type(() => ThermostatEffectiveComfortModel)
+	effective_comfort: ThermostatEffectiveComfortModel;
+
 	@ApiProperty({ description: 'Process epoch for runtime invalidation hints' }) @Expose() epoch: string;
 	@ApiProperty() @Expose() sequence: number;
 	@ApiProperty() @Expose() configuration_revision: number;

@@ -16,6 +16,8 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { Roles } from '../../../modules/users/guards/roles.guard';
+import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
 import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.dto';
 import {
@@ -57,6 +59,7 @@ export class VirtualThermostatAuthoringController {
 	})
 	@ApiUnprocessableEntityResponse('Proposed graph, source, claim, policy or revision is invalid')
 	@ApiCreatedSuccessResponse(VirtualCreatedThermostatResponseModel, 'Create thermostat')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Post()
 	async create(@Body() dto: CreateVirtualThermostatProducerDto): Promise<VirtualCreatedThermostatResponseModel> {
 		const response = new VirtualCreatedThermostatResponseModel();

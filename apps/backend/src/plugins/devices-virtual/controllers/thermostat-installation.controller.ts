@@ -74,7 +74,30 @@ export class ThermostatInstallationController {
 	): Promise<ThermostatInstallationResponseModel> {
 		const actor = this.actor(req);
 		try {
-			await this.profiles.stage(claim, dto.expected_revision, dto.setup, dto.operator_attestations, actor);
+			if (!!dto.setup === !!dto.member_setup)
+				throw new DevicesValidationException('Exactly one legacy setup or member_setup is required.');
+			const fence =
+				dto.expected_configuration_revision === undefined &&
+				dto.expected_claim_revision === undefined &&
+				dto.expected_qualification_generation === undefined
+					? ([] as [])
+					: ([
+							{
+								configurationRevision: dto.expected_configuration_revision,
+								claimRevision: dto.expected_claim_revision,
+								...(dto.expected_qualification_generation === undefined
+									? {}
+									: { qualificationGeneration: dto.expected_qualification_generation }),
+							},
+						] as [{ configurationRevision?: number; claimRevision?: number; qualificationGeneration?: string | null }]);
+			await this.profiles.stage(
+				claim,
+				dto.expected_revision,
+				dto.member_setup ?? dto.setup,
+				dto.operator_attestations,
+				actor,
+				...fence,
+			);
 		} catch (error) {
 			if (error instanceof DevicesValidationException) throw new UnprocessableEntityException(error.message);
 			if (error instanceof EntityNotFoundError)

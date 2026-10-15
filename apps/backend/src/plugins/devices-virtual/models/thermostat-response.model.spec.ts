@@ -6,6 +6,7 @@ import { SchemaObjectFactory } from '@nestjs/swagger/dist/services/schema-object
 import { SwaggerTypesMapper } from '@nestjs/swagger/dist/services/swagger-types-mapper';
 
 import {
+	VirtualThermostatBranchRuntimeModel,
 	VirtualThermostatRecoveriesResponseModel,
 	VirtualThermostatRecoveryModel,
 	VirtualThermostatRuntimeModel,
@@ -111,4 +112,40 @@ describe('thermostat input freshness HTTP contract', () => {
 			Object.keys(input).sort(),
 		);
 	});
+});
+
+describe('thermostat member observation HTTP contract', () => {
+	it.each([true, false, null])(
+		'preserves qualification %s and original physical activity timestamps without installation data',
+		(qualification) => {
+			const branch = {
+				qualification_ready: qualification,
+				activity: 'off',
+				activity_sampled_at: '2026-10-14T10:00:00.000Z',
+				activity_expires_at: '2026-10-14T10:00:30.000Z',
+			};
+			const response = new VirtualThermostatRuntimeResponseModel();
+			response.data = Object.assign(new VirtualThermostatRuntimeModel(), {
+				branches: [Object.assign(new VirtualThermostatBranchRuntimeModel(), branch)],
+			});
+			expect(
+				instanceToPlain(response, { excludeExtraneousValues: true, exposeUnsetFields: false, groups: ['api'] }),
+			).toEqual({ data: { branches: [branch] } });
+			const schemas: Record<string, SchemaObject> = {};
+			new SchemaObjectFactory(new ModelPropertiesAccessor(), new SwaggerTypesMapper()).exploreModelSchema(
+				VirtualThermostatRuntimeResponseModel,
+				schemas,
+			);
+			expect(schemas.DevicesVirtualPluginDataThermostatBranchRuntime.properties.qualification_ready).toMatchObject({
+				type: 'boolean',
+				nullable: true,
+			});
+			for (const field of ['activity_sampled_at', 'activity_expires_at'])
+				expect(schemas.DevicesVirtualPluginDataThermostatBranchRuntime.properties[field]).toMatchObject({
+					type: 'string',
+					format: 'date-time',
+					nullable: true,
+				});
+		},
+	);
 });

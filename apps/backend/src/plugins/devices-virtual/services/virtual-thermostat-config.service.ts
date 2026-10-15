@@ -22,6 +22,13 @@ import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import {
+	MAX_THERMOSTAT_ACTUATOR_MEMBERS,
+	SHELLY_GUARDED_PROFILE,
+	SHELLY_GUARDED_PROFILE_VERSION,
+	thermostatBranchGroupIdentity,
+	thermostatHasOpposedBranches,
+} from '../contracts/thermostat-actuation.contract';
 import { ConfigureVirtualThermostatDto, RestoreVirtualThermostatActuatorDto } from '../dto/thermostat-config.dto';
 import {
 	VirtualChannelPropertyEntity,
@@ -29,6 +36,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import {
 	ThermostatSetting,
 	VirtualThermostatActuatorClaimEntity,
@@ -39,12 +47,17 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
+import {
+	resolveThermostatProtectionSource,
+	validateProtectionConsumerIndex,
+} from './thermostat-protection-source.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	isEligibleVirtualMeasurement,
 	isEligibleVirtualTransformedTemperature,
 } from './virtual-source-eligibility.utils';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import {
 	isThermostatTemperature,
 	thermostatActuatorIdentity,
@@ -72,13 +85,22 @@ export class VirtualThermostatConfigService {
 	) {}
 
 	async configure(controllerId: string, dto: ConfigureVirtualThermostatDto) {
-		return this.structureLock.runExclusive(async () => {
-			await this.graph.withStructuralWrite(async (manager) => {
-				const prepared = await this.prepare(manager, controllerId, dto);
-				await this.persist(manager, controllerId, prepared);
-			}, dto.expectedGraphRevision);
-			return this.afterCommit(controllerId);
-		});
+		// Revoke captured ON authority synchronously, before lock acquisition or any validation I/O.
+		const release = this.claims.holdRecoveryFence();
+		this.claims.revokeAllQualifications();
+		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+		try {
+			return await this.structureLock.runExclusive(async () => {
+				await this.graph.withStructuralWrite(async (manager) => {
+					const prepared = await this.prepare(manager, controllerId, dto);
+					await this.persist(manager, controllerId, prepared);
+				}, dto.expectedGraphRevision);
+				return this.afterCommit(controllerId);
+			});
+		} finally {
+			release();
+			await this.claims.refresh().catch(() => undefined);
+		}
 	}
 	/** Shared by existing configuration and an admitted atomic creation transaction. */
 	prepare(
@@ -114,9 +136,17 @@ export class VirtualThermostatConfigService {
 		await manager.delete(VirtualThermostatSettingEntity, { controllerId });
 		await manager.save(prepared.settings);
 		await manager.save(prepared.actuators);
+		await manager.save(ThermostatMemberProtectionEntity, prepared.protections);
 	}
 	async describe(prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>) {
-		return this.model(prepared.config, prepared.sources, prepared.actuators, prepared.settings);
+		return this.model(
+			prepared.config,
+			prepared.sources,
+			prepared.actuators,
+			prepared.settings,
+			undefined,
+			prepared.protections,
+		);
 	}
 	/** Capture the persisted response inside the creating transaction, before fallible publication. */
 	async snapshot(manager: EntityManager, controllerId: string) {
@@ -176,31 +206,39 @@ export class VirtualThermostatConfigService {
 	}
 	/** Durable release demand. Detach/remap/delete remains forbidden until qualified proof is recorded. */
 	async requestRelease(controllerId: string, expectedRevision: number) {
-		return this.structureLock.runExclusive(async () => {
-			await this.graph.withStructuralWrite(async (manager) => {
-				const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-				if (config.revision !== expectedRevision) fail('Thermostat revision changed.');
-				config.revision++;
-				config.requestedMode = 'off';
-				config.releaseRequestedAt = new Date();
-				await manager.save(config);
-				const claims = await manager.findBy(VirtualThermostatActuatorClaimEntity, {
-					controllerId,
-					state: Not('released'),
+		const release = this.claims.holdRecoveryFence();
+		this.claims.revokeAllQualifications();
+		this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+		try {
+			return await this.structureLock.runExclusive(async () => {
+				await this.graph.withStructuralWrite(async (manager) => {
+					const config = await manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+					if (config.revision !== expectedRevision) fail('Thermostat revision changed.');
+					config.revision++;
+					config.requestedMode = 'off';
+					config.releaseRequestedAt = new Date();
+					await manager.save(config);
+					const claims = await manager.findBy(VirtualThermostatActuatorClaimEntity, {
+						controllerId,
+						state: Not('released'),
+					});
+					for (const claim of claims) {
+						claim.state = claim.sourcePropertyId ? 'releasing' : 'missing';
+						claim.revision++;
+						claim.releaseRequestedAt = config.releaseRequestedAt;
+						claim.reason = 'explicit_release_requested';
+					}
+					await manager.save(claims);
 				});
-				for (const claim of claims) {
-					claim.state = claim.sourcePropertyId ? 'releasing' : 'missing';
-					claim.revision++;
-					claim.releaseRequestedAt = config.releaseRequestedAt;
-					claim.reason = 'explicit_release_requested';
-				}
-				await manager.save(claims);
+				this.claims.invalidate();
+				await this.claims.refresh();
+				this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+				return this.get(controllerId);
 			});
-			this.claims.invalidate();
-			await this.claims.refresh();
-			this.events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
-			return this.get(controllerId);
-		});
+		} finally {
+			release();
+			await this.claims.refresh().catch(() => undefined);
+		}
 	}
 	/** Rebind a lost database endpoint only to the same reserved physical switch. Operator intent is not release proof. */
 	async restoreActuator(
@@ -344,6 +382,12 @@ export class VirtualThermostatConfigService {
 						else config.locked = value as boolean;
 					}
 				}
+				if (config.comfort) {
+					if (rows.some((row) => row.setting.endsWith('setpoint'))) config.comfort.selected_preset = null;
+					if (rows.some((row) => row.setting.endsWith('enabled'))) config.comfort.user_off = !heat && !cool;
+					const errors = validateThermostatComfort(config.comfort, config.policy);
+					if (errors.length) fail(errors.join(', '));
+				}
 				config.requestedMode = heat ? (cool ? 'auto' : 'heat') : cool ? 'cool' : 'off';
 				this.validatePolicy(config.policy, config.requestedMode);
 				config.revision++;
@@ -412,7 +456,26 @@ export class VirtualThermostatConfigService {
 		const previous = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 		if (dto.schemaVersion !== 1 || dto.expectedRevision !== (previous?.revision ?? 0))
 			fail('Thermostat configuration revision changed.');
+		if (dto.controlStrategy !== undefined && dto.controlStrategy !== 'guarded_branches')
+			fail('Native unit adapters are not implemented; guarded branches are required.');
 		this.validatePolicy(dto.policy, dto.requestedMode);
+		const comfort = dto.comfort
+			? {
+					...dto.comfort,
+					selected_preset: previous?.comfort?.selected_preset ?? null,
+					user_off: dto.requestedMode === 'off',
+					automation_enabled: dto.comfort.automation_enabled ?? previous?.comfort?.automation_enabled ?? false,
+					automation_baseline:
+						dto.comfort.automation_enabled === false ? null : (previous?.comfort?.automation_baseline ?? null),
+					temporary_override: previous?.comfort?.temporary_override ?? null,
+				}
+			: previous?.comfort
+				? { ...previous.comfort, user_off: dto.requestedMode === 'off' }
+				: null;
+		if (comfort) {
+			const errors = validateThermostatComfort(comfort, dto.policy);
+			if (errors.length) fail(`Reconfigure comfort before changing branches/ranges: ${errors.join(', ')}`);
+		}
 		if (dto.heuristic && !validateVirtualWindowTrendPolicy(dto.heuristic))
 			fail('Invalid independent window trend policy.');
 		if (
@@ -421,11 +484,17 @@ export class VirtualThermostatConfigService {
 			)
 		)
 			fail('Invalid contact debounce policy.');
+		const heatingInputs = Array.isArray(dto.actuators)
+			? dto.actuators.filter((member) => member.role === 'heating')
+			: [];
 		if (
 			!Array.isArray(dto.sources) ||
 			dto.sources.length > 18 ||
 			dto.sources.filter((source) => source.role === 'ambient').length !== 1 ||
-			dto.sources.filter((source) => source.role === 'floor').length !== (dto.policy.floor ? 1 : 0)
+			dto.sources.filter((source) => source.role === 'floor').length > (dto.policy.floor ? 1 : 0) ||
+			(dto.policy.floor &&
+				!dto.sources.some((source) => source.role === 'floor') &&
+				!(heatingInputs.length > 0 && heatingInputs.every((member) => !!member.protection)))
 		)
 			fail('One ambient and one independently configured floor source are required for their enabled roles.');
 		const oldSources = await manager.findBy(VirtualThermostatSourceEntity, { controllerId });
@@ -519,8 +588,7 @@ export class VirtualThermostatConfigService {
 		if (
 			!Array.isArray(dto.actuators) ||
 			dto.actuators.length < 1 ||
-			dto.actuators.length > 2 ||
-			new Set(dto.actuators.map((actuator) => actuator.role)).size !== dto.actuators.length ||
+			dto.actuators.length > MAX_THERMOSTAT_ACTUATOR_MEMBERS ||
 			dto.actuators.some((actuator) => !['heating', 'cooling'].includes(actuator.role)) ||
 			!!dto.actuators.find((actuator) => actuator.role === 'heating') !== (dto.policy.heatingSetpoint !== null) ||
 			!!dto.actuators.find((actuator) => actuator.role === 'cooling') !== (dto.policy.coolingSetpoint !== null)
@@ -532,7 +600,9 @@ export class VirtualThermostatConfigService {
 		});
 		const actuators: VirtualThermostatActuatorClaimEntity[] = [];
 		for (const input of dto.actuators) {
-			const old = oldClaims.find((claim) => claim.role === input.role);
+			const old = oldClaims.find(
+				(claim) => claim.role === input.role && claim.sourcePropertyIdentity === input.sourcePropertyId,
+			);
 			if (old && old.sourcePropertyId !== input.sourcePropertyId)
 				fail('Request and prove release before actuator repair, remap or detach.');
 			const target = await this.property(manager, input.sourcePropertyId, !!draft);
@@ -553,13 +623,16 @@ export class VirtualThermostatConfigService {
 				physicalIdentity: identity,
 				state: Not('released'),
 			});
-			if (conflict && conflict.id !== old?.id) fail('Canonical physical actuator is already reserved.');
+			if (conflict && conflict.id !== old?.id)
+				fail('Canonical physical actuator is already reserved; qualified release is required before repair or remap.');
 			actuators.push(
 				manager.create(VirtualThermostatActuatorClaimEntity, {
 					id: old?.id ?? uuid(),
 					controllerId,
 					role: input.role,
 					physicalIdentity: identity,
+					providerProfile: old?.providerProfile ?? SHELLY_GUARDED_PROFILE,
+					providerProfileVersion: old?.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
 					sourcePropertyId: target.property.id,
 					sourcePropertyIdentity: target.property.id,
 					sourceDeviceId: target.device.id,
@@ -579,7 +652,73 @@ export class VirtualThermostatConfigService {
 		if (oldClaims.some((old) => !actuators.some((claim) => claim.id === old.id)))
 			fail('Unresolved actuator reservation cannot be detached.');
 		if (new Set(actuators.map((claim) => claim.physicalIdentity)).size !== actuators.length)
-			fail('Opposed branches cannot own the same physical actuator.');
+			fail('Branch members cannot own the same physical actuator more than once.');
+		const protections: ThermostatMemberProtectionEntity[] = [];
+		const heating = actuators.filter((claim) => claim.role === 'heating');
+		for (const claim of actuators) {
+			const input = dto.actuators.find((member) => member.sourcePropertyId === claim.sourcePropertyIdentity);
+			const old = await manager.findOneBy(ThermostatMemberProtectionEntity, { claimId: claim.id });
+			if (input.protection === undefined) {
+				if (old || (claim.role === 'heating' && heating.length > 1))
+					fail(
+						'Every parallel or previously explicit heating member requires an explicit retained protection binding.',
+					);
+				continue;
+			}
+			const protection = input.protection;
+			if (
+				!protection ||
+				claim.role !== 'heating' ||
+				protection.schemaVersion !== 1 ||
+				protection.kind !== 'local_floor' ||
+				!dto.policy.floor ||
+				!Number.isInteger(protection.maximumAgeSeconds) ||
+				protection.maximumAgeSeconds < 1 ||
+				protection.maximumAgeSeconds > 86400
+			)
+				fail('Invalid explicit local floor protection.');
+			if (!protection.sourcePropertyId) {
+				if (!old || old.sourcePropertyId !== null)
+					fail('Null cannot remove protection; only retain an already missing source.');
+				protections.push(
+					manager.create(ThermostatMemberProtectionEntity, {
+						...old,
+						revision: old.revision + 1,
+						maximumAgeSeconds: protection.maximumAgeSeconds,
+					}),
+				);
+			} else {
+				const source = await resolveThermostatProtectionSource(
+					manager,
+					protection.sourcePropertyId,
+					claim.physicalIdentity,
+				);
+				protections.push(
+					manager.create(ThermostatMemberProtectionEntity, {
+						claimId: claim.id,
+						schemaVersion: 1,
+						kind: 'local_floor',
+						revision: (old?.revision ?? 0) + 1,
+						sourcePropertyId: source.property.id,
+						sourcePropertyIdentity: source.property.id,
+						physicalPropertyIdentity: source.leaf.id,
+						contractFingerprint: source.fingerprint,
+						maximumAgeSeconds: protection.maximumAgeSeconds,
+					}),
+				);
+			}
+			claim.qualificationGeneration = uuid();
+		}
+		if (dto.displayFloorClaimId && !protections.some((row) => row.claimId === dto.displayFloorClaimId))
+			fail('Display floor must select an explicitly protected active member.');
+		const otherConsumers = await manager
+			.createQueryBuilder(ThermostatMemberProtectionEntity, 'protection')
+			.innerJoin('protection.claim', 'claim')
+			.where('claim.controllerId <> :controllerId AND claim.state <> :released', { controllerId, released: 'released' })
+			.getMany();
+		validateProtectionConsumerIndex([...otherConsumers, ...protections]);
+		// Validate the producer DAG separately: consumer dependencies must never become measurement lineage.
+		this.graph.validate(await this.graph.edges(manager));
 		if (
 			!Array.isArray(dto.settings) ||
 			dto.settings.length > 5 ||
@@ -625,11 +764,13 @@ export class VirtualThermostatConfigService {
 			);
 		}
 		const config = manager.create(VirtualThermostatConfigEntity, {
+			displayFloorClaimId: dto.displayFloorClaimId ?? null,
 			controllerId,
 			ownerDeviceId: controllerId,
 			schemaVersion: 1,
 			revision: (previous?.revision ?? 0) + 1,
 			requestedMode: dto.requestedMode,
+			comfort,
 			locked: previous?.locked ?? false,
 			policy: { ...dto.policy, floor: dto.policy.floor ?? null },
 			heuristic: dto.heuristic ?? null,
@@ -638,7 +779,7 @@ export class VirtualThermostatConfigService {
 			configuredAt: new Date(),
 			releaseRequestedAt: previous?.releaseRequestedAt ?? null,
 		});
-		return { config, sources, actuators, settings };
+		return { config, sources, actuators, settings, protections };
 	}
 	private settingContract(setting: ThermostatSetting) {
 		if (setting === 'locked')
@@ -656,18 +797,53 @@ export class VirtualThermostatConfigService {
 		actuators: VirtualThermostatActuatorClaimEntity[],
 		settings: VirtualThermostatSettingEntity[],
 		manager?: EntityManager,
+		preparedProtections?: ThermostatMemberProtectionEntity[],
 	) {
+		const protections =
+			preparedProtections ?? (await (manager ?? this.dataSource.manager).find(ThermostatMemberProtectionEntity));
 		const reasons = ['controller_runtime_unavailable'];
 		for (const claim of actuators) {
 			if (!claim.sourcePropertyId || !claim.sourceDeviceId) reasons.push(claim.role + '_actuator_missing');
-			if (!this.claims.qualification(claim, actuators.length > 1))
+			if (!this.claims.qualification(claim, thermostatHasOpposedBranches(actuators)))
 				reasons.push(claim.role + '_hardware_qualification_missing');
 			if (claim.state !== 'reserved') reasons.push(claim.role + '_' + claim.state);
 		}
 		for (const source of sources) if (!source.sourcePropertyId) reasons.push(source.role + '_source_missing');
+		const modelClaim = (claim: VirtualThermostatActuatorClaimEntity) => ({
+			protection:
+				protections
+					.filter((row) => row.claimId === claim.id)
+					.map((row) => ({
+						schema_version: row.schemaVersion,
+						kind: row.kind,
+						revision: row.revision,
+						source_property: row.sourcePropertyId,
+						source_identity: row.sourcePropertyIdentity,
+						physical_property: row.physicalPropertyIdentity,
+						maximum_age_seconds: row.maximumAgeSeconds,
+					}))[0] ?? null,
+			id: claim.id,
+			group_identity: thermostatBranchGroupIdentity(config.controllerId, claim.role),
+			provider_profile: claim.providerProfile ?? SHELLY_GUARDED_PROFILE,
+			provider_profile_version: claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
+			role: claim.role,
+			source_property: claim.sourcePropertyId,
+			source_identity: claim.sourcePropertyIdentity,
+			physical_identity: claim.physicalIdentity,
+			revision: claim.revision,
+			qualification_generation: claim.qualificationGeneration,
+			state: claim.state,
+			lease_seconds: claim.leaseSeconds,
+			reason: claim.reason,
+			release_requested_at: claim.releaseRequestedAt?.toISOString() ?? null,
+			released_at: claim.releasedAt?.toISOString() ?? null,
+			release_evidence: claim.releaseEvidence,
+		});
 		return {
+			display_floor_claim: config.displayFloorClaimId ?? null,
 			controller: config.controllerId,
 			schema_version: 1,
+			control_strategy: config.controlStrategy ?? 'guarded_branches',
 			revision: config.revision,
 			graph_revision: await this.graph.revision(manager),
 			requested_mode: config.requestedMode,
@@ -689,18 +865,13 @@ export class VirtualThermostatConfigService {
 				open_value: source.openValue,
 				closed_value: source.closedValue,
 			})),
-			actuators: actuators.map((claim) => ({
-				id: claim.id,
-				role: claim.role,
-				source_property: claim.sourcePropertyId,
-				source_identity: claim.sourcePropertyIdentity,
-				physical_identity: claim.physicalIdentity,
-				revision: claim.revision,
-				qualification_generation: claim.qualificationGeneration,
-				state: claim.state,
-				lease_seconds: claim.leaseSeconds,
-				reason: claim.reason,
-			})),
+			actuators: actuators.map(modelClaim),
+			released_actuators: (
+				await (manager ?? this.dataSource.manager).findBy(VirtualThermostatActuatorClaimEntity, {
+					controllerId: config.controllerId,
+					state: 'released',
+				})
+			).map(modelClaim),
 			settings: settings.map((setting) => ({ property: setting.propertyId, setting: setting.setting })),
 		};
 	}

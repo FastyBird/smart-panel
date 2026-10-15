@@ -1,6 +1,7 @@
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ThermostatComfortConfiguration } from '../services/virtual-thermostat-comfort.utils';
 import { VirtualThermostatMode, VirtualThermostatPolicy } from '../services/virtual-thermostat-policy.utils';
 import { VirtualWindowTrendPolicy } from '../services/virtual-window-trend.utils';
 
@@ -20,6 +21,9 @@ export type ThermostatSetting =
 export class VirtualThermostatConfigEntity {
 	@PrimaryColumn({ type: 'varchar' })
 	controllerId: string;
+	/** Presentation only; never replaces a mandatory global or member floor guard. */
+	@Column({ type: 'varchar', nullable: true })
+	displayFloorClaimId: string | null;
 	@Column({ type: 'varchar', nullable: true })
 	ownerDeviceId: string | null;
 	@ManyToOne(() => DeviceEntity, { nullable: true, onDelete: 'SET NULL' })
@@ -31,8 +35,12 @@ export class VirtualThermostatConfigEntity {
 	revision: number;
 	@Column({ type: 'text' })
 	requestedMode: VirtualThermostatMode;
+	@Column({ type: 'text', default: 'guarded_branches' })
+	controlStrategy: 'guarded_branches';
 	@Column({ type: 'boolean', default: false })
 	locked: boolean;
+	@Column({ type: 'simple-json', nullable: true })
+	comfort: ThermostatComfortConfiguration | null;
 	@Column({ type: 'simple-json' })
 	policy: VirtualThermostatPolicy;
 	@Column({ type: 'simple-json', nullable: true })
@@ -83,8 +91,7 @@ export class VirtualThermostatSourceEntity {
 	unique: true,
 	where: '"state" != \'released\'',
 })
-@Index('UQ_virtual_thermostat_branch_reservation', ['controllerId', 'role'], {
-	unique: true,
+@Index('IDX_virtual_thermostat_branch_members', ['controllerId', 'role'], {
 	where: '"state" != \'released\'',
 })
 @Check(
@@ -103,6 +110,10 @@ export class VirtualThermostatActuatorClaimEntity {
 	role: ThermostatActuatorRole;
 	@Column({ type: 'text' })
 	physicalIdentity: string;
+	@Column({ type: 'text', default: 'shelly-ng.guarded-switch' })
+	providerProfile: string;
+	@Column({ type: 'integer', default: 1 })
+	providerProfileVersion: number;
 	@Column({ type: 'varchar', nullable: true })
 	sourcePropertyId: string | null;
 	@ManyToOne(() => ChannelPropertyEntity, { nullable: true, onDelete: 'SET NULL' })

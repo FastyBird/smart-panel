@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { SHELLY_GUARD_SOURCE } from '../../devices-shelly-ng/contracts/guard-script-source';
+import { SHELLY_MEMBER_GUARD_SOURCE } from '../../devices-shelly-ng/contracts/member-guard-script-source';
 import {
 	nativeTemperatureIdentity,
 	nativeVoltmeterVoltageIdentity,
@@ -16,6 +17,7 @@ import {
 	ThermostatGuardSetup,
 	ThermostatOperatorAttestation,
 } from './thermostat-installation.types';
+import { protectionBoundsValid } from './thermostat-protection-source.utils';
 import { VirtualNumericTransformOperator, validateVirtualNumericTransform } from './virtual-numeric-transform.utils';
 
 type Bindings = Awaited<ReturnType<ThermostatInstallationBindingsService['resolve']>>;
@@ -51,6 +53,9 @@ export function validateThermostatInstallation(
 		'switchConfigurationJson',
 		'peripheralsJson',
 		'floorConversion',
+		...(binding.memberProtection
+			? ['formatVersion', 'installedFloorCeilingC', 'effectiveFloorCutoffC', 'floorDomainC']
+			: []),
 	]);
 	if (
 		!['deviceHardwareId', 'firmware', 'endpointHostname', 'epochKey'].every((key) => text(setup[key])) ||
@@ -161,6 +166,26 @@ export function validateThermostatInstallation(
 		)
 	)
 		reject('The floor guard requires native Celsius or explicit calibrated voltage lineage.');
+	if (binding.memberProtection) {
+		const domain = binding.protectionSource?.domain;
+		const cutoff = Math.min(binding.config.policy.floor.limit, setup.installedFloorCeilingC);
+		if (
+			setup.formatVersion !== 2 ||
+			setup.effectiveFloorCutoffC !== cutoff ||
+			!Number.isFinite(setup.installedFloorCeilingC) ||
+			!domain ||
+			JSON.stringify(setup.floorDomainC) !== JSON.stringify(domain) ||
+			!protectionBoundsValid(domain, cutoff, binding.config.policy.floor.recoveryHysteresis)
+		)
+			reject('Installed floor ceiling, effective cutoff and strict recovery must fit both backend and local domains.');
+		const snapshot = binding.protectionSource.metadata.installationSnapshot;
+		if (
+			!snapshot ||
+			setup.floorConfigurationJson !== JSON.stringify(snapshot.configuration) ||
+			setup.peripheralsJson !== JSON.stringify(snapshot.peripherals)
+		)
+			reject('Floor snapshots must match the current complete catalog.');
+	} else if (setup.formatVersion !== undefined) reject('Legacy installation format must remain unchanged.');
 	if (!Array.isArray(attestations) || attestations.length > THERMOSTAT_ATTESTATION_KINDS.length)
 		reject('Invalid operator attestations.');
 	const kinds = new Set<string>();
@@ -225,10 +250,13 @@ export function thermostatInstallationArtifact(
 		floorAttribute: setup.floorAttribute,
 		floorConfigurationJson: setup.floorConfigurationJson,
 		floorConversion: setup.floorConversion,
-		floorLimitC: binding.config.policy.floor.limit,
+		floorLimitC: binding.memberProtection
+			? Math.min(binding.config.policy.floor.limit, setup.installedFloorCeilingC)
+			: binding.config.policy.floor.limit,
 		floorHysteresisC: binding.config.policy.floor.recoveryHysteresis,
+		...(binding.memberProtection ? { floorDomainC: setup.floorDomainC } : {}),
 	};
-	const source = `let SP_GUARD_CONFIG = ${JSON.stringify(configuration)};\n${SHELLY_GUARD_SOURCE}`;
+	const source = `let SP_GUARD_CONFIG = ${JSON.stringify(configuration)};\n${binding.memberProtection ? SHELLY_MEMBER_GUARD_SOURCE : SHELLY_GUARD_SOURCE}`;
 	const sourceHash = createHash('sha256').update(source).digest('hex');
 	return {
 		source,
