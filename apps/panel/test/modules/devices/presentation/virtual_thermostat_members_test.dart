@@ -765,6 +765,103 @@ void main() {
   );
 
   testWidgets(
+    'runtime-only retained samples keep watermarks across matched refetches and prune only after removal',
+    (tester) async {
+      final fixture = MemberDetailFixture()..configurationRevision = 1;
+      final now = DateTime.now();
+      Map<String, dynamic> sample(
+        DateTime time,
+        double temperature, {
+        int maximumAge = 60,
+      }) => {
+        ...protection(time, temperature),
+        'maximum_age_seconds': maximumAge,
+        'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
+      };
+      fixture.sample = sample(now, 0);
+      fixture.displayFloorClaim = 'one';
+      void retained(
+        DateTime time,
+        double temperature, {
+        int maximumAge = 60,
+        String state = 'reserved',
+      }) {
+        fixture.extraBranches = [
+          {
+            'claim': 'retained',
+            'role': 'heating',
+            'claim_state': state,
+            'physical_identity': 'retained-relay',
+            'protection': sample(time, temperature, maximumAge: maximumAge),
+          },
+        ];
+      }
+
+      Finder reading(String text) => find.descendant(
+        of: find.byKey(const ValueKey('thermostat-member-retained')),
+        matching: find.text(text),
+      );
+      void unavailable() {
+        expect(reading('Live protection reading: Unavailable'), findsOneWidget);
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      }
+
+      final t1 = now;
+      final t2 = now.add(const Duration(seconds: 1));
+      final t3 = now.add(const Duration(seconds: 2));
+      final t4 = now.add(const Duration(seconds: 3));
+      retained(t2, 22);
+      await fixture.mount(tester);
+      expect(reading('Live protection reading: 22.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      // Configuration revision/membership stays fixed; only runtime sequence changes.
+      retained(t1, 21);
+      await fixture.refetch(tester);
+      unavailable();
+      expect(reading('Live protection reading: 21.0 °C'), findsNothing);
+      retained(t3, 23, maximumAge: 2);
+      await fixture.refetch(tester);
+      expect(reading('Live protection reading: 23.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      unavailable();
+      // A refetch with rolled-back age/expiry cannot renew an expired sample.
+      retained(t3, 23);
+      await fixture.refetch(tester);
+      unavailable();
+      retained(t1, 21);
+      await fixture.refetch(tester);
+      unavailable();
+      retained(t4, 24);
+      await fixture.refetch(tester);
+      expect(reading('Live protection reading: 24.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      // Once absent from BOTH accepted sources, its watermark may be discarded.
+      fixture.extraBranches = [];
+      await fixture.refetch(tester);
+      expect(
+        find.byKey(const ValueKey('thermostat-member-retained')),
+        findsNothing,
+      );
+      retained(t1, 21);
+      await fixture.refetch(tester);
+      expect(reading('Live protection reading: 21.0 °C'), findsOneWidget);
+      // Released runtime rows are excluded from the same active projection.
+      retained(t1, 21, state: 'released');
+      await fixture.refetch(tester);
+      expect(
+        find.byKey(const ValueKey('thermostat-member-retained')),
+        findsNothing,
+      );
+      retained(now.subtract(const Duration(seconds: 1)), 20);
+      await fixture.refetch(tester);
+      expect(reading('Live protection reading: 20.0 °C'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
     'legacy singleton without declared protection and empty membership preserve snapshot readiness',
     (tester) async {
       final fixture = MemberDetailFixture()..declaresMemberProtection = false;
@@ -784,6 +881,7 @@ class MemberDetailFixture {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
   final held = <void Function()>[];
   int revision = 1;
+  int? configurationRevision;
   bool hold = false, hasMember = true, declaresMemberProtection = true;
   List<Map<String, dynamic>> sources = [], inputs = [], extraBranches = [];
   String? displayFloorClaim;
@@ -811,7 +909,7 @@ class MemberDetailFixture {
               ? {
                   'epoch': 'epoch',
                   'sequence': revision,
-                  'configuration_revision': revision,
+                  'configuration_revision': configurationRevision ?? revision,
                   'requested_mode': 'heat',
                   'readiness': 'ready',
                   'reasons': <String>[],
@@ -828,7 +926,7 @@ class MemberDetailFixture {
                   ],
                 }
               : {
-                  'revision': revision,
+                  'revision': configurationRevision ?? revision,
                   'locked': false,
                   'policy': {'heatingSetpoint': 21},
                   'settings': <Map>[],

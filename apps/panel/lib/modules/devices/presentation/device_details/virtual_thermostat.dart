@@ -184,22 +184,20 @@ class _VirtualThermostatDeviceDetailState
       }
       _configurationMismatchSeen = false;
       _hintRefreshNeeded = false;
-      // Prune only once membership is known from an accepted, revision-matched
-      // configuration. A loading projection is not evidence of removal.
-      final activeClaims = configuration['actuators'];
-      if (activeClaims is List) {
+      // Prune against exactly the active membership displayed below: configured
+      // claims plus non-released runtime-only reservations. Partial/loading
+      // membership is not evidence of removal from either source.
+      if (configuration['actuators'] is List && candidate['branches'] is List) {
         _readingFence.retainClaims(
-          activeClaims
-              .whereType<Map>()
-              .map((claim) => claim['id'])
-              .whereType<String>(),
+          VirtualThermostatMember.read(
+            configuration,
+            candidate,
+          ).map((member) => member.claim),
         );
       }
       setState(() {
         _configuration = configuration;
-        _runtime = Map<String, dynamic>.from(
-          responses[1].data?['data'] as Map? ?? {},
-        );
+        _runtime = candidate;
         _runtimeReceivedAt = DateTime.now();
         _runtimeAge = Duration.zero;
         _error = null;
