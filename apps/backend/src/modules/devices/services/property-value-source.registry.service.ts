@@ -57,6 +57,11 @@ export class PropertyValueSourceRegistryService {
 		return this.sources[property.type]?.unavailableReason?.(property) ?? null;
 	}
 
+	/** Entity policy remains available even when its runtime source provider is absent. */
+	requiresLiveValue(property: ChannelPropertyEntity): boolean {
+		return property.requiresLiveValue === true;
+	}
+
 	/** True when the property's value is stored under a different property's key. */
 	isProjected(property: ChannelPropertyEntity): boolean {
 		return this.resolve(property) !== property.id;

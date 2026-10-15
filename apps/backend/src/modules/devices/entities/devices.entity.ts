@@ -548,6 +548,11 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Type(() => PropertyValueState)
 	value: PropertyValueState | null;
 
+	/** Internal live-authority policy; persisted history cannot satisfy producer-owned outputs. */
+	get requiresLiveValue(): boolean {
+		return false;
+	}
+
 	@ApiProperty({
 		description: 'Channel identifier',
 		type: 'string',

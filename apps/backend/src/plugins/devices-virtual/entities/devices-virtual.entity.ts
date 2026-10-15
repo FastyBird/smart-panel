@@ -4,7 +4,7 @@ import { ChildEntity, Column, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 
@@ -267,6 +267,23 @@ export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 	/** True when this property was meant to project a source that has since been deleted. */
 	get isDerived(): boolean {
 		return this.valueOrigin === VirtualValueOrigin.DERIVED;
+	}
+
+	/** Runtime measurements/status are never recoverable from history after a cold start. */
+	override get requiresLiveValue(): boolean {
+		if (this.isDerived) return true;
+		if (
+			this.valueOrigin !== VirtualValueOrigin.LOCAL ||
+			this.permissions?.some((permission) => WRITABLE_PERMISSIONS.includes(permission)) ||
+			![PropertyCategory.TEMPERATURE, PropertyCategory.FLOOR_TEMPERATURE, PropertyCategory.STATUS].includes(
+				this.category,
+			)
+		)
+			return false;
+		// Device information is a local constant, including its STATUS. Missing parent metadata
+		// cannot prove that exemption; conservatively withhold controller-shaped read-only values.
+		const channel = this.channel;
+		return !channel || typeof channel === 'string' || channel.category !== ChannelCategory.DEVICE_INFORMATION;
 	}
 
 	get isOrphaned(): boolean {
