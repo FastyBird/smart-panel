@@ -43,7 +43,7 @@ export class FanMapper extends BaseHomeKitMapper {
 				(value) => value === Characteristic.Active.ACTIVE,
 			);
 			const swing = this.findProperty(channel, PropertyCategory.SWING);
-			if (swing?.dataType === DataTypeType.BOOL)
+			if (this.booleanContract(swing))
 				this.bindCharacteristic(
 					context,
 					device,
@@ -52,24 +52,16 @@ export class FanMapper extends BaseHomeKitMapper {
 					service.getCharacteristic(Characteristic.SwingMode),
 					boolean,
 					(value) => value === Characteristic.SwingMode.SWING_ENABLED,
+					undefined,
+					undefined,
+					(current) => {
+						if (!this.booleanContract(current)) throw communicationFailure();
+					},
 				);
 
 			const speed = this.findProperty(channel, PropertyCategory.SPEED);
 			// Native percentage only. Discrete speed labels have no lossless HAP percentage mapping.
-			if (
-				speed?.dataType === DataTypeType.UCHAR &&
-				speed.unit === '%' &&
-				Array.isArray(speed.format) &&
-				speed.format.length === 2 &&
-				speed.format.every((value) => typeof value === 'number' && Number.isInteger(value)) &&
-				Number(speed.format[0]) >= 0 &&
-				Number(speed.format[1]) <= 100 &&
-				Number(speed.format[0]) < Number(speed.format[1]) &&
-				(speed.step == null ||
-					(Number.isInteger(speed.step) &&
-						speed.step > 0 &&
-						matchesStep(Number(speed.format[1]), speed.step, Number(speed.format[0]))))
-			) {
+			if (this.percentageSpeed(speed)) {
 				const characteristic = service.getCharacteristic(Characteristic.RotationSpeed);
 				const minimum = Number(speed.format[0]),
 					maximum = Number(speed.format[1]),
@@ -77,11 +69,30 @@ export class FanMapper extends BaseHomeKitMapper {
 				// A new HAP characteristic starts at zero, which may be outside the native grid.
 				characteristic.value = null;
 				characteristic.setProps({ minValue: minimum, maxValue: maximum, minStep: step });
-				this.bindCharacteristic(context, device, channel, speed, characteristic, (value) => {
-					const number = validateHapNumber(characteristic, value);
-					if (!matchesStep(number, step, minimum)) throw communicationFailure();
-					return number;
-				});
+				this.bindCharacteristic(
+					context,
+					device,
+					channel,
+					speed,
+					characteristic,
+					(value) => {
+						const number = validateHapNumber(characteristic, value);
+						if (!matchesStep(number, step, minimum)) throw communicationFailure();
+						return number;
+					},
+					undefined,
+					undefined,
+					undefined,
+					(current) => {
+						if (
+							!this.percentageSpeed(current) ||
+							Number(current.format[0]) !== minimum ||
+							Number(current.format[1]) !== maximum ||
+							(current.step ?? 1) !== step
+						)
+							throw communicationFailure();
+					},
+				);
 			}
 			for (const [category, type, values] of [
 				[
@@ -103,7 +114,10 @@ export class FanMapper extends BaseHomeKitMapper {
 			] as const) {
 				const property = this.findProperty(channel, category);
 				if (!this.exactEnum(property, Object.keys(values))) continue;
-				const convert = (value: unknown) => enumToHap(property, value, values);
+				const convert = (value: unknown, current: ChannelPropertyEntity = property) => {
+					if (!this.exactEnum(current, Object.keys(values))) throw communicationFailure();
+					return enumToHap(current, value, values);
+				};
 				this.bindCharacteristic(
 					context,
 					device,
@@ -114,12 +128,45 @@ export class FanMapper extends BaseHomeKitMapper {
 					(value) => Object.keys(values).find((key) => values[key] === value),
 					undefined,
 					convert,
+					(current) => {
+						if (!this.exactEnum(current, Object.keys(values))) throw communicationFailure();
+					},
 				);
 			}
 			// Active is requested/reported ON, not evidence for the optional CurrentFanState.
 		}
 		SensorMapper.attachSensorServices(accessory, device, context);
 		return accessory;
+	}
+
+	private booleanContract(property: ChannelPropertyEntity | undefined): boolean {
+		if (property?.dataType !== DataTypeType.BOOL || property.unit != null) return false;
+		const format = property.format;
+		return (
+			format == null ||
+			(Array.isArray(format) &&
+				(format.length === 0 ||
+					(format.length === 2 &&
+						format.every((value) => typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) &&
+						new Set(format.map((value) => String(value).toLowerCase())).size === 2)))
+		);
+	}
+
+	private percentageSpeed(property: ChannelPropertyEntity | undefined): boolean {
+		return (
+			property?.dataType === DataTypeType.UCHAR &&
+			property.unit === '%' &&
+			Array.isArray(property.format) &&
+			property.format.length === 2 &&
+			property.format.every((value) => typeof value === 'number' && Number.isInteger(value)) &&
+			Number(property.format[0]) >= 0 &&
+			Number(property.format[1]) <= 100 &&
+			Number(property.format[0]) < Number(property.format[1]) &&
+			(property.step == null ||
+				(Number.isInteger(property.step) &&
+					property.step > 0 &&
+					matchesStep(Number(property.format[1]), property.step, Number(property.format[0]))))
+		);
 	}
 
 	private exactEnum(property: ChannelPropertyEntity | undefined, values: string[]): boolean {

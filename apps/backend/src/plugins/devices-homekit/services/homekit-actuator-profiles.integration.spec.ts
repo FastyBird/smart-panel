@@ -12,6 +12,7 @@ import { QualifiedPropertySample } from '../../../modules/devices/models/propert
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { VirtualLightGroupProfile } from '../../devices-virtual/entities/virtual-producer.entity';
 import { reportGroup } from '../../devices-virtual/services/virtual-group-profile';
+import { HomeKitEventListener } from '../listeners/homekit-event.listener';
 
 const failure = HAPStatus.SERVICE_COMMUNICATION_FAILURE;
 describe('HomeKit fan and covering profiles', () => {
@@ -85,6 +86,93 @@ describe('HomeKit fan and covering profiles', () => {
 		await expect(service.getCharacteristic(Characteristic.TargetFanState).handleGetRequest()).rejects.toBe(failure);
 	});
 
+	it.each([
+		[
+			PropertyCategory.MODE,
+			Characteristic.TargetFanState,
+			['auto', 'manual'],
+			'manual',
+			['auto', 'manual', 'sleep'],
+			'sleep',
+		],
+		[
+			PropertyCategory.DIRECTION,
+			Characteristic.RotationDirection,
+			['clockwise', 'counter_clockwise'],
+			'clockwise',
+			['forward', 'reverse'],
+			'forward',
+		],
+	] as const)(
+		'uses current managed %s metadata and fences SET before deferred rebuild',
+		async (category, type, format, value, invalidFormat, noncanonical) => {
+			const device = fixture.device(DeviceCategory.FAN);
+			const on = fixture.property(device, ChannelCategory.FAN, PropertyCategory.ON);
+			const optional = fixture.property(device, ChannelCategory.FAN, category, {
+				dataType: DataTypeType.ENUM,
+				format: [...format],
+			});
+			const temperature = fixture.property(device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+			fixture.publish(on, true);
+			fixture.publish(optional, value);
+			fixture.publish(temperature, 21);
+			const initial = fixture.build(device),
+				service = initial.getService(Service.Fanv2);
+			const reading = service.getCharacteristic(type);
+			expect(await reading.handleGetRequest()).toBe(0);
+			const listener = new HomeKitEventListener(fixture.registry);
+			// Detached metadata reproduces the captured-original-property bug: the original remains canonical.
+			const changed: ChannelPropertyEntity = Object.assign(
+				Object.create(Object.getPrototypeOf(optional) as object) as ChannelPropertyEntity,
+				optional,
+				{ format: [...invalidFormat] },
+			);
+			const fanChannel = device.channels.find((channel) => channel.category === ChannelCategory.FAN);
+			fanChannel.properties = fanChannel.properties.map((candidate) =>
+				candidate.id === optional.id ? changed : candidate,
+			);
+			listener.handlePropertyValueChanged(changed);
+			await expect(reading.handleGetRequest()).rejects.toBe(failure);
+			await expect(reading.handleSetRequest(1)).rejects.toBe(failure);
+			expect(fixture.commands.executePropertyCommandById).not.toHaveBeenCalled();
+			expect(optional.format).toEqual([...format]);
+			fixture.publish(changed, value);
+			await expect(reading.handleGetRequest()).rejects.toBe(failure);
+			expect(
+				await initial
+					.getService(Service.TemperatureSensor)
+					.getCharacteristic(Characteristic.CurrentTemperature)
+					.handleGetRequest(),
+			).toBe(21);
+			const replacement = fixture.build(device);
+			expect(replacement.getService(Service.Fanv2).testCharacteristic(type)).toBe(false);
+			expect(fixture.registry.getBindingsForProperty(optional.id)).toHaveLength(0);
+			changed.format = [...format];
+			fixture.publish(changed, noncanonical);
+			const recoveredAccessory = fixture.build(device);
+			const recovered = recoveredAccessory.getService(Service.Fanv2).getCharacteristic(type);
+			await expect(recovered.handleGetRequest()).rejects.toBe(failure);
+			fixture.publish(changed, value);
+			expect(await recovered.handleGetRequest()).toBe(0);
+			fixture.publish(temperature, 21, 'degraded');
+			expect(
+				await recoveredAccessory
+					.getService(Service.TemperatureSensor)
+					.getCharacteristic(Characteristic.CurrentTemperature)
+					.handleGetRequest(),
+			).toBe(21);
+			expect(
+				await recoveredAccessory
+					.getService(Service.TemperatureSensor)
+					.getCharacteristic(Characteristic.StatusFault)
+					.handleGetRequest(),
+			).toBe(1);
+			jest.setSystemTime(Date.now() + 1000);
+			await expect(recovered.handleGetRequest()).rejects.toBe(failure);
+			await expect(reading.handleSetRequest(1)).rejects.toBe(failure);
+			expect(fixture.commands.executePropertyCommandById).not.toHaveBeenCalled();
+		},
+	);
 	it('retains sensor services and one binding per property when a sensor-only device rebuilds with a fan', async () => {
 		const device = fixture.device(DeviceCategory.FAN);
 		const temperature = fixture.property(device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, {

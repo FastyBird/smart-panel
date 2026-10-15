@@ -105,6 +105,21 @@ export class HomeKitEventListener implements OnModuleDestroy {
 		if (channel?.category === ChannelCategory.CARBON_DIOXIDE) await this.handlePropertyStructureChanged(property);
 	}
 
+	/** Optional fan services depend on the declared native contract, not merely the latest value. */
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
+	async handleFanMetadataChanged(property: ChannelPropertyEntity): Promise<void> {
+		if (
+			!property ||
+			![PropertyCategory.SPEED, PropertyCategory.SWING, PropertyCategory.DIRECTION, PropertyCategory.MODE].includes(
+				property.category,
+			)
+		)
+			return;
+		const channel =
+			typeof property.channel === 'string' ? await this.channelsService?.findOne(property.channel) : property.channel;
+		if (channel?.category === ChannelCategory.FAN) await this.handlePropertyStructureChanged(property);
+	}
+
 	private isMapped(deviceId: string): boolean {
 		return this.bridge?.getConfig().mappedDeviceIds?.includes(deviceId) ?? false;
 	}

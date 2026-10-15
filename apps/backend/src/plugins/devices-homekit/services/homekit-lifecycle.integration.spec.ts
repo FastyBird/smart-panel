@@ -256,6 +256,159 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 		expect(commits).toBe(0);
 	});
 
+	it.each([
+		[
+			PropertyCategory.MODE,
+			Characteristic.TargetFanState,
+			{ dataType: DataTypeType.ENUM, format: ['auto', 'manual'] },
+			'manual',
+			{ format: ['auto', 'manual', 'sleep'] },
+			1,
+		],
+		[
+			PropertyCategory.MODE,
+			Characteristic.TargetFanState,
+			{ dataType: DataTypeType.ENUM, format: ['auto', 'manual'] },
+			'manual',
+			{ dataType: DataTypeType.STRING },
+			1,
+		],
+		[
+			PropertyCategory.DIRECTION,
+			Characteristic.RotationDirection,
+			{ dataType: DataTypeType.ENUM, format: ['clockwise', 'counter_clockwise'] },
+			'clockwise',
+			{ format: ['forward', 'reverse'] },
+			1,
+		],
+		[
+			PropertyCategory.SPEED,
+			Characteristic.RotationSpeed,
+			{ dataType: DataTypeType.UCHAR, unit: '%', format: [10, 90], step: 10 },
+			30,
+			{ dataType: DataTypeType.ENUM, format: ['low', 'high'] },
+			50,
+		],
+		[
+			PropertyCategory.SPEED,
+			Characteristic.RotationSpeed,
+			{ dataType: DataTypeType.UCHAR, unit: '%', format: [10, 90], step: 10 },
+			30,
+			{ unit: 'rpm' },
+			50,
+		],
+		[
+			PropertyCategory.SWING,
+			Characteristic.SwingMode,
+			{ dataType: DataTypeType.BOOL, format: null },
+			false,
+			{ dataType: DataTypeType.ENUM, format: ['off', 'on'] },
+			1,
+		],
+		[
+			PropertyCategory.SWING,
+			Characteristic.SwingMode,
+			{ dataType: DataTypeType.BOOL, format: null },
+			false,
+			{ format: ['true'] },
+			1,
+		],
+	] as const)(
+		'withdraws and recovers fan optional %s contracts with synchronous GET/SET fencing',
+		async (category, type, metadata, value, invalid, request) => {
+			device.channels = [];
+			const fan = channel(device, 'fan', ChannelCategory.FAN);
+			Object.assign(property(fan, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+			const optional = Object.assign(property(fan, 'fan-optional', category, value), metadata);
+			property(
+				channel(device, 'temperature', ChannelCategory.TEMPERATURE),
+				'temperature-value',
+				PropertyCategory.TEMPERATURE,
+				21,
+			);
+			await bridge.start();
+			const original = accessory(),
+				reading = original.getService(Service.Fanv2).getCharacteristic(type);
+			expect(await reading.handleGetRequest()).toBe(category === PropertyCategory.SPEED ? 30 : 0);
+			const changed = Object.assign(new ChannelPropertyEntity(), optional, invalid);
+			fan.properties = fan.properties.map((candidate) => (candidate.id === optional.id ? changed : candidate));
+			listener.handlePropertyValueChanged(changed);
+			// Neither operation may use the old contract during the 100 ms rebuild debounce.
+			await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			await expect(reading.handleSetRequest(request)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			expect(dispatch).not.toHaveBeenCalled();
+			expect(await original.getService(Service.Fanv2).getCharacteristic(Characteristic.Active).handleGetRequest()).toBe(
+				1,
+			);
+			expect(
+				await original
+					.getService(Service.TemperatureSensor)
+					.getCharacteristic(Characteristic.CurrentTemperature)
+					.handleGetRequest(),
+			).toBe(21);
+			await listener.handleFanMetadataChanged(Object.assign(new ChannelPropertyEntity(), changed, { channel: fan.id }));
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			await bridge.applyMapping();
+			expect(accessory().getService(Service.Fanv2).testCharacteristic(type)).toBe(false);
+			expect(registry.getBindingsForProperty(optional.id)).toHaveLength(0);
+			await expect(reading.handleSetRequest(request)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			fan.properties = fan.properties.map((candidate) => (candidate.id === optional.id ? optional : candidate));
+			await listener.handleFanMetadataChanged(optional);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			await bridge.applyMapping();
+			const recovered = accessory().getService(Service.Fanv2).getCharacteristic(type);
+			expect(await recovered.handleGetRequest()).toBe(category === PropertyCategory.SPEED ? 30 : 0);
+			expect(registry.getBindingsForProperty(optional.id)).toHaveLength(1);
+			await recovered.handleSetRequest(request);
+			expect(dispatch).toHaveBeenCalledTimes(1);
+			expect(dispatch).toHaveBeenCalledWith(
+				optional.id,
+				category === PropertyCategory.MODE
+					? 'auto'
+					: category === PropertyCategory.DIRECTION
+						? 'counter_clockwise'
+						: category === PropertyCategory.SPEED
+							? request
+							: true,
+			);
+			expect(accessory().UUID).toBe(original.UUID);
+			expect(registry.getBindingsForProperty('temperature-value')).toHaveLength(1);
+			expect(commits).toBe(0);
+		},
+	);
+
+	it('fences the previous speed grid until supported range and step changes are rebuilt', async () => {
+		device.channels = [];
+		const fan = channel(device, 'fan', ChannelCategory.FAN);
+		Object.assign(property(fan, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+		const speed = Object.assign(property(fan, 'speed', PropertyCategory.SPEED, 30), {
+			dataType: DataTypeType.UCHAR,
+			unit: '%',
+			format: [10, 90],
+			step: 10,
+		});
+		await bridge.start();
+		const old = accessory().getService(Service.Fanv2).getCharacteristic(Characteristic.RotationSpeed);
+		const changed = Object.assign(new ChannelPropertyEntity(), speed, {
+			format: [20, 80],
+			step: 20,
+			value: new PropertyValueState(40),
+		});
+		fan.properties = fan.properties.map((candidate) => (candidate.id === speed.id ? changed : candidate));
+		listener.handlePropertyValueChanged(changed);
+		await expect(old.handleSetRequest(50)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		await expect(old.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect(dispatch).not.toHaveBeenCalled();
+		await listener.handleFanMetadataChanged(changed);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		const current = accessory().getService(Service.Fanv2).getCharacteristic(Characteristic.RotationSpeed);
+		expect(current.props).toMatchObject({ minValue: 20, maxValue: 80, minStep: 20 });
+		expect(await current.handleGetRequest()).toBe(40);
+		await current.handleSetRequest(60);
+		expect(dispatch).toHaveBeenCalledWith(speed.id, 60);
+	});
+
 	it('debounces structure events per mapped device, retaining UUID and replacing old resources', async () => {
 		await bridge.start();
 		const old = accessory();

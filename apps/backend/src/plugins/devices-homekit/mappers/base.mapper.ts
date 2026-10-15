@@ -64,7 +64,8 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 		channel: ChannelEntity,
 		property: ChannelPropertyEntity,
 		characteristic: Characteristic,
-		toHomeKit: (value: unknown) => CharacteristicValue = (val) => val as CharacteristicValue,
+		toHomeKit: (value: unknown, property?: ChannelPropertyEntity) => CharacteristicValue = (val) =>
+			val as CharacteristicValue,
 		fromHomeKit: (value: CharacteristicValue) => unknown = (val) => val,
 		fault?: Characteristic,
 		semanticConversion?: ManagedSemanticConversion,
@@ -140,6 +141,18 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 			bindCharacteristicWrite(
 				characteristic,
 				async (value: CharacteristicValue) => {
+					// Opted-in metadata guards run before any optimistic cache or command mutation.
+					validateProperty?.(currentProperty);
+					if (
+						validateProperty &&
+						!(
+							context.commandDispatcher.canExecuteCompositeProperty?.(currentProperty) ||
+							currentProperty.permissions?.some((permission) =>
+								[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+							)
+						)
+					)
+						throw communicationFailure();
 					const startingRevision = binding.revision;
 					const token = (binding.nextWriteToken ?? 0) + 1;
 					binding.nextWriteToken = token;

@@ -28,7 +28,7 @@ export function readMappedProperty(
 	context: HomeKitMapperContext,
 	property: ChannelPropertyEntity,
 	characteristic: Characteristic,
-	map: (value: unknown) => CharacteristicValue,
+	map: (value: unknown, property?: ChannelPropertyEntity) => CharacteristicValue,
 	fault?: Characteristic,
 	semanticConversion?: ManagedSemanticConversion,
 	validateProperty?: (property: ChannelPropertyEntity) => void,
@@ -55,7 +55,7 @@ export function readMappedProperty(
 	}
 
 	function read(): CharacteristicValue {
-		if (!managed) return map(property.value?.value);
+		if (!managed) return map(property.value?.value, property);
 		if (state.unavailable || state.value === null) throw communicationFailure();
 		if (semanticConversion) {
 			const converted = semanticConversion(state.value, property);
@@ -78,7 +78,7 @@ export function readMappedProperty(
 				numeric = 1_000_000 / numeric;
 			validateHapNumber(characteristic, numeric);
 		}
-		const value = map(state.value);
+		const value = map(state.value, property);
 		if (typeof value === 'number') validateHapNumber(characteristic, value);
 		return value;
 	}
