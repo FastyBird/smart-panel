@@ -4276,6 +4276,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nicht erkannt';
+
   @override
   String get thermostatComfortTitle => 'Thermostatkomfort';
 

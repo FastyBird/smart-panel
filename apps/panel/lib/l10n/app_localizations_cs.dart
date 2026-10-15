@@ -4268,6 +4268,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nedetekováno';
+
   @override
   String get thermostatComfortTitle => 'Komfort termostatu';
 

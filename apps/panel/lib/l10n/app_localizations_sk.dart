@@ -4274,6 +4274,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nedetegované';
+
   @override
   String get thermostatComfortTitle => 'Komfort termostatu';
 

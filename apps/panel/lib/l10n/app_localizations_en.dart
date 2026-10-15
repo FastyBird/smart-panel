@@ -4230,6 +4230,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Not detected';
+
   @override
   String get thermostatComfortTitle => 'Thermostat comfort';
 

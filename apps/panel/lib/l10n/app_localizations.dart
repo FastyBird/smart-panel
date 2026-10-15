@@ -7647,7 +7647,7 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not detected'**
   String get virtual_measurement_false;
-  @override
+
   /// No description provided for @thermostatComfortTitle.
   ///
   /// In en, this message translates to:

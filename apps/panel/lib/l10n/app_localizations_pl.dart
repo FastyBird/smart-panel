@@ -4310,6 +4310,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nie wykryto';
+
   @override
   String get thermostatComfortTitle => 'Komfort termostatu';
 

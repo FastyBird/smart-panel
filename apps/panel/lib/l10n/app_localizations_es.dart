@@ -4270,6 +4270,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'No detectado';
+
   @override
   String get thermostatComfortTitle => 'Confort del termostato';
 

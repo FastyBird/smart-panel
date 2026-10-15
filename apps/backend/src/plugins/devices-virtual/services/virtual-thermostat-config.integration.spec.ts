@@ -15,8 +15,8 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
 import { AddVirtualThermostatRuntime1000000000032 } from '../../../migrations/1000000000032-AddVirtualThermostatRuntime';
 import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations/1000000000034-AddVirtualThermostatRecoveries';
-import { AddThermostatBranchGroups1000000000040 } from '../../../migrations/1000000000040-AddThermostatBranchGroups';
 import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
+import { AddThermostatBranchGroups1000000000040 } from '../../../migrations/1000000000040-AddThermostatBranchGroups';
 import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import {
@@ -353,14 +353,16 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		const beforeConfig: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_configs"');
 		const beforeClaims: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_actuator_claims"');
 		const beforeJournal: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"');
+		await new AddVirtualThermostatComfort1000000000039().up(runner);
 		await new AddThermostatBranchGroups1000000000040().up(runner);
 		expect(await runner.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime"')).toEqual(beforeBranch);
 		const afterConfig = (await runner.query('SELECT * FROM "devices_virtual_thermostat_configs"')) as Record<
 			string,
 			unknown
 		>[];
-		expect(afterConfig.map(({ controlStrategy: _strategy, ...row }) => row)).toEqual(beforeConfig);
+		expect(afterConfig.map(({ controlStrategy: _strategy, comfort: _comfort, ...row }) => row)).toEqual(beforeConfig);
 
+		expect(afterConfig[0].comfort).toBeNull();
 		expect(await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"')).toEqual(beforeJournal);
 		const afterClaims = (await runner.query('SELECT * FROM "devices_virtual_thermostat_actuator_claims"')) as Record<
 			string,

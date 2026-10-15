@@ -30,10 +30,16 @@ entire acceptance is satisfied, even when its PR also closes other issues.
 
 - [x] VD3-1 / #1448: shared numeric eligibility, weighted mean and explicit outlier filtering.
 - [x] VD3-4 / #1451: typed group contracts and backend switch/outlet profiles.
+- [x] VD3-2 / #1449: humidity/CO₂/illuminance and binary any/all aggregates.
+- [x] VD3-3 / #1450: aggregate authoring, diagnostics and Panel presentation.
 
-Both tasks merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
+VD3-1 and VD3-4 merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
 head `0e6fe2d0f22988158867b74bc74711b76647c719`, and CodeRabbit's completed main summary reported no merge blockers.
 Admin/panel support for the new group profiles remains VD3-6; these checkmarks do not claim that UI work is delivered.
+
+VD3-2 and VD3-3 merged in [PR #1465](https://github.com/FastyBird/smart-panel/pull/1465) at
+`4f4dd1f346fa5e9508c729f5b0d11a23a416f465`. Thermostat comfort and mandatory branches are combined locally
+on that base for composed validation and parent review; neither #1454 nor #1455 is marked delivered here.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -96,10 +102,13 @@ is recorded; software checkmarks do not establish installed safety or imply rela
 
 ## VD3-10 local backend delivery
 
-The provider-neutral mandatory-branch backend foundation is implemented locally on the PR #1464 base; see the
+The provider-neutral mandatory-branch backend foundation is integrated locally on the merged PR #1465 base; see the
 [implementation and validation record](../../docs/work/virtual-thermostat/parallel-branches-validation.md).
 Migration 40 retains singleton claim/journal identities and unresolved ownership. Independent parent review of
-ownership/concurrency/protection and multi-member Admin/Panel authoring/diagnostics remain before alpha delivery.
+ownership/concurrency/protection, a separately reviewed per-member floor-protection design, and multi-member
+Admin/Panel authoring/diagnostics remain before alpha delivery. Current clients retain the single-member authoring
+flow and existing comfort controls; this integration adds no multi-member UI. Multi-Shelly floor-protected groups
+remain ineligible.
 The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
 qualification is claimed by this backend slice.
 

@@ -1535,6 +1535,66 @@ describe('virtual thermostat durable runtime', () => {
 		},
 	);
 
+	it.each(['override expiry', 'explicit OFF', 'manual configuration'] as const)(
+		'fences a queued parallel leaf and drains every journal after %s',
+		async (change) => {
+			const sibling = await addMandatoryMember();
+			runtime.request(controllerId);
+			await settle();
+			await configureComfort();
+			sample(sensorId, 22);
+			let resumeOn!: () => void;
+			onGate = new Promise<void>((resolve) => {
+				resumeOn = resolve;
+			});
+			const now = Date.now();
+			jest.spyOn(Date, 'now').mockReturnValue(now);
+			if (change === 'manual configuration') {
+				await comfort.select(controllerId, await comfortFence(), 'comfort', false);
+			} else {
+				await comfort.override(
+					controllerId,
+					await comfortFence(),
+					{ preset: 'comfort', setpoints: null, expires_at: new Date(now + 1000).toISOString() },
+					'operator',
+				);
+			}
+			await waitForOnJournal();
+			await runtime.flush();
+			const prepared = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			expect(prepared).toHaveLength(2);
+			expect(new Set(prepared.map((command) => command.decisionRevision)).size).toBe(1);
+			if (change === 'override expiry') {
+				jest.spyOn(Date, 'now').mockReturnValue(now + 1000);
+			} else {
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				if (change === 'explicit OFF') {
+					config.requestedMode = 'off';
+					config.comfort.user_off = true;
+				} else {
+					config.policy.heatingSetpoint = 21;
+					config.comfort.selected_preset = null;
+				}
+				config.revision++;
+				await database.manager.save(config);
+				events.emit('devices-virtual.thermostat.config.changed', controllerId);
+			}
+			resumeOn();
+			onGate = null;
+			await settle();
+			// Expiry persists a new configuration revision; poll again for release proof bound to that revision.
+			runtime.request(controllerId);
+			await settle();
+			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			expect(sentTargets.some((send) => send.propertyId === sibling && !send.on)).toBe(true);
+			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			expect(retained.map((command) => command.id).sort()).toEqual(prepared.map((command) => command.id).sort());
+			expect(retained.every((command) => ['confirmed', 'cancelled'].includes(command.status))).toBe(true);
+			expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
+			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => !branch.pending_on)).toBe(true);
+		},
+	);
+
 	it('keeps a partial late ON unresolved per leaf while releasing the rest of its group', async () => {
 		const sibling = await addMandatoryMember();
 		runtime.request(controllerId);
