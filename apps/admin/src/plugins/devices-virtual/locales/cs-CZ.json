@@ -263,7 +263,10 @@
 		"previewExpired": "Snímek návrhu vypršel. Před uložením spusťte náhled znovu.",
 		"detected": "Detekováno",
 		"notDetected": "Nedetekováno",
-		"snapshotQuality": "Kvalita návrhu: {quality}"
+		"snapshotQuality": "Kvalita návrhu: {quality}",
+		"extensionOperator": "Operátor důvěryhodného rozšíření",
+		"measurementOperatorMissing": "Přesná verze operátoru není dostupná. Uložená konfigurace je zachována; pro opravu vyberte dostupnou verzi.",
+		"measurementOperatorParameter": "Číselný parametr je mimo podporovaný rozsah."
 	},
 	"lightGroup": {
 		"apply": "Použít",

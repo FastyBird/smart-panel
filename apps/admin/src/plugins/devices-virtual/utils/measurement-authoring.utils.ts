@@ -11,6 +11,7 @@ import {
 	DevicesVirtualPluginValueOrigin,
 } from '../../../openapi.constants';
 
+export type NumericOperator = components['schemas']['DevicesVirtualPluginDataNumericOperator'];
 export type TransformPolicy = components['schemas']['DevicesVirtualPluginNumericTransformPolicy'];
 export type TransformConfiguration = components['schemas']['DevicesVirtualPluginConfigureTransform'];
 export type AggregateConfiguration = components['schemas']['DevicesVirtualPluginConfigureAggregate'];

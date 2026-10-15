@@ -27,6 +27,66 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 describe('measurement authoring API lifecycle', () => {
+	it('keeps missing custom versions and parameters for repair without an implicit upgrade', async () => {
+		const stored = {
+			...config(),
+			policy: {
+				operator: 'extension',
+				contractVersion: 1,
+				operatorId: '@fixture/operator:offset',
+				operatorVersion: 7,
+				parameters: { offset: 2 },
+				inputRange: { minimum: 0, maximum: 100 },
+				outputRange: { minimum: 0, maximum: 100 },
+			},
+		};
+		client.GET.mockResolvedValueOnce({ data: { data: stored } }).mockResolvedValueOnce({ data: { data: [] } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		await authoring.loadCapabilities();
+		expect(authoring.model.extensionKey).toBe('@fixture/operator:offset@7');
+		expect(authoring.model.parameters).toEqual({ offset: 2 });
+		expect(authoring.current.value).toEqual(stored);
+		expect(authoring.canPreview.value).toBe(false);
+		await authoring.save();
+		expect(client.PUT).not.toHaveBeenCalled();
+		expect(authoring.error.value).toBe('measurementOperatorMissing');
+	});
+	it('uses explicit descriptor versions and finite bounded numeric parameters', async () => {
+		const descriptor = {
+			contractVersion: 1,
+			name: 'offset',
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 2,
+			input: { quantity: 'temperature', unit: '°C' },
+			output: { quantity: 'temperature', unit: '°C' },
+			inputRange: { minimum: -40, maximum: 100 },
+			outputRange: { minimum: -50, maximum: 110 },
+			parameters: { offset: { required: true, minimum: -10, maximum: 10 } },
+		};
+		client.GET.mockResolvedValue({ data: { data: [descriptor] } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform);
+		await authoring.loadCapabilities();
+		Object.assign(authoring.model, { operator: 'extension', extensionKey: '@fixture/operator:offset@2', inputs: [{ source_property: 'physical' }] });
+		authoring.selectOperator();
+		authoring.model.parameters.offset = Infinity;
+		await authoring.previewDraft();
+		expect(client.POST).not.toHaveBeenCalled();
+		authoring.model.parameters.offset = 11;
+		await authoring.previewDraft();
+		expect(client.POST).not.toHaveBeenCalled();
+		authoring.model.parameters.offset = -10;
+		client.POST.mockResolvedValue({ data: { data: config() } });
+		await authoring.previewDraft();
+		expect(client.POST.mock.calls[0][1].body.configuration.policy).toMatchObject({
+			operator: 'extension',
+			contractVersion: 1,
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 2,
+			parameters: { offset: -10 },
+		});
+	});
+
 	it('requires an attainable aggregate minimum while preserving transform preview eligibility', () => {
 		const aggregate = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate);
 		aggregate.model.inputs = [{ source_property: 'one' }, { source_property: 'two' }];

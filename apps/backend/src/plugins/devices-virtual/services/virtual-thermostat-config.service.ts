@@ -1,7 +1,7 @@
 import { DataSource, EntityManager, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import {
@@ -40,6 +40,7 @@ import {
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import {
 	isEligibleVirtualMeasurement,
 	isEligibleVirtualTransformedTemperature,
@@ -53,6 +54,7 @@ import {
 } from './virtual-thermostat-contract.utils';
 import { validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
 import { transformContractErrors } from './virtual-transform-contract.utils';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 import { validateVirtualWindowTrendPolicy } from './virtual-window-trend.utils';
 
 export const THERMOSTAT_CONFIG_CHANGED = 'devices-virtual.thermostat.config.changed';
@@ -69,6 +71,7 @@ export class VirtualThermostatConfigService {
 		private readonly claims: VirtualThermostatClaimsService,
 		private readonly events: EventEmitter2,
 		private readonly values: PropertyValueService,
+		@Optional() private readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
 	) {}
 
 	async configure(controllerId: string, dto: ConfigureVirtualThermostatDto) {
@@ -481,10 +484,11 @@ export class VirtualThermostatConfigService {
 					: null;
 				if (
 					!transform ||
+					(input.role === 'floor' && transform.policy.operator !== VirtualNumericTransformOperator.STEINHART_HART) ||
 					!binding ||
 					transform.quantity !== String(PropertyCategory.TEMPERATURE) ||
 					transform.unit !== '°C' ||
-					transformContractErrors(transform, target.property, physical, binding).length
+					transformContractErrors(transform, target.property, physical, binding, this.resolver).length
 				)
 					fail(
 						'Transformed thermostat temperatures require a configured Celsius single-physical-input producer contract.',

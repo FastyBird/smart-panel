@@ -263,7 +263,10 @@
 		"previewExpired": "The draft snapshot expired. Preview again before saving.",
 		"detected": "Detected",
 		"notDetected": "Not detected",
-		"snapshotQuality": "Draft quality: {quality}"
+		"snapshotQuality": "Draft quality: {quality}",
+		"extensionOperator": "Trusted extension operator",
+		"measurementOperatorMissing": "The exact operator version is unavailable. The stored policy is preserved; select an available version to repair it.",
+		"measurementOperatorParameter": "Numeric parameter is outside its supported domain."
 	},
 	"lightGroup": {
 		"apply": "Apply",

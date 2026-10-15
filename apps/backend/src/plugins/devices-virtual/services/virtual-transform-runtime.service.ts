@@ -20,8 +20,9 @@ import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { evaluateVirtualNumericTransform } from './virtual-numeric-transform.utils';
+import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { transformContractErrors } from './virtual-transform-contract.utils';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 
 export interface TransformEvaluation {
 	value: number | null;
@@ -37,6 +38,7 @@ interface RuntimeOutput {
 	property: VirtualChannelPropertyEntity;
 	revision: number;
 	lease: PropertyProducerLease;
+	operatorId?: string;
 }
 
 /** Process-local fresh evidence only. Configuration and historical output UUIDs remain durable. */
@@ -47,6 +49,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 	private readonly stopListeners: (() => void)[] = [];
 	private timer?: NodeJS.Timeout;
 	private active = false;
+	private readonly operatorBarriers = new Map<string, number>();
 	private requested = 0;
 	private completed = 0;
 	private readonly dirty = new Set<string>();
@@ -64,11 +67,24 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly events: EventEmitter2,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+		@Optional() private readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
 	) {}
 
 	async onApplicationBootstrap(): Promise<void> {
 		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on' || this.active) return;
 		this.active = true;
+		const operatorsChanged = (ids: readonly string[]) => {
+			for (const id of ids) this.operatorBarriers.set(id, this.values.currentSampleGeneration());
+			for (const [id, output] of this.outputs)
+				if (ids.includes(output.operatorId)) {
+					for (const [sourceId, outputs] of this.sourceOutputs)
+						if (outputs.has(id)) this.requireFreshSample(id, sourceId);
+					this.producers.invalidate(output.lease, ['operator_unavailable']);
+				}
+			this.requestRecompute();
+		};
+		operatorsChanged(this.resolver.registry?.catalogue().map((d) => d.operatorId) ?? []);
+		if (this.resolver.registry) this.stopListeners.push(this.resolver.registry.observe(operatorsChanged));
 		for (const event of [
 			EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
 			EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
@@ -195,6 +211,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 		this.sourceSequences.clear();
 		this.freshBarriers.clear();
 		this.sourceOwners.clear();
+		this.operatorBarriers.clear();
 	}
 
 	isActive(): boolean {
@@ -289,6 +306,9 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 		for (const config of configs) {
 			if (!this.current(generation)) return;
 			if (!this.dirty.delete(config.outputPropertyId)) continue;
+			const operatorScope = this.resolver.capture(config.policy);
+			const operatorId =
+				config.policy.operator === VirtualNumericTransformOperator.EXTENSION ? config.policy.operatorId : undefined;
 			const property = await this.dataSource.manager.findOne(VirtualChannelPropertyEntity, {
 				where: { id: config.outputPropertyId },
 				relations: ['channel', 'channel.device'],
@@ -299,10 +319,14 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			if (!output || output.revision !== config.revision || !this.producers.isAvailable(output.lease)) {
 				output = {
 					property,
+					operatorId,
 					revision: config.revision,
 					lease: this.producers.register(property, config.revision, {
-						isCurrent: this.graph.capturePublishGuard(),
-						reason: 'graph_validation_pending',
+						isCurrent: (() => {
+							const graphCurrent = this.graph.capturePublishGuard();
+							return () => graphCurrent() && (!operatorId || !!operatorScope?.isCurrent());
+						})(),
+						reason: operatorId ? 'operator_unavailable' : 'graph_validation_pending',
 					}),
 				};
 				this.outputs.set(property.id, output);
@@ -355,7 +379,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 				expiresAt: null,
 				ageSeconds: sample ? (now.getTime() - sample.sampledAt.getTime()) / 1000 : null,
 			};
-			const contractErrors = transformContractErrors(config, property, source, binding);
+			const contractErrors = transformContractErrors(config, property, source, binding, this.resolver);
 			if (!contractErrors.length) {
 				property.unit = config.unit;
 				property.measurementQuantity = config.quantity;
@@ -368,7 +392,11 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			else if (device?.enabled === false) result.reasons = ['disabled'];
 			else if (status !== ConnectionState.UNKNOWN && !OnlineDeviceState.includes(status)) result.reasons = ['offline'];
 			else if (!sample) result.reasons = ['invalid'];
-			else if (!hasFreshEvidence || sample.receivedAt.getTime() < config.configuredAt.getTime())
+			else if (
+				!hasFreshEvidence ||
+				(operatorId && sample.acceptanceGeneration <= (this.operatorBarriers.get(operatorId) ?? 0)) ||
+				sample.receivedAt.getTime() < config.configuredAt.getTime()
+			)
 				result.reasons = ['awaiting_fresh_sample'];
 			else if (result.ageSeconds < 0 || result.ageSeconds >= config.maximumAgeSeconds) result.reasons = ['stale'];
 			else if (
@@ -379,7 +407,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			)
 				result.reasons = ['invalid'];
 			else {
-				const computed = evaluateVirtualNumericTransform(config.policy, sample.value);
+				const computed = this.resolver.evaluate(config.policy, sample.value, operatorScope);
 				if (computed.reason) result.reasons = [computed.reason];
 				else if (
 					!validatePropertyCommandValue(

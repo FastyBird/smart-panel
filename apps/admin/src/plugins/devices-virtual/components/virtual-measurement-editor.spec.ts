@@ -278,3 +278,41 @@ describe('backend-evaluated snapshot presentation', () => {
 		wrapper.unmount();
 	});
 });
+
+describe('trusted numeric operator form', () => {
+	it('renders actual bounded numeric inputs and canonical domains from the catalogue', async () => {
+		mocks.GET.mockResolvedValue({
+			data: {
+				data: [
+					{
+						contractVersion: 1,
+						name: 'offset',
+						operatorId: '@fixture/operator:offset',
+						operatorVersion: 1,
+						input: { quantity: 'temperature', unit: '°C' },
+						output: { quantity: 'temperature', unit: '°C' },
+						inputRange: { minimum: -40, maximum: 100 },
+						outputRange: { minimum: -50, maximum: 110 },
+						parameters: { offset: { required: true, minimum: -10, maximum: 10 } },
+					},
+				],
+			},
+		});
+		const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform } });
+		await flushPromises();
+		const operator = wrapper
+			.findAllComponents(ElSelect)
+			.find((select) => select.findAllComponents(ElOption).some((option) => option.props('value') === 'extension'))!;
+		operator.vm.$emit('update:modelValue', 'extension');
+		await flushPromises();
+		const custom = wrapper.findAllComponents(ElSelect).find((select) => select.attributes('data-test-id') === 'numeric-operator')!;
+		custom.vm.$emit('update:modelValue', '@fixture/operator:offset@1');
+		custom.vm.$emit('change', '@fixture/operator:offset@1');
+		await flushPromises();
+		const input = wrapper.findAllComponents(ElInputNumber).find((field) => field.attributes('data-test-id') === 'numeric-parameter-offset')!;
+		expect(input.props('min')).toBe(-10);
+		expect(input.props('max')).toBe(10);
+		expect(wrapper.get('[data-test-id="numeric-operator-domains"]').text()).toContain('temperature (°C)');
+		wrapper.unmount();
+	});
+});

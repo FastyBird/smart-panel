@@ -29,6 +29,8 @@ export interface IManagedExtensionService {
 	readonly serviceId: string;
 	readonly activationPolicy?: ManagedServiceActivationPolicy;
 
+	/** Close live publication authority before coordinated shutdown waits on other services. Must be synchronous and idempotent. */
+	revokeCurrentAuthority?(): void;
 	start(): Promise<void>;
 	stop(): Promise<void>;
 	getState(): ServiceState;

@@ -67,6 +67,7 @@ import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualNumericOperatorRegistry } from './virtual-numeric-operator.registry';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import {
 	ThermostatCommandAuthority,
@@ -75,6 +76,7 @@ import {
 } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 
 jest.setTimeout(30_000);
 
@@ -1356,6 +1358,49 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		expect(revised.sources.find((source) => source.role === 'floor').contract_fingerprint).not.toBe(
 			floor.contract_fingerprint,
 		);
+		const operators = new VirtualNumericOperatorRegistry();
+		operators.activate('@fixture/floor', [
+			{
+				contractVersion: 1,
+				name: 'steinhart_hart',
+				operatorVersion: 1,
+				input: { quantity: 'value', unit: 'V' },
+				output: { quantity: 'temperature', unit: '°C' },
+				inputRange: { minimum: 0, maximum: 10 },
+				outputRange: { minimum: -100, maximum: 150 },
+				parameters: {},
+				evaluate: () => 20,
+			},
+		]);
+		await database.manager.update(
+			VirtualTransformConfigEntity,
+			{ outputPropertyId: transformedFloor },
+			{
+				policy: {
+					operator: VirtualNumericTransformOperator.EXTENSION,
+					contractVersion: 1,
+					operatorId: '@fixture/floor:steinhart_hart',
+					operatorVersion: 1,
+					parameters: {},
+					inputRange: { minimum: 0, maximum: 10 },
+					outputRange: { minimum: -100, maximum: 150 },
+				},
+			},
+		);
+		const customConfigs = new VirtualThermostatConfigService(
+			database,
+			structure,
+			graph,
+			claims,
+			events,
+			values,
+			new VirtualTransformResolver(operators),
+		);
+		await expect(customConfigs.preview(controller, input)).rejects.toThrow('Transformed thermostat temperatures');
+		await expect(customConfigs.configure(controller, input)).rejects.toThrow('Transformed thermostat temperatures');
+		expect(
+			(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+		).toBe(1);
 	});
 
 	it('only an internal qualified OFF and drained-ON proof frees a releasing reservation', async () => {

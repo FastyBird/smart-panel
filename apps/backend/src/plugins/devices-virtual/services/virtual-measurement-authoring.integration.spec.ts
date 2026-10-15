@@ -45,6 +45,7 @@ import { CreateVirtualChannelDto } from '../dto/create-channel.dto';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
 import { CreateVirtualAggregateProducerDto } from '../dto/measurement-authoring.dto';
 import { PreviewVirtualTransformProducerDto } from '../dto/measurement-authoring.dto';
+import { VirtualNumericTransformPolicyDto } from '../dto/transform-config.dto';
 import { UpdateVirtualChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { UpdateVirtualChannelDto } from '../dto/update-channel.dto';
 import { UpdateVirtualDeviceDto } from '../dto/update-device.dto';
@@ -704,8 +705,8 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 			beta: 3950,
 			thermistorLeg: 'low',
 		});
-		delete dto.configuration.policy.scale;
-		delete dto.configuration.policy.offset;
+		delete (dto.configuration.policy as VirtualNumericTransformPolicyDto).scale;
+		delete (dto.configuration.policy as VirtualNumericTransformPolicyDto).offset;
 		dto.previewInput = 1.65;
 		const before = await snapshot(),
 			result = await authoring.previewTransform(dto);
