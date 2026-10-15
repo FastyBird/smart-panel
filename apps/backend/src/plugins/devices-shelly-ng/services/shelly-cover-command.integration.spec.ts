@@ -1421,6 +1421,11 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		const migration = new AddShellyCoverRecoveries1000000000042();
 		await migration.down(runner);
 		await migration.up(runner);
+		const table = await runner.getTable('devices_shelly_ng_cover_recoveries');
+		const column = db.getMetadata(ShellyCoverRecoveryEntity).findColumnWithPropertyName('observedPosition');
+		expect(table.findColumnByName('observedPosition').type).toBe('real');
+		expect(column.type).toBe(table.findColumnByName('observedPosition').type);
+		transports[0].state.current_pos = 40.25;
 		await reserveRecovery();
 		const { controller, dto } = await recoveryContext();
 		await controller.recover(
@@ -1432,6 +1437,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		);
 		await expect(migration.down(runner)).rejects.toThrow('Cannot discard');
 		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(1);
+		expect((await db.manager.find(ShellyCoverRecoveryEntity))[0].observedPosition).toBe(40.25);
 		await runner.release();
 	});
 	it.each(['queued', 'auth-retry'] as const)(
