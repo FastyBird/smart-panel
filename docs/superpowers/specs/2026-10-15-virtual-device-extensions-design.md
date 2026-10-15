@@ -1,6 +1,6 @@
 # Virtual device extensions and automation
 
-Status: implementation proposal
+Status: planned — independently reviewed implementation contract
 Date: 2026-10-15
 Tracking: see [delivery epic](../../../tasks/epics/EPIC-VIRTUAL-DEVICE-EXTENSIONS.md)
 Baseline: `de474d2ebca9dd45ace852caaa8bf97698f54b94` (#1446)
