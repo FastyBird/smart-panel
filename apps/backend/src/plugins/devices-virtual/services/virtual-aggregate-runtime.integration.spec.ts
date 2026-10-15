@@ -44,11 +44,13 @@ import {
 	VirtualAggregateInputEntity,
 	VirtualAggregateOperator,
 } from '../entities/virtual-producer.entity';
+import { VirtualIndexMaintenanceListener } from '../listeners/virtual-index-maintenance.listener';
 
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
+import { VirtualPropertyIndexService } from './virtual-property-index.service';
 import { VirtualValueSourceService } from './virtual-value-source.service';
 
 jest.setTimeout(30000);
@@ -350,6 +352,119 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
 		listener.handlePropertyValueChanged(updated);
 		expect(await reading.handleGetRequest()).toBe(22);
+		coldProducers.onModuleDestroy();
+	});
+
+	it('fences a previously local constant after the committed graph changes its origin to SOURCE', async () => {
+		const physical = await measurement(),
+			local = await measurement(VirtualDeviceMode.PROJECTION);
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelPropertyEntity, local.id, {
+				valueOrigin: VirtualValueOrigin.LOCAL,
+				category: PropertyCategory.GENERIC,
+			}),
+		);
+		const bound = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: local.id },
+			relations: ['channel', 'channel.device'],
+		});
+		bound.value = new PropertyValueState(19);
+		const sources = new PropertyValueSourceRegistryService();
+		sources.register(new VirtualValueSourceService(graph));
+		const adapter = new HomeKitPropertyStateService(new PropertyProducerRegistryService(), sources);
+		expect(adapter.read(bound)).toMatchObject({ value: 19, unavailable: false });
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelPropertyEntity, local.id, {
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId: physical.id,
+			}),
+		);
+		expect(adapter.read(bound)).toMatchObject({ unavailable: true, reasons: ['graph_source_changed'] });
+	});
+	it('fences source deletion synchronously inside a real transaction and repairs rollback before orphan events', async () => {
+		jest.useRealTimers();
+		const physical = await measurement(),
+			alias = await measurement(VirtualDeviceMode.PROJECTION);
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelPropertyEntity, alias.id, {
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId: physical.id,
+			}),
+		);
+		const bound = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: alias.id },
+			relations: ['channel', 'channel.device'],
+		});
+		bound.value = new PropertyValueState(19);
+		const sources = new PropertyValueSourceRegistryService();
+		sources.register(new VirtualValueSourceService(graph));
+		const coldProducers = new PropertyProducerRegistryService();
+		const registry = new HomeKitMapperRegistryService(new HomeKitPropertyStateService(coldProducers, sources));
+		const channel = bound.channel as ChannelEntity,
+			device = channel.device as DeviceEntity;
+		channel.properties = [bound];
+		device.channels = [channel];
+		device.status = { online: true } as DeviceEntity['status'];
+		const staged = registry.buildAccessory(
+			device,
+			new HomeKitCommandDispatcher({ canExecuteCompositeProperty: () => false } as never),
+		);
+		registry.commitStaged(staged);
+		const reading = staged.accessory
+			.getService(Service.TemperatureSensor)
+			.getCharacteristic(Characteristic.CurrentTemperature);
+		const maintenance = new VirtualIndexMaintenanceListener(
+			new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity), graph),
+			{ recompute: jest.fn().mockResolvedValue(undefined) } as never,
+			{ findAll: jest.fn().mockResolvedValue([]), findOne: jest.fn().mockResolvedValue(null) } as never,
+			{} as never,
+			{} as never,
+			new DeviceStructureLockService(),
+			events,
+			database,
+			database.getRepository(DeviceEntity),
+			graph,
+		);
+		events.on(EventType.CHANNEL_PROPERTY_DELETED, () => maintenance.handleSourceDeleted());
+		const settled = async () => {
+			const deadline = Date.now() + 3000;
+			while (
+				(!graph.isValidated() || (maintenance as unknown as { running: boolean }).running) &&
+				Date.now() < deadline
+			)
+				await new Promise<void>((resolve) => setTimeout(resolve, 5));
+			expect(graph.isValidated()).toBe(true);
+			expect((maintenance as unknown as { running: boolean }).running).toBe(false);
+		};
+		for (const rollback of [true, false]) {
+			let entered!: () => void, release!: () => void;
+			const inside = new Promise<void>((resolve) => {
+					entered = resolve;
+				}),
+				gate = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+			const transaction = database.transaction(async (manager) => {
+				await manager.delete(ChannelPropertyEntity, physical.id);
+				events.emit(EventType.CHANNEL_PROPERTY_DELETED, physical);
+				entered();
+				await gate;
+				if (rollback) throw new Error('test rollback');
+			});
+			// Observe and attach rejection handling before releasing the deliberately paused transaction.
+			const completion = transaction.then(
+				() => 'committed',
+				() => 'rolled back',
+			);
+			await inside;
+			expect(graph.isValidated()).toBe(false);
+			await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			release();
+			expect(await completion).toBe(rollback ? 'rolled back' : 'committed');
+			await settled();
+			if (rollback) expect(await reading.handleGetRequest()).toBe(19);
+			else await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		}
 		coldProducers.onModuleDestroy();
 	});
 	it('HomeKit follows real aggregate quorum, degraded evidence, expiry at GET and recovery', async () => {

@@ -1,6 +1,6 @@
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -14,6 +14,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { findEnergySourceType } from '../../../modules/energy/utils/energy-source-type.utils';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import { VirtualDependencyGraphService } from '../services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from '../services/virtual-devices.service';
 import { VirtualIndexRebuildResult, VirtualPropertyIndexService } from '../services/virtual-property-index.service';
 
@@ -110,6 +111,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 
 	private running = false;
 	private pending = false;
+	private graphRefreshPending = false;
 	private repairTimer: NodeJS.Timeout | null = null;
 	private repairPasses = 0;
 
@@ -192,6 +194,7 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		// express. See unhideSource() for why that needs a write outside DevicesService.update().
 		@InjectRepository(DeviceEntity)
 		private readonly devicesRepository: Repository<DeviceEntity>,
+		@Optional() private readonly graph?: VirtualDependencyGraphService,
 	) {}
 
 	/**
@@ -299,6 +302,21 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 		outsideSqliteTransaction(this.dataSource, () => void this.runRebuildLoop());
 	}
 
+	@OnEvent(EventType.DEVICE_DELETED)
+	@OnEvent(EventType.CHANNEL_DELETED)
+	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
+	@OnEvent(EventType.DEVICE_RESET)
+	@OnEvent(EventType.CHANNEL_PROPERTY_RESET)
+	@OnEvent(EventType.MODULE_RESET)
+	handleSourceDeleted(): void {
+		if (!this.graph) return;
+		// Deletion events can run inside a transaction. Close authority immediately without I/O;
+		// the existing detached, settled pass repairs this fence after either commit or rollback.
+		this.graph.invalidateValidation();
+		this.graphRefreshPending = true;
+		this.handleStructuralChange();
+	}
+
 	/**
 	 * Runs rebuild() passes until one completes with no further event pending. Defers past whatever
 	 * transaction is open (see deferPastOpenTransaction()) before *every* pass, not just the first —
@@ -358,6 +376,20 @@ export class VirtualIndexMaintenanceListener implements OnApplicationBootstrap {
 				const settled = await this.deferPastOpenTransaction();
 
 				this.pending = false;
+				if (settled && this.graphRefreshPending) {
+					// Clear before awaiting: another deletion must retain its own pending refresh and
+					// invalidate this evaluation's generation rather than be acknowledged by this pass.
+					this.graphRefreshPending = false;
+					try {
+						await this.graph.refreshQuarantine();
+					} catch (error) {
+						this.graphRefreshPending = true;
+						this.logger.error(
+							'Failed to refresh virtual value-source authority after deletion; reads remain unavailable until a successful settled pass.',
+							error instanceof Error ? error : undefined,
+						);
+					}
+				}
 
 				// First, and before the rebuild: a released meter is unattributed until somebody takes it,
 				// and every reading that arrives in the meantime is billed to the physical device for good.

@@ -43,6 +43,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 
+	/** Synchronous structural-event fence; a settled owner must refresh after commit or rollback. */
+	invalidateValidation(): void {
+		this.validationGeneration++;
+		this.validationPending = true;
+	}
+
 	/** Applies committed validation before returning; runtime evaluation waits for the caller's activation events. */
 	async withStructuralWrite<T>(
 		operation: (manager: EntityManager) => Promise<T>,
