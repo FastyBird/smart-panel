@@ -3,7 +3,7 @@
 ID: EPIC-VIRTUAL-DEVICE-EXTENSIONS
 Type: epic
 Scope: backend, admin, panel, spec, sdk
-Status: planned
+Status: in_progress
 Tracking: [#1447](https://github.com/FastyBird/smart-panel/issues/1447)
 
 ## Objective
@@ -18,12 +18,22 @@ The user explicitly selected both Home Assistant climate and Zigbee2MQTT native-
 
 Rows track independently verifiable acceptance, not one PR per issue. The user prefers fewer, larger cohesive PRs
 because CodeRabbit provides one review per hour. Assemble related issue work and its tests/documentation into a shared
-delivery PR after local implementation and independent review. The first combined delivery is PR #1464, covering the
-plan plus VD3-1 and VD3-4. Keep it draft until both implementations and composed checks are ready. Split later work only
+delivery PR after local implementation and independent review. The first combined delivery, [PR #1464](https://github.com/FastyBird/smart-panel/pull/1464), merged the
+plan plus VD3-1 and VD3-4 after composed checks and current-head review passed. Keep subsequent PRs draft until their
+complete implementations and composed checks are ready. Split later work only
 where dependency, compatibility or the actual reviewer file limit requires a separate batch.
 
 Checkboxes mean merged, tested software, not candidate code or installed qualification. A child closes only after its
 entire acceptance is satisfied, even when its PR also closes other issues.
+
+### Merged progress
+
+- [x] VD3-1 / #1448: shared numeric eligibility, weighted mean and explicit outlier filtering.
+- [x] VD3-4 / #1451: typed group contracts and backend switch/outlet profiles.
+
+Both tasks merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
+head `0e6fe2d0f22988158867b74bc74711b76647c719`, and CodeRabbit's completed main summary reported no merge blockers.
+Admin/panel support for the new group profiles remains VD3-6; these checkmarks do not claim that UI work is delivered.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
