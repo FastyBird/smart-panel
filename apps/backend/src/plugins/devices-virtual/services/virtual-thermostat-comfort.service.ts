@@ -14,7 +14,6 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import {
 	ThermostatComfortConfiguration,
-	ThermostatComfortOverride,
 	ThermostatPreset,
 	ThermostatSetpoints,
 	effectiveThermostatComfort,
@@ -81,8 +80,8 @@ export class VirtualThermostatComfortService {
 				monotonic = performance.now();
 			const created = Date.parse(override.created_at),
 				expiry = Date.parse(override.expires_at);
-			const duration = override.original_duration_ms ?? expiry - created;
-			const watermark = override.wall_watermark_ms ?? created;
+			const duration = override.original_duration_ms === undefined ? expiry - created : override.original_duration_ms;
+			const watermark = override.wall_watermark_ms === undefined ? created : override.wall_watermark_ms;
 			let lease = this.leases.get(controllerId);
 			if (!lease || lease.id !== override.id) {
 				const valid =

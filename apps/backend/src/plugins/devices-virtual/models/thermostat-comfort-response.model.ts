@@ -1,6 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { ThermostatPreset } from '../services/virtual-thermostat-comfort.utils';
@@ -29,7 +29,11 @@ export class ThermostatComfortSetpointsModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatComfortPreset' })
 export class ThermostatComfortPresetModel {
-	@ApiProperty({ description: 'Explicit preset name', enum: ['comfort', 'eco', 'away'] })
+	@ApiProperty({
+		description: 'Explicit preset name',
+		enumName: 'DevicesVirtualPluginThermostatPreset',
+		enum: ['comfort', 'eco', 'away'],
+	})
 	@Expose()
 	preset: ThermostatPreset;
 
@@ -50,7 +54,8 @@ export class ThermostatEffectiveComfortModel extends ThermostatComfortSetpointsM
 
 	@ApiProperty({
 		description: 'Controller preset distinct from HVAC mode',
-		enum: ['comfort', 'eco', 'away', null],
+		type: String,
+		allOf: [{ $ref: getSchemaPath('DevicesVirtualPluginThermostatPreset') }],
 		nullable: true,
 	})
 	@Expose()
@@ -104,7 +109,8 @@ export class ThermostatComfortOverrideModel {
 
 	@ApiProperty({
 		description: 'Controller preset distinct from HVAC mode',
-		enum: ['comfort', 'eco', 'away', null],
+		type: String,
+		allOf: [{ $ref: getSchemaPath('DevicesVirtualPluginThermostatPreset') }],
 		nullable: true,
 	})
 	@Expose()
@@ -132,7 +138,8 @@ export class ThermostatComfortOverrideModel {
 export class ThermostatAutomationBaselineModel {
 	@ApiProperty({
 		description: 'Preset selected by the trusted bridge',
-		enum: ['comfort', 'eco', 'away', null],
+		type: String,
+		allOf: [{ $ref: getSchemaPath('DevicesVirtualPluginThermostatPreset') }],
 		nullable: true,
 	})
 	@Expose()
@@ -182,7 +189,12 @@ export class ThermostatComfortConfigurationModel {
 	@Type(() => ThermostatComfortPresetModel)
 	presets: ThermostatComfortPresetModel[];
 
-	@ApiProperty({ description: 'Selected baseline preset', enum: ['comfort', 'eco', 'away', null], nullable: true })
+	@ApiProperty({
+		description: 'Selected baseline preset',
+		type: String,
+		allOf: [{ $ref: getSchemaPath('DevicesVirtualPluginThermostatPreset') }],
+		nullable: true,
+	})
 	@Expose()
 	selected_preset: ThermostatPreset | null;
 

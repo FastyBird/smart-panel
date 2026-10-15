@@ -15,7 +15,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema, PickType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, PickType, getSchemaPath } from '@nestjs/swagger';
 
 import { ThermostatPreset } from '../services/virtual-thermostat-comfort.utils';
 
@@ -74,6 +74,7 @@ export class ThermostatComfortSetpointsDto {
 export class ThermostatComfortPresetDto {
 	@ApiProperty({
 		description: 'Controller preset, distinct from HVAC mode or space activity',
+		enumName: 'DevicesVirtualPluginThermostatPreset',
 		enum: ['comfort', 'eco', 'away'],
 	})
 	@Expose()
@@ -138,7 +139,8 @@ export class ConfigureThermostatComfortDto extends ThermostatComfortFenceDto {
 export class SelectThermostatPresetDto extends ThermostatComfortFenceDto {
 	@ApiProperty({
 		description: 'Baseline preset, or null for current manual baseline',
-		enum: ['comfort', 'eco', 'away', null],
+		type: String,
+		allOf: [{ $ref: getSchemaPath('DevicesVirtualPluginThermostatPreset') }],
 		nullable: true,
 	})
 	@Expose()
@@ -158,7 +160,8 @@ export class SelectThermostatPresetDto extends ThermostatComfortFenceDto {
 export class CreateThermostatOverrideDto extends ThermostatComfortFenceDto {
 	@ApiProperty({
 		description: 'Preset to resolve at creation, mutually exclusive with explicit setpoints',
-		enum: ['comfort', 'eco', 'away', null],
+		type: String,
+		allOf: [{ $ref: getSchemaPath('DevicesVirtualPluginThermostatPreset') }],
 		nullable: true,
 	})
 	@Expose()

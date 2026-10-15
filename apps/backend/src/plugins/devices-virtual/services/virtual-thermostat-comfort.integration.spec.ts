@@ -275,6 +275,21 @@ describe('thermostat durable comfort lifecycle', () => {
 		expect((await comfort.get(id)).effective.heating_setpoint).toBe(20);
 	});
 
+	it('inhibits invalid persisted lifetime evidence instead of treating explicit null as missing legacy metadata', async () => {
+		await configured();
+		await overridden();
+		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		row.comfort.temporary_override.original_duration_ms = null;
+		await database.manager.save(row);
+		comfort = makeService();
+		const result = await comfort.get(id);
+		expect(result.configuration.temporary_override.status).toBe('clock_uncertain');
+		expect(result.effective.source).toBe('override');
+		expect(
+			comfort.isCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
+		).toBe(false);
+	});
+
 	it('bounds process state through replacements, cancellation, expiry and stale dispatch snapshots', async () => {
 		await configured();
 		const snapshots: VirtualThermostatConfigEntity[] = [];
