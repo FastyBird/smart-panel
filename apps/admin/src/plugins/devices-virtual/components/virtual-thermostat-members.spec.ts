@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { type ThermostatConfiguration, draftFromConfiguration } from '../services/thermostat-authoring';
-import type { ThermostatMemberRuntime } from '../services/thermostat-members';
+import { ThermostatMemberFreshness, type ThermostatMemberRuntime } from '../services/thermostat-members';
 
 import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatMemberInstallation from './thermostat-member-installation.vue';
@@ -407,6 +407,7 @@ describe('actual mandatory-member authoring forms', () => {
 					status: 'fresh',
 					quality: 'good',
 					temperature: 22,
+					sampled_at: new Date(0).toISOString(),
 					age_seconds: 0,
 					maximum_age_seconds: 10,
 					expires_at: new Date(10000).toISOString(),
@@ -450,6 +451,113 @@ describe('actual mandatory-member authoring forms', () => {
 		await view.setProps({ now: 30000 });
 		expect(view.text()).toMatch(/devicesVirtualPlugin\.members\.observed:\s*unknown/);
 		expect(view.text()).toMatch(/devicesVirtualPlugin\.members\.qualification:\s*unknown/);
+	});
+	it('keeps separate claim sample fences across older reports, expiry, loading and cached refetches', async () => {
+		const freshness = new ThermostatMemberFreshness();
+		const report = (activityAt: number, protectionAt = activityAt, qualification: boolean | null = false) =>
+			({
+				claim: 'claim-0',
+				activity: 'off',
+				qualification_ready: qualification,
+				activity_sampled_at: new Date(activityAt).toISOString(),
+				activity_expires_at: new Date(activityAt + 30000).toISOString(),
+				protection: {
+					status: 'fresh',
+					quality: 'good',
+					temperature: 22,
+					sampled_at: new Date(protectionAt).toISOString(),
+					expires_at: new Date(protectionAt + 10000).toISOString(),
+					age_seconds: 0,
+					maximum_age_seconds: 10,
+					ready: true,
+					latched: false,
+					reasons: [],
+				},
+			}) as unknown as ThermostatMemberRuntime;
+		const props = {
+			member: draftFromConfiguration(configuration() as unknown as ThermostatConfiguration).actuators[0],
+			parallel: true,
+			configurationRevision: 3,
+			requestedLimit: 28,
+			disabled: true,
+			freshness,
+			receivedAt: 2000,
+			now: 2000,
+			runtime: report(2000),
+		};
+		const mountCard = () =>
+			mount(ThermostatMemberCard, { props, global: { stubs: { ThermostatMemberInstallation: true, ThermostatMemberRecovery: true } } });
+		view = mountCard();
+		expect(view.text()).toMatch(/members\.qualification:\s*false/);
+		expect(view.text()).toContain('22 °C');
+		await view.setProps({ runtime: report(1000), now: 3000, receivedAt: 3000 });
+		expect(view.text()).toMatch(/members\.observed:\s*unknown/);
+		expect(view.text()).not.toContain('22 °C');
+		// A new physical relay report does not renew the independent, older protective sample.
+		await view.setProps({ runtime: report(4000, 1000), now: 4000, receivedAt: 4000 });
+		expect(view.text()).toMatch(/members\.observed:\s*off/);
+		expect(view.text()).not.toContain('22 °C');
+		await view.setProps({ runtime: report(4000, 5000), now: 5000, receivedAt: 5000 });
+		expect(view.text()).toContain('22 °C');
+		await view.setProps({ now: 34000 });
+		expect(view.text()).toMatch(/members\.observed:\s*unknown/);
+		expect(view.text()).not.toContain('22 °C');
+		await view.setProps({ runtime: null });
+		view.unmount();
+		view = mountCard(); // The editor's cache survives a loading/remount boundary.
+		await view.setProps({ runtime: report(4000, 5000), now: 6000, receivedAt: 6000 });
+		expect(view.text()).toMatch(/members\.observed:\s*unknown/);
+		expect(view.text()).not.toContain('22 °C');
+		await view.setProps({ runtime: report(7000, 7000, null), now: 7000, receivedAt: 7000 });
+		expect(view.text()).toMatch(/members\.observed:\s*off/);
+		expect(view.text()).toMatch(/members\.qualification:\s*unknown/);
+		expect(view.text()).toContain('22 °C');
+		expect(freshness.size).toBe(1);
+	});
+	it('keeps the editor cache through real reloads and runtime-only claims until authoritative removal or device change', async () => {
+		const get = mocks.get.getMockImplementation()!;
+		let released = false;
+		const sample = {
+			claim: 'claim-0',
+			claim_state: 'reserved',
+			activity: 'off',
+			qualification_ready: false,
+			activity_sampled_at: new Date(0).toISOString(),
+			activity_expires_at: new Date(30000).toISOString(),
+		} as unknown as ThermostatMemberRuntime;
+		mocks.get.mockImplementation((path: string, options: { params: { path: Record<string, string> } }) =>
+			path.endsWith('/runtime')
+				? Promise.resolve({
+						data: {
+							data: {
+								branches: released ? [] : [sample, { ...sample, claim: 'runtime-only', claim_state: 'releasing' }],
+								configuration_revision: current.revision,
+							},
+						},
+					})
+				: get(path, options)
+		);
+		const editor = await open();
+		const cache = editor.findComponent(ThermostatMemberCard).props('freshness')!;
+		cache.observation('runtime-only', sample, 0, 0);
+		cache.observation('claim-0', sample, 0, 0);
+		cache.expire(30000);
+		// Actual configuration reload destroys and recreates the member cards.
+		await button(editor, 'Reload').trigger('click');
+		await flushPromises();
+		expect(editor.findComponent(ThermostatMemberCard).props('freshness')).toBe(cache);
+		expect(cache.size).toBe(2);
+		expect(cache.observation('runtime-only', sample, 1000, 1000).activity).toBe('unknown');
+		// Only a current authoritative runtime without the old claims confirms their removal.
+		released = true;
+		current = { ...current, revision: current.revision + 1, actuators: current.actuators.slice(1) };
+		await button(editor, 'Reload').trigger('click');
+		await flushPromises();
+		expect(cache.size).toBe(0);
+		cache.observation('claim-1', sample, 0, 0);
+		await editor.setProps({ deviceId: 'another-controller' });
+		await flushPromises();
+		expect(cache.size).toBe(0);
 	});
 	it('withholds structural authoring for an ordinary user', async () => {
 		mocks.profile.role = 'user';

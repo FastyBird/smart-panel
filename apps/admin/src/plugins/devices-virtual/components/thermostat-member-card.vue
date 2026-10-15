@@ -147,7 +147,7 @@ import { ElAlert, ElButton, ElCard, ElCheckbox, ElFormItem, ElInputNumber, ElOpt
 import { useBackend } from '../../../common';
 import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
 import type { ThermostatMemberDraft } from '../services/thermostat-authoring';
-import { type ThermostatMemberContext, type ThermostatMemberRuntime, memberObservation, memberReading } from '../services/thermostat-members';
+import { type ThermostatMemberContext, ThermostatMemberFreshness, type ThermostatMemberRuntime } from '../services/thermostat-members';
 
 import ThermostatMemberInstallation from './thermostat-member-installation.vue';
 import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
@@ -164,6 +164,7 @@ const props = defineProps<{
 	runtime: ThermostatMemberRuntime | null;
 	receivedAt: number;
 	now: number;
+	freshness?: ThermostatMemberFreshness;
 }>();
 const emit = defineEmits<{ remove: []; changed: [] }>();
 const { t } = useI18n();
@@ -184,8 +185,10 @@ const context = useThermostatMemberContext<ThermostatMemberContext>(sourceKey, a
 	return data.data;
 });
 const selected = computed(() => context.value.value?.candidates.find((entry) => entry.property === props.member.protection?.source_property));
-const observation = computed(() => memberObservation(props.runtime, props.receivedAt, props.now));
-const reading = computed(() => memberReading(props.runtime, props.receivedAt, props.now));
+const localFreshness = new ThermostatMemberFreshness();
+const claimKey = computed(() => props.member.retained?.id ?? props.member.source_property ?? 'unbound');
+const observation = computed(() => (props.freshness ?? localFreshness).observation(claimKey.value, props.runtime, props.receivedAt, props.now));
+const reading = computed(() => (props.freshness ?? localFreshness).reading(claimKey.value, props.runtime, props.receivedAt, props.now));
 const member = toRef(props, 'member');
 const adopt = (enabled: string | number | boolean) => {
 	if (enabled === true && !member.value.protection)

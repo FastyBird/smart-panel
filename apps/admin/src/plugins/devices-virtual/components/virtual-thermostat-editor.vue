@@ -283,6 +283,7 @@
 					:disabled="busy"
 					:runtime="memberRuntime.value.value?.snapshot.branches.find((branch) => branch.claim === actuator.retained?.id) ?? null"
 					:setup-disabled="!!configuration && JSON.stringify(draft) !== JSON.stringify(draftFromConfiguration(configuration))"
+					:freshness="memberFreshness"
 					:received-at="memberRuntime.value.value?.receivedAt ?? now"
 					:now="now"
 					@remove="draft.actuators.splice(draft.actuators.indexOf(actuator), 1)"
@@ -469,6 +470,7 @@ import {
 	draftFromConfiguration,
 	emptyThermostatDraft,
 } from '../services/thermostat-authoring';
+import { ThermostatMemberFreshness } from '../services/thermostat-members';
 import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
 
 import ThermostatMemberCard from './thermostat-member-card.vue';
@@ -487,6 +489,8 @@ const memberLabel = (key: string) => t(`devicesVirtualPlugin.members.${key}`);
 const removeLegacyFloor = ref(false),
 	now = ref(Date.now());
 const configuration = ref<ThermostatConfiguration | null>(null);
+const memberFreshness = new ThermostatMemberFreshness();
+let retainedRuntimeClaims: string[] = [];
 const memberRuntime = useThermostatMemberContext(
 	computed(() => (props.deviceId && configuration.value ? `${props.deviceId}:${configuration.value.revision}` : '')),
 	async (_, signal) => {
@@ -499,8 +503,16 @@ const memberRuntime = useThermostatMemberContext(
 		return { snapshot: data.data, receivedAt: Date.now() };
 	}
 );
+watch([configuration, memberRuntime.value], ([config, runtime]) => {
+	if (runtime) {
+		retainedRuntimeClaims = runtime.snapshot.branches.filter((branch) => branch.claim_state !== 'released').map((branch) => branch.claim);
+	}
+	if (!config) return;
+	memberFreshness.retain([...config.actuators.filter((claim) => claim.state !== 'released').map((claim) => claim.id), ...retainedRuntimeClaims]);
+});
 const clock = setInterval(() => {
 	now.value = Date.now();
+	memberFreshness.expire(now.value);
 }, 1000);
 const disconnectMembers = () => memberRuntime.invalidate();
 const refreshMembers = () => {
@@ -747,6 +759,8 @@ const setContactValue = (source: ThermostatDraft['sources'][number], key: 'open_
 watch(
 	() => props.deviceId,
 	() => {
+		memberFreshness.clear();
+		retainedRuntimeClaims = [];
 		previewGate.invalidate();
 		void reload();
 	}

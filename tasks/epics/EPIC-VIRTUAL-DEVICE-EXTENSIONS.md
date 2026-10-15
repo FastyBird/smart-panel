@@ -108,8 +108,10 @@ Migration 40 retains singleton claim/journal identities and unresolved ownership
 head `5cabef74eb9f914d6970e3cfd526df5a8c4f4608` passed independent local review, without publication.
 Per-member floor protection (migration 41) is being integrated with Admin member arrays, read-only source/setup
 context, diagnostics and fenced staging/recovery; see the [client integration record](../../docs/work/virtual-thermostat/member-client-validation.md).
-Its backend safety follow-up and fresh composed review remain open. Panel ordinary intents and all-member diagnostics
-are a separate coordinated local worker stage. Multi-Shelly groups require explicitly bound local guards, separately
+The original-owner safety correction and read-only runtime diagnostics passed independent local review; composed
+backend validation passed 26 suites / 508 tests. Admin member authoring corrections are independently accepted; narrow
+activity/qualification freshness correction awaits final review, and the independently accepted Panel field follow-up awaits local integration. The accepted Panel member
+diagnostics stack is integrated locally, with final composed Panel checks pending that follow-up. Multi-Shelly groups require explicitly bound local guards, separately
 reviewed/staged member installations and actual qualification; no installed eligibility is supplied by these local changes.
 The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
 qualification is claimed by this backend slice.

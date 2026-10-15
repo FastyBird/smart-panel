@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { type ThermostatConfiguration, buildThermostatRequest, draftFromConfiguration } from './thermostat-authoring';
 import { emptyMemberInstallation, memberInstallationBlocker, memberInstallationRequest } from './thermostat-member-installation';
-import { type ThermostatMemberContext, type ThermostatMemberRuntime, memberObservation, memberReading } from './thermostat-members';
+import {
+	type ThermostatMemberContext,
+	ThermostatMemberFreshness,
+	type ThermostatMemberRuntime,
+	memberObservation,
+	memberReading,
+} from './thermostat-members';
 
 export const memberConfiguration = (count = 2): ThermostatConfiguration =>
 	({
@@ -195,4 +201,39 @@ describe('mandatory member authoring and current evidence', () => {
 			expect(Object.values(locale).every((value) => value.trim())).toBe(true);
 		}
 	});
+});
+
+describe('bounded claim freshness ownership', () => {
+	it('never evicts retained evidence to admit a new claim and prunes only authoritative removals', () => {
+		const freshness = new ThermostatMemberFreshness();
+		const sample = {
+			activity: 'off',
+			qualification_ready: false,
+			activity_sampled_at: new Date(0).toISOString(),
+			activity_expires_at: new Date(30000).toISOString(),
+		} as unknown as ThermostatMemberRuntime;
+		for (let index = 0; index < 16; index++) freshness.observation(`claim-${index}`, sample, 0, 0);
+		expect(freshness.size).toBe(16);
+		expect(freshness.observation('overflow', sample, 0, 0).activity).toBe('unknown');
+		freshness.expire(30000);
+		freshness.retain(['claim-0']);
+		expect(freshness.size).toBe(1);
+		expect(freshness.observation('claim-0', sample, 1000, 1000).activity).toBe('unknown');
+		freshness.clear();
+		expect(freshness.size).toBe(0);
+	});
+});
+
+it('does not extend the original monotonic observation budget when wall time rolls back before expiry', () => {
+	let elapsed = 0;
+	const freshness = new ThermostatMemberFreshness(() => elapsed);
+	const sample = {
+		activity: 'off',
+		qualification_ready: false,
+		activity_sampled_at: new Date(0).toISOString(),
+		activity_expires_at: new Date(30000).toISOString(),
+	} as unknown as ThermostatMemberRuntime;
+	expect(freshness.observation('claim', sample, 20000, 20000).activity).toBe('off');
+	elapsed = 10000;
+	expect(freshness.observation('claim', sample, 1000, 1000).activity).toBe('unknown');
 });

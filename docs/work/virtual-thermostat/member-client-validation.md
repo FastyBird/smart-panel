@@ -3,8 +3,9 @@
 This local batch follows independently accepted composed comfort/foundation head
 `5cabef74eb9f914d6970e3cfd526df5a8c4f4608` on `feat/virtual-thermostat-comfort-branches`.
 It incorporates per-member source `23a00e3f3466643e264ca7a634b97ecf9ef1f98c` and safety correction
-`6ef96756a80a24bfdbb4afafb18e4487863198fd`. These individual backend revisions are not claimed accepted:
-parent-directed safety review/follow-up remains open until its later correction and composed acceptance.
+`6ef96756a80a24bfdbb4afafb18e4487863198fd`. The initial source required safety corrections; the later original-owner correction
+`46504173bdcc8bdba8112421c53c24d4d33c039b` passed independent local review and is integrated as
+`075baf6de394549a56a44b01116dd7c2353a78bc`. This is local software acceptance, without publication or commissioning.
 Only incremental migrations 39, 40 and 41 exist in this batch. No hardware was contacted or operated.
 
 ## Integration resolutions
@@ -46,9 +47,11 @@ pending ON/release, retry timing, current proof and retained evidence. Failed re
 withhold readings rather than promoting cached values. Config/source/profile changes and disposal fence delayed
 responses. The six existing locales retain comfort translations and gain translated member controls.
 
-Panel ordinary intents and all-member diagnostics are implemented by the separate Panel worker; that worker owns its
-handwritten code/localizations/tests and its result will be integrated separately. This record does not claim those
-changes are already present.
+The independently accepted Panel-only stack is now integrated: `81d47453` → `85f3b9214`, `94fa3e31` →
+`3f0957e80`, `51fb6ddd` → `17717bf99`, and `3774fe49` → `896c10e6f`. These changes retain ordinary comfort
+intents, all-member diagnostics, protective expiry/gap withholding, and config/runtime claim watermarks. The
+separate Panel worker still owns the small follow-up for the new public activity/qualification fields; no extra
+Panel handwritten changes were made in the integration clone.
 
 ## Verified source checkpoint
 
@@ -72,9 +75,9 @@ races, legacy singleton/request behavior and all six locales. API conventions an
 (`/tmp/vd-members-backend-lint-final3.log`, `/tmp/vd-members-admin-lint-final3.log`,
 `/tmp/vd-members-admin-lint-checkpoint.log`) and scoped formatting. These checks cover the source checkpoint above, not the pending final safety/Panel/diagnostics composition. Generated outputs remain ignored and are never force-added.
 
-Current public runtime does not yet carry a separately qualified relay sample expiry or qualification diagnostic.
-The proposed additive fields await parent review and the original safety owner’s handback; clients must show unknown
-where current proof is absent. This provisional record is not final composed acceptance.
+At the initial Backend/Admin checkpoint, separate physical relay expiry and guard qualification fields were still
+pending. The later independently accepted runtime checkpoint `879a27be5efc4fac20e68c0f45fee70c8052873b` now
+provides them; its composed validation is recorded below. The initial checkpoint evidence remains historical.
 
 No issue is marked merged or alpha-ready by this local work. Parent independent review, composed software acceptance,
 published alpha and later separately authorized installed commissioning remain distinct gates.
@@ -99,4 +102,69 @@ Focused correction validation: 3 Admin files / 23 tests passed with two workers
 passed in the correction run (`/tmp/vd-members-review-backend-types.log`, `/tmp/vd-members-review-admin-types.log`,
 `/tmp/vd-members-review-backend-lint.log`, `/tmp/vd-members-review-admin-lint.log`), and the final incremental Admin type/lint checks passed after the last refinement
 (`/tmp/vd-members-review-admin-types-final.log`, `/tmp/vd-members-review-admin-lint-final.log`). No API contract changed, so generation was not repeated.
-These corrections still require fresh independent review; they do not establish final composed acceptance.
+These corrections passed fresh independent review at `4052a42a`; they do not establish final composed acceptance.
+
+## Current composed runtime and Admin field wiring
+
+Accepted safety correction `46504173` had one integration conflict, in runtime-test setup: retain the real comfort
+and registered-config service initialization while adopting the optional real transport seam. Production runtime
+and installation/CAS paths merged without conflict. No safety barrier was reimplemented independently.
+
+Runtime source `879a27be5efc4fac20e68c0f45fee70c8052873b` adds nullable `qualification_ready`,
+`activity_sampled_at` and `activity_expires_at`. These are detached read-only diagnostics at both publication and
+cached reads. The activity and both timestamps come from the same current good physical boolean sample, with its
+original sample time and existing 30-second feedback window. Current registry/graph/runtime epoch, target identity
+and source lease checks withdraw unproven fields. Newer dispatched pending/in-flight ON supersedes older feedback.
+Journal/ACK/history/metadata never renew observation evidence. Guard qualification is explicitly distinct from full
+admission, installation readiness and physical certification; sanitized contexts cannot retain a positive value.
+Existing policy, transport, journals, release proof and virtual STATUS publication retain their original paths.
+
+The first expanded backend run exposed four fixture failures (`/tmp/vd-members-composed-backend.log`). The three
+comfort/queued-leaf cases needed the new all-member post-drain protective reports after a comfort revision changes
+the floor basis. Their old Date.now-only freeze also disagreed with physical samples created by new Date. Fixtures
+now use coherent receiver packet time, prove current all-member OFF/drain, then incorporate later protective reports
+before ON. The tests still prove an actually ON sibling and queued relay before mutation, a NEW sibling OFF after
+the send boundary, no queued relay ON, both exact journals retained/drained, real registered setting commands, and
+actual comfort expiry settlement. The lower-demand override test now drains the preceding configure notification
+before the override phase. No production barrier was relaxed. The targeted failures and read-projection contracts
+passed 2 suites / 18 tests (`/tmp/vd-members-composed-regressions.log`).
+
+At exact runtime source `879a27be5efc4fac20e68c0f45fee70c8052873b`, the final composed command passed
+**26 suites / 508 tests** (`/tmp/vd-members-composed-backend-final.log`):
+
+```sh
+pnpm exec jest --runInBand --testPathPatterns='virtual-thermostat|thermostat-ownership|thermostat-actuation|thermostat-installation|thermostat-response.model|thermostat-authoring-context|guarded-shelly|shelly-guard|shelly-sample-sources|qualified-adoption|property-qualified-state'
+```
+
+Backend types/scoped lint/format passed (`/tmp/vd-member-observation-{types,lint,format}-checkpoint.log`).
+Backend/Admin specs, OpenAPI/Admin types and ignored Panel API/build_runner generation passed serially
+(`/tmp/vd-members-final-{backend-spec,admin-spec,openapi,panel-api}.log`). Panel generation used installed Flutter
+3.41.5. No ignored generated client was edited or force-added. Final API conventions and strict Spectral passed
+(`/tmp/vd-members-final-api-conventions.log`, `/tmp/vd-members-final-spectral.log`).
+
+Admin field wiring source `d2b1d27df07872d621aa62ce48ebcd007fd5797a` uses the existing shared helper/card to
+withdraw activity and qualification on original relay expiry and missing old fields. Independent review found that a cached refetch with a new receipt time could revive expired evidence after wall-clock rollback and could admit an older still-unexpired report.
+False and null remain distinct. Read-only labels/help in all six locales distinguish the server guard/target check
+from admission/certification. It adds no authoring controls. All thermostat Admin tests passed **11 files / 59 tests**
+with two workers; final Admin types/scoped lint/format passed
+(`/tmp/vd-members-observation-admin-{tests,types,lint,format}.log`). This initial count predates the freshness correction below. The separate Panel field follow-up is independently accepted and awaits local integration. Final composed Panel validation will be recorded after that
+reviewed follow-up is integrated, rather than reusing the worker's individual counts as a composed pass.
+
+The Admin correction uses an editor-owned bounded per-claim cache shared by member cards. Independent activity and
+protective-floor watermarks reject older reports and permanently withdraw equal-timestamp expired evidence.
+Equal-timestamp refetches cannot extend either the original expiry or a monotonic remaining-lifetime budget;
+unchanged values with genuinely newer timestamps can recover. Loading, runtime-null and card remounts preserve
+this memory. Only authoritative membership removal (including the last accepted nonreleased runtime membership)
+or a controller identity change prunes it. The two authoritative snapshots are bounded to sixteen retained entries;
+capacity overflow withholds a new observation rather than evicting retained evidence.
+
+Correction validation passed two focused Admin files / 28 tests with two workers, including the actual editor reload
+and card remount paths, independent field expiry, cached refetch after rollback, older report refusal, new report
+recovery, false versus null, monotonic lifetime and bounded ownership (`/tmp/vd-admin-freshness-tests-current.log`).
+Final Admin types passed (`/tmp/vd-admin-freshness-types-current.log`); scoped lint and formatting passed
+(`/tmp/vd-admin-freshness-lint.log`, `/tmp/vd-admin-freshness-format.log`). The correction awaits independent review.
+
+The current tracked source diff is 114 paths versus cached merged-main base. No tests/locales are omitted to change
+that count; parent publication may split an identical final tree to meet the external 100-file review limit.
+No issue #1447/#1454/#1455 is marked merged or alpha-ready. No push, PR, hardware action, deployment or release was
+performed by this integration task.
