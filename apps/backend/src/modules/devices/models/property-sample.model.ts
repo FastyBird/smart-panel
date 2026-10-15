@@ -5,6 +5,12 @@ export interface PropertySampleEvidence {
 	readonly sampledAt: Date;
 	readonly receivedAt: Date;
 	readonly provenance: 'live' | 'cached' | 'retained';
+	/** Internal semantic classification; generic imperative cover mappings do not establish native movement state. */
+	readonly semanticOrigin?: 'native_cover_status';
+	/** Factual API field presence in a native status, not hardware qualification. */
+	readonly nativeCoverTagPresent?: boolean;
+	/** Opaque process-local command observation capability; never serialized or persisted. */
+	readonly commandObservation?: object;
 	/** Server poll request start or notification capture, before queuing. */
 	readonly observedAt?: Date;
 	/** Pure process-local generation/identity guard; never serialized or supplied by a public DTO. */
@@ -25,6 +31,10 @@ export interface AcceptedPropertySample {
 	readonly sampledAt: Date;
 	readonly receivedAt: Date;
 	readonly provenance: PropertySampleEvidence['provenance'];
+	readonly semanticOrigin?: PropertySampleEvidence['semanticOrigin'];
+	readonly nativeCoverTagPresent?: boolean;
+	/** Internal qualified readers only; omitted from sample events/history. */
+	readonly commandObservation?: object;
 	readonly quality: Exclude<PropertyProducerQuality, 'unavailable'>;
 	readonly reasons: readonly string[];
 	readonly revision?: number;

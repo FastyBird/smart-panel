@@ -247,4 +247,16 @@ describe('PropertyCommandWindowService', () => {
 		expect(() => open()).not.toThrow();
 		expect(observer).toHaveBeenCalledTimes(1);
 	});
+	it('releases only the owned motor epoch without reviving superseded authority', () => {
+		const old = service.beginCoverEffect('motor');
+		const current = service.beginCoverEffect('motor');
+		service.releaseCoverEffect('motor', old);
+		expect(service.isCoverEffectCurrent('motor', old)).toBe(false);
+		expect(service.isCoverEffectCurrent('motor', current)).toBe(true);
+		service.releaseCoverEffect('motor', current);
+		expect(service.isCoverEffectCurrent('motor', current)).toBe(false);
+		const next = service.beginCoverEffect('motor');
+		expect(next).not.toBe(current);
+		expect(service.isCoverEffectCurrent('motor', current)).toBe(false);
+	});
 });

@@ -37,6 +37,8 @@ export enum VirtualLightGroupProfile {
 	LIGHT = 'light',
 	SWITCH = 'switch',
 	OUTLET = 'outlet',
+	FAN = 'fan',
+	COVER = 'cover',
 }
 
 @Entity('devices_virtual_graph_revision')

@@ -917,6 +917,11 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			sampledAt: new Date(evidence.sampledAt),
 			receivedAt: new Date(evidence.receivedAt),
 			provenance: evidence.provenance,
+			...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
+			...(evidence.nativeCoverTagPresent !== undefined
+				? { nativeCoverTagPresent: evidence.nativeCoverTagPresent }
+				: {}),
+			...(evidence.commandObservation ? { commandObservation: evidence.commandObservation } : {}),
 			...(evidence.isCurrent ? { isCurrent: evidence.isCurrent } : {}),
 			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
@@ -1307,6 +1312,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const handle = { canonicalPropertyId, generation: window.generation };
 		const receipt = { value: validation.value, receivedAt: Date.now() };
 
+		// Sibling-observation actions can only be confirmed by the core-minted proof context.
+		if (window.proofKind === 'cover_action') return { changed: false, state: null, held: true, forceValueEvent: false };
 		const isConfirmation = validation.value === window.commandedValue;
 
 		// A same-value command (or a repeated command generation) can deliberately have an identical

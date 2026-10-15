@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
+import { VirtualGroupCatalogService } from '../services/virtual-group-catalog.service';
 import { VirtualLightGroupAuthoringService } from '../services/virtual-light-group-authoring.service';
 import { VirtualProducerConfigService } from '../services/virtual-producer-config.service';
 
@@ -17,6 +18,7 @@ describe('producer configuration HTTP failures', () => {
 		const controller = new VirtualProducerConfigController(
 			configs as unknown as VirtualProducerConfigService,
 			{} as VirtualLightGroupAuthoringService,
+			{} as VirtualGroupCatalogService,
 		);
 		await expect(controller.configureAggregate('output', new ConfigureVirtualAggregateDto())).rejects.toBeInstanceOf(
 			UnprocessableEntityException,
@@ -28,6 +30,7 @@ describe('producer configuration HTTP failures', () => {
 		const controller = new VirtualProducerConfigController(
 			configs as unknown as VirtualProducerConfigService,
 			{} as VirtualLightGroupAuthoringService,
+			{} as VirtualGroupCatalogService,
 		);
 		await expect(controller.getAggregate('output')).rejects.toBeInstanceOf(NotFoundException);
 	});
@@ -36,6 +39,7 @@ describe('producer configuration HTTP failures', () => {
 		const module = await Test.createTestingModule({
 			controllers: [VirtualProducerConfigController],
 			providers: [
+				{ provide: VirtualGroupCatalogService, useValue: {} },
 				{ provide: VirtualProducerConfigService, useValue: {} },
 				{
 					provide: VirtualLightGroupAuthoringService,

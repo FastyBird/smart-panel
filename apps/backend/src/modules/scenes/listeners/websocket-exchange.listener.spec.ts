@@ -1,3 +1,4 @@
+import { instanceToPlain } from 'class-transformer';
 /*
 eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment,
 @typescript-eslint/no-unsafe-member-access
@@ -125,6 +126,47 @@ describe('WebsocketExchangeListener (Scenes)', () => {
 			expect(sceneExecutorService.triggerScene).toHaveBeenCalledWith(sceneId, user.id);
 		});
 
+		it('serializes correlated native group children in the real socket response, including failed scenes', async () => {
+			sceneExecutorService.triggerScene.mockResolvedValue({
+				sceneId: uuid(),
+				status: SceneExecutionStatus.FAILED,
+				totalActions: 1,
+				successfulActions: 0,
+				failedActions: 1,
+				triggeredAt: new Date().toISOString(),
+				completedAt: new Date().toISOString(),
+				actionResults: [
+					{
+						actionId: uuid(),
+						success: false,
+						executionTimeMs: 20,
+						composite: {
+							id: 'parent',
+							status: 'failed',
+							children: [
+								{
+									memberId: 'member',
+									memberIdentity: 'original-channel',
+									propertyId: null,
+									status: 'unavailable',
+									reason: 'qualified_cover_adapter_unavailable',
+								},
+							],
+						},
+					},
+				],
+			});
+			const result = await handleTriggerScene(createMockUser(), { sceneId: uuid() });
+			expect(result.success).toBe(false);
+			const payload = instanceToPlain(result);
+			expect(payload.data.action_results[0].composite.children[0]).toMatchObject({
+				member_id: 'member',
+				member_identity: 'original-channel',
+				property_id: null,
+				reason: 'qualified_cover_adapter_unavailable',
+			});
+		});
+
 		it('should allow admin user', async () => {
 			const user = createMockUser({ type: 'user', role: UserRole.ADMIN, ownerType: undefined });
 			const sceneId = uuid();
@@ -206,6 +248,7 @@ describe('WebsocketExchangeListener (Scenes)', () => {
 					failed_actions: 0,
 					triggered_at: triggeredAt,
 					completed_at: completedAt,
+					action_results: [],
 				},
 			});
 		});
