@@ -483,6 +483,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 		expect(runtime.getReportedState(channelId)?.unknownCount).toBe(2);
 	});
 	it.each([
+		[VirtualLightGroupProfile.LIGHT, DeviceCategory.LIGHTING, ChannelCategory.LIGHT],
 		[VirtualLightGroupProfile.SWITCH, DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
 		[VirtualLightGroupProfile.OUTLET, DeviceCategory.OUTLET, ChannelCategory.OUTLET],
 	] as const)(
@@ -621,7 +622,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 					channelId,
 					Object.assign(new ConfigureVirtualLightGroupDto(), configuration, { expectedRevision: 1 }),
 				),
-			).rejects.toThrow(/remove capability/);
+			).rejects.toThrow(/profile-required access|remove capability/);
 			expect((await configs.getLightGroup(channelId)).revision).toBe(1);
 			await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { format: null });
 			runtime = new VirtualLightGroupStateService(
@@ -723,13 +724,80 @@ describe('light group actual feedback with real SQLite bindings', () => {
 				registry,
 				events,
 			);
-			const send = () =>
+			const send = (value = true) =>
 				dispatch.dispatchBatch(
-					[{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: true }],
+					[{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value }],
 					{ ttlMs: 1000 },
 				);
 			expect((await send()).composite.children.map((child) => child.status)).toEqual(['confirmed', 'confirmed']);
 			expect(physicalDispatch).toHaveBeenCalledTimes(2);
+
+			// Metadata can change after authoring, or an older release can have persisted a
+			// one-state contract. No such source/output may dispatch or supply group evidence.
+			for (const format of [['true'], ['false'], ['true', 'garbage'], ['true', 'true'], [0, 1]]) {
+				await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { format });
+				await report(physical[0].propertyId, false);
+				await runtime.refresh();
+				expect(runtime.getReportedState(channelId)).toMatchObject({
+					on: profile === VirtualLightGroupProfile.LIGHT ? false : null,
+					unknownCount: profile === VirtualLightGroupProfile.LIGHT ? 0 : 1,
+				});
+				const previousCalls = physicalDispatch.mock.calls.length;
+				const result = await send(false);
+				expect(result.composite.children.map((child) => child.status).sort()).toEqual(
+					profile === VirtualLightGroupProfile.LIGHT ? ['confirmed', 'confirmed'] : ['confirmed', 'unavailable'],
+				);
+				const dispatched = physicalDispatch.mock.calls.slice(previousCalls).flatMap(([targets]) => targets);
+				expect(dispatched.some((target) => target.property.id === physical[0].propertyId)).toBe(
+					profile === VirtualLightGroupProfile.LIGHT,
+				);
+				if (profile !== VirtualLightGroupProfile.LIGHT)
+					expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
+			}
+			await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { format: null });
+			if (profile !== VirtualLightGroupProfile.LIGHT) {
+				for (const format of [['true'], ['true', 'invalid'], [0, 1]]) {
+					await database.manager.update(VirtualChannelPropertyEntity, outputId, { format });
+					parent.format = format;
+					const previousCalls = physicalDispatch.mock.calls.length;
+					await expect(
+						commands.plan([
+							{ property: parent, channel: parentChannel, device: parentChannel.device as DeviceEntity, value: false },
+						]),
+					).rejects.toThrow(/two-state boolean contract/);
+					expect((await send(false)).success).toBe(false);
+					expect(physicalDispatch).toHaveBeenCalledTimes(previousCalls);
+					await runtime.refresh();
+					expect(runtime.getReportedState(channelId)).toMatchObject({ on: null, unknownCount: 2 });
+					expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
+					await expect(
+						configs.configureLightGroup(
+							channelId,
+							Object.assign(new ConfigureVirtualLightGroupDto(), configuration, { expectedRevision: 1 }),
+						),
+					).rejects.toThrow(/two-state boolean contract/);
+				}
+				await database.manager.update(VirtualChannelPropertyEntity, outputId, { format: null });
+				parent.format = null;
+			}
+			if (inUseSources.length) {
+				await database.manager.update(ChannelPropertyEntity, inUseSources[0], { format: ['true'] });
+				for (const value of [true, false]) {
+					await report(inUseSources[0], value);
+					await runtime.refresh();
+					expect(runtime.getReportedState(channelId).properties.get(PropertyCategory.IN_USE).value).toBeNull();
+					expect(producers.read(inUseOutput)?.producer.quality).toBe('unavailable');
+				}
+				await database.manager.update(ChannelPropertyEntity, inUseSources[0], { format: null });
+				await report(inUseSources[0], true);
+			}
+			// Accepted two-state metadata follows the same case-insensitive spelling as core BOOL parsing.
+			await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { format: ['FALSE', 'True'] });
+			const accepted = await send(false);
+			expect(accepted.composite.children.map((child) => child.status)).toEqual(['confirmed', 'confirmed']);
+			await database.manager.update(ChannelPropertyEntity, physical[0].propertyId, { format: null });
+			await report(physical[0].propertyId, true);
+			await runtime.refresh();
 			let lateHandle: { canonicalPropertyId: string; generation: string } | undefined;
 			physicalDispatch.mockImplementationOnce((targets) => {
 				const window = windows.get(targets[0].property.id);

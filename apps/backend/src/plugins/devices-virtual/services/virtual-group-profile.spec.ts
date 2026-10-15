@@ -3,7 +3,13 @@ import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 
-import { commonGroupCapabilities, groupField, groupSourceSupports, reportGroup } from './virtual-group-profile';
+import {
+	commonGroupCapabilities,
+	groupBooleanContractIsSupported,
+	groupField,
+	groupSourceSupports,
+	reportGroup,
+} from './virtual-group-profile';
 import { commonLightCapabilities, reportLightGroup } from './virtual-light-group.utils';
 
 const property = (category: PropertyCategory, permissions = [PermissionType.READ_WRITE], extra = {}) =>
@@ -69,12 +75,43 @@ describe('typed group profile contracts', () => {
 			expect(commonGroupCapabilities(profile, [[on], [on, on]])).toEqual([]);
 		},
 	);
-	it('intersects boolean enums and refuses disjoint values rather than guessing', () => {
-		const on = (format: string[]) => property(PropertyCategory.ON, undefined, { format });
-		expect(
-			commonGroupCapabilities(VirtualLightGroupProfile.SWITCH, [[on(['true', 'false'])], [on(['true'])]])[0].format,
-		).toEqual(['true']);
-		expect(commonGroupCapabilities(VirtualLightGroupProfile.SWITCH, [[on(['false'])], [on(['true'])]])).toEqual([]);
+
+	it.each([VirtualLightGroupProfile.SWITCH, VirtualLightGroupProfile.OUTLET])(
+		'requires a complete boolean domain for %s instead of advertising an unenforced enum',
+		(profile) => {
+			for (const format of [null, [], ['true', 'false'], ['FALSE', 'True']]) {
+				const on = property(PropertyCategory.ON, undefined, { format });
+				expect(groupBooleanContractIsSupported(profile, on)).toBe(true);
+				expect(commonGroupCapabilities(profile, [[on], [on]])[0]).toMatchObject({
+					category: PropertyCategory.ON,
+					format: null,
+				});
+			}
+			for (const format of [
+				['true'],
+				['false'],
+				['true', 'true'],
+				['true', 'garbage'],
+				[' true', 'false'],
+				[0, 1],
+				[true, false],
+				'true,false',
+			]) {
+				const on = property(PropertyCategory.ON, undefined, { format });
+				expect(groupBooleanContractIsSupported(profile, on)).toBe(false);
+				expect(commonGroupCapabilities(profile, [[on], [on]])).toEqual([]);
+				expect(commonGroupCapabilities(profile, [[property(PropertyCategory.ON)], [on]])).toEqual([]);
+				const inUse = property(PropertyCategory.IN_USE, [PermissionType.READ_ONLY], { format });
+				expect(commonGroupCapabilities(profile, [[inUse], [inUse]])).toEqual([]);
+			}
+		},
+	);
+	it('preserves legacy light admission even for constrained boolean metadata', () => {
+		const on = property(PropertyCategory.ON, undefined, { format: ['true'] });
+		expect(groupBooleanContractIsSupported(VirtualLightGroupProfile.LIGHT, on)).toBe(true);
+		expect(commonGroupCapabilities(VirtualLightGroupProfile.LIGHT, [[on], [on]])).toEqual(
+			commonLightCapabilities([[on], [on]]),
+		);
 	});
 	it('distinguishes RO, RW and WO source contracts without making observations commandable', () => {
 		const read = property(PropertyCategory.IN_USE, [PermissionType.READ_ONLY]);

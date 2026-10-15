@@ -36,7 +36,13 @@ import {
 import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { GROUP_PROFILES, commonGroupCapabilities, groupField, groupSourceSupports } from './virtual-group-profile';
+import {
+	GROUP_PROFILES,
+	commonGroupCapabilities,
+	groupBooleanContractIsSupported,
+	groupField,
+	groupSourceSupports,
+} from './virtual-group-profile';
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability } from './virtual-light-group.utils';
 import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
@@ -329,6 +335,9 @@ export class VirtualProducerConfigService {
 		)
 			throw new DevicesValidationException('Light group requires a derived on output.');
 		const exposed = outputs.filter((property) => property.valueOrigin === VirtualValueOrigin.DERIVED);
+		if (exposed.some((property) => !groupBooleanContractIsSupported(dto.profile, property)))
+			throw new DevicesValidationException('Switch/outlet outputs require an unrestricted two-state boolean contract.');
+
 		if (
 			exposed.some(
 				(property) =>
@@ -410,7 +419,8 @@ export class VirtualProducerConfigService {
 					source.category !== output.category ||
 					source.dataType !== output.dataType ||
 					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
-					!groupSourceSupports(source, groupField(dto.profile, output.category))
+					!groupSourceSupports(source, groupField(dto.profile, output.category)) ||
+					!groupBooleanContractIsSupported(dto.profile, source)
 				) {
 					if (existing && output.category !== PropertyCategory.ON)
 						throw new ConflictException(

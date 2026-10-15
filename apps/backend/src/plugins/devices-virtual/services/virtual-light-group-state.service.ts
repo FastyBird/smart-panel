@@ -27,7 +27,13 @@ import {
 import { VirtualLightGroupReportedStateModel } from '../models/producer-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { GROUP_PROFILES, groupField, groupSourceSupports, reportGroup } from './virtual-group-profile';
+import {
+	GROUP_PROFILES,
+	groupBooleanContractIsSupported,
+	groupField,
+	groupSourceSupports,
+	reportGroup,
+} from './virtual-group-profile';
 import { LIGHT_GROUP_MAXIMUM_AGE_MS, LightGroupReportedState } from './virtual-light-group.utils';
 
 export const LIGHT_GROUP_REPORTED_STATE_CHANGED = 'DevicesVirtual.LightGroup.ReportedStateChanged';
@@ -166,6 +172,8 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 						property.dataType !== output.dataType ||
 						resolvePropertyUnit(property) !== resolvePropertyUnit(output) ||
 						!groupSourceSupports(property, groupField(config.profile, output.category)) ||
+						!groupBooleanContractIsSupported(config.profile, property) ||
+						!groupBooleanContractIsSupported(config.profile, output) ||
 						groupField(config.profile, output.category)?.access === 'wo'
 					) {
 						reasons.add('metadata_incompatible');

@@ -75,6 +75,28 @@ export function groupSourceSupports(property: ChannelPropertyEntity, field: Grou
 		property.permissions.includes(PermissionType.READ_WRITE);
 	return field.access === 'rw' ? readable && writable : field.access === 'ro' ? readable : writable;
 }
+/**
+ * Switch/outlet fields represent a complete boolean domain. Core boolean validation parses
+ * true/false case-insensitively but does not enforce format enums, so partial domains and
+ * malformed formats cannot participate in these profiles. Legacy lights retain their policy.
+ */
+export function groupBooleanContractIsSupported(
+	profile: VirtualLightGroupProfile,
+	property: ChannelPropertyEntity,
+): boolean {
+	if (profile === VirtualLightGroupProfile.LIGHT) return true;
+	if (property.dataType !== DataTypeType.BOOL) return false;
+	const format = property.format;
+	if (format == null) return true;
+	if (!Array.isArray(format)) return false;
+	if (!format.length) return true;
+	return (
+		format.length === 2 &&
+		format.every((value) => typeof value === 'string') &&
+		new Set(format.map((value) => value.toLowerCase())).size === 2 &&
+		format.every((value) => ['true', 'false'].includes(value.toLowerCase()))
+	);
+}
 export function commonGroupCapabilities(
 	profile: VirtualLightGroupProfile,
 	members: readonly (readonly ChannelPropertyEntity[])[],
@@ -88,7 +110,7 @@ export function commonGroupCapabilities(
 			sources.some(
 				(properties) =>
 					properties.length !== 1 ||
-					properties[0].dataType !== DataTypeType.BOOL ||
+					!groupBooleanContractIsSupported(profile, properties[0]) ||
 					!groupSourceSupports(properties[0], field),
 			)
 		)
@@ -96,19 +118,12 @@ export function commonGroupCapabilities(
 		const properties = sources.map(([property]) => property);
 		const first = properties[0];
 		if (properties.some((property) => resolvePropertyUnit(property) !== resolvePropertyUnit(first))) continue;
-		const bounded = properties.filter((property) => property.format?.length);
-		if (bounded.some((property) => !property.format.every((value) => typeof value === 'string'))) continue;
-		const format = bounded.length
-			? (bounded[0].format as string[]).filter((value) =>
-					bounded.every((property) => (property.format as string[]).includes(value)),
-				)
-			: null;
-		if (format && !format.length) continue;
+
 		result.push({
 			category: field.category,
 			dataType: DataTypeType.BOOL,
 			unit: resolvePropertyUnit(first) ?? null,
-			format,
+			format: null,
 			step: null,
 		});
 	}

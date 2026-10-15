@@ -30,7 +30,13 @@ import {
 } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { GROUP_PROFILES, groupField, groupProfileForChannel, groupSourceSupports } from './virtual-group-profile';
+import {
+	GROUP_PROFILES,
+	groupBooleanContractIsSupported,
+	groupField,
+	groupProfileForChannel,
+	groupSourceSupports,
+} from './virtual-group-profile';
 import { LIGHT_GROUP_MAXIMUM_AGE_MS } from './virtual-light-group.utils';
 
 @Injectable()
@@ -133,6 +139,9 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				throw new Error('Group profile does not match its current device/channel');
 			const field = groupField(config.profile, update.property.category);
 			if (!field || field.access === 'ro') throw new Error('Group capability is not commandable');
+			if (!groupBooleanContractIsSupported(config.profile, update.property))
+				throw new Error('Group output requires an unrestricted two-state boolean contract');
+
 			revisions.set(channelId, config.revision);
 			const members = await this.dataSource.manager.find(VirtualLightGroupMemberEntity, {
 				where: { groupChannelId: channelId },
@@ -163,7 +172,8 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					property.category === update.property.category &&
 					property.dataType === update.property.dataType &&
 					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
-					groupSourceSupports(property, field);
+					groupSourceSupports(property, field) &&
+					groupBooleanContractIsSupported(config.profile, property);
 				if (children.length >= 2048) throw new Error('Composite size exceeds bounds');
 				let preserved: CompositeCommandChild | null = null;
 				let powerAvailable = true;
