@@ -1,4 +1,4 @@
-# Virtual temperature aggregates
+# Virtual aggregate sensors
 
 The backend accepts these exact canonical channel/property profiles. Physical inputs must be readable.
 Preview, persistence, source candidates and runtime share the same capability policy. Graph validation quarantines
@@ -21,7 +21,6 @@ no aggregate invents brightness thresholds. CO₂ `detected` and carbon-monoxide
 Only the existing read-only canonical temperature transform can compose into an aggregate. Forwarded aliases,
 aggregate nesting, cross-quantity composition, arbitrary units and cycles are excluded. A Celsius unit or aggregate
 mode alone never grants thermostat temperature eligibility; non-temperature quantity metadata is rejected.
-UI creation/presentation remains separate work (#1450).
 
 `GET /plugins/devices-virtual/producers/aggregate-profiles` exposes supported profile capabilities.
 `GET /plugins/devices-virtual/producers/aggregate-profiles/{profile}/sources` returns structurally eligible source UUIDs.
@@ -82,3 +81,29 @@ and history do not manufacture fresh samples. Restart waits for new process-loca
 
 The incremental profile migration defaults existing aggregate configurations to `temperature`, retaining output/input
 identities, revisions and prior policy. No smoke/leak alarm or security decision policy is provided.
+
+## Authoring and diagnostics
+
+The admin aggregate editor obtains available profiles and eligible sources from the backend. Choose the quantity,
+sources, operator, minimum valid input count and maximum sample age. Numeric profiles additionally expose weights for
+weighted mean and an optional outlier threshold labelled in the profile's unit. Binary profiles expose only `any` and
+`all`; they do not offer weights, numeric grids or outlier filtering. Existing outputs retain their profile and UUID.
+Missing sources retain their original binding identity so they can be explicitly replaced without recreating the sensor.
+
+Preview evaluates the proposed configuration on the backend, including unsaved policy changes during creation, editing
+and repair. Its `preview_result` contains the value, quality, source exclusions, evaluation/sample timestamps and expiry.
+The create route is `POST /plugins/devices-virtual/producers/aggregates/draft-preview`; existing outputs use
+`POST /plugins/devices-virtual/producers/aggregates/{id}/preview`. These snapshots use the same qualified evidence and
+evaluation policy as runtime. They do not write values/history, publish producer state, renew source leases or consume
+the fresh-input barrier used after creation. Preview availability does not promise that the saved sensor will immediately
+produce a live value; runtime still requires its own current evidence.
+
+The editor distinguishes the draft result from saved runtime diagnostics. Changing a draft or its selected sources
+invalidates its preview, and superseded responses cannot authorize a newer draft. A preview with a finite expiry is
+discarded at that deadline. Run preview again before saving changed or expired drafts. A validated configuration can
+still be saved while its current result is unavailable; missing or stale evidence remains unavailable after saving.
+
+Admin and panel diagnostics identify missing, stale, disabled, incompatible and outlier inputs without presenting
+historical values as current evidence. The panel respects each numeric output's precision and distinguishes binary
+`false` from unavailable data. A degraded decisive binary result remains labelled as degraded rather than implying
+that every member reported.
