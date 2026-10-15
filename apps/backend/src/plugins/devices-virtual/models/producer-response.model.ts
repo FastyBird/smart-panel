@@ -268,6 +268,13 @@ export class VirtualLightGroupReportedStateModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupCapability' })
 export class VirtualLightGroupCapabilityModel {
+	@ApiPropertyOptional({
+		enum: ['ro', 'rw', 'wo'],
+		description: 'Profile field access; legacy light fields are read-write. Materialized outputs remain read-only.',
+	})
+	@Expose()
+	access?: 'ro' | 'rw' | 'wo';
+
 	@ApiProperty({ enum: PropertyCategory })
 	@Expose()
 	category: PropertyCategory;

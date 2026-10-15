@@ -2,13 +2,7 @@ import { DataSource } from 'typeorm';
 
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import {
-	ChannelCategory,
-	DataTypeType,
-	DeviceCategory,
-	PermissionType,
-	PropertyCategory,
-} from '../../../modules/devices/devices.constants';
+import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
@@ -32,9 +26,11 @@ import {
 	VirtualLightGroupBindingEntity,
 	VirtualLightGroupConfigEntity,
 	VirtualLightGroupMemberEntity,
+	VirtualLightGroupProfile,
 } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { GROUP_PROFILES, groupField, groupProfileForChannel, groupSourceSupports } from './virtual-group-profile';
 import { LIGHT_GROUP_MAXIMUM_AGE_MS } from './virtual-light-group.utils';
 
 @Injectable()
@@ -66,9 +62,11 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 			!!channel &&
 			typeof channel !== 'string' &&
 			typeof channel.device !== 'string' &&
-			channel.category === ChannelCategory.LIGHT &&
+			groupProfileForChannel(channel.category) !== undefined &&
 			channel.device.type === 'virtual' &&
-			channel.device.category === DeviceCategory.LIGHTING &&
+			channel.device.category === GROUP_PROFILES[groupProfileForChannel(channel.category)].deviceCategory &&
+			groupField(groupProfileForChannel(channel.category), property.category)?.access !== undefined &&
+			groupField(groupProfileForChannel(channel.category), property.category)?.access !== 'ro' &&
 			(channel.device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP &&
 			property.permissions.includes(PermissionType.READ_ONLY)
 		);
@@ -126,6 +124,15 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				groupChannelId: channelId,
 			});
 			if (!config) throw new Error('Light group is not configured');
+			const policy = GROUP_PROFILES[config.profile];
+			if (
+				!policy ||
+				policy.channelCategory !== update.channel.category ||
+				policy.deviceCategory !== update.device.category
+			)
+				throw new Error('Group profile does not match its current device/channel');
+			const field = groupField(config.profile, update.property.category);
+			if (!field || field.access === 'ro') throw new Error('Group capability is not commandable');
 			revisions.set(channelId, config.revision);
 			const members = await this.dataSource.manager.find(VirtualLightGroupMemberEntity, {
 				where: { groupChannelId: channelId },
@@ -145,6 +152,9 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					member.sourceChannelId &&
 					property &&
 					channel.id === member.sourceChannelId &&
+					channel.category === GROUP_PROFILES[config.profile].channelCategory &&
+					(config.profile === VirtualLightGroupProfile.LIGHT ||
+						device?.category === GROUP_PROFILES[config.profile].deviceCategory) &&
 					device?.enabled &&
 					device.type !== 'virtual' &&
 					device.status.online &&
@@ -153,7 +163,7 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					property.category === update.property.category &&
 					property.dataType === update.property.dataType &&
 					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
-					property.permissions.includes(PermissionType.READ_WRITE);
+					groupSourceSupports(property, field);
 				if (children.length >= 2048) throw new Error('Composite size exceeds bounds');
 				let preserved: CompositeCommandChild | null = null;
 				let powerAvailable = true;

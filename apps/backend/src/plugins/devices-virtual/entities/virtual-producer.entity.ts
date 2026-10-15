@@ -23,6 +23,8 @@ export interface VirtualAggregateFilter {
 
 export enum VirtualLightGroupProfile {
 	LIGHT = 'light',
+	SWITCH = 'switch',
+	OUTLET = 'outlet',
 }
 
 @Entity('devices_virtual_graph_revision')
