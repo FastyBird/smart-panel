@@ -195,8 +195,11 @@ class SensorUtils {
   static String? Function(ChannelPropertyView) valueFormatterForCategory(
     DevicesModuleChannelCategory category,
   ) {
-    final scale = scaleForCategory(category);
     return (prop) {
+      final step = prop.type == 'virtual' ? prop.step : null;
+      final scale = step != null && step.isFinite && step > 0
+          ? _scaleForStep(step)
+          : scaleForCategory(category);
       final value = prop.value;
       if (value is NumberValueType) {
         // Delegate to ValueUtils for range/invalid checks — it returns null
@@ -211,6 +214,14 @@ class SensorUtils {
       }
       return ValueUtils.formatValue(prop, scale);
     };
+  }
+
+  static int _scaleForStep(double step) {
+    for (var scale = 0; scale <= 10; scale++) {
+      if ((step - step.roundToDouble()).abs() < 1e-9) return scale;
+      step *= 10;
+    }
+    return 10;
   }
 
   // ===========================================================================
@@ -465,7 +476,7 @@ class SensorUtils {
         return value.value == 'true' || value.value == '1';
       }
 
-      return false;
+      return detectedProp.type == 'virtual' ? null : false;
     }
 
     // For other channels: if the resolved (best) property is a known binary
@@ -482,7 +493,7 @@ class SensorUtils {
         return value.value == 'true' || value.value == '1';
       }
 
-      return false;
+      return prop.type == 'virtual' ? null : false;
     }
 
     return null;

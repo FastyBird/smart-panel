@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Tryb",
 		"projection": "Projekcja",
-		"aggregate": "Temperatura zbiorcza",
+		"aggregate": "Czujnik zbiorczy",
 		"transform": "Konwersja liczbowa",
 		"group": "Grupa świateł",
 		"name": "Nazwa",
@@ -198,7 +198,10 @@
 			"mean": "Średnia",
 			"median": "Mediana",
 			"min": "Minimum",
-			"max": "Maksimum"
+			"max": "Maksimum",
+			"weighted_mean": "Średnia ważona",
+			"any": "Dowolny wykryty",
+			"all": "Wszystkie wykryte"
 		},
 		"states": {
 			"good": "Dobra",
@@ -232,7 +235,27 @@
 			"output_out_of_range": "Wartość poza zakresem",
 			"invalid_domain": "Poza dziedziną matematyczną",
 			"producer_disposed": "Producent zatrzymany",
-			"unknown": "Nieznana diagnostyka"
+			"unknown": "Nieznana diagnostyka",
+			"outlier": "Wartość odstająca wykluczona",
+			"insufficient_comparison_cohort": "Za mało źródeł do porównania",
+			"unknown_members": "Nieznani członkowie uniemożliwiają wynik"
+		},
+		"weight": "Waga względna",
+		"filter": "Wyklucz wartości odstające (odchylenie od mediany)",
+		"filterThreshold": "Maksymalne odchylenie ({unit})",
+		"filterCohort": "Przed filtrowaniem wymagane są co najmniej trzy prawidłowe źródła. Kworum liczy zachowane źródła, nie wagi.",
+		"grid": "Krok wyjściowy: {step} {unit} (najbliższy, remisy do +∞)",
+		"legacyGrid": "Zachowuje zadeklarowaną precyzję temperatury",
+		"sampleAge": "Wiek próbki: {age} s",
+		"aggregatePreviewOnly": "Tylko weryfikacja konfiguracji przez serwer. Diagnostyka opisuje zapisane działanie, nie obliczony wynik projektu.",
+		"profiles": {
+			"temperature": "Temperatura (°C)",
+			"humidity": "Wilgotność względna (%)",
+			"carbon_dioxide": "Stężenie CO₂ (ppm)",
+			"illuminance": "Natężenie oświetlenia (lx)",
+			"contact": "Kontakt",
+			"motion": "Ruch",
+			"occupancy": "Obecność"
 		}
 	},
 	"lightGroup": {

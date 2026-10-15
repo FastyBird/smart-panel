@@ -4844,5 +4844,37 @@
   "virtual_measurement_state_producer_disposed": "Producer stopped",
   "virtual_measurement_state_unknown": "Unknown diagnostic",
   "climate_temperature_coverage_conflict": "Room temperature sensors overlap. Select one representative using room climate participation settings.",
-  "climate_temperature_coverage_unavailable": "Room temperature is unavailable. Check sensor configuration and availability."
+  "climate_temperature_coverage_unavailable": "Room temperature is unavailable. Check sensor configuration and availability.",
+  "virtual_measurement_state_outlier": "Outlier excluded",
+  "virtual_measurement_state_insufficient_comparison_cohort": "Not enough sources for comparison",
+  "virtual_measurement_state_unknown_members": "Unknown members prevent a result",
+  "virtual_measurement_grid": "Output step: {step} {unit} (nearest, ties toward +∞)",
+  "@virtual_measurement_grid": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_weight": "Relative weight: {weight}",
+  "@virtual_measurement_weight": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_age": "Sample age: {age} s",
+  "@virtual_measurement_age": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_true": "Detected",
+  "virtual_measurement_false": "Not detected"
 }

@@ -15,6 +15,8 @@ export type TransformPolicy = components['schemas']['DevicesVirtualPluginNumeric
 export type TransformConfiguration = components['schemas']['DevicesVirtualPluginConfigureTransform'];
 export type AggregateConfiguration = components['schemas']['DevicesVirtualPluginConfigureAggregate'];
 export type TransformState = components['schemas']['DevicesVirtualPluginDataTransformConfiguration'];
+export type AggregateProfile = components['schemas']['DevicesVirtualPluginDataAggregateProfile'];
+export type AggregateSource = components['schemas']['DevicesVirtualPluginDataAggregateSource'];
 export type AggregateState = components['schemas']['DevicesVirtualPluginDataAggregateConfiguration'];
 export type MeasurementMode = DevicesVirtualPluginDeviceMode.sensor_aggregate | DevicesVirtualPluginDeviceMode.sensor_transform;
 export type MeasurementSourceDevice = Pick<IDevice, 'id' | 'type' | 'name'> & { mode?: string };
@@ -118,4 +120,43 @@ export function measurementDraft(
 			},
 		],
 	};
+}
+
+/** Materialize the backend capability contract without inferring units or numeric types. */
+export function aggregateDraft(
+	profile: AggregateProfile,
+	name: string,
+	outputId: string,
+	deviceId: string,
+	channelId: string
+): DevicesVirtualPluginCreateDeviceSchema {
+	const draft = measurementDraft(DevicesVirtualPluginDeviceMode.sensor_aggregate, name, true, outputId, deviceId, channelId);
+	const channel = draft.channels![0];
+	channel.category = profile.channel as DevicesModuleChannelCategory;
+	const property = channel.properties![0];
+	property.category = profile.quantity as DevicesModuleChannelPropertyCategory;
+	property.data_type = profile.data_types[0];
+	if (profile.numeric_policy && profile.output_step !== null) property.step = profile.output_step;
+	return draft;
+}
+
+/** Candidate admission belongs to the backend; the local catalog supplies labels only. */
+export function aggregateCandidates(
+	sources: AggregateSource[],
+	devices: MeasurementSourceDevice[],
+	channels: MeasurementSourceChannel[],
+	properties: MeasurementSourceProperty[],
+	profile: AggregateProfile
+): MeasurementCandidate[] {
+	return sources.map((source) => {
+		const device = devices.find((entry) => entry.id === source.device);
+		const channel = channels.find((entry) => entry.id === source.channel);
+		const property = properties.find((entry) => entry.id === source.property);
+		return {
+			id: source.property,
+			label: [device?.name, channel?.name, property?.name ?? source.property].filter(Boolean).join(' / '),
+			quantity: profile.quantity,
+			unit: profile.unit ?? '',
+		};
+	});
 }

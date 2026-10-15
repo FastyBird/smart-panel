@@ -24,13 +24,19 @@
 			v-if="current"
 			:title="
 				t('devicesVirtualPlugin.measurement.quality', {
-					quality: diagnosticLabel('quality' in current ? current.quality : current.runtime_readiness),
+					quality: diagnosticLabel(liveQuality),
 				})
 			"
 			type="info"
 			:closable="false"
 			class="mb-3"
 		/>
+		<p
+			v-if="current && liveReasons.length"
+			data-test-id="measurement-reasons"
+		>
+			{{ liveReasons.map(diagnosticLabel).join(', ') }}
+		</p>
 		<el-form
 			label-position="top"
 			:disabled="busy || loading"
@@ -59,6 +65,39 @@
 					/>
 				</el-select>
 			</el-form-item>
+			<template v-if="!isTransform">
+				<el-form-item :label="t('devicesVirtualPlugin.measurement.profile')">
+					<el-select
+						v-model="model.profile"
+						:disabled="!!outputId"
+						data-test-id="aggregate-profile"
+					>
+						<el-option
+							v-for="profile in profiles"
+							:key="profile.profile"
+							:value="profile.profile"
+							:label="t(`devicesVirtualPlugin.measurement.profiles.${profile.profile}`)"
+						/>
+					</el-select>
+				</el-form-item>
+				<p
+					v-if="selectedProfile?.numeric_policy"
+					data-test-id="aggregate-grid"
+				>
+					{{ t('devicesVirtualPlugin.measurement.unit') }}: {{ selectedProfile.unit }} ·
+					{{
+						effectiveStep === null
+							? t('devicesVirtualPlugin.measurement.legacyGrid')
+							: t('devicesVirtualPlugin.measurement.grid', { step: effectiveStep, unit: selectedProfile.unit })
+					}}
+				</p>
+				<el-alert
+					v-if="sourcesError"
+					:title="message(sourcesError)"
+					type="error"
+					:closable="false"
+				/>
+			</template>
 			<div
 				v-if="isTransform && !model.temperature"
 				class="grid grid-cols-2 gap-3"
@@ -88,6 +127,8 @@
 							v-model="input.source_property"
 							filterable
 							class="grow-1"
+							:loading="sourcesLoading"
+							:disabled="!isTransform && (sourcesLoading || !!sourcesError)"
 							:placeholder="t('devicesVirtualPlugin.measurement.selectSource')"
 						>
 							<el-option
@@ -110,11 +151,24 @@
 							/>
 						</el-select>
 						<el-tag
-							v-if="input.source_property === null"
-							type="warning"
+							v-if="input.identity"
+							:type="input.source_property === null ? 'warning' : 'info'"
 						>
-							{{ t('devicesVirtualPlugin.measurement.missing', { id: input.identity }) }}
+							{{ input.source_property === null ? t('devicesVirtualPlugin.measurement.missing', { id: input.identity }) : input.identity }}
 						</el-tag>
+						<el-form-item
+							v-if="!isTransform && numericPolicy && model.aggregateOperator === AggregateOperator.weighted_mean"
+							:label="t('devicesVirtualPlugin.measurement.weight')"
+							class="mb-0"
+						>
+							<el-input-number
+								v-model="input.weight"
+								:min="0.000001"
+								:max="1000000"
+								:precision="6"
+								data-test-id="aggregate-weight"
+							/>
+						</el-form-item>
 						<el-button
 							v-if="!isTransform"
 							@click="model.inputs.splice(index, 1)"
@@ -124,7 +178,7 @@
 					</div>
 					<el-button
 						v-if="!isTransform"
-						@click="model.inputs.push({ source_property: null })"
+						@click="model.inputs.push({ source_property: null, weight: 1 })"
 					>
 						{{ t('devicesVirtualPlugin.measurement.addInput') }}
 					</el-button>
@@ -173,6 +227,25 @@
 					:precision="0"
 				/>
 			</el-form-item>
+			<template v-if="!isTransform && numericPolicy">
+				<el-form-item :label="t('devicesVirtualPlugin.measurement.filter')">
+					<el-switch
+						v-model="model.filterEnabled"
+						data-test-id="aggregate-filter"
+					/>
+				</el-form-item>
+				<el-form-item
+					v-if="model.filterEnabled"
+					:label="t('devicesVirtualPlugin.measurement.filterThreshold', { unit: selectedProfile?.unit })"
+				>
+					<el-input-number
+						v-model="model.filterThreshold"
+						:min="0"
+						data-test-id="aggregate-filter-threshold"
+					/>
+					<el-text>{{ t('devicesVirtualPlugin.measurement.filterCohort') }}</el-text>
+				</el-form-item>
+			</template>
 			<el-form-item :label="t('devicesVirtualPlugin.measurement.maximumAge')">
 				<el-input-number
 					v-model="model.maximumAgeSeconds"
@@ -256,7 +329,7 @@
 			data-test-id="measurement-preview"
 		>
 			<el-alert
-				:title="t('devicesVirtualPlugin.measurement.previewOnly')"
+				:title="t(`devicesVirtualPlugin.measurement.${isTransform ? 'previewOnly' : 'aggregatePreviewOnly'}`)"
 				type="info"
 				:closable="false"
 			/>
@@ -270,7 +343,7 @@
 					:key="input.id"
 				>
 					<code>{{ input.source_identity }}</code>
-					· {{ diagnosticLabel(input.exclusion) }}
+					· {{ diagnosticLabel(input.exclusion) }} · {{ t('devicesVirtualPlugin.measurement.sampleAge', { age: input.age_seconds ?? '—' }) }}
 				</div>
 			</template>
 		</div>
@@ -290,12 +363,18 @@
 				:key="input.id"
 			>
 				<code>{{ input.source_identity }}</code>
-				· {{ diagnosticLabel(input.exclusion) }}
+				· {{ diagnosticLabel(input.exclusion) }} · {{ t('devicesVirtualPlugin.measurement.sampleAge', { age: input.age_seconds ?? '—' }) }}
 			</div>
 		</div>
 		<el-button
 			:loading="busy"
-			:disabled="!canPreview || loading || !!catalogError || (!outputId && !model.name.trim())"
+			:disabled="
+				!canPreview ||
+				loading ||
+				!!catalogError ||
+				(!isTransform && (!selectedProfile || sourcesLoading || !!sourcesError)) ||
+				(!outputId && !model.name.trim())
+			"
 			@click="previewDraft"
 		>
 			{{ t('devicesVirtualPlugin.measurement.preview') }}
@@ -311,10 +390,10 @@
 	</el-card>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCard, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElTag, ElText } from 'element-plus';
+import { ElAlert, ElButton, ElCard, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText } from 'element-plus';
 
 import { injectStoresManager } from '../../../common';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
@@ -324,7 +403,7 @@ import {
 } from '../../../openapi';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { useMeasurementAuthoring } from '../composables/use-measurement-authoring';
-import { type MeasurementMode, measurementCandidates } from '../utils/measurement-authoring.utils';
+import { type MeasurementMode, aggregateCandidates, measurementCandidates } from '../utils/measurement-authoring.utils';
 
 const props = defineProps<{ mode: MeasurementMode; outputId?: string; temperature?: boolean }>();
 const emit = defineEmits<{ created: [deviceId: string]; busy: [value: boolean] }>();
@@ -333,16 +412,62 @@ const stores = injectStoresManager(),
 	devices = stores.getStore(devicesStoreKey),
 	channels = stores.getStore(channelsStoreKey),
 	properties = stores.getStore(channelsPropertiesStoreKey);
-const { model, busy, error, conflict, current, preview, isTransform, canPreview, load, previewDraft, save } = useMeasurementAuthoring(
-	props.mode,
-	props.outputId
-);
+const {
+	profiles,
+	selectedProfile,
+	numericPolicy,
+	sources,
+	sourcesLoading,
+	sourcesError,
+	loadCapabilities,
+	model,
+	busy,
+	error,
+	conflict,
+	current,
+	preview,
+	isTransform,
+	canPreview,
+	load,
+	previewDraft,
+	save,
+} = useMeasurementAuthoring(props.mode, props.outputId);
 watch(busy, (value) => emit('busy', value), { immediate: true });
 model.temperature = props.temperature ?? true;
 if (isTransform) model.inputs = [{ source_property: null }];
 const loading = ref(false),
 	catalogError = ref<string | null>(null);
-const candidates = computed(() => measurementCandidates(props.mode, devices.findAll(), channels.findAll(), properties.findAll()));
+const candidates = computed(() =>
+	isTransform
+		? measurementCandidates(props.mode, devices.findAll(), channels.findAll(), properties.findAll())
+		: selectedProfile.value
+			? aggregateCandidates(sources.value, devices.findAll(), channels.findAll(), properties.findAll(), selectedProfile.value)
+			: []
+);
+const effectiveStep = computed(() =>
+	current.value && 'output_step' in current.value ? current.value.output_step : (selectedProfile.value?.output_step ?? null)
+);
+const now = ref(Date.now());
+let clock: ReturnType<typeof setInterval> | undefined;
+onUnmounted(() => clearInterval(clock));
+const liveProducer = computed(() => properties.findAll().find((entry) => entry.id === props.outputId)?.value?.producer);
+const liveReasons = computed(() => [
+	...(liveProducer.value?.reasons ?? []),
+	...(liveProducer.value?.expiresAt && Date.parse(liveProducer.value.expiresAt) <= now.value ? ['stale'] : []),
+]);
+const liveQuality = computed(() => {
+	const producer = liveProducer.value;
+	return producer &&
+		producer.quality !== 'unavailable' &&
+		producer.sampledAt &&
+		producer.expiresAt &&
+		Date.parse(producer.sampledAt) <= now.value &&
+		Date.parse(producer.evaluatedAt) >= Date.parse(producer.sampledAt) &&
+		Date.parse(producer.evaluatedAt) <= now.value &&
+		Date.parse(producer.expiresAt) > now.value
+		? producer.quality
+		: 'unavailable';
+});
 const availableCandidates = (index: number) =>
 	candidates.value.filter((candidate) => !model.inputs.some((input, other) => other !== index && input.source_property === candidate.id));
 const thermistorAllowed = computed(
@@ -358,7 +483,7 @@ const affineFields = ['scale', 'offset'] as const;
 const ntcFields = ['referenceVoltage', 'seriesResistance', 'nominalResistance', 'nominalTemperatureCelsius', 'beta'] as const;
 const steinhartFields = ['referenceVoltage', 'seriesResistance', 'coefficientA', 'coefficientB', 'coefficientC'] as const;
 const transformOperators = Object.values(TransformOperator),
-	aggregateOperators = Object.values(AggregateOperator);
+	aggregateOperators = computed(() => selectedProfile.value?.operators ?? []);
 const message = (key: string | null) => (key?.startsWith('measurement') ? t(`devicesVirtualPlugin.measurement.${key}`) : (key ?? ''));
 const diagnosticLabel = (value: string | null | undefined): string => {
 	if (!value) return '—';
@@ -366,13 +491,6 @@ const diagnosticLabel = (value: string | null | undefined): string => {
 	const key = `devicesVirtualPlugin.measurement.states.${code}`;
 	return te(key) ? `${t(key)}${identity ? ` · ${identity}` : ''}` : `${t('devicesVirtualPlugin.measurement.states.unknown')} (${value})`;
 };
-watch(
-	model,
-	() => {
-		preview.value = null;
-	},
-	{ deep: true }
-);
 const reload = async () => {
 	loading.value = true;
 	catalogError.value = null;
@@ -381,6 +499,7 @@ const reload = async () => {
 		await channels.fetch({});
 		await Promise.all([...new Set(channels.findAll().map((channel) => channel.id))].map((channelId) => properties.fetch({ channelId })));
 		await load();
+		await loadCapabilities();
 	} catch {
 		catalogError.value = 'measurementCatalog';
 	} finally {
@@ -391,5 +510,10 @@ const submit = async () => {
 	const deviceId = await save();
 	if (deviceId) emit('created', deviceId);
 };
-onMounted(reload);
+onMounted(() => {
+	void reload();
+	clock = setInterval(() => {
+		now.value = Date.now();
+	}, 1000);
+});
 </script>

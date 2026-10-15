@@ -1306,5 +1306,37 @@
   "virtual_measurement_state_producer_disposed": "Producent zastaven",
   "virtual_measurement_state_unknown": "Neznámá diagnostika",
   "climate_temperature_coverage_conflict": "Teplotní senzory místnosti se překrývají. V nastavení účasti na klimatu místnosti vyberte jednoho zástupce.",
-  "climate_temperature_coverage_unavailable": "Teplotu místnosti nelze určit. Zkontrolujte nastavení a dostupnost senzorů."
+  "climate_temperature_coverage_unavailable": "Teplotu místnosti nelze určit. Zkontrolujte nastavení a dostupnost senzorů.",
+  "virtual_measurement_state_outlier": "Odlehlá hodnota vyloučena",
+  "virtual_measurement_state_insufficient_comparison_cohort": "Nedostatek zdrojů pro porovnání",
+  "virtual_measurement_state_unknown_members": "Neznámí členové brání výsledku",
+  "virtual_measurement_grid": "Krok výstupu: {step} {unit} (nejbližší, shoda směrem k +∞)",
+  "@virtual_measurement_grid": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_weight": "Relativní váha: {weight}",
+  "@virtual_measurement_weight": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_age": "Stáří vzorku: {age} s",
+  "@virtual_measurement_age": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_true": "Detekováno",
+  "virtual_measurement_false": "Nedetekováno"
 }

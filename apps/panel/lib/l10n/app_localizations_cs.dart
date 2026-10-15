@@ -4236,4 +4236,36 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get climate_temperature_coverage_unavailable =>
       'Teplotu místnosti nelze určit. Zkontrolujte nastavení a dostupnost senzorů.';
+
+  @override
+  String get virtual_measurement_state_outlier => 'Odlehlá hodnota vyloučena';
+
+  @override
+  String get virtual_measurement_state_insufficient_comparison_cohort =>
+      'Nedostatek zdrojů pro porovnání';
+
+  @override
+  String get virtual_measurement_state_unknown_members =>
+      'Neznámí členové brání výsledku';
+
+  @override
+  String virtual_measurement_grid(String step, String unit) {
+    return 'Krok výstupu: $step $unit (nejbližší, shoda směrem k +∞)';
+  }
+
+  @override
+  String virtual_measurement_weight(String weight) {
+    return 'Relativní váha: $weight';
+  }
+
+  @override
+  String virtual_measurement_age(String age) {
+    return 'Stáří vzorku: $age s';
+  }
+
+  @override
+  String get virtual_measurement_true => 'Detekováno';
+
+  @override
+  String get virtual_measurement_false => 'Nedetekováno';
 }

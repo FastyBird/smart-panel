@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Modo",
 		"projection": "Proyección",
-		"aggregate": "Temperatura agregada",
+		"aggregate": "Sensor agregado",
 		"transform": "Conversión numérica",
 		"group": "Grupo de luces",
 		"name": "Nombre",
@@ -198,7 +198,10 @@
 			"mean": "Media",
 			"median": "Mediana",
 			"min": "Mínimo",
-			"max": "Máximo"
+			"max": "Máximo",
+			"weighted_mean": "Media ponderada",
+			"any": "Cualquiera detectado",
+			"all": "Todos detectados"
 		},
 		"states": {
 			"good": "Buena",
@@ -232,7 +235,27 @@
 			"output_out_of_range": "Valor fuera del rango",
 			"invalid_domain": "Fuera del dominio matemático",
 			"producer_disposed": "Productor detenido",
-			"unknown": "Diagnóstico desconocido"
+			"unknown": "Diagnóstico desconocido",
+			"outlier": "Valor atípico excluido",
+			"insufficient_comparison_cohort": "Fuentes insuficientes para comparar",
+			"unknown_members": "Los miembros desconocidos impiden un resultado"
+		},
+		"weight": "Peso relativo",
+		"filter": "Excluir valores atípicos (desviación de la mediana)",
+		"filterThreshold": "Desviación máxima ({unit})",
+		"filterCohort": "Se requieren al menos tres fuentes válidas antes de filtrar. El cuórum cuenta fuentes conservadas, no pesos.",
+		"grid": "Paso de salida: {step} {unit} (más cercano, empates hacia +∞)",
+		"legacyGrid": "Conserva la precisión de temperatura declarada",
+		"sampleAge": "Edad de la muestra: {age} s",
+		"aggregatePreviewOnly": "Solo validación de configuración del servidor. Los diagnósticos describen la ejecución guardada, no un resultado calculado del borrador.",
+		"profiles": {
+			"temperature": "Temperatura (°C)",
+			"humidity": "Humedad relativa (%)",
+			"carbon_dioxide": "Concentración de CO₂ (ppm)",
+			"illuminance": "Iluminancia (lx)",
+			"contact": "Contacto",
+			"motion": "Movimiento",
+			"occupancy": "Presencia"
 		}
 	},
 	"lightGroup": {

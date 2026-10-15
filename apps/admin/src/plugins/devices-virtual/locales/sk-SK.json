@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Režim",
 		"projection": "Projekcia",
-		"aggregate": "Agregovaná teplota",
+		"aggregate": "Agregovaný senzor",
 		"transform": "Číselný prevod",
 		"group": "Skupina svetiel",
 		"name": "Názov",
@@ -198,7 +198,10 @@
 			"mean": "Priemer",
 			"median": "Medián",
 			"min": "Minimum",
-			"max": "Maximum"
+			"max": "Maximum",
+			"weighted_mean": "Vážený priemer",
+			"any": "Aspoň jeden deteguje",
+			"all": "Všetky detegujú"
 		},
 		"states": {
 			"good": "V poriadku",
@@ -232,7 +235,27 @@
 			"output_out_of_range": "Hodnota mimo rozsahu",
 			"invalid_domain": "Mimo matematického oboru",
 			"producer_disposed": "Producent zastavený",
-			"unknown": "Neznáma diagnostika"
+			"unknown": "Neznáma diagnostika",
+			"outlier": "Odľahlá hodnota vylúčená",
+			"insufficient_comparison_cohort": "Nedostatok zdrojov na porovnanie",
+			"unknown_members": "Neznámi členovia bránia výsledku"
+		},
+		"weight": "Relatívna váha",
+		"filter": "Vylúčiť odľahlé hodnoty (odchýlka od mediánu)",
+		"filterThreshold": "Maximálna odchýlka ({unit})",
+		"filterCohort": "Pred filtrovaním sú nutné aspoň tri spôsobilé zdroje. Kvórum počíta ponechané zdroje, nie váhy.",
+		"grid": "Krok výstupu: {step} {unit} (najbližší, zhoda smerom k +∞)",
+		"legacyGrid": "Zachováva deklarovanú presnosť teploty",
+		"sampleAge": "Vek vzorky: {age} s",
+		"aggregatePreviewOnly": "Iba overenie konfigurácie backendom. Diagnostika členov opisuje uložený beh, nie vypočítaný výsledok návrhu.",
+		"profiles": {
+			"temperature": "Teplota (°C)",
+			"humidity": "Relatívna vlhkosť (%)",
+			"carbon_dioxide": "Koncentrácia CO₂ (ppm)",
+			"illuminance": "Osvetlenosť (lx)",
+			"contact": "Kontakt",
+			"motion": "Pohyb",
+			"occupancy": "Prítomnosť"
 		}
 	},
 	"lightGroup": {

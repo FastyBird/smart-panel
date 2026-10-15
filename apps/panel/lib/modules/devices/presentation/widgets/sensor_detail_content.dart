@@ -75,6 +75,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   String? get _propertyId => _currentSensorData.property?.id;
 
   String get _currentValue {
+    // Recheck the live property lease even when SensorData cached a detection.
+    if (_currentSensorData.property?.type == 'virtual' && _currentSensorData.property?.value == null) return '--';
     if (_isBinary) {
       return _currentSensorData.isDetection! ? 'true' : 'false';
     }

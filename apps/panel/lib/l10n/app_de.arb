@@ -1255,5 +1255,37 @@
   "virtual_measurement_state_producer_disposed": "Produzent gestoppt",
   "virtual_measurement_state_unknown": "Unbekannte Diagnose",
   "climate_temperature_coverage_conflict": "Die Temperatursensoren des Raums überschneiden sich. Wählen Sie in den Raumklima-Einstellungen einen Vertreter aus.",
-  "climate_temperature_coverage_unavailable": "Die Raumtemperatur ist nicht verfügbar. Prüfen Sie die Sensorkonfiguration und Verfügbarkeit."
+  "climate_temperature_coverage_unavailable": "Die Raumtemperatur ist nicht verfügbar. Prüfen Sie die Sensorkonfiguration und Verfügbarkeit.",
+  "virtual_measurement_state_outlier": "Ausreißer ausgeschlossen",
+  "virtual_measurement_state_insufficient_comparison_cohort": "Nicht genügend Quellen zum Vergleich",
+  "virtual_measurement_state_unknown_members": "Unbekannte Mitglieder verhindern ein Ergebnis",
+  "virtual_measurement_grid": "Ausgabeschritt: {step} {unit} (nächster Wert, Gleichstand zu +∞)",
+  "@virtual_measurement_grid": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_weight": "Relatives Gewicht: {weight}",
+  "@virtual_measurement_weight": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_age": "Probenalter: {age} s",
+  "@virtual_measurement_age": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_true": "Erkannt",
+  "virtual_measurement_false": "Nicht erkannt"
 }

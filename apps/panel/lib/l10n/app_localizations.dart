@@ -7599,6 +7599,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Room temperature is unavailable. Check sensor configuration and availability.'**
   String get climate_temperature_coverage_unavailable;
+
+  /// No description provided for @virtual_measurement_state_outlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Outlier excluded'**
+  String get virtual_measurement_state_outlier;
+
+  /// No description provided for @virtual_measurement_state_insufficient_comparison_cohort.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough sources for comparison'**
+  String get virtual_measurement_state_insufficient_comparison_cohort;
+
+  /// No description provided for @virtual_measurement_state_unknown_members.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown members prevent a result'**
+  String get virtual_measurement_state_unknown_members;
+
+  /// No description provided for @virtual_measurement_grid.
+  ///
+  /// In en, this message translates to:
+  /// **'Output step: {step} {unit} (nearest, ties toward +∞)'**
+  String virtual_measurement_grid(String step, String unit);
+
+  /// No description provided for @virtual_measurement_weight.
+  ///
+  /// In en, this message translates to:
+  /// **'Relative weight: {weight}'**
+  String virtual_measurement_weight(String weight);
+
+  /// No description provided for @virtual_measurement_age.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample age: {age} s'**
+  String virtual_measurement_age(String age);
+
+  /// No description provided for @virtual_measurement_true.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected'**
+  String get virtual_measurement_true;
+
+  /// No description provided for @virtual_measurement_false.
+  ///
+  /// In en, this message translates to:
+  /// **'Not detected'**
+  String get virtual_measurement_false;
 }
 
 class _AppLocalizationsDelegate

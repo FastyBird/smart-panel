@@ -4277,4 +4277,37 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get climate_temperature_coverage_unavailable =>
       'Temperatura pomieszczenia jest niedostępna. Sprawdź konfigurację i dostępność czujników.';
+
+  @override
+  String get virtual_measurement_state_outlier =>
+      'Wartość odstająca wykluczona';
+
+  @override
+  String get virtual_measurement_state_insufficient_comparison_cohort =>
+      'Za mało źródeł do porównania';
+
+  @override
+  String get virtual_measurement_state_unknown_members =>
+      'Nieznani członkowie uniemożliwiają wynik';
+
+  @override
+  String virtual_measurement_grid(String step, String unit) {
+    return 'Krok wyjściowy: $step $unit (najbliższy, remisy do +∞)';
+  }
+
+  @override
+  String virtual_measurement_weight(String weight) {
+    return 'Waga względna: $weight';
+  }
+
+  @override
+  String virtual_measurement_age(String age) {
+    return 'Wiek próbki: $age s';
+  }
+
+  @override
+  String get virtual_measurement_true => 'Wykryto';
+
+  @override
+  String get virtual_measurement_false => 'Nie wykryto';
 }
