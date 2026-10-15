@@ -1,6 +1,7 @@
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
 
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ThermostatComfortConfiguration } from '../services/virtual-thermostat-comfort.utils';
 import { VirtualThermostatMode, VirtualThermostatPolicy } from '../services/virtual-thermostat-policy.utils';
 import { VirtualWindowTrendPolicy } from '../services/virtual-window-trend.utils';
 
@@ -35,6 +36,8 @@ export class VirtualThermostatConfigEntity {
 	controlStrategy: 'guarded_branches';
 	@Column({ type: 'boolean', default: false })
 	locked: boolean;
+	@Column({ type: 'simple-json', nullable: true })
+	comfort: ThermostatComfortConfiguration | null;
 	@Column({ type: 'simple-json' })
 	policy: VirtualThermostatPolicy;
 	@Column({ type: 'simple-json', nullable: true })

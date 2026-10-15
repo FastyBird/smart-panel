@@ -48,6 +48,45 @@ HTTP and event snapshots share process epoch and sequence stamps, so a fetch cov
 refresh loop; newer hints, commands, reconnects or device replacement fence older pending responses. Socket payloads
 are not treated as actuator acknowledgement or independent control evidence.
 
+## Thermostat comfort intent
+
+The controller stores optional comfort configuration alongside its version-1 requested settings. A null comfort
+configuration preserves installed manual behavior and does not seed any preset or enable automation. Explicit
+`comfort`, `eco` and `away` presets use operator-defined Celsius setpoints and ranges matching the configured
+branches and neutral deadband. HVAC `requested_mode`, selected preset and reported branch activity stay separate.
+The original requested setpoint properties and configuration response retain their meaning. Runtime
+`effective_comfort` reports the resolved source, preset, setpoints, override identity and expiry.
+
+The `/plugins/devices-virtual/producers/thermostats/{id}/comfort` endpoint reads this state; PUT configures explicit
+ranges/presets. POST `selection` selects a preset or null for the manual baseline, POST `override` selects a preset
+or explicit setpoints until an absolute ISO expiry, and POST `override/cancel` terminates the identified active
+override. Writes require both current thermostat and graph revisions. Override source is assigned by the backend
+and actor identity comes from an authenticated user session; public requests cannot impersonate internal automation.
+The optional `comfort` definition on the existing thermostat configuration PUT permits an atomic policy/range change.
+Incompatible active override setpoints must be cancelled before such a change; neither reconfiguration nor preset
+editing silently replaces a live override.
+
+A live override keeps the setpoints resolved at its creation and precedes an explicitly enabled trusted automation
+baseline, then the current selected preset/manual baseline. The internal `applyAutomationBaseline` port accepts only
+a current validated preset or explicit setpoints, authenticated bridge actor identity and revision fences; it has no
+public HTTP route. Operator configuration defaults automation disabled. Explicitly disabling it clears its baseline. Background edits change that baseline only. Cancellation and expiry resolve the then-current baseline;
+there is no saved settings restoration or historical command replay. Explicit OFF through the registered enable
+controls latches OFF across comfort edits. An explicit non-OFF command or `clear_user_off` selection action clears
+the latch; clearing it does not change the separate requested HVAC mode. All existing protective inputs, claims,
+qualification and unresolved-output barriers still dominate comfort and are checked again at physical dispatch.
+
+Override expiry uses both an absolute wall-clock deadline and a process-local monotonic budget. Equality expires.
+Once observed, terminal expiry is persisted before evaluating the baseline and cannot revive on rollback or restart.
+This backend has no trusted elapsed-time evidence across downtime: an override without its process-local budget
+terminates durably as `clock_uncertain` after restart, even if its wall-clock deadline appears future. The API exposes
+`terminate_on_restart_uncertainty`; it does not claim to detect unobservable wall-clock changes while stopped. This
+conservative policy also means an ordinary restart ends an override early. A future trusted-clock implementation
+must retain these terminal and dispatch fences. Temporary overrides are bounded to seven days.
+
+This backend stage does not implement a space activity/schedule/presence engine. The trusted baseline port is ready
+for the separate bridge, and no engine invokes it here.
+Admin preset authoring and panel comfort controls still need delivery before VD3-7 can be marked complete.
+
 ## Input graph and measurements
 
 Virtual measurement bindings are durable graph edges. An aggregate reports a read-only temperature from compatible sources according to its configured operator, freshness and quorum. The output has its own identity and history, while source identity, timestamp and quality remain visible for diagnostics. Losing quorum or seeing only stale inputs makes the current output unavailable; history is not treated as a live reading.

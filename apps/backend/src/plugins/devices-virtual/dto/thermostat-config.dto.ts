@@ -19,6 +19,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { ThermostatActuatorRole, ThermostatSetting, ThermostatSourceRole } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatMode } from '../services/virtual-thermostat-policy.utils';
 
+import { ThermostatComfortDefinitionDto } from './thermostat-comfort.dto';
+
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatFloorGuard' })
 export class VirtualThermostatFloorGuardDto {
 	@ApiProperty({ description: 'Floor temperature heating release threshold in Celsius' })
@@ -277,6 +279,17 @@ export class ConfigureVirtualThermostatDto {
 	@IsOptional()
 	@IsIn(['guarded_branches'])
 	controlStrategy?: 'guarded_branches';
+
+	@ApiPropertyOptional({
+		description:
+			'Explicit comfort replacement for atomic branch/range reconfiguration; omitted preserves installed comfort configuration',
+		type: ThermostatComfortDefinitionDto,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ThermostatComfortDefinitionDto)
+	comfort?: ThermostatComfortDefinitionDto;
 
 	@ApiProperty({ name: 'schema_version', enum: [1], description: 'Typed configuration version' })
 	@Expose({ name: 'schema_version' })

@@ -102,3 +102,7 @@ Migration 40 retains singleton claim/journal identities and unresolved ownership
 ownership/concurrency/protection and multi-member Admin/Panel authoring/diagnostics remain before alpha delivery.
 The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
 qualification is claimed by this backend slice.
+VD3-7 implementation is staged: the local backend comfort configuration/API, arbitration, durable override lifecycle
+and dispatch fencing are implemented. Admin preset/override controls, panel diagnostics/cancel controls, all six locale
+updates and their UI tests remain open; VD3-7 is not complete. The backend defaults automation disabled and exposes only an internal trusted baseline port for the
+separate VD3-8 bridge. Restart uses explicit conservative `clock_uncertain` termination without a trusted clock.

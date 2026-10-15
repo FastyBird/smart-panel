@@ -16,6 +16,7 @@ import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/100
 import { AddVirtualThermostatRuntime1000000000032 } from '../../../migrations/1000000000032-AddVirtualThermostatRuntime';
 import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations/1000000000034-AddVirtualThermostatRecoveries';
 import { AddThermostatBranchGroups1000000000040 } from '../../../migrations/1000000000040-AddThermostatBranchGroups';
+import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
 import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import {
@@ -1755,6 +1756,66 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow('reserved');
 	});
 
+	it('preserves override and explicit OFF through legacy commands and atomic range reconfiguration', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			relay = await actuator();
+		const enable = await setting(controller, ChannelCategory.HEATER, PropertyCategory.ON);
+		const setpoint = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE);
+		const input = dto(sensor, relay);
+		input.requestedMode = 'heat';
+		input.settings = [
+			{ propertyId: enable, setting: 'heating_enabled' },
+			{ propertyId: setpoint, setting: 'heating_setpoint' },
+		];
+		input.comfort = { heating_range: { minimum: 10, maximum: 30 }, cooling_range: null, presets: [] };
+		await configs.configure(controller, input);
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		config.comfort.temporary_override = {
+			id: uuid(),
+			source: 'user',
+			actor_id: 'operator',
+			revision: config.revision,
+			created_at: new Date().toISOString(),
+			expires_at: new Date(Date.now() + 60_000).toISOString(),
+			preset: null,
+			setpoints: { heating_setpoint: 24, cooling_setpoint: null },
+			resolved_setpoints: { heating_setpoint: 24, cooling_setpoint: null },
+			status: 'active',
+			terminated_at: null,
+		};
+		await database.manager.save(config);
+		await configs.command([await target(enable, false)]);
+		await configs.command([await target(setpoint, 18)]);
+		let current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		expect(current).toMatchObject({
+			requestedMode: 'off',
+			policy: { heatingSetpoint: 18 },
+			comfort: { user_off: true, temporary_override: { resolved_setpoints: { heating_setpoint: 24 } } },
+		});
+		await configs.configure(controller, { ...input, expectedRevision: current.revision });
+		current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		expect(current.comfort.user_off).toBe(true);
+		await configs.command([await target(enable, true)]);
+		current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		expect(current.comfort.user_off).toBe(false);
+		await expect(
+			configs.configure(controller, {
+				...input,
+				expectedRevision: current.revision,
+				policy: { ...input.policy, heatingSetpoint: 31 },
+				comfort: undefined,
+			}),
+		).rejects.toThrow('setpoint_range');
+		await configs.configure(controller, {
+			...input,
+			expectedRevision: current.revision,
+			policy: { ...input.policy, heatingSetpoint: 31 },
+			comfort: { heating_range: { minimum: 10, maximum: 35 }, cooling_range: null, presets: [] },
+		});
+		expect((await configs.get(controller)).policy.heatingSetpoint).toBe(31);
+	});
+
 	it('migration matches synchronized reservation constraints and stable SET NULL foreign keys', async () => {
 		const runner = database.createQueryRunner();
 		await runner.dropTable('devices_virtual_thermostat_recoveries');
@@ -1771,6 +1832,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await recoveryMigration.up(runner);
 		const branchMigration = new AddThermostatBranchGroups1000000000040();
 		await branchMigration.up(runner);
+		await new AddVirtualThermostatComfort1000000000039().up(runner);
 		const indexes = await runner.query('PRAGMA index_list("devices_virtual_thermostat_actuator_claims")');
 		expect(indexes).toEqual(
 			expect.arrayContaining([

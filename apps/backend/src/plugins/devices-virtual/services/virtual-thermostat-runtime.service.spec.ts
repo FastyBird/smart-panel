@@ -59,6 +59,7 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
@@ -74,6 +75,7 @@ describe('virtual thermostat durable runtime', () => {
 	let directory: string;
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
+	let comfort: VirtualThermostatComfortService;
 	let controllerId: string;
 	let sensorId: string;
 	let relayId: string;
@@ -376,6 +378,13 @@ describe('virtual thermostat durable runtime', () => {
 				return () => graphValidated && generation === graphGeneration;
 			},
 		} as unknown as VirtualDependencyGraphService;
+		comfort = new VirtualThermostatComfortService(
+			database,
+			new DeviceStructureLockService(),
+			new VirtualDependencyGraphService(database),
+			claims,
+			events,
+		);
 		makeRuntime = (runtimeGraph = graph, aggregate) =>
 			new VirtualThermostatRuntimeService(
 				database,
@@ -387,6 +396,8 @@ describe('virtual thermostat durable runtime', () => {
 				producers,
 				events,
 				runtimeGraph,
+				comfort,
+				new ConfigService(),
 			);
 		runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
@@ -437,6 +448,97 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		await runtime.flush();
 	};
+
+	const comfortFence = async () => {
+		const current = await comfort.get(controllerId);
+		return { expected_revision: current.revision, expected_graph_revision: current.graph_revision };
+	};
+	const configureComfort = async () =>
+		comfort.configure(controllerId, await comfortFence(), {
+			heating_range: { minimum: 10, maximum: 30 },
+			cooling_range: null,
+			presets: [{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } }],
+		});
+
+	it('uses effective preset demand without changing requested settings or bypassing a final ambient guard', async () => {
+		await settle();
+		await configureComfort();
+		let releaseOn: () => void;
+		onGate = new Promise<void>((resolve) => {
+			releaseOn = resolve;
+		});
+		await comfort.select(controllerId, await comfortFence(), 'comfort', false);
+		await waitForOnJournal();
+		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
+			requested_mode: 'heat',
+			heating_setpoint: 20,
+			effective_comfort: { source: 'preset', preset: 'comfort', heating_setpoint: 24 },
+		});
+		samples.delete(sensorId);
+		releaseOn();
+		await settle();
+		expect(sends).not.toContain(true);
+		runtime.request(controllerId);
+		await settle();
+		expect(runtime.readDiagnostics(controllerId).reasons).toContain('ambient_unavailable');
+	});
+
+	it('rejects queued ON at exact override expiry even before a poll recomputes the baseline', async () => {
+		await settle();
+		await configureComfort();
+		let releaseOn: () => void;
+		onGate = new Promise<void>((resolve) => {
+			releaseOn = resolve;
+		});
+		const now = Date.now();
+		jest.spyOn(Date, 'now').mockReturnValue(now);
+		await comfort.override(
+			controllerId,
+			await comfortFence(),
+			{
+				preset: 'comfort',
+				setpoints: null,
+				expires_at: new Date(now + 1000).toISOString(),
+			},
+			'operator',
+		);
+		await waitForOnJournal();
+		jest.spyOn(Date, 'now').mockReturnValue(now + 1000);
+		releaseOn();
+		await settle();
+		expect(sends).not.toContain(true);
+		expect((await comfort.get(controllerId)).configuration.temporary_override.status).toBe('expired');
+		runtime.request(controllerId);
+		await settle();
+		expect(runtime.readDiagnostics(controllerId).effective_comfort).toMatchObject({
+			source: 'manual',
+			heating_setpoint: 20,
+		});
+	});
+
+	it('fences a queued preset ON when a newer user OFF revision commits', async () => {
+		await settle();
+		await configureComfort();
+		let releaseOn: () => void;
+		onGate = new Promise<void>((resolve) => {
+			releaseOn = resolve;
+		});
+		await comfort.select(controllerId, await comfortFence(), 'comfort', false);
+		await waitForOnJournal();
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+		config.requestedMode = 'off';
+		config.comfort.user_off = true;
+		config.revision++;
+		await database.manager.save(config);
+		events.emit('devices-virtual.thermostat.config.changed', controllerId);
+		releaseOn();
+		await settle();
+		expect(sends).not.toContain(true);
+		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
+			requested_mode: 'off',
+			effective_comfort: { source: 'user_off' },
+		});
+	});
 
 	it('publishes detached binding freshness with the same HTTP and event stamp', async () => {
 		const snapshots: {

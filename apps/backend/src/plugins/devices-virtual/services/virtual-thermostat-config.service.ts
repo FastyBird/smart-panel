@@ -52,6 +52,7 @@ import {
 	isEligibleVirtualTransformedTemperature,
 } from './virtual-source-eligibility.utils';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import {
 	isThermostatTemperature,
 	thermostatActuatorIdentity,
@@ -351,6 +352,12 @@ export class VirtualThermostatConfigService {
 						else config.locked = value as boolean;
 					}
 				}
+				if (config.comfort) {
+					if (rows.some((row) => row.setting.endsWith('setpoint'))) config.comfort.selected_preset = null;
+					if (rows.some((row) => row.setting.endsWith('enabled'))) config.comfort.user_off = !heat && !cool;
+					const errors = validateThermostatComfort(config.comfort, config.policy);
+					if (errors.length) fail(errors.join(', '));
+				}
 				config.requestedMode = heat ? (cool ? 'auto' : 'heat') : cool ? 'cool' : 'off';
 				this.validatePolicy(config.policy, config.requestedMode);
 				config.revision++;
@@ -422,6 +429,23 @@ export class VirtualThermostatConfigService {
 		if (dto.controlStrategy !== undefined && dto.controlStrategy !== 'guarded_branches')
 			fail('Native unit adapters are not implemented; guarded branches are required.');
 		this.validatePolicy(dto.policy, dto.requestedMode);
+		const comfort = dto.comfort
+			? {
+					...dto.comfort,
+					selected_preset: previous?.comfort?.selected_preset ?? null,
+					user_off: (previous?.comfort?.user_off ?? false) || dto.requestedMode === 'off',
+					automation_enabled: dto.comfort.automation_enabled ?? previous?.comfort?.automation_enabled ?? false,
+					automation_baseline:
+						dto.comfort.automation_enabled === false ? null : (previous?.comfort?.automation_baseline ?? null),
+					temporary_override: previous?.comfort?.temporary_override ?? null,
+				}
+			: previous?.comfort
+				? { ...previous.comfort, user_off: previous.comfort.user_off || dto.requestedMode === 'off' }
+				: null;
+		if (comfort) {
+			const errors = validateThermostatComfort(comfort, dto.policy);
+			if (errors.length) fail(`Reconfigure comfort before changing branches/ranges: ${errors.join(', ')}`);
+		}
 		if (dto.heuristic && !validateVirtualWindowTrendPolicy(dto.heuristic))
 			fail('Invalid independent window trend policy.');
 		if (
@@ -643,6 +667,7 @@ export class VirtualThermostatConfigService {
 			schemaVersion: 1,
 			revision: (previous?.revision ?? 0) + 1,
 			requestedMode: dto.requestedMode,
+			comfort,
 			locked: previous?.locked ?? false,
 			policy: { ...dto.policy, floor: dto.policy.floor ?? null },
 			heuristic: dto.heuristic ?? null,

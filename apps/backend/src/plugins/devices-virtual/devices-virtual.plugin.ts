@@ -35,6 +35,7 @@ import { VirtualDevicesController } from './controllers/virtual-devices.controll
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
 import { VirtualThermostatAuthoringController } from './controllers/virtual-thermostat-authoring.controller';
+import { VirtualThermostatComfortController } from './controllers/virtual-thermostat-comfort.controller';
 import { VirtualThermostatConfigController } from './controllers/virtual-thermostat-config.controller';
 import { VirtualTransformConfigController } from './controllers/virtual-transform-config.controller';
 import {
@@ -107,6 +108,7 @@ import { VirtualProducerStateService } from './services/virtual-producer-state.s
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
 import { VirtualThermostatAuthoringService } from './services/virtual-thermostat-authoring.service';
 import { VirtualThermostatClaimsService } from './services/virtual-thermostat-claims.service';
+import { VirtualThermostatComfortService } from './services/virtual-thermostat-comfort.service';
 import { VirtualThermostatConfigService } from './services/virtual-thermostat-config.service';
 import { VirtualThermostatInputsService } from './services/virtual-thermostat-inputs.service';
 import { VirtualThermostatRuntimeService } from './services/virtual-thermostat-runtime.service';
@@ -162,6 +164,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		ThermostatInstallationLoaderService,
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
+		VirtualThermostatComfortService,
 		VirtualThermostatAuthoringService,
 		VirtualThermostatInputsService,
 		VirtualThermostatTransportService,
@@ -197,6 +200,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 	controllers: [
 		ThermostatInstallationController,
 		VirtualThermostatConfigController,
+		VirtualThermostatComfortController,
 		VirtualThermostatAuthoringController,
 		VirtualMeasurementAuthoringController,
 		VirtualTransformConfigController,

@@ -39,6 +39,12 @@ import {
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { thermostatBranchActivity, thermostatBranchEvidence } from './virtual-thermostat-branch.utils';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
+import {
+	ThermostatEffectiveComfort,
+	effectiveThermostatComfort,
+	validateThermostatComfort,
+} from './virtual-thermostat-comfort.utils';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 import {
@@ -96,6 +102,7 @@ export interface ThermostatRuntimeDiagnostic {
 	current_temperature: number | null;
 	floor_temperature: number | null;
 	requested_mode: 'off' | 'heat' | 'cool' | 'auto';
+	effective_comfort: ThermostatEffectiveComfort;
 	heating_setpoint: number | null;
 	cooling_setpoint: number | null;
 	floor_latched: boolean;
@@ -186,6 +193,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		private readonly producers: PropertyProducerRegistryService,
 		private readonly events: EventEmitter2,
 		private readonly graph: VirtualDependencyGraphService,
+		private readonly comfort: VirtualThermostatComfortService,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 
@@ -262,6 +270,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (result && (!this.graph.isValidated() || this.diagnosticGuards.get(controllerId)?.() === false))
 			return {
 				...result,
+				effective_comfort: { ...result.effective_comfort },
 				readiness: 'unavailable',
 				current_temperature: null,
 				floor_temperature: null,
@@ -279,6 +288,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		return result
 			? {
 					...result,
+					effective_comfort: { ...result.effective_comfort },
 					inputs: result.inputs.map((input) => ({ ...input, reasons: [...input.reasons] })),
 					reasons: [...result.reasons],
 					branches: result.branches.map((branch) => ({ ...branch })),
@@ -306,6 +316,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					decision_revision: 0,
 					readiness: 'unavailable',
 					requested_mode: 'off',
+					effective_comfort: {
+						source: 'manual',
+						preset: null,
+						override_id: null,
+						expires_at: null,
+						heating_setpoint: null,
+						cooling_setpoint: null,
+					},
 					heating_setpoint: null,
 					cooling_setpoint: null,
 					current_temperature: null,
@@ -344,6 +362,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		publishOutcome();
 	}
 	private async load(controllerId: string): Promise<ControllerContext | null> {
+		await this.comfort.settle(controllerId);
 		return this.structure.runShared(async () => {
 			const admission = this.claims.capture();
 			const publishGuard = this.graph.capturePublishGuard();
@@ -572,19 +591,27 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			thermostatBranchEvidence(
 				context.claims.filter((claim) => claim.role === role).map((claim) => this.evidence(context, claim, now)),
 			);
-		const decision = evaluateVirtualThermostatPolicy(context.config.policy, {
-			now,
-			mode: context.owner?.enabled ? context.config.requestedMode : 'off',
-			ambient: frame.ambient,
-			floor: frame.floor,
-			heating: branchEvidence('heating'),
-			cooling: branchEvidence('cooling'),
-			previousDemand: context.state.previousDemand,
-			floorOverheatLatched: context.state.floorLatched,
-			windows,
-			heuristicWindowPause: heuristic?.paused ?? false,
-			reconciled: context.claims.length > 0 && context.claims.every((claim) => this.isReconciled(claim)),
-		});
+		const effective = effectiveThermostatComfort(context.config.policy, context.config.comfort);
+		const decision = evaluateVirtualThermostatPolicy(
+			{
+				...context.config.policy,
+				heatingSetpoint: effective.heating_setpoint,
+				coolingSetpoint: effective.cooling_setpoint,
+			},
+			{
+				now,
+				mode: context.owner?.enabled && effective.source !== 'user_off' ? context.config.requestedMode : 'off',
+				ambient: frame.ambient,
+				floor: frame.floor,
+				heating: branchEvidence('heating'),
+				cooling: branchEvidence('cooling'),
+				previousDemand: context.state.previousDemand,
+				floorOverheatLatched: context.state.floorLatched,
+				windows,
+				heuristicWindowPause: heuristic?.paused ?? false,
+				reconciled: context.claims.length > 0 && context.claims.every((claim) => this.isReconciled(claim)),
+			},
+		);
 		for (const claim of context.claims)
 			if (
 				context.commands.some(
@@ -595,6 +622,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				if (claim.role === 'heating') decision.desiredHeating = false;
 				else decision.desiredCooling = false;
 			}
+		if (
+			!this.comfort.isCurrent(context.config.comfort) ||
+			(context.config.comfort && validateThermostatComfort(context.config.comfort, context.config.policy).length)
+		) {
+			decision.desiredHeating = false;
+			decision.desiredCooling = false;
+			decision.reasons.push('comfort_refresh_required');
+		}
 		if (!context.publishGuard()) {
 			decision.desiredHeating = false;
 			decision.desiredCooling = false;
@@ -1085,6 +1120,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				: 'ready',
 			inputs: frame.inputs,
 			requested_mode: context.config.requestedMode,
+			effective_comfort: effectiveThermostatComfort(context.config.policy, context.config.comfort),
 			heating_setpoint: context.config.policy.heatingSetpoint,
 			cooling_setpoint: context.config.policy.coolingSetpoint,
 			current_temperature: frame.ambient,

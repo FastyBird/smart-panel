@@ -7,6 +7,8 @@ import { VirtualThermostatRecoveryEntity } from '../entities/virtual-thermostat.
 import { VirtualThermostatConfigService } from '../services/virtual-thermostat-config.service';
 import { ThermostatRuntimeDiagnostic } from '../services/virtual-thermostat-runtime.service';
 
+import { ThermostatEffectiveComfortModel } from './thermostat-comfort-response.model';
+
 type ThermostatConfiguration = Awaited<ReturnType<VirtualThermostatConfigService['get']>>;
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatFloorGuard' })
@@ -393,6 +395,14 @@ export class VirtualThermostatInputRuntimeModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatRuntime' })
 export class VirtualThermostatRuntimeModel implements ThermostatRuntimeDiagnostic {
+	@ApiProperty({
+		description: 'Effective comfort intent, distinct from requested settings and actual activity',
+		type: ThermostatEffectiveComfortModel,
+	})
+	@Expose()
+	@Type(() => ThermostatEffectiveComfortModel)
+	effective_comfort: ThermostatEffectiveComfortModel;
+
 	@ApiProperty({ description: 'Process epoch for runtime invalidation hints' }) @Expose() epoch: string;
 	@ApiProperty() @Expose() sequence: number;
 	@ApiProperty() @Expose() configuration_revision: number;
