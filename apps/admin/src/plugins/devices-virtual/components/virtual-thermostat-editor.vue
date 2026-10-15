@@ -400,6 +400,14 @@
 			</div>
 		</template>
 	</el-card>
+	<virtual-thermostat-comfort
+		v-if="!create && deviceId && configuration"
+		:key="deviceId"
+		:device-id="deviceId"
+		:revision="configuration.revision"
+		:disabled="busy || JSON.stringify(draft) !== JSON.stringify(draftFromConfiguration(configuration))"
+		@changed="reload"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -442,6 +450,7 @@ import {
 import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
 
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
+import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
 
 const props = defineProps<{ deviceId?: string; create?: boolean }>();
 const emit = defineEmits<{ created: [deviceId: string] }>();
