@@ -265,8 +265,9 @@
 		"notDetected": "Nedetekováno",
 		"snapshotQuality": "Kvalita návrhu: {quality}",
 		"extensionOperator": "Operátor důvěryhodného rozšíření",
-		"measurementOperatorMissing": "Přesná verze operátoru není dostupná. Uložená konfigurace je zachována; pro opravu vyberte dostupnou verzi.",
-		"measurementOperatorParameter": "Číselný parametr je mimo podporovaný rozsah."
+		"measurementOperatorMissing": "Uložený kontrakt nebo verze operátoru není dostupná. Konfigurace je zachována; pro opravu vyberte dostupnou verzi.",
+		"measurementOperatorParameter": "Číselný parametr je mimo podporovaný rozsah.",
+		"resetOperatorDefinition": "Obnovit podle definice operátoru"
 	},
 	"lightGroup": {
 		"apply": "Použít",

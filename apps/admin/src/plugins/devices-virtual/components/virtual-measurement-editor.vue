@@ -296,6 +296,12 @@
 						:closable="false"
 					/>
 					<template v-else>
+						<el-button
+							data-test-id="numeric-operator-reset"
+							@click="selectOperator"
+						>
+							{{ t('devicesVirtualPlugin.measurement.resetOperatorDefinition') }}
+						</el-button>
 						<p data-test-id="numeric-operator-domains">
 							{{ selectedOperator.input.quantity }} ({{ selectedOperator.input.unit }}) [{{ selectedOperator.inputRange.minimum }},
 							{{ selectedOperator.inputRange.maximum }}] → {{ selectedOperator.output.quantity }} ({{ selectedOperator.output.unit }}) [{{

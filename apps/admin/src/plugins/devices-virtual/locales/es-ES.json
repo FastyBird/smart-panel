@@ -265,8 +265,9 @@
 		"notDetected": "No detectado",
 		"snapshotQuality": "Calidad del borrador: {quality}",
 		"extensionOperator": "Operador de extensión de confianza",
-		"measurementOperatorMissing": "La versión exacta del operador no está disponible. La configuración guardada se conserva; seleccione una versión disponible para repararla.",
-		"measurementOperatorParameter": "El parámetro numérico está fuera del rango admitido."
+		"measurementOperatorMissing": "El contrato o la versión guardada del operador no está disponible. La configuración se conserva; seleccione una versión disponible para repararla.",
+		"measurementOperatorParameter": "El parámetro numérico está fuera del rango admitido.",
+		"resetOperatorDefinition": "Restablecer la definición del operador"
 	},
 	"lightGroup": {
 		"apply": "Aplicar",

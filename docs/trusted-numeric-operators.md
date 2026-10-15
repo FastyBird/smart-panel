@@ -65,6 +65,8 @@ Steinhart–Hart). Swagger has explicit wire-operator variants; generated API/sp
 pipeline. No database migration or schemaVersion change is needed. Unknown persisted extension IDs/versions remain
 readable, unavailable and repairable; they never fall back to a built-in. Admin shows available exact versions,
 canonical domains and bounded numeric parameter fields in all six locales, while preserving unavailable saved policy.
+Unsupported stored contracts stay distinct even if their operator ID/version is installed. Unknown parameters/fields
+are retained or rejected until the operator explicitly selects or resets a definition; repair does not silently drop them.
 
 ## Lifecycle and current publication
 

@@ -265,8 +265,9 @@
 		"notDetected": "Nie wykryto",
 		"snapshotQuality": "Jakość projektu: {quality}",
 		"extensionOperator": "Operator zaufanego rozszerzenia",
-		"measurementOperatorMissing": "Dokładna wersja operatora jest niedostępna. Zapisana konfiguracja zostaje zachowana; wybierz dostępną wersję, aby ją naprawić.",
-		"measurementOperatorParameter": "Parametr liczbowy jest poza obsługiwanym zakresem."
+		"measurementOperatorMissing": "Zapisany kontrakt lub wersja operatora jest niedostępna. Konfiguracja zostaje zachowana; wybierz dostępną wersję, aby ją naprawić.",
+		"measurementOperatorParameter": "Parametr liczbowy jest poza obsługiwanym zakresem.",
+		"resetOperatorDefinition": "Przywróć definicję operatora"
 	},
 	"lightGroup": {
 		"apply": "Zastosuj",

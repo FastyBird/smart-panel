@@ -26,6 +26,7 @@ import {
 	type TransformState,
 	aggregateDraft,
 	measurementDraft,
+	numericOperatorKey,
 } from '../utils/measurement-authoring.utils';
 
 type SemanticErrorOperation = { responses: { default: { content: { 'application/json': unknown } } } };
@@ -76,10 +77,12 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		inputs: [] as { id?: string; source_property: string | null; identity?: string; weight?: number }[],
 	});
 	const numericOperators = ref<NumericOperator[]>([]);
+	let extensionRepaired = false;
 	const selectedOperator = computed(() => numericOperators.value.find((d) => `${d.operatorId}@${d.operatorVersion}` === model.extensionKey));
 	const selectOperator = () => {
 		const descriptor = selectedOperator.value;
 		if (!descriptor) return;
+		extensionRepaired = true;
 		model.parameters = {};
 		model.inputMinimum = descriptor.inputRange.minimum;
 		model.inputMaximum = descriptor.inputRange.maximum;
@@ -182,6 +185,8 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		if (model.operator === 'extension') {
 			const descriptor = selectedOperator.value;
 			if (!descriptor) throw new Error('measurementOperatorMissing');
+			if (Object.keys(model.parameters).some((key) => !Object.prototype.hasOwnProperty.call(descriptor.parameters, key)))
+				throw new Error('measurementOperatorParameter');
 			const parameters: Record<string, number> = {};
 			for (const [name, schema] of Object.entries(descriptor.parameters)) {
 				const value = model.parameters[name];
@@ -191,6 +196,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				parameters[name] = number;
 			}
 			return {
+				...(!extensionRepaired && current.value && 'policy' in current.value && current.value.policy.operator === 'extension'
+					? current.value.policy
+					: {}),
 				operator: DevicesVirtualPluginExtensionTransformPolicyOperator.extension,
 				contractVersion: 1,
 				operatorId: descriptor.operatorId,
@@ -293,6 +301,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		invalidatePreview();
 		return run(async () => {
 			current.value = null;
+			extensionRepaired = false;
 			expectedRevision.value = 0;
 			expectedGraphRevision.value = undefined;
 			if (!outputId) return;
@@ -317,7 +326,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				model.inputs = [{ id: value.source.id, source_property: value.source.source_property, identity: value.source.source_identity }];
 				model.operator = value.policy.operator;
 				if (value.policy.operator === 'extension') {
-					model.extensionKey = `${value.policy.operatorId}@${value.policy.operatorVersion}`;
+					model.extensionKey = numericOperatorKey(value.policy);
 					model.parameters = { ...value.policy.parameters };
 				}
 				model.inputMinimum = value.policy.inputRange.minimum;

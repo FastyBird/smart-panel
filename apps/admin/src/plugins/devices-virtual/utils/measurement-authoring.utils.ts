@@ -161,3 +161,9 @@ export function aggregateCandidates(
 		};
 	});
 }
+
+/** Keep unsupported persisted SDK contracts distinct from an available v1 descriptor until explicit repair. */
+export function numericOperatorKey(policy: { operatorId: string; operatorVersion: number; contractVersion: number }): string {
+	const key = `${policy.operatorId}@${policy.operatorVersion}`;
+	return policy.contractVersion === 1 ? key : `${key} / contract ${policy.contractVersion}`;
+}
