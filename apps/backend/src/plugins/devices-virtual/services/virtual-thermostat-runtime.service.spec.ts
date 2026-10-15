@@ -468,9 +468,10 @@ describe('virtual thermostat durable runtime', () => {
 		for (let attempt = 0; attempt < 6; attempt++) {
 			await runtime.inspect(controllerId);
 			const command = (await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).find(
-				(row) => row.action === 'on',
+				// A sibling may already be accepted; wait for the leaf still queued at dispatch.
+				(row) => row.action === 'on' && row.status === 'dispatching',
 			);
-			if (command?.status === 'dispatching') return command;
+			if (command) return command;
 		}
 		throw new Error('ON did not reach the durable dispatch journal');
 	};
@@ -2188,6 +2189,9 @@ describe('virtual thermostat durable runtime', () => {
 		async (change) => {
 			const sibling = await addMandatoryMember();
 			packetTick = useThermostatPacketClock();
+			// Every evaluation boundary below is explicit. A real poll during SQLite I/O can drain the
+			// energized sibling before the mutation whose queued-ON fence this fixture is testing.
+			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
 			const commandTarget =
 				change === 'override expiry'
 					? null
