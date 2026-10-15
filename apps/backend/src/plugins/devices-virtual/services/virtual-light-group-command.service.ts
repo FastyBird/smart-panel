@@ -38,6 +38,7 @@ import {
 	groupSourceSupports,
 } from './virtual-group-profile';
 import { LIGHT_GROUP_MAXIMUM_AGE_MS } from './virtual-light-group.utils';
+import { typedGroupSourceMatchesOutput } from './virtual-typed-group.utils';
 
 @Injectable()
 export class VirtualLightGroupCommandService implements CompositePropertyCommandPlanner, OnModuleInit, OnModuleDestroy {
@@ -157,7 +158,30 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				const deviceId = channel ? (channel.device as DeviceEntity).id : null;
 				if (deviceId && !deviceCache.has(deviceId)) deviceCache.set(deviceId, await this.devices.findOne(deviceId));
 				const device = deviceId ? deviceCache.get(deviceId) : null;
+				let coverTypeCompatible = true;
+				if (config.profile === VirtualLightGroupProfile.COVER) {
+					const typeBinding = await this.dataSource.manager.findOne(VirtualLightGroupBindingEntity, {
+						where: { memberId: member.id, quantity: PropertyCategory.TYPE },
+						relations: ['sourceProperty', 'sourceProperty.channel'],
+					});
+					const typeOutput = typeBinding
+						? await this.dataSource.manager.findOneBy(VirtualChannelPropertyEntity, {
+								id: typeBinding.outputPropertyId,
+							})
+						: null;
+					if (typeOutput) typeOutput.channel = update.channel;
+					coverTypeCompatible =
+						!!typeBinding?.sourceProperty &&
+						!!typeOutput &&
+						typedGroupSourceMatchesOutput(
+							config.profile,
+							groupField(config.profile, PropertyCategory.TYPE),
+							typeBinding.sourceProperty,
+							typeOutput,
+						);
+				}
 				const available =
+					coverTypeCompatible &&
 					member.sourceChannelId &&
 					property &&
 					channel.id === member.sourceChannelId &&
@@ -173,7 +197,8 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					property.dataType === update.property.dataType &&
 					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
 					groupSourceSupports(property, field) &&
-					groupBooleanContractIsSupported(config.profile, property);
+					groupBooleanContractIsSupported(config.profile, property) &&
+					typedGroupSourceMatchesOutput(config.profile, field, property, update.property);
 				if (children.length >= 2048) throw new Error('Composite size exceeds bounds');
 				let preserved: CompositeCommandChild | null = null;
 				let powerAvailable = true;
@@ -229,12 +254,18 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					memberId: member.id,
 					memberIdentity: member.sourceChannelIdentity,
 					propertyIdentity: binding?.sourcePropertyIdentity ?? null,
-					update: available && powerAvailable ? { property, channel, device, value: update.value } : null,
-					reason: !powerAvailable
-						? 'Qualified member power is unknown or changed during brightness planning'
-						: available
-							? undefined
-							: 'Member is missing, disabled, offline, incompatible or quarantined',
+					update:
+						available && powerAvailable && field.access !== 'wo'
+							? { property, channel, device, value: update.value }
+							: null,
+					reason:
+						field.access === 'wo'
+							? 'Write-only cover commands require a qualified correlated stopped/readback adapter; acknowledgement cannot confirm completion'
+							: !powerAvailable
+								? 'Qualified member power is unknown or changed during brightness planning'
+								: available
+									? undefined
+									: 'Member is missing, disabled, offline, incompatible or quarantined',
 				});
 				if (preserved) children.push(preserved);
 			}

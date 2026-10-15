@@ -35,6 +35,7 @@ import {
 	reportGroup,
 } from './virtual-group-profile';
 import { LIGHT_GROUP_MAXIMUM_AGE_MS, LightGroupReportedState } from './virtual-light-group.utils';
+import { typedGroupSourceMatchesOutput } from './virtual-typed-group.utils';
 
 export const LIGHT_GROUP_REPORTED_STATE_CHANGED = 'DevicesVirtual.LightGroup.ReportedStateChanged';
 
@@ -152,7 +153,28 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				const samples = new Map<PropertyCategory, QualifiedPropertySample>();
 				const reasons = new Set<string>();
 				if (!member.sourceChannelId) reasons.add('missing_channel');
+				const typeBinding =
+					config.profile === VirtualLightGroupProfile.COVER
+						? bindings.find(
+								(binding) => binding.memberId === member.id && binding.quantity === String(PropertyCategory.TYPE),
+							)
+						: null;
+				const typeOutput = typeBinding ? outputs.find((output) => output.id === typeBinding.outputPropertyId) : null;
+				const coverTypeCompatible =
+					config.profile !== VirtualLightGroupProfile.COVER ||
+					(!!typeBinding?.sourceProperty &&
+						!!typeOutput &&
+						typedGroupSourceMatchesOutput(
+							config.profile,
+							groupField(config.profile, PropertyCategory.TYPE),
+							typeBinding.sourceProperty,
+							typeOutput,
+						));
 				for (const binding of bindings.filter((binding) => binding.memberId === member.id)) {
+					if (!coverTypeCompatible) {
+						reasons.add('cover_type_incompatible');
+						continue;
+					}
 					const property = binding.sourceProperty;
 					if (!member.sourceChannelId || !property) {
 						reasons.add('missing_property');
@@ -174,7 +196,13 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 						!groupSourceSupports(property, groupField(config.profile, output.category)) ||
 						!groupBooleanContractIsSupported(config.profile, property) ||
 						!groupBooleanContractIsSupported(config.profile, output) ||
-						groupField(config.profile, output.category)?.access === 'wo'
+						groupField(config.profile, output.category)?.access === 'wo' ||
+						!typedGroupSourceMatchesOutput(
+							config.profile,
+							groupField(config.profile, output.category),
+							property,
+							output,
+						)
 					) {
 						reasons.add('metadata_incompatible');
 						continue;
@@ -199,7 +227,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 						continue;
 					}
 					const sample = this.values.readQualifiedSample(property, LIGHT_GROUP_MAXIMUM_AGE_MS, now);
-					if (sample && validatePropertyCommandValue(property, sample.value).valid)
+					if (
+						sample &&
+						validatePropertyCommandValue(property, sample.value).valid &&
+						(![VirtualLightGroupProfile.FAN, VirtualLightGroupProfile.COVER].includes(config.profile) ||
+							validatePropertyCommandValue(output, sample.value).valid)
+					)
 						samples.set(property.category, sample);
 					else reasons.add('no_fresh_provider_feedback');
 				}
@@ -239,7 +272,7 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				}
 				const sampledAt = new Date(Math.min(...reported.samples.map((sample) => sample.sampledAt.getTime())));
 				let representative = reported.value;
-				if (typeof representative === 'number') {
+				if (typeof representative === 'number' && config.profile === VirtualLightGroupProfile.LIGHT) {
 					const step = output.step ?? (output.dataType === DataTypeType.FLOAT ? null : 1);
 					if (step) {
 						const lower = typeof output.format?.[0] === 'number' ? output.format[0] : 0;
@@ -248,9 +281,12 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				}
 				reported.representativeValue = representative;
 				reported.rounded = representative !== reported.value;
+				const unavailable = [VirtualLightGroupProfile.FAN, VirtualLightGroupProfile.COVER].includes(config.profile)
+					? reported.samples.length < members.length
+					: state.unknownCount > 0;
 				await this.values.publishDerived(output, lease, representative, {
-					quality: state.unknownCount || reported.mixed ? 'degraded' : 'good',
-					reasons: [...(state.unknownCount ? ['members_unavailable'] : []), ...(reported.mixed ? ['mixed'] : [])],
+					quality: unavailable || reported.mixed ? 'degraded' : 'good',
+					reasons: [...(unavailable ? ['members_unavailable'] : []), ...(reported.mixed ? ['mixed'] : [])],
 					sampledAt,
 					evaluatedAt: now,
 					expiresAt: new Date(sampledAt.getTime() + LIGHT_GROUP_MAXIMUM_AGE_MS),

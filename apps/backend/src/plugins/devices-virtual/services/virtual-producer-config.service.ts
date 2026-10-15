@@ -47,6 +47,7 @@ import {
 	groupBooleanContractIsSupported,
 	groupField,
 	groupSourceSupports,
+	requiredGroupFields,
 } from './virtual-group-profile';
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability } from './virtual-light-group.utils';
@@ -59,6 +60,7 @@ import {
 	isEligibleAggregateSource,
 } from './virtual-numeric-profile.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
+import { typedGroupSourceMatchesOutput } from './virtual-typed-group.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
 @Injectable()
@@ -490,11 +492,13 @@ export class VirtualProducerConfigService {
 			.callListeners(false)
 			.getMany();
 		if (
-			!outputs.some(
-				(property) => property.category === PropertyCategory.ON && property.valueOrigin === VirtualValueOrigin.DERIVED,
+			!requiredGroupFields(dto.profile).every((category) =>
+				outputs.some(
+					(property) => property.category === category && property.valueOrigin === VirtualValueOrigin.DERIVED,
+				),
 			)
 		)
-			throw new DevicesValidationException('Light group requires a derived on output.');
+			throw new DevicesValidationException('Group requires all derived profile outputs.');
 		const exposed = outputs.filter((property) => property.valueOrigin === VirtualValueOrigin.DERIVED);
 		if (exposed.some((property) => !groupBooleanContractIsSupported(dto.profile, property)))
 			throw new DevicesValidationException('Switch/outlet outputs require an unrestricted two-state boolean contract.');
@@ -581,7 +585,8 @@ export class VirtualProducerConfigService {
 					source.dataType !== output.dataType ||
 					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
 					!groupSourceSupports(source, groupField(dto.profile, output.category)) ||
-					!groupBooleanContractIsSupported(dto.profile, source)
+					!groupBooleanContractIsSupported(dto.profile, source) ||
+					!typedGroupSourceMatchesOutput(dto.profile, groupField(dto.profile, output.category), source, output)
 				) {
 					if (existing && output.category !== PropertyCategory.ON)
 						throw new ConflictException(
@@ -618,6 +623,18 @@ export class VirtualProducerConfigService {
 			);
 			if (liveSources.length !== members.length) continue;
 			const common = capabilities.find((capability) => capability.category === output.category);
+			if (
+				[VirtualLightGroupProfile.FAN, VirtualLightGroupProfile.COVER].includes(dto.profile) &&
+				(!common ||
+					common.dataType !== output.dataType ||
+					common.unit !== (resolvePropertyUnit(output) ?? null) ||
+					common.step !== (output.step ?? null) ||
+					JSON.stringify(common.format) !== JSON.stringify(output.format ?? null))
+			) {
+				throw new ConflictException(
+					`Membership edit would change capability ${output.category}; preserve the exact exposed contract.`,
+				);
+			}
 			const numericRange = common?.format?.length === 2 && common.format.every((value) => typeof value === 'number');
 			if (
 				!common ||

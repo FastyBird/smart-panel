@@ -240,6 +240,92 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		});
 
 	it.each([
+		[VirtualLightGroupProfile.FAN, DeviceCategory.FAN, ChannelCategory.FAN],
+		[VirtualLightGroupProfile.COVER, DeviceCategory.WINDOW_COVERING, ChannelCategory.WINDOW_COVERING],
+	] as const)(
+		'creates %s with typed outputs and refuses membership contract drift',
+		async (profile, deviceCategory, channelCategory) => {
+			for (const id of memberIds) {
+				const channel = await database.manager.findOneOrFail(ChannelEntity, { where: { id }, relations: ['device'] });
+				await database.manager.update(DeviceEntity, (channel.device as DeviceEntity).id, { category: deviceCategory });
+				await database.manager.update(ChannelEntity, id, { category: channelCategory });
+				await database.manager.delete(ChannelPropertyEntity, { channel: { id } });
+				const fields =
+					profile === VirtualLightGroupProfile.FAN
+						? [
+								[PropertyCategory.ON, DataTypeType.BOOL, null, null, PermissionType.READ_WRITE],
+								[PropertyCategory.SPEED, DataTypeType.UCHAR, [0, 100], 1, PermissionType.READ_WRITE],
+								[PropertyCategory.MODE, DataTypeType.ENUM, ['auto', 'manual'], null, PermissionType.READ_WRITE],
+							]
+						: [
+								[PropertyCategory.TYPE, DataTypeType.ENUM, ['blind'], null, PermissionType.READ_ONLY],
+								[
+									PropertyCategory.STATUS,
+									DataTypeType.ENUM,
+									['opened', 'closed', 'opening', 'closing', 'stopped'],
+									null,
+									PermissionType.READ_ONLY,
+								],
+								[PropertyCategory.POSITION, DataTypeType.UCHAR, [0, 100], 1, PermissionType.READ_WRITE],
+								[
+									PropertyCategory.COMMAND,
+									DataTypeType.ENUM,
+									['open', 'close', 'stop'],
+									null,
+									PermissionType.WRITE_ONLY,
+								],
+								[PropertyCategory.OBSTRUCTION, DataTypeType.BOOL, null, null, PermissionType.READ_ONLY],
+							];
+				for (const [category, dataType, format, step, permission] of fields)
+					await database.manager.insert(ChannelPropertyEntity, {
+						id: uuid(),
+						channel: id,
+						category,
+						dataType,
+						format,
+						step,
+						permissions: [permission],
+					} as never);
+			}
+			const dto = Object.assign(draft(), { profile });
+			const preview = await authoring.preview(dto);
+			expect(
+				preview.common_capabilities.find(
+					(field) =>
+						field.category ===
+						(profile === VirtualLightGroupProfile.FAN ? PropertyCategory.SPEED : PropertyCategory.POSITION),
+				),
+			).toMatchObject({ data_type: DataTypeType.UCHAR, format: [0, 100], step: 1 });
+			const created = await authoring.create(dto);
+			expect(created.configuration.profile).toBe(profile);
+			expect(created.device.category).toBe(deviceCategory);
+			const control = profile === VirtualLightGroupProfile.FAN ? PropertyCategory.SPEED : PropertyCategory.POSITION;
+			const source = await database.manager.findOneByOrFail(ChannelPropertyEntity, {
+				channel: { id: memberIds[0] },
+				category: control,
+			});
+			await database.manager.update(ChannelPropertyEntity, source.id, { format: [10, 100] });
+			const repair = Object.assign(new ConfigureVirtualLightGroupDto(), {
+				profile,
+				expectedRevision: 1,
+				members: created.configuration.members.map((member) => ({
+					id: member.id,
+					sourceChannelId: member.source_channel,
+					bindings: member.bindings.map((binding) => ({
+						id: binding.id,
+						outputPropertyId: binding.output_property,
+						sourcePropertyId: binding.source_property,
+					})),
+				})),
+			});
+			await expect(configs.configureLightGroup(created.configuration.group_channel, repair)).rejects.toThrow(
+				/change capability|remove capability/,
+			);
+			expect((await configs.getLightGroup(created.configuration.group_channel)).revision).toBe(1);
+		},
+	);
+
+	it.each([
 		[VirtualLightGroupProfile.SWITCH, DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
 		[VirtualLightGroupProfile.OUTLET, DeviceCategory.OUTLET, ChannelCategory.OUTLET],
 	] as const)(

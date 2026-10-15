@@ -28,6 +28,37 @@ Their boolean fields must support both states: no format, an empty format, or ex
 both output and physical-member contracts, and runtime feedback becomes unavailable when those contracts drift.
 This also fences previously materialized invalid rows. The legacy light profile keeps its existing format policy.
 
+## Fan and cover backend contracts
+
+The existing group endpoints accept `fan` and `cover`. Both require 2–256 homogeneous physical members.
+The `LightGroup` API/storage names remain compatibility aliases; UI authoring and HomeKit/HA mappings are separate work.
+
+| Profile | Required fields | Optional fields | Source access |
+|---|---|---|---|
+| Fan | `on` boolean | `speed`, `swing`, `direction`, `mode` | Read/write |
+| Cover | `type`, `status`, `position`, `command` | `tilt`, `obstruction` | Type/status/obstruction read; position/tilt read/write; command write |
+
+Fan speed uses either native percentage (`uchar`, %) or discrete enum levels; these representations cannot mix.
+Cover position likewise preserves percentage versus discrete states. Tilt uses native degrees. Numeric fields require
+explicit finite ranges within the channel specification and a compatible common decimal grid. Enum controls expose
+only the shared supported values. Cover command sets must match exactly. Cover type requires the same singleton
+metadata declaration on every member; a broad list of possible installed types is refused. There is no inversion,
+calibration, unit conversion, speed-to-ON inference, timer, breeze or lock policy.
+
+New numeric and enum observations require exact agreement across every intended member, including powered-off fans.
+Conflicting or missing positions/speeds/status remain null with mixed/contributor diagnostics; they are never averaged
+or rounded into a physical observation. Obstruction also requires agreement; a mixed result retains its contributors
+and does not mean the obstruction cleared. Cover ON counts describe unavailable power fields; use each property's
+value/mixed/contributors and member reasons for covering feedback. Freshness remains 300 seconds and restart waits
+for fresh evidence. Membership repair preserves output UUIDs and the exact exposed range/grid/enum contract.
+
+Commands use the existing prepared canonical-leaf core path with revision, claims, deadline and per-member outcomes.
+The current core has no qualified adapter linking a write-only covering command to causally related status feedback.
+Consequently **all write-only covering commands (including STOP) are refused as unavailable before physical dispatch**.
+An acknowledgement never establishes stopped state. Position/tilt remain commandable when their read/write native
+contract and the provider's prepared composite dispatch/readback contract qualify. Observed `stopped` is reported only
+when every member supplies fresh agreeing stopped feedback; opening/closing conflicts and missing feedback stay unknown.
+
 ## Feedback and quality
 
 `VirtualLightGroupStateService` consumes only `PropertyValueService.readQualifiedSample`: a provider must submit actual

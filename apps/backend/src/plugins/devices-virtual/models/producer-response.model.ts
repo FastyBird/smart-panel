@@ -270,19 +270,19 @@ export class VirtualLightGroupReportedPropertyModel {
 	category: PropertyCategory;
 
 	@ApiProperty({
-		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		description: 'Feedback representative; brightness is the raw mean of valid on members',
 	})
 	@Expose()
-	value: number | boolean | null;
+	value: string | number | boolean | null;
 
 	@ApiPropertyOptional({
-		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		description: 'Published representative rounded onto the validated output grid',
 	})
 	@Expose()
-	representative_value?: number | boolean;
+	representative_value?: string | number | boolean;
 
 	@ApiPropertyOptional({ description: 'Raw representative needed rounding onto the output grid' })
 	@Expose()

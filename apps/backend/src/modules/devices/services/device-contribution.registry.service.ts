@@ -16,7 +16,11 @@ export interface DeviceContributionCoverage {
 		mixed: boolean;
 		mixedProperties: readonly PropertyCategory[];
 		onBrightness?: { sum: number; count: number };
-		properties: readonly { category: PropertyCategory; value: boolean | number | null; contributors: number }[];
+		properties: readonly {
+			category: PropertyCategory;
+			value: string | boolean | number | null;
+			contributors: number;
+		}[];
 	};
 }
 export interface DeviceContributionProvider {

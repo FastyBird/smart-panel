@@ -20,7 +20,7 @@ import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 import { CreatedLightGroupModel, LightGroupDraftModel } from '../models/light-group-draft.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { GROUP_PROFILES, commonGroupCapabilities, groupField } from './virtual-group-profile';
+import { GROUP_PROFILES, commonGroupCapabilities, groupField, requiredGroupFields } from './virtual-group-profile';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 
 @Injectable()
@@ -165,17 +165,21 @@ export class VirtualLightGroupAuthoringService {
 			profile,
 			channels.map((channel) => channel.properties ?? []),
 		);
-		if (!common.some((capability) => capability.category === PropertyCategory.ON))
+		if (
+			!requiredGroupFields(profile).every((category) => common.some((capability) => capability.category === category))
+		)
 			throw new DevicesValidationException(
-				'Every group member must provide the same readable/writable boolean on contract',
+				profile === VirtualLightGroupProfile.COVER
+					? 'Every group member must provide the required compatible profile contracts'
+					: 'Every group member must provide the same readable/writable boolean on contract',
 			);
 		const requested = dto.capabilities ?? common.map((capability) => capability.category);
 		if (
-			!requested.includes(PropertyCategory.ON) ||
+			!requiredGroupFields(profile).every((category) => requested.includes(category)) ||
 			requested.some((category) => !common.some((capability) => capability.category === category))
 		)
 			throw new DevicesValidationException(
-				'Requested controls must include on and belong to the validated common capability contract',
+				'Requested controls must include required profile fields and belong to the validated common capability contract',
 			);
 		const selected = common.filter((capability) => requested.includes(capability.category));
 		// Apply the complete-color rule after optional control selection too.
