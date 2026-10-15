@@ -189,9 +189,10 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			entry.lease !== lease ||
 			!Number.isFinite(evaluatedAt.getTime()) ||
 			evaluatedAt.getTime() > Date.now() ||
-			evaluatedAt.getTime() < Date.parse(entry.state.producer.evaluatedAt)
+			(evaluatedAt.getTime() < Date.parse(entry.state.producer.evaluatedAt) && entry.guard?.isCurrent() !== false)
 		)
 			return false;
+		// A closed lifecycle must notify dependents even after a clock rollback; lease identity still fences old owners.
 		entry.epoch++;
 		entry.state = this.unavailable(lease.revision, reasons, evaluatedAt);
 		entry.sourceSample = undefined;

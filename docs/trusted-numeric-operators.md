@@ -79,7 +79,9 @@ close live authority before asynchronous cleanup. Coordinated service shutdown i
 A transform captures operator identity before database/connectivity waits, then composes it with the graph guard on
 its actual producer lease. Publication checks `canCommit` before queuing, inside the queue and at commit. Revocation
 synchronously invalidates matching outputs and dependent aggregates, retaining unavailable overlays over history.
-Reactivation installs a fresh-source barrier again: reports accepted during the disabled interval are insufficient.
+Closed lifecycle invalidation also notifies dependents after a server clock rollback; ordinary active-lifecycle
+invalidations keep their timestamp fence. Reactivation installs a fresh-source barrier again: reports accepted during
+the disabled interval are insufficient.
 Neither registration nor recomputation renews physical source age, acceptance generation or sampling timestamps.
 Thrown errors, nonfinite/nonnumeric results and unsupported async results affect the output's availability.
 
