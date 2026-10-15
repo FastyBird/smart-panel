@@ -32,13 +32,20 @@ export class HomeKitEventListener implements OnModuleDestroy {
 		this.rebuildTimers.clear();
 	}
 
+	/** Keeps deletion-event delivery non-throwing after compensated mapping maintenance fails. */
 	@OnEvent(DevicesEventType.DEVICE_DELETED)
 	async handleDeviceDeleted(device: DeviceEntity): Promise<void> {
 		if (!device?.id || !this.isMapped(device.id)) return;
 		const timer = this.rebuildTimers.get(device.id);
 		if (timer) clearTimeout(timer);
 		this.rebuildTimers.delete(device.id);
-		await this.bridge.maintainMapping({ removeDeviceIds: [device.id] });
+		try {
+			await this.bridge.maintainMapping({ removeDeviceIds: [device.id] });
+		} catch (error) {
+			this.logger.warn(
+				`Failed to remove deleted HomeKit device ${device.id}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	@OnEvent(DevicesEventType.DEVICE_CONNECTION_CHANGED)

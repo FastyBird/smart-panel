@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 
 import { Bridge, Characteristic, HAPStatus, Perms, Service } from '@homebridge/hap-nodejs';
+import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -262,7 +263,7 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 		expect(bridge.getState()).toBe('started');
 	});
 
-	it('restores config and live resources if deleting an accessory fails after mutation', async () => {
+	it('logs a deletion-maintenance failure after restoring config and live resources', async () => {
 		await bridge.start();
 		const old = accessory();
 		const hapBridge = (bridge as unknown as { bridge: Bridge }).bridge;
@@ -271,7 +272,10 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 			throw new Error('removal failed after mutation');
 		});
 		rows.delete(device.id);
-		await expect(listener.handleDeviceDeleted(device)).rejects.toThrow('removal failed');
+		const warn = jest.spyOn(Logger.prototype, 'warn');
+		await expect(listener.handleDeviceDeleted(device)).resolves.toBeUndefined();
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining(`Failed to remove deleted HomeKit device ${device.id}:`));
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('removal failed'));
 		expect(config.mappedDeviceIds).toEqual([device.id]);
 		expect(accessory()).toBe(old);
 		expect(registry.getBindingsForProperty('on')).toHaveLength(1);

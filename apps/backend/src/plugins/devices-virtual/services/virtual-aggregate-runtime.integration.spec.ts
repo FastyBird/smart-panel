@@ -231,6 +231,10 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 				});
 			}
 		});
+		expect(graph.propertyRequiresLiveValue(physical.id)).toBe(false);
+		expect(graph.propertyRequiresLiveValue(output.id)).toBe(true);
+		// Aggregate inputs without a projection do not expand the projection identity lookup.
+		expect(graph.propertyRequiresLiveValue(other.id)).toBeNull();
 		// A separate process starts without producer leases. ORM hydration reads persisted canonical
 		// scalar history, which deliberately has no producer metadata; it must never become live proof.
 		const coldProducers = new PropertyProducerRegistryService();

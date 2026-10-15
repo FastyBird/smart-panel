@@ -248,6 +248,24 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		await this.refreshValidation(true);
 	}
 
+	/** Reads only existing identities referenced by SOURCE projections, without hydrating value history. */
+	private async readProjectionSources(manager: EntityManager): Promise<ChannelPropertyEntity[]> {
+		const sources = manager
+			.createQueryBuilder(VirtualChannelPropertyEntity, 'projection')
+			.select('projection.sourcePropertyId')
+			.where('projection.valueOrigin = :projectionOrigin', { projectionOrigin: VirtualValueOrigin.SOURCE })
+			.andWhere('projection.sourcePropertyId IS NOT NULL');
+		// Materialize the STI query before copying its generated discriminator parameters.
+		const sourceQuery = sources.getQuery();
+		return manager
+			.createQueryBuilder(ChannelPropertyEntity, 'property')
+			.select(['property.id'])
+			.where(`property.id IN (${sourceQuery})`)
+			.setParameters(sources.getParameters())
+			.callListeners(false)
+			.getMany();
+	}
+
 	/** Validates one committed snapshot without evaluating outputs before their writer activates them. */
 	private async refreshValidation(activated: boolean): Promise<void> {
 		const generation = ++this.validationGeneration;
@@ -255,11 +273,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		try {
 			const snapshot = await this.dataSource.transaction(async (manager) => ({
 				edges: await this.edges(manager),
-				knownProperties: await manager
-					.createQueryBuilder(ChannelPropertyEntity, 'property')
-					.select(['property.id'])
-					.callListeners(false)
-					.getMany(),
+				knownProperties: await this.readProjectionSources(manager),
 				properties: await manager
 					.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
 					.leftJoinAndSelect('property.channel', 'channel')
