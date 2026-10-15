@@ -1,5 +1,5 @@
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
-import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
+import { VirtualAggregateFilterKind, VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 
 import { AggregateInputEvidence, evaluateAggregate } from './virtual-aggregate-evaluator';
 
@@ -91,5 +91,131 @@ describe('deterministic temperature aggregate evaluation', () => {
 			quality: 'degraded',
 			reasons: ['invalid:b', 'invalid:c', 'input_degraded'],
 		});
+	});
+	it.each([0.000001, 1, 1000000])(
+		'accepts inclusive weight boundary %s and renormalizes after exclusions',
+		(weight) => {
+			const sources = [
+				{ ...input('a', 10), weight },
+				{ ...input('b', 30), weight },
+				{ ...input('c', 100), weight: 1000000, exclusion: 'offline' as const },
+			];
+			expect(evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 2, 30, sources, now)).toMatchObject({
+				value: 20,
+				quality: 'degraded',
+			});
+		},
+	);
+	it.each([0, -1, NaN, Infinity, 0.000000999, 1000001, null])(
+		'rejects invalid weight %s even on excluded members',
+		(weight) => {
+			const sources = [input('a', 20), { ...input('b', 30), weight, exclusion: 'offline' as const }];
+			expect(evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 1, 30, sources, now).reasons[0]).toBe(
+				'invalid_policy',
+			);
+		},
+	);
+	it('uses unequal weights in stable identity order, defaults legacy weights and counts quorum identities', () => {
+		const sources = [
+			{ ...input('a', 10), weight: 1 },
+			{ ...input('b', 30), weight: 3 },
+		];
+		expect(evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 2, 30, sources, now).value).toBe(25);
+		expect(evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 2, 30, sources.reverse(), now).value).toBe(25);
+		expect(
+			evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 2, 30, [input('a', 10), input('b', 30)], now).value,
+		).toBe(20);
+		expect(
+			evaluateAggregate(
+				VirtualAggregateOperator.WEIGHTED_MEAN,
+				2,
+				30,
+				[
+					{ ...input('a', 10), weight: 1000000 },
+					{ ...input('b', 30), exclusion: 'offline' },
+				],
+				now,
+			).reasons[0],
+		).toBe('quorum_lost');
+	});
+	it('avoids overflow of finite weighted products and sums', () => {
+		for (const values of [
+			[Number.MAX_VALUE, Number.MAX_VALUE],
+			[-Number.MAX_VALUE, -Number.MAX_VALUE],
+			[Number.MAX_VALUE, -Number.MAX_VALUE],
+		]) {
+			const sources = values.map((value, index) => ({ ...input(String(index), value), weight: 1000000 }));
+			expect(evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 2, 30, sources, now).value).toBe(
+				values[0] === values[1] ? values[0] : 0,
+			);
+		}
+		const result = evaluateAggregate(
+			VirtualAggregateOperator.WEIGHTED_MEAN,
+			2,
+			30,
+			[
+				{ ...input('a', Number.MAX_VALUE), weight: 1000000 },
+				{ ...input('b', -Number.MAX_VALUE), weight: 0.000001 },
+			],
+			now,
+		);
+		expect(Number.isFinite(result.value)).toBe(true);
+		expect(result.value).toBeGreaterThan(Number.MAX_VALUE * 0.999999);
+	});
+	const filter = { kind: VirtualAggregateFilterKind.ABSOLUTE_DEVIATION_FROM_MEDIAN, threshold: 2 };
+	it('retains equality, excludes strictly beyond median deviation and renormalizes before quorum', () => {
+		const sources = [
+			{ ...input('a', 18, 5), weight: 1 },
+			{ ...input('b', 20, 3), weight: 3 },
+			{ ...input('c', 22, 2), weight: 2 },
+			{ ...input('d', 100, 10), weight: 1000000 },
+		];
+		const result = evaluateAggregate(VirtualAggregateOperator.WEIGHTED_MEAN, 2, 30, sources, now, undefined, filter);
+		expect(result.value).toBeCloseTo(20.8);
+		expect(result).toMatchObject({
+			quality: 'degraded',
+			reasons: ['outlier:a', 'outlier:d'],
+			sampledAt: sources[1].sample.sampledAt,
+		});
+		expect(evaluateAggregate(VirtualAggregateOperator.MEAN, 3, 30, sources, now, undefined, filter).reasons).toEqual([
+			'quorum_lost',
+			'outlier:a',
+			'outlier:d',
+		]);
+		expect(
+			evaluateAggregate(
+				VirtualAggregateOperator.MEAN,
+				3,
+				30,
+				[input('a', 18), input('b', 20), input('c', 22)],
+				now,
+				undefined,
+				filter,
+			),
+		).toMatchObject({ value: 20, quality: 'good' });
+	});
+	it.each(['stale', 'offline', 'invalid'] as const)(
+		'requires a qualified cohort of three after %s admission',
+		(exclusion) => {
+			const sources = [input('a', 20), input('b', 21), { ...input('c', 100), exclusion }];
+			expect(evaluateAggregate(VirtualAggregateOperator.MEAN, 1, 30, sources, now, undefined, filter)).toMatchObject({
+				value: null,
+				quality: 'unavailable',
+				reasons: ['insufficient_comparison_cohort', exclusion + ':c'],
+			});
+		},
+	);
+	it.each([0, -1, Infinity, NaN])('rejects filter threshold %s', (threshold) => {
+		expect(
+			evaluateAggregate(
+				VirtualAggregateOperator.MEAN,
+				1,
+				30,
+				[input('a', 20), input('b', 20), input('c', 20)],
+				now,
+				undefined,
+				{ ...filter, threshold },
+			).reasons,
+		).toEqual(['invalid_policy']);
 	});
 });

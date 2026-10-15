@@ -15,6 +15,7 @@ import {
 import { ApiProperty, ApiPropertyOptional, ApiSchema, OmitType } from '@nestjs/swagger';
 
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
+import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 
 import { CreateVirtualDeviceDto } from './create-device.dto';
 
@@ -36,6 +37,12 @@ export class LightGroupDraftMemberDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginLightGroupDraft' })
 export class LightGroupDraftDto {
+	@ApiPropertyOptional({ enum: VirtualLightGroupProfile, default: VirtualLightGroupProfile.LIGHT })
+	@Expose()
+	@IsOptional()
+	@IsEnum(VirtualLightGroupProfile)
+	profile?: VirtualLightGroupProfile;
+
 	@ApiProperty({ type: [LightGroupDraftMemberDto], minItems: 2, maxItems: 256 })
 	@Expose()
 	@IsArray()

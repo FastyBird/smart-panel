@@ -6,13 +6,25 @@ import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from './vi
 
 export enum VirtualAggregateOperator {
 	MEAN = 'mean',
+	WEIGHTED_MEAN = 'weighted_mean',
 	MEDIAN = 'median',
 	MIN = 'min',
 	MAX = 'max',
 }
 
+export enum VirtualAggregateFilterKind {
+	ABSOLUTE_DEVIATION_FROM_MEDIAN = 'absolute_deviation_from_median',
+}
+
+export interface VirtualAggregateFilter {
+	kind: VirtualAggregateFilterKind;
+	threshold: number;
+}
+
 export enum VirtualLightGroupProfile {
 	LIGHT = 'light',
+	SWITCH = 'switch',
+	OUTLET = 'outlet',
 }
 
 @Entity('devices_virtual_graph_revision')
@@ -46,6 +58,9 @@ export class VirtualAggregateConfigEntity {
 	@Column({ type: 'integer' })
 	maximumAgeSeconds: number;
 
+	@Column({ type: 'simple-json', nullable: true })
+	outlierFilter: VirtualAggregateFilter | null;
+
 	@Column({ type: 'integer', default: 1 })
 	revision: number;
 }
@@ -71,6 +86,9 @@ export class VirtualAggregateInputEntity {
 	@ManyToOne(() => ChannelPropertyEntity, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'sourcePropertyId' })
 	sourceProperty: ChannelPropertyEntity | null;
+
+	@Column({ type: 'float', default: 1 })
+	weight: number;
 
 	/** Preserved when the live FK is cleared; membership/quorum never shrink on source deletion. */
 	@Column({ type: 'varchar' })

@@ -5,7 +5,9 @@ import {
 	IsArray,
 	IsEnum,
 	IsInt,
+	IsNumber,
 	IsOptional,
+	IsPositive,
 	IsUUID,
 	Max,
 	Min,
@@ -14,10 +16,49 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { VirtualAggregateOperator, VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
+import {
+	VirtualAggregateFilterKind,
+	VirtualAggregateOperator,
+	VirtualLightGroupProfile,
+} from '../entities/virtual-producer.entity';
+
+@ApiSchema({ name: 'DevicesVirtualPluginAggregateOutlierFilter' })
+export class VirtualAggregateOutlierFilterDto {
+	@ApiProperty({
+		description: 'Explicit comparison policy; requires at least three qualified inputs',
+		enum: VirtualAggregateFilterKind,
+	})
+	@Expose()
+	@IsEnum(VirtualAggregateFilterKind)
+	kind: VirtualAggregateFilterKind;
+
+	@ApiProperty({
+		description: 'Positive finite absolute deviation threshold in canonical output units; equality is retained',
+		exclusiveMinimum: true,
+		minimum: 0,
+	})
+	@Expose()
+	@IsNumber({ allowInfinity: false, allowNaN: false })
+	@IsPositive()
+	threshold: number;
+}
 
 @ApiSchema({ name: 'DevicesVirtualPluginAggregateInput' })
 export class VirtualAggregateInputDto {
+	@ApiPropertyOptional({
+		description:
+			'Relative weight, inclusive bounds 0.000001–1000000; omitted means 1. Quorum counts identities, not weights.',
+		default: 1,
+		minimum: 0.000001,
+		maximum: 1000000,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber({ allowInfinity: false, allowNaN: false })
+	@Min(0.000001)
+	@Max(1000000)
+	weight?: number;
+
 	@ApiPropertyOptional({ description: 'Stable binding UUID; retain it to repair a missing input', format: 'uuid' })
 	@Expose()
 	@IsOptional()
@@ -39,6 +80,19 @@ export class VirtualAggregateInputDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginConfigureAggregate' })
 export class ConfigureVirtualAggregateDto {
+	@ApiPropertyOptional({
+		name: 'outlier_filter',
+		description:
+			'Optional explicit filter applied after fresh/domain admission and before quorum; omitted/null disables filtering',
+		type: VirtualAggregateOutlierFilterDto,
+		nullable: true,
+	})
+	@Expose({ name: 'outlier_filter' })
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => VirtualAggregateOutlierFilterDto)
+	outlierFilter?: VirtualAggregateOutlierFilterDto | null;
+
 	@ApiProperty({
 		name: 'expected_revision',
 		description: 'Expected config revision; zero for first configuration',

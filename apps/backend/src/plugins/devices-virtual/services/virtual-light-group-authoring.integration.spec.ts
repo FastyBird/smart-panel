@@ -238,6 +238,98 @@ describe('light group atomic authoring with real SQLite and core creation servic
 			expected_graph_revision: 0,
 			members: memberIds.map((id) => ({ source_channel: id })),
 		});
+
+	it.each([
+		[VirtualLightGroupProfile.SWITCH, DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
+		[VirtualLightGroupProfile.OUTLET, DeviceCategory.OUTLET, ChannelCategory.OUTLET],
+	] as const)(
+		'previews and persists %s through core atomic creation while preserving exposed capabilities',
+		async (profile, deviceCategory, channelCategory) => {
+			for (const id of memberIds) {
+				const channel = await database.manager.findOneOrFail(ChannelEntity, { where: { id }, relations: ['device'] });
+				await database.manager.update(DeviceEntity, (channel.device as DeviceEntity).id, { category: deviceCategory });
+				await database.manager.update(ChannelEntity, id, { category: channelCategory });
+				if (profile === VirtualLightGroupProfile.OUTLET)
+					await database.manager.insert(ChannelPropertyEntity, {
+						id: uuid(),
+						channel: id,
+						category: PropertyCategory.IN_USE,
+						dataType: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_ONLY],
+					} as never);
+			}
+			const dto = Object.assign(draft(), { profile });
+			const preview = await authoring.preview(dto);
+			expect(preview.common_capabilities.map((capability) => capability.category)).toEqual(
+				profile === VirtualLightGroupProfile.OUTLET
+					? [PropertyCategory.ON, PropertyCategory.IN_USE]
+					: [PropertyCategory.ON],
+			);
+			expect(preview.unavailable_capabilities).toEqual([]);
+			const result = await authoring.create(dto);
+			expect(result.device.category).toBe(deviceCategory);
+			expect(result.configuration.profile).toBe(profile);
+			const group = await database.manager.findOneByOrFail(VirtualLightGroupConfigEntity, {
+				groupChannelId: result.configuration.group_channel,
+			});
+			expect(group.profile).toBe(profile);
+			expect((await configs.getLightGroup(group.groupChannelId)).members).toHaveLength(2);
+			if (profile === VirtualLightGroupProfile.OUTLET) {
+				const inUse = await database.manager.findOneByOrFail(ChannelPropertyEntity, {
+					channel: { id: memberIds[0] },
+					category: PropertyCategory.IN_USE,
+				});
+				await database.manager.update(ChannelPropertyEntity, inUse.id, { permissions: [PermissionType.WRITE_ONLY] });
+				await expect(
+					configs.configureLightGroup(
+						group.groupChannelId,
+						Object.assign(new ConfigureVirtualLightGroupDto(), {
+							profile,
+							expectedRevision: 1,
+							members: result.configuration.members.map((member) => ({
+								id: member.id,
+								sourceChannelId: member.source_channel,
+								bindings: member.bindings.map((binding) => ({
+									id: binding.id,
+									outputPropertyId: binding.output_property,
+									sourcePropertyId: binding.source_property,
+								})),
+							})),
+						}),
+					),
+				).rejects.toThrow(/remove capability/);
+				expect((await configs.getLightGroup(group.groupChannelId)).revision).toBe(1);
+			}
+		},
+	);
+
+	it.each([
+		[VirtualLightGroupProfile.SWITCH, DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
+		[VirtualLightGroupProfile.OUTLET, DeviceCategory.OUTLET, ChannelCategory.OUTLET],
+	] as const)(
+		'refuses %s one-state and malformed boolean sources during preview and persistence',
+		async (profile, deviceCategory, channelCategory) => {
+			for (const id of memberIds) {
+				const channel = await database.manager.findOneOrFail(ChannelEntity, { where: { id }, relations: ['device'] });
+				await database.manager.update(DeviceEntity, (channel.device as DeviceEntity).id, { category: deviceCategory });
+				await database.manager.update(ChannelEntity, id, { category: channelCategory });
+			}
+			const source = await database.manager.findOneByOrFail(ChannelPropertyEntity, {
+				channel: { id: memberIds[0] },
+				category: PropertyCategory.ON,
+			});
+			for (const format of [['true'], ['true', 'invalid'], ['true', 'true'], [' true', 'false'], [0, 1]]) {
+				await database.manager.update(ChannelPropertyEntity, source.id, { format });
+				const dto = Object.assign(draft(), { profile });
+				await expect(authoring.preview(dto)).rejects.toThrow(/readable\/writable boolean on contract/);
+				await expect(authoring.create(dto)).rejects.toThrow(/readable\/writable boolean on contract/);
+				expect(await database.manager.count(VirtualLightGroupConfigEntity)).toBe(0);
+			}
+			await database.manager.update(ChannelPropertyEntity, source.id, { format: ['FALSE', 'True'] });
+			const accepted = await authoring.create(Object.assign(draft(), { profile }));
+			expect(accepted.configuration.common_capabilities[0].format).toBeNull();
+		},
+	);
 	it('commits catalog and bindings before publishing any event and leaves every output unqualified', async () => {
 		const result = await authoring.create(draft());
 		expect(result.configuration.revision).toBe(1);

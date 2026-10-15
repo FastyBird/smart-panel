@@ -4,12 +4,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
 
-import {
-	ChannelCategory,
-	DeviceCategory,
-	PermissionType,
-	PropertyCategory,
-} from '../../../modules/devices/devices.constants';
+import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
@@ -25,19 +20,8 @@ import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 import { CreatedLightGroupModel, LightGroupDraftModel } from '../models/light-group-draft.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { commonLightCapabilities } from './virtual-light-group.utils';
+import { GROUP_PROFILES, commonGroupCapabilities, groupField } from './virtual-group-profile';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
-
-const initialLightCapabilities = [
-	PropertyCategory.ON,
-	PropertyCategory.BRIGHTNESS,
-	PropertyCategory.COLOR_TEMPERATURE,
-	PropertyCategory.COLOR_RED,
-	PropertyCategory.COLOR_GREEN,
-	PropertyCategory.COLOR_BLUE,
-	PropertyCategory.HUE,
-	PropertyCategory.SATURATION,
-];
 
 @Injectable()
 export class VirtualLightGroupAuthoringService {
@@ -64,6 +48,8 @@ export class VirtualLightGroupAuthoringService {
 				'virtual',
 				async (context) => {
 					const draft = await this.prepare(context.manager, dto);
+					const profile = dto.profile ?? VirtualLightGroupProfile.LIGHT;
+					const policy = GROUP_PROFILES[profile];
 					const outputs = draft.capabilities.map((capability) => ({
 						id: uuid(),
 						type: 'virtual',
@@ -79,15 +65,15 @@ export class VirtualLightGroupAuthoringService {
 						...dto.device,
 						id: deviceId,
 						type: 'virtual',
-						category: DeviceCategory.LIGHTING,
+						category: policy.deviceCategory,
 						mode: VirtualDeviceMode.ACTUATOR_GROUP,
 						channels: [
 							{
 								id: channelId,
 								type: 'virtual',
-								identifier: 'light',
-								name: 'Light',
-								category: ChannelCategory.LIGHT,
+								identifier: policy.channelCategory,
+								name: profile === VirtualLightGroupProfile.LIGHT ? 'Light' : policy.channelCategory,
+								category: policy.channelCategory,
 								properties: outputs,
 							},
 							{
@@ -116,7 +102,7 @@ export class VirtualLightGroupAuthoringService {
 					});
 					await this.devices.create<VirtualDeviceEntity, CreateVirtualDeviceDto>(deviceDto, context);
 					const configDto = Object.assign(new ConfigureVirtualLightGroupDto(), {
-						profile: VirtualLightGroupProfile.LIGHT,
+						profile,
 						expectedRevision: 0,
 						members: draft.channels.map((channel) => ({
 							sourceChannelId: channel.id,
@@ -141,11 +127,14 @@ export class VirtualLightGroupAuthoringService {
 
 	/** Shared validator for dry-run and admitted persistence; no sample or producer writes. */
 	async prepare(manager: EntityManager, dto: LightGroupDraftDto) {
+		const profile = dto.profile ?? VirtualLightGroupProfile.LIGHT;
+		const policy = GROUP_PROFILES[profile];
+		if (!Object.hasOwn(GROUP_PROFILES, profile)) throw new DevicesValidationException('Unsupported group profile');
 		if (!Array.isArray(dto.members) || dto.members.length < 2 || dto.members.length > 256)
-			throw new DevicesValidationException('Select between two and 256 distinct physical light channels');
+			throw new DevicesValidationException('Select between two and 256 distinct physical group channels');
 		const identities = dto.members.map((member) => member.sourceChannelId);
 		if (new Set(identities).size !== identities.length)
-			throw new DevicesValidationException('A physical light channel may occur only once in a group');
+			throw new DevicesValidationException('A physical channel may occur only once in a group');
 		const channels: ChannelEntity[] = [];
 		for (const id of identities) {
 			const channel = await manager
@@ -160,20 +149,25 @@ export class VirtualLightGroupAuthoringService {
 				!channel ||
 				!device ||
 				device.type === 'virtual' ||
-				device.category !== DeviceCategory.LIGHTING ||
-				channel.category !== ChannelCategory.LIGHT
+				device.category !== policy.deviceCategory ||
+				channel.category !== policy.channelCategory
 			)
-				throw new DevicesValidationException('Every light group member must be an existing physical lighting channel');
+				throw new DevicesValidationException(
+					'Every group member must be a physical device/channel matching the selected profile',
+				);
 			for (const property of channel.properties ?? []) {
 				property.channel = channel;
 				property.unit = resolvePropertyUnit(property);
 			}
 			channels.push(channel);
 		}
-		const common = commonLightCapabilities(channels.map((channel) => channel.properties ?? []));
+		const common = commonGroupCapabilities(
+			profile,
+			channels.map((channel) => channel.properties ?? []),
+		);
 		if (!common.some((capability) => capability.category === PropertyCategory.ON))
 			throw new DevicesValidationException(
-				'Every light group member must provide the same readable/writable boolean on contract',
+				'Every group member must provide the same readable/writable boolean on contract',
 			);
 		const requested = dto.capabilities ?? common.map((capability) => capability.category);
 		if (
@@ -186,7 +180,8 @@ export class VirtualLightGroupAuthoringService {
 		const selected = common.filter((capability) => requested.includes(capability.category));
 		// Apply the complete-color rule after optional control selection too.
 		if (
-			commonLightCapabilities(
+			commonGroupCapabilities(
+				profile,
 				channels.map((channel) =>
 					(channel.properties ?? []).filter((property) => requested.includes(property.category)),
 				),
@@ -199,14 +194,17 @@ export class VirtualLightGroupAuthoringService {
 			graph_revision: await this.graph.revision(manager),
 			common_capabilities: selected.map((capability) => ({
 				category: capability.category,
+				...(profile === VirtualLightGroupProfile.LIGHT
+					? {}
+					: { access: groupField(profile, capability.category).access }),
 				data_type: capability.dataType,
 				unit: capability.unit,
 				format: capability.format,
 				step: capability.step,
 			})),
-			unavailable_capabilities: initialLightCapabilities.filter(
-				(category) => !common.some((capability) => capability.category === category),
-			),
+			unavailable_capabilities: policy.fields
+				.map((field) => field.category)
+				.filter((category) => !common.some((capability) => capability.category === category)),
 			members: channels.map((channel) => ({
 				source_channel: channel.id,
 				device_id: (channel.device as DeviceEntity).id,

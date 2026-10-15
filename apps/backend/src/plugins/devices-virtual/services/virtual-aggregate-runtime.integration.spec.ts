@@ -41,6 +41,7 @@ import {
 } from '../entities/devices-virtual.entity';
 import {
 	VirtualAggregateConfigEntity,
+	VirtualAggregateFilterKind,
 	VirtualAggregateInputEntity,
 	VirtualAggregateOperator,
 } from '../entities/virtual-producer.entity';
@@ -494,64 +495,70 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		expect(await hap.reading.handleGetRequest()).toBe(22);
 		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.NO_FAULT);
 	});
-	it('starts without trusting history; equal reports recompute age without duplicate scalar history', async () => {
-		const a = await measurement(),
-			b = await measurement(),
-			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
-		await configure(output, [a, b]);
-		await start();
-		expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
-		await sample(a, 20);
-		await sample(b, 22);
-		expect(outputState(output)).toMatchObject({
-			value: 21,
-			producer: {
-				quality: 'good',
-				sampledAt: new Date(base).toISOString(),
-				expiresAt: new Date(base + 10000).toISOString(),
-			},
-		});
-		jest.setSystemTime(base + 5000);
-		await sample(a, 20);
-		expect(outputState(output).producer.sampledAt).toBe(new Date(base).toISOString());
-		await sample(b, 22);
-		expect(outputState(output).producer.sampledAt).toBe(new Date(base + 5000).toISOString());
-		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(2);
-		expect(storage.writePoints).toHaveBeenCalledTimes(1);
-	});
+	it.each([VirtualAggregateOperator.MEAN, VirtualAggregateOperator.WEIGHTED_MEAN])(
+		'starts without trusting history; equal reports recompute age without duplicate scalar history (%s)',
+		async (operator) => {
+			const a = await measurement(),
+				b = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configure(output, [a, b], 2, 0, operator);
+			await start();
+			expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+			await sample(a, 20);
+			await sample(b, 22);
+			expect(outputState(output)).toMatchObject({
+				value: 21,
+				producer: {
+					quality: 'good',
+					sampledAt: new Date(base).toISOString(),
+					expiresAt: new Date(base + 10000).toISOString(),
+				},
+			});
+			jest.setSystemTime(base + 5000);
+			await sample(a, 20);
+			expect(outputState(output).producer.sampledAt).toBe(new Date(base).toISOString());
+			await sample(b, 22);
+			expect(outputState(output).producer.sampledAt).toBe(new Date(base + 5000).toISOString());
+			expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(2);
+			expect(storage.writePoints).toHaveBeenCalledTimes(1);
+		},
+	);
 
-	it('expires members with a fixed quorum and admits an older contributor in a newer evaluation', async () => {
-		const a = await measurement(),
-			b = await measurement(),
-			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
-		await configure(output, [a, b], 1);
-		await start();
-		await sample(a, 20);
-		jest.setSystemTime(base + 10000);
-		await sample(b, 22);
-		expect(outputState(output)).toMatchObject({
-			value: 22,
-			producer: { quality: 'degraded', sampledAt: new Date(base + 10000).toISOString() },
-		});
-		jest.setSystemTime(base + 12000);
-		await sample(a, 20, base + 8000);
-		expect(outputState(output)).toMatchObject({
-			value: 21,
-			producer: {
-				quality: 'good',
-				sampledAt: new Date(base + 8000).toISOString(),
-				expiresAt: new Date(base + 18000).toISOString(),
-			},
-		});
-		jest.setSystemTime(base + 18000);
-		runtime.requestRecompute();
-		await runtime.flush();
-		expect(outputState(output)).toMatchObject({ value: 22, producer: { quality: 'degraded' } });
-		jest.setSystemTime(base + 20000);
-		runtime.requestRecompute();
-		await runtime.flush();
-		expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
-	});
+	it.each([VirtualAggregateOperator.MEAN, VirtualAggregateOperator.WEIGHTED_MEAN])(
+		'expires members with a fixed quorum and admits an older contributor in a newer evaluation (%s)',
+		async (operator) => {
+			const a = await measurement(),
+				b = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configure(output, [a, b], 1, 0, operator);
+			await start();
+			await sample(a, 20);
+			jest.setSystemTime(base + 10000);
+			await sample(b, 22);
+			expect(outputState(output)).toMatchObject({
+				value: 22,
+				producer: { quality: 'degraded', sampledAt: new Date(base + 10000).toISOString() },
+			});
+			jest.setSystemTime(base + 12000);
+			await sample(a, 20, base + 8000);
+			expect(outputState(output)).toMatchObject({
+				value: 21,
+				producer: {
+					quality: 'good',
+					sampledAt: new Date(base + 8000).toISOString(),
+					expiresAt: new Date(base + 18000).toISOString(),
+				},
+			});
+			jest.setSystemTime(base + 18000);
+			runtime.requestRecompute();
+			await runtime.flush();
+			expect(outputState(output)).toMatchObject({ value: 22, producer: { quality: 'degraded' } });
+			jest.setSystemTime(base + 20000);
+			runtime.requestRecompute();
+			await runtime.flush();
+			expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+		},
+	);
 
 	it('excludes offline, incompatible metadata and invalid values while keeping configured membership', async () => {
 		const a = await measurement(),
@@ -586,46 +593,119 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		);
 	});
 
-	it('retains missing identity/quorum, remaps the binding and preserves output/history identity', async () => {
+	it.each([VirtualAggregateOperator.MEAN, VirtualAggregateOperator.WEIGHTED_MEAN])(
+		'retains missing identity/quorum, remaps the binding and preserves output/history identity (%s)',
+		async (operator) => {
+			const a = await measurement(),
+				b = await measurement(),
+				c = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configure(output, [a, b], 2, 0, operator);
+			await start();
+			await sample(a, 20);
+			await sample(b, 22);
+			const old = (await configs.getAggregate(output.id)).inputs.find((input) => input.source_property === a.id);
+			await database.manager.delete(ChannelPropertyEntity, a.id);
+			events.emit(EventType.CHANNEL_PROPERTY_DELETED, a);
+			await runtime.flush();
+			expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+			expect(runtime.readDiagnostics(output.id).inputs.find((input) => input.id === old.id)).toMatchObject({
+				sourceIdentity: a.id,
+				exclusion: 'missing',
+			});
+			await configs.configureAggregate(
+				output.id,
+				Object.assign(new ConfigureVirtualAggregateDto(), {
+					expectedRevision: 1,
+					operator,
+					minimumValidInputs: 2,
+					maximumAgeSeconds: 10,
+					inputs: [{ id: old.id, sourcePropertyId: c.id }, { sourcePropertyId: b.id }],
+				}),
+			);
+			await runtime.flush();
+			expect(outputState(output).value).toBeNull();
+			await sample(c, 24);
+			expect(outputState(output)).toMatchObject({ value: 23, producer: { revision: 2 } });
+			expect((await configs.getAggregate(output.id)).inputs.find((input) => input.id === old.id).source_property).toBe(
+				c.id,
+			);
+			expect(
+				await database.manager.count(VirtualAggregateConfigEntity, { where: { outputPropertyId: output.id } }),
+			).toBe(1);
+		},
+	);
+
+	it('filters qualified weighted evidence, bounds authority by comparison expiry and requires a new cohort after restart', async () => {
 		const a = await measurement(),
 			b = await measurement(),
 			c = await measurement(),
 			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
-		await configure(output, [a, b]);
-		await start();
-		await sample(a, 20);
-		await sample(b, 22);
-		const old = (await configs.getAggregate(output.id)).inputs.find((input) => input.source_property === a.id);
-		await database.manager.delete(ChannelPropertyEntity, a.id);
-		events.emit(EventType.CHANNEL_PROPERTY_DELETED, a);
-		await runtime.flush();
-		expect(outputState(output)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
-		expect(runtime.readDiagnostics(output.id).inputs.find((input) => input.id === old.id)).toMatchObject({
-			sourceIdentity: a.id,
-			exclusion: 'missing',
-		});
 		await configs.configureAggregate(
 			output.id,
 			Object.assign(new ConfigureVirtualAggregateDto(), {
-				expectedRevision: 1,
-				operator: VirtualAggregateOperator.MEAN,
+				expectedRevision: 0,
+				operator: VirtualAggregateOperator.WEIGHTED_MEAN,
 				minimumValidInputs: 2,
 				maximumAgeSeconds: 10,
-				inputs: [{ id: old.id, sourcePropertyId: c.id }, { sourcePropertyId: b.id }],
+				outlierFilter: { kind: VirtualAggregateFilterKind.ABSOLUTE_DEVIATION_FROM_MEDIAN, threshold: 2 },
+				inputs: [
+					{ sourcePropertyId: a.id, weight: 1 },
+					{ sourcePropertyId: b.id, weight: 3 },
+					{ sourcePropertyId: c.id, weight: 1000000 },
+				],
 			}),
 		);
+		await start();
+		await sample(a, 20);
+		await sample(b, 22);
+		expect(outputState(output).producer.reasons).toContain('insufficient_comparison_cohort');
+		await sample(c, 80);
+		expect(outputState(output)).toMatchObject({
+			value: 21.5,
+			producer: { quality: 'degraded', sampledAt: new Date(base).toISOString() },
+		});
+		expect(runtime.readDiagnostics(output.id).inputs.find((input) => input.sourceIdentity === c.id).exclusion).toBe(
+			'outlier',
+		);
+		jest.setSystemTime(base + 5000);
+		runtime.requestRecompute();
 		await runtime.flush();
-		expect(outputState(output).value).toBeNull();
-		await sample(c, 24);
-		expect(outputState(output)).toMatchObject({ value: 23, producer: { revision: 2 } });
-		expect((await configs.getAggregate(output.id)).inputs.find((input) => input.id === old.id).source_property).toBe(
-			c.id,
+		expect(outputState(output).producer.sampledAt).toBe(new Date(base).toISOString());
+		await sample(a, 20);
+		await sample(b, 22);
+		expect(outputState(output).producer.expiresAt).toBe(new Date(base + 10000).toISOString());
+		jest.setSystemTime(base + 10000);
+		runtime.requestRecompute();
+		await runtime.flush();
+		expect(outputState(output).producer.reasons).toContain('insufficient_comparison_cohort');
+		expect(outputState(output).producer.quality).toBe('unavailable');
+		runtime.onModuleDestroy();
+		values = new PropertyValueService(
+			storage as unknown as StorageService,
+			new PropertyValueSourceRegistryService(),
+			new PropertyValueLockService({} as never),
+			producers,
+			events,
 		);
-		expect(await database.manager.count(VirtualAggregateConfigEntity, { where: { outputPropertyId: output.id } })).toBe(
-			1,
+		runtime = new VirtualAggregateRuntimeService(
+			database,
+			producers,
+			values,
+			{
+				readLatest: () => Promise.resolve({ status: ConnectionState.UNKNOWN }),
+			} as unknown as DeviceConnectionStateService,
+			graph,
+			events,
 		);
+		await runtime.onApplicationBootstrap();
+		expect(outputState(output).producer.quality).toBe('unavailable');
+		await sample(a, 20);
+		await sample(b, 22);
+		expect(outputState(output).producer.quality).toBe('unavailable');
+		await sample(c, 22);
+		expect(outputState(output).producer.quality).toBe('good');
 	});
-
 	it('fences pending output publication across reconfiguration and runtime disposal', async () => {
 		const a = await measurement(),
 			b = await measurement(),

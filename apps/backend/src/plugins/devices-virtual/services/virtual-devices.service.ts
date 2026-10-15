@@ -43,6 +43,7 @@ import {
 } from '../entities/devices-virtual.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { GROUP_PROFILES, groupProfileForChannel } from './virtual-group-profile';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 import { isTransformOutputSlot } from './virtual-transform-contract.utils';
@@ -335,8 +336,8 @@ export class VirtualDevicesService {
 				(transformProperty && isTransformOutputSlot(transformProperty)) ||
 				(device.type === DEVICES_VIRTUAL_TYPE &&
 					(device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP &&
-					device.category === DeviceCategory.LIGHTING &&
-					channel.category === ChannelCategory.LIGHT &&
+					groupProfileForChannel(channel.category) !== undefined &&
+					device.category === GROUP_PROFILES[groupProfileForChannel(channel.category)].deviceCategory &&
 					getAllProperties(channel.category).some(
 						(slot) =>
 							slot.category === property.category &&

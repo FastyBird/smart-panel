@@ -4,14 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import {
-	ChannelCategory,
-	DataTypeType,
-	DeviceCategory,
-	EventType,
-	PermissionType,
-	PropertyCategory,
-} from '../../../modules/devices/devices.constants';
+import { EventType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
@@ -40,16 +33,22 @@ import {
 	VirtualProducerBindingModel,
 } from '../models/producer-response.model';
 
+import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
-import { LightGroupCapability, commonLightCapabilities } from './virtual-light-group.utils';
-import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
-import { VirtualProducerStateService } from './virtual-producer-state.service';
 import {
-	isEligibleVirtualMeasurement,
-	isEligibleVirtualTransformedTemperature,
-} from './virtual-source-eligibility.utils';
+	GROUP_PROFILES,
+	commonGroupCapabilities,
+	groupBooleanContractIsSupported,
+	groupField,
+	groupSourceSupports,
+} from './virtual-group-profile';
+import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
+import { LightGroupCapability } from './virtual-light-group.utils';
+import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
+import { isEligibleAggregateSource } from './virtual-numeric-profile.utils';
+import { VirtualProducerStateService } from './virtual-producer-state.service';
+import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
 @Injectable()
@@ -159,35 +158,22 @@ export class VirtualProducerConfigService {
 			if (!proposed.sourcePropertyId) {
 				if (!old || old.sourcePropertyId !== null)
 					throw new DevicesValidationException('Only an existing missing input can retain a null source.');
-				inputs.push(old);
+				inputs.push(manager.create(VirtualAggregateInputEntity, { ...old, weight: proposed.weight ?? 1 }));
 			} else {
 				const source = await this.property(manager, proposed.sourcePropertyId, previewOnly);
 				const sourceChannel = source.channel as ChannelEntity;
 				const sourceDevice = sourceChannel.device as VirtualDeviceEntity;
-				// Aggregate nesting and alias chains remain excluded. Only canonical, read-only
-				// transformed measurements are reserved as an upstream producer extension.
-				if (
-					sourceDevice.type === 'virtual' &&
-					!isEligibleVirtualTransformedTemperature(source, sourceChannel, sourceDevice)
-				)
+				if (!isEligibleAggregateSource(source, sourceChannel, sourceDevice))
 					throw new DevicesValidationException(
-						'Aggregate inputs require physical temperatures or read-only canonical transformed temperatures.',
+						sourceDevice.type === 'virtual'
+							? 'Aggregate inputs require physical temperatures or read-only canonical transformed temperatures.'
+							: 'Aggregate input must be a readable canonical Celsius temperature.',
 					);
-				if (
-					sourceChannel.category !== ChannelCategory.TEMPERATURE ||
-					source.category !== PropertyCategory.TEMPERATURE ||
-					source.dataType !== DataTypeType.FLOAT ||
-					(!source.permissions.includes(PermissionType.READ_ONLY) &&
-						!source.permissions.includes(PermissionType.READ_WRITE)) ||
-					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
-					(source.unit != null && source.unit !== resolvePropertyUnit(source)) ||
-					(output.unit != null && output.unit !== resolvePropertyUnit(output))
-				) {
-					throw new DevicesValidationException('Aggregate input must be a readable canonical Celsius temperature.');
-				}
+
 				inputs.push(
 					manager.create(VirtualAggregateInputEntity, {
 						id: old?.id ?? uuid(),
+						weight: proposed.weight ?? 1,
 						outputPropertyId,
 						sourcePropertyId: source.id,
 						sourcePropertyIdentity: source.id,
@@ -214,6 +200,7 @@ export class VirtualProducerConfigService {
 			outputPropertyId,
 			schemaVersion: 1,
 			operator: dto.operator,
+			outlierFilter: dto.outlierFilter ?? null,
 			minimumValidInputs: dto.minimumValidInputs,
 			maximumAgeSeconds: dto.maximumAgeSeconds,
 			revision: (existing?.revision ?? 0) + 1,
@@ -287,7 +274,7 @@ export class VirtualProducerConfigService {
 			where: { channel: { id: groupChannelId } },
 			relations: ['channel'],
 		});
-		const capabilities = await this.commonContract(this.dataSource.manager, members, bindings, outputs);
+		const capabilities = await this.commonContract(this.dataSource.manager, members, bindings, outputs, config.profile);
 		return this.groupModel(config, members, bindings, await this.graph.revision(), capabilities);
 	}
 
@@ -303,12 +290,12 @@ export class VirtualProducerConfigService {
 		capabilities: LightGroupCapability[];
 	}> {
 		if (
-			dto.profile !== VirtualLightGroupProfile.LIGHT ||
+			!Object.hasOwn(GROUP_PROFILES, dto.profile) ||
 			!Array.isArray(dto.members) ||
 			dto.members.length < 2 ||
 			dto.members.length > 256
 		)
-			throw new DevicesValidationException('A light group requires the light profile and 2–256 members.');
+			throw new DevicesValidationException('A group requires a supported profile and 2–256 members.');
 		const group = await manager
 			.createQueryBuilder(ChannelEntity, 'channel')
 			.leftJoinAndSelect('channel.device', 'device')
@@ -320,14 +307,16 @@ export class VirtualProducerConfigService {
 			!group ||
 			device?.type !== 'virtual' ||
 			device.mode !== VirtualDeviceMode.ACTUATOR_GROUP ||
-			device.category !== DeviceCategory.LIGHTING ||
-			group.category !== ChannelCategory.LIGHT
+			device.category !== GROUP_PROFILES[dto.profile].deviceCategory ||
+			group.category !== GROUP_PROFILES[dto.profile].channelCategory
 		)
 			throw new DevicesValidationException(
-				'Light group configuration requires an actuator-group lighting device and light channel.',
+				'Group configuration requires an actuator-group device/channel matching its profile.',
 			);
 		const existing = await manager.findOneBy(VirtualLightGroupConfigEntity, { groupChannelId });
 		this.assertRevision(existing?.revision ?? 0, dto.expectedRevision);
+		if (existing && existing.profile !== dto.profile)
+			throw new ConflictException('An existing group profile cannot be changed');
 		const previousMembers = await manager.find(VirtualLightGroupMemberEntity, { where: { groupChannelId } });
 		const previousBindings = (await manager.find(VirtualLightGroupBindingEntity)).filter((binding) =>
 			previousMembers.some((member) => member.id === binding.memberId),
@@ -346,6 +335,9 @@ export class VirtualProducerConfigService {
 		)
 			throw new DevicesValidationException('Light group requires a derived on output.');
 		const exposed = outputs.filter((property) => property.valueOrigin === VirtualValueOrigin.DERIVED);
+		if (exposed.some((property) => !groupBooleanContractIsSupported(dto.profile, property)))
+			throw new DevicesValidationException('Switch/outlet outputs require an unrestricted two-state boolean contract.');
+
 		if (
 			exposed.some(
 				(property) =>
@@ -377,9 +369,13 @@ export class VirtualProducerConfigService {
 				proposed.sourceChannelId &&
 				(!sourceChannel ||
 					(sourceChannel.device as VirtualDeviceEntity)?.type === 'virtual' ||
-					sourceChannel.category !== ChannelCategory.LIGHT)
+					sourceChannel.category !== GROUP_PROFILES[dto.profile].channelCategory ||
+					(dto.profile !== VirtualLightGroupProfile.LIGHT &&
+						(sourceChannel.device as VirtualDeviceEntity)?.category !== GROUP_PROFILES[dto.profile].deviceCategory))
 			)
-				throw new DevicesValidationException('Light group members must be physical light channels.');
+				throw new DevicesValidationException(
+					'Group members must be homogeneous physical channels matching the profile.',
+				);
 			if (!proposed.sourceChannelId && (!old || old.sourceChannelId !== null))
 				throw new DevicesValidationException('Only an existing missing member can retain a null channel.');
 			const member = manager.create(VirtualLightGroupMemberEntity, {
@@ -423,14 +419,15 @@ export class VirtualProducerConfigService {
 					source.category !== output.category ||
 					source.dataType !== output.dataType ||
 					resolvePropertyUnit(source) !== resolvePropertyUnit(output) ||
-					!source.permissions.includes(PermissionType.READ_WRITE)
+					!groupSourceSupports(source, groupField(dto.profile, output.category)) ||
+					!groupBooleanContractIsSupported(dto.profile, source)
 				) {
 					if (existing && output.category !== PropertyCategory.ON)
 						throw new ConflictException(
 							`Membership edit would remove capability ${output.category}; repair its scene/tile references and exposed contract explicitly.`,
 						);
 					throw new DevicesValidationException(
-						'Member property must belong to its physical channel and match output quantity/type/unit with read-write support.',
+						'Member property must belong to its physical channel and match output quantity/type/unit with the profile-required access.',
 					);
 				}
 				bindings.push(
@@ -452,7 +449,7 @@ export class VirtualProducerConfigService {
 			new Set(bindings.map((binding) => binding.id)).size !== bindings.length
 		)
 			throw new DevicesValidationException('Member identities and binding UUIDs must be distinct.');
-		const capabilities = await this.commonContract(manager, members, bindings, exposed);
+		const capabilities = await this.commonContract(manager, members, bindings, exposed, dto.profile);
 		// Missing identities retain their last durable contract; live metadata is checked again at runtime.
 		for (const output of exposed) {
 			const liveSources = bindings.filter(
@@ -465,6 +462,10 @@ export class VirtualProducerConfigService {
 				!common ||
 				common.dataType !== output.dataType ||
 				common.unit !== (resolvePropertyUnit(output) ?? null) ||
+				(common.format?.every((value) => typeof value === 'string') &&
+					common.format.length > 0 &&
+					(!output.format?.length ||
+						output.format.some((value) => !(common.format as string[]).includes(String(value))))) ||
 				(numericRange &&
 					(!output.format ||
 						output.format.length !== 2 ||
@@ -511,8 +512,10 @@ export class VirtualProducerConfigService {
 		members: VirtualLightGroupMemberEntity[],
 		bindings: VirtualLightGroupBindingEntity[],
 		outputs: VirtualChannelPropertyEntity[],
+		profile: VirtualLightGroupProfile,
 	): Promise<LightGroupCapability[]> {
-		return commonLightCapabilities(
+		return commonGroupCapabilities(
+			profile,
 			await Promise.all(
 				members.map(async (member) => {
 					const physical = member.sourceChannelId
@@ -561,6 +564,17 @@ export class VirtualProducerConfigService {
 	}
 
 	private assertPolicy(dto: ConfigureVirtualAggregateDto): void {
+		if (!isValidAggregateFilter(dto.outlierFilter))
+			throw new DevicesValidationException(
+				'Aggregate outlier filter requires a supported kind and a positive finite canonical-unit threshold.',
+			);
+		if (
+			Array.isArray(dto.inputs) &&
+			dto.inputs.some((input) => !isValidAggregateWeight(input.weight === undefined ? 1 : input.weight))
+		)
+			throw new DevicesValidationException(
+				'Aggregate input weight must be finite and between 0.000001 and 1000000 (inclusive).',
+			);
 		if (
 			!Object.values(VirtualAggregateOperator).includes(dto.operator) ||
 			!Array.isArray(dto.inputs) ||
@@ -605,6 +619,7 @@ export class VirtualProducerConfigService {
 			output_property: config.outputPropertyId,
 			schema_version: config.schemaVersion,
 			operator: config.operator,
+			outlier_filter: config.outlierFilter ?? null,
 			minimum_valid_inputs: config.minimumValidInputs,
 			maximum_age_seconds: config.maximumAgeSeconds,
 			revision: config.revision,
@@ -612,6 +627,7 @@ export class VirtualProducerConfigService {
 			runtime_readiness: this.aggregateRuntime?.isActive() ? 'ready' : 'unavailable',
 			inputs: inputs.map((input) => {
 				const model = this.bindingModel(input);
+				model.weight = input.weight ?? 1;
 				const diagnostic = this.aggregateRuntime
 					?.readDiagnostics(config.outputPropertyId)
 					?.inputs.find((candidate) => candidate.id === input.id);
@@ -644,6 +660,9 @@ export class VirtualProducerConfigService {
 			common_capabilities: capabilities.map((capability) =>
 				Object.assign(new VirtualLightGroupCapabilityModel(), {
 					category: capability.category,
+					...(config.profile === VirtualLightGroupProfile.LIGHT
+						? {}
+						: { access: groupField(config.profile, capability.category).access }),
 					data_type: capability.dataType,
 					unit: capability.unit,
 					format: capability.format,

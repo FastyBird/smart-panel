@@ -5,13 +5,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
-import {
-	ChannelCategory,
-	DataTypeType,
-	EventType,
-	PermissionType,
-	PropertyCategory,
-} from '../../../modules/devices/devices.constants';
+import { DataTypeType, EventType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
@@ -28,11 +22,19 @@ import {
 	VirtualLightGroupBindingEntity,
 	VirtualLightGroupConfigEntity,
 	VirtualLightGroupMemberEntity,
+	VirtualLightGroupProfile,
 } from '../entities/virtual-producer.entity';
 import { VirtualLightGroupReportedStateModel } from '../models/producer-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { LIGHT_GROUP_MAXIMUM_AGE_MS, LightGroupReportedState, reportLightGroup } from './virtual-light-group.utils';
+import {
+	GROUP_PROFILES,
+	groupBooleanContractIsSupported,
+	groupField,
+	groupSourceSupports,
+	reportGroup,
+} from './virtual-group-profile';
+import { LIGHT_GROUP_MAXIMUM_AGE_MS, LightGroupReportedState } from './virtual-light-group.utils';
 
 export const LIGHT_GROUP_REPORTED_STATE_CHANGED = 'DevicesVirtual.LightGroup.ReportedStateChanged';
 
@@ -164,12 +166,15 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 					const output = outputs.find((candidate) => candidate.id === binding.outputPropertyId);
 					if (
 						channel.id !== member.sourceChannelId ||
-						channel.category !== ChannelCategory.LIGHT ||
+						channel.category !== GROUP_PROFILES[config.profile].channelCategory ||
 						!output ||
 						property.category !== output.category ||
 						property.dataType !== output.dataType ||
 						resolvePropertyUnit(property) !== resolvePropertyUnit(output) ||
-						!property.permissions.includes(PermissionType.READ_WRITE)
+						!groupSourceSupports(property, groupField(config.profile, output.category)) ||
+						!groupBooleanContractIsSupported(config.profile, property) ||
+						!groupBooleanContractIsSupported(config.profile, output) ||
+						groupField(config.profile, output.category)?.access === 'wo'
 					) {
 						reasons.add('metadata_incompatible');
 						continue;
@@ -177,6 +182,14 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 					const deviceId = (channel.device as DeviceEntity).id;
 					if (!deviceCache.has(deviceId)) deviceCache.set(deviceId, await this.devices.findOne(deviceId));
 					const device = deviceCache.get(deviceId);
+					if (
+						config.profile !== VirtualLightGroupProfile.LIGHT &&
+						device &&
+						(device.type === 'virtual' || device.category !== GROUP_PROFILES[config.profile].deviceCategory)
+					) {
+						reasons.add('metadata_incompatible');
+						continue;
+					}
 					if (!device?.enabled) {
 						reasons.add(device ? 'disabled' : 'missing_device');
 						continue;
@@ -192,7 +205,7 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 				}
 				snapshots.push({ identity: member.sourceChannelIdentity, samples, reasons: [...reasons] });
 			}
-			const state = reportLightGroup(snapshots);
+			const state = reportGroup(config.profile, snapshots);
 			const current = await this.dataSource.manager.findOneBy(VirtualLightGroupConfigEntity, {
 				groupChannelId: config.groupChannelId,
 			});

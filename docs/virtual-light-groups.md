@@ -12,6 +12,22 @@ The authoring preview returns `common_capabilities`. Exposed output rows keep th
 An edit incompatible with an exposed optional output returns a repair conflict; it never silently deletes the output
 or its scene/tile references. Missing members retain the last validated exposed contract while requiring explicit repair.
 
+## Additional backend profiles
+
+The backend authoring/configuration API also supports `switch` and `outlet` profiles with matching device/channel
+categories. Each group has 2–256 homogeneous physical members. Existing light-group endpoint, schema and storage names
+remain compatibility aliases. Admin/panel authoring for these profiles is tracked separately in #1453.
+
+Switch and outlet profiles expose common readable/writable ON. An outlet may additionally expose common read-only
+`in_use`; it is a reported value, not a command target. They do not create aggregate power or energy counters.
+The same fixed-membership freshness, graph/revision fencing, feedback-based mixed/unknown state and per-member
+composite outcomes apply. Room lighting contribution rules below remain specific to the light profile.
+
+Their boolean fields must support both states: no format, an empty format, or exactly `true` and `false` strings
+(case-insensitive). One-state or malformed formats are refused by preview and persistence. Command planning rechecks
+both output and physical-member contracts, and runtime feedback becomes unavailable when those contracts drift.
+This also fences previously materialized invalid rows. The legacy light profile keeps its existing format policy.
+
 ## Feedback and quality
 
 `VirtualLightGroupStateService` consumes only `PropertyValueService.readQualifiedSample`: a provider must submit actual
