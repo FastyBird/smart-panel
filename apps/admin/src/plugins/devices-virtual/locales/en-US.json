@@ -404,6 +404,10 @@
 		"unavailable": "Unavailable",
 		"watchdog": "Installed watchdog bound (ms)",
 		"releaseProven": "Current release proof",
-		"lastOff": "Last qualified OFF"
+		"lastOff": "Last qualified OFF",
+		"qualification": "Guard qualification at server read",
+		"qualificationHelp": "Checks the installed guard and current target only. It does not establish controller readiness or certify physical equipment.",
+		"activitySample": "Observed relay sample",
+		"activityExpiry": "Observation valid until"
 	}
 }

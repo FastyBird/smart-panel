@@ -91,7 +91,10 @@
 			</template>
 		</template>
 		<template v-if="member.retained">
-			<p>{{ label('observed') }}: {{ runtime?.activity ?? 'unknown' }} · {{ label('pendingOn') }}: {{ runtime?.pending_on ?? 'unknown' }}</p>
+			<p>{{ label('observed') }}: {{ observation.activity }} · {{ label('pendingOn') }}: {{ runtime?.pending_on ?? 'unknown' }}</p>
+			<p>{{ label('qualification') }}: {{ observation.qualification ?? 'unknown' }}</p>
+			<p>{{ label('qualificationHelp') }}</p>
+			<p>{{ label('activitySample') }}: {{ observation.sampledAt ?? '—' }} · {{ label('activityExpiry') }}: {{ observation.expiresAt ?? '—' }}</p>
 			<p>
 				{{ label('reading') }}: {{ reading.temperature === null ? label('unavailable') : `${reading.temperature} °C` }} · {{ reading.status }} ·
 				{{ runtime?.protection?.quality ?? 'unavailable' }} · {{ reading.age ?? '—' }} s
@@ -144,7 +147,7 @@ import { ElAlert, ElButton, ElCard, ElCheckbox, ElFormItem, ElInputNumber, ElOpt
 import { useBackend } from '../../../common';
 import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
 import type { ThermostatMemberDraft } from '../services/thermostat-authoring';
-import { type ThermostatMemberContext, type ThermostatMemberRuntime, memberReading } from '../services/thermostat-members';
+import { type ThermostatMemberContext, type ThermostatMemberRuntime, memberObservation, memberReading } from '../services/thermostat-members';
 
 import ThermostatMemberInstallation from './thermostat-member-installation.vue';
 import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
@@ -181,6 +184,7 @@ const context = useThermostatMemberContext<ThermostatMemberContext>(sourceKey, a
 	return data.data;
 });
 const selected = computed(() => context.value.value?.candidates.find((entry) => entry.property === props.member.protection?.source_property));
+const observation = computed(() => memberObservation(props.runtime, props.receivedAt, props.now));
 const reading = computed(() => memberReading(props.runtime, props.receivedAt, props.now));
 const member = toRef(props, 'member');
 const adopt = (enabled: string | number | boolean) => {

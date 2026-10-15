@@ -404,6 +404,10 @@
 		"unavailable": "Niedostępne",
 		"watchdog": "Zainstalowany limit nadzoru (ms)",
 		"releaseProven": "Bieżący dowód zwolnienia",
-		"lastOff": "Ostatnie kwalifikowane wyłączenie"
+		"lastOff": "Ostatnie kwalifikowane wyłączenie",
+		"qualification": "Kwalifikacja zabezpieczenia przy odczycie serwera",
+		"qualificationHelp": "Sprawdza wyłącznie zainstalowane zabezpieczenie i aktualne wyjście. Nie potwierdza gotowości regulatora ani bezpieczeństwa fizycznego urządzenia.",
+		"activitySample": "Zaobserwowana próbka przekaźnika",
+		"activityExpiry": "Obserwacja ważna do"
 	}
 }

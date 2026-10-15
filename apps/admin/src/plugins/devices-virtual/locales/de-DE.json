@@ -404,6 +404,10 @@
 		"unavailable": "Nicht verfügbar",
 		"watchdog": "Installierte Überwachungsgrenze (ms)",
 		"releaseProven": "Aktueller Freigabenachweis",
-		"lastOff": "Letztes qualifiziertes AUS"
+		"lastOff": "Letztes qualifiziertes AUS",
+		"qualification": "Schutzqualifikation beim Serverabruf",
+		"qualificationHelp": "Prüft nur den installierten Schutz und das aktuelle Ziel. Bestätigt weder die Reglerbereitschaft noch die Sicherheit physischer Geräte.",
+		"activitySample": "Beobachtete Relaisprobe",
+		"activityExpiry": "Beobachtung gültig bis"
 	}
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { type ThermostatConfiguration, buildThermostatRequest, draftFromConfiguration } from './thermostat-authoring';
 import { emptyMemberInstallation, memberInstallationBlocker, memberInstallationRequest } from './thermostat-member-installation';
-import { type ThermostatMemberContext, type ThermostatMemberRuntime, memberReading } from './thermostat-members';
+import { type ThermostatMemberContext, type ThermostatMemberRuntime, memberObservation, memberReading } from './thermostat-members';
 
 export const memberConfiguration = (count = 2): ThermostatConfiguration =>
 	({
@@ -109,6 +109,27 @@ describe('mandatory member authoring and current evidence', () => {
 		expect(memberReading(member, 1000, 999).ready).toBe(false);
 		member.protection!.status = 'unavailable' as NonNullable<ThermostatMemberRuntime['protection']>['status'];
 		expect(memberReading(member, 0, 1).temperature).toBeNull();
+	});
+	it.each([true, false, null])('keeps qualification %s distinct from physical activity and expires original evidence', (qualification) => {
+		const runtime = {
+			activity: 'off',
+			qualification_ready: qualification,
+			activity_sampled_at: new Date(0).toISOString(),
+			activity_expires_at: new Date(30000).toISOString(),
+		} as unknown as ThermostatMemberRuntime;
+		expect(memberObservation(runtime, 0, 0)).toMatchObject({ activity: 'off', qualification });
+		expect(memberObservation(runtime, 0, 30000)).toEqual({ activity: 'unknown', qualification: null, sampledAt: null, expiresAt: null });
+		expect(memberObservation(runtime, 1, 0).qualification).toBeNull();
+	});
+	it('withholds missing legacy timestamps and never promotes retained OFF history to live relay activity', () => {
+		const history = {
+			activity: 'on',
+			qualification_ready: true,
+			last_verified_off_at: new Date(0).toISOString(),
+			release_proven: true,
+		} as unknown as ThermostatMemberRuntime;
+		expect(memberObservation(history, 0, 0)).toEqual({ activity: 'unknown', qualification: null, sampledAt: null, expiresAt: null });
+		expect(memberObservation(null, 0, 0).activity).toBe('unknown');
 	});
 	it('stages with derived snapshot only and leaves evidence unasserted until supplied', () => {
 		const draft = emptyMemberInstallation();

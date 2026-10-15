@@ -28,3 +28,24 @@ export function memberReading(member: ThermostatMemberRuntime | null, receivedAt
 		ready: fresh && protection.ready === true,
 	};
 }
+
+/** Current display observation only. Missing old-server fields and retained OFF proof cannot establish freshness. */
+export function memberObservation(member: ThermostatMemberRuntime | null, receivedAt: number, now: number) {
+	const sampledAt = member?.activity_sampled_at ? Date.parse(member.activity_sampled_at) : NaN;
+	const expiresAt = member?.activity_expires_at ? Date.parse(member.activity_expires_at) : NaN;
+	const fresh =
+		!!member &&
+		['on', 'off'].includes(member.activity) &&
+		Number.isFinite(sampledAt) &&
+		Number.isFinite(expiresAt) &&
+		now >= receivedAt &&
+		now >= sampledAt &&
+		expiresAt > sampledAt &&
+		now < expiresAt;
+	return {
+		activity: fresh ? member.activity : 'unknown',
+		qualification: fresh ? (member.qualification_ready ?? null) : null,
+		sampledAt: fresh ? member.activity_sampled_at : null,
+		expiresAt: fresh ? member.activity_expires_at : null,
+	};
+}

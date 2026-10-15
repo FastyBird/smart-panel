@@ -404,6 +404,10 @@
 		"unavailable": "Nedostupné",
 		"watchdog": "Inštalovaný limit dohľadu (ms)",
 		"releaseProven": "Aktuálny dôkaz uvoľnenia",
-		"lastOff": "Posledné kvalifikované vypnutie"
+		"lastOff": "Posledné kvalifikované vypnutie",
+		"qualification": "Kvalifikácia ochrany pri čítaní serverom",
+		"qualificationHelp": "Kontrola sa týka iba nainštalovanej ochrany a aktuálneho výstupu. Nepotvrdzuje pripravenosť regulátora ani bezpečnosť fyzického zariadenia.",
+		"activitySample": "Pozorovaná vzorka relé",
+		"activityExpiry": "Pozorovanie platí do"
 	}
 }

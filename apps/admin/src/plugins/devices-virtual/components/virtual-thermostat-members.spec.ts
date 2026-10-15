@@ -423,6 +423,34 @@ describe('actual mandatory-member authoring forms', () => {
 		expect(card.text()).toMatch(/devicesVirtualPlugin\.members\.latched:\s*unknown/);
 		expect(card.text()).not.toContain('22 °C');
 	});
+	it('withdraws observed relay activity and guard qualification on original feedback expiry', async () => {
+		view = mount(ThermostatMemberCard, {
+			props: {
+				member: draftFromConfiguration(configuration() as unknown as ThermostatConfiguration).actuators[0],
+				parallel: true,
+				configurationRevision: 3,
+				requestedLimit: 28,
+				disabled: true,
+				receivedAt: 0,
+				now: 0,
+				runtime: {
+					claim: 'claim-0',
+					activity: 'on',
+					pending_on: false,
+					qualification_ready: true,
+					activity_sampled_at: new Date(0).toISOString(),
+					activity_expires_at: new Date(30000).toISOString(),
+				} as unknown as ThermostatMemberRuntime,
+			},
+			global: { stubs: { ThermostatMemberInstallation: true, ThermostatMemberRecovery: true } },
+		});
+		expect(view.text()).toMatch(/devicesVirtualPlugin\.members\.observed:\s*on/);
+		expect(view.text()).toMatch(/devicesVirtualPlugin\.members\.qualification:\s*true/);
+		expect(view.text()).toContain('devicesVirtualPlugin.members.qualificationHelp');
+		await view.setProps({ now: 30000 });
+		expect(view.text()).toMatch(/devicesVirtualPlugin\.members\.observed:\s*unknown/);
+		expect(view.text()).toMatch(/devicesVirtualPlugin\.members\.qualification:\s*unknown/);
+	});
 	it('withholds structural authoring for an ordinary user', async () => {
 		mocks.profile.role = 'user';
 		const editor = await open(true);

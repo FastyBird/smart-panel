@@ -404,6 +404,10 @@
 		"unavailable": "No disponible",
 		"watchdog": "Límite instalado del vigilante (ms)",
 		"releaseProven": "Prueba actual de liberación",
-		"lastOff": "Último apagado cualificado"
+		"lastOff": "Último apagado cualificado",
+		"qualification": "Cualificación de protección al consultar el servidor",
+		"qualificationHelp": "Comprueba únicamente la protección instalada y el destino actual. No confirma que el controlador esté listo ni certifica la seguridad del equipo físico.",
+		"activitySample": "Muestra observada del relé",
+		"activityExpiry": "Observación válida hasta"
 	}
 }
