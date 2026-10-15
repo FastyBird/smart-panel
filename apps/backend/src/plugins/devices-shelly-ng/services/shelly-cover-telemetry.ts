@@ -2,7 +2,6 @@ import { GuardedShellyRpcHandler } from './guarded-shelly-rpc';
 
 /** A notification delta is a refresh trigger, never a synthesized full physical sample. */
 export function coverDeltaNeedsRefresh(raw: Record<string, unknown>, id: number): boolean {
-	if (['id', 'state', 'current_pos', 'pos_control'].every((field) => Object.hasOwn(raw, field))) return false;
 	if (
 		(Object.hasOwn(raw, 'id') && raw.id !== id) ||
 		(Object.hasOwn(raw, 'state') &&
@@ -12,12 +11,15 @@ export function coverDeltaNeedsRefresh(raw: Record<string, unknown>, id: number)
 				!Number.isFinite(raw.current_pos) ||
 				raw.current_pos < 0 ||
 				raw.current_pos > 100)) ||
+		(Object.hasOwn(raw, 'current_pos') &&
+			((raw.state === 'open' && raw.current_pos !== 100) || (raw.state === 'closed' && raw.current_pos !== 0))) ||
 		(Object.hasOwn(raw, 'pos_control') && raw.pos_control !== true) ||
 		(Object.hasOwn(raw, 'errors') && raw.errors !== null && (!Array.isArray(raw.errors) || raw.errors.length > 0)) ||
 		(Object.hasOwn(raw, 'tag') && raw.tag !== null && (typeof raw.tag !== 'string' || raw.tag.length > 20))
 	)
 		return false;
-	return true;
+	if (Object.hasOwn(raw, 'errors') && raw.errors === null) return true;
+	return !['id', 'state', 'current_pos', 'pos_control'].every((field) => Object.hasOwn(raw, field));
 }
 
 /** One bounded in-flight full read per motor, coalesced without cached fields or command authority. */

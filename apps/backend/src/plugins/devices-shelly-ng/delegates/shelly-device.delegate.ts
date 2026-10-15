@@ -721,7 +721,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 					continue;
 				}
 
-				this.emitNotificationValue(componentKey, characteristic, value);
+				this.emitNotificationValue(componentKey, characteristic, value, false);
 			}
 
 			if (changedCharacteristics?.size === 0) {
@@ -756,8 +756,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * Applies a raw NotifyStatus frame which did not pass through a library component.  It
 	 * still advances the component revision so a concurrent poll cannot overwrite it.
 	 */
-	emitNotificationValue(compKey: string, char: string, val: unknown): void {
-		this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
+	emitNotificationValue(compKey: string, char: string, val: unknown, advanceRevision = true): void {
+		// handleStatusUpdate already advances the whole raw frame before flattening.
+		if (advanceRevision) this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
 
 		emitFlattenedValue(
 			(event: string, ...args: unknown[]): boolean => this.emit(event, ...args, 'notify'),

@@ -590,30 +590,35 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
 		},
 	);
-	it('recovers a native fault-clear errors:null delta only from a new complete status read', async () => {
-		emitRaw(0, { errors: ['obstruction'] });
-		await until(
-			() =>
-				values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000) === null &&
-				values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null,
-		);
-		expect(transports[0].frames).toHaveLength(0);
-		transports[0].pre = () => HOLD;
-		emitRaw(0, { errors: null });
-		await until(() => transports[0].frames.length === 1);
-		expect(transports[0].frames[0].method).toBe('Cover.GetStatus');
-		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toBeNull();
-		expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)).toBeNull();
-		// Neither cached position nor cached tag may be promoted by the null delta.
-		transports[0].answer(transports[0].frames[0], { id: 0, state: 'stopped', current_pos: 55, pos_control: true });
-		await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 55);
-		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toMatchObject({
-			value: 'stopped',
-			nativeCoverTagPresent: false,
-		});
-		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).commandObservation).toBeUndefined();
-		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
-	});
+	it.each([{ errors: null }, { id: 0, state: 'stopped', current_pos: 40, pos_control: true, errors: null }])(
+		'recovers native fault-clear delta %j only from a new complete status read',
+		async (delta) => {
+			emitRaw(0, { errors: ['obstruction'] });
+			await until(
+				() =>
+					values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000) === null &&
+					values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null,
+			);
+			expect(transports[0].frames).toHaveLength(0);
+			transports[0].pre = () => HOLD;
+			emitRaw(0, delta);
+			await until(() => transports[0].frames.length === 1);
+			expect(transports[0].frames[0].method).toBe('Cover.GetStatus');
+			expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toBeNull();
+			expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)).toBeNull();
+			// Neither cached position nor cached tag may be promoted by the null delta.
+			transports[0].answer(transports[0].frames[0], { id: 0, state: 'stopped', current_pos: 55, pos_control: true });
+			await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 55);
+			expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toMatchObject({
+				value: 'stopped',
+				nativeCoverTagPresent: false,
+			});
+			expect(
+				values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).commandObservation,
+			).toBeUndefined();
+			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+		},
+	);
 	it.each([{ errors: ['obstruction'] }, { errors: 'obstruction' }, { errors: {} }, { errors: 1 }, { errors: false }])(
 		'keeps nonempty or malformed native errors %j invalid without a refresh',
 		async ({ errors }) => {
@@ -627,6 +632,33 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
 		},
 	);
+	it.each([
+		{ id: 1 },
+		{ state: 'unknown' },
+		{ current_pos: null },
+		{ current_pos: 101 },
+		{ pos_control: false },
+		{ tag: {} },
+		{ state: 'open', current_pos: 40 },
+		{ errors: ['obstruction'] },
+	])('keeps a complete fault-clear envelope with invalid fields %j unavailable without a refresh', async (invalid) => {
+		emitRaw(0, { id: 0, state: 'stopped', current_pos: 40, pos_control: true, errors: null, ...invalid });
+		await until(
+			() =>
+				values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000) === null &&
+				values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null,
+		);
+		expect(transports[0].frames).toHaveLength(0);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+	});
+	it('admits complete valid native status without errors directly without a refresh or command proof', async () => {
+		emitRaw(0, { id: 0, state: 'opening', current_pos: 55, pos_control: true, tag: 'external' });
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 55);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).value).toBe('opening');
+		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).commandObservation).toBeUndefined();
+		expect(transports[0].frames).toHaveLength(0);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+	});
 	it('discards an in-flight refresh overtaken by a delta and coalesces one newer full read', async () => {
 		transports[0].pre = () => HOLD;
 		emitRaw(0, { current_pos: 50 });
@@ -677,7 +709,11 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		await new Promise<void>((resolve) => setTimeout(resolve, 20));
 		expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value).not.toBe(55);
 	});
-	it.each([{ apower: 12 }, { errors: null }])(
+	it.each([
+		{ apower: 12 },
+		{ errors: null },
+		{ id: 0, state: 'opening', current_pos: 40, pos_control: true, errors: null },
+	])(
 		'normal refreshed status after delta %j with an action tag cannot confirm an ACK-only command readback',
 		async (delta) => {
 			transports[0].post = () => HOLD;
