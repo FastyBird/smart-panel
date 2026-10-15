@@ -4274,4 +4274,136 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nedetegované';
+  @override
+  String get thermostatComfortTitle => 'Komfort termostatu';
+
+  @override
+  String get thermostatComfortHelp =>
+      'Komfortná požiadavka je oddelená od režimu HVAC a fyzickej činnosti. Ochrany platia vždy.';
+
+  @override
+  String get thermostatComfortUnconfigured =>
+      'Komfort nie je nastavený. Existujúce ručné nastavenia zostávajú dostupné.';
+
+  @override
+  String get thermostatComfortHeating => 'Kúrenie';
+
+  @override
+  String get thermostatComfortCooling => 'Chladenie';
+
+  @override
+  String get thermostatComfortMinimum => 'Minimum';
+
+  @override
+  String get thermostatComfortMaximum => 'Maximum';
+
+  @override
+  String get thermostatComfortComfort => 'Komfort';
+
+  @override
+  String get thermostatComfortEco => 'Úsporný';
+
+  @override
+  String get thermostatComfortAway => 'Neprítomnosť';
+
+  @override
+  String get thermostatComfortManual => 'Ručný základ';
+
+  @override
+  String get thermostatComfortSelected => 'Základná predvoľba';
+
+  @override
+  String get thermostatComfortChoose => 'Vybrať základ';
+
+  @override
+  String get thermostatComfortConfigure => 'Nastaviť komfort';
+
+  @override
+  String get thermostatComfortAutomation =>
+      'Výslovne povoliť automatizáciu klímy';
+
+  @override
+  String get thermostatComfortSave => 'Uložiť nastavenie komfortu';
+
+  @override
+  String get thermostatComfortReload => 'Načítať zo servera';
+
+  @override
+  String get thermostatComfortOverride => 'Dočasné prepísanie';
+
+  @override
+  String get thermostatComfortExplicit => 'Vlastné požadované teploty';
+
+  @override
+  String get thermostatComfortDuration => 'Trvanie (minúty, 1–10080)';
+
+  @override
+  String get thermostatComfortCreate => 'Vytvoriť prepísanie';
+
+  @override
+  String get thermostatComfortCancel => 'Zrušiť toto prepísanie';
+
+  @override
+  String get thermostatComfortClearOff => 'Zrušiť používateľské vypnutie';
+
+  @override
+  String get thermostatComfortOffHeld =>
+      'Používateľské vypnutie je zaistené. Predvoľby ani automatizácia nemôžu obnoviť výstup.';
+
+  @override
+  String get thermostatComfortEffective => 'Účinná komfortná požiadavka';
+
+  @override
+  String get thermostatComfortExpires => 'Absolútny koniec platnosti';
+
+  @override
+  String get thermostatComfortRemaining => 'Zostávajúci čas';
+
+  @override
+  String get thermostatComfortExpiryHint =>
+      'Odpočet je informatívny. Je potrebné potvrdenie servera; nepotvrdzuje fyzickú činnosť.';
+
+  @override
+  String get thermostatComfortStatus => 'Stav servera';
+
+  @override
+  String get thermostatComfortSource => 'Zdroj';
+
+  @override
+  String get thermostatComfortActor => 'Overený používateľ';
+
+  @override
+  String get thermostatComfortIdentity => 'Identita prepísania';
+
+  @override
+  String get thermostatComfortRevision => 'Revízia';
+
+  @override
+  String get thermostatComfortClockPolicy => 'Časová politika servera';
+
+  @override
+  String get thermostatComfortUncertain =>
+      'Stav prepísania vyžaduje pozornosť. Neisté hodiny blokujú výstup; neznáme stavy vyžadujú potvrdenie servera.';
+
+  @override
+  String get thermostatComfortError =>
+      'Požiadavka zlyhala; pred opakovaním načítajte stav';
+
+  @override
+  String get thermostatComfortOffClearHelp =>
+      'Zrušenie vypnutia je samostatná výslovná akcia a nemení požadovaný režim HVAC.';
+
+  @override
+  String get thermostatComfortConfigHint =>
+      'Zadajte iba rozsahy podporovaných vetiev a výslovne vybrané teploty predvolieb v stupňoch Celzia. Predvolené teploty sa nedopĺňajú.';
+
+  @override
+  String get thermostatComfortServerValidation =>
+      'Server overuje podporované vetvy, rozsahy, neutrálne pásmo a revízie.';
+
+  @override
+  String get thermostatComfortRequested => 'Požadovaný režim HVAC';
+
+  @override
+  String get thermostatComfortActivity => 'Hlásená činnosť výstupov';
 }

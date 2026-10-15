@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_commands.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_comfort.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
@@ -233,7 +234,11 @@ class _VirtualThermostatDeviceDetailState
       return;
     }
     final deviceId = widget.device.id;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _refreshGeneration++;
+      _refreshInFlightFor = null;
+    });
     try {
       final accepted = await locator<DevicesService>()
           .setMultiplePropertyValues(
@@ -446,6 +451,12 @@ class _VirtualThermostatDeviceDetailState
                       ? const Icon(Icons.warning_amber)
                       : null,
                 ),
+            VirtualThermostatComfort(
+              deviceId: widget.device.id,
+              revision: (config?['revision'] as num?)?.toInt(),
+              disabled: !canControl,
+              onChanged: () => unawaited(_refresh(force: true)),
+            ),
           ],
         ),
       ),

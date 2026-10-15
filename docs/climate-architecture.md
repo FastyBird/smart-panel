@@ -61,7 +61,7 @@ The `/plugins/devices-virtual/producers/thermostats/{id}/comfort` endpoint reads
 ranges/presets. POST `selection` selects a preset or null for the manual baseline, POST `override` selects a preset
 or explicit setpoints until an absolute ISO expiry, and POST `override/cancel` terminates the identified active
 override. Writes require both current thermostat and graph revisions. Override source is assigned by the backend
-and actor identity comes from an authenticated user session; public requests cannot impersonate internal automation.
+and actor identity comes from an authenticated user session or a display-owned token (recorded as source `panel` with display/token identity); public requests cannot impersonate internal automation.
 The optional `comfort` definition on the existing thermostat configuration PUT permits an atomic policy/range change.
 Incompatible active override setpoints must be cancelled before such a change; neither reconfiguration nor preset
 editing silently replaces a live override.
@@ -87,7 +87,9 @@ Temporary overrides are bounded to seven days. Cache state is bounded to one liv
 
 This backend stage does not implement a space activity/schedule/presence engine. The trusted baseline port is ready
 for the separate bridge, and no engine invokes it here.
-Admin preset authoring and panel comfort controls still need delivery before VD3-7 can be marked complete.
+Admin authoring and Panel selection/override/cancel controls expose server diagnostics in all six locales. Local UI
+tests cover legacy/manual controllers, explicit branch setpoints, OFF-latch actions, expiry invalidation and stale
+requests. Independent backend review, composed UI acceptance and release gates remain before VD3-7 is complete.
 
 ## Input graph and measurements
 

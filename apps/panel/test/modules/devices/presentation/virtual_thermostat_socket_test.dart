@@ -9,30 +9,47 @@ import 'package:flutter_test/flutter_test.dart';
 const runtimeEvent = 'DevicesVirtualPlugin.Thermostat.RuntimeChanged';
 
 class ThermostatSocket extends SocketService {
-  final handlers = <String, void Function(String, Map<String, dynamic>)>{};
-  void Function(bool)? connection;
+  final handlers =
+      <String, List<void Function(String, Map<String, dynamic>)>>{};
+  final connections = <void Function(bool)>[];
+  void Function(bool) get connection => (connected) {
+    for (final listener in connections.toList()) {
+      listener(connected);
+    }
+  };
   @override
   void registerEventHandler(
     String event,
     void Function(String, Map<String, dynamic>) callback,
-  ) => handlers[event] = callback;
+  ) => (handlers[event] ??= []).add(callback);
   @override
   void unregisterEventHandler(
     String event,
     void Function(String, Map<String, dynamic>) callback,
-  ) => handlers.remove(event);
+  ) {
+    handlers[event]?.remove(callback);
+    if (handlers[event]?.isEmpty == true) {
+      handlers.remove(event);
+    }
+  }
+
   @override
   void addConnectionListener(void Function(bool) listener) =>
-      connection = listener;
+      connections.add(listener);
   @override
   void removeConnectionListener(void Function(bool) listener) =>
-      connection = null;
-  void hint(String controller, String epoch, int sequence) =>
-      handlers[runtimeEvent]?.call(runtimeEvent, {
+      connections.remove(listener);
+  void hint(String controller, String epoch, int sequence) {
+    for (final handler
+        in handlers[runtimeEvent]?.toList() ??
+            <void Function(String, Map<String, dynamic>)>[]) {
+      handler(runtimeEvent, {
         'controller': controller,
         'epoch': epoch,
         'sequence': sequence,
       });
+    }
+  }
 }
 
 void main() {
@@ -42,6 +59,37 @@ void main() {
       final socket = ThermostatSocket();
       locator.registerSingleton<SocketService>(socket);
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.path.endsWith('/comfort')) {
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'data': {
+                      'controller': options.path
+                          .split('/')
+                          .reversed
+                          .skip(1)
+                          .first,
+                      'revision': 1,
+                      'graph_revision': 1,
+                      'configuration': null,
+                      'effective': {'source': 'manual', 'preset': null},
+                      'clock_policy': 'server-policy',
+                    },
+                  },
+                ),
+              );
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+      );
       locator.registerSingleton<Dio>(dio);
       addTearDown(() {
         locator.unregister<SocketService>();
@@ -159,7 +207,7 @@ void main() {
       sequence = 0;
       mode = 'cool';
       hold = false;
-      socket.connection?.call(true);
+      socket.connection(true);
       await tester.pump(const Duration(milliseconds: 150));
       await tester.pump();
       expect(find.text('Requested mode: cool'), findsOneWidget);
@@ -201,7 +249,7 @@ void main() {
       expect(runtimeReads, afterChange);
       await tester.pumpWidget(const SizedBox.shrink());
       expect(socket.handlers, isEmpty);
-      expect(socket.connection, isNull);
+      expect(socket.connections, isEmpty);
       await tester.pump(const Duration(seconds: 1));
       expect(runtimeReads, afterChange);
     },

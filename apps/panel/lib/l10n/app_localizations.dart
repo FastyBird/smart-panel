@@ -7647,6 +7647,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not detected'**
   String get virtual_measurement_false;
+  @override
+  /// No description provided for @thermostatComfortTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thermostat comfort'**
+  String get thermostatComfortTitle;
+
+  /// No description provided for @thermostatComfortHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfort intent is separate from HVAC mode and physical activity. Safety guards always apply.'**
+  String get thermostatComfortHelp;
+
+  /// No description provided for @thermostatComfortUnconfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfort is not configured. Existing manual settings remain available.'**
+  String get thermostatComfortUnconfigured;
+
+  /// No description provided for @thermostatComfortHeating.
+  ///
+  /// In en, this message translates to:
+  /// **'Heating'**
+  String get thermostatComfortHeating;
+
+  /// No description provided for @thermostatComfortCooling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling'**
+  String get thermostatComfortCooling;
+
+  /// No description provided for @thermostatComfortMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum'**
+  String get thermostatComfortMinimum;
+
+  /// No description provided for @thermostatComfortMaximum.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum'**
+  String get thermostatComfortMaximum;
+
+  /// No description provided for @thermostatComfortComfort.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfort'**
+  String get thermostatComfortComfort;
+
+  /// No description provided for @thermostatComfortEco.
+  ///
+  /// In en, this message translates to:
+  /// **'Eco'**
+  String get thermostatComfortEco;
+
+  /// No description provided for @thermostatComfortAway.
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get thermostatComfortAway;
+
+  /// No description provided for @thermostatComfortManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual baseline'**
+  String get thermostatComfortManual;
+
+  /// No description provided for @thermostatComfortSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Baseline preset'**
+  String get thermostatComfortSelected;
+
+  /// No description provided for @thermostatComfortChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Select baseline'**
+  String get thermostatComfortChoose;
+
+  /// No description provided for @thermostatComfortConfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure comfort'**
+  String get thermostatComfortConfigure;
+
+  /// No description provided for @thermostatComfortAutomation.
+  ///
+  /// In en, this message translates to:
+  /// **'Explicitly enable climate automation'**
+  String get thermostatComfortAutomation;
+
+  /// No description provided for @thermostatComfortSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save comfort configuration'**
+  String get thermostatComfortSave;
+
+  /// No description provided for @thermostatComfortReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload from server'**
+  String get thermostatComfortReload;
+
+  /// No description provided for @thermostatComfortOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary override'**
+  String get thermostatComfortOverride;
+
+  /// No description provided for @thermostatComfortExplicit.
+  ///
+  /// In en, this message translates to:
+  /// **'Explicit setpoints'**
+  String get thermostatComfortExplicit;
+
+  /// No description provided for @thermostatComfortDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (minutes, 1–10080)'**
+  String get thermostatComfortDuration;
+
+  /// No description provided for @thermostatComfortCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create override'**
+  String get thermostatComfortCreate;
+
+  /// No description provided for @thermostatComfortCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this override'**
+  String get thermostatComfortCancel;
+
+  /// No description provided for @thermostatComfortClearOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear user OFF latch'**
+  String get thermostatComfortClearOff;
+
+  /// No description provided for @thermostatComfortOffHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'User OFF is latched. Presets and automation cannot resume output.'**
+  String get thermostatComfortOffHeld;
+
+  /// No description provided for @thermostatComfortEffective.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective comfort intent'**
+  String get thermostatComfortEffective;
+
+  /// No description provided for @thermostatComfortExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute expiry'**
+  String get thermostatComfortExpires;
+
+  /// No description provided for @thermostatComfortRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Time remaining'**
+  String get thermostatComfortRemaining;
+
+  /// No description provided for @thermostatComfortExpiryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Countdown is informational. Server confirmation is required; it does not confirm output activity.'**
+  String get thermostatComfortExpiryHint;
+
+  /// No description provided for @thermostatComfortStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Server status'**
+  String get thermostatComfortStatus;
+
+  /// No description provided for @thermostatComfortSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get thermostatComfortSource;
+
+  /// No description provided for @thermostatComfortActor.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticated actor'**
+  String get thermostatComfortActor;
+
+  /// No description provided for @thermostatComfortIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Override identity'**
+  String get thermostatComfortIdentity;
+
+  /// No description provided for @thermostatComfortRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'Revision'**
+  String get thermostatComfortRevision;
+
+  /// No description provided for @thermostatComfortClockPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Server clock policy'**
+  String get thermostatComfortClockPolicy;
+
+  /// No description provided for @thermostatComfortUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Override state needs attention. Uncertain clocks inhibit output; unknown states require server confirmation.'**
+  String get thermostatComfortUncertain;
+
+  /// No description provided for @thermostatComfortError.
+  ///
+  /// In en, this message translates to:
+  /// **'Request failed; reload before retrying'**
+  String get thermostatComfortError;
+
+  /// No description provided for @thermostatComfortOffClearHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Clearing OFF is a separate explicit action and does not change the requested HVAC mode.'**
+  String get thermostatComfortOffClearHelp;
+
+  /// No description provided for @thermostatComfortConfigHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter only supported branch ranges and explicitly chosen preset temperatures in Celsius. No temperatures are supplied by default.'**
+  String get thermostatComfortConfigHint;
+
+  /// No description provided for @thermostatComfortServerValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'The server validates supported branches, ranges, deadband and revisions.'**
+  String get thermostatComfortServerValidation;
+
+  /// No description provided for @thermostatComfortRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested HVAC mode'**
+  String get thermostatComfortRequested;
+
+  /// No description provided for @thermostatComfortActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported output activity'**
+  String get thermostatComfortActivity;
 }
 
 class _AppLocalizationsDelegate

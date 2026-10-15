@@ -4276,4 +4276,136 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nicht erkannt';
+  @override
+  String get thermostatComfortTitle => 'Thermostatkomfort';
+
+  @override
+  String get thermostatComfortHelp =>
+      'Komfortwunsch, HVAC-Modus und physische Aktivität bleiben getrennt. Schutzfunktionen gelten immer.';
+
+  @override
+  String get thermostatComfortUnconfigured =>
+      'Komfort ist nicht konfiguriert. Bestehende manuelle Einstellungen bleiben verfügbar.';
+
+  @override
+  String get thermostatComfortHeating => 'Heizen';
+
+  @override
+  String get thermostatComfortCooling => 'Kühlen';
+
+  @override
+  String get thermostatComfortMinimum => 'Minimum';
+
+  @override
+  String get thermostatComfortMaximum => 'Maximum';
+
+  @override
+  String get thermostatComfortComfort => 'Komfort';
+
+  @override
+  String get thermostatComfortEco => 'Eco';
+
+  @override
+  String get thermostatComfortAway => 'Abwesend';
+
+  @override
+  String get thermostatComfortManual => 'Manuelle Basis';
+
+  @override
+  String get thermostatComfortSelected => 'Basisprofil';
+
+  @override
+  String get thermostatComfortChoose => 'Basis auswählen';
+
+  @override
+  String get thermostatComfortConfigure => 'Komfort konfigurieren';
+
+  @override
+  String get thermostatComfortAutomation =>
+      'Klimaautomatisierung ausdrücklich aktivieren';
+
+  @override
+  String get thermostatComfortSave => 'Komfortkonfiguration speichern';
+
+  @override
+  String get thermostatComfortReload => 'Vom Server neu laden';
+
+  @override
+  String get thermostatComfortOverride => 'Temporäre Übersteuerung';
+
+  @override
+  String get thermostatComfortExplicit => 'Eigene Sollwerte';
+
+  @override
+  String get thermostatComfortDuration => 'Dauer (Minuten, 1–10080)';
+
+  @override
+  String get thermostatComfortCreate => 'Übersteuerung erstellen';
+
+  @override
+  String get thermostatComfortCancel => 'Diese Übersteuerung abbrechen';
+
+  @override
+  String get thermostatComfortClearOff => 'Benutzer-AUS-Sperre aufheben';
+
+  @override
+  String get thermostatComfortOffHeld =>
+      'Benutzer-AUS ist verriegelt. Profile und Automatisierung können den Ausgang nicht wieder aktivieren.';
+
+  @override
+  String get thermostatComfortEffective => 'Wirksamer Komfortwunsch';
+
+  @override
+  String get thermostatComfortExpires => 'Absoluter Ablaufzeitpunkt';
+
+  @override
+  String get thermostatComfortRemaining => 'Verbleibende Zeit';
+
+  @override
+  String get thermostatComfortExpiryHint =>
+      'Der Countdown dient zur Information. Eine Serverbestätigung ist erforderlich; er bestätigt keine Ausgangsaktivität.';
+
+  @override
+  String get thermostatComfortStatus => 'Serverstatus';
+
+  @override
+  String get thermostatComfortSource => 'Quelle';
+
+  @override
+  String get thermostatComfortActor => 'Authentifizierter Akteur';
+
+  @override
+  String get thermostatComfortIdentity => 'Übersteuerungskennung';
+
+  @override
+  String get thermostatComfortRevision => 'Revision';
+
+  @override
+  String get thermostatComfortClockPolicy => 'Zeitregel des Servers';
+
+  @override
+  String get thermostatComfortUncertain =>
+      'Der Übersteuerungszustand erfordert Aufmerksamkeit. Unsichere Uhren sperren den Ausgang; unbekannte Zustände erfordern eine Serverbestätigung.';
+
+  @override
+  String get thermostatComfortError =>
+      'Anfrage fehlgeschlagen; vor Wiederholung neu laden';
+
+  @override
+  String get thermostatComfortOffClearHelp =>
+      'Das Aufheben von AUS ist eine separate ausdrückliche Aktion und ändert nicht den angeforderten HVAC-Modus.';
+
+  @override
+  String get thermostatComfortConfigHint =>
+      'Nur Bereiche unterstützter Zweige und ausdrücklich gewählte Profiltemperaturen in Celsius eingeben. Es gibt keine Standardtemperaturen.';
+
+  @override
+  String get thermostatComfortServerValidation =>
+      'Der Server prüft unterstützte Zweige, Bereiche, Totband und Revisionen.';
+
+  @override
+  String get thermostatComfortRequested => 'Angeforderter HVAC-Modus';
+
+  @override
+  String get thermostatComfortActivity => 'Gemeldete Ausgangsaktivität';
 }

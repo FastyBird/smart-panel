@@ -4310,4 +4310,135 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nie wykryto';
+  @override
+  String get thermostatComfortTitle => 'Komfort termostatu';
+
+  @override
+  String get thermostatComfortHelp =>
+      'Żądanie komfortu, tryb HVAC i aktywność fizyczna są rozdzielone. Zabezpieczenia obowiązują zawsze.';
+
+  @override
+  String get thermostatComfortUnconfigured =>
+      'Komfort nie jest skonfigurowany. Dotychczasowe ustawienia ręczne pozostają dostępne.';
+
+  @override
+  String get thermostatComfortHeating => 'Ogrzewanie';
+
+  @override
+  String get thermostatComfortCooling => 'Chłodzenie';
+
+  @override
+  String get thermostatComfortMinimum => 'Minimum';
+
+  @override
+  String get thermostatComfortMaximum => 'Maksimum';
+
+  @override
+  String get thermostatComfortComfort => 'Komfort';
+
+  @override
+  String get thermostatComfortEco => 'Eco';
+
+  @override
+  String get thermostatComfortAway => 'Nieobecność';
+
+  @override
+  String get thermostatComfortManual => 'Podstawa ręczna';
+
+  @override
+  String get thermostatComfortSelected => 'Profil bazowy';
+
+  @override
+  String get thermostatComfortChoose => 'Wybierz podstawę';
+
+  @override
+  String get thermostatComfortConfigure => 'Konfiguruj komfort';
+
+  @override
+  String get thermostatComfortAutomation => 'Jawnie włącz automatykę klimatu';
+
+  @override
+  String get thermostatComfortSave => 'Zapisz konfigurację komfortu';
+
+  @override
+  String get thermostatComfortReload => 'Odśwież z serwera';
+
+  @override
+  String get thermostatComfortOverride => 'Tymczasowe nadpisanie';
+
+  @override
+  String get thermostatComfortExplicit => 'Jawne nastawy';
+
+  @override
+  String get thermostatComfortDuration => 'Czas (minuty, 1–10080)';
+
+  @override
+  String get thermostatComfortCreate => 'Utwórz nadpisanie';
+
+  @override
+  String get thermostatComfortCancel => 'Anuluj to nadpisanie';
+
+  @override
+  String get thermostatComfortClearOff => 'Usuń blokadę wyłączenia użytkownika';
+
+  @override
+  String get thermostatComfortOffHeld =>
+      'Wyłączenie użytkownika jest zatrzaśnięte. Profile ani automatyka nie mogą wznowić wyjścia.';
+
+  @override
+  String get thermostatComfortEffective => 'Obowiązujące żądanie komfortu';
+
+  @override
+  String get thermostatComfortExpires => 'Bezwzględny termin wygaśnięcia';
+
+  @override
+  String get thermostatComfortRemaining => 'Pozostały czas';
+
+  @override
+  String get thermostatComfortExpiryHint =>
+      'Odliczanie ma charakter informacyjny. Wymagane jest potwierdzenie serwera; nie potwierdza ono aktywności wyjścia.';
+
+  @override
+  String get thermostatComfortStatus => 'Stan serwera';
+
+  @override
+  String get thermostatComfortSource => 'Źródło';
+
+  @override
+  String get thermostatComfortActor => 'Uwierzytelniony użytkownik';
+
+  @override
+  String get thermostatComfortIdentity => 'Identyfikator nadpisania';
+
+  @override
+  String get thermostatComfortRevision => 'Rewizja';
+
+  @override
+  String get thermostatComfortClockPolicy => 'Polityka zegara serwera';
+
+  @override
+  String get thermostatComfortUncertain =>
+      'Stan nadpisania wymaga uwagi. Niepewny zegar blokuje wyjście; nieznane stany wymagają potwierdzenia serwera.';
+
+  @override
+  String get thermostatComfortError =>
+      'Żądanie nie powiodło się; odśwież przed ponowieniem';
+
+  @override
+  String get thermostatComfortOffClearHelp =>
+      'Usunięcie wyłączenia jest oddzielnym jawnym działaniem i nie zmienia żądanego trybu HVAC.';
+
+  @override
+  String get thermostatComfortConfigHint =>
+      'Wprowadź tylko zakresy obsługiwanych gałęzi i jawnie wybrane temperatury profili w stopniach Celsjusza. Nie ma domyślnych temperatur.';
+
+  @override
+  String get thermostatComfortServerValidation =>
+      'Serwer sprawdza obsługiwane gałęzie, zakresy, strefę neutralną i rewizje.';
+
+  @override
+  String get thermostatComfortRequested => 'Żądany tryb HVAC';
+
+  @override
+  String get thermostatComfortActivity => 'Zgłoszona aktywność wyjścia';
 }

@@ -15,107 +15,138 @@ import 'package:mocktail/mocktail.dart';
 class MockDevicesService extends Mock implements DevicesService {}
 
 void main() {
-  testWidgets(
-    'shows requested heat separately from suspended physical output',
-    (tester) async {
-      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            final runtime = options.path.endsWith('/runtime');
+  testWidgets('shows requested heat separately from suspended physical output', (
+    tester,
+  ) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+    // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path.endsWith('/comfort')) {
             handler.resolve(
-              Response<Map<String, dynamic>>(
+              Response(
                 requestOptions: options,
                 statusCode: 200,
                 data: {
-                  'data': runtime
-                      ? {
-                          'requested_mode': 'heat',
-                          'heating_setpoint': 21.0,
-                          'cooling_setpoint': null,
-                          'current_temperature': 19.5,
-                          'floor_temperature': 29.0,
-                          'floor_latched': true,
-                          'readiness': 'suspended',
-                          'reasons': ['floor limit reached'],
-                          'inputs': [
-                            {
-                              'binding': 'ambient',
-                              'role': 'ambient',
-                              'source_kind': 'physical',
-                              'status': 'stale',
-                              'quality': 'unavailable',
-                              'age_seconds': 120,
-                              'maximum_age_seconds': 60,
-                            },
-                            {
-                              'binding': 'floor',
-                              'role': 'floor',
-                              'source_kind': 'derived',
-                              'status': 'unavailable',
-                              'quality': 'unavailable',
-                              'maximum_age_seconds': 30,
-                              'reasons': ['source_fault'],
-                            },
-                            {
-                              'binding': 'contact',
-                              'role': 'contact',
-                              'source_kind': 'unknown',
-                              'status': 'missing',
-                              'quality': 'unavailable',
-                              'maximum_age_seconds': 60,
-                            },
-                          ],
-                          'branches': [
-                            {'role': 'heating', 'activity': 'off'},
-                          ],
-                        }
-                      : {
-                          'requested_mode': 'heat',
-                          'locked': false,
-                          'policy': {
-                            'heatingSetpoint': 21.0,
-                            'coolingSetpoint': null,
-                          },
-                          'settings': [],
-                        },
+                  'data': {
+                    'controller': options.path
+                        .split('/')
+                        .reversed
+                        .skip(1)
+                        .first,
+                    'revision': 1,
+                    'graph_revision': 1,
+                    'configuration': null,
+                    'effective': {'source': 'manual', 'preset': null},
+                    'clock_policy': 'server-policy',
+                  },
                 },
               ),
             );
-          },
-        ),
-      );
-      locator.registerSingleton<Dio>(dio);
-      addTearDown(() => locator.unregister<Dio>());
+          } else {
+            handler.next(options);
+          }
+        },
+      ),
+    );
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final runtime = options.path.endsWith('/runtime');
+          handler.resolve(
+            Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'data': runtime
+                    ? {
+                        'requested_mode': 'heat',
+                        'heating_setpoint': 21.0,
+                        'cooling_setpoint': null,
+                        'current_temperature': 19.5,
+                        'floor_temperature': 29.0,
+                        'floor_latched': true,
+                        'readiness': 'suspended',
+                        'reasons': ['floor limit reached'],
+                        'inputs': [
+                          {
+                            'binding': 'ambient',
+                            'role': 'ambient',
+                            'source_kind': 'physical',
+                            'status': 'stale',
+                            'quality': 'unavailable',
+                            'age_seconds': 120,
+                            'maximum_age_seconds': 60,
+                          },
+                          {
+                            'binding': 'floor',
+                            'role': 'floor',
+                            'source_kind': 'derived',
+                            'status': 'unavailable',
+                            'quality': 'unavailable',
+                            'maximum_age_seconds': 30,
+                            'reasons': ['source_fault'],
+                          },
+                          {
+                            'binding': 'contact',
+                            'role': 'contact',
+                            'source_kind': 'unknown',
+                            'status': 'missing',
+                            'quality': 'unavailable',
+                            'maximum_age_seconds': 60,
+                          },
+                        ],
+                        'branches': [
+                          {'role': 'heating', 'activity': 'off'},
+                        ],
+                      }
+                    : {
+                        'requested_mode': 'heat',
+                        'locked': false,
+                        'policy': {
+                          'heatingSetpoint': 21.0,
+                          'coolingSetpoint': null,
+                        },
+                        'settings': [],
+                      },
+              },
+            ),
+          );
+        },
+      ),
+    );
+    locator.registerSingleton<Dio>(dio);
+    addTearDown(() => locator.unregister<Dio>());
 
-      final device = ThermostatDeviceView(
-        id: 'controller',
-        type: 'virtual',
-        name: 'Room thermostat',
-        channels: const [],
-      );
-      await tester.pumpWidget(
-        MaterialApp(home: VirtualThermostatDeviceDetail(device: device)),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+    final device = ThermostatDeviceView(
+      id: 'controller',
+      type: 'virtual',
+      name: 'Room thermostat',
+      channels: const [],
+    );
+    await tester.pumpWidget(
+      MaterialApp(home: VirtualThermostatDeviceDetail(device: device)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Requested mode: heat'), findsOneWidget);
-      expect(find.text('Controller readiness: suspended'), findsOneWidget);
-      expect(
-        find.text('Floor protection is holding heating OFF.'),
-        findsOneWidget,
-      );
-      expect(find.text('Inhibited: floor limit reached'), findsOneWidget);
-      expect(find.text('off'), findsOneWidget);
-      expect(find.text('ambient: stale (physical)'), findsOneWidget);
-      expect(find.text('floor: unavailable (derived)'), findsOneWidget);
-      expect(find.text('contact: missing (unknown)'), findsOneWidget);
-      expect(find.textContaining('Allowed age: 60 s'), findsWidgets);
-      expect(find.textContaining('Ambient: 19.5'), findsNothing);
-      await tester.pumpWidget(const SizedBox.shrink());
-    },
-  );
+    expect(find.text('Requested mode: heat'), findsOneWidget);
+    expect(find.text('Controller readiness: suspended'), findsOneWidget);
+    expect(
+      find.text('Floor protection is holding heating OFF.'),
+      findsOneWidget,
+    );
+    expect(find.text('Inhibited: floor limit reached'), findsOneWidget);
+    expect(find.text('off'), findsOneWidget);
+    expect(find.text('ambient: stale (physical)'), findsOneWidget);
+    expect(find.text('floor: unavailable (derived)'), findsOneWidget);
+    expect(find.text('contact: missing (unknown)'), findsOneWidget);
+    expect(find.textContaining('Allowed age: 60 s'), findsWidgets);
+    expect(find.textContaining('Ambient: 19.5'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
   staleDeviceResponseTest();
   disposePendingCommandTest();
   commandSupersedesPollTest();
@@ -141,6 +172,37 @@ void commandSupersedesPollTest() {
     var afterCommand = false;
     var requests = 0;
     final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+    // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path.endsWith('/comfort')) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'data': {
+                    'controller': options.path
+                        .split('/')
+                        .reversed
+                        .skip(1)
+                        .first,
+                    'revision': 1,
+                    'graph_revision': 1,
+                    'configuration': null,
+                    'effective': {'source': 'manual', 'preset': null},
+                    'clock_policy': 'server-policy',
+                  },
+                },
+              ),
+            );
+          } else {
+            handler.next(options);
+          }
+        },
+      ),
+    );
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -248,6 +310,7 @@ void commandSupersedesPollTest() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Requested mode: heat'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
   });
 }
 
@@ -268,6 +331,37 @@ void disposePendingCommandTest() {
     addTearDown(() => locator.unregister<DevicesService>());
 
     final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+    // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path.endsWith('/comfort')) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'data': {
+                    'controller': options.path
+                        .split('/')
+                        .reversed
+                        .skip(1)
+                        .first,
+                    'revision': 1,
+                    'graph_revision': 1,
+                    'configuration': null,
+                    'effective': {'source': 'manual', 'preset': null},
+                    'clock_policy': 'server-policy',
+                  },
+                },
+              ),
+            );
+          } else {
+            handler.next(options);
+          }
+        },
+      ),
+    );
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -330,8 +424,9 @@ void disposePendingCommandTest() {
     await tester.tap(find.text('Lock thermostat controls'));
     await tester.pump();
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     pendingCommand.complete(true);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }
@@ -344,6 +439,37 @@ void staleDeviceResponseTest() {
   ) async {
     final pending = <String, RequestInterceptorHandler>{};
     final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+    // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path.endsWith('/comfort')) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'data': {
+                    'controller': options.path
+                        .split('/')
+                        .reversed
+                        .skip(1)
+                        .first,
+                    'revision': 1,
+                    'graph_revision': 1,
+                    'configuration': null,
+                    'effective': {'source': 'manual', 'preset': null},
+                    'clock_policy': 'server-policy',
+                  },
+                },
+              ),
+            );
+          } else {
+            handler.next(options);
+          }
+        },
+      ),
+    );
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
@@ -415,5 +541,6 @@ void staleDeviceResponseTest() {
     expect(find.text('Requested mode: off'), findsOneWidget);
     expect(find.text('Requested mode: heat'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
   });
 }

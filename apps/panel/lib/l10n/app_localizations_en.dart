@@ -4230,4 +4230,135 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Not detected';
+  @override
+  String get thermostatComfortTitle => 'Thermostat comfort';
+
+  @override
+  String get thermostatComfortHelp =>
+      'Comfort intent is separate from HVAC mode and physical activity. Safety guards always apply.';
+
+  @override
+  String get thermostatComfortUnconfigured =>
+      'Comfort is not configured. Existing manual settings remain available.';
+
+  @override
+  String get thermostatComfortHeating => 'Heating';
+
+  @override
+  String get thermostatComfortCooling => 'Cooling';
+
+  @override
+  String get thermostatComfortMinimum => 'Minimum';
+
+  @override
+  String get thermostatComfortMaximum => 'Maximum';
+
+  @override
+  String get thermostatComfortComfort => 'Comfort';
+
+  @override
+  String get thermostatComfortEco => 'Eco';
+
+  @override
+  String get thermostatComfortAway => 'Away';
+
+  @override
+  String get thermostatComfortManual => 'Manual baseline';
+
+  @override
+  String get thermostatComfortSelected => 'Baseline preset';
+
+  @override
+  String get thermostatComfortChoose => 'Select baseline';
+
+  @override
+  String get thermostatComfortConfigure => 'Configure comfort';
+
+  @override
+  String get thermostatComfortAutomation =>
+      'Explicitly enable climate automation';
+
+  @override
+  String get thermostatComfortSave => 'Save comfort configuration';
+
+  @override
+  String get thermostatComfortReload => 'Reload from server';
+
+  @override
+  String get thermostatComfortOverride => 'Temporary override';
+
+  @override
+  String get thermostatComfortExplicit => 'Explicit setpoints';
+
+  @override
+  String get thermostatComfortDuration => 'Duration (minutes, 1–10080)';
+
+  @override
+  String get thermostatComfortCreate => 'Create override';
+
+  @override
+  String get thermostatComfortCancel => 'Cancel this override';
+
+  @override
+  String get thermostatComfortClearOff => 'Clear user OFF latch';
+
+  @override
+  String get thermostatComfortOffHeld =>
+      'User OFF is latched. Presets and automation cannot resume output.';
+
+  @override
+  String get thermostatComfortEffective => 'Effective comfort intent';
+
+  @override
+  String get thermostatComfortExpires => 'Absolute expiry';
+
+  @override
+  String get thermostatComfortRemaining => 'Time remaining';
+
+  @override
+  String get thermostatComfortExpiryHint =>
+      'Countdown is informational. Server confirmation is required; it does not confirm output activity.';
+
+  @override
+  String get thermostatComfortStatus => 'Server status';
+
+  @override
+  String get thermostatComfortSource => 'Source';
+
+  @override
+  String get thermostatComfortActor => 'Authenticated actor';
+
+  @override
+  String get thermostatComfortIdentity => 'Override identity';
+
+  @override
+  String get thermostatComfortRevision => 'Revision';
+
+  @override
+  String get thermostatComfortClockPolicy => 'Server clock policy';
+
+  @override
+  String get thermostatComfortUncertain =>
+      'Override state needs attention. Uncertain clocks inhibit output; unknown states require server confirmation.';
+
+  @override
+  String get thermostatComfortError => 'Request failed; reload before retrying';
+
+  @override
+  String get thermostatComfortOffClearHelp =>
+      'Clearing OFF is a separate explicit action and does not change the requested HVAC mode.';
+
+  @override
+  String get thermostatComfortConfigHint =>
+      'Enter only supported branch ranges and explicitly chosen preset temperatures in Celsius. No temperatures are supplied by default.';
+
+  @override
+  String get thermostatComfortServerValidation =>
+      'The server validates supported branches, ranges, deadband and revisions.';
+
+  @override
+  String get thermostatComfortRequested => 'Requested HVAC mode';
+
+  @override
+  String get thermostatComfortActivity => 'Reported output activity';
 }
