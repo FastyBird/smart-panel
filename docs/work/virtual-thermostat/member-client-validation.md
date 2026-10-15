@@ -50,7 +50,14 @@ Panel ordinary intents and all-member diagnostics are implemented by the separat
 handwritten code/localizations/tests and its result will be integrated separately. This record does not claim those
 changes are already present.
 
-## Validation in progress
+## Verified source checkpoint
+
+The Backend/Admin checkpoint is `ebc33cf32a39627c1f62df3cfc489097bbe4f6c0`, based on
+`0cb553e536ee8a2aedde93e714741d440dde5242`. This documentation-only follow-up records that exact tested source.
+The checkout was clean after the source commit. No Panel handwritten files, localization files or generated
+clients were committed; no PR or push was performed.
+
+## Validation
 
 Authoring/context, principal and installation checks passed 3 suites / 62 tests after the local same-Shelly catalog
 query and staging revision fences were complete (`/tmp/vd-members-context-stage-final.log`). Separate earlier delegate
@@ -63,8 +70,7 @@ capability refusal, revision conflict without draft loss, original protective ex
 races, legacy singleton/request behavior and all six locales. API conventions and strict Spectral passed
 (`/tmp/vd-members-api-conventions.log`, `/tmp/vd-members-spectral.log`). Final Admin type checking passed (`/tmp/vd-members-admin-types-final3.log`). Backend type checking passed (`/tmp/vd-members-backend-types-final.log`), as did scoped backend/Admin lint
 (`/tmp/vd-members-backend-lint-final3.log`, `/tmp/vd-members-admin-lint-final3.log`,
-`/tmp/vd-members-admin-lint-checkpoint.log`) and scoped formatting. The checkpoint hash is recorded separately after
-commit; these checks cover this source checkpoint, not the pending final safety/Panel/diagnostics composition. Generated outputs remain ignored and are never force-added.
+`/tmp/vd-members-admin-lint-checkpoint.log`) and scoped formatting. These checks cover the source checkpoint above, not the pending final safety/Panel/diagnostics composition. Generated outputs remain ignored and are never force-added.
 
 Current public runtime does not yet carry a separately qualified relay sample expiry or qualification diagnostic.
 The proposed additive fields await parent review and the original safety owner’s handback; clients must show unknown
