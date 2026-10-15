@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { v4 as uuid } from 'uuid';
 
+import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
@@ -28,6 +29,10 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { HomeKitEventListener } from '../../devices-homekit/listeners/homekit-event.listener';
+import { HomeKitCommandDispatcher } from '../../devices-homekit/services/homekit-command.dispatcher';
+import { HomeKitMapperRegistryService } from '../../devices-homekit/services/homekit-mapper-registry.service';
+import { HomeKitPropertyStateService } from '../../devices-homekit/services/homekit-property-state.service';
 import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
@@ -282,6 +287,54 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		await runtime.flush();
 	};
 
+	const homekit = (output: ChannelPropertyEntity) => {
+		const channel = output.channel as ChannelEntity,
+			device = channel.device as DeviceEntity;
+		device.channels = [channel];
+		channel.properties = [output];
+		device.status = { online: true } as DeviceEntity['status'];
+		const registry = new HomeKitMapperRegistryService(
+			new HomeKitPropertyStateService(producers, new PropertyValueSourceRegistryService()),
+		);
+		const staged = registry.buildAccessory(
+			device,
+			new HomeKitCommandDispatcher({ canExecuteCompositeProperty: () => false } as never),
+		);
+		if (!staged) throw new Error('Missing HomeKit measurement');
+		registry.commitStaged(staged);
+		const listener = new HomeKitEventListener(registry);
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (property: ChannelPropertyEntity) =>
+			listener.handlePropertyValueSet(property),
+		);
+		const service = staged.accessory.getService(Service.TemperatureSensor);
+		return {
+			reading: service.getCharacteristic(Characteristic.CurrentTemperature),
+			fault: service.getCharacteristic(Characteristic.StatusFault),
+		};
+	};
+
+	it('HomeKit follows the real converter domain, negative Celsius, range rejection and recovery', async () => {
+		const raw = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		await transform(raw, output);
+		await start();
+		const hap = homekit(output);
+		await expect(hap.reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		await sample(raw, -3);
+		expect(outputState(output)).toMatchObject({ value: -5, producer: { quality: 'good' } });
+		expect(await hap.reading.handleGetRequest()).toBe(-5);
+		// Backend permits this calibrated output, but standard HAP cannot represent >100 C.
+		await sample(raw, 60);
+		await expect(hap.reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.GENERAL_FAULT);
+		await sample(raw, null);
+		await expect(hap.reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		jest.setSystemTime(base + 1);
+		await sample(raw, 10);
+		expect(outputState(output)).toMatchObject({ value: 21, producer: { quality: 'good' } });
+		expect(await hap.reading.handleGetRequest()).toBe(21);
+		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.NO_FAULT);
+	});
 	it('new aggregate evidence barriers ignore retained transformed output until a new physical acceptance', async () => {
 		const raw = await measurement(),
 			sibling = await measurement(),

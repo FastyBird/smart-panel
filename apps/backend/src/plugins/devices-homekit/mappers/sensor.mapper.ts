@@ -65,11 +65,20 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Temperature ${tempChannel.name || tempChannel.id}`;
 			const tempService = accessory.addService(Service.TemperatureSensor, serviceName, tempChannel.id);
 			const tempChar = tempService.getCharacteristic(Characteristic.CurrentTemperature);
-			this.bindCharacteristic(context, device, tempChannel, tempProp, tempChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const num = Number(unwrapped);
-				return isNaN(num) ? 0 : num;
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				tempChannel,
+				tempProp,
+				tempChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const num = Number(unwrapped);
+					return isNaN(num) ? 0 : num;
+				},
+				undefined,
+				tempService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -85,11 +94,20 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Humidity ${humChannel.name || humChannel.id}`;
 			const humService = accessory.addService(Service.HumiditySensor, serviceName, humChannel.id);
 			const humChar = humService.getCharacteristic(Characteristic.CurrentRelativeHumidity);
-			this.bindCharacteristic(context, device, humChannel, humProp, humChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const num = Number(unwrapped);
-				return isNaN(num) ? 0 : Math.min(100, Math.max(0, num));
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				humChannel,
+				humProp,
+				humChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const num = Number(unwrapped);
+					return isNaN(num) ? 0 : Math.min(100, Math.max(0, num));
+				},
+				undefined,
+				humService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -105,10 +123,19 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Motion ${motionChannel.name || motionChannel.id}`;
 			const motionService = accessory.addService(Service.MotionSensor, serviceName, motionChannel.id);
 			const motionChar = motionService.getCharacteristic(Characteristic.MotionDetected);
-			this.bindCharacteristic(context, device, motionChannel, motionProp, motionChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				return Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				motionChannel,
+				motionProp,
+				motionChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					return Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
+				},
+				undefined,
+				motionService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -124,13 +151,22 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Contact ${contactChannel.name || contactChannel.id}`;
 			const contactService = accessory.addService(Service.ContactSensor, serviceName, contactChannel.id);
 			const contactChar = contactService.getCharacteristic(Characteristic.ContactSensorState);
-			this.bindCharacteristic(context, device, contactChannel, contactProp, contactChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const isOpen = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1 || unwrapped === 'open');
-				return isOpen
-					? Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
-					: Characteristic.ContactSensorState.CONTACT_DETECTED;
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				contactChannel,
+				contactProp,
+				contactChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const isOpen = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1 || unwrapped === 'open');
+					return isOpen
+						? Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
+						: Characteristic.ContactSensorState.CONTACT_DETECTED;
+				},
+				undefined,
+				contactService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -146,13 +182,22 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Occupancy ${occChannel.name || occChannel.id}`;
 			const occService = accessory.addService(Service.OccupancySensor, serviceName, occChannel.id);
 			const occChar = occService.getCharacteristic(Characteristic.OccupancyDetected);
-			this.bindCharacteristic(context, device, occChannel, occProp, occChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const isOcc = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
-				return isOcc
-					? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED
-					: Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED;
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				occChannel,
+				occProp,
+				occChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const isOcc = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
+					return isOcc
+						? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED
+						: Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED;
+				},
+				undefined,
+				occService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -168,11 +213,20 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Light Level ${lightChannel.name || lightChannel.id}`;
 			const lightService = accessory.addService(Service.LightSensor, serviceName, lightChannel.id);
 			const lightChar = lightService.getCharacteristic(Characteristic.CurrentAmbientLightLevel);
-			this.bindCharacteristic(context, device, lightChannel, lightProp, lightChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const num = Number(unwrapped);
-				return isNaN(num) || num <= 0 ? 0.0001 : num;
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				lightChannel,
+				lightProp,
+				lightChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const num = Number(unwrapped);
+					return isNaN(num) || num <= 0 ? 0.0001 : num;
+				},
+				undefined,
+				lightService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -186,11 +240,20 @@ export class SensorMapper extends BaseHomeKitMapper {
 				leakChannels.length === 1 ? `${device.name} Leak` : `${device.name} Leak ${leakChannel.name || leakChannel.id}`;
 			const leakService = accessory.addService(Service.LeakSensor, serviceName, leakChannel.id);
 			const leakChar = leakService.getCharacteristic(Characteristic.LeakDetected);
-			this.bindCharacteristic(context, device, leakChannel, leakProp, leakChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const isLeak = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
-				return isLeak ? Characteristic.LeakDetected.LEAK_DETECTED : Characteristic.LeakDetected.LEAK_NOT_DETECTED;
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				leakChannel,
+				leakProp,
+				leakChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const isLeak = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
+					return isLeak ? Characteristic.LeakDetected.LEAK_DETECTED : Characteristic.LeakDetected.LEAK_NOT_DETECTED;
+				},
+				undefined,
+				leakService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 
@@ -206,11 +269,22 @@ export class SensorMapper extends BaseHomeKitMapper {
 					: `${device.name} Smoke ${smokeChannel.name || smokeChannel.id}`;
 			const smokeService = accessory.addService(Service.SmokeSensor, serviceName, smokeChannel.id);
 			const smokeChar = smokeService.getCharacteristic(Characteristic.SmokeDetected);
-			this.bindCharacteristic(context, device, smokeChannel, smokeProp, smokeChar, (val) => {
-				const unwrapped = this.unwrapValue(val);
-				const isSmoke = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
-				return isSmoke ? Characteristic.SmokeDetected.SMOKE_DETECTED : Characteristic.SmokeDetected.SMOKE_NOT_DETECTED;
-			});
+			this.bindCharacteristic(
+				context,
+				device,
+				smokeChannel,
+				smokeProp,
+				smokeChar,
+				(val) => {
+					const unwrapped = this.unwrapValue(val);
+					const isSmoke = Boolean(unwrapped === true || unwrapped === 'true' || unwrapped === 1);
+					return isSmoke
+						? Characteristic.SmokeDetected.SMOKE_DETECTED
+						: Characteristic.SmokeDetected.SMOKE_NOT_DETECTED;
+				},
+				undefined,
+				smokeService.getCharacteristic(Characteristic.StatusFault),
+			);
 			addedService = true;
 		}
 

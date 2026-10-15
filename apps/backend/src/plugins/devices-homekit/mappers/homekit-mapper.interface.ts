@@ -3,6 +3,7 @@ import { Characteristic, CharacteristicValue } from '@homebridge/hap-nodejs';
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { HomeKitCommandDispatcher } from '../services/homekit-command.dispatcher';
+import { HomeKitPropertyStateService } from '../services/homekit-property-state.service';
 
 export interface CharacteristicPendingWrite {
 	token: number;
@@ -22,6 +23,7 @@ export interface CharacteristicBinding {
 	revision: number;
 	nextWriteToken?: number;
 	pendingWrite?: CharacteristicPendingWrite;
+	readValue?: (property?: ChannelPropertyEntity, metadataUpdate?: boolean) => CharacteristicValue;
 }
 
 export interface PropertyEventListener {
@@ -46,6 +48,7 @@ export interface HomeKitAvailability {
 export interface HomeKitMapperContext {
 	/** Extension seam for availability policies (including qualified derived producers). */
 	readonly availability?: HomeKitAvailability;
+	readonly propertyState?: HomeKitPropertyStateService;
 	readonly commandDispatcher: HomeKitCommandDispatcher;
 	registerBinding(binding: CharacteristicBinding): void;
 	registerPropertyListener(listener: PropertyEventListener): void;

@@ -145,6 +145,7 @@ describe('PropertyCommandService', () => {
 	};
 
 	const mockChannelProperty: MockChannelProperty = {
+		requiresLiveValue: false,
 		id: uuid().toString(),
 		type: 'mock',
 		name: 'Test Property',

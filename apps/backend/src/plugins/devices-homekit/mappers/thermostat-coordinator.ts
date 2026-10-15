@@ -6,6 +6,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { bindCharacteristicGet } from './characteristic-get';
 import { bindCharacteristicWrite } from './characteristic-write';
 import { HomeKitMapperContext, PropertyEventListener } from './homekit-mapper.interface';
+import { communicationFailure, validateHapNumber } from './property-read';
 
 export interface ThermostatCoordinatorConfig {
 	device: DeviceEntity;
@@ -232,6 +233,7 @@ export class ThermostatCoordinator {
 			const heaterTempProp = this.config.heaterTempProperty;
 			bindCharacteristicGet(this.config.context, this.heatingThresholdChar, () => {
 				const val = this.values.get(heaterTempProp.id);
+				if (this.isManagedController()) return validateHapNumber(this.heatingThresholdChar, val);
 				if (val !== null && val !== undefined) {
 					const num = Number(val);
 					return !isNaN(num) ? num : 20;
@@ -258,6 +260,7 @@ export class ThermostatCoordinator {
 			const coolerTempProp = this.config.coolerTempProperty;
 			bindCharacteristicGet(this.config.context, this.coolingThresholdChar, () => {
 				const val = this.values.get(coolerTempProp.id);
+				if (this.isManagedController()) return validateHapNumber(this.coolingThresholdChar, val);
 				if (val !== null && val !== undefined) {
 					const num = Number(val);
 					return !isNaN(num) ? num : 25;
@@ -414,10 +417,17 @@ export class ThermostatCoordinator {
 	}
 
 	private refreshCharacteristics(): void {
-		this.currentTempChar.updateValue(this.getAmbientTemperature());
-		this.currentHeatingCoolingChar.updateValue(this.deriveCurrentHeatingCoolingState());
-		this.targetHeatingCoolingChar.updateValue(this.deriveTargetHeatingCoolingState());
-		this.targetTempChar.updateValue(this.getTargetTemperature());
+		const update = (characteristic: Characteristic, read: () => CharacteristicValue) => {
+			try {
+				characteristic.updateValue(read());
+			} catch (error) {
+				characteristic.updateValue(error as Error);
+			}
+		};
+		update(this.currentTempChar, () => this.getAmbientTemperature());
+		update(this.currentHeatingCoolingChar, () => this.deriveCurrentHeatingCoolingState());
+		update(this.targetHeatingCoolingChar, () => this.deriveTargetHeatingCoolingState());
+		update(this.targetTempChar, () => this.getTargetTemperature());
 
 		if (this.heatingThresholdChar && this.config.heaterTempProperty) {
 			const val = this.values.get(this.config.heaterTempProperty.id);
@@ -453,7 +463,23 @@ export class ThermostatCoordinator {
 			: Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
 	}
 
+	private isManagedController(): boolean {
+		return !!(
+			this.config.heaterStatusProperty?.requiresLiveValue || this.config.coolerStatusProperty?.requiresLiveValue
+		);
+	}
+
+	private managedNumber(property: ChannelPropertyEntity, characteristic: Characteristic): number {
+		const state = this.config.context.propertyState?.read(property);
+		if (!state || state.unavailable) throw communicationFailure();
+		return validateHapNumber(characteristic, state.value);
+	}
+
 	private getAmbientTemperature(): number {
+		const state = this.config.context.propertyState?.read(this.config.ambientTempProperty);
+		if (this.config.ambientTempProperty.requiresLiveValue || state?.quality) {
+			return this.managedNumber(this.config.ambientTempProperty, this.currentTempChar);
+		}
 		const val = this.values.get(this.config.ambientTempProperty.id);
 		if (val !== null && val !== undefined) {
 			const num = Number(val);
@@ -464,6 +490,14 @@ export class ThermostatCoordinator {
 
 	private getTargetTemperature(): number {
 		const mode = this.deriveTargetHeatingCoolingState();
+		if (this.isManagedController()) {
+			const property =
+				mode === Characteristic.TargetHeatingCoolingState.COOL
+					? this.config.coolerTempProperty
+					: (this.config.heaterTempProperty ?? this.config.coolerTempProperty);
+			if (!property) throw communicationFailure();
+			return validateHapNumber(this.targetTempChar, this.values.get(property.id));
+		}
 		if (mode === Characteristic.TargetHeatingCoolingState.COOL && this.config.coolerTempProperty) {
 			const val = this.values.get(this.config.coolerTempProperty.id);
 			if (val !== null && val !== undefined) {
@@ -499,6 +533,23 @@ export class ThermostatCoordinator {
 	 * Rule: Active or Inactive is strictly authoritative. Fall back to temp comparison only if Absent/Unknown.
 	 */
 	private deriveCurrentHeatingCoolingState(): number {
+		if (this.isManagedController()) {
+			// Controller STATUS is confirmed feedback, independent of requested ON and comfort demand.
+			// HAP has no UNKNOWN activity enum: unknown feedback must fail the read, never imply OFF.
+			const read = (property?: ChannelPropertyEntity): boolean | null => {
+				if (!property) return null;
+				const state = this.config.context.propertyState?.read(property);
+				return state && !state.unavailable && typeof state.value === 'boolean' ? state.value : null;
+			};
+			const heat = read(this.config.heaterStatusProperty),
+				cool = read(this.config.coolerStatusProperty);
+			if (heat === true && cool === true) throw communicationFailure();
+			if (heat === true) return Characteristic.CurrentHeatingCoolingState.HEAT;
+			if (cool === true) return Characteristic.CurrentHeatingCoolingState.COOL;
+			if ((this.config.heaterOnProperty && heat === null) || (this.config.coolerOnProperty && cool === null))
+				throw communicationFailure();
+			return Characteristic.CurrentHeatingCoolingState.OFF;
+		}
 		const ambientTemp = this.getAmbientTemperature();
 
 		// Check Heater
@@ -553,6 +604,13 @@ export class ThermostatCoordinator {
 	}
 
 	private deriveTargetHeatingCoolingState(): number {
+		if (
+			this.isManagedController() &&
+			[this.config.heaterOnProperty, this.config.coolerOnProperty].some(
+				(property) => property && typeof this.values.get(property.id) !== 'boolean',
+			)
+		)
+			throw communicationFailure();
 		const heaterOn = this.config.heaterOnProperty ? Boolean(this.values.get(this.config.heaterOnProperty.id)) : false;
 		const coolerOn = this.config.coolerOnProperty ? Boolean(this.values.get(this.config.coolerOnProperty.id)) : false;
 

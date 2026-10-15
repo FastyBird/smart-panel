@@ -20,6 +20,9 @@ export interface IPropertyValueSource {
 
 	/** Optional lifecycle gate for aliases or derived outputs, without changing their canonical storage key. */
 	unavailableReason?(property: ChannelPropertyEntity): string | null;
+
+	/** Whether a resolved value needs current producer authority rather than stored history. */
+	requiresLiveValue?(property: ChannelPropertyEntity): boolean | null;
 }
 
 @Injectable()
@@ -59,7 +62,7 @@ export class PropertyValueSourceRegistryService {
 
 	/** Entity policy remains available even when its runtime source provider is absent. */
 	requiresLiveValue(property: ChannelPropertyEntity): boolean {
-		return property.requiresLiveValue === true;
+		return this.sources[property.type]?.requiresLiveValue?.(property) ?? property.requiresLiveValue === true;
 	}
 
 	/** True when the property's value is stored under a different property's key. */

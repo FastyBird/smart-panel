@@ -30,6 +30,7 @@ import { HomeKitBridgeService } from './services/homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './services/homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './services/homekit-mapper-registry.service';
 import { getMappingMaintenance } from './services/homekit-mapping-maintenance';
+import { HomeKitPropertyStateService } from './services/homekit-property-state.service';
 import { HomeKitWizardService } from './services/homekit-wizard.service';
 
 @ApiTag({
@@ -46,6 +47,7 @@ import { HomeKitWizardService } from './services/homekit-wizard.service';
 		HomeKitCommandDispatcher,
 		HomeKitEventListener,
 		HomeKitMapperRegistryService,
+		HomeKitPropertyStateService,
 		HomeKitWizardService,
 	],
 	exports: [HomeKitBridgeService],
@@ -202,6 +204,10 @@ Exposes Smart Panel registered devices to Apple Home as bridged accessories over
 - **Selective Bridging**: Select exactly which devices are exposed to Apple Home via the mapping wizard.
 - **Bidirectional Sync**: Real-time push updates for lights, switches, outlets, thermostats, sensors, blinds, and locks.
 - **Device Lifecycle**: Deleted or incompatible devices are removed, and structure changes rebuild accessories with the same identity. Offline devices report No Response.
+- **Virtual Measurements**: Supported temperature, humidity and light-level outputs use live producer quality and freshness. Unavailable readings report No Response; supported sensor services expose StatusFault for degraded quality. Arbitrary numeric quantities have no generic HomeKit mapping.
+- **Virtual Light Groups**: Common mapped controls use backend composite commands. ON means any member on; partial member outcomes fail the request while retaining successful feedback.
+- **Virtual Thermostats**: Target mode is requested intent; current activity follows confirmed feedback. Backend floor/window guards remain authoritative. Detailed protective diagnostics remain in Smart Panel; standard Thermostat and Lightbulb services have no StatusFault here.
+- **Verification**: Software acceptance does not qualify live hardware, heating protection or Apple Home commissioning.
 - **Accessory Names**: Renames in Smart Panel are not automatically propagated to Apple Home after pairing. Rename the accessory in Apple Home.
 - **Easy Pairing**: Scan the generated QR code or enter the 8-digit setup PIN code directly in the Apple Home app.
 `,

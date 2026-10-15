@@ -106,6 +106,7 @@ export class HomeKitEventListener implements OnModuleDestroy {
 		);
 	}
 
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
 	handlePropertyValueSet(property: ChannelPropertyEntity): void {
 		// The backend command window has already accepted this value, including confirmations
@@ -130,10 +131,16 @@ export class HomeKitEventListener implements OnModuleDestroy {
 		const rawValue = property.value?.value;
 
 		for (const binding of bindings) {
+			if (acceptedValue) {
+				binding.revision++;
+				binding.pendingWrite = undefined;
+			}
 			try {
-				const hapValue: CharacteristicValue = binding.toHomeKit
-					? binding.toHomeKit(rawValue)
-					: (rawValue as CharacteristicValue);
+				const hapValue: CharacteristicValue = binding.readValue
+					? binding.readValue(property, !acceptedValue)
+					: binding.toHomeKit
+						? binding.toHomeKit(rawValue)
+						: (rawValue as CharacteristicValue);
 				if (!acceptedValue && binding.pendingWrite && Object.is(hapValue, binding.pendingWrite.previousValue)) {
 					this.logger.debug(
 						`Suppressing stale HomeKit characteristic update: property=${property.id} value=${JSON.stringify(rawValue)}`,
@@ -150,6 +157,7 @@ export class HomeKitEventListener implements OnModuleDestroy {
 				binding.characteristic.updateValue(hapValue);
 			} catch (error) {
 				const err = error as Error;
+				binding.characteristic.updateValue(err);
 				this.logger.warn(`Failed to update HomeKit characteristic for property=${property.id}: ${err.message}`);
 			}
 		}

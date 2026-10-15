@@ -32,6 +32,7 @@ import { ChannelsTypeMapperService } from '../../../modules/devices/services/cha
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
@@ -42,6 +43,7 @@ import { PropertyCommandDispatchService } from '../../../modules/devices/service
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyCommandService } from '../../../modules/devices/services/property-command.service';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyStateCoordinatorService } from '../../../modules/devices/services/property-state-coordinator.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
@@ -59,10 +61,12 @@ import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
 	VirtualDeviceEntity,
+	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../../devices-virtual/entities/devices-virtual.entity';
 import { VirtualProjectionListener } from '../../devices-virtual/listeners/virtual-projection.listener';
 import { VirtualDevicePlatform } from '../../devices-virtual/platforms/virtual-device.platform';
+import { VirtualDependencyGraphService } from '../../devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualPropertyIndexService } from '../../devices-virtual/services/virtual-property-index.service';
 import { VirtualValueSourceService } from '../../devices-virtual/services/virtual-value-source.service';
 import { MemoryStorage } from '../../memory-storage/services/memory-storage.storage';
@@ -77,6 +81,7 @@ import { HomeKitEventListener } from '../listeners/homekit-event.listener';
 import { HomeKitBridgeService } from './homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service';
+import { HomeKitPropertyStateService } from './homekit-property-state.service';
 
 /**
  * Real HAP handlers -> command services -> virtual forwarding -> controlled provider, with real
@@ -109,6 +114,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	let registry: HomeKitMapperRegistryService;
 	let listener: HomeKitEventListener;
 	let mappedDevices: DeviceEntity[];
+	let index: VirtualPropertyIndexService;
+	let composites: CompositePropertyCommandRegistryService;
+	let producers: PropertyProducerRegistryService;
 
 	beforeEach(async () => {
 		database = new DataSource({
@@ -139,15 +147,31 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			getModuleConfig: () => new StorageConfigModel(),
 		} as unknown as ConfigService);
 		storage.registerPlugin(memory.name, memory);
+		events = new EventEmitter2();
+		producers = new PropertyProducerRegistryService(events);
+		composites = new CompositePropertyCommandRegistryService();
 		const valueSources = new PropertyValueSourceRegistryService();
-		valueSources.register(new VirtualValueSourceService());
+		valueSources.register(
+			new VirtualValueSourceService({
+				isValidated: () => true,
+				isQuarantined: () => false,
+				// This fixture's SOURCE aliases all target physical simulator properties. The cold
+				// derived-source policy is covered with a real graph in aggregate runtime acceptance.
+				propertyRequiresLiveValue: () => false,
+			} as unknown as VirtualDependencyGraphService),
+		);
 		const runtimeConfig = new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: locksEnabled });
 		propertyMetadata = new PropertyMetadataService(database, runtimeConfig);
-		values = new PropertyValueService(storage, valueSources, new PropertyValueLockService(database, runtimeConfig));
+		values = new PropertyValueService(
+			storage,
+			valueSources,
+			new PropertyValueLockService(database, runtimeConfig),
+			producers,
+			events,
+		);
 		connectivity = new DeviceConnectionStateService(storage);
 		new ChannelPropertyEntitySubscriber(values, connectivity, database);
 		new DeviceEntitySubscriber(connectivity, database);
-		events = new EventEmitter2();
 		windows = new PropertyCommandWindowService();
 		structure = new DeviceStructureLockService();
 		const coordinator = new PropertyStateCoordinatorService();
@@ -199,6 +223,12 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			getType: () => SIMULATOR_TYPE,
 			process: (update) => provider([update]),
 			processBatch: provider,
+			prepareCompositeBatch: (updates) =>
+				Promise.resolve({
+					updates,
+					isCurrent: () => true,
+					dispatch: (isAdmitted) => (isAdmitted() ? provider([...updates]) : Promise.resolve(false)),
+				}),
 		});
 		graphs = new DeviceCommandGraphService(propertyMetadata, values, connectivity);
 		platforms.register(new VirtualDevicePlatform(graphs, platforms));
@@ -212,6 +242,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			structure,
 			coordinator,
 			windows,
+			undefined,
+			composites,
+			events,
 		);
 		commands = new PropertyCommandService(
 			graphs,
@@ -222,10 +255,12 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			new IntentsService(events, new IntentTimeseriesService(storage)),
 			dispatch,
 			windows,
+			undefined,
+			composites,
 		);
 		const homekit = new HomeKitCommandDispatcher(commands);
-		registry = new HomeKitMapperRegistryService();
-		const index = new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity));
+		registry = new HomeKitMapperRegistryService(new HomeKitPropertyStateService(producers, valueSources));
+		index = new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity));
 		const projection = new VirtualProjectionListener(index, events);
 		listener = new HomeKitEventListener(
 			registry,
@@ -241,6 +276,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			projection.handlePropertyValueSet(property),
 		);
 		events.on(EventType.CHANNEL_PROPERTY_VALUE_SET, (property: ChannelPropertyEntity) =>
+			listener.handlePropertyValueSet(property),
+		);
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (property: ChannelPropertyEntity) =>
 			listener.handlePropertyValueSet(property),
 		);
 		published = [];
@@ -280,11 +318,17 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			});
 			const alias = await properties.findOne<VirtualChannelPropertyEntity>(savedAlias.id);
 			if (!alias) throw new Error('Missing alias property');
+			alias.sourceProperty = source;
 			aliases.push(alias);
 			const hydrated = await devices.findOne(aliasDevice.id);
 			if (!hydrated) throw new Error('Missing alias device');
 			// This suite exercises command convergence with an available mapped device.
 			hydrated.status.online = true;
+			for (const ch of hydrated.channels)
+				for (const prop of ch.properties) {
+					if (prop instanceof VirtualChannelPropertyEntity && prop.sourcePropertyId === source.id)
+						prop.sourceProperty = source;
+				}
 			mappedDevices.push(hydrated);
 			const staged = registry.buildAccessory(hydrated, homekit);
 			if (!staged) throw new Error('Missing HomeKit accessory');
@@ -310,6 +354,83 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		if (database?.isInitialized) await database.destroy();
 	});
 
+	it.each([false, true])(
+		'routes read-only HAP group SET through real composite commands; partial=%s',
+		async (partial) => {
+			const group = await database
+				.getRepository(VirtualDeviceEntity)
+				.save({ name: 'Group', category: DeviceCategory.LIGHTING, mode: VirtualDeviceMode.ACTUATOR_GROUP });
+			const groupChannel = await database
+				.getRepository(VirtualChannelEntity)
+				.save({ device: group, name: 'Group light', category: ChannelCategory.LIGHT });
+			const output = await database
+				.getRepository(VirtualChannelPropertyEntity)
+				.save({
+					channel: groupChannel,
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+					valueOrigin: VirtualValueOrigin.DERIVED,
+					permissions: [PermissionType.READ_ONLY],
+				});
+			const device = await devices.findOne(group.id);
+			device.status.online = true;
+			await propertyMetadata.onModuleInit();
+			const physical = await graphs.findOne(commandTarget(source).device.id);
+			const channel = physical.channels.find((candidate) => candidate.id === commandTarget(source).channel.id);
+			const leaf = channel.properties.find((candidate) => candidate.id === source.id);
+			const target = { device: physical, channel, property: leaf, value: true };
+			composites.register({
+				canHandle: (property) => property.id === output.id,
+				plan: () =>
+					Promise.resolve({
+						revision: 1,
+						isCurrent: () => Promise.resolve(true),
+						children: [
+							{ memberId: 'available', update: target },
+							...(partial ? [{ memberId: 'missing', update: null, reason: 'missing member' }] : []),
+						],
+					}),
+			});
+			const lease = producers.register(output, 1);
+			const publish = async (value: boolean) => {
+				const now = new Date();
+				const publication = await values.publishDerived(output, lease, value, {
+					quality: partial ? 'degraded' : 'good',
+					reasons: partial ? ['members_unavailable'] : [],
+					sampledAt: now,
+					evaluatedAt: now,
+					expiresAt: new Date(now.getTime() + 300000),
+				});
+				expect(publication.state).toMatchObject({ value });
+			};
+			await publish(false);
+			device.channels[0].properties = [output];
+			const staged = registry.buildAccessory(device, new HomeKitCommandDispatcher(commands));
+			registry.commitStaged(staged);
+			const on = staged.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.On);
+			provider.mockImplementation(async () => {
+				await values.writeSampleWithState(source, true, {
+					sampledAt: new Date(),
+					receivedAt: new Date(),
+					provenance: 'live',
+				});
+				// Deliver the newer reported group state before the parent is allowed to settle.
+				await publish(true);
+				const window = windows.get(source.id);
+				windows.confirm(
+					{ canonicalPropertyId: source.id, generation: window.generation },
+					{ value: true, receivedAt: Date.now() },
+				);
+				return true;
+			});
+			if (partial) await expect(on.handleSetRequest(true)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			else await expect(on.handleSetRequest(true)).resolves.toBe(true);
+			expect(provider).toHaveBeenCalledTimes(1);
+			expect(output.permissions).toEqual([PermissionType.READ_ONLY]);
+			expect(await on.handleGetRequest()).toBe(true);
+			expect(await values.readLatest(source)).toMatchObject({ value: true });
+		},
+	);
 	it('rejects offline HAP writes before the command pipeline and refreshes on reconnect', async () => {
 		const mappedDevice = mappedDevices[0];
 		if (!mappedDevice) throw new Error('Missing mapped device');

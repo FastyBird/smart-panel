@@ -386,6 +386,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 						{
 							...property,
 							type: property.type,
+							requiresLiveValue: property.requiresLiveValue,
 							invalid: property.invalid ?? null,
 							step: null,
 						} as ChannelPropertyEntity,

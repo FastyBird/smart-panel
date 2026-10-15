@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { v4 as uuid } from 'uuid';
 
+import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
@@ -23,7 +24,12 @@ import { PropertyProducerRegistryService } from '../../../modules/devices/servic
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscribers/channel-property-entity.subscriber';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { HomeKitEventListener } from '../../devices-homekit/listeners/homekit-event.listener';
+import { HomeKitCommandDispatcher } from '../../devices-homekit/services/homekit-command.dispatcher';
+import { HomeKitMapperRegistryService } from '../../devices-homekit/services/homekit-mapper-registry.service';
+import { HomeKitPropertyStateService } from '../../devices-homekit/services/homekit-property-state.service';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -42,6 +48,7 @@ import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.serv
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
+import { VirtualValueSourceService } from './virtual-value-source.service';
 
 jest.setTimeout(30000);
 const base = Date.parse('2026-10-13T10:00:00Z');
@@ -176,6 +183,125 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 	};
 	const outputState = (output: ChannelPropertyEntity) => producers.read(output.id);
 
+	const homekit = (output: ChannelPropertyEntity) => {
+		const channel = output.channel as ChannelEntity,
+			device = channel.device as DeviceEntity;
+		device.channels = [channel];
+		channel.properties = [output];
+		device.status = { online: true } as DeviceEntity['status'];
+		const registry = new HomeKitMapperRegistryService(
+			new HomeKitPropertyStateService(producers, new PropertyValueSourceRegistryService()),
+		);
+		const staged = registry.buildAccessory(
+			device,
+			new HomeKitCommandDispatcher({ canExecuteCompositeProperty: () => false } as never),
+		);
+		if (!staged) throw new Error('Missing HomeKit measurement');
+		registry.commitStaged(staged);
+		const listener = new HomeKitEventListener(registry);
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (property: ChannelPropertyEntity) =>
+			listener.handlePropertyValueSet(property),
+		);
+		const service = staged.accessory.getService(Service.TemperatureSensor);
+		return {
+			reading: service.getCharacteristic(Characteristic.CurrentTemperature),
+			fault: service.getCharacteristic(Characteristic.StatusFault),
+		};
+	};
+
+	it('HomeKit rejects cold hydrated canonical derived history but preserves a known physical projection', async () => {
+		const physical = await measurement(),
+			other = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [physical, other]);
+		await graph.onApplicationBootstrap();
+		const alias = await measurement(VirtualDeviceMode.PROJECTION),
+			physicalAlias = await measurement(VirtualDeviceMode.PROJECTION);
+		await graph.withStructuralWrite(async (manager) => {
+			for (const [projection, source] of [
+				[alias, output],
+				[physicalAlias, physical],
+			]) {
+				await manager.update(VirtualChannelPropertyEntity, projection.id, {
+					valueOrigin: VirtualValueOrigin.SOURCE,
+					sourcePropertyId: source.id,
+				});
+			}
+		});
+		// A separate process starts without producer leases. ORM hydration reads persisted canonical
+		// scalar history, which deliberately has no producer metadata; it must never become live proof.
+		const coldProducers = new PropertyProducerRegistryService();
+		const coldSources = new PropertyValueSourceRegistryService();
+		coldSources.register(new VirtualValueSourceService(graph));
+		const history = {
+			...storage,
+			query: jest.fn().mockResolvedValue([{ time: new Date(base - 1000), numberValue: 24 }]),
+		};
+		const coldValues = new PropertyValueService(
+			history as unknown as StorageService,
+			coldSources,
+			new PropertyValueLockService({} as never),
+			coldProducers,
+		);
+		new ChannelPropertyEntitySubscriber(
+			coldValues,
+			new DeviceConnectionStateService(history as unknown as StorageService),
+			database,
+		);
+		const hydrated = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: alias.id },
+			relations: ['channel', 'channel.device'],
+		});
+		expect(hydrated.value).toMatchObject({ value: 24 });
+		expect(hydrated.value.producer).toBeUndefined();
+		const adapter = new HomeKitPropertyStateService(coldProducers, coldSources);
+		expect(adapter.read(hydrated)).toMatchObject({ unavailable: true, reasons: ['producer_unavailable'] });
+		const knownPhysical = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: physicalAlias.id },
+			relations: ['channel', 'channel.device'],
+		});
+		expect(adapter.read(knownPhysical)).toMatchObject({ value: 24, unavailable: false });
+		// Missing source metadata cannot be treated as proof of a physical source after deletion.
+		await graph.withStructuralWrite(async (manager) => {
+			await manager.delete(ChannelPropertyEntity, physical.id);
+		});
+		const orphan = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: physicalAlias.id },
+			relations: ['channel', 'channel.device'],
+		});
+		expect(adapter.read(orphan).unavailable).toBe(true);
+		// Corrupted cyclic aliases retain quarantined history under their own ids, never authority.
+		await graph.withStructuralWrite(async (manager) => {
+			await manager.update(VirtualChannelPropertyEntity, alias.id, { sourcePropertyId: physicalAlias.id });
+			await manager.update(VirtualChannelPropertyEntity, physicalAlias.id, { sourcePropertyId: alias.id });
+		});
+		expect(coldSources.unavailableReason(hydrated)).toBe('graph_quarantined');
+		expect(adapter.read(hydrated)).toMatchObject({ unavailable: true, reasons: ['graph_quarantined'] });
+		coldProducers.onModuleDestroy();
+	});
+	it('HomeKit follows real aggregate quorum, degraded evidence, expiry at GET and recovery', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b], 1);
+		await start();
+		const hap = homekit(output);
+		await expect(hap.reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		await sample(a, -5);
+		expect(await hap.reading.handleGetRequest()).toBe(-5);
+		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.GENERAL_FAULT);
+		await sample(b, -5);
+		expect(await hap.reading.handleGetRequest()).toBe(-5);
+		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.NO_FAULT);
+		// No timer/event has run yet: GET itself must revoke expired producer authority.
+		jest.setSystemTime(base + 10001);
+		await expect(hap.reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.GENERAL_FAULT);
+		await sample(a, 22);
+		await sample(b, 22);
+		expect(await hap.reading.handleGetRequest()).toBe(22);
+		expect(await hap.fault.handleGetRequest()).toBe(Characteristic.StatusFault.NO_FAULT);
+	});
 	it('starts without trusting history; equal reports recompute age without duplicate scalar history', async () => {
 		const a = await measurement(),
 			b = await measurement(),

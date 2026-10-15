@@ -272,6 +272,16 @@ export class VirtualChannelPropertyEntity extends ChannelPropertyEntity {
 	/** Runtime measurements/status are never recoverable from history after a cold start. */
 	override get requiresLiveValue(): boolean {
 		if (this.isDerived) return true;
+		if (this.isProjecting) {
+			// Without a provider's validated source metadata, an unresolved alias cannot prove that
+			// its canonical history belongs to a physical source rather than a managed measurement.
+			return (
+				!this.sourcePropertyId ||
+				!this.sourceProperty ||
+				this.sourceProperty instanceof VirtualChannelPropertyEntity ||
+				this.sourceProperty.requiresLiveValue
+			);
+		}
 		if (
 			this.valueOrigin !== VirtualValueOrigin.LOCAL ||
 			this.permissions?.some((permission) => WRITABLE_PERMISSIONS.includes(permission)) ||

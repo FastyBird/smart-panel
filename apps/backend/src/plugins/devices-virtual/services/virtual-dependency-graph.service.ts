@@ -6,6 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import {
@@ -24,6 +25,8 @@ export interface VirtualDependencyEdge {
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
+	private liveValueProperties = new Set<string>();
+	private knownProperties = new Set<string>();
 	private readonly validationListeners = new Map<
 		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
 		{ requiresActivation?: boolean }
@@ -77,6 +80,11 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	/** Whether a complete graph snapshot and every validation listener have succeeded. */
 	isValidated(): boolean {
 		return !this.validationPending && this.quarantineRevision >= 0;
+	}
+
+	/** Policy from the same validated metadata snapshot as the dependency graph; null while suspended. */
+	propertyRequiresLiveValue(propertyId: string): boolean | null {
+		return this.isValidated() && this.knownProperties.has(propertyId) ? this.liveValueProperties.has(propertyId) : null;
 	}
 
 	/** Captures one validation lifecycle so pending publications cannot survive a failed refresh/retry. */
@@ -229,6 +237,16 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		try {
 			const snapshot = await this.dataSource.transaction(async (manager) => ({
 				edges: await this.edges(manager),
+				knownProperties: await manager
+					.createQueryBuilder(ChannelPropertyEntity, 'property')
+					.select(['property.id'])
+					.callListeners(false)
+					.getMany(),
+				properties: await manager
+					.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+					.leftJoinAndSelect('property.channel', 'channel')
+					.callListeners(false)
+					.getMany(),
 				revision: await this.revision(manager),
 			}));
 			if (generation !== this.validationGeneration) return;
@@ -268,6 +286,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			if (snapshot.edges.length > 8192 || neighbors.size > 4096)
 				for (const node of neighbors.keys()) quarantined.add(node);
 			this.quarantined = quarantined;
+			this.knownProperties = new Set(snapshot.knownProperties.map((property) => property.id));
+			this.liveValueProperties = new Set(
+				snapshot.properties.filter((property) => property.requiresLiveValue).map((property) => property.id),
+			);
 			for (const [listener, options] of this.validationListeners) {
 				if (generation !== this.validationGeneration) return;
 				if (!options.requiresActivation) await listener(snapshot.revision, quarantined);

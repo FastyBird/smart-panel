@@ -111,6 +111,7 @@ describe('ChannelsPropertiesService', () => {
 	};
 
 	const mockChannelProperty: MockChannelProperty = {
+		requiresLiveValue: false,
 		id: uuid().toString(),
 		type: 'mock',
 		name: 'Test Property',
@@ -844,6 +845,7 @@ describe('ChannelsPropertiesService', () => {
 				mockValue: createDto.mock_value,
 			};
 			const mockCreatedProperty: MockChannelProperty = {
+				requiresLiveValue: false,
 				id: uuid().toString(),
 				type: mockCreateProperty.type,
 				category: mockCreateProperty.category,
@@ -2209,6 +2211,7 @@ describe('ChannelsPropertiesService', () => {
 				mock_value: 'Changed text',
 			};
 			const mockUpdateProperty: MockChannelProperty = {
+				requiresLiveValue: false,
 				id: mockChannelProperty.id,
 				type: mockChannelProperty.type,
 				category: mockChannelProperty.category,
@@ -2227,6 +2230,7 @@ describe('ChannelsPropertiesService', () => {
 				mockValue: updateDto.mock_value,
 			};
 			const mockUpdatedProperty: MockChannelProperty = {
+				requiresLiveValue: false,
 				id: mockUpdateProperty.id,
 				type: mockUpdateProperty.type,
 				category: mockUpdateProperty.category,

@@ -1,6 +1,7 @@
 import { HAPStatus, HapStatusError } from '@homebridge/hap-nodejs';
 import { Injectable, Logger } from '@nestjs/common';
 
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyCommandService } from '../../../modules/devices/services/property-command.service';
 
 @Injectable()
@@ -8,6 +9,10 @@ export class HomeKitCommandDispatcher {
 	private readonly logger = new Logger(HomeKitCommandDispatcher.name);
 
 	constructor(private readonly propertyCommandService: PropertyCommandService) {}
+
+	canExecuteCompositeProperty(property: ChannelPropertyEntity): boolean {
+		return this.propertyCommandService.canExecuteCompositeProperty(property);
+	}
 
 	async dispatch(propertyId: string, value: unknown): Promise<void> {
 		try {

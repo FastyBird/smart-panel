@@ -16,12 +16,22 @@ export class VirtualValueSourceService implements IPropertyValueSource {
 
 	/** Projection reads also need validation even when no producer lease owns their alias. */
 	unavailableReason(property: ChannelPropertyEntity): string | null {
-		return property instanceof VirtualChannelPropertyEntity &&
-			(property.isProjecting || property.isDerived) &&
-			this.graph &&
-			!this.graph.isValidated()
-			? 'graph_validation_pending'
-			: null;
+		if (
+			!(property instanceof VirtualChannelPropertyEntity) ||
+			!(property.isProjecting || property.isDerived) ||
+			!this.graph
+		)
+			return null;
+		if (!this.graph.isValidated()) return 'graph_validation_pending';
+		if (this.graph.isQuarantined(property.id)) return 'graph_quarantined';
+		return null;
+	}
+
+	/** Canonical policy uses the graph's validated metadata, never the alias's historical value. */
+	requiresLiveValue(property: ChannelPropertyEntity): boolean | null {
+		if (!(property instanceof VirtualChannelPropertyEntity) || !property.isProjecting) return null;
+		if (!property.sourcePropertyId) return true;
+		return this.graph?.propertyRequiresLiveValue(property.sourcePropertyId) ?? null;
 	}
 
 	resolve(property: ChannelPropertyEntity): string | null {

@@ -68,6 +68,27 @@ describe('HomeKitPropertyStateService', () => {
 		sources.register(new VirtualValueSourceService());
 		expect(service.read(derived()).reasons).toEqual(['producer_unavailable']);
 	});
+
+	it('withholds unresolved projection history when its provider or source metadata is missing', () => {
+		const alias = Object.assign(new VirtualChannelPropertyEntity(), {
+			id: 'alias',
+			sourcePropertyId: 'derived',
+			value: new PropertyValueState(99),
+		});
+		expect(service.read(alias)).toMatchObject({ unavailable: true, reasons: ['producer_unavailable'] });
+		sources.register(new VirtualValueSourceService());
+		expect(service.read(alias)).toMatchObject({ unavailable: true, reasons: ['producer_unavailable'] });
+	});
+
+	it('does not trust an orphan alias with a stale loaded physical relation when its provider is absent', () => {
+		const alias = Object.assign(new VirtualChannelPropertyEntity(), {
+			id: 'orphan',
+			sourcePropertyId: null,
+			sourceProperty: property(),
+			value: new PropertyValueState(99),
+		});
+		expect(service.read(alias).unavailable).toBe(true);
+	});
 	it('withholds controller-shaped local read-only values without parent metadata; preserves settings and information', () => {
 		const output = Object.assign(derived(), {
 			valueOrigin: VirtualValueOrigin.LOCAL,
@@ -153,6 +174,7 @@ describe('HomeKitPropertyStateService', () => {
 		const alias = Object.assign(new VirtualChannelPropertyEntity(), {
 			id: 'alias',
 			sourcePropertyId: 'physical',
+			sourceProperty: property(),
 			value: new PropertyValueState(18),
 		});
 		expect(service.read(alias)).toMatchObject({ value: 18, unavailable: false });

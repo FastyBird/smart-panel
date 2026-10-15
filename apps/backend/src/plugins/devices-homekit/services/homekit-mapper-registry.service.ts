@@ -1,5 +1,5 @@
 import { Accessory, HAPStatus, HapStatusError } from '@homebridge/hap-nodejs';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { BatteryMapper } from '../mappers/battery.mapper';
@@ -20,6 +20,7 @@ import { ThermostatMapper } from '../mappers/thermostat.mapper';
 import { WindowCoveringMapper } from '../mappers/window-covering.mapper';
 
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
+import { HomeKitPropertyStateService } from './homekit-property-state.service';
 
 interface DeviceAvailabilityState {
 	online: boolean;
@@ -107,7 +108,7 @@ export class HomeKitMapperRegistryService {
 	// deviceId -> propertyIds
 	private readonly deviceProperties = new Map<string, Set<string>>();
 
-	constructor() {
+	constructor(@Optional() private readonly propertyState?: HomeKitPropertyStateService) {
 		// Register built-in mappers in priority order
 		this.mappers.push(new LightbulbMapper());
 		this.mappers.push(new SwitchMapper());
@@ -166,6 +167,7 @@ export class HomeKitMapperRegistryService {
 				},
 			},
 			commandDispatcher,
+			propertyState: this.propertyState,
 			registerBinding: (binding: CharacteristicBinding) => {
 				stagedBindings.push(binding);
 			},
