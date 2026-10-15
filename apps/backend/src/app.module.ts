@@ -1,5 +1,6 @@
 import path from 'path';
 
+import type { DiscoveredBackendExtension } from '@fastybird/smart-panel-extension-sdk';
 import { CacheModule } from '@nestjs/cache-manager';
 import { DynamicModule, Module, type Type } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
@@ -32,6 +33,7 @@ import { EnergyModule } from './modules/energy/energy.module';
 import { ExtensionRegistryModule } from './modules/extension-registry/extension-registry.module';
 import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
 import { ExtensionsModule } from './modules/extensions/extensions.module';
+import { DiscoveredBackendModule } from './modules/extensions/services/discovered-backend.module';
 import { FactoryResetModule } from './modules/factory-reset/factory-reset.module';
 import { IntentsModule } from './modules/intents/intents.module';
 import { McpThrottleGuard } from './modules/mcp/guards/mcp-throttle.guard';
@@ -148,13 +150,14 @@ import { WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX } from './plugins/weather-openweat
 import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap/weather-openweathermap.plugin';
 
 export interface AppRegisterOptions {
+	discoveredBackend?: readonly DiscoveredBackendExtension[];
 	moduleExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
 	pluginExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
 }
 
 @Module({})
 export class AppModule {
-	static register({ moduleExtensions, pluginExtensions }: AppRegisterOptions): DynamicModule {
+	static register({ moduleExtensions, pluginExtensions, discoveredBackend = [] }: AppRegisterOptions): DynamicModule {
 		const seen = new Set<string>();
 
 		const clean = (s: string) => s.replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/');
@@ -189,6 +192,7 @@ export class AppModule {
 				{ provide: APP_GUARD, useClass: AuthGuard },
 			],
 			imports: [
+				DiscoveredBackendModule.register(discoveredBackend),
 				ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
 				NestConfigModule.forRoot({
 					envFilePath: [

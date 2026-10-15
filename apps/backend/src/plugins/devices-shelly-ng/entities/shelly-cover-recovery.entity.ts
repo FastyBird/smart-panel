@@ -15,7 +15,7 @@ export class ShellyCoverRecoveryEntity {
 	@Column({ type: 'text' }) contextRevision: string;
 	@Column({ type: 'text' }) reason: string;
 	@Column({ type: 'text' }) observedState: string;
-	@Column({ type: 'integer' }) observedPosition: number;
+	@Column({ type: 'real' }) observedPosition: number;
 	@Column({ type: 'datetime' }) observedAt: Date;
 	@Column({ type: 'text' }) advisory: string;
 }

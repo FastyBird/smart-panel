@@ -67,6 +67,7 @@ import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualNumericOperatorRegistry } from './virtual-numeric-operator.registry';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import {
 	ThermostatCommandAuthority,
@@ -75,6 +76,7 @@ import {
 } from './virtual-thermostat-claims.service';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 
 jest.setTimeout(30_000);
 
@@ -1268,95 +1270,171 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(registry.assertAllowed(await target(relay, false))).rejects.toThrow('reserved');
 	});
 
-	it('admits converted qualified volts as a floor while rejecting direct volts and tracking conversion revision', async () => {
-		const controller = await owner(),
-			sensor = await ambient(),
-			transformedFloor = await ambient(VirtualDeviceMode.SENSOR_TRANSFORM),
-			relay = await actuator();
-		const nativeFloor = uuid(),
-			nativeChannel = uuid(),
-			nativeDevice = uuid();
-		const voltage = nativeVoltmeterVoltageIdentity(
-			'voltmeter:100',
-			{ id: 100, range: 0, report_thr: 0.1, xvoltage: { expr: null, unit: null } },
-			{ voltmeter: { 'voltmeter:100': {} } },
-			'A8032ABE5085',
-		);
-		await database.manager.insert(ShellyNgDeviceEntity, {
-			id: nativeDevice,
-			name: 'Voltmeter',
-			category: DeviceCategory.SENSOR,
-			canonicalMac: 'A8032ABE5085',
-		} as never);
-		await database.manager.insert(ShellyNgChannelEntity, {
-			id: nativeChannel,
-			name: 'Raw voltage',
-			identifier: voltage.channelIdentifier,
-			category: ChannelCategory.ANALOG_INPUT,
-			device: nativeDevice,
-		} as never);
-		await database.manager.insert(ShellyNgChannelPropertyEntity, {
-			id: nativeFloor,
-			channel: nativeChannel,
-			identifier: 'voltage',
-			category: PropertyCategory.VALUE,
-			dataType: DataTypeType.FLOAT,
-			permissions: [PermissionType.READ_ONLY],
-		} as never);
-		const physical = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id: nativeFloor },
-			relations: ['channel', 'channel.device'],
-		});
-		expect(resolvePropertyUnit(physical)).toBe('V');
-		await database.manager.insert(VirtualTransformConfigEntity, {
-			outputPropertyId: transformedFloor,
-			schemaVersion: 1,
-			revision: 3,
-			maximumAgeSeconds: 300,
-			quantity: 'temperature',
-			unit: '°C',
-			configuredAt: new Date(),
-			policy: {
-				operator: VirtualNumericTransformOperator.STEINHART_HART,
-				inputRange: { minimum: 0, maximum: 10 },
-				outputRange: { minimum: -100, maximum: 150 },
-				referenceVoltage: 10,
-				seriesResistance: 10_000,
-				coefficientA: 0.0010351024725298568,
-				coefficientB: 0.0002338353574079741,
-				coefficientC: 7.917851073336009e-8,
-				thermistorLeg: 'low',
-			},
-		});
-		await database.manager.insert(VirtualTransformSourceEntity, {
-			id: uuid(),
-			outputPropertyId: transformedFloor,
-			sourcePropertyId: nativeFloor,
-			sourcePropertyIdentity: nativeFloor,
-			quantity: 'value',
-			unit: 'V',
-		});
-		const input = dto(sensor, relay);
-		input.policy.floor = { limit: 30, recoveryHysteresis: 1 };
-		input.sources.push({ role: 'floor', sourcePropertyId: nativeFloor, maximumAgeSeconds: 300 });
-		await expect(configs.preview(controller, input)).rejects.toThrow('Temperature roles');
-		input.sources.pop();
-		input.sources.push({ role: 'floor', sourcePropertyId: transformedFloor, maximumAgeSeconds: 300 });
-		const configured = await configs.configure(controller, input);
-		const floor = configured.sources.find((source) => source.role === 'floor');
-		expect(floor.physical_identity).toBe('property:' + nativeFloor);
-		expect(floor.source_identity).toBe(transformedFloor);
-		await database.manager.update(
-			VirtualTransformConfigEntity,
-			{ outputPropertyId: transformedFloor },
-			{ revision: 4 },
-		);
-		input.expectedRevision = 1;
-		const revised = await configs.preview(controller, input);
-		expect(revised.sources.find((source) => source.role === 'floor').contract_fingerprint).not.toBe(
-			floor.contract_fingerprint,
-		);
-	});
+	it.each([
+		{ operator: VirtualNumericTransformOperator.AFFINE, scale: 2, offset: 1 },
+		{
+			operator: VirtualNumericTransformOperator.PIECEWISE_LINEAR,
+			points: [
+				{ x: 0, y: 0 },
+				{ x: 10, y: 100 },
+			],
+		},
+		{
+			operator: VirtualNumericTransformOperator.NTC_BETA,
+			referenceVoltage: 10,
+			seriesResistance: 10_000,
+			nominalResistance: 10_000,
+			nominalTemperatureCelsius: 25,
+			beta: 3950,
+			thermistorLeg: 'low',
+		},
+		{
+			operator: VirtualNumericTransformOperator.STEINHART_HART,
+			referenceVoltage: 10,
+			seriesResistance: 10_000,
+			coefficientA: 0.0010351024725298568,
+			coefficientB: 0.0002338353574079741,
+			coefficientC: 7.917851073336009e-8,
+			thermistorLeg: 'low',
+		},
+	] as const)(
+		'admits built-in $operator floor configuration without granting installation certification',
+		async (policy) => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				transformedFloor = await ambient(VirtualDeviceMode.SENSOR_TRANSFORM),
+				relay = await actuator();
+			const nativeFloor = uuid(),
+				nativeChannel = uuid(),
+				nativeDevice = uuid();
+			const voltage = nativeVoltmeterVoltageIdentity(
+				'voltmeter:100',
+				{ id: 100, range: 0, report_thr: 0.1, xvoltage: { expr: null, unit: null } },
+				{ voltmeter: { 'voltmeter:100': {} } },
+				'A8032ABE5085',
+			);
+			await database.manager.insert(ShellyNgDeviceEntity, {
+				id: nativeDevice,
+				name: 'Voltmeter',
+				category: DeviceCategory.SENSOR,
+				canonicalMac: 'A8032ABE5085',
+			} as never);
+			await database.manager.insert(ShellyNgChannelEntity, {
+				id: nativeChannel,
+				name: 'Raw voltage',
+				identifier: voltage.channelIdentifier,
+				category: ChannelCategory.ANALOG_INPUT,
+				device: nativeDevice,
+			} as never);
+			await database.manager.insert(ShellyNgChannelPropertyEntity, {
+				id: nativeFloor,
+				channel: nativeChannel,
+				identifier: 'voltage',
+				category: PropertyCategory.VALUE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+			} as never);
+			const physical = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: nativeFloor },
+				relations: ['channel', 'channel.device'],
+			});
+			expect(resolvePropertyUnit(physical)).toBe('V');
+			await database.manager.insert(VirtualTransformConfigEntity, {
+				outputPropertyId: transformedFloor,
+				schemaVersion: 1,
+				revision: 3,
+				maximumAgeSeconds: 300,
+				quantity: 'temperature',
+				unit: '°C',
+				configuredAt: new Date(),
+				policy: {
+					...policy,
+					inputRange: { minimum: 0, maximum: 10 },
+					outputRange: { minimum: -100, maximum: 150 },
+				},
+			});
+			await database.manager.insert(VirtualTransformSourceEntity, {
+				id: uuid(),
+				outputPropertyId: transformedFloor,
+				sourcePropertyId: nativeFloor,
+				sourcePropertyIdentity: nativeFloor,
+				quantity: 'value',
+				unit: 'V',
+			});
+			const input = dto(sensor, relay);
+			input.policy.floor = { limit: 30, recoveryHysteresis: 1 };
+			input.sources.push({ role: 'floor', sourcePropertyId: nativeFloor, maximumAgeSeconds: 300 });
+			await expect(configs.preview(controller, input)).rejects.toThrow('Temperature roles');
+			input.sources.pop();
+			input.sources.push({ role: 'floor', sourcePropertyId: transformedFloor, maximumAgeSeconds: 300 });
+			expect((await configs.preview(controller, input)).sources).toEqual(
+				expect.arrayContaining([expect.objectContaining({ role: 'floor', source_identity: transformedFloor })]),
+			);
+			const configured = await configs.configure(controller, input);
+			const floor = configured.sources.find((source) => source.role === 'floor');
+			expect(floor.physical_identity).toBe('property:' + nativeFloor);
+			expect(floor.source_identity).toBe(transformedFloor);
+			await database.manager.update(
+				VirtualTransformConfigEntity,
+				{ outputPropertyId: transformedFloor },
+				{ revision: 4 },
+			);
+			input.expectedRevision = 1;
+			const revised = await configs.preview(controller, input);
+			expect(revised.sources.find((source) => source.role === 'floor').contract_fingerprint).not.toBe(
+				floor.contract_fingerprint,
+			);
+			const operators = new VirtualNumericOperatorRegistry();
+			operators.activate('@fixture/floor', [
+				{
+					contractVersion: 1,
+					name: 'steinhart_hart',
+					operatorVersion: 1,
+					input: { quantity: 'value', unit: 'V' },
+					output: { quantity: 'temperature', unit: '°C' },
+					inputRange: { minimum: 0, maximum: 10 },
+					outputRange: { minimum: -100, maximum: 150 },
+					parameters: {},
+					evaluate: () => 20,
+				},
+			]);
+			await database.manager.update(
+				VirtualTransformConfigEntity,
+				{ outputPropertyId: transformedFloor },
+				{
+					policy: {
+						operator: VirtualNumericTransformOperator.EXTENSION,
+						contractVersion: 1,
+						operatorId: '@fixture/floor:steinhart_hart',
+						operatorVersion: 1,
+						parameters: {},
+						inputRange: { minimum: 0, maximum: 10 },
+						outputRange: { minimum: -100, maximum: 150 },
+					},
+				},
+			);
+			const customConfigs = new VirtualThermostatConfigService(
+				database,
+				structure,
+				graph,
+				claims,
+				events,
+				values,
+				new VirtualTransformResolver(operators),
+			);
+			await expect(customConfigs.preview(controller, input)).rejects.toThrow('Transformed thermostat temperatures');
+			await expect(customConfigs.configure(controller, input)).rejects.toThrow('Transformed thermostat temperatures');
+			await database.query('UPDATE devices_virtual_transform_configs SET policy = ? WHERE outputPropertyId = ?', [
+				'null',
+				transformedFloor,
+			]);
+			await expect(customConfigs.preview(controller, input)).rejects.toBeInstanceOf(DevicesValidationException);
+			await expect(customConfigs.configure(controller, input)).rejects.toBeInstanceOf(DevicesValidationException);
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+			).toBe(1);
+		},
+	);
 
 	it('only an internal qualified OFF and drained-ON proof frees a releasing reservation', async () => {
 		const controller = await owner(),

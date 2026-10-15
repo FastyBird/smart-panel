@@ -190,6 +190,10 @@
 					v-model="model.operator"
 				>
 					<el-option
+						value="extension"
+						:label="t('devicesVirtualPlugin.measurement.extensionOperator')"
+					/>
+					<el-option
 						v-for="operator in transformOperators"
 						:key="operator"
 						:value="operator"
@@ -264,6 +268,61 @@
 						<el-input-number v-model="model[field]" />
 					</el-form-item>
 				</div>
+				<template v-if="model.operator === 'extension'">
+					<el-form-item :label="t('devicesVirtualPlugin.measurement.extensionOperator')">
+						<el-select
+							v-model="model.extensionKey"
+							data-test-id="numeric-operator"
+							@change="selectOperator"
+						>
+							<el-option
+								v-if="model.extensionKey && !selectedOperator"
+								:value="model.extensionKey"
+								:label="model.extensionKey"
+								disabled
+							/>
+							<el-option
+								v-for="descriptor in numericOperators"
+								:key="`${descriptor.operatorId}@${descriptor.operatorVersion}`"
+								:value="`${descriptor.operatorId}@${descriptor.operatorVersion}`"
+								:label="`${descriptor.operatorId} · v${descriptor.operatorVersion}`"
+							/>
+						</el-select>
+					</el-form-item>
+					<el-alert
+						v-if="!selectedOperator"
+						:title="t('devicesVirtualPlugin.measurement.measurementOperatorMissing')"
+						type="warning"
+						:closable="false"
+					/>
+					<template v-else>
+						<el-button
+							data-test-id="numeric-operator-reset"
+							@click="selectOperator"
+						>
+							{{ t('devicesVirtualPlugin.measurement.resetOperatorDefinition') }}
+						</el-button>
+						<p data-test-id="numeric-operator-domains">
+							{{ selectedOperator.input.quantity }} ({{ selectedOperator.input.unit }}) [{{ selectedOperator.inputRange.minimum }},
+							{{ selectedOperator.inputRange.maximum }}] → {{ selectedOperator.output.quantity }} ({{ selectedOperator.output.unit }}) [{{
+								selectedOperator.outputRange.minimum
+							}}, {{ selectedOperator.outputRange.maximum }}]
+						</p>
+						<el-form-item
+							v-for="(schema, name) in selectedOperator.parameters"
+							:key="name"
+							:label="String(name)"
+							:required="schema.required"
+						>
+							<el-input-number
+								v-model="model.parameters[name]"
+								:min="schema.minimum"
+								:max="schema.maximum"
+								:data-test-id="`numeric-parameter-${name}`"
+							/>
+						</el-form-item>
+					</template>
+				</template>
 				<div
 					v-if="model.operator === TransformOperator.affine"
 					class="grid grid-cols-2 gap-3"
@@ -430,6 +489,9 @@ const stores = injectStoresManager(),
 	channels = stores.getStore(channelsStoreKey),
 	properties = stores.getStore(channelsPropertiesStoreKey);
 const {
+	numericOperators,
+	selectedOperator,
+	selectOperator,
 	profiles,
 	invalidatePreview,
 	previewExpired,
@@ -459,7 +521,12 @@ const loading = ref(false),
 	catalogError = ref<string | null>(null);
 const candidates = computed(() =>
 	isTransform
-		? measurementCandidates(props.mode, devices.findAll(), channels.findAll(), properties.findAll())
+		? measurementCandidates(props.mode, devices.findAll(), channels.findAll(), properties.findAll()).filter(
+				(candidate) =>
+					model.operator !== 'extension' ||
+					!selectedOperator.value ||
+					(candidate.quantity === selectedOperator.value.input.quantity && candidate.unit === selectedOperator.value.input.unit)
+			)
 		: selectedProfile.value
 			? aggregateCandidates(sources.value, devices.findAll(), channels.findAll(), properties.findAll(), selectedProfile.value)
 			: []

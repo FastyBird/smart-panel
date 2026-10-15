@@ -44,6 +44,7 @@ async function bootstrap() {
 		}));
 
 	const appModule = AppModule.register({
+		discoveredBackend: discovered.backend,
 		moduleExtensions,
 		pluginExtensions,
 	});

@@ -9,7 +9,7 @@ import {
 	Put,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import {
@@ -81,6 +81,7 @@ export class VirtualProducerConfigController {
 			'Uses the same exact channel, category, unit, numeric type and restricted composition policy as preview/persistence/runtime. Candidate membership does not imply live qualification.',
 		operationId: 'get-devices-virtual-plugin-aggregate-sources',
 	})
+	@ApiParam({ name: 'profile', description: 'Exact aggregate measurement profile', enum: VirtualAggregateProfile })
 	@ApiSuccessResponse(VirtualAggregateSourcesResponseModel, 'Structurally eligible aggregate sources')
 	@Get('aggregate-profiles/:profile/sources')
 	async getAggregateSources(

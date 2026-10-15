@@ -20,6 +20,8 @@ import { ExtensionsBundledService } from './extensions-bundled.service';
  * Extension metadata that can be registered by modules/plugins
  */
 export interface ExtensionMetadata {
+	/** Discovered npm identity for opt-in SDK ownership; unrelated to route/type. */
+	packageName?: string;
 	type: string;
 	name: string;
 	description?: string;
@@ -51,6 +53,8 @@ export class ExtensionsService {
 	/**
 	 * Registry for extension metadata
 	 */
+	private readonly ownerClaims = new Map<string, Set<string | undefined>>();
+
 	private readonly moduleMetadata = new Map<string, ExtensionMetadata>();
 	private readonly pluginMetadata = new Map<string, ExtensionMetadata>();
 
@@ -65,6 +69,7 @@ export class ExtensionsService {
 	 * Register module metadata
 	 */
 	registerModuleMetadata(metadata: ExtensionMetadata): void {
+		this.recordOwnerClaim('module', metadata);
 		this.moduleMetadata.set(metadata.type, metadata);
 	}
 
@@ -72,7 +77,22 @@ export class ExtensionsService {
 	 * Register plugin metadata
 	 */
 	registerPluginMetadata(metadata: ExtensionMetadata): void {
+		this.recordOwnerClaim('plugin', metadata);
 		this.pluginMetadata.set(metadata.type, metadata);
+	}
+
+	private recordOwnerClaim(kind: 'module' | 'plugin', metadata: ExtensionMetadata): void {
+		const key = `${kind}:${metadata.type}`;
+		const claims = this.ownerClaims.get(key) ?? new Set<string | undefined>();
+		claims.add(metadata.packageName);
+		this.ownerClaims.set(key, claims);
+	}
+
+	hasOwnerMetadata(kind: 'module' | 'plugin', type: string, packageName: string): boolean {
+		return (
+			this.ownerClaims.get(`${kind}:${type}`)?.size === 1 &&
+			(kind === 'module' ? this.moduleMetadata : this.pluginMetadata).get(type)?.packageName === packageName
+		);
 	}
 
 	/**
