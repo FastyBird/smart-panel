@@ -7,6 +7,7 @@ import WebSocket from 'ws';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { AddShellyCoverRecoveries1000000000042 } from '../../../migrations/1000000000042-AddShellyCoverRecoveries';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -34,7 +35,9 @@ import { PropertyValueLockService } from '../../../modules/devices/services/prop
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { IntentEventType, IntentStatus, IntentTargetStatus } from '../../../modules/intents/intents.constants';
+import { IntentRecord } from '../../../modules/intents/models/intent.model';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
+import { UserRole } from '../../../modules/users/users.constants';
 import { ConfigureVirtualLightGroupDto } from '../../devices-virtual/dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -62,8 +65,10 @@ import {
 	CoversMode,
 	CoversRole,
 } from '../../spaces-home-control/spaces-home-control.constants';
+import { ShellyCoverRecoveryController } from '../controllers/shelly-cover-recovery.controller';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
+import { COVER_RECOVERY_ACKNOWLEDGEMENT } from '../dto/cover-recovery.dto';
 import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateShellyNgChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -72,10 +77,13 @@ import {
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
 import { ShellyCoverOrderingEntity } from '../entities/shelly-cover-ordering.entity';
+import { ShellyCoverRecoveryEntity } from '../entities/shelly-cover-recovery.entity';
 import { ShellyNgDevicePlatform } from '../platforms/shelly-ng.device.platform';
 
 import { GuardedShellyRpcHandler } from './guarded-shelly-rpc';
 import { ShellyCoverOrderingService } from './shelly-cover-ordering.service';
+import { ShellyCoverRecoveryLaneService } from './shelly-cover-recovery-lane.service';
+import { ShellyCoverRecoveryService } from './shelly-cover-recovery.service';
 
 const HOLD = Symbol('no response');
 type Frame = { id: number; method: string; params: Record<string, unknown> };
@@ -173,6 +181,8 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	let events: EventEmitter2;
 	let structure: DeviceStructureLockService;
 	let graph: VirtualDependencyGraphService;
+	let recoveryLane: ShellyCoverRecoveryLaneService;
+	let recovery: ShellyCoverRecoveryService;
 	beforeEach(async () => {
 		db = await new SqliteDataSource({
 			type: 'sqlite',
@@ -187,6 +197,9 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		sources.register(new VirtualValueSourceService(graph));
 		producers = new PropertyProducerRegistryService(events);
 		windows = new PropertyCommandWindowService();
+		guards = new PropertyCommandAdmissionRegistryService();
+		recoveryLane = new ShellyCoverRecoveryLaneService(guards, windows);
+		recoveryLane.onModuleInit();
 		values = new PropertyValueService(
 			{
 				isConnected: () => true,
@@ -244,7 +257,9 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			undefined,
 			values,
 			ordering,
+			recoveryLane,
 		);
+		recovery = new ShellyCoverRecoveryService(db, metadata, sources, manager, recoveryLane, structure);
 		Object.assign(manager, {
 			channelsService: {
 				findAll: async (deviceId: string) =>
@@ -386,7 +401,6 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		groupPosition = outputs.get(PropertyCategory.POSITION);
 		await graph.onApplicationBootstrap();
 		const registry = new CompositePropertyCommandRegistryService();
-		guards = new PropertyCommandAdmissionRegistryService();
 		planner = new VirtualLightGroupCommandService(db, registry, devices as never, graph, metadata, values, windows);
 		planner.onModuleInit();
 		runtime = new VirtualLightGroupStateService(db, values, producers, devices as never, graph, events, structure);
@@ -593,6 +607,39 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			});
 		},
 	);
+	it('loads declared cover outputs once per update while preserving each member contract', async () => {
+		const output = await metadata.findOne(groupCommand);
+		const channel = output.channel as ChannelEntity;
+		const find = jest.spyOn(db.manager, 'find');
+		const plan = await planner.plan([
+			{ property: output, channel, device: channel.device as DeviceEntity, value: 'open' },
+		]);
+		expect(find.mock.calls.filter(([entity]) => entity === VirtualChannelPropertyEntity)).toHaveLength(1);
+		expect(plan.children).toHaveLength(2);
+		expect(plan.children.every((child) => !!child.update)).toBe(true);
+		find.mockRestore();
+		await db.manager.delete(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.STATUS).id);
+		const drifted = await planner.plan([
+			{ property: output, channel, device: channel.device as DeviceEntity, value: 'open' },
+		]);
+		expect(drifted.children.find((child) => child.memberIdentity === physical[0].channel.id)).toMatchObject({
+			update: null,
+		});
+		expect(drifted.children.find((child) => child.memberIdentity === physical[1].channel.id).update).not.toBeNull();
+	});
+	it('reports only nonconfirmed child reasons in an actual partial room response', async () => {
+		const fixture = await actualCoverRoom([group]);
+		transports[0].pre = (raw) => ({ ...raw, pos_control: false });
+		const response = await fixture.execute({ type: CoversIntentType.OPEN });
+		expect(response).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+		const composite = response.composites[0];
+		expect(composite.status).toBe('partial');
+		expect(composite.children.some((child) => child.status === 'confirmed')).toBe(true);
+		const failed = composite.children.filter((child) => child.status !== 'confirmed');
+		const completed = fixture.completeIntent.mock.results.at(-1)?.value as IntentRecord;
+		expect(completed.results[0].error).toBe(failed.map((child) => child.reason ?? child.status).join('; '));
+		expect(completed.results[0].error).not.toContain('cover_action_begun');
+	});
 	it('reports a raw-only role request as failed over the real intent transport even when its outside-role UNKNOWN group is ready', async () => {
 		const fixture = await actualCoverRoom([group, physical[0].channel.id]);
 		expect(
@@ -818,6 +865,16 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(legacySend).not.toHaveBeenCalled();
 			covers[0].device.status = producer.status;
 			expect(plan).not.toHaveBeenCalled();
+			const actualState = await (await actualCoverRoom([group, channelId])).state.getCoversState('room');
+			for (const operation of ['open', 'close'])
+				expect(actualState.groupOperations.find((item) => item.operation === operation)).toMatchObject({
+					commandable: true,
+					reasons: [],
+				});
+			expect(actualState.groupOperations.find((item) => item.operation === 'stop')).toMatchObject({
+				commandable: false,
+				reasons: [`${channelId}: control_unavailable:stop`],
+			});
 			// A non-targeted group cannot block an ordinary role-specific request.
 			covers[1].role = CoversRole.BLACKOUT;
 			const ordinaryRoleResult = await room.executeCoversIntent('room', {
@@ -866,6 +923,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	};
 	afterEach(async () => {
 		dispatcher?.onModuleDestroy();
+		recoveryLane?.onModuleDestroy();
 		planner?.onModuleDestroy();
 		runtime?.onModuleDestroy();
 		producers?.onModuleDestroy();
@@ -881,6 +939,430 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	const property = (index: number, category: PropertyCategory) =>
 		physical[index].properties.find((property) => property.category === category);
 
+	const recoveryActor = { auth: { type: 'user', id: 'operator', role: UserRole.OWNER } } as never;
+	const recoveryContext = async () => {
+		const controller = new ShellyCoverRecoveryController(recovery);
+		const context = (
+			await controller.context(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+			)
+		).data;
+		return {
+			controller,
+			context,
+			dto: {
+				data: {
+					context_id: context.context_id,
+					expected_token: context.expected_token,
+					expected_revision: context.expected_revision,
+					acknowledgement: COVER_RECOVERY_ACKNOWLEDGEMENT,
+					reason: 'Operator inspected the installation and accepts physical handback responsibility',
+				},
+			},
+		};
+	};
+	const reserveRecovery = async () => {
+		const physicalIdentity = `${physical[0].device.canonicalMac}|cover:0`;
+		const token = uuid();
+		await db.manager.insert(ShellyCoverOrderingEntity, { physicalIdentity, token, startedAt: new Date() });
+		return { physicalIdentity, token };
+	};
+	it('exposes unresolved tokens only for the exact canonical ordinary cover target, never a group or different binding', async () => {
+		await reserveRecovery();
+		const controller = new ShellyCoverRecoveryController(recovery);
+		const virtual = await db.manager.findOneOrFail(VirtualChannelEntity, {
+			where: { id: group },
+			relations: ['device'],
+		});
+		await expect(
+			controller.context(recoveryActor, (virtual.device as DeviceEntity).id, group, groupCommand),
+		).rejects.toThrow('canonical ordinary');
+		await expect(
+			controller.context(
+				recoveryActor,
+				physical[1].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+			),
+		).rejects.toThrow('canonical ordinary');
+		await expect(
+			controller.context(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.POSITION).id,
+			),
+		).rejects.toThrow('no guarded');
+		expect(transports.flatMap((rpc) => rpc.frames)).toEqual([]);
+		expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(1);
+	});
+	it('audits explicit operator override through the real API/provider after an uncertain sent RPC without confirming or replaying it', async () => {
+		transports[0].actionResponse = () => HOLD;
+		const old = await send('open', groupCommand, 3000);
+		expect(old.composite.status).toBe('partial');
+		const terminal = JSON.stringify(old);
+		const oldFrame = transports[0].frames.find((frame) => frame.method === 'Cover.Open');
+		const { controller, context, dto } = await recoveryContext();
+		expect(context.physical_identity).toBe(`${physical[0].device.canonicalMac}|cover:0`);
+		transports[0].state.state = 'stopped'; // Operator changed actual mock-device condition; no command is fabricated.
+		const samples = values.currentSampleGeneration();
+		const before = transports[0].frames.length;
+		const result = await controller.recover(
+			recoveryActor,
+			physical[0].device.id,
+			physical[0].channel.id,
+			property(0, PropertyCategory.COMMAND).id,
+			dto,
+		);
+		expect(result.data).toMatchObject({
+			advisory: 'operator_overridden_unresolved_ordering',
+			observed_state: 'stopped',
+		});
+		expect(transports[0].frames.slice(before).map((frame) => frame.method)).toEqual(['Cover.GetStatus']);
+		expect(values.currentSampleGeneration()).toBe(samples);
+		expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(0);
+		expect(
+			await db.manager.findOneByOrFail(ShellyCoverRecoveryEntity, { id: result.data.override_epoch }),
+		).toMatchObject({
+			actorId: 'operator',
+			oldToken: context.expected_token,
+			physicalIdentity: context.physical_identity,
+			observedState: 'stopped',
+			reason: dto.data.reason,
+			advisory: 'operator_overridden_unresolved_ordering',
+		});
+		expect(JSON.stringify(old)).toBe(terminal);
+		// A late response from the retired request cannot clear a new reservation or confirm its generation.
+		const next = send('open', property(0, PropertyCategory.COMMAND).id, 1500);
+		await until(
+			async () =>
+				(await db.manager.count(ShellyCoverOrderingEntity)) === 1 &&
+				transports[0].frames.filter((frame) => frame.method === 'Cover.Open').length === 2,
+		);
+		const newer = await db.manager.findOneByOrFail(ShellyCoverOrderingEntity, {
+			physicalIdentity: context.physical_identity,
+		});
+		expect(newer.token).not.toBe(context.expected_token);
+		transports[0].answer(oldFrame, null);
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+		expect(
+			(await db.manager.findOneByOrFail(ShellyCoverOrderingEntity, { physicalIdentity: context.physical_identity }))
+				.token,
+		).toBe(newer.token);
+		transports[0].answer(transports[0].frames.filter((frame) => frame.method === 'Cover.Open')[1], null);
+		expect((await next).success).toBe(true);
+		expect(JSON.stringify(old)).toBe(terminal);
+	});
+	it.each([
+		{ state: 'opening' },
+		{ state: 'closing' },
+		{ state: 'calibrating' },
+		{ state: 'unknown' },
+		{ current_pos: null },
+		{ current_pos: 101 },
+		{ pos_control: false },
+		{ errors: ['overpower'] },
+		{ errors: null },
+		{ tag: undefined },
+	])('keeps the unresolved token and no audit when fresh recovery status is invalid: %j', async (change) => {
+		const { token } = await reserveRecovery();
+		const { controller, dto } = await recoveryContext();
+		transports[0].pre = (raw) => ({ ...raw, ...change });
+		await expect(
+			controller.recover(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+				dto,
+			),
+		).rejects.toThrow('Fresh calibrated');
+		expect((await db.manager.findOneByOrFail(ShellyCoverOrderingEntity, { token })).token).toBe(token);
+		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		expect(transports[0].frames.map((frame) => frame.method)).toEqual(['Cover.GetStatus']);
+	});
+	it.each(['token', 'metadata', 'disconnect', 'deletion', 'mapping'] as const)(
+		'refuses stale recovery %s without deleting the reservation',
+		async (change) => {
+			const { physicalIdentity } = await reserveRecovery();
+			const { controller, dto } = await recoveryContext();
+			if (change === 'token')
+				await db.manager.update(ShellyCoverOrderingEntity, { physicalIdentity }, { token: uuid() });
+			if (change === 'metadata')
+				await db.manager.update(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.TYPE).id, {
+					format: ['curtain'],
+				});
+			if (change === 'disconnect') transports[0].socketDisconnectForTest();
+			if (change === 'deletion') await db.manager.delete(ShellyNgChannelEntity, physical[0].channel.id);
+			if (change === 'mapping')
+				Object.assign(manager, { propertyMappingStorage: { get: () => ({ read: 'changed' }) } });
+			await expect(
+				controller.recover(
+					recoveryActor,
+					physical[0].device.id,
+					physical[0].channel.id,
+					property(0, PropertyCategory.COMMAND).id,
+					dto,
+				),
+			).rejects.toThrow();
+			expect(
+				await new ShellyCoverOrderingService(db.getRepository(ShellyCoverOrderingEntity)).blocked(physicalIdentity),
+			).toBe(true);
+			expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		},
+	);
+	it('keeps the token blocked and retires read authority after a recovery status timeout', async () => {
+		const { token } = await reserveRecovery();
+		const { controller, dto } = await recoveryContext();
+		transports[0].pre = () => HOLD;
+		await expect(
+			controller.recover(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+				dto,
+			),
+		).rejects.toThrow('Fresh guarded cover status unavailable');
+		expect((await db.manager.findOneByOrFail(ShellyCoverOrderingEntity, { token })).token).toBe(token);
+		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		transports[0].answer(transports[0].frames[0], { ...transports[0].state, tag: null });
+		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+	});
+	it('rolls back token deletion on audit failure and refuses replayed contexts across restart', async () => {
+		const { physicalIdentity, token } = await reserveRecovery();
+		const { controller, dto } = await recoveryContext();
+		await db.query(
+			`CREATE TRIGGER fail_cover_audit BEFORE INSERT ON devices_shelly_ng_cover_recoveries BEGIN SELECT RAISE(ABORT, 'audit unavailable'); END`,
+		);
+		await expect(
+			controller.recover(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+				dto,
+			),
+		).rejects.toThrow('audit unavailable');
+		await db.query('DROP TRIGGER fail_cover_audit');
+		expect((await db.manager.findOneByOrFail(ShellyCoverOrderingEntity, { physicalIdentity })).token).toBe(token);
+		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		const restarted = new ShellyCoverRecoveryService(db, metadata, sources, manager, recoveryLane, structure);
+		await expect(
+			restarted.recover(
+				'operator',
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+				dto.data,
+			),
+		).rejects.toThrow('context expired');
+	});
+	it('refuses overlapping recoveries and commands while a distinct fresh status is pending, fencing old aliases and sibling effects', async () => {
+		await reserveRecovery();
+		await db.manager.insert(ShellyNgChannelPropertyEntity, {
+			id: uuid(),
+			channel: physical[0].channel.id,
+			category: PropertyCategory.TILT,
+			dataType: DataTypeType.UCHAR,
+			format: [0, 100],
+			permissions: [PermissionType.READ_WRITE],
+		} as never);
+		physical[0].properties.push(
+			await db.manager.findOneByOrFail(ShellyNgChannelPropertyEntity, {
+				channel: { id: physical[0].channel.id },
+				category: PropertyCategory.TILT,
+			}),
+		);
+		const first = await recoveryContext(),
+			second = await recoveryContext();
+		const old = guards.capture();
+		const updates = await Promise.all(
+			[PropertyCategory.COMMAND, PropertyCategory.POSITION, PropertyCategory.TILT].map(async (category) => {
+				const p = await metadata.findOne(property(0, category).id);
+				const c = p.channel as ChannelEntity;
+				return {
+					device: c.device as DeviceEntity,
+					channel: c,
+					property: p,
+					value: category === PropertyCategory.COMMAND ? 'open' : 50,
+				};
+			}),
+		);
+		for (const update of updates)
+			windows.open({
+				canonicalTarget: { deviceId: update.device.id, channelId: update.channel.id, propertyId: update.property.id },
+				requestedTargets: [{ deviceId: 'alias-device', channelId: 'alias-channel', propertyId: 'alias-property' }],
+				commandedValue: update.value,
+				previousValue: null,
+				ttlMs: 30000,
+				effectScope: `shelly-ng:${first.context.physical_identity}`,
+			});
+		transports[0].pre = () => HOLD;
+		const pending = first.controller.recover(
+			recoveryActor,
+			physical[0].device.id,
+			physical[0].channel.id,
+			property(0, PropertyCategory.COMMAND).id,
+			first.dto,
+		);
+		for (const update of updates) {
+			expect(windows.get(update.property.id)).toBeNull();
+			expect(old.isCurrent(update)).toBe(false);
+		}
+		const during = guards.capture();
+		await until(() => transports[0].frames.length === 1);
+		await expect(
+			second.controller.recover(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+				second.dto,
+			),
+		).rejects.toThrow(/context expired|already in progress/);
+		expect((await send('open', property(0, PropertyCategory.COMMAND).id)).success).toBe(false);
+		expect(transports[0].frames).toHaveLength(1);
+		transports[0].answer(transports[0].frames[0], { ...transports[0].state, tag: null });
+		await pending;
+		for (const update of updates) {
+			expect(old.isCurrent(update)).toBe(false);
+			expect(during.isCurrent(update)).toBe(false);
+			expect(guards.capture().isCurrent(update)).toBe(true);
+		}
+	});
+	it('rejects recovery for the full post-response polling lifetime even after prepared work is disposed', async () => {
+		transports[0].setRequestTimeoutForTest(10);
+		transports[0].post = () => HOLD;
+		const output = await metadata.findOne(property(0, PropertyCategory.COMMAND).id);
+		const channel = output.channel as ChannelEntity;
+		const update = { property: output, channel, device: channel.device as DeviceEntity, value: 'open' };
+		const original = manager.prepareCoverAction.bind(manager) as DelegatesManagerService['prepareCoverAction'];
+		let captured: Awaited<ReturnType<DelegatesManagerService['prepareCoverAction']>>;
+		jest.spyOn(manager, 'prepareCoverAction').mockImplementation(async (target) => {
+			const prepared = await original(target);
+			if (target.property.id === output.id) captured = prepared;
+			return prepared;
+		});
+		const pending = dispatcher.dispatchBatch([update], { ttlMs: 5000 });
+		await until(() => transports[0].frames.length >= 3);
+		const oldSession = manager
+			.get(update.device.identifier)
+			.prepareCoverSession(
+				'cover:0',
+				physical[0].device.canonicalMac,
+				new ShellyCoverOrderingService(db.getRepository(ShellyCoverOrderingEntity)),
+			);
+		expect(oldSession.hasActiveDispatch()).toBe(true);
+		captured.dispose();
+		await reserveRecovery();
+		const { controller, dto } = await recoveryContext();
+		await expect(
+			controller.recover(recoveryActor, physical[0].device.id, physical[0].channel.id, output.id, dto),
+		).rejects.toThrow('active or prepared');
+		expect(oldSession.identityIsCurrent()).toBe(false);
+		expect(oldSession.hasActiveDispatch()).toBe(true);
+		transports[0].answer(transports[0].frames[2], { ...transports[0].state, tag: transports[0].actionTag });
+		expect((await pending).success).toBe(false);
+		await until(() => !oldSession.hasActiveDispatch());
+		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(1);
+	});
+	it.each(['metadata-during-read', 'disconnect-during-read', 'disconnect-during-audit'] as const)(
+		'keeps ordering blocked on %s',
+		async (change) => {
+			const { token } = await reserveRecovery();
+			const { controller, dto } = await recoveryContext();
+			if (change === 'disconnect-during-audit')
+				db.subscribers.push({
+					listenTo: () => ShellyCoverRecoveryEntity,
+					afterInsert: () => transports[0].socketDisconnectForTest(),
+				});
+			else transports[0].pre = () => HOLD;
+			const pending = controller.recover(
+				recoveryActor,
+				physical[0].device.id,
+				physical[0].channel.id,
+				property(0, PropertyCategory.COMMAND).id,
+				dto,
+			);
+			const rejected = expect(pending).rejects.toThrow();
+			if (change !== 'disconnect-during-audit') {
+				await until(() => transports[0].frames.length === 1);
+				if (change === 'metadata-during-read')
+					await db.manager.update(ShellyNgChannelPropertyEntity, property(0, PropertyCategory.TYPE).id, {
+						format: ['curtain'],
+					});
+				else transports[0].socketDisconnectForTest();
+				transports[0].answer(transports[0].frames[0], { ...transports[0].state, tag: null });
+			}
+			await rejected;
+			expect((await db.manager.findOneByOrFail(ShellyCoverOrderingEntity, { token })).token).toBe(token);
+			expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		},
+	);
+	it('applies incremental migration 42 and refuses to discard durable operator acceptance history', async () => {
+		const runner = db.createQueryRunner();
+		const migration = new AddShellyCoverRecoveries1000000000042();
+		await migration.down(runner);
+		await migration.up(runner);
+		await reserveRecovery();
+		const { controller, dto } = await recoveryContext();
+		await controller.recover(
+			recoveryActor,
+			physical[0].device.id,
+			physical[0].channel.id,
+			property(0, PropertyCategory.COMMAND).id,
+			dto,
+		);
+		await expect(migration.down(runner)).rejects.toThrow('Cannot discard');
+		expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(1);
+		await runner.release();
+	});
+	it.each(['queued', 'auth-retry'] as const)(
+		'revokes %s physical sends before await and refuses recovery during active local dispatch',
+		async (phase) => {
+			let release: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			if (phase === 'queued')
+				transports[0].pre = (raw) => {
+					transports[0].gate = gate;
+					return raw;
+				};
+			else transports[0].actionResponse = () => HOLD;
+			const pending = send('open', property(0, PropertyCategory.COMMAND).id, 3000);
+			await until(async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 1);
+			if (phase === 'auth-retry') {
+				await until(() => transports[0].frames.some((frame) => frame.method === 'Cover.Open'));
+				transports[0].gate = gate;
+				transports[0].answerError(transports[0].frames.find((frame) => frame.method === 'Cover.Open'));
+			}
+			const { controller, dto } = await recoveryContext();
+			await expect(
+				controller.recover(
+					recoveryActor,
+					physical[0].device.id,
+					physical[0].channel.id,
+					property(0, PropertyCategory.COMMAND).id,
+					dto,
+				),
+			).rejects.toThrow('active or prepared');
+			release();
+			expect((await pending).success).toBe(false);
+			await new Promise<void>((resolve) => setTimeout(resolve, 20));
+			expect(transports[0].frames.filter((frame) => frame.method === 'Cover.Open')).toHaveLength(
+				phase === 'queued' ? 0 : 1,
+			);
+			if (phase === 'queued') await until(async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 0);
+			else expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(1);
+			expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+		},
+	);
 	it('confirms tagged motion begun through real RPC, sample admission and composite windows without inventing endpoint state', async () => {
 		const result = await send();
 		expect(result.composite.status).toBe('confirmed');
@@ -1424,12 +1906,41 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect(transports[0].frames.some((frame) => frame.method === 'Cover.GoToPosition')).toBe(false);
 	});
 	it('blocks a new STOP after an earlier sent action response becomes uncertain, including restart of the ordering service', async () => {
-		transports[0].actionResponse = () => HOLD;
-		const pending = send('open', groupCommand, 400);
-		await until(() => transports[0].frames.some((frame) => frame.method === 'Cover.Open'));
+		let sent: () => void, confirmed: () => void;
+		const sentAction = new Promise<void>((resolve) => {
+			sent = resolve;
+		});
+		const healthyConfirmed = new Promise<void>((resolve) => {
+			confirmed = resolve;
+		});
+		transports[0].actionResponse = () => {
+			sent();
+			return HOLD;
+		};
+		const stopObserving = windows.observeConfirmation((handle) => {
+			if (handle.canonicalPropertyId === property(1, PropertyCategory.COMMAND).id) confirmed();
+		});
+		const pending = send('open', groupCommand, 5000);
+		try {
+			await Promise.race([
+				Promise.all([sentAction, healthyConfirmed]),
+				pending.then((early) => {
+					throw new Error(`Required uncertain-action phases missed deadline: ${JSON.stringify(early.composite)}`);
+				}),
+			]);
+		} finally {
+			stopObserving();
+		}
 		expect((await pending).composite.status).toBe('partial');
 		const ledger = new ShellyCoverOrderingService(db.getRepository(ShellyCoverOrderingEntity));
 		expect(await ledger.blocked(`${physical[0].device.canonicalMac}|cover:0`)).toBe(true);
+		const configured = await configs.getLightGroup(group);
+		expect(
+			configured.operations
+				.find((operation) => operation.operation === 'open')
+				.members.find((member) => member.source_identity === physical[0].channel.id).reasons,
+		).toContain('cover_ordering_unresolved_operator_recovery_required');
+
 		const before = transports[0].frames.length;
 		const stop = await send('stop');
 		expect(stop.composite.status).toBe('partial');

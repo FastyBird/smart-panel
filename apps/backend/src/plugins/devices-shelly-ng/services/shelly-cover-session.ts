@@ -8,6 +8,14 @@ import { ShellyCoverOrderingService } from './shelly-cover-ordering.service';
 export class ShellyCoverSession {
 	private submitting = false;
 	private uncertain = false;
+	private retired = false;
+	private activeDispatches = 0;
+	hasActiveDispatch(): boolean {
+		return this.activeDispatches > 0;
+	}
+	retire(): void {
+		this.retired = true;
+	}
 	constructor(
 		private readonly rpc: GuardedShellyRpcHandler,
 		private readonly componentId: number,
@@ -16,29 +24,38 @@ export class ShellyCoverSession {
 		private readonly physicalIdentity: string,
 	) {}
 	identityIsCurrent(): boolean {
-		return this.identityCurrent() && this.rpc.connected;
+		return !this.retired && this.identityCurrent() && this.rpc.connected;
 	}
 	isReady(): boolean {
-		return this.identityCurrent() && this.rpc.connected && !this.submitting && !this.uncertain;
+		return this.identityIsCurrent() && this.rpc.connected && !this.submitting && !this.uncertain;
 	}
 	async read(
 		isCurrent: () => boolean,
 		invalid?: (raw: Readonly<Record<string, unknown>>, observedAt: Date) => Promise<void>,
 	): Promise<{ raw: NativeCoverStatus; observedAt: Date } | null> {
-		if (!isCurrent() || !this.identityCurrent()) return null;
+		if (!isCurrent() || !this.identityIsCurrent()) return null;
 		const observedAt = new Date();
 		const raw = await this.rpc.withSendGuard(
-			() => isCurrent() && this.identityCurrent(),
+			() => isCurrent() && this.identityIsCurrent(),
 			() => this.rpc.request<unknown>('Cover.GetStatus', { id: this.componentId }),
 		);
-		if (!isCurrent() || !this.identityCurrent()) return null;
+		if (!isCurrent() || !this.identityIsCurrent()) return null;
 		const validated = nativeCoverStatus(raw, this.componentId);
 		if (validated && Object.hasOwn(validated, 'tag') && (validated.tag === null || typeof validated.tag === 'string'))
 			return { raw: validated, observedAt };
 		await invalid?.(raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}, observedAt);
 		return null;
 	}
-	async dispatch(
+	async dispatch(...args: Parameters<ShellyCoverSession['dispatchAction']>): Promise<boolean> {
+		if (this.retired) return false;
+		this.activeDispatches++;
+		try {
+			return await this.dispatchAction(...args);
+		} finally {
+			this.activeDispatches--;
+		}
+	}
+	private async dispatchAction(
 		action: 'open' | 'close' | 'stop',
 		context: CoverActionDispatchContext,
 		admit: (raw: NativeCoverStatus, observedAt: Date, preflightState: string) => Promise<boolean>,
@@ -68,7 +85,7 @@ export class ShellyCoverSession {
 			} // no request submitted
 			this.uncertain = true;
 			const result = await this.rpc.withSendGuard(
-				context.isCurrent,
+				() => context.isCurrent() && this.identityIsCurrent(),
 				() =>
 					this.rpc.request<unknown>(`Cover.${action === 'open' ? 'Open' : action === 'close' ? 'Close' : 'Stop'}`, {
 						id: this.componentId,
@@ -97,7 +114,7 @@ export class ShellyCoverSession {
 				this.submitting = false;
 			}
 		}
-		while (context.isCurrent() && this.identityCurrent()) {
+		while (context.isCurrent() && this.identityIsCurrent()) {
 			try {
 				const status = await this.read(context.isCurrent, invalid);
 				if (!context.isCurrent()) return false;

@@ -182,6 +182,17 @@ export const ApiForbiddenResponse = (description?: string) => {
 	);
 };
 
+/** Standard 409 envelope for a stale revision, reservation or current-operation conflict. */
+export const ApiConflictResponse = (description?: string) => {
+	return applyDecorators(
+		ApiResponse({
+			status: 409,
+			description: description || 'The current resource revision or operation conflicts with this request.',
+			schema: { $ref: getSchemaPath(BaseErrorResponseModel) },
+		}),
+	);
+};
+
 /**
  * Decorator for 404 Not Found error response
  */

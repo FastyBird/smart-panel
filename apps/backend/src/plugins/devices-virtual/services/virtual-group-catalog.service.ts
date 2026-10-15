@@ -6,6 +6,11 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { GroupCatalogDto } from '../dto/group-catalog.dto';
+import {
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
 import { VirtualLightGroupConfigEntity, VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 import { GroupCatalogModel } from '../models/group-catalog.model';
 
@@ -31,7 +36,9 @@ export class VirtualGroupCatalogService {
 			.leftJoinAndSelect('channel.properties', 'property')
 			.where('channel.category = :category', { category: policy.channelCategory })
 			.andWhere('device.category = :deviceCategory', { deviceCategory: policy.deviceCategory })
-			.andWhere('device.type != :virtual', { virtual: 'virtual' })
+			.andWhere('device.type NOT IN (:...virtualTypes)', {
+				virtualTypes: ['virtual', this.dataSource.getMetadata(VirtualDeviceEntity).discriminatorValue],
+			})
 			.callListeners(false)
 			.getMany();
 		for (const channel of channels)
@@ -50,8 +57,8 @@ export class VirtualGroupCatalogService {
 			});
 			if (!group || group.profile !== profile)
 				throw new DevicesValidationException('Group profile changed; reload before repair');
-			outputs = await this.dataSource.manager.find(ChannelPropertyEntity, {
-				where: { channel: { id: dto.exposedGroup } },
+			outputs = await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
+				where: { channel: { id: dto.exposedGroup }, valueOrigin: VirtualValueOrigin.DERIVED },
 			});
 		}
 		return {

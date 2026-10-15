@@ -443,7 +443,7 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 				if (epoch === null) {
 					plan.dispose?.();
 					releaseEffects();
-					return { success: false, reason: 'Cover effect capacity exceeded' };
+					return { success: false, reason: 'Cover effect is reserved or capacity exceeded' };
 				}
 				effectEpochs.set(scope, epoch);
 			}
