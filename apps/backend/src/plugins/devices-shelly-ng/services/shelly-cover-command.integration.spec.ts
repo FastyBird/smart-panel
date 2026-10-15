@@ -590,6 +590,43 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
 		},
 	);
+	it('recovers a native fault-clear errors:null delta only from a new complete status read', async () => {
+		emitRaw(0, { errors: ['obstruction'] });
+		await until(
+			() =>
+				values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000) === null &&
+				values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null,
+		);
+		expect(transports[0].frames).toHaveLength(0);
+		transports[0].pre = () => HOLD;
+		emitRaw(0, { errors: null });
+		await until(() => transports[0].frames.length === 1);
+		expect(transports[0].frames[0].method).toBe('Cover.GetStatus');
+		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toBeNull();
+		expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)).toBeNull();
+		// Neither cached position nor cached tag may be promoted by the null delta.
+		transports[0].answer(transports[0].frames[0], { id: 0, state: 'stopped', current_pos: 55, pos_control: true });
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 55);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toMatchObject({
+			value: 'stopped',
+			nativeCoverTagPresent: false,
+		});
+		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).commandObservation).toBeUndefined();
+		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+	});
+	it.each([{ errors: ['obstruction'] }, { errors: 'obstruction' }, { errors: {} }, { errors: 1 }, { errors: false }])(
+		'keeps nonempty or malformed native errors %j invalid without a refresh',
+		async ({ errors }) => {
+			emitRaw(0, { errors });
+			await until(
+				() =>
+					values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000) === null &&
+					values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null,
+			);
+			expect(transports[0].frames).toHaveLength(0);
+			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+		},
+	);
 	it('discards an in-flight refresh overtaken by a delta and coalesces one newer full read', async () => {
 		transports[0].pre = () => HOLD;
 		emitRaw(0, { current_pos: 50 });
@@ -640,23 +677,26 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		await new Promise<void>((resolve) => setTimeout(resolve, 20));
 		expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value).not.toBe(55);
 	});
-	it('normal refreshed status with an action tag cannot confirm an ACK-only command readback', async () => {
-		transports[0].post = () => HOLD;
-		const pending = send('open', groupCommand, 700);
-		await until(() => transports[0].frames.length >= 3);
-		emitRaw(0, { apower: 12 });
-		await until(() => transports[0].frames.length >= 4);
-		transports[0].answer(transports[0].frames[3], {
-			id: 0,
-			state: 'opening',
-			current_pos: 40,
-			pos_control: true,
-			tag: transports[0].actionTag,
-		});
-		await until(() => values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value === 'opening');
-		expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
-		expect((await pending).composite.status).toBe('partial');
-	});
+	it.each([{ apower: 12 }, { errors: null }])(
+		'normal refreshed status after delta %j with an action tag cannot confirm an ACK-only command readback',
+		async (delta) => {
+			transports[0].post = () => HOLD;
+			const pending = send('open', groupCommand, 700);
+			await until(() => transports[0].frames.length >= 3);
+			emitRaw(0, delta);
+			await until(() => transports[0].frames.length >= 4);
+			transports[0].answer(transports[0].frames[3], {
+				id: 0,
+				state: 'opening',
+				current_pos: 40,
+				pos_control: true,
+				tag: transports[0].actionTag,
+			});
+			await until(() => values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value === 'opening');
+			expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
+			expect((await pending).composite.status).toBe('partial');
+		},
+	);
 	it('ACK-only stays pending, times out and cannot be repaired by a late readback', async () => {
 		transports[0].post = () => HOLD;
 		const pending = send('open', groupCommand, 400);

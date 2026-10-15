@@ -13,7 +13,7 @@ export function coverDeltaNeedsRefresh(raw: Record<string, unknown>, id: number)
 				raw.current_pos < 0 ||
 				raw.current_pos > 100)) ||
 		(Object.hasOwn(raw, 'pos_control') && raw.pos_control !== true) ||
-		(Object.hasOwn(raw, 'errors') && (!Array.isArray(raw.errors) || raw.errors.length > 0)) ||
+		(Object.hasOwn(raw, 'errors') && raw.errors !== null && (!Array.isArray(raw.errors) || raw.errors.length > 0)) ||
 		(Object.hasOwn(raw, 'tag') && raw.tag !== null && (typeof raw.tag !== 'string' || raw.tag.length > 20))
 	)
 		return false;
