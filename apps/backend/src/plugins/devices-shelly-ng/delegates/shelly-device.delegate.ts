@@ -40,6 +40,7 @@ import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
 import { ShellyCoverOrderingService } from '../services/shelly-cover-ordering.service';
 import { ShellyCoverSession } from '../services/shelly-cover-session';
+import { ShellyCoverTelemetry, coverDeltaNeedsRefresh } from '../services/shelly-cover-telemetry';
 import { ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { emitFlattenedValue } from '../utils/transform.utils';
 
@@ -121,6 +122,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	private connectionGeneration = 0;
 	private protectiveGeneration = 0;
 	private readonly sampleComponentKeys = new Set<string>();
+	private sampleBindingGeneration = 0;
+	private coverTelemetry: ShellyCoverTelemetry | undefined;
+	private coverTelemetryRpc: GuardedShellyRpcHandler | undefined;
 
 	private applyingPollComponent: string | null = null;
 
@@ -663,7 +667,41 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		for (const [key, values] of Object.entries(update)) {
 			if (values && typeof values === 'object') {
 				this.notificationRevisions.set(key, (this.notificationRevisions.get(key) ?? 0) + 1);
-				this.emitRawSample(key, values as Record<string, unknown>, shellySampleEvidence(update.ts, observedAt));
+				const raw = values as Record<string, unknown>;
+				if (
+					/^cover:\d+$/.test(key) &&
+					this.sampleComponentKeys.has(key) &&
+					coverDeltaNeedsRefresh(raw, Number(key.split(':')[1])) &&
+					this.shelly.rpcHandler instanceof GuardedShellyRpcHandler
+				) {
+					const generation = this.connectionGeneration;
+					const binding = this.sampleBindingGeneration;
+					const rpc = this.shelly.rpcHandler;
+					if (this.coverTelemetryRpc !== rpc) {
+						this.coverTelemetryRpc = rpc;
+						this.coverTelemetry = new ShellyCoverTelemetry(rpc, (component, full, sampledAt, current, sourceCurrent) =>
+							this.emitRawSample(component, full, {
+								sampledAt,
+								observedAt: sampledAt,
+								receivedAt: new Date(),
+								provenance: 'live',
+								isCurrent: current,
+								sourceIsCurrent: sourceCurrent,
+							}),
+						);
+					}
+					this.coverTelemetry.refresh(
+						key,
+						this.notificationRevisions.get(key),
+						() =>
+							generation === this.connectionGeneration &&
+							binding === this.sampleBindingGeneration &&
+							this.shelly.rpcHandler === rpc &&
+							rpc.connected &&
+							this.sampleComponentKeys.has(key),
+						() => this.notificationRevisions.get(key) ?? 0,
+					);
+				} else this.emitRawSample(key, raw, shellySampleEvidence(update.ts, observedAt));
 			}
 		}
 		for (const [componentKey, values] of Object.entries(update)) {
@@ -779,6 +817,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	setSampleComponentKeys(keys: Iterable<string>): void {
+		this.sampleBindingGeneration++;
 		this.sampleComponentKeys.clear();
 		for (const key of keys) this.sampleComponentKeys.add(key);
 	}

@@ -47,6 +47,8 @@ export class ShellyCoverSession {
 		if (!this.isReady() || !context.isCurrent()) return false;
 		this.submitting = true;
 		let preflight: Awaited<ReturnType<ShellyCoverSession['read']>>;
+		let reservation: string | null = null;
+		let possiblySent = false;
 		try {
 			preflight = await this.read(context.isCurrent, invalid);
 			if (
@@ -58,17 +60,23 @@ export class ShellyCoverSession {
 				return false;
 			// Latch before submission; a timeout/rejection does not prove the device did not execute.
 			const token = await this.ordering.reserve(this.physicalIdentity);
+			reservation = token;
 			if (!token) return false;
 			if (!context.isCurrent()) {
 				await this.ordering.settle(this.physicalIdentity, token);
 				return false;
 			} // no request submitted
 			this.uncertain = true;
-			const result = await this.rpc.withSendGuard(context.isCurrent, () =>
-				this.rpc.request<unknown>(`Cover.${action === 'open' ? 'Open' : action === 'close' ? 'Close' : 'Stop'}`, {
-					id: this.componentId,
-					tag: context.tag,
-				}),
+			const result = await this.rpc.withSendGuard(
+				context.isCurrent,
+				() =>
+					this.rpc.request<unknown>(`Cover.${action === 'open' ? 'Open' : action === 'close' ? 'Close' : 'Stop'}`, {
+						id: this.componentId,
+						tag: context.tag,
+					}),
+				() => {
+					possiblySent = true;
+				},
 			);
 			if (result !== null) return false;
 			await this.ordering.settle(this.physicalIdentity, token);
@@ -78,7 +86,16 @@ export class ShellyCoverSession {
 		} catch {
 			return false;
 		} finally {
-			this.submitting = false;
+			// Request settlement fences every queued/retry send before this cleanup. Only
+			// absence of *any* transport-boundary attempt proves the reservation unsent.
+			try {
+				if (reservation && !possiblySent) {
+					await this.ordering.settle(this.physicalIdentity, reservation);
+					this.uncertain = false;
+				}
+			} finally {
+				this.submitting = false;
+			}
 		}
 		while (context.isCurrent() && this.identityCurrent()) {
 			try {

@@ -68,6 +68,7 @@ class CoverTransport extends GuardedShellyRpcHandler {
 	actionTag: string | null = null;
 	post: (raw: Record<string, unknown>) => unknown = (raw) => raw;
 	actionResponse: () => unknown = () => null;
+	pre: (raw: Record<string, unknown>) => unknown = (raw) => raw;
 	gate: Promise<void> = Promise.resolve();
 	protected override createSocket(): WebSocket {
 		return Object.assign(new EventEmitter(), {
@@ -78,7 +79,7 @@ class CoverTransport extends GuardedShellyRpcHandler {
 				callback();
 				let result: unknown;
 				if (frame.method === 'Cover.GetStatus')
-					result = this.actionTag ? this.post({ ...this.state, tag: this.actionTag }) : this.state;
+					result = this.actionTag ? this.post({ ...this.state, tag: this.actionTag }) : this.pre(this.state);
 				else {
 					this.actionTag = typeof frame.params.tag === 'string' ? frame.params.tag : null;
 					this.state = {
@@ -116,7 +117,7 @@ class CoverTransport extends GuardedShellyRpcHandler {
 	}
 }
 const until = async (condition: () => boolean | Promise<boolean>): Promise<void> => {
-	for (let i = 0; i < 200; i++) {
+	for (let i = 0; i < 400; i++) {
 		if (await condition()) return;
 		await new Promise<void>((resolve) => setTimeout(resolve, 5));
 	}
@@ -484,8 +485,15 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		['uncalibrated', { pos_control: false }],
 		['obstruction', { errors: ['obstruction'] }],
 	] as const)('does not confirm %s while retaining other member success', async (_name, override) => {
-		transports[0].post = (raw) => ({ ...raw, ...override });
-		const result = await send('open', groupCommand, 1500);
+		// End via the bounded read timeout, leaving parent-finalization budget under host load.
+		// Dedicated ACK/deadline cases separately exercise absolute composite expiration.
+		let observed = false;
+		transports[0].post = (raw) => {
+			if (observed) return HOLD;
+			observed = true;
+			return { ...raw, ...override };
+		};
+		const result = await send('open', groupCommand, 3000);
 		if (result.composite?.status !== 'partial')
 			throw new Error(`Unexpected member outcomes: ${JSON.stringify(result)}`);
 		expect(result.composite.status).toBe('partial');
@@ -567,6 +575,88 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect(result.composite.status).toBe('partial');
 		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(1);
 	});
+	it.each([{ current_pos: 55 }, { apower: 12 }, { state: 'opening' }])(
+		'refreshes native telemetry delta %j using a distinct full read without cached-field synthesis',
+		async (delta) => {
+			transports[0].state = { ...transports[0].state, current_pos: 55, state: 'opening' };
+			const before = values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).acceptanceGeneration;
+			emitRaw(0, delta);
+			await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 55);
+			expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).value).toBe('opening');
+			expect(
+				values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000).acceptanceGeneration,
+			).toBeGreaterThan(before);
+			expect(transports[0].frames.map((frame) => frame.method)).toEqual(['Cover.GetStatus']);
+			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+		},
+	);
+	it('discards an in-flight refresh overtaken by a delta and coalesces one newer full read', async () => {
+		transports[0].pre = () => HOLD;
+		emitRaw(0, { current_pos: 50 });
+		await until(() => transports[0].frames.length === 1);
+		emitRaw(0, { current_pos: 60 });
+		transports[0].state.current_pos = 60;
+		transports[0].pre = (raw) => raw;
+		transports[0].answer(transports[0].frames[0], { ...transports[0].state, current_pos: 50 });
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 60);
+		expect(transports[0].frames).toHaveLength(2);
+	});
+	it('coalesces normal delta bursts and invalidates on failed full refresh without minting command proof', async () => {
+		transports[0].state.current_pos = 55;
+		emitRaw(0, { apower: 1 });
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value === 55);
+		const original = values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000);
+		transports[0].pre = () => HOLD;
+		emitRaw(0, { apower: 1 });
+		emitRaw(0, { current_pos: 41 });
+		emitRaw(0, { state: 'opening' });
+		await until(() => transports[0].frames.length === 2);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)).toMatchObject({
+			value: 55,
+			acceptanceGeneration: original.acceptanceGeneration,
+			sampledAt: original.sampledAt,
+		});
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)).toBeNull();
+		expect(transports[0].frames).toHaveLength(2);
+	});
+	it.each(['disconnect', 'remap', 'newer full fault'])('fences a pending normal refresh across %s', async (change) => {
+		transports[0].pre = () => HOLD;
+		emitRaw(0, { current_pos: 55 });
+		await until(() => transports[0].frames.length === 1);
+		if (change === 'disconnect') transports[0].socketDisconnectForTest();
+		else if (change === 'remap') manager.get(physical[0].device.identifier).setSampleComponentKeys([]);
+		else {
+			emitRaw(0, { id: 0, state: 'stopped', current_pos: null, pos_control: false, errors: ['obstruction'] });
+			await until(() => values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000) === null);
+		}
+		transports[0].answer(transports[0].frames[0], {
+			id: 0,
+			state: 'opening',
+			current_pos: 55,
+			pos_control: true,
+			tag: 'external',
+		});
+		await new Promise<void>((resolve) => setTimeout(resolve, 20));
+		expect(values.readQualifiedSample(property(0, PropertyCategory.POSITION), 300000)?.value).not.toBe(55);
+	});
+	it('normal refreshed status with an action tag cannot confirm an ACK-only command readback', async () => {
+		transports[0].post = () => HOLD;
+		const pending = send('open', groupCommand, 700);
+		await until(() => transports[0].frames.length >= 3);
+		emitRaw(0, { apower: 12 });
+		await until(() => transports[0].frames.length >= 4);
+		transports[0].answer(transports[0].frames[3], {
+			id: 0,
+			state: 'opening',
+			current_pos: 40,
+			pos_control: true,
+			tag: transports[0].actionTag,
+		});
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value === 'opening');
+		expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
+		expect((await pending).composite.status).toBe('partial');
+	});
 	it('ACK-only stays pending, times out and cannot be repaired by a late readback', async () => {
 		transports[0].post = () => HOLD;
 		const pending = send('open', groupCommand, 400);
@@ -607,19 +697,55 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect(superseded.composite.children.some((child) => child.status === 'superseded')).toBe(true);
 		expect(values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value).toBe('stopped');
 	});
-	it('fences an SDK connect-queued request at send when a newer direct control supersedes the group', async () => {
+	it('releases only proven unsent action ordering after a queued-send guard rejection, including a new session', async () => {
 		let release: () => void;
-		transports[0].gate = new Promise<void>((resolve) => {
-			release = resolve;
-		});
+		transports[0].pre = (raw) => {
+			transports[0].gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			return raw;
+		};
 		const old = send('open', groupCommand, 5000);
-		await until(() => transports[1].frames.length >= 3);
+		await until(
+			async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 1 && transports[1].frames.length >= 3,
+		);
 		await send(60, property(0, PropertyCategory.POSITION).id);
 		release();
 		expect((await old).success).toBe(false);
+		await until(async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 0);
 		expect(transports[0].frames.some((frame) => frame.method === 'Cover.Open')).toBe(false);
+		transports[0].pre = (raw) => raw;
+		expect((await send('open', property(0, PropertyCategory.COMMAND).id)).success).toBe(true);
+		// Drop the cached session and recreate journal access, as after process restart.
+		(
+			manager.get(physical[0].device.identifier) as unknown as { coverSessions: Map<number, unknown> }
+		).coverSessions.clear();
+		Object.assign(manager, {
+			coverOrdering: new ShellyCoverOrderingService(db.getRepository(ShellyCoverOrderingEntity)),
+		});
+		expect((await send('stop', property(0, PropertyCategory.COMMAND).id)).success).toBe(true);
 	});
 
+	it('retires a timed-out never-sent reservation and fences a later connect release', async () => {
+		let release: () => void;
+		transports[0].pre = (raw) => {
+			transports[0].gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			return raw;
+		};
+		const old = send('open', groupCommand, 5000);
+		await until(
+			async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 1 && transports[1].frames.length >= 3,
+		);
+		expect((await old).success).toBe(false);
+		await until(async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 0);
+		release();
+		await new Promise<void>((resolve) => setTimeout(resolve, 20));
+		expect(transports[0].frames.some((frame) => frame.method === 'Cover.Open')).toBe(false);
+		transports[0].pre = (raw) => raw;
+		expect((await send('stop', property(0, PropertyCategory.COMMAND).id)).success).toBe(true);
+	});
 	it('does not resend an expired/superseded cover action during SDK digest authentication retry', async () => {
 		transports[0].actionResponse = () => HOLD;
 		const old = send('open', groupCommand, 1500);
@@ -629,6 +755,12 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect((await old).success).toBe(false);
 		await new Promise<void>((resolve) => setTimeout(resolve, 10));
 		expect(transports[0].frames.filter((frame) => frame.method === 'Cover.Open')).toHaveLength(1);
+		expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(1);
+		expect(
+			await new ShellyCoverOrderingService(db.getRepository(ShellyCoverOrderingEntity)).blocked(
+				`${physical[0].device.canonicalMac}|cover:0`,
+			),
+		).toBe(true);
 	});
 	it('checks sibling effect ownership at admission and while accepting a proof', async () => {
 		let allowed = true;

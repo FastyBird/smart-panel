@@ -30,14 +30,16 @@ export function nativeCoverStatus(value: unknown, componentId: number): NativeCo
 	return raw as unknown as NativeCoverStatus;
 }
 export const coverStatusReason = (value: Readonly<Record<string, unknown>>): string =>
-	value.pos_control !== true
-		? 'position_unavailable_uncalibrated'
-		: typeof value.current_pos !== 'number' ||
-			  !Number.isFinite(value.current_pos) ||
-			  value.current_pos < 0 ||
-			  value.current_pos > 100
-			? 'position_unavailable_invalid'
-			: 'cover_status_invalid_or_faulted';
+	Array.isArray(value.errors) && value.errors.includes('source_unavailable')
+		? 'cover_status_unavailable'
+		: value.pos_control !== true
+			? 'position_unavailable_uncalibrated'
+			: typeof value.current_pos !== 'number' ||
+				  !Number.isFinite(value.current_pos) ||
+				  value.current_pos < 0 ||
+				  value.current_pos > 100
+				? 'position_unavailable_invalid'
+				: 'cover_status_invalid_or_faulted';
 
 export function configuredCoverType(properties: readonly ChannelPropertyEntity[]): string | null {
 	const types = properties.filter((property) => property.category === PropertyCategory.TYPE);
