@@ -16,13 +16,13 @@ export interface AggregateInputEvidence {
 export interface AggregateInputDiagnostic {
 	readonly id: string;
 	readonly sourceIdentity: string;
-	readonly value: number | null;
+	readonly value: number | boolean | null;
 	readonly sampledAt: string | null;
 	readonly ageSeconds: number | null;
 	readonly exclusion: AggregateExclusion | null;
 }
 export interface AggregateEvaluation {
-	readonly value: number | null;
+	readonly value: number | boolean | null;
 	readonly quality: PropertyProducerQuality;
 	readonly reasons: readonly string[];
 	readonly sampledAt: Date | null;
@@ -108,6 +108,8 @@ export function evaluateAggregate(
 	step?: number | null,
 	outlierFilter?: VirtualAggregateFilter | null,
 ): AggregateEvaluation {
+	if (operator === VirtualAggregateOperator.ANY || operator === VirtualAggregateOperator.ALL)
+		return evaluateBinaryAggregate(operator, minimumValidInputs, maximumAgeSeconds, evidence, now, step, outlierFilter);
 	let included: { id: string; value: number; weight: number; sampled: number; expiry: number; degraded: boolean }[] =
 		[];
 	const inputs = [...evidence]
@@ -218,4 +220,56 @@ export function evaluateAggregate(
 		expiresAt: new Date(Math.min(comparisonExpiry, ...included.map((input) => input.expiry))),
 		inputs,
 	};
+}
+
+/** Reuse identical identity, freshness, quorum and age admission; only actual booleans enter the truth table. */
+function evaluateBinaryAggregate(
+	operator: VirtualAggregateOperator,
+	quorum: number,
+	maximumAgeSeconds: number,
+	evidence: readonly AggregateInputEvidence[],
+	now: Date,
+	step?: number | null,
+	filter?: VirtualAggregateFilter | null,
+): AggregateEvaluation {
+	const admitted = evaluateAggregate(
+		VirtualAggregateOperator.MEAN,
+		quorum,
+		maximumAgeSeconds,
+		evidence.map((input) => ({
+			...input,
+			exclusion: input.exclusion ?? (typeof input.sample?.value === 'boolean' ? undefined : 'invalid'),
+			sample: input.sample ? { ...input.sample, value: input.sample.value === true ? 1 : 0 } : null,
+		})),
+		now,
+	);
+	const inputs = admitted.inputs.map((input) => ({
+		...input,
+		value: typeof evidence.find((item) => item.id === input.id)?.sample?.value === 'boolean' ? input.value === 1 : null,
+	}));
+	if (step != null || filter != null || evidence.some((input) => (input.weight ?? 1) !== 1))
+		return {
+			...admitted,
+			inputs,
+			value: null,
+			quality: 'unavailable',
+			sampledAt: null,
+			expiresAt: null,
+			reasons: ['invalid_policy'],
+		};
+	if (admitted.quality === 'unavailable') return { ...admitted, inputs };
+	const decisive = operator === VirtualAggregateOperator.ANY;
+	const retained = inputs.filter((input) => input.exclusion === null);
+	const hasDecisive = retained.some((input) => input.value === decisive);
+	if (!hasDecisive && retained.length !== evidence.length)
+		return {
+			...admitted,
+			inputs,
+			value: null,
+			quality: 'unavailable',
+			sampledAt: null,
+			expiresAt: null,
+			reasons: ['unknown_members', ...admitted.reasons],
+		};
+	return { ...admitted, inputs, value: hasDecisive ? decisive : !decisive };
 }

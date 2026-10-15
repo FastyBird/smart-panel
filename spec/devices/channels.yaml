@@ -382,7 +382,7 @@ illuminance:
       format: [0,100000]
     level:
       category: level
-      required: true
+      required: false
       description:
         en: Value as discrete level (low/medium/high)
       permissions:

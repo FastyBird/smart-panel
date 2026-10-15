@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Modo",
 		"projection": "Proyección",
-		"aggregate": "Temperatura agregada",
+		"aggregate": "Sensor agregado",
 		"transform": "Conversión numérica",
 		"group": "Grupo de luces",
 		"name": "Nombre",
@@ -198,7 +198,10 @@
 			"mean": "Media",
 			"median": "Mediana",
 			"min": "Mínimo",
-			"max": "Máximo"
+			"max": "Máximo",
+			"weighted_mean": "Media ponderada",
+			"any": "Cualquiera detectado",
+			"all": "Todos detectados"
 		},
 		"states": {
 			"good": "Buena",
@@ -232,8 +235,35 @@
 			"output_out_of_range": "Valor fuera del rango",
 			"invalid_domain": "Fuera del dominio matemático",
 			"producer_disposed": "Productor detenido",
-			"unknown": "Diagnóstico desconocido"
-		}
+			"unknown": "Diagnóstico desconocido",
+			"outlier": "Valor atípico excluido",
+			"insufficient_comparison_cohort": "Fuentes insuficientes para comparar",
+			"unknown_members": "Los miembros desconocidos impiden un resultado",
+			"preview_revoked": "Vista previa revocada; recargue y vuelva a previsualizar"
+		},
+		"weight": "Peso relativo",
+		"filter": "Excluir valores atípicos (desviación de la mediana)",
+		"filterThreshold": "Desviación máxima ({unit})",
+		"filterCohort": "Se requieren al menos tres fuentes válidas antes de filtrar. El cuórum cuenta fuentes conservadas, no pesos.",
+		"grid": "Paso de salida: {step} {unit} (más cercano, empates hacia +∞)",
+		"legacyGrid": "Conserva la precisión de temperatura declarada",
+		"sampleAge": "Edad de la muestra: {age} s",
+		"aggregatePreviewOnly": "Instantánea del borrador evaluada por el servidor con muestras válidas actuales. Es de solo lectura, caduca con sus datos y no garantiza frescura ni disponibilidad al guardar. Las fuentes nuevas pueden requerir informes nuevos tras la creación.",
+		"profiles": {
+			"temperature": "Temperatura (°C)",
+			"humidity": "Humedad relativa (%)",
+			"carbon_dioxide": "Concentración de CO₂ (ppm)",
+			"illuminance": "Iluminancia (lx)",
+			"contact": "Contacto",
+			"motion": "Movimiento",
+			"occupancy": "Presencia"
+		},
+		"evaluatedAt": "Evaluado a las: {time}",
+		"expiresAt": "Los datos caducan a las: {time}",
+		"previewExpired": "La instantánea del borrador ha caducado. Vuelva a previsualizar antes de guardar.",
+		"detected": "Detectado",
+		"notDetected": "No detectado",
+		"snapshotQuality": "Calidad del borrador: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Aplicar",

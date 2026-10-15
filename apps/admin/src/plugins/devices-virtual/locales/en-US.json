@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Mode",
 		"projection": "Projection",
-		"aggregate": "Aggregate temperature",
+		"aggregate": "Sensor aggregate",
 		"transform": "Numeric conversion",
 		"group": "Light group",
 		"name": "Name",
@@ -198,7 +198,10 @@
 			"mean": "Mean",
 			"median": "Median",
 			"min": "Minimum",
-			"max": "Maximum"
+			"max": "Maximum",
+			"weighted_mean": "Weighted mean",
+			"any": "Any detected",
+			"all": "All detected"
 		},
 		"states": {
 			"good": "Good",
@@ -232,8 +235,35 @@
 			"output_out_of_range": "Value outside range",
 			"invalid_domain": "Outside mathematical domain",
 			"producer_disposed": "Producer stopped",
-			"unknown": "Unknown diagnostic"
-		}
+			"unknown": "Unknown diagnostic",
+			"outlier": "Outlier excluded",
+			"insufficient_comparison_cohort": "Not enough sources for comparison",
+			"unknown_members": "Unknown members prevent a result",
+			"preview_revoked": "Preview revoked; reload and preview again"
+		},
+		"weight": "Relative weight",
+		"filter": "Exclude outliers (deviation from median)",
+		"filterThreshold": "Maximum deviation ({unit})",
+		"filterCohort": "Requires at least three qualified sources before filtering. Quorum counts retained sources, not weights.",
+		"grid": "Output step: {step} {unit} (nearest, ties toward +∞)",
+		"legacyGrid": "Preserves declared temperature precision",
+		"sampleAge": "Sample age: {age} s",
+		"aggregatePreviewOnly": "Draft snapshot evaluated by the backend from currently qualified samples. It is read-only, expires with its evidence, and does not guarantee freshness or availability when saved. New sources may require fresh reports after creation.",
+		"profiles": {
+			"temperature": "Temperature (°C)",
+			"humidity": "Relative humidity (%)",
+			"carbon_dioxide": "CO₂ concentration (ppm)",
+			"illuminance": "Illuminance (lx)",
+			"contact": "Contact",
+			"motion": "Motion",
+			"occupancy": "Occupancy"
+		},
+		"evaluatedAt": "Evaluated at: {time}",
+		"expiresAt": "Evidence expires at: {time}",
+		"previewExpired": "The draft snapshot expired. Preview again before saving.",
+		"detected": "Detected",
+		"notDetected": "Not detected",
+		"snapshotQuality": "Draft quality: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Apply",

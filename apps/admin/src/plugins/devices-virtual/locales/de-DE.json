@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Modus",
 		"projection": "Projektion",
-		"aggregate": "Aggregierte Temperatur",
+		"aggregate": "Sensoraggregat",
 		"transform": "Numerische Umrechnung",
 		"group": "Lichtgruppe",
 		"name": "Name",
@@ -198,7 +198,10 @@
 			"mean": "Mittelwert",
 			"median": "Median",
 			"min": "Minimum",
-			"max": "Maximum"
+			"max": "Maximum",
+			"weighted_mean": "Gewichteter Mittelwert",
+			"any": "Mindestens einer erkannt",
+			"all": "Alle erkannt"
 		},
 		"states": {
 			"good": "Gut",
@@ -232,8 +235,35 @@
 			"output_out_of_range": "Wert außerhalb des Bereichs",
 			"invalid_domain": "Außerhalb des mathematischen Bereichs",
 			"producer_disposed": "Produzent gestoppt",
-			"unknown": "Unbekannte Diagnose"
-		}
+			"unknown": "Unbekannte Diagnose",
+			"outlier": "Ausreißer ausgeschlossen",
+			"insufficient_comparison_cohort": "Nicht genügend Quellen zum Vergleich",
+			"unknown_members": "Unbekannte Mitglieder verhindern ein Ergebnis",
+			"preview_revoked": "Vorschau widerrufen; neu laden und erneut prüfen"
+		},
+		"weight": "Relatives Gewicht",
+		"filter": "Ausreißer ausschließen (Abweichung vom Median)",
+		"filterThreshold": "Maximale Abweichung ({unit})",
+		"filterCohort": "Vor dem Filtern sind mindestens drei gültige Quellen nötig. Das Quorum zählt beibehaltene Quellen, keine Gewichte.",
+		"grid": "Ausgabeschritt: {step} {unit} (nächster Wert, Gleichstand zu +∞)",
+		"legacyGrid": "Behält die deklarierte Temperaturpräzision bei",
+		"sampleAge": "Probenalter: {age} s",
+		"aggregatePreviewOnly": "Vom Backend anhand aktuell gültiger Proben ausgewerteter Entwurf. Der schreibgeschützte Schnappschuss verfällt mit seinen Nachweisen und garantiert keine Frische oder Verfügbarkeit beim Speichern. Neue Quellen können nach der Erstellung neue Meldungen erfordern.",
+		"profiles": {
+			"temperature": "Temperatur (°C)",
+			"humidity": "Relative Feuchte (%)",
+			"carbon_dioxide": "CO₂-Konzentration (ppm)",
+			"illuminance": "Beleuchtungsstärke (lx)",
+			"contact": "Kontakt",
+			"motion": "Bewegung",
+			"occupancy": "Anwesenheit"
+		},
+		"evaluatedAt": "Ausgewertet um: {time}",
+		"expiresAt": "Nachweise verfallen um: {time}",
+		"previewExpired": "Der Entwurfsschnappschuss ist abgelaufen. Vor dem Speichern erneut prüfen.",
+		"detected": "Erkannt",
+		"notDetected": "Nicht erkannt",
+		"snapshotQuality": "Entwurfsqualität: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Anwenden",

@@ -8,6 +8,7 @@ import {
 	VirtualAggregateFilter,
 	VirtualAggregateFilterKind,
 	VirtualAggregateOperator,
+	VirtualAggregateProfile,
 	VirtualLightGroupProfile,
 } from '../entities/virtual-producer.entity';
 
@@ -45,9 +46,13 @@ export class VirtualProducerBindingModel {
 	@Expose()
 	unit: string | null;
 
-	@ApiPropertyOptional({ description: 'Current source numeric value', type: Number, nullable: true })
+	@ApiPropertyOptional({
+		description: 'Current source value',
+		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+	})
 	@Expose()
-	current_value?: number | null;
+	current_value?: number | boolean | null;
 
 	@ApiPropertyOptional({
 		description: 'Original source sample timestamp',
@@ -86,8 +91,97 @@ export class VirtualAggregateOutlierFilterModel implements VirtualAggregateFilte
 	threshold: number;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataAggregatePreview' })
+export class VirtualAggregatePreviewModel {
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		description:
+			'Ephemeral evaluation of the proposed policy against qualified live evidence. Does not admit sources for future creation or publish a live reading.',
+	})
+	@Expose()
+	evaluated_at: string;
+
+	@ApiProperty({ type: String, format: 'date-time', nullable: true })
+	@Expose()
+	sampled_at: string | null;
+
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		nullable: true,
+		description: 'Earliest evidence expiry; null for unavailable results. Never extended by reading the preview.',
+	})
+	@Expose()
+	expires_at: string | null;
+
+	@ApiProperty({ enum: VirtualAggregateProfile })
+	@Expose()
+	profile: VirtualAggregateProfile;
+
+	@ApiProperty({ type: String, nullable: true })
+	@Expose()
+	unit: string | null;
+
+	@ApiProperty({ type: Number, nullable: true })
+	@Expose()
+	output_step: number | null;
+
+	@ApiProperty({ oneOf: [{ type: 'number' }, { type: 'boolean' }], nullable: true })
+	@Expose()
+	value: number | boolean | null;
+
+	@ApiProperty({ enum: ['good', 'degraded', 'unavailable'] })
+	@Expose()
+	quality: 'good' | 'degraded' | 'unavailable';
+
+	@ApiProperty({ type: [String] })
+	@Expose()
+	reasons: string[];
+
+	@ApiProperty({
+		type: [VirtualProducerBindingModel],
+		description:
+			'Evaluated draft input diagnostics. Saved runtime diagnostics are returned separately by configuration reads.',
+	})
+	@Expose()
+	@Type(() => VirtualProducerBindingModel)
+	inputs: VirtualProducerBindingModel[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataAggregateConfiguration' })
 export class VirtualAggregateConfigurationModel {
+	@ApiPropertyOptional({
+		type: VirtualAggregatePreviewModel,
+		description: 'Present only for preview requests; evaluated draft snapshot, never saved runtime authority.',
+	})
+	@Expose()
+	@Type(() => VirtualAggregatePreviewModel)
+	preview_result?: VirtualAggregatePreviewModel;
+
+	@ApiProperty({
+		description: 'Exact canonical channel/quantity profile; excludes smoke and leak policy',
+		enum: VirtualAggregateProfile,
+	})
+	@Expose()
+	profile: VirtualAggregateProfile;
+
+	@ApiProperty({
+		description:
+			'Fixed output precision grid; null preserves the legacy temperature declared grid or floating precision',
+		type: Number,
+		nullable: true,
+	})
+	@Expose()
+	output_step: number | null;
+
+	@ApiProperty({
+		description: 'Final numeric rounding policy; binary values are never rounded',
+		enum: ['nearest_ties_positive'],
+	})
+	@Expose()
+	rounding: string;
+
 	@ApiProperty({
 		description: 'Explicit outlier filter, null when disabled',
 		type: VirtualAggregateOutlierFilterModel,
@@ -374,4 +468,80 @@ export class VirtualLightGroupConfigurationResponseModel extends BaseSuccessResp
 	@Expose()
 	@Type(() => VirtualLightGroupConfigurationModel)
 	declare data: VirtualLightGroupConfigurationModel;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataAggregateProfile' })
+export class VirtualAggregateProfileModel {
+	@ApiProperty({ enum: VirtualAggregateProfile })
+	@Expose()
+	profile: VirtualAggregateProfile;
+
+	@ApiProperty({ description: 'Canonical channel; distinguishes contact, motion and occupancy', type: String })
+	@Expose()
+	channel: string;
+
+	@ApiProperty({ description: 'Canonical property category', enum: PropertyCategory })
+	@Expose()
+	quantity: PropertyCategory;
+
+	@ApiProperty({ type: String, nullable: true })
+	@Expose()
+	unit: string | null;
+
+	@ApiProperty({ enum: DataTypeType, isArray: true })
+	@Expose()
+	data_types: DataTypeType[];
+
+	@ApiProperty({ enum: VirtualAggregateOperator, isArray: true })
+	@Expose()
+	operators: VirtualAggregateOperator[];
+
+	@ApiProperty({ description: 'Whether weights and numeric outlier filtering are supported' })
+	@Expose()
+	numeric_policy: boolean;
+
+	@ApiProperty({
+		type: Number,
+		nullable: true,
+		description: 'Fixed grid, or null for legacy declared temperature precision/binary',
+	})
+	@Expose()
+	output_step: number | null;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginResAggregateProfiles' })
+export class VirtualAggregateProfilesResponseModel extends BaseSuccessResponseModel<VirtualAggregateProfileModel[]> {
+	@ApiProperty({
+		type: [VirtualAggregateProfileModel],
+		description: 'Supported profiles only; no generic alarm/security policy',
+	})
+	@Expose()
+	@Type(() => VirtualAggregateProfileModel)
+	declare data: VirtualAggregateProfileModel[];
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataAggregateSource' })
+export class VirtualAggregateSourceModel {
+	@ApiProperty({ format: 'uuid' })
+	@Expose()
+	property: string;
+
+	@ApiProperty({ format: 'uuid' })
+	@Expose()
+	channel: string;
+
+	@ApiProperty({ format: 'uuid' })
+	@Expose()
+	device: string;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginResAggregateSources' })
+export class VirtualAggregateSourcesResponseModel extends BaseSuccessResponseModel<VirtualAggregateSourceModel[]> {
+	@ApiProperty({
+		type: [VirtualAggregateSourceModel],
+		description: 'Structurally eligible sources; live freshness is still required at runtime',
+	})
+	@Expose()
+	@Type(() => VirtualAggregateSourceModel)
+	declare data: VirtualAggregateSourceModel[];
 }

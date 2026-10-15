@@ -67,6 +67,7 @@ export class VirtualMeasurementAuthoringService {
 
 	async previewAggregate(dto: CreateVirtualAggregateProducerDto): Promise<VirtualAggregateConfigurationModel> {
 		return this.lock.runExclusive(async () => {
+			const graphCurrent = this.graph.capturePublishGuard();
 			const draft = await this.draft(
 				this.dataSource.manager,
 				dto.device,
@@ -82,7 +83,7 @@ export class VirtualMeasurementAuthoringService {
 				draft.output,
 				true,
 			);
-			return this.aggregates.describeAggregate(prepared, revision);
+			return this.aggregates.previewPreparedAggregate(prepared, revision, graphCurrent);
 		});
 	}
 
@@ -285,13 +286,13 @@ export class VirtualMeasurementAuthoringService {
 		if (
 			output.id !== outputPropertyId ||
 			!output.isDerived ||
-			output.dataType !== DataTypeType.FLOAT ||
+			![DataTypeType.FLOAT, DataTypeType.UCHAR, DataTypeType.BOOL].includes(output.dataType) ||
 			output.permissions.length !== 1 ||
 			output.permissions[0] !== PermissionType.READ_ONLY ||
 			output.sourcePropertyId
 		)
 			throw new DevicesValidationException(
-				'The selected output must be an owned readonly derived float without a projection source.',
+				'The selected output must be an owned readonly derived measurement without a projection source.',
 			);
 		if (
 			fakeChannels.some((channel) =>

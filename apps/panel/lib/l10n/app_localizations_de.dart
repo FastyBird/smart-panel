@@ -4244,4 +4244,36 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get climate_temperature_coverage_unavailable =>
       'Die Raumtemperatur ist nicht verfügbar. Prüfen Sie die Sensorkonfiguration und Verfügbarkeit.';
+
+  @override
+  String get virtual_measurement_state_outlier => 'Ausreißer ausgeschlossen';
+
+  @override
+  String get virtual_measurement_state_insufficient_comparison_cohort =>
+      'Nicht genügend Quellen zum Vergleich';
+
+  @override
+  String get virtual_measurement_state_unknown_members =>
+      'Unbekannte Mitglieder verhindern ein Ergebnis';
+
+  @override
+  String virtual_measurement_grid(String step, String unit) {
+    return 'Ausgabeschritt: $step $unit (nächster Wert, Gleichstand zu +∞)';
+  }
+
+  @override
+  String virtual_measurement_weight(String weight) {
+    return 'Relatives Gewicht: $weight';
+  }
+
+  @override
+  String virtual_measurement_age(String age) {
+    return 'Probenalter: $age s';
+  }
+
+  @override
+  String get virtual_measurement_true => 'Erkannt';
+
+  @override
+  String get virtual_measurement_false => 'Nicht erkannt';
 }

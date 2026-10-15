@@ -1255,5 +1255,37 @@
   "virtual_measurement_state_producer_disposed": "Producent zatrzymany",
   "virtual_measurement_state_unknown": "Nieznana diagnostyka",
   "climate_temperature_coverage_conflict": "Czujniki temperatury pomieszczenia nakładają się. Wybierz jednego przedstawiciela w ustawieniach udziału w klimacie pomieszczenia.",
-  "climate_temperature_coverage_unavailable": "Temperatura pomieszczenia jest niedostępna. Sprawdź konfigurację i dostępność czujników."
+  "climate_temperature_coverage_unavailable": "Temperatura pomieszczenia jest niedostępna. Sprawdź konfigurację i dostępność czujników.",
+  "virtual_measurement_state_outlier": "Wartość odstająca wykluczona",
+  "virtual_measurement_state_insufficient_comparison_cohort": "Za mało źródeł do porównania",
+  "virtual_measurement_state_unknown_members": "Nieznani członkowie uniemożliwiają wynik",
+  "virtual_measurement_grid": "Krok wyjściowy: {step} {unit} (najbliższy, remisy do +∞)",
+  "@virtual_measurement_grid": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_weight": "Waga względna: {weight}",
+  "@virtual_measurement_weight": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_age": "Wiek próbki: {age} s",
+  "@virtual_measurement_age": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_true": "Wykryto",
+  "virtual_measurement_false": "Nie wykryto"
 }

@@ -44,6 +44,7 @@ import {
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { GROUP_PROFILES, groupProfileForChannel } from './virtual-group-profile';
+import { isEligibleAggregateOutput } from './virtual-numeric-profile.utils';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
 import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 import { isTransformOutputSlot } from './virtual-transform-contract.utils';
@@ -332,7 +333,7 @@ export class VirtualDevicesService {
 			!channel ||
 			!device ||
 			!(
-				isEligibleVirtualMeasurement(property, channel, device) ||
+				isEligibleAggregateOutput(property, channel, device) ||
 				(transformProperty && isTransformOutputSlot(transformProperty)) ||
 				(device.type === DEVICES_VIRTUAL_TYPE &&
 					(device as VirtualDeviceEntity).mode === VirtualDeviceMode.ACTUATOR_GROUP &&

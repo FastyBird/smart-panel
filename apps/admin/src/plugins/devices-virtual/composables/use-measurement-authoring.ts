@@ -1,19 +1,23 @@
-import { computed, reactive, ref } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, reactive, ref, watch } from 'vue';
 
 import { useBackend } from '../../../common';
 import { getErrorReason } from '../../../common/utils/api-error.utils';
 import {
+	DevicesVirtualPluginAggregateOutlierFilterKind,
 	DevicesVirtualPluginConfigureAggregateOperator,
 	DevicesVirtualPluginNumericTransformPolicyOperator,
 } from '../../../openapi';
 import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import {
 	type AggregateConfiguration,
+	type AggregateProfile,
+	type AggregateSource,
 	type AggregateState,
 	type MeasurementMode,
 	type TransformConfiguration,
 	type TransformPolicy,
 	type TransformState,
+	aggregateDraft,
 	measurementDraft,
 } from '../utils/measurement-authoring.utils';
 
@@ -33,6 +37,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const ids = { device: crypto.randomUUID(), channel: crypto.randomUUID(), output: outputId ?? crypto.randomUUID() };
 	const model = reactive({
 		name: '',
+		profile: 'temperature' as AggregateProfile['profile'],
+		filterEnabled: false,
+		filterThreshold: undefined as number | undefined,
 		temperature: true,
 		quantity: 'temperature',
 		unit: '°C',
@@ -57,19 +64,90 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		coefficientC: undefined as number | undefined,
 		thermistorLeg: undefined as TransformPolicy['thermistorLeg'],
 		previewInput: undefined as number | undefined,
-		inputs: [] as { id?: string; source_property: string | null; identity?: string }[],
+		inputs: [] as { id?: string; source_property: string | null; identity?: string; weight?: number }[],
 	});
+	const profiles = ref<AggregateProfile[]>([]);
+	const sources = ref<AggregateSource[]>([]);
+	const sourcesLoading = ref(false);
+	const sourcesError = ref<string | null>(null);
+	const selectedProfile = computed(() => profiles.value.find((profile) => profile.profile === model.profile));
+	const numericPolicy = computed(() => selectedProfile.value?.numeric_policy === true);
+	let sourceRequest = 0;
+	const loadSources = async () => {
+		invalidatePreview();
+		const request = ++sourceRequest;
+		sources.value = [];
+		sourcesLoading.value = true;
+		sourcesError.value = null;
+		try {
+			const result = await backend.client.GET('/plugins/devices-virtual/producers/aggregate-profiles/{profile}/sources', {
+				params: { path: { profile: model.profile } },
+			});
+			const value = response(result.data, result.error, result.response?.status);
+			if (request === sourceRequest) sources.value = value;
+		} catch {
+			if (request === sourceRequest) sourcesError.value = 'measurementCatalog';
+		} finally {
+			if (request === sourceRequest) sourcesLoading.value = false;
+		}
+	};
+	const loadCapabilities = async () => {
+		if (isTransform) return;
+		const result = await backend.client.GET('/plugins/devices-virtual/producers/aggregate-profiles');
+		profiles.value = response(result.data, result.error, result.response?.status);
+		await loadSources();
+	};
 	const busy = ref(false),
 		error = ref<string | null>(null),
 		conflict = ref(false);
 	const current = ref<AggregateState | TransformState | null>(null);
 	const preview = ref<AggregateState | TransformState | null>(null);
+	let draftVersion = 0;
+	const previewExpired = ref(false);
+	let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+	const invalidatePreview = () => {
+		draftVersion++;
+		clearTimeout(expiryTimer);
+		preview.value = null;
+		previewExpired.value = false;
+	};
+	if (getCurrentScope())
+		onScopeDispose(() => {
+			invalidatePreview();
+			sourceRequest++;
+		});
+	watch(
+		preview,
+		(value) => {
+			clearTimeout(expiryTimer);
+			if (!value || !('inputs' in value) || !value.preview_result?.expires_at) return;
+			const delay = Date.parse(value.preview_result.expires_at) - Date.now();
+			const expire = () => {
+				invalidatePreview();
+				previewExpired.value = true;
+			};
+			if (!(delay > 0)) expire();
+			else expiryTimer = setTimeout(expire, delay);
+		},
+		{ flush: 'sync' }
+	);
+	const canSavePreview = computed(
+		() =>
+			!!preview.value &&
+			(isTransform ||
+				('inputs' in preview.value && !!preview.value.preview_result && !preview.value.preview_result.reasons.includes('preview_revoked')))
+	);
 	const expectedRevision = ref(0),
 		expectedGraphRevision = ref<number>();
 	const isTransform = mode === DevicesVirtualPluginDeviceMode.sensor_transform;
 	const finite = (value: number | undefined): number => {
 		if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('measurementFinite');
 		return value;
+	};
+	const validFilterThreshold = () => typeof model.filterThreshold === 'number' && Number.isFinite(model.filterThreshold) && model.filterThreshold > 0;
+	const filterThreshold = () => {
+		if (!validFilterThreshold()) throw new Error('measurementFinite');
+		return finite(model.filterThreshold);
 	};
 	const policy = (): TransformPolicy => {
 		const result: TransformPolicy = {
@@ -122,7 +200,18 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					operator: model.aggregateOperator,
 					minimum_valid_inputs: model.minimumValidInputs,
 					maximum_age_seconds: model.maximumAgeSeconds,
-					inputs: model.inputs.map(({ id, source_property }) => ({ id, source_property })),
+					inputs: model.inputs.map(({ id, source_property, weight }) => ({
+						id,
+						source_property,
+						...(numericPolicy.value ? { weight: weight ?? 1 } : {}),
+					})),
+					...(numericPolicy.value
+						? {
+								outlier_filter: model.filterEnabled
+									? { kind: DevicesVirtualPluginAggregateOutlierFilterKind.absolute_deviation_from_median, threshold: filterThreshold() }
+									: null,
+							}
+						: {}),
 				};
 	const run = async <T>(operation: () => Promise<T>): Promise<T | undefined> => {
 		if (busy.value) return;
@@ -143,9 +232,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		if (data) return data.data;
 		throw new MeasurementRequestError(getErrorReason<SemanticErrorOperation>(failure, 'measurementFailed'), status);
 	};
-	const load = async () =>
-		run(async () => {
-			preview.value = null;
+	const load = async () => {
+		invalidatePreview();
+		return run(async () => {
 			current.value = null;
 			expectedRevision.value = 0;
 			expectedGraphRevision.value = undefined;
@@ -190,26 +279,48 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					Object.assign(model, { [key]: value.policy[key] });
 				model.points = value.policy.points?.map((point) => ({ ...point })) ?? [];
 			} else {
+				model.profile = value.profile ?? 'temperature';
+				model.filterEnabled = !!value.outlier_filter;
+				model.filterThreshold = value.outlier_filter?.threshold;
 				model.aggregateOperator = value.operator;
 				model.minimumValidInputs = value.minimum_valid_inputs;
-				model.inputs = value.inputs.map((input) => ({ id: input.id, source_property: input.source_property, identity: input.source_identity }));
+				model.inputs = value.inputs.map((input) => ({
+					id: input.id,
+					source_property: input.source_property,
+					identity: input.source_identity,
+					...(input.weight === undefined ? {} : { weight: input.weight }),
+				}));
 			}
 			preview.value = null;
 		});
+	};
 	const draft = () => ({
-		device: measurementDraft(
-			mode,
-			model.name,
-			!isTransform || model.temperature,
-			ids.output,
-			ids.device,
-			ids.channel,
-			isTransform ? policy().outputRange : undefined
-		),
+		device: !isTransform
+			? aggregateDraft(
+					selectedProfile.value ??
+						(() => {
+							throw new Error('measurementCatalog');
+						})(),
+					model.name,
+					ids.output,
+					ids.device,
+					ids.channel
+				)
+			: measurementDraft(
+					mode,
+					model.name,
+					!isTransform || model.temperature,
+					ids.output,
+					ids.device,
+					ids.channel,
+					isTransform ? policy().outputRange : undefined
+				),
 		output_property: ids.output,
 	});
-	const previewDraft = async () =>
-		run(async () => {
+	const previewDraft = async () => {
+		invalidatePreview();
+		const version = draftVersion;
+		return run(async () => {
 			let value: AggregateState | TransformState;
 			if (isTransform) {
 				const config = configuration() as TransformConfiguration;
@@ -232,9 +343,11 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					: await backend.client.POST('/plugins/devices-virtual/producers/aggregates/draft-preview', { body: { ...draft(), configuration: config } });
 				value = response(result.data, result.error, result.response?.status);
 			}
+			if (version !== draftVersion) return;
 			preview.value = value;
 			expectedGraphRevision.value = value.graph_revision;
 		});
+	};
 	const save = async () =>
 		run(async () => {
 			let deviceId: string | undefined;
@@ -267,6 +380,14 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					deviceId = value.device.id;
 				}
 			}
+			if ('inputs' in current.value) {
+				model.inputs = current.value.inputs.map((input) => ({
+					id: input.id,
+					source_property: input.source_property,
+					identity: input.source_identity,
+					...(input.weight === undefined ? {} : { weight: input.weight }),
+				}));
+			}
 			expectedRevision.value = current.value.revision;
 			expectedGraphRevision.value = current.value.graph_revision;
 			preview.value = null;
@@ -275,7 +396,54 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const canPreview = computed(
 		() =>
 			(isTransform ? model.inputs.length === 1 : model.inputs.length >= 2 && model.minimumValidInputs <= model.inputs.length) &&
-			model.inputs.every((input) => input.source_property !== null || !!input.id)
+			model.inputs.every((input) => input.source_property !== null || !!input.id) &&
+			(isTransform || !numericPolicy.value || !model.filterEnabled || validFilterThreshold())
 	);
-	return { model, busy, error, conflict, current, preview, isTransform, canPreview, load, previewDraft, save };
+	watch(
+		() => model.profile,
+		(profile, previous) => {
+			preview.value = null;
+			if (isTransform || profile === previous) return;
+			const capability = selectedProfile.value;
+			if (!outputId) {
+				model.inputs = [];
+				model.filterEnabled = false;
+				model.filterThreshold = undefined;
+				if (capability) model.aggregateOperator = capability.operators[0];
+			}
+			if (profiles.value.length > 0) void loadSources();
+		},
+		{ flush: 'sync' }
+	);
+	watch(
+		model,
+		() => {
+			invalidatePreview();
+		},
+		{ deep: true, flush: 'sync' }
+	);
+	return {
+		invalidatePreview,
+		previewExpired,
+		canSavePreview,
+		profiles,
+		sources,
+		sourcesLoading,
+		sourcesError,
+		selectedProfile,
+		numericPolicy,
+		loadCapabilities,
+		loadSources,
+		model,
+		busy,
+		error,
+		conflict,
+		current,
+		preview,
+		isTransform,
+		canPreview,
+		load,
+		previewDraft,
+		save,
+	};
 }

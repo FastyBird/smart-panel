@@ -11,7 +11,6 @@ import { ExtensionLoggerService } from '../../../common/logger/extension-logger.
 import {
 	ChannelCategory,
 	ConnectionState,
-	DataTypeType,
 	DeviceCategory,
 	EventType,
 	PermissionType,
@@ -44,11 +43,13 @@ import {
 	VirtualAggregateFilterKind,
 	VirtualAggregateInputEntity,
 	VirtualAggregateOperator,
+	VirtualAggregateProfile,
 } from '../entities/virtual-producer.entity';
 import { VirtualIndexMaintenanceListener } from '../listeners/virtual-index-maintenance.listener';
 
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { aggregateProfiles } from './virtual-numeric-profile.utils';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './virtual-property-index.service';
@@ -127,7 +128,11 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		await rm(directory, { recursive: true, force: true });
 	});
 
-	const measurement = async (mode?: VirtualDeviceMode): Promise<ChannelPropertyEntity> => {
+	const measurement = async (
+		mode?: VirtualDeviceMode,
+		profileId = VirtualAggregateProfile.TEMPERATURE,
+	): Promise<ChannelPropertyEntity> => {
+		const profile = aggregateProfiles.find((candidate) => candidate.id === profileId);
 		const deviceId = uuid(),
 			channelId = uuid(),
 			id = uuid();
@@ -139,12 +144,12 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		} as never);
 		await database
 			.getRepository(mode ? VirtualChannelEntity : ChannelEntity)
-			.insert({ id: channelId, device: deviceId, name: 'Temperature', category: ChannelCategory.TEMPERATURE } as never);
+			.insert({ id: channelId, device: deviceId, name: 'Measurement', category: profile.channel } as never);
 		await database.getRepository(mode ? VirtualChannelPropertyEntity : ChannelPropertyEntity).insert({
 			id,
 			channel: channelId,
-			category: PropertyCategory.TEMPERATURE,
-			dataType: DataTypeType.FLOAT,
+			category: profile.quantity,
+			dataType: profile.dataTypes[0],
 			permissions: [PermissionType.READ_ONLY],
 			...(mode ? { valueOrigin: VirtualValueOrigin.DERIVED } : {}),
 		} as never);
@@ -172,7 +177,7 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		);
 		await runtime.flush();
 	};
-	const sample = async (property: ChannelPropertyEntity, value: number | null, sampledAt = Date.now()) => {
+	const sample = async (property: ChannelPropertyEntity, value: number | boolean | null, sampledAt = Date.now()) => {
 		await values.writeSampleWithState(property, value, {
 			sampledAt: new Date(sampledAt),
 			receivedAt: new Date(),
@@ -186,6 +191,155 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		await runtime.onApplicationBootstrap();
 	};
 	const outputState = (output: ChannelPropertyEntity) => producers.read(output.id);
+
+	it('discovers only exact-profile eligible sources in a mixed catalog and skips unknown profiles', async () => {
+		const physical = await measurement();
+		const transformed = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		const quarantined = await measurement();
+		await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await measurement(VirtualDeviceMode.SENSOR_TRANSFORM, VirtualAggregateProfile.HUMIDITY);
+		for (const profile of [
+			VirtualAggregateProfile.HUMIDITY,
+			VirtualAggregateProfile.CARBON_DIOXIDE,
+			VirtualAggregateProfile.ILLUMINANCE,
+		])
+			await measurement(undefined, profile);
+		const wrongQuantity = await measurement();
+		await database.manager.update(ChannelPropertyEntity, wrongQuantity.id, { category: PropertyCategory.HUMIDITY });
+		const quarantinedCheck = jest.spyOn(graph, 'isQuarantined').mockImplementation((id) => id === quarantined.id);
+		const query = jest.spyOn(database.manager, 'createQueryBuilder');
+		expect(
+			(await configs.listAggregateSources(VirtualAggregateProfile.TEMPERATURE)).map((source) => source.property).sort(),
+		).toEqual([physical.id, transformed.id].sort());
+		// Only exact channel/quantity candidates reach the post-hydration policy checks.
+		expect(quarantinedCheck).toHaveBeenCalledTimes(4);
+		query.mockClear();
+		expect(await configs.listAggregateSources('unknown' as VirtualAggregateProfile)).toEqual([]);
+		expect(query).not.toHaveBeenCalled();
+	});
+	it.each([
+		[VirtualAggregateProfile.HUMIDITY, 40, 41, 41],
+		[VirtualAggregateProfile.CARBON_DIOXIDE, 400.1, 400.9, 401],
+		[VirtualAggregateProfile.ILLUMINANCE, 0.1, 0.2, 0.2],
+	] as const)(
+		'publishes %s on its declared grid and preserves evidence/history across equal reports, expiry and restart',
+		async (profile, first, second, expected) => {
+			const a = await measurement(undefined, profile),
+				b = await measurement(undefined, profile);
+			const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE, profile);
+			await configure(output, [a, b]);
+			expect(await configs.getAggregate(output.id)).toMatchObject({
+				profile,
+				output_step: aggregateProfiles.find((item) => item.id === profile).outputStep,
+			});
+			expect((await configs.listAggregateSources(profile)).map((item) => item.property).sort()).toEqual(
+				[a.id, b.id].sort(),
+			);
+			await start();
+			await sample(a, first);
+			await sample(b, second);
+			expect(outputState(output)).toMatchObject({
+				value: expected,
+				producer: { quality: 'good', sampledAt: new Date(base).toISOString() },
+			});
+			jest.setSystemTime(base + 4000);
+			await sample(b, second);
+			expect(outputState(output)?.producer.sampledAt).toBe(new Date(base).toISOString());
+			jest.setSystemTime(base + 10000);
+			runtime.requestRecompute();
+			await runtime.flush();
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+			expect(storage.enqueueWritePoint).toHaveBeenCalled();
+			runtime.onModuleDestroy();
+			values = new PropertyValueService(
+				storage as unknown as StorageService,
+				new PropertyValueSourceRegistryService(),
+				new PropertyValueLockService({} as never),
+				producers,
+				events,
+			);
+			runtime = new VirtualAggregateRuntimeService(
+				database,
+				producers,
+				values,
+				{
+					readLatest: () => Promise.resolve({ status: ConnectionState.UNKNOWN }),
+				} as unknown as DeviceConnectionStateService,
+				graph,
+				events,
+			);
+			await runtime.onApplicationBootstrap();
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+		},
+	);
+
+	it.each([VirtualAggregateProfile.CONTACT, VirtualAggregateProfile.MOTION, VirtualAggregateProfile.OCCUPANCY])(
+		'preserves %s fixed membership, unknowns and decisive degraded results with real producers',
+		async (profile) => {
+			const a = await measurement(undefined, profile),
+				b = await measurement(undefined, profile);
+			const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE, profile);
+			await configure(output, [a, b], 1, 0, VirtualAggregateOperator.ANY);
+			await start();
+			await sample(a, false);
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+			await sample(a, true);
+			expect(outputState(output)).toMatchObject({ value: true, producer: { quality: 'degraded' } });
+			await sample(b, false);
+			expect(outputState(output)).toMatchObject({ value: true, producer: { quality: 'good' } });
+			await database.getRepository(ChannelPropertyEntity).delete(b.id);
+			runtime.requestRecompute();
+			await runtime.flush();
+			expect(outputState(output)).toMatchObject({ value: true, producer: { quality: 'degraded' } });
+			const saved = await configs.getAggregate(output.id);
+			expect(saved.inputs).toHaveLength(2);
+			expect(saved.inputs.find((input) => input.source_identity === b.id)).toMatchObject({
+				source_property: null,
+				quantity: 'detected',
+			});
+			await sample(a, false);
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+			// Retain the missing binding by UUID when changing operator.
+			await configs.configureAggregate(
+				output.id,
+				Object.assign(new ConfigureVirtualAggregateDto(), {
+					expectedRevision: 1,
+					operator: VirtualAggregateOperator.ALL,
+					minimumValidInputs: 1,
+					maximumAgeSeconds: 10,
+					inputs: saved.inputs.map((input) => ({ id: input.id, sourcePropertyId: input.source_property })),
+				}),
+			);
+			await runtime.flush();
+			expect(outputState(output)).toMatchObject({ value: false, producer: { quality: 'degraded' } });
+			jest.setSystemTime(base + 10000);
+			runtime.requestRecompute();
+			await runtime.flush();
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+		},
+	);
+
+	it('fences a binary output profile change through the real graph without replacing its identity/history', async () => {
+		const a = await measurement(undefined, VirtualAggregateProfile.CONTACT);
+		const b = await measurement(undefined, VirtualAggregateProfile.CONTACT);
+		const output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE, VirtualAggregateProfile.CONTACT);
+		await configure(output, [a, b], 2, 0, VirtualAggregateOperator.ANY);
+		await start();
+		await sample(a, true);
+		await sample(b, false);
+		expect(outputState(output)).toMatchObject({ value: true, producer: { quality: 'good' } });
+		const writes = storage.enqueueWritePoint.mock.calls.length;
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelEntity, (output.channel as ChannelEntity).id, { category: ChannelCategory.MOTION }),
+		);
+		await runtime.flush();
+		expect(graph.isQuarantined(output.id)).toBe(true);
+		expect(outputState(output)?.producer.quality).toBe('unavailable');
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(writes);
+		expect(
+			await database.manager.findOneBy(VirtualAggregateConfigEntity, { outputPropertyId: output.id }),
+		).toMatchObject({ profile: VirtualAggregateProfile.CONTACT, revision: 1 });
+	});
 
 	const homekit = (output: ChannelPropertyEntity) => {
 		const channel = output.channel as ChannelEntity,
@@ -747,7 +901,7 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		await start();
 		await sample(a, 20);
 		await sample(b, 22);
-		const original = database.manager.findOne.bind(database.manager) as typeof database.manager.findOne;
+		const original = runtime.snapshotEvidence.bind(runtime) as typeof runtime.snapshotEvidence;
 		const runBlocked = async (during: () => Promise<void>) => {
 			let release: () => void;
 			let started: () => void;
@@ -758,22 +912,20 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 				started = resolve;
 			});
 			let blocked = false;
-			const read = jest.spyOn(database.manager, 'findOne').mockImplementation(async (entity, options) => {
-				if (entity === ChannelPropertyEntity && (options.where as { id?: string }).id === a.id && !blocked) {
+			const read = jest.spyOn(runtime, 'snapshotEvidence').mockImplementation(async (...args) => {
+				if (!blocked) {
 					blocked = true;
 					started();
 					await gate;
 				}
-				return original(entity, options);
+				return original(...args);
 			});
 			runtime.requestRecompute();
 			await entered;
 			await during();
 			release();
 			await runtime.flush();
-			const calls = read.mock.calls.filter(
-				([entity, options]) => entity === ChannelPropertyEntity && (options.where as { id?: string }).id === a.id,
-			).length;
+			const calls = read.mock.calls.length;
 			read.mockRestore();
 			return calls;
 		};
@@ -1127,4 +1279,202 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 			invalidate.mockRestore();
 		}
 	});
+	const previewService = () =>
+		new VirtualProducerConfigService(
+			database,
+			new DeviceStructureLockService(),
+			graph,
+			events,
+			state,
+			undefined,
+			runtime,
+		);
+	const editDraft = async (output: ChannelPropertyEntity, operator = VirtualAggregateOperator.MAX) => {
+		const saved = await configs.getAggregate(output.id);
+		return Object.assign(new ConfigureVirtualAggregateDto(), {
+			expectedRevision: saved.revision,
+			expectedGraphRevision: saved.graph_revision,
+			operator,
+			minimumValidInputs: saved.minimum_valid_inputs,
+			maximumAgeSeconds: saved.maximum_age_seconds,
+			inputs: saved.inputs.map((input) => ({ id: input.id, sourcePropertyId: input.source_property })),
+		});
+	};
+	it('evaluates edited policy rather than saved runtime and keeps every write/publication/diagnostic untouched', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await start();
+		await sample(a, 10);
+		await sample(b, 20);
+		const dto = await editDraft(output);
+		const before = await database.manager.find(VirtualAggregateInputEntity);
+		const live = producers.readDiagnosticState(output.id),
+			diagnostics = runtime.readDiagnostics(output.id),
+			generation = values.currentSampleGeneration();
+		const eventsSeen = jest.fn();
+		events.onAny(eventsSeen);
+		const writes = jest.spyOn(database.logger, 'logQuery');
+		const historyWrites = storage.enqueueWritePoint.mock.calls.length;
+		const historyReads = storage.query.mock.calls.length;
+		const result = await previewService().previewAggregate(output.id, dto);
+		expect(result.preview_result).toMatchObject({
+			value: 20,
+			quality: 'good',
+			profile: 'temperature',
+			unit: '°C',
+			sampled_at: new Date(base).toISOString(),
+			expires_at: new Date(base + 10000).toISOString(),
+		});
+		expect(await database.manager.find(VirtualAggregateInputEntity)).toEqual(before);
+		expect(
+			(await database.manager.findOneBy(VirtualAggregateConfigEntity, { outputPropertyId: output.id })).operator,
+		).toBe('mean');
+		expect(producers.readDiagnosticState(output.id)).toEqual(live);
+		expect(runtime.readDiagnostics(output.id)).toEqual(diagnostics);
+		expect(values.currentSampleGeneration()).toBe(generation);
+		expect(eventsSeen).not.toHaveBeenCalled();
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(historyWrites);
+		expect(storage.query).toHaveBeenCalledTimes(historyReads);
+		expect(writes.mock.calls.some(([query]) => /^\s*(INSERT|UPDATE|DELETE|REPLACE)/i.test(query))).toBe(false);
+		writes.mockRestore();
+		events.offAny(eventsSeen);
+	});
+	it('retains missing identity, and repairs against the replacement evidence rather than the old sample', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			replacement = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b], 1);
+		await start();
+		await sample(a, 10);
+		await sample(b, 90);
+		await graph.withStructuralWrite(async (manager) => {
+			await manager.delete(ChannelPropertyEntity, b.id);
+		});
+		const dto = await editDraft(output);
+		const missing = dto.inputs.find((input) => input.sourcePropertyId === null);
+		expect(missing).toBeDefined();
+		const first = (await previewService().previewAggregate(output.id, dto)).preview_result;
+		expect(first).toMatchObject({ value: 10, quality: 'degraded' });
+		expect(first.inputs.find((input) => input.source_identity === b.id)).toMatchObject({
+			id: missing.id,
+			source_property: null,
+			current_value: null,
+			exclusion: 'missing',
+		});
+		missing.sourcePropertyId = replacement.id;
+		const unqualifiedResponse = await previewService().previewAggregate(output.id, dto);
+		expect(unqualifiedResponse.inputs.every((input) => input.current_value === undefined)).toBe(true);
+		const unqualified = unqualifiedResponse.preview_result;
+		expect(unqualified.value).toBe(10);
+		expect(unqualified.inputs.find((input) => input.id === missing.id)).toMatchObject({
+			source_identity: replacement.id,
+			current_value: null,
+		});
+		await sample(replacement, 30);
+		const repaired = (await previewService().previewAggregate(output.id, dto)).preview_result;
+		expect(repaired).toMatchObject({ value: 30, quality: 'good' });
+		expect(repaired.inputs.find((input) => input.id === missing.id)).toMatchObject({
+			source_identity: replacement.id,
+			current_value: 30,
+		});
+		expect((await configs.getAggregate(output.id)).inputs.find((input) => input.id === missing.id)).toMatchObject({
+			source_identity: b.id,
+			source_property: null,
+		});
+	});
+	it('uses the evaluation clock after asynchronous metadata and never revives history-only or expired evidence', async () => {
+		const a = await measurement(),
+			b = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await configure(output, [a, b]);
+		await start();
+		storage.query.mockResolvedValue([{ value: 80, time: new Date(base) }]);
+		const dto = await editDraft(output);
+		expect((await previewService().previewAggregate(output.id, dto)).preview_result).toMatchObject({
+			value: null,
+			quality: 'unavailable',
+			reasons: expect.arrayContaining(['quorum_lost']) as string[],
+		});
+		await sample(a, 10);
+		await sample(b, 20);
+		const original = runtime.snapshotEvidence.bind(runtime) as typeof runtime.snapshotEvidence;
+		jest.spyOn(runtime, 'snapshotEvidence').mockImplementationOnce(async (...args) => {
+			const read = await original(...args);
+			jest.setSystemTime(base + 10000);
+			return read;
+		});
+		const result = (await previewService().previewAggregate(output.id, dto)).preview_result;
+		expect(result).toMatchObject({
+			value: null,
+			quality: 'unavailable',
+			evaluated_at: new Date(base + 10000).toISOString(),
+		});
+		expect(result.inputs.every((input) => input.exclusion === 'stale')).toBe(true);
+		expect(producers.readDiagnosticState(output.id).producer.quality).toBe('good'); // Preview did not sweep expired authority.
+	});
+	it.each(['graph', 'configuration'] as const)(
+		'revokes a draft if its %s changes during source snapshot',
+		async (kind) => {
+			const a = await measurement(),
+				b = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+			await configure(output, [a, b]);
+			await start();
+			await sample(a, 10);
+			await sample(b, 20);
+			const dto = await editDraft(output),
+				original = runtime.snapshotEvidence.bind(runtime) as typeof runtime.snapshotEvidence;
+			jest.spyOn(runtime, 'snapshotEvidence').mockImplementationOnce(async (...args) => {
+				const read = await original(...args);
+				if (kind === 'graph') graph.invalidateValidation();
+				else
+					await database.manager.increment(
+						VirtualAggregateConfigEntity,
+						{ outputPropertyId: output.id },
+						'revision',
+						1,
+					);
+				return read;
+			});
+			const result = (await previewService().previewAggregate(output.id, dto)).preview_result;
+			expect(result).toMatchObject({
+				value: null,
+				quality: 'unavailable',
+				reasons: ['preview_revoked'],
+				expires_at: null,
+			});
+			expect(result.inputs.every((input) => input.current_value === null)).toBe(true);
+		},
+	);
+	it.each([VirtualAggregateProfile.CONTACT, VirtualAggregateProfile.MOTION, VirtualAggregateProfile.OCCUPANCY])(
+		'previews %s strict false and unknown/quorum outcomes under proposed binary policy',
+		async (profile) => {
+			const a = await measurement(undefined, profile),
+				b = await measurement(undefined, profile),
+				output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE, profile);
+			await configure(output, [a, b], 1, 0, VirtualAggregateOperator.ANY);
+			await start();
+			await sample(a, false);
+			const dto = await editDraft(output, VirtualAggregateOperator.ALL);
+			const result = (await previewService().previewAggregate(output.id, dto)).preview_result;
+			expect(result).toMatchObject({ value: false, quality: 'degraded', output_step: null, unit: null });
+			expect(result.inputs.every((input) => input.weight === undefined)).toBe(true);
+			dto.operator = VirtualAggregateOperator.ANY;
+			expect((await previewService().previewAggregate(output.id, dto)).preview_result).toMatchObject({
+				value: null,
+				quality: 'unavailable',
+				reasons: expect.arrayContaining(['unknown_members']) as string[],
+			});
+			dto.operator = VirtualAggregateOperator.ALL;
+			dto.minimumValidInputs = 2;
+			expect((await previewService().previewAggregate(output.id, dto)).preview_result).toMatchObject({
+				value: null,
+				quality: 'unavailable',
+				reasons: expect.arrayContaining(['quorum_lost']) as string[],
+			});
+		},
+	);
 });

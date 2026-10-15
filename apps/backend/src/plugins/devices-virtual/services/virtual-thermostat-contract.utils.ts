@@ -56,6 +56,8 @@ export function thermostatActuatorIdentity(
 }
 export const isThermostatTemperature = (property: ChannelPropertyEntity, channel: ChannelEntity): boolean =>
 	channel.category === ChannelCategory.TEMPERATURE &&
+	((property as ChannelPropertyEntity & { measurementQuantity?: string }).measurementQuantity == null ||
+		(property as ChannelPropertyEntity & { measurementQuantity?: string }).measurementQuantity === 'temperature') &&
 	property.category === PropertyCategory.TEMPERATURE &&
 	[DataTypeType.FLOAT, DataTypeType.INT, DataTypeType.SHORT, DataTypeType.UCHAR].includes(property.dataType) &&
 	permissionSatisfied(PermissionType.READ_ONLY, new Set(property.permissions ?? [])) &&

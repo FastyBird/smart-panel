@@ -168,4 +168,79 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+  testWidgets(
+    'binary diagnostics preserve false and outlier exclusion with explicit grid and age',
+    (tester) async {
+      final now = DateTime.now();
+      await tester.pumpWidget(
+        app(
+          property(),
+          (_) async => MeasurementDiagnostics(
+            transform: false,
+            outputStep: 0.1,
+            unit: 'lx',
+            inputs: [
+              MeasurementInputDiagnostic(
+                identity: 'boolean source',
+                value: false,
+                sampledAt: now.subtract(const Duration(seconds: 2)),
+                expiresAt: now.add(const Duration(seconds: 20)),
+              ),
+              MeasurementInputDiagnostic(
+                identity: 'rejected source',
+                value: 99,
+                weight: 2,
+                unit: 'lx',
+                exclusion: 'outlier',
+                sampledAt: now.subtract(const Duration(seconds: 2)),
+                expiresAt: now.add(const Duration(seconds: 20)),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.textContaining('boolean source: Not detected'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('rejected source: — lx · Outlier excluded'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Output step: 0.1 lx'), findsOneWidget);
+      expect(find.textContaining('Sample age: 2 s'), findsWidgets);
+      expect(find.textContaining('Relative weight: 2'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  test(
+    'input diagnostics hide values at expiry and when timestamp lies in the future',
+    () {
+      final now = DateTime.now();
+      for (final diagnostic in [
+        MeasurementInputDiagnostic(
+          identity: 'expired',
+          value: false,
+          sampledAt: now.subtract(const Duration(seconds: 5)),
+          expiresAt: now,
+        ),
+        MeasurementInputDiagnostic(
+          identity: 'future',
+          value: 3,
+          sampledAt: now.add(const Duration(seconds: 1)),
+          expiresAt: now.add(const Duration(seconds: 5)),
+        ),
+        MeasurementInputDiagnostic(
+          identity: 'stale',
+          value: 3,
+          exclusion: 'stale',
+          sampledAt: now,
+          expiresAt: now.add(const Duration(seconds: 5)),
+        ),
+      ]) {
+        expect(diagnostic.valueAt(now), isNull);
+      }
+    },
+  );
 }

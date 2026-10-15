@@ -28,8 +28,8 @@ class IlluminanceChannelView extends ChannelView
   IlluminanceChannelPropertyView get illuminanceProp =>
       properties.whereType<IlluminanceChannelPropertyView>().first;
 
-  LevelChannelPropertyView get levelProp =>
-      properties.whereType<LevelChannelPropertyView>().first;
+  LevelChannelPropertyView? get levelProp =>
+      properties.whereType<LevelChannelPropertyView>().firstOrNull;
 
   @override
   ActiveChannelPropertyView? get activeProp =>
@@ -39,17 +39,19 @@ class IlluminanceChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
-  bool get hasLevel => true;
+  bool get hasLevel => levelProp != null;
 
   IlluminanceLevelValue? get level {
-    final ValueType? value = levelProp.value;
+    final LevelChannelPropertyView? prop = levelProp;
+
+    final ValueType? value = prop?.value;
 
     if (value is StringValueType &&
         IlluminanceLevelValue.contains(value.value)) {
       return IlluminanceLevelValue.fromValue(value.value);
     }
 
-    final ValueType? defaultValue = levelProp.defaultValue;
+    final ValueType? defaultValue = prop?.defaultValue;
 
     if (defaultValue is StringValueType &&
         IlluminanceLevelValue.contains(defaultValue.value)) {
@@ -60,7 +62,7 @@ class IlluminanceChannelView extends ChannelView
   }
 
   List<IlluminanceLevelValue> get availableLevels {
-    final FormatType? format = levelProp.format;
+    final FormatType? format = levelProp?.format;
 
     if (format is StringListFormatType) {
       return format.value

@@ -4198,4 +4198,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get climate_temperature_coverage_unavailable =>
       'Room temperature is unavailable. Check sensor configuration and availability.';
+
+  @override
+  String get virtual_measurement_state_outlier => 'Outlier excluded';
+
+  @override
+  String get virtual_measurement_state_insufficient_comparison_cohort =>
+      'Not enough sources for comparison';
+
+  @override
+  String get virtual_measurement_state_unknown_members =>
+      'Unknown members prevent a result';
+
+  @override
+  String virtual_measurement_grid(String step, String unit) {
+    return 'Output step: $step $unit (nearest, ties toward +∞)';
+  }
+
+  @override
+  String virtual_measurement_weight(String weight) {
+    return 'Relative weight: $weight';
+  }
+
+  @override
+  String virtual_measurement_age(String age) {
+    return 'Sample age: $age s';
+  }
+
+  @override
+  String get virtual_measurement_true => 'Detected';
+
+  @override
+  String get virtual_measurement_false => 'Not detected';
 }

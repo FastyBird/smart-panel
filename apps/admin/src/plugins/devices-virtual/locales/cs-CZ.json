@@ -142,7 +142,7 @@
 	"measurement": {
 		"mode": "Režim",
 		"projection": "Projekce",
-		"aggregate": "Agregovaná teplota",
+		"aggregate": "Agregovaný senzor",
 		"transform": "Číselný převod",
 		"group": "Skupina světel",
 		"name": "Název",
@@ -198,7 +198,10 @@
 			"mean": "Průměr",
 			"median": "Medián",
 			"min": "Minimum",
-			"max": "Maximum"
+			"max": "Maximum",
+			"weighted_mean": "Vážený průměr",
+			"any": "Alespoň jeden detekuje",
+			"all": "Všechny detekují"
 		},
 		"states": {
 			"good": "V pořádku",
@@ -232,8 +235,35 @@
 			"output_out_of_range": "Hodnota mimo rozsah",
 			"invalid_domain": "Mimo matematický obor",
 			"producer_disposed": "Producent zastaven",
-			"unknown": "Neznámá diagnostika"
-		}
+			"unknown": "Neznámá diagnostika",
+			"outlier": "Odlehlá hodnota vyloučena",
+			"insufficient_comparison_cohort": "Nedostatek zdrojů pro porovnání",
+			"unknown_members": "Neznámí členové brání výsledku",
+			"preview_revoked": "Náhled odvolán; načtěte data a spusťte náhled znovu"
+		},
+		"weight": "Relativní váha",
+		"filter": "Vyloučit odlehlé hodnoty (odchylka od mediánu)",
+		"filterThreshold": "Maximální odchylka ({unit})",
+		"filterCohort": "Před filtrováním jsou nutné alespoň tři způsobilé zdroje. Kvórum počítá ponechané zdroje, ne váhy.",
+		"grid": "Krok výstupu: {step} {unit} (nejbližší, shoda směrem k +∞)",
+		"legacyGrid": "Zachovává deklarovanou přesnost teploty",
+		"sampleAge": "Stáří vzorku: {age} s",
+		"aggregatePreviewOnly": "Snímek návrhu vyhodnocený backendem z aktuálně způsobilých vzorků. Je pouze pro čtení, vyprší s důkazy a nezaručuje čerstvost ani dostupnost při uložení. Nové zdroje mohou po vytvoření vyžadovat čerstvá hlášení.",
+		"profiles": {
+			"temperature": "Teplota (°C)",
+			"humidity": "Relativní vlhkost (%)",
+			"carbon_dioxide": "Koncentrace CO₂ (ppm)",
+			"illuminance": "Osvětlenost (lx)",
+			"contact": "Kontakt",
+			"motion": "Pohyb",
+			"occupancy": "Přítomnost"
+		},
+		"evaluatedAt": "Vyhodnoceno: {time}",
+		"expiresAt": "Důkazy vyprší: {time}",
+		"previewExpired": "Snímek návrhu vypršel. Před uložením spusťte náhled znovu.",
+		"detected": "Detekováno",
+		"notDetected": "Nedetekováno",
+		"snapshotQuality": "Kvalita návrhu: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Použít",

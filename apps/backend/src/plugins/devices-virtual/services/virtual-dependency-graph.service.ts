@@ -17,7 +17,7 @@ import {
 } from '../entities/virtual-producer.entity';
 import { VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
-import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
+import { aggregateProfile, isEligibleAggregateOutput } from './virtual-numeric-profile.utils';
 
 export interface VirtualDependencyEdge {
 	outputPropertyId: string;
@@ -328,7 +328,8 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 				if (
 					!property ||
 					!channel?.device ||
-					!isEligibleVirtualMeasurement(property, channel, channel.device as DeviceEntity)
+					!isEligibleAggregateOutput(property, channel, channel.device as DeviceEntity) ||
+					aggregateProfile(property, channel)?.id !== config.profile
 				)
 					quarantined.add(config.outputPropertyId);
 			}

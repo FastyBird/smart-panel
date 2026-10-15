@@ -1255,5 +1255,37 @@
   "virtual_measurement_state_producer_disposed": "Productor detenido",
   "virtual_measurement_state_unknown": "Diagnóstico desconocido",
   "climate_temperature_coverage_conflict": "Los sensores de temperatura de la habitación se solapan. Selecciona un representante en los ajustes de participación en el clima de la habitación.",
-  "climate_temperature_coverage_unavailable": "La temperatura de la habitación no está disponible. Comprueba la configuración y la disponibilidad de los sensores."
+  "climate_temperature_coverage_unavailable": "La temperatura de la habitación no está disponible. Comprueba la configuración y la disponibilidad de los sensores.",
+  "virtual_measurement_state_outlier": "Valor atípico excluido",
+  "virtual_measurement_state_insufficient_comparison_cohort": "Fuentes insuficientes para comparar",
+  "virtual_measurement_state_unknown_members": "Los miembros desconocidos impiden un resultado",
+  "virtual_measurement_grid": "Paso de salida: {step} {unit} (más cercano, empates hacia +∞)",
+  "@virtual_measurement_grid": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_weight": "Peso relativo: {weight}",
+  "@virtual_measurement_weight": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_age": "Edad de la muestra: {age} s",
+  "@virtual_measurement_age": {
+    "placeholders": {
+      "age": {
+        "type": "String"
+      }
+    }
+  },
+  "virtual_measurement_true": "Detectado",
+  "virtual_measurement_false": "No detectado"
 }

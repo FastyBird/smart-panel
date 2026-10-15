@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UnprocessableEntityException } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Get,
+	Param,
+	ParseEnumPipe,
+	ParseUUIDPipe,
+	Post,
+	Put,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -10,9 +20,12 @@ import {
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
 import { CreateLightGroupDraftDto, LightGroupDraftDto } from '../dto/light-group-draft.dto';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
+import { VirtualAggregateProfile } from '../entities/virtual-producer.entity';
 import { CreatedLightGroupResponseModel, LightGroupDraftResponseModel } from '../models/light-group-draft.model';
 import {
 	VirtualAggregateConfigurationResponseModel,
+	VirtualAggregateProfilesResponseModel,
+	VirtualAggregateSourcesResponseModel,
 	VirtualLightGroupConfigurationResponseModel,
 } from '../models/producer-response.model';
 import { VirtualLightGroupAuthoringService } from '../services/virtual-light-group-authoring.service';
@@ -28,9 +41,41 @@ export class VirtualProducerConfigController {
 
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'List aggregate profiles',
+		description:
+			'Shared typed capability policy for aggregate authoring; smoke/leak and security decisions are unsupported.',
+		operationId: 'get-devices-virtual-plugin-aggregate-profiles',
+	})
+	@ApiSuccessResponse(VirtualAggregateProfilesResponseModel, 'Supported aggregate profiles')
+	@Get('aggregate-profiles')
+	getAggregateProfiles(): VirtualAggregateProfilesResponseModel {
+		const response = new VirtualAggregateProfilesResponseModel();
+		response.data = this.configs.listAggregateProfiles();
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'List aggregate source candidates',
+		description:
+			'Uses the same exact channel, category, unit, numeric type and restricted composition policy as preview/persistence/runtime. Candidate membership does not imply live qualification.',
+		operationId: 'get-devices-virtual-plugin-aggregate-sources',
+	})
+	@ApiSuccessResponse(VirtualAggregateSourcesResponseModel, 'Structurally eligible aggregate sources')
+	@Get('aggregate-profiles/:profile/sources')
+	async getAggregateSources(
+		@Param('profile', new ParseEnumPipe(VirtualAggregateProfile)) profile: VirtualAggregateProfile,
+	): Promise<VirtualAggregateSourcesResponseModel> {
+		const response = new VirtualAggregateSourcesResponseModel();
+		response.data = await this.execute(() => this.configs.listAggregateSources(profile));
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Read aggregate configuration',
 		description:
-			'Read durable policy and input diagnostics, including missing source identities. Runtime readiness remains unavailable until the aggregate evaluator is delivered.',
+			'Read durable policy and input diagnostics, including missing source identities. Live quality and source age remain subject to runtime qualification.',
 		operationId: 'get-devices-virtual-plugin-aggregate-configuration',
 	})
 	@ApiUnprocessableEntityResponse('Producer policy, binding or revision is invalid')
@@ -48,7 +93,7 @@ export class VirtualProducerConfigController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Configure aggregate producer',
 		description:
-			'Atomically validate and persist versioned aggregate policy, stable typed input bindings and graph revision. Does not activate runtime evaluation.',
+			'Atomically validate and persist versioned aggregate policy, stable typed input bindings and graph revision. Runtime evaluation requires qualified live source reports.',
 		operationId: 'configure-devices-virtual-plugin-aggregate',
 	})
 	@ApiUnprocessableEntityResponse('Producer policy, binding or revision is invalid')

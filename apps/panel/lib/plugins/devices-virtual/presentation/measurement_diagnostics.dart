@@ -36,6 +36,10 @@ String measurementDiagnosticLabel(AppLocalizations l, String value) {
     'disabled' => l.virtual_measurement_state_disabled,
     'output_disabled' => l.virtual_measurement_state_output_disabled,
     'quorum_lost' => l.virtual_measurement_state_quorum_lost,
+    'outlier' => l.virtual_measurement_state_outlier,
+    'insufficient_comparison_cohort' =>
+      l.virtual_measurement_state_insufficient_comparison_cohort,
+    'unknown_members' => l.virtual_measurement_state_unknown_members,
     'invalid_policy' => l.virtual_measurement_state_invalid_policy,
     'invalid_configuration' =>
       l.virtual_measurement_state_invalid_configuration,
@@ -55,7 +59,8 @@ String measurementDiagnosticLabel(AppLocalizations l, String value) {
 class MeasurementInputDiagnostic {
   final String identity;
   final String? sourceId;
-  final num? value;
+  final Object? value;
+  final num? weight;
   final String? unit;
   final String? exclusion;
   final DateTime? sampledAt;
@@ -64,6 +69,7 @@ class MeasurementInputDiagnostic {
     required this.identity,
     this.sourceId,
     this.value,
+    this.weight,
     this.unit,
     this.exclusion,
     this.sampledAt,
@@ -71,8 +77,9 @@ class MeasurementInputDiagnostic {
   });
 
   /// Returns a sample only while its timestamp, lease, and source are usable.
-  num? valueAt(DateTime now) =>
-      sampledAt != null &&
+  Object? valueAt(DateTime now) =>
+      (value is num || value is bool) &&
+          sampledAt != null &&
           !sampledAt!.isAfter(now) &&
           expiresAt?.isAfter(now) == true &&
           ![
@@ -82,6 +89,7 @@ class MeasurementInputDiagnostic {
             'stale',
             'incompatible',
             'invalid',
+            'outlier',
           ].contains(exclusion)
       ? value
       : null;
@@ -91,10 +99,14 @@ class MeasurementDiagnostics {
   final bool transform;
   final List<MeasurementInputDiagnostic> inputs;
   final List<String> errors;
+  final num? outputStep;
+  final String? unit;
   const MeasurementDiagnostics({
     required this.transform,
     required this.inputs,
     this.errors = const [],
+    this.outputStep,
+    this.unit,
   });
 }
 
@@ -133,12 +145,17 @@ Future<MeasurementDiagnostics> loadMeasurementDiagnostics(String id) async {
     );
     return MeasurementDiagnostics(
       transform: false,
+      outputStep: response.data.data.outputStep,
+      unit: response.data.data.inputs.firstOrNull?.unit,
       inputs: response.data.data.inputs
           .map(
             (source) => MeasurementInputDiagnostic(
               identity: source.sourceIdentity,
               sourceId: source.sourceProperty,
-              value: source.currentValue,
+              value: source.currentValue is num || source.currentValue is bool
+                  ? source.currentValue
+                  : null,
+              weight: source.weight,
               unit: source.unit,
               exclusion: source.exclusion?.json,
               sampledAt: source.sampledAt,
@@ -174,12 +191,16 @@ class _VirtualMeasurementDiagnosticsState
   bool _loading = false;
   int _request = 0;
   Timer? _timer;
+  int _ticks = 0;
 
   @override
   void initState() {
     super.initState();
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _refresh());
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+      if (++_ticks % 5 == 0) _refresh();
+    });
   }
 
   @override
@@ -241,6 +262,14 @@ class _VirtualMeasurementDiagnosticsState
         : '${device.name} / ${channel!.name} / ${input.identity}';
   }
 
+  String _inputValue(AppLocalizations l, MeasurementInputDiagnostic input) {
+    final value = input.valueAt(DateTime.now());
+    if (value is bool) {
+      return value ? l.virtual_measurement_true : l.virtual_measurement_false;
+    }
+    return value?.toString() ?? '—';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -275,6 +304,13 @@ class _VirtualMeasurementDiagnosticsState
             child: Text(l.virtual_measurement_retry),
           ),
         if (_data != null) ...[
+          if (_data!.outputStep != null)
+            Text(
+              l.virtual_measurement_grid(
+                '${_data!.outputStep}',
+                _data!.unit ?? '',
+              ),
+            ),
           Text(
             _data!.transform
                 ? l.virtual_measurement_conversion
@@ -284,7 +320,7 @@ class _VirtualMeasurementDiagnosticsState
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                '${_sourceLabel(input)}: ${input.valueAt(DateTime.now()) ?? '—'} ${input.unit ?? ''}${input.exclusion == null ? '' : ' · ${measurementDiagnosticLabel(l, input.exclusion!)}'}',
+                '${_sourceLabel(input)}: ${_inputValue(l, input)} ${input.unit ?? ''}${input.exclusion == null ? '' : ' · ${measurementDiagnosticLabel(l, input.exclusion!)}'}${input.weight == null ? '' : ' · ${l.virtual_measurement_weight('${input.weight}')}'} · ${l.virtual_measurement_age(input.sampledAt == null ? '—' : '${DateTime.now().difference(input.sampledAt!).inSeconds}')}',
               ),
             ),
           if (_data!.errors.isNotEmpty)

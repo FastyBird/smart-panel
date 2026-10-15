@@ -6,7 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { EventType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
@@ -21,6 +21,7 @@ import {
 	VirtualAggregateConfigEntity,
 	VirtualAggregateInputEntity,
 	VirtualAggregateOperator,
+	VirtualAggregateProfile,
 	VirtualLightGroupBindingEntity,
 	VirtualLightGroupConfigEntity,
 	VirtualLightGroupMemberEntity,
@@ -28,11 +29,15 @@ import {
 } from '../entities/virtual-producer.entity';
 import {
 	VirtualAggregateConfigurationModel,
+	VirtualAggregatePreviewModel,
+	VirtualAggregateProfileModel,
+	VirtualAggregateSourceModel,
 	VirtualLightGroupCapabilityModel,
 	VirtualLightGroupConfigurationModel,
 	VirtualProducerBindingModel,
 } from '../models/producer-response.model';
 
+import { evaluateAggregate } from './virtual-aggregate-evaluator';
 import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
@@ -46,9 +51,14 @@ import {
 import { VirtualLightGroupStateService } from './virtual-light-group-state.service';
 import { LightGroupCapability } from './virtual-light-group.utils';
 import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
-import { isEligibleAggregateSource } from './virtual-numeric-profile.utils';
+import {
+	aggregateOperatorAllowed,
+	aggregateProfile,
+	aggregateProfiles,
+	isEligibleAggregateOutput,
+	isEligibleAggregateSource,
+} from './virtual-numeric-profile.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
-import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
 
 /** Typed persistence and validation only. Runtime evaluation/dispatch belongs to later producer services. */
 @Injectable()
@@ -62,6 +72,53 @@ export class VirtualProducerConfigService {
 		@Optional() private readonly lightGroups?: VirtualLightGroupStateService,
 		@Optional() private readonly aggregateRuntime?: VirtualAggregateRuntimeService,
 	) {}
+
+	listAggregateProfiles(): VirtualAggregateProfileModel[] {
+		return aggregateProfiles.map((profile) =>
+			Object.assign(new VirtualAggregateProfileModel(), {
+				profile: profile.id,
+				channel: profile.channel,
+				quantity: profile.quantity,
+				unit: profile.unit,
+				data_types: [...profile.dataTypes],
+				operators: Object.values(VirtualAggregateOperator).filter((operator) =>
+					aggregateOperatorAllowed(profile, operator),
+				),
+				numeric_policy: !profile.binary,
+				output_step: profile.outputStep,
+			}),
+		);
+	}
+
+	async listAggregateSources(profileId: VirtualAggregateProfile): Promise<VirtualAggregateSourceModel[]> {
+		const profile = aggregateProfiles.find((candidate) => candidate.id === profileId);
+		if (!profile) return [];
+		const properties = await this.dataSource.manager
+			.createQueryBuilder(ChannelPropertyEntity, 'property')
+			.leftJoinAndSelect('property.channel', 'channel')
+			.leftJoinAndSelect('channel.device', 'device')
+			.where('channel.category = :channelCategory', { channelCategory: profile.channel })
+			.andWhere('property.category = :quantity', { quantity: profile.quantity })
+			.callListeners(false)
+			.getMany();
+		for (const property of properties) await hydrateMeasurementContract(this.dataSource.manager, property);
+		return properties
+			.filter((property) => {
+				const channel = property.channel as ChannelEntity;
+				return (
+					!this.graph.isQuarantined(property.id) &&
+					aggregateProfile(property, channel)?.id === profileId &&
+					isEligibleAggregateSource(property, channel, channel.device as DeviceEntity)
+				);
+			})
+			.map((property) =>
+				Object.assign(new VirtualAggregateSourceModel(), {
+					property: property.id,
+					channel: (property.channel as ChannelEntity).id,
+					device: ((property.channel as ChannelEntity).device as DeviceEntity).id,
+				}),
+			);
+	}
 
 	async configureAggregate(
 		outputPropertyId: string,
@@ -93,10 +150,97 @@ export class VirtualProducerConfigService {
 	}
 
 	describeAggregate(
-		prepared: { config: VirtualAggregateConfigEntity; inputs: VirtualAggregateInputEntity[] },
+		prepared: {
+			config: VirtualAggregateConfigEntity;
+			inputs: VirtualAggregateInputEntity[];
+			output?: VirtualChannelPropertyEntity;
+		},
 		graphRevision: number,
 	): VirtualAggregateConfigurationModel {
-		return this.aggregateModel(prepared.config, prepared.inputs, graphRevision);
+		return this.aggregateModel(prepared.config, prepared.inputs, graphRevision, prepared.output?.step, false);
+	}
+
+	/** Evaluate prepared draft policy without mutating catalog, live state, source evidence or runtime barriers. */
+	async previewPreparedAggregate(
+		prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareAggregate']>>,
+		graphRevision: number,
+		graphCurrent: () => boolean,
+	): Promise<VirtualAggregateConfigurationModel> {
+		const { config, inputs, output } = prepared;
+		const readEvidence = await this.aggregateRuntime?.snapshotEvidence(config, inputs, output);
+		const saved = await this.dataSource.manager.findOneBy(VirtualAggregateConfigEntity, {
+			outputPropertyId: output.id,
+		});
+		const revision = await this.graph.revision();
+		// All asynchronous metadata and fence reads precede this single evaluation clock.
+		const now = new Date();
+		const profile = aggregateProfile(output, output.channel as ChannelEntity);
+		const step = output.step ?? profile.outputStep;
+		const evidence =
+			readEvidence?.(now) ??
+			inputs.map((input) => ({
+				id: input.id,
+				sourceIdentity: input.sourcePropertyIdentity,
+				sample: null,
+				weight: input.weight,
+			}));
+		let result = evaluateAggregate(
+			config.operator,
+			config.minimumValidInputs,
+			config.maximumAgeSeconds,
+			evidence,
+			now,
+			step,
+			config.outlierFilter,
+		);
+		const revoked = !graphCurrent() || revision !== graphRevision || (saved?.revision ?? 0) !== config.revision - 1;
+		const reason = revoked
+			? 'preview_revoked'
+			: !readEvidence
+				? 'runtime_unavailable'
+				: (output.channel as ChannelEntity).device &&
+					  ((output.channel as ChannelEntity).device as DeviceEntity).enabled === false
+					? 'output_disabled'
+					: null;
+		if (reason)
+			result = {
+				...result,
+				value: null,
+				quality: 'unavailable',
+				reasons: [reason],
+				sampledAt: null,
+				expiresAt: null,
+				inputs: result.inputs.map((input) => ({
+					...input,
+					value: null,
+					sampledAt: null,
+					ageSeconds: null,
+					exclusion: 'invalid',
+				})),
+			};
+		const model = this.describeAggregate(prepared, graphRevision);
+		model.preview_result = Object.assign(new VirtualAggregatePreviewModel(), {
+			evaluated_at: now.toISOString(),
+			sampled_at: result.sampledAt?.toISOString() ?? null,
+			expires_at: result.expiresAt?.toISOString() ?? null,
+			profile: config.profile,
+			unit: profile.unit,
+			output_step: step ?? null,
+			value: result.value,
+			quality: result.quality,
+			reasons: [...result.reasons],
+			inputs: inputs.map((input) => {
+				const diagnostic = result.inputs.find((candidate) => candidate.id === input.id);
+				return Object.assign(this.bindingModel(input), {
+					...(!profile.binary ? { weight: input.weight ?? 1 } : {}),
+					current_value: diagnostic.value,
+					sampled_at: diagnostic.sampledAt,
+					age_seconds: diagnostic.ageSeconds,
+					exclusion: diagnostic.exclusion,
+				});
+			}),
+		});
+		return model;
 	}
 
 	async previewAggregate(
@@ -104,14 +248,12 @@ export class VirtualProducerConfigService {
 		dto: ConfigureVirtualAggregateDto,
 	): Promise<VirtualAggregateConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
-			const { config, inputs } = await this.prepareAggregate(
-				this.dataSource.manager,
-				outputPropertyId,
-				dto,
-				undefined,
-				true,
-			);
-			return this.aggregateModel(config, inputs, await this.graph.revision());
+			const graphCurrent = this.graph.capturePublishGuard();
+			const revision = await this.graph.revision();
+			if (dto.expectedGraphRevision !== undefined && dto.expectedGraphRevision !== revision)
+				throw new DevicesValidationException('Virtual dependency graph revision changed; reload and retry.');
+			const prepared = await this.prepareAggregate(this.dataSource.manager, outputPropertyId, dto, undefined, true);
+			return this.previewPreparedAggregate(prepared, revision, graphCurrent);
 		});
 	}
 
@@ -122,7 +264,8 @@ export class VirtualProducerConfigService {
 			where: { outputPropertyId },
 			order: { id: 'ASC' },
 		});
-		return this.aggregateModel(config, inputs, await this.graph.revision());
+		const output = await this.property(this.dataSource.manager, outputPropertyId, true);
+		return this.aggregateModel(config, inputs, await this.graph.revision(), output.step);
 	}
 
 	async prepareAggregate(
@@ -140,9 +283,17 @@ export class VirtualProducerConfigService {
 		const output = draftOutput ?? (await this.property(manager, outputPropertyId, previewOnly));
 		const channel = output.channel as ChannelEntity;
 		const device = channel.device as VirtualDeviceEntity;
-		if (!isEligibleVirtualMeasurement(output, channel, device))
+		if (!isEligibleAggregateOutput(output, channel, device))
 			throw new DevicesValidationException(
-				'Aggregate output must be a read-only derived sensor temperature with canonical Celsius semantics.',
+				'Aggregate output must be a read-only derived sensor with a supported canonical aggregate profile.',
+			);
+		const profile = aggregateProfile(output, channel);
+		if (
+			!aggregateOperatorAllowed(profile, dto.operator) ||
+			(profile.binary && (dto.outlierFilter != null || dto.inputs.some((input) => input.weight !== undefined)))
+		)
+			throw new DevicesValidationException(
+				'Aggregate profile does not support this operator, binary weights or filtering.',
 			);
 		const existing = await manager.findOneBy(VirtualAggregateConfigEntity, { outputPropertyId });
 		this.assertRevision(existing?.revision ?? 0, dto.expectedRevision);
@@ -156,18 +307,27 @@ export class VirtualProducerConfigService {
 			if (proposed.id && !old)
 				throw new DevicesValidationException('Aggregate binding UUID is not owned by this output.');
 			if (!proposed.sourcePropertyId) {
-				if (!old || old.sourcePropertyId !== null)
+				if (
+					!old ||
+					old.sourcePropertyId !== null ||
+					old.quantity !== String(profile.quantity) ||
+					old.unit !== profile.unit ||
+					existing?.profile !== profile.id
+				)
 					throw new DevicesValidationException('Only an existing missing input can retain a null source.');
 				inputs.push(manager.create(VirtualAggregateInputEntity, { ...old, weight: proposed.weight ?? 1 }));
 			} else {
 				const source = await this.property(manager, proposed.sourcePropertyId, previewOnly);
 				const sourceChannel = source.channel as ChannelEntity;
 				const sourceDevice = sourceChannel.device as VirtualDeviceEntity;
-				if (!isEligibleAggregateSource(source, sourceChannel, sourceDevice))
+				if (
+					!isEligibleAggregateSource(source, sourceChannel, sourceDevice) ||
+					aggregateProfile(source, sourceChannel)?.id !== profile.id
+				)
 					throw new DevicesValidationException(
 						sourceDevice.type === 'virtual'
-							? 'Aggregate inputs require physical temperatures or read-only canonical transformed temperatures.'
-							: 'Aggregate input must be a readable canonical Celsius temperature.',
+							? 'Aggregate inputs require matching physical profiles or read-only canonical transformed temperatures (temperature composition only).'
+							: 'Aggregate input must match the output canonical quantity, channel, unit and type.',
 					);
 
 				inputs.push(
@@ -199,6 +359,7 @@ export class VirtualProducerConfigService {
 		const config = manager.create(VirtualAggregateConfigEntity, {
 			outputPropertyId,
 			schemaVersion: 1,
+			profile: profile.id,
 			operator: dto.operator,
 			outlierFilter: dto.outlierFilter ?? null,
 			minimumValidInputs: dto.minimumValidInputs,
@@ -614,10 +775,15 @@ export class VirtualProducerConfigService {
 		config: VirtualAggregateConfigEntity,
 		inputs: VirtualAggregateInputEntity[],
 		graphRevision: number,
+		outputStep?: number | null,
+		includeRuntimeDiagnostics = true,
 	): VirtualAggregateConfigurationModel {
 		return Object.assign(new VirtualAggregateConfigurationModel(), {
 			output_property: config.outputPropertyId,
 			schema_version: config.schemaVersion,
+			profile: config.profile,
+			output_step: outputStep ?? aggregateProfiles.find((profile) => profile.id === config.profile)?.outputStep ?? null,
+			rounding: 'nearest_ties_positive',
 			operator: config.operator,
 			outlier_filter: config.outlierFilter ?? null,
 			minimum_valid_inputs: config.minimumValidInputs,
@@ -627,10 +793,16 @@ export class VirtualProducerConfigService {
 			runtime_readiness: this.aggregateRuntime?.isActive() ? 'ready' : 'unavailable',
 			inputs: inputs.map((input) => {
 				const model = this.bindingModel(input);
-				model.weight = input.weight ?? 1;
-				const diagnostic = this.aggregateRuntime
-					?.readDiagnostics(config.outputPropertyId)
-					?.inputs.find((candidate) => candidate.id === input.id);
+				if (!aggregateProfiles.find((profile) => profile.id === config.profile)?.binary)
+					model.weight = input.weight ?? 1;
+				const diagnostic =
+					includeRuntimeDiagnostics && input.sourcePropertyId !== null
+						? this.aggregateRuntime
+								?.readDiagnostics(config.outputPropertyId)
+								?.inputs.find(
+									(candidate) => candidate.id === input.id && candidate.sourceIdentity === input.sourcePropertyIdentity,
+								)
+						: undefined;
 				if (diagnostic)
 					Object.assign(model, {
 						current_value: diagnostic.value,

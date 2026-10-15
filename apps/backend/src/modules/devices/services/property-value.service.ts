@@ -338,6 +338,24 @@ export class PropertyValueService {
 		maxAgeMs: number,
 		now = new Date(),
 	): QualifiedPropertySample | null {
+		return this.qualifySample(property, maxAgeMs, now, false);
+	}
+
+	/** Same admission checks as live reads, without expiring producer leases or publishing corrections. */
+	readQualifiedSampleSnapshot(
+		property: ChannelPropertyEntity,
+		maxAgeMs: number,
+		now: Date,
+	): QualifiedPropertySample | null {
+		return this.qualifySample(property, maxAgeMs, now, true);
+	}
+
+	private qualifySample(
+		property: ChannelPropertyEntity,
+		maxAgeMs: number,
+		now: Date,
+		detached: boolean,
+	): QualifiedPropertySample | null {
 		if (
 			!Number.isFinite(maxAgeMs) ||
 			maxAgeMs < 0 ||
@@ -347,7 +365,7 @@ export class PropertyValueService {
 			return null;
 		const key = this.resolveBestEffort(property, 'qualified sample');
 		if (key === null) return null;
-		const produced = this.producers?.read(key);
+		const produced = detached ? this.producers?.readDiagnosticState(key) : this.producers?.read(key);
 		if (produced) {
 			if (
 				produced.value === null ||
@@ -368,6 +386,9 @@ export class PropertyValueService {
 
 			const sampledAt = new Date(produced.producer.sampledAt);
 			if (
+				!Number.isFinite(sampledAt.getTime()) ||
+				!Number.isFinite(Date.parse(produced.producer.evaluatedAt)) ||
+				Date.parse(produced.producer.evaluatedAt) < sampledAt.getTime() ||
 				sampledAt.getTime() > now.getTime() ||
 				Date.parse(produced.producer.evaluatedAt) > now.getTime() ||
 				now.getTime() - sampledAt.getTime() > maxAgeMs ||
