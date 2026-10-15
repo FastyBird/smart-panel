@@ -2011,8 +2011,58 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	});
 	it('STOP needs explicit nonmoving feedback; unchanged position while moving is not proof', async () => {
 		transports[0].state.state = 'opening';
-		transports[0].post = (raw) => ({ ...raw, state: 'opening' });
-		expect((await send('stop', groupCommand, 500)).composite.status).toBe('partial');
+		const unchangedPosition = transports[0].state.current_pos;
+		let readMoving: () => void, confirmed: () => void;
+		const movingRead = new Promise<void>((resolve) => {
+			readMoving = resolve;
+		});
+		const siblingConfirmed = new Promise<void>((resolve) => {
+			confirmed = resolve;
+		});
+		transports[0].post = (raw) => {
+			expect(raw.current_pos).toBe(unchangedPosition);
+			readMoving();
+			return { ...raw, state: 'opening' };
+		};
+		const healthyId = property(1, PropertyCategory.COMMAND).id;
+		let healthyWindow: ReturnType<PropertyCommandWindowService['get']>;
+		const stopObserving = windows.observeConfirmation((handle) => {
+			if (handle.canonicalPropertyId !== healthyId) return;
+			healthyWindow = windows.get(healthyId);
+			confirmed();
+		});
+		// SQLite/coverage preparation belongs to the absolute deadline. Require both
+		// actual protocol phases before testing the moving member's intentional expiry.
+		const pending = send('stop', groupCommand, 5000);
+		try {
+			await Promise.race([
+				Promise.all([movingRead, siblingConfirmed]),
+				pending.then((early) => {
+					throw new Error(`Required STOP phases missed deadline: ${JSON.stringify(early.composite)}`);
+				}),
+			]);
+		} finally {
+			stopObserving();
+		}
+		expect(healthyWindow.state).toBe('confirmed_grace');
+		expect(healthyWindow.confirmedAt).toBeLessThan(healthyWindow.expiresAt);
+		const result = await pending;
+		expect(result.composite.status).toBe('partial');
+		expect(result.composite.children.find((child) => child.propertyId === healthyId)).toMatchObject({
+			status: 'confirmed',
+			reason: 'cover_stopped',
+		});
+		const movingId = property(0, PropertyCategory.COMMAND).id;
+		expect(result.composite.children.find((child) => child.propertyId === movingId)).toMatchObject({
+			status: 'timed_out',
+		});
+		expect(transports[0].frames.filter((frame) => frame.method === 'Cover.Stop')).toHaveLength(1);
+		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+		const terminal = JSON.stringify(result);
+		emitRaw(0, { ...transports[0].state, state: 'stopped', tag: transports[0].actionTag });
+		await until(() => values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value === 'stopped');
+		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+		expect(JSON.stringify(result)).toBe(terminal);
 	});
 	it('direct POSITION supersedes a group COMMAND across the motor scope and is explicitly unavailable', async () => {
 		transports[0].post = () => HOLD;
