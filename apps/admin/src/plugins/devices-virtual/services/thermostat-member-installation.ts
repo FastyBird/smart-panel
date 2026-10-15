@@ -45,13 +45,22 @@ export const emptyMemberInstallation = (): MemberInstallationDraft => ({
 	attestations: [],
 });
 const number = (value: number | null): value is number => typeof value === 'number' && Number.isFinite(value);
+/** Catalog eligibility alone does not supply the selected member's complete installation metadata. */
+export function memberInstallationBlocker(context: ThermostatMemberContext | null, source: string | null): string | null {
+	if (!context) return 'member_authoring_context_unavailable';
+	const candidate = context.candidates.find((entry) => entry.property === source);
+	if (!candidate) return 'selected_protective_source_unavailable';
+	return candidate.snapshot ? null : 'selected_protective_source_installation_snapshot_missing';
+}
 export function memberInstallationRequest(
 	draft: MemberInstallationDraft,
 	context: ThermostatMemberContext | null,
 	revision: number,
-	generation?: string | null
+	generation?: string | null,
+	selectedSource: string | null = null
 ): ThermostatStageRequest | null {
 	if (
+		memberInstallationBlocker(context, selectedSource) ||
 		!context?.device_hardware_id ||
 		!context.firmware ||
 		!context.switch_configuration_json ||

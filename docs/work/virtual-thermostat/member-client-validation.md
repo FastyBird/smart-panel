@@ -78,3 +78,25 @@ where current proof is absent. This provisional record is not final composed acc
 
 No issue is marked merged or alpha-ready by this local work. Parent independent review, composed software acceptance,
 published alpha and later separately authorized installed commissioning remain distinct gates.
+
+## Independent checkpoint review corrections
+
+The independent review of `d7a815e1f3b6c23912c1226f52c8461713b6b6eb` requested two client corrections.
+Release responses now preserve policy/source intent edited before or during the request, while replacing retained
+member identities/revisions/states from the authoritative response. Fully released claims leave the editable member
+set and cannot be resurrected from a dirty draft. Successful release invalidates the preview and runtime context.
+The real form tests defer the response and cover releasing, fully released and refused outcomes without sleeps.
+
+Member staging now requires the **selected** protective candidate's actual installation snapshot. The specific
+`selected_protective_source_installation_snapshot_missing` blocker disables Stage and its request builder, with no
+HTTP mutation. An unrelated incomplete candidate does not block a complete selected native/converter source, and
+legacy setup payloads remain unchanged. Reloading current complete metadata clears the blocker. The real SQLite
+catalog test retains historical null metadata rather than fabricating a positive snapshot.
+
+Focused correction validation: 3 Admin files / 23 tests passed with two workers
+(`/tmp/vd-members-review-admin-tests-final.log`); the backend authoring-context suite passed 3 tests
+(`/tmp/vd-members-review-backend-context.log`). Backend types, Admin types and scoped backend/Admin lint/format
+passed in the correction run (`/tmp/vd-members-review-backend-types.log`, `/tmp/vd-members-review-admin-types.log`,
+`/tmp/vd-members-review-backend-lint.log`, `/tmp/vd-members-review-admin-lint.log`), and the final incremental Admin type/lint checks passed after the last refinement
+(`/tmp/vd-members-review-admin-types-final.log`, `/tmp/vd-members-review-admin-lint-final.log`). No API contract changed, so generation was not repeated.
+These corrections still require fresh independent review; they do not establish final composed acceptance.

@@ -465,6 +465,7 @@ import {
 	type ThermostatDraft,
 	type ThermostatSource,
 	buildThermostatRequest,
+	draftAfterRelease,
 	draftFromConfiguration,
 	emptyThermostatDraft,
 } from '../services/thermostat-authoring';
@@ -689,7 +690,8 @@ const save = async (): Promise<void> => {
 const requestRelease = async (): Promise<void> => {
 	const deviceId = props.deviceId;
 	if (!canAuthor.value || !configuration.value || !deviceId || busy.value) return;
-	const ticket = ++requestSequence;
+	const ticket = ++requestSequence,
+		draftSignature = JSON.stringify(draftFromConfiguration(configuration.value));
 	mutationBusy.value = true;
 	requestError.value = null;
 	try {
@@ -700,8 +702,11 @@ const requestRelease = async (): Promise<void> => {
 		if (!alive || ticket !== requestSequence || deviceId !== props.deviceId) return;
 		if (data) {
 			configuration.value = data.data;
-			draft.value = draftFromConfiguration(data.data);
+			draft.value = JSON.stringify(draft.value) === draftSignature ? draftFromConfiguration(data.data) : draftAfterRelease(draft.value, data.data);
+			previewGate.invalidate();
 			preview.value = null;
+			memberRuntime.invalidate();
+			void memberRuntime.reload();
 		} else requestError.value = errorText(error);
 	} catch (error) {
 		if (alive && ticket === requestSequence) requestError.value = errorText(error);

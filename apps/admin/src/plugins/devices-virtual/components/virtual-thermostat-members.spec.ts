@@ -29,7 +29,7 @@ const context = (id: string) => ({
 	graph_revision: 8,
 	candidates: [
 		{
-			property: `floor-${id}`,
+			property: `floor-${id.startsWith('claim-') ? id.slice(6) : id}`,
 			physical_property: `physical-${id}`,
 			name: `Floor ${id}`,
 			fingerprint: id,
@@ -219,6 +219,69 @@ describe('actual mandatory-member authoring forms', () => {
 			},
 		});
 	});
+	it('preserves edits already present before requesting release', async () => {
+		const editor = await open();
+		setNumber(editor, 'Heating setpoint (°C)', 22);
+		await flushPromises();
+		mocks.post.mockResolvedValueOnce({ data: { data: structuredClone(current) } });
+		await button(editor, 'Request OFF and release').trigger('click');
+		await flushPromises();
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((item) => item.props('label') === 'Heating setpoint (°C)')!
+				.findComponent(ElInputNumber)
+				.props('modelValue')
+		).toBe(22);
+	});
+	it.each(['releasing', 'released', 'refused'] as const)('preserves in-flight policy/source edits after %s release response', async (outcome) => {
+		const editor = await open();
+		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await flushPromises();
+		let respond!: (value: unknown) => void;
+		mocks.post.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					respond = resolve;
+				})
+		);
+		await button(editor, 'Request OFF and release').trigger('click');
+		setNumber(editor, 'Heating setpoint (°C)', 23);
+		editor
+			.findAllComponents(ThermostatPropertyPicker)
+			.find((picker) => picker.props('kind') === 'ambient')!
+			.vm.$emit('update:modelValue', 'edited-ambient');
+		await flushPromises();
+		if (outcome === 'refused') respond({ error: { message: 'release_revision_changed' } });
+		else {
+			current.revision = 4;
+			for (const claim of current.actuators) {
+				claim.state = 'releasing';
+				claim.revision = 5;
+			}
+			if (outcome === 'released') current.actuators = [];
+			respond({ data: { data: structuredClone(current) } });
+		}
+		await flushPromises();
+		expect(
+			editor
+				.findAllComponents(ElFormItem)
+				.find((item) => item.props('label') === 'Heating setpoint (°C)')!
+				.findComponent(ElInputNumber)
+				.props('modelValue')
+		).toBe(23);
+		expect(
+			editor
+				.findAllComponents(ThermostatPropertyPicker)
+				.find((picker) => picker.props('kind') === 'ambient')!
+				.props('modelValue')
+		).toBe('edited-ambient');
+		expect(button(editor, 'Save configuration').props('disabled')).toBe(true);
+		const cards = editor.findAllComponents(ThermostatMemberCard);
+		expect(cards).toHaveLength(outcome === 'released' ? 0 : 2);
+		if (outcome === 'releasing') expect(cards[0].props('member').retained).toMatchObject({ state: 'releasing', revision: 5 });
+		if (outcome === 'refused') expect(editor.text()).toContain('release_revision_changed');
+	});
 	it('stages versioned installation through real controls with derived read-only metadata and exact fences', async () => {
 		const editor = await open(),
 			installation = editor.findComponent(ThermostatMemberInstallation);
@@ -254,6 +317,49 @@ describe('actual mandatory-member authoring forms', () => {
 			},
 		});
 		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
+	});
+	it('blocks only the selected incomplete source snapshot and stages after current metadata reload', async () => {
+		let complete = false;
+		const ordinaryGet = mocks.get.getMockImplementation()!;
+		mocks.get.mockImplementation((path: string, options: { params: { path: Record<string, string> } }) => {
+			if (path.includes('member-authoring/claims')) {
+				const data = context(options.params.path.claim);
+				if (!complete) data.candidates[0].snapshot = null as unknown as { component: string };
+				return Promise.resolve({ data: { data } });
+			}
+			return ordinaryGet(path, options);
+		});
+		const editor = await open(),
+			installation = editor.findComponent(ThermostatMemberInstallation);
+		for (const [key, value] of Object.entries({ endpoint: 'offline.fixture', epoch: 'operator-key' }))
+			installation
+				.findAllComponents(ElFormItem)
+				.find((item) => item.props('label') === `devicesVirtualPlugin.members.${key}`)!
+				.findComponent(ElInput)
+				.vm.$emit('update:modelValue', value);
+		for (const [key, value] of Object.entries({
+			script: 2,
+			ceiling: 30,
+			minimumLease: 1,
+			maximumLease: 30,
+			watchdog: 100,
+			heatingMinimum: 15,
+			heatingMaximum: 25,
+		}))
+			setNumber(installation, `devicesVirtualPlugin.members.${key}`, value);
+		await flushPromises();
+		expect(installation.text()).toContain('selected_protective_source_installation_snapshot_missing');
+		expect(button(installation, 'devicesVirtualPlugin.members.stage').props('disabled')).toBe(true);
+		await button(installation, 'devicesVirtualPlugin.members.stage').trigger('click');
+		expect(mocks.put).not.toHaveBeenCalled();
+		complete = true;
+		await button(installation, 'devicesVirtualPlugin.members.reload').trigger('click');
+		await flushPromises();
+		expect(installation.text()).not.toContain('selected_protective_source_installation_snapshot_missing');
+		expect(button(installation, 'devicesVirtualPlugin.members.stage').props('disabled')).toBe(false);
+		await button(installation, 'devicesVirtualPlugin.members.stage').trigger('click');
+		await flushPromises();
+		expect(mocks.put.mock.calls.filter(([path]) => path.includes('thermostat-installations'))).toHaveLength(1);
 	});
 	it('rejects an unoffered source and preserves the draft after server capability refusal', async () => {
 		const editor = await open(),

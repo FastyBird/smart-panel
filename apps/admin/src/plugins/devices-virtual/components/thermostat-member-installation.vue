@@ -10,7 +10,11 @@
 		/>
 		<p v-if="state.value.value?.profile">{{ state.value.value.profile.readiness }} · r{{ state.value.value.profile.revision }}</p>
 		<el-alert
-			v-for="reason in [...(state.value.value?.context.reasons ?? []), ...(state.value.value?.profile?.reasons ?? [])]"
+			v-for="reason in [
+				...(state.value.value?.context.reasons ?? []),
+				...(state.value.value?.profile?.reasons ?? []),
+				...(selectedBlocker ? [selectedBlocker] : []),
+			]"
 			:key="reason"
 			:title="reason"
 			type="warning"
@@ -116,7 +120,12 @@ import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption
 import { useBackend } from '../../../common';
 import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
 import type { ThermostatClaim } from '../services/thermostat-authoring';
-import { attestationKinds, emptyMemberInstallation, memberInstallationRequest } from '../services/thermostat-member-installation';
+import {
+	attestationKinds,
+	emptyMemberInstallation,
+	memberInstallationBlocker,
+	memberInstallationRequest,
+} from '../services/thermostat-member-installation';
 import type { ThermostatInstallation, ThermostatMemberContext } from '../services/thermostat-members';
 
 const props = defineProps<{ claim: ThermostatClaim; configurationRevision: number; requestedLimit: number | null; disabled: boolean }>();
@@ -146,12 +155,17 @@ const current = computed(
 		state.value.value?.context.configuration_revision === props.configurationRevision &&
 		state.value.value.context.claim_revision === props.claim.revision
 );
+const selectedSource = computed(() => props.claim.protection?.source_property ?? props.claim.protection?.source_identity ?? null);
+const selectedBlocker = computed(() =>
+	props.claim.protection && state.value.value ? memberInstallationBlocker(state.value.value.context, selectedSource.value) : null
+);
 const request = computed(() =>
 	memberInstallationRequest(
 		draft.value,
 		state.value.value?.context ?? null,
 		state.value.value?.profile?.revision ?? 0,
-		props.claim.qualification_generation
+		props.claim.qualification_generation,
+		selectedSource.value
 	)
 );
 const textFields = [

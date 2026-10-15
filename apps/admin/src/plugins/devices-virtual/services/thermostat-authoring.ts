@@ -105,6 +105,24 @@ export const draftFromConfiguration = (config: ThermostatConfiguration): Thermos
 	settings: config.settings.map((setting) => ({ ...setting })),
 });
 
+/** Preserve editable intent while authoritative release results replace every retained ownership identity. */
+export const draftAfterRelease = (draft: ThermostatDraft, config: ThermostatConfiguration): ThermostatDraft => {
+	const authoritative = draftFromConfiguration(config);
+	return {
+		...draft,
+		display_floor_claim: authoritative.actuators.some((member) => member.retained?.id === draft.display_floor_claim)
+			? draft.display_floor_claim
+			: null,
+		actuators: [
+			...authoritative.actuators.map((member) => {
+				const edited = draft.actuators.find((entry) => entry.retained?.id === member.retained?.id);
+				return edited ? { ...edited, source_property: member.source_property, retained: member.retained } : member;
+			}),
+			...draft.actuators.filter((member) => !member.retained),
+		],
+	};
+};
+
 const finite = (value: number | null): value is number => typeof value === 'number' && Number.isFinite(value);
 const whole = (value: number | null): value is number => finite(value) && Number.isInteger(value);
 

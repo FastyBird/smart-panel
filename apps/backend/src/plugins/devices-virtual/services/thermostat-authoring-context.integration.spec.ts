@@ -107,6 +107,33 @@ describe('read-only thermostat member authoring catalog', () => {
 		expect(gap.switch_configuration_json).toBeNull();
 		expect(gap.reasons).toContain('current_switch_catalog_unavailable');
 	});
+	it('preserves an eligible historical source without inventing its missing installation snapshot', async () => {
+		const actuator = await relay('A8032ABE5084');
+		const native = await createProtectionProbe(database, actuator),
+			converter = await createProtectionProbe(database, actuator, true);
+		const original = await database.manager.findOneByOrFail(ShellySampleSourceEntity, {
+			propertyId: native.physicalId,
+		});
+		await database.manager.update(
+			ShellySampleSourceEntity,
+			{ propertyId: native.physicalId },
+			{ installationSnapshot: null },
+		);
+		const incomplete = await context.read(actuator);
+		expect(incomplete.candidates.find((source) => source.property === native.sourceId)?.snapshot).toBeNull();
+		expect(incomplete.candidates.find((source) => source.property === converter.sourceId)?.snapshot).toMatchObject({
+			calibration: { operator: 'steinhart_hart' },
+		});
+		expect(incomplete.reasons).toEqual([]);
+		await database.manager.update(
+			ShellySampleSourceEntity,
+			{ propertyId: native.physicalId },
+			{ installationSnapshot: original.installationSnapshot },
+		);
+		expect(
+			(await context.read(actuator)).candidates.find((source) => source.property === native.sourceId)?.snapshot,
+		).not.toBeNull();
+	});
 	it('withdraws a replaced source contract and never manufactures a positive reading from catalog metadata', async () => {
 		const actuator = await relay('A8032ABE5084');
 		const probe = await createProtectionProbe(database, actuator);
