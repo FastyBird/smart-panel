@@ -226,3 +226,112 @@ Nine files changed relative to `23a00e3f3466643e264ca7a634b97ecf9ef1f98c`:
 - `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts`
 - `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts`
 - `docs/work/virtual-thermostat/per-member-protection-validation.md`
+
+## Second safety-review follow-up after `6ef96756`
+
+Both newly confirmed findings are addressed in the 016 worktree, directly after
+`6ef96756a80a24bfdbb4afafb18e4487863198fd`. No migration or legacy script source changes are included.
+
+Qualified Shelly OFF admission still follows the real guard session, transport, platform, delegate manager,
+ChannelsPropertiesService and PropertyValueService path. Every normal accepted relay sample still invokes the
+runtime listener and revokes the captured decision epoch. The listener has no provider/event suppression exception.
+After those OFF events, a newly loaded context can retire the trip barrier using the already settled all-member
+proofs. Each proof retains its configuration/input/member/topology scope fingerprint and live graph/ownership
+leases, in addition to the existing qualification identity, provider source lease and observation timestamp.
+Acknowledgement still requires every mandatory heating member qualified OFF, all ON identities drained, no member
+command in flight, post-barrier observations and a current evaluation epoch. It only re-arms the recovery sample
+boundary; it never clears the latch from a cached report or creates ON authority.
+
+An already settled current drain with an empty journal avoids issuing another identical fence and consequently
+another accepted OFF event. During graph withholding, settled physical drains need no repeated fence I/O; the
+release barrier stays closed. Returning graph validation requires a fresh graph-current scope before acknowledgement.
+Qualification/source replacement, new journals, new barriers, changed configuration, binding, mapping, topology or
+claim generation cannot use this shortcut to authorize recovery. Ordinary OFF telemetry alone is never drain proof.
+Final ON still evaluates all existing epoch/configuration/graph/claim/installation/input guards.
+
+The absent-row refusal now applies only to parallel heating claims. Cooling retains its exact legacy resolver and
+artifact path, including the required same-device global floor input and opposed-output installation evidence.
+Missing/releasing/suspended heating reservations still count toward the explicit per-member requirement.
+
+The new test fixture uses real production services through guard-session inspection/fencing and qualified sample
+publication. That event path mocks SDK RPC/guard HTTP responses and storage I/O; the surrounding runtime harness
+supplies offline qualification entries and controllable graph leases. Actual claims/installation loaders are exercised
+separately in the SQLite installation/configuration/ownership suites. The new fixture opens no network listener and
+touches no hardware. It explicitly models matched ON responses followed by independent SDK telemetry, and can pause before
+send or after a possible ON send. Receiver time advances with simulated packets while SQLite/event scheduling stays
+real. Fixture telemetry is awaited before asserting completed drainage or supplying new recovery evidence. Early or
+late observations continue to revoke captured ON authority; tests retain and reconcile the per-leaf journals.
+
+Coverage adds unchanged OFF readbacks, finite feedback scheduling, startup/trip/restart recovery, graph withholding
+and revalidation, queued/late ON, and temperature/configuration/graph/claim mutation while proof awaits. The mixed
+installation lifecycle uses three distinct supported 1PM `switch:0` fixtures, two explicit heating protection rows,
+and legacy cooling with its own physical global floor guard. Staging, inspection, activation and renewal use actual
+installation services. The existing singleton upgrade/hash/generation/journal and retained-heating-member cases
+remain in the focused suites.
+
+Admin/Panel coordination remains separate. No public API/source schema changed, no client generation is needed for
+this follow-up, and no unchanged Admin/Panel suites are rerun. Physical commissioning remains after published alpha;
+these software fixtures supply no hardware qualification or protection attestation. Independent safety review is
+still required before integration/publication.
+
+Fresh validation commands (from this worktree root):
+
+```sh
+pnpm --filter @fastybird/smart-panel-backend exec jest --runInBand --transform '{"^.+\\.(t|j)s$": ["ts-jest", {"tsconfig": {"allowJs": true, "isolatedModules": true}}]}' virtual-thermostat-runtime.service.spec.ts thermostat-installation.integration.spec.ts virtual-thermostat-config.integration.spec.ts virtual-thermostat-claims.service.spec.ts virtual-thermostat-transport.service.spec.ts virtual-thermostat-authoring.integration.spec.ts virtual-thermostat-ownership.subscriber.spec.ts shelly-guard-candidate.spec.ts shelly-sample-sources.service.spec.ts qualified-adoption.spec.ts property-qualified-state.integration.spec.ts shelly-guard-rpc-session.spec.ts guarded-shelly-http.spec.ts guarded-shelly-rpc.spec.ts
+pnpm --filter @fastybird/smart-panel-backend exec jest --runInBand virtual-thermostat-runtime.service.spec.ts
+pnpm --filter @fastybird/smart-panel-backend run type-check
+pnpm --filter @fastybird/smart-panel-backend run lint:api
+pnpm --filter @fastybird/smart-panel-backend run lint:openapi:spec
+# Scoped Prettier and ESLint run from apps/backend against the five TypeScript files listed below.
+pnpm exec prettier --check <changed TypeScript files>
+pnpm exec eslint --max-warnings 0 <changed TypeScript files>
+git diff --exit-code 6ef96756 -- apps/backend/src/migrations apps/backend/src/plugins/devices-shelly-ng/contracts/guard-script-source.ts apps/backend/src/plugins/devices-shelly-ng/contracts/member-guard-script-source.ts docs/work/virtual-thermostat/shelly-guard-candidate.js
+git diff --check
+```
+
+The initial 14-suite sweep (`.vd1454-round2-focused.log`) passed all 13 non-runtime suites. Its runtime suite had eight
+fixture failures: four paused-proof cases had not first cleared their startup latch, two SDK telemetry/retry-clock
+cases assumed completion before all telemetry/retry work, and two earlier recovery tests assumed a later report
+stayed fresh across uncontrolled host/SQLite time as well as the acknowledgement's receiver boundary. Fixtures now prime the initial safe state, await independent
+SDK telemetry, advance the existing retry backoff explicitly for late ON, and supply later recovery evidence only
+after all-leaf OFF/drain. No guard, sample clock acceptance, retry interval or qualification requirement was relaxed.
+The run used an isolated-module Jest transform to reduce host memory contention, with full backend TypeScript
+checking separately. An ordinary configured Jest rerun also exercised all runtime cases; its remaining fixture timing failures and final
+corrections are recorded below.
+
+Changed files relative to `6ef96756` (six total):
+
+- `apps/backend/src/plugins/devices-virtual/services/thermostat-installation-bindings.service.ts`
+- `apps/backend/src/plugins/devices-virtual/services/thermostat-installation.integration.spec.ts`
+- `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts`
+- `apps/backend/src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.ts`
+- `apps/backend/test/support/thermostat-real-guard-fixture.ts`
+- `docs/work/virtual-thermostat/per-member-protection-validation.md`
+
+Final static checks passed: full backend TypeScript (`.vd1454-round2-types-final.log`), scoped ESLint with zero
+warnings (`.vd1454-round2-lint-final.log`), scoped Prettier check (`.vd1454-round2-format-check.log`), API conventions
+(`.vd1454-round2-api.log`) and strict Spectral warning threshold (`.vd1454-round2-spectral.log`). All logs are ignored
+local files retained in this worktree. The immutable migration/legacy/v2 script diff check and whitespace check
+passed. No generated contract file was manually edited or force-added.
+
+
+Final runtime validation passed **75 tests / one complete suite**, including all eight new real-event cases:
+
+```sh
+pnpm --filter @fastybird/smart-panel-backend exec jest --runInBand --transform '{"^.+\\.(t|j)s$": ["ts-jest", {"tsconfig": {"allowJs": true, "isolatedModules": true}}]}' virtual-thermostat-runtime.service.spec.ts
+```
+
+The final log is `.vd1454-round2-runtime-verified.log` (33.523 seconds, 75/75 passed). Together with the 300 tests in
+the 13 green non-runtime suites from `.vd1454-round2-focused.log`, this is **375 passing tests across 14 focused
+suites**. No failed case remains unresolved. No broad monorepo or unchanged Admin/Panel suite was run.
+
+The standard-transform complete runtime run (`.vd1454-round2-runtime-final.log`) passed 70 cases and exposed four
+ordering fixtures whose five-second input contracts expired during slow host/SQLite work, plus one multi-phase
+proof race exceeding the 30-second test budget. Packet time is now controlled for those ordering fixtures without
+changing the five-second contract; the four complex SQLite proof races have a bounded 60-second test budget.
+The five affected cases passed in `.vd1454-round2-five-final.log`. Subsequent complete sweeps exposed an SDK-fixture
+assumption that a late observation always needed exactly one fixed retry interval. Either sibling can deliver that
+observation, including when the other queued ON is refused. The fixture now follows the actual `next_release_at`
+deadline with a bounded six-round reconciliation loop, retaining the original journals and requiring qualified OFF
+before new recovery reports. Final complete runtime validation above supersedes these intermediate fixture failures.
+Production timeout, retry, input age, local script and qualification rules remain unchanged.

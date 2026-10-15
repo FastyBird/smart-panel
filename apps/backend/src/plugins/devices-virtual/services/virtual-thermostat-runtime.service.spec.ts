@@ -7,6 +7,10 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createProtectionProbe, memberInstallationSetup } from '../../../../test/support/thermostat-protection-fixture';
+import {
+	realThermostatGuardFixture,
+	useThermostatPacketClock,
+} from '../../../../test/support/thermostat-real-guard-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { IndexVirtualThermostatCommands1000000000035 } from '../../../migrations/1000000000035-IndexVirtualThermostatCommands';
 import {
@@ -95,6 +99,7 @@ describe('virtual thermostat durable runtime', () => {
 	let makeRuntime: (
 		graph?: VirtualDependencyGraphService,
 		aggregate?: VirtualAggregateRuntimeService,
+		transport?: VirtualThermostatTransportService,
 	) => VirtualThermostatRuntimeService;
 	let events: EventEmitter2;
 	let producers: PropertyProducerRegistryService;
@@ -122,7 +127,9 @@ describe('virtual thermostat durable runtime', () => {
 	let providerCurrent: boolean;
 	let proofMutation: (proof: ThermostatReleaseOrderingEvidence) => ThermostatReleaseOrderingEvidence;
 	const protectionProbes = new Set<string>();
+	let packetTick: (() => void) | null;
 	const sample = (id: string, value: number | boolean): void => {
+		packetTick?.();
 		const at = new Date();
 		if (id === sensorId) for (const probe of protectionProbes) sample(probe, 20);
 		samples.set(id, {
@@ -145,6 +152,7 @@ describe('virtual thermostat durable runtime', () => {
 		}).initialize();
 		samples.clear();
 		protectionProbes.clear();
+		packetTick = null;
 		unavailableMembers.clear();
 		sends.length = 0;
 		sentTargets.length = 0;
@@ -423,13 +431,13 @@ describe('virtual thermostat durable runtime', () => {
 			claims,
 			events,
 		);
-		makeRuntime = (runtimeGraph = graph, aggregate) =>
+		makeRuntime = (runtimeGraph = graph, aggregate, runtimeTransport = transport) =>
 			new VirtualThermostatRuntimeService(
 				database,
 				new DeviceStructureLockService(),
 				claims,
 				new VirtualThermostatInputsService(database, values, aggregate),
-				transport,
+				runtimeTransport,
 				values,
 				producers,
 				events,
@@ -443,6 +451,7 @@ describe('virtual thermostat durable runtime', () => {
 	afterEach(async () => {
 		jest.restoreAllMocks();
 		runtime?.onModuleDestroy();
+		jest.useRealTimers();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
 	});
@@ -1585,6 +1594,245 @@ describe('virtual thermostat durable runtime', () => {
 		return propertyId;
 	};
 
+	const afterMemberDrain = async () => {
+		for (let phase = 0; phase < 2; phase++) {
+			runtime.request(controllerId, false);
+			await settle();
+		}
+		expect(
+			runtime
+				.readDiagnostics(controllerId)
+				.branches.every((branch) => branch.release_proven && !branch.pending_on && branch.activity === 'off'),
+		).toBe(true);
+		// Recovery is a later receiver observation, not a same-millisecond retained value.
+		await new Promise<void>((resolve) => setTimeout(resolve, 2));
+	};
+	const settleReal = async (fixture: Awaited<ReturnType<typeof realThermostatGuardFixture>>) => {
+		for (let phase = 0; phase < 5; phase++) {
+			await fixture.flushTelemetry();
+			await settle();
+		}
+		// Consume the last settled all-leaf proof and publish its current diagnostics before new recovery reports.
+		runtime.request(controllerId, false);
+		await fixture.flushTelemetry();
+		await settle();
+	};
+	const expectAllMembersOn = () => {
+		const diagnostic = runtime.readDiagnostics(controllerId);
+		expect(diagnostic.branches.every((branch) => branch.activity === 'on') ? true : diagnostic).toBe(true);
+	};
+	const useRealGuard = async () => {
+		runtime.onModuleDestroy();
+		const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications);
+		for (const [id, sample] of samples) await fixture.report(id, sample.value as number | boolean);
+		values = fixture.values;
+		runtime = makeRuntime(undefined, undefined, fixture.transport);
+		await runtime.onApplicationBootstrap();
+		return fixture;
+	};
+
+	it('recovers startup, trip and restart through real guard-session OFF admission events including unchanged OFF', async () => {
+		const sibling = await addMandatoryMember();
+		const accepted = jest.fn<void, [{ propertyId: string; sample: QualifiedPropertySample }]>();
+		events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, accepted);
+		const fixture = await useRealGuard();
+		await settleReal(fixture);
+		expect(fixture.controls.errors).toEqual([]);
+		expect(fixture.controls.fences.length).toBeGreaterThanOrEqual(2);
+		expect(
+			accepted.mock.calls.filter(([event]) => event.propertyId === relayId && event.sample.value === false).length,
+		).toBeGreaterThanOrEqual(2);
+		const settledFences = fixture.controls.fences.length;
+		runtime.request(controllerId);
+		await settleReal(fixture);
+		expect(fixture.controls.fences).toHaveLength(settledFences); // No self-sustaining unchanged-OFF loop.
+		for (const probe of protectionProbes) await fixture.report(probe, 20);
+		await fixture.report(sensorId, 18);
+		await settleReal(fixture);
+		expectAllMembersOn();
+		const [probe] = [...protectionProbes];
+		const beforeTrip = fixture.controls.fences.length;
+		await fixture.report(probe, 30);
+		await fixture.report(probe, 20);
+		await settleReal(fixture);
+		expect(fixture.controls.fences.length).toBeGreaterThan(beforeTrip);
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+		expect(runtime.readDiagnostics(controllerId).branches.some((branch) => branch.protection.latched)).toBe(true);
+		for (const source of protectionProbes) await fixture.report(source, 20);
+		await settleReal(fixture);
+		expectAllMembersOn();
+		const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+		runtime.onModuleDestroy();
+		// Restart cannot use historical clear latches or ordinary OFF feedback as drainage proof.
+		await fixture.report(relayId, false);
+		await fixture.report(sibling, false);
+		runtime = makeRuntime(undefined, undefined, fixture.transport);
+		await runtime.onApplicationBootstrap();
+		await settleReal(fixture);
+		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+		for (const source of protectionProbes) await fixture.report(source, 20);
+		await settleReal(fixture);
+		expectAllMembersOn();
+		const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+		expect(original.every((command) => retained.some((row) => row.id === command.id))).toBe(true);
+		fixture.reports.onModuleDestroy();
+	});
+
+	it('withholds real guard-session recovery without a fence feedback loop while graph validation is unavailable', async () => {
+		await addMandatoryMember();
+		const fixture = await useRealGuard();
+		await settleReal(fixture);
+		for (const source of protectionProbes) await fixture.report(source, 20);
+		await settleReal(fixture);
+		const before = fixture.controls.fences.length;
+		graphGeneration++;
+		graphValidated = false;
+		runtime.request(controllerId);
+		await fixture.report([...protectionProbes][0], 30);
+		await settleReal(fixture);
+		expect(fixture.controls.fences).toHaveLength(before);
+		expect(fixture.controls.sends).toHaveLength(0);
+		expect(runtime.readDiagnostics(controllerId).readiness).toBe('unavailable');
+		graphValidated = true;
+		runtime.request(controllerId);
+		await settleReal(fixture);
+		expect(fixture.controls.fences.length).toBeGreaterThan(before);
+		expect(fixture.controls.sends).toHaveLength(0);
+		for (const source of protectionProbes) await fixture.report(source, 20);
+		await fixture.report(sensorId, 18);
+		await settleReal(fixture);
+		expectAllMembersOn();
+		fixture.reports.onModuleDestroy();
+	});
+
+	it.each(['queued', 'late'] as const)(
+		'retains real guard-session %s ON until all-leaf post-trip drain and new recovery',
+		async (delivery) => {
+			await addMandatoryMember();
+			const fixture = await useRealGuard();
+			await settleReal(fixture);
+			let release!: () => void, entered!: () => void;
+			const gate = new Promise<void>((resolve) => (release = resolve));
+			const started = new Promise<void>((resolve) => (entered = resolve));
+			fixture.controls[delivery === 'queued' ? 'beforeOn' : 'afterOn'] = async (property) => {
+				if (property !== relayId) return;
+				entered();
+				await gate;
+			};
+			for (const source of protectionProbes) await fixture.report(source, 20);
+			await fixture.report(sensorId, 18);
+			await started;
+			await runtime.flush();
+			const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			const [probe] = [...protectionProbes];
+			await fixture.report(probe, 30);
+			await fixture.report(probe, 20);
+			await runtime.flush();
+			expect(
+				(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })).some(
+					(row) => row.status === 'dispatching',
+				),
+			).toBe(true);
+			release();
+			await settle();
+			await fixture.flushTelemetry();
+			await settleReal(fixture);
+			// Either member can report a late ON after earlier OFF, even when the other ON was refused.
+			// Follow the actual
+			// bounded retry deadline, preserving backoff and all journals until qualified drain.
+			for (let retry = 0; retry < 6; retry++) {
+				const branches = runtime.readDiagnostics(controllerId).branches;
+				if (branches.every((branch) => branch.activity === 'off' && branch.release_proven && !branch.pending_on)) break;
+				jest.setSystemTime(
+					Math.max(
+						Date.now(),
+						...branches.map((branch) => (branch.next_release_at ? Date.parse(branch.next_release_at) : 0)),
+					) + 1,
+				);
+				runtime.request(controllerId, false);
+				await settleReal(fixture);
+			}
+			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+			expect(runtime.readDiagnostics(controllerId).branches.some((branch) => branch.protection.latched)).toBe(true);
+			if (delivery === 'queued') expect(fixture.controls.sends.some((send) => send.property === relayId)).toBe(false);
+			else expect(fixture.controls.sends.some((send) => send.property === relayId)).toBe(true);
+			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+			expect(original.every((command) => retained.some((row) => row.id === command.id))).toBe(true);
+			for (const source of protectionProbes) await fixture.report(source, 20);
+			await settleReal(fixture);
+			expectAllMembersOn();
+			fixture.reports.onModuleDestroy();
+		},
+	);
+
+	it.each(['temperature', 'configuration', 'graph', 'claim'] as const)(
+		'rejects stale scope after external %s mutation while real guard-session proof awaits',
+		async (mutation) => {
+			await addMandatoryMember();
+			const fixture = await useRealGuard();
+			await settleReal(fixture);
+			for (const source of protectionProbes) await fixture.report(source, 20);
+			await settleReal(fixture);
+			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.protection.ready)).toBe(true);
+			let release!: () => void, entered!: () => void;
+			const gate = new Promise<void>((resolve) => (release = resolve));
+			const started = new Promise<void>((resolve) => (entered = resolve));
+			let held = false;
+			fixture.controls.beforeFence = async (property) => {
+				if (property !== relayId || held) throw new Error('subsequent proof deliberately withheld');
+				held = true;
+				entered();
+				await gate;
+			};
+			const [probe] = [...protectionProbes];
+			await fixture.report(probe, 30);
+			await started;
+			if (mutation === 'temperature') {
+				await fixture.report(probe, 31);
+				await fixture.report(sensorId, 18);
+			} else if (mutation === 'configuration') {
+				await database.manager.increment(VirtualThermostatConfigEntity, { controllerId }, 'revision', 1);
+				events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+			} else if (mutation === 'claim') {
+				await database.manager.increment(
+					VirtualThermostatActuatorClaimEntity,
+					{ sourcePropertyId: relayId },
+					'revision',
+					1,
+				);
+				events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
+			} else {
+				graphGeneration++;
+				graphValidated = false;
+				runtime.request(controllerId);
+			}
+			for (const source of protectionProbes) await fixture.report(source, 20);
+			release();
+			await settleReal(fixture);
+			expect(fixture.controls.sends).toHaveLength(0);
+			expect(runtime.readDiagnostics(controllerId).branches.some((branch) => branch.protection.latched)).toBe(true);
+			if (mutation === 'graph') expect(runtime.readDiagnostics(controllerId).readiness).toBe('unavailable');
+			if (mutation === 'configuration' || mutation === 'claim')
+				expect(
+					runtime
+						.readDiagnostics(controllerId)
+						.branches.some((branch) => branch.protection.reasons.includes('member_floor_release_required')),
+				).toBe(true);
+			// Current-scope proof is still obtainable after the deliberate fault is repaired.
+			fixture.controls.beforeFence = null;
+			graphValidated = true;
+			runtime.request(controllerId);
+			await settleReal(fixture);
+			expect(fixture.controls.sends).toHaveLength(0); // Pre-proof safe reports never authorize recovery.
+			for (const source of protectionProbes) await fixture.report(source, 20);
+			await fixture.report(sensorId, 18);
+			await settleReal(fixture);
+			expectAllMembersOn();
+			fixture.reports.onModuleDestroy();
+		},
+		60_000,
+	);
+
 	it('releases the whole demanded branch when any actual member floor trips and keeps individual evidence', async () => {
 		const sibling = await addMandatoryMember();
 		runtime.request(controllerId);
@@ -1614,6 +1862,7 @@ describe('virtual thermostat durable runtime', () => {
 		).toBe(2);
 	});
 	it('retains a synchronous input fault across rapid recovery inside hysteresis before evaluation', async () => {
+		packetTick = useThermostatPacketClock();
 		await addMandatoryMember();
 		runtime.request(controllerId);
 		await settle();
@@ -1629,6 +1878,7 @@ describe('virtual thermostat durable runtime', () => {
 				.protection.latched,
 		).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+		await afterMemberDrain();
 		sample(probe, 27.9);
 		runtime.request(controllerId);
 		await settle();
@@ -1638,6 +1888,7 @@ describe('virtual thermostat durable runtime', () => {
 	it.each(['trip', 'source-gap', 'reconfiguration'] as const)(
 		'retains the whole-branch trip barrier across immediate recovery and %s with an energized sibling and queued ON',
 		async (interruption) => {
+			packetTick = useThermostatPacketClock();
 			const sibling = await addMandatoryMember();
 			runtime.request(controllerId);
 			await settle();
@@ -1683,6 +1934,7 @@ describe('virtual thermostat durable runtime', () => {
 			expect(sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
 			// Pre-drain recovery reports remain unusable. Only a new post-drain report clears the latch.
+			await afterMemberDrain();
 			for (const source of protectionProbes) sample(source, 20);
 			runtime.request(controllerId);
 			await settle();
@@ -1998,6 +2250,7 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		expect(original.every((command) => pending.some((row) => row.id === command.id))).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
+		await afterMemberDrain();
 		for (const probe of protectionProbes) sample(probe, 20);
 		runtime.request(controllerId);
 		await settle();

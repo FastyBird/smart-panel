@@ -41,7 +41,7 @@ export class ThermostatInstallationBindingsService {
 				role: 'heating',
 				state: Not('released'),
 			});
-			if (heating > 1)
+			if (legacyClaim.role === 'heating' && heating > 1)
 				throw new DevicesValidationException(
 					'Every nonreleased parallel heating member requires explicit local protection before installation.',
 				);

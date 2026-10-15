@@ -170,7 +170,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly memberFaults = new Map<string, string>();
 	private readonly reconciled = new Map<
 		string,
-		{ qualification: ThermostatInstalledQualification; sourceIsCurrent: () => boolean; observedAt: number }
+		{
+			qualification: ThermostatInstalledQualification;
+			sourceIsCurrent: () => boolean;
+			observedAt: number;
+			scope: string;
+			scopeIsCurrent: () => boolean;
+		}
 	>();
 	private readonly diagnosticGuards = new Map<string, () => boolean>();
 	/** A stored release barrier is usable only while its exact installed qualification and source lease stay live. */
@@ -750,6 +756,9 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const now = Date.now(),
 			frame = this.inputs.read(context.bindings, now);
 		context.decision = this.decide(context, frame, now, true);
+		// Fence feedback revokes the previous decision like every other relay event. Consume settled
+		// all-leaf proof only in this freshly loaded scope, before issuing any further proof I/O.
+		this.acknowledgeMemberRelease(context);
 		context.state.decisionRevision++;
 		context.state.configurationRevision = context.config.revision;
 		context.state.floorLatched = context.decision.floorOverheatLatched;
@@ -795,6 +804,52 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		}
 		await this.publish(context, frame);
 	}
+	/** OFF/drain proof is reusable only for this exact topology, bindings and live graph/ownership leases. */
+	private releaseScope(context: ControllerContext): string {
+		return thermostatFingerprint({
+			configuration: context.config.revision,
+			inputs: context.bindings
+				.map(({ binding, compatible, producerRevision }) => ({ binding, compatible, producerRevision }))
+				.sort((a, b) => a.binding.id.localeCompare(b.binding.id)),
+			claims: context.claims
+				.map((claim) => ({
+					id: claim.id,
+					revision: claim.revision,
+					generation: claim.qualificationGeneration,
+					role: claim.role,
+					state: claim.state,
+					leaseSeconds: claim.leaseSeconds,
+					providerProfile: claim.providerProfile,
+					providerProfileVersion: claim.providerProfileVersion,
+					device: claim.sourceDeviceId,
+					physicalIdentity: claim.physicalIdentity,
+					source: claim.sourcePropertyId,
+					contract: claim.contractFingerprint,
+				}))
+				.sort((a, b) => a.id.localeCompare(b.id)),
+			members: context.memberBindings
+				.map((member) => ({ claim: member.claimId, basis: member.basis }))
+				.sort((a, b) => a.claim.localeCompare(b.claim)),
+		});
+	}
+	private hasCurrentDrain(context: ControllerContext, claim: VirtualThermostatActuatorClaimEntity): boolean {
+		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
+		const after = this.memberProtection.requiredReleaseAfter(context.memberBindings);
+		const evidence = this.evidence(context, claim, Date.now());
+		const target = context.targets.get(claim.id);
+		return (
+			!!proof &&
+			!!target &&
+			!!this.transport.get(target, claim)?.canReconcile(target, proof.qualification) &&
+			proof.scope === this.releaseScope(context) &&
+			proof.scopeIsCurrent() &&
+			(after === null || proof.observedAt > after) &&
+			evidence.activity === 'off' &&
+			!evidence.pendingOn &&
+			evidence.releaseProven &&
+			![...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)
+		);
+	}
 	/** Never acknowledge scheduling: every relevant leaf needs a post-trip, current qualified OFF/drain proof. */
 	private acknowledgeMemberRelease(context: ControllerContext): void {
 		const after = this.memberProtection.requiredReleaseAfter(context.memberBindings);
@@ -807,22 +862,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		)
 			return;
 		const heating = context.claims.filter((claim) => claim.role === 'heating');
-		if (
-			!heating.length ||
-			!heating.every((claim) => {
-				const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
-				const evidence = this.evidence(context, claim, Date.now());
-				return (
-					proof &&
-					proof.observedAt > after &&
-					evidence.activity === 'off' &&
-					!evidence.pendingOn &&
-					evidence.releaseProven &&
-					![...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)
-				);
-			})
-		)
-			return;
+		if (!heating.length || !heating.every((claim) => this.hasCurrentDrain(context, claim))) return;
 		this.memberProtection.acknowledgeRelease(context.memberBindings, Date.now());
 	}
 	private async prepare(
@@ -989,6 +1029,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if ([...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)) return;
 		const pending = await this.structure.runShared(() => this.loadUnresolvedCommands(claim.controllerId, claim.id));
 		if (pending.some((command) => this.inFlight.has(command.id))) return;
+		// A new fence itself publishes OFF feedback. Repeating an already settled current fence
+		// would enqueue another evaluation forever. Never reuse it across a new barrier or journal.
+		if (!pending.length && this.hasCurrentDrain(context, claim)) return;
+		// Graph withholding cannot acknowledge a barrier or send ON. Once physical drainage is
+		// settled, defer a scope-refresh fence until validation returns instead of feeding back forever.
+		if (!pending.length && !context.publishGuard() && this.isReconciled(claim)) return;
 		const startedAt = new Date();
 		const proof = await this.transport.get(target, claim).reconcile(
 			target,
@@ -1158,6 +1204,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			qualification,
 			sourceIsCurrent: proof.sourceIsCurrent,
 			observedAt: proof.offSample.receivedAt.getTime(),
+			scope: this.releaseScope(context),
+			scopeIsCurrent: () => context.admission.isCurrent() && context.publishGuard(),
 		});
 	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {

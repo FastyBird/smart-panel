@@ -1371,6 +1371,58 @@ describe('durable thermostat installation profiles', () => {
 		).toBe(1);
 		await expect(profiles.stage(claim.id, 1, setup, attestations(), 'operator')).rejects.toThrow('member format');
 	});
+	it('stages, inspects, verifies and renews legacy cooling beside two explicitly protected heating members', async () => {
+		const sibling = await additionalInstallation(2);
+		const cooling = await additionalInstallation(3);
+		const coolingFloor = await db.manager.findOneByOrFail(VirtualThermostatSourceEntity, {
+			controllerId: cooling.controllerId,
+			role: 'floor',
+		});
+		// Assemble a new mixed controller before staging: its additional global floor is the cooling
+		// Shelly's own physical probe. Every output is switch:0 on a distinct supported 1PM fixture.
+		await db.manager.update(
+			VirtualThermostatSourceEntity,
+			{ controllerId: claim.controllerId, role: 'floor' },
+			{
+				sourcePropertyId: coolingFloor.sourcePropertyId,
+				sourcePropertyIdentity: coolingFloor.sourcePropertyIdentity,
+				physicalIdentity: coolingFloor.physicalIdentity,
+				contractFingerprint: coolingFloor.contractFingerprint,
+			},
+		);
+		for (const member of [sibling, cooling]) {
+			member.controllerId = claim.controllerId;
+			if (member.id === cooling.id) member.role = 'cooling';
+			await db.manager.save(member);
+		}
+		await adopt(claim);
+		await adopt(sibling, true);
+		const opposed = [...attestations(), { ...attestations()[0], kind: 'opposed_interlock' as const }];
+		await profiles.stage(claim.id, 0, memberInstallationSetup(27), opposed, 'operator');
+		await profiles.stage(sibling.id, 1, memberInstallationSetup(35), opposed, 'operator');
+		await profiles.stage(cooling.id, 1, { ...setup, deviceHardwareId: 'fixture-hardware-3' }, opposed, 'operator');
+		expect(await db.manager.count(ThermostatMemberProtectionEntity)).toBe(2);
+		const legacy = await bindings.resolve(db.manager, cooling.id);
+		expect(legacy.memberProtection).toBeUndefined();
+		expect(legacy.opposed).toBe(true);
+		const before = await profiles.inspect(cooling.id);
+		for (const member of [claim, sibling, cooling])
+			await loader.verify(member.id, member.id === claim.id ? 1 : 2, 'operator');
+		await loader.refresh(); // Each explicit activation globally fences earlier qualifications; renew all armed intent.
+		for (const member of [claim, sibling, cooling]) {
+			expect(claims.qualification(member, true) ?? (await profiles.inspect(member.id)).reasons).toEqual(
+				expect.objectContaining({ physicalIdentity: member.physicalIdentity }),
+			);
+			expect((await profiles.inspect(member.id)).readiness).toBe('metadata_verified_runtime_fence_required');
+		}
+		await loader.refresh();
+		expect(claims.qualification(cooling, true)).not.toBeNull();
+		const after = await profiles.inspect(cooling.id);
+		expect(after.readiness).toBe('metadata_verified_runtime_fence_required');
+		expect(after.activation_requested).toBe(true);
+		expect(after.artifact).toBe(before.artifact);
+		expect(after.source_hash).toBe(before.source_hash);
+	});
 	it('uses conservative per-member latches through strict boundaries, observation gaps, restart and one faulty input', async () => {
 		const sibling = await additionalInstallation(2);
 		await db.manager.update(VirtualThermostatActuatorClaimEntity, sibling.id, { controllerId: claim.controllerId });
