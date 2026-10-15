@@ -281,11 +281,10 @@ describe('VirtualIndexMaintenanceListener', () => {
 	});
 
 	it('wires synchronous source deletion/reset fences without subscribing to value events', () => {
+		// Read only for decorator introspection; the unbound handler is never invoked.
 		// eslint-disable-next-line @typescript-eslint/unbound-method
-		const metadata = Reflect.getMetadata(
-			EVENT_LISTENER_METADATA,
-			VirtualIndexMaintenanceListener.prototype.handleSourceDeleted,
-		) as OnEventMetadataEntry[];
+		const handler = VirtualIndexMaintenanceListener.prototype.handleSourceDeleted;
+		const metadata = Reflect.getMetadata(EVENT_LISTENER_METADATA, handler) as OnEventMetadataEntry[];
 		expect(metadata.map((entry) => entry.event).sort()).toEqual(
 			[
 				EventType.DEVICE_DELETED,
