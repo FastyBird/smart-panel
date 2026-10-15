@@ -144,6 +144,12 @@ void main() {
         fence.expiredClaims([sample(now)], Duration.zero, now),
         contains('one'),
       );
+      // Loading has no authoritative membership and must preserve expiry.
+      fence.expiredClaims([], Duration.zero, now);
+      expect(
+        fence.expiredClaims([sample(now)], Duration.zero, now),
+        contains('one'),
+      );
       final newer = now.add(const Duration(seconds: 4));
       expect(
         fence.expiredClaims([sample(newer)], Duration.zero, newer),
@@ -153,6 +159,9 @@ void main() {
         fence.expiredClaims([sample(now)], Duration.zero, now),
         contains('one'),
       );
+      // Explicit authoritative removal drops the watermark and bounds memory.
+      fence.retainClaims([]);
+      expect(fence.expiredClaims([sample(now)], Duration.zero, now), isEmpty);
       final noTimestamp = VirtualThermostatMember(
         claim('one', 'heating', 'reserved'),
         {
@@ -469,6 +478,8 @@ void main() {
         expect(card(id), findsOneWidget);
       }
       expect(textIn('h1', 'Live protection reading: 0.0 °C'), findsOneWidget);
+      expect(textIn('h1', 'Server protection readiness: true'), findsOneWidget);
+      expect(textIn('h1', 'Protection latched: false'), findsOneWidget);
       expect(
         textIn('h2', 'Live protection reading: Unavailable'),
         findsOneWidget,
@@ -500,6 +511,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump();
       expect(textIn('h1', 'Reported observation: unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      expect(find.text('Inhibited: member_branch_blocked'), findsNothing);
       revision = 3;
       socket.hint(3);
       for (final respond in held.toList()) {
@@ -519,6 +532,13 @@ void main() {
         findsOneWidget,
       );
       expect(textIn('h1', 'Historical reading only: 0.0 °C'), findsOneWidget);
+      expect(
+        textIn('h1', 'Server protection readiness: Unavailable'),
+        findsOneWidget,
+      );
+      expect(textIn('h1', 'Protection latched: Unavailable'), findsOneWidget);
+      expect(textIn('h1', 'Server protection readiness: true'), findsNothing);
+      expect(textIn('h1', 'Protection latched: false'), findsNothing);
       expect(textIn('h2', 'Server blocker: barrier_latched'), findsOneWidget);
       // A repeated cached HTTP record cannot renew an expired live reading.
       await tester.pump(const Duration(seconds: 2));
@@ -531,6 +551,8 @@ void main() {
       hold = true;
       await tester.pump(const Duration(seconds: 6));
       expect(textIn('h1', 'Reported observation: unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      expect(find.text('Inhibited: member_branch_blocked'), findsNothing);
       expect(
         paths.every(
           (path) =>
@@ -544,8 +566,213 @@ void main() {
       for (final respond in held) {
         respond();
       }
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets(
+    'ready controller becomes unavailable on a hint and on stalled poll expiry',
+    (tester) async {
+      final fixture = MemberDetailFixture();
+      await fixture.mount(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      fixture.hold = true;
+      fixture.socket.hint(++fixture.revision);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      await fixture.flush(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      // No new hint: the periodic poll stalls and the HTTP snapshot itself expires.
+      fixture.hold = true;
+      await tester.pump(const Duration(seconds: 6));
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
+    'same-id loading preserves newer and expired sample fences until qualified recovery',
+    (tester) async {
+      final fixture = MemberDetailFixture();
+      final now = DateTime.now();
+      Map<String, dynamic> sample(
+        DateTime time,
+        double temperature, {
+        int maximumAge = 60,
+      }) => {
+        ...protection(time, temperature),
+        'maximum_age_seconds': maximumAge,
+        'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
+      };
+      fixture.sample = sample(now, 10);
+      await fixture.mount(tester);
+      expect(find.text('Live protection reading: 10.0 °C'), findsOneWidget);
+      // Both readings are unexpired; replacing the model must retain the newer watermark.
+      fixture.sample = sample(now.subtract(const Duration(seconds: 1)), 9);
+      fixture.revision++;
+      fixture.hold = true;
+      await fixture.mount(tester);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      await fixture.flush(tester);
+      expect(find.text('Live protection reading: 9.0 °C'), findsNothing);
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Server protection readiness: true'), findsNothing);
+
+      fixture.sample = sample(
+        now.add(const Duration(seconds: 1)),
+        11,
+        maximumAge: 2,
+      );
+      await fixture.refetch(tester);
+      expect(find.text('Live protection reading: 11.0 °C'), findsOneWidget);
+      expect(find.text('Protection latched: false'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(
+        find.text('Server protection readiness: Unavailable'),
+        findsOneWidget,
+      );
+      // Simulate a cached age/expiry rollback across another same-id loading phase.
+      fixture.sample = sample(now.add(const Duration(seconds: 1)), 11);
+      fixture.revision++;
+      fixture.hold = true;
+      await fixture.mount(tester);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      await fixture.flush(tester);
+      expect(find.text('Live protection reading: 11.0 °C'), findsNothing);
+      expect(find.text('Protection latched: false'), findsNothing);
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      fixture.sample = sample(now, 10);
+      await fixture.refetch(tester);
+      expect(find.text('Live protection reading: 10.0 °C'), findsNothing);
+      // Only genuinely newer qualified evidence recovers the live reading and flags.
+      fixture.sample = sample(now.add(const Duration(seconds: 2)), 12);
+      await fixture.refetch(tester);
+      expect(find.text('Live protection reading: 12.0 °C'), findsOneWidget);
+      expect(find.text('Server protection readiness: true'), findsOneWidget);
+      expect(find.text('Protection latched: false'), findsOneWidget);
+      fixture.hasMember = false;
+      await fixture.refetch(tester);
+      expect(find.byKey(const ValueKey('thermostat-member-one')), findsNothing);
+      await fixture.dispose(tester);
+    },
+  );
+}
+
+/// HTTP and socket fixture for the real detail lifecycle, including held reads.
+class MemberDetailFixture {
+  final socket = MemberSocket();
+  final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+  final held = <void Function()>[];
+  int revision = 1;
+  bool hold = false, hasMember = true;
+  Map<String, dynamic>? sample;
+
+  MemberDetailFixture() {
+    locator.registerSingleton<Dio>(dio);
+    locator.registerSingleton<SocketService>(socket);
+    addTearDown(() {
+      locator.unregister<Dio>();
+      locator.unregister<SocketService>();
+    });
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final data = options.path.endsWith('/comfort')
+              ? {
+                  'controller': 'controller',
+                  'revision': revision,
+                  'graph_revision': revision,
+                  'configuration': null,
+                  'effective': {'source': 'manual'},
+                }
+              : options.path.endsWith('/runtime')
+              ? {
+                  'epoch': 'epoch',
+                  'sequence': revision,
+                  'configuration_revision': revision,
+                  'requested_mode': 'heat',
+                  'readiness': 'ready',
+                  'reasons': <String>[],
+                  'branches': [
+                    if (hasMember)
+                      {
+                        'claim': 'one',
+                        'role': 'heating',
+                        'activity': 'off',
+                        'protection': sample,
+                      },
+                  ],
+                }
+              : {
+                  'revision': revision,
+                  'locked': false,
+                  'policy': {'heatingSetpoint': 21},
+                  'settings': <Map>[],
+                  'actuators': [
+                    if (hasMember) claim('one', 'heating', 'reserved'),
+                  ],
+                };
+          void respond() => handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'data': data},
+            ),
+          );
+          if (hold && !options.path.endsWith('/comfort')) {
+            held.add(respond);
+          } else {
+            respond();
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> mount(WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 4000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: VirtualThermostatDeviceDetail(
+          device: ThermostatDeviceView(
+            id: 'controller',
+            type: 'virtual',
+            name: 'Room',
+            channels: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  Future<void> flush(WidgetTester tester) async {
+    hold = false;
+    final pending = held.toList();
+    held.clear();
+    for (final respond in pending) {
+      respond();
+    }
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+  }
+
+  Future<void> refetch(WidgetTester tester) async {
+    socket.hint(++revision);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+  }
+
+  Future<void> dispose(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await flush(tester);
+    expect(tester.takeException(), isNull);
+  }
 }

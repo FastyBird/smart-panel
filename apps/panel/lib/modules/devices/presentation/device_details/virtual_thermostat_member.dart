@@ -98,13 +98,18 @@ class VirtualThermostatMember {
 class VirtualThermostatReadingFence {
   final _samples = <String, ({DateTime time, bool expired})>{};
 
+  /// Only an accepted configuration can establish removal. Empty/loading view
+  /// projections must not discard watermarks during same-device replacement.
+  void retainClaims(Iterable<String> claims) {
+    final active = claims.toSet();
+    _samples.removeWhere((claim, _) => !active.contains(claim));
+  }
+
   Set<String> expiredClaims(
     List<VirtualThermostatMember> members,
     Duration elapsed,
     DateTime now,
   ) {
-    final claims = members.map((member) => member.claim).toSet();
-    _samples.removeWhere((claim, _) => !claims.contains(claim));
     final expired = <String>{};
     for (final member in members) {
       final input = member.input;

@@ -138,11 +138,11 @@ class VirtualThermostatMembers extends StatelessWidget {
                   field(l.thermostatMemberCutoff, p?['effective_cutoff']),
                   field(
                     l.thermostatMemberLatch,
-                    current ? (p?['latched']) : null,
+                    live != null ? (p?['latched']) : null,
                   ),
                   field(
                     l.thermostatMemberProtectionReady,
-                    current ? (p?['ready']) : null,
+                    live != null ? (p?['ready']) : null,
                   ),
                   for (final reason in input?.reasons ?? <String>[])
                     field(l.thermostatMemberBlockers, reason),

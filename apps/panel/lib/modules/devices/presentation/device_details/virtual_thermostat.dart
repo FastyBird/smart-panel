@@ -184,6 +184,17 @@ class _VirtualThermostatDeviceDetailState
       }
       _configurationMismatchSeen = false;
       _hintRefreshNeeded = false;
+      // Prune only once membership is known from an accepted, revision-matched
+      // configuration. A loading projection is not evidence of removal.
+      final activeClaims = configuration['actuators'];
+      if (activeClaims is List) {
+        _readingFence.retainClaims(
+          activeClaims
+              .whereType<Map>()
+              .map((claim) => claim['id'])
+              .whereType<String>(),
+        );
+      }
       setState(() {
         _configuration = configuration;
         _runtime = Map<String, dynamic>.from(
@@ -391,7 +402,9 @@ class _VirtualThermostatDeviceDetailState
                 '${l.thermostatMemberPolicy}: ${(policy['floor'] as Map)['limit']} °C / ${(policy['floor'] as Map)['recoveryHysteresis']} °C',
               ),
             Text('Requested mode: ${requestedMode ?? 'unknown'}'),
-            Text('Controller readiness: $readiness'),
+            Text(
+              'Controller readiness: ${current ? readiness : l.thermostatMemberUnavailable}',
+            ),
             if (ambient != null)
               Text('Ambient: ${ambient.toStringAsFixed(1)} °C'),
             if (selectedClaim != null)
@@ -402,7 +415,13 @@ class _VirtualThermostatDeviceDetailState
               Text('Floor: ${floor.toStringAsFixed(1)} °C'),
             if (current && runtime['floor_latched'] == true)
               const Text('Floor protection is holding heating OFF.'),
-            for (final reason in reasons) Text('Inhibited: $reason'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (current)
+                  for (final reason in reasons) Text('Inhibited: $reason'),
+              ],
+            ),
             if (inputs.isNotEmpty) ...[
               const Divider(),
               const Text('Input freshness'),
