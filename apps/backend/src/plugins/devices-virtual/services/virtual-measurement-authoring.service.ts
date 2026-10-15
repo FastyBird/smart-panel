@@ -67,6 +67,7 @@ export class VirtualMeasurementAuthoringService {
 
 	async previewAggregate(dto: CreateVirtualAggregateProducerDto): Promise<VirtualAggregateConfigurationModel> {
 		return this.lock.runExclusive(async () => {
+			const graphCurrent = this.graph.capturePublishGuard();
 			const draft = await this.draft(
 				this.dataSource.manager,
 				dto.device,
@@ -82,7 +83,7 @@ export class VirtualMeasurementAuthoringService {
 				draft.output,
 				true,
 			);
-			return this.aggregates.describeAggregate(prepared, revision);
+			return this.aggregates.previewPreparedAggregate(prepared, revision, graphCurrent);
 		});
 	}
 

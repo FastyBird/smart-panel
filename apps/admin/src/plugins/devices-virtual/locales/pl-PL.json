@@ -238,7 +238,8 @@
 			"unknown": "Nieznana diagnostyka",
 			"outlier": "Wartość odstająca wykluczona",
 			"insufficient_comparison_cohort": "Za mało źródeł do porównania",
-			"unknown_members": "Nieznani członkowie uniemożliwiają wynik"
+			"unknown_members": "Nieznani członkowie uniemożliwiają wynik",
+			"preview_revoked": "Podgląd unieważniony; wczytaj dane i uruchom ponownie"
 		},
 		"weight": "Waga względna",
 		"filter": "Wyklucz wartości odstające (odchylenie od mediany)",
@@ -247,7 +248,7 @@
 		"grid": "Krok wyjściowy: {step} {unit} (najbliższy, remisy do +∞)",
 		"legacyGrid": "Zachowuje zadeklarowaną precyzję temperatury",
 		"sampleAge": "Wiek próbki: {age} s",
-		"aggregatePreviewOnly": "Tylko weryfikacja konfiguracji przez serwer. Diagnostyka opisuje zapisane działanie, nie obliczony wynik projektu.",
+		"aggregatePreviewOnly": "Migawka projektu oceniona przez serwer na podstawie aktualnie prawidłowych próbek. Jest tylko do odczytu, wygasa wraz z dowodami i nie gwarantuje świeżości ani dostępności przy zapisie. Nowe źródła mogą wymagać nowych raportów po utworzeniu.",
 		"profiles": {
 			"temperature": "Temperatura (°C)",
 			"humidity": "Wilgotność względna (%)",
@@ -256,7 +257,13 @@
 			"contact": "Kontakt",
 			"motion": "Ruch",
 			"occupancy": "Obecność"
-		}
+		},
+		"evaluatedAt": "Oceniono o: {time}",
+		"expiresAt": "Dowody wygasają o: {time}",
+		"previewExpired": "Migawka projektu wygasła. Przed zapisem uruchom podgląd ponownie.",
+		"detected": "Wykryto",
+		"notDetected": "Nie wykryto",
+		"snapshotQuality": "Jakość projektu: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Zastosuj",

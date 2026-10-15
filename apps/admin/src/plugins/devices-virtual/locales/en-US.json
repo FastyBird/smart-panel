@@ -238,7 +238,8 @@
 			"unknown": "Unknown diagnostic",
 			"outlier": "Outlier excluded",
 			"insufficient_comparison_cohort": "Not enough sources for comparison",
-			"unknown_members": "Unknown members prevent a result"
+			"unknown_members": "Unknown members prevent a result",
+			"preview_revoked": "Preview revoked; reload and preview again"
 		},
 		"weight": "Relative weight",
 		"filter": "Exclude outliers (deviation from median)",
@@ -247,7 +248,7 @@
 		"grid": "Output step: {step} {unit} (nearest, ties toward +∞)",
 		"legacyGrid": "Preserves declared temperature precision",
 		"sampleAge": "Sample age: {age} s",
-		"aggregatePreviewOnly": "Backend configuration validation only. Member diagnostics describe the saved runtime, not a calculated draft result.",
+		"aggregatePreviewOnly": "Draft snapshot evaluated by the backend from currently qualified samples. It is read-only, expires with its evidence, and does not guarantee freshness or availability when saved. New sources may require fresh reports after creation.",
 		"profiles": {
 			"temperature": "Temperature (°C)",
 			"humidity": "Relative humidity (%)",
@@ -256,7 +257,13 @@
 			"contact": "Contact",
 			"motion": "Motion",
 			"occupancy": "Occupancy"
-		}
+		},
+		"evaluatedAt": "Evaluated at: {time}",
+		"expiresAt": "Evidence expires at: {time}",
+		"previewExpired": "The draft snapshot expired. Preview again before saving.",
+		"detected": "Detected",
+		"notDetected": "Not detected",
+		"snapshotQuality": "Draft quality: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Apply",

@@ -378,3 +378,81 @@ describe('extended aggregate authoring contracts', () => {
 		expect(authoring.preview.value).toBeNull();
 	});
 });
+
+const evaluatedState = (value: number | boolean | null, expiresAt: string | null, reasons: string[] = []) => ({
+	...aggregateState(),
+	preview_result: {
+		profile: 'humidity',
+		unit: '%',
+		output_step: 1,
+		value,
+		quality: value === null ? 'unavailable' : 'degraded',
+		reasons,
+		evaluated_at: new Date().toISOString(),
+		sampled_at: new Date().toISOString(),
+		expires_at: expiresAt,
+		inputs: aggregateState().inputs,
+	},
+});
+describe('evaluated draft snapshot lifecycle', () => {
+	const setup = async () => {
+		aggregateApi();
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate);
+		await authoring.loadCapabilities();
+		Object.assign(authoring.model, { name: 'Draft', inputs: [{ source_property: 'one' }, { source_property: 'two' }] });
+		return authoring;
+	};
+	it('keeps backend false distinct from null and revokes authorization at exact evidence expiry', async () => {
+		vi.useFakeTimers();
+		try {
+			const authoring = await setup();
+			const expiry = new Date(Date.now() + 1000).toISOString();
+			client.POST.mockResolvedValueOnce({ data: { data: evaluatedState(false, expiry) } });
+			await authoring.previewDraft();
+			expect(authoring.preview.value).toMatchObject({ preview_result: { value: false, quality: 'degraded' } });
+			expect(authoring.canSavePreview.value).toBe(true);
+			vi.advanceTimersByTime(1000);
+			expect(authoring.preview.value).toBeNull();
+			expect(authoring.previewExpired.value).toBe(true);
+			expect(authoring.canSavePreview.value).toBe(false);
+			client.POST.mockResolvedValueOnce({ data: { data: evaluatedState(null, null, ['quorum_lost']) } });
+			await authoring.previewDraft();
+			expect(authoring.preview.value).toMatchObject({ preview_result: { value: null, reasons: ['quorum_lost'] } });
+			expect(authoring.previewExpired.value).toBe(false);
+			authoring.invalidatePreview();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+	it('does not install a result already expired when its response arrives', async () => {
+		const authoring = await setup();
+		client.POST.mockResolvedValueOnce({ data: { data: evaluatedState(40, new Date(Date.now() - 1).toISOString()) } });
+		await authoring.previewDraft();
+		expect(authoring.preview.value).toBeNull();
+		expect(authoring.canSavePreview.value).toBe(false);
+	});
+	it.each(['source change', 'reload', 'new preview request'] as const)('discards an in-flight response superseded by %s', async (kind) => {
+		const authoring = await setup();
+		let resolve!: (value: unknown) => void;
+		client.POST.mockReturnValueOnce(
+			new Promise((done) => {
+				resolve = done;
+			})
+		);
+		const pending = authoring.previewDraft();
+		if (kind === 'source change') authoring.invalidatePreview();
+		else if (kind === 'reload') await authoring.load();
+		else await authoring.previewDraft();
+		resolve({ data: { data: evaluatedState(40, new Date(Date.now() + 1000).toISOString()) } });
+		await pending;
+		expect(authoring.preview.value).toBeNull();
+		expect(authoring.canSavePreview.value).toBe(false);
+	});
+	it('shows a revoked backend snapshot without allowing it to satisfy the save gate', async () => {
+		const authoring = await setup();
+		client.POST.mockResolvedValueOnce({ data: { data: evaluatedState(null, null, ['preview_revoked']) } });
+		await authoring.previewDraft();
+		expect(authoring.preview.value).toMatchObject({ preview_result: { reasons: ['preview_revoked'] } });
+		expect(authoring.canSavePreview.value).toBe(false);
+	});
+});

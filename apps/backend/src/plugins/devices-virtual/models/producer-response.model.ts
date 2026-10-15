@@ -91,8 +91,74 @@ export class VirtualAggregateOutlierFilterModel implements VirtualAggregateFilte
 	threshold: number;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataAggregatePreview' })
+export class VirtualAggregatePreviewModel {
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		description:
+			'Ephemeral evaluation of the proposed policy against qualified live evidence. Does not admit sources for future creation or publish a live reading.',
+	})
+	@Expose()
+	evaluated_at: string;
+
+	@ApiProperty({ type: String, format: 'date-time', nullable: true })
+	@Expose()
+	sampled_at: string | null;
+
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		nullable: true,
+		description: 'Earliest evidence expiry; null for unavailable results. Never extended by reading the preview.',
+	})
+	@Expose()
+	expires_at: string | null;
+
+	@ApiProperty({ enum: VirtualAggregateProfile })
+	@Expose()
+	profile: VirtualAggregateProfile;
+
+	@ApiProperty({ type: String, nullable: true })
+	@Expose()
+	unit: string | null;
+
+	@ApiProperty({ type: Number, nullable: true })
+	@Expose()
+	output_step: number | null;
+
+	@ApiProperty({ oneOf: [{ type: 'number' }, { type: 'boolean' }], nullable: true })
+	@Expose()
+	value: number | boolean | null;
+
+	@ApiProperty({ enum: ['good', 'degraded', 'unavailable'] })
+	@Expose()
+	quality: 'good' | 'degraded' | 'unavailable';
+
+	@ApiProperty({ type: [String] })
+	@Expose()
+	reasons: string[];
+
+	@ApiProperty({
+		type: [VirtualProducerBindingModel],
+		description:
+			'Evaluated draft input diagnostics. Saved runtime diagnostics are returned separately by configuration reads.',
+	})
+	@Expose()
+	@Type(() => VirtualProducerBindingModel)
+	inputs: VirtualProducerBindingModel[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataAggregateConfiguration' })
 export class VirtualAggregateConfigurationModel {
+	@ApiPropertyOptional({
+		type: VirtualAggregatePreviewModel,
+		description: 'Present only for preview requests; evaluated draft snapshot, never saved runtime authority.',
+	})
+	@Expose()
+	@Type(() => VirtualAggregatePreviewModel)
+	preview_result?: VirtualAggregatePreviewModel;
+
 	@ApiProperty({
 		description: 'Exact canonical channel/quantity profile; excludes smoke and leak policy',
 		enum: VirtualAggregateProfile,

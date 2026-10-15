@@ -238,7 +238,8 @@
 			"unknown": "Diagnóstico desconocido",
 			"outlier": "Valor atípico excluido",
 			"insufficient_comparison_cohort": "Fuentes insuficientes para comparar",
-			"unknown_members": "Los miembros desconocidos impiden un resultado"
+			"unknown_members": "Los miembros desconocidos impiden un resultado",
+			"preview_revoked": "Vista previa revocada; recargue y vuelva a previsualizar"
 		},
 		"weight": "Peso relativo",
 		"filter": "Excluir valores atípicos (desviación de la mediana)",
@@ -247,7 +248,7 @@
 		"grid": "Paso de salida: {step} {unit} (más cercano, empates hacia +∞)",
 		"legacyGrid": "Conserva la precisión de temperatura declarada",
 		"sampleAge": "Edad de la muestra: {age} s",
-		"aggregatePreviewOnly": "Solo validación de configuración del servidor. Los diagnósticos describen la ejecución guardada, no un resultado calculado del borrador.",
+		"aggregatePreviewOnly": "Instantánea del borrador evaluada por el servidor con muestras válidas actuales. Es de solo lectura, caduca con sus datos y no garantiza frescura ni disponibilidad al guardar. Las fuentes nuevas pueden requerir informes nuevos tras la creación.",
 		"profiles": {
 			"temperature": "Temperatura (°C)",
 			"humidity": "Humedad relativa (%)",
@@ -256,7 +257,13 @@
 			"contact": "Contacto",
 			"motion": "Movimiento",
 			"occupancy": "Presencia"
-		}
+		},
+		"evaluatedAt": "Evaluado a las: {time}",
+		"expiresAt": "Los datos caducan a las: {time}",
+		"previewExpired": "La instantánea del borrador ha caducado. Vuelva a previsualizar antes de guardar.",
+		"detected": "Detectado",
+		"notDetected": "No detectado",
+		"snapshotQuality": "Calidad del borrador: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Aplicar",

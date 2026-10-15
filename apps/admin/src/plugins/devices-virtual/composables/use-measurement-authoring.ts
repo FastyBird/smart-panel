@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, reactive, ref, watch } from 'vue';
 
 import { useBackend } from '../../../common';
 import { getErrorReason } from '../../../common/utils/api-error.utils';
@@ -74,6 +74,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const numericPolicy = computed(() => selectedProfile.value?.numeric_policy === true);
 	let sourceRequest = 0;
 	const loadSources = async () => {
+		invalidatePreview();
 		const request = ++sourceRequest;
 		sources.value = [];
 		sourcesLoading.value = true;
@@ -102,6 +103,40 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const current = ref<AggregateState | TransformState | null>(null);
 	const preview = ref<AggregateState | TransformState | null>(null);
 	let draftVersion = 0;
+	const previewExpired = ref(false);
+	let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+	const invalidatePreview = () => {
+		draftVersion++;
+		clearTimeout(expiryTimer);
+		preview.value = null;
+		previewExpired.value = false;
+	};
+	if (getCurrentScope())
+		onScopeDispose(() => {
+			invalidatePreview();
+			sourceRequest++;
+		});
+	watch(
+		preview,
+		(value) => {
+			clearTimeout(expiryTimer);
+			if (!value || !('inputs' in value) || !value.preview_result?.expires_at) return;
+			const delay = Date.parse(value.preview_result.expires_at) - Date.now();
+			const expire = () => {
+				invalidatePreview();
+				previewExpired.value = true;
+			};
+			if (!(delay > 0)) expire();
+			else expiryTimer = setTimeout(expire, delay);
+		},
+		{ flush: 'sync' }
+	);
+	const canSavePreview = computed(
+		() =>
+			!!preview.value &&
+			(isTransform ||
+				('inputs' in preview.value && !!preview.value.preview_result && !preview.value.preview_result.reasons.includes('preview_revoked')))
+	);
 	const expectedRevision = ref(0),
 		expectedGraphRevision = ref<number>();
 	const isTransform = mode === DevicesVirtualPluginDeviceMode.sensor_transform;
@@ -192,9 +227,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		if (data) return data.data;
 		throw new MeasurementRequestError(getErrorReason<SemanticErrorOperation>(failure, 'measurementFailed'), status);
 	};
-	const load = async () =>
-		run(async () => {
-			preview.value = null;
+	const load = async () => {
+		invalidatePreview();
+		return run(async () => {
 			current.value = null;
 			expectedRevision.value = 0;
 			expectedGraphRevision.value = undefined;
@@ -253,6 +288,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 			}
 			preview.value = null;
 		});
+	};
 	const draft = () => ({
 		device: !isTransform
 			? aggregateDraft(
@@ -276,10 +312,10 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				),
 		output_property: ids.output,
 	});
-	const previewDraft = async () =>
-		run(async () => {
-			const version = draftVersion;
-			preview.value = null;
+	const previewDraft = async () => {
+		invalidatePreview();
+		const version = draftVersion;
+		return run(async () => {
 			let value: AggregateState | TransformState;
 			if (isTransform) {
 				const config = configuration() as TransformConfiguration;
@@ -306,6 +342,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 			preview.value = value;
 			expectedGraphRevision.value = value.graph_revision;
 		});
+	};
 	const save = async () =>
 		run(async () => {
 			let deviceId: string | undefined;
@@ -375,12 +412,14 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	watch(
 		model,
 		() => {
-			draftVersion++;
-			preview.value = null;
+			invalidatePreview();
 		},
 		{ deep: true, flush: 'sync' }
 	);
 	return {
+		invalidatePreview,
+		previewExpired,
+		canSavePreview,
 		profiles,
 		sources,
 		sourcesLoading,

@@ -29,6 +29,7 @@ import {
 } from '../entities/virtual-producer.entity';
 import {
 	VirtualAggregateConfigurationModel,
+	VirtualAggregatePreviewModel,
 	VirtualAggregateProfileModel,
 	VirtualAggregateSourceModel,
 	VirtualLightGroupCapabilityModel,
@@ -36,6 +37,7 @@ import {
 	VirtualProducerBindingModel,
 } from '../models/producer-response.model';
 
+import { evaluateAggregate } from './virtual-aggregate-evaluator';
 import { isValidAggregateFilter, isValidAggregateWeight } from './virtual-aggregate-policy.utils';
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
@@ -151,7 +153,90 @@ export class VirtualProducerConfigService {
 		},
 		graphRevision: number,
 	): VirtualAggregateConfigurationModel {
-		return this.aggregateModel(prepared.config, prepared.inputs, graphRevision, prepared.output?.step);
+		return this.aggregateModel(prepared.config, prepared.inputs, graphRevision, prepared.output?.step, false);
+	}
+
+	/** Evaluate prepared draft policy without mutating catalog, live state, source evidence or runtime barriers. */
+	async previewPreparedAggregate(
+		prepared: Awaited<ReturnType<VirtualProducerConfigService['prepareAggregate']>>,
+		graphRevision: number,
+		graphCurrent: () => boolean,
+	): Promise<VirtualAggregateConfigurationModel> {
+		const { config, inputs, output } = prepared;
+		const readEvidence = await this.aggregateRuntime?.snapshotEvidence(config, inputs, output);
+		const saved = await this.dataSource.manager.findOneBy(VirtualAggregateConfigEntity, {
+			outputPropertyId: output.id,
+		});
+		const revision = await this.graph.revision();
+		// All asynchronous metadata and fence reads precede this single evaluation clock.
+		const now = new Date();
+		const profile = aggregateProfile(output, output.channel as ChannelEntity);
+		const step = output.step ?? profile.outputStep;
+		const evidence =
+			readEvidence?.(now) ??
+			inputs.map((input) => ({
+				id: input.id,
+				sourceIdentity: input.sourcePropertyIdentity,
+				sample: null,
+				weight: input.weight,
+			}));
+		let result = evaluateAggregate(
+			config.operator,
+			config.minimumValidInputs,
+			config.maximumAgeSeconds,
+			evidence,
+			now,
+			step,
+			config.outlierFilter,
+		);
+		const revoked = !graphCurrent() || revision !== graphRevision || (saved?.revision ?? 0) !== config.revision - 1;
+		const reason = revoked
+			? 'preview_revoked'
+			: !readEvidence
+				? 'runtime_unavailable'
+				: (output.channel as ChannelEntity).device &&
+					  ((output.channel as ChannelEntity).device as DeviceEntity).enabled === false
+					? 'output_disabled'
+					: null;
+		if (reason)
+			result = {
+				...result,
+				value: null,
+				quality: 'unavailable',
+				reasons: [reason],
+				sampledAt: null,
+				expiresAt: null,
+				inputs: result.inputs.map((input) => ({
+					...input,
+					value: null,
+					sampledAt: null,
+					ageSeconds: null,
+					exclusion: 'invalid',
+				})),
+			};
+		const model = this.describeAggregate(prepared, graphRevision);
+		model.preview_result = Object.assign(new VirtualAggregatePreviewModel(), {
+			evaluated_at: now.toISOString(),
+			sampled_at: result.sampledAt?.toISOString() ?? null,
+			expires_at: result.expiresAt?.toISOString() ?? null,
+			profile: config.profile,
+			unit: profile.unit,
+			output_step: step ?? null,
+			value: result.value,
+			quality: result.quality,
+			reasons: [...result.reasons],
+			inputs: inputs.map((input) => {
+				const diagnostic = result.inputs.find((candidate) => candidate.id === input.id);
+				return Object.assign(this.bindingModel(input), {
+					...(!profile.binary ? { weight: input.weight ?? 1 } : {}),
+					current_value: diagnostic.value,
+					sampled_at: diagnostic.sampledAt,
+					age_seconds: diagnostic.ageSeconds,
+					exclusion: diagnostic.exclusion,
+				});
+			}),
+		});
+		return model;
 	}
 
 	async previewAggregate(
@@ -159,14 +244,12 @@ export class VirtualProducerConfigService {
 		dto: ConfigureVirtualAggregateDto,
 	): Promise<VirtualAggregateConfigurationModel> {
 		return this.structureLock.runExclusive(async () => {
-			const { config, inputs, output } = await this.prepareAggregate(
-				this.dataSource.manager,
-				outputPropertyId,
-				dto,
-				undefined,
-				true,
-			);
-			return this.aggregateModel(config, inputs, await this.graph.revision(), output.step);
+			const graphCurrent = this.graph.capturePublishGuard();
+			const revision = await this.graph.revision();
+			if (dto.expectedGraphRevision !== undefined && dto.expectedGraphRevision !== revision)
+				throw new DevicesValidationException('Virtual dependency graph revision changed; reload and retry.');
+			const prepared = await this.prepareAggregate(this.dataSource.manager, outputPropertyId, dto, undefined, true);
+			return this.previewPreparedAggregate(prepared, revision, graphCurrent);
 		});
 	}
 
@@ -689,6 +772,7 @@ export class VirtualProducerConfigService {
 		inputs: VirtualAggregateInputEntity[],
 		graphRevision: number,
 		outputStep?: number | null,
+		includeRuntimeDiagnostics = true,
 	): VirtualAggregateConfigurationModel {
 		return Object.assign(new VirtualAggregateConfigurationModel(), {
 			output_property: config.outputPropertyId,
@@ -707,9 +791,14 @@ export class VirtualProducerConfigService {
 				const model = this.bindingModel(input);
 				if (!aggregateProfiles.find((profile) => profile.id === config.profile)?.binary)
 					model.weight = input.weight ?? 1;
-				const diagnostic = this.aggregateRuntime
-					?.readDiagnostics(config.outputPropertyId)
-					?.inputs.find((candidate) => candidate.id === input.id);
+				const diagnostic =
+					includeRuntimeDiagnostics && input.sourcePropertyId !== null
+						? this.aggregateRuntime
+								?.readDiagnostics(config.outputPropertyId)
+								?.inputs.find(
+									(candidate) => candidate.id === input.id && candidate.sourceIdentity === input.sourcePropertyIdentity,
+								)
+						: undefined;
 				if (diagnostic)
 					Object.assign(model, {
 						current_value: diagnostic.value,

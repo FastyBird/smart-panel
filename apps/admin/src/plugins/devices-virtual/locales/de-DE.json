@@ -238,7 +238,8 @@
 			"unknown": "Unbekannte Diagnose",
 			"outlier": "Ausreißer ausgeschlossen",
 			"insufficient_comparison_cohort": "Nicht genügend Quellen zum Vergleich",
-			"unknown_members": "Unbekannte Mitglieder verhindern ein Ergebnis"
+			"unknown_members": "Unbekannte Mitglieder verhindern ein Ergebnis",
+			"preview_revoked": "Vorschau widerrufen; neu laden und erneut prüfen"
 		},
 		"weight": "Relatives Gewicht",
 		"filter": "Ausreißer ausschließen (Abweichung vom Median)",
@@ -247,7 +248,7 @@
 		"grid": "Ausgabeschritt: {step} {unit} (nächster Wert, Gleichstand zu +∞)",
 		"legacyGrid": "Behält die deklarierte Temperaturpräzision bei",
 		"sampleAge": "Probenalter: {age} s",
-		"aggregatePreviewOnly": "Nur Konfigurationsprüfung durch das Backend. Mitgliedsdiagnosen beschreiben die gespeicherte Laufzeit, kein berechnetes Entwurfsergebnis.",
+		"aggregatePreviewOnly": "Vom Backend anhand aktuell gültiger Proben ausgewerteter Entwurf. Der schreibgeschützte Schnappschuss verfällt mit seinen Nachweisen und garantiert keine Frische oder Verfügbarkeit beim Speichern. Neue Quellen können nach der Erstellung neue Meldungen erfordern.",
 		"profiles": {
 			"temperature": "Temperatur (°C)",
 			"humidity": "Relative Feuchte (%)",
@@ -256,7 +257,13 @@
 			"contact": "Kontakt",
 			"motion": "Bewegung",
 			"occupancy": "Anwesenheit"
-		}
+		},
+		"evaluatedAt": "Ausgewertet um: {time}",
+		"expiresAt": "Nachweise verfallen um: {time}",
+		"previewExpired": "Der Entwurfsschnappschuss ist abgelaufen. Vor dem Speichern erneut prüfen.",
+		"detected": "Erkannt",
+		"notDetected": "Nicht erkannt",
+		"snapshotQuality": "Entwurfsqualität: {quality}"
 	},
 	"lightGroup": {
 		"apply": "Anwenden",

@@ -55,7 +55,12 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
-import { VirtualAggregateOperator, VirtualAggregateProfile } from '../entities/virtual-producer.entity';
+import {
+	VirtualAggregateConfigEntity,
+	VirtualAggregateInputEntity,
+	VirtualAggregateOperator,
+	VirtualAggregateProfile,
+} from '../entities/virtual-producer.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
@@ -252,6 +257,7 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		state?.onModuleDestroy();
 		producers?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
+		jest.useRealTimers();
 		useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });
 	});
 	const draft = () => {
@@ -766,5 +772,265 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 			).rejects.toThrow('owning COMMIT');
 		});
 		expect(callback).not.toHaveBeenCalled();
+	});
+	const previewRuntime = async () => {
+		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+		const sources = new PropertyValueSourceRegistryService();
+		sources.register(new VirtualValueSourceService(graph));
+		const storage = {
+			isConnected: () => true,
+			query: jest.fn().mockResolvedValue([]),
+			enqueueWritePoint: jest.fn(),
+			flushQueuedWrites: jest.fn().mockResolvedValue(undefined),
+		};
+		const values = new PropertyValueService(
+			storage as never,
+			sources,
+			new PropertyValueLockService(database),
+			producers,
+			events,
+		);
+		const connectivity = { readLatest: () => Promise.resolve({ status: ConnectionState.CONNECTED }) };
+		aggregateRuntime = new VirtualAggregateRuntimeService(
+			database,
+			producers,
+			values,
+			connectivity as never,
+			graph,
+			events,
+		);
+		transformRuntime = new VirtualTransformRuntimeService(
+			database,
+			producers,
+			values,
+			connectivity as never,
+			graph,
+			events,
+		);
+		transforms = new VirtualTransformConfigService(database, lock, graph, events, state, transformRuntime);
+		const aggregates = new VirtualProducerConfigService(
+			database,
+			lock,
+			graph,
+			events,
+			state,
+			undefined,
+			aggregateRuntime,
+		);
+		authoring = new VirtualMeasurementAuthoringService(
+			database,
+			lock,
+			graph,
+			devices,
+			new DeviceValidationService(devices),
+			aggregates,
+			transforms,
+			state,
+			aggregateRuntime,
+		);
+		await state.onModuleInit();
+		await graph.onApplicationBootstrap();
+		await transformRuntime.onApplicationBootstrap();
+		await aggregateRuntime.onApplicationBootstrap();
+		const report = async (propertyId: string, value: number | boolean) => {
+			const property = await database.manager
+				.createQueryBuilder(ChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.where('property.id = :id', { id: propertyId })
+				.callListeners(false)
+				.getOne();
+			await values.writeSampleWithState(property, value, {
+				sampledAt: new Date(),
+				receivedAt: new Date(),
+				provenance: 'live',
+			});
+			await transformRuntime.flush();
+			await aggregateRuntime.flush();
+		};
+		return { values, storage, report };
+	};
+	const aggregateDraft = (ids: string[], profileId = VirtualAggregateProfile.TEMPERATURE) => {
+		const original = draft(),
+			profile = aggregateProfiles.find((candidate) => candidate.id === profileId);
+		original.device.mode = VirtualDeviceMode.SENSOR_AGGREGATE;
+		original.device.channels[0].category = profile.channel;
+		Object.assign(original.device.channels[0].properties[0], {
+			category: profile.quantity,
+			data_type: profile.dataTypes[0],
+			format: null,
+		});
+		return Object.assign(new CreateVirtualAggregateProducerDto(), {
+			device: original.device,
+			outputPropertyId: original.outputPropertyId,
+			configuration: {
+				expectedRevision: 0,
+				operator: profile.binary ? VirtualAggregateOperator.ALL : VirtualAggregateOperator.WEIGHTED_MEAN,
+				minimumValidInputs: 1,
+				maximumAgeSeconds: 10,
+				inputs: ids.map((sourcePropertyId) => ({ sourcePropertyId })),
+			},
+		});
+	};
+	const profileSources = async (profileId: VirtualAggregateProfile, count: number) => {
+		const profile = aggregateProfiles.find((candidate) => candidate.id === profileId),
+			ids: string[] = [];
+		const channelId = uuid(),
+			deviceId = uuid();
+		await database.manager.insert(DeviceEntity, { id: deviceId, name: 'Sources', category: DeviceCategory.SENSOR });
+		await database.manager.insert(ChannelEntity, {
+			id: channelId,
+			device: deviceId,
+			name: 'Sources',
+			category: profile.channel,
+		} as never);
+		for (let i = 0; i < count; i++) {
+			const id = uuid();
+			ids.push(id);
+			await database.manager.insert(ChannelPropertyEntity, {
+				id,
+				channel: channelId,
+				category: profile.quantity,
+				dataType: profile.dataTypes[0],
+				permissions: [PermissionType.READ_ONLY],
+			} as never);
+		}
+		return ids;
+	};
+	it('evaluates a weighted, filtered, grid-rounded creation draft read-only and does not qualify later creation', async () => {
+		const ids = await profileSources(VirtualAggregateProfile.HUMIDITY, 3),
+			{ report, values, storage } = await previewRuntime();
+		await report(ids[0], 40);
+		await report(ids[1], 42);
+		await report(ids[2], 90);
+		const dto = aggregateDraft(ids, VirtualAggregateProfile.HUMIDITY);
+		dto.configuration.minimumValidInputs = 2;
+		dto.configuration.inputs[0].weight = 1;
+		dto.configuration.inputs[1].weight = 3;
+		dto.configuration.inputs[2].weight = 9;
+		dto.configuration.outlierFilter = {
+			kind: 'absolute_deviation_from_median',
+			threshold: 3,
+		} as typeof dto.configuration.outlierFilter;
+		const before = await snapshot(),
+			generation = values.currentSampleGeneration(),
+			writes = storage.enqueueWritePoint.mock.calls.length,
+			history = jest.fn();
+		database.subscribers.push({ listenTo: () => ChannelPropertyEntity, afterLoad: history });
+		publications.length = 0;
+		const first = (await authoring.previewAggregate(dto)).preview_result;
+		expect(first).toMatchObject({ value: 42, quality: 'degraded', profile: 'humidity', unit: '%', output_step: 1 });
+		expect(first.inputs.find((input) => input.source_identity === ids[2])).toMatchObject({
+			current_value: 90,
+			exclusion: 'outlier',
+		});
+		jest.setSystemTime(Date.now() + 500);
+		const second = (await authoring.previewAggregate(dto)).preview_result;
+		expect(second.expires_at).toBe(first.expires_at);
+		expect(second.sampled_at).toBe(first.sampled_at);
+		expect(await snapshot()).toEqual(before);
+		expect(history).not.toHaveBeenCalled();
+		expect(publications).toEqual([]);
+		expect(values.currentSampleGeneration()).toBe(generation);
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(writes);
+		expect(producers.owns(dto.outputPropertyId)).toBe(false);
+		await authoring.createAggregate(dto);
+		await aggregateRuntime.flush();
+		expect(producers.readDiagnosticState(dto.outputPropertyId).producer.quality).toBe('unavailable');
+		// Previewing the newly saved policy cannot consume the post-creation freshness barrier.
+		const saved = await database.manager.findOneByOrFail(VirtualAggregateConfigEntity, {
+			outputPropertyId: dto.outputPropertyId,
+		});
+		const bindings = await database.manager.find(VirtualAggregateInputEntity, {
+			where: { outputPropertyId: dto.outputPropertyId },
+		});
+		const configs = new VirtualProducerConfigService(database, lock, graph, events, state, undefined, aggregateRuntime);
+		dto.configuration.expectedRevision = saved.revision;
+		dto.configuration.inputs = bindings.map((input) => ({
+			id: input.id,
+			sourcePropertyId: input.sourcePropertyId,
+			weight: input.weight,
+		}));
+		expect((await configs.previewAggregate(dto.outputPropertyId, dto.configuration)).preview_result.quality).toBe(
+			'unavailable',
+		);
+		aggregateRuntime.requestRecompute();
+		await aggregateRuntime.flush();
+		expect(producers.readDiagnosticState(dto.outputPropertyId).producer.quality).toBe('unavailable');
+		await report(ids[0], 40);
+		await report(ids[1], 42);
+		await report(ids[2], 90);
+		expect(producers.readDiagnosticState(dto.outputPropertyId)).toMatchObject({
+			value: 42,
+			producer: { quality: 'degraded' },
+		});
+	});
+	it('previews binary creation with false distinct from unavailable and an unknown member', async () => {
+		const ids = await profileSources(VirtualAggregateProfile.CONTACT, 2),
+			{ report } = await previewRuntime();
+		await report(ids[0], false);
+		const dto = aggregateDraft(ids, VirtualAggregateProfile.CONTACT);
+		expect((await authoring.previewAggregate(dto)).preview_result).toMatchObject({
+			value: false,
+			quality: 'degraded',
+			profile: 'contact',
+			unit: null,
+		});
+		dto.configuration.operator = VirtualAggregateOperator.ANY;
+		expect((await authoring.previewAggregate(dto)).preview_result).toMatchObject({
+			value: null,
+			quality: 'unavailable',
+			reasons: expect.arrayContaining(['unknown_members']) as string[],
+		});
+	});
+	it('retains transformed source lineage, sample age and lease expiry without publishing or renewing it', async () => {
+		const { report, storage, values } = await previewRuntime();
+		const converter = draft();
+		await authoring.createTransform(converter);
+		await report(sourceId, 12);
+		const before = producers.readDiagnosticState(converter.outputPropertyId),
+			incorporated = producers.readIncorporatedSample(converter.outputPropertyId),
+			generation = values.currentSampleGeneration();
+		jest.setSystemTime(Date.now() + 1000);
+		const dto = aggregateDraft([converter.outputPropertyId, sourceId]);
+		const writes = storage.enqueueWritePoint.mock.calls.length;
+		const result = (await authoring.previewAggregate(dto)).preview_result;
+		expect(result).toMatchObject({
+			value: 18.5,
+			quality: 'good',
+			sampled_at: before.producer.sampledAt,
+			expires_at: before.producer.expiresAt,
+		});
+		expect(result.inputs.find((input) => input.source_identity === converter.outputPropertyId).age_seconds).toBe(1);
+		expect(producers.readDiagnosticState(converter.outputPropertyId)).toEqual(before);
+		expect(producers.readIncorporatedSample(converter.outputPropertyId)).toEqual(incorporated);
+		expect(values.currentSampleGeneration()).toBe(generation);
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(writes);
+		jest.setSystemTime(Date.parse(before.producer.expiresAt));
+		const expired = (await authoring.previewAggregate(dto)).preview_result;
+		expect(expired).toMatchObject({ value: null, quality: 'unavailable' });
+		expect(expired.inputs.find((input) => input.source_identity === converter.outputPropertyId).exclusion).toBe(
+			'stale',
+		);
+		expect(producers.readDiagnosticState(converter.outputPropertyId)).toEqual(before);
+	});
+	it('rejects a transformed cached publication when its incorporated physical acceptance has been replaced', async () => {
+		const { report } = await previewRuntime();
+		const converter = draft();
+		await authoring.createTransform(converter);
+		await report(sourceId, 12);
+		const before = producers.readDiagnosticState(converter.outputPropertyId);
+		const dto = aggregateDraft([converter.outputPropertyId, sourceId]);
+		dto.configuration.minimumValidInputs = 2;
+		const paused = jest.spyOn(transformRuntime, 'requestRecompute').mockImplementation(() => undefined);
+		jest.setSystemTime(Date.now() + 1000);
+		await report(sourceId, 13);
+		const result = (await authoring.previewAggregate(dto)).preview_result;
+		expect(result).toMatchObject({ value: null, quality: 'unavailable' });
+		expect(
+			result.inputs.find((input) => input.source_identity === converter.outputPropertyId).current_value,
+		).toBeNull();
+		expect(producers.readDiagnosticState(converter.outputPropertyId)).toEqual(before);
+		paused.mockRestore();
 	});
 });

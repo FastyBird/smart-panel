@@ -1,3 +1,5 @@
+import { reactive } from 'vue';
+
 import { ElInputNumber, ElOption, ElSelect, ElSwitch } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -23,6 +25,16 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 const profiles = [
+	{
+		profile: 'illuminance',
+		channel: 'illuminance',
+		quantity: 'illuminance',
+		unit: 'lx',
+		data_types: ['float'],
+		operators: ['mean', 'weighted_mean'],
+		numeric_policy: true,
+		output_step: 0.1,
+	},
 	{
 		profile: 'temperature',
 		channel: 'temperature',
@@ -176,6 +188,93 @@ describe('aggregate editor', () => {
 		await wrapper.vm.$nextTick();
 		expect(wrapper.text()).toContain('quality{"quality":"devicesVirtualPlugin.measurement.states.unavailable');
 		expect(wrapper.text()).not.toContain('80');
+		wrapper.unmount();
+	});
+});
+
+const evaluated = (value: number | boolean | null, profile = 'humidity', expiry: string | null = null) => ({
+	...state,
+	preview_result: {
+		profile,
+		value,
+		quality: value === null ? 'unavailable' : 'degraded',
+		reasons: value === null ? ['quorum_lost'] : ['outlier:binding2'],
+		unit: profile === 'contact' ? null : profile === 'illuminance' ? 'lx' : '%',
+		output_step: ['contact', 'temperature'].includes(profile) ? null : profile === 'illuminance' ? 0.1 : 1,
+		evaluated_at: new Date().toISOString(),
+		expires_at: expiry,
+		sampled_at: new Date().toISOString(),
+		inputs: state.inputs,
+	},
+});
+const previewButton = (wrapper: Awaited<ReturnType<typeof mountEditor>>) =>
+	wrapper.findAll('button').find((button) => button.text() === 'devicesVirtualPlugin.measurement.preview')!;
+const saveButton = (wrapper: Awaited<ReturnType<typeof mountEditor>>) =>
+	wrapper.findAll('button').find((button) => button.text() === 'devicesVirtualPlugin.measurement.save')!;
+describe('backend-evaluated snapshot presentation', () => {
+	it.each([
+		[false, 'contact', 'devicesVirtualPlugin.measurement.notDetected'],
+		[null, 'contact', '—'],
+		[0, 'humidity', '0'],
+		[12.3, 'illuminance', '12.3'],
+		[1e-25, 'temperature', '1e-25'],
+	] as const)('renders backend %s distinctly with its precision', async (value, profile, expected) => {
+		const originalGet = mocks.GET.getMockImplementation()!;
+		mocks.GET.mockImplementation(async (path: string) =>
+			path.endsWith('aggregates/{id}')
+				? { data: { data: { ...state, profile, operator: profile === 'contact' ? 'all' : 'weighted_mean' } } }
+				: originalGet(path)
+		);
+		mocks.POST.mockResolvedValueOnce({ data: { data: evaluated(value, profile) } });
+		const wrapper = await mountEditor('output');
+		await previewButton(wrapper).trigger('click');
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain(expected);
+		expect(wrapper.get('[data-test-id="aggregate-preview-quality"]').text()).toContain(value === null ? '.states.unavailable' : '.states.degraded');
+		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain('.evaluatedAt');
+		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain('.expiresAt');
+		// Saved runtime diagnostics remain outside the independently evaluated draft snapshot.
+		expect(wrapper.get('[data-test-id="measurement-preview"]').text()).toContain(value === null ? '.states.quorum_lost' : '.states.outlier');
+		wrapper.unmount();
+	});
+	it.each(['visible', 'in-flight'] as const)('invalidates a %s preview on source evidence changes without editing the draft', async (phase) => {
+		const source = reactive({ id: 'outlier-id', channel: 'c', value: { value: 10, lastUpdated: 'first' } });
+		mocks.properties = [source];
+		const wrapper = await mountEditor('output');
+		let resolve!: (response: unknown) => void;
+		if (phase === 'visible') mocks.POST.mockResolvedValueOnce({ data: { data: evaluated(40) } });
+		else
+			mocks.POST.mockReturnValueOnce(
+				new Promise((done) => {
+					resolve = done;
+				})
+			);
+		await previewButton(wrapper).trigger('click');
+		await flushPromises();
+		if (phase === 'visible') expect(wrapper.find('[data-test-id="measurement-preview"]').exists()).toBe(true);
+		source.value.lastUpdated = 'second';
+		await flushPromises();
+		if (phase === 'in-flight') {
+			resolve({ data: { data: evaluated(40) } });
+			await flushPromises();
+		}
+		expect(wrapper.find('[data-test-id="measurement-preview"]').exists()).toBe(false);
+		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
+		wrapper.unmount();
+	});
+	it('removes an expired snapshot and disables saving at the evidence deadline', async () => {
+		vi.useFakeTimers();
+		mocks.POST.mockResolvedValueOnce({ data: { data: evaluated(40, 'humidity', new Date(Date.now() + 1000).toISOString()) } });
+		const wrapper = await mountEditor('output');
+		await previewButton(wrapper).trigger('click');
+		await flushPromises();
+		expect(wrapper.get('[data-test-id="aggregate-preview-result"]').text()).toContain('40');
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		vi.advanceTimersByTime(1000);
+		await wrapper.vm.$nextTick();
+		expect(wrapper.find('[data-test-id="measurement-preview"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('.previewExpired');
+		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
 		wrapper.unmount();
 	});
 });

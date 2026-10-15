@@ -23,6 +23,7 @@ import { VirtualAggregateConfigEntity, VirtualAggregateInputEntity } from '../en
 
 import { AggregateEvaluation, AggregateInputEvidence, evaluateAggregate } from './virtual-aggregate-evaluator';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils';
 import {
 	aggregateOperatorAllowed,
 	aggregateProfile,
@@ -290,73 +291,15 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 					outputIds.add(property.id);
 					this.sourceOutputs.set(input.sourcePropertyId, outputIds);
 				}
-			const sources: {
-				input: VirtualAggregateInputEntity;
-				property: ChannelPropertyEntity | null;
-				status: ConnectionState;
-			}[] = [];
-			for (const input of inputs) {
-				const source = input.sourcePropertyId
-					? await this.dataSource.manager.findOne(ChannelPropertyEntity, {
-							where: { id: input.sourcePropertyId },
-							relations: ['channel', 'channel.device'],
-						})
-					: null;
-				const device = (source?.channel as ChannelEntity)?.device as DeviceEntity;
-				const status = device ? (await this.connectivity.readLatest(device)).status : ConnectionState.UNKNOWN;
-				sources.push({ input, property: source, status });
-			}
+			const readEvidence = await this.snapshotEvidence(config, inputs, property);
 			if (!this.current(generation) || !this.producers.isAvailable(output.lease)) return;
 			const now = new Date();
-			const evidence: AggregateInputEvidence[] = sources.map(({ input, property: source, status }) => {
-				const sourceChannel = source?.channel as ChannelEntity;
-				const device = sourceChannel?.device as DeviceEntity;
-				const unit = source ? resolvePropertyUnit(source) : null;
-				const incompatible =
-					source &&
-					(!isEligibleAggregateSource(source, sourceChannel, device) ||
-						aggregateProfile(source, sourceChannel)?.id !== config.profile ||
-						input.quantity !== String(source.category) ||
-						input.unit !== unit ||
-						unit !== resolvePropertyUnit(property) ||
-						this.graph.isQuarantined(source.id));
-				let sample =
-					source && !incompatible ? this.values.readQualifiedSample(source, Number.MAX_SAFE_INTEGER, now) : null;
-				const barrier = this.newInputBarriers.get(property.id)?.get(source?.id);
-				if (barrier) {
-					const incorporated = this.producers.readIncorporatedSample(source.id);
-					if (sample && incorporated && incorporated.acceptanceGeneration > barrier.admissionGeneration)
-						this.newInputBarriers.get(property.id).delete(source.id);
-					else sample = null;
-				}
-				return {
-					id: input.id,
-					sourceIdentity: input.sourcePropertyIdentity,
-					weight: input.weight,
-					sample,
-					expiresAt:
-						source && this.producers.owns(source.id)
-							? new Date(this.producers.read(source.id)?.producer.expiresAt ?? NaN)
-							: undefined,
-					exclusion:
-						device?.enabled === false
-							? 'disabled'
-							: !source
-								? 'missing'
-								: incompatible
-									? 'incompatible'
-									: status !== ConnectionState.UNKNOWN && !OnlineDeviceState.includes(status)
-										? 'offline'
-										: sample &&
-											  (!aggregateValueAllowed(aggregateProfile(source, sourceChannel), sample.value) ||
-													!validatePropertyCommandValue(
-														{ ...source, invalid: source.invalid ?? null, step: null } as ChannelPropertyEntity,
-														sample.value,
-													).valid)
-											? 'invalid'
-											: undefined,
-				};
-			});
+			const evidence = readEvidence(now);
+			// Only the saved runtime consumes admission barriers, after the shared read has admitted evidence.
+			for (const input of evidence) {
+				if (input.sample)
+					this.newInputBarriers.get(property.id)?.delete(inputs.find((row) => row.id === input.id)?.sourcePropertyId);
+			}
 			const result = evaluateAggregate(
 				config.operator,
 				config.minimumValidInputs,
@@ -371,6 +314,88 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			this.diagnostics.set(property.id, result);
 			await this.publish(output, evaluation, result, now);
 		}
+	}
+
+	/** Detached metadata/evidence snapshot: never installs output state, renews samples or consumes barriers. */
+	async snapshotEvidence(
+		config: VirtualAggregateConfigEntity,
+		inputs: VirtualAggregateInputEntity[],
+		property: VirtualChannelPropertyEntity,
+	): Promise<(now: Date) => AggregateInputEvidence[]> {
+		const sources: {
+			input: VirtualAggregateInputEntity;
+			property: ChannelPropertyEntity | null;
+			status: ConnectionState;
+		}[] = [];
+		for (const input of inputs) {
+			const source = input.sourcePropertyId
+				? await this.dataSource.manager
+						.createQueryBuilder(ChannelPropertyEntity, 'property')
+						.leftJoinAndSelect('property.channel', 'channel')
+						.leftJoinAndSelect('channel.device', 'device')
+						.where('property.id = :id', { id: input.sourcePropertyId })
+						.callListeners(false)
+						.getOne()
+				: null;
+			if (source) await hydrateMeasurementContract(this.dataSource.manager, source);
+			const device = (source?.channel as ChannelEntity)?.device as DeviceEntity;
+			const status = device ? (await this.connectivity.readLatest(device)).status : ConnectionState.UNKNOWN;
+			sources.push({ input, property: source, status });
+		}
+		return (now: Date) =>
+			sources.map(({ input, property: source, status }) => {
+				const sourceChannel = source?.channel as ChannelEntity;
+				const device = sourceChannel?.device as DeviceEntity;
+				const unit = source ? resolvePropertyUnit(source) : null;
+				const incompatible =
+					source &&
+					(!isEligibleAggregateSource(source, sourceChannel, device) ||
+						aggregateProfile(source, sourceChannel)?.id !== config.profile ||
+						input.quantity !== String(source.category) ||
+						input.unit !== unit ||
+						unit !== resolvePropertyUnit(property) ||
+						this.graph.isQuarantined(source.id));
+				let sample =
+					source && !incompatible
+						? this.values.readQualifiedSampleSnapshot(source, Number.MAX_SAFE_INTEGER, now)
+						: null;
+				const barrier = this.newInputBarriers.get(property.id)?.get(source?.id);
+				if (barrier) {
+					const incorporated = source && this.producers.readIncorporatedSample(source.id);
+					if (!(sample && incorporated && incorporated.acceptanceGeneration > barrier.admissionGeneration))
+						sample = null;
+				}
+				return {
+					id: input.id,
+					sourceIdentity: input.sourcePropertyIdentity,
+					weight: input.weight,
+					sample,
+					expiresAt:
+						source && this.producers.owns(source.id)
+							? new Date(this.producers.readDiagnosticState(source.id)?.producer.expiresAt ?? NaN)
+							: undefined,
+					exclusion:
+						device?.enabled === false
+							? 'disabled'
+							: !source
+								? 'missing'
+								: incompatible
+									? 'incompatible'
+									: status !== ConnectionState.UNKNOWN && !OnlineDeviceState.includes(status)
+										? 'offline'
+										: source &&
+											  this.values.readSampleFreshness(source, config.maximumAgeSeconds * 1000, now).status === 'stale'
+											? 'stale'
+											: sample &&
+												  (!aggregateValueAllowed(aggregateProfile(source, sourceChannel), sample.value) ||
+														!validatePropertyCommandValue(
+															{ ...source, invalid: source.invalid ?? null, step: null } as ChannelPropertyEntity,
+															sample.value,
+														).valid)
+												? 'invalid'
+												: undefined,
+				};
+			});
 	}
 
 	private current(generation: number): boolean {

@@ -333,17 +333,28 @@
 				type="info"
 				:closable="false"
 			/>
-			<template v-if="'preview_result' in preview && preview.preview_result">
+			<template v-if="'preview_result' in preview && preview.preview_result && 'input' in preview.preview_result">
 				<p>{{ preview.preview_result.input }} → {{ preview.preview_result.value ?? '—' }} {{ 'unit' in preview ? preview.unit : '' }}</p>
 				<el-text type="danger">{{ diagnosticLabel(preview.preview_result.error) }}</el-text>
 			</template>
-			<template v-if="'inputs' in preview">
+			<template v-if="aggregatePreview">
+				<p>{{ t(`devicesVirtualPlugin.measurement.profiles.${aggregatePreview.profile}`) }}</p>
+				<p data-test-id="aggregate-preview-result">
+					{{ previewValue(aggregatePreview.value, aggregatePreview.output_step) }} {{ aggregatePreview.unit }}
+				</p>
+				<p data-test-id="aggregate-preview-quality">
+					{{ t('devicesVirtualPlugin.measurement.snapshotQuality', { quality: diagnosticLabel(aggregatePreview.quality) }) }}
+				</p>
+				<p>{{ aggregatePreview.reasons.map(diagnosticLabel).join(', ') }}</p>
+				<p>{{ t('devicesVirtualPlugin.measurement.evaluatedAt', { time: aggregatePreview.evaluated_at }) }}</p>
+				<p>{{ t('devicesVirtualPlugin.measurement.expiresAt', { time: aggregatePreview.expires_at ?? '—' }) }}</p>
 				<div
-					v-for="input in preview.inputs"
+					v-for="input in aggregatePreview.inputs"
 					:key="input.id"
 				>
 					<code>{{ input.source_identity }}</code>
-					· {{ diagnosticLabel(input.exclusion) }} · {{ t('devicesVirtualPlugin.measurement.sampleAge', { age: input.age_seconds ?? '—' }) }}
+					· {{ previewValue(input.current_value) }} {{ input.unit }} · {{ diagnosticLabel(input.exclusion) }} ·
+					{{ t('devicesVirtualPlugin.measurement.sampleAge', { age: input.age_seconds ?? '—' }) }}
 				</div>
 			</template>
 		</div>
@@ -379,10 +390,16 @@
 		>
 			{{ t('devicesVirtualPlugin.measurement.preview') }}
 		</el-button>
+		<el-alert
+			v-if="previewExpired"
+			:title="t('devicesVirtualPlugin.measurement.previewExpired')"
+			type="warning"
+			:closable="false"
+		/>
 		<el-button
 			type="primary"
 			:loading="busy"
-			:disabled="!preview || loading || !!catalogError"
+			:disabled="!canSavePreview || loading || !!catalogError"
 			@click="submit"
 		>
 			{{ t(`devicesVirtualPlugin.measurement.${outputId ? 'save' : 'create'}`) }}
@@ -414,6 +431,9 @@ const stores = injectStoresManager(),
 	properties = stores.getStore(channelsPropertiesStoreKey);
 const {
 	profiles,
+	invalidatePreview,
+	previewExpired,
+	canSavePreview,
 	selectedProfile,
 	numericPolicy,
 	sources,
@@ -444,6 +464,30 @@ const candidates = computed(() =>
 			? aggregateCandidates(sources.value, devices.findAll(), channels.findAll(), properties.findAll(), selectedProfile.value)
 			: []
 );
+const aggregatePreview = computed(() => (preview.value && 'inputs' in preview.value ? preview.value.preview_result : null));
+const previewValue = (value: number | boolean | null | undefined, step?: number | null): string => {
+	if (value == null) return '—';
+	if (typeof value === 'boolean') return t(`devicesVirtualPlugin.measurement.${value ? 'detected' : 'notDetected'}`);
+	// Presentation precision only: the backend has already evaluated and rounded this value.
+	if (!(step && step > 0)) return String(value);
+	const [coefficient, exponent] = String(step).split('e');
+	const digits = Math.max(0, (coefficient.split('.')[1] ?? '').length - Number(exponent ?? 0));
+	if (digits > 20) return String(value);
+	return new Intl.NumberFormat(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+};
+// Any source evidence or metadata update revokes both visible and in-flight previews.
+watch(
+	() =>
+		model.inputs.map((input) => {
+			const property = properties.findAll().find((entry) => entry.id === input.source_property);
+			const channel = channels.findAll().find((entry) => entry.id === property?.channel);
+			const device = devices.findAll().find((entry) => entry.id === channel?.device);
+			return { property, channel, device };
+		}),
+	invalidatePreview,
+	{ deep: true, flush: 'sync' }
+);
+watch(() => properties.findAll().find((entry) => entry.id === props.outputId)?.value?.producer?.revision, invalidatePreview, { flush: 'sync' });
 const effectiveStep = computed(() =>
 	current.value && 'output_step' in current.value ? current.value.output_step : (selectedProfile.value?.output_step ?? null)
 );
