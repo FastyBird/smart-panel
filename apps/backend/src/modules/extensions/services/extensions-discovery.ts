@@ -7,11 +7,13 @@ import {
 	type ClassType,
 	type DiscoveredAdminExtension,
 	type DiscoveredBackendExtension,
+	type NumericOperatorDefinition,
 	type SmartPanelAdminExtensionManifest,
 	type SmartPanelBackendExtensionManifest,
 	isSmartPanelAdminExtensionManifest,
 	isSmartPanelBackendExtensionManifest,
 	normalizeRoutePrefix,
+	snapshotNumericOperator,
 } from '@fastybird/smart-panel-extension-sdk';
 
 interface DiscoverOptions {
@@ -279,9 +281,25 @@ export async function discoverExtensions(
 
 						const key = backendKey(pkg.name, backendManifest.kind, routePrefix);
 
+						let numericOperators: readonly NumericOperatorDefinition[] | undefined;
+						if (backendManifest.numericOperatorsExport) {
+							try {
+								const definitions = mod[backendManifest.numericOperatorsExport];
+								if (!Array.isArray(definitions) || definitions.length > 64) throw new Error('Invalid operator export');
+								numericOperators = Object.freeze(definitions.map(snapshotNumericOperator));
+							} catch {
+								// A broken opt-in must not prevent unrelated Nest extensions from loading.
+								numericOperators = undefined;
+							}
+						}
 						const candidate = {
 							item: {
 								pkgName: pkg.name,
+								configOwnerType: backendManifest.configOwnerType,
+								backendExports: Object.freeze(
+									Object.values(mod).filter((value): value is ClassType => typeof value === 'function'),
+								),
+								numericOperators,
 								routePrefix,
 								extensionClass,
 								kind: backendManifest.kind,

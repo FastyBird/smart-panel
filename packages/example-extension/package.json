@@ -17,7 +17,9 @@
       "extensionExport": "ExampleExtensionModule",
       "sdkVersion": "^1.0.0",
       "displayName": "Example Extension",
-      "description": "Shows how to build a minimal extension for Smart Panel."
+      "description": "Shows how to build a minimal extension for Smart Panel.",
+      "numericOperatorsExport": "exampleNumericOperators",
+      "configOwnerType": "example-extension"
     },
     "smartPanelAdmin": {
       "kind": "plugin",
@@ -27,7 +29,8 @@
     }
   },
   "dependencies": {
-    "@fastybird/smart-panel-backend": "^1.0.0-beta.3"
+    "@fastybird/smart-panel-backend": "^1.0.0-beta.3",
+    "@fastybird/smart-panel-extension-sdk": "^1.1.0-alpha.64"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.1.3",

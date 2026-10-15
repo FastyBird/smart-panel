@@ -25,5 +25,5 @@ export class ExampleExtensionConfigModel extends PluginConfigModel {
 	})
 	@Expose()
 	@IsBoolean()
-	enabled: boolean = true;
+	enabled: boolean = false;
 }

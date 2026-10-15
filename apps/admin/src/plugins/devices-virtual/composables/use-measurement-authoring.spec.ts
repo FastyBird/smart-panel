@@ -27,6 +27,153 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 describe('measurement authoring API lifecycle', () => {
+	it.each(['http', 'throw'] as const)('keeps built-in editing available after a %s numeric catalogue failure', async (failure) => {
+		const stored = { ...config(), source: { ...config().source, source_property: 'physical' } };
+		client.GET.mockResolvedValueOnce({ data: { data: stored } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		client.GET.mockResolvedValueOnce({ data: { data: [{ operatorId: '@fixture/operator:offset', operatorVersion: 1 }] } });
+		await authoring.loadCapabilities();
+		expect(authoring.numericOperators.value).toHaveLength(1);
+		if (failure === 'http') client.GET.mockResolvedValueOnce({ error: { message: 'Unavailable' }, response: { status: 503 } });
+		else client.GET.mockRejectedValueOnce(new Error('Network unavailable'));
+		await expect(authoring.loadCapabilities()).resolves.toBeUndefined();
+		expect(authoring.numericOperators.value).toEqual([]);
+		expect(authoring.canPreview.value).toBe(true);
+		authoring.model.previewInput = 22;
+		client.POST.mockResolvedValueOnce({ data: { data: { ...stored, preview_result: { input: 22, value: 22, error: null, qualified: false } } } });
+		await authoring.previewDraft();
+		expect(authoring.preview.value).toMatchObject({ preview_result: { value: 22 } });
+		client.PUT.mockResolvedValueOnce({ data: { data: stored } });
+		await authoring.save();
+		expect(client.PUT).toHaveBeenCalledTimes(1);
+		expect(client.PUT.mock.calls[0][1].body.policy.operator).toBe('affine');
+		expect(authoring.error.value).toBeNull();
+		authoring.model.operator = 'extension';
+		authoring.model.extensionKey = '@missing/operator:offset@7';
+		expect(authoring.canPreview.value).toBe(false);
+		await authoring.save();
+		expect(authoring.error.value).toBe('measurementOperatorMissing');
+		expect(client.PUT).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps missing custom versions and parameters for repair without an implicit upgrade', async () => {
+		const stored = {
+			...config(),
+			policy: {
+				operator: 'extension',
+				contractVersion: 1,
+				operatorId: '@fixture/operator:offset',
+				operatorVersion: 7,
+				parameters: { offset: 2 },
+				inputRange: { minimum: 0, maximum: 100 },
+				outputRange: { minimum: 0, maximum: 100 },
+			},
+		};
+		client.GET.mockResolvedValueOnce({ data: { data: stored } }).mockResolvedValueOnce({ data: { data: [] } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		await authoring.loadCapabilities();
+		expect(authoring.model.extensionKey).toBe('@fixture/operator:offset@7');
+		expect(authoring.model.parameters).toEqual({ offset: 2 });
+		expect(authoring.current.value).toEqual(stored);
+		expect(authoring.canPreview.value).toBe(false);
+		await authoring.save();
+		expect(client.PUT).not.toHaveBeenCalled();
+		expect(authoring.error.value).toBe('measurementOperatorMissing');
+	});
+
+	it('preserves unsupported saved contracts even when the same operator version is available', async () => {
+		const policy = {
+			operator: 'extension',
+			contractVersion: 2,
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 1,
+			parameters: { offset: 2 },
+			inputRange: { minimum: 0, maximum: 100 },
+			outputRange: { minimum: 0, maximum: 100 },
+		};
+		client.GET.mockResolvedValueOnce({ data: { data: { ...config(), policy } } }).mockResolvedValueOnce({
+			data: { data: [{ ...policy, contractVersion: 1 }] },
+		});
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		await authoring.loadCapabilities();
+		expect(authoring.model.extensionKey).toContain('contract 2');
+		expect(authoring.selectedOperator.value).toBeUndefined();
+		expect(authoring.canPreview.value).toBe(false);
+		await authoring.save();
+		expect(client.PUT).not.toHaveBeenCalled();
+		expect(authoring.current.value).toMatchObject({ policy });
+	});
+	it('requires explicit repair before discarding unknown saved parameters or policy fields', async () => {
+		const policy = {
+			operator: 'extension',
+			contractVersion: 1,
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 1,
+			parameters: { offset: 2, future: 3 },
+			futurePolicy: 4,
+			inputRange: { minimum: 0, maximum: 100 },
+			outputRange: { minimum: 0, maximum: 100 },
+		};
+		const descriptor = {
+			...policy,
+			input: { quantity: 'temperature', unit: '°C' },
+			output: { quantity: 'temperature', unit: '°C' },
+			parameters: { offset: { required: true, minimum: -10, maximum: 10 } },
+		};
+		client.GET.mockResolvedValueOnce({ data: { data: { ...config(), policy } } }).mockResolvedValueOnce({ data: { data: [descriptor] } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		await authoring.loadCapabilities();
+		await authoring.save();
+		expect(client.PUT).not.toHaveBeenCalled();
+		expect(authoring.model.parameters).toEqual({ offset: 2, future: 3 });
+		delete authoring.model.parameters.future; // An explicit parameter edit still retains unrecognized top-level data for backend rejection.
+		client.PUT.mockResolvedValue({ data: { data: { ...config(), policy } } });
+		await authoring.save();
+		expect(client.PUT.mock.calls[0][1].body.policy.futurePolicy).toBe(4);
+		authoring.selectOperator();
+		authoring.model.parameters.offset = 2;
+		await authoring.save();
+		expect(client.PUT.mock.calls[1][1].body.policy).not.toHaveProperty('futurePolicy');
+	});
+	it('uses explicit descriptor versions and finite bounded numeric parameters', async () => {
+		const descriptor = {
+			contractVersion: 1,
+			name: 'offset',
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 2,
+			input: { quantity: 'temperature', unit: '°C' },
+			output: { quantity: 'temperature', unit: '°C' },
+			inputRange: { minimum: -40, maximum: 100 },
+			outputRange: { minimum: -50, maximum: 110 },
+			parameters: { offset: { required: true, minimum: -10, maximum: 10 } },
+		};
+		client.GET.mockResolvedValue({ data: { data: [descriptor] } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform);
+		await authoring.loadCapabilities();
+		Object.assign(authoring.model, { operator: 'extension', extensionKey: '@fixture/operator:offset@2', inputs: [{ source_property: 'physical' }] });
+		authoring.selectOperator();
+		authoring.model.parameters.offset = Infinity;
+		await authoring.previewDraft();
+		expect(client.POST).not.toHaveBeenCalled();
+		authoring.model.parameters.offset = 11;
+		await authoring.previewDraft();
+		expect(client.POST).not.toHaveBeenCalled();
+		authoring.model.parameters.offset = -10;
+		client.POST.mockResolvedValue({ data: { data: config() } });
+		await authoring.previewDraft();
+		expect(client.POST.mock.calls[0][1].body.configuration.policy).toMatchObject({
+			operator: 'extension',
+			contractVersion: 1,
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 2,
+			parameters: { offset: -10 },
+		});
+	});
+
 	it('requires an attainable aggregate minimum while preserving transform preview eligibility', () => {
 		const aggregate = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate);
 		aggregate.model.inputs = [{ source_property: 'one' }, { source_property: 'two' }];

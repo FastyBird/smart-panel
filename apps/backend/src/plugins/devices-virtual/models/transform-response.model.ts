@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -32,7 +32,12 @@ export class VirtualCalibrationPointModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataNumericTransformPolicy' })
 export class VirtualNumericTransformPolicyModel {
-	@ApiProperty({ description: 'Whitelisted operator', enum: VirtualNumericTransformOperator })
+	@ApiProperty({
+		description: 'Whitelisted operator',
+		enum: Object.values(VirtualNumericTransformOperator).filter(
+			(operator) => operator !== VirtualNumericTransformOperator.EXTENSION,
+		),
+	})
 	@Expose()
 	operator: VirtualNumericTransformOperator;
 
@@ -94,6 +99,30 @@ export class VirtualNumericTransformPolicyModel {
 	@Expose()
 	@Type(() => VirtualCalibrationPointModel)
 	points?: VirtualCalibrationPointModel[];
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataExtensionTransformPolicy' })
+export class VirtualExtensionTransformPolicyModel {
+	@ApiProperty({ description: 'Trusted package operator', enum: ['extension'] }) @Expose() operator: 'extension';
+	@ApiProperty({ description: 'SDK contract version', enum: [1] }) @Expose() contractVersion: 1;
+	@ApiProperty({ description: 'Host package qualified identifier' }) @Expose() operatorId: string;
+	@ApiProperty({ description: 'Exact immutable operator version', minimum: 1 }) @Expose() operatorVersion: number;
+	@ApiProperty({ description: 'Configured input domain', type: VirtualNumericRangeModel })
+	@Expose()
+	@Type(() => VirtualNumericRangeModel)
+	inputRange: VirtualNumericRangeModel;
+	@ApiProperty({ description: 'Configured output domain', type: VirtualNumericRangeModel })
+	@Expose()
+	@Type(() => VirtualNumericRangeModel)
+	outputRange: VirtualNumericRangeModel;
+	@ApiProperty({
+		description: 'Finite custom numeric parameters',
+		type: 'object',
+		additionalProperties: { type: 'number' },
+	})
+	@Expose()
+	@Transform(({ obj }: { obj: { parameters: Record<string, number> } }) => obj.parameters)
+	parameters: Record<string, number>;
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataTransformSource' })
@@ -211,9 +240,15 @@ export class VirtualTransformConfigurationModel {
 	@Expose()
 	unit: string;
 
-	@ApiProperty({ description: 'Bounded typed policy', type: VirtualNumericTransformPolicyModel })
+	@ApiProperty({
+		description: 'Bounded typed policy; unknown persisted operators remain readable for repair',
+		oneOf: [
+			{ $ref: getSchemaPath(VirtualNumericTransformPolicyModel) },
+			{ $ref: getSchemaPath(VirtualExtensionTransformPolicyModel) },
+		],
+	})
 	@Expose()
-	@Type(() => VirtualNumericTransformPolicyModel)
+	@Transform(({ obj }: { obj: VirtualTransformConfigurationModel }) => obj.policy)
 	policy: VirtualNumericTransformConfig;
 
 	@ApiProperty({ description: 'Source binding and diagnostics', type: VirtualTransformSourceModel })

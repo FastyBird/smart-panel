@@ -263,7 +263,11 @@
 		"previewExpired": "La instantánea del borrador ha caducado. Vuelva a previsualizar antes de guardar.",
 		"detected": "Detectado",
 		"notDetected": "No detectado",
-		"snapshotQuality": "Calidad del borrador: {quality}"
+		"snapshotQuality": "Calidad del borrador: {quality}",
+		"extensionOperator": "Operador de extensión de confianza",
+		"measurementOperatorMissing": "El contrato o la versión guardada del operador no está disponible. La configuración se conserva; seleccione una versión disponible para repararla.",
+		"measurementOperatorParameter": "El parámetro numérico está fuera del rango admitido.",
+		"resetOperatorDefinition": "Restablecer la definición del operador"
 	},
 	"lightGroup": {
 		"apply": "Aplicar",

@@ -19,6 +19,7 @@ import { hydrateMeasurementContract } from './virtual-measurement-metadata.utils
 import { VirtualNumericTransformConfig } from './virtual-numeric-transform.utils';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { transformContractErrors } from './virtual-transform-contract.utils';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 import { VirtualTransformRuntimeService } from './virtual-transform-runtime.service';
 
 @Injectable()
@@ -30,6 +31,7 @@ export class VirtualTransformConfigService {
 		private readonly events: EventEmitter2,
 		private readonly state: VirtualProducerStateService,
 		@Optional() private readonly runtime?: VirtualTransformRuntimeService,
+		@Optional() readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
 	) {}
 
 	async configure(
@@ -157,7 +159,7 @@ export class VirtualTransformConfigService {
 			revision: (existing?.revision ?? 0) + 1,
 			configuredAt: new Date(),
 		});
-		const errors = transformContractErrors(config, output, physical);
+		const errors = transformContractErrors(config, output, physical, physical ? undefined : old, this.resolver);
 		if (errors.length)
 			throw new DevicesValidationException(`Invalid numeric transform contract: ${errors.join(', ')}.`);
 		const source = manager.create(VirtualTransformSourceEntity, {

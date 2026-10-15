@@ -1,3 +1,5 @@
+import type { NumericOperatorDefinition } from './numeric-operator.types.js';
+
 export type ExtensionKind = 'module' | 'plugin';
 
 export interface ClassType<T = unknown> {
@@ -9,6 +11,9 @@ export interface ClassType<T = unknown> {
  * Used by the server to mount Nest modules and routes.
  */
 export interface SmartPanelBackendExtensionManifest {
+	/** Opt in together; owner type is explicitly registered by the Nest extension. */
+	numericOperatorsExport?: string;
+	configOwnerType?: string;
 	/** 'module' mounts under /api/<prefix>, 'plugin' under /api/plugins/<prefix>. */
 	kind: ExtensionKind;
 
@@ -36,6 +41,10 @@ export interface SmartPanelBackendExtensionManifest {
 }
 
 export interface DiscoveredBackendExtension {
+	/** Class identities exported by the same loaded backend entry, for config mapper ownership checks. */
+	backendExports?: readonly ClassType[];
+	configOwnerType?: string;
+	numericOperators?: readonly NumericOperatorDefinition[];
 	/** npm package name, e.g., "@fastybird/smart-panel-extension-devices-acme" */
 	pkgName: string;
 

@@ -1,8 +1,11 @@
+import type { NumericOperatorDefinition } from './numeric-operator.types.js';
 export type ExtensionKind = 'module' | 'plugin';
 export interface ClassType<T = unknown> {
     new (...args: any[]): T;
 }
 export interface SmartPanelBackendExtensionManifest {
+    numericOperatorsExport?: string;
+    configOwnerType?: string;
     kind: ExtensionKind;
     routePrefix: string;
     extensionExport: string;
@@ -11,6 +14,9 @@ export interface SmartPanelBackendExtensionManifest {
     description?: string;
 }
 export interface DiscoveredBackendExtension {
+    backendExports?: readonly ClassType[];
+    configOwnerType?: string;
+    numericOperators?: readonly NumericOperatorDefinition[];
     pkgName: string;
     routePrefix: string;
     extensionClass: ClassType<unknown>;
