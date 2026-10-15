@@ -574,8 +574,18 @@ void main() {
     'ready controller becomes unavailable on a hint and on stalled poll expiry',
     (tester) async {
       final fixture = MemberDetailFixture();
+      final now = DateTime.now();
+      fixture.sample = protection(now, 0);
       await fixture.mount(tester);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      fixture.sample = {
+        ...protection(now.add(const Duration(seconds: 1)), 0),
+        'maximum_age_seconds': 60,
+        'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
+      };
       fixture.hold = true;
       fixture.socket.hint(++fixture.revision);
       await tester.pump(const Duration(milliseconds: 100));
@@ -610,6 +620,7 @@ void main() {
       fixture.sample = sample(now, 10);
       await fixture.mount(tester);
       expect(find.text('Live protection reading: 10.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
       // Both readings are unexpired; replacing the model must retain the newer watermark.
       fixture.sample = sample(now.subtract(const Duration(seconds: 1)), 9);
       fixture.revision++;
@@ -619,6 +630,8 @@ void main() {
       await fixture.flush(tester);
       expect(find.text('Live protection reading: 9.0 °C'), findsNothing);
       expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       expect(find.text('Server protection readiness: true'), findsNothing);
 
       fixture.sample = sample(
@@ -628,9 +641,12 @@ void main() {
       );
       await fixture.refetch(tester);
       expect(find.text('Live protection reading: 11.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
       expect(find.text('Protection latched: false'), findsOneWidget);
       await tester.pump(const Duration(seconds: 3));
       expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       expect(
         find.text('Server protection readiness: Unavailable'),
         findsOneWidget,
@@ -645,6 +661,8 @@ void main() {
       expect(find.text('Live protection reading: 11.0 °C'), findsNothing);
       expect(find.text('Protection latched: false'), findsNothing);
       expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       fixture.sample = sample(now, 10);
       await fixture.refetch(tester);
       expect(find.text('Live protection reading: 10.0 °C'), findsNothing);
@@ -652,11 +670,109 @@ void main() {
       fixture.sample = sample(now.add(const Duration(seconds: 2)), 12);
       await fixture.refetch(tester);
       expect(find.text('Live protection reading: 12.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
       expect(find.text('Server protection readiness: true'), findsOneWidget);
       expect(find.text('Protection latched: false'), findsOneWidget);
       fixture.hasMember = false;
       await fixture.refetch(tester);
       expect(find.byKey(const ValueKey('thermostat-member-one')), findsNothing);
+      await fixture.dispose(tester);
+    },
+  );
+  for (final role in ['ambient', 'floor', 'contact']) {
+    testWidgets(
+      'declared $role evidence must be present and current for a ready heading',
+      (tester) async {
+        final fixture = MemberDetailFixture()..hasMember = false;
+        final now = DateTime.now();
+        fixture.sources = [
+          {'id': 'required-$role', 'role': role},
+        ];
+        Map<String, dynamic> input(DateTime time) => {
+          ...protection(time, 0),
+          'binding': 'required-$role',
+          'role': role,
+          'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
+        };
+        fixture.inputs = [input(now)];
+        await fixture.mount(tester);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 3));
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        fixture.inputs = [input(now.add(const Duration(seconds: 1)))];
+        await fixture.refetch(tester);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        fixture.inputs = [];
+        await fixture.refetch(tester);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        fixture.inputs = [
+          {
+            ...input(now.add(const Duration(seconds: 2))),
+            'quality': 'degraded',
+          },
+        ];
+        await fixture.refetch(tester);
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  testWidgets(
+    'unselected runtime-only retained protection with missing input withholds ready',
+    (tester) async {
+      final fixture = MemberDetailFixture();
+      final now = DateTime.now();
+      fixture.sample = {
+        ...protection(now, 0),
+        'maximum_age_seconds': 60,
+        'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
+      };
+      fixture.displayFloorClaim = 'one';
+      fixture.extraBranches = [
+        {
+          'claim': 'retained',
+          'role': 'heating',
+          'claim_state': 'missing',
+          'physical_identity': 'retained-relay',
+          'protection': {
+            'source_identity': 'retained-floor',
+            'status': 'missing',
+            'quality': 'unavailable',
+          },
+        },
+      ];
+      await fixture.mount(tester);
+      expect(find.text('Live protection reading: 0.0 °C'), findsOneWidget);
+      expect(
+        find.text(
+          'Selected member floor (not an average): canonical-one: 0.0 °C',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('thermostat-member-retained')),
+        findsOneWidget,
+      );
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      fixture.extraBranches = [];
+      await fixture.refetch(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
+    'legacy singleton without declared protection and empty membership preserve snapshot readiness',
+    (tester) async {
+      final fixture = MemberDetailFixture()..declaresMemberProtection = false;
+      await fixture.mount(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      fixture.hasMember = false;
+      await fixture.refetch(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
       await fixture.dispose(tester);
     },
   );
@@ -668,7 +784,9 @@ class MemberDetailFixture {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
   final held = <void Function()>[];
   int revision = 1;
-  bool hold = false, hasMember = true;
+  bool hold = false, hasMember = true, declaresMemberProtection = true;
+  List<Map<String, dynamic>> sources = [], inputs = [], extraBranches = [];
+  String? displayFloorClaim;
   Map<String, dynamic>? sample;
 
   MemberDetailFixture() {
@@ -697,7 +815,9 @@ class MemberDetailFixture {
                   'requested_mode': 'heat',
                   'readiness': 'ready',
                   'reasons': <String>[],
+                  'inputs': inputs,
                   'branches': [
+                    ...extraBranches,
                     if (hasMember)
                       {
                         'claim': 'one',
@@ -712,8 +832,14 @@ class MemberDetailFixture {
                   'locked': false,
                   'policy': {'heatingSetpoint': 21},
                   'settings': <Map>[],
+                  'sources': sources,
+                  'display_floor_claim': displayFloorClaim,
                   'actuators': [
-                    if (hasMember) claim('one', 'heating', 'reserved'),
+                    if (hasMember)
+                      {
+                        ...claim('one', 'heating', 'reserved'),
+                        if (!declaresMemberProtection) 'protection': null,
+                      },
                   ],
                 };
           void respond() => handler.resolve(

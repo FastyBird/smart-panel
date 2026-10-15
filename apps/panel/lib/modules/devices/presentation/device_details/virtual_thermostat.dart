@@ -363,16 +363,55 @@ class _VirtualThermostatDeviceDetailState
     final ambient = current && roleFresh('ambient')
         ? _number(runtime['current_temperature'])
         : null;
+    final members = VirtualThermostatMember.read(config, runtime);
     final expiredMemberClaims = _readingFence.expiredClaims(
-      VirtualThermostatMember.read(config, runtime),
+      members,
       elapsed,
       now,
     );
+    // Withhold a positive snapshot label when its declared required evidence
+    // has expired or been rejected locally. This does not calculate readiness
+    // or change command authorization; only the server can report readiness.
+    bool inputCurrent(VirtualThermostatInput input) =>
+        input.quality == 'good' &&
+        input.sampledAt != null &&
+        input.expiresAt != null &&
+        input.currentStatus(elapsed, now) == 'fresh';
+    const requiredRoles = ['ambient', 'floor', 'contact'];
+    final declaredSources =
+        (config?['sources'] is List ? config!['sources'] as List : const [])
+            .whereType<Map>()
+            .where((source) => requiredRoles.contains(source['role']));
+    final inputsCurrent =
+        inputs
+            .where((input) => requiredRoles.contains(input.role))
+            .every(inputCurrent) &&
+        declaredSources.every(
+          (source) => inputs.any(
+            (input) =>
+                input.role == source['role'] &&
+                (source['id'] == null || input.binding == source['id']) &&
+                inputCurrent(input),
+          ),
+        );
+    final memberProtectionCurrent = members
+        .where((member) => member.binding != null || member.protection != null)
+        .every(
+          (member) =>
+              member.liveTemperature(
+                elapsed,
+                now,
+                current && !expiredMemberClaims.contains(member.claim),
+              ) !=
+              null,
+        );
+    final readinessCurrent =
+        current &&
+        (readiness != 'ready' || (inputsCurrent && memberProtectionCurrent));
     final selectedClaim = config?['display_floor_claim'];
-    final selected = VirtualThermostatMember.read(
-      config,
-      runtime,
-    ).where((member) => member.claim == selectedClaim).firstOrNull;
+    final selected = members
+        .where((member) => member.claim == selectedClaim)
+        .firstOrNull;
     final floor = selectedClaim != null
         ? selected?.liveTemperature(
             elapsed,
@@ -403,7 +442,7 @@ class _VirtualThermostatDeviceDetailState
               ),
             Text('Requested mode: ${requestedMode ?? 'unknown'}'),
             Text(
-              'Controller readiness: ${current ? readiness : l.thermostatMemberUnavailable}',
+              'Controller readiness: ${readinessCurrent ? readiness : l.thermostatMemberUnavailable}',
             ),
             if (ambient != null)
               Text('Ambient: ${ambient.toStringAsFixed(1)} °C'),
