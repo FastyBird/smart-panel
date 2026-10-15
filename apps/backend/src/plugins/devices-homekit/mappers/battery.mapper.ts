@@ -3,6 +3,7 @@ import { Accessory, Characteristic, Service } from '@homebridge/hap-nodejs';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
+import { bindCharacteristicGet } from './characteristic-get';
 import { HomeKitMapperContext, PropertyEventListener } from './homekit-mapper.interface';
 
 export class BatteryMapper {
@@ -83,9 +84,9 @@ export class BatteryMapper {
 			return Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
 		};
 
-		levelChar.onGet(() => toLevel(currentLevel));
-		lowBatChar.onGet(() => isLowBattery(currentLevel, currentStatus));
-		chargingChar.onGet(() => toCharging(currentStatus));
+		bindCharacteristicGet(context, levelChar, () => toLevel(currentLevel));
+		bindCharacteristicGet(context, lowBatChar, () => isLowBattery(currentLevel, currentStatus));
+		bindCharacteristicGet(context, chargingChar, () => toCharging(currentStatus));
 
 		levelChar.updateValue(toLevel(currentLevel));
 		lowBatChar.updateValue(isLowBattery(currentLevel, currentStatus));

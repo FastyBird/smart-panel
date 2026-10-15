@@ -11,6 +11,7 @@ import {
 import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
+import { bindCharacteristicGet } from './characteristic-get';
 import { bindCharacteristicWrite } from './characteristic-write';
 import { CharacteristicBinding, HomeKitMapperContext, IHomeKitAccessoryMapper } from './homekit-mapper.interface';
 
@@ -76,7 +77,7 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 			revision: 0,
 		};
 
-		characteristic.onGet(() => {
+		bindCharacteristicGet(context, characteristic, () => {
 			return binding.currentValue;
 		});
 
@@ -130,6 +131,7 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 					}
 				},
 				() => binding.currentValue,
+				() => context.availability?.assertAvailable(),
 			);
 		}
 

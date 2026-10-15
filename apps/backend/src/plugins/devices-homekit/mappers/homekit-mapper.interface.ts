@@ -38,7 +38,14 @@ export interface InputOccurrenceListener {
 	onOccurrence: (occurrence: ChannelInputOccurrencePayload) => void;
 }
 
+export interface HomeKitAvailability {
+	isAvailable(): boolean;
+	assertAvailable(): void;
+}
+
 export interface HomeKitMapperContext {
+	/** Extension seam for availability policies (including qualified derived producers). */
+	readonly availability?: HomeKitAvailability;
 	readonly commandDispatcher: HomeKitCommandDispatcher;
 	registerBinding(binding: CharacteristicBinding): void;
 	registerPropertyListener(listener: PropertyEventListener): void;

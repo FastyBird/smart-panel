@@ -1,6 +1,7 @@
 import { Characteristic } from '@homebridge/hap-nodejs';
+import { EVENT_LISTENER_METADATA } from '@nestjs/event-emitter/dist/constants';
 
-import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, EventType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
@@ -11,6 +12,7 @@ import { HomeKitEventListener } from './homekit-event.listener';
 describe('HomeKitEventListener', () => {
 	let listener: HomeKitEventListener;
 	let mapperRegistry: {
+		notePropertyEvent: jest.Mock;
 		getBindingsForProperty: jest.Mock;
 		getListenersForProperty: jest.Mock;
 		getOccurrenceListeners: jest.Mock;
@@ -20,11 +22,25 @@ describe('HomeKitEventListener', () => {
 	beforeEach(() => {
 		mockCharacteristic = { updateValue: jest.fn() };
 		mapperRegistry = {
+			notePropertyEvent: jest.fn(),
 			getBindingsForProperty: jest.fn(),
 			getListenersForProperty: jest.fn().mockReturnValue([]),
 			getOccurrenceListeners: jest.fn().mockReturnValue([]),
 		};
 		listener = new HomeKitEventListener(mapperRegistry as unknown as HomeKitMapperRegistryService);
+	});
+
+	it.each([
+		['handleDeviceDeleted', EventType.DEVICE_DELETED],
+		['handleConnectionChanged', EventType.DEVICE_CONNECTION_CHANGED],
+		['handleChannelStructureChanged', EventType.CHANNEL_CREATED],
+		['handleChannelStructureChanged', EventType.CHANNEL_DELETED],
+		['handlePropertyStructureChanged', EventType.CHANNEL_PROPERTY_CREATED],
+		['handlePropertyStructureChanged', EventType.CHANNEL_PROPERTY_DELETED],
+	])('subscribes %s to %s', (handler, event) => {
+		const method = Object.getOwnPropertyDescriptor(HomeKitEventListener.prototype, handler)?.value as object;
+		const subscriptions = Reflect.getMetadata(EVENT_LISTENER_METADATA, method) as Array<{ event: string }>;
+		expect(subscriptions.map((entry) => entry.event)).toContain(event);
 	});
 
 	it('should update characteristic and notify listeners when property value changes', () => {

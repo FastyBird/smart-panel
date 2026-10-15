@@ -1,4 +1,4 @@
-import { Accessory, Categories, Characteristic, Service } from '@homebridge/hap-nodejs';
+import { Accessory, Categories, Characteristic, HapStatusError, Service } from '@homebridge/hap-nodejs';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
@@ -7,7 +7,31 @@ import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/c
 import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 
 import { BaseHomeKitMapper } from './base.mapper';
+import { bindCharacteristicGet } from './characteristic-get';
 import { HomeKitMapperContext } from './homekit-mapper.interface';
+
+/**
+ * HAP bypasses onGet for ProgrammableSwitchEvent and returns null unconditionally.
+ * Keep that stateless behavior online, but enforce the same read failure as other
+ * mapped characteristics offline. No HAP private fields are read or modified.
+ */
+class AvailableProgrammableSwitchEvent extends Characteristic.ProgrammableSwitchEvent {
+	constructor(private readonly context: HomeKitMapperContext) {
+		super();
+	}
+
+	override async handleGetRequest(
+		...args: Parameters<Characteristic['handleGetRequest']>
+	): ReturnType<Characteristic['handleGetRequest']> {
+		try {
+			this.context.availability?.assertAvailable();
+		} catch (error) {
+			// Match HAP's request boundary, which rejects with numeric status codes.
+			throw error instanceof HapStatusError ? error.hapStatus : error;
+		}
+		return super.handleGetRequest(...args);
+	}
+}
 
 /**
  * Maps hardware input channels (buttons, event-capable binary inputs) to Apple HomeKit
@@ -154,11 +178,12 @@ export class ButtonMapper extends BaseHomeKitMapper {
 				indexChar.setValue(serviceIndex);
 			}
 
-			const switchEventChar = switchService.getCharacteristic(Characteristic.ProgrammableSwitchEvent);
+			switchService.removeCharacteristic(switchService.getCharacteristic(Characteristic.ProgrammableSwitchEvent));
+			const switchEventChar = switchService.addCharacteristic(new AvailableProgrammableSwitchEvent(context));
 
 			// Stateless programmable switch has no persistent state; GET returns null.
 			// Replays on startup/restart are strictly avoided.
-			switchEventChar.onGet(() => null);
+			bindCharacteristicGet(context, switchEventChar, () => null);
 
 			switchEventChar.setProps({ validValues });
 
@@ -167,6 +192,7 @@ export class ButtonMapper extends BaseHomeKitMapper {
 				channelId: channel.id,
 				propertyId: eventProp.id,
 				onOccurrence: (occurrence: ChannelInputOccurrencePayload) => {
+					if (context.availability && !context.availability.isAvailable()) return;
 					const hapEvent = ButtonMapper.mapEventToHap(occurrence.event);
 					if (hapEvent === null) {
 						ButtonMapper.logger.debug(

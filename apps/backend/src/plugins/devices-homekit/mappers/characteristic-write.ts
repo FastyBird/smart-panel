@@ -9,11 +9,13 @@ export function bindCharacteristicWrite(
 	characteristic: Characteristic,
 	write: (value: CharacteristicValue) => Promise<void>,
 	currentValue: () => CharacteristicValue,
+	assertAvailable?: () => void,
 ): void {
 	if (!characteristic.props.perms.includes(Perms.WRITE_RESPONSE)) {
 		characteristic.setProps({ perms: [...characteristic.props.perms, Perms.WRITE_RESPONSE] });
 	}
 	characteristic.onSet(async (value) => {
+		assertAvailable?.();
 		await write(value);
 		const current = currentValue();
 		if (!Object.is(characteristic.value, current)) {

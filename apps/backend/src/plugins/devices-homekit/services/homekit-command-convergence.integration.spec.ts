@@ -74,6 +74,7 @@ import {
 import { SIMULATOR_TYPE } from '../../simulator/simulator.constants';
 import { HomeKitEventListener } from '../listeners/homekit-event.listener';
 
+import { HomeKitBridgeService } from './homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service';
 
@@ -105,6 +106,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	let provider: jest.Mock<Promise<boolean>, [IDevicePropertyData[]]>;
 	let published: Array<{ id: string; value: unknown }>;
 	let notifications: unknown[][];
+	let registry: HomeKitMapperRegistryService;
+	let listener: HomeKitEventListener;
+	let mappedDevices: DeviceEntity[];
 
 	beforeEach(async () => {
 		database = new DataSource({
@@ -220,10 +224,19 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			windows,
 		);
 		const homekit = new HomeKitCommandDispatcher(commands);
-		const registry = new HomeKitMapperRegistryService();
+		registry = new HomeKitMapperRegistryService();
 		const index = new VirtualPropertyIndexService(database.getRepository(VirtualChannelPropertyEntity));
 		const projection = new VirtualProjectionListener(index, events);
-		const listener = new HomeKitEventListener(registry);
+		listener = new HomeKitEventListener(
+			registry,
+			{
+				getConfig: () => ({
+					mappedDeviceIds: mappedDevices.map((device) => device.id),
+				}),
+				getState: () => 'started',
+			} as unknown as HomeKitBridgeService,
+			devices,
+		);
 		events.on(EventType.CHANNEL_PROPERTY_VALUE_SET, (property: ChannelPropertyEntity) =>
 			projection.handlePropertyValueSet(property),
 		);
@@ -249,6 +262,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		source = await database.getRepository(SimulatorChannelPropertyEntity).save({ ...metadata, channel });
 		await values.write(source, false, new Date(Date.now() - 1000));
 		aliases = [];
+		mappedDevices = [];
 		characteristics = [];
 		notifications = [];
 		for (let i = 0; i < 2; i++) {
@@ -269,6 +283,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			aliases.push(alias);
 			const hydrated = await devices.findOne(aliasDevice.id);
 			if (!hydrated) throw new Error('Missing alias device');
+			// This suite exercises command convergence with an available mapped device.
+			hydrated.status.online = true;
+			mappedDevices.push(hydrated);
 			const staged = registry.buildAccessory(hydrated, homekit);
 			if (!staged) throw new Error('Missing HomeKit accessory');
 			registry.commitStaged(staged);
@@ -291,6 +308,20 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		await storage?.onApplicationShutdown();
 		await memory?.destroy();
 		if (database?.isInitialized) await database.destroy();
+	});
+
+	it('rejects offline HAP writes before the command pipeline and refreshes on reconnect', async () => {
+		const mappedDevice = mappedDevices[0];
+		if (!mappedDevice) throw new Error('Missing mapped device');
+		await listener.handleConnectionChanged({ device: mappedDevice, state: ConnectionState.DISCONNECTED });
+		await expect(characteristics[0].handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		await expect(characteristics[0].handleSetRequest(true)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect(provider).not.toHaveBeenCalled();
+		expect(published).toEqual([]);
+		await report(true);
+		await listener.handleConnectionChanged({ device: mappedDevice, state: ConnectionState.CONNECTED });
+		expect(await characteristics[0].handleGetRequest()).toBe(true);
+		expect(provider).not.toHaveBeenCalled();
 	});
 
 	const report = (value: boolean) => properties.update(source.id, { type: SIMULATOR_TYPE, value });

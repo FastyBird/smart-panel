@@ -50,7 +50,7 @@ describe('DevicesHomeKitPlugin', () => {
 		managedServiceManager = { register: jest.fn() } as unknown as jest.Mocked<ManagedServiceManagerService>;
 
 		homeKitBridgeService = {
-			reconcileLatestMapping: jest.fn().mockResolvedValue(undefined),
+			applyMapping: jest.fn().mockResolvedValue(undefined),
 		} as unknown as jest.Mocked<HomeKitBridgeService>;
 
 		pluginConfigMutations = {
@@ -157,7 +157,7 @@ describe('DevicesHomeKitPlugin', () => {
 			await mutationHandler({ type: DEVICES_HOMEKIT_PLUGIN_NAME, mapped_device_ids: ['dev-1'] }, commit);
 
 			expect(commit).toHaveBeenCalled();
-			expect(homeKitBridgeService.reconcileLatestMapping).toHaveBeenCalled();
+			expect(homeKitBridgeService.applyMapping).toHaveBeenCalled();
 			expect(configService.setPluginConfig).not.toHaveBeenCalled();
 		});
 
@@ -169,7 +169,7 @@ describe('DevicesHomeKitPlugin', () => {
 			} as unknown as HomeKitConfigModel);
 
 			const reconcileError = new Error('HAP bridge accessory addition failed');
-			homeKitBridgeService.reconcileLatestMapping.mockRejectedValue(reconcileError);
+			homeKitBridgeService.applyMapping.mockRejectedValue(reconcileError);
 
 			await expect(
 				mutationHandler({ type: DEVICES_HOMEKIT_PLUGIN_NAME, mapped_device_ids: ['dev-1'] }, commit),
@@ -191,7 +191,7 @@ describe('DevicesHomeKitPlugin', () => {
 
 			const reconcileError = new Error('Reconciliation failed');
 			const rollbackError = new Error('Disk write error during rollback');
-			homeKitBridgeService.reconcileLatestMapping.mockRejectedValue(reconcileError);
+			homeKitBridgeService.applyMapping.mockRejectedValue(reconcileError);
 			configService.setPluginConfig.mockImplementation(() => {
 				throw rollbackError;
 			});

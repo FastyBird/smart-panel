@@ -3,6 +3,7 @@ import { Characteristic, CharacteristicValue, Perms, Service } from '@homebridge
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
+import { bindCharacteristicGet } from './characteristic-get';
 import { bindCharacteristicWrite } from './characteristic-write';
 import { HomeKitMapperContext, PropertyEventListener } from './homekit-mapper.interface';
 
@@ -110,10 +111,10 @@ export class ThermostatCoordinator {
 
 	private setupGettersAndSetters(): void {
 		// CurrentTemperature
-		this.currentTempChar.onGet(() => this.getAmbientTemperature());
+		bindCharacteristicGet(this.config.context, this.currentTempChar, () => this.getAmbientTemperature());
 
 		// TargetTemperature
-		this.targetTempChar.onGet(() => this.getTargetTemperature());
+		bindCharacteristicGet(this.config.context, this.targetTempChar, () => this.getTargetTemperature());
 		const hasWritableTemp =
 			this.isPropertyWritable(this.config.heaterTempProperty) ||
 			this.isPropertyWritable(this.config.coolerTempProperty);
@@ -163,14 +164,19 @@ export class ThermostatCoordinator {
 					}
 				},
 				() => this.targetTempChar.value,
+				() => this.config.context.availability?.assertAvailable(),
 			);
 		}
 
 		// CurrentHeatingCoolingState
-		this.currentHeatingCoolingChar.onGet(() => this.deriveCurrentHeatingCoolingState());
+		bindCharacteristicGet(this.config.context, this.currentHeatingCoolingChar, () =>
+			this.deriveCurrentHeatingCoolingState(),
+		);
 
 		// TargetHeatingCoolingState
-		this.targetHeatingCoolingChar.onGet(() => this.deriveTargetHeatingCoolingState());
+		bindCharacteristicGet(this.config.context, this.targetHeatingCoolingChar, () =>
+			this.deriveTargetHeatingCoolingState(),
+		);
 		const hasWritableState =
 			(this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) ||
 			(this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty));
@@ -217,13 +223,14 @@ export class ThermostatCoordinator {
 					}
 				},
 				() => this.targetHeatingCoolingChar.value,
+				() => this.config.context.availability?.assertAvailable(),
 			);
 		}
 
 		// HeatingThresholdTemperature & CoolingThresholdTemperature (for AUTO mode)
 		if (this.heatingThresholdChar && this.config.heaterTempProperty) {
 			const heaterTempProp = this.config.heaterTempProperty;
-			this.heatingThresholdChar.onGet(() => {
+			bindCharacteristicGet(this.config.context, this.heatingThresholdChar, () => {
 				const val = this.values.get(heaterTempProp.id);
 				if (val !== null && val !== undefined) {
 					const num = Number(val);
@@ -242,13 +249,14 @@ export class ThermostatCoordinator {
 						await this.dispatchPending(heaterTempProp.id, target);
 					},
 					() => this.heatingThresholdChar.value,
+					() => this.config.context.availability?.assertAvailable(),
 				);
 			}
 		}
 
 		if (this.coolingThresholdChar && this.config.coolerTempProperty) {
 			const coolerTempProp = this.config.coolerTempProperty;
-			this.coolingThresholdChar.onGet(() => {
+			bindCharacteristicGet(this.config.context, this.coolingThresholdChar, () => {
 				const val = this.values.get(coolerTempProp.id);
 				if (val !== null && val !== undefined) {
 					const num = Number(val);
@@ -267,6 +275,7 @@ export class ThermostatCoordinator {
 						await this.dispatchPending(coolerTempProp.id, target);
 					},
 					() => this.coolingThresholdChar.value,
+					() => this.config.context.availability?.assertAvailable(),
 				);
 			}
 		}
@@ -275,7 +284,7 @@ export class ThermostatCoordinator {
 		if (this.config.lockedProperty) {
 			const lockProp = this.config.lockedProperty;
 			this.lockPhysicalControlsChar = this.config.service.getCharacteristic(Characteristic.LockPhysicalControls);
-			this.lockPhysicalControlsChar.onGet(() => this.getLockPhysicalControls());
+			bindCharacteristicGet(this.config.context, this.lockPhysicalControlsChar, () => this.getLockPhysicalControls());
 
 			if (this.isPropertyWritable(lockProp) && this.lockPhysicalControlsChar.props.perms.includes(Perms.PAIRED_WRITE)) {
 				bindCharacteristicWrite(
@@ -285,6 +294,7 @@ export class ThermostatCoordinator {
 						await this.dispatchPending(lockProp.id, isLocked);
 					},
 					() => this.lockPhysicalControlsChar.value,
+					() => this.config.context.availability?.assertAvailable(),
 				);
 			}
 		}

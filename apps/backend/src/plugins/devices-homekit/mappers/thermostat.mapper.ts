@@ -4,6 +4,8 @@ import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modu
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
 import { BaseHomeKitMapper } from './base.mapper';
+import { bindCharacteristicGet } from './characteristic-get';
+import { bindCharacteristicWrite } from './characteristic-write';
 import { HomeKitMapperContext } from './homekit-mapper.interface';
 import { ThermostatCoordinator } from './thermostat-coordinator';
 
@@ -45,9 +47,18 @@ export class ThermostatMapper extends BaseHomeKitMapper {
 		const accessory = this.createBaseAccessory(device, Categories.THERMOSTAT);
 		const service = accessory.addService(Service.Thermostat, device.name);
 
-		service
-			.getCharacteristic(Characteristic.TemperatureDisplayUnits)
-			.onGet(() => Characteristic.TemperatureDisplayUnits.CELSIUS);
+		bindCharacteristicGet(
+			context,
+			service.getCharacteristic(Characteristic.TemperatureDisplayUnits),
+			() => Characteristic.TemperatureDisplayUnits.CELSIUS,
+		);
+
+		bindCharacteristicWrite(
+			service.getCharacteristic(Characteristic.TemperatureDisplayUnits),
+			() => Promise.resolve(),
+			() => Characteristic.TemperatureDisplayUnits.CELSIUS,
+			() => context.availability?.assertAvailable(),
+		);
 
 		const thermostatChannel = this.findChannel(device, ChannelCategory.THERMOSTAT);
 		const lockedProp =
