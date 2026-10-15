@@ -147,7 +147,7 @@ withdraw activity and qualification on original relay expiry and missing old fie
 False and null remain distinct. Read-only labels/help in all six locales distinguish the server guard/target check
 from admission/certification. It adds no authoring controls. All thermostat Admin tests passed **11 files / 59 tests**
 with two workers; final Admin types/scoped lint/format passed
-(`/tmp/vd-members-observation-admin-{tests,types,lint,format}.log`). This initial count predates the freshness correction below. The separate Panel field follow-up is independently accepted and awaits local integration. Final composed Panel validation will be recorded after that
+(`/tmp/vd-members-observation-admin-{tests,types,lint,format}.log`). This initial count predates the freshness correction below. The separate Panel field follow-up is independently accepted and integrated as recorded below. Final composed Panel validation will be recorded after that
 reviewed follow-up is integrated, rather than reusing the worker's individual counts as a composed pass.
 
 The Admin correction uses an editor-owned bounded per-claim cache shared by member cards. Independent activity and
@@ -163,6 +163,38 @@ and card remount paths, independent field expiry, cached refetch after rollback,
 recovery, false versus null, monotonic lifetime and bounded ownership (`/tmp/vd-admin-freshness-tests-current.log`).
 Final Admin types passed (`/tmp/vd-admin-freshness-types-current.log`); scoped lint and formatting passed
 (`/tmp/vd-admin-freshness-lint.log`, `/tmp/vd-admin-freshness-format.log`). The correction awaits independent review.
+
+## Final client integration checkpoint
+
+Admin freshness correction `8b26f2f67` is followed by the independently accepted Panel source
+`5e9e5f513d42b620bd7c31926c76342f9a7a0042`, mapped without conflicts to local
+`405a2499d87b4aea6f1335df37dce6d619da553e`. No Panel handwritten changes were made during this cherry-pick.
+At that exact composed source checkpoint, targeted Panel validation passed **6 suites / 50 tests**
+(`/tmp/vd-members-client-final-panel-tests.log`):
+
+```sh
+/Users/akadlec/Development/Flutter/v3.41.5/bin/flutter test --concurrency=2 \
+  test/modules/devices/presentation/virtual_thermostat_members_test.dart \
+  test/modules/devices/presentation/virtual_thermostat_socket_test.dart \
+  test/modules/devices/presentation/virtual_thermostat_input_test.dart \
+  test/modules/devices/presentation/virtual_thermostat_commands_test.dart \
+  test/modules/devices/presentation/virtual_thermostat_comfort_test.dart \
+  test/modules/devices/presentation/virtual_thermostat_detail_test.dart
+```
+
+Scoped Dart analysis covered the three thermostat detail/member source files plus these six test files with no
+issues; formatting checked nine files with zero changes (`/tmp/vd-members-client-final-panel-{analyze,format}.log`).
+Flutter 3.41.5 `gen-l10n` passed and produced no tracked localization drift
+(`/tmp/vd-members-client-final-l10n.log`, `/tmp/vd-members-client-final-l10n-drift.log`). The complete backend/spec
+trees remain byte-identical to accepted `879a27be5`, verified by Git diff
+(`/tmp/vd-members-client-final-backend-drift.log`), so its generation/API and 508-test backend results above remain
+the exact applicable evidence; no redundant backend or contract generation was performed after client-only changes.
+
+The final composed Admin command targeted all eleven thermostat service/composable/component/draft test files
+with `pnpm exec vitest run ... --maxWorkers=2`: **11 files / 63 tests passed**
+(`/tmp/vd-members-client-final-admin-tests.log`). Final Admin types and scoped lint/format passed
+(`/tmp/vd-members-client-final-admin-{types,lint,format}.log`). Independent review of the Admin freshness correction remains a
+publication gate; these local client results do not claim hardware qualification or alpha readiness.
 
 The current tracked source diff is 114 paths versus cached merged-main base. No tests/locales are omitted to change
 that count; parent publication may split an identical final tree to meet the external 100-file review limit.

@@ -110,15 +110,15 @@ Per-member floor protection (migration 41) is being integrated with Admin member
 context, diagnostics and fenced staging/recovery; see the [client integration record](../../docs/work/virtual-thermostat/member-client-validation.md).
 The original-owner safety correction and read-only runtime diagnostics passed independent local review; composed
 backend validation passed 26 suites / 508 tests. Admin member authoring corrections are independently accepted; narrow
-activity/qualification freshness correction awaits final review, and the independently accepted Panel field follow-up awaits local integration. The accepted Panel member
-diagnostics stack is integrated locally, with final composed Panel checks pending that follow-up. Multi-Shelly groups require explicitly bound local guards, separately
+activity/qualification freshness correction awaits final review. The independently accepted Panel field follow-up is
+integrated locally; composed client validation passed 6 Panel suites / 50 tests and 11 Admin files / 63 tests. Multi-Shelly groups require explicitly bound local guards, separately
 reviewed/staged member installations and actual qualification; no installed eligibility is supplied by these local changes.
 The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
 qualification is claimed by this backend slice.
 
 VD3-7 local implementation includes backend comfort configuration/API, arbitration, durable override recovery and
 dispatch fencing, plus Admin authoring and Panel selection/override diagnostics with all six locales and UI tests.
-Independent backend and composed UI review remain open; VD3-7 is not complete. Automation defaults disabled and the
+Final composed publication review remains open; VD3-7 is not complete. Automation defaults disabled and the
 internal trusted baseline port is reserved for the separate VD3-8 bridge. Bounded restart recovery preserves the
 absolute expiry; observable clock uncertainty inhibits output until an explicit operator action. No hardware
 qualification or physical actuation is part of this local implementation stage.
