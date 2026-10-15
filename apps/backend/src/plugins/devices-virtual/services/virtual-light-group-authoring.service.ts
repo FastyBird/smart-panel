@@ -2,7 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { DataSource, EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
@@ -10,6 +10,7 @@ import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/d
 import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
@@ -19,8 +20,10 @@ import { VirtualDeviceEntity, VirtualDeviceMode, VirtualValueOrigin } from '../e
 import { VirtualLightGroupProfile } from '../entities/virtual-producer.entity';
 import { CreatedLightGroupModel, LightGroupDraftModel } from '../models/light-group-draft.model';
 
+import { coverContractReasons } from './virtual-cover-contract.utils';
+import { coverOperationReadiness } from './virtual-cover-readiness.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { GROUP_PROFILES, commonGroupCapabilities, groupField } from './virtual-group-profile';
+import { GROUP_PROFILES, commonGroupCapabilities, groupField, requiredGroupFields } from './virtual-group-profile';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 
 @Injectable()
@@ -31,6 +34,7 @@ export class VirtualLightGroupAuthoringService {
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly devices: DevicesService,
 		private readonly configs: VirtualProducerConfigService,
+		@Optional() private readonly platforms?: PlatformRegistryService,
 	) {}
 
 	async preview(dto: LightGroupDraftDto): Promise<LightGroupDraftModel> {
@@ -128,8 +132,8 @@ export class VirtualLightGroupAuthoringService {
 	/** Shared validator for dry-run and admitted persistence; no sample or producer writes. */
 	async prepare(manager: EntityManager, dto: LightGroupDraftDto) {
 		const profile = dto.profile ?? VirtualLightGroupProfile.LIGHT;
-		const policy = GROUP_PROFILES[profile];
 		if (!Object.hasOwn(GROUP_PROFILES, profile)) throw new DevicesValidationException('Unsupported group profile');
+		const policy = GROUP_PROFILES[profile];
 		if (!Array.isArray(dto.members) || dto.members.length < 2 || dto.members.length > 256)
 			throw new DevicesValidationException('Select between two and 256 distinct physical group channels');
 		const identities = dto.members.map((member) => member.sourceChannelId);
@@ -159,23 +163,31 @@ export class VirtualLightGroupAuthoringService {
 				property.channel = channel;
 				property.unit = resolvePropertyUnit(property);
 			}
+			if (profile === VirtualLightGroupProfile.COVER && coverContractReasons(channel.properties ?? []).length)
+				throw new DevicesValidationException(
+					'Every cover member must provide the full compatible TYPE/STATUS/POSITION/COMMAND contract',
+				);
 			channels.push(channel);
 		}
 		const common = commonGroupCapabilities(
 			profile,
 			channels.map((channel) => channel.properties ?? []),
 		);
-		if (!common.some((capability) => capability.category === PropertyCategory.ON))
+		if (
+			!requiredGroupFields(profile).every((category) => common.some((capability) => capability.category === category))
+		)
 			throw new DevicesValidationException(
-				'Every group member must provide the same readable/writable boolean on contract',
+				profile === VirtualLightGroupProfile.COVER
+					? 'Every group member must provide the required compatible profile contracts'
+					: 'Every group member must provide the same readable/writable boolean on contract',
 			);
 		const requested = dto.capabilities ?? common.map((capability) => capability.category);
 		if (
-			!requested.includes(PropertyCategory.ON) ||
+			!requiredGroupFields(profile).every((category) => requested.includes(category)) ||
 			requested.some((category) => !common.some((capability) => capability.category === category))
 		)
 			throw new DevicesValidationException(
-				'Requested controls must include on and belong to the validated common capability contract',
+				'Requested controls must include required profile fields and belong to the validated common capability contract',
 			);
 		const selected = common.filter((capability) => requested.includes(capability.category));
 		// Apply the complete-color rule after optional control selection too.
@@ -192,6 +204,14 @@ export class VirtualLightGroupAuthoringService {
 			);
 		const model = Object.assign(new LightGroupDraftModel(), {
 			graph_revision: await this.graph.revision(manager),
+			...(profile === VirtualLightGroupProfile.COVER
+				? {
+						operations: await coverOperationReadiness(
+							this.platforms,
+							channels.map((channel) => ({ identity: channel.id, channel })),
+						),
+					}
+				: {}),
 			common_capabilities: selected.map((capability) => ({
 				category: capability.category,
 				...(profile === VirtualLightGroupProfile.LIGHT

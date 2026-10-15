@@ -38,6 +38,9 @@ import {
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
+import { ShellyCoverOrderingService } from '../services/shelly-cover-ordering.service';
+import { ShellyCoverSession } from '../services/shelly-cover-session';
+import { ShellyCoverTelemetry, coverDeltaNeedsRefresh } from '../services/shelly-cover-telemetry';
 import { ShellyGuardRpcSession } from '../services/shelly-guard-rpc-session';
 import { emitFlattenedValue } from '../utils/transform.utils';
 
@@ -119,6 +122,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	private connectionGeneration = 0;
 	private protectiveGeneration = 0;
 	private readonly sampleComponentKeys = new Set<string>();
+	private sampleBindingGeneration = 0;
+	private coverTelemetry: ShellyCoverTelemetry | undefined;
+	private coverTelemetryRpc: GuardedShellyRpcHandler | undefined;
 
 	private applyingPollComponent: string | null = null;
 
@@ -363,6 +369,95 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		return { outcome: 'accepted', wasOn: response.value.was_on, outputConfirmed: false, pendingOnDrained: false };
 	}
 
+	private readonly coverSessions = new Map<number, ShellyCoverSession>();
+	/** Session identity remains pinned across action and distinct post-response status RPCs. */
+	prepareCoverSession(
+		componentKey: string,
+		canonicalMac: string,
+		ordering: ShellyCoverOrderingService,
+	): ShellyCoverSession | null {
+		const match = /^cover:(\d+)$/.exec(componentKey);
+		const rpc = this.shelly.rpcHandler;
+		if (
+			!match ||
+			!(rpc instanceof GuardedShellyRpcHandler) ||
+			!rpc.connected ||
+			!canonicalMac ||
+			this.shelly.macAddress?.toUpperCase() !== canonicalMac.toUpperCase()
+		)
+			return null;
+		const id = Number(match[1]);
+		const component = this.covers.get(id);
+		if (!component) return null;
+		const old = this.coverSessions.get(id);
+		// Never replace an uncertain session merely because a newer request wants to use it.
+		if (old?.identityIsCurrent()) return old;
+		const generation = this.connectionGeneration;
+		const model = this.shelly.model;
+		const session = new ShellyCoverSession(
+			rpc,
+			id,
+			() =>
+				this.shelly.rpcHandler === rpc &&
+				generation === this.connectionGeneration &&
+				this.shelly.model === model &&
+				this.shelly.macAddress?.toUpperCase() === canonicalMac.toUpperCase() &&
+				this.covers.get(id) === component,
+			ordering,
+			`${canonicalMac.toUpperCase()}|cover:${id}`,
+		);
+		this.coverSessions.set(id, session);
+		return session;
+	}
+	/** A connection lease is independent of a session's revocable command authority. */
+	captureCoverRecoveryConnection(componentKey: string, canonicalMac: string) {
+		const match = /^cover:(\d+)$/.exec(componentKey);
+		const rpc = this.shelly.rpcHandler;
+		const component = match ? this.covers.get(Number(match[1])) : null;
+		if (
+			!component ||
+			!(rpc instanceof GuardedShellyRpcHandler) ||
+			!rpc.connected ||
+			this.shelly.macAddress?.toUpperCase() !== canonicalMac.toUpperCase()
+		)
+			return null;
+		const generation = this.connectionGeneration;
+		return {
+			revision: generation,
+			isCurrent: () =>
+				rpc === this.shelly.rpcHandler &&
+				rpc.connected &&
+				this.connectionGeneration === generation &&
+				this.covers.get(Number(match[1])) === component &&
+				this.shelly.macAddress?.toUpperCase() === canonicalMac.toUpperCase(),
+		};
+	}
+	retireCoverSession(componentKey: string): void {
+		this.coverSessions.get(Number(componentKey.split(':')[1]))?.retire();
+	}
+	/** Retire authority permanently. A detached fresh session is installed only after audited CAS success. */
+	beginCoverRecoverySession(componentKey: string, canonicalMac: string, ordering: ShellyCoverOrderingService) {
+		const id = Number(componentKey.split(':')[1]);
+		const old = this.coverSessions.get(id);
+		old?.retire();
+		if (old?.hasActiveDispatch()) throw new Error('Cover has active local dispatch');
+		this.coverSessions.delete(id);
+		const fresh = this.prepareCoverSession(componentKey, canonicalMac, ordering);
+		if (!fresh) throw new Error('Current guarded cover session unavailable');
+		this.coverSessions.delete(id);
+		return {
+			session: fresh,
+			isCurrent: () => fresh.identityIsCurrent() && !this.coverSessions.has(id),
+			install: () => {
+				if (!fresh.identityIsCurrent() || this.coverSessions.has(id)) throw new Error('Cover recovery session changed');
+				this.coverSessions.set(id, fresh);
+			},
+			dispose: () => {
+				if (this.coverSessions.get(id) === fresh && !fresh.identityIsCurrent()) this.coverSessions.delete(id);
+				if (this.coverSessions.get(id) !== fresh) fresh.retire();
+			},
+		};
+	}
 	/** Strict ordinary lighting: exact explicit effects, guarded at every actual SDK send. */
 	prepareLightingCommand(
 		componentKey: string,
@@ -621,7 +716,41 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		for (const [key, values] of Object.entries(update)) {
 			if (values && typeof values === 'object') {
 				this.notificationRevisions.set(key, (this.notificationRevisions.get(key) ?? 0) + 1);
-				this.emitRawSample(key, values as Record<string, unknown>, shellySampleEvidence(update.ts, observedAt));
+				const raw = values as Record<string, unknown>;
+				if (
+					/^cover:\d+$/.test(key) &&
+					this.sampleComponentKeys.has(key) &&
+					coverDeltaNeedsRefresh(raw, Number(key.split(':')[1])) &&
+					this.shelly.rpcHandler instanceof GuardedShellyRpcHandler
+				) {
+					const generation = this.connectionGeneration;
+					const binding = this.sampleBindingGeneration;
+					const rpc = this.shelly.rpcHandler;
+					if (this.coverTelemetryRpc !== rpc) {
+						this.coverTelemetryRpc = rpc;
+						this.coverTelemetry = new ShellyCoverTelemetry(rpc, (component, full, sampledAt, current, sourceCurrent) =>
+							this.emitRawSample(component, full, {
+								sampledAt,
+								observedAt: sampledAt,
+								receivedAt: new Date(),
+								provenance: 'live',
+								isCurrent: current,
+								sourceIsCurrent: sourceCurrent,
+							}),
+						);
+					}
+					this.coverTelemetry.refresh(
+						key,
+						this.notificationRevisions.get(key),
+						() =>
+							generation === this.connectionGeneration &&
+							binding === this.sampleBindingGeneration &&
+							this.shelly.rpcHandler === rpc &&
+							rpc.connected &&
+							this.sampleComponentKeys.has(key),
+						() => this.notificationRevisions.get(key) ?? 0,
+					);
+				} else this.emitRawSample(key, raw, shellySampleEvidence(update.ts, observedAt));
 			}
 		}
 		for (const [componentKey, values] of Object.entries(update)) {
@@ -641,7 +770,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 					continue;
 				}
 
-				this.emitNotificationValue(componentKey, characteristic, value);
+				this.emitNotificationValue(componentKey, characteristic, value, false);
 			}
 
 			if (changedCharacteristics?.size === 0) {
@@ -676,8 +805,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * Applies a raw NotifyStatus frame which did not pass through a library component.  It
 	 * still advances the component revision so a concurrent poll cannot overwrite it.
 	 */
-	emitNotificationValue(compKey: string, char: string, val: unknown): void {
-		this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
+	emitNotificationValue(compKey: string, char: string, val: unknown, advanceRevision = true): void {
+		// handleStatusUpdate already advances the whole raw frame before flattening.
+		if (advanceRevision) this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
 
 		emitFlattenedValue(
 			(event: string, ...args: unknown[]): boolean => this.emit(event, ...args, 'notify'),
@@ -703,7 +833,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		values: Record<string, unknown>,
 		evidence: ShellyRawSample['evidence'],
 	): void {
-		if (/^(temperature|input|voltmeter|switch|light):\d+$/.test(componentKey)) {
+		if (/^(temperature|input|voltmeter|switch|light|cover):\d+$/.test(componentKey)) {
 			const generation = this.connectionGeneration;
 			this.emit('sample', {
 				componentKey,
@@ -737,6 +867,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	setSampleComponentKeys(keys: Iterable<string>): void {
+		this.sampleBindingGeneration++;
 		this.sampleComponentKeys.clear();
 		for (const key of keys) this.sampleComponentKeys.add(key);
 	}

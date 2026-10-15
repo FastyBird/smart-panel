@@ -1153,8 +1153,37 @@ export class RoleCoversStateDataModel {
 /**
  * Covers state data model (aggregated covers state for a space)
  */
+@ApiSchema({ name: 'SpacesHomeControlPluginDataGroupCoverOperation' })
+export class GroupCoverOperationModel {
+	@ApiProperty({ enum: ['open', 'close', 'stop', 'position', 'tilt'] }) @Expose() operation:
+		| 'open'
+		| 'close'
+		| 'stop'
+		| 'position'
+		| 'tilt';
+	@ApiProperty() @Expose() commandable: boolean;
+	@ApiProperty({ type: [String] }) @Expose() reasons: string[];
+}
+
 @ApiSchema({ name: 'SpacesModuleDataCoversState' })
 export class CoversStateDataModel {
+	@ApiPropertyOptional({
+		name: 'group_expires_at',
+		type: String,
+		format: 'date-time',
+		description: 'Earliest actual group position contributor expiry; absent when any group has no qualified position.',
+	})
+	@Expose({ name: 'group_expires_at' })
+	groupExpiresAt?: string;
+	@ApiPropertyOptional({
+		name: 'group_operations',
+		type: [GroupCoverOperationModel],
+		description:
+			'Present when room covers include groups; only supported operations are offered. Readiness is not command authority.',
+	})
+	@Expose({ name: 'group_operations' })
+	@Type(() => GroupCoverOperationModel)
+	groupOperations?: GroupCoverOperationModel[];
 	@ApiProperty({
 		name: 'has_covers',
 		description: 'Whether the space has any controllable covers',
@@ -1334,6 +1363,8 @@ export class CoversStateDataModel {
 	static fromState(state: CoversState): CoversStateDataModel {
 		const model = new CoversStateDataModel();
 		model.hasCovers = state.hasCovers;
+		model.groupOperations = state.groupOperations;
+		model.groupExpiresAt = state.groupExpiresAt;
 		model.detectedMode = state.detectedMode;
 		model.modeConfidence = state.modeConfidence;
 		model.modeMatchPercentage = state.modeMatchPercentage;
@@ -1383,6 +1414,13 @@ export class CoversStateResponseModel extends BaseSuccessResponseModel<CoversSta
  */
 @ApiSchema({ name: 'SpacesModuleDataCoversIntentResult' })
 export class CoversIntentResultDataModel {
+	@ApiPropertyOptional({
+		type: [CompositeCommandOutcomeModel],
+		description: 'Qualified per-member outcomes for cover group commands; begun motion is not full travel.',
+	})
+	@Expose()
+	@Type(() => CompositeCommandOutcomeModel)
+	composites?: CompositeCommandOutcomeModel[];
 	@ApiProperty({
 		description: 'Whether the intent was executed successfully',
 		type: 'boolean',

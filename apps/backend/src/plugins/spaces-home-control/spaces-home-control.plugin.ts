@@ -47,6 +47,7 @@ import { WebsocketExchangeListener } from './listeners/websocket-exchange.listen
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import { ClimateContributionPlannerService } from './services/climate-contribution-planner.service';
 import { ClimateIntentService } from './services/climate-intent.service';
+import { CoverGroupIntentPort } from './services/cover-group-intent.port';
 import { CoversIntentService } from './services/covers-intent.service';
 import { DerivedMediaEndpointService } from './services/derived-media-endpoint.service';
 import { HomeControlHomePageResolver } from './services/home-control-home-page.resolver';
@@ -136,6 +137,7 @@ import { IntentSpecLoaderService } from './spec';
 		WebsocketModule,
 	],
 	providers: [
+		CoverGroupIntentPort,
 		LightingContributionPlannerService,
 		ClimateContributionPlannerService,
 		// Resolvers + loader

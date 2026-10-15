@@ -265,24 +265,47 @@ export class VirtualLightGroupMemberModel {
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupReportedProperty' })
 export class VirtualLightGroupReportedPropertyModel {
+	@ApiPropertyOptional({
+		type: String,
+		format: 'date-time',
+		description:
+			'Oldest actual contributing sample; absent for configured metadata and fields with no qualified contributors.',
+	})
+	@Expose()
+	sampled_at?: string;
+	@ApiPropertyOptional({
+		type: String,
+		format: 'date-time',
+		description: 'Earliest absolute contributor expiry; reading this report never renews freshness.',
+	})
+	@Expose()
+	expires_at?: string;
+
+	@ApiPropertyOptional({
+		enum: ['configured'],
+		description: 'Configuration metadata; never a physical sample or timestamp',
+	})
+	@Expose()
+	provenance?: 'configured';
+
 	@ApiProperty({ enum: PropertyCategory })
 	@Expose()
 	category: PropertyCategory;
 
 	@ApiProperty({
-		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		description: 'Feedback representative; brightness is the raw mean of valid on members',
 	})
 	@Expose()
-	value: number | boolean | null;
+	value: string | number | boolean | null;
 
 	@ApiPropertyOptional({
-		oneOf: [{ type: 'number' }, { type: 'boolean' }],
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		description: 'Published representative rounded onto the validated output grid',
 	})
 	@Expose()
-	representative_value?: number | boolean;
+	representative_value?: string | number | boolean;
 
 	@ApiPropertyOptional({ description: 'Raw representative needed rounding onto the output grid' })
 	@Expose()
@@ -396,8 +419,42 @@ export class VirtualLightGroupCapabilityModel {
 	step: number | null;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoverOperationMemberReadiness' })
+export class CoverOperationMemberReadinessModel {
+	@ApiProperty({ type: 'string' })
+	@Expose()
+	source_identity: string;
+	@ApiProperty({ type: 'boolean' })
+	@Expose()
+	commandable: boolean;
+	@ApiProperty({ type: [String] })
+	@Expose()
+	reasons: string[];
+}
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoverOperationReadiness' })
+export class CoverOperationReadinessModel {
+	@ApiProperty({ enum: ['open', 'close', 'stop', 'position', 'tilt'] })
+	@Expose()
+	operation: 'open' | 'close' | 'stop' | 'position' | 'tilt';
+	@ApiProperty({ type: 'boolean', description: 'Current adapter readiness; dispatch revalidates every member' })
+	@Expose()
+	commandable: boolean;
+	@ApiProperty({ type: [CoverOperationMemberReadinessModel] })
+	@Expose()
+	@Type(() => CoverOperationMemberReadinessModel)
+	members: CoverOperationMemberReadinessModel[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupConfiguration' })
 export class VirtualLightGroupConfigurationModel {
+	@ApiPropertyOptional({
+		type: [CoverOperationReadinessModel],
+		description: 'Operational cover capabilities, separate from structural field access',
+	})
+	@Expose()
+	@Type(() => CoverOperationReadinessModel)
+	operations?: CoverOperationReadinessModel[];
+
 	@ApiProperty({ description: 'Owning group channel UUID', format: 'uuid' })
 	@Expose()
 	group_channel: string;

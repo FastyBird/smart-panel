@@ -1,7 +1,7 @@
 # Shelly NG Cover Component Mappings
 # Maps cover components (roller shutters, blinds) to window covering channels
 
-version: "1.0"
+version: '1.0'
 
 transformers:
   # Cover position (0-100)
@@ -16,55 +16,55 @@ transformers:
   cover_state:
     type: map
     read:
-      opening: "opening"
-      closing: "closing"
-      stopped: "stopped"
-      open: "opening"
-      close: "closing"
-      stop: "stopped"
+      opening: 'opening'
+      closing: 'closing'
+      stopped: 'stopped'
+      open: 'opened'
+      closed: 'closed'
+
     write:
-      opening: "open"
-      closing: "close"
-      stopped: "stop"
-      open: "open"
-      close: "close"
-      stop: "stop"
+      opening: 'open'
+      closing: 'close'
+      stopped: 'stop'
+      open: 'open'
+      close: 'close'
+      stop: 'stop'
 
 derivations:
   # Derive status from state
   cover_status_from_state:
-    description: "Derive cover status from state"
+    description: 'Derive cover status from state'
     rule:
       type: boolean_map
-      true_value: "opening"
-      false_value: "stopped"
+      true_value: 'opening'
+      false_value: 'stopped'
 
 mappings:
   # Cover as Window Covering
   - name: cover_as_window_covering
-    description: "Shelly cover component mapped as window covering channel"
+    description: 'Shelly cover component mapped as window covering channel'
     priority: 100
     match:
       component_type: cover
     channels:
-      - identifier: "cover:{key}"
-        name: "Cover: {key}"
+      - identifier: 'cover:{key}'
+        name: 'Cover: {key}'
         category: WINDOW_COVERING
         properties:
           - shelly_property: state
             panel:
               identifier: STATUS
-              data_type: STRING
+              data_type: ENUM
+              format: ['opened', 'closed', 'opening', 'closing', 'stopped']
             transformer: cover_state
           - shelly_property: current_pos
             panel:
               identifier: POSITION
               data_type: UCHAR
               format: [0, 100]
-              unit: "%"
-            transformer: cover_position
+              unit: '%'
         static_properties:
           - identifier: COMMAND
             data_type: ENUM
-            format: ["open", "close", "stop"]
-            value: "stop"
+            format: ['open', 'close', 'stop']
+            value: 'stop'

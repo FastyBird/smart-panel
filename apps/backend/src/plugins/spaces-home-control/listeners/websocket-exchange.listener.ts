@@ -3,6 +3,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../../modules/auth/auth.constants';
+import { CompositeCommandOutcomeModel } from '../../../modules/devices/models/composite-command.model';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { UserRole } from '../../../modules/users/users.constants';
@@ -286,6 +287,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					offline_device_ids: result.offlineDeviceIds,
 					failed_targets: result.failedTargets,
 					new_position: result.newPosition,
+					...(result.composites ? { composites: toInstance(CompositeCommandOutcomeModel, result.composites) } : {}),
 				},
 			};
 		} catch (error) {
