@@ -77,13 +77,18 @@ Delivered against §3: the `hidden` flag with filtering in every selection UI, t
 
 Step 6 of the design's [creation flow](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#creation-flow) was superseded during implementation — the spec records what replaced it and why.
 
-Left out deliberately, and still open:
+Historical v1 exclusions and subsequent delivery:
 
-- **The six closed-loop categories** stay blocked, as [the design's v1 boundary](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#v1-category-boundary) sets out. Unblocking them needs a control loop with hysteresis and minimum cycle protection, plus user-settable setpoints as owned properties — the schema already accommodates the latter. It starts with a design rather than a task, and what that design has to answer is recorded under [Controller support](../../docs/superpowers/specs/2026-07-31-virtual-devices-design.md#controller-support) in the design spec.
-- **Per-channel energy attribution**, so a split device's consumption lands in its own room. Filed as [`BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION`](../bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md) rather than left as the "pre-existing limitation" this epic first called it: the reproduction shows a split device reporting *zero* in every room it was split into, which the split itself creates the expectation of.
-- Everything in §3's out-of-scope list: auto-detection of splittable devices, panel-side creation, new device specs, and extension-SDK support for third-party virtual devices.
+- The six closed-loop categories remain blocked in the original projection/wiring mode. The dedicated heating/cooling
+  `climate_controller` mode, including floor/window protection, was subsequently delivered in
+  [#1409](https://github.com/FastyBird/smart-panel/issues/1409); see
+  [EPIC-VIRTUAL-DEVICE-CAPABILITIES](../epics/EPIC-VIRTUAL-DEVICE-CAPABILITIES.md). Other controller categories remain future work.
+- Per-channel energy attribution was completed in
+  [BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION](../bugs/BUG-ENERGY-VIRTUAL-ROOM-ATTRIBUTION.md); it is no longer an open v1 follow-up.
+- Auto-detection of splittable devices, panel-side creation, additional device specs and extension-SDK support for
+  third-party virtual devices remain outside this archived epic.
 
-The completed engineering follow-up audit lives in [`TECH-VIRTUAL-DEVICES-FOLLOWUPS`](../technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md), tracked by #1336. It resolves SQLite connection ownership, immutable projection events, nullable provenance, partial admin updates, descendant lifecycle cleanup and duplicate security/Buddy presentation. It also records the explicit stored-reference policy: hiding preserves existing automation targets; deletion cascades database-backed references and missing local scene targets fail individually. Shared device-editing and test-infrastructure refactors continue in [#1402](https://github.com/FastyBird/smart-panel/issues/1402). Controller support remains the separate design work described above.
+The completed engineering follow-up audit lives in [`TECH-VIRTUAL-DEVICES-FOLLOWUPS`](../technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md), tracked by #1336. It resolves SQLite connection ownership, immutable projection events, nullable provenance, partial admin updates, descendant lifecycle cleanup and duplicate security/Buddy presentation. It also records the explicit stored-reference policy: hiding preserves existing automation targets; deletion cascades database-backed references and missing local scene targets fail individually. Shared device-editing and test-infrastructure refactors were completed in [#1402](https://github.com/FastyBird/smart-panel/issues/1402). Dedicated thermostat delivery and remaining controller extensions are tracked separately as described above.
 
 ## 5. Technical constraints
 

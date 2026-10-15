@@ -3,8 +3,14 @@
 ID: EPIC-VIRTUAL-DEVICE-CAPABILITIES
 Type: epic
 Scope: backend, admin, panel, spec
-Status: implemented; final delivery gated by PR #1444
+Status: done
 Tracking: [#1409](https://github.com/FastyBird/smart-panel/issues/1409)
+
+Software delivery completed in [PR #1444](https://github.com/FastyBird/smart-panel/pull/1444), merged as
+`4de657717c36b1a20789592549c6761d876c1f4d` after exact-head CI and completed non-blocking CodeRabbit review.
+The tracking epic and all 15 child issues are closed. Installed heating commissioning remains unverified.
+HomeKit lifecycle and virtual-state integration continue separately in [#1220](https://github.com/FastyBird/smart-panel/issues/1220)
+and [#1445](https://github.com/FastyBird/smart-panel/issues/1445).
 
 ## Objective
 
@@ -25,9 +31,8 @@ permit heating. Recovery requires hysteresis and fresh valid inputs.
 
 ## Delivery tasks
 
-Checkboxes record implemented software acceptance. Tasks through the protocol, runtime and protective-policy work
-are merged; PR #1444 carries the final diagnostics, room contribution and acceptance evidence. A feature branch is
-not delivered until its current-head CI and completed non-blocking CodeRabbit review pass and it merges. Installed
+Checkboxes record implemented software acceptance. All delivery tasks, including the final diagnostics, room contribution and acceptance evidence in PR #1444, are merged.
+Each delivery required current-head CI and a completed non-blocking CodeRabbit review, or explicit operator approval. Installed
 equipment qualification is a separate activation gate, not something these software checkmarks certify.
 
 - [x] VD2-1 [#1410](https://github.com/FastyBird/smart-panel/issues/1410): design decisions and actuator-platform qualification spike
@@ -78,12 +83,11 @@ Production features through PR #1443 are merged on `10e9c206d68f12966d5bb7d5a077
 The identical composed source tree at `f84be26b257ad225c0cd6816a428da2059e252da` passed all 15 hosted
 checks and completed CodeRabbit review with Minimal risk and no blocking finding before merge.
 [PR #1443 checks and review](https://github.com/FastyBird/smart-panel/pull/1443) record that baseline.
-Protocol evidence PR #1424 merged as `35e8ef6bab56e302f64bef5f05b318ffe99836ac` after all 16 checks passed and its completed CodeRabbit review covered exact source `0e64c3227bfd2e0889eaae5fecf32d98da9be864` with Minimal risk and no actionable finding. The remaining #1421 improvements in PR #1444 retain their own exact-head CI/review gates.
+Protocol evidence PR #1424 merged as `35e8ef6bab56e302f64bef5f05b318ffe99836ac` after all 16 checks passed and its completed CodeRabbit review covered exact source `0e64c3227bfd2e0889eaae5fecf32d98da9be864` with Minimal risk and no actionable finding. PR #1444 subsequently delivered the remaining #1421 improvements and #1422 acceptance after all 18 final-head hosted checks passed and CodeRabbit completed exact-head review with Minimal risk; all five pre-merge checks passed.
 
 The protocol spike #1410 and the runtime and protective-policy tasks #1419 and #1420 are closed as tested software implementations.
 That closure does not establish installed hardware qualification. PR #1444 implements explicit source freshness presentation, room climate contribution coverage/conflicts, socket/HTTP
-convergence and a real HTTP/SQLite configuration round trip. It carries closure of #1421 and #1422 only after its own
-exact-head hosted CI and review pass. The linked ledger maps each minimum to the test boundary that proves it.
+convergence and a real HTTP/SQLite configuration round trip. It closed #1421 and #1422 after its own exact-head hosted CI and completed non-blocking review passed. The linked ledger maps each minimum to the test boundary that proves it.
 
 | Acceptance slice                     | Evidence on the merged baseline                                                                                                                                                                                                                  | Follow-up and delivery boundary                                                                                                                                   |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
