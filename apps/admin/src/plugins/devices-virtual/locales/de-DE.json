@@ -263,7 +263,11 @@
 		"previewExpired": "Der Entwurfsschnappschuss ist abgelaufen. Vor dem Speichern erneut prüfen.",
 		"detected": "Erkannt",
 		"notDetected": "Nicht erkannt",
-		"snapshotQuality": "Entwurfsqualität: {quality}"
+		"snapshotQuality": "Entwurfsqualität: {quality}",
+		"extensionOperator": "Operator einer vertrauenswürdigen Erweiterung",
+		"measurementOperatorMissing": "Der gespeicherte Operatorvertrag oder die Version ist nicht verfügbar. Die Konfiguration bleibt erhalten; wählen Sie zur Reparatur eine verfügbare Version.",
+		"measurementOperatorParameter": "Der Zahlenparameter liegt außerhalb des unterstützten Bereichs.",
+		"resetOperatorDefinition": "Auf Operatordefinition zurücksetzen"
 	},
 	"lightGroup": {
 		"apply": "Anwenden",

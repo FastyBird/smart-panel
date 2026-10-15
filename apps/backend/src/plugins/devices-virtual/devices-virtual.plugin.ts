@@ -103,6 +103,8 @@ import { VirtualLightGroupContributionService } from './services/virtual-light-g
 import { VirtualLightGroupStateService } from './services/virtual-light-group-state.service';
 import { VirtualMeasurementAuthoringService } from './services/virtual-measurement-authoring.service';
 import { VirtualMeasurementContributionService } from './services/virtual-measurement-contribution.service';
+import { VirtualNumericOperatorHostService } from './services/virtual-numeric-operator-host.service';
+import { VirtualNumericOperatorRegistry } from './services/virtual-numeric-operator.registry';
 import { VirtualProducerConfigService } from './services/virtual-producer-config.service';
 import { VirtualProducerStateService } from './services/virtual-producer-state.service';
 import { VirtualPropertyIndexService } from './services/virtual-property-index.service';
@@ -113,6 +115,7 @@ import { VirtualThermostatInputsService } from './services/virtual-thermostat-in
 import { VirtualThermostatRuntimeService } from './services/virtual-thermostat-runtime.service';
 import { VirtualThermostatTransportService } from './services/virtual-thermostat-transport.service';
 import { VirtualTransformConfigService } from './services/virtual-transform-config.service';
+import { VirtualTransformResolver } from './services/virtual-transform-resolver';
 import { VirtualTransformRuntimeService } from './services/virtual-transform-runtime.service';
 import { VirtualValueSourceService } from './services/virtual-value-source.service';
 import { VirtualThermostatOwnershipSubscriber } from './subscribers/virtual-thermostat-ownership.subscriber';
@@ -158,6 +161,9 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		VirtualNumericOperatorRegistry,
+		VirtualNumericOperatorHostService,
+		VirtualTransformResolver,
 		ThermostatInstallationService,
 		ThermostatInstallationBindingsService,
 		ThermostatInstallationLoaderService,

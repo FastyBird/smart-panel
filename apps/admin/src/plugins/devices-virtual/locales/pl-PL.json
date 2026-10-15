@@ -263,7 +263,11 @@
 		"previewExpired": "Migawka projektu wygasła. Przed zapisem uruchom podgląd ponownie.",
 		"detected": "Wykryto",
 		"notDetected": "Nie wykryto",
-		"snapshotQuality": "Jakość projektu: {quality}"
+		"snapshotQuality": "Jakość projektu: {quality}",
+		"extensionOperator": "Operator zaufanego rozszerzenia",
+		"measurementOperatorMissing": "Zapisany kontrakt lub wersja operatora jest niedostępna. Konfiguracja zostaje zachowana; wybierz dostępną wersję, aby ją naprawić.",
+		"measurementOperatorParameter": "Parametr liczbowy jest poza obsługiwanym zakresem.",
+		"resetOperatorDefinition": "Przywróć definicję operatora"
 	},
 	"lightGroup": {
 		"apply": "Zastosuj",

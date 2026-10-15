@@ -3,3 +3,4 @@ export * from './input.types.js';
 export * from './notification.types.js';
 export * from './types.js';
 export * from './validate.js';
+export * from './numeric-operator.types.js';

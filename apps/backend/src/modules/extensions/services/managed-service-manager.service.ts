@@ -193,6 +193,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		this.logger.log('Stopping all managed services for factory reset');
 
 		const sorted = this.getSortedServices().reverse();
+		for (const registration of sorted) registration.service.revokeCurrentAuthority?.();
 
 		for (const registration of sorted) {
 			const state = registration.service.getState();
@@ -233,6 +234,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		// Stop in reverse order (highest priority last started, first stopped)
 		const sorted = this.getSortedServices().reverse();
+		for (const registration of sorted) registration.service.revokeCurrentAuthority?.();
 
 		for (const registration of sorted) {
 			const state = registration.service.getState();

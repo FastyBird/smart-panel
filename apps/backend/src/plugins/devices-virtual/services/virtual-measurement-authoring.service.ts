@@ -104,7 +104,11 @@ export class VirtualMeasurementAuthoringService {
 				draft.output,
 				true,
 			);
-			return attachTransformPreview(this.transforms.describe(prepared, revision), dto.previewInput);
+			return attachTransformPreview(
+				this.transforms.describe(prepared, revision),
+				dto.previewInput,
+				this.transforms.resolver,
+			);
 		});
 	}
 

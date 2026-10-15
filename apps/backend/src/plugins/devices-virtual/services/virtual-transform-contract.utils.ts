@@ -15,7 +15,8 @@ import {
 import { VirtualDeviceMode, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
-import { VirtualNumericTransformOperator, validateVirtualNumericTransform } from './virtual-numeric-transform.utils';
+import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 
 /** Safe bounded metadata; never markup, control characters or executable configuration. */
 export const isTransformQuantity = (quantity: unknown): quantity is string =>
@@ -68,8 +69,17 @@ export function transformContractErrors(
 	output: ChannelPropertyEntity,
 	source: ChannelPropertyEntity | null,
 	binding?: Pick<VirtualTransformSourceEntity, 'quantity' | 'unit'>,
+	resolver = new VirtualTransformResolver(),
 ): string[] {
-	const errors = validateVirtualNumericTransform(config.policy);
+	const errors = resolver.validate(
+		config.policy,
+		source
+			? { quantity: String(source.category), unit: resolvePropertyUnit(source) }
+			: binding
+				? { quantity: binding.quantity, unit: binding.unit }
+				: undefined,
+		{ quantity: config.quantity, unit: config.unit },
+	);
 	if (
 		config.schemaVersion !== 1 ||
 		!Number.isInteger(config.maximumAgeSeconds) ||
