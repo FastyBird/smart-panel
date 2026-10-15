@@ -31,6 +31,15 @@ describe('aggregate policy request contract', () => {
 		expect(dto.outlierFilter).toMatchObject({ kind: 'absolute_deviation_from_median', threshold: 2 });
 		expect(dto.inputs[0].sourcePropertyId).toBe(old.inputs[0].source_property);
 	});
+	it.each([Number.MIN_VALUE, 0.000001, 1])('accepts strictly positive filter threshold %s', async (threshold) => {
+		const dto = plainToInstance(ConfigureVirtualAggregateDto, {
+			...payload(),
+			outlier_filter: { kind: 'absolute_deviation_from_median', threshold },
+		});
+		expect(await validate(dto)).toHaveLength(0);
+		expect(dto.outlierFilter.threshold).toBe(threshold);
+	});
+
 	it.each([0, -1, NaN, Infinity, 0.000000999, 1000001, '1'])('rejects invalid request weight %s', async (weight) => {
 		const old = payload();
 		const dto = plainToInstance(ConfigureVirtualAggregateDto, {

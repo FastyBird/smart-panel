@@ -56,6 +56,7 @@ export class SwaggerDocumentService {
 
 		// Set OpenAPI version to 3.1.0
 		document.openapi = '3.1.0';
+		this.normalizeExclusiveBounds(document);
 
 		// Add summary field to info (OpenAPI 3.1.0 feature)
 		if (document.info) {
@@ -141,6 +142,65 @@ export class SwaggerDocumentService {
 				showRequestDuration: true,
 			},
 		});
+	}
+
+	/**
+	 * Nest Swagger emits OpenAPI 3.0 boolean exclusive bounds. Our 3.1 document
+	 * needs numeric bounds instead. Cover registered component schemas and their
+	 * schema-valued children only; example/default payloads are application data.
+	 */
+	private normalizeExclusiveBounds(document: OpenAPIObject): void {
+		const visit = (value: unknown, path: string): void => {
+			if (typeof value !== 'object' || value === null || Array.isArray(value)) return;
+			const schema = value as Record<string, unknown>;
+
+			for (const [exclusive, inclusive] of [
+				['exclusiveMinimum', 'minimum'],
+				['exclusiveMaximum', 'maximum'],
+			]) {
+				if (typeof schema[exclusive] !== 'boolean') continue;
+				if (schema[exclusive] === false) {
+					delete schema[exclusive];
+					continue;
+				}
+
+				const bound = schema[inclusive];
+				if (typeof bound !== 'number' || !Number.isFinite(bound)) {
+					throw new Error(`Cannot convert ${path}.${exclusive}: true requires a finite numeric ${inclusive}`);
+				}
+				schema[exclusive] = bound;
+				delete schema[inclusive];
+			}
+
+			for (const key of ['properties', 'patternProperties', 'dependentSchemas', '$defs', 'definitions']) {
+				const children = schema[key];
+				if (typeof children === 'object' && children !== null && !Array.isArray(children)) {
+					for (const [name, child] of Object.entries(children)) visit(child, `${path}.${key}.${name}`);
+				}
+			}
+			for (const key of [
+				'items',
+				'additionalProperties',
+				'unevaluatedProperties',
+				'unevaluatedItems',
+				'contains',
+				'propertyNames',
+				'not',
+				'if',
+				'then',
+				'else',
+			]) {
+				visit(schema[key], `${path}.${key}`);
+			}
+			for (const key of ['allOf', 'anyOf', 'oneOf', 'prefixItems']) {
+				const children = schema[key];
+				if (Array.isArray(children)) children.forEach((child, index) => visit(child, `${path}.${key}[${index}]`));
+			}
+		};
+
+		for (const [name, schema] of Object.entries(document.components?.schemas ?? {})) {
+			visit(schema, `components.schemas.${name}`);
+		}
 	}
 
 	private adjustThirdPartyDemoWebhookPath(document: OpenAPIObject): void {
