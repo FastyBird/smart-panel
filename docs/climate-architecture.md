@@ -76,12 +76,14 @@ the latch; clearing it does not change the separate requested HVAC mode. All exi
 qualification and unresolved-output barriers still dominate comfort and are checked again at physical dispatch.
 
 Override expiry uses both an absolute wall-clock deadline and a process-local monotonic budget. Equality expires.
-Once observed, terminal expiry is persisted before evaluating the baseline and cannot revive on rollback or restart.
-This backend has no trusted elapsed-time evidence across downtime: an override without its process-local budget
-terminates durably as `clock_uncertain` after restart, even if its wall-clock deadline appears future. The API exposes
-`terminate_on_restart_uncertainty`; it does not claim to detect unobservable wall-clock changes while stopped. This
-conservative policy also means an ordinary restart ends an override early. A future trusted-clock implementation
-must retain these terminal and dispatch fences. Temporary overrides are bounded to seven days.
+Committed terminal expiry cannot revive on rollback or restart. A restart recovers remaining absolute lifetime capped
+by the original duration, retaining identity and setpoints. A persisted wall watermark detects observable rollback;
+invalid lifetime evidence or clock uncertainty holds the override as `clock_uncertain` and inhibits output until an
+explicit cancellation/replacement, rather than falling through to a potentially higher-demand baseline. No method can
+prove unobservable wall-clock shifts across downtime without an independent trusted clock. The API reports
+`bounded_absolute_recovery_with_uncertainty_inhibit`. Synchronous dispatch refusal is immediately fail-closed, but durable
+expiry observation occurs at committed settlement; a synchronous guard cannot promise persistence across a crash.
+Temporary overrides are bounded to seven days. Cache state is bounded to one live identity per controller.
 
 This backend stage does not implement a space activity/schedule/presence engine. The trusted baseline port is ready
 for the separate bridge, and no engine invokes it here.

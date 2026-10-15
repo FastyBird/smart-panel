@@ -623,12 +623,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				else decision.desiredCooling = false;
 			}
 		if (
-			!this.comfort.isCurrent(context.config.comfort) ||
+			!this.comfort.isCurrent(context.config) ||
 			(context.config.comfort && validateThermostatComfort(context.config.comfort, context.config.policy).length)
 		) {
 			decision.desiredHeating = false;
 			decision.desiredCooling = false;
-			decision.reasons.push('comfort_refresh_required');
+			decision.reasons.push(
+				context.config.comfort?.temporary_override?.status === 'clock_uncertain'
+					? 'comfort_clock_uncertain'
+					: 'comfort_refresh_required',
+			);
 		}
 		if (!context.publishGuard()) {
 			decision.desiredHeating = false;

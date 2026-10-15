@@ -28,6 +28,8 @@ export interface ThermostatComfortOverride {
 	actor_id: string;
 	revision: number;
 	created_at: string;
+	original_duration_ms?: number;
+	wall_watermark_ms?: number;
 	expires_at: string;
 	preset: ThermostatPreset | null;
 	setpoints: ThermostatSetpoints | null;
@@ -102,7 +104,7 @@ export function validateThermostatComfort(
 		if (!target) return ['automation_preset_missing'];
 		sets.push(target);
 	}
-	if (comfort.temporary_override?.status === 'active') {
+	if (['active', 'clock_uncertain'].includes(comfort.temporary_override?.status)) {
 		if ((comfort.temporary_override.preset === null) === (comfort.temporary_override.setpoints === null))
 			return ['invalid_override'];
 		const target = comfort.temporary_override.resolved_setpoints;
@@ -126,7 +128,9 @@ export function effectiveThermostatComfort(
 		expires_at: null,
 	};
 	if (!comfort) return result;
-	const override = comfort.temporary_override?.status === 'active' ? comfort.temporary_override : null;
+	const override = ['active', 'clock_uncertain'].includes(comfort.temporary_override?.status)
+		? comfort.temporary_override
+		: null;
 	const automation = comfort.automation_enabled ? comfort.automation_baseline : null;
 	const preset = override ? override.preset : automation ? automation.preset : comfort.selected_preset;
 	const setpoints =

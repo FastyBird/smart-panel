@@ -236,11 +236,11 @@ export class ThermostatComfortModel {
 	effective: ThermostatEffectiveComfortModel;
 
 	@ApiProperty({
-		description: 'No trusted cross-downtime clock: an active override terminates after restart',
-		enum: ['terminate_on_restart_uncertainty'],
+		description: 'Recover bounded remaining absolute lifetime; observable clock uncertainty inhibits output',
+		enum: ['bounded_absolute_recovery_with_uncertainty_inhibit'],
 	})
 	@Expose()
-	clock_policy: 'terminate_on_restart_uncertainty';
+	clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit';
 }
 
 @ApiSchema({ name: 'DevicesVirtualPluginResThermostatComfort' })

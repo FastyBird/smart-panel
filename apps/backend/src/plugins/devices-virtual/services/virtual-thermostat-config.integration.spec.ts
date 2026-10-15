@@ -1795,7 +1795,7 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		});
 		await configs.configure(controller, { ...input, expectedRevision: current.revision });
 		current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
-		expect(current.comfort.user_off).toBe(true);
+		expect(current.comfort.user_off).toBe(false);
 		await configs.command([await target(enable, true)]);
 		current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
 		expect(current.comfort.user_off).toBe(false);

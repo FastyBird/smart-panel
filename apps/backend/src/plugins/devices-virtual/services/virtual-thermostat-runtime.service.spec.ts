@@ -460,6 +460,35 @@ describe('virtual thermostat durable runtime', () => {
 			presets: [{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } }],
 		});
 
+	it('inhibits a lower-demand override on observable rollback instead of resuming a higher baseline', async () => {
+		await settle();
+		await configureComfort();
+		const wall = Date.now();
+		jest.spyOn(Date, 'now').mockReturnValue(wall);
+		await comfort.override(
+			controllerId,
+			await comfortFence(),
+			{
+				preset: null,
+				setpoints: { heating_setpoint: 17, cooling_setpoint: null },
+				expires_at: new Date(wall + 60_000).toISOString(),
+			},
+			'operator',
+		);
+		sample(sensorId, 18);
+		runtime.request(controllerId);
+		await settle();
+		expect(sends).not.toContain(true);
+		jest.spyOn(Date, 'now').mockReturnValue(wall - 1);
+		runtime.request(controllerId);
+		await settle();
+		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
+			effective_comfort: { source: 'override', heating_setpoint: 17 },
+		});
+		expect(runtime.readDiagnostics(controllerId).reasons).toContain('comfort_clock_uncertain');
+		expect(sends).not.toContain(true);
+	});
+
 	it('uses effective preset demand without changing requested settings or bypassing a final ambient guard', async () => {
 		await settle();
 		await configureComfort();

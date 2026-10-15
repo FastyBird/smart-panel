@@ -22,6 +22,7 @@ describe('thermostat durable comfort lifecycle', () => {
 	let comfort: VirtualThermostatComfortService;
 	let makeService: () => VirtualThermostatComfortService;
 	let id: string;
+	let events: EventEmitter2;
 	let wall: number;
 	let elapsed: number;
 	const input = () => ({
@@ -62,7 +63,7 @@ describe('thermostat durable comfort lifecycle', () => {
 		}).initialize();
 		const structure = new DeviceStructureLockService();
 		const graph = new VirtualDependencyGraphService(database);
-		const events = new EventEmitter2();
+		events = new EventEmitter2();
 		const claims = {
 			invalidate: jest.fn(),
 			refresh: jest.fn().mockResolvedValue(undefined),
@@ -191,18 +192,18 @@ describe('thermostat durable comfort lifecycle', () => {
 		});
 	});
 
-	it('uses the monotonic budget during wall rollback and fences before durable settlement', async () => {
+	it('inhibits observable rollback without falling through to a higher baseline', async () => {
 		await configured();
 		await overridden();
-		const captured = (await comfort.get(id)).configuration;
+		const captured = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
 		wall -= 60_000;
 		elapsed += 999;
-		expect(comfort.isCurrent(captured)).toBe(true);
+		expect(comfort.isCurrent(captured)).toBe(false);
 		elapsed += 1;
 		expect(comfort.isCurrent(captured)).toBe(false);
 		expect(await comfort.get(id)).toMatchObject({
-			configuration: { temporary_override: { status: 'expired' } },
-			effective: { source: 'manual' },
+			configuration: { temporary_override: { status: 'clock_uncertain' } },
+			effective: { source: 'override' },
 		});
 	});
 
@@ -212,12 +213,116 @@ describe('thermostat durable comfort lifecycle', () => {
 		wall -= 60_000;
 		comfort = makeService();
 		expect(await comfort.get(id)).toMatchObject({
-			clock_policy: 'terminate_on_restart_uncertainty',
+			clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
 			configuration: { temporary_override: { status: 'clock_uncertain' } },
-			effective: { source: 'manual' },
+			effective: { source: 'override' },
 		});
 		comfort = makeService();
 		expect((await comfort.get(id)).configuration.temporary_override.status).toBe('clock_uncertain');
+	});
+
+	it('recovers an ordinary restart without changing a lower-demand override identity, settings or expiry', async () => {
+		await configured();
+		const initial = await comfort.override(
+			id,
+			await fence(),
+			{ preset: 'eco', setpoints: null, expires_at: new Date(wall + 1000).toISOString() },
+			'operator',
+		);
+		wall += 400;
+		elapsed += 400;
+		await comfort.get(id); // durable watermark
+		comfort = makeService();
+		const recovered = await comfort.get(id);
+		expect(recovered.configuration.temporary_override).toMatchObject({
+			id: initial.configuration.temporary_override.id,
+			expires_at: initial.configuration.temporary_override.expires_at,
+			resolved_setpoints: initial.configuration.temporary_override.resolved_setpoints,
+			status: 'active',
+		});
+		expect(recovered.effective).toMatchObject({ source: 'override', heating_setpoint: 17 });
+		wall += 599;
+		elapsed += 599;
+		expect((await comfort.get(id)).effective.source).toBe('override');
+		wall += 1;
+		elapsed += 1;
+		expect((await comfort.get(id)).configuration.temporary_override.status).toBe('expired');
+		wall -= 5000;
+		comfort = makeService();
+		expect((await comfort.get(id)).configuration.temporary_override.status).toBe('expired');
+	});
+
+	it('uses persisted watermark on rollback/restart and requires explicit cancellation of uncertainty', async () => {
+		await configured();
+		await comfort.override(
+			id,
+			await fence(),
+			{ preset: 'eco', setpoints: null, expires_at: new Date(wall + 1000).toISOString() },
+			'operator',
+		);
+		wall += 500;
+		elapsed += 500;
+		await comfort.get(id);
+		wall -= 1;
+		comfort = makeService();
+		const held = await comfort.get(id);
+		expect(held.configuration.temporary_override.status).toBe('clock_uncertain');
+		expect(held.effective.heating_setpoint).toBe(17);
+		expect(
+			comfort.isCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
+		).toBe(false);
+		await comfort.cancel(id, await fence(), held.configuration.temporary_override.id);
+		expect((await comfort.get(id)).effective.heating_setpoint).toBe(20);
+	});
+
+	it('bounds process state through replacements, cancellation, expiry and stale dispatch snapshots', async () => {
+		await configured();
+		const snapshots: VirtualThermostatConfigEntity[] = [];
+		for (let index = 0; index < 12; index++) {
+			await overridden();
+			snapshots.push(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }));
+		}
+		for (const snapshot of snapshots.slice(0, -1)) expect(comfort.isCurrent(snapshot)).toBe(false);
+		const cache = (comfort as unknown as { leases: Map<string, unknown> }).leases;
+		expect(cache.size).toBe(1);
+		await comfort.cancel(id, await fence(), snapshots.at(-1).comfort.temporary_override.id);
+		expect(cache.size).toBe(0);
+		for (const snapshot of snapshots) expect(comfort.isCurrent(snapshot)).toBe(false);
+		expect(cache.size).toBe(0);
+		await overridden();
+		elapsed += 1000;
+		await comfort.get(id);
+		expect(cache.size).toBe(0);
+	});
+
+	it('keeps committed results successful when a real listener throws, and retries publication without mutation replay', async () => {
+		await configured();
+		const listener = () => {
+			throw new Error('listener failed after commit');
+		};
+		events.on('devices-virtual.thermostat.config.changed', listener);
+		const before = await fence();
+		const result = await overridden();
+		expect(result.revision).toBe(before.expected_revision + 1);
+		const identity = result.configuration.temporary_override.id;
+		const selected = await comfort.select(id, await fence(), 'eco', false);
+		expect(selected.configuration.temporary_override.id).toBe(identity);
+		elapsed += 1000;
+		const settled = await comfort.get(id);
+		expect(settled.configuration.temporary_override.status).toBe('expired');
+		events.off('devices-virtual.thermostat.config.changed', listener);
+		const notified = jest.fn();
+		events.on('devices-virtual.thermostat.config.changed', notified);
+		const after = await comfort.get(id);
+		expect(after.revision).toBe(settled.revision);
+		expect(notified).toHaveBeenCalledWith(id);
+		const next = await overridden();
+		events.on('devices-virtual.thermostat.config.changed', listener);
+		const cancelled = await comfort.cancel(id, await fence(), next.configuration.temporary_override.id);
+		expect(cancelled.configuration.temporary_override).toMatchObject({
+			id: next.configuration.temporary_override.id,
+			status: 'cancelled',
+		});
 	});
 
 	it('cancels only the current override and recomputes a changed baseline without replay', async () => {

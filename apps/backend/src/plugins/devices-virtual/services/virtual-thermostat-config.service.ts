@@ -433,14 +433,14 @@ export class VirtualThermostatConfigService {
 			? {
 					...dto.comfort,
 					selected_preset: previous?.comfort?.selected_preset ?? null,
-					user_off: (previous?.comfort?.user_off ?? false) || dto.requestedMode === 'off',
+					user_off: dto.requestedMode === 'off',
 					automation_enabled: dto.comfort.automation_enabled ?? previous?.comfort?.automation_enabled ?? false,
 					automation_baseline:
 						dto.comfort.automation_enabled === false ? null : (previous?.comfort?.automation_baseline ?? null),
 					temporary_override: previous?.comfort?.temporary_override ?? null,
 				}
 			: previous?.comfort
-				? { ...previous.comfort, user_off: previous.comfort.user_off || dto.requestedMode === 'off' }
+				? { ...previous.comfort, user_off: dto.requestedMode === 'off' }
 				: null;
 		if (comfort) {
 			const errors = validateThermostatComfort(comfort, dto.policy);
