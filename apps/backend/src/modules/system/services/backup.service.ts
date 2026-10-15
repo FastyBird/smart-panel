@@ -647,15 +647,12 @@ export class BackupService {
 					restoreContribution(contribution);
 				}
 
-				if (lazyPass.length > 0) {
-					// Invalidate in-memory caches that lazy callbacks will read from — pass 1
-					// rewrote files on disk, but services like ConfigService hold their parsed
-					// state in memory and would otherwise return pre-restore values.
-					this.eventEmitter.emit(ConfigEventType.CONFIG_RELOAD);
+				// Static contributions may replace config even when no optional lazy data exists.
+				// Invalidate parsed config and live authority before lazy callbacks or the DB swap.
+				this.eventEmitter.emit(ConfigEventType.CONFIG_RELOAD);
 
-					for (const contribution of lazyPass) {
-						restoreContribution(contribution);
-					}
+				for (const contribution of lazyPass) {
+					restoreContribution(contribution);
 				}
 			}
 
