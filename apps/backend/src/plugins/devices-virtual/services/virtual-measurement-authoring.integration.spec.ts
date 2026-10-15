@@ -414,6 +414,17 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		},
 	);
 
+	it.each([null, 17])('rejects malformed draft policy %j without crossing preview scope', async (policy) => {
+		const dto = draft(),
+			before = await snapshot();
+		dto.configuration.policy = policy as unknown as typeof dto.configuration.policy;
+		await expect(authoring.previewTransform(dto)).rejects.toThrow(/missing_configuration|invalid_input_range/);
+		expect(await snapshot()).toEqual(before);
+		expect(publications).toEqual([]);
+		expect(producers.owns(dto.outputPropertyId)).toBe(false);
+		expect((await authoring.previewTransform(draft())).preview_result).toMatchObject({ value: 25, qualified: false });
+	});
+
 	it('dry-runs supplied input without catalog, publications, graph changes or producer ownership', async () => {
 		const dto = draft(),
 			before = await snapshot();

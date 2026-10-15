@@ -307,8 +307,9 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!this.dirty.delete(config.outputPropertyId)) continue;
 			const operatorScope = this.resolver.capture(config.policy);
+			// simple-json can contain null/scalars. Let shared contract validation isolate invalid stored policies.
 			const operatorId =
-				config.policy.operator === VirtualNumericTransformOperator.EXTENSION ? config.policy.operatorId : undefined;
+				config.policy?.operator === VirtualNumericTransformOperator.EXTENSION ? config.policy.operatorId : undefined;
 			const property = await this.dataSource.manager.findOne(VirtualChannelPropertyEntity, {
 				where: { id: config.outputPropertyId },
 				relations: ['channel', 'channel.device'],

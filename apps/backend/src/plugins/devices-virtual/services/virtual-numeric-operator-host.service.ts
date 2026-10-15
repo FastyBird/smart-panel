@@ -91,7 +91,8 @@ export class VirtualNumericOperatorHostService implements OnModuleInit, OnApplic
 		};
 		this.events.on(ConfigEvent.CONFIG_UPDATED, configUpdated);
 		this.stops.push(() => this.events.off(ConfigEvent.CONFIG_UPDATED, configUpdated));
-		for (const event of [ConfigEvent.CONFIG_RESET, SystemEvent.SYSTEM_FACTORY_RESET]) {
+		// Restore swaps config files before reload; revoke now and leave activation to normal lifecycle startup.
+		for (const event of [ConfigEvent.CONFIG_RELOAD, ConfigEvent.CONFIG_RESET, SystemEvent.SYSTEM_FACTORY_RESET]) {
 			const revoke = () => {
 				for (const adapter of this.adapters) adapter.revoke();
 			};

@@ -104,6 +104,26 @@ describe('discovered numeric operator managed lifecycle', () => {
 		expect(current()).toBeNull();
 	});
 
+	it('revokes on restore reload synchronously without reactivating a restored disabled owner', async () => {
+		host = createHost();
+		host.onModuleInit();
+		host.onApplicationBootstrap();
+		await Promise.resolve();
+		const scope = current();
+		expect(scope?.isCurrent()).toBe(true);
+		enabled = false;
+		events.emit(EventType.CONFIG_RELOAD);
+		expect(scope.isCurrent()).toBe(false);
+		expect(current()).toBeNull();
+		await Promise.resolve();
+		expect(current()).toBeNull();
+		await manager.restartService('plugin', 'real-owner', 'numeric-operators');
+		expect(current()).toBeNull();
+		enabled = true;
+		await manager.restartService('plugin', 'real-owner', 'numeric-operators');
+		expect(current()?.isCurrent()).toBe(true);
+	});
+
 	it('revokes all numeric authority before coordinated shutdown awaits another service', async () => {
 		host = createHost();
 		host.onModuleInit();

@@ -11,6 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualNumericTransforms1000000000029 } from '../../../migrations/1000000000029-AddVirtualNumericTransforms';
+import { EventType as ConfigEvent } from '../../../modules/config/config.constants';
 import { PluginsTypeMapperService } from '../../../modules/config/services/plugins-type-mapper.service';
 import {
 	ChannelCategory,
@@ -360,7 +361,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			const capturedHost = operatorHost;
 			return () => capturedHost.onModuleDestroy();
 		};
-		let dispose = register();
+		const dispose = register();
 		const source = await measurement(),
 			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
 		const aggregate = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
@@ -389,14 +390,46 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		});
 		expect(outputState(aggregate)?.producer.quality).toBe('good');
 		const history = storage.writePoints.mock.calls.length + storage.enqueueWritePoint.mock.calls.length;
+		let release: () => void, entered: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		let paused = false;
+		storage.writePoints.mockImplementation(async (points: { tags: { propertyId: string } }[]) => {
+			if (!paused && points[0].tags.propertyId === output.id) {
+				paused = true;
+				entered();
+				await gate;
+			}
+		});
+		await values.writeSampleWithState(source, 21, {
+			sampledAt: new Date(base),
+			receivedAt: new Date(base),
+			provenance: 'live',
+		});
+		await started;
+		const scope = operators.capture('@fixture/operator:offset', 1);
 		jest.setSystemTime(base + 1_000);
-		dispose();
+		events.emit(ConfigEvent.CONFIG_RELOAD);
+		expect(scope.isCurrent()).toBe(false);
+		expect(operators.capture('@fixture/operator:offset', 1)).toBeNull();
 		expect(outputState(output)?.producer.quality).toBe('unavailable');
 		expect(outputState(aggregate)?.producer.quality).toBe('unavailable');
-		expect(storage.writePoints.mock.calls.length + storage.enqueueWritePoint.mock.calls.length).toBe(history);
+		// The entered write may retain history, but reload must fence its current publication.
+		expect(storage.writePoints.mock.calls.length + storage.enqueueWritePoint.mock.calls.length).toBe(history + 2);
+		release();
+		await transformRuntime.flush();
+		await runtime.flush();
+		expect(outputState(output)?.producer.quality).toBe('unavailable');
+		expect(outputState(aggregate)?.producer.quality).toBe('unavailable');
+		expect((await values.readLatest(output))?.value).toBeNull();
+		expect(operators.capture('@fixture/operator:offset', 1)).toBeNull();
 		await sample(source, 21);
 		jest.setSystemTime(base + 2_000);
-		dispose = register();
+		await manager.restartService('plugin', 'fixture-owner', 'numeric-operators');
 		await transformRuntime.flush();
 		await runtime.flush();
 		expect(outputState(output)?.producer.quality).toBe('unavailable');
@@ -409,6 +442,82 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			expiresAt: new Date(base + 10_000).toISOString(),
 		});
 		dispose();
+	});
+
+	it('isolates stored JSON null and scalar policies during timer drains without renewing healthy sibling evidence', async () => {
+		operators.activate('@fixture/identity', [
+			{
+				contractVersion: 1,
+				name: 'identity',
+				operatorVersion: 1,
+				input: { quantity: 'temperature', unit: '°C' },
+				output: { quantity: 'temperature', unit: '°C' },
+				inputRange: { minimum: -100, maximum: 100 },
+				outputRange: { minimum: -200, maximum: 200 },
+				parameters: {},
+				evaluate: (n) => n,
+			},
+		]);
+		const source = await measurement();
+		const outputs = await Promise.all(Array.from({ length: 4 }, () => measurement(VirtualDeviceMode.SENSOR_TRANSFORM)));
+		for (const [index, output] of outputs.entries()) {
+			const request = dto(source);
+			if (index === 3)
+				request.policy = {
+					operator: VirtualNumericTransformOperator.EXTENSION,
+					contractVersion: 1,
+					operatorId: '@fixture/identity:identity',
+					operatorVersion: 1,
+					parameters: {},
+					inputRange: request.policy.inputRange,
+					outputRange: request.policy.outputRange,
+				};
+			await transforms.configure(output.id, request);
+		}
+		await start();
+		await sample(source, 20);
+		const healthy = outputs.slice(2).map((output) => outputState(output));
+		const history = storage.writePoints.mock.calls.length;
+		for (const [index, policy] of [null, 17].entries()) {
+			await database.query('UPDATE devices_virtual_transform_configs SET policy = ? WHERE outputPropertyId = ?', [
+				JSON.stringify(policy),
+				outputs[index].id,
+			]);
+			expect(instanceToPlain(await transforms.get(outputs[index].id)).policy).toEqual(policy);
+			const request = dto(source, 1);
+			request.policy = policy as unknown as ConfigureVirtualTransformDto['policy'];
+			await expect(transforms.preview(outputs[index].id, request)).rejects.toThrow(
+				/missing_configuration|invalid_input_range/,
+			);
+		}
+		const invalidations = jest.spyOn(producers, 'invalidate');
+		for (let tick = 1; tick <= 2; tick++) {
+			jest.advanceTimersByTime(1_000);
+			await transformRuntime.flush();
+			await runtime.flush();
+			for (const [index, output] of outputs.slice(0, 2).entries()) {
+				expect(transformRuntime.readDiagnostics(output.id)?.reasons).toContain(
+					index === 0 ? 'missing_configuration' : 'invalid_input_range',
+				);
+				expect(outputState(output)?.producer.quality).toBe('unavailable');
+				expect((await values.readLatest(output))?.value).toBeNull();
+				expect(transformRuntime.readDiagnostics(output.id)?.reasons).not.toContain('runtime_error');
+			}
+			for (const [index, output] of outputs.slice(2).entries()) {
+				expect(outputState(output)).toMatchObject({
+					value: healthy[index].value,
+					producer: {
+						quality: 'good',
+						sampledAt: healthy[index].producer.sampledAt,
+						expiresAt: healthy[index].producer.expiresAt,
+					},
+				});
+			}
+		}
+		expect(
+			invalidations.mock.calls.every(([lease]) => !outputs.slice(2).some((output) => output.id === lease.propertyId)),
+		).toBe(true);
+		expect(storage.writePoints.mock.calls.length).toBe(history);
 	});
 
 	it.each(['database', 'history-write'])(
