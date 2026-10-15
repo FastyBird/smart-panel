@@ -79,7 +79,7 @@ Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`
 ## 4. Acceptance criteria
 
 - [ ] `ActivityMode` enum exists with at least: WORK, RELAX, SLEEP, ENTERTAINMENT, AWAY
-- [ ] Each mode has a default configuration specifying per-domain intents
+- [ ] Each mode has a default configuration specifying per-domain intents; climate defaults disabled/unset until an operator configures a validated setpoint or thermostat preset reference
 - [ ] `SpaceModeService.activateMode()` executes appropriate intents for all domains
 - [ ] Mode activation returns aggregated results from all domain intents
 - [ ] Active mode is persisted per space
@@ -103,6 +103,7 @@ Given Space "Office" has:
   - 1 thermostat
   - 1 window covering
   - No media devices
+And the operator explicitly enabled the Work climate action with a validated 21°C setpoint
 When the user taps "Work" mode
 Then:
   - Lighting: WORK mode (100% MAIN and TASK)
@@ -116,17 +117,25 @@ And mode is persisted as active
 
 Given Space "Living Room" has customized Relax mode:
   - Lighting: 40% (instead of default 50%)
-  - Climate: 23°C (instead of default 22°C)
+  - Climate: explicitly enabled with an operator-configured, validated 23°C setpoint
 When the user taps "Relax" mode
 Then custom values are applied instead of defaults
 
 ### Scenario: Partial domain failure
 
 Given Space "Bedroom" is in Work mode
+And its operator explicitly configured and enabled a climate action
 When mode activation fails for climate (device offline)
 Then lighting and covers still apply successfully
 And mode activation returns partial success
 And panel shows "Work" mode with warning indicator
+
+### Scenario: Unconfigured climate action
+
+Given a space has a thermostat but no configured/enabled climate action for Work mode
+When the user or a schedule activates Work mode
+Then climate is skipped without sending a command or creating thermostat presets
+And configured actions for other domains still execute
 
 ## 6. Technical constraints
 
@@ -158,6 +167,7 @@ interface ModeConfiguration {
     setpoint?: number;
     setpointDelta?: number;
     mode?: ClimateMode;
+    thermostatPreset?: 'comfort' | 'eco' | 'away';
   };
 
   covers?: {
@@ -179,26 +189,37 @@ interface ModeConfiguration {
 }
 ```
 
+An enabled climate action must select a valid explicit intent. Thermostat preset selection is mutually exclusive
+with numeric `setpoint`/`setpointDelta`; resolve the selected preset against each target controller's configuration.
+Preview and activation reject missing presets, incompatible targets and invalid merged ranges/deadband. Merely naming
+an activity mode does not enable a climate action.
+
 ### Default Mode Definitions
+
+Climate defaults are deliberately unset. The virtual-device extensions milestone replaces the earlier universal
+21/22/18 °C examples: an operator must explicitly configure the climate action, including a validated numeric target
+or thermostat preset reference. Activity-mode names do not implicitly select same-named thermostat presets. Existing
+persisted operator configuration is preserved; these are defaults for newly authored configurations.
+
 ```typescript
 const DEFAULT_MODES: Record<ActivityMode, ModeConfiguration> = {
   [ActivityMode.WORK]: {
     lighting: { enabled: true, mode: LightingMode.WORK },
-    climate: { enabled: true, setpoint: 21 },
+    climate: { enabled: false },
     covers: { enabled: true, position: 75 }, // anti-glare
     media: { enabled: true, mode: MediaMode.OFF },
     security: { enabled: false },
   },
   [ActivityMode.RELAX]: {
     lighting: { enabled: true, mode: LightingMode.RELAX },
-    climate: { enabled: true, setpoint: 22 },
+    climate: { enabled: false },
     covers: { enabled: true, mode: CoversMode.OPEN },
     media: { enabled: true, mode: MediaMode.BACKGROUND },
     security: { enabled: false },
   },
   [ActivityMode.SLEEP]: {
     lighting: { enabled: true, mode: LightingMode.NIGHT, brightness: 0 },
-    climate: { enabled: true, setpoint: 18 },
+    climate: { enabled: false },
     covers: { enabled: true, mode: CoversMode.CLOSED },
     media: { enabled: true, mode: MediaMode.OFF },
     security: { enabled: false },
