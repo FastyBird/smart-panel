@@ -4401,4 +4401,151 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get thermostatComfortActivity => 'Hlášená činnost výstupů';
+
+  @override
+  String get thermostatMemberUnavailable => 'Nedostupné';
+
+  @override
+  String get thermostatMemberClaim => 'Rezervace';
+
+  @override
+  String get thermostatMemberState => 'Stav rezervace';
+
+  @override
+  String get thermostatMemberSource => 'Uchovaná vlastnost relé';
+
+  @override
+  String get thermostatMemberRequested => 'Režim požadovaný regulátorem';
+
+  @override
+  String get thermostatMemberObserved => 'Hlášené pozorování';
+
+  @override
+  String get thermostatMemberPending => 'Nevyřešené ON';
+
+  @override
+  String get thermostatMemberBlockers => 'Blokace serveru';
+
+  @override
+  String get thermostatMemberProfile => 'Profil poskytovatele';
+
+  @override
+  String get thermostatMemberQualification =>
+      'Podrobnosti instalace / kvalifikace nejsou na displeji dostupné. Zkontrolujte v Adminu.';
+
+  @override
+  String get thermostatMemberProtectionSource => 'Uchovaný ochranný zdroj';
+
+  @override
+  String get thermostatMemberReading => 'Živá ochranná hodnota';
+
+  @override
+  String get thermostatMemberQuality => 'Kvalita';
+
+  @override
+  String get thermostatMemberFreshness => 'Čerstvost';
+
+  @override
+  String get thermostatMemberAge => 'Stáří vzorku (s)';
+
+  @override
+  String get thermostatMemberSample => 'Původní čas vzorku';
+
+  @override
+  String get thermostatMemberHistoryReading => 'Pouze historická hodnota';
+
+  @override
+  String get thermostatMemberCutoff => 'Účinný limit (°C)';
+
+  @override
+  String get thermostatMemberLatch => 'Ochrana zajištěna';
+
+  @override
+  String get thermostatMemberProtectionReady =>
+      'Připravenost ochrany dle serveru';
+
+  @override
+  String get thermostatMemberReleasePending => 'Čeká na uvolnění';
+
+  @override
+  String get thermostatMemberAttempts => 'Pokusy o uvolnění';
+
+  @override
+  String get thermostatMemberNextRelease => 'Další pokus o uvolnění';
+
+  @override
+  String get thermostatMemberDrain => 'Důkaz OFF / vyprázdnění dle serveru';
+
+  @override
+  String get thermostatMemberGeneration => 'Uchovaná generace obnovy';
+
+  @override
+  String get thermostatMemberLastOff => 'Poslední ověřené OFF (historie)';
+
+  @override
+  String get thermostatMemberReleaseRequested => 'Uvolnění požadováno v';
+
+  @override
+  String get thermostatMemberReleasedAt => 'Uvolněno v';
+
+  @override
+  String get thermostatMemberEvidence =>
+      'Uchovaný důkaz OFF / vyprázdnění (historie, nikoli aktuální kvalifikace)';
+
+  @override
+  String get thermostatMemberMandatory => 'Povinné členy větví';
+
+  @override
+  String get thermostatMemberWholeBranch =>
+      'Každý člen je povinný. Porucha člena blokuje celou jeho větev. Požadovaný režim není fyzická aktivita.';
+
+  @override
+  String get thermostatMemberExpired =>
+      'Aktuální diagnostika nedostupná; uchované údaje jsou historické.';
+
+  @override
+  String get thermostatMemberReleasedHistory =>
+      'Uvolnění členové — historie, mimo aktivní kapacitu';
+
+  @override
+  String get thermostatMemberAdmin =>
+      'Pro opravu vazeb, kontrolu instalace nebo obnovu použijte Admin jako vlastník či správce. Vlastnictví zůstává rezervováno, dokud server nepotvrdí uvolnění.';
+
+  @override
+  String get thermostatMemberRoom => 'Regulace místnosti';
+
+  @override
+  String get thermostatMemberPolicy =>
+      'Společný požadovaný limit podlahy / hystereze obnovy';
+
+  @override
+  String get thermostatMemberSelectedFloor =>
+      'Podlaha vybraného člena (není průměr)';
+
+  @override
+  String get thermostatMemberGroup => 'Skupina větve';
+
+  @override
+  String get thermostatMemberVersion => 'Verze profilu';
+
+  @override
+  String get thermostatMemberMaximumAge => 'Maximální stáří vzorku (s)';
+
+  @override
+  String get thermostatMemberExpiry => 'Původní konec platnosti vzorku';
+
+  @override
+  String get thermostatMemberNoBlocker => 'Není hlášena blokace';
+
+  @override
+  String get thermostatMemberHistoryPending =>
+      'Poslední hlášené nevyřešené ON (historie)';
+
+  @override
+  String get thermostatMemberHistoryRelease =>
+      'Poslední hlášené čekající uvolnění (historie)';
+
+  @override
+  String get thermostatMemberActivitySnapshot =>
+      'Aktivita je hlášena snímkem serveru; čas a čerstvost pozorování jednotlivých členů nejsou dostupné.';
 }

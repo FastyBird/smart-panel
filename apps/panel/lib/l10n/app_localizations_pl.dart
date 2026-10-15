@@ -4442,4 +4442,151 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get thermostatComfortActivity => 'Zgłoszona aktywność wyjścia';
+
+  @override
+  String get thermostatMemberUnavailable => 'Niedostępne';
+
+  @override
+  String get thermostatMemberClaim => 'Rezerwacja';
+
+  @override
+  String get thermostatMemberState => 'Stan rezerwacji';
+
+  @override
+  String get thermostatMemberSource => 'Zachowana właściwość przekaźnika';
+
+  @override
+  String get thermostatMemberRequested => 'Tryb żądany przez regulator';
+
+  @override
+  String get thermostatMemberObserved => 'Zgłoszona obserwacja';
+
+  @override
+  String get thermostatMemberPending => 'Nierozstrzygnięte ON';
+
+  @override
+  String get thermostatMemberBlockers => 'Blokada serwera';
+
+  @override
+  String get thermostatMemberProfile => 'Profil dostawcy';
+
+  @override
+  String get thermostatMemberQualification =>
+      'Szczegóły instalacji / kwalifikacji niedostępne na tym ekranie. Sprawdź w Admin.';
+
+  @override
+  String get thermostatMemberProtectionSource => 'Zachowane źródło ochrony';
+
+  @override
+  String get thermostatMemberReading => 'Aktualny odczyt ochronny';
+
+  @override
+  String get thermostatMemberQuality => 'Jakość';
+
+  @override
+  String get thermostatMemberFreshness => 'Aktualność';
+
+  @override
+  String get thermostatMemberAge => 'Wiek próbki (s)';
+
+  @override
+  String get thermostatMemberSample => 'Pierwotny czas próbki';
+
+  @override
+  String get thermostatMemberHistoryReading => 'Tylko odczyt historyczny';
+
+  @override
+  String get thermostatMemberCutoff => 'Efektywny limit (°C)';
+
+  @override
+  String get thermostatMemberLatch => 'Ochrona zatrzaśnięta';
+
+  @override
+  String get thermostatMemberProtectionReady =>
+      'Gotowość ochrony według serwera';
+
+  @override
+  String get thermostatMemberReleasePending => 'Zwolnienie w toku';
+
+  @override
+  String get thermostatMemberAttempts => 'Próby zwolnienia';
+
+  @override
+  String get thermostatMemberNextRelease => 'Następna próba zwolnienia';
+
+  @override
+  String get thermostatMemberDrain => 'Dowód OFF / opróżnienia z serwera';
+
+  @override
+  String get thermostatMemberGeneration => 'Zachowana generacja odzyskiwania';
+
+  @override
+  String get thermostatMemberLastOff => 'Ostatnie zweryfikowane OFF (historia)';
+
+  @override
+  String get thermostatMemberReleaseRequested => 'Zwolnienie zażądane o';
+
+  @override
+  String get thermostatMemberReleasedAt => 'Zwolniono o';
+
+  @override
+  String get thermostatMemberEvidence =>
+      'Zachowany dowód OFF / opróżnienia (historia, nie bieżąca kwalifikacja)';
+
+  @override
+  String get thermostatMemberMandatory => 'Obowiązkowi członkowie gałęzi';
+
+  @override
+  String get thermostatMemberWholeBranch =>
+      'Każdy członek jest wymagany. Awaria członka blokuje całą jego gałąź. Żądany tryb nie oznacza aktywności fizycznej.';
+
+  @override
+  String get thermostatMemberExpired =>
+      'Bieżąca diagnostyka niedostępna; zachowane dane są historyczne.';
+
+  @override
+  String get thermostatMemberReleasedHistory =>
+      'Zwolnieni członkowie — historia, poza aktywną wydajnością';
+
+  @override
+  String get thermostatMemberAdmin =>
+      'Użyj aplikacji Admin jako właściciel lub administrator do naprawy powiązań, przeglądu instalacji lub odzyskiwania. Własność pozostaje zarezerwowana do potwierdzenia zwolnienia przez serwer.';
+
+  @override
+  String get thermostatMemberRoom => 'Regulacja pomieszczenia';
+
+  @override
+  String get thermostatMemberPolicy =>
+      'Wspólny żądany limit podłogi / histereza odzyskiwania';
+
+  @override
+  String get thermostatMemberSelectedFloor =>
+      'Podłoga wybranego członka (nie średnia)';
+
+  @override
+  String get thermostatMemberGroup => 'Grupa gałęzi';
+
+  @override
+  String get thermostatMemberVersion => 'Wersja profilu';
+
+  @override
+  String get thermostatMemberMaximumAge => 'Maksymalny wiek próbki (s)';
+
+  @override
+  String get thermostatMemberExpiry => 'Pierwotny termin ważności próbki';
+
+  @override
+  String get thermostatMemberNoBlocker => 'Nie zgłoszono blokady';
+
+  @override
+  String get thermostatMemberHistoryPending =>
+      'Ostatnie zgłoszone nierozstrzygnięte ON (historia)';
+
+  @override
+  String get thermostatMemberHistoryRelease =>
+      'Ostatnie zgłoszone oczekujące zwolnienie (historia)';
+
+  @override
+  String get thermostatMemberActivitySnapshot =>
+      'Aktywność pochodzi z migawki serwera; czas i aktualność obserwacji członka są niedostępne.';
 }

@@ -4362,4 +4362,150 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get thermostatComfortActivity => 'Reported output activity';
+
+  @override
+  String get thermostatMemberUnavailable => 'Unavailable';
+
+  @override
+  String get thermostatMemberClaim => 'Claim';
+
+  @override
+  String get thermostatMemberState => 'Reservation state';
+
+  @override
+  String get thermostatMemberSource => 'Retained relay property';
+
+  @override
+  String get thermostatMemberRequested => 'Controller requested mode';
+
+  @override
+  String get thermostatMemberObserved => 'Reported observation';
+
+  @override
+  String get thermostatMemberPending => 'Unresolved ON';
+
+  @override
+  String get thermostatMemberBlockers => 'Server blocker';
+
+  @override
+  String get thermostatMemberProfile => 'Provider profile';
+
+  @override
+  String get thermostatMemberQualification =>
+      'Installation / qualification details unavailable on this display. Review in Admin.';
+
+  @override
+  String get thermostatMemberProtectionSource => 'Retained protective source';
+
+  @override
+  String get thermostatMemberReading => 'Live protection reading';
+
+  @override
+  String get thermostatMemberQuality => 'Quality';
+
+  @override
+  String get thermostatMemberFreshness => 'Freshness';
+
+  @override
+  String get thermostatMemberAge => 'Sample age (s)';
+
+  @override
+  String get thermostatMemberSample => 'Original sample time';
+
+  @override
+  String get thermostatMemberHistoryReading => 'Historical reading only';
+
+  @override
+  String get thermostatMemberCutoff => 'Effective cutoff (°C)';
+
+  @override
+  String get thermostatMemberLatch => 'Protection latched';
+
+  @override
+  String get thermostatMemberProtectionReady => 'Server protection readiness';
+
+  @override
+  String get thermostatMemberReleasePending => 'Release pending';
+
+  @override
+  String get thermostatMemberAttempts => 'Release attempts';
+
+  @override
+  String get thermostatMemberNextRelease => 'Next release attempt';
+
+  @override
+  String get thermostatMemberDrain => 'Server OFF / drain proof';
+
+  @override
+  String get thermostatMemberGeneration => 'Retained recovery generation';
+
+  @override
+  String get thermostatMemberLastOff => 'Last verified OFF (history)';
+
+  @override
+  String get thermostatMemberReleaseRequested => 'Release requested at';
+
+  @override
+  String get thermostatMemberReleasedAt => 'Released at';
+
+  @override
+  String get thermostatMemberEvidence =>
+      'Retained OFF / drain evidence (history, not current qualification)';
+
+  @override
+  String get thermostatMemberMandatory => 'Mandatory branch members';
+
+  @override
+  String get thermostatMemberWholeBranch =>
+      'Every member is required. A member fault inhibits its whole branch. Requested mode is not physical activity.';
+
+  @override
+  String get thermostatMemberExpired =>
+      'Current diagnostics unavailable; retained details are historical.';
+
+  @override
+  String get thermostatMemberReleasedHistory =>
+      'Released members — history, excluded from active capacity';
+
+  @override
+  String get thermostatMemberAdmin =>
+      'Use the Admin app as owner or administrator for binding repair, installation review or recovery. Ownership remains reserved until the server confirms release.';
+
+  @override
+  String get thermostatMemberRoom => 'Room regulation';
+
+  @override
+  String get thermostatMemberPolicy =>
+      'Common requested floor limit / recovery hysteresis';
+
+  @override
+  String get thermostatMemberSelectedFloor =>
+      'Selected member floor (not an average)';
+
+  @override
+  String get thermostatMemberGroup => 'Branch group';
+
+  @override
+  String get thermostatMemberVersion => 'Profile version';
+
+  @override
+  String get thermostatMemberMaximumAge => 'Maximum sample age (s)';
+
+  @override
+  String get thermostatMemberExpiry => 'Original sample expiry';
+
+  @override
+  String get thermostatMemberNoBlocker => 'No blocker reported';
+
+  @override
+  String get thermostatMemberHistoryPending =>
+      'Last reported unresolved ON (history)';
+
+  @override
+  String get thermostatMemberHistoryRelease =>
+      'Last reported pending release (history)';
+
+  @override
+  String get thermostatMemberActivitySnapshot =>
+      'Activity is reported by the server snapshot; per-member observation time and freshness are unavailable.';
 }

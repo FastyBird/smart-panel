@@ -138,7 +138,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Inhibited: floor limit reached'), findsOneWidget);
-    expect(find.text('off'), findsOneWidget);
+    expect(find.text('Reported observation: off'), findsOneWidget);
     expect(find.text('ambient: stale (physical)'), findsOneWidget);
     expect(find.text('floor: unavailable (derived)'), findsOneWidget);
     expect(find.text('contact: missing (unknown)'), findsOneWidget);
@@ -148,6 +148,7 @@ void main() {
     await tester.pumpAndSettle();
   });
   staleDeviceResponseTest();
+  staleDeviceResponseTest(sameId: true);
   disposePendingCommandTest();
   commandSupersedesPollTest();
 }
@@ -433,114 +434,120 @@ void disposePendingCommandTest() {
 
 // A detail State is reused when navigation changes between virtual thermostats.
 // The older network response must never replace the new device's state.
-void staleDeviceResponseTest() {
-  testWidgets('discards an earlier device response after the device changes', (
-    tester,
-  ) async {
-    final pending = <String, RequestInterceptorHandler>{};
-    final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
-    // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          if (options.path.endsWith('/comfort')) {
-            handler.resolve(
-              Response(
-                requestOptions: options,
-                statusCode: 200,
-                data: {
-                  'data': {
-                    'controller': options.path
-                        .split('/')
-                        .reversed
-                        .skip(1)
-                        .first,
-                    'revision': 1,
-                    'graph_revision': 1,
-                    'configuration': null,
-                    'effective': {'source': 'manual', 'preset': null},
-                    'clock_policy': 'server-policy',
+void staleDeviceResponseTest({bool sameId = false}) {
+  testWidgets(
+    'discards an earlier device response after ${sameId ? 'the same device model' : 'the device'} changes',
+    (tester) async {
+      final pending = <String, List<RequestInterceptorHandler>>{};
+      final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+      // Comfort has its own HTTP lifecycle; these regressions count the mode/runtime pair.
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.path.endsWith('/comfort')) {
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'data': {
+                      'controller': options.path
+                          .split('/')
+                          .reversed
+                          .skip(1)
+                          .first,
+                      'revision': 1,
+                      'graph_revision': 1,
+                      'configuration': null,
+                      'effective': {'source': 'manual', 'preset': null},
+                      'clock_policy': 'server-policy',
+                    },
+                  },
+                ),
+              );
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+      );
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            (pending[options.path] ??= []).add(handler);
+          },
+        ),
+      );
+      locator.registerSingleton<Dio>(dio);
+      addTearDown(() => locator.unregister<Dio>());
+
+      final oldDevice = ThermostatDeviceView(
+        id: 'old',
+        type: 'virtual',
+        name: 'Old',
+        channels: const [],
+      );
+      final newDevice = ThermostatDeviceView(
+        id: sameId ? 'old' : 'new',
+        type: 'virtual',
+        name: 'New',
+        channels: const [],
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: VirtualThermostatDeviceDetail(device: oldDevice)),
+      );
+      await tester.pump();
+      await tester.pumpWidget(
+        MaterialApp(home: VirtualThermostatDeviceDetail(device: newDevice)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        pending.keys,
+        contains(
+          '/plugins/devices-virtual/producers/thermostats/${newDevice.id}',
+        ),
+      );
+
+      void complete(String device, String mode, {int index = 0}) {
+        final path = '/plugins/devices-virtual/producers/thermostats/$device';
+        for (final suffix in ['', '/runtime']) {
+          final options = RequestOptions(path: '$path$suffix');
+          pending['$path$suffix']![index].resolve(
+            Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'data': {
+                  'requested_mode': mode,
+                  if (suffix.isEmpty) ...{
+                    'locked': false,
+                    'policy': {
+                      'heatingSetpoint': null,
+                      'coolingSetpoint': null,
+                    },
+                    'settings': [],
+                  } else ...{
+                    'readiness': 'suspended',
+                    'reasons': [],
                   },
                 },
-              ),
-            );
-          } else {
-            handler.next(options);
-          }
-        },
-      ),
-    );
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          pending[options.path] = handler;
-        },
-      ),
-    );
-    locator.registerSingleton<Dio>(dio);
-    addTearDown(() => locator.unregister<Dio>());
-
-    final oldDevice = ThermostatDeviceView(
-      id: 'old',
-      type: 'virtual',
-      name: 'Old',
-      channels: const [],
-    );
-    final newDevice = ThermostatDeviceView(
-      id: 'new',
-      type: 'virtual',
-      name: 'New',
-      channels: const [],
-    );
-    await tester.pumpWidget(
-      MaterialApp(home: VirtualThermostatDeviceDetail(device: oldDevice)),
-    );
-    await tester.pump();
-    await tester.pumpWidget(
-      MaterialApp(home: VirtualThermostatDeviceDetail(device: newDevice)),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(
-      pending.keys,
-      contains('/plugins/devices-virtual/producers/thermostats/new'),
-    );
-
-    void complete(String device, String mode) {
-      final path = '/plugins/devices-virtual/producers/thermostats/$device';
-      for (final suffix in ['', '/runtime']) {
-        final options = RequestOptions(path: '$path$suffix');
-        pending['$path$suffix']!.resolve(
-          Response<Map<String, dynamic>>(
-            requestOptions: options,
-            statusCode: 200,
-            data: {
-              'data': {
-                'requested_mode': mode,
-                if (suffix.isEmpty) ...{
-                  'locked': false,
-                  'policy': {'heatingSetpoint': null, 'coolingSetpoint': null},
-                  'settings': [],
-                } else ...{
-                  'readiness': 'suspended',
-                  'reasons': [],
-                },
               },
-            },
-          ),
-        );
+            ),
+          );
+        }
       }
-    }
 
-    complete('new', 'off');
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    complete('old', 'heat');
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Requested mode: off'), findsOneWidget);
-    expect(find.text('Requested mode: heat'), findsNothing);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pumpAndSettle();
-  });
+      complete(newDevice.id, 'off', index: sameId ? 1 : 0);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      complete('old', 'heat');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Requested mode: off'), findsOneWidget);
+      expect(find.text('Requested mode: heat'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    },
+  );
 }

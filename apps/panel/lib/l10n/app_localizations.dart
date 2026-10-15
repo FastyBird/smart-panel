@@ -7893,6 +7893,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reported output activity'**
   String get thermostatComfortActivity;
+
+  /// No description provided for @thermostatMemberUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get thermostatMemberUnavailable;
+
+  /// No description provided for @thermostatMemberClaim.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim'**
+  String get thermostatMemberClaim;
+
+  /// No description provided for @thermostatMemberState.
+  ///
+  /// In en, this message translates to:
+  /// **'Reservation state'**
+  String get thermostatMemberState;
+
+  /// No description provided for @thermostatMemberSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Retained relay property'**
+  String get thermostatMemberSource;
+
+  /// No description provided for @thermostatMemberRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Controller requested mode'**
+  String get thermostatMemberRequested;
+
+  /// No description provided for @thermostatMemberObserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported observation'**
+  String get thermostatMemberObserved;
+
+  /// No description provided for @thermostatMemberPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Unresolved ON'**
+  String get thermostatMemberPending;
+
+  /// No description provided for @thermostatMemberBlockers.
+  ///
+  /// In en, this message translates to:
+  /// **'Server blocker'**
+  String get thermostatMemberBlockers;
+
+  /// No description provided for @thermostatMemberProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider profile'**
+  String get thermostatMemberProfile;
+
+  /// No description provided for @thermostatMemberQualification.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation / qualification details unavailable on this display. Review in Admin.'**
+  String get thermostatMemberQualification;
+
+  /// No description provided for @thermostatMemberProtectionSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Retained protective source'**
+  String get thermostatMemberProtectionSource;
+
+  /// No description provided for @thermostatMemberReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Live protection reading'**
+  String get thermostatMemberReading;
+
+  /// No description provided for @thermostatMemberQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get thermostatMemberQuality;
+
+  /// No description provided for @thermostatMemberFreshness.
+  ///
+  /// In en, this message translates to:
+  /// **'Freshness'**
+  String get thermostatMemberFreshness;
+
+  /// No description provided for @thermostatMemberAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample age (s)'**
+  String get thermostatMemberAge;
+
+  /// No description provided for @thermostatMemberSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Original sample time'**
+  String get thermostatMemberSample;
+
+  /// No description provided for @thermostatMemberHistoryReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Historical reading only'**
+  String get thermostatMemberHistoryReading;
+
+  /// No description provided for @thermostatMemberCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective cutoff (°C)'**
+  String get thermostatMemberCutoff;
+
+  /// No description provided for @thermostatMemberLatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection latched'**
+  String get thermostatMemberLatch;
+
+  /// No description provided for @thermostatMemberProtectionReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Server protection readiness'**
+  String get thermostatMemberProtectionReady;
+
+  /// No description provided for @thermostatMemberReleasePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Release pending'**
+  String get thermostatMemberReleasePending;
+
+  /// No description provided for @thermostatMemberAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'Release attempts'**
+  String get thermostatMemberAttempts;
+
+  /// No description provided for @thermostatMemberNextRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Next release attempt'**
+  String get thermostatMemberNextRelease;
+
+  /// No description provided for @thermostatMemberDrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Server OFF / drain proof'**
+  String get thermostatMemberDrain;
+
+  /// No description provided for @thermostatMemberGeneration.
+  ///
+  /// In en, this message translates to:
+  /// **'Retained recovery generation'**
+  String get thermostatMemberGeneration;
+
+  /// No description provided for @thermostatMemberLastOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Last verified OFF (history)'**
+  String get thermostatMemberLastOff;
+
+  /// No description provided for @thermostatMemberReleaseRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Release requested at'**
+  String get thermostatMemberReleaseRequested;
+
+  /// No description provided for @thermostatMemberReleasedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Released at'**
+  String get thermostatMemberReleasedAt;
+
+  /// No description provided for @thermostatMemberEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Retained OFF / drain evidence (history, not current qualification)'**
+  String get thermostatMemberEvidence;
+
+  /// No description provided for @thermostatMemberMandatory.
+  ///
+  /// In en, this message translates to:
+  /// **'Mandatory branch members'**
+  String get thermostatMemberMandatory;
+
+  /// No description provided for @thermostatMemberWholeBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Every member is required. A member fault inhibits its whole branch. Requested mode is not physical activity.'**
+  String get thermostatMemberWholeBranch;
+
+  /// No description provided for @thermostatMemberExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Current diagnostics unavailable; retained details are historical.'**
+  String get thermostatMemberExpired;
+
+  /// No description provided for @thermostatMemberReleasedHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Released members — history, excluded from active capacity'**
+  String get thermostatMemberReleasedHistory;
+
+  /// No description provided for @thermostatMemberAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the Admin app as owner or administrator for binding repair, installation review or recovery. Ownership remains reserved until the server confirms release.'**
+  String get thermostatMemberAdmin;
+
+  /// No description provided for @thermostatMemberRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Room regulation'**
+  String get thermostatMemberRoom;
+
+  /// No description provided for @thermostatMemberPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Common requested floor limit / recovery hysteresis'**
+  String get thermostatMemberPolicy;
+
+  /// No description provided for @thermostatMemberSelectedFloor.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected member floor (not an average)'**
+  String get thermostatMemberSelectedFloor;
+
+  /// No description provided for @thermostatMemberGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch group'**
+  String get thermostatMemberGroup;
+
+  /// No description provided for @thermostatMemberVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile version'**
+  String get thermostatMemberVersion;
+
+  /// No description provided for @thermostatMemberMaximumAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum sample age (s)'**
+  String get thermostatMemberMaximumAge;
+
+  /// No description provided for @thermostatMemberExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Original sample expiry'**
+  String get thermostatMemberExpiry;
+
+  /// No description provided for @thermostatMemberNoBlocker.
+  ///
+  /// In en, this message translates to:
+  /// **'No blocker reported'**
+  String get thermostatMemberNoBlocker;
+
+  /// No description provided for @thermostatMemberHistoryPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Last reported unresolved ON (history)'**
+  String get thermostatMemberHistoryPending;
+
+  /// No description provided for @thermostatMemberHistoryRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Last reported pending release (history)'**
+  String get thermostatMemberHistoryRelease;
+
+  /// No description provided for @thermostatMemberActivitySnapshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity is reported by the server snapshot; per-member observation time and freshness are unavailable.'**
+  String get thermostatMemberActivitySnapshot;
 }
 
 class _AppLocalizationsDelegate
