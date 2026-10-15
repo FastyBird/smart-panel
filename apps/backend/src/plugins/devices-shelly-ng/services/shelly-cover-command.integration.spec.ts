@@ -115,6 +115,9 @@ class CoverTransport extends GuardedShellyRpcHandler {
 	protected override disconnect(): Promise<void> {
 		return Promise.resolve();
 	}
+	setRequestTimeoutForTest(seconds: number): void {
+		this.options.requestTimeout = seconds;
+	}
 	socketDisconnectForTest(): void {
 		(this.socket as unknown as { readyState: number }).readyState = WebSocket.CLOSED;
 		this.emit('disconnect', 1000, 'fixture', null);
@@ -1301,16 +1304,66 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect((await old).success).toBe(false);
 	});
 	it('a late matched action response establishes ordering only and never repairs the old command result', async () => {
-		transports[0].actionResponse = () => HOLD;
-		const result = await send('open', groupCommand, 400);
-		expect(result.composite.status).toBe('partial');
+		// The held RPC must remain matchable beyond this command's shorter composite deadline.
+		transports[0].setRequestTimeoutForTest(10);
+		let sent: () => void;
+		const actionSent = new Promise<void>((resolve) => {
+			sent = resolve;
+		});
+		transports[0].actionResponse = () => {
+			sent();
+			return HOLD;
+		};
+		let confirmed: () => void;
+		const siblingConfirmed = new Promise<void>((resolve) => {
+			confirmed = resolve;
+		});
+		const healthyId = property(1, PropertyCategory.COMMAND).id;
+		let healthyWindow: ReturnType<PropertyCommandWindowService['get']>;
+		const stopObserving = windows.observeConfirmation((handle) => {
+			if (handle.canonicalPropertyId !== healthyId) return;
+			healthyWindow = windows.get(healthyId);
+			confirmed();
+		});
+		// Coverage/SQLite preparation is part of the absolute budget. Allow this test's real
+		// protocol phases to finish before expiry, rather than assuming they fit in 400 ms.
+		const pending = send('open', groupCommand, 5000);
+		try {
+			await Promise.race([
+				Promise.all([actionSent, siblingConfirmed]),
+				pending.then((early) => {
+					throw new Error(`Required protocol phases missed deadline: ${JSON.stringify(early.composite)}`);
+				}),
+			]);
+		} finally {
+			stopObserving();
+		}
+		expect(healthyWindow.state).toBe('confirmed_grace');
+		expect(healthyWindow.confirmedAt).toBeLessThan(healthyWindow.expiresAt);
 		const action = transports[0].frames.find((frame) => frame.method === 'Cover.Open');
+		expect(action).toBeDefined();
+		const result = await pending;
+		expect(result.composite.status).toBe('partial');
+		expect(result.composite.children.find((child) => child.propertyId === healthyId)).toMatchObject({
+			status: 'confirmed',
+			reason: 'cover_action_begun',
+		});
+		expect(
+			result.composite.children.find((child) => child.propertyId === property(0, PropertyCategory.COMMAND).id),
+		).toMatchObject({ status: 'timed_out' });
+		const terminal = JSON.stringify(result);
+		expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(1);
+		const beforeStop = transports[0].frames.length;
+		expect((await send('stop', property(0, PropertyCategory.COMMAND).id)).success).toBe(false);
+		expect(transports[0].frames).toHaveLength(beforeStop);
 		transports[0].answer(action, null);
 		await until(async () => (await db.manager.count(ShellyCoverOrderingEntity)) === 0);
+		expect(transports[0].frames).toHaveLength(beforeStop); // Late ACK cannot start an expired readback.
 		transports[0].actionResponse = () => null;
 		expect((await send('stop', property(0, PropertyCategory.COMMAND).id)).success).toBe(true);
-		expect(result.composite.status).toBe('partial');
+		expect(JSON.stringify(result)).toBe(terminal);
 	});
+
 	it.each([
 		PropertyCategory.TYPE,
 		PropertyCategory.STATUS,
