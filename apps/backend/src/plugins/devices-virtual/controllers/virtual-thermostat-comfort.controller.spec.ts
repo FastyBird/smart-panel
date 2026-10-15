@@ -32,9 +32,34 @@ describe('thermostat comfort actor boundary', () => {
 				expires_at: '2026-10-15T12:00:00Z',
 			},
 			'actual-user',
+			'user',
 		);
 		const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
 		expect(errors.map((error) => error.property).sort()).toEqual(['actor_id', 'source']);
+	});
+
+	it('attributes display commands to the authenticated display/token and refuses other token owners', async () => {
+		const override = jest.fn().mockResolvedValue({});
+		const controller = new VirtualThermostatComfortController({
+			override,
+		} as unknown as VirtualThermostatComfortService);
+		const dto = { preset: 'eco', setpoints: null, expires_at: '2026-10-15T12:00:00Z' } as CreateThermostatOverrideDto;
+		await controller.override('controller', dto, {
+			auth: { type: 'token', ownerType: 'display', ownerId: 'screen', tokenId: 'credential' },
+		} as unknown as AuthenticatedRequest);
+		expect(override).toHaveBeenLastCalledWith(
+			'controller',
+			dto,
+			{ preset: 'eco', setpoints: null, expires_at: dto.expires_at },
+			'display:screen:token:credential',
+			'panel',
+		);
+		for (const ownerType of ['mcp', 'third_party', 'user'])
+			expect(() =>
+				controller.override('controller', dto, {
+					auth: { type: 'token', ownerType, ownerId: 'owner', tokenId: 'credential' },
+				} as unknown as AuthenticatedRequest),
+			).toThrow('identified user or display');
 	});
 
 	it('requires a timezone-qualified absolute override expiry', async () => {
@@ -59,7 +84,7 @@ describe('thermostat comfort actor boundary', () => {
 				{} as CreateThermostatOverrideDto,
 				{ auth: { type: 'token' } } as unknown as AuthenticatedRequest,
 			),
-		).toThrow('identified user');
+		).toThrow('identified user or display');
 		expect(override).not.toHaveBeenCalled();
 	});
 });

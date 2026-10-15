@@ -50,7 +50,7 @@ export class ThermostatEffectiveComfortModel extends ThermostatComfortSetpointsM
 
 	@ApiProperty({
 		description: 'Controller preset distinct from HVAC mode',
-		enum: ['comfort', 'eco', 'away'],
+		enum: ['comfort', 'eco', 'away', null],
 		nullable: true,
 	})
 	@Expose()
@@ -71,9 +71,9 @@ export class ThermostatComfortOverrideModel {
 	@Expose()
 	id: string;
 
-	@ApiProperty({ description: 'Authenticated command source', enum: ['user'] })
+	@ApiProperty({ description: 'Authenticated command source', enum: ['user', 'panel'] })
 	@Expose()
-	source: 'user';
+	source: 'user' | 'panel';
 
 	@ApiProperty({ description: 'Authenticated actor identity' })
 	@Expose()
@@ -104,7 +104,7 @@ export class ThermostatComfortOverrideModel {
 
 	@ApiProperty({
 		description: 'Controller preset distinct from HVAC mode',
-		enum: ['comfort', 'eco', 'away'],
+		enum: ['comfort', 'eco', 'away', null],
 		nullable: true,
 	})
 	@Expose()
@@ -132,7 +132,7 @@ export class ThermostatComfortOverrideModel {
 export class ThermostatAutomationBaselineModel {
 	@ApiProperty({
 		description: 'Preset selected by the trusted bridge',
-		enum: ['comfort', 'eco', 'away'],
+		enum: ['comfort', 'eco', 'away', null],
 		nullable: true,
 	})
 	@Expose()
@@ -182,7 +182,7 @@ export class ThermostatComfortConfigurationModel {
 	@Type(() => ThermostatComfortPresetModel)
 	presets: ThermostatComfortPresetModel[];
 
-	@ApiProperty({ description: 'Selected baseline preset', enum: ['comfort', 'eco', 'away'], nullable: true })
+	@ApiProperty({ description: 'Selected baseline preset', enum: ['comfort', 'eco', 'away', null], nullable: true })
 	@Expose()
 	selected_preset: ThermostatPreset | null;
 

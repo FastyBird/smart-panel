@@ -301,6 +301,8 @@ describe('thermostat durable comfort lifecycle', () => {
 			throw new Error('listener failed after commit');
 		};
 		events.on('devices-virtual.thermostat.config.changed', listener);
+		const configuredResult = await comfort.configure(id, await fence(), input());
+		expect(configuredResult.configuration.automation_enabled).toBe(false);
 		const before = await fence();
 		const result = await overridden();
 		expect(result.revision).toBe(before.expected_revision + 1);

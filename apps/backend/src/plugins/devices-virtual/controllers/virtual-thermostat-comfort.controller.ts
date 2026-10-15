@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { TokenOwnerType } from '../../../modules/auth/auth.constants';
 import { AuthenticatedRequest } from '../../../modules/auth/guards/auth.guard';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import {
@@ -94,7 +95,7 @@ export class VirtualThermostatComfortController {
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
 		summary: 'Create temporary thermostat override',
 		description:
-			'An authenticated user selects a preset or explicit setpoints until an absolute expiry. Source and actor are assigned by the server. Does not clear user OFF or bypass guards.',
+			'An authenticated user or display selects a preset or explicit setpoints until an absolute expiry. Source and actor are assigned by the server. Does not clear user OFF or bypass guards.',
 		operationId: 'create-devices-virtual-plugin-thermostat-override',
 	})
 	@ApiUnprocessableEntityResponse('Invalid override, locked controller or revision conflict')
@@ -105,8 +106,13 @@ export class VirtualThermostatComfortController {
 		@Body() dto: CreateThermostatOverrideDto,
 		@Req() request: AuthenticatedRequest,
 	): Promise<ThermostatComfortResponseModel> {
-		if (request.auth?.type !== 'user') throw new ForbiddenException('An identified user session is required.');
-		const actorId = request.auth.id;
+		const auth = request.auth;
+		const panel =
+			auth?.type === 'token' && auth.ownerType === TokenOwnerType.DISPLAY && !!auth.ownerId && !!auth.tokenId;
+		if (auth?.type !== 'user' && !panel)
+			throw new ForbiddenException('An identified user or display session is required.');
+		const actorId = auth.type === 'user' ? auth.id : `display:${auth.ownerId}:token:${auth.tokenId}`;
+		const source = auth.type === 'user' ? 'user' : 'panel';
 		return this.response(() =>
 			this.comfort.override(
 				id,
@@ -117,6 +123,7 @@ export class VirtualThermostatComfortController {
 					expires_at: dto.expires_at,
 				},
 				actorId,
+				source,
 			),
 		);
 	}

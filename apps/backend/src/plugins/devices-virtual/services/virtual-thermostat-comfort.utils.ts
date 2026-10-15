@@ -24,7 +24,7 @@ export interface ThermostatComfortConfiguration {
 }
 export interface ThermostatComfortOverride {
 	id: string;
-	source: 'user';
+	source: 'user' | 'panel';
 	actor_id: string;
 	revision: number;
 	created_at: string;

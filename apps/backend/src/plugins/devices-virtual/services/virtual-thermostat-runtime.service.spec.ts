@@ -460,6 +460,27 @@ describe('virtual thermostat durable runtime', () => {
 			presets: [{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } }],
 		});
 
+	it('reconciles and refreshes runtime after a committed comfort mutation whose leading listener threw', async () => {
+		await settle();
+		await configureComfort();
+		const throwing = () => {
+			throw new Error('post-commit listener');
+		};
+		events.prependListener('devices-virtual.thermostat.config.changed', throwing);
+		const result = await comfort.select(controllerId, await comfortFence(), 'comfort', false);
+		expect(result.configuration.selected_preset).toBe('comfort');
+		const committedRevision = result.revision;
+		events.off('devices-virtual.thermostat.config.changed', throwing);
+		runtime.request(controllerId);
+		await settle();
+		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
+			configuration_revision: committedRevision,
+			effective_comfort: { source: 'preset', heating_setpoint: 24 },
+		});
+		expect((await comfort.get(controllerId)).revision).toBe(committedRevision);
+		expect(sends).toContain(true);
+	});
+
 	it('inhibits a lower-demand override on observable rollback instead of resuming a higher baseline', async () => {
 		await settle();
 		await configureComfort();

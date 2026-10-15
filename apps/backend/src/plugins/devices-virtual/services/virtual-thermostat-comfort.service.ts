@@ -62,8 +62,8 @@ export class VirtualThermostatComfortService {
 						: now < lease.watermark
 							? 'clock_uncertain'
 							: null;
+			if (!lease.status) lease.watermark = Math.max(lease.watermark, now);
 		}
-		if (!lease.status) lease.watermark = Math.max(lease.watermark, Date.now());
 		return !lease.status;
 	}
 
@@ -204,6 +204,7 @@ export class VirtualThermostatComfortService {
 		fence: ThermostatComfortFence,
 		input: { preset: ThermostatPreset | null; setpoints: ThermostatSetpoints | null; expires_at: string },
 		actorId: string,
+		source: 'user' | 'panel' = 'user',
 	) {
 		let identity: string;
 		let deadline: number;
@@ -236,7 +237,7 @@ export class VirtualThermostatComfortService {
 				row.comfort.temporary_override = {
 					...input,
 					id: identity,
-					source: 'user',
+					source,
 					actor_id: actorId,
 					revision: row.revision + 1,
 					original_duration_ms: duration,

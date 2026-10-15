@@ -138,7 +138,7 @@ export class ConfigureThermostatComfortDto extends ThermostatComfortFenceDto {
 export class SelectThermostatPresetDto extends ThermostatComfortFenceDto {
 	@ApiProperty({
 		description: 'Baseline preset, or null for current manual baseline',
-		enum: ['comfort', 'eco', 'away'],
+		enum: ['comfort', 'eco', 'away', null],
 		nullable: true,
 	})
 	@Expose()
@@ -158,7 +158,7 @@ export class SelectThermostatPresetDto extends ThermostatComfortFenceDto {
 export class CreateThermostatOverrideDto extends ThermostatComfortFenceDto {
 	@ApiProperty({
 		description: 'Preset to resolve at creation, mutually exclusive with explicit setpoints',
-		enum: ['comfort', 'eco', 'away'],
+		enum: ['comfort', 'eco', 'away', null],
 		nullable: true,
 	})
 	@Expose()
