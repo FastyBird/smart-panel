@@ -1514,7 +1514,6 @@
   "@weather_condition_unknown": {
     "description": ""
   },
-
   "discovery_searching_title": "Searching for Gateways",
   "@discovery_searching_title": {
     "description": "Title displayed while searching for gateways"
@@ -1643,7 +1642,6 @@
   "@discovery_button_cancel": {
     "description": "Cancel search button text"
   },
-
   "room_selection_title": "Select a Room",
   "@room_selection_title": {
     "description": "Title for room selection screen during onboarding"
@@ -1677,7 +1675,6 @@
   "@room_selection_empty_description": {
     "description": "Description shown when no rooms exist in the backend"
   },
-
   "action_success": "Action completed successfully",
   "@action_success": {
     "description": "Success message when an action completes"
@@ -1796,7 +1793,6 @@
   "@house_overview_tap_to_view": {
     "description": "Hint text on space cards in house overview"
   },
-
   "house_modes_home": "Home",
   "@house_modes_home": {
     "description": "Label for home mode"
@@ -1849,7 +1845,6 @@
   "@space_scene_partial_success": {
     "description": "Message when a scene is partially activated (some actions failed)"
   },
-
   "window_covering_status_open": "Open",
   "@window_covering_status_open": {
     "description": "Status when the window covering is fully open"
@@ -2120,7 +2115,7 @@
       "count": {}
     }
   },
-  "media_devices_summary_on": "{count} devices \u2022 {on} on",
+  "media_devices_summary_on": "{count} devices • {on} on",
   "@media_devices_summary_on": {
     "description": "Summary showing total/on media devices",
     "placeholders": {
@@ -2431,7 +2426,6 @@
   "@entry_cameras": {
     "description": "Label for cameras in security section"
   },
-
   "air_quality_level_excellent": "Excellent",
   "@air_quality_level_excellent": {
     "description": "Air quality level - excellent"
@@ -2456,7 +2450,6 @@
   "@air_quality_level_unknown": {
     "description": "Air quality level - unknown"
   },
-
   "aqi_label_good": "Good",
   "@aqi_label_good": {
     "description": "AQI label for good air quality (0-50)"
@@ -2481,7 +2474,6 @@
   "@aqi_label_hazardous": {
     "description": "AQI label for hazardous air quality (301+)"
   },
-
   "particulate_label_pm1": "PM1",
   "@particulate_label_pm1": {
     "description": "Label for PM1 particulate matter"
@@ -2494,7 +2486,6 @@
   "@particulate_label_pm10": {
     "description": "Label for PM10 particulate matter"
   },
-
   "sensor_enum_voc_level_low": "Low",
   "@sensor_enum_voc_level_low": {
     "description": "VOC level - low (short)"
@@ -2519,7 +2510,6 @@
   "@sensor_enum_voc_level_high_long": {
     "description": "VOC level - high (long)"
   },
-
   "fan_mode_auto": "Auto",
   "@fan_mode_auto": {
     "description": "Fan mode - automatic"
@@ -2544,7 +2534,6 @@
   "@fan_mode_turbo": {
     "description": "Fan mode - turbo/high power"
   },
-
   "fan_speed_off": "Off",
   "@fan_speed_off": {
     "description": "Fan speed level - off"
@@ -2569,7 +2558,6 @@
   "@fan_speed_auto": {
     "description": "Fan speed level - auto"
   },
-
   "fan_timer_off": "Off",
   "@fan_timer_off": {
     "description": "Fan timer - off"
@@ -2598,7 +2586,6 @@
   "@fan_timer_12h": {
     "description": "Fan timer - 12 hours"
   },
-
   "fan_direction_clockwise": "Clockwise",
   "@fan_direction_clockwise": {
     "description": "Fan direction - clockwise"
@@ -2607,7 +2594,6 @@
   "@fan_direction_counter_clockwise": {
     "description": "Fan direction - counter-clockwise"
   },
-
   "filter_status_good": "Good",
   "@filter_status_good": {
     "description": "Filter status - good condition"
@@ -2624,7 +2610,6 @@
   "@filter_status_unknown": {
     "description": "Filter status - unknown or unavailable"
   },
-
   "dehumidifier_mode_auto": "Auto",
   "@dehumidifier_mode_auto": {
     "description": "Dehumidifier mode - automatic"
@@ -2645,7 +2630,6 @@
   "@dehumidifier_mode_quiet": {
     "description": "Dehumidifier mode - quiet/silent operation"
   },
-
   "dehumidifier_status_idle": "Idle",
   "@dehumidifier_status_idle": {
     "description": "Dehumidifier status - idle"
@@ -2658,7 +2642,6 @@
   "@dehumidifier_status_defrosting": {
     "description": "Dehumidifier status - defrost cycle active"
   },
-
   "dehumidifier_timer_off": "Off",
   "@dehumidifier_timer_off": {
     "description": "Dehumidifier timer - off"
@@ -2687,7 +2670,6 @@
   "@dehumidifier_timer_12h": {
     "description": "Dehumidifier timer - 12 hours"
   },
-
   "dehumidifier_water_tank": "Water Tank",
   "@dehumidifier_water_tank": {
     "description": "Dehumidifier water tank label"
@@ -2700,7 +2682,6 @@
   "@dehumidifier_defrost_active": {
     "description": "Dehumidifier defrost cycle is active"
   },
-
   "humidifier_mode_auto": "Auto",
   "@humidifier_mode_auto": {
     "description": "Humidifier mode - automatic"
@@ -2717,7 +2698,6 @@
   "@humidifier_mode_baby": {
     "description": "Humidifier mode - baby safe mode"
   },
-
   "humidifier_status_idle": "Idle",
   "@humidifier_status_idle": {
     "description": "Humidifier status - idle"
@@ -2726,7 +2706,6 @@
   "@humidifier_status_humidifying": {
     "description": "Humidifier status - actively humidifying"
   },
-
   "humidifier_mist_level": "Mist Level",
   "@humidifier_mist_level": {
     "description": "Mist level control label"
@@ -2747,7 +2726,6 @@
   "@humidifier_mist_level_high": {
     "description": "Humidifier mist level - high"
   },
-
   "humidifier_timer_off": "Off",
   "@humidifier_timer_off": {
     "description": "Humidifier timer - off"
@@ -2776,7 +2754,6 @@
   "@humidifier_timer_12h": {
     "description": "Humidifier timer - 12 hours"
   },
-
   "humidifier_water_tank": "Water Tank",
   "@humidifier_water_tank": {
     "description": "Humidifier water tank label"
@@ -2785,7 +2762,6 @@
   "@humidifier_warm_mist": {
     "description": "Humidifier warm mist feature label"
   },
-
   "device_current_humidity": "Current",
   "@device_current_humidity": {
     "description": "Current humidity label"
@@ -2914,7 +2890,6 @@
   "@device_settings": {
     "description": "Settings section label for device configuration options"
   },
-
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {
     "description": "Duration format with hours and minutes",
@@ -2945,7 +2920,6 @@
       }
     }
   },
-
   "media_playing": "Playing",
   "@media_playing": {
     "description": "Media player status - playing"
@@ -2998,7 +2972,6 @@
   "@climate_more_sensors": {
     "description": "Status label on the 'more' tile when sensors overflow the grid"
   },
-
   "domain_shading": "Shading",
   "@domain_shading": {
     "description": "Title for shading domain view in room navigation"
@@ -3217,7 +3190,7 @@
   "@light_cap_white": {
     "description": "White channel capability short label"
   },
-  "light_header_mode_count": "{mode} \u2022 {count} on",
+  "light_header_mode_count": "{mode} • {count} on",
   "@light_header_mode_count": {
     "description": "Lights header subtitle showing mode name and count of lights on",
     "placeholders": {
@@ -3241,7 +3214,6 @@
       }
     }
   },
-
   "popup_label_mode": "Mode",
   "@popup_label_mode": {
     "description": "Label shown at top of mode selection popup"
@@ -3254,7 +3226,6 @@
   "@connection_banner_retry": {
     "description": "Retry link text in connection banner"
   },
-
   "connection_overlay_title_reconnecting": "Reconnecting",
   "@connection_overlay_title_reconnecting": {
     "description": "Overlay title during reconnection"
@@ -3275,12 +3246,10 @@
   "@connection_overlay_retrying": {
     "description": "Retry button text while attempting reconnection"
   },
-
   "connection_recovery_connected": "Connected",
   "@connection_recovery_connected": {
     "description": "Toast message shown when connection is restored"
   },
-
   "connection_auth_error_title": "Session Expired",
   "@connection_auth_error_title": {
     "description": "Title for authentication error screen"
@@ -3293,7 +3262,6 @@
   "@connection_auth_error_button_reset": {
     "description": "Reset device button text"
   },
-
   "connection_network_error_title": "Network Unavailable",
   "@connection_network_error_title": {
     "description": "Title for network error screen"
@@ -3306,7 +3274,6 @@
   "@connection_network_error_button_retry": {
     "description": "Retry button text on network error screen"
   },
-
   "connection_server_error_title": "Server Unavailable",
   "@connection_server_error_title": {
     "description": "Title for server error screen"
@@ -3319,7 +3286,6 @@
   "@connection_server_error_button_retry": {
     "description": "Retry button text on server error screen"
   },
-
   "sensor_enum_illuminance_bright": "Bright",
   "sensor_enum_illuminance_bright_long": "Bright",
   "sensor_enum_illuminance_moderate": "Moderate",
@@ -3328,21 +3294,18 @@
   "sensor_enum_illuminance_dusky_long": "Dusky",
   "sensor_enum_illuminance_dark": "Dark",
   "sensor_enum_illuminance_dark_long": "Dark",
-
   "sensor_enum_gas_status_normal": "OK",
   "sensor_enum_gas_status_normal_long": "Normal",
   "sensor_enum_gas_status_warning": "Warn",
   "sensor_enum_gas_status_warning_long": "Warning",
   "sensor_enum_gas_status_alarm": "Alarm",
   "sensor_enum_gas_status_alarm_long": "Gas Alarm",
-
   "sensor_enum_leak_level_low": "Low",
   "sensor_enum_leak_level_low_long": "Low Leak",
   "sensor_enum_leak_level_medium": "Med",
   "sensor_enum_leak_level_medium_long": "Medium Leak",
   "sensor_enum_leak_level_high": "High",
   "sensor_enum_leak_level_high_long": "Severe Leak",
-
   "sensor_enum_battery_level_critical": "Crit",
   "sensor_enum_battery_level_critical_long": "Critical",
   "sensor_enum_battery_level_low": "Low",
@@ -3353,14 +3316,12 @@
   "sensor_enum_battery_level_high_long": "High",
   "sensor_enum_battery_level_full": "Full",
   "sensor_enum_battery_level_full_long": "Full",
-
   "sensor_enum_battery_status_ok": "OK",
   "sensor_enum_battery_status_ok_long": "Battery OK",
   "sensor_enum_battery_status_low": "Low",
   "sensor_enum_battery_status_low_long": "Low Battery",
   "sensor_enum_battery_status_charging": "Chrg",
   "sensor_enum_battery_status_charging_long": "Charging",
-
   "sensor_enum_alarm_alarm_idle": "Idle",
   "sensor_enum_alarm_alarm_idle_long": "Alarm Idle",
   "sensor_enum_alarm_alarm_pending": "Pend",
@@ -3369,7 +3330,6 @@
   "sensor_enum_alarm_alarm_triggered_long": "Alarm Triggered",
   "sensor_enum_alarm_alarm_silenced": "Muted",
   "sensor_enum_alarm_alarm_silenced_long": "Alarm Silenced",
-
   "sensor_enum_alarm_disarmed": "Off",
   "sensor_enum_alarm_disarmed_long": "Disarmed",
   "sensor_enum_alarm_armed_home": "Home",
@@ -3378,14 +3338,12 @@
   "sensor_enum_alarm_armed_away_long": "Armed Away",
   "sensor_enum_alarm_armed_night": "Night",
   "sensor_enum_alarm_armed_night_long": "Armed Night",
-
   "sensor_enum_filter_good": "Good",
   "sensor_enum_filter_good_long": "Filter Good",
   "sensor_enum_filter_replace_soon": "Soon",
   "sensor_enum_filter_replace_soon_long": "Replace Soon",
   "sensor_enum_filter_replace_now": "Now!",
   "sensor_enum_filter_replace_now_long": "Replace Now",
-
   "sensor_enum_door_opened": "Open",
   "sensor_enum_door_opened_long": "Door Opened",
   "sensor_enum_door_closed": "Closed",
@@ -3396,12 +3354,10 @@
   "sensor_enum_door_closing_long": "Door Closing",
   "sensor_enum_door_stopped": "Stopped",
   "sensor_enum_door_stopped_long": "Door Stopped",
-
   "sensor_enum_lock_locked": "Locked",
   "sensor_enum_lock_locked_long": "Lock Locked",
   "sensor_enum_lock_unlocked": "Open",
   "sensor_enum_lock_unlocked_long": "Lock Unlocked",
-
   "sensor_enum_camera_available": "On",
   "sensor_enum_camera_available_long": "Camera Available",
   "sensor_enum_camera_in_use": "In Use",
@@ -3414,7 +3370,6 @@
   "sensor_enum_camera_initializing_long": "Camera Initializing",
   "sensor_enum_camera_error": "Err",
   "sensor_enum_camera_error_long": "Camera Error",
-
   "sensor_enum_device_info_connected": "On",
   "sensor_enum_device_info_connected_long": "Connected",
   "sensor_enum_device_info_disconnected": "Off",
@@ -3435,7 +3390,6 @@
   "sensor_enum_device_info_alert_long": "Alert",
   "sensor_enum_device_info_unknown": "N/A",
   "sensor_enum_device_info_unknown_long": "Unknown",
-
   "sensor_freshness_live": "Live",
   "@sensor_freshness_live": {
     "description": "Label shown when sensor data is fresh/live"
@@ -3922,7 +3876,6 @@
       }
     }
   },
-
   "sensor_state_detected": "Detected",
   "sensor_state_not_detected": "Not Detected",
   "sensor_state_clear": "Clear",
@@ -3936,7 +3889,6 @@
   "sensor_state_gas_detected": "Gas detected",
   "sensor_state_leak_detected": "Leak detected",
   "sensor_state_co_detected": "CO detected",
-
   "sensor_label_temperature": "Temperature",
   "sensor_label_humidity": "Humidity",
   "sensor_label_pressure": "Pressure",
@@ -3964,11 +3916,9 @@
   "sensor_label_electrical_energy": "Energy",
   "sensor_label_electrical_generation": "Generation",
   "sensor_label_electrical_power": "Power",
-
   "sensor_alert_high_level": "High Level",
   "sensor_alert_low_battery": "Low Battery",
   "sensor_alert_charging": "Charging",
-
   "sensor_category_temperature": "Temperature",
   "sensor_category_humidity": "Humidity",
   "sensor_category_air_quality": "Air Quality",
@@ -3976,7 +3926,6 @@
   "sensor_category_safety": "Safety",
   "sensor_category_light": "Light",
   "sensor_category_energy": "Energy",
-
   "sensor_ui_event_log": "Event Log",
   "sensor_ui_history": "History",
   "sensor_ui_current": "Current",
@@ -4021,7 +3970,6 @@
   "sensor_ui_period_24h": "24H",
   "sensor_ui_period_7d": "7D",
   "sensor_ui_period_30d": "30D",
-
   "sensor_empty_no_events": "No events recorded",
   "sensor_empty_no_state_changes": "No state changes",
   "sensor_empty_no_history": "No history data available",
@@ -4029,7 +3977,6 @@
   "sensor_status_loading": "Loading data...",
   "sensor_status_failed": "Failed to load data",
   "sensor_status_retry": "Retry",
-
   "sensors_domain_title": "Sensors",
   "sensors_domain_empty_title": "Sensors Not Configured",
   "sensors_domain_empty_description": "Sensor roles have not been set up for this room. Configure sensor assignments in the administration.",
@@ -4074,12 +4021,10 @@
       }
     }
   },
-
   "domain_security": "Security",
   "@domain_security": {
     "description": "Title for security domain view in room navigation"
   },
-
   "security_tab_entry_points": "Entry Points",
   "@security_tab_entry_points": {
     "description": "Tab label for the entry points section on the security screen"
@@ -4096,7 +4041,6 @@
   "@security_header_recent_events": {
     "description": "Header title for the recent events card on the security screen"
   },
-
   "security_status_triggered": "Triggered",
   "@security_status_triggered": {
     "description": "Status ring label when the alarm is in triggered/critical state"
@@ -4109,7 +4053,6 @@
   "@security_status_secure": {
     "description": "Status ring label when everything is secure"
   },
-
   "security_armed_disarmed": "Disarmed",
   "@security_armed_disarmed": {
     "description": "Armed state label when the system is disarmed"
@@ -4130,7 +4073,6 @@
   "@security_armed_unknown": {
     "description": "Armed state label when the armed state is unknown"
   },
-
   "security_alarm_idle": "Idle",
   "@security_alarm_idle": {
     "description": "Alarm state label when the alarm is idle"
@@ -4151,7 +4093,6 @@
   "@security_alarm_unknown": {
     "description": "Alarm state label when the alarm state is unknown"
   },
-
   "security_entry_open_count": "{count} Open",
   "@security_entry_open_count": {
     "description": "Badge label showing how many entry points are open",
@@ -4181,7 +4122,6 @@
   "@security_entry_status_closed": {
     "description": "Entry point status when the entry point is closed"
   },
-
   "security_summary_all_clear": "All clear · {count} entry points secured",
   "@security_summary_all_clear": {
     "description": "Status summary when there are no alerts and all entry points are secure",
@@ -4217,7 +4157,6 @@
   "@security_summary_open_label": {
     "description": "Short label for the open entry points summary pill"
   },
-
   "security_no_active_alerts": "No active alerts",
   "@security_no_active_alerts": {
     "description": "Message displayed when there are no active security alerts"
@@ -4226,7 +4165,6 @@
   "@security_ack_all": {
     "description": "Button label to acknowledge all alerts"
   },
-
   "security_no_recent_events": "No recent events",
   "@security_no_recent_events": {
     "description": "Message displayed when there are no recent security events"
@@ -4239,7 +4177,6 @@
   "@security_retry": {
     "description": "Button label to retry loading security events"
   },
-
   "security_alert_type_intrusion": "Intrusion detected",
   "@security_alert_type_intrusion": {
     "description": "Alert type label for intrusion detection"
@@ -4280,7 +4217,6 @@
   "@security_alert_type_unknown": {
     "description": "Alert type label when the alert type is unknown"
   },
-
   "security_event_alert_raised": "Alert Raised",
   "@security_event_alert_raised": {
     "description": "Short event name for an alert being raised"
@@ -4301,7 +4237,6 @@
   "@security_event_arming_mode_changed": {
     "description": "Short event name for an arming mode change"
   },
-
   "security_event_title_alert_raised": "Alert raised: {alertType}",
   "@security_event_title_alert_raised": {
     "description": "Full event title for an alert being raised",
@@ -4353,7 +4288,6 @@
       }
     }
   },
-
   "security_state_transition": "{from} → {to}",
   "@security_state_transition": {
     "description": "State transition format showing from and to states",
@@ -4370,7 +4304,6 @@
   "@security_state_unknown": {
     "description": "Label for an unknown state in state transitions"
   },
-
   "security_overlay_alarm_triggered": "Alarm triggered",
   "@security_overlay_alarm_triggered": {
     "description": "Overlay title when the alarm is triggered but there is no top alert"
@@ -4396,7 +4329,6 @@
       }
     }
   },
-
   "room_overview_no_room": "No room assigned to this display",
   "@room_overview_no_room": {
     "description": "Error shown when no room is assigned to the display"
@@ -4476,7 +4408,6 @@
   "@sensor_label_light": {
     "description": "Label for light/illuminance sensor reading"
   },
-
   "settings_save_failed": "Save settings failed.",
   "@settings_save_failed": {
     "description": "Toast message when saving settings fails"
@@ -4485,7 +4416,6 @@
   "@settings_about_version_loading": {
     "description": "Placeholder while app version is loading"
   },
-
   "app_error_failed_to_start": "Failed to Start Application",
   "@app_error_failed_to_start": {
     "description": "Title for app startup error screen"
@@ -4518,8 +4448,12 @@
   "@app_error_connection_failed_backend": {
     "description": "Error when backend connection fails",
     "placeholders": {
-      "name": { "type": "String" },
-      "address": { "type": "String" }
+      "name": {
+        "type": "String"
+      },
+      "address": {
+        "type": "String"
+      }
     }
   },
   "app_error_initialization_failed": "Failed to initialize connection to backend.",
@@ -4530,10 +4464,11 @@
   "@app_error_connection_failed_url": {
     "description": "Error when URL connection fails",
     "placeholders": {
-      "url": { "type": "String" }
+      "url": {
+        "type": "String"
+      }
     }
   },
-
   "deck_empty_title": "No pages configured",
   "@deck_empty_title": {
     "description": "Title for empty deck state"
@@ -4542,27 +4477,22 @@
   "@deck_empty_description": {
     "description": "Description for empty deck state"
   },
-
   "alert_banner_view_button": "View",
   "@alert_banner_view_button": {
     "description": "Button label on alert banner"
   },
-
   "sensor_chart_label_now": "Now",
   "@sensor_chart_label_now": {
     "description": "Label for current time on sensor chart axis"
   },
-
   "room_name_fallback": "Room",
   "@room_name_fallback": {
     "description": "Fallback name when room name is unavailable"
   },
-
   "weather_tile_not_configured": "Not configured",
   "@weather_tile_not_configured": {
     "description": "Weather tile text when not configured"
   },
-
   "entry_error_load_security_data": "Failed to load security data",
   "@entry_error_load_security_data": {
     "description": "Error message when security data fails to load"
@@ -4575,8 +4505,12 @@
   "@entry_locks_status_partial": {
     "description": "Status when some locks are locked",
     "placeholders": {
-      "locked": { "type": "int" },
-      "total": { "type": "int" }
+      "locked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "entry_alarm_armed": "Armed",
@@ -4591,10 +4525,11 @@
   "@entry_cameras_status_active": {
     "description": "Status showing active camera count",
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
-
   "master_error_load_house_data": "Failed to load house data",
   "@master_error_load_house_data": {
     "description": "Error when house data fails to load"
@@ -4603,11 +4538,14 @@
   "@master_room_device_count": {
     "description": "Device count summary for a room",
     "placeholders": {
-      "online": { "type": "int" },
-      "total": { "type": "int" }
+      "online": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
-
   "buddy_dismiss": "Dismiss",
   "@buddy_dismiss": {
     "description": "Buddy suggestion dismiss button"
@@ -4692,8 +4630,12 @@
   "@buddy_recording_progress": {
     "description": "Recording progress indicator",
     "placeholders": {
-      "seconds": { "type": "int" },
-      "maxSeconds": { "type": "int" }
+      "seconds": {
+        "type": "int"
+      },
+      "maxSeconds": {
+        "type": "int"
+      }
     }
   },
   "buddy_recording_cancel": "Cancel",
@@ -4708,7 +4650,6 @@
   "@buddy_recording_permission_error": {
     "description": "Snackbar when microphone permission denied"
   },
-
   "buddy_voice_listening": "Listening...",
   "@buddy_voice_listening": {
     "description": "Label shown in voice input overlay while recording"
@@ -4717,16 +4658,24 @@
   "@buddy_voice_recording_timer": {
     "description": "Recording timer shown in voice input overlay (seconds elapsed / max seconds)",
     "placeholders": {
-      "seconds": { "type": "int" },
-      "maxSeconds": { "type": "int" }
+      "seconds": {
+        "type": "int"
+      },
+      "maxSeconds": {
+        "type": "int"
+      }
     }
   },
   "buddy_voice_recording_progress": "Recording {seconds}s / {maxSeconds}s",
   "@buddy_voice_recording_progress": {
     "description": "Label shown in voice activation indicator during recording",
     "placeholders": {
-      "seconds": { "type": "int" },
-      "maxSeconds": { "type": "int" }
+      "seconds": {
+        "type": "int"
+      },
+      "maxSeconds": {
+        "type": "int"
+      }
     }
   },
   "buddy_voice_processing": "Processing...",
@@ -4737,20 +4686,19 @@
   "@buddy_voice_transcribing": {
     "description": "Placeholder text shown while audio is being transcribed"
   },
-
   "security_events_error_unexpected_response": "Unexpected response",
   "@security_events_error_unexpected_response": {
     "description": "Error when security events API returns unexpected data"
   },
-
   "media_activation_step_fallback": "Step {index}",
   "@media_activation_step_fallback": {
     "description": "Fallback label for media activation step",
     "placeholders": {
-      "index": { "type": "int" }
+      "index": {
+        "type": "int"
+      }
     }
   },
-
   "intent_error_deck_not_initialized": "Deck not initialized",
   "@intent_error_deck_not_initialized": {
     "description": "Error when deck is not initialized"
@@ -4795,7 +4743,6 @@
   "@intent_error_toggle_device_error": {
     "description": "Error during device toggle"
   },
-
   "settings_display_screen_lock_never": "Never",
   "@settings_display_screen_lock_never": {
     "description": "Screen lock duration option for never"
@@ -4876,5 +4823,78 @@
     }
   },
   "virtual_measurement_true": "Detected",
-  "virtual_measurement_false": "Not detected"
+  "virtual_measurement_false": "Not detected",
+  "groupActualFeedback": "Reported physical feedback",
+  "groupReload": "Reload / reconnect",
+  "groupRepair": "Configuration or capabilities changed. Reload and repair membership in Admin.",
+  "groupUncertain": "Command result uncertain. Reload actual feedback before another attempt.",
+  "groupUnknown": "Unknown",
+  "groupMixed": "Mixed",
+  "groupOn": "On",
+  "groupOff": "Off",
+  "groupUnavailable": "Unavailable",
+  "groupOpen": "Open",
+  "groupClose": "Close",
+  "groupStop": "Stop",
+  "groupSelectValue": "Select native value",
+  "groupApply": "Apply",
+  "groupApplyTogether": "Apply together",
+  "groupConfigured": "Configured metadata",
+  "groupMissing": "Missing member; repair in Admin",
+  "groupReadinessUnavailable": "Command readiness unavailable",
+  "groupCoverMeaning": "OPEN/CLOSE confirms motion begun or an already reached endpoint, not full travel. STOP requires qualified stopped feedback.",
+  "groupContributors": "{count}/{total} contributing members",
+  "groupCommandOutcome": "Group command: {status}",
+  "groupStep": "Step {value}",
+  "groupPending": "Pending",
+  "groupConfirmed": "Confirmed",
+  "groupPartial": "Partial",
+  "groupFailed": "Failed",
+  "groupSuperseded": "Superseded",
+  "groupTimedOut": "Timed out",
+  "groupFieldOn": "Power",
+  "groupFieldSpeed": "Speed",
+  "groupFieldSwing": "Swing",
+  "groupFieldDirection": "Direction",
+  "groupFieldMode": "Mode",
+  "groupFieldPosition": "Position",
+  "groupFieldTilt": "Tilt",
+  "groupFieldType": "Type",
+  "groupFieldStatus": "Status",
+  "groupFieldObstruction": "Obstruction",
+  "groupFieldInUse": "In use",
+  "groupFieldBrightness": "Brightness",
+  "groupFieldColorTemperature": "Color temperature",
+  "groupFieldColorRed": "Red",
+  "groupFieldColorGreen": "Green",
+  "groupFieldColorBlue": "Blue",
+  "groupFieldHue": "Hue",
+  "groupFieldSaturation": "Saturation",
+  "@groupContributors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@groupCommandOutcome": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@groupStep": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOpenAll": "Open all",
+  "groupCloseAll": "Close all",
+  "groupStopAll": "Stop all"
 }

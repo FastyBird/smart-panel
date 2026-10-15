@@ -5,9 +5,9 @@
 	>
 		<template #header>{{ t('devicesVirtualPlugin.lightGroup.reportedState') }}</template>
 		<el-alert
-			v-if="error || authoring.error.value"
+			v-if="error || authoring.error.value || catalog.error.value"
 			type="error"
-			:title="error ?? authoring.error.value ?? ''"
+			:title="error ?? authoring.error.value ?? catalog.error.value ?? ''"
 			:closable="false"
 		/>
 		<el-button
@@ -17,7 +17,7 @@
 			{{ t('devicesVirtualPlugin.lightGroup.reload') }}
 		</el-button>
 		<template v-if="configuration">
-			<p v-if="configuration.reported_state">
+			<p v-if="configuration.reported_state && configuration.profile !== 'cover'">
 				{{
 					t('devicesVirtualPlugin.lightGroup.onCount', {
 						on: configuration.reported_state.on_count,
@@ -40,6 +40,9 @@
 								t('devicesVirtualPlugin.lightGroup.unknown'))
 							: t('devicesVirtualPlugin.lightGroup.missingMember', { identity: member.source_identity })
 					}}
+					<span>
+						{{ configuration.reported_state?.members.find((state) => state.source_identity === member.source_identity)?.reasons?.join('; ') }}
+					</span>
 				</li>
 			</ul>
 			<ul>
@@ -48,21 +51,102 @@
 					:key="property.category"
 				>
 					{{ t(`devicesModule.categories.channelsProperties.${property.category}`) }}:
-					{{ property.mixed ? t('devicesVirtualPlugin.lightGroup.mixed') : (property.value ?? t('devicesVirtualPlugin.lightGroup.unknown')) }}
+					{{
+						property.expires_at && new Date(property.expires_at).getTime() <= now
+							? t('devicesVirtualPlugin.lightGroup.unknown')
+							: property.mixed
+								? t('devicesVirtualPlugin.lightGroup.mixed')
+								: (property.value ?? t('devicesVirtualPlugin.lightGroup.unknown'))
+					}}
+					<small>
+						{{
+							t('devicesVirtualPlugin.lightGroup.contributors', {
+								count: property.contributors?.length ?? 0,
+								total: configuration.reported_state?.total ?? 0,
+							})
+						}}
+					</small>
+					<small v-if="property.provenance === 'configured'">{{ t('devicesVirtualPlugin.lightGroup.configured') }}</small>
 				</li>
 			</ul>
 			<el-button
-				:disabled="busy"
+				v-if="writable.some((category) => category === 'on')"
+				:disabled="busy || !connected"
 				@click="command([{ category: 'on', value: true }])"
 			>
 				{{ t('devicesVirtualPlugin.lightGroup.turnOn') }}
 			</el-button>
 			<el-button
-				:disabled="busy"
+				v-if="writable.some((category) => category === 'on')"
+				:disabled="busy || !connected"
 				@click="command([{ category: 'on', value: false }])"
 			>
 				{{ t('devicesVirtualPlugin.lightGroup.turnOff') }}
 			</el-button>
+			<template
+				v-for="control in scalarControls"
+				:key="control.category"
+			>
+				<label>{{ t(`devicesModule.categories.channelsProperties.${control.category}`) }} {{ control.unit ?? '' }}</label>
+				<template v-if="control.data_type === 'bool'">
+					<el-button
+						v-for="value in [true, false]"
+						:key="String(value)"
+						:disabled="busy || !connected"
+						@click="command([{ category: control.category, value }])"
+					>
+						{{ t(`devicesVirtualPlugin.lightGroup.${value ? 'turnOn' : 'turnOff'}`) }}
+					</el-button>
+				</template>
+				<template v-else>
+					<el-select
+						v-model="requestedEnums[control.category]"
+						:disabled="busy || !connected"
+						:data-test-id="`group-enum-${control.category}`"
+					>
+						<el-option
+							v-for="value in enumValues(control.format)"
+							:key="value"
+							:value="value"
+							:label="value"
+						/>
+					</el-select>
+					<el-button
+						:disabled="busy || !connected || !enumValues(control.format).includes(requestedEnums[control.category] ?? '')"
+						@click="command([{ category: control.category, value: requestedEnums[control.category]! }])"
+					>
+						{{ t('devicesVirtualPlugin.lightGroup.apply') }}
+					</el-button>
+				</template>
+			</template>
+			<template v-if="configuration.profile === 'cover'">
+				<el-alert
+					:title="t('devicesVirtualPlugin.lightGroup.coverCommandMeaning')"
+					type="info"
+					:closable="false"
+				/>
+				<div
+					v-for="operation in coverOperations"
+					:key="operation.operation"
+				>
+					<el-button
+						v-if="['open', 'close', 'stop'].includes(operation.operation)"
+						:disabled="busy || !connected || !operation.commandable"
+						:data-test-id="`group-command-${operation.operation}`"
+						@click="command([{ category: 'command', value: operation.operation }])"
+					>
+						{{ t(`devicesVirtualPlugin.lightGroup.${operation.operation}`) }}
+					</el-button>
+					<span v-if="!operation.commandable">
+						{{ operation.operation }}:
+						{{
+							operation.members.flatMap((member) => member.reasons.map((reason) => `${member.source_identity}: ${reason}`)).join('; ') ||
+							t('devicesVirtualPlugin.lightGroup.readinessUnavailable')
+						}}
+					</span>
+				</div>
+			</template>
+
 			<div
 				v-for="controls in numericControls"
 				:key="controls[0]!.category"
@@ -75,7 +159,7 @@
 					{{ t(`devicesModule.categories.channelsProperties.${control.category}`) }} {{ control.unit ?? '' }}
 					<el-input-number
 						v-model="requestedValues[control.category]"
-						:disabled="busy"
+						:disabled="busy || !connected"
 						:min="numericBound(control.format, 0)"
 						:max="numericBound(control.format, 1)"
 						:step="control.step ?? 1"
@@ -83,7 +167,7 @@
 					/>
 				</label>
 				<el-button
-					:disabled="busy || controls.some((control) => numericTarget(control) === null)"
+					:disabled="busy || !connected || controls.some((control) => numericTarget(control) === null)"
 					@click="command(controls.map((control) => ({ category: control.category, value: numericTarget(control)! })))"
 				>
 					{{ t('devicesVirtualPlugin.lightGroup.apply') }}
@@ -158,9 +242,9 @@ import { injectSockets, injectStoresManager, useBackend } from '../../../common'
 import type { IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import type { components } from '../../../openapi';
+import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';
 import { useLightGroupAuthoring } from '../composables/useLightGroupAuthoring';
 import { useLightGroupCommandOutcomes } from '../composables/useLightGroupCommandOutcomes';
-import { lightGroupChannelCandidates } from '../utils/light-group-candidates.utils';
 
 import VirtualLightGroupMembers from './virtual-light-group-members.vue';
 import VirtualLightGroupOutcomes from './virtual-light-group-outcomes.vue';
@@ -180,9 +264,16 @@ const devices = stores.getStore(devicesStoreKey);
 const channels = stores.getStore(channelsStoreKey);
 const properties = stores.getStore(channelsPropertiesStoreKey);
 const authoring = useLightGroupAuthoring();
+const catalog = useGroupCatalog();
+const connected = ref(true);
+let requestGeneration = 0;
 const outcomes = useLightGroupCommandOutcomes(props.device.id);
 const configuration = ref<Configuration | null>(null);
 const busy = ref(false);
+const now = ref(Date.now());
+const clock = setInterval(() => {
+	now.value = Date.now();
+}, 1000);
 const error = ref<string | null>(null);
 const editing = ref(false);
 const memberIds = ref<string[]>([]);
@@ -195,7 +286,35 @@ const missingMembers = computed(
 		) ?? []
 );
 const previewKey = ref<string | null>(null);
+const writable = computed(() =>
+	(configuration.value?.common_capabilities ?? [])
+		.filter((field) => field.access === 'rw' || field.access === 'wo' || ((configuration.value?.profile ?? 'light') === 'light' && !field.access))
+		.map((field) => field.category)
+);
+const requestedEnums = ref<Record<string, string | undefined>>({});
+const enumValues = (format: string[] | number[] | null) => format?.filter((value): value is string => typeof value === 'string') ?? [];
+const scalarControls = computed(() =>
+	(configuration.value?.common_capabilities ?? []).filter(
+		(field) =>
+			writable.value.includes(field.category) && field.category !== 'on' && field.category !== 'command' && ['bool', 'enum'].includes(field.data_type)
+	)
+);
+const coverOperations = computed(
+	() =>
+		configuration.value?.operations ??
+		['open', 'close', 'stop', 'position', 'tilt'].map((operation) => ({ operation, commandable: false, members: [] }))
+);
+const controlReady = (category: string) =>
+	configuration.value?.profile !== 'cover' || coverOperations.value.some((operation) => operation.operation === category && operation.commandable);
 const requestedValues = ref<Record<string, number | undefined>>({});
+watch(
+	() => JSON.stringify([configuration.value?.revision, configuration.value?.common_capabilities]),
+	() => {
+		requestedEnums.value = {};
+		requestedValues.value = {};
+		previewKey.value = null;
+	}
+);
 const numericBound = (format: (number[] | string[]) | null, index: number) =>
 	typeof format?.[index] === 'number' ? (format[index] as number) : undefined;
 const numericTarget = (control: components['schemas']['DevicesVirtualPluginDataLightGroupCapability']): number | null => {
@@ -210,8 +329,17 @@ const numericTarget = (control: components['schemas']['DevicesVirtualPluginDataL
 const numericControls = computed(() => {
 	const available = configuration.value?.common_capabilities ?? [];
 	const exposed = new Set(configuration.value?.members[0]?.bindings.map((binding) => binding.quantity) ?? []);
-	return [['brightness'], ['color_temperature'], ['color_red', 'color_green', 'color_blue'], ['hue', 'saturation']]
-		.filter((categories) => categories.every((category) => exposed.has(category) && available.some((control) => control.category === category)))
+	return [['brightness'], ['color_temperature'], ['color_red', 'color_green', 'color_blue'], ['hue', 'saturation'], ['speed'], ['position'], ['tilt']]
+		.filter((categories) =>
+			categories.every(
+				(category) =>
+					exposed.has(category) &&
+					controlReady(category) &&
+					available.some(
+						(control) => control.category === category && !['bool', 'enum'].includes(control.data_type) && writable.value.includes(control.category)
+					)
+			)
+		)
 		.map((categories) => categories.map((category) => available.find((control) => control.category === category)!));
 });
 const terminal = ref<components['schemas']['DevicesModuleDataCompositeCommandOutcome'][]>([]);
@@ -221,11 +349,24 @@ const memberNames = computed(() =>
 	)
 );
 const candidates = computed(() =>
-	lightGroupChannelCandidates(devices.findAll(), channels.findAll(), properties.findAll()).map((channel) => ({
-		id: channel.id,
-		label: memberNames.value[channel.id] ?? channel.id,
+	(catalog.catalog.value?.candidates ?? []).map((candidate) => ({
+		id: candidate.channel,
+		label: `${candidate.name}${candidate.reasons.length ? ` — ${candidate.reasons.join('; ')}` : ''}`,
+		eligible: candidate.eligible,
 	}))
 );
+const refreshCandidates = () => {
+	if (editing.value && configuration.value)
+		void catalog.load({
+			profile: configuration.value.profile as GroupProfile,
+			selected_channels: memberIds.value.map((id) => {
+				const member = configuration.value?.members.find((member) => member.source_identity === id);
+				return member ? replacementIds.value[member.id] || member.source_channel || id : id;
+			}),
+			exposed_group: configuration.value.group_channel,
+		});
+};
+
 const outcomeRows = computed(() => [
 	...(outcomes.progress.value.length ? [{ id: 'progress', status: 'accepted', children: outcomes.progress.value }] : []),
 	...outcomes.terminal.value,
@@ -235,19 +376,46 @@ watch(
 	[memberIds, replacementIds],
 	() => {
 		previewKey.value = null;
+		refreshCandidates();
 	},
 	{ deep: true }
 );
+watch(
+	() =>
+		JSON.stringify(
+			properties.findAll().map(({ id, channel, category, dataType, format, step, permissions, unit }) => ({
+				id,
+				channel,
+				category,
+				dataType,
+				format,
+				step,
+				permissions,
+				unit,
+			}))
+		),
+	() => {
+		if (editing.value) {
+			previewKey.value = null;
+			refreshCandidates();
+		}
+	}
+);
 const describe = (cause: unknown) => (cause instanceof Error ? cause.message : t('devicesVirtualPlugin.lightGroup.loadFailed'));
 const load = async () => {
+	const generation = ++requestGeneration;
 	busy.value = true;
 	error.value = null;
 	try {
 		await channels.fetch({ deviceId: props.device.id });
-		const channel = channels.findForDevice(props.device.id).find((candidate) => candidate.category === 'light');
+		const channel = channels
+			.findForDevice(props.device.id)
+			.find((candidate) => ['light', 'switcher', 'outlet', 'fan', 'window_covering'].includes(candidate.category));
 		if (!channel) throw new Error(t('devicesVirtualPlugin.lightGroup.loadFailed'));
 		await properties.fetch({ channelId: channel.id });
-		configuration.value = await authoring.load(channel.id);
+		const next = await authoring.load(channel.id);
+		if (disposed || generation !== requestGeneration || !connected.value) return;
+		configuration.value = next;
 	} catch (cause) {
 		error.value = describe(cause);
 	} finally {
@@ -270,6 +438,7 @@ const edit = async () => {
 		replacementIds.value = {};
 		memberIds.value = configuration.value?.members.map((member) => member.source_channel ?? member.source_identity) ?? [];
 		editing.value = true;
+		refreshCandidates();
 	} catch (cause) {
 		error.value = describe(cause);
 	} finally {
@@ -317,6 +486,7 @@ const editDraft = (): Configure => {
 	};
 };
 const previewEdit = async () => {
+	const generation = requestGeneration;
 	busy.value = true;
 	error.value = null;
 	previewKey.value = null;
@@ -327,6 +497,7 @@ const previewEdit = async () => {
 			body: draft,
 		});
 		if (!result.data) throw new Error(t('devicesVirtualPlugin.lightGroup.revisionConflict'));
+		if (disposed || generation !== requestGeneration || !connected.value || JSON.stringify(editDraft()) !== JSON.stringify(draft)) return;
 		previewKey.value = JSON.stringify(draft);
 	} catch (cause) {
 		error.value = describe(cause);
@@ -354,12 +525,14 @@ const saveEdit = async () => {
 		busy.value = false;
 	}
 };
-const command = async (targets: { category: string; value: number | boolean }[]) => {
+const command = async (targets: { category: string; value: number | boolean | string }[]) => {
 	busy.value = true;
 	error.value = null;
 	try {
 		const channelId = configuration.value?.group_channel;
-		if (!channelId) throw new Error(t('devicesVirtualPlugin.lightGroup.loadFailed'));
+		if (!connected.value || !channelId) throw new Error(t('devicesVirtualPlugin.lightGroup.loadFailed'));
+		if (targets.some((target) => !controlReady(target.category === 'command' ? String(target.value) : target.category)))
+			throw new Error(t('devicesVirtualPlugin.lightGroup.readinessUnavailable'));
 		const commands = targets.map((target) => {
 			const property = properties.findForChannel(channelId).find((candidate) => candidate.category === target.category);
 			if (!property) throw new Error(t('devicesVirtualPlugin.lightGroup.loadFailed'));
@@ -392,26 +565,34 @@ const sockets = injectSockets();
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 let disposed = false;
 const refreshReportedState = async () => {
+	const generation = ++requestGeneration;
 	const current = configuration.value;
 	if (!current || disposed) return;
 	try {
 		const result = await backend.client.GET('/plugins/devices-virtual/producers/light-groups/{id}', {
 			params: { path: { id: current.group_channel } },
 		});
-		if (disposed || configuration.value?.group_channel !== current.group_channel) return;
+		if (disposed || generation !== requestGeneration || !connected.value || configuration.value?.group_channel !== current.group_channel) return;
 		if (!result.data) {
 			configuration.value.reported_state = null;
+			configuration.value.operations = undefined;
 			return;
 		}
-		if (result.data.data.revision !== current.revision) {
+		if (
+			result.data.data.revision !== current.revision ||
+			JSON.stringify(result.data.data.common_capabilities) !== JSON.stringify(current.common_capabilities)
+		) {
 			previewKey.value = null;
 			error.value = t('devicesVirtualPlugin.lightGroup.revisionConflict');
 			configuration.value = null;
 			return;
 		}
-		configuration.value.reported_state = result.data.data.reported_state;
+		configuration.value = result.data.data;
 	} catch {
-		if (configuration.value) configuration.value.reported_state = null;
+		if (configuration.value) {
+			configuration.value.reported_state = null;
+			configuration.value.operations = undefined;
+		}
 	}
 };
 const onStateEvent = (event: { event: string; payload: unknown }) => {
@@ -424,23 +605,35 @@ const onStateEvent = (event: { event: string; payload: unknown }) => {
 		refreshTimer
 	)
 		return;
+	++requestGeneration;
+	if (configuration.value?.profile === 'cover') configuration.value.operations = undefined;
 	refreshTimer = setTimeout(() => {
 		refreshTimer = undefined;
 		void refreshReportedState();
 	}, 250);
 };
 const disconnected = () => {
+	++requestGeneration;
+	authoring.invalidatePreview();
+	connected.value = false;
+	previewKey.value = null;
 	if (configuration.value) configuration.value.reported_state = null;
 };
 sockets.on('event', onStateEvent);
 sockets.on('disconnect', disconnected);
-sockets.on('connect', refreshReportedState);
+const reconnected = () => {
+	connected.value = true;
+	void refreshReportedState();
+};
+sockets.on('connect', reconnected);
 onBeforeUnmount(() => {
 	disposed = true;
+	++requestGeneration;
+	clearInterval(clock);
 	clearTimeout(refreshTimer);
 	sockets.off('event', onStateEvent);
 	sockets.off('disconnect', disconnected);
-	sockets.off('connect', refreshReportedState);
+	sockets.off('connect', reconnected);
 });
 onBeforeMount(load);
 </script>

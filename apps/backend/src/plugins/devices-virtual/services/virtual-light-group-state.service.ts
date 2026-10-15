@@ -104,6 +104,16 @@ export class VirtualLightGroupStateService implements OnModuleInit, OnModuleDest
 			})),
 			properties: [...state.properties].map(([category, reported]) => ({
 				category,
+				...(reported.samples.length
+					? {
+							sampled_at: new Date(
+								Math.min(...reported.samples.map((sample) => sample.sampledAt.getTime())),
+							).toISOString(),
+							expires_at: new Date(
+								Math.min(...reported.samples.map((sample) => sample.sampledAt.getTime())) + LIGHT_GROUP_MAXIMUM_AGE_MS,
+							).toISOString(),
+						}
+					: {}),
 				value: reported.value,
 				representative_value: reported.representativeValue,
 				rounded: reported.rounded,

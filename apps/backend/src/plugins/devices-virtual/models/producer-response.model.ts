@@ -266,6 +266,22 @@ export class VirtualLightGroupMemberModel {
 @ApiSchema({ name: 'DevicesVirtualPluginDataLightGroupReportedProperty' })
 export class VirtualLightGroupReportedPropertyModel {
 	@ApiPropertyOptional({
+		type: String,
+		format: 'date-time',
+		description:
+			'Oldest actual contributing sample; absent for configured metadata and fields with no qualified contributors.',
+	})
+	@Expose()
+	sampled_at?: string;
+	@ApiPropertyOptional({
+		type: String,
+		format: 'date-time',
+		description: 'Earliest absolute contributor expiry; reading this report never renews freshness.',
+	})
+	@Expose()
+	expires_at?: string;
+
+	@ApiPropertyOptional({
 		enum: ['configured'],
 		description: 'Configuration metadata; never a physical sample or timestamp',
 	})

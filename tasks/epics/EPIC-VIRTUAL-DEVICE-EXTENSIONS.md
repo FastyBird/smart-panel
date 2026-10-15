@@ -29,11 +29,24 @@ entire acceptance is satisfied, even when its PR also closes other issues.
 ### Merged progress
 
 - [x] VD3-1 / #1448: shared numeric eligibility, weighted mean and explicit outlier filtering.
+- [x] VD3-2 / #1449: additional numeric and binary profiles (merged in #1465).
+- [x] VD3-3 / #1450: measurement authoring and quality presentation (merged in #1465).
 - [x] VD3-4 / #1451: typed group contracts and backend switch/outlet profiles.
 
 Both tasks merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
 head `0e6fe2d0f22988158867b74bc74711b76647c719`, and CodeRabbit's completed main summary reported no merge blockers.
 Admin/panel support for the new group profiles remains VD3-6; these checkmarks do not claim that UI work is delivered.
+
+### Locally staged; pending PR review and CI
+
+- [ ] VD3-5 / #1452: fan/cover backend with qualified Shelly NG COMMAND feedback, accepted independently before composition.
+- [ ] VD3-6 / #1453: five-profile Admin authoring/repair, native Panel controls, scenes and existing cover/light room paths.
+
+The accepted backend commits are composed onto merged #1465 main `4f4dd1f346fa5e9508c729f5b0d11a23a416f465` in
+`feat/virtual-actuator-profiles-ui`. Existing numeric/binary editor changes are preserved; cover migration remains 38.
+No delivery PR is opened yet. POSITION/TILT completion and unqualified cover providers remain unavailable. There is
+no standalone switch/outlet/fan room intent domain; their native device and scene controls do not imply such a domain.
+These limits and software-only checks must remain explicit in review. Neither #1452 nor #1453 is marked complete here.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |

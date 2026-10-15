@@ -124,16 +124,16 @@
 		"loadFailed": "Zdrojová zařízení se nepodařilo načíst.",
 		"retry": "Zkusit znovu",
 		"warning": {
-			"title": "{channel} · {property}: ztráta zdroje",
+			"title": "<channel> · <TYPE-property>: ztráta zdroje",
 			"description": "Zdrojová vlastnost byla odstraněna. Toto zařízení zůstává offline, dokud nebude přemapováno.",
 			"remap": "Přemapovat"
 		}
 	},
 	"remap": {
-		"title": "Přemapovat {property}",
+		"title": "Přemapovat <TYPE-property>",
 		"description": "Vyberte nový zdroj pro tuto vlastnost. Potvrdit lze pouze kompatibilní zdroj.",
 		"confirm": "Přemapovat",
-		"success": "{property} nyní čerpá z nového zdroje",
+		"success": "<TYPE-property> nyní čerpá z nového zdroje",
 		"errors": {
 			"propertyGone": "Tato vlastnost už neexistuje.",
 			"updateFailed": "Vlastnost se nepodařilo přemapovat. Zkuste to prosím znovu."
@@ -144,7 +144,7 @@
 		"projection": "Projekce",
 		"aggregate": "Agregovaný senzor",
 		"transform": "Číselný převod",
-		"group": "Skupina světel",
+		"group": "Skupina ovladačů",
 		"name": "Název",
 		"profile": "Profil výstupu",
 		"temperature": "Teplota (°C)",
@@ -267,9 +267,9 @@
 	},
 	"lightGroup": {
 		"apply": "Použít",
-		"createTitle": "Vytvořit skupinu světel",
+		"createTitle": "Vytvořit skupinu ovladačů",
 		"members": "Členové",
-		"selectMembers": "Vyberte fyzické světelné kanály",
+		"selectMembers": "Vyberte kompatibilní fyzické kanály",
 		"memberBounds": "Vyberte 2–256 různých fyzických kanálů. Členy lze nadále ovládat jednotlivě.",
 		"room": "Místnost",
 		"preview": "Náhled",
@@ -278,9 +278,9 @@
 		"cancel": "Zrušit",
 		"step": "Krok {value}",
 		"commonOnly": "Tyto volitelné funkce nejsou dostupné, protože všichni členové musí mít kompatibilní vlastnosti.",
-		"loadFailed": "Skupinu světel se nepodařilo načíst.",
+		"loadFailed": "Skupinu se nepodařilo načíst.",
 		"revisionConflict": "Konfigurace se změnila nebo je nutné opravit používanou funkci. Před dalším pokusem ji znovu načtěte.",
-		"editTitle": "Upravit skupinu světel",
+		"editTitle": "Upravit skupinu ovladačů",
 		"save": "Uložit",
 		"reload": "Znovu načíst",
 		"missingMember": "Chybějící člen: {identity}",
@@ -301,6 +301,22 @@
 		},
 		"turnOn": "Zapnout",
 		"turnOff": "Vypnout",
-		"commandUncertain": "Výsledek příkazu není jistý. Před dalším příkazem obnovte hlášený stav."
+		"commandUncertain": "Výsledek příkazu není jistý. Před dalším příkazem obnovte hlášený stav.",
+		"profile": "Profil",
+		"coverTypeGuide": "U každého fyzického stínění nastavte stejný explicitní TYPE s jedinou hodnotou pomocí API metadat vlastnosti: PATCH /api/v1/modules/devices/channels/<channel>/properties/<TYPE-property> s data.type a data.format, například [\"blind\"]. Nezadávejte data.value. Typ instalace zvolte sami; název ani model nejsou důkazem.",
+		"coverCommandMeaning": "OTEVŘÍT/ZAVŘÍT potvrzuje zahájení pohybu nebo již dosaženou krajní polohu, nikoli celý pohyb. STOP vyžaduje ověřenou zpětnou vazbu o zastavení.",
+		"readinessUnavailable": "Připravenost příkazu není dostupná",
+		"configured": "Konfigurační metadata",
+		"contributors": "{count}/{total} přispívajících členů",
+		"open": "Otevřít",
+		"close": "Zavřít",
+		"stop": "Zastavit",
+		"profiles": {
+			"light": "Světlo",
+			"switch": "Spínač",
+			"outlet": "Zásuvka",
+			"fan": "Ventilátor",
+			"cover": "Stínění"
+		}
 	}
 }

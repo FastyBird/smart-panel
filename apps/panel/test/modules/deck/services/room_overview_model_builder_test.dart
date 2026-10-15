@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_home_control_plugin_create_home_control_space_category.dart';
@@ -15,9 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 // Helper to create a display with minimum required fields
-DisplayModel createDisplay({
-  String? spaceId = _roomUuid,
-}) {
+DisplayModel createDisplay({String? spaceId = _roomUuid}) {
   return DisplayModel(
     id: 'display-1',
     macAddress: '00:11:22:33:44:55',
@@ -68,7 +67,8 @@ SpaceView createRoom({
     model: SpaceModel(
       id: id,
       type: SpacesModuleDataSpaceType.room,
-      category: SpacesHomeControlPluginCreateHomeControlSpaceCategory.livingRoom,
+      category:
+          SpacesHomeControlPluginCreateHomeControlSpaceCategory.livingRoom,
       name: name,
       icon: icon,
       displayOrder: 0,
@@ -82,7 +82,8 @@ SpaceView createRoom({
 SceneView createScene({
   String id = _sceneUuid,
   String name = 'Scene',
-  ScenesModuleDataSceneCategory category = ScenesModuleDataSceneCategory.generic,
+  ScenesModuleDataSceneCategory category =
+      ScenesModuleDataSceneCategory.generic,
   bool enabled = true,
   bool triggerable = true,
   int order = 0,
@@ -106,6 +107,62 @@ final _l = AppLocalizationsEn();
 
 void main() {
   group('buildRoomOverviewModel', () {
+    test(
+      'group shading never falls back to an average and disables unsupported position quick actions',
+      () {
+        final state = CoversStateModel.fromJson({
+          'has_covers': true,
+          'average_position': null,
+          'all_closed': false,
+          'group_operations': [
+            {'operation': 'open', 'commandable': true, 'reasons': <String>[]},
+            {
+              'operation': 'close',
+              'commandable': false,
+              'reasons': ['tag_unavailable'],
+            },
+          ],
+        }, spaceId: _roomUuid);
+        final model = buildRoomOverviewModel(
+          RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.windowCovering],
+            scenes: [],
+            now: DateTime.now(),
+            localizations: AppLocalizationsEn(),
+            coversState: state,
+            shadingPosition: 65,
+          ),
+        );
+        final card = model.domainCards.firstWhere(
+          (card) => card.domain == DomainType.shading,
+        );
+        expect(card.primaryValue, 'Unknown');
+        expect(card.subtitle, isNot(contains('65')));
+        expect(
+          card.actions
+              .firstWhere((action) => action.type == QuickActionType.coversHalf)
+              .disabled,
+          isTrue,
+        );
+        expect(
+          card.actions
+              .firstWhere(
+                (action) => action.type == QuickActionType.coversClose,
+              )
+              .disabled,
+          isTrue,
+        );
+        expect(
+          card.actions
+              .firstWhere((action) => action.type == QuickActionType.coversOpen)
+              .disabled,
+          isFalse,
+        );
+      },
+    );
+
     test('should return model with room name as title', () {
       final input = RoomOverviewBuildInput(
         display: createDisplay(),
@@ -192,7 +249,7 @@ void main() {
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -209,7 +266,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -229,7 +286,7 @@ void main() {
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -251,7 +308,7 @@ void main() {
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -270,69 +327,87 @@ void main() {
           energyDeviceCount: 3,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.domainCards.any((c) => c.domain == DomainType.energy), false);
-      });
-
-      test('should show Custom as primary value when lights are on without intent', () {
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [
-            DevicesModuleDeviceCategory.lighting,
-            DevicesModuleDeviceCategory.lighting,
-            DevicesModuleDeviceCategory.lighting,
-          ],
-          lightsOnCount: 2,
-          scenes: [],
-          now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+        expect(
+          model.domainCards.any((c) => c.domain == DomainType.energy),
+          false,
         );
-
-        final model = buildRoomOverviewModel(input);
-
-        final lightsCard = model.domainCards.firstWhere((c) => c.domain == DomainType.lights);
-        expect(lightsCard.primaryValue, 'Custom');
-        expect(lightsCard.isActive, true);
       });
 
-      test('withheld climate readings cannot fall back to a raw overview value', () {
-        for (final status in ['coverage_conflict', 'coverage_stale', 'ok']) {
+      test(
+        'should show Custom as primary value when lights are on without intent',
+        () {
           final input = RoomOverviewBuildInput(
             display: createDisplay(),
             room: createRoom(),
-            deviceCategories: [DevicesModuleDeviceCategory.thermostat],
-            temperature: 21.5,
-            climateState: ClimateStateModel.fromJson({
-              'has_climate': true,
-              'current_temperature': null,
-              'temperature_contribution': {
-                'status': status,
-                'selected_property_ids': ['aggregate'],
-                'unavailable_property_ids': ['aggregate'],
-              },
-            }, spaceId: _roomUuid),
+            deviceCategories: [
+              DevicesModuleDeviceCategory.lighting,
+              DevicesModuleDeviceCategory.lighting,
+              DevicesModuleDeviceCategory.lighting,
+            ],
+            lightsOnCount: 2,
             scenes: [],
             now: DateTime(2024, 6, 15, 12, 0),
             localizations: _l,
           );
+
           final model = buildRoomOverviewModel(input);
-          final card = model.domainCards.firstWhere(
-            (card) => card.domain == DomainType.climate,
+
+          final lightsCard = model.domainCards.firstWhere(
+            (c) => c.domain == DomainType.lights,
           );
-          expect(card.primaryValue.contains('21.5'), isFalse);
-          expect(card.isActive, isFalse);
-          expect(card.subtitle, status == 'coverage_conflict'
-              ? _l.climate_temperature_coverage_conflict
-              : _l.climate_temperature_coverage_unavailable);
-          expect(model.sensorReadings.where((reading) =>
-              reading.label == _l.device_temperature), isEmpty);
-        }
-      });
+          expect(lightsCard.primaryValue, 'Custom');
+          expect(lightsCard.isActive, true);
+        },
+      );
+
+      test(
+        'withheld climate readings cannot fall back to a raw overview value',
+        () {
+          for (final status in ['coverage_conflict', 'coverage_stale', 'ok']) {
+            final input = RoomOverviewBuildInput(
+              display: createDisplay(),
+              room: createRoom(),
+              deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+              temperature: 21.5,
+              climateState: ClimateStateModel.fromJson({
+                'has_climate': true,
+                'current_temperature': null,
+                'temperature_contribution': {
+                  'status': status,
+                  'selected_property_ids': ['aggregate'],
+                  'unavailable_property_ids': ['aggregate'],
+                },
+              }, spaceId: _roomUuid),
+              scenes: [],
+              now: DateTime(2024, 6, 15, 12, 0),
+              localizations: _l,
+            );
+            final model = buildRoomOverviewModel(input);
+            final card = model.domainCards.firstWhere(
+              (card) => card.domain == DomainType.climate,
+            );
+            expect(card.primaryValue.contains('21.5'), isFalse);
+            expect(card.isActive, isFalse);
+            expect(
+              card.subtitle,
+              status == 'coverage_conflict'
+                  ? _l.climate_temperature_coverage_conflict
+                  : _l.climate_temperature_coverage_unavailable,
+            );
+            expect(
+              model.sensorReadings.where(
+                (reading) => reading.label == _l.device_temperature,
+              ),
+              isEmpty,
+            );
+          }
+        },
+      );
 
       test('should show temperature with unit as climate primary value', () {
         final input = RoomOverviewBuildInput(
@@ -342,12 +417,14 @@ void main() {
           temperature: 21.5,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
 
-        final climateCard = model.domainCards.firstWhere((c) => c.domain == DomainType.climate);
+        final climateCard = model.domainCards.firstWhere(
+          (c) => c.domain == DomainType.climate,
+        );
         expect(climateCard.primaryValue, '21.5\u00B0C');
         expect(climateCard.isActive, true);
       });
@@ -361,7 +438,7 @@ void main() {
           deviceCategories: [],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -380,7 +457,7 @@ void main() {
             createScene(id: _scene2Uuid, enabled: false, triggerable: true),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -399,7 +476,7 @@ void main() {
             createScene(id: _scene2Uuid, triggerable: false),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -415,18 +492,28 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-                id: _scene1Uuid, category: ScenesModuleDataSceneCategory.movie),
+              id: _scene1Uuid,
+              category: ScenesModuleDataSceneCategory.movie,
+            ),
             createScene(
-                id: _scene2Uuid, category: ScenesModuleDataSceneCategory.relax),
+              id: _scene2Uuid,
+              category: ScenesModuleDataSceneCategory.relax,
+            ),
             createScene(
-                id: _scene3Uuid, category: ScenesModuleDataSceneCategory.night),
+              id: _scene3Uuid,
+              category: ScenesModuleDataSceneCategory.night,
+            ),
             createScene(
-                id: _scene4Uuid, category: ScenesModuleDataSceneCategory.work),
+              id: _scene4Uuid,
+              category: ScenesModuleDataSceneCategory.work,
+            ),
             createScene(
-                id: _scene5Uuid, category: ScenesModuleDataSceneCategory.party),
+              id: _scene5Uuid,
+              category: ScenesModuleDataSceneCategory.party,
+            ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -441,17 +528,20 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-                id: _workSceneUuid,
-                category: ScenesModuleDataSceneCategory.work),
+              id: _workSceneUuid,
+              category: ScenesModuleDataSceneCategory.work,
+            ),
             createScene(
-                id: _movieSceneUuid,
-                category: ScenesModuleDataSceneCategory.movie),
+              id: _movieSceneUuid,
+              category: ScenesModuleDataSceneCategory.movie,
+            ),
             createScene(
-                id: _relaxSceneUuid,
-                category: ScenesModuleDataSceneCategory.relax),
+              id: _relaxSceneUuid,
+              category: ScenesModuleDataSceneCategory.relax,
+            ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -469,16 +559,18 @@ void main() {
           deviceCategories: [],
           scenes: [
             createScene(
-                id: _movie2Uuid,
-                category: ScenesModuleDataSceneCategory.movie,
-                order: 2),
+              id: _movie2Uuid,
+              category: ScenesModuleDataSceneCategory.movie,
+              order: 2,
+            ),
             createScene(
-                id: _movie1Uuid,
-                category: ScenesModuleDataSceneCategory.movie,
-                order: 1),
+              id: _movie1Uuid,
+              category: ScenesModuleDataSceneCategory.movie,
+              order: 1,
+            ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -496,16 +588,19 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
           lightsOnCount: 3,
         );
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.suggestedActions.any((a) => a.id == 'turn-off-lights'),
-            true);
-        final action = model.suggestedActions
-            .firstWhere((a) => a.id == 'turn-off-lights');
+        expect(
+          model.suggestedActions.any((a) => a.id == 'turn-off-lights'),
+          true,
+        );
+        final action = model.suggestedActions.firstWhere(
+          (a) => a.id == 'turn-off-lights',
+        );
         expect(action.actionType, SuggestedActionType.turnOffLights);
         expect(action.icon, MdiIcons.lightbulbOutline);
       });
@@ -517,36 +612,41 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
           lightsOnCount: 0,
         );
 
         final model = buildRoomOverviewModel(input);
 
         expect(
-            model.suggestedActions.any((a) => a.id == 'turn-off-lights'), false);
-      });
-
-      test('should not suggest turning off lights when lightsOnCount is null',
-          () {
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [DevicesModuleDeviceCategory.lighting],
-          scenes: [],
-          now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
-          lightsOnCount: null,
+          model.suggestedActions.any((a) => a.id == 'turn-off-lights'),
+          false,
         );
-
-        final model = buildRoomOverviewModel(input);
-
-        expect(
-            model.suggestedActions.any((a) => a.id == 'turn-off-lights'), false);
       });
 
-      test('should suggest movie mode when lights + media + movie scene exist',
-          () {
+      test(
+        'should not suggest turning off lights when lightsOnCount is null',
+        () {
+          final input = RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [DevicesModuleDeviceCategory.lighting],
+            scenes: [],
+            now: DateTime(2024, 6, 15, 12, 0),
+            localizations: _l,
+            lightsOnCount: null,
+          );
+
+          final model = buildRoomOverviewModel(input);
+
+          expect(
+            model.suggestedActions.any((a) => a.id == 'turn-off-lights'),
+            false,
+          );
+        },
+      );
+
+      test('should suggest movie mode when lights + media + movie scene exist', () {
         // Movie scene needs to NOT be in quick scenes, so add 4 scenes with higher priority
         // Actually movie has priority 0, so we can't push it out. Let's test differently -
         // This test checks that movie mode IS NOT suggested when movie scene IS in quick scenes
@@ -565,14 +665,16 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
 
         // Movie is in quick scenes, so movie-mode should NOT be suggested
         expect(
-            model.quickScenes.any((s) => s.sceneId == _movieSceneUuid), true);
+          model.quickScenes.any((s) => s.sceneId == _movieSceneUuid),
+          true,
+        );
         expect(model.suggestedActions.any((a) => a.id == 'movie-mode'), false);
       });
 
@@ -591,49 +693,67 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
 
         // Movie scene is in quick scenes (first 4), so movie-mode should not be suggested
         expect(
-            model.quickScenes.any((s) => s.sceneId == _movieSceneUuid), true);
+          model.quickScenes.any((s) => s.sceneId == _movieSceneUuid),
+          true,
+        );
         expect(model.suggestedActions.any((a) => a.id == 'movie-mode'), false);
       });
 
-      test('should not suggest night mode when night scene is in quick scenes', () {
-        // All triggerable scenes are now included in quick scenes (no limit),
-        // so night scene will always be in quick scenes and not suggested
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [],
-          scenes: [
-            createScene(
-                id: _scene1Uuid, category: ScenesModuleDataSceneCategory.movie),
-            createScene(
-                id: _scene2Uuid, category: ScenesModuleDataSceneCategory.relax),
-            createScene(
-                id: _scene3Uuid, category: ScenesModuleDataSceneCategory.work),
-            createScene(
-                id: _scene4Uuid, category: ScenesModuleDataSceneCategory.party),
-            createScene(
-              id: _nightSceneUuid,
-              category: ScenesModuleDataSceneCategory.night,
-            ),
-          ],
-          now: DateTime(2024, 6, 15, 22, 0), // 10 PM
-        localizations: _l,
-        );
+      test(
+        'should not suggest night mode when night scene is in quick scenes',
+        () {
+          // All triggerable scenes are now included in quick scenes (no limit),
+          // so night scene will always be in quick scenes and not suggested
+          final input = RoomOverviewBuildInput(
+            display: createDisplay(),
+            room: createRoom(),
+            deviceCategories: [],
+            scenes: [
+              createScene(
+                id: _scene1Uuid,
+                category: ScenesModuleDataSceneCategory.movie,
+              ),
+              createScene(
+                id: _scene2Uuid,
+                category: ScenesModuleDataSceneCategory.relax,
+              ),
+              createScene(
+                id: _scene3Uuid,
+                category: ScenesModuleDataSceneCategory.work,
+              ),
+              createScene(
+                id: _scene4Uuid,
+                category: ScenesModuleDataSceneCategory.party,
+              ),
+              createScene(
+                id: _nightSceneUuid,
+                category: ScenesModuleDataSceneCategory.night,
+              ),
+            ],
+            now: DateTime(2024, 6, 15, 22, 0), // 10 PM
+            localizations: _l,
+          );
 
-        final model = buildRoomOverviewModel(input);
+          final model = buildRoomOverviewModel(input);
 
-        expect(model.quickScenes.length, 5);
-        expect(
-            model.quickScenes.any((s) => s.sceneId == _nightSceneUuid), true);
-        expect(model.suggestedActions.any((a) => a.id == 'night-mode'), false);
-      });
+          expect(model.quickScenes.length, 5);
+          expect(
+            model.quickScenes.any((s) => s.sceneId == _nightSceneUuid),
+            true,
+          );
+          expect(
+            model.suggestedActions.any((a) => a.id == 'night-mode'),
+            false,
+          );
+        },
+      );
 
       test('should suggest night mode at 5 AM', () {
         // Test the logic without worrying about quick scenes - just verify night hours work
@@ -648,14 +768,16 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 5, 0), // 5 AM
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
 
         // Night scene is in quick scenes (only 1 scene), so it won't be suggested
         expect(
-            model.quickScenes.any((s) => s.sceneId == _nightSceneUuid), true);
+          model.quickScenes.any((s) => s.sceneId == _nightSceneUuid),
+          true,
+        );
         expect(model.suggestedActions.any((a) => a.id == 'night-mode'), false);
       });
 
@@ -671,7 +793,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 7, 0), // 7 AM - not night hours
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -699,7 +821,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 22, 0), // Night hours
-        localizations: _l,
+          localizations: _l,
           lightsOnCount: 5, // Lights are on
         );
 
@@ -721,7 +843,7 @@ void main() {
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -739,7 +861,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final inputWithoutDevices = RoomOverviewBuildInput(
@@ -748,7 +870,7 @@ void main() {
           deviceCategories: [],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
-        localizations: _l,
+          localizations: _l,
         );
 
         final modelWithDevices = buildRoomOverviewModel(inputWithDevices);

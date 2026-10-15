@@ -4,6 +4,7 @@ import { PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 
 export interface DeviceContributionCoverage {
+	operations?: readonly { operation: string; commandable: boolean; reasons: readonly string[] }[];
 	/** Stable intended physical channel identities, including missing members. */
 	leaves: readonly string[];
 	/** Fences membership and source metadata through queued physical I/O. */
@@ -20,6 +21,7 @@ export interface DeviceContributionCoverage {
 			category: PropertyCategory;
 			value: string | boolean | number | null;
 			contributors: number;
+			expiresAt?: number;
 		}[];
 	};
 }

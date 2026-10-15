@@ -9,7 +9,6 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
-import { matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import {
@@ -44,6 +43,7 @@ import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.serv
 import { coverContractReasons, loadCoverMemberContract } from './virtual-cover-contract.utils';
 import { coverOperationReadiness } from './virtual-cover-readiness.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { groupCapabilityChange } from './virtual-group-contract.utils';
 import {
 	GROUP_PROFILES,
 	commonGroupCapabilities,
@@ -659,37 +659,12 @@ export class VirtualProducerConfigService {
 			);
 			if (liveSources.length !== members.length) continue;
 			const common = capabilities.find((capability) => capability.category === output.category);
-			if (
-				[VirtualLightGroupProfile.FAN, VirtualLightGroupProfile.COVER].includes(dto.profile) &&
-				(!common ||
-					common.dataType !== output.dataType ||
-					common.unit !== (resolvePropertyUnit(output) ?? null) ||
-					common.step !== (output.step ?? null) ||
-					JSON.stringify(common.format) !== JSON.stringify(output.format ?? null))
-			) {
+			const change = groupCapabilityChange(dto.profile, common, output);
+			if (change === 'changed')
 				throw new ConflictException(
 					`Membership edit would change capability ${output.category}; preserve the exact exposed contract.`,
 				);
-			}
-			const numericRange = common?.format?.length === 2 && common.format.every((value) => typeof value === 'number');
-			if (
-				!common ||
-				common.dataType !== output.dataType ||
-				common.unit !== (resolvePropertyUnit(output) ?? null) ||
-				(common.format?.every((value) => typeof value === 'string') &&
-					common.format.length > 0 &&
-					(!output.format?.length ||
-						output.format.some((value) => !(common.format as string[]).includes(String(value))))) ||
-				(numericRange &&
-					(!output.format ||
-						output.format.length !== 2 ||
-						Number(output.format[0]) < Number(common.format[0]) ||
-						Number(output.format[1]) > Number(common.format[1]))) ||
-				(common.step &&
-					(!output.step ||
-						!matchesStep(output.step, common.step, 0) ||
-						!matchesStep(Number(output.format?.[0] ?? 0), common.step, Number(common.format?.[0] ?? 0))))
-			) {
+			if (change === 'removed') {
 				if (existing)
 					throw new ConflictException(
 						`Membership edit would remove capability ${output.category}; repair its scene/tile references and exposed contract explicitly.`,

@@ -35,7 +35,9 @@ class LightingIntentResult {
           .toList(),
       composites: (json['composites'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
-          .map((entry) => CompositeCommandOutcome.fromJson(entry, requestId: ''))
+          .map(
+            (entry) => CompositeCommandOutcome.fromJson(entry, requestId: ''),
+          )
           .toList(),
     );
   }
@@ -50,8 +52,10 @@ class ClimateIntentResult {
   final List<String>? offlineDeviceIds;
   final List<String>? failedTargets;
   final ClimateMode? mode;
+
   /// Heating setpoint (used in HEAT and AUTO modes)
   final double? heatingSetpoint;
+
   /// Cooling setpoint (used in COOL and AUTO modes)
   final double? coolingSetpoint;
 
@@ -95,6 +99,7 @@ class CoversIntentResult {
   final List<String>? offlineDeviceIds;
   final List<String>? failedTargets;
   final int? newPosition;
+  final List<CompositeCommandOutcome> composites;
 
   CoversIntentResult({
     required this.success,
@@ -104,6 +109,7 @@ class CoversIntentResult {
     this.offlineDeviceIds,
     this.failedTargets,
     this.newPosition,
+    this.composites = const [],
   });
 
   factory CoversIntentResult.fromJson(Map<String, dynamic> json) {
@@ -119,6 +125,12 @@ class CoversIntentResult {
           ?.map((e) => e as String)
           .toList(),
       newPosition: json['new_position'] as int?,
+      composites: (json['composites'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (entry) => CompositeCommandOutcome.fromJson(entry, requestId: ''),
+          )
+          .toList(),
     );
   }
 }

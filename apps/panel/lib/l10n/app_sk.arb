@@ -1287,5 +1287,78 @@
     }
   },
   "virtual_measurement_true": "Detegované",
-  "virtual_measurement_false": "Nedetegované"
+  "virtual_measurement_false": "Nedetegované",
+  "groupActualFeedback": "Nahlásený fyzický stav",
+  "groupReload": "Znovu načítať / pripojiť",
+  "groupRepair": "Konfigurácia alebo schopnosti sa zmenili. Znovu načítajte a opravte členstvo v Admine.",
+  "groupUncertain": "Výsledok príkazu nie je istý. Pred ďalším pokusom načítajte skutočný stav.",
+  "groupUnknown": "Neznáme",
+  "groupMixed": "Zmiešané",
+  "groupOn": "Zapnuté",
+  "groupOff": "Vypnuté",
+  "groupUnavailable": "Nedostupné",
+  "groupOpen": "Otvoriť",
+  "groupClose": "Zatvoriť",
+  "groupStop": "Zastaviť",
+  "groupSelectValue": "Vyberte natívnu hodnotu",
+  "groupApply": "Použiť",
+  "groupApplyTogether": "Použiť spolu",
+  "groupConfigured": "Konfiguračné metadáta",
+  "groupMissing": "Chýbajúci člen; opravte v Admine",
+  "groupReadinessUnavailable": "Pripravenosť príkazu nie je dostupná",
+  "groupCoverMeaning": "OTVORIŤ/ZATVORIŤ potvrdzuje začiatok pohybu alebo dosiahnutú krajnú polohu, nie celý pohyb. STOP vyžaduje kvalifikované potvrdenie zastavenia.",
+  "groupContributors": "{count}/{total} prispievajúcich členov",
+  "groupCommandOutcome": "Príkaz skupiny: {status}",
+  "groupStep": "Krok {value}",
+  "groupPending": "Čaká sa",
+  "groupConfirmed": "Potvrdené",
+  "groupPartial": "Čiastočné",
+  "groupFailed": "Zlyhalo",
+  "groupSuperseded": "Nahradené",
+  "groupTimedOut": "Vypršal čas",
+  "groupFieldOn": "Napájanie",
+  "groupFieldSpeed": "Rýchlosť",
+  "groupFieldSwing": "Otáčanie",
+  "groupFieldDirection": "Smer",
+  "groupFieldMode": "Režim",
+  "groupFieldPosition": "Poloha",
+  "groupFieldTilt": "Náklon",
+  "groupFieldType": "Typ",
+  "groupFieldStatus": "Stav",
+  "groupFieldObstruction": "Prekážka",
+  "groupFieldInUse": "Používa sa",
+  "groupFieldBrightness": "Jas",
+  "groupFieldColorTemperature": "Teplota farby",
+  "groupFieldColorRed": "Červená",
+  "groupFieldColorGreen": "Zelená",
+  "groupFieldColorBlue": "Modrá",
+  "groupFieldHue": "Odtieň",
+  "groupFieldSaturation": "Sýtosť",
+  "@groupContributors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@groupCommandOutcome": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@groupStep": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOpenAll": "Otvoriť všetko",
+  "groupCloseAll": "Zavrieť všetko",
+  "groupStopAll": "Zastaviť všetko"
 }

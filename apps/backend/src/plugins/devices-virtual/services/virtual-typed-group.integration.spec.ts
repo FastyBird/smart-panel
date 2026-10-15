@@ -296,6 +296,17 @@ describe('typed fan/cover SQLite and core composite lifecycle', () => {
 					value: null,
 					mixed: true,
 				});
+
+				const actualReport = runtime.getReportedModel(channelId);
+				const mixedField = actualReport.properties.find((field) => field.category === quantity);
+				expect(mixedField.mixed).toBe(true);
+				expect(Date.parse(mixedField.expires_at) - Date.parse(mixedField.sampled_at)).toBe(300_000);
+				if (profile === VirtualLightGroupProfile.COVER) {
+					const declared = actualReport.properties.find((field) => field.category === PropertyCategory.TYPE);
+					expect(declared.provenance).toBe('configured');
+					expect(declared.sampled_at).toBeUndefined();
+					expect(declared.expires_at).toBeUndefined();
+				}
 				await report(1, quantity, 20);
 				await runtime.refresh();
 				expect(producers.read(outputs.get(quantity))?.value).toBe(20);

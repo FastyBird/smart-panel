@@ -124,16 +124,16 @@
 		"loadFailed": "Quellgeräte konnten nicht geladen werden.",
 		"retry": "Erneut versuchen",
 		"warning": {
-			"title": "{channel} · {property}: Quelle verloren",
+			"title": "<channel> · <TYPE-property>: Quelle verloren",
 			"description": "Die Quelleigenschaft wurde gelöscht. Dieses Gerät bleibt offline, bis sie neu zugeordnet wird.",
 			"remap": "Neu zuordnen"
 		}
 	},
 	"remap": {
-		"title": "{property} neu zuordnen",
+		"title": "<TYPE-property> neu zuordnen",
 		"description": "Wählen Sie eine neue Quelle für diese Eigenschaft. Bestätigt werden kann nur eine kompatible Quelle.",
 		"confirm": "Neu zuordnen",
-		"success": "{property} bezieht jetzt Werte aus einer neuen Quelle",
+		"success": "<TYPE-property> bezieht jetzt Werte aus einer neuen Quelle",
 		"errors": {
 			"propertyGone": "Diese Eigenschaft existiert nicht mehr.",
 			"updateFailed": "Die Eigenschaft konnte nicht neu zugeordnet werden. Bitte versuchen Sie es erneut."
@@ -144,7 +144,7 @@
 		"projection": "Projektion",
 		"aggregate": "Sensoraggregat",
 		"transform": "Numerische Umrechnung",
-		"group": "Lichtgruppe",
+		"group": "Aktorgruppe",
 		"name": "Name",
 		"profile": "Ausgabeprofil",
 		"temperature": "Temperatur (°C)",
@@ -267,9 +267,9 @@
 	},
 	"lightGroup": {
 		"apply": "Anwenden",
-		"createTitle": "Lichtgruppe erstellen",
+		"createTitle": "Aktorgruppe erstellen",
 		"members": "Mitglieder",
-		"selectMembers": "Physische Lichtkanäle auswählen",
+		"selectMembers": "Kompatible physische Kanäle auswählen",
 		"memberBounds": "2–256 verschiedene physische Kanäle auswählen. Mitglieder bleiben einzeln steuerbar.",
 		"room": "Raum",
 		"preview": "Vorschau",
@@ -278,9 +278,9 @@
 		"cancel": "Abbrechen",
 		"step": "Schritt {value}",
 		"commonOnly": "Diese optionalen Funktionen sind nicht verfügbar, da alle Mitglieder kompatible Eigenschaften benötigen.",
-		"loadFailed": "Die Lichtgruppe konnte nicht geladen werden.",
+		"loadFailed": "Die Gruppe konnte nicht geladen werden.",
 		"revisionConflict": "Die Konfiguration hat sich geändert oder eine verwendete Funktion muss repariert werden. Vor einem neuen Versuch neu laden.",
-		"editTitle": "Lichtgruppe bearbeiten",
+		"editTitle": "Aktorgruppe bearbeiten",
 		"save": "Speichern",
 		"reload": "Neu laden",
 		"missingMember": "Fehlendes Mitglied: {identity}",
@@ -301,6 +301,22 @@
 		},
 		"turnOn": "Einschalten",
 		"turnOff": "Ausschalten",
-		"commandUncertain": "Das Befehlergebnis ist ungewiss. Aktualisieren Sie den gemeldeten Zustand vor einem weiteren Befehl."
+		"commandUncertain": "Das Befehlergebnis ist ungewiss. Aktualisieren Sie den gemeldeten Zustand vor einem weiteren Befehl.",
+		"profile": "Profil",
+		"coverTypeGuide": "Für jede physische Beschattung denselben expliziten TYPE mit einem Wert über die Eigenschaftsmetadaten setzen: PATCH /api/v1/modules/devices/channels/<channel>/properties/<TYPE-property> mit data.type und data.format, z. B. [\"blind\"]. data.value nicht angeben. Den installierten Typ selbst auswählen; Name und Modell sind kein Nachweis.",
+		"coverCommandMeaning": "ÖFFNEN/SCHLIESSEN bestätigt den Bewegungsbeginn oder eine bereits erreichte Endlage, nicht die vollständige Fahrt. STOP benötigt qualifizierte Stillstandsrückmeldung.",
+		"readinessUnavailable": "Befehlsbereitschaft nicht verfügbar",
+		"configured": "Konfigurationsmetadaten",
+		"contributors": "{count}/{total} beitragende Mitglieder",
+		"open": "Öffnen",
+		"close": "Schließen",
+		"stop": "Stoppen",
+		"profiles": {
+			"light": "Licht",
+			"switch": "Schalter",
+			"outlet": "Steckdose",
+			"fan": "Ventilator",
+			"cover": "Beschattung"
+		}
 	}
 }

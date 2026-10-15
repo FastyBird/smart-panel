@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceContributionCoverage } from '../../../modules/devices/services/device-contribution.registry.service';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { CoversMode, CoversRole } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
+import { LightingContributionPlannerService } from './lighting-contribution-planner.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';
 
@@ -16,6 +18,7 @@ import { SpaceIntentBaseService } from './space-intent-base.service';
  * Represents a window covering device with its channel, properties, and role.
  */
 export interface CoverDevice {
+	coverage?: DeviceContributionCoverage;
 	device: DeviceEntity;
 	coverChannel: ChannelEntity;
 	positionProperty: ChannelPropertyEntity | null;
@@ -59,6 +62,12 @@ export interface CoversModeMatch {
  * State information for covers in a space.
  */
 export interface CoversState {
+	groupExpiresAt?: string;
+	groupOperations?: {
+		operation: 'open' | 'close' | 'stop' | 'position' | 'tilt';
+		commandable: boolean;
+		reasons: string[];
+	}[];
 	hasCovers: boolean;
 	// Mode detection
 	detectedMode: CoversMode | null;
@@ -95,6 +104,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		private readonly coversRoleService: SpaceCoversRoleService,
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
+		@Optional() private readonly contributions?: LightingContributionPlannerService,
 	) {
 		super();
 	}
@@ -163,7 +173,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			roleGroups.get(role)?.push(cover);
 
 			// Count by role (use same fallback as roleGroups for consistency)
-			coversByRole[role] = (coversByRole[role] ?? 0) + 1;
+			coversByRole[role] = (coversByRole[role] ?? 0) + (cover.coverage?.reported.total ?? 1);
 		}
 
 		// Calculate per-role state
@@ -181,8 +191,8 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		let anyHasTilt = false;
 
 		for (const cover of covers) {
-			const position = this.getPropertyNumericValue(cover.positionProperty);
-			const tilt = this.getPropertyNumericValue(cover.tiltProperty);
+			const position = this.readCoverNumber(cover, PropertyCategory.POSITION);
+			const tilt = this.readCoverNumber(cover, PropertyCategory.TILT);
 
 			if (position !== null) {
 				allPositions.push(position);
@@ -201,8 +211,27 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		}
 
 		// Calculate overall position mixed state
-		const positionResult = this.getUniformValue(allPositions);
-		const tiltResult = this.getUniformValue(allTilts);
+		const positionResult = this.coverUniformValue(covers, allPositions);
+		if (
+			covers.some((cover) => this.isGroup(cover) && this.readCoverNumber(cover, PropertyCategory.POSITION) === null)
+		) {
+			positionResult.value = null;
+			allClosed = false;
+		}
+		positionResult.isMixed ||= covers.some((cover) =>
+			cover.coverage?.reported.mixedProperties.includes(PropertyCategory.POSITION),
+		);
+		const tiltResult = this.coverUniformValue(covers, allTilts);
+		if (
+			covers.some(
+				(cover) =>
+					this.isGroup(cover) && cover.tiltProperty && this.readCoverNumber(cover, PropertyCategory.TILT) === null,
+			)
+		)
+			tiltResult.value = null;
+		tiltResult.isMixed ||= covers.some((cover) =>
+			cover.coverage?.reported.mixedProperties.includes(PropertyCategory.TILT),
+		);
 
 		// Get last applied mode from InfluxDB
 		const lastApplied = await this.intentTimeseriesService.getLastCoversMode(spaceId);
@@ -213,7 +242,14 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			: null;
 
 		// Detect current mode (prefer lastAppliedMode as tie-breaker)
-		const modeMatch = this.detectMode(roles, covers, lastAppliedMode);
+		const modeMatch = covers.some(
+			(cover) =>
+				this.isGroup(cover) &&
+				(this.readCoverNumber(cover, PropertyCategory.POSITION) === null ||
+					cover.coverage?.reported.mixedProperties.includes(PropertyCategory.POSITION)),
+		)
+			? null
+			: this.detectMode(roles, covers, lastAppliedMode);
 
 		// Determine if mode was set by intent using mode validity tracking
 		const detectedMode = modeMatch?.mode ?? null;
@@ -236,6 +272,31 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 
 		return {
 			hasCovers: true,
+			...(covers.some((cover) => this.isGroup(cover)) ? { groupExpiresAt: this.groupExpiry(covers) } : {}),
+			...(covers.some((cover) => this.isGroup(cover))
+				? {
+						groupOperations: (['open', 'close', 'stop', 'position', 'tilt'] as const).map((operation) => {
+							const reasons = covers.flatMap((cover) => {
+								if (this.isGroup(cover)) {
+									const readiness = cover.coverage?.operations?.find((item) => item.operation === operation);
+									return readiness?.commandable && cover.coverage?.isCurrent?.() !== false
+										? []
+										: readiness?.reasons.length
+											? [...readiness.reasons]
+											: [`${cover.coverChannel.id}: qualified_cover_adapter_unavailable`];
+								}
+								const property =
+									operation === 'position'
+										? cover.positionProperty
+										: operation === 'tilt'
+											? cover.tiltProperty
+											: cover.commandProperty;
+								return property ? [] : [`${cover.coverChannel.id}: control_unavailable:${operation}`];
+							});
+							return { operation, commandable: reasons.length === 0, reasons };
+						}),
+					}
+				: {}),
 			detectedMode,
 			modeConfidence: modeMatch ? modeMatch.confidence : 'none',
 			modeMatchPercentage: modeMatch?.matchPercentage ?? null,
@@ -247,7 +308,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			hasTilt: anyHasTilt,
 			anyOpen,
 			allClosed,
-			devicesCount: covers.length,
+			devicesCount: covers.reduce((count, cover) => count + (cover.coverage?.reported.total ?? 1), 0),
 			roles,
 			coversByRole,
 			lastAppliedMode,
@@ -266,13 +327,13 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 		let hasTilt = false;
 
 		for (const cover of covers) {
-			const position = this.getPropertyNumericValue(cover.positionProperty);
-			const tilt = this.getPropertyNumericValue(cover.tiltProperty);
+			const position = this.readCoverNumber(cover, PropertyCategory.POSITION);
+			const tilt = this.readCoverNumber(cover, PropertyCategory.TILT);
 
 			if (position !== null) {
 				positions.push(position);
 				if (position > 0) {
-					devicesOpen++;
+					devicesOpen += cover.coverage?.reported.total ?? 1;
 				}
 			}
 
@@ -284,11 +345,28 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			}
 		}
 
-		const positionResult = this.getUniformValue(positions);
-		const tiltResult = this.getUniformValue(tilts);
+		const positionResult = this.coverUniformValue(covers, positions);
+		const unknownGroup = covers.some(
+			(cover) => this.isGroup(cover) && this.readCoverNumber(cover, PropertyCategory.POSITION) === null,
+		);
+		if (unknownGroup) positionResult.value = null;
+		positionResult.isMixed ||= covers.some((cover) =>
+			cover.coverage?.reported.mixedProperties.includes(PropertyCategory.POSITION),
+		);
+		const tiltResult = this.coverUniformValue(covers, tilts);
+		if (
+			covers.some(
+				(cover) =>
+					this.isGroup(cover) && cover.tiltProperty && this.readCoverNumber(cover, PropertyCategory.TILT) === null,
+			)
+		)
+			tiltResult.value = null;
+		tiltResult.isMixed ||= covers.some((cover) =>
+			cover.coverage?.reported.mixedProperties.includes(PropertyCategory.TILT),
+		);
 
 		const isOpen = devicesOpen > 0;
-		const isClosed = devicesOpen === 0 && positions.length > 0;
+		const isClosed = !unknownGroup && devicesOpen === 0 && positions.length > 0;
 
 		return {
 			role,
@@ -299,7 +377,7 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			hasTilt,
 			isOpen,
 			isClosed,
-			devicesCount: covers.length,
+			devicesCount: covers.reduce((count, cover) => count + (cover.coverage?.reported.total ?? 1), 0),
 			devicesOpen,
 		};
 	}
@@ -517,6 +595,46 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 			}
 		}
 
-		return covers;
+		if (!this.contributions) return covers;
+		const plan = await this.contributions.plan(
+			covers.map((cover) => ({ ...cover, channel: cover.coverChannel })),
+			'covers',
+		);
+		return plan.targets.map((cover) => ({ ...cover, coverage: plan.coverage.get(cover.coverChannel.id) }));
+	}
+	private isGroup(cover: CoverDevice): boolean {
+		return cover.device.type === 'virtual' && Reflect.get(cover.device, 'mode') === 'actuator_group';
+	}
+	private coverUniformValue(covers: CoverDevice[], values: number[]): { value: number | null; isMixed: boolean } {
+		if (!covers.some((cover) => this.isGroup(cover))) return this.getUniformValue(values);
+		const isMixed = values.some((value) => value !== values[0]);
+		return { value: values.length && !isMixed ? values[0] : null, isMixed };
+	}
+
+	private groupExpiry(covers: CoverDevice[]): string | undefined {
+		const groups = covers.filter((cover) => this.isGroup(cover));
+		const clocks = groups.map(
+			(cover) =>
+				cover.coverage?.reported.properties.find((field) => field.category === PropertyCategory.POSITION)?.expiresAt,
+		);
+		return clocks.length && clocks.every((clock) => clock !== undefined)
+			? new Date(Math.min(...clocks)).toISOString()
+			: undefined;
+	}
+
+	private readCoverNumber(cover: CoverDevice, category: PropertyCategory): number | null {
+		if (!this.isGroup(cover))
+			return this.getPropertyNumericValue(
+				category === PropertyCategory.POSITION ? cover.positionProperty : cover.tiltProperty,
+			);
+		const field = cover.coverage?.reported.properties.find((field) => field.category === category);
+		return cover.coverage?.isCurrent?.() !== false &&
+			field &&
+			typeof field.value === 'number' &&
+			Number.isFinite(field.value) &&
+			field.expiresAt !== undefined &&
+			field.expiresAt > Date.now()
+			? field.value
+			: null;
 	}
 }

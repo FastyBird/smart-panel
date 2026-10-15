@@ -4276,4 +4276,160 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nicht erkannt';
+
+  @override
+  String get groupActualFeedback => 'Gemeldete physische Rückmeldung';
+
+  @override
+  String get groupReload => 'Neu laden / verbinden';
+
+  @override
+  String get groupRepair =>
+      'Konfiguration oder Fähigkeiten geändert. Neu laden und Mitglieder im Admin reparieren.';
+
+  @override
+  String get groupUncertain =>
+      'Befehlsergebnis ungewiss. Vor einem weiteren Versuch die tatsächliche Rückmeldung neu laden.';
+
+  @override
+  String get groupUnknown => 'Unbekannt';
+
+  @override
+  String get groupMixed => 'Gemischt';
+
+  @override
+  String get groupOn => 'Ein';
+
+  @override
+  String get groupOff => 'Aus';
+
+  @override
+  String get groupUnavailable => 'Nicht verfügbar';
+
+  @override
+  String get groupOpen => 'Öffnen';
+
+  @override
+  String get groupClose => 'Schließen';
+
+  @override
+  String get groupStop => 'Stoppen';
+
+  @override
+  String get groupSelectValue => 'Nativen Wert auswählen';
+
+  @override
+  String get groupApply => 'Anwenden';
+
+  @override
+  String get groupApplyTogether => 'Gemeinsam anwenden';
+
+  @override
+  String get groupConfigured => 'Konfigurationsmetadaten';
+
+  @override
+  String get groupMissing => 'Mitglied fehlt; im Admin reparieren';
+
+  @override
+  String get groupReadinessUnavailable => 'Befehlsbereitschaft nicht verfügbar';
+
+  @override
+  String get groupCoverMeaning =>
+      'ÖFFNEN/SCHLIESSEN bestätigt den Bewegungsbeginn oder eine erreichte Endlage, nicht die ganze Fahrt. STOP benötigt qualifizierte Stillstandsrückmeldung.';
+
+  @override
+  String groupContributors(int count, int total) {
+    return '$count/$total beitragende Mitglieder';
+  }
+
+  @override
+  String groupCommandOutcome(String status) {
+    return 'Gruppenbefehl: $status';
+  }
+
+  @override
+  String groupStep(String value) {
+    return 'Schritt $value';
+  }
+
+  @override
+  String get groupPending => 'Ausstehend';
+
+  @override
+  String get groupConfirmed => 'Bestätigt';
+
+  @override
+  String get groupPartial => 'Teilweise';
+
+  @override
+  String get groupFailed => 'Fehlgeschlagen';
+
+  @override
+  String get groupSuperseded => 'Ersetzt';
+
+  @override
+  String get groupTimedOut => 'Zeitüberschreitung';
+
+  @override
+  String get groupFieldOn => 'Strom';
+
+  @override
+  String get groupFieldSpeed => 'Geschwindigkeit';
+
+  @override
+  String get groupFieldSwing => 'Schwenken';
+
+  @override
+  String get groupFieldDirection => 'Richtung';
+
+  @override
+  String get groupFieldMode => 'Modus';
+
+  @override
+  String get groupFieldPosition => 'Position';
+
+  @override
+  String get groupFieldTilt => 'Neigung';
+
+  @override
+  String get groupFieldType => 'Typ';
+
+  @override
+  String get groupFieldStatus => 'Status';
+
+  @override
+  String get groupFieldObstruction => 'Hindernis';
+
+  @override
+  String get groupFieldInUse => 'In Verwendung';
+
+  @override
+  String get groupFieldBrightness => 'Helligkeit';
+
+  @override
+  String get groupFieldColorTemperature => 'Farbtemperatur';
+
+  @override
+  String get groupFieldColorRed => 'Rot';
+
+  @override
+  String get groupFieldColorGreen => 'Grün';
+
+  @override
+  String get groupFieldColorBlue => 'Blau';
+
+  @override
+  String get groupFieldHue => 'Farbton';
+
+  @override
+  String get groupFieldSaturation => 'Sättigung';
+
+  @override
+  String get groupOpenAll => 'Alle öffnen';
+
+  @override
+  String get groupCloseAll => 'Alle schließen';
+
+  @override
+  String get groupStopAll => 'Alle stoppen';
 }

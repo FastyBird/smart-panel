@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
+import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -24,6 +25,7 @@ import {
 	PositionDelta,
 } from '../spaces-home-control.constants';
 
+import { CoverGroupIntentPort } from './cover-group-intent.port';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { CoverDevice, CoversState, SpaceCoversStateService } from './space-covers-state.service';
 import { IntentExecutionResult, SpaceIntentBaseService } from './space-intent-base.service';
@@ -117,6 +119,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		private readonly undoHistoryService: SpaceUndoHistoryService,
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		private readonly intentsService: IntentsService,
+		@Optional() private readonly groups?: CoverGroupIntentPort,
 	) {
 		super();
 	}
@@ -134,6 +137,19 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
 	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
+		const entry = this.groups?.capture();
+		try {
+			return await this.executeRoomCoversIntent(spaceId, intent, entry);
+		} finally {
+			this.groups?.release(entry);
+		}
+	}
+
+	private async executeRoomCoversIntent(
+		spaceId: string,
+		intent: CoversIntentDto,
+		entry?: PropertyCommandEntrySnapshot,
+	): Promise<CoversIntentResult | null> {
 		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
 
@@ -219,30 +235,39 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			}
 		}
 
+		const groupExecution = await this.groups?.execute(covers, intent, intentRecord, entry);
+		const remainingCovers = groupExecution?.remaining ?? covers;
+		if (groupExecution) targetResults.push(...groupExecution.results);
+
 		switch (intent.type) {
 			case CoversIntentType.OPEN:
-				result = await this.executePositionIntentWithResults(covers, 100, targetResults);
+				result = await this.executePositionIntentWithResults(remainingCovers, 100, targetResults);
 				break;
 
 			case CoversIntentType.CLOSE:
-				result = await this.executePositionIntentWithResults(covers, 0, targetResults);
+				result = await this.executePositionIntentWithResults(remainingCovers, 0, targetResults);
 				break;
 
 			case CoversIntentType.STOP:
-				result = await this.executeStopIntentWithResults(covers, targetResults);
+				result = await this.executeStopIntentWithResults(remainingCovers, targetResults);
 				break;
 
 			case CoversIntentType.SET_POSITION:
-				result = await this.executePositionIntentWithResults(covers, intent.position ?? 0, targetResults);
+				result = await this.executePositionIntentWithResults(remainingCovers, intent.position ?? 0, targetResults);
 				break;
 
 			case CoversIntentType.POSITION_DELTA:
-				result = await this.executePositionDeltaIntentWithResults(covers, intent.delta, intent.increase, targetResults);
+				result = await this.executePositionDeltaIntentWithResults(
+					remainingCovers,
+					intent.delta,
+					intent.increase,
+					targetResults,
+				);
 				break;
 
 			case CoversIntentType.ROLE_POSITION:
 				result = await this.executeRolePositionIntentWithResults(
-					covers,
+					remainingCovers,
 					intent.role,
 					intent.position ?? 0,
 					targetResults,
@@ -250,7 +275,11 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				break;
 
 			case CoversIntentType.SET_MODE:
-				result = await this.executeModeIntentWithResults(spaceId, covers, intent.mode, targetResults);
+				if (groupExecution) {
+					result = { success: false, affectedDevices: 0, failedDevices: 0, newPosition: null };
+					break;
+				}
+				result = await this.executeModeIntentWithResults(spaceId, remainingCovers, intent.mode, targetResults);
 				break;
 
 			default:
@@ -264,6 +293,17 @@ export class CoversIntentService extends SpaceIntentBaseService {
 					offlineDeviceIds: targetedOfflineIds.length > 0 ? targetedOfflineIds : undefined,
 					newPosition: null,
 				};
+		}
+
+		if (groupExecution) {
+			result = {
+				...result,
+				success: result.failedDevices === 0 && groupExecution.result.success,
+				affectedDevices: result.affectedDevices + groupExecution.result.affectedDevices,
+				failedDevices: result.failedDevices + groupExecution.result.failedDevices,
+				newPosition: null,
+				composites: groupExecution.result.composites,
+			};
 		}
 
 		// Invalidate mode only when the intent actually changed device state
@@ -290,7 +330,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		result.failedTargets = targetResults.filter((t) => t.status === IntentTargetStatus.FAILED).map((t) => t.deviceId);
 
 		// Complete intent with results (emits Intent.Completed event)
-		this.intentsService.completeIntent(intentRecord.id, targetResults);
+		if (result.composites?.length)
+			this.intentsService.completeIntent(intentRecord.id, targetResults, result.composites);
+		else this.intentsService.completeIntent(intentRecord.id, targetResults);
 
 		// Emit state change event for WebSocket clients (fire and forget)
 		if (result.success) {
@@ -348,6 +390,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	}
 
 	private getCoversIntentTtlMs(covers: readonly CoverDevice[]): number {
+		if (covers.some((cover) => this.groups?.isGroup(cover))) return 30_000;
 		return this.platformRegistryService.getCommandTtlMs(
 			covers.map((cover) => ({
 				device: cover.device,

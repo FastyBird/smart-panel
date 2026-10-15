@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_covers_intent.dart';
@@ -70,6 +71,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Cached covers states by space ID
   final Map<String, CoversStateModel> _coversStates = {};
+  final Map<String, int> _coversFetchGenerations = {};
+  int _coversGeneration = 0;
+  bool _disposed = false;
 
   /// Cached sensor states by space ID
   final Map<String, SensorStateModel> _sensorStates = {};
@@ -87,9 +91,9 @@ class SpaceStateRepository extends ChangeNotifier {
     required SpacesHomeControlPluginClient apiClient,
     required IntentsRepository intentsRepository,
     required CommandDispatchService commandDispatch,
-  })  : _apiClient = apiClient,
-        _intentsRepository = intentsRepository,
-        _commandDispatch = commandDispatch;
+  }) : _apiClient = apiClient,
+       _intentsRepository = intentsRepository,
+       _commandDispatch = commandDispatch;
 
   SpacesHomeControlPluginClient get apiClient => _apiClient;
 
@@ -119,9 +123,7 @@ class SpaceStateRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Failed to parse lighting state: $e',
-        );
+        debugPrint('[SPACES MODULE][STATE] Failed to parse lighting state: $e');
       }
     }
   }
@@ -179,9 +181,7 @@ class SpaceStateRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Failed to parse climate state: $e',
-        );
+        debugPrint('[SPACES MODULE][STATE] Failed to parse climate state: $e');
       }
     }
   }
@@ -227,6 +227,8 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Update covers state from WebSocket event
   void updateCoversState(String spaceId, Map<String, dynamic> json) {
+    if (_disposed) return;
+    _coversFetchGenerations[spaceId] = ++_coversGeneration;
     try {
       final state = CoversStateModel.fromJson(json, spaceId: spaceId);
       _coversStates[spaceId] = state;
@@ -239,21 +241,23 @@ class SpaceStateRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Failed to parse covers state: $e',
-        );
+        debugPrint('[SPACES MODULE][STATE] Failed to parse covers state: $e');
       }
     }
   }
 
   /// Fetch covers state from API
   Future<CoversStateModel?> fetchCoversState(String spaceId) async {
+    if (_disposed) return null;
+    final generation = ++_coversGeneration;
+    _coversFetchGenerations[spaceId] = generation;
     try {
-      final response = await _apiClient.getSpacesModuleSpaceCovers(
-        id: spaceId,
-      );
+      final response = await _apiClient.getSpacesModuleSpaceCovers(id: spaceId);
 
       if (response.response.statusCode == 200) {
+        if (_disposed || _coversFetchGenerations[spaceId] != generation) {
+          return null;
+        }
         final data = response.response.data['data'] as Map<String, dynamic>;
         final state = CoversStateModel.fromJson(data, spaceId: spaceId);
         _coversStates[spaceId] = state;
@@ -299,9 +303,7 @@ class SpaceStateRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Failed to parse sensor state: $e',
-        );
+        debugPrint('[SPACES MODULE][STATE] Failed to parse sensor state: $e');
       }
     }
   }
@@ -316,7 +318,10 @@ class SpaceStateRepository extends ChangeNotifier {
       if (response.response.statusCode == 200) {
         // Prefer typed response data and convert to JSON for existing model
         final apiData = response.data.data;
-        final state = SensorStateModel.fromJson(apiData.toJson(), spaceId: spaceId);
+        final state = SensorStateModel.fromJson(
+          apiData.toJson(),
+          spaceId: spaceId,
+        );
         _sensorStates[spaceId] = state;
         notifyListeners();
         return state;
@@ -385,27 +390,27 @@ class SpaceStateRepository extends ChangeNotifier {
 
     try {
       // Use command dispatch with WebSocket primary and API fallback
-      final payload = {
-        'spaceId': spaceId,
-        'intent': intentBody,
-      };
+      final payload = {'spaceId': spaceId, 'intent': intentBody};
       final dispatchResult = hasCompositeTarget
           ? await _commandDispatch.dispatchComposite(
               event: SpacesModuleConstants.lightingIntentEvent,
               handler: SpacesModuleEventHandlerName.lightingIntent,
               payload: payload,
-              apiFallback: () => _executeCompositeLightingIntentViaApi(spaceId, intentBody),
+              apiFallback: () =>
+                  _executeCompositeLightingIntentViaApi(spaceId, intentBody),
             )
           : await _commandDispatch.dispatch(
-        event: SpacesModuleConstants.lightingIntentEvent,
-        handler: SpacesModuleEventHandlerName.lightingIntent,
-        payload: payload,
-        apiFallback: () => _executeLightingIntentViaApi(spaceId, intentBody),
-      );
+              event: SpacesModuleConstants.lightingIntentEvent,
+              handler: SpacesModuleEventHandlerName.lightingIntent,
+              payload: payload,
+              apiFallback: () =>
+                  _executeLightingIntentViaApi(spaceId, intentBody),
+            );
 
       stopwatch.stop();
 
-      if (dispatchResult.success || dispatchResult.data?['composites'] is List) {
+      if (dispatchResult.success ||
+          dispatchResult.data?['composites'] is List) {
         // For WebSocket, we get basic success info; for API, we get full result
         final result = dispatchResult.data != null
             ? LightingIntentResult.fromJson(dispatchResult.data!)
@@ -417,7 +422,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
         MetricsService.instance.trackIntent(
           intentName,
-          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+          result.failedDevices > 0
+              ? MetricStatus.partial
+              : MetricStatus.success,
           stopwatch.elapsed,
           spaceId: spaceId,
           affectedDevices: result.affectedDevices,
@@ -497,18 +504,20 @@ class SpaceStateRepository extends ChangeNotifier {
       return false;
     }
     final devices = locator<DevicesService>();
-    final targets = locator<LightTargetsRepository>()
-        .getLightTargetsForSpace(spaceId);
+    final targets = locator<LightTargetsRepository>().getLightTargetsForSpace(
+      spaceId,
+    );
     if (targets.isEmpty) {
       return devices.devicesList.whereType<LightingDeviceView>().any(
-        (device) => device.isCompositeGroup &&
+        (device) =>
+            device.isCompositeGroup &&
             (device.roomId == spaceId || device.zoneIds.contains(spaceId)),
       );
     }
     return targets.any((target) {
-          final device = devices.getDevice(target.deviceId);
-          return device is LightingDeviceView && device.isCompositeGroup;
-        });
+      final device = devices.getDevice(target.deviceId);
+      return device is LightingDeviceView && device.isCompositeGroup;
+    });
   }
 
   Future<Map<String, dynamic>?> _executeCompositeLightingIntentViaApi(
@@ -536,10 +545,7 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Turn all lights on
   Future<LightingIntentResult?> turnLightsOn(String spaceId) {
-    return executeLightingIntent(
-      spaceId: spaceId,
-      type: LightingIntentType.on,
-    );
+    return executeLightingIntent(spaceId: spaceId, type: LightingIntentType.on);
   }
 
   /// Set lighting mode
@@ -697,10 +703,7 @@ class SpaceStateRepository extends ChangeNotifier {
       final dispatchResult = await _commandDispatch.dispatch(
         event: SpacesModuleConstants.climateIntentEvent,
         handler: SpacesModuleEventHandlerName.climateIntent,
-        payload: {
-          'spaceId': spaceId,
-          'intent': intentBody,
-        },
+        payload: {'spaceId': spaceId, 'intent': intentBody},
         apiFallback: () => _executeClimateIntentViaApi(spaceId, intentBody),
       );
 
@@ -717,7 +720,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
         MetricsService.instance.trackIntent(
           intentName,
-          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+          result.failedDevices > 0
+              ? MetricStatus.partial
+              : MetricStatus.success,
           stopwatch.elapsed,
           spaceId: spaceId,
           affectedDevices: result.affectedDevices,
@@ -881,28 +886,38 @@ class SpaceStateRepository extends ChangeNotifier {
       if (mode != null) 'mode': mode,
     };
 
-    // Create local intent for optimistic UI before sending command
+    final compositeCovers = _hasCompositeCoverTarget(spaceId);
+    // The group control remains pending for the same bounded composite request.
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
       type: _mapCoversIntentType(type),
       value: intentBody,
+      ttlMs: compositeCovers ? 35000 : 5000,
     );
 
     try {
       // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = await _commandDispatch.dispatch(
-        event: SpacesModuleConstants.coversIntentEvent,
-        handler: SpacesModuleEventHandlerName.coversIntent,
-        payload: {
-          'spaceId': spaceId,
-          'intent': intentBody,
-        },
-        apiFallback: () => _executeCoversIntentViaApi(spaceId, intentBody),
-      );
+      final dispatchResult = compositeCovers
+          ? await _commandDispatch.dispatchComposite(
+              event: SpacesModuleConstants.coversIntentEvent,
+              handler: SpacesModuleEventHandlerName.coversIntent,
+              payload: {'spaceId': spaceId, 'intent': intentBody},
+              apiFallback: () =>
+                  _executeCompositeCoversIntentViaApi(spaceId, intentBody),
+            )
+          : await _commandDispatch.dispatch(
+              event: SpacesModuleConstants.coversIntentEvent,
+              handler: SpacesModuleEventHandlerName.coversIntent,
+              payload: {'spaceId': spaceId, 'intent': intentBody},
+              apiFallback: () =>
+                  _executeCoversIntentViaApi(spaceId, intentBody),
+            );
 
       stopwatch.stop();
 
-      if (dispatchResult.success) {
+      if (dispatchResult.success ||
+          dispatchResult.data?['composites'] is List) {
+        if (compositeCovers && dispatchResult.data == null) return null;
         final result = dispatchResult.data != null
             ? CoversIntentResult.fromJson(dispatchResult.data!)
             : CoversIntentResult(
@@ -913,7 +928,9 @@ class SpaceStateRepository extends ChangeNotifier {
 
         MetricsService.instance.trackIntent(
           intentName,
-          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+          result.failedDevices > 0
+              ? MetricStatus.partial
+              : MetricStatus.success,
           stopwatch.elapsed,
           spaceId: spaceId,
           affectedDevices: result.affectedDevices,
@@ -959,6 +976,34 @@ class SpaceStateRepository extends ChangeNotifier {
     return null;
   }
 
+  bool _hasCompositeCoverTarget(String spaceId) {
+    if (_coversStates[spaceId]?.groupOperations != null) return true;
+    if (!locator.isRegistered<DevicesService>()) return true;
+    final devices = locator<DevicesService>();
+    if (!devices.devicesLoaded) return true;
+    return devices.devicesList.any(
+      (device) =>
+          device.isCompositeGroup &&
+          device.category == DevicesModuleDeviceCategory.windowCovering &&
+          (device.roomId == spaceId || device.zoneIds.contains(spaceId)),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _executeCompositeCoversIntentViaApi(
+    String spaceId,
+    Map<String, dynamic> intentBody,
+  ) async {
+    final response = await locator<Dio>().post<Map<String, dynamic>>(
+      '/modules/spaces/spaces/$spaceId/intents/covers',
+      data: {'data': intentBody},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 35),
+        extra: {'retryExhausted': true},
+      ),
+    );
+    return response.data?['data'] as Map<String, dynamic>?;
+  }
+
   /// Execute covers intent via API (used as fallback)
   Future<Map<String, dynamic>?> _executeCoversIntentViaApi(
     String spaceId,
@@ -988,33 +1033,21 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Open all covers in a space
   Future<CoversIntentResult?> openCovers(String spaceId) {
-    return executeCoversIntent(
-      spaceId: spaceId,
-      type: CoversIntentType.open,
-    );
+    return executeCoversIntent(spaceId: spaceId, type: CoversIntentType.open);
   }
 
   /// Close all covers in a space
   Future<CoversIntentResult?> closeCovers(String spaceId) {
-    return executeCoversIntent(
-      spaceId: spaceId,
-      type: CoversIntentType.close,
-    );
+    return executeCoversIntent(spaceId: spaceId, type: CoversIntentType.close);
   }
 
   /// Stop all covers movement in a space
   Future<CoversIntentResult?> stopCovers(String spaceId) {
-    return executeCoversIntent(
-      spaceId: spaceId,
-      type: CoversIntentType.stop,
-    );
+    return executeCoversIntent(spaceId: spaceId, type: CoversIntentType.stop);
   }
 
   /// Set covers position
-  Future<CoversIntentResult?> setCoversPosition(
-    String spaceId,
-    int position,
-  ) {
+  Future<CoversIntentResult?> setCoversPosition(String spaceId, int position) {
     return executeCoversIntent(
       spaceId: spaceId,
       type: CoversIntentType.setPosition,
@@ -1051,10 +1084,7 @@ class SpaceStateRepository extends ChangeNotifier {
   }
 
   /// Set covers mode (open, closed, privacy, daylight)
-  Future<CoversIntentResult?> setCoversMode(
-    String spaceId,
-    CoversMode mode,
-  ) {
+  Future<CoversIntentResult?> setCoversMode(String spaceId, CoversMode mode) {
     return executeCoversIntent(
       spaceId: spaceId,
       type: CoversIntentType.setMode,
@@ -1087,8 +1117,9 @@ class SpaceStateRepository extends ChangeNotifier {
       if (response.response.statusCode == 200) {
         final data = response.response.data['data'];
         if (data != null) {
-          final suggestion =
-              SuggestionModel.fromJson(data as Map<String, dynamic>);
+          final suggestion = SuggestionModel.fromJson(
+            data as Map<String, dynamic>,
+          );
           _suggestions[spaceId] = suggestion;
           notifyListeners();
           return suggestion;
@@ -1122,15 +1153,16 @@ class SpaceStateRepository extends ChangeNotifier {
     SuggestionFeedback feedback,
   ) async {
     try {
-      final response = await _apiClient.createSpacesModuleSpaceSuggestionFeedback(
-        id: spaceId,
-        body: SpacesModuleReqSuggestionFeedback(
-          data: SpacesModuleSuggestionFeedback(
-            suggestionType: suggestionTypeToApiEnum(suggestionType),
-            feedback: suggestionFeedbackToApiEnum(feedback),
-          ),
-        ),
-      );
+      final response = await _apiClient
+          .createSpacesModuleSpaceSuggestionFeedback(
+            id: spaceId,
+            body: SpacesModuleReqSuggestionFeedback(
+              data: SpacesModuleSuggestionFeedback(
+                suggestionType: suggestionTypeToApiEnum(suggestionType),
+                feedback: suggestionFeedbackToApiEnum(feedback),
+              ),
+            ),
+          );
 
       if (response.response.statusCode == 200 ||
           response.response.statusCode == 201) {
@@ -1219,9 +1251,7 @@ class SpaceStateRepository extends ChangeNotifier {
       final dispatchResult = await _commandDispatch.dispatch(
         event: SpacesModuleConstants.undoIntentEvent,
         handler: SpacesModuleEventHandlerName.undoIntent,
-        payload: {
-          'spaceId': spaceId,
-        },
+        payload: {'spaceId': spaceId},
         apiFallback: () => _executeUndoViaApi(spaceId),
       );
 
@@ -1320,6 +1350,7 @@ class SpaceStateRepository extends ChangeNotifier {
     _lightingStates.clear();
     _climateStates.clear();
     _coversStates.clear();
+    _coversFetchGenerations.clear();
     _sensorStates.clear();
     _suggestions.clear();
     _undoStates.clear();
@@ -1332,6 +1363,7 @@ class SpaceStateRepository extends ChangeNotifier {
     _lightingStates.remove(spaceId);
     _climateStates.remove(spaceId);
     _coversStates.remove(spaceId);
+    _coversFetchGenerations.remove(spaceId);
     _sensorStates.remove(spaceId);
     _suggestions.remove(spaceId);
     _undoStates.remove(spaceId);
@@ -1402,5 +1434,12 @@ class SpaceStateRepository extends ChangeNotifier {
       case CoversIntentType.setMode:
         return IntentType.spaceCoversSetMode;
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _coversFetchGenerations.clear();
+    super.dispose();
   }
 }

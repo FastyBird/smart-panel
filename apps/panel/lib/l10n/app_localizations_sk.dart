@@ -4274,4 +4274,161 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nedetegované';
+
+  @override
+  String get groupActualFeedback => 'Nahlásený fyzický stav';
+
+  @override
+  String get groupReload => 'Znovu načítať / pripojiť';
+
+  @override
+  String get groupRepair =>
+      'Konfigurácia alebo schopnosti sa zmenili. Znovu načítajte a opravte členstvo v Admine.';
+
+  @override
+  String get groupUncertain =>
+      'Výsledok príkazu nie je istý. Pred ďalším pokusom načítajte skutočný stav.';
+
+  @override
+  String get groupUnknown => 'Neznáme';
+
+  @override
+  String get groupMixed => 'Zmiešané';
+
+  @override
+  String get groupOn => 'Zapnuté';
+
+  @override
+  String get groupOff => 'Vypnuté';
+
+  @override
+  String get groupUnavailable => 'Nedostupné';
+
+  @override
+  String get groupOpen => 'Otvoriť';
+
+  @override
+  String get groupClose => 'Zatvoriť';
+
+  @override
+  String get groupStop => 'Zastaviť';
+
+  @override
+  String get groupSelectValue => 'Vyberte natívnu hodnotu';
+
+  @override
+  String get groupApply => 'Použiť';
+
+  @override
+  String get groupApplyTogether => 'Použiť spolu';
+
+  @override
+  String get groupConfigured => 'Konfiguračné metadáta';
+
+  @override
+  String get groupMissing => 'Chýbajúci člen; opravte v Admine';
+
+  @override
+  String get groupReadinessUnavailable =>
+      'Pripravenosť príkazu nie je dostupná';
+
+  @override
+  String get groupCoverMeaning =>
+      'OTVORIŤ/ZATVORIŤ potvrdzuje začiatok pohybu alebo dosiahnutú krajnú polohu, nie celý pohyb. STOP vyžaduje kvalifikované potvrdenie zastavenia.';
+
+  @override
+  String groupContributors(int count, int total) {
+    return '$count/$total prispievajúcich členov';
+  }
+
+  @override
+  String groupCommandOutcome(String status) {
+    return 'Príkaz skupiny: $status';
+  }
+
+  @override
+  String groupStep(String value) {
+    return 'Krok $value';
+  }
+
+  @override
+  String get groupPending => 'Čaká sa';
+
+  @override
+  String get groupConfirmed => 'Potvrdené';
+
+  @override
+  String get groupPartial => 'Čiastočné';
+
+  @override
+  String get groupFailed => 'Zlyhalo';
+
+  @override
+  String get groupSuperseded => 'Nahradené';
+
+  @override
+  String get groupTimedOut => 'Vypršal čas';
+
+  @override
+  String get groupFieldOn => 'Napájanie';
+
+  @override
+  String get groupFieldSpeed => 'Rýchlosť';
+
+  @override
+  String get groupFieldSwing => 'Otáčanie';
+
+  @override
+  String get groupFieldDirection => 'Smer';
+
+  @override
+  String get groupFieldMode => 'Režim';
+
+  @override
+  String get groupFieldPosition => 'Poloha';
+
+  @override
+  String get groupFieldTilt => 'Náklon';
+
+  @override
+  String get groupFieldType => 'Typ';
+
+  @override
+  String get groupFieldStatus => 'Stav';
+
+  @override
+  String get groupFieldObstruction => 'Prekážka';
+
+  @override
+  String get groupFieldInUse => 'Používa sa';
+
+  @override
+  String get groupFieldBrightness => 'Jas';
+
+  @override
+  String get groupFieldColorTemperature => 'Teplota farby';
+
+  @override
+  String get groupFieldColorRed => 'Červená';
+
+  @override
+  String get groupFieldColorGreen => 'Zelená';
+
+  @override
+  String get groupFieldColorBlue => 'Modrá';
+
+  @override
+  String get groupFieldHue => 'Odtieň';
+
+  @override
+  String get groupFieldSaturation => 'Sýtosť';
+
+  @override
+  String get groupOpenAll => 'Otvoriť všetko';
+
+  @override
+  String get groupCloseAll => 'Zavrieť všetko';
+
+  @override
+  String get groupStopAll => 'Zastaviť všetko';
 }

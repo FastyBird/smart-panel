@@ -19,8 +19,9 @@ import { IntentTimeseriesService } from '../../../modules/intents/services/inten
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
-import { CoversIntentType, CoversRole } from '../spaces-home-control.constants';
+import { CoversIntentType, CoversMode, CoversRole } from '../spaces-home-control.constants';
 
+import { CoverGroupIntentPort } from './cover-group-intent.port';
 import { CoversIntentService } from './covers-intent.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { CoverDevice, SpaceCoversStateService } from './space-covers-state.service';
@@ -141,6 +142,83 @@ describe('CoversIntentService', () => {
 		// Reset mocks between tests
 		jest.clearAllMocks();
 		mockPlatform.processBatch.mockResolvedValue(true);
+	});
+
+	it('runs the public room service through the native group port under its original deadline and retains partial outcomes', async () => {
+		const cover = createMockCoverDevice({
+			commandProperty: { id: uuid(), category: PropertyCategory.COMMAND } as ChannelPropertyEntity,
+		});
+		Object.assign(cover.device, { type: 'virtual', mode: 'actuator_group' });
+		coversStateService.getCoversInSpace.mockResolvedValue([cover]);
+		const intents = module.get<jest.Mocked<IntentsService>>(IntentsService);
+		const expiresAt = new Date(Date.now() + 30000);
+		intents.createIntent.mockReturnValue({ id: mockIntentId, expiresAt } as never);
+		const dispatch = module.get<jest.Mocked<PropertyCommandDispatchService>>(PropertyCommandDispatchService);
+		const dispatchBatch = jest.spyOn(dispatch, 'dispatchBatch');
+		const completeIntent = jest.spyOn(intents, 'completeIntent');
+		const storeModeValidity = jest.spyOn(
+			module.get<IntentTimeseriesService>(IntentTimeseriesService),
+			'storeModeValidity',
+		);
+		const composite = {
+			id: 'parent',
+			status: 'partial',
+			children: [
+				{ memberId: 'a', memberIdentity: 'a', propertyId: null, status: 'confirmed' },
+				{ memberId: 'b', memberIdentity: 'b', propertyId: null, status: 'unavailable', reason: 'tag_unavailable' },
+			],
+		};
+		dispatch.dispatchBatch.mockResolvedValue({ success: false, composite } as never);
+		const entry = {},
+			releaseCommandEntry = jest.fn();
+		const port = new CoverGroupIntentPort(
+			{ captureCommandEntry: () => entry, releaseCommandEntry } as never,
+			dispatch,
+			{
+				plan: (targets: unknown[]) =>
+					Promise.resolve({
+						targets,
+						excludedRawChannels: [],
+						coverage: new Map([[cover.coverChannel.id, { leaves: ['a', 'b'] }]]),
+						isCurrent: () => true,
+					}),
+			} as never,
+		);
+		const grouped = new CoversIntentService(
+			spacesService,
+			module.get(PlatformRegistryService),
+			dispatch,
+			coversStateService,
+			module.get(EventEmitter2),
+			module.get(SpaceContextSnapshotService),
+			module.get(SpaceUndoHistoryService),
+			module.get(IntentTimeseriesService),
+			intents,
+			port,
+		);
+		const result = await grouped.executeCoversIntent(mockSpaceId, { type: CoversIntentType.OPEN });
+		expect(result).toMatchObject({
+			success: false,
+			affectedDevices: 0,
+			failedDevices: 1,
+			newPosition: null,
+			composites: [composite],
+		});
+		expect(dispatchBatch).toHaveBeenCalledTimes(1);
+		expect(dispatchBatch).toHaveBeenCalledWith(
+			[expect.objectContaining({ property: cover.commandProperty, value: 'open' })],
+			expect.objectContaining({ commandEntry: entry, deadlineAt: expiresAt.getTime() - 100 }),
+		);
+		expect(completeIntent).toHaveBeenCalledWith(mockIntentId, expect.any(Array), [composite]);
+		expect(releaseCommandEntry).toHaveBeenCalledWith(entry);
+		dispatchBatch.mockClear();
+		const mode = await grouped.executeCoversIntent(mockSpaceId, {
+			type: CoversIntentType.SET_MODE,
+			mode: CoversMode.OPEN,
+		});
+		expect(mode.success).toBe(false);
+		expect(dispatchBatch).not.toHaveBeenCalled();
+		expect(storeModeValidity).not.toHaveBeenCalled();
 	});
 
 	describe('offline device handling', () => {

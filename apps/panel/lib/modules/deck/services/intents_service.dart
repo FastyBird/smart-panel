@@ -30,9 +30,9 @@ class IntentsService extends ChangeNotifier {
     required EventBus eventBus,
     ScenesService? scenesService,
     ChannelPropertiesRepository? channelPropertiesRepository,
-  })  : _eventBus = eventBus,
-        _scenesService = scenesService,
-        _channelPropertiesRepository = channelPropertiesRepository;
+  }) : _eventBus = eventBus,
+       _scenesService = scenesService,
+       _channelPropertiesRepository = channelPropertiesRepository;
 
   /// Sets the current deck for navigation intents.
   void setDeck(DeckResult deck) {
@@ -51,7 +51,10 @@ class IntentsService extends ChangeNotifier {
   /// Navigates to a specific deck item by ID.
   ///
   /// Fires a NavigateToDeckItemEvent that the deck navigation UI should handle.
-  IntentResult navigateToDeckItem(String itemId, {required AppLocalizations localizations}) {
+  IntentResult navigateToDeckItem(
+    String itemId, {
+    required AppLocalizations localizations,
+  }) {
     if (_currentDeck == null) {
       return IntentResult.failure(
         IntentType.navigateToDeckItem,
@@ -101,7 +104,10 @@ class IntentsService extends ChangeNotifier {
   }
 
   /// Activates a scene by ID.
-  Future<IntentResult> activateScene(String sceneId, {required AppLocalizations localizations}) async {
+  Future<IntentResult> activateScene(
+    String sceneId, {
+    required AppLocalizations localizations,
+  }) async {
     if (_scenesService == null) {
       return IntentResult.failure(
         IntentType.activateScene,
@@ -115,14 +121,19 @@ class IntentsService extends ChangeNotifier {
       final memberDetails = result.composites
           .expand((parent) => parent.children)
           .where((child) => child.status != 'confirmed')
-          .map((child) => '${child.memberIdentity ?? child.memberId}: ${child.status}')
+          .map(
+            (child) =>
+                '${child.memberIdentity ?? child.memberId}: ${child.status}${child.reason == null ? '' : ' — ${child.reason}'}',
+          )
           .join(', ');
 
       if (result.success) {
         if (result.failureCount > 0) {
           return IntentResult.partialSuccess(
             IntentType.activateScene,
-            message: result.errorMessage ?? localizations.space_scene_partial_success,
+            message:
+                result.errorMessage ??
+                localizations.space_scene_partial_success,
             data: {
               'sceneId': sceneId,
               'successCount': result.successCount,
@@ -134,10 +145,7 @@ class IntentsService extends ChangeNotifier {
         return IntentResult.success(
           IntentType.activateScene,
           message: localizations.space_scene_triggered,
-          data: {
-            'sceneId': sceneId,
-            'successCount': result.successCount,
-          },
+          data: {'sceneId': sceneId, 'successCount': result.successCount},
         );
       }
 
@@ -159,7 +167,10 @@ class IntentsService extends ChangeNotifier {
 
       return IntentResult.failure(
         IntentType.activateScene,
-        message: result.errorMessage ?? localizations.intent_error_scene_activation_failed,
+        message: memberDetails.isNotEmpty
+            ? memberDetails
+            : result.errorMessage ??
+                  localizations.intent_error_scene_activation_failed,
         data: {'sceneId': sceneId},
       );
     } catch (e) {
@@ -220,7 +231,10 @@ class IntentsService extends ChangeNotifier {
   }
 
   /// Toggles a boolean device property.
-  Future<IntentResult> toggleDevice(String propertyId, {required AppLocalizations localizations}) async {
+  Future<IntentResult> toggleDevice(
+    String propertyId, {
+    required AppLocalizations localizations,
+  }) async {
     if (_channelPropertiesRepository == null) {
       return IntentResult.failure(
         IntentType.toggleDevice,

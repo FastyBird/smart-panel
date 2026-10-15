@@ -53,6 +53,7 @@ import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virt
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
+import { VirtualGroupCatalogService } from './virtual-group-catalog.service';
 import { VirtualLightGroupAuthoringService } from './virtual-light-group-authoring.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
@@ -239,6 +240,49 @@ describe('light group atomic authoring with real SQLite and core creation servic
 			members: memberIds.map((id) => ({ source_channel: id })),
 		});
 
+	it('catalog and preview both reject incomplete light tuples', async () => {
+		for (const id of memberIds)
+			for (const category of [PropertyCategory.COLOR_RED, PropertyCategory.COLOR_GREEN, PropertyCategory.COLOR_BLUE])
+				await database.manager.insert(ChannelPropertyEntity, {
+					id: uuid(),
+					channel: id,
+					category,
+					dataType: DataTypeType.UCHAR,
+					permissions: [PermissionType.READ_WRITE],
+					format: [0, 255],
+					step: 1,
+				} as never);
+		const capabilities = [PropertyCategory.ON, PropertyCategory.COLOR_RED];
+		const result = await new VirtualGroupCatalogService(database, graph).read({
+			selectedChannels: memberIds,
+			capabilities,
+		});
+		expect(
+			result.candidates.every((candidate) => candidate.reasons.includes('group_capability_incomplete_tuple')),
+		).toBe(true);
+		await expect(authoring.preview(Object.assign(draft(), { capabilities }))).rejects.toThrow('complete RGB');
+	});
+
+	it('catalog uses the authoring policy, retains missing identities and excludes virtual outputs', async () => {
+		const catalog = new VirtualGroupCatalogService(database, graph);
+		const before = await catalog.read({ selectedChannels: memberIds });
+		expect(before.profiles.map((profile) => profile.profile)).toEqual(['light', 'switch', 'outlet', 'fan', 'cover']);
+		expect(before.candidates).toHaveLength(2);
+		expect(before.candidates.every((candidate) => candidate.eligible)).toBe(true);
+		await database.manager.update(
+			ChannelPropertyEntity,
+			{ channel: { id: memberIds[1] } },
+			{ permissions: [PermissionType.READ_ONLY] },
+		);
+		const changed = await catalog.read({ selectedChannels: memberIds });
+		expect(changed.candidates.every((candidate) => !candidate.eligible)).toBe(true);
+		expect(changed.candidates[0].reasons).toContain('group_capability_incompatible:on');
+		await database.manager.delete(ChannelEntity, memberIds[1]);
+		expect((await catalog.read({ selectedChannels: memberIds })).diagnostics).toEqual([
+			`selected_identity_missing_or_incompatible:${memberIds[1]}`,
+		]);
+	});
+
 	it.each([
 		[VirtualLightGroupProfile.FAN, DeviceCategory.FAN, ChannelCategory.FAN],
 		[VirtualLightGroupProfile.COVER, DeviceCategory.WINDOW_COVERING, ChannelCategory.WINDOW_COVERING],
@@ -287,6 +331,10 @@ describe('light group atomic authoring with real SQLite and core creation servic
 						permissions: [permission],
 					} as never);
 			}
+			const catalog = new VirtualGroupCatalogService(database, graph);
+			const candidates = await catalog.read({ profile, selectedChannels: memberIds });
+			expect(candidates.candidates.every((candidate) => candidate.eligible)).toBe(true);
+			expect(candidates.candidates).toHaveLength(2);
 			const dto = Object.assign(draft(), { profile });
 			const preview = await authoring.preview(dto);
 			expect(
@@ -318,6 +366,13 @@ describe('light group atomic authoring with real SQLite and core creation servic
 					})),
 				})),
 			});
+			const drift = await catalog.read({
+				profile,
+				selectedChannels: memberIds,
+				exposedGroup: created.configuration.group_channel,
+			});
+			expect(drift.candidates.every((candidate) => !candidate.eligible)).toBe(true);
+			expect(drift.candidates[0].reasons).toContain(`exposed_capability_changed:${control}`);
 			await expect(configs.configureLightGroup(created.configuration.group_channel, repair)).rejects.toThrow(
 				/change capability|remove capability/,
 			);
@@ -344,6 +399,10 @@ describe('light group atomic authoring with real SQLite and core creation servic
 						permissions: [PermissionType.READ_ONLY],
 					} as never);
 			}
+			const catalog = new VirtualGroupCatalogService(database, graph);
+			const candidates = await catalog.read({ profile, selectedChannels: memberIds });
+			expect(candidates.candidates.every((candidate) => candidate.eligible)).toBe(true);
+			expect(candidates.candidates).toHaveLength(2);
 			const dto = Object.assign(draft(), { profile });
 			const preview = await authoring.preview(dto);
 			expect(preview.common_capabilities.map((capability) => capability.category)).toEqual(
@@ -406,6 +465,10 @@ describe('light group atomic authoring with real SQLite and core creation servic
 			});
 			for (const format of [['true'], ['true', 'invalid'], ['true', 'true'], [' true', 'false'], [0, 1]]) {
 				await database.manager.update(ChannelPropertyEntity, source.id, { format });
+				const catalog = new VirtualGroupCatalogService(database, graph);
+				const candidates = await catalog.read({ profile, selectedChannels: memberIds });
+				expect(candidates.candidates.every((candidate) => !candidate.eligible)).toBe(true);
+				expect(candidates.candidates).toHaveLength(2);
 				const dto = Object.assign(draft(), { profile });
 				await expect(authoring.preview(dto)).rejects.toThrow(/readable\/writable boolean on contract/);
 				await expect(authoring.create(dto)).rejects.toThrow(/readable\/writable boolean on contract/);

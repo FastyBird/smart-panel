@@ -1,4 +1,4 @@
-# Virtual light groups
+# Virtual actuator groups
 
 A lighting device in `actuator_group` mode owns derived output rows and durable member/channel/property bindings.
 The initial profile accepts 2–256 physical light channels. Members keep their identities after deletion: nullable live
@@ -12,11 +12,11 @@ The authoring preview returns `common_capabilities`. Exposed output rows keep th
 An edit incompatible with an exposed optional output returns a repair conflict; it never silently deletes the output
 or its scene/tile references. Missing members retain the last validated exposed contract while requiring explicit repair.
 
-## Additional backend profiles
+## Switch and outlet profiles
 
 The backend authoring/configuration API also supports `switch` and `outlet` profiles with matching device/channel
 categories. Each group has 2–256 homogeneous physical members. Existing light-group endpoint, schema and storage names
-remain compatibility aliases. Admin/panel authoring for these profiles is tracked separately in #1453.
+remain compatibility aliases. The locally staged #1453 batch adds Admin authoring and Panel controls for all five profiles; delivery remains pending PR review and CI.
 
 Switch and outlet profiles expose common readable/writable ON. An outlet may additionally expose common read-only
 `in_use`; it is a reported value, not a command target. They do not create aggregate power or energy counters.
@@ -28,10 +28,10 @@ Their boolean fields must support both states: no format, an empty format, or ex
 both output and physical-member contracts, and runtime feedback becomes unavailable when those contracts drift.
 This also fences previously materialized invalid rows. The legacy light profile keeps its existing format policy.
 
-## Fan and cover backend contracts
+## Fan and cover contracts
 
 The existing group endpoints accept `fan` and `cover`. Both require 2–256 homogeneous physical members.
-The `LightGroup` API/storage names remain compatibility aliases; UI authoring and HomeKit/HA mappings are separate work.
+The `LightGroup` API/storage names remain compatibility aliases. HomeKit/HA mappings remain separate work (#1461).
 
 | Profile | Required fields                         | Optional fields                       | Source access                                                         |
 | ------- | --------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
@@ -99,8 +99,8 @@ Acceptance uses mock RPC transport with the real pinned SDK, production Shelly a
 normal qualified sample admission and core composite windows. It covers tagged motion/no-op endpoints/STOP, malformed
 and missing evidence, ACK-only/late responses, partial members, direct/group supersession, ownership effects,
 configuration/metadata/deletion/disconnect/shutdown fences, normal raw reports, TYPE persistence/readiness and journal
-migration/restart behavior. This is backend software evidence; UI #1453, installed equipment qualification and hardware
-acceptance remain separate work.
+migration/restart behavior. This is backend software evidence. The #1453 software UI flows below are staged locally; installed equipment
+qualification and hardware acceptance remain after alpha.
 
 ## Feedback and quality
 
@@ -186,3 +186,74 @@ Production availability depends on adapters submitting qualified live feedback; 
 adapters that write only values remain unknown. WLED partial observations preserve omitted main RGB values; only full
 snapshots or explicitly unsafe main-segment identities invalidate those colors. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.
+
+## Authoring and repairing native groups (locally staged #1453)
+
+In Admin, open the group wizard and select Light, Switch, Outlet, Fan or Cover. Profile definitions and candidate
+compatibility come from `POST /plugins/devices-virtual/producers/light-group-candidates`, using the same typed policy
+as creation and repair. Only homogeneous physical channels are eligible. Candidate diagnostics explain incompatible
+quantities, enum intersections, ranges/grids and required cover metadata. A catalog or UI readiness result grants no
+write authority: preview, persistence and dispatch each revalidate their own current contract.
+
+Select 2–256 members, preview their common capabilities, optionally remove non-required controls, then preview again
+before creating. Fan discrete speed, direction and mode display their native shared choices. A native percentage speed
+remains numeric; no percentage/discrete conversion is offered. Changing profile, selected members, optional fields or
+source metadata invalidates the previous preview. Existing measurement editors and light color tuples retain their
+own flows.
+
+For each physical Shelly NG cover, first choose the installed TYPE explicitly using its supported metadata endpoint:
+
+```http
+PATCH /api/v1/modules/devices/channels/<physical-channel>/properties/<type-property>
+Content-Type: application/json
+
+{"data":{"type":"devices-shelly-ng","format":["blind"]}}
+```
+
+Use the actual property integration `type` and a supported singleton installed covering type. Do not include `value`.
+This is a configuration change, not a motor command. It persists through rediscovery. The wizard displays this guidance
+and the precise TYPE incompatibility when the declaration is missing. It never guesses from names/models or publishes
+configured TYPE as a physical sample.
+
+Open the group's Admin detail to edit membership. Deleted members keep their original channel/property identities;
+replace their live source explicitly. Repair candidates must preserve every durable output UUID and its exposed
+capability contract. Metadata changes require reload/re-preview; an incompatible change cannot silently remove an
+output referenced by scenes or tiles.
+
+## Panel controls, quality and command outcomes
+
+Native group categories open a shared group detail with actual reported feedback, contributor counts, missing member
+identities and refusal reasons. False remains Off; missing, expired or unavailable is Unknown; disagreement is Mixed.
+Reported expiry comes from actual source sample clocks. Refreshing REST does not renew it. Configured TYPE is separately
+labelled. Numeric/enum fan speeds and cover positions are never averaged into an observation.
+
+On/Off, compatible fan native controls and light tuples use the existing composite command transport. All tuple fields
+are submitted together. Pending requests disable repeat submissions and retain actual feedback. Partial/failed,
+superseded, timed-out and unavailable outcomes retain individual member identities/reasons. Reload/reconnect fences
+late responses; configuration changes require an explicit reload and membership repair in Admin where necessary.
+
+Cover controls use each operation's backend readiness. OPEN/CLOSE confirms motion started or an already correct
+endpoint, not full travel. STOP requires the qualified stopped-feedback path described above. POSITION and TILT remain
+unavailable as commands in the current adapter; they can still display qualified actual observations. Unsupported
+providers, tag uncertainty, uncalibrated/unavailable position and missing bindings retain concrete refusal reasons.
+The backend rechecks readiness and all core evidence/ordering guards at execution.
+
+## Scenes and room intent scope
+
+Admin scene action add/edit reads the same native group access/readiness metadata, including derived output properties
+whose storage permission is read-only. Cover scene choices include only ready native COMMAND values; no position/tilt
+control is advertised as usable. Scene execution remains in `LocalScenePlatform` and core composite dispatch with the
+scene's existing absolute deadline, estimated group budget and per-member outcomes. There is no second command engine.
+
+The existing covers room domain now dispatches OPEN/CLOSE/STOP as native COMMAND operations when groups participate.
+It uses shared canonical-leaf contribution selection to exclude represented raw members and reject overlapping groups.
+Repair overlap by changing membership or the existing cover participation role (HIDDEN excludes a representative).
+Room controls display agreement/mixed/unknown actual position, source expiry, readiness/refusal and composite outcomes.
+Group-containing rooms offer no relative-position, preset-mode or guessed position-to-command conversion. Explicit
+position requests still reach core validation and remain unavailable on the current qualified adapter. Ordinary
+physical-only covers and the existing light room domain retain their policies.
+
+There is currently **no standalone switch, outlet or fan room intent domain**. Device controls and scene actions for
+those profiles are supported, but mapping them into lighting/HVAC or inventing a new room domain is outside this batch.
+Consequently the broad room-control portion of #1453 remains limited to existing light and cover domains; this guide
+and the epic do not mark #1453 delivered or close the issue. Installed-device qualification remains after alpha.
