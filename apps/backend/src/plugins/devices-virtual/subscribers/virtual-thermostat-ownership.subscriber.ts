@@ -4,6 +4,7 @@ import {
 	DataSource,
 	EntitySubscriberInterface,
 	Not,
+	QueryRunner,
 	RemoveEvent,
 	TransactionCommitEvent,
 	TransactionRollbackEvent,
@@ -23,6 +24,7 @@ import { THERMOSTAT_OWNERSHIP_TRIGGERS } from '../services/virtual-thermostat-ow
 export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInterface, OnApplicationBootstrap {
 	private readonly logger = new Logger(VirtualThermostatOwnershipSubscriber.name);
 	private installed = false;
+	private readonly dirtyRunners = new WeakSet<QueryRunner>();
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly claims: VirtualThermostatClaimsService,
@@ -41,22 +43,27 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 		);
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
-		if (
-			this.installed &&
-			this.isCatalogMutation(event.query) &&
-			!this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)
-		)
+		if (!this.installed || !this.isCatalogMutation(event.query)) return;
+		this.dirtyRunners.add(event.queryRunner);
+		if (!this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters))
 			this.claims.invalidate();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
 		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))
-			await this.refreshAfterWrite('catalog write');
+			await this.reconcileRunner(event.queryRunner, 'catalog write');
 	}
 	async afterTransactionCommit(event: TransactionCommitEvent): Promise<void> {
-		if (this.installed && !event.queryRunner.isTransactionActive) await this.refreshAfterWrite('transaction commit');
+		await this.reconcileRunner(event.queryRunner, 'transaction commit');
 	}
 	async afterTransactionRollback(event: TransactionRollbackEvent): Promise<void> {
-		if (this.installed && !event.queryRunner.isTransactionActive) await this.refreshAfterWrite('transaction rollback');
+		await this.reconcileRunner(event.queryRunner, 'transaction rollback');
+	}
+	private async reconcileRunner(runner: QueryRunner, boundary: string): Promise<void> {
+		// Read-only snapshots must release SQLite without acquiring the structure lock: a structural
+		// writer can already hold that lock while waiting for this connection. Inner savepoint
+		// boundaries retain dirtiness until the owning transaction commits or rolls back.
+		if (!this.installed || runner.isTransactionActive || !this.dirtyRunners.delete(runner)) return;
+		await this.refreshAfterWrite(boundary);
 	}
 	private async refreshAfterWrite(boundary: string): Promise<void> {
 		try {
