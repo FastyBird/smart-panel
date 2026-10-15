@@ -290,7 +290,9 @@ export class SpaceCoversStateService extends SpaceIntentBaseService {
 										? cover.positionProperty
 										: operation === 'tilt'
 											? cover.tiltProperty
-											: cover.commandProperty;
+											: operation === 'open' || operation === 'close'
+												? (cover.positionProperty ?? cover.commandProperty)
+												: cover.commandProperty;
 								return property ? [] : [`${cover.coverChannel.id}: control_unavailable:${operation}`];
 							});
 							return { operation, commandable: reasons.length === 0, reasons };

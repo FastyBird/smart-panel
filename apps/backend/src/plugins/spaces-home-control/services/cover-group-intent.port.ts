@@ -202,7 +202,10 @@ export class CoverGroupIntentPort {
 					? {}
 					: {
 							error:
-								children.map((child) => child.reason ?? child.status).join('; ') ||
+								children
+									.filter((child) => child.status !== 'confirmed')
+									.map((child) => child.reason ?? child.status)
+									.join('; ') ||
 								response?.reason ||
 								'cover_command_unconfirmed',
 						}),

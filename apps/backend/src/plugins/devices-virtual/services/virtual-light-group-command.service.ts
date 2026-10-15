@@ -149,6 +149,14 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				where: { groupChannelId: channelId },
 			});
 			if (members.length < 2 || members.length > 256) throw new Error('Invalid light group member count');
+
+			const coverOutputs =
+				config.profile === VirtualLightGroupProfile.COVER
+					? await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
+							where: { channel: { id: channelId } },
+							relations: ['channel'],
+						})
+					: [];
 			for (const member of members) {
 				const binding = await this.dataSource.manager.findOne(VirtualLightGroupBindingEntity, {
 					where: { memberId: member.id, outputPropertyId: update.property.id },
@@ -159,13 +167,6 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				const deviceId = channel ? (channel.device as DeviceEntity).id : null;
 				if (deviceId && !deviceCache.has(deviceId)) deviceCache.set(deviceId, await this.devices.findOne(deviceId));
 				const device = deviceId ? deviceCache.get(deviceId) : null;
-				const coverOutputs =
-					config.profile === VirtualLightGroupProfile.COVER
-						? await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
-								where: { channel: { id: channelId } },
-								relations: ['channel'],
-							})
-						: [];
 				const coverContract =
 					config.profile === VirtualLightGroupProfile.COVER
 						? await loadCoverMemberContract(this.dataSource.manager, member.id, member.sourceChannelId, coverOutputs)

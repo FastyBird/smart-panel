@@ -263,6 +263,47 @@ describe('light group atomic authoring with real SQLite and core creation servic
 		await expect(authoring.preview(Object.assign(draft(), { capabilities }))).rejects.toThrow('complete RGB');
 	});
 
+	it('keeps repair catalog and persistence in agreement with mixed derived and local group properties', async () => {
+		const created = await authoring.create(draft());
+		const groupChannel = created.configuration.group_channel;
+		const persistentId = uuid();
+		await database.manager.insert(VirtualChannelPropertyEntity, {
+			id: persistentId,
+			channel: groupChannel,
+			name: 'Operator metadata',
+			category: PropertyCategory.STATUS,
+			dataType: DataTypeType.STRING,
+			permissions: [PermissionType.READ_ONLY],
+			valueOrigin: VirtualValueOrigin.LOCAL,
+		} as never);
+		const catalog = new VirtualGroupCatalogService(database, graph);
+		const candidates = await catalog.read({ selectedChannels: memberIds, exposedGroup: groupChannel });
+		expect(candidates.candidates).toHaveLength(2);
+		expect(candidates.candidates.every((candidate) => candidate.eligible)).toBe(true);
+		const repair = Object.assign(new ConfigureVirtualLightGroupDto(), {
+			profile: VirtualLightGroupProfile.LIGHT,
+			expectedRevision: 1,
+			members: created.configuration.members.map((member) => ({
+				id: member.id,
+				sourceChannelId: member.source_channel,
+				bindings: member.bindings.map((binding) => ({
+					id: binding.id,
+					outputPropertyId: binding.output_property,
+					sourcePropertyId: binding.source_property,
+				})),
+			})),
+		});
+		await configs.configureLightGroup(groupChannel, repair);
+		expect((await configs.getLightGroup(groupChannel)).revision).toBe(2);
+		expect(await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: persistentId })).toMatchObject({
+			valueOrigin: VirtualValueOrigin.LOCAL,
+		});
+		expect(
+			(await catalog.read({ selectedChannels: memberIds, exposedGroup: groupChannel })).candidates.every(
+				(candidate) => candidate.eligible,
+			),
+		).toBe(true);
+	});
 	it('catalog uses the authoring policy, retains missing identities and excludes virtual outputs', async () => {
 		const catalog = new VirtualGroupCatalogService(database, graph);
 		const before = await catalog.read({ selectedChannels: memberIds });

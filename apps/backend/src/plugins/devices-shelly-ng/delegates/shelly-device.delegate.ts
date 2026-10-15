@@ -409,6 +409,55 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.coverSessions.set(id, session);
 		return session;
 	}
+	/** A connection lease is independent of a session's revocable command authority. */
+	captureCoverRecoveryConnection(componentKey: string, canonicalMac: string) {
+		const match = /^cover:(\d+)$/.exec(componentKey);
+		const rpc = this.shelly.rpcHandler;
+		const component = match ? this.covers.get(Number(match[1])) : null;
+		if (
+			!component ||
+			!(rpc instanceof GuardedShellyRpcHandler) ||
+			!rpc.connected ||
+			this.shelly.macAddress?.toUpperCase() !== canonicalMac.toUpperCase()
+		)
+			return null;
+		const generation = this.connectionGeneration;
+		return {
+			revision: generation,
+			isCurrent: () =>
+				rpc === this.shelly.rpcHandler &&
+				rpc.connected &&
+				this.connectionGeneration === generation &&
+				this.covers.get(Number(match[1])) === component &&
+				this.shelly.macAddress?.toUpperCase() === canonicalMac.toUpperCase(),
+		};
+	}
+	retireCoverSession(componentKey: string): void {
+		this.coverSessions.get(Number(componentKey.split(':')[1]))?.retire();
+	}
+	/** Retire authority permanently. A detached fresh session is installed only after audited CAS success. */
+	beginCoverRecoverySession(componentKey: string, canonicalMac: string, ordering: ShellyCoverOrderingService) {
+		const id = Number(componentKey.split(':')[1]);
+		const old = this.coverSessions.get(id);
+		old?.retire();
+		if (old?.hasActiveDispatch()) throw new Error('Cover has active local dispatch');
+		this.coverSessions.delete(id);
+		const fresh = this.prepareCoverSession(componentKey, canonicalMac, ordering);
+		if (!fresh) throw new Error('Current guarded cover session unavailable');
+		this.coverSessions.delete(id);
+		return {
+			session: fresh,
+			isCurrent: () => fresh.identityIsCurrent() && !this.coverSessions.has(id),
+			install: () => {
+				if (!fresh.identityIsCurrent() || this.coverSessions.has(id)) throw new Error('Cover recovery session changed');
+				this.coverSessions.set(id, fresh);
+			},
+			dispose: () => {
+				if (this.coverSessions.get(id) === fresh && !fresh.identityIsCurrent()) this.coverSessions.delete(id);
+				if (this.coverSessions.get(id) !== fresh) fresh.retire();
+			},
+		};
+	}
 	/** Strict ordinary lighting: exact explicit effects, guarded at every actual SDK send. */
 	prepareLightingCommand(
 		componentKey: string,

@@ -73,7 +73,7 @@ describe('covers room port to core composites', () => {
 			expect(result.results).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({ status: IntentTargetStatus.SKIPPED, error: 'represented_by_cover_group' }),
-					expect.objectContaining({ status: IntentTargetStatus.FAILED, error: 'confirmed; tag_unavailable' }),
+					expect.objectContaining({ status: IntentTargetStatus.FAILED, error: 'tag_unavailable' }),
 				]),
 			);
 			expect(releaseCommandEntry).toHaveBeenCalledWith(entry);

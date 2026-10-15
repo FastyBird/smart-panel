@@ -94,8 +94,22 @@ export class PropertyCommandWindowService {
 	private readonly recoveries = new Map<string, RecoveryWindow>();
 	private readonly confirmationObservers = new Set<(handle: PropertyCommandWindowHandle) => void>();
 	private readonly coverEffects = new Map<string, string>();
+	private readonly reservedCoverEffects = new Map<string, string>();
+	/** Internal exclusive maintenance fence. It cancels old motor windows without granting command proof. */
+	reserveCoverEffect(scope: string): string | null {
+		if (this.reservedCoverEffects.has(scope)) return null;
+		const epoch = this.beginCoverEffect(scope);
+		if (epoch !== null) this.reservedCoverEffects.set(scope, epoch);
+		return epoch;
+	}
+	releaseCoverEffectReservation(scope: string, epoch: string): void {
+		if (this.reservedCoverEffects.get(scope) !== epoch) return;
+		this.reservedCoverEffects.delete(scope);
+		this.releaseCoverEffect(scope, epoch);
+	}
 	/** One physical motor scope across direct/group COMMAND, POSITION and shared-drive TILT. */
 	beginCoverEffect(channelId: string): string | null {
+		if (this.reservedCoverEffects.has(channelId)) return null;
 		if (!this.coverEffects.has(channelId) && this.coverEffects.size >= 4096) return null;
 		const epoch = randomUUID();
 		this.coverEffects.set(channelId, epoch);

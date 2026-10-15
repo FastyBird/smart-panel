@@ -28,6 +28,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { ShellyCoverRecoveryController } from './controllers/shelly-cover-recovery.controller';
 import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
 import {
@@ -51,6 +52,7 @@ import {
 	ShellyNgDeviceEntity,
 } from './entities/devices-shelly-ng.entity';
 import { ShellyCoverOrderingEntity } from './entities/shelly-cover-ordering.entity';
+import { ShellyCoverRecoveryEntity } from './entities/shelly-cover-recovery.entity';
 import { ShellyNgDeviceAddressEntity } from './entities/shelly-ng-device-address.entity';
 import { ShellySampleSourceEntity } from './entities/shelly-sample-source.entity';
 import { MappingLoaderService, PropertyMappingStorageService, TransformerRegistry } from './mappings';
@@ -61,6 +63,8 @@ import { DeviceAddressService } from './services/device-address.service';
 import { DeviceManagerService } from './services/device-manager.service';
 import { PollPlacementDiagnosticsService } from './services/poll-placement-diagnostics.service';
 import { ShellyCoverOrderingService } from './services/shelly-cover-ordering.service';
+import { ShellyCoverRecoveryLaneService } from './services/shelly-cover-recovery-lane.service';
+import { ShellyCoverRecoveryService } from './services/shelly-cover-recovery.service';
 import { ShellyNgAdoptionService } from './services/shelly-ng-adoption.service';
 import { ShellyNgDiscoveryService } from './services/shelly-ng-discovery.service';
 import { ShellyNgService } from './services/shelly-ng.service';
@@ -83,6 +87,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 			ShellyNgDeviceAddressEntity,
 			ShellySampleSourceEntity,
 			ShellyCoverOrderingEntity,
+			ShellyCoverRecoveryEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
@@ -98,6 +103,8 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DeviceAddressService,
 		ShellySampleSourcesService,
 		ShellyCoverOrderingService,
+		ShellyCoverRecoveryService,
+		ShellyCoverRecoveryLaneService,
 		DatabaseDiscovererService,
 		DelegatesManagerService,
 		DeviceManagerService,
@@ -109,7 +116,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ShellyNgDevicePlatform,
 		DeviceEntitySubscriber,
 	],
-	controllers: [ShellyNgDevicesController],
+	controllers: [ShellyNgDevicesController, ShellyCoverRecoveryController],
 })
 export class DevicesShellyNgPlugin {
 	constructor(
