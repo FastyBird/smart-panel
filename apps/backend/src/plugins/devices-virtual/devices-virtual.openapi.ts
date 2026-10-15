@@ -15,9 +15,14 @@ import * as ThermostatDtos from './dto/thermostat-config.dto';
 import * as InstallationDtos from './dto/thermostat-installation.dto';
 import {
 	ConfigureVirtualTransformDto,
+	VirtualAffineTransformPolicyDto,
 	VirtualCalibrationPointDto,
+	VirtualExtensionTransformPolicyDto,
+	VirtualNtcBetaTransformPolicyDto,
 	VirtualNumericRangeDto,
 	VirtualNumericTransformPolicyDto,
+	VirtualPiecewiseLinearTransformPolicyDto,
+	VirtualSteinhartHartTransformPolicyDto,
 } from './dto/transform-config.dto';
 import { UpdateVirtualChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateVirtualChannelDto } from './dto/update-channel.dto';
@@ -32,6 +37,7 @@ import { CompatibilityReportModel, CompatibilityResponseModel } from './models/c
 import { VirtualConfigModel } from './models/config.model';
 import * as LightGroupDraftModels from './models/light-group-draft.model';
 import * as MeasurementAuthoringModels from './models/measurement-authoring-response.model';
+import * as NumericOperatorModels from './models/numeric-operator.model';
 import * as ProducerModels from './models/producer-response.model';
 import * as ThermostatAuthoringModels from './models/thermostat-authoring-response.model';
 import * as ComfortModels from './models/thermostat-comfort-response.model';
@@ -46,10 +52,16 @@ export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	...Object.values(MeasurementAuthoringDtos),
 	...Object.values(MeasurementAuthoringModels),
 	ConfigureVirtualTransformDto,
+	VirtualExtensionTransformPolicyDto,
+	VirtualAffineTransformPolicyDto,
+	VirtualPiecewiseLinearTransformPolicyDto,
+	VirtualNtcBetaTransformPolicyDto,
+	VirtualSteinhartHartTransformPolicyDto,
 	VirtualNumericTransformPolicyDto,
 	VirtualNumericRangeDto,
 	VirtualCalibrationPointDto,
 	...Object.values(TransformModels),
+	...Object.values(NumericOperatorModels),
 	...Object.values(InstallationDtos),
 	...Object.values(InstallationModels),
 	...Object.values(ThermostatDtos),

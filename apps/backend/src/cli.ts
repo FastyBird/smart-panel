@@ -14,6 +14,7 @@ async function bootstrap() {
 	const discovered = await getDiscoveredExtensions();
 
 	const appModule = AppModule.register({
+		discoveredBackend: discovered.backend,
 		moduleExtensions: discovered.backend
 			.filter((e) => e.kind === 'module')
 			.map((d) => ({

@@ -350,6 +350,23 @@ describe('qualified samples and producer state', () => {
 		expect(values.readQualifiedSample(property, 10_000)).toBeNull();
 	});
 
+	it('notifies dependent producers immediately when a captured lifecycle closes after a clock rollback', async () => {
+		const dependent = Object.assign(new SampleProperty(), property, { id: 'dependent' });
+		const dependentLease = producers.register(dependent, 1);
+		await values.publishDerived(dependent, dependentLease, 20, publication(base, base, base + 30_000));
+		jest.setSystemTime(base + 10_000);
+		let active = true;
+		const lease = producers.register(property, 1, { isCurrent: () => active, reason: 'operator_unavailable' });
+		await values.publishDerived(property, lease, 21, publication(base + 10_000));
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, (changed: ChannelPropertyEntity) => {
+			if (changed.id === property.id) producers.invalidate(dependentLease, ['source_unavailable']);
+		});
+		jest.setSystemTime(base + 5_000);
+		expect(producers.invalidate(lease, ['old_evaluation'])).toBe(false);
+		active = false;
+		expect(producers.invalidate(lease, ['operator_unavailable'])).toBe(true);
+		expect(producers.read(dependent.id)?.producer.quality).toBe('unavailable');
+	});
 	it('cannot publish an in-flight derived sample after its captured lifecycle closes and a retry reopens authority', async () => {
 		let validated = true;
 		let generation = 0;

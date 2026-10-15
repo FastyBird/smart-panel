@@ -1,14 +1,15 @@
 import { VirtualTransformConfigurationModel, VirtualTransformPreviewModel } from '../models/transform-response.model';
 
-import { evaluateVirtualNumericTransform } from './virtual-numeric-transform.utils';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 
 /** Add an unqualified numeric preview without installing a producer or claiming live source evidence. */
 export function attachTransformPreview(
 	model: VirtualTransformConfigurationModel,
 	input?: number,
+	resolver = new VirtualTransformResolver(),
 ): VirtualTransformConfigurationModel {
 	if (input === undefined) return model;
-	const computed = evaluateVirtualNumericTransform(model.policy, input);
+	const computed = resolver.evaluate(model.policy, input);
 	model.preview_result = Object.assign(new VirtualTransformPreviewModel(), {
 		input,
 		value: computed.value,

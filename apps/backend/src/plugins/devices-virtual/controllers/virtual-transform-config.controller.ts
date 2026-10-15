@@ -9,6 +9,7 @@ import {
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
 import { PreviewVirtualTransformDto } from '../dto/measurement-authoring.dto';
 import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
+import { NumericOperatorModel, NumericOperatorsResponseModel } from '../models/numeric-operator.model';
 import { VirtualTransformConfigurationResponseModel } from '../models/transform-response.model';
 import { VirtualTransformConfigService } from '../services/virtual-transform-config.service';
 import { attachTransformPreview } from '../services/virtual-transform-preview.utils';
@@ -17,6 +18,23 @@ import { attachTransformPreview } from '../services/virtual-transform-preview.ut
 @Controller('producers')
 export class VirtualTransformConfigController {
 	constructor(private readonly configs: VirtualTransformConfigService) {}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'List trusted numeric operators',
+		description:
+			'Available exact operator versions with canonical measurements, domains and finite numeric parameter schemas. Preview grants no live authority.',
+		operationId: 'get-devices-virtual-plugin-numeric-operators',
+	})
+	@ApiSuccessResponse(NumericOperatorsResponseModel, 'Available numeric operators')
+	@Get('numeric-operators')
+	operators(): NumericOperatorsResponseModel {
+		const response = new NumericOperatorsResponseModel();
+		response.data = (this.configs.resolver.registry?.catalogue() ?? []).map((descriptor) =>
+			Object.assign(new NumericOperatorModel(), descriptor),
+		);
+		return response;
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
@@ -70,7 +88,11 @@ export class VirtualTransformConfigController {
 		@Body() dto: PreviewVirtualTransformDto,
 	): Promise<VirtualTransformConfigurationResponseModel> {
 		const response = new VirtualTransformConfigurationResponseModel();
-		response.data = attachTransformPreview(await this.execute(() => this.configs.preview(id, dto)), dto.previewInput);
+		response.data = attachTransformPreview(
+			await this.execute(() => this.configs.preview(id, dto)),
+			dto.previewInput,
+			this.configs.resolver,
+		);
 		return response;
 	}
 

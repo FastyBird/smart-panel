@@ -320,3 +320,10 @@ import {
   normalizeRoutePrefix,
 } from '@fastybird/smart-panel-extension-sdk';
 ```
+
+## Trusted numeric operators
+
+`NumericOperatorDefinition` and its descriptor/parameter validation helpers are exported from the SDK index.
+See [the host contract](../../docs/trusted-numeric-operators.md) for discovery, exact config ownership, versioning,
+physical-input qualification, lifecycle fencing and the trusted-code limitations. The SDK provides no sandbox,
+protection authority or asynchronous execution support.

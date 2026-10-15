@@ -15,7 +15,8 @@ export async function hydrateMeasurementContract(
 	property.unit = resolvePropertyUnit(property);
 	if (!(property instanceof VirtualChannelPropertyEntity) || !property.isDerived) return;
 	const config = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: property.id });
-	if (!config || transformContractErrors(config, property, null).length) return;
+	if (!config || transformContractErrors(config, property, null).some((error) => error !== 'operator_unavailable'))
+		return;
 	property.unit = config.unit;
 	property.measurementQuantity = config.quantity;
 }

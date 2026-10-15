@@ -1,14 +1,18 @@
 import { instanceToPlain } from 'class-transformer';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { v4 as uuid } from 'uuid';
 
 import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualNumericTransforms1000000000029 } from '../../../migrations/1000000000029-AddVirtualNumericTransforms';
+import { EventType as ConfigEvent } from '../../../modules/config/config.constants';
+import { PluginsTypeMapperService } from '../../../modules/config/services/plugins-type-mapper.service';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -28,6 +32,9 @@ import { PropertyValueSourceRegistryService } from '../../../modules/devices/ser
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
+import { discoverExtensions } from '../../../modules/extensions/services/extensions-discovery';
+import { ExtensionsService } from '../../../modules/extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { HomeKitEventListener } from '../../devices-homekit/listeners/homekit-event.listener';
 import { HomeKitCommandDispatcher } from '../../devices-homekit/services/homekit-command.dispatcher';
@@ -40,7 +47,7 @@ import {
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
-import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
+import { ConfigureVirtualTransformDto, VirtualNumericTransformPolicyDto } from '../dto/transform-config.dto';
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
@@ -56,6 +63,8 @@ import { VirtualTransformMetadataSubscriber } from '../subscribers/virtual-trans
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
+import { VirtualNumericOperatorHostService } from './virtual-numeric-operator-host.service';
+import { VirtualNumericOperatorRegistry } from './virtual-numeric-operator.registry';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
@@ -63,12 +72,17 @@ import { thermostatFingerprint, thermostatPropertyContract } from './virtual-the
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { evaluateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
 import { VirtualTransformConfigService } from './virtual-transform-config.service';
+import { attachTransformPreview } from './virtual-transform-preview.utils';
+import { VirtualTransformResolver } from './virtual-transform-resolver';
 import { VirtualTransformRuntimeService } from './virtual-transform-runtime.service';
 
-jest.setTimeout(30000);
+jest.setTimeout(120000);
 const base = Date.parse('2026-10-13T10:00:00Z');
 
 describe('numeric transform real SQLite contract and runtime', () => {
+	let operatorHost: VirtualNumericOperatorHostService | undefined;
+	let operators: VirtualNumericOperatorRegistry;
+	let resolver: VirtualTransformResolver;
 	let directory: string;
 	let database: SqliteDataSource;
 	let graph: VirtualDependencyGraphService;
@@ -90,6 +104,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 	};
 
 	beforeEach(async () => {
+		operatorHost = undefined;
 		directory = await mkdtemp(join(tmpdir(), 'vd2-aggregate-'));
 		database = await new SqliteDataSource({
 			type: 'sqlite',
@@ -125,6 +140,8 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		state = new VirtualProducerStateService(database, producers, graph, events);
 		configs = new VirtualProducerConfigService(database, new DeviceStructureLockService(), graph, events, state);
 		statuses = new Map();
+		operators = new VirtualNumericOperatorRegistry();
+		resolver = new VirtualTransformResolver(operators);
 		runtime = new VirtualAggregateRuntimeService(
 			database,
 			producers,
@@ -146,6 +163,8 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			} as DeviceConnectionStateService,
 			graph,
 			events,
+			undefined,
+			resolver,
 		);
 		transforms = new VirtualTransformConfigService(
 			database,
@@ -154,14 +173,17 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			events,
 			state,
 			transformRuntime,
+			resolver,
 		);
 	});
 
 	afterEach(async () => {
+		operatorHost?.onModuleDestroy();
 		runtime?.onModuleDestroy();
 		transformRuntime?.onModuleDestroy();
 		state?.onModuleDestroy();
 		producers?.onModuleDestroy();
+		jest.restoreAllMocks();
 		jest.useRealTimers();
 		if (database?.isInitialized) await database.destroy();
 		await rm(directory, { recursive: true, force: true });
@@ -281,6 +303,309 @@ describe('numeric transform real SQLite contract and runtime', () => {
 				outputRange: { minimum: -200, maximum: 200 },
 			},
 		});
+	it('discovers a trusted owner export, previews, persists, evaluates and revokes with retained history and fresh reactivation', async () => {
+		const pkg = join(directory, 'fixture');
+		await mkdir(pkg);
+		await writeFile(
+			join(pkg, 'package.json'),
+			JSON.stringify({
+				name: '@fixture/operator',
+				main: 'index.js',
+				fastybird: {
+					smartPanelBackend: {
+						kind: 'plugin',
+						routePrefix: 'not-the-owner',
+						extensionExport: 'FixtureModule',
+						numericOperatorsExport: 'operators',
+						configOwnerType: 'fixture-owner',
+					},
+				},
+			}),
+		);
+		await writeFile(
+			join(pkg, 'index.js'),
+			`exports.FixtureConfig = class FixtureConfig {}; exports.FixtureConfigDto = class FixtureConfigDto {}; exports.FixtureModule = class FixtureModule { constructor(mapper, metadata) { this.mapper=mapper; this.metadata=metadata; } onModuleInit() { this.mapper.registerMapping({type:'fixture-owner',class:exports.FixtureConfig,configDto:exports.FixtureConfigDto}); this.metadata.registerPluginMetadata({type:'fixture-owner',name:'Fixture',packageName:'@fixture/operator'}); } }; exports.operators = [{contractVersion:1,name:'offset',operatorVersion:1,input:{quantity:'temperature',unit:'°C'},output:{quantity:'temperature',unit:'°C'},inputRange:{minimum:-40,maximum:100},outputRange:{minimum:-50,maximum:110},parameters:{offset:{required:true,minimum:-10,maximum:10}},evaluate:(n,p)=>n+p.offset}];`,
+		);
+		const discovered = (await discoverExtensions({ extraDirs: [directory], namePrefixes: ['@fixture/'] })).backend;
+		expect(discovered).toHaveLength(1);
+		expect(discovered[0]).toMatchObject({
+			pkgName: '@fixture/operator',
+			kind: 'plugin',
+			configOwnerType: 'fixture-owner',
+			packageDir: pkg,
+		});
+		const mapper = new PluginsTypeMapperService();
+		const modules = { getMappings: () => [] };
+		const metadata = new ExtensionsService({} as never, modules as never, mapper, {} as never);
+		const fixture = new discovered[0].extensionClass(mapper, metadata) as { onModuleInit(): void };
+		fixture.onModuleInit();
+		const manager = new ManagedServiceManagerService(
+			{ getPluginConfig: () => ({ enabled: true }) } as never,
+			new NestConfigService(),
+			{ hasValidator: () => false } as never,
+			{ resolve: () => Promise.resolve(undefined) } as never,
+		);
+		await manager.onApplicationBootstrap();
+		const register = () => {
+			operatorHost = new VirtualNumericOperatorHostService(
+				operators,
+				manager,
+				modules as never,
+				mapper,
+				metadata,
+				events,
+				discovered,
+			);
+			operatorHost.onModuleInit();
+			operatorHost.onApplicationBootstrap();
+			const capturedHost = operatorHost;
+			return () => capturedHost.onModuleDestroy();
+		};
+		const dispose = register();
+		const source = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		const aggregate = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		const request = dto(source);
+		request.policy = {
+			operator: VirtualNumericTransformOperator.EXTENSION,
+			contractVersion: 1,
+			operatorId: '@fixture/operator:offset',
+			operatorVersion: 1,
+			parameters: { offset: 2 },
+			inputRange: { minimum: -40, maximum: 100 },
+			outputRange: { minimum: -50, maximum: 110 },
+		};
+		const preview = attachTransformPreview(await transforms.preview(output.id, request), 20, resolver);
+		expect(preview.preview_result).toMatchObject({ value: 22, qualified: false });
+		await transforms.configure(output.id, request);
+		expect((await transforms.get(output.id)).policy).toEqual(request.policy);
+		const sibling = await measurement();
+		await configure(aggregate, [output, sibling]);
+		await start();
+		await sample(source, 20);
+		await sample(sibling, 20);
+		expect(outputState(output)).toMatchObject({
+			value: 22,
+			producer: { quality: 'good', sampledAt: new Date(base).toISOString() },
+		});
+		expect(outputState(aggregate)?.producer.quality).toBe('good');
+		const history = storage.writePoints.mock.calls.length + storage.enqueueWritePoint.mock.calls.length;
+		let release: () => void, entered: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		let paused = false;
+		storage.writePoints.mockImplementation(async (points: { tags: { propertyId: string } }[]) => {
+			if (!paused && points[0].tags.propertyId === output.id) {
+				paused = true;
+				entered();
+				await gate;
+			}
+		});
+		await values.writeSampleWithState(source, 21, {
+			sampledAt: new Date(base),
+			receivedAt: new Date(base),
+			provenance: 'live',
+		});
+		await started;
+		const scope = operators.capture('@fixture/operator:offset', 1);
+		jest.setSystemTime(base + 1_000);
+		events.emit(ConfigEvent.CONFIG_RELOAD);
+		expect(scope.isCurrent()).toBe(false);
+		expect(operators.capture('@fixture/operator:offset', 1)).toBeNull();
+		expect(outputState(output)?.producer.quality).toBe('unavailable');
+		expect(outputState(aggregate)?.producer.quality).toBe('unavailable');
+		// The entered write may retain history, but reload must fence its current publication.
+		expect(storage.writePoints.mock.calls.length + storage.enqueueWritePoint.mock.calls.length).toBe(history + 2);
+		release();
+		await transformRuntime.flush();
+		await runtime.flush();
+		expect(outputState(output)?.producer.quality).toBe('unavailable');
+		expect(outputState(aggregate)?.producer.quality).toBe('unavailable');
+		expect((await values.readLatest(output))?.value).toBeNull();
+		expect(operators.capture('@fixture/operator:offset', 1)).toBeNull();
+		await sample(source, 21);
+		jest.setSystemTime(base + 2_000);
+		await manager.restartService('plugin', 'fixture-owner', 'numeric-operators');
+		await transformRuntime.flush();
+		await runtime.flush();
+		expect(outputState(output)?.producer.quality).toBe('unavailable');
+		await sample(source, 21, base + 1_000);
+		expect(outputState(output)?.value).toBe(23);
+		expect(outputState(output)?.producer.sampledAt).toBe(new Date(base + 1_000).toISOString());
+		expect(outputState(aggregate)?.producer).toMatchObject({
+			quality: 'good',
+			sampledAt: new Date(base).toISOString(),
+			expiresAt: new Date(base + 10_000).toISOString(),
+		});
+		dispose();
+	});
+
+	it('isolates stored JSON null and scalar policies during timer drains without renewing healthy sibling evidence', async () => {
+		operators.activate('@fixture/identity', [
+			{
+				contractVersion: 1,
+				name: 'identity',
+				operatorVersion: 1,
+				input: { quantity: 'temperature', unit: '°C' },
+				output: { quantity: 'temperature', unit: '°C' },
+				inputRange: { minimum: -100, maximum: 100 },
+				outputRange: { minimum: -200, maximum: 200 },
+				parameters: {},
+				evaluate: (n) => n,
+			},
+		]);
+		const source = await measurement();
+		const outputs = await Promise.all(Array.from({ length: 4 }, () => measurement(VirtualDeviceMode.SENSOR_TRANSFORM)));
+		for (const [index, output] of outputs.entries()) {
+			const request = dto(source);
+			if (index === 3)
+				request.policy = {
+					operator: VirtualNumericTransformOperator.EXTENSION,
+					contractVersion: 1,
+					operatorId: '@fixture/identity:identity',
+					operatorVersion: 1,
+					parameters: {},
+					inputRange: request.policy.inputRange,
+					outputRange: request.policy.outputRange,
+				};
+			await transforms.configure(output.id, request);
+		}
+		await start();
+		await sample(source, 20);
+		const healthy = outputs.slice(2).map((output) => outputState(output));
+		const history = storage.writePoints.mock.calls.length;
+		for (const [index, policy] of [null, 17].entries()) {
+			await database.query('UPDATE devices_virtual_transform_configs SET policy = ? WHERE outputPropertyId = ?', [
+				JSON.stringify(policy),
+				outputs[index].id,
+			]);
+			expect(instanceToPlain(await transforms.get(outputs[index].id)).policy).toEqual(policy);
+			const request = dto(source, 1);
+			request.policy = policy as unknown as ConfigureVirtualTransformDto['policy'];
+			await expect(transforms.preview(outputs[index].id, request)).rejects.toThrow(
+				/missing_configuration|invalid_input_range/,
+			);
+		}
+		const invalidations = jest.spyOn(producers, 'invalidate');
+		for (let tick = 1; tick <= 2; tick++) {
+			jest.advanceTimersByTime(1_000);
+			await transformRuntime.flush();
+			await runtime.flush();
+			for (const [index, output] of outputs.slice(0, 2).entries()) {
+				expect(transformRuntime.readDiagnostics(output.id)?.reasons).toContain(
+					index === 0 ? 'missing_configuration' : 'invalid_input_range',
+				);
+				expect(outputState(output)?.producer.quality).toBe('unavailable');
+				expect((await values.readLatest(output))?.value).toBeNull();
+				expect(transformRuntime.readDiagnostics(output.id)?.reasons).not.toContain('runtime_error');
+			}
+			for (const [index, output] of outputs.slice(2).entries()) {
+				expect(outputState(output)).toMatchObject({
+					value: healthy[index].value,
+					producer: {
+						quality: 'good',
+						sampledAt: healthy[index].producer.sampledAt,
+						expiresAt: healthy[index].producer.expiresAt,
+					},
+				});
+			}
+		}
+		expect(
+			invalidations.mock.calls.every(([lease]) => !outputs.slice(2).some((output) => output.id === lease.propertyId)),
+		).toBe(true);
+		expect(storage.writePoints.mock.calls.length).toBe(history);
+	});
+
+	it.each(['database', 'history-write'])(
+		'fences a revoked custom activation across a delayed %s and re-registration',
+		async (stage) => {
+			const definition = {
+				contractVersion: 1 as const,
+				name: 'offset',
+				operatorVersion: 1,
+				input: { quantity: 'temperature' as const, unit: '°C' as const },
+				output: { quantity: 'temperature' as const, unit: '°C' as const },
+				inputRange: { minimum: -40, maximum: 100 },
+				outputRange: { minimum: -50, maximum: 110 },
+				parameters: { offset: { required: true, minimum: -10, maximum: 10 } },
+				evaluate: (n: number, p: Readonly<Record<string, number>>) => n + p.offset,
+			};
+			const dispose = operators.activate('@fixture/operator', [definition]);
+			const source = await measurement(),
+				output = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+			const request = dto(source);
+			request.policy = {
+				operator: VirtualNumericTransformOperator.EXTENSION,
+				contractVersion: 1,
+				operatorId: '@fixture/operator:offset',
+				operatorVersion: 1,
+				parameters: { offset: 2 },
+				inputRange: definition.inputRange,
+				outputRange: definition.outputRange,
+			};
+			await transforms.configure(output.id, request);
+			await start();
+			await sample(source, 20);
+			let release: () => void, entered: () => void;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const started = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			let paused = false;
+			if (stage === 'database') {
+				const original = database.manager.findOne.bind(database.manager) as typeof database.manager.findOne;
+				jest
+					.spyOn(database.manager, 'findOne')
+					.mockImplementation(async (...args: Parameters<typeof database.manager.findOne>) => {
+						if (!paused && args[0] === VirtualChannelPropertyEntity) {
+							paused = true;
+							entered();
+							await gate;
+						}
+						return original(...args);
+					});
+			} else
+				storage.writePoints.mockImplementation(async (points: { tags: { propertyId: string } }[]) => {
+					if (!paused && points[0].tags.propertyId === output.id) {
+						paused = true;
+						entered();
+						await gate;
+					}
+				});
+			const pending = values.writeSampleWithState(source, 21, {
+				sampledAt: new Date(base),
+				receivedAt: new Date(base),
+				provenance: 'live',
+			});
+			await pending;
+			await Promise.race([
+				started,
+				transformRuntime.flush().then(() => {
+					if (!paused)
+						throw new Error(`Expected ${stage} pause: ${JSON.stringify(transformRuntime.readDiagnostics(output.id))}`);
+				}),
+			]);
+			dispose();
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+			const newDispose = operators.activate('@fixture/operator', [definition]);
+			dispose(); // stale disposer cannot remove the new activation
+			release();
+			await pending;
+			await transformRuntime.flush();
+			expect(outputState(output)?.producer.quality).toBe('unavailable');
+			expect((await values.readLatest(output))?.value).toBeNull();
+			await sample(source, 22);
+			expect(outputState(output)?.value).toBe(24);
+			newDispose();
+		},
+	);
+
 	const transform = async (source: ChannelPropertyEntity, output: ChannelPropertyEntity, revision = 0) => {
 		await transforms.configure(output.id, dto(source, revision));
 		await transformRuntime.flush();
@@ -679,7 +1004,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		const graphRevision = await graph.revision();
 		await expect(transforms.configure(output.id, config)).rejects.toThrow('revision');
 		const bad = dto(source, 1);
-		bad.policy.scale = Infinity;
+		(bad.policy as VirtualNumericTransformPolicyDto).scale = Infinity;
 		await expect(transforms.preview(output.id, bad)).rejects.toThrow('invalid_coefficients');
 		await expect(transforms.configure(output.id, bad)).rejects.toThrow('invalid_coefficients');
 		expect(await graph.revision()).toBe(graphRevision);
@@ -729,7 +1054,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			evaluation = producers.beginEvaluation(lease);
 		jest.setSystemTime(base + 1000);
 		const edited = dto(source, 1);
-		edited.policy.scale = 3;
+		(edited.policy as VirtualNumericTransformPolicyDto).scale = 3;
 		await transforms.configure(output.id, edited);
 		await transformRuntime.flush();
 		expect(outputState(output).value).toBeNull();
@@ -1025,7 +1350,7 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		});
 		await entered;
 		const edited = dto(source, 1);
-		edited.policy.scale = 3;
+		(edited.policy as VirtualNumericTransformPolicyDto).scale = 3;
 		await transforms.configure(output.id, edited);
 		expect(outputState(output)).toMatchObject({ value: null, producer: { revision: 2 } });
 		release();
@@ -1184,8 +1509,8 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		const proposed = dto(source);
 		proposed.quantity = 'voltage';
 		proposed.unit = 'mV';
-		proposed.policy.scale = 1000;
-		proposed.policy.offset = 0;
+		(proposed.policy as VirtualNumericTransformPolicyDto).scale = 1000;
+		(proposed.policy as VirtualNumericTransformPolicyDto).offset = 0;
 		proposed.policy.outputRange.maximum = 100000;
 		expect((await transforms.preview(output.id, proposed)).unit).toBe('mV');
 		await transforms.configure(output.id, proposed);
@@ -1202,8 +1527,8 @@ describe('numeric transform real SQLite contract and runtime', () => {
 		const edited = dto(source, 1);
 		edited.quantity = 'voltage';
 		edited.unit = 'kV';
-		edited.policy.scale = 0.001;
-		edited.policy.offset = 0;
+		(edited.policy as VirtualNumericTransformPolicyDto).scale = 0.001;
+		(edited.policy as VirtualNumericTransformPolicyDto).offset = 0;
 		const revision = await graph.revision();
 		const historyWrites = storage.enqueueWritePoint.mock.calls.length;
 		await expect(transforms.preview(output.id, edited)).rejects.toThrow('immutable');
