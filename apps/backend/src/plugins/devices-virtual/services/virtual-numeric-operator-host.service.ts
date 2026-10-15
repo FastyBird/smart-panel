@@ -50,6 +50,7 @@ class NumericOperatorAdapter implements IManagedExtensionService {
 	revoke(): void {
 		const dispose = this.dispose;
 		this.dispose = undefined;
+		if (dispose && this.state === 'started') this.state = 'error';
 		dispose?.();
 	}
 	stop(): Promise<void> {

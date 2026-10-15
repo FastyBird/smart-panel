@@ -280,6 +280,47 @@ describe('backend-evaluated snapshot presentation', () => {
 });
 
 describe('trusted numeric operator form', () => {
+	it.each(['http', 'throw'] as const)('previews and saves a built-in despite a %s operator catalogue failure', async (failure) => {
+		const stored = {
+			output_property: 'output',
+			schema_version: 1,
+			quantity: 'temperature',
+			unit: '°C',
+			maximum_age_seconds: 30,
+			revision: 1,
+			graph_revision: 1,
+			runtime_readiness: 'configured',
+			quality: 'unavailable',
+			current_value: null,
+			errors: [],
+			source: { id: 'binding', source_property: 'physical', source_identity: 'physical', quantity: 'temperature', unit: '°C' },
+			policy: { operator: 'affine', scale: 1, offset: 0, inputRange: { minimum: 0, maximum: 100 }, outputRange: { minimum: 0, maximum: 100 } },
+		};
+		mocks.GET.mockImplementation(async (path: string) => {
+			if (path.endsWith('numeric-operators')) {
+				if (failure === 'throw') throw new Error('Network unavailable');
+				return { error: { message: 'Unavailable' }, response: { status: 503 } };
+			}
+			return { data: { data: stored } };
+		});
+		const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform, outputId: 'output' } });
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('.states.measurementCatalog');
+		expect(previewButton(wrapper).attributes('disabled')).toBeUndefined();
+		mocks.POST.mockResolvedValueOnce({ data: { data: { ...stored, preview_result: { input: 22, value: 22, error: null, qualified: false } } } });
+		await previewButton(wrapper).trigger('click');
+		await flushPromises();
+		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
+		mocks.PUT.mockResolvedValueOnce({ data: { data: stored } });
+		await saveButton(wrapper).trigger('click');
+		await flushPromises();
+		expect(mocks.PUT).toHaveBeenCalledWith(
+			'/plugins/devices-virtual/producers/transforms/{id}',
+			expect.objectContaining({ body: expect.objectContaining({ policy: expect.objectContaining({ operator: 'affine' }) }) })
+		);
+		wrapper.unmount();
+	});
+
 	it('renders actual bounded numeric inputs and canonical domains from the catalogue', async () => {
 		mocks.GET.mockResolvedValue({
 			data: {

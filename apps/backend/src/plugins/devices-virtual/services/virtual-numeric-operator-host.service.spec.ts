@@ -76,7 +76,7 @@ describe('discovered numeric operator managed lifecycle', () => {
 		host = createHost();
 		host.onModuleInit();
 		host.onApplicationBootstrap();
-		await Promise.resolve();
+		await manager.onApplicationBootstrap();
 		const old = current();
 		expect(old?.isCurrent()).toBe(true);
 		events.emit(EventType.CONFIG_UPDATED, { type: 'plugin', source: 'real-owner' });
@@ -104,11 +104,41 @@ describe('discovered numeric operator managed lifecycle', () => {
 		expect(current()).toBeNull();
 	});
 
+	it('reports revoked activation as error, permits manual recovery and ends an explicit stop as stopped', async () => {
+		host = createHost();
+		host.onModuleInit();
+		host.onApplicationBootstrap();
+		await manager.onApplicationBootstrap();
+		expect(await manager.getServiceStatus('plugin', 'real-owner', 'numeric-operators')).toMatchObject({
+			state: 'started',
+		});
+		const scope = current();
+		events.emit(EventType.CONFIG_RELOAD);
+		expect(scope.isCurrent()).toBe(false);
+		expect(current()).toBeNull();
+		expect(await manager.getServiceStatus('plugin', 'real-owner', 'numeric-operators')).toMatchObject({
+			state: 'error',
+		});
+		events.emit(EventType.CONFIG_RELOAD); // Repeated revocation cannot pretend recovery.
+		expect(await manager.startServiceManually('plugin', 'real-owner', 'numeric-operators')).toBe(true);
+		expect(current()?.isCurrent()).toBe(true);
+		expect(scope.isCurrent()).toBe(false);
+		await manager.stopServiceManually('plugin', 'real-owner', 'numeric-operators');
+		expect(await manager.getServiceStatus('plugin', 'real-owner', 'numeric-operators')).toMatchObject({
+			state: 'stopped',
+		});
+		events.emit(EventType.CONFIG_RELOAD);
+		expect(await manager.getServiceStatus('plugin', 'real-owner', 'numeric-operators')).toMatchObject({
+			state: 'stopped',
+		});
+		expect(current()).toBeNull();
+	});
+
 	it('revokes on restore reload synchronously without reactivating a restored disabled owner', async () => {
 		host = createHost();
 		host.onModuleInit();
 		host.onApplicationBootstrap();
-		await Promise.resolve();
+		await manager.onApplicationBootstrap();
 		const scope = current();
 		expect(scope?.isCurrent()).toBe(true);
 		enabled = false;
@@ -128,7 +158,7 @@ describe('discovered numeric operator managed lifecycle', () => {
 		host = createHost();
 		host.onModuleInit();
 		host.onApplicationBootstrap();
-		await Promise.resolve();
+		await manager.onApplicationBootstrap();
 		const scope = current();
 		expect(scope?.isCurrent()).toBe(true);
 		let release: () => void;

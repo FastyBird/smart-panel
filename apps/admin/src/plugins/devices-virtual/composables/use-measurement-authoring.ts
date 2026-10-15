@@ -121,8 +121,12 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	};
 	const loadCapabilities = async () => {
 		if (isTransform) {
-			const result = await backend.client.GET('/plugins/devices-virtual/producers/numeric-operators');
-			numericOperators.value = response(result.data, result.error, result.response?.status);
+			try {
+				const result = await backend.client.GET('/plugins/devices-virtual/producers/numeric-operators');
+				numericOperators.value = response(result.data, result.error, result.response?.status);
+			} catch {
+				numericOperators.value = [];
+			}
 			return;
 		}
 		const result = await backend.client.GET('/plugins/devices-virtual/producers/aggregate-profiles');

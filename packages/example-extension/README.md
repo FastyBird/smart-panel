@@ -5,14 +5,29 @@ This is a minimal example of a **Smart Panel extension**.
 ### 🧩 Manifest
 
 ```json
-"fastybird": {
-  "smartPanel": {
-    "kind": "plugin",
-    "routePrefix": "example-extension",
-    "moduleExport": "ExampleExtensionModule",
-    "sdkVersion": "^0.1.0"
+{
+  "name": "@fastybird/smart-panel-extension-example",
+  "main": "dist/index.js",
+  "fastybird": {
+    "smartPanelBackend": {
+      "kind": "plugin",
+      "routePrefix": "example-extension",
+      "extensionExport": "ExampleExtensionModule",
+      "sdkVersion": "^1.0.0",
+      "displayName": "Example Extension",
+      "description": "Shows how to build a minimal extension for Smart Panel.",
+      "numericOperatorsExport": "exampleNumericOperators",
+      "configOwnerType": "example-extension"
+    },
+    "smartPanelAdmin": {
+      "kind": "plugin",
+      "extensionEntry": "admin/index.js",
+      "displayName": "Example Admin",
+      "description": "Tiny demo admin plugin"
+    }
   }
 }
+```
 
 The backend entry also exports a typed `temperature_offset` numeric operator, the registered config model and update
 DTO. Both manifest opt-in fields identify the real `example-extension` owner. The module registers its config mapper

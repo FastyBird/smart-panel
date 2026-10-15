@@ -484,7 +484,7 @@ export class VirtualThermostatConfigService {
 					: null;
 				if (
 					!transform ||
-					(input.role === 'floor' && transform.policy.operator !== VirtualNumericTransformOperator.STEINHART_HART) ||
+					(input.role === 'floor' && transform.policy?.operator === VirtualNumericTransformOperator.EXTENSION) ||
 					!binding ||
 					transform.quantity !== String(PropertyCategory.TEMPERATURE) ||
 					transform.unit !== '°C' ||

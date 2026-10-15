@@ -30,7 +30,7 @@
     "pretty:write": "prettier \"src/**/*.ts\" \"test/**/*.ts\" --write",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build",
-    "test": "node --test test/*.test.cjs"
+    "test": "npm run build && node --test test/*.test.cjs"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.1.3"

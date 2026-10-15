@@ -27,6 +27,36 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 describe('measurement authoring API lifecycle', () => {
+	it.each(['http', 'throw'] as const)('keeps built-in editing available after a %s numeric catalogue failure', async (failure) => {
+		const stored = { ...config(), source: { ...config().source, source_property: 'physical' } };
+		client.GET.mockResolvedValueOnce({ data: { data: stored } });
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_transform, 'output');
+		await authoring.load();
+		client.GET.mockResolvedValueOnce({ data: { data: [{ operatorId: '@fixture/operator:offset', operatorVersion: 1 }] } });
+		await authoring.loadCapabilities();
+		expect(authoring.numericOperators.value).toHaveLength(1);
+		if (failure === 'http') client.GET.mockResolvedValueOnce({ error: { message: 'Unavailable' }, response: { status: 503 } });
+		else client.GET.mockRejectedValueOnce(new Error('Network unavailable'));
+		await expect(authoring.loadCapabilities()).resolves.toBeUndefined();
+		expect(authoring.numericOperators.value).toEqual([]);
+		expect(authoring.canPreview.value).toBe(true);
+		authoring.model.previewInput = 22;
+		client.POST.mockResolvedValueOnce({ data: { data: { ...stored, preview_result: { input: 22, value: 22, error: null, qualified: false } } } });
+		await authoring.previewDraft();
+		expect(authoring.preview.value).toMatchObject({ preview_result: { value: 22 } });
+		client.PUT.mockResolvedValueOnce({ data: { data: stored } });
+		await authoring.save();
+		expect(client.PUT).toHaveBeenCalledTimes(1);
+		expect(client.PUT.mock.calls[0][1].body.policy.operator).toBe('affine');
+		expect(authoring.error.value).toBeNull();
+		authoring.model.operator = 'extension';
+		authoring.model.extensionKey = '@missing/operator:offset@7';
+		expect(authoring.canPreview.value).toBe(false);
+		await authoring.save();
+		expect(authoring.error.value).toBe('measurementOperatorMissing');
+		expect(client.PUT).toHaveBeenCalledTimes(1);
+	});
+
 	it('keeps missing custom versions and parameters for repair without an implicit upgrade', async () => {
 		const stored = {
 			...config(),
