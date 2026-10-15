@@ -76,6 +76,7 @@ describePosix('HomeKitBridgeService Storage Permissions', () => {
 			clearAllBindings: jest.fn(),
 			clearDeviceBindings: jest.fn(),
 			commitStaged: jest.fn(),
+			trackDevice: jest.fn(),
 			buildAccessory: jest.fn(),
 			getSnapshot: jest
 				.fn()

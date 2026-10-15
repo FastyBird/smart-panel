@@ -145,6 +145,7 @@ describe('LightbulbMapper', () => {
 		expect(characteristic).toBeDefined();
 		const binding = registeredBindings[0];
 		const registry = {
+			notePropertyEvent: jest.fn(),
 			getBindingsForProperty: jest.fn().mockReturnValue([binding]),
 			getListenersForProperty: jest.fn().mockReturnValue([]),
 		};

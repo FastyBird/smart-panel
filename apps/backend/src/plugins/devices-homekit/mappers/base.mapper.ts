@@ -11,8 +11,10 @@ import {
 import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
+import { bindCharacteristicGet } from './characteristic-get';
 import { bindCharacteristicWrite } from './characteristic-write';
 import { CharacteristicBinding, HomeKitMapperContext, IHomeKitAccessoryMapper } from './homekit-mapper.interface';
+import { readMappedProperty } from './property-read';
 
 export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 	abstract canMap(device: DeviceEntity): boolean;
@@ -63,8 +65,15 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 		characteristic: Characteristic,
 		toHomeKit: (value: unknown) => CharacteristicValue = (val) => val as CharacteristicValue,
 		fromHomeKit: (value: CharacteristicValue) => unknown = (val) => val,
+		fault?: Characteristic,
 	): void {
-		const initialValue = toHomeKit(property.value?.value);
+		let currentProperty = property;
+		let initialValue: CharacteristicValue;
+		try {
+			initialValue = readMappedProperty(context, property, characteristic, toHomeKit, fault);
+		} catch {
+			initialValue = undefined;
+		}
 		const binding: CharacteristicBinding = {
 			deviceId: device.id,
 			channelId: channel.id,
@@ -76,9 +85,29 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 			revision: 0,
 		};
 
-		characteristic.onGet(() => {
-			return binding.currentValue;
-		});
+		binding.readValue = (event, metadataUpdate = false) => {
+			if (event)
+				currentProperty = Object.assign(
+					Object.create(Object.getPrototypeOf(currentProperty) as object) as ChannelPropertyEntity,
+					currentProperty,
+					metadataUpdate ? event : { value: event.value },
+					{ channel: currentProperty.channel },
+				);
+			const state = context.propertyState?.read(currentProperty);
+			if (!event && !currentProperty.requiresLiveValue && (!state || state.quality === null))
+				return binding.currentValue;
+			return readMappedProperty(context, currentProperty, characteristic, toHomeKit, fault);
+		};
+		bindCharacteristicGet(context, characteristic, () => binding.readValue());
+		if (fault)
+			bindCharacteristicGet(context, fault, () => {
+				try {
+					binding.readValue(currentProperty);
+				} catch {
+					/* Fault remains readable for unavailable sensors. */
+				}
+				return fault.value;
+			});
 
 		if (initialValue !== undefined && initialValue !== null) {
 			try {
@@ -88,9 +117,11 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 			}
 		}
 
+		const isComposite = context.commandDispatcher.canExecuteCompositeProperty?.(property) ?? false;
 		const isPropertyWritable =
-			Array.isArray(property.permissions) &&
-			property.permissions.some((p) => [PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(p));
+			(Array.isArray(property.permissions) &&
+				property.permissions.some((p) => [PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(p))) ||
+			isComposite;
 		const isCharacteristicWritable = characteristic.props.perms.includes(Perms.PAIRED_WRITE);
 
 		if (isPropertyWritable && isCharacteristicWritable) {
@@ -107,7 +138,7 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 						requestedValue: value,
 						startingRevision,
 					};
-					binding.currentValue = value;
+					if (!isComposite) binding.currentValue = value;
 					const smartPanelValue = fromHomeKit(value);
 
 					try {
@@ -129,7 +160,8 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 						}
 					}
 				},
-				() => binding.currentValue,
+				() => binding.readValue(),
+				() => context.availability?.assertAvailable(),
 			);
 		}
 

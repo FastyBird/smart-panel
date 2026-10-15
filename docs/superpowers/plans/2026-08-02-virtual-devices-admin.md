@@ -1,6 +1,6 @@
 # Virtual Devices — Admin Implementation Plan (Plan B)
 
-> **Status:** Implemented — PR #635 (admin virtual device plugin and wizard); the completed follow-up audit is in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, epic #1336. Shared editing and test-infrastructure refactors continue in #1402. Checkboxes below are not ticked retroactively.
+> **Status:** Implemented — PR #635 (admin virtual device plugin and wizard); the completed follow-up audit is in `tasks/technical/TECH-VIRTUAL-DEVICES-FOLLOWUPS.md`, epic #1336. Shared editing and test-infrastructure refactors were completed in #1402. Checkboxes below are not ticked retroactively.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

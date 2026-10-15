@@ -64,7 +64,11 @@ describe('durable virtual measurement coverage and room planner integration', ()
 		const registry = new DeviceContributionRegistryService();
 		const valueSources = new PropertyValueSourceRegistryService();
 		valueSources.register(
-			new VirtualValueSourceService({ isValidated: () => graphCurrent, isQuarantined: () => false } as never),
+			new VirtualValueSourceService({
+				isValidated: () => graphCurrent,
+				isQuarantined: () => false,
+				matchesValueSource: () => graphCurrent,
+			} as never),
 		);
 		storage = {
 			query: jest.fn().mockResolvedValue([]),

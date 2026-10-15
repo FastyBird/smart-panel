@@ -1,5 +1,5 @@
-import { Accessory } from '@homebridge/hap-nodejs';
-import { Injectable, Logger } from '@nestjs/common';
+import { Accessory, HAPStatus, HapStatusError } from '@homebridge/hap-nodejs';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { BatteryMapper } from '../mappers/battery.mapper';
@@ -20,8 +20,23 @@ import { ThermostatMapper } from '../mappers/thermostat.mapper';
 import { WindowCoveringMapper } from '../mappers/window-covering.mapper';
 
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
+import { HomeKitPropertyStateService } from './homekit-property-state.service';
+
+interface DeviceAvailabilityState {
+	online: boolean;
+	initialized: boolean;
+	revision: number;
+	propertyRevisions: Map<string, number>;
+}
+
+interface AccessoryAvailability {
+	active: boolean;
+	state: DeviceAvailabilityState;
+}
 
 export interface RegistrySnapshot {
+	availability?: Map<string, AccessoryAvailability>;
+	deviceStates?: Map<string, DeviceAvailabilityState>;
 	propertyBindings: Map<string, CharacteristicBinding[]>;
 	propertyListeners: Map<string, PropertyEventListener[]>;
 	occurrenceListeners: Map<string, InputOccurrenceListener[]>;
@@ -29,6 +44,7 @@ export interface RegistrySnapshot {
 }
 
 export interface StagedAccessory {
+	availability?: AccessoryAvailability;
 	accessory: Accessory;
 	deviceId: string;
 	bindings: CharacteristicBinding[];
@@ -40,6 +56,48 @@ export interface StagedAccessory {
 export class HomeKitMapperRegistryService {
 	private readonly logger = new Logger(HomeKitMapperRegistryService.name);
 	private readonly mappers: IHomeKitAccessoryMapper[] = [];
+	private readonly availability = new Map<string, AccessoryAvailability>();
+	private readonly deviceStates = new Map<string, DeviceAvailabilityState>();
+
+	/** Start tracking before an asynchronous entity/status load so a newer event wins. */
+	trackDevice(deviceId: string): void {
+		if (!this.deviceStates.has(deviceId)) {
+			this.deviceStates.set(deviceId, { online: false, initialized: false, revision: 0, propertyRevisions: new Map() });
+		}
+	}
+
+	setDeviceOnline(deviceId: string, online: boolean): boolean {
+		this.trackDevice(deviceId);
+		const state = this.deviceStates.get(deviceId);
+		if (state.initialized && state.online === online) return false;
+		const becameOnline = online;
+		state.online = online;
+		state.initialized = true;
+		state.revision++;
+		return becameOnline;
+	}
+
+	notePropertyEvent(propertyId: string): void {
+		for (const [deviceId, properties] of this.deviceProperties) {
+			if (properties.has(propertyId)) {
+				const state = this.deviceStates.get(deviceId);
+				if (state) state.propertyRevisions.set(propertyId, (state.propertyRevisions.get(propertyId) ?? 0) + 1);
+			}
+		}
+	}
+
+	/** Fences late refresh reads against events, removal, rebuild and stop. */
+	captureRefresh(deviceId: string): (propertyId?: string) => boolean {
+		const holder = this.availability.get(deviceId);
+		const revision = holder?.state.revision;
+		const propertyRevisions = new Map(holder?.state.propertyRevisions);
+		return (propertyId?: string) =>
+			!!holder?.active &&
+			this.availability.get(deviceId) === holder &&
+			holder.state.online &&
+			holder.state.revision === revision &&
+			(!propertyId || holder.state.propertyRevisions.get(propertyId) === propertyRevisions.get(propertyId));
+	}
 
 	// propertyId -> bindings
 	private readonly propertyBindings = new Map<string, CharacteristicBinding[]>();
@@ -50,7 +108,7 @@ export class HomeKitMapperRegistryService {
 	// deviceId -> propertyIds
 	private readonly deviceProperties = new Map<string, Set<string>>();
 
-	constructor() {
+	constructor(@Optional() private readonly propertyState?: HomeKitPropertyStateService) {
 		// Register built-in mappers in priority order
 		this.mappers.push(new LightbulbMapper());
 		this.mappers.push(new SwitchMapper());
@@ -92,8 +150,24 @@ export class HomeKitMapperRegistryService {
 		const stagedListeners: PropertyEventListener[] = [];
 		const stagedOccurrenceListeners: InputOccurrenceListener[] = [];
 
+		this.trackDevice(device.id);
+		const state = this.deviceStates.get(device.id);
+		if (!state.initialized) {
+			state.online = device.status?.online === true;
+			state.initialized = true;
+		}
+		const availability: AccessoryAvailability = { active: true, state };
 		const context: HomeKitMapperContext = {
+			availability: {
+				isAvailable: () => availability.active && state.online,
+				assertAvailable: () => {
+					if (!availability.active || !state.online) {
+						throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+					}
+				},
+			},
 			commandDispatcher,
+			propertyState: this.propertyState,
 			registerBinding: (binding: CharacteristicBinding) => {
 				stagedBindings.push(binding);
 			},
@@ -118,6 +192,7 @@ export class HomeKitMapperRegistryService {
 
 		return {
 			accessory,
+			availability,
 			deviceId: device.id,
 			bindings: stagedBindings,
 			listeners: stagedListeners,
@@ -127,6 +202,11 @@ export class HomeKitMapperRegistryService {
 
 	commitStaged(staged: StagedAccessory): void {
 		this.clearDeviceBindings(staged.deviceId);
+		if (staged.availability) {
+			staged.availability.active = true;
+			this.availability.set(staged.deviceId, staged.availability);
+			this.deviceStates.set(staged.deviceId, staged.availability.state);
+		}
 
 		for (const binding of staged.bindings) {
 			const existing = this.propertyBindings.get(binding.propertyId) ?? [];
@@ -168,6 +248,13 @@ export class HomeKitMapperRegistryService {
 		}
 	}
 
+	getDeviceIdForProperty(propertyId: string): string | undefined {
+		for (const [deviceId, properties] of this.deviceProperties) {
+			if (properties.has(propertyId)) return deviceId;
+		}
+		return undefined;
+	}
+
 	getBindingsForProperty(propertyId: string): CharacteristicBinding[] {
 		return this.propertyBindings.get(propertyId) ?? [];
 	}
@@ -181,6 +268,10 @@ export class HomeKitMapperRegistryService {
 	}
 
 	clearDeviceBindings(deviceId: string): void {
+		const holder = this.availability.get(deviceId);
+		if (holder) holder.active = false;
+		this.availability.delete(deviceId);
+		this.deviceStates.delete(deviceId);
 		const propIds = this.deviceProperties.get(deviceId);
 		if (propIds) {
 			for (const propId of propIds) {
@@ -214,6 +305,9 @@ export class HomeKitMapperRegistryService {
 	}
 
 	clearAllBindings(): void {
+		for (const holder of this.availability.values()) holder.active = false;
+		this.availability.clear();
+		this.deviceStates.clear();
 		this.propertyBindings.clear();
 		this.propertyListeners.clear();
 		this.occurrenceListeners.clear();
@@ -238,6 +332,8 @@ export class HomeKitMapperRegistryService {
 			cloneProps.set(k, new Set(v));
 		}
 		return {
+			availability: new Map(this.availability),
+			deviceStates: new Map(this.deviceStates),
 			propertyBindings: cloneBindings,
 			propertyListeners: cloneListeners,
 			occurrenceListeners: cloneOcc,
@@ -247,6 +343,11 @@ export class HomeKitMapperRegistryService {
 
 	restoreSnapshot(snapshot: RegistrySnapshot): void {
 		this.clearAllBindings();
+		for (const [k, holder] of snapshot.availability ?? []) {
+			holder.active = true;
+			this.availability.set(k, holder);
+		}
+		for (const [k, state] of snapshot.deviceStates ?? []) this.deviceStates.set(k, state);
 		for (const [k, v] of snapshot.propertyBindings.entries()) {
 			this.propertyBindings.set(k, [...v]);
 		}

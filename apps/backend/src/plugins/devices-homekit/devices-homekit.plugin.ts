@@ -29,6 +29,8 @@ import { HomeKitActionsService } from './services/homekit-actions.service';
 import { HomeKitBridgeService } from './services/homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './services/homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './services/homekit-mapper-registry.service';
+import { getMappingMaintenance } from './services/homekit-mapping-maintenance';
+import { HomeKitPropertyStateService } from './services/homekit-property-state.service';
 import { HomeKitWizardService } from './services/homekit-wizard.service';
 
 @ApiTag({
@@ -45,6 +47,7 @@ import { HomeKitWizardService } from './services/homekit-wizard.service';
 		HomeKitCommandDispatcher,
 		HomeKitEventListener,
 		HomeKitMapperRegistryService,
+		HomeKitPropertyStateService,
 		HomeKitWizardService,
 	],
 	exports: [HomeKitBridgeService],
@@ -83,6 +86,12 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 			DEVICES_HOMEKIT_PLUGIN_NAME,
 			async (update, commit) => {
 				let previousMappedDeviceIds: string[] = [];
+				const maintenance = getMappingMaintenance(update);
+				const currentIds =
+					this.configService.getPluginConfig<HomeKitConfigModel>(DEVICES_HOMEKIT_PLUGIN_NAME).mappedDeviceIds ?? [];
+				if (maintenance) {
+					update.mapped_device_ids = currentIds.filter((id) => !maintenance.removeDeviceIds?.includes(id));
+				}
 
 				if (update.mapped_device_ids !== undefined) {
 					if (!Array.isArray(update.mapped_device_ids)) {
@@ -110,7 +119,12 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 						}),
 					);
 
+					const retainedIds: string[] = [];
 					for (const { deviceId, device } of devices) {
+						if ((!device || !this.mapperRegistry.canMap(device)) && (maintenance || currentIds.includes(deviceId))) {
+							this.logger.warn(`Pruning missing or incompatible HomeKit device ${deviceId}.`);
+							continue;
+						}
 						if (!device) {
 							throw new BadRequestException([{ field: 'mapped_device_ids', reason: `Device ${deviceId} not found.` }]);
 						}
@@ -123,17 +137,25 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 								},
 							]);
 						}
+						retainedIds.push(deviceId);
 					}
+
+					update.mapped_device_ids = retainedIds;
 
 					const currentConfig = this.configService.getPluginConfig<HomeKitConfigModel>(DEVICES_HOMEKIT_PLUGIN_NAME);
 					previousMappedDeviceIds = [...(currentConfig.mappedDeviceIds ?? [])];
 				}
 
-				await commit();
+				const mappingChanged = update.mapped_device_ids?.join(',') !== currentIds.join(',');
+				if (!maintenance || mappingChanged) {
+					await commit();
+				}
 
 				if (update.mapped_device_ids !== undefined) {
 					try {
-						await this.homeKitBridgeService.reconcileLatestMapping();
+						if (maintenance?.reconcile !== false) {
+							await this.homeKitBridgeService.applyMapping(maintenance?.rebuildDeviceIds ?? []);
+						}
 					} catch (reconcileError) {
 						let rollbackError: unknown;
 						try {
@@ -181,6 +203,12 @@ Exposes Smart Panel registered devices to Apple Home as bridged accessories over
 - **Local Control**: Direct local connection via HomeKit Accessory Protocol (HAP) and mDNS.
 - **Selective Bridging**: Select exactly which devices are exposed to Apple Home via the mapping wizard.
 - **Bidirectional Sync**: Real-time push updates for lights, switches, outlets, thermostats, sensors, blinds, and locks.
+- **Device Lifecycle**: Deleted or incompatible devices are removed, and structure changes rebuild accessories with the same identity. Offline devices report No Response.
+- **Virtual Measurements**: Supported temperature, humidity and light-level outputs use live producer quality and freshness. Unavailable readings report No Response; supported sensor services expose StatusFault for degraded quality. Arbitrary numeric quantities have no generic HomeKit mapping.
+- **Virtual Light Groups**: Common mapped controls use backend composite commands. ON means any member on; partial member outcomes fail the request while retaining successful feedback.
+- **Virtual Thermostats**: Target mode is requested intent; current activity follows confirmed feedback. Backend floor/window guards remain authoritative. Detailed protective diagnostics remain in Smart Panel; standard Thermostat and Lightbulb services have no StatusFault here.
+- **Verification**: Software acceptance does not qualify live hardware, heating protection or Apple Home commissioning.
+- **Accessory Names**: Renames in Smart Panel are not automatically propagated to Apple Home after pairing. Rename the accessory in Apple Home.
 - **Easy Pairing**: Scan the generated QR code or enter the 8-digit setup PIN code directly in the Apple Home app.
 `,
 			links: {

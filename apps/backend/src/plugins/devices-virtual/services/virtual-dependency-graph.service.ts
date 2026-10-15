@@ -6,6 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import {
@@ -24,6 +25,9 @@ export interface VirtualDependencyEdge {
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	private quarantined = new Set<string>();
+	private liveValueProperties = new Set<string>();
+	private knownProperties = new Set<string>();
+	private valueSources = new Map<string, { valueOrigin: VirtualValueOrigin; sourcePropertyId: string | null }>();
 	private readonly validationListeners = new Map<
 		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
 		{ requiresActivation?: boolean }
@@ -38,6 +42,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		private readonly dataSource: DataSource,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
+
+	/** Synchronous structural-event fence; a settled owner must refresh after commit or rollback. */
+	invalidateValidation(): void {
+		this.validationGeneration++;
+		this.validationPending = true;
+	}
 
 	/** Applies committed validation before returning; runtime evaluation waits for the caller's activation events. */
 	async withStructuralWrite<T>(
@@ -77,6 +87,22 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	/** Whether a complete graph snapshot and every validation listener have succeeded. */
 	isValidated(): boolean {
 		return !this.validationPending && this.quarantineRevision >= 0;
+	}
+
+	/** Policy from the same validated metadata snapshot as the dependency graph; null while suspended. */
+	propertyRequiresLiveValue(propertyId: string): boolean | null {
+		return this.isValidated() && this.knownProperties.has(propertyId) ? this.liveValueProperties.has(propertyId) : null;
+	}
+
+	/** A stale bound entity cannot read an old canonical source after a committed relink. */
+	matchesValueSource(property: Pick<VirtualChannelPropertyEntity, 'id' | 'valueOrigin' | 'sourcePropertyId'>): boolean {
+		const source = this.valueSources.get(property.id);
+		return (
+			this.isValidated() &&
+			!!source &&
+			source.valueOrigin === (property.valueOrigin ?? VirtualValueOrigin.SOURCE) &&
+			source.sourcePropertyId === (property.sourcePropertyId ?? null)
+		);
 	}
 
 	/** Captures one validation lifecycle so pending publications cannot survive a failed refresh/retry. */
@@ -222,6 +248,24 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		await this.refreshValidation(true);
 	}
 
+	/** Reads only existing identities referenced by SOURCE projections, without hydrating value history. */
+	private async readProjectionSources(manager: EntityManager): Promise<ChannelPropertyEntity[]> {
+		const sources = manager
+			.createQueryBuilder(VirtualChannelPropertyEntity, 'projection')
+			.select('projection.sourcePropertyId')
+			.where('projection.valueOrigin = :projectionOrigin', { projectionOrigin: VirtualValueOrigin.SOURCE })
+			.andWhere('projection.sourcePropertyId IS NOT NULL');
+		// Materialize the STI query before copying its generated discriminator parameters.
+		const sourceQuery = sources.getQuery();
+		return manager
+			.createQueryBuilder(ChannelPropertyEntity, 'property')
+			.select(['property.id'])
+			.where(`property.id IN (${sourceQuery})`)
+			.setParameters(sources.getParameters())
+			.callListeners(false)
+			.getMany();
+	}
+
 	/** Validates one committed snapshot without evaluating outputs before their writer activates them. */
 	private async refreshValidation(activated: boolean): Promise<void> {
 		const generation = ++this.validationGeneration;
@@ -229,6 +273,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		try {
 			const snapshot = await this.dataSource.transaction(async (manager) => ({
 				edges: await this.edges(manager),
+				knownProperties: await this.readProjectionSources(manager),
+				properties: await manager
+					.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+					.leftJoinAndSelect('property.channel', 'channel')
+					.callListeners(false)
+					.getMany(),
 				revision: await this.revision(manager),
 			}));
 			if (generation !== this.validationGeneration) return;
@@ -268,6 +318,16 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			if (snapshot.edges.length > 8192 || neighbors.size > 4096)
 				for (const node of neighbors.keys()) quarantined.add(node);
 			this.quarantined = quarantined;
+			this.knownProperties = new Set(snapshot.knownProperties.map((property) => property.id));
+			this.valueSources = new Map(
+				snapshot.properties.map((property) => [
+					property.id,
+					{ valueOrigin: property.valueOrigin, sourcePropertyId: property.sourcePropertyId ?? null },
+				]),
+			);
+			this.liveValueProperties = new Set(
+				snapshot.properties.filter((property) => property.requiresLiveValue).map((property) => property.id),
+			);
 			for (const [listener, options] of this.validationListeners) {
 				if (generation !== this.validationGeneration) return;
 				if (!options.requiresActivation) await listener(snapshot.revision, quarantined);

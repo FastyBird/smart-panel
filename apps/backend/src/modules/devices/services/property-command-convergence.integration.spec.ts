@@ -263,6 +263,7 @@ describe('property command convergence integration', () => {
 		}
 		const updateValue = jest.spyOn(characteristic, 'updateValue');
 		const homeKitListener = new HomeKitEventListener({
+			notePropertyEvent: jest.fn(),
 			getBindingsForProperty: jest.fn((id: string) => (id === aliasA.id ? bindings : [])),
 			getListenersForProperty: jest.fn(() => []),
 		} as unknown as HomeKitMapperRegistryService);

@@ -122,6 +122,7 @@ describe('HomeKitBridgeService', () => {
 			clearAllBindings: jest.fn(),
 			clearDeviceBindings: jest.fn(),
 			commitStaged: jest.fn(),
+			trackDevice: jest.fn(),
 			buildAccessory: jest.fn().mockImplementation((dev: DeviceEntity) => {
 				const acc = new Accessory(dev.name, '550e8400-e29b-41d4-a716-44665544000' + dev.id.slice(-1));
 				const info = acc.getService(Service.AccessoryInformation) ?? acc.addService(Service.AccessoryInformation);
@@ -204,6 +205,22 @@ describe('HomeKitBridgeService', () => {
 				setup_id: expect.any(String) as unknown as string,
 			}),
 		);
+	});
+
+	it('preserves start then stop order while startup is pruning stale configuration', async () => {
+		let release!: () => void;
+		configService.updatePluginConfig.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					release = resolve;
+				}),
+		);
+		const starting = service.start();
+		const stopping = service.stop();
+		await Promise.resolve();
+		release();
+		await Promise.all([starting, stopping]);
+		expect(service.getState()).toBe('stopped');
 	});
 
 	it('should be idempotent when start is called repeatedly with identical configuration', async () => {

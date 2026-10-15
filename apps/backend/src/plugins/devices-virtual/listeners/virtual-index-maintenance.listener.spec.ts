@@ -280,6 +280,59 @@ describe('VirtualIndexMaintenanceListener', () => {
 		expect(events).not.toContain(EventType.CHANNEL_PROPERTY_VALUE_SET);
 	});
 
+	it('wires synchronous source deletion/reset fences without subscribing to value events', () => {
+		// Read only for decorator introspection; the unbound handler is never invoked.
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		const handler = VirtualIndexMaintenanceListener.prototype.handleSourceDeleted;
+		const metadata = Reflect.getMetadata(EVENT_LISTENER_METADATA, handler) as OnEventMetadataEntry[];
+		expect(metadata.map((entry) => entry.event).sort()).toEqual(
+			[
+				EventType.DEVICE_DELETED,
+				EventType.CHANNEL_DELETED,
+				EventType.CHANNEL_PROPERTY_DELETED,
+				EventType.DEVICE_RESET,
+				EventType.CHANNEL_PROPERTY_RESET,
+				EventType.MODULE_RESET,
+			].sort(),
+		);
+	});
+
+	it('invalidates graph authority synchronously and retains a newer deletion during an awaited refresh', async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const graph = {
+			invalidateValidation: jest.fn(),
+			refreshQuarantine: jest.fn().mockReturnValueOnce(gate).mockResolvedValue(undefined),
+		};
+		Object.assign(listener, { graph });
+		listener.handleSourceDeleted();
+		expect(graph.invalidateValidation).toHaveBeenCalledTimes(1);
+		expect(index.rebuild).not.toHaveBeenCalled();
+		await flushUntil(() => graph.refreshQuarantine.mock.calls.length === 1);
+		listener.handleSourceDeleted();
+		expect(graph.invalidateValidation).toHaveBeenCalledTimes(2);
+		release();
+		await flushUntil(() => graph.refreshQuarantine.mock.calls.length === 2 && index.rebuild.mock.calls.length === 2);
+		expect(graph.refreshQuarantine).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps a failed graph refresh pending for a later settled structural pass', async () => {
+		const graph = {
+			invalidateValidation: jest.fn(),
+			refreshQuarantine: jest
+				.fn()
+				.mockRejectedValueOnce(new Error('transient validation failure'))
+				.mockResolvedValue(undefined),
+		};
+		Object.assign(listener, { graph });
+		listener.handleSourceDeleted();
+		await flushUntil(() => index.rebuild.mock.calls.length === 1);
+		listener.handleStructuralChange();
+		await flushUntil(() => graph.refreshQuarantine.mock.calls.length === 2);
+		expect(graph.refreshQuarantine).toHaveBeenCalledTimes(2);
+	});
 	it('coalesces events that arrive while a rebuild is in flight into exactly one subsequent rebuild', async () => {
 		const first = createDeferred();
 		const second = createDeferred();

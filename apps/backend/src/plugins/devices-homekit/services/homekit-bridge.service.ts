@@ -43,6 +43,7 @@ import { installCiaoReceiveGuard } from '../utils/ciao-receive-guard';
 
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 import { HomeKitMapperRegistryService, StagedAccessory } from './homekit-mapper-registry.service';
+import { MappingMaintenance, createMappingMaintenance } from './homekit-mapping-maintenance';
 
 @Injectable()
 export class HomeKitBridgeService implements IManagedExtensionService {
@@ -59,6 +60,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 	private activeConfig: HomeKitConfigModel | null = null;
 	private storageInitialized = false;
 	private lifecycleQueue: Promise<unknown> = Promise.resolve();
+	private preparationQueue: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -163,15 +165,34 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 	}
 
 	async start(): Promise<void> {
+		// Config mutations acquire their lock before the lifecycle queue. Keep startup
+		// preflight outside that queue, while preserving start/stop request order.
+		const prepared = this.preparationQueue.then(async () => {
+			if (this.getConfig().enabled) {
+				await this.maintainMapping({ reconcile: this.state === 'started' });
+			}
+		});
+		this.preparationQueue = prepared.catch((): void => undefined);
+		await prepared;
 		return this.enqueueLifecycleOperation(() => this.startUnlocked());
 	}
 
 	async stop(): Promise<void> {
+		await this.preparationQueue;
 		return this.enqueueLifecycleOperation(() => this.stopUnlocked());
 	}
 
+	async maintainMapping(request: MappingMaintenance = {}): Promise<void> {
+		await this.configService.updatePluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, createMappingMaintenance(request));
+	}
+
 	async reconcileLatestMapping(): Promise<void> {
-		return this.enqueueLifecycleOperation(() => this.reconcileLatestMappingUnlocked());
+		await this.maintainMapping();
+	}
+
+	/** Called by the config mutation handler after validation, outside its lifecycle queue. */
+	async applyMapping(rebuildDeviceIds: string[] = []): Promise<void> {
+		return this.enqueueLifecycleOperation(() => this.reconcileLatestMappingUnlocked(rebuildDeviceIds));
 	}
 
 	async onConfigChanged(): Promise<ConfigChangeResult | void> {
@@ -303,7 +324,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		}
 	}
 
-	private async reconcileLatestMappingUnlocked(): Promise<void> {
+	private async reconcileLatestMappingUnlocked(rebuildDeviceIds: string[] = []): Promise<void> {
 		if (!this.bridge || this.state !== 'started') {
 			return;
 		}
@@ -324,8 +345,10 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		}
 
 		const currentDeviceIds = new Set(currentBridgedMap.keys());
-		const toAddIds = targetDeviceIds.filter((id) => !currentDeviceIds.has(id));
-		const toRemoveSerials = Array.from(currentDeviceIds).filter((id) => !targetSet.has(id));
+		const toAddIds = targetDeviceIds.filter((id) => !currentDeviceIds.has(id) || rebuildDeviceIds.includes(id));
+		const toRemoveSerials = Array.from(currentDeviceIds).filter(
+			(id) => !targetSet.has(id) || rebuildDeviceIds.includes(id),
+		);
 
 		if (toAddIds.length === 0 && toRemoveSerials.length === 0) {
 			return;
@@ -336,32 +359,38 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		);
 
 		// 1. Pre-build accessories to stage additions. Any failure must abort before mutating bridge.
+		const snapshot = this.mapperRegistry.getSnapshot();
 		const stagedAccessories: StagedAccessory[] = [];
-		for (const deviceId of toAddIds) {
-			const device = await this.devicesService.findOne(deviceId);
-			if (!device) {
-				const msg = `Device ${deviceId} not found in database during reconciliation.`;
-				this.logger.error(msg);
-				throw new Error(msg);
+		try {
+			for (const deviceId of toAddIds) {
+				this.mapperRegistry.trackDevice(deviceId);
+				const device = await this.devicesService.findOne(deviceId);
+				if (!device) {
+					const msg = `Device ${deviceId} not found in database during reconciliation.`;
+					this.logger.error(msg);
+					throw new Error(msg);
+				}
+				let staged: StagedAccessory | null;
+				try {
+					staged = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
+				} catch (err) {
+					const msg = `Failed to build accessory for device ${deviceId}: ${(err as Error).message}`;
+					this.logger.error(msg);
+					throw new Error(msg, { cause: err });
+				}
+				if (!staged) {
+					const msg = `Device ${deviceId} could not be mapped to any supported HomeKit accessory.`;
+					this.logger.error(msg);
+					throw new Error(msg);
+				}
+				stagedAccessories.push(staged);
 			}
-			let staged: StagedAccessory | null;
-			try {
-				staged = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
-			} catch (err) {
-				const msg = `Failed to build accessory for device ${deviceId}: ${(err as Error).message}`;
-				this.logger.error(msg);
-				throw new Error(msg, { cause: err });
-			}
-			if (!staged) {
-				const msg = `Device ${deviceId} could not be mapped to any supported HomeKit accessory.`;
-				this.logger.error(msg);
-				throw new Error(msg);
-			}
-			stagedAccessories.push(staged);
+		} catch (error) {
+			this.mapperRegistry.restoreSnapshot(snapshot);
+			throw error;
 		}
 
-		// 2. Snapshot state for transactional rollback
-		const snapshot = this.mapperRegistry.getSnapshot();
+		// 2. Snapshot bridge state for transactional rollback
 		const originalAccessories = [...this.bridge.bridgedAccessories];
 		const originalAccessoriesMap = new Map(originalAccessories.map((a) => [a.UUID, a]));
 
@@ -399,7 +428,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 				// Remove any accessory currently on the bridge that was not in the original snapshot
 				const currentOnBridge = [...this.bridge.bridgedAccessories];
 				for (const acc of currentOnBridge) {
-					if (!originalAccessoriesMap.has(acc.UUID)) {
+					if (originalAccessoriesMap.get(acc.UUID) !== acc) {
 						try {
 							this.bridge.removeBridgedAccessory(acc);
 						} catch (e) {
@@ -412,7 +441,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 				// Re-add any original accessory missing from the bridge
 				const remainingOnBridgeMap = new Map(this.bridge.bridgedAccessories.map((a) => [a.UUID, a]));
 				for (const acc of originalAccessories) {
-					if (!remainingOnBridgeMap.has(acc.UUID)) {
+					if (remainingOnBridgeMap.get(acc.UUID) !== acc) {
 						try {
 							this.bridge.addBridgedAccessory(acc);
 						} catch (e) {
@@ -450,9 +479,11 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		let addedCount = 0;
 		for (const deviceId of mappedDeviceIds) {
 			try {
+				this.mapperRegistry.trackDevice(deviceId);
 				const device = await this.devicesService.findOne(deviceId);
 				if (!device) {
 					this.logger.warn(`Mapped device ID not found in database: ${deviceId}`);
+					this.mapperRegistry.clearDeviceBindings(deviceId);
 					continue;
 				}
 
@@ -461,8 +492,11 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 					this.bridge.addBridgedAccessory(staged.accessory);
 					this.mapperRegistry.commitStaged(staged);
 					addedCount++;
+				} else {
+					this.mapperRegistry.clearDeviceBindings(deviceId);
 				}
 			} catch (error) {
+				this.mapperRegistry.clearDeviceBindings(deviceId);
 				const err = error as Error;
 				this.logger.warn(`Failed to bridge device ${deviceId}: ${err.message}`);
 			}
@@ -527,6 +561,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 	}
 
 	async resetPairing(): Promise<void> {
+		await this.preparationQueue;
 		// Phase 1: Queued destructive teardown
 		await this.enqueueLifecycleOperation(async () => {
 			this.logger.log('Resetting HomeKit pairing credentials (Phase 1: destructive teardown)...');
@@ -581,6 +616,5 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			mapped_device_ids: deviceIds,
 		});
 		await this.configService.updatePluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, updateDto);
-		await this.reconcileLatestMapping();
 	}
 }
