@@ -150,7 +150,7 @@ request reports per-operation outcomes; target acceptance or an unrelated later 
 
 The user selected both Home Assistant climate and Zigbee2MQTT native thermostats as initial `native_unit` adapters.
 They delegate supported native mode/setpoint requests and report actual available feedback separately from requests.
-Validate capability/range/unit, command ordering, feedback provenance and per-model semantics. Zigbee exposed features
+Validate capability/range/unit, command ordering, feedback provenance and per-model semantics. Features exposed by a Zigbee device
 alone do not prove atomic `heat_cool`; unsupported compound/auto requests are refused. Cover both integrations with
 production-adapter protocol/component tests. Do not imply support for every model or firmware.
 
