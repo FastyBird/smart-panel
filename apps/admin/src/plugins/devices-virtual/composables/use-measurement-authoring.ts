@@ -3,9 +3,15 @@ import { computed, getCurrentScope, onScopeDispose, reactive, ref, watch } from 
 import { useBackend } from '../../../common';
 import { getErrorReason } from '../../../common/utils/api-error.utils';
 import {
+	PathsPluginsDevicesVirtualProducersAggregateProfilesProfileSourcesGetParametersPathProfile as AggregateSourceProfile,
+	DevicesVirtualPluginAffineTransformPolicyOperator,
 	DevicesVirtualPluginAggregateOutlierFilterKind,
 	DevicesVirtualPluginConfigureAggregateOperator,
+	DevicesVirtualPluginExtensionTransformPolicyOperator,
+	DevicesVirtualPluginNtcBetaTransformPolicyOperator,
 	DevicesVirtualPluginNumericTransformPolicyOperator,
+	DevicesVirtualPluginPiecewiseLinearTransformPolicyOperator,
+	DevicesVirtualPluginThermostatFloorConversionKind,
 } from '../../../openapi';
 import { DevicesVirtualPluginDeviceMode } from '../../../openapi.constants';
 import {
@@ -14,11 +20,13 @@ import {
 	type AggregateSource,
 	type AggregateState,
 	type MeasurementMode,
+	type NumericOperator,
 	type TransformConfiguration,
 	type TransformPolicy,
 	type TransformState,
 	aggregateDraft,
 	measurementDraft,
+	numericOperatorKey,
 } from '../utils/measurement-authoring.utils';
 
 type SemanticErrorOperation = { responses: { default: { content: { 'application/json': unknown } } } };
@@ -44,7 +52,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		quantity: 'temperature',
 		unit: '°C',
 		maximumAgeSeconds: 60,
-		operator: DevicesVirtualPluginNumericTransformPolicyOperator.affine,
+		operator: DevicesVirtualPluginNumericTransformPolicyOperator.affine as DevicesVirtualPluginNumericTransformPolicyOperator | 'extension',
+		extensionKey: '',
+		parameters: {} as Record<string, number>,
 		aggregateOperator: DevicesVirtualPluginConfigureAggregateOperator.mean,
 		minimumValidInputs: 1,
 		inputMinimum: undefined as number | undefined,
@@ -66,6 +76,24 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		previewInput: undefined as number | undefined,
 		inputs: [] as { id?: string; source_property: string | null; identity?: string; weight?: number }[],
 	});
+	const numericOperators = ref<NumericOperator[]>([]);
+	let extensionRepaired = false;
+	const selectedOperator = computed(() => numericOperators.value.find((d) => `${d.operatorId}@${d.operatorVersion}` === model.extensionKey));
+	const selectOperator = () => {
+		const descriptor = selectedOperator.value;
+		if (!descriptor) return;
+		extensionRepaired = true;
+		model.parameters = {};
+		model.inputMinimum = descriptor.inputRange.minimum;
+		model.inputMaximum = descriptor.inputRange.maximum;
+		model.outputMinimum = descriptor.outputRange.minimum;
+		model.outputMaximum = descriptor.outputRange.maximum;
+		if (!outputId) {
+			model.temperature = descriptor.output.quantity === 'temperature';
+			model.quantity = descriptor.output.quantity;
+			model.unit = descriptor.output.unit;
+		}
+	};
 	const profiles = ref<AggregateProfile[]>([]);
 	const sources = ref<AggregateSource[]>([]);
 	const sourcesLoading = ref(false);
@@ -81,7 +109,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		sourcesError.value = null;
 		try {
 			const result = await backend.client.GET('/plugins/devices-virtual/producers/aggregate-profiles/{profile}/sources', {
-				params: { path: { profile: model.profile } },
+				params: { path: { profile: AggregateSourceProfile[model.profile] } },
 			});
 			const value = response(result.data, result.error, result.response?.status);
 			if (request === sourceRequest) sources.value = value;
@@ -92,7 +120,15 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		}
 	};
 	const loadCapabilities = async () => {
-		if (isTransform) return;
+		if (isTransform) {
+			try {
+				const result = await backend.client.GET('/plugins/devices-virtual/producers/numeric-operators');
+				numericOperators.value = response(result.data, result.error, result.response?.status);
+			} catch {
+				numericOperators.value = [];
+			}
+			return;
+		}
 		const result = await backend.client.GET('/plugins/devices-virtual/producers/aggregate-profiles');
 		profiles.value = response(result.data, result.error, result.response?.status);
 		await loadSources();
@@ -149,7 +185,33 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		if (!validFilterThreshold()) throw new Error('measurementFinite');
 		return finite(model.filterThreshold);
 	};
-	const policy = (): TransformPolicy => {
+	const policy = (): TransformConfiguration['policy'] => {
+		if (model.operator === 'extension') {
+			const descriptor = selectedOperator.value;
+			if (!descriptor) throw new Error('measurementOperatorMissing');
+			if (Object.keys(model.parameters).some((key) => !Object.prototype.hasOwnProperty.call(descriptor.parameters, key)))
+				throw new Error('measurementOperatorParameter');
+			const parameters: Record<string, number> = {};
+			for (const [name, schema] of Object.entries(descriptor.parameters)) {
+				const value = model.parameters[name];
+				if (value === undefined && !schema.required) continue;
+				const number = finite(value);
+				if (number < schema.minimum || number > schema.maximum) throw new Error('measurementOperatorParameter');
+				parameters[name] = number;
+			}
+			return {
+				...(!extensionRepaired && current.value && 'policy' in current.value && current.value.policy.operator === 'extension'
+					? current.value.policy
+					: {}),
+				operator: DevicesVirtualPluginExtensionTransformPolicyOperator.extension,
+				contractVersion: 1,
+				operatorId: descriptor.operatorId,
+				operatorVersion: descriptor.operatorVersion,
+				parameters,
+				inputRange: { minimum: finite(model.inputMinimum), maximum: finite(model.inputMaximum) },
+				outputRange: { minimum: finite(model.outputMinimum), maximum: finite(model.outputMaximum) },
+			};
+		}
 		const result: TransformPolicy = {
 			operator: model.operator,
 			inputRange: { minimum: finite(model.inputMinimum), maximum: finite(model.inputMaximum) },
@@ -180,7 +242,14 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				thermistorLeg: model.thermistorLeg,
 			});
 		}
-		return result;
+		const operators = {
+			[DevicesVirtualPluginNumericTransformPolicyOperator.affine]: DevicesVirtualPluginAffineTransformPolicyOperator.affine,
+			[DevicesVirtualPluginNumericTransformPolicyOperator.piecewise_linear]:
+				DevicesVirtualPluginPiecewiseLinearTransformPolicyOperator.piecewise_linear,
+			[DevicesVirtualPluginNumericTransformPolicyOperator.ntc_beta]: DevicesVirtualPluginNtcBetaTransformPolicyOperator.ntc_beta,
+			[DevicesVirtualPluginNumericTransformPolicyOperator.steinhart_hart]: DevicesVirtualPluginThermostatFloorConversionKind.steinhart_hart,
+		};
+		return { ...result, operator: operators[model.operator] };
 	};
 	const configuration = (): TransformConfiguration | AggregateConfiguration =>
 		isTransform
@@ -236,6 +305,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		invalidatePreview();
 		return run(async () => {
 			current.value = null;
+			extensionRepaired = false;
 			expectedRevision.value = 0;
 			expectedGraphRevision.value = undefined;
 			if (!outputId) return;
@@ -259,6 +329,10 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				model.unit = value.unit;
 				model.inputs = [{ id: value.source.id, source_property: value.source.source_property, identity: value.source.source_identity }];
 				model.operator = value.policy.operator;
+				if (value.policy.operator === 'extension') {
+					model.extensionKey = numericOperatorKey(value.policy);
+					model.parameters = { ...value.policy.parameters };
+				}
 				model.inputMinimum = value.policy.inputRange.minimum;
 				model.inputMaximum = value.policy.inputRange.maximum;
 				model.outputMinimum = value.policy.outputRange.minimum;
@@ -276,8 +350,8 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					'coefficientC',
 					'thermistorLeg',
 				] as const)
-					Object.assign(model, { [key]: value.policy[key] });
-				model.points = value.policy.points?.map((point) => ({ ...point })) ?? [];
+					Object.assign(model, { [key]: (value.policy as TransformPolicy)[key] });
+				model.points = (value.policy as TransformPolicy).points?.map((point) => ({ ...point })) ?? [];
 			} else {
 				model.profile = value.profile ?? 'temperature';
 				model.filterEnabled = !!value.outlier_filter;
@@ -395,7 +469,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		});
 	const canPreview = computed(
 		() =>
-			(isTransform ? model.inputs.length === 1 : model.inputs.length >= 2 && model.minimumValidInputs <= model.inputs.length) &&
+			(isTransform
+				? model.inputs.length === 1 && (model.operator !== 'extension' || !!selectedOperator.value)
+				: model.inputs.length >= 2 && model.minimumValidInputs <= model.inputs.length) &&
 			model.inputs.every((input) => input.source_property !== null || !!input.id) &&
 			(isTransform || !numericPolicy.value || !model.filterEnabled || validFilterThreshold())
 	);
@@ -423,6 +499,9 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		{ deep: true, flush: 'sync' }
 	);
 	return {
+		numericOperators,
+		selectedOperator,
+		selectOperator,
 		invalidatePreview,
 		previewExpired,
 		canSavePreview,

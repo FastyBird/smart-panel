@@ -1,4 +1,5 @@
 export enum VirtualNumericTransformOperator {
+	EXTENSION = 'extension',
 	AFFINE = 'affine',
 	PIECEWISE_LINEAR = 'piecewise_linear',
 	NTC_BETA = 'ntc_beta',
@@ -17,6 +18,13 @@ interface TransformDomain {
 
 export type VirtualNumericTransformConfig = TransformDomain &
 	(
+		| {
+				operator: VirtualNumericTransformOperator.EXTENSION;
+				contractVersion: 1;
+				operatorId: string;
+				operatorVersion: number;
+				parameters: Readonly<Record<string, number>>;
+		  }
 		| { operator: VirtualNumericTransformOperator.AFFINE; scale: number; offset: number }
 		| {
 				operator: VirtualNumericTransformOperator.PIECEWISE_LINEAR;

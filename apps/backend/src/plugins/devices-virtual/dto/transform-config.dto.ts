@@ -1,5 +1,6 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
+	Allow,
 	ArrayMaxSize,
 	ArrayMinSize,
 	IsArray,
@@ -17,7 +18,7 @@ import {
 	ValidatorConstraintInterface,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import {
 	VirtualNumericTransformConfig,
@@ -25,13 +26,16 @@ import {
 	validateVirtualNumericTransform,
 } from '../services/virtual-numeric-transform.utils';
 import { isTransformQuantity, isTransformUnit } from '../services/virtual-transform-contract.utils';
+import { VirtualTransformResolver } from '../services/virtual-transform-resolver';
 
 import { VirtualAggregateInputDto } from './producer-config.dto';
 
 @ValidatorConstraint({ name: 'numericTransformPolicy', async: false })
 export class NumericTransformPolicyConstraint implements ValidatorConstraintInterface {
 	validate(value: VirtualNumericTransformConfig): boolean {
-		return validateVirtualNumericTransform(value).length === 0;
+		return value?.operator === VirtualNumericTransformOperator.EXTENSION
+			? new VirtualTransformResolver().validate(value).every((error) => error === 'operator_unavailable')
+			: validateVirtualNumericTransform(value).length === 0;
 	}
 	defaultMessage(): string {
 		return 'Invalid numeric transform policy';
@@ -86,7 +90,12 @@ export class VirtualCalibrationPointDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginNumericTransformPolicy' })
 export class VirtualNumericTransformPolicyDto {
-	@ApiProperty({ description: 'Whitelisted conversion operator', enum: VirtualNumericTransformOperator })
+	@ApiProperty({
+		description: 'Whitelisted conversion operator',
+		enum: Object.values(VirtualNumericTransformOperator).filter(
+			(operator) => operator !== VirtualNumericTransformOperator.EXTENSION,
+		),
+	})
 	@Expose()
 	@IsEnum(VirtualNumericTransformOperator)
 	operator: VirtualNumericTransformOperator;
@@ -188,6 +197,81 @@ export class VirtualNumericTransformPolicyDto {
 	thermistorLeg?: 'low' | 'high';
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginAffineTransformPolicy' })
+export class VirtualAffineTransformPolicyDto extends VirtualNumericTransformPolicyDto {
+	@ApiProperty({ description: 'Exact built-in wire operator', enum: [VirtualNumericTransformOperator.AFFINE] })
+	@Expose()
+	@IsIn([VirtualNumericTransformOperator.AFFINE])
+	declare operator: VirtualNumericTransformOperator.AFFINE;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginPiecewiseLinearTransformPolicy' })
+export class VirtualPiecewiseLinearTransformPolicyDto extends VirtualNumericTransformPolicyDto {
+	@ApiProperty({
+		description: 'Exact built-in wire operator',
+		enum: [VirtualNumericTransformOperator.PIECEWISE_LINEAR],
+	})
+	@Expose()
+	@IsIn([VirtualNumericTransformOperator.PIECEWISE_LINEAR])
+	declare operator: VirtualNumericTransformOperator.PIECEWISE_LINEAR;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginNtcBetaTransformPolicy' })
+export class VirtualNtcBetaTransformPolicyDto extends VirtualNumericTransformPolicyDto {
+	@ApiProperty({ description: 'Exact built-in wire operator', enum: [VirtualNumericTransformOperator.NTC_BETA] })
+	@Expose()
+	@IsIn([VirtualNumericTransformOperator.NTC_BETA])
+	declare operator: VirtualNumericTransformOperator.NTC_BETA;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginSteinhartHartTransformPolicy' })
+export class VirtualSteinhartHartTransformPolicyDto extends VirtualNumericTransformPolicyDto {
+	@ApiProperty({ description: 'Exact built-in wire operator', enum: [VirtualNumericTransformOperator.STEINHART_HART] })
+	@Expose()
+	@IsIn([VirtualNumericTransformOperator.STEINHART_HART])
+	declare operator: VirtualNumericTransformOperator.STEINHART_HART;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginExtensionTransformPolicy' })
+export class VirtualExtensionTransformPolicyDto {
+	@ApiProperty({ description: 'Trusted package operator', enum: ['extension'] })
+	@Expose()
+	@IsIn(['extension'])
+	operator: VirtualNumericTransformOperator.EXTENSION;
+	@ApiProperty({ description: 'SDK contract version', enum: [1] })
+	@Expose()
+	@IsIn([1])
+	contractVersion: 1;
+	@ApiProperty({ description: 'Host package qualified local name', maxLength: 280 })
+	@Expose()
+	@IsString()
+	operatorId: string;
+	@ApiProperty({ description: 'Exact immutable operator version', minimum: 1 })
+	@Expose()
+	@IsInt()
+	@Min(1)
+	operatorVersion: number;
+	@ApiProperty({ description: 'Inclusive supported input domain', type: VirtualNumericRangeDto })
+	@Expose()
+	@Type(() => VirtualNumericRangeDto)
+	@ValidateNested()
+	inputRange: VirtualNumericRangeDto;
+	@ApiProperty({ description: 'Inclusive supported output domain', type: VirtualNumericRangeDto })
+	@Expose()
+	@Type(() => VirtualNumericRangeDto)
+	@ValidateNested()
+	outputRange: VirtualNumericRangeDto;
+	@ApiProperty({
+		description: 'Finite numeric parameters validated against the registered descriptor',
+		type: 'object',
+		additionalProperties: { type: 'number' },
+	})
+	@Expose()
+	@Allow()
+	@Transform(({ obj }: { obj: { parameters: Record<string, number> } }) => obj.parameters)
+	parameters: Readonly<Record<string, number>>;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginConfigureTransform' })
 export class ConfigureVirtualTransformDto {
 	@ApiProperty({ name: 'schema_version', description: 'Policy schema version', enum: [1] })
@@ -242,10 +326,41 @@ export class ConfigureVirtualTransformDto {
 	@Type(() => VirtualAggregateInputDto)
 	source: VirtualAggregateInputDto;
 
-	@ApiProperty({ description: 'Bounded typed conversion parameters', type: VirtualNumericTransformPolicyDto })
+	@ApiProperty({
+		description: 'Bounded typed conversion parameters',
+		oneOf: [
+			{ $ref: getSchemaPath(VirtualAffineTransformPolicyDto) },
+			{ $ref: getSchemaPath(VirtualPiecewiseLinearTransformPolicyDto) },
+			{ $ref: getSchemaPath(VirtualNtcBetaTransformPolicyDto) },
+			{ $ref: getSchemaPath(VirtualSteinhartHartTransformPolicyDto) },
+			{ $ref: getSchemaPath(VirtualExtensionTransformPolicyDto) },
+		],
+		discriminator: {
+			propertyName: 'operator',
+			mapping: {
+				affine: getSchemaPath(VirtualAffineTransformPolicyDto),
+				piecewise_linear: getSchemaPath(VirtualPiecewiseLinearTransformPolicyDto),
+				ntc_beta: getSchemaPath(VirtualNtcBetaTransformPolicyDto),
+				steinhart_hart: getSchemaPath(VirtualSteinhartHartTransformPolicyDto),
+				extension: getSchemaPath(VirtualExtensionTransformPolicyDto),
+			},
+		},
+	})
 	@Expose()
 	@ValidateNested()
 	@Validate(NumericTransformPolicyConstraint)
-	@Type(() => VirtualNumericTransformPolicyDto)
-	policy: VirtualNumericTransformPolicyDto;
+	@Type(() => VirtualNumericTransformPolicyDto, {
+		discriminator: {
+			property: 'operator',
+			subTypes: [
+				{ name: 'extension', value: VirtualExtensionTransformPolicyDto },
+				{ name: 'affine', value: VirtualAffineTransformPolicyDto },
+				{ name: 'piecewise_linear', value: VirtualPiecewiseLinearTransformPolicyDto },
+				{ name: 'ntc_beta', value: VirtualNtcBetaTransformPolicyDto },
+				{ name: 'steinhart_hart', value: VirtualSteinhartHartTransformPolicyDto },
+			],
+		},
+		keepDiscriminatorProperty: true,
+	})
+	policy: VirtualNumericTransformPolicyDto | VirtualExtensionTransformPolicyDto;
 }

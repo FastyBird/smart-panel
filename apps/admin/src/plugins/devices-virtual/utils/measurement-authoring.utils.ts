@@ -11,6 +11,7 @@ import {
 	DevicesVirtualPluginValueOrigin,
 } from '../../../openapi.constants';
 
+export type NumericOperator = components['schemas']['DevicesVirtualPluginDataNumericOperator'];
 export type TransformPolicy = components['schemas']['DevicesVirtualPluginNumericTransformPolicy'];
 export type TransformConfiguration = components['schemas']['DevicesVirtualPluginConfigureTransform'];
 export type AggregateConfiguration = components['schemas']['DevicesVirtualPluginConfigureAggregate'];
@@ -159,4 +160,10 @@ export function aggregateCandidates(
 			unit: profile.unit ?? '',
 		};
 	});
+}
+
+/** Keep unsupported persisted SDK contracts distinct from an available v1 descriptor until explicit repair. */
+export function numericOperatorKey(policy: { operatorId: string; operatorVersion: number; contractVersion: number }): string {
+	const key = `${policy.operatorId}@${policy.operatorVersion}`;
+	return policy.contractVersion === 1 ? key : `${key} / contract ${policy.contractVersion}`;
 }

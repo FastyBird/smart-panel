@@ -100,6 +100,18 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 						if (this.producers.readIncorporatedSample(sourceId)?.propertyId === observedSourceId)
 							this.requestRecompute(sourceId);
 
+				// A revoked upstream producer loses dependent current authority synchronously, before DB awaits.
+				if (
+					event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED &&
+					observedSourceId &&
+					this.producers.read(observedSourceId)?.producer.quality === 'unavailable'
+				) {
+					for (const id of this.sourceOutputs.get(observedSourceId) ?? []) {
+						const output = this.outputs.get(id);
+						if (output && this.producers.read(id)?.producer.quality !== 'unavailable')
+							this.producers.invalidate(output.lease, ['source_unavailable']);
+					}
+				}
 				// Outputs emit their own producer state; never feed those publications back into themselves.
 				if (event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED && this.outputs.has(payload?.id)) return;
 				if (
