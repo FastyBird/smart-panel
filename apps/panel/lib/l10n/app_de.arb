@@ -1338,7 +1338,7 @@
   "thermostatMemberPending": "Ungeklärtes EIN",
   "thermostatMemberBlockers": "Serversperre",
   "thermostatMemberProfile": "Anbieterprofil",
-  "thermostatMemberQualification": "Installations- / Qualifikationsdetails auf diesem Display nicht verfügbar. In Admin prüfen.",
+  "thermostatMemberQualification": "Die Schutz-/Zielprüfung ist keine vollständige Reglerfreigabe, Installationsbereitschaft oder physische Zertifizierung. Installation in Admin prüfen.",
   "thermostatMemberProtectionSource": "Gespeicherte Schutzquelle",
   "thermostatMemberReading": "Aktueller Schutzmesswert",
   "thermostatMemberQuality": "Qualität",
@@ -1373,5 +1373,8 @@
   "thermostatMemberNoBlocker": "Keine Sperre gemeldet",
   "thermostatMemberHistoryPending": "Zuletzt gemeldetes ungeklärtes EIN (Historie)",
   "thermostatMemberHistoryRelease": "Zuletzt gemeldete ausstehende Freigabe (Historie)",
-  "thermostatMemberActivitySnapshot": "Die Aktivität stammt aus dem Server-Snapshot; Beobachtungszeit und Aktualität pro Mitglied sind nicht verfügbar."
+  "thermostatMemberActivitySnapshot": "Aktivität erfordert die ursprüngliche, noch gültige Relaisbeobachtung. Die Schutz-/Zielprüfung ist ein separater Server-Snapshot; beides belegt keine vollständige Freigabe.",
+  "thermostatMemberQualificationCheck": "Server-Schutz-/Zielprüfung (Snapshot)",
+  "thermostatMemberActivitySample": "Ursprüngliche Relaisbeobachtung (historische Metadaten)",
+  "thermostatMemberActivityExpiry": "Ursprünglicher Ablauf der Relaisbeobachtung"
 }

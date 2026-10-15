@@ -1338,7 +1338,7 @@
   "thermostatMemberPending": "ON sin resolver",
   "thermostatMemberBlockers": "Bloqueo del servidor",
   "thermostatMemberProfile": "Perfil del proveedor",
-  "thermostatMemberQualification": "Detalles de instalación / cualificación no disponibles en esta pantalla. Revisar en Admin.",
+  "thermostatMemberQualification": "La comprobación de protección/destino no es admisión completa del controlador, preparación de instalación ni certificación física. Revise la instalación en Admin.",
   "thermostatMemberProtectionSource": "Fuente de protección retenida",
   "thermostatMemberReading": "Lectura de protección actual",
   "thermostatMemberQuality": "Calidad",
@@ -1373,5 +1373,8 @@
   "thermostatMemberNoBlocker": "Sin bloqueo reportado",
   "thermostatMemberHistoryPending": "Último ON sin resolver reportado (historial)",
   "thermostatMemberHistoryRelease": "Última liberación pendiente reportada (historial)",
-  "thermostatMemberActivitySnapshot": "La actividad procede de la instantánea del servidor; la hora y vigencia de observación por miembro no están disponibles."
+  "thermostatMemberActivitySnapshot": "La actividad requiere la observación original vigente del relé. La comprobación de protección/destino es una instantánea separada del servidor; ninguna demuestra admisión completa.",
+  "thermostatMemberQualificationCheck": "Comprobación de protección/destino del servidor (instantánea)",
+  "thermostatMemberActivitySample": "Observación original del relé (metadatos históricos)",
+  "thermostatMemberActivityExpiry": "Caducidad original de observación del relé"
 }

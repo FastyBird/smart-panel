@@ -1338,7 +1338,7 @@
   "thermostatMemberPending": "Nevyriešené ON",
   "thermostatMemberBlockers": "Blokovanie servera",
   "thermostatMemberProfile": "Profil poskytovateľa",
-  "thermostatMemberQualification": "Podrobnosti inštalácie / kvalifikácie nie sú na displeji dostupné. Skontrolujte v Admine.",
+  "thermostatMemberQualification": "Kontrola ochrany/cieľa nie je úplné povolenie regulátora, pripravenosť inštalácie ani fyzická certifikácia. Inštaláciu skontrolujte v Admine.",
   "thermostatMemberProtectionSource": "Uchovaný ochranný zdroj",
   "thermostatMemberReading": "Živá ochranná hodnota",
   "thermostatMemberQuality": "Kvalita",
@@ -1373,5 +1373,8 @@
   "thermostatMemberNoBlocker": "Nie je hlásené blokovanie",
   "thermostatMemberHistoryPending": "Posledné hlásené nevyriešené ON (história)",
   "thermostatMemberHistoryRelease": "Posledné hlásené čakajúce uvoľnenie (história)",
-  "thermostatMemberActivitySnapshot": "Aktivita je hlásená snímkou servera; čas a čerstvosť pozorovania jednotlivých členov nie sú dostupné."
+  "thermostatMemberActivitySnapshot": "Aktivita vyžaduje pôvodné neexpirované pozorovanie relé. Kontrola ochrany/cieľa je samostatná snímka servera; ani jedno nedokladá úplné povolenie.",
+  "thermostatMemberQualificationCheck": "Kontrola ochrany/cieľa serverom (snímka)",
+  "thermostatMemberActivitySample": "Pôvodné pozorovanie relé (historické metadáta)",
+  "thermostatMemberActivityExpiry": "Pôvodný koniec platnosti pozorovania relé"
 }

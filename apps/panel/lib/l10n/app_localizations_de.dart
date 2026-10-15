@@ -4439,7 +4439,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get thermostatMemberQualification =>
-      'Installations- / Qualifikationsdetails auf diesem Display nicht verfügbar. In Admin prüfen.';
+      'Die Schutz-/Zielprüfung ist keine vollständige Reglerfreigabe, Installationsbereitschaft oder physische Zertifizierung. Installation in Admin prüfen.';
 
   @override
   String get thermostatMemberProtectionSource => 'Gespeicherte Schutzquelle';
@@ -4556,5 +4556,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get thermostatMemberActivitySnapshot =>
-      'Die Aktivität stammt aus dem Server-Snapshot; Beobachtungszeit und Aktualität pro Mitglied sind nicht verfügbar.';
+      'Aktivität erfordert die ursprüngliche, noch gültige Relaisbeobachtung. Die Schutz-/Zielprüfung ist ein separater Server-Snapshot; beides belegt keine vollständige Freigabe.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Server-Schutz-/Zielprüfung (Snapshot)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Ursprüngliche Relaisbeobachtung (historische Metadaten)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Ursprünglicher Ablauf der Relaisbeobachtung';
 }

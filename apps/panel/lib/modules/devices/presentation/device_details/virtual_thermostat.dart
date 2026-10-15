@@ -40,6 +40,14 @@ class _VirtualThermostatDeviceDetailState
   bool _configurationMismatchSeen = false;
   DateTime? _runtimeReceivedAt;
   Duration _runtimeAge = Duration.zero;
+  final _displayStopwatch = Stopwatch()..start();
+  Duration _displayTicks = Duration.zero;
+  Duration _runtimeReceivedClock = Duration.zero;
+  Duration get _displayClock => _displayStopwatch.elapsed > _displayTicks
+      ? _displayStopwatch.elapsed
+      : _displayTicks;
+  VirtualThermostatActivityFence _activityFence =
+      VirtualThermostatActivityFence();
   VirtualThermostatReadingFence _readingFence = VirtualThermostatReadingFence();
   Map<String, dynamic>? _configuration;
   Map<String, dynamic>? _runtime;
@@ -61,7 +69,12 @@ class _VirtualThermostatDeviceDetailState
     }
     unawaited(_refresh());
     _freshnessTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _runtimeAge += const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _runtimeAge += const Duration(seconds: 1);
+          _displayTicks += const Duration(seconds: 1);
+        });
+      }
     });
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 5),
@@ -73,6 +86,7 @@ class _VirtualThermostatDeviceDetailState
   void dispose() {
     _refreshGeneration++;
     _refreshInFlightFor = null;
+    _displayStopwatch.stop();
     _refreshTimer?.cancel();
     _freshnessTimer?.cancel();
     _resyncTimer?.cancel();
@@ -92,7 +106,10 @@ class _VirtualThermostatDeviceDetailState
     _hintSerial++;
     _hintRefreshNeeded = true;
     _configurationMismatchSeen = false;
-    if (replacedDevice) _readingFence = VirtualThermostatReadingFence();
+    if (replacedDevice) {
+      _readingFence = VirtualThermostatReadingFence();
+      _activityFence = VirtualThermostatActivityFence();
+    }
     _configuration = null;
     _runtime = null;
     _error = null;
@@ -188,18 +205,19 @@ class _VirtualThermostatDeviceDetailState
       // claims plus non-released runtime-only reservations. Partial/loading
       // membership is not evidence of removal from either source.
       if (configuration['actuators'] is List && candidate['branches'] is List) {
-        _readingFence.retainClaims(
-          VirtualThermostatMember.read(
-            configuration,
-            candidate,
-          ).map((member) => member.claim),
-        );
+        final activeClaims = VirtualThermostatMember.read(
+          configuration,
+          candidate,
+        ).map((member) => member.claim).toSet();
+        _readingFence.retainClaims(activeClaims);
+        _activityFence.retainClaims(activeClaims);
       }
       setState(() {
         _configuration = configuration;
         _runtime = candidate;
         _runtimeReceivedAt = DateTime.now();
         _runtimeAge = Duration.zero;
+        _runtimeReceivedClock = _displayClock;
         _error = null;
       });
     } catch (error) {
@@ -344,7 +362,12 @@ class _VirtualThermostatDeviceDetailState
     final wallElapsed = _runtimeReceivedAt == null
         ? Duration.zero
         : now.difference(_runtimeReceivedAt!);
-    final elapsed = wallElapsed > _runtimeAge ? wallElapsed : _runtimeAge;
+    final clock = _displayClock;
+    final clockElapsed = clock - _runtimeReceivedClock;
+    final localElapsed = clockElapsed > _runtimeAge
+        ? clockElapsed
+        : _runtimeAge;
+    final elapsed = wallElapsed > localElapsed ? wallElapsed : localElapsed;
     final inputs =
         (runtime?['inputs'] is List ? runtime!['inputs'] as List : const [])
             .whereType<Map>()
@@ -366,6 +389,11 @@ class _VirtualThermostatDeviceDetailState
       members,
       elapsed,
       now,
+    );
+    final unavailableActivityClaims = _activityFence.unavailableClaims(
+      members,
+      now,
+      clock,
     );
     // Withhold a positive snapshot label when its declared required evidence
     // has expired or been rejected locally. This does not calculate readiness
@@ -540,6 +568,7 @@ class _VirtualThermostatDeviceDetailState
               now: now,
               current: current,
               expiredMemberClaims: expiredMemberClaims,
+              unavailableActivityClaims: unavailableActivityClaims,
             ),
             VirtualThermostatComfort(
               deviceId: widget.device.id,

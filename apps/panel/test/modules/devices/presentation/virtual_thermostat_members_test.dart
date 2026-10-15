@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
@@ -76,6 +77,18 @@ Map<String, dynamic> protection(
   'reasons': stale ? ['floor_sample_stale', 'barrier_latched'] : <String>[],
 };
 
+Map<String, dynamic> activityObservation(
+  DateTime time,
+  String activity, {
+  Duration lifetime = const Duration(seconds: 30),
+  bool? qualification = true,
+}) => {
+  'activity': activity,
+  'qualification_ready': qualification,
+  'activity_sampled_at': time.toIso8601String(),
+  'activity_expires_at': time.add(lifetime).toIso8601String(),
+};
+
 void main() {
   test(
     'claim join preserves missing members, false and zero, and fences history',
@@ -102,7 +115,7 @@ void main() {
       expect(members[0].liveTemperature(Duration.zero, now, true), 0);
       expect(members[0].diagnostic?['pending_on'], false);
       expect(members[1].identity, 'canonical-two');
-      expect(members[1].observed(true), 'unknown');
+      expect(members[1].observed(true, now), isNull);
       expect(
         members[0].liveTemperature(const Duration(seconds: 3), now, true),
         isNull,
@@ -122,7 +135,7 @@ void main() {
         historical: true,
       );
       expect(historical.liveTemperature(Duration.zero, now, true), isNull);
-      expect(historical.observed(true), 'unavailable');
+      expect(historical.observed(true, now), isNull);
     },
   );
 
@@ -235,7 +248,10 @@ void main() {
                       {
                         'claim': 'one',
                         'role': 'heating',
-                        'activity': 'off',
+                        ...activityObservation(
+                          DateTime.now().subtract(const Duration(seconds: 1)),
+                          'off',
+                        ),
                         'pending_on': true,
                       },
                     ],
@@ -400,7 +416,10 @@ void main() {
           {
             'claim': 'h1',
             'role': 'heating',
-            'activity': rev == 1 ? 'off' : 'on',
+            ...activityObservation(
+              now.subtract(Duration(seconds: 4 - rev)),
+              rev == 1 ? 'off' : 'on',
+            ),
             'pending_on': false,
             'release_pending': false,
             'release_attempts': 0,
@@ -510,7 +529,7 @@ void main() {
       socket.hint(2);
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump();
-      expect(textIn('h1', 'Reported observation: unavailable'), findsOneWidget);
+      expect(textIn('h1', 'Reported observation: Unavailable'), findsOneWidget);
       expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       expect(find.text('Inhibited: member_branch_blocked'), findsNothing);
       revision = 3;
@@ -550,7 +569,7 @@ void main() {
       // A failed/pending poll cannot keep the old diagnostic live indefinitely.
       hold = true;
       await tester.pump(const Duration(seconds: 6));
-      expect(textIn('h1', 'Reported observation: unavailable'), findsOneWidget);
+      expect(textIn('h1', 'Reported observation: Unavailable'), findsOneWidget);
       expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       expect(find.text('Inhibited: member_branch_blocked'), findsNothing);
       expect(
@@ -861,6 +880,317 @@ void main() {
     },
   );
 
+  test(
+    'relay fence keeps original budget through rollback, source gaps and older samples',
+    () {
+      final now = DateTime.utc(2026, 10, 15, 12);
+      final fence = VirtualThermostatActivityFence();
+      VirtualThermostatMember member(Map<String, dynamic> observation) =>
+          VirtualThermostatMember(claim('one', 'heating', 'reserved'), {
+            'claim': 'one',
+            ...observation,
+          });
+      final first = activityObservation(
+        now,
+        'on',
+        lifetime: const Duration(seconds: 2),
+      );
+      expect(
+        fence.unavailableClaims([member(first)], now, Duration.zero),
+        isEmpty,
+      );
+      // Wall time rolls back; the independent monotonic budget still expires.
+      expect(
+        fence.unavailableClaims(
+          [member(first)],
+          now,
+          const Duration(seconds: 3),
+        ),
+        contains('one'),
+      );
+      expect(
+        fence.unavailableClaims(
+          [
+            member({
+              ...first,
+              'activity_expires_at': now
+                  .add(const Duration(minutes: 1))
+                  .toIso8601String(),
+            }),
+          ],
+          now,
+          const Duration(seconds: 3),
+        ),
+        contains('one'),
+      );
+      final next = activityObservation(
+        now.add(const Duration(seconds: 1)),
+        'off',
+      );
+      expect(
+        fence.unavailableClaims(
+          [member(next)],
+          now.add(const Duration(seconds: 1)),
+          const Duration(seconds: 4),
+        ),
+        isEmpty,
+      );
+      expect(
+        fence.unavailableClaims(
+          [
+            member({'activity': 'unknown'}),
+          ],
+          now,
+          const Duration(seconds: 4),
+        ),
+        contains('one'),
+      );
+      expect(
+        fence.unavailableClaims(
+          [member(next)],
+          now.add(const Duration(seconds: 1)),
+          const Duration(seconds: 4),
+        ),
+        contains('one'),
+      );
+      fence.retainClaims([]);
+      expect(
+        fence.unavailableClaims([member(first)], now, Duration.zero),
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'relay expiry cannot be renewed by a fresh HTTP poll; guard check is independent',
+    (tester) async {
+      final fixture = MemberDetailFixture()..declaresMemberProtection = false;
+      final now = DateTime.now();
+      fixture.observation = activityObservation(
+        now,
+        'on',
+        lifetime: const Duration(seconds: 2),
+        qualification: false,
+      );
+      await fixture.mount(tester);
+      expect(find.text('Reported observation: on'), findsOneWidget);
+      expect(
+        find.text('Server guard/target check (snapshot): false'),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await fixture.refetch(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Reported observation: on'), findsNothing);
+      expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+      // The registry/target check is a current HTTP boolean, not relay feedback.
+      expect(
+        find.text('Server guard/target check (snapshot): false'),
+        findsOneWidget,
+      );
+      fixture.observation = {
+        ...fixture.observation,
+        'activity_expires_at': now
+            .add(const Duration(minutes: 1))
+            .toIso8601String(),
+      };
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+      fixture.observation = activityObservation(DateTime.now(), 'off');
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      expect(
+        find.text('Server guard/target check (snapshot): true'),
+        findsOneWidget,
+      );
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
+    'relay and guard snapshots invalidate on source, socket and model changes',
+    (tester) async {
+      final fixture = MemberDetailFixture()..declaresMemberProtection = false;
+      final original = DateTime.now().subtract(const Duration(seconds: 1));
+      final first = activityObservation(original, 'on');
+      fixture.observation = first;
+      await fixture.mount(tester);
+      expect(find.text('Reported observation: on'), findsOneWidget);
+      fixture.hold = true;
+      fixture.socket.hint(++fixture.revision);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+      expect(
+        find.text('Server guard/target check (snapshot): Unavailable'),
+        findsOneWidget,
+      );
+      await fixture.flush(tester);
+      expect(find.text('Reported observation: on'), findsOneWidget);
+      fixture.observation = {
+        'activity': 'unknown',
+        'qualification_ready': null,
+        'activity_sampled_at': null,
+        'activity_expires_at': null,
+      };
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+      expect(
+        find.text('Server guard/target check (snapshot): Unavailable'),
+        findsOneWidget,
+      );
+      fixture.observation = first;
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: on'), findsNothing);
+      fixture.observation = activityObservation(DateTime.now(), 'off');
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      fixture.observation = activityObservation(
+        original.subtract(const Duration(seconds: 1)),
+        'on',
+      );
+      fixture.revision++;
+      fixture.hold = true;
+      await fixture.mount(tester);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.text('Reported observation: off'), findsNothing);
+      expect(
+        find.text('Server guard/target check (snapshot): true'),
+        findsNothing,
+      );
+      await fixture.flush(tester);
+      expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+      // Missing/invalid dates can never make a legacy ON or historical OFF live.
+      fixture.observation = {
+        'activity': 'on',
+        'qualification_ready': false,
+        'last_verified_off_at': DateTime.now().toIso8601String(),
+      };
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: on'), findsNothing);
+      expect(
+        find.text('Server guard/target check (snapshot): false'),
+        findsOneWidget,
+      );
+      fixture.observation = {
+        'activity': 'off',
+        'qualification_ready': true,
+        'activity_sampled_at': 'bad',
+        'activity_expires_at': 'bad',
+      };
+      await fixture.refetch(tester);
+      expect(find.text('Reported observation: off'), findsNothing);
+      expect(
+        find.text('Server guard/target check (snapshot): true'),
+        findsOneWidget,
+      );
+      fixture.hold = true;
+      await tester.pump(const Duration(seconds: 6));
+      expect(
+        find.text('Server guard/target check (snapshot): true'),
+        findsNothing,
+      );
+      expect(
+        find.text('Server guard/target check (snapshot): Unavailable'),
+        findsOneWidget,
+      );
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
+    'runtime-only relay watermark survives refetch and stays independent of floor expiry',
+    (tester) async {
+      final fixture = MemberDetailFixture()..configurationRevision = 1;
+      final now = DateTime.now();
+      fixture.sample = protection(now, 0);
+      fixture.observation = activityObservation(now, 'off');
+      final t2 = now.subtract(const Duration(seconds: 1));
+      void retained(DateTime time) => fixture.extraBranches = [
+        {
+          'claim': 'retained',
+          'role': 'heating',
+          'claim_state': 'reserved',
+          'physical_identity': 'relay-retained',
+          ...activityObservation(time, 'on'),
+        },
+      ];
+      Finder activity(String value) => find.descendant(
+        of: find.byKey(const ValueKey('thermostat-member-retained')),
+        matching: find.text('Reported observation: $value'),
+      );
+      retained(t2);
+      await fixture.mount(tester);
+      expect(activity('on'), findsOneWidget);
+      retained(t2.subtract(const Duration(seconds: 1)));
+      await fixture.refetch(tester);
+      expect(activity('Unavailable'), findsOneWidget);
+      retained(DateTime.now());
+      await fixture.refetch(tester);
+      expect(activity('on'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(activity('on'), findsOneWidget);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      fixture.extraBranches = [];
+      await fixture.refetch(tester);
+      retained(t2.subtract(const Duration(seconds: 1)));
+      await fixture.refetch(tester);
+      expect(activity('on'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  const observationLocales = {
+    'en': (
+      'Server guard/target check (snapshot)',
+      'not full controller admission',
+      'Unavailable',
+    ),
+    'cs': (
+      'Kontrola ochrany/cíle serverem (snímek)',
+      'není úplné povolení',
+      'Nedostupné',
+    ),
+    'de': (
+      'Server-Schutz-/Zielprüfung (Snapshot)',
+      'keine vollständige Reglerfreigabe',
+      'Nicht verfügbar',
+    ),
+    'es': (
+      'Comprobación de protección/destino del servidor (instantánea)',
+      'no es admisión completa',
+      'No disponible',
+    ),
+    'pl': (
+      'Kontrola zabezpieczenia/celu przez serwer (migawka)',
+      'nie oznacza pełnego dopuszczenia',
+      'Niedostępne',
+    ),
+    'sk': (
+      'Kontrola ochrany/cieľa serverom (snímka)',
+      'nie je úplné povolenie',
+      'Nedostupné',
+    ),
+  };
+  for (final entry in observationLocales.entries) {
+    testWidgets('narrow guard check and unknown state render in ${entry.key}', (
+      tester,
+    ) async {
+      final fixture = MemberDetailFixture()
+        ..declaresMemberProtection = false
+        ..locale = Locale(entry.key)
+        ..observation = {'qualification_ready': false, 'activity': 'on'};
+      await fixture.mount(tester);
+      expect(find.text('${entry.value.$1}: false'), findsOneWidget);
+      expect(find.textContaining(entry.value.$2), findsOneWidget);
+      fixture.observation = {'qualification_ready': null, 'activity': 'on'};
+      await fixture.refetch(tester);
+      expect(find.text('${entry.value.$1}: ${entry.value.$3}'), findsOneWidget);
+      await fixture.dispose(tester);
+    });
+  }
+
   testWidgets(
     'legacy singleton without declared protection and empty membership preserve snapshot readiness',
     (tester) async {
@@ -885,7 +1215,9 @@ class MemberDetailFixture {
   bool hold = false, hasMember = true, declaresMemberProtection = true;
   List<Map<String, dynamic>> sources = [], inputs = [], extraBranches = [];
   String? displayFloorClaim;
+  Locale? locale;
   Map<String, dynamic>? sample;
+  Map<String, dynamic> observation = {};
 
   MemberDetailFixture() {
     locator.registerSingleton<Dio>(dio);
@@ -921,6 +1253,7 @@ class MemberDetailFixture {
                         'claim': 'one',
                         'role': 'heating',
                         'activity': 'off',
+                        ...observation,
                         'protection': sample,
                       },
                   ],
@@ -962,6 +1295,9 @@ class MemberDetailFixture {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: VirtualThermostatDeviceDetail(
           device: ThermostatDeviceView(
             id: 'controller',

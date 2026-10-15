@@ -138,7 +138,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Inhibited: floor limit reached'), findsOneWidget);
-    expect(find.text('Reported observation: off'), findsOneWidget);
+    expect(find.text('Reported observation: Unavailable'), findsOneWidget);
     expect(find.text('ambient: stale (physical)'), findsOneWidget);
     expect(find.text('floor: unavailable (derived)'), findsOneWidget);
     expect(find.text('contact: missing (unknown)'), findsOneWidget);

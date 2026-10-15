@@ -11,6 +11,7 @@ class VirtualThermostatMembers extends StatelessWidget {
   final DateTime now;
   final bool current;
   final Set<String> expiredMemberClaims;
+  final Set<String> unavailableActivityClaims;
   const VirtualThermostatMembers({
     super.key,
     required this.configuration,
@@ -19,6 +20,7 @@ class VirtualThermostatMembers extends StatelessWidget {
     required this.now,
     required this.current,
     this.expiredMemberClaims = const {},
+    this.unavailableActivityClaims = const {},
   });
 
   @override
@@ -73,7 +75,26 @@ class VirtualThermostatMembers extends StatelessWidget {
                   runtime?['requested_mode'] ??
                       configuration?['requested_mode'],
                 ),
-                field(l.thermostatMemberObserved, member.observed(current)),
+                field(
+                  l.thermostatMemberObserved,
+                  member.observed(
+                    current &&
+                        !unavailableActivityClaims.contains(member.claim),
+                    now,
+                  ),
+                ),
+                field(
+                  l.thermostatMemberActivitySample,
+                  member.activitySampledAt?.toUtc().toIso8601String(),
+                ),
+                field(
+                  l.thermostatMemberActivityExpiry,
+                  member.activityExpiresAt?.toUtc().toIso8601String(),
+                ),
+                field(
+                  l.thermostatMemberQualificationCheck,
+                  member.qualification(current),
+                ),
                 field(
                   l.thermostatMemberPending,
                   current ? (d?['pending_on']) : null,
@@ -88,8 +109,8 @@ class VirtualThermostatMembers extends StatelessWidget {
                   l.thermostatMemberProfile,
                   member.configuration['provider_profile'],
                 ),
-                // The display-token runtime has no separate installed-profile or
-                // qualification readiness field. A null fault is not certification.
+                // This public registry/target check is narrower than admission
+                // or installation readiness; floor and relay evidence are separate.
                 field(
                   l.thermostatMemberVersion,
                   member.configuration['provider_profile_version'],

@@ -4434,7 +4434,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get thermostatMemberQualification =>
-      'Detalles de instalación / cualificación no disponibles en esta pantalla. Revisar en Admin.';
+      'La comprobación de protección/destino no es admisión completa del controlador, preparación de instalación ni certificación física. Revise la instalación en Admin.';
 
   @override
   String get thermostatMemberProtectionSource =>
@@ -4552,5 +4552,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get thermostatMemberActivitySnapshot =>
-      'La actividad procede de la instantánea del servidor; la hora y vigencia de observación por miembro no están disponibles.';
+      'La actividad requiere la observación original vigente del relé. La comprobación de protección/destino es una instantánea separada del servidor; ninguna demuestra admisión completa.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Comprobación de protección/destino del servidor (instantánea)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Observación original del relé (metadatos históricos)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Caducidad original de observación del relé';
 }

@@ -4431,7 +4431,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get thermostatMemberQualification =>
-      'Podrobnosti instalace / kvalifikace nejsou na displeji dostupné. Zkontrolujte v Adminu.';
+      'Kontrola ochrany/cíle není úplné povolení regulátoru, připravenost instalace ani fyzická certifikace. Instalaci zkontrolujte v Adminu.';
 
   @override
   String get thermostatMemberProtectionSource => 'Uchovaný ochranný zdroj';
@@ -4547,5 +4547,17 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get thermostatMemberActivitySnapshot =>
-      'Aktivita je hlášena snímkem serveru; čas a čerstvost pozorování jednotlivých členů nejsou dostupné.';
+      'Aktivita vyžaduje původní neprošlé pozorování relé. Kontrola ochrany/cíle je samostatný snímek serveru; ani jedno nedokládá úplné povolení.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Kontrola ochrany/cíle serverem (snímek)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Původní pozorování relé (historická metadata)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Původní konec platnosti pozorování relé';
 }

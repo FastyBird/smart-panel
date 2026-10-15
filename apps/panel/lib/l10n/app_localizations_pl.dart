@@ -4472,7 +4472,7 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get thermostatMemberQualification =>
-      'Szczegóły instalacji / kwalifikacji niedostępne na tym ekranie. Sprawdź w Admin.';
+      'Kontrola zabezpieczenia/celu nie oznacza pełnego dopuszczenia regulatora, gotowości instalacji ani certyfikacji fizycznej. Sprawdź instalację w Admin.';
 
   @override
   String get thermostatMemberProtectionSource => 'Zachowane źródło ochrony';
@@ -4588,5 +4588,17 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get thermostatMemberActivitySnapshot =>
-      'Aktywność pochodzi z migawki serwera; czas i aktualność obserwacji członka są niedostępne.';
+      'Aktywność wymaga pierwotnej, niewygasłej obserwacji przekaźnika. Kontrola zabezpieczenia/celu jest oddzielną migawką serwera; żadna nie dowodzi pełnego dopuszczenia.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Kontrola zabezpieczenia/celu przez serwer (migawka)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Pierwotna obserwacja przekaźnika (metadane historyczne)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Pierwotny termin ważności obserwacji przekaźnika';
 }

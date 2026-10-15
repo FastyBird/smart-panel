@@ -1338,7 +1338,7 @@
   "thermostatMemberPending": "Nierozstrzygnięte ON",
   "thermostatMemberBlockers": "Blokada serwera",
   "thermostatMemberProfile": "Profil dostawcy",
-  "thermostatMemberQualification": "Szczegóły instalacji / kwalifikacji niedostępne na tym ekranie. Sprawdź w Admin.",
+  "thermostatMemberQualification": "Kontrola zabezpieczenia/celu nie oznacza pełnego dopuszczenia regulatora, gotowości instalacji ani certyfikacji fizycznej. Sprawdź instalację w Admin.",
   "thermostatMemberProtectionSource": "Zachowane źródło ochrony",
   "thermostatMemberReading": "Aktualny odczyt ochronny",
   "thermostatMemberQuality": "Jakość",
@@ -1373,5 +1373,8 @@
   "thermostatMemberNoBlocker": "Nie zgłoszono blokady",
   "thermostatMemberHistoryPending": "Ostatnie zgłoszone nierozstrzygnięte ON (historia)",
   "thermostatMemberHistoryRelease": "Ostatnie zgłoszone oczekujące zwolnienie (historia)",
-  "thermostatMemberActivitySnapshot": "Aktywność pochodzi z migawki serwera; czas i aktualność obserwacji członka są niedostępne."
+  "thermostatMemberActivitySnapshot": "Aktywność wymaga pierwotnej, niewygasłej obserwacji przekaźnika. Kontrola zabezpieczenia/celu jest oddzielną migawką serwera; żadna nie dowodzi pełnego dopuszczenia.",
+  "thermostatMemberQualificationCheck": "Kontrola zabezpieczenia/celu przez serwer (migawka)",
+  "thermostatMemberActivitySample": "Pierwotna obserwacja przekaźnika (metadane historyczne)",
+  "thermostatMemberActivityExpiry": "Pierwotny termin ważności obserwacji przekaźnika"
 }

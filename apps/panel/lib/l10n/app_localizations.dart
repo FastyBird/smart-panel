@@ -7951,7 +7951,7 @@ abstract class AppLocalizations {
   /// No description provided for @thermostatMemberQualification.
   ///
   /// In en, this message translates to:
-  /// **'Installation / qualification details unavailable on this display. Review in Admin.'**
+  /// **'The guard/target check is not full controller admission, installation readiness or physical certification. Review installation in Admin.'**
   String get thermostatMemberQualification;
 
   /// No description provided for @thermostatMemberProtectionSource.
@@ -8161,8 +8161,26 @@ abstract class AppLocalizations {
   /// No description provided for @thermostatMemberActivitySnapshot.
   ///
   /// In en, this message translates to:
-  /// **'Activity is reported by the server snapshot; per-member observation time and freshness are unavailable.'**
+  /// **'Activity requires the original unexpired relay observation. The guard/target check is a separate server snapshot; neither proves full admission.'**
   String get thermostatMemberActivitySnapshot;
+
+  /// No description provided for @thermostatMemberQualificationCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Server guard/target check (snapshot)'**
+  String get thermostatMemberQualificationCheck;
+
+  /// No description provided for @thermostatMemberActivitySample.
+  ///
+  /// In en, this message translates to:
+  /// **'Original relay observation (history metadata)'**
+  String get thermostatMemberActivitySample;
+
+  /// No description provided for @thermostatMemberActivityExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Original relay observation expiry'**
+  String get thermostatMemberActivityExpiry;
 }
 
 class _AppLocalizationsDelegate

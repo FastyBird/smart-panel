@@ -51,9 +51,33 @@ class VirtualThermostatMember {
       ? temperature
       : null;
 
-  String observed(bool current) => !current || historical
-      ? 'unavailable'
-      : diagnostic?['activity']?.toString() ?? 'unknown';
+  DateTime? get activitySampledAt =>
+      DateTime.tryParse(diagnostic?['activity_sampled_at']?.toString() ?? '');
+  DateTime? get activityExpiresAt =>
+      DateTime.tryParse(diagnostic?['activity_expires_at']?.toString() ?? '');
+  String? get activity => const ['on', 'off'].contains(diagnostic?['activity'])
+      ? diagnostic!['activity'] as String
+      : null;
+  bool? qualification(bool current) => !current || historical
+      ? null
+      : diagnostic?['qualification_ready'] is bool
+      ? diagnostic!['qualification_ready'] as bool
+      : null;
+
+  String? observed(bool current, DateTime now) {
+    final sampled = activitySampledAt;
+    final expiry = activityExpiresAt;
+    if (!current ||
+        historical ||
+        sampled == null ||
+        expiry == null ||
+        sampled.isAfter(now) ||
+        !expiry.isAfter(sampled) ||
+        !now.isBefore(expiry)) {
+      return null;
+    }
+    return activity;
+  }
 
   static List<VirtualThermostatMember> read(
     Map? config,
@@ -131,4 +155,89 @@ class VirtualThermostatReadingFence {
     }
     return expired;
   }
+}
+
+/// Relay observations have their own original timestamps and lifetime. Neither
+/// HTTP refresh nor floor samples can renew this independent display evidence.
+class VirtualThermostatActivityFence {
+  final _samples = <String, _ActivityWatermark>{};
+
+  void retainClaims(Iterable<String> claims) {
+    final active = claims.toSet();
+    _samples.removeWhere((claim, _) => !active.contains(claim));
+  }
+
+  Set<String> unavailableClaims(
+    List<VirtualThermostatMember> members,
+    DateTime now,
+    Duration clock,
+  ) {
+    final unavailable = <String>{};
+    for (final member in members) {
+      final previous = _samples[member.claim];
+      final sampled = member.activitySampledAt;
+      final expiry = member.activityExpiresAt;
+      final activity = member.observed(true, now);
+      final context =
+          '${member.identity}/${member.configuration['qualification_generation'] ?? ''}';
+      if (sampled == null ||
+          expiry == null ||
+          activity == null ||
+          (previous != null && sampled.isBefore(previous.sampled))) {
+        // A source gap or regression cannot restore the last observed sample.
+        if (previous != null) previous.invalid = true;
+        if (sampled != null &&
+            (previous == null || sampled.isAfter(previous.sampled))) {
+          _samples[member.claim] = _ActivityWatermark(
+            sampled,
+            expiry ?? sampled,
+            clock,
+            context,
+            member.activity ?? 'unknown',
+          )..invalid = true;
+        }
+        unavailable.add(member.claim);
+        continue;
+      }
+      final deadline = clock + expiry.difference(now);
+      if (previous != null && sampled == previous.sampled) {
+        // Keep the earliest original expiry/budget, even across clock rollback
+        // or a cached response that changes its expiry for the same sample.
+        if (expiry.isBefore(previous.expiry)) previous.expiry = expiry;
+        if (deadline < previous.deadline) previous.deadline = deadline;
+        previous.invalid =
+            previous.invalid ||
+            previous.context != context ||
+            previous.activity != activity ||
+            !now.isBefore(previous.expiry) ||
+            clock >= previous.deadline;
+        if (previous.invalid) unavailable.add(member.claim);
+      } else {
+        _samples[member.claim] = _ActivityWatermark(
+          sampled,
+          expiry,
+          deadline,
+          context,
+          activity,
+        );
+      }
+    }
+    return unavailable;
+  }
+}
+
+class _ActivityWatermark {
+  final DateTime sampled;
+  DateTime expiry;
+  Duration deadline;
+  final String context;
+  final String activity;
+  bool invalid = false;
+  _ActivityWatermark(
+    this.sampled,
+    this.expiry,
+    this.deadline,
+    this.context,
+    this.activity,
+  );
 }

@@ -4392,7 +4392,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get thermostatMemberQualification =>
-      'Installation / qualification details unavailable on this display. Review in Admin.';
+      'The guard/target check is not full controller admission, installation readiness or physical certification. Review installation in Admin.';
 
   @override
   String get thermostatMemberProtectionSource => 'Retained protective source';
@@ -4507,5 +4507,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get thermostatMemberActivitySnapshot =>
-      'Activity is reported by the server snapshot; per-member observation time and freshness are unavailable.';
+      'Activity requires the original unexpired relay observation. The guard/target check is a separate server snapshot; neither proves full admission.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Server guard/target check (snapshot)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Original relay observation (history metadata)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Original relay observation expiry';
 }
