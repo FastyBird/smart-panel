@@ -314,6 +314,15 @@ describe('virtual thermostat durable runtime', () => {
 			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) =>
 				unavailableMembers.has(property.id) ? null : (samples.get(property.id) ?? null),
 			),
+			readQualifiedSampleSnapshot: jest.fn((property: ChannelPropertyEntity, maxAgeMs: number, now: Date) => {
+				const sample = samples.get(property.id);
+				return !providerCurrent ||
+					unavailableMembers.has(property.id) ||
+					!sample ||
+					now.getTime() - sample.sampledAt.getTime() > maxAgeMs
+					? null
+					: sample;
+			}),
 			readSampleFreshness: jest.fn((property: ChannelPropertyEntity) => {
 				const sample = samples.get(property.id);
 				return {
@@ -507,6 +516,132 @@ describe('virtual thermostat durable runtime', () => {
 			presets: [{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } }],
 		});
 
+	describe('read-only member observation diagnostics', () => {
+		it('uses the original physical boolean sample and withdraws it at expiry without evaluation or renewed evidence', async () => {
+			await settle();
+			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
+			const physical = samples.get(relayId),
+				original = physical.sampledAt.toISOString(),
+				sent = sends.length;
+			const liveRead = jest.spyOn(values, 'readQualifiedSample');
+			const liveReads = liveRead.mock.calls.length;
+			jest.useFakeTimers();
+			jest.setSystemTime(physical.sampledAt.getTime() + 29_999);
+			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+				qualification_ready: true,
+				activity: 'off',
+				activity_sampled_at: original,
+				activity_expires_at: new Date(physical.sampledAt.getTime() + 30_000).toISOString(),
+			});
+			jest.setSystemTime(physical.sampledAt.getTime() + 30_000);
+			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+				qualification_ready: true,
+				activity: 'unknown',
+				activity_sampled_at: null,
+				activity_expires_at: null,
+			});
+			expect(samples.get(relayId)).toBe(physical);
+			expect(sends).toHaveLength(sent);
+			expect(liveRead).toHaveBeenCalledTimes(liveReads);
+			jest.useRealTimers();
+		});
+		it('withdraws qualification and activity when target source lease or graph scope is revoked', async () => {
+			await settle();
+			expect(runtime.readDiagnostics(controllerId).branches[0].qualification_ready).toBe(true);
+			providerCurrent = false;
+			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+				qualification_ready: null,
+				activity: 'unknown',
+				activity_sampled_at: null,
+				activity_expires_at: null,
+			});
+			providerCurrent = true;
+			graphValidated = false;
+			graphGeneration++;
+			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+				qualification_ready: null,
+				activity: 'unknown',
+				activity_sampled_at: null,
+				activity_expires_at: null,
+			});
+		});
+		it('withdraws cached qualification when its captured registry scope is revoked', async () => {
+			await settle();
+			expect(runtime.readDiagnostics(controllerId).branches[0].qualification_ready).toBe(true);
+			const context = (
+				runtime as unknown as { contexts: Map<string, { admission: { isCurrent(): boolean } }> }
+			).contexts.get(controllerId);
+			context.admission = { isCurrent: () => false };
+			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+				qualification_ready: null,
+				activity: 'unknown',
+				activity_sampled_at: null,
+				activity_expires_at: null,
+			});
+		});
+		it.each(['quality', 'type', 'identity', 'missing', 'cached', 'future'] as const)(
+			'never promotes %s physical feedback to current activity',
+			async (fault) => {
+				await settle();
+				const physical = samples.get(relayId);
+				if (fault === 'quality') samples.set(relayId, { ...physical, quality: 'degraded' });
+				if (fault === 'type') samples.set(relayId, { ...physical, value: 'false' });
+				if (fault === 'identity') samples.set(relayId, { ...physical, propertyId: sensorId });
+				if (fault === 'missing') samples.delete(relayId);
+				if (fault === 'cached')
+					samples.set(relayId, { ...physical, provenance: 'cached' } as unknown as QualifiedPropertySample);
+				if (fault === 'future')
+					samples.set(relayId, {
+						...physical,
+						sampledAt: new Date(Date.now() + 1000),
+						receivedAt: new Date(Date.now() + 1000),
+					});
+				expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+					activity: 'unknown',
+					activity_sampled_at: null,
+					activity_expires_at: null,
+				});
+			},
+		);
+		it.each(['context', 'in_flight'] as const)(
+			'withholds older OFF feedback after newer %s ON dispatch until actual newer physical feedback',
+			async (storage) => {
+				await settle();
+				const physical = samples.get(relayId);
+				const contexts = (
+					runtime as unknown as { contexts: Map<string, { commands: VirtualThermostatCommandEntity[] }> }
+				).contexts;
+				const command = Object.assign(new VirtualThermostatCommandEntity(), {
+					id: uuid(),
+					claimId: (await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId })).id,
+					action: 'on',
+					status: 'accepted',
+					dispatchedAt: new Date(physical.receivedAt.getTime() + 1),
+				});
+				if (storage === 'context') contexts.get(controllerId).commands.push(command);
+				else
+					(
+						runtime as unknown as { inFlightCommands: Map<string, VirtualThermostatCommandEntity> }
+					).inFlightCommands.set(command.id, command);
+				expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+					activity: 'unknown',
+					activity_sampled_at: null,
+					activity_expires_at: null,
+				});
+				const at = new Date(Math.max(Date.now(), command.dispatchedAt.getTime()));
+				samples.set(relayId, { ...physical, value: true, sampledAt: at, receivedAt: at });
+				jest.useFakeTimers();
+				jest.setSystemTime(at);
+				expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
+					activity: 'on',
+					activity_sampled_at: at.toISOString(),
+					activity_expires_at: new Date(at.getTime() + 30_000).toISOString(),
+				});
+				jest.useRealTimers();
+			},
+		);
+	});
+
 	it('reconciles and refreshes runtime after a committed comfort mutation whose leading listener threw', async () => {
 		await settle();
 		await configureComfort();
@@ -530,9 +665,11 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('inhibits a lower-demand override on observable rollback instead of resuming a higher baseline', async () => {
 		await settle();
+		packetTick = useThermostatPacketClock();
 		await configureComfort();
+		await settle();
 		const wall = Date.now();
-		jest.spyOn(Date, 'now').mockReturnValue(wall);
+		jest.setSystemTime(wall);
 		await comfort.override(
 			controllerId,
 			await comfortFence(),
@@ -547,7 +684,7 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settle();
 		expect(sends).not.toContain(true);
-		jest.spyOn(Date, 'now').mockReturnValue(wall - 1);
+		jest.setSystemTime(wall - 1);
 		runtime.request(controllerId);
 		await settle();
 		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
@@ -2050,6 +2187,7 @@ describe('virtual thermostat durable runtime', () => {
 		'fences a queued parallel leaf and drains every journal after %s',
 		async (change) => {
 			const sibling = await addMandatoryMember();
+			packetTick = useThermostatPacketClock();
 			const commandTarget =
 				change === 'override expiry'
 					? null
@@ -2071,7 +2209,7 @@ describe('virtual thermostat durable runtime', () => {
 				};
 			});
 			const now = Date.now();
-			jest.spyOn(Date, 'now').mockReturnValue(now);
+			jest.setSystemTime(now);
 			if (change === 'manual configuration') {
 				await comfort.select(controllerId, await comfortFence(), 'comfort', false);
 			} else {
@@ -2082,6 +2220,19 @@ describe('virtual thermostat durable runtime', () => {
 					'operator',
 				);
 			}
+			// Every comfort revision invalidates the member protection basis. Prove current all-leaf
+			// OFF/drain first, then supply genuinely later receiver reports before allowing ON.
+			for (let phase = 0; phase < 2; phase++) {
+				runtime.request(controllerId, false);
+				await settle();
+			}
+			expect(
+				runtime
+					.readDiagnostics(controllerId)
+					.branches.every((branch) => branch.release_proven && !branch.pending_on && branch.activity === 'off'),
+			).toBe(true);
+			for (const probe of protectionProbes) sample(probe, 20);
+			runtime.request(controllerId);
 			await waitForOnJournal();
 			await Promise.all([relayQueued, siblingEnergized]);
 			await runtime.flush();
@@ -2105,7 +2256,7 @@ describe('virtual thermostat durable runtime', () => {
 			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
 			const mutationBoundary = sentTargets.length;
 			if (change === 'override expiry') {
-				jest.spyOn(Date, 'now').mockReturnValue(now + 1000);
+				jest.setSystemTime(now + 1000);
 			} else {
 				await expect(
 					configs.command([{ ...commandTarget, value: change === 'explicit OFF' ? false : 21 }]),

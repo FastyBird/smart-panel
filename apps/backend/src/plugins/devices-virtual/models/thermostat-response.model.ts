@@ -451,7 +451,39 @@ export class VirtualThermostatBranchRuntimeModel {
 
 	@ApiProperty() @Expose() claim: string;
 	@ApiProperty({ enum: ['heating', 'cooling'] }) @Expose() role: 'heating' | 'cooling';
-	@ApiProperty({ enum: ['on', 'off', 'unknown'] }) @Expose() activity: 'on' | 'off' | 'unknown';
+	@ApiProperty({
+		enum: ['on', 'off', 'unknown'],
+		description:
+			'Current good physical boolean feedback; unknown when unavailable, expired or superseded by a newer ON dispatch. Never inferred from journal history or command acceptance.',
+	})
+	@Expose()
+	activity: 'on' | 'off' | 'unknown';
+	@ApiProperty({
+		type: Boolean,
+		nullable: true,
+		description:
+			'Current installed guard qualification and target availability only; not full controller admission, installation readiness or physical certification. Null when current proof is unavailable.',
+	})
+	@Expose()
+	qualification_ready: boolean | null;
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		nullable: true,
+		description:
+			'Original sample time of the same current good physical boolean feedback used for activity; never journal, ACK or historical OFF evidence.',
+	})
+	@Expose()
+	activity_sampled_at: string | null;
+	@ApiProperty({
+		type: String,
+		format: 'date-time',
+		nullable: true,
+		description:
+			'Original physical activity sample time plus the existing 30-second feedback window; publication does not extend it.',
+	})
+	@Expose()
+	activity_expires_at: string | null;
 	@ApiProperty() @Expose() pending_on: boolean;
 	@ApiProperty() @Expose() release_pending: boolean;
 	@ApiProperty() @Expose() release_attempts: number;

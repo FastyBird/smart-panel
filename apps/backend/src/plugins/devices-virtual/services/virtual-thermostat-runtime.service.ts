@@ -20,6 +20,7 @@ import {
 	PropertyProducerRegistryService,
 } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { ShellyNgChannelPropertyEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import {
 	thermostatBranchGroupIdentity,
 	thermostatHasOpposedBranches,
@@ -51,7 +52,7 @@ import {
 	validateThermostatComfort,
 } from './virtual-thermostat-comfort.utils';
 import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
-import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
+import { thermostatActuatorIdentity, thermostatFingerprint } from './virtual-thermostat-contract.utils';
 import {
 	ThermostatInputBinding,
 	ThermostatInputFrame,
@@ -90,6 +91,9 @@ export interface ThermostatBranchDiagnostic {
 	release_evidence: VirtualThermostatActuatorClaimEntity['releaseEvidence'];
 	role: 'heating' | 'cooling';
 	activity: 'on' | 'off' | 'unknown';
+	qualification_ready: boolean | null;
+	activity_sampled_at: string | null;
+	activity_expires_at: string | null;
 	pending_on: boolean;
 	release_pending: boolean;
 	release_attempts: number;
@@ -100,7 +104,15 @@ export interface ThermostatBranchDiagnostic {
 }
 const copyBranchDiagnostic = (branch: ThermostatBranchDiagnostic, unavailable = false): ThermostatBranchDiagnostic => ({
 	...branch,
-	...(unavailable ? { activity: 'unknown' as const, release_proven: false } : {}),
+	...(unavailable
+		? {
+				activity: 'unknown' as const,
+				qualification_ready: null,
+				activity_sampled_at: null,
+				activity_expires_at: null,
+				release_proven: false,
+			}
+		: {}),
 	protection: branch.protection
 		? {
 				...branch.protection,
@@ -323,6 +335,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 	readDiagnostics(controllerId: string): ThermostatRuntimeDiagnostic | null {
 		const result = this.diagnostics.get(controllerId);
+		const observedAt = new Date(),
+			context = this.contexts.get(controllerId);
 		if (result && (!this.graph.isValidated() || this.diagnosticGuards.get(controllerId)?.() === false))
 			return {
 				...result,
@@ -347,7 +361,17 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					effective_comfort: { ...result.effective_comfort },
 					inputs: result.inputs.map((input) => ({ ...input, reasons: [...input.reasons] })),
 					reasons: [...result.reasons],
-					branches: result.branches.map((branch) => copyBranchDiagnostic(branch)),
+					branches: result.branches.map((branch) => ({
+						...copyBranchDiagnostic(branch),
+						...this.branchObservation(
+							context?.config.revision === result.configuration_revision &&
+								context.state.decisionRevision === result.decision_revision
+								? context
+								: undefined,
+							branch.claim,
+							observedAt,
+						),
+					})),
 				}
 			: null;
 	}
@@ -1208,9 +1232,89 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			scopeIsCurrent: () => context.admission.isCurrent() && context.publishGuard(),
 		});
 	}
+	/** Detached display evidence only: never enters policy, release proof, journaling or transport admission. */
+	private branchObservation(
+		context: ControllerContext | undefined,
+		claimId: string,
+		now: Date,
+	): Pick<
+		ThermostatBranchDiagnostic,
+		'qualification_ready' | 'activity' | 'activity_sampled_at' | 'activity_expires_at'
+	> {
+		const unavailable = {
+			qualification_ready: null,
+			activity: 'unknown' as const,
+			activity_sampled_at: null,
+			activity_expires_at: null,
+		};
+		if (
+			!this.active ||
+			!context ||
+			!context.admission.isCurrent() ||
+			!context.publishGuard() ||
+			context.epoch !== (this.epochs.get(context.config.controllerId) ?? 0)
+		)
+			return unavailable;
+		const claim = context.claims.find((member) => member.id === claimId),
+			target = context.targets.get(claimId);
+		if (
+			!claim ||
+			!target?.device.enabled ||
+			!(target.property instanceof ShellyNgChannelPropertyEntity) ||
+			target.property.id !== claim.sourcePropertyId ||
+			thermostatActuatorIdentity(target.property, target.channel, target.device) !== claim.physicalIdentity ||
+			!this.values.captureSampleSourceGuard(target.property)()
+		)
+			return unavailable;
+		const qualificationReady = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims))
+			? true
+			: null;
+		const sample = this.values.readQualifiedSampleSnapshot(target.property, 30_000, now);
+		if (
+			!sample ||
+			sample.propertyId !== target.property.id ||
+			sample.provenance !== 'live' ||
+			sample.quality !== 'good' ||
+			typeof sample.value !== 'boolean'
+		)
+			return { ...unavailable, qualification_ready: qualificationReady };
+		const sampledAt = sample.sampledAt.getTime(),
+			receivedAt = sample.receivedAt.getTime(),
+			expiresAt = new Date(sampledAt + 30_000);
+		if (
+			!Number.isFinite(sampledAt) ||
+			!Number.isFinite(receivedAt) ||
+			!Number.isFinite(expiresAt.getTime()) ||
+			sampledAt > now.getTime() ||
+			receivedAt > now.getTime() ||
+			now.getTime() >= expiresAt.getTime()
+		)
+			return { ...unavailable, qualification_ready: qualificationReady };
+		const commands = new Map(context.commands.map((command) => [command.id, command]));
+		for (const command of this.inFlightCommands.values())
+			if (command.claimId === claim.id) commands.set(command.id, command);
+		if (
+			[...commands.values()].some(
+				(command) =>
+					command.claimId === claim.id &&
+					unresolved(command) &&
+					command.action === 'on' &&
+					command.dispatchedAt &&
+					receivedAt < command.dispatchedAt.getTime(),
+			)
+		)
+			return { ...unavailable, qualification_ready: qualificationReady };
+		return {
+			qualification_ready: qualificationReady,
+			activity: sample.value ? 'on' : 'off',
+			activity_sampled_at: sample.sampledAt.toISOString(),
+			activity_expires_at: expiresAt.toISOString(),
+		};
+	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {
 		if (!context.publishGuard()) return;
-		const branches = context.claims.map((claim): ThermostatBranchDiagnostic => {
+		const observedAt = new Date();
+		const branches = context.claims.map((claim) => {
 			const branch = context.branches.get(claim.id),
 				commands = context.commands.filter((command) => command.claimId === claim.id && unresolved(command));
 			const target = context.targets.get(claim.id);
@@ -1236,11 +1340,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					(command) =>
 						command.action === 'on' &&
 						command.dispatchedAt &&
-						((context.targets.get(claim.id)
-							? this.values.readQualifiedSample(context.targets.get(claim.id).property, 30000)?.receivedAt.getTime()
-							: null) ?? 0) < command.dispatchedAt.getTime(),
+						((target ? this.values.readQualifiedSample(target.property, 30_000)?.receivedAt.getTime() : null) ?? 0) <
+							command.dispatchedAt.getTime(),
 				)
-					? 'unknown'
+					? ('unknown' as const)
 					: branch.activity,
 				pending_on: commands.some((command) => command.action === 'on'),
 				release_pending: commands.some((command) => command.action === 'off'),
@@ -1296,7 +1399,9 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			comfort_demand: context.decision.comfortDemand,
 			reasons: [...new Set(reasons)],
 			headline_reason: priority.find((reason) => reasons.includes(reason)) ?? reasons[0] ?? null,
-			branches,
+			// Physical/virtual output publication below retains its existing activity path. Only the public
+			// diagnostic view uses detached sample projection and read-time freshness withdrawal.
+			branches: branches.map((branch) => ({ ...branch, ...this.branchObservation(context, branch.claim, observedAt) })),
 		};
 		this.diagnostics.set(context.config.controllerId, runtime);
 		this.diagnosticGuards.set(context.config.controllerId, context.publishGuard);
