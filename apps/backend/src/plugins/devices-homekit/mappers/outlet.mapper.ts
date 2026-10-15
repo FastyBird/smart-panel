@@ -5,6 +5,7 @@ import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
 import { BaseHomeKitMapper } from './base.mapper';
 import { HomeKitMapperContext } from './homekit-mapper.interface';
+import { bindUnavailableCharacteristic } from './unavailable-characteristic';
 
 export class OutletMapper extends BaseHomeKitMapper {
 	canMap(device: DeviceEntity): boolean {
@@ -45,6 +46,8 @@ export class OutletMapper extends BaseHomeKitMapper {
 			const inUseChar = service.getCharacteristic(Characteristic.OutletInUse);
 			if (inUseProp) {
 				this.bindCharacteristic(context, device, outletChannel, inUseProp, inUseChar, toBool);
+			} else if (onProp.requiresLiveValue) {
+				bindUnavailableCharacteristic(context, inUseChar);
 			} else {
 				this.bindCharacteristic(context, device, outletChannel, onProp, inUseChar, toBool);
 			}

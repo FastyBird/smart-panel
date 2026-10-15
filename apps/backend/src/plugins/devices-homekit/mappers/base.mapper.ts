@@ -14,7 +14,8 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { bindCharacteristicGet } from './characteristic-get';
 import { bindCharacteristicWrite } from './characteristic-write';
 import { CharacteristicBinding, HomeKitMapperContext, IHomeKitAccessoryMapper } from './homekit-mapper.interface';
-import { readMappedProperty } from './property-read';
+import { ManagedSemanticConversion, communicationFailure, readMappedProperty } from './property-read';
+import { bindServiceFault } from './service-fault';
 
 export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 	abstract canMap(device: DeviceEntity): boolean;
@@ -66,13 +67,15 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 		toHomeKit: (value: unknown) => CharacteristicValue = (val) => val as CharacteristicValue,
 		fromHomeKit: (value: CharacteristicValue) => unknown = (val) => val,
 		fault?: Characteristic,
+		semanticConversion?: ManagedSemanticConversion,
 	): void {
 		let currentProperty = property;
 		let initialValue: CharacteristicValue;
 		try {
-			initialValue = readMappedProperty(context, property, characteristic, toHomeKit, fault);
+			initialValue = readMappedProperty(context, property, characteristic, toHomeKit, fault, semanticConversion);
 		} catch {
 			initialValue = undefined;
+			characteristic.updateValue(communicationFailure());
 		}
 		const binding: CharacteristicBinding = {
 			deviceId: device.id,
@@ -96,18 +99,10 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 			const state = context.propertyState?.read(currentProperty);
 			if (!event && !currentProperty.requiresLiveValue && (!state || state.quality === null))
 				return binding.currentValue;
-			return readMappedProperty(context, currentProperty, characteristic, toHomeKit, fault);
+			return readMappedProperty(context, currentProperty, characteristic, toHomeKit, fault, semanticConversion);
 		};
 		bindCharacteristicGet(context, characteristic, () => binding.readValue());
-		if (fault)
-			bindCharacteristicGet(context, fault, () => {
-				try {
-					binding.readValue(currentProperty);
-				} catch {
-					/* Fault remains readable for unavailable sensors. */
-				}
-				return fault.value;
-			});
+		if (fault) bindServiceFault(context, fault, characteristic, () => binding.readValue(currentProperty));
 
 		if (initialValue !== undefined && initialValue !== null) {
 			try {
