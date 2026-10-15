@@ -12,6 +12,7 @@ import { PluginsTypeMapperService } from '../../../modules/config/services/plugi
 import {
 	ChannelCategory,
 	ConnectionState,
+	DataTypeType,
 	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
@@ -188,6 +189,71 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 		const count = commits;
 		await listener.handleDeviceDeleted(device);
 		expect(commits).toBe(count);
+	});
+
+	it('retains mixed fan sensors through lifecycle rebuilds and withdraws CO2 levels after metadata drift', async () => {
+		device.channels = [];
+		const temperatureChannel = channel(device, 'temperature', ChannelCategory.TEMPERATURE);
+		const temperature = property(temperatureChannel, 'temperature-value', PropertyCategory.TEMPERATURE, 21);
+		const co2 = channel(device, 'co2', ChannelCategory.CARBON_DIOXIDE);
+		const concentration = property(co2, 'concentration', PropertyCategory.CONCENTRATION, 450);
+		Object.assign(concentration, { dataType: DataTypeType.FLOAT, unit: 'ppm' });
+		property(co2, 'detection', PropertyCategory.DETECTED, false);
+		await bridge.start();
+		const original = accessory();
+		const oldTemperature = original.getService(Service.TemperatureSensor);
+		const fan = channel(device, 'fan', ChannelCategory.FAN);
+		Object.assign(property(fan, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+		listener.handleChannelStructureChanged(fan);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		const mixed = accessory();
+		expect(mixed.UUID).toBe(original.UUID);
+		expect(mixed.getService(Service.TemperatureSensor).subtype).toBe(oldTemperature.subtype);
+		expect(await mixed.getService(Service.Fanv2).getCharacteristic(Characteristic.Active).handleGetRequest()).toBe(1);
+		expect(
+			await mixed
+				.getService(Service.TemperatureSensor)
+				.getCharacteristic(Characteristic.CurrentTemperature)
+				.handleGetRequest(),
+		).toBe(21);
+		expect(registry.getBindingsForProperty(temperature.id)).toHaveLength(1);
+		expect(registry.getBindingsForProperty('fan-on')).toHaveLength(1);
+		expect(new Set(mixed.services.map((service) => `${service.UUID}:${service.subtype}`)).size).toBe(
+			mixed.services.length,
+		);
+		await expect(oldTemperature.getCharacteristic(Characteristic.CurrentTemperature).handleGetRequest()).rejects.toBe(
+			HAPStatus.SERVICE_COMMUNICATION_FAILURE,
+		);
+		const oldLevel = mixed.getService(Service.CarbonDioxideSensor).getCharacteristic(Characteristic.CarbonDioxideLevel);
+		expect(await oldLevel.handleGetRequest()).toBe(450);
+		concentration.unit = '%';
+		listener.handlePropertyValueChanged(concentration);
+		await expect(oldLevel.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		// Real update events may carry only the channel ID. Resolve it before scheduling the rebuild.
+		await listener.handleCarbonDioxideMetadataChanged(
+			Object.assign(new ChannelPropertyEntity(), concentration, { channel: co2.id }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		expect(
+			accessory().getService(Service.CarbonDioxideSensor).testCharacteristic(Characteristic.CarbonDioxideLevel),
+		).toBe(false);
+		expect(registry.getBindingsForProperty(concentration.id)).toHaveLength(0);
+		await expect(oldLevel.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		concentration.unit = 'ppm';
+		await listener.handleCarbonDioxideMetadataChanged(concentration);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		expect(
+			await accessory()
+				.getService(Service.CarbonDioxideSensor)
+				.getCharacteristic(Characteristic.CarbonDioxideLevel)
+				.handleGetRequest(),
+		).toBe(450);
+		expect(registry.getBindingsForProperty(concentration.id)).toHaveLength(1);
+		expect(registry.getBindingsForProperty(temperature.id)).toHaveLength(1);
+		expect(commits).toBe(0);
 	});
 
 	it('debounces structure events per mapped device, retaining UUID and replacing old resources', async () => {

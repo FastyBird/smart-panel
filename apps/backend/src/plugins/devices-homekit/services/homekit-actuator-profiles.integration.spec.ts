@@ -84,6 +84,55 @@ describe('HomeKit fan and covering profiles', () => {
 		fixture.publish(mode, 'sleep');
 		await expect(service.getCharacteristic(Characteristic.TargetFanState).handleGetRequest()).rejects.toBe(failure);
 	});
+
+	it('retains sensor services and one binding per property when a sensor-only device rebuilds with a fan', async () => {
+		const device = fixture.device(DeviceCategory.FAN);
+		const temperature = fixture.property(device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, {
+			dataType: DataTypeType.FLOAT,
+			unit: '°C',
+		});
+		const humidity = fixture.property(device, ChannelCategory.HUMIDITY, PropertyCategory.HUMIDITY);
+		const motion = fixture.property(device, ChannelCategory.MOTION, PropertyCategory.DETECTED);
+		fixture.publish(temperature, 21);
+		fixture.publish(humidity, 45);
+		fixture.publish(motion, true);
+		const previous = fixture.build(device),
+			oldTemperature = previous.getService(Service.TemperatureSensor);
+		const on = fixture.property(device, ChannelCategory.FAN, PropertyCategory.ON);
+		fixture.publish(on, true);
+		const replacement = fixture.build(device);
+		expect(replacement.UUID).toBe(previous.UUID);
+		expect(replacement.getService(Service.TemperatureSensor).subtype).toBe(oldTemperature.subtype);
+		for (const [property, type, characteristic, value] of [
+			[temperature, Service.TemperatureSensor, Characteristic.CurrentTemperature, 21],
+			[humidity, Service.HumiditySensor, Characteristic.CurrentRelativeHumidity, 45],
+			[motion, Service.MotionSensor, Characteristic.MotionDetected, true],
+			[on, Service.Fanv2, Characteristic.Active, 1],
+		] as const) {
+			expect(await replacement.getService(type).getCharacteristic(characteristic).handleGetRequest()).toBe(value);
+			expect(fixture.registry.getBindingsForProperty(property.id)).toHaveLength(1);
+		}
+		const identities = replacement.services.map((service) => `${service.UUID}:${service.subtype}`);
+		expect(new Set(identities).size).toBe(identities.length);
+		await expect(oldTemperature.getCharacteristic(Characteristic.CurrentTemperature).handleGetRequest()).rejects.toBe(
+			failure,
+		);
+		fixture.publish(temperature, 21, 'degraded');
+		const currentTemperature = replacement.getService(Service.TemperatureSensor);
+		expect(await currentTemperature.getCharacteristic(Characteristic.StatusFault).handleGetRequest()).toBe(1);
+		fixture.publish(temperature, 21);
+		expect(await currentTemperature.getCharacteristic(Characteristic.StatusFault).handleGetRequest()).toBe(0);
+		jest.setSystemTime(Date.now() + 1000);
+		await expect(
+			currentTemperature.getCharacteristic(Characteristic.CurrentTemperature).handleGetRequest(),
+		).rejects.toBe(failure);
+		await expect(
+			replacement.getService(Service.Fanv2).getCharacteristic(Characteristic.Active).handleGetRequest(),
+		).rejects.toBe(failure);
+		const rebuiltAgain = fixture.build(device);
+		expect(rebuiltAgain.services.map((service) => `${service.UUID}:${service.subtype}`)).toEqual(identities);
+		expect(fixture.registry.getBindingsForProperty(temperature.id)).toHaveLength(1);
+	});
 	it.each([
 		[PropertyCategory.SPEED, DataTypeType.ENUM, null, ['off', 'low', 'turbo', 'auto'], Characteristic.RotationSpeed],
 		[PropertyCategory.SPEED, DataTypeType.UCHAR, null, [0, 100], Characteristic.RotationSpeed],

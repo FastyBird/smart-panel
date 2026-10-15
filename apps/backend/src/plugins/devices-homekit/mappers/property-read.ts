@@ -31,6 +31,7 @@ export function readMappedProperty(
 	map: (value: unknown) => CharacteristicValue,
 	fault?: Characteristic,
 	semanticConversion?: ManagedSemanticConversion,
+	validateProperty?: (property: ChannelPropertyEntity) => void,
 ): CharacteristicValue {
 	const state = context.propertyState?.read(property);
 	if (!state && property.requiresLiveValue) {
@@ -40,6 +41,7 @@ export function readMappedProperty(
 	const managed = state?.quality !== undefined && state.quality !== null;
 
 	try {
+		validateProperty?.(property);
 		const value = read();
 		updateServiceFault(
 			fault,

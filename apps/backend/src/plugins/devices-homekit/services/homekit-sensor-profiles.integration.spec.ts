@@ -3,6 +3,7 @@ import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { HomeKitProfileFixture } from '../../../../test/support/homekit-profile.fixture';
 import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { HomeKitEventListener } from '../listeners/homekit-event.listener';
 
 const failure = HAPStatus.SERVICE_COMMUNICATION_FAILURE;
 describe('HomeKit standard sensor profiles with current producer authority', () => {
@@ -38,9 +39,15 @@ describe('HomeKit standard sensor profiles with current producer authority', () 
 	});
 	it('tracks independent detection/level/peak faults, invalid ranges, recovery and exact expiry without a timer tick', async () => {
 		const device = fixture.device();
-		const level = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.CONCENTRATION);
+		const level = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.CONCENTRATION, {
+			dataType: DataTypeType.FLOAT,
+			unit: 'ppm',
+		});
 		const detected = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.DETECTED);
-		const peak = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.PEAK_LEVEL);
+		const peak = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.PEAK_LEVEL, {
+			dataType: DataTypeType.FLOAT,
+			unit: 'ppm',
+		});
 		fixture.publish(level, 600);
 		fixture.publish(detected, false);
 		fixture.publish(peak, 1000);
@@ -76,7 +83,10 @@ describe('HomeKit standard sensor profiles with current producer authority', () 
 	});
 	it('ignores persisted last-good CO2 after process restart until current evidence returns', async () => {
 		const device = fixture.device();
-		const output = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.CONCENTRATION);
+		const output = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.CONCENTRATION, {
+			dataType: DataTypeType.FLOAT,
+			unit: 'ppm',
+		});
 		fixture.publish(output, 700);
 		fixture.build(device);
 		output.value = new PropertyValueState(700, new Date().toISOString());
@@ -92,6 +102,74 @@ describe('HomeKit standard sensor profiles with current producer authority', () 
 			restarted.destroy();
 		}
 	});
+
+	it.each([
+		[DataTypeType.BOOL, 'ppm'],
+		[DataTypeType.UCHAR, 'ppm'],
+		[DataTypeType.FLOAT, '%'],
+		[DataTypeType.FLOAT, null],
+	] as const)(
+		'rejects CO2 level metadata %s/%s without converting numeric values to ppm',
+		(dataType, unit: string | null) => {
+			const device = fixture.device();
+			const level = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.CONCENTRATION, {
+				dataType,
+				unit,
+			});
+			fixture.publish(level, 450);
+			expect(fixture.registry.canMap(device)).toBe(false);
+			const detection = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.DETECTED);
+			const peak = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.PEAK_LEVEL, {
+				dataType,
+				unit,
+			});
+			fixture.publish(detection, false);
+			fixture.publish(peak, 450);
+			const service = fixture.build(device).getService(Service.CarbonDioxideSensor);
+			expect(service.testCharacteristic(Characteristic.CarbonDioxideLevel)).toBe(false);
+			expect(service.testCharacteristic(Characteristic.CarbonDioxidePeakLevel)).toBe(false);
+			expect(fixture.registry.getBindingsForProperty(level.id)).toHaveLength(0);
+			expect(fixture.registry.getBindingsForProperty(peak.id)).toHaveLength(0);
+		},
+	);
+	it.each([
+		[PropertyCategory.CONCENTRATION, Characteristic.CarbonDioxideLevel, DataTypeType.FLOAT, '%'],
+		[PropertyCategory.CONCENTRATION, Characteristic.CarbonDioxideLevel, DataTypeType.BOOL, 'ppm'],
+		[PropertyCategory.PEAK_LEVEL, Characteristic.CarbonDioxidePeakLevel, DataTypeType.FLOAT, '%'],
+		[PropertyCategory.PEAK_LEVEL, Characteristic.CarbonDioxidePeakLevel, DataTypeType.UCHAR, 'ppm'],
+	] as const)(
+		'fails %s on metadata drift before rebuild and withdraws the old binding',
+		async (category, type, dataType, unit) => {
+			const device = fixture.device();
+			const detection = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.DETECTED);
+			const output = fixture.property(device, ChannelCategory.CARBON_DIOXIDE, category, {
+				dataType: DataTypeType.FLOAT,
+				unit: 'ppm',
+			});
+			fixture.publish(detection, false);
+			fixture.publish(output, 450);
+			const oldAccessory = fixture.build(device),
+				service = oldAccessory.getService(Service.CarbonDioxideSensor);
+			const reading = service.getCharacteristic(type);
+			expect(await reading.handleGetRequest()).toBe(450);
+			Object.assign(output, { dataType, unit });
+			new HomeKitEventListener(fixture.registry).handlePropertyValueChanged(output);
+			await expect(reading.handleGetRequest()).rejects.toBe(failure);
+			expect(await service.getCharacteristic(Characteristic.StatusFault).handleGetRequest()).toBe(1);
+			// Equal-valued live evidence cannot restore a binding whose metadata no longer denotes ppm.
+			fixture.publish(output, 450);
+			await expect(reading.handleGetRequest()).rejects.toBe(failure);
+			const replacement = fixture.build(device);
+			expect(replacement.UUID).toBe(oldAccessory.UUID);
+			expect(replacement.getService(Service.CarbonDioxideSensor).testCharacteristic(type)).toBe(false);
+			expect(fixture.registry.getBindingsForProperty(output.id)).toHaveLength(0);
+			await expect(reading.handleGetRequest()).rejects.toBe(failure);
+			Object.assign(output, { dataType: DataTypeType.FLOAT, unit: 'ppm' });
+			const recovered = fixture.build(device).getService(Service.CarbonDioxideSensor);
+			expect(await recovered.getCharacteristic(type).handleGetRequest()).toBe(450);
+			expect(fixture.registry.getBindingsForProperty(output.id)).toHaveLength(1);
+		},
+	);
 	it.each([
 		[
 			ChannelCategory.HUMIDITY,

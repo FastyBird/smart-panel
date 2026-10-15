@@ -8,6 +8,7 @@ import { BaseHomeKitMapper } from './base.mapper';
 import { HomeKitMapperContext } from './homekit-mapper.interface';
 import { communicationFailure, validateHapNumber } from './property-read';
 import { enumToHap } from './semantic-conversion';
+import { SensorMapper } from './sensor.mapper';
 
 export class FanMapper extends BaseHomeKitMapper {
 	canMap(device: DeviceEntity): boolean {
@@ -117,6 +118,7 @@ export class FanMapper extends BaseHomeKitMapper {
 			}
 			// Active is requested/reported ON, not evidence for the optional CurrentFanState.
 		}
+		SensorMapper.attachSensorServices(accessory, device, context);
 		return accessory;
 	}
 

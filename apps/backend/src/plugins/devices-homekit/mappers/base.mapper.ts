@@ -68,11 +68,20 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 		fromHomeKit: (value: CharacteristicValue) => unknown = (val) => val,
 		fault?: Characteristic,
 		semanticConversion?: ManagedSemanticConversion,
+		validateProperty?: (property: ChannelPropertyEntity) => void,
 	): void {
 		let currentProperty = property;
 		let initialValue: CharacteristicValue;
 		try {
-			initialValue = readMappedProperty(context, property, characteristic, toHomeKit, fault, semanticConversion);
+			initialValue = readMappedProperty(
+				context,
+				property,
+				characteristic,
+				toHomeKit,
+				fault,
+				semanticConversion,
+				validateProperty,
+			);
 		} catch {
 			initialValue = undefined;
 			characteristic.updateValue(communicationFailure());
@@ -97,9 +106,17 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 					{ channel: currentProperty.channel },
 				);
 			const state = context.propertyState?.read(currentProperty);
-			if (!event && !currentProperty.requiresLiveValue && (!state || state.quality === null))
+			if (!validateProperty && !event && !currentProperty.requiresLiveValue && (!state || state.quality === null))
 				return binding.currentValue;
-			return readMappedProperty(context, currentProperty, characteristic, toHomeKit, fault, semanticConversion);
+			return readMappedProperty(
+				context,
+				currentProperty,
+				characteristic,
+				toHomeKit,
+				fault,
+				semanticConversion,
+				validateProperty,
+			);
 		};
 		bindCharacteristicGet(context, characteristic, () => binding.readValue());
 		if (fault) bindServiceFault(context, fault, characteristic, () => binding.readValue(currentProperty));
