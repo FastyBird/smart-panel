@@ -3,9 +3,11 @@ import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import {
+	ChannelCategory,
 	ConnectionState,
 	EventType as DevicesEventType,
 	OnlineDeviceState,
+	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
@@ -92,6 +94,30 @@ export class HomeKitEventListener implements OnModuleDestroy {
 			const channel = await this.channelsService.findOne(channelId);
 			if (channel) this.handleChannelStructureChanged(channel);
 		}
+	}
+
+	/** CO2 numeric metadata determines service admission, including optional level withdrawal/recovery. */
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
+	async handleCarbonDioxideMetadataChanged(property: ChannelPropertyEntity): Promise<void> {
+		if (!property || ![PropertyCategory.CONCENTRATION, PropertyCategory.PEAK_LEVEL].includes(property.category)) return;
+		const channel =
+			typeof property.channel === 'string' ? await this.channelsService?.findOne(property.channel) : property.channel;
+		if (channel?.category === ChannelCategory.CARBON_DIOXIDE) await this.handlePropertyStructureChanged(property);
+	}
+
+	/** Optional fan services depend on the declared native contract, not merely the latest value. */
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
+	async handleFanMetadataChanged(property: ChannelPropertyEntity): Promise<void> {
+		if (
+			!property ||
+			![PropertyCategory.SPEED, PropertyCategory.SWING, PropertyCategory.DIRECTION, PropertyCategory.MODE].includes(
+				property.category,
+			)
+		)
+			return;
+		const channel =
+			typeof property.channel === 'string' ? await this.channelsService?.findOne(property.channel) : property.channel;
+		if (channel?.category === ChannelCategory.FAN) await this.handlePropertyStructureChanged(property);
 	}
 
 	private isMapped(deviceId: string): boolean {

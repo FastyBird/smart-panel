@@ -4,6 +4,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { BatteryMapper } from '../mappers/battery.mapper';
 import { ButtonMapper } from '../mappers/button.mapper';
+import { FanMapper } from '../mappers/fan.mapper';
 import {
 	CharacteristicBinding,
 	HomeKitMapperContext,
@@ -114,6 +115,7 @@ export class HomeKitMapperRegistryService {
 		this.mappers.push(new SwitchMapper());
 		this.mappers.push(new OutletMapper());
 		this.mappers.push(new ThermostatMapper());
+		this.mappers.push(new FanMapper());
 		this.mappers.push(new WindowCoveringMapper());
 		this.mappers.push(new LockMapper());
 		this.mappers.push(new SensorMapper());
