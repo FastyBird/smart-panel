@@ -363,15 +363,13 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			const groupChannel = await database
 				.getRepository(VirtualChannelEntity)
 				.save({ device: group, name: 'Group light', category: ChannelCategory.LIGHT });
-			const output = await database
-				.getRepository(VirtualChannelPropertyEntity)
-				.save({
-					channel: groupChannel,
-					category: PropertyCategory.ON,
-					dataType: DataTypeType.BOOL,
-					valueOrigin: VirtualValueOrigin.DERIVED,
-					permissions: [PermissionType.READ_ONLY],
-				});
+			const output = await database.getRepository(VirtualChannelPropertyEntity).save({
+				channel: groupChannel,
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				valueOrigin: VirtualValueOrigin.DERIVED,
+				permissions: [PermissionType.READ_ONLY],
+			});
 			const device = await devices.findOne(group.id);
 			device.status.online = true;
 			await propertyMetadata.onModuleInit();
