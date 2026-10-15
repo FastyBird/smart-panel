@@ -459,17 +459,22 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 			Array.from({ length: Math.min(8, work.length) }, async () => {
 				while (preparing < work.length) {
 					const channel = work[preparing++];
+					let prepared: PreparedCompositeDeviceBatch | null | undefined;
 					try {
 						const platform = this.platformRegistryService.get(channel[0].update.device);
 						if (!platform) throw new Error('Unsupported physical platform');
 						const requested = channel.map((leaf) => leaf.update);
 						if (!platform.prepareCompositeBatch)
 							throw new Error('Provider does not support the strict composite dispatch profile');
-						const prepared = await this.withCompositeDeadline(
+						prepared = await this.withCompositeDeadline(
 							platform.prepareCompositeBatch(requested),
 							Math.min(deadline, Date.now() + 1_000),
+							(late) => late?.dispose?.(),
 						);
 						if (!prepared || !prepared.isCurrent() || prepared.updates.length !== channel.length) {
+							const rejected = prepared;
+							prepared = undefined;
+							rejected?.dispose?.();
 							const readiness = await platform.getCommandReadiness?.(requested[0]);
 							throw new Error(
 								readiness?.reasons.join(', ') ||
@@ -500,6 +505,8 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 						)
 							throw new Error('Invalid cover observation footprint');
 						preparedBatches.set(channel, prepared);
+						// The dispatch worker now owns the successful batch and its finalizer.
+						prepared = undefined;
 					} catch (error) {
 						for (const leaf of channel)
 							for (const index of leaf.indexes)
@@ -507,6 +514,9 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 									status: 'unavailable',
 									reason: error instanceof Error ? error.message : 'Physical preparation failed',
 								});
+					} finally {
+						// Validation failures must not retain provider preparation/recovery leases.
+						prepared?.dispose?.();
 					}
 				}
 			}),
@@ -855,14 +865,27 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		return success ? { success: true } : { success: false, reason: 'Execution failed' };
 	}
 
-	private async withCompositeDeadline<T>(operation: Promise<T>, deadline: number): Promise<T> {
+	private async withCompositeDeadline<T>(
+		operation: Promise<T>,
+		deadline: number,
+		onLateResult?: (result: T) => void,
+	): Promise<T> {
 		let timer: NodeJS.Timeout;
+		let expired = false;
 		try {
 			return await Promise.race([
-				operation,
+				// Promise.race keeps both settlements handled, including a late rejection or
+				// cleanup error. A timed-out provider result never returns to the caller.
+				operation.then((result) => {
+					if (expired) onLateResult?.(result);
+					return result;
+				}),
 				new Promise<T>((_, reject) => {
 					timer = setTimeout(
-						() => reject(new CompositeDeadlineExceededError('Composite deadline exceeded')),
+						() => {
+							expired = true;
+							reject(new CompositeDeadlineExceededError('Composite deadline exceeded'));
+						},
 						Math.max(1, deadline - Date.now()),
 					);
 				}),

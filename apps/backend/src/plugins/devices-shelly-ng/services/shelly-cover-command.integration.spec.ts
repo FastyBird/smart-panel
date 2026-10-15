@@ -17,6 +17,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PreparedCompositeDeviceBatch } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
@@ -970,6 +971,117 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		await db.manager.insert(ShellyCoverOrderingEntity, { physicalIdentity, token, startedAt: new Date() });
 		return { physicalIdentity, token };
 	};
+	it.each(['invalidated', 'invalid value'] as const)(
+		'releases real Shelly preparation leases rejected after await: %s',
+		async (failure) => {
+			const original = manager.prepareCoverAction.bind(manager) as DelegatesManagerService['prepareCoverAction'];
+			const disposals: jest.Mock[] = [];
+			jest.spyOn(manager, 'prepareCoverAction').mockImplementation(async (target) => {
+				const prepared = await original(target);
+				if (!prepared) throw new Error('Expected real Shelly preparation');
+				const dispose = jest.fn(() => prepared.dispose?.());
+				disposals.push(dispose);
+				if (failure === 'invalidated')
+					transports[physical.findIndex((member) => member.device.id === target.device.id)].socketDisconnectForTest();
+				return {
+					...prepared,
+					dispose,
+					...(failure === 'invalid value'
+						? { updates: prepared.updates.map((update) => ({ ...update, value: 'invalid' })) }
+						: {}),
+				};
+			});
+			// Avoid readiness creating a second preparation: this assertion concerns the
+			// dispatcher ownership of the actual provider results rejected above.
+			jest.spyOn(platform, 'getCommandReadiness').mockResolvedValue({ commandable: false, reasons: ['changed'] });
+			const result = await send('open', groupCommand, 5000);
+			expect(result.success).toBe(false);
+			expect(result.composite.children.every((child) => child.status === 'unavailable')).toBe(true);
+			expect(disposals).toHaveLength(2);
+			for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
+			expect(transports.flatMap((rpc) => rpc.frames)).toEqual([]);
+			for (const member of physical) {
+				const recovery = recoveryLane.begin(`${member.device.canonicalMac}|cover:0`);
+				recovery.dispose();
+			}
+			expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(0);
+		},
+	);
+	it('disposes late real Shelly preparations exactly once without dispatch or repairing terminal outcomes', async () => {
+		const original = manager.prepareCoverAction.bind(manager) as DelegatesManagerService['prepareCoverAction'];
+		const waiting: Array<() => void> = [];
+		const disposals: jest.Mock[] = [];
+		jest.spyOn(manager, 'prepareCoverAction').mockImplementation(async (target) => {
+			const prepared = await original(target);
+			if (!prepared) throw new Error('Expected real Shelly preparation');
+			const dispose = jest.fn(() => prepared.dispose?.());
+			disposals.push(dispose);
+			return new Promise<PreparedCompositeDeviceBatch>((resolve) => {
+				waiting.push(() => resolve({ ...prepared, dispose }));
+			});
+		});
+		const pending = send('open', groupCommand, 5000);
+		await until(() => waiting.length === 2);
+		const result = await pending; // The independent one-second preparation bound wins.
+		const terminal = JSON.stringify(result);
+		expect(result.success).toBe(false);
+		expect(result.composite.children.every((child) => child.status === 'unavailable')).toBe(true);
+		for (const member of physical)
+			expect(() => recoveryLane.begin(`${member.device.canonicalMac}|cover:0`)).toThrow('active or prepared');
+		for (const settle of waiting) settle();
+		await until(() => disposals.every((dispose) => dispose.mock.calls.length === 1));
+		for (const member of physical) recoveryLane.begin(`${member.device.canonicalMac}|cover:0`).dispose();
+		expect(transports.flatMap((rpc) => rpc.frames)).toEqual([]);
+		expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(0);
+		expect(JSON.stringify(result)).toBe(terminal);
+		for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
+	});
+	it.each(['fault', 'missing tag'] as const)(
+		'preserves the operator recovery reason over %s telemetry without qualifying recovery',
+		async (condition) => {
+			await reserveRecovery();
+			const raw = { ...transports[0].state };
+			if (condition === 'fault') raw.errors = ['obstruction'];
+			else delete raw.tag;
+			emitRaw(0, raw);
+			await until(() =>
+				condition === 'fault'
+					? values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000) === null
+					: values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.nativeCoverTagPresent === false,
+			);
+			const command = property(0, PropertyCategory.COMMAND);
+			const target = { device: physical[0].device, channel: physical[0].channel, property: command, value: 'open' };
+			expect(await manager.coverCommandReadiness(target)).toEqual({
+				commandable: false,
+				reasons: ['cover_ordering_unresolved_operator_recovery_required'],
+			});
+			for (const category of [PropertyCategory.POSITION, PropertyCategory.TILT])
+				expect(
+					(
+						await manager.coverCommandReadiness({
+							...target,
+							property: Object.assign(new ShellyNgChannelPropertyEntity(), command, { category }),
+						})
+					).reasons,
+				).not.toContain('cover_ordering_unresolved_operator_recovery_required');
+			expect(
+				(
+					await manager.coverCommandReadiness({
+						...target,
+						channel: Object.assign(new ShellyNgChannelEntity(), target.channel, { identifier: 'cover:1' }),
+					})
+				).reasons,
+			).not.toContain('cover_ordering_unresolved_operator_recovery_required');
+			transports[0].pre = () => raw;
+			const { controller, dto } = await recoveryContext();
+			await expect(
+				controller.recover(recoveryActor, target.device.id, target.channel.id, command.id, dto),
+			).rejects.toThrow('Fresh calibrated');
+			expect(await db.manager.count(ShellyCoverOrderingEntity)).toBe(1);
+			expect(await db.manager.count(ShellyCoverRecoveryEntity)).toBe(0);
+			expect(transports[0].frames.every((frame) => frame.method === 'Cover.GetStatus')).toBe(true);
+		},
+	);
 	it('exposes unresolved tokens only for the exact canonical ordinary cover target, never a group or different binding', async () => {
 		await reserveRecovery();
 		const controller = new ShellyCoverRecoveryController(recovery);
