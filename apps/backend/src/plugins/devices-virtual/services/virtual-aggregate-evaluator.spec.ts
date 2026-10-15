@@ -4,7 +4,7 @@ import { VirtualAggregateFilterKind, VirtualAggregateOperator } from '../entitie
 import { AggregateInputEvidence, evaluateAggregate } from './virtual-aggregate-evaluator';
 
 const now = new Date('2026-10-13T10:00:20Z');
-const input = (id: string, value: number, ageSeconds = 1): AggregateInputEvidence => ({
+const input = (id: string, value: number | boolean, ageSeconds = 1): AggregateInputEvidence => ({
 	id,
 	sourceIdentity: id,
 	sample: {
@@ -217,5 +217,94 @@ describe('deterministic temperature aggregate evaluation', () => {
 				{ ...filter, threshold },
 			).reasons,
 		).toEqual(['invalid_policy']);
+	});
+});
+
+describe('strict fixed-membership binary truth table', () => {
+	for (const operator of [VirtualAggregateOperator.ANY, VirtualAggregateOperator.ALL])
+		for (const a of [true, false, null])
+			for (const b of [true, false, null])
+				for (const c of [true, false, null])
+					for (const quorum of [1, 2, 3])
+						it(`${operator}(${a},${b},${c}) with quorum ${quorum}`, () => {
+							const members = [a, b, c];
+							const known = members.filter((value) => value !== null);
+							const decisive = operator === VirtualAggregateOperator.ANY;
+							const expected =
+								known.length < quorum
+									? null
+									: known.includes(decisive)
+										? decisive
+										: known.length === 3
+											? !decisive
+											: null;
+							const result = evaluateAggregate(
+								operator,
+								quorum,
+								30,
+								members.map((value, index) =>
+									value === null
+										? { id: String(index), sourceIdentity: String(index), sample: null, exclusion: 'missing' }
+										: input(String(index), value),
+								),
+								now,
+							);
+							expect(result.value).toBe(expected);
+							expect(result.quality).toBe(expected === null ? 'unavailable' : known.length === 3 ? 'good' : 'degraded');
+						});
+
+	it.each([0, 1, 'true', 'false', NaN])('does not coerce %s into a boolean', (value) => {
+		const result = evaluateAggregate(
+			VirtualAggregateOperator.ANY,
+			2,
+			30,
+			[input('a', true), input('b', value as never)],
+			now,
+		);
+		expect(result).toMatchObject({ value: null, quality: 'unavailable' });
+		expect(result.inputs[1].exclusion).toBe('invalid');
+	});
+
+	it('rejects binary weights/filter/grid and expires decisive evidence exactly at its deadline', () => {
+		const sources = [input('a', true, 10), input('b', false, 1)];
+		const first = evaluateAggregate(VirtualAggregateOperator.ANY, 1, 30, sources, now);
+		expect(first.sampledAt).toEqual(sources[0].sample.sampledAt);
+		for (const result of [
+			evaluateAggregate(VirtualAggregateOperator.ANY, 1, 30, [{ ...sources[0], weight: 2 }, sources[1]], now),
+			evaluateAggregate(VirtualAggregateOperator.ALL, 1, 30, sources, now, 1),
+			evaluateAggregate(VirtualAggregateOperator.ANY, 1, 30, sources, now, null, {
+				kind: VirtualAggregateFilterKind.ABSOLUTE_DEVIATION_FROM_MEDIAN,
+				threshold: 1,
+			}),
+		])
+			expect(result.reasons).toContain('invalid_policy');
+		expect(
+			evaluateAggregate(VirtualAggregateOperator.ANY, 1, 30, sources, new Date(now.getTime() + 20000)),
+		).toMatchObject({ value: null, quality: 'unavailable' });
+	});
+});
+
+describe('declared profile output precision boundaries', () => {
+	it.each([
+		[1, 0.49, 0],
+		[1, 0.5, 1],
+		[1, 0.51, 1],
+		[1, 99.5, 100],
+		[0.1, 0.149, 0.1],
+		[0.1, 0.15, 0.2],
+		[0.1, 0.151, 0.2],
+		[0.1, 99999.99, 100000],
+		[0.1, -0.05, 0],
+	])('rounds grid %s value %s to %s only after aggregation', (step, value, expected) => {
+		const result = evaluateAggregate(
+			VirtualAggregateOperator.WEIGHTED_MEAN,
+			2,
+			30,
+			[input('a', value), input('b', value)],
+			now,
+			step,
+		);
+		expect(result.value).toBeCloseTo(expected, 10);
+		expect(result.quality).toBe('good');
 	});
 });

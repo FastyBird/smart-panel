@@ -10,6 +10,7 @@ import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { ExtensionLoggerService } from '../../../common/logger/extension-logger.service';
 import { AddVirtualProducerBindings1000000000027 } from '../../../migrations/1000000000027-AddVirtualProducerBindings';
 import { AddVirtualAggregatePolicies1000000000036 } from '../../../migrations/1000000000036-AddVirtualAggregatePolicies';
+import { AddVirtualAggregateProfiles1000000000037 } from '../../../migrations/1000000000037-AddVirtualAggregateProfiles';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -304,6 +305,13 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			);
 			const migration = new AddVirtualAggregatePolicies1000000000036();
 			await migration.up(migrated.createQueryRunner());
+			const profilesMigration = new AddVirtualAggregateProfiles1000000000037();
+			await profilesMigration.up(migrated.createQueryRunner());
+			expect(
+				await migrated.query('SELECT outputPropertyId, profile, revision FROM devices_virtual_aggregate_configs'),
+			).toEqual([{ outputPropertyId: 'output', profile: 'temperature', revision: 7 }]);
+			await profilesMigration.down(migrated.createQueryRunner());
+			await profilesMigration.up(migrated.createQueryRunner());
 			expect(
 				await migrated.query(
 					'SELECT id, sourcePropertyId, sourcePropertyIdentity, weight FROM devices_virtual_aggregate_inputs',
@@ -701,6 +709,7 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			const migration = new AddVirtualProducerBindings1000000000027();
 			await migration.up(migrated.createQueryRunner());
 			await new AddVirtualAggregatePolicies1000000000036().up(migrated.createQueryRunner());
+			await new AddVirtualAggregateProfiles1000000000037().up(migrated.createQueryRunner());
 			for (const table of [
 				'devices_virtual_graph_revision',
 				'devices_virtual_aggregate_configs',

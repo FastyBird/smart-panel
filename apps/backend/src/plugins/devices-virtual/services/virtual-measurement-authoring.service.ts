@@ -285,13 +285,13 @@ export class VirtualMeasurementAuthoringService {
 		if (
 			output.id !== outputPropertyId ||
 			!output.isDerived ||
-			output.dataType !== DataTypeType.FLOAT ||
+			![DataTypeType.FLOAT, DataTypeType.UCHAR, DataTypeType.BOOL].includes(output.dataType) ||
 			output.permissions.length !== 1 ||
 			output.permissions[0] !== PermissionType.READ_ONLY ||
 			output.sourcePropertyId
 		)
 			throw new DevicesValidationException(
-				'The selected output must be an owned readonly derived float without a projection source.',
+				'The selected output must be an owned readonly derived measurement without a projection source.',
 			);
 		if (
 			fakeChannels.some((channel) =>

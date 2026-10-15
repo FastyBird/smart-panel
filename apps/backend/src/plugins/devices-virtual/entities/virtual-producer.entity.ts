@@ -10,6 +10,18 @@ export enum VirtualAggregateOperator {
 	MEDIAN = 'median',
 	MIN = 'min',
 	MAX = 'max',
+	ANY = 'any',
+	ALL = 'all',
+}
+
+export enum VirtualAggregateProfile {
+	TEMPERATURE = 'temperature',
+	HUMIDITY = 'humidity',
+	CARBON_DIOXIDE = 'carbon_dioxide',
+	ILLUMINANCE = 'illuminance',
+	CONTACT = 'contact',
+	MOTION = 'motion',
+	OCCUPANCY = 'occupancy',
 }
 
 export enum VirtualAggregateFilterKind {
@@ -48,6 +60,9 @@ export class VirtualAggregateConfigEntity {
 
 	@Column({ type: 'integer', default: 1 })
 	schemaVersion: number;
+
+	@Column({ type: 'text', default: VirtualAggregateProfile.TEMPERATURE })
+	profile: VirtualAggregateProfile;
 
 	@Column({ type: 'text', enum: VirtualAggregateOperator })
 	operator: VirtualAggregateOperator;

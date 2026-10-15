@@ -139,7 +139,7 @@ export class ConfigureVirtualAggregateDto {
 	maximumAgeSeconds: number;
 
 	@ApiProperty({
-		description: 'Distinct compatible temperature inputs',
+		description: 'Distinct inputs matching the output canonical aggregate profile',
 		type: [VirtualAggregateInputDto],
 		minItems: 2,
 		maxItems: 256,

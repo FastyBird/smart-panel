@@ -23,8 +23,13 @@ import { VirtualAggregateConfigEntity, VirtualAggregateInputEntity } from '../en
 
 import { AggregateEvaluation, AggregateInputEvidence, evaluateAggregate } from './virtual-aggregate-evaluator';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { isEligibleAggregateSource } from './virtual-numeric-profile.utils';
-import { isEligibleVirtualMeasurement } from './virtual-source-eligibility.utils';
+import {
+	aggregateOperatorAllowed,
+	aggregateProfile,
+	aggregateValueAllowed,
+	isEligibleAggregateOutput,
+	isEligibleAggregateSource,
+} from './virtual-numeric-profile.utils';
 
 interface RuntimeOutput {
 	property: VirtualChannelPropertyEntity;
@@ -262,7 +267,9 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				config.schemaVersion !== 1 ||
 				!this.graph.isValidated() ||
 				this.graph.isQuarantined(property.id) ||
-				!isEligibleVirtualMeasurement(property, channel, channel.device as DeviceEntity)
+				!isEligibleAggregateOutput(property, channel, channel.device as DeviceEntity) ||
+				aggregateProfile(property, channel)?.id !== config.profile ||
+				!aggregateOperatorAllowed(aggregateProfile(property, channel), config.operator)
 			) {
 				this.producers.invalidate(output.lease, [
 					this.graph.isQuarantined(property.id) ? 'graph_quarantined' : 'incompatible_output',
@@ -308,6 +315,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				const incompatible =
 					source &&
 					(!isEligibleAggregateSource(source, sourceChannel, device) ||
+						aggregateProfile(source, sourceChannel)?.id !== config.profile ||
 						input.quantity !== String(source.category) ||
 						input.unit !== unit ||
 						unit !== resolvePropertyUnit(property) ||
@@ -340,10 +348,11 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 									: status !== ConnectionState.UNKNOWN && !OnlineDeviceState.includes(status)
 										? 'offline'
 										: sample &&
-											  !validatePropertyCommandValue(
-													{ ...source, invalid: source.invalid ?? null, step: null } as ChannelPropertyEntity,
-													sample.value,
-											  ).valid
+											  (!aggregateValueAllowed(aggregateProfile(source, sourceChannel), sample.value) ||
+													!validatePropertyCommandValue(
+														{ ...source, invalid: source.invalid ?? null, step: null } as ChannelPropertyEntity,
+														sample.value,
+													).valid)
 											? 'invalid'
 											: undefined,
 				};
@@ -354,7 +363,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				config.maximumAgeSeconds,
 				evidence,
 				now,
-				property.step,
+				property.step ?? aggregateProfile(property, channel).outputStep,
 				config.outlierFilter,
 			);
 			if (!this.current(generation)) return;

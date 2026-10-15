@@ -55,7 +55,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
-import { VirtualAggregateOperator } from '../entities/virtual-producer.entity';
+import { VirtualAggregateOperator, VirtualAggregateProfile } from '../entities/virtual-producer.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
 import { DeviceIsVirtualConstraintValidator } from '../validators/device-is-virtual-constraint.validator';
@@ -64,6 +64,7 @@ import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.serv
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDevicesService } from './virtual-devices.service';
 import { VirtualMeasurementAuthoringService } from './virtual-measurement-authoring.service';
+import { aggregateProfiles } from './virtual-numeric-profile.utils';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
@@ -309,6 +310,103 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		sources: await database.getRepository(VirtualTransformSourceEntity).count(),
 		revision: await graph.revision(),
 	});
+	it.each(aggregateProfiles.filter((profile) => profile.id !== VirtualAggregateProfile.TEMPERATURE))(
+		'previews, creates and repairs $id with the same profile capability policy',
+		async (profile) => {
+			const source = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: sourceId },
+				relations: ['channel'],
+			});
+			await database.manager.update(ChannelEntity, (source.channel as ChannelEntity).id, { category: profile.channel });
+			await database.manager.update(ChannelPropertyEntity, sourceId, {
+				category: profile.quantity,
+				dataType: profile.dataTypes[0],
+			});
+			const secondId = uuid();
+			await database.manager.insert(ChannelPropertyEntity, {
+				id: secondId,
+				channel: (source.channel as ChannelEntity).id,
+				category: profile.quantity,
+				dataType: profile.dataTypes[0],
+				permissions: [PermissionType.READ_ONLY],
+			} as never);
+			const original = draft();
+			original.device.mode = VirtualDeviceMode.SENSOR_AGGREGATE;
+			original.device.channels[0].category = profile.channel;
+			Object.assign(original.device.channels[0].properties[0], {
+				category: profile.quantity,
+				data_type: profile.dataTypes[0],
+				format: null,
+			});
+			const dto = Object.assign(new CreateVirtualAggregateProducerDto(), {
+				device: original.device,
+				outputPropertyId: original.outputPropertyId,
+				configuration: {
+					expectedRevision: 0,
+					operator: profile.binary ? VirtualAggregateOperator.ANY : VirtualAggregateOperator.WEIGHTED_MEAN,
+					minimumValidInputs: 1,
+					maximumAgeSeconds: 10,
+					inputs: [{ sourcePropertyId: sourceId }, { sourcePropertyId: secondId }],
+				},
+			});
+			const aggregates = new VirtualProducerConfigService(
+				database,
+				new DeviceStructureLockService(),
+				graph,
+				events,
+				state,
+			);
+			const before = await snapshot();
+			expect(await authoring.previewAggregate(dto)).toMatchObject({
+				profile: profile.id,
+				output_step: profile.outputStep,
+			});
+			expect(await snapshot()).toEqual(before);
+			const created = await authoring.createAggregate(dto);
+			expect(created.configuration).toMatchObject({ profile: profile.id, revision: 1 });
+			const rows = created.configuration.inputs;
+			await database.manager.delete(ChannelPropertyEntity, secondId);
+			dto.configuration.expectedRevision = 1;
+			dto.configuration.inputs = rows.map((row) => ({
+				id: row.id,
+				sourcePropertyId: row.source_identity === secondId ? null : sourceId,
+			}));
+			expect(await aggregates.previewAggregate(dto.outputPropertyId, dto.configuration)).toMatchObject({
+				profile: profile.id,
+				revision: 2,
+			});
+			const retained = await aggregates.configureAggregate(dto.outputPropertyId, dto.configuration);
+			expect(retained.inputs.find((row) => row.source_identity === secondId)).toMatchObject({
+				id: rows.find((row) => row.source_identity === secondId).id,
+				source_property: null,
+			});
+			const replacement = uuid();
+			await database.manager.insert(ChannelPropertyEntity, {
+				id: replacement,
+				channel: (source.channel as ChannelEntity).id,
+				category: profile.quantity,
+				dataType: profile.dataTypes[0],
+				permissions: [PermissionType.READ_ONLY],
+			} as never);
+			dto.configuration.expectedRevision = 2;
+			dto.configuration.inputs.find((row) => row.sourcePropertyId === null).sourcePropertyId = replacement;
+			const repaired = await aggregates.configureAggregate(dto.outputPropertyId, dto.configuration);
+			expect(repaired.inputs.find((row) => row.source_identity === replacement)).toMatchObject({
+				id: rows.find((row) => row.source_identity === secondId).id,
+				source_property: replacement,
+			});
+			dto.configuration.expectedRevision = 3;
+			dto.configuration.operator = profile.binary ? VirtualAggregateOperator.MEAN : VirtualAggregateOperator.ANY;
+			await expect(aggregates.previewAggregate(dto.outputPropertyId, dto.configuration)).rejects.toThrow(/profile/);
+			await expect(aggregates.configureAggregate(dto.outputPropertyId, dto.configuration)).rejects.toThrow(/profile/);
+			if (profile.binary) {
+				dto.configuration.operator = VirtualAggregateOperator.ANY;
+				dto.configuration.inputs[0].weight = 1;
+				await expect(aggregates.previewAggregate(dto.outputPropertyId, dto.configuration)).rejects.toThrow(/weights/);
+			}
+		},
+	);
+
 	it('dry-runs supplied input without catalog, publications, graph changes or producer ownership', async () => {
 		const dto = draft(),
 			before = await snapshot();
