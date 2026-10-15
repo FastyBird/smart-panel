@@ -431,7 +431,9 @@ export class ThermostatCoordinator {
 
 		if (this.heatingThresholdChar && this.config.heaterTempProperty) {
 			const val = this.values.get(this.config.heaterTempProperty.id);
-			if (val !== null && val !== undefined) {
+			if (this.isManagedController()) {
+				update(this.heatingThresholdChar, () => validateHapNumber(this.heatingThresholdChar, val));
+			} else if (val !== null && val !== undefined) {
 				const num = Number(val);
 				if (!isNaN(num)) {
 					this.heatingThresholdChar.updateValue(num);
@@ -440,7 +442,9 @@ export class ThermostatCoordinator {
 		}
 		if (this.coolingThresholdChar && this.config.coolerTempProperty) {
 			const val = this.values.get(this.config.coolerTempProperty.id);
-			if (val !== null && val !== undefined) {
+			if (this.isManagedController()) {
+				update(this.coolingThresholdChar, () => validateHapNumber(this.coolingThresholdChar, val));
+			} else if (val !== null && val !== undefined) {
 				const num = Number(val);
 				if (!isNaN(num)) {
 					this.coolingThresholdChar.updateValue(num);

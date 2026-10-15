@@ -18,6 +18,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
@@ -277,6 +278,78 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		});
 		expect(coldSources.unavailableReason(hydrated)).toBe('graph_quarantined');
 		expect(adapter.read(hydrated)).toMatchObject({ unavailable: true, reasons: ['graph_quarantined'] });
+		coldProducers.onModuleDestroy();
+	});
+
+	it('fences a physical-to-derived alias relink before its metadata event and rejects later stale metadata', async () => {
+		const physical = await measurement(),
+			other = await measurement(),
+			output = await measurement(VirtualDeviceMode.SENSOR_AGGREGATE),
+			alias = await measurement(VirtualDeviceMode.PROJECTION);
+		await configure(output, [physical, other]);
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelPropertyEntity, alias.id, {
+				valueOrigin: VirtualValueOrigin.SOURCE,
+				sourcePropertyId: physical.id,
+			}),
+		);
+		const bound = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: alias.id },
+			relations: ['channel', 'channel.device'],
+		});
+		bound.value = new PropertyValueState(19);
+		const sources = new PropertyValueSourceRegistryService();
+		sources.register(new VirtualValueSourceService(graph));
+		const coldProducers = new PropertyProducerRegistryService();
+		const registry = new HomeKitMapperRegistryService(new HomeKitPropertyStateService(coldProducers, sources));
+		const channel = bound.channel as ChannelEntity,
+			device = channel.device as DeviceEntity;
+		channel.properties = [bound];
+		device.channels = [channel];
+		device.status = { online: true } as DeviceEntity['status'];
+		const staged = registry.buildAccessory(
+			device,
+			new HomeKitCommandDispatcher({ canExecuteCompositeProperty: () => false } as never),
+		);
+		registry.commitStaged(staged);
+		const reading = staged.accessory
+			.getService(Service.TemperatureSensor)
+			.getCharacteristic(Characteristic.CurrentTemperature);
+		expect(await reading.handleGetRequest()).toBe(19);
+		// The structural transaction and graph snapshot are current, but no property event has been delivered.
+		await graph.withStructuralWrite((manager) =>
+			manager.update(VirtualChannelPropertyEntity, alias.id, { sourcePropertyId: output.id }),
+		);
+		await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		const updated = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
+			where: { id: alias.id },
+			relations: ['channel', 'channel.device'],
+		});
+		updated.value = new PropertyValueState(24);
+		const listener = new HomeKitEventListener(registry);
+		listener.handlePropertyValueChanged(updated);
+		await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		const lease = coldProducers.register(output, 1),
+			now = Date.now();
+		expect(
+			coldProducers.commit(
+				lease,
+				new PropertyValueState(22),
+				{
+					quality: 'good',
+					reasons: [],
+					sampledAt: new Date(now),
+					evaluatedAt: new Date(now),
+					expiresAt: new Date(now + 1000),
+				},
+				coldProducers.version(lease),
+			),
+		).toBe(true);
+		expect(await reading.handleGetRequest()).toBe(22);
+		listener.handlePropertyValueChanged(bound);
+		await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		listener.handlePropertyValueChanged(updated);
+		expect(await reading.handleGetRequest()).toBe(22);
 		coldProducers.onModuleDestroy();
 	});
 	it('HomeKit follows real aggregate quorum, degraded evidence, expiry at GET and recovery', async () => {

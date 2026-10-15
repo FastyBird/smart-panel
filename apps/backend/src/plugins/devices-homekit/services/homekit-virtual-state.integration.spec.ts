@@ -232,6 +232,43 @@ describe('HomeKit managed virtual state', () => {
 		);
 		expect(service.testCharacteristic(Characteristic.StatusFault)).toBe(false);
 	});
+
+	it('never publishes clamped AUTO thresholds for managed out-of-range or unknown settings, and recovers', async () => {
+		const parent = device(DeviceCategory.THERMOSTAT);
+		parent.mode = VirtualDeviceMode.CLIMATE_CONTROLLER;
+		const ambient = property(parent, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+		property(parent, ChannelCategory.HEATER, PropertyCategory.ON, true, true);
+		property(parent, ChannelCategory.COOLER, PropertyCategory.ON, true, true);
+		const heat = property(parent, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE, true, 22);
+		const cool = property(parent, ChannelCategory.COOLER, PropertyCategory.TEMPERATURE, true, 24);
+		const heatStatus = property(parent, ChannelCategory.HEATER, PropertyCategory.STATUS);
+		const coolStatus = property(parent, ChannelCategory.COOLER, PropertyCategory.STATUS);
+		heatStatus.valueOrigin = VirtualValueOrigin.LOCAL;
+		coolStatus.valueOrigin = VirtualValueOrigin.LOCAL;
+		publish(ambient, 21);
+		publish(heatStatus, false);
+		publish(coolStatus, false);
+		const service = build(parent).getService(Service.Thermostat);
+		for (const [setting, type, invalid, boundary, recovered] of [
+			[heat, Characteristic.HeatingThresholdTemperature, 26, 25, 23],
+			[cool, Characteristic.CoolingThresholdTemperature, 36, 35, 27],
+		] as const) {
+			const characteristic = service.getCharacteristic(type),
+				notifications: unknown[] = [];
+			characteristic.on('change', ({ newValue }: { newValue: unknown }) => notifications.push(newValue));
+			for (const value of [invalid, null]) {
+				setting.value = new PropertyValueState(value);
+				events.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, setting);
+				await expect(characteristic.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+				expect(characteristic.value).not.toBe(boundary);
+				expect(notifications).not.toContain(boundary);
+			}
+			setting.value = new PropertyValueState(recovered);
+			events.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, setting);
+			expect(await characteristic.handleGetRequest()).toBe(recovered);
+			expect(notifications).toContain(recovered);
+		}
+	});
 	it('fences replaced accessory GET/SET and accepts equal-value quality changes', async () => {
 		const parent = device(),
 			output = property(parent, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);

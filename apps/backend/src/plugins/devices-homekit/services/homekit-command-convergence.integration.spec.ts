@@ -155,6 +155,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			new VirtualValueSourceService({
 				isValidated: () => true,
 				isQuarantined: () => false,
+				matchesValueSource: () => true,
 				// This fixture's SOURCE aliases all target physical simulator properties. The cold
 				// derived-source policy is covered with a real graph in aggregate runtime acceptance.
 				propertyRequiresLiveValue: () => false,

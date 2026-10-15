@@ -24,6 +24,7 @@ export class VirtualValueSourceService implements IPropertyValueSource {
 			return null;
 		if (!this.graph.isValidated()) return 'graph_validation_pending';
 		if (this.graph.isQuarantined(property.id)) return 'graph_quarantined';
+		if (!this.graph.matchesValueSource(property)) return 'graph_source_changed';
 		return null;
 	}
 
