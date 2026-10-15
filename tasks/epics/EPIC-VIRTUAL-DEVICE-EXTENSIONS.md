@@ -110,7 +110,7 @@ Per-member floor protection (migration 41) is being integrated with Admin member
 context, diagnostics and fenced staging/recovery; see the [client integration record](../../docs/work/virtual-thermostat/member-client-validation.md).
 The original-owner safety correction and read-only runtime diagnostics passed independent local review; composed
 backend validation passed 26 suites / 508 tests. Admin member authoring corrections are independently accepted; narrow
-activity/qualification freshness correction awaits final review. The independently accepted Panel field follow-up is
+activity/qualification freshness correction also passed independent local review. The independently accepted Panel field follow-up is
 integrated locally; composed client validation passed 6 Panel suites / 50 tests and 11 Admin files / 63 tests. Multi-Shelly groups require explicitly bound local guards, separately
 reviewed/staged member installations and actual qualification; no installed eligibility is supplied by these local changes.
 The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment

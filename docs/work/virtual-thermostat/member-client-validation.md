@@ -162,7 +162,7 @@ Correction validation passed two focused Admin files / 28 tests with two workers
 and card remount paths, independent field expiry, cached refetch after rollback, older report refusal, new report
 recovery, false versus null, monotonic lifetime and bounded ownership (`/tmp/vd-admin-freshness-tests-current.log`).
 Final Admin types passed (`/tmp/vd-admin-freshness-types-current.log`); scoped lint and formatting passed
-(`/tmp/vd-admin-freshness-lint.log`, `/tmp/vd-admin-freshness-format.log`). The correction awaits independent review.
+(`/tmp/vd-admin-freshness-lint.log`, `/tmp/vd-admin-freshness-format.log`). The correction passed independent local review at `8b26f2f67a5c8992ffcfb60c4025f1e41fbc9759`.
 
 ## Final client integration checkpoint
 
@@ -193,8 +193,7 @@ the exact applicable evidence; no redundant backend or contract generation was p
 The final composed Admin command targeted all eleven thermostat service/composable/component/draft test files
 with `pnpm exec vitest run ... --maxWorkers=2`: **11 files / 63 tests passed**
 (`/tmp/vd-members-client-final-admin-tests.log`). Final Admin types and scoped lint/format passed
-(`/tmp/vd-members-client-final-admin-{types,lint,format}.log`). Independent review of the Admin freshness correction remains a
-publication gate; these local client results do not claim hardware qualification or alpha readiness.
+(`/tmp/vd-members-client-final-admin-{types,lint,format}.log`). Independent review accepted the Admin freshness correction at `8b26f2f67`; parent publication/CI review remains pending. These local client results do not claim hardware qualification or alpha readiness.
 
 The current tracked source diff is 114 paths versus cached merged-main base. No tests/locales are omitted to change
 that count; parent publication may split an identical final tree to meet the external 100-file review limit.
