@@ -32,6 +32,7 @@ import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
 } from '../src/plugins/devices-virtual/entities/devices-virtual.entity';
+import { VirtualDeviceInformationListener } from '../src/plugins/devices-virtual/listeners/virtual-device-information.listener';
 import { VirtualStatusListener } from '../src/plugins/devices-virtual/listeners/virtual-status.listener';
 import { VirtualDependencyGraphService } from '../src/plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
@@ -425,22 +426,40 @@ describe('devices-virtual plugin (e2e)', () => {
 		// ─── Step 1: virtual device + light channel + on property linked to the source ───
 
 		it('creates a virtual device with category lighting', async () => {
-			const response = await authPost('/modules/devices/devices')
-				.send({
-					data: {
-						type: DEVICES_VIRTUAL_TYPE,
-						category: DeviceCategory.LIGHTING,
-						name: 'E2E Virtual Light',
-					},
-				})
-				.expect(201);
+			const information = moduleRef.get<VirtualDeviceInformationListener>(VirtualDeviceInformationListener);
+			const synthesize = information.handleDeviceCreated.bind(
+				information,
+			) as VirtualDeviceInformationListener['handleDeviceCreated'];
+			let synthesis: Promise<void> | undefined;
+			const listener = jest.spyOn(information, 'handleDeviceCreated').mockImplementation((device) => {
+				synthesis = synthesize(device);
+				return synthesis;
+			});
 
-			const body = response.body as { data: DeviceBody };
+			try {
+				const response = await authPost('/modules/devices/devices')
+					.send({
+						data: {
+							type: DEVICES_VIRTUAL_TYPE,
+							category: DeviceCategory.LIGHTING,
+							name: 'E2E Virtual Light',
+						},
+					})
+					.expect(201);
 
-			virtualDeviceId = body.data.id;
+				const body = response.body as { data: DeviceBody };
 
-			expect(body.data.type).toBe(DEVICES_VIRTUAL_TYPE);
-			expect(body.data.category).toBe(DeviceCategory.LIGHTING);
+				virtualDeviceId = body.data.id;
+
+				expect(body.data.type).toBe(DEVICES_VIRTUAL_TYPE);
+				expect(body.data.category).toBe(DeviceCategory.LIGHTING);
+				// Await the real DEVICE_CREATED listener, including its later metadata graph writes.
+				// Merely observing LOCAL status does not mean those fire-and-forget writes have finished.
+				expect(synthesis).toBeDefined();
+				await synthesis;
+			} finally {
+				listener.mockRestore();
+			}
 		});
 
 		// Regression test for every virtual device being permanently uncommandable. The `status`
