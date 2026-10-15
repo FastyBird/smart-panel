@@ -268,6 +268,44 @@ function aggregateApi(profile = 'humidity') {
 }
 
 describe('extended aggregate authoring contracts', () => {
+	it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, undefined])(
+		'rejects enabled filter threshold %s before preview or save',
+		async (threshold) => {
+			aggregateApi();
+			const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate, 'output');
+			await authoring.load();
+			await authoring.loadCapabilities();
+			authoring.model.filterThreshold = threshold;
+			expect(authoring.canPreview.value).toBe(false);
+			await authoring.previewDraft();
+			await authoring.save();
+			expect(client.POST).not.toHaveBeenCalled();
+			expect(client.PUT).not.toHaveBeenCalled();
+			expect(authoring.error.value).toBe('measurementFinite');
+			authoring.model.filterThreshold = 0.000001;
+			expect(authoring.canPreview.value).toBe(true);
+			authoring.model.filterThreshold = undefined;
+			authoring.model.filterEnabled = false;
+			expect(authoring.canPreview.value).toBe(true);
+			client.POST.mockResolvedValueOnce({ data: { data: aggregateState() } });
+			await authoring.previewDraft();
+			expect(client.POST.mock.calls[0][1].body.outlier_filter).toBeNull();
+		}
+	);
+	it('loads restored edit sources once after capabilities and loads a subsequent profile change', async () => {
+		aggregateApi();
+		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate, 'output');
+		await authoring.load();
+		expect(client.GET).toHaveBeenCalledTimes(1);
+		expect(authoring.model.profile).toBe('humidity');
+		await authoring.loadCapabilities();
+		expect(client.GET).toHaveBeenCalledTimes(3);
+		expect(client.GET.mock.calls[2][1]).toEqual({ params: { path: { profile: 'humidity' } } });
+		authoring.model.profile = 'contact' as typeof authoring.model.profile;
+		expect(client.GET).toHaveBeenCalledTimes(4);
+		expect(client.GET.mock.calls[3][1]).toEqual({ params: { path: { profile: 'contact' } } });
+		expect(authoring.preview.value).toBeNull();
+	});
 	it('uses backend candidates and drafts canonical humidity with its integer type and grid', async () => {
 		aggregateApi();
 		const authoring = useMeasurementAuthoring(DevicesVirtualPluginDeviceMode.sensor_aggregate);

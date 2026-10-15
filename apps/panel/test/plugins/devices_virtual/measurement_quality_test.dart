@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
@@ -6,6 +7,7 @@ import 'package:fastybird_smart_panel/plugins/devices-virtual/models/property.da
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:flutter/material.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -16,6 +18,8 @@ import 'package:fastybird_smart_panel/modules/devices/services/property_timeseri
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
 import 'package:intl/intl.dart';
+
+class MockChannelPropertyView extends Mock implements ChannelPropertyView {}
 
 class MockDevicesService extends Mock implements DevicesService {}
 
@@ -192,6 +196,41 @@ void main() {
           }),
         );
         expect(SensorUtils.valueFormatterForCategory(entry.$1)(view), entry.$7);
+        expect(
+          SensorUtils.formatNumericValueWithUnit(
+            entry.$6,
+            entry.$1,
+            property: view,
+          ),
+          '${entry.$7}${entry.$4}',
+        );
+        if (entry.$1 == DevicesModuleChannelCategory.temperature) {
+          expect(
+            SensorUtils.formatNumericValueWithUnit(
+              21.25,
+              entry.$1,
+              property: view,
+              displayUnits: DisplayUnits.metric,
+            ),
+            '21.3°C',
+          );
+          expect(
+            SensorUtils.formatNumericValueWithUnit(
+              21.25,
+              entry.$1,
+              property: view,
+              displayUnits: const DisplayUnits(
+                numberFormat: NumberFormatSetting.commaDot,
+                temperature: TemperatureUnit.fahrenheit,
+                windSpeed: WindSpeedUnit.metersPerSecond,
+                pressure: PressureUnit.hectopascal,
+                precipitation: PrecipitationUnit.millimeters,
+                distance: DistanceUnit.kilometers,
+              ),
+            ),
+            '70.3°F',
+          );
+        }
       }
     },
   );
@@ -235,6 +274,123 @@ void main() {
           expect(view.valueState?.value, isNotNull);
         }
       }
+    },
+  );
+  test('legacy category formatting keeps physical defaults and units', () {
+    Intl.defaultLocale = 'en_US';
+    final physical = MockChannelPropertyView();
+    when(() => physical.type).thenReturn('physical');
+    when(() => physical.step).thenReturn(0.1);
+    when(() => physical.unit).thenReturn('lx');
+    expect(
+      SensorUtils.formatNumericValueWithUnit(
+        12.3,
+        DevicesModuleChannelCategory.illuminance,
+        property: physical,
+      ),
+      '12lux',
+    );
+    when(() => physical.type).thenReturn('virtual');
+    for (final step in [0.0, -1.0, double.nan, double.infinity]) {
+      when(() => physical.step).thenReturn(step);
+      expect(
+        SensorUtils.scaleForProperty(
+          DevicesModuleChannelCategory.illuminance,
+          physical,
+        ),
+        0,
+      );
+    }
+
+    expect(
+      SensorUtils.formatNumericValueWithUnit(
+        12.3,
+        DevicesModuleChannelCategory.illuminance,
+      ),
+      '12lux',
+    );
+    expect(
+      SensorUtils.formatNumericValueWithUnit(
+        21.25,
+        DevicesModuleChannelCategory.temperature,
+      ),
+      '21.3°C',
+    );
+  });
+  testWidgets(
+    'sensor history min max and average use virtual lux precision and unit',
+    (tester) async {
+      Intl.defaultLocale = 'en_US';
+      final view = buildChannelPropertyView(
+        VirtualChannelPropertyModel.fromJson({
+          ...property(),
+          'category': 'illuminance',
+          'unit': 'lx',
+          'step': 0.1,
+        }),
+      );
+      final channel = ChannelView(
+        id: 'channel',
+        device: 'device',
+        type: 'virtual',
+        category: DevicesModuleChannelCategory.illuminance,
+        properties: [view],
+      );
+      final screen = ScreenService(
+        screenWidth: 1600,
+        screenHeight: 1200,
+        pixelRatio: 2,
+      );
+      final timeseries = MockTimeseriesService();
+      when(
+        () => timeseries.getTimeseries(
+          channelId: 'channel',
+          propertyId: view.id,
+          timeRange: TimeRange.oneDay,
+        ),
+      ).thenAnswer(
+        (_) async => PropertyTimeseries(
+          points: [
+            TimeseriesPoint(
+              time: now.subtract(const Duration(minutes: 1)),
+              numericValue: 12.3,
+            ),
+            TimeseriesPoint(time: now, numericValue: 12.5),
+          ],
+        ),
+      );
+      locator.registerSingleton<ScreenService>(screen);
+      locator.registerSingleton<VisualDensityService>(
+        VisualDensityService(pixelRatio: 2),
+      );
+      locator.registerSingleton<DevicesService>(MockDevicesService());
+      locator.registerSingleton<PropertyTimeseriesService>(timeseries);
+      addTearDown(() async {
+        await locator.reset();
+        screen.dispose();
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SensorDetailContent(
+              sensor: SensorData(
+                label: 'Illuminance',
+                icon: Icons.light_mode,
+                channel: channel,
+                property: view,
+                unit: 'lx',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('12.3lx'), findsOneWidget);
+      expect(find.text('12.5lx'), findsOneWidget);
+      expect(find.text('12.4lx'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
     },
   );
   testWidgets(

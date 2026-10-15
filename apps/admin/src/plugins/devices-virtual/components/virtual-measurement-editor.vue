@@ -240,7 +240,7 @@
 				>
 					<el-input-number
 						v-model="model.filterThreshold"
-						:min="0"
+						:min="0.000001"
 						data-test-id="aggregate-filter-threshold"
 					/>
 					<el-text>{{ t('devicesVirtualPlugin.measurement.filterCohort') }}</el-text>

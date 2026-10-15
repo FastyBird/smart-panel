@@ -340,7 +340,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       default:
         return '--';
     }
-    return SensorUtils.formatNumericValueWithUnit(value, _currentSensorData.channel.category);
+    return SensorUtils.formatNumericValueWithUnit(value, _currentSensorData.channel.category,
+        property: _currentSensorData.property);
   }
 
   String _getPeriodLabel() {

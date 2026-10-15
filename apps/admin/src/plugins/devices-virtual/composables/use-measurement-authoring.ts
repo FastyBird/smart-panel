@@ -144,6 +144,11 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 		if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('measurementFinite');
 		return value;
 	};
+	const validFilterThreshold = () => typeof model.filterThreshold === 'number' && Number.isFinite(model.filterThreshold) && model.filterThreshold > 0;
+	const filterThreshold = () => {
+		if (!validFilterThreshold()) throw new Error('measurementFinite');
+		return finite(model.filterThreshold);
+	};
 	const policy = (): TransformPolicy => {
 		const result: TransformPolicy = {
 			operator: model.operator,
@@ -203,7 +208,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 					...(numericPolicy.value
 						? {
 								outlier_filter: model.filterEnabled
-									? { kind: DevicesVirtualPluginAggregateOutlierFilterKind.absolute_deviation_from_median, threshold: finite(model.filterThreshold) }
+									? { kind: DevicesVirtualPluginAggregateOutlierFilterKind.absolute_deviation_from_median, threshold: filterThreshold() }
 									: null,
 							}
 						: {}),
@@ -391,7 +396,8 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 	const canPreview = computed(
 		() =>
 			(isTransform ? model.inputs.length === 1 : model.inputs.length >= 2 && model.minimumValidInputs <= model.inputs.length) &&
-			model.inputs.every((input) => input.source_property !== null || !!input.id)
+			model.inputs.every((input) => input.source_property !== null || !!input.id) &&
+			(isTransform || !numericPolicy.value || !model.filterEnabled || validFilterThreshold())
 	);
 	watch(
 		() => model.profile,
@@ -405,7 +411,7 @@ export function useMeasurementAuthoring(mode: MeasurementMode, outputId?: string
 				model.filterThreshold = undefined;
 				if (capability) model.aggregateOperator = capability.operators[0];
 			}
-			void loadSources();
+			if (profiles.value.length > 0) void loadSources();
 		},
 		{ flush: 'sync' }
 	);

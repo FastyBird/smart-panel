@@ -91,10 +91,14 @@ export class VirtualProducerConfigService {
 	}
 
 	async listAggregateSources(profileId: VirtualAggregateProfile): Promise<VirtualAggregateSourceModel[]> {
+		const profile = aggregateProfiles.find((candidate) => candidate.id === profileId);
+		if (!profile) return [];
 		const properties = await this.dataSource.manager
 			.createQueryBuilder(ChannelPropertyEntity, 'property')
 			.leftJoinAndSelect('property.channel', 'channel')
 			.leftJoinAndSelect('channel.device', 'device')
+			.where('channel.category = :channelCategory', { channelCategory: profile.channel })
+			.andWhere('property.category = :quantity', { quantity: profile.quantity })
 			.callListeners(false)
 			.getMany();
 		for (const property of properties) await hydrateMeasurementContract(this.dataSource.manager, property);

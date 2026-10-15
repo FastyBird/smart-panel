@@ -192,6 +192,31 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 	};
 	const outputState = (output: ChannelPropertyEntity) => producers.read(output.id);
 
+	it('discovers only exact-profile eligible sources in a mixed catalog and skips unknown profiles', async () => {
+		const physical = await measurement();
+		const transformed = await measurement(VirtualDeviceMode.SENSOR_TRANSFORM);
+		const quarantined = await measurement();
+		await measurement(VirtualDeviceMode.SENSOR_AGGREGATE);
+		await measurement(VirtualDeviceMode.SENSOR_TRANSFORM, VirtualAggregateProfile.HUMIDITY);
+		for (const profile of [
+			VirtualAggregateProfile.HUMIDITY,
+			VirtualAggregateProfile.CARBON_DIOXIDE,
+			VirtualAggregateProfile.ILLUMINANCE,
+		])
+			await measurement(undefined, profile);
+		const wrongQuantity = await measurement();
+		await database.manager.update(ChannelPropertyEntity, wrongQuantity.id, { category: PropertyCategory.HUMIDITY });
+		const quarantinedCheck = jest.spyOn(graph, 'isQuarantined').mockImplementation((id) => id === quarantined.id);
+		const query = jest.spyOn(database.manager, 'createQueryBuilder');
+		expect(
+			(await configs.listAggregateSources(VirtualAggregateProfile.TEMPERATURE)).map((source) => source.property).sort(),
+		).toEqual([physical.id, transformed.id].sort());
+		// Only exact channel/quantity candidates reach the post-hydration policy checks.
+		expect(quarantinedCheck).toHaveBeenCalledTimes(4);
+		query.mockClear();
+		expect(await configs.listAggregateSources('unknown' as VirtualAggregateProfile)).toEqual([]);
+		expect(query).not.toHaveBeenCalled();
+	});
 	it.each([
 		[VirtualAggregateProfile.HUMIDITY, 40, 41, 41],
 		[VirtualAggregateProfile.CARBON_DIOXIDE, 400.1, 400.9, 401],

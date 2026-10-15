@@ -118,13 +118,12 @@ class SensorUtils {
     num value,
     DevicesModuleChannelCategory category, {
     DisplayUnits? displayUnits,
+    ChannelPropertyView? property,
   }) {
     final converted = displayUnits != null
         ? _convertValue(value.toDouble(), category, displayUnits)
         : value.toDouble();
-    final scale = displayUnits != null
-        ? _scaleForConvertedCategory(category, displayUnits)
-        : scaleForCategory(category);
+    final scale = scaleForProperty(category, property, displayUnits: displayUnits);
     if (scale > 0) {
       return NumberUtils.formatDecimal(converted, decimalPlaces: scale);
     }
@@ -139,10 +138,14 @@ class SensorUtils {
     num value,
     DevicesModuleChannelCategory category, {
     DisplayUnits? displayUnits,
+    ChannelPropertyView? property,
   }) {
-    final formatted =
-        formatNumericValue(value, category, displayUnits: displayUnits);
-    final unit = unitForCategory(category, displayUnits: displayUnits);
+    final formatted = formatNumericValue(value, category,
+        displayUnits: displayUnits, property: property);
+    final unit = displayUnits != null
+        ? unitForCategory(category, displayUnits: displayUnits)
+        : (property?.type == 'virtual' ? property?.unit : null) ??
+            unitForCategory(category);
     if (unit.isEmpty) return formatted;
     return '$formatted$unit';
   }
@@ -196,10 +199,7 @@ class SensorUtils {
     DevicesModuleChannelCategory category,
   ) {
     return (prop) {
-      final step = prop.type == 'virtual' ? prop.step : null;
-      final scale = step != null && step.isFinite && step > 0
-          ? _scaleForStep(step)
-          : scaleForCategory(category);
+      final scale = scaleForProperty(category, prop);
       final value = prop.value;
       if (value is NumberValueType) {
         // Delegate to ValueUtils for range/invalid checks — it returns null
@@ -214,6 +214,24 @@ class SensorUtils {
       }
       return ValueUtils.formatValue(prop, scale);
     };
+  }
+
+  /// Shared precision for current readings and numeric history statistics.
+  /// Display-unit conversion retains its established category precision.
+  static int scaleForProperty(
+    DevicesModuleChannelCategory category,
+    ChannelPropertyView? property, {
+    DisplayUnits? displayUnits,
+  }) {
+    if (displayUnits != null &&
+        (category == DevicesModuleChannelCategory.temperature ||
+            category == DevicesModuleChannelCategory.pressure)) {
+      return _scaleForConvertedCategory(category, displayUnits);
+    }
+    final step = property?.type == 'virtual' ? property?.step : null;
+    return step != null && step.isFinite && step > 0
+        ? _scaleForStep(step)
+        : scaleForCategory(category);
   }
 
   static int _scaleForStep(double step) {
