@@ -324,7 +324,21 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) continue;
 			this.diagnostics.set(property.id, result);
-			await this.publish(output, evaluation, result, now);
+			// Capture the entire admitted comparison cohort, including samples later filtered as outliers.
+			const cohort = evidence.filter((input) => input.sample && !input.exclusion);
+			const lineage = cohort.map((input) => input.incorporated);
+			if (result.quality === 'good' && lineage.some((input) => !input)) {
+				this.producers.invalidate(output.lease, ['protective_lineage_unavailable']);
+				continue;
+			}
+			await this.publish(
+				output,
+				evaluation,
+				result,
+				now,
+				lineage.filter((input) => !!input),
+				cohort,
+			);
 		}
 	}
 
@@ -382,6 +396,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 					sourceIdentity: input.sourcePropertyIdentity,
 					weight: input.weight,
 					sample,
+					incorporated: sample ? this.values.captureIncorporatedSample(source) : undefined,
 					expiresAt:
 						source && this.producers.owns(source.id)
 							? new Date(this.producers.readDiagnosticState(source.id)?.producer.expiresAt ?? NaN)
@@ -419,6 +434,8 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		evaluation: PropertyProducerEvaluation,
 		result: AggregateEvaluation,
 		now: Date,
+		sourceSamples: import('../../../modules/devices/models/property-sample.model').IncorporatedPropertySample[],
+		cohort: AggregateInputEvidence[],
 	): Promise<void> {
 		if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) return;
 		if (result.quality === 'unavailable') {
@@ -435,7 +452,18 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				reasons: result.reasons,
 				sampledAt: result.sampledAt,
 				evaluatedAt: now,
-				expiresAt: result.expiresAt,
+				expiresAt: new Date(
+					Math.min(
+						result.expiresAt.getTime(),
+						...cohort.map((input) =>
+							Math.min(
+								input.sample.sampledAt.getTime() + (result.expiresAt.getTime() - result.sampledAt.getTime()),
+								input.expiresAt?.getTime() ?? Infinity,
+							),
+						),
+					),
+				),
+				...(sourceSamples.length ? { sourceSamples } : {}),
 			},
 			evaluation,
 		);

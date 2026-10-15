@@ -1,5 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
@@ -22,8 +23,37 @@ export class VirtualThermostatFloorGuardModel {
 	recoveryHysteresis: number;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoolingPolicy' })
+export class VirtualCoolingPolicyModel {
+	@ApiProperty({ enum: [1], description: 'Separate cooling policy version' })
+	@Expose()
+	schemaVersion: 1;
+	@ApiProperty({ description: 'Positive margin above current qualified dew point in Celsius' })
+	@Expose()
+	marginC: number;
+	@ApiProperty({ description: 'Positive strict recovery hysteresis Celsius' })
+	@Expose()
+	recoveryHysteresisC: number;
+	@ApiPropertyOptional({
+		nullable: true,
+		type: Number,
+		description: 'Explicit independent absolute surface minimum Celsius',
+	})
+	@Expose()
+	absoluteMinimumC?: number | null;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatPolicy' })
 export class VirtualThermostatPolicyModel {
+	@ApiPropertyOptional({
+		type: VirtualCoolingPolicyModel,
+		nullable: true,
+		description: 'Independent cooling policy; installed eligibility remains separate',
+	})
+	@Expose()
+	@Type(() => VirtualCoolingPolicyModel)
+	cooling?: VirtualCoolingPolicyModel | null;
+
 	@ApiProperty({
 		description: 'Heating comfort setpoint in Celsius; null means no heating branch',
 		type: Number,
@@ -223,8 +253,96 @@ export class ThermostatMemberProtectionRuntimeModel {
 	@ApiProperty({ type: [String], description: 'Individual protection blockers' }) @Expose() reasons: string[];
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoolingDependency' })
+export class ThermostatCoolingDependencyModel {
+	@ApiProperty({ enum: [1], description: 'Separate retained dependency version' })
+	@Expose()
+	schema_version: 1;
+	@ApiProperty({ description: 'Dependency revision' })
+	@Expose()
+	revision: number;
+	@ApiProperty({
+		enum: ['cooled_surface'],
+		description: 'Explicit cooled-surface role; authoring is not installation proof',
+	})
+	@Expose()
+	purpose: 'cooled_surface';
+	@ApiProperty({ type: String, nullable: true, description: 'Dedicated dew point UUID or retained missing edge' })
+	@Expose()
+	dew_point_property: string | null;
+	@ApiProperty({ description: 'Retained dew point UUID' })
+	@Expose()
+	dew_point_identity: string;
+	@ApiProperty({ type: String, nullable: true, description: 'Local surface UUID or retained missing edge' })
+	@Expose()
+	surface_property: string | null;
+	@ApiProperty({ description: 'Retained local surface UUID' })
+	@Expose()
+	surface_identity: string;
+	@ApiProperty({ description: 'Original source evidence age bound' })
+	@Expose()
+	maximum_age_seconds: number;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginDataCoolingProtection' })
+export class ThermostatCoolingProtectionModel {
+	@ApiProperty({ description: 'Mandatory leaf claim UUID' })
+	@Expose()
+	claim: string;
+	@ApiProperty({ type: String, nullable: true, description: 'Retained dew point identity' })
+	@Expose()
+	dew_point_identity: string | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Retained local surface identity' })
+	@Expose()
+	surface_identity: string | null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Current qualified dew point Celsius' })
+	@Expose()
+	dew_point: number | null;
+	@ApiProperty({ type: Number, nullable: true, description: 'Current qualified local surface Celsius' })
+	@Expose()
+	surface: number | null;
+	@ApiProperty({
+		type: Number,
+		nullable: true,
+		description: 'Dew point plus margin, bounded by optional absolute minimum',
+	})
+	@Expose()
+	threshold: number | null;
+	@ApiProperty({ type: String, nullable: true, description: 'Earliest inherited evidence expiry' })
+	@Expose()
+	expires_at: string | null;
+	@ApiProperty({ description: 'Conservative cooling cutoff latch' })
+	@Expose()
+	latched: boolean;
+	@ApiProperty({ description: 'Every software and installed profile gate passed' })
+	@Expose()
+	ready: boolean;
+	@ApiProperty({
+		type: [String],
+		description: 'Exact cooling blockers including missing post-alpha installation qualification',
+	})
+	@Expose()
+	reasons: string[];
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatClaim' })
 export class VirtualThermostatClaimModel {
+	@ApiPropertyOptional({
+		type: ThermostatCoolingProtectionModel,
+		nullable: true,
+		description: 'Detached current cooling preview blockers; never installed qualification',
+	})
+	@Expose()
+	@Type(() => ThermostatCoolingProtectionModel)
+	cooling_diagnostics: ThermostatCoolingProtectionModel | null;
+	@ApiPropertyOptional({
+		type: ThermostatCoolingDependencyModel,
+		nullable: true,
+		description: 'Independent cooling dependency; legacy heating protection is preserved',
+	})
+	@Expose()
+	@Type(() => ThermostatCoolingDependencyModel)
+	cooling_protection: ThermostatCoolingDependencyModel | null;
 	@ApiProperty({
 		type: ThermostatMemberProtectionModel,
 		nullable: true,
@@ -424,6 +542,14 @@ export class VirtualThermostatConfigurationResponseModel extends BaseSuccessResp
 
 @ApiSchema({ name: 'DevicesVirtualPluginDataThermostatBranchRuntime' })
 export class VirtualThermostatBranchRuntimeModel {
+	@ApiPropertyOptional({
+		type: ThermostatCoolingProtectionModel,
+		nullable: true,
+		description: 'Per-member condensation policy, current evidence and qualification blockers',
+	})
+	@Expose()
+	@Type(() => ThermostatCoolingProtectionModel)
+	cooling_protection?: ThermostatCoolingProtectionModel | null;
 	@ApiProperty({
 		type: ThermostatMemberProtectionRuntimeModel,
 		nullable: true,

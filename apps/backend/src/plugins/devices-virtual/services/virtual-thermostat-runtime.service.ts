@@ -38,6 +38,11 @@ import {
 } from '../entities/virtual-thermostat.entity';
 
 import {
+	CoolingBinding,
+	CoolingDiagnostic,
+	ThermostatCoolingDependencyService,
+} from './thermostat-cooling-dependency.service';
+import {
 	ThermostatMemberProtectionBinding,
 	ThermostatMemberProtectionDiagnostic,
 	ThermostatMemberProtectionService,
@@ -101,9 +106,19 @@ export interface ThermostatBranchDiagnostic {
 	release_proven: boolean;
 	fault: string | null;
 	protection: ThermostatMemberProtectionDiagnostic | null;
+	cooling_protection?: CoolingDiagnostic | null;
 }
 const copyBranchDiagnostic = (branch: ThermostatBranchDiagnostic, unavailable = false): ThermostatBranchDiagnostic => ({
 	...branch,
+	cooling_protection: branch.cooling_protection
+		? {
+				...branch.cooling_protection,
+				ready: !unavailable && branch.cooling_protection.ready,
+				reasons: [...branch.cooling_protection.reasons],
+				dew_point: unavailable ? null : branch.cooling_protection.dew_point,
+				surface: unavailable ? null : branch.cooling_protection.surface,
+			}
+		: null,
 	...(unavailable
 		? {
 				activity: 'unknown' as const,
@@ -156,6 +171,8 @@ interface ControllerContext {
 	owner: DeviceEntity | null;
 	bindings: ThermostatInputBinding[];
 	memberBindings: ThermostatMemberProtectionBinding[];
+	coolingBindings: CoolingBinding[];
+	coolingProtection: CoolingDiagnostic[];
 	memberProtection: ThermostatMemberProtectionDiagnostic[];
 	claims: VirtualThermostatActuatorClaimEntity[];
 	branches: Map<string, VirtualThermostatBranchRuntimeEntity>;
@@ -171,6 +188,12 @@ interface ControllerContext {
 /** One serialized decision stream per controller; I/O is detached so urgent release can fence queued ON immediately. */
 @Injectable()
 export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, OnModuleDestroy {
+	private stopCoolingReader?: () => void;
+	private coolingService?: ThermostatCoolingDependencyService;
+	private get coolingDependencies(): ThermostatCoolingDependencyService {
+		return (this.coolingService ??= new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims));
+	}
+
 	private active = false;
 	private readonly epoch = randomUUID();
 	private sequence = 0;
@@ -229,6 +252,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	};
 	private reset = () => {
 		this.memberProtection.reset();
+		this.coolingService?.reset();
 		this.reconciled.clear();
 		this.contacts.clear();
 		for (const [id, trend] of this.trends)
@@ -262,6 +286,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	async onApplicationBootstrap(): Promise<void> {
 		if (this.active || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
 		this.active = true;
+		this.stopCoolingReader = this.transport.registerCoolingFrameReader?.((claim) => {
+			const context = this.contexts.get(claim.controllerId), binding = context?.coolingBindings.find((b) => b.claimId === claim.id);
+			if (!context || !binding || !context.publishGuard()) return null;
+			const captured = this.coolingDependencies.capture(binding);
+			return captured ? { ...captured, isCurrent: () => captured.isCurrent() && context.publishGuard() &&
+				this.contexts.get(claim.controllerId) === context && context.config.revision === captured.controllerRevision &&
+				context.claims.some((c) => c.id === claim.id && c.revision === claim.revision) } : null;
+		});
 		this.stopAdmission = this.claims.registerRuntimeAdmission((claim) => {
 			const context = this.contexts.get(claim.controllerId);
 			return !!context && this.canSend(context, claim, 'on');
@@ -290,6 +322,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		}
 		const configured = (id: string) => {
 			this.memberProtection.reset();
+			this.coolingService?.reset();
 			this.request(id);
 		};
 		this.events.on(THERMOSTAT_CONFIG_CHANGED, configured);
@@ -320,6 +353,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	onModuleDestroy(): void {
 		this.active = false;
 		this.stopAdmission?.();
+		this.stopCoolingReader?.();
+		this.stopCoolingReader = undefined;
 		if (this.timer) clearInterval(this.timer);
 		for (const stop of this.stops.splice(0)) stop();
 		for (const output of this.outputs.values()) this.producers.unregister(output.lease);
@@ -331,6 +366,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.reconciled.clear();
 		this.memberFaults.clear();
 		this.memberProtection.reset();
+		this.coolingService?.reset();
 		for (const id of this.epochs.keys()) this.epochs.set(id, (this.epochs.get(id) ?? 0) + 1);
 	}
 	readDiagnostics(controllerId: string): ThermostatRuntimeDiagnostic | null {
@@ -464,6 +500,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const rows = await this.dataSource.manager.findBy(VirtualThermostatSourceEntity, { controllerId });
 			const bindings = await this.inputs.load(rows);
 			const memberBindings = await this.memberProtection.load(config, claims);
+			const coolingBindings = await this.coolingDependencies.load(config, claims);
 			const commands = await this.loadDecisionCommands(controllerId, claims);
 			const state =
 				(await this.dataSource.manager.findOneBy(VirtualThermostatRuntimeEntity, { controllerId })) ??
@@ -512,6 +549,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				bindings,
 				memberBindings,
 				memberProtection: [],
+				coolingBindings,
+				coolingProtection: [],
 				commands,
 				state,
 				branches,
@@ -705,6 +744,20 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				reconciled: context.claims.length > 0 && context.claims.every((claim) => this.isReconciled(claim)),
 			},
 		);
+		context.coolingProtection = this.coolingDependencies.read(context.coolingBindings, now);
+		if (
+			context.config.policy.cooling &&
+			context.coolingBindings.length !== context.claims.filter((c) => c.role === 'cooling').length
+		) {
+			decision.desiredCooling = false;
+			decision.reasons.push('cooling_mandatory_dependencies_missing');
+		}
+		for (const member of context.coolingProtection) {
+			if (!member.ready) {
+				decision.desiredCooling = false;
+				decision.reasons.push(...member.reasons.map((reason) => `${reason}:${member.claim}`));
+			}
+		}
 		// The same evaluator runs again in final canSend after queueing, inspection and authentication retries.
 		context.memberProtection = this.memberProtection.read(context.memberBindings, now);
 		for (const member of context.memberProtection) {
@@ -783,6 +836,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		// Fence feedback revokes the previous decision like every other relay event. Consume settled
 		// all-leaf proof only in this freshly loaded scope, before issuing any further proof I/O.
 		this.acknowledgeMemberRelease(context);
+		this.acknowledgeCoolingRelease(context);
 		context.state.decisionRevision++;
 		context.state.configurationRevision = context.config.revision;
 		context.state.floorLatched = context.decision.floorOverheatLatched;
@@ -812,6 +866,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		}
 		for (const claim of context.claims) await this.reconcile(context, claim);
 		this.acknowledgeMemberRelease(context);
+		this.acknowledgeCoolingRelease(context);
 		for (const claim of context.claims) {
 			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
 			const latest = context.commands
@@ -851,14 +906,19 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					contract: claim.contractFingerprint,
 				}))
 				.sort((a, b) => a.id.localeCompare(b.id)),
+			cooling: context.coolingBindings.map((entry) => ({ claim: entry.claimId, basis: entry.basis })),
 			members: context.memberBindings
 				.map((member) => ({ claim: member.claimId, basis: member.basis }))
 				.sort((a, b) => a.claim.localeCompare(b.claim)),
 		});
 	}
-	private hasCurrentDrain(context: ControllerContext, claim: VirtualThermostatActuatorClaimEntity): boolean {
+	private hasCurrentDrain(
+		context: ControllerContext,
+		claim: VirtualThermostatActuatorClaimEntity,
+		requiredAfter?: number,
+	): boolean {
 		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
-		const after = this.memberProtection.requiredReleaseAfter(context.memberBindings);
+		const after = requiredAfter ?? this.memberProtection.requiredReleaseAfter(context.memberBindings);
 		const evidence = this.evidence(context, claim, Date.now());
 		const target = context.targets.get(claim.id);
 		return (
@@ -889,6 +949,21 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (!heating.length || !heating.every((claim) => this.hasCurrentDrain(context, claim))) return;
 		this.memberProtection.acknowledgeRelease(context.memberBindings, Date.now());
 	}
+	private acknowledgeCoolingRelease(context: ControllerContext): void {
+		const after = this.coolingDependencies.requiredReleaseAfter(context.coolingBindings);
+		if (
+			after === null ||
+			!context.admission.isCurrent() ||
+			!context.publishGuard() ||
+			this.contexts.get(context.config.controllerId) !== context ||
+			context.epoch !== this.epochs.get(context.config.controllerId)
+		)
+			return;
+		const cooling = context.claims.filter((claim) => claim.role === 'cooling');
+		if (!cooling.length || !cooling.every((claim) => this.hasCurrentDrain(context, claim, after))) return;
+		this.coolingDependencies.acknowledgeRelease(context.coolingBindings);
+	}
+
 	private async prepare(
 		context: ControllerContext,
 		claim: VirtualThermostatActuatorClaimEntity,
@@ -991,7 +1066,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			enteredTransport = true;
 			const result = await this.transport
 				.get(update, claim)
-				.send(update, claim, this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)), guard);
+				.send(update, claim, this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)), guard, { commandId: command.id });
 			refusedOn = command.action === 'on' && result.outcome === 'refused';
 			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
 			command.settledAt = new Date();
@@ -1329,6 +1404,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 							: null;
 			return {
 				protection: context.memberProtection.find((entry) => entry.claim === claim.id) ?? null,
+				cooling_protection: context.coolingProtection.find((entry) => entry.claim === claim.id) ?? null,
 				claim: claim.id,
 				group_identity: thermostatBranchGroupIdentity(claim.controllerId, claim.role),
 				physical_identity: claim.physicalIdentity,

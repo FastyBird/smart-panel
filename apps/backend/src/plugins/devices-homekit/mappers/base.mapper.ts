@@ -47,7 +47,11 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 	}
 
 	protected findProperty(channel: ChannelEntity, category: PropertyCategory): ChannelPropertyEntity | undefined {
-		return channel.properties?.find((property) => property.category === category);
+		return channel.properties?.find(
+			(property) =>
+				property.category === category &&
+				(property as ChannelPropertyEntity & { measurementQuantity?: string }).measurementQuantity !== 'dew_point',
+		);
 	}
 
 	protected unwrapValue(val: unknown): unknown {

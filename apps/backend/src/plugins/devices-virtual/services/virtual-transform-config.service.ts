@@ -11,6 +11,7 @@ import { DeviceStructureLockService } from '../../../modules/devices/services/de
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { ConfigureVirtualTransformDto } from '../dto/transform-config.dto';
 import { VirtualChannelPropertyEntity } from '../entities/devices-virtual.entity';
+import { VirtualDewPointConfigEntity } from '../entities/virtual-dew-point.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 import { VirtualTransformConfigurationModel, VirtualTransformSourceModel } from '../models/transform-response.model';
 
@@ -133,6 +134,10 @@ export class VirtualTransformConfigService {
 		previewOnly = false,
 	) {
 		const output = draftOutput ?? (await this.property(manager, outputPropertyId, previewOnly));
+		if (await manager.existsBy(VirtualDewPointConfigEntity, { outputPropertyId }))
+			throw new DevicesValidationException(
+				'Dedicated dew point output cannot be reconfigured as a one-input transform.',
+			);
 		const existing = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId });
 		if (existing && (existing.quantity !== dto.quantity || existing.unit !== dto.unit))
 			throw new DevicesValidationException(

@@ -8,11 +8,14 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
+import { CreateVirtualDewPointProducerDto } from '../dto/measurement-authoring.dto';
 import {
 	CreateVirtualAggregateProducerDto,
 	CreateVirtualTransformProducerDto,
 	PreviewVirtualTransformProducerDto,
 } from '../dto/measurement-authoring.dto';
+import { VirtualDewPointResponseModel } from '../models/dew-point-response.model';
+import { VirtualCreatedDewPointResponseModel } from '../models/measurement-authoring-response.model';
 import {
 	VirtualCreatedAggregateResponseModel,
 	VirtualCreatedTransformResponseModel,
@@ -90,6 +93,36 @@ export class VirtualMeasurementAuthoringController {
 	): Promise<VirtualTransformConfigurationResponseModel> {
 		const response = new VirtualTransformConfigurationResponseModel();
 		response.data = await this.execute(() => this.authoring.previewTransform(dto));
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Create dedicated dew point measurement',
+		description:
+			'Atomically create the read-only output, both retained input roles and formula policy; activate only after commit.',
+		operationId: 'create-devices-virtual-plugin-dew-point-producer',
+	})
+	@ApiCreatedSuccessResponse(VirtualCreatedDewPointResponseModel, 'Create dew point measurement')
+	@Post('dew-points')
+	async createDewPoint(@Body() dto: CreateVirtualDewPointProducerDto): Promise<VirtualCreatedDewPointResponseModel> {
+		const response = new VirtualCreatedDewPointResponseModel();
+		response.data = await this.execute(() => this.authoring.createDewPoint(dto));
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Preview dedicated dew point measurement',
+		description:
+			'Validate the exact proposed output and two-input graph without storing values or granting protective authority.',
+		operationId: 'preview-devices-virtual-plugin-dew-point-draft',
+	})
+	@ApiSuccessResponse(VirtualDewPointResponseModel, 'Preview dew point measurement')
+	@Post('dew-points/draft-preview')
+	async previewDewPoint(@Body() dto: CreateVirtualDewPointProducerDto): Promise<VirtualDewPointResponseModel> {
+		const response = new VirtualDewPointResponseModel();
+		response.data = await this.execute(() => this.authoring.previewDewPoint(dto));
 		return response;
 	}
 

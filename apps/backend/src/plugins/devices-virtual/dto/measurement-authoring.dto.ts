@@ -4,6 +4,7 @@ import { IsDefined, IsNumber, IsOptional, IsUUID, ValidateNested } from 'class-v
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { CreateVirtualDeviceDto } from './create-device.dto';
+import { ConfigureVirtualDewPointDto } from './dew-point-config.dto';
 import { ConfigureVirtualAggregateDto } from './producer-config.dto';
 import { ConfigureVirtualTransformDto } from './transform-config.dto';
 
@@ -87,4 +88,33 @@ export class PreviewVirtualTransformProducerDto extends CreateVirtualTransformPr
 	@IsOptional()
 	@IsNumber({ allowInfinity: false, allowNaN: false })
 	previewInput?: number;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginCreateDewPointProducer' })
+export class CreateVirtualDewPointProducerDto {
+	@ApiProperty({
+		description: 'Proposed virtual sensor device with explicit nested output UUID',
+		type: CreateVirtualDeviceDto,
+	})
+	@Expose()
+	@IsDefined()
+	@ValidateNested()
+	@Type(() => CreateVirtualDeviceDto)
+	device: CreateVirtualDeviceDto;
+
+	@ApiProperty({
+		name: 'output_property',
+		description: 'Readonly derived property UUID within the proposed device',
+		format: 'uuid',
+	})
+	@Expose({ name: 'output_property' })
+	@IsUUID('4')
+	outputPropertyId: string;
+
+	@ApiProperty({ description: 'Dedicated two-input dew point configuration', type: ConfigureVirtualDewPointDto })
+	@Expose()
+	@IsDefined()
+	@ValidateNested()
+	@Type(() => ConfigureVirtualDewPointDto)
+	configuration: ConfigureVirtualDewPointDto;
 }

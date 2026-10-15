@@ -3,7 +3,7 @@ import { validate } from 'class-validator';
 import { DataSource, EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -24,6 +24,7 @@ import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { CreateVirtualDeviceChannelDto } from '../dto/create-device-channel.dto';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
+import { CreateVirtualDewPointProducerDto } from '../dto/measurement-authoring.dto';
 import {
 	CreateVirtualAggregateProducerDto,
 	CreateVirtualTransformProducerDto,
@@ -37,6 +38,7 @@ import {
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
 import { VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+import { VirtualCreatedDewPointModel } from '../models/measurement-authoring-response.model';
 import {
 	VirtualCreatedAggregateModel,
 	VirtualCreatedTransformModel,
@@ -46,6 +48,7 @@ import { VirtualTransformConfigurationModel } from '../models/transform-response
 
 import { VirtualAggregateRuntimeService } from './virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualDewPointConfigService } from './virtual-dew-point-config.service';
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { VirtualTransformConfigService } from './virtual-transform-config.service';
@@ -63,6 +66,7 @@ export class VirtualMeasurementAuthoringService {
 		private readonly transforms: VirtualTransformConfigService,
 		private readonly state: VirtualProducerStateService,
 		private readonly aggregateRuntime: VirtualAggregateRuntimeService,
+		@Optional() private readonly dewPoints?: VirtualDewPointConfigService,
 	) {}
 
 	async previewAggregate(dto: CreateVirtualAggregateProducerDto): Promise<VirtualAggregateConfigurationModel> {
@@ -207,6 +211,67 @@ export class VirtualMeasurementAuthoringService {
 				device: await this.devices.findOne(committed.device.id),
 				configuration: await this.transforms.get(dto.outputPropertyId),
 			});
+		});
+	}
+
+	async createDewPoint(dto: CreateVirtualDewPointProducerDto): Promise<VirtualCreatedDewPointModel> {
+		return this.lock.runExclusive(async () => {
+			const committed = await DeviceCreationContext.run<{
+				device: VirtualDeviceEntity;
+				prepared: Awaited<ReturnType<VirtualDewPointConfigService['prepare']>>;
+			}>(
+				(operation) => this.graph.withStructuralWrite(operation, dto.configuration.expectedGraphRevision),
+				'virtual',
+				async (context) => {
+					const draft = await this.draft(
+						context.manager,
+						dto.device,
+						dto.outputPropertyId,
+						VirtualDeviceMode.SENSOR_TRANSFORM,
+					);
+					await this.dewPoints.prepare(context.manager, dto.outputPropertyId, dto.configuration, draft.output, true);
+					const device = await this.devices.create<VirtualDeviceEntity, CreateVirtualDeviceDto>(draft.dto, context);
+					const prepared = await this.dewPoints.prepare(
+						context.manager,
+						dto.outputPropertyId,
+						dto.configuration,
+						undefined,
+						true,
+					);
+					await this.dewPoints.persist(context.manager, prepared);
+					return { device, prepared };
+				},
+				({ prepared }) => this.dewPoints.activate(prepared),
+				dto.outputPropertyId,
+			);
+			return Object.assign(new VirtualCreatedDewPointModel(), {
+				device: await this.devices.findOne(committed.device.id),
+				configuration: await this.dewPoints.get(dto.outputPropertyId),
+			});
+		});
+	}
+
+	async previewDewPoint(dto: CreateVirtualDewPointProducerDto) {
+		return this.lock.runExclusive(async () => {
+			const draft = await this.draft(
+				this.dataSource.manager,
+				dto.device,
+				dto.outputPropertyId,
+				VirtualDeviceMode.SENSOR_TRANSFORM,
+			);
+			const prepared = await this.dewPoints.prepare(
+				this.dataSource.manager,
+				dto.outputPropertyId,
+				dto.configuration,
+				draft.output,
+			);
+			return this.dewPoints.describe(
+				prepared.config,
+				prepared.sources,
+				await this.graph.revision(),
+				false,
+				await this.dewPoints.inspect(prepared),
+			);
 		});
 	}
 

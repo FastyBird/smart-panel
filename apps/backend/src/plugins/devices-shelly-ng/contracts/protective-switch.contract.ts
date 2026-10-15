@@ -1,3 +1,4 @@
+import type { QualifiedRemoteDewPointProfile } from '../services/remote-dew-point-qualification';
 import { ShellyGuardScriptQualification } from './guard-script.contract';
 
 /** Internal only. Installed hardware evidence must be supplied by the qualification registry. */
@@ -13,6 +14,8 @@ export interface ShellyProtectiveQualification {
 	readonly releaseOrderingQualified: boolean;
 	readonly independentProtectionQualified: boolean;
 	readonly guardScript?: ShellyGuardScriptQualification;
+	/** A separately verified remote cooling profile; legacy heating fields alone cannot authorize it. */
+	readonly remoteDewPoint?: QualifiedRemoteDewPointProfile;
 }
 
 export type ShellyProtectiveCommand =

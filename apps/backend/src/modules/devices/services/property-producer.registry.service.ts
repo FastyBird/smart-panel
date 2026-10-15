@@ -34,6 +34,8 @@ interface ProducerEntry {
 	epoch: number;
 	generation: number;
 	sourceSample?: IncorporatedPropertySample;
+	sourceSamples?: readonly IncorporatedPropertySample[];
+	publication: number;
 	guard?: PropertyProducerGuard;
 }
 
@@ -42,6 +44,57 @@ interface ProducerEntry {
 export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDestroy {
 	private readonly entries = new Map<string, ProducerEntry>();
 	private timer: NodeJS.Timeout | null = null;
+	private publicationSequence = 0;
+	private evidenceValidator?: (sources: readonly IncorporatedPropertySample[]) => boolean;
+
+	setEvidenceValidator(validator: (sources: readonly IncorporatedPropertySample[]) => boolean): void {
+		this.evidenceValidator = validator;
+	}
+
+	readIncorporatedSamples(propertyId: string): readonly IncorporatedPropertySample[] | null {
+		const entry = this.entries.get(propertyId);
+		return entry?.sourceSamples ?? (entry?.sourceSample ? [entry.sourceSample] : null);
+	}
+
+	captureEvidence(propertyId: string): IncorporatedPropertySample | null {
+		const state = this.read(propertyId);
+		const entry = this.entries.get(propertyId);
+		const sources = this.readIncorporatedSamples(propertyId);
+		if (!entry || !sources?.length || state?.producer.quality !== 'good') return null;
+		return Object.freeze({
+			propertyId,
+			acceptanceGeneration: 0,
+			producer: Object.freeze({
+				lease: entry.lease,
+				publication: entry.publication,
+				revision: entry.lease.revision,
+				expiresAt: Date.parse(state.producer.expiresAt),
+				quality: 'good' as const,
+			}),
+			sources,
+		});
+	}
+
+	isPublicationCurrent(evidence: IncorporatedPropertySample): boolean {
+		const entry = this.entries.get(evidence.propertyId);
+		return (
+			!!entry &&
+			entry.lease === evidence.producer?.lease &&
+			entry.publication === evidence.producer.publication &&
+			entry.lease.revision === evidence.producer.revision &&
+			entry.guard?.isCurrent() !== false &&
+			entry.state.producer.quality === evidence.producer.quality &&
+			Date.parse(entry.state.producer.evaluatedAt) <= Date.now() &&
+			Date.parse(entry.state.producer.expiresAt) === evidence.producer.expiresAt &&
+			evidence.producer.expiresAt > Date.now()
+		);
+	}
+
+	private evidenceCurrent(publication: Pick<DerivedPropertyPublication, 'sourceSample' | 'sourceSamples'>): boolean {
+		if (publication.sourceSample && publication.sourceSamples) return false;
+		const sources = publication.sourceSamples ?? (publication.sourceSample ? [publication.sourceSample] : undefined);
+		return !sources || (!!this.evidenceValidator && this.evidenceValidator(sources));
+	}
 	private readonly refreshPropertyMetadata = (property: ChannelPropertyEntity): void => {
 		const entry = this.entries.get(property.id);
 		if (entry) entry.property = property;
@@ -76,6 +129,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			state,
 			epoch: (previous?.epoch ?? 0) + 1,
 			generation: 0,
+			publication: 0,
 			guard: guard ? Object.freeze({ ...guard }) : undefined,
 		});
 		this.emit(property, state);
@@ -138,6 +192,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			entry.lease !== lease ||
 			epoch !== entry.epoch ||
 			!['good', 'degraded'].includes(publication.quality) ||
+			!this.evidenceCurrent(publication) ||
 			(generation !== undefined && generation !== entry.generation)
 		)
 			return false;
@@ -177,6 +232,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		});
 		entry.state = next;
 		entry.sourceSample = publication.sourceSample ? Object.freeze({ ...publication.sourceSample }) : undefined;
+		entry.sourceSamples = publication.sourceSamples;
+		entry.publication = ++this.publicationSequence;
 		// Successful publications do not change the lifecycle epoch: queued newer evaluations remain valid.
 		this.emit(entry.property, next);
 		return true;
@@ -196,6 +253,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		entry.epoch++;
 		entry.state = this.unavailable(lease.revision, reasons, evaluatedAt);
 		entry.sourceSample = undefined;
+		entry.sourceSamples = undefined;
 		this.emit(entry.property, entry.state);
 		return true;
 	}
@@ -217,16 +275,16 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	readDiagnosticState(propertyId: string): PropertyValueState | null {
 		const entry = this.entries.get(propertyId);
 		if (!entry) return null;
-		return entry.guard?.isCurrent() === false
-			? this.unavailable(entry.lease.revision, [entry.guard.reason], new Date())
+		return entry.guard?.isCurrent() === false || !this.evidenceCurrent(entry)
+			? this.unavailable(entry.lease.revision, [entry.guard?.reason ?? 'source_changed'], new Date())
 			: clonePropertyValueState(entry.state);
 	}
 
 	read(propertyId: string): PropertyValueState | null {
 		const entry = this.entries.get(propertyId);
 		if (!entry) return null;
-		if (entry.guard?.isCurrent() === false) {
-			const state = this.unavailable(entry.lease.revision, [entry.guard.reason], new Date());
+		if (entry.guard?.isCurrent() === false || !this.evidenceCurrent(entry)) {
+			const state = this.unavailable(entry.lease.revision, [entry.guard?.reason ?? 'source_changed'], new Date());
 			return clonePropertyValueState(state);
 		}
 		const now = Date.now();
@@ -240,6 +298,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			entry.epoch++;
 			entry.state = this.unavailable(entry.lease.revision, ['clock_invalid'], new Date(now));
 			entry.sourceSample = undefined;
+			entry.sourceSamples = undefined;
 			this.emit(entry.property, entry.state);
 		}
 		if (

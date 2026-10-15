@@ -1,3 +1,5 @@
+import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
+import { RemoteCoolingFrame, ThermostatRemoteCoolingAdapter } from './thermostat-remote-cooling-adapter';
 import { Injectable } from '@nestjs/common';
 
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
@@ -25,6 +27,14 @@ export type ThermostatActuationAdapter = ProviderActuationAdapter<ThermostatInst
 @Injectable()
 export class VirtualThermostatTransportService {
 	private readonly adapters = new Map<string, ThermostatActuationAdapter>();
+	private remoteCooling?: ThermostatRemoteCoolingAdapter;
+	private coolingFrameReader?: (claim: VirtualThermostatActuatorClaimEntity) => RemoteCoolingFrame | null;
+	registerCoolingFrameReader(reader: (claim: VirtualThermostatActuatorClaimEntity) => RemoteCoolingFrame | null): () => void {
+		if (this.coolingFrameReader) throw new Error('Cooling evidence reader already registered');
+		this.coolingFrameReader = reader;
+		return () => { if (this.coolingFrameReader === reader) this.coolingFrameReader = undefined; };
+	}
+
 	constructor(
 		private readonly platforms: PlatformRegistryService,
 		private readonly values: PropertyValueService,
@@ -42,6 +52,16 @@ export class VirtualThermostatTransportService {
 		return () => this.adapters.delete(type);
 	}
 	get(target: IDevicePropertyData, claim?: VirtualThermostatActuatorClaimEntity): ThermostatActuationAdapter | null {
+		if (claim?.providerProfile === REMOTE_DEW_POINT_PROFILE && claim.providerProfileVersion === 1 && claim.role === 'cooling') {
+			return this.remoteCooling ??= new ThermostatRemoteCoolingAdapter(this.values,
+				(member) => this.coolingFrameReader?.(member) ?? null,
+				async (leaf, current) => {
+					const platform = this.platforms.get(leaf.device);
+					if (!(leaf.device instanceof ShellyNgDeviceEntity) || !(platform instanceof ShellyNgDevicePlatform)) return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
+					return platform.processProtectiveCommand({ device: leaf.device, channel: leaf.channel, property: leaf.property }, { on: false }, 1000, current);
+				});
+		}
+
 		const supplied = this.adapters.get(target.device.type);
 		if (supplied)
 			return !claim ||

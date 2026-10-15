@@ -858,4 +858,62 @@ describe('qualified samples and producer state', () => {
 		expect(jest.getTimerCount()).toBe(0);
 		expect(events.listenerCount(EventType.CHANNEL_PROPERTY_UPDATED)).toBe(0);
 	});
+	it('checks plural and recursive ancestor publications on every live/freshness read', async () => {
+		await report(20);
+		const leaf = values.captureIncorporatedSample(property);
+		const parent = Object.assign(new SampleProperty(), property, { id: 'parent' });
+		const parentLease = producers.register(parent, 1);
+		await values.publishDerived(parent, parentLease, 21, { ...publication(), sourceSamples: [leaf] });
+		const incorporated = values.captureIncorporatedSample(parent);
+		expect(incorporated.producer).toBeDefined();
+		const output = Object.assign(new SampleProperty(), property, { id: 'plural-output' });
+		const lease = producers.register(output, 1);
+		await values.publishDerived(output, lease, 10, { ...publication(), sourceSamples: [incorporated] });
+		expect(values.readQualifiedSample(output, 10000)?.value).toBe(10);
+		await values.publishDerived(parent, parentLease, 22, { ...publication(), sourceSamples: [leaf] });
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+		expect(values.readQualifiedSampleSnapshot(output, 10000, new Date())).toBeNull();
+		expect(values.readSampleFreshness(output, 10000).status).toBe('unavailable');
+		expect(producers.read(output.id).producer.quality).toBe('unavailable');
+	});
+
+	it('never grants live producer authority after a stale history write completes', async () => {
+		await report(20);
+		const incorporated = values.captureIncorporatedSample(property);
+		const output = Object.assign(new SampleProperty(), property, { id: 'late-output' });
+		const lease = producers.register(output, 1);
+		const original = (
+			values as unknown as { writeInternal: (...args: unknown[]) => Promise<unknown> }
+		).writeInternal.bind(values);
+		const gate = deferred<void>();
+		const entered = deferred<void>();
+		const spy = jest.spyOn(values as never, 'writeInternal' as never).mockImplementation((...args: unknown[]) => {
+			if ((args[0] as SampleProperty).id !== output.id) return original(...args) as never;
+			entered.resolve();
+			return gate.promise.then(() => original(...args)) as never;
+		});
+		const pending = values.publishDerived(output, lease, 10, { ...publication(), sourceSamples: [incorporated] });
+		await entered.promise;
+		await report(20); // A same-millisecond/equal-valued acceptance supersedes the captured input.
+		gate.resolve();
+		await pending;
+		expect(producers.read(output.id).producer.quality).toBe('unavailable');
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+		spy.mockRestore();
+	});
+
+	it('rejects ambiguous singular/plural, duplicates, missing protective lineage and cycles', async () => {
+		await report(20);
+		const leaf = values.captureIncorporatedSample(property);
+		const output = Object.assign(new SampleProperty(), property, { id: 'ambiguous-output' });
+		const lease = producers.register(output, 1);
+		await values.publishDerived(output, lease, 10, { ...publication(), sourceSample: leaf, sourceSamples: [leaf] });
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+		await values.publishDerived(output, lease, 10, { ...publication(), sourceSamples: [leaf, leaf] });
+		expect(values.readQualifiedSample(output, 10000)).toBeNull();
+		await values.publishDerived(output, lease, 10, publication()); // Ordinary legacy display remains supported.
+		expect(values.captureIncorporatedSample(output)).toBeNull(); // But cannot supply protective lineage.
+		const cycle = { ...leaf, sources: [leaf] };
+		expect(values.incorporatedEvidenceCurrent([cycle])).toBe(false);
+	});
 });

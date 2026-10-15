@@ -2,6 +2,7 @@ import { Check, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn, Pri
 
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 
+import { VirtualDewPointConfigEntity, VirtualDewPointSourceEntity } from './virtual-dew-point.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from './virtual-transform.entity';
 
 export enum VirtualAggregateOperator {
@@ -202,6 +203,8 @@ export class VirtualLightGroupBindingEntity {
 }
 
 export const VIRTUAL_PRODUCER_ENTITIES = [
+	VirtualDewPointConfigEntity,
+	VirtualDewPointSourceEntity,
 	VirtualTransformConfigEntity,
 	VirtualTransformSourceEntity,
 	VirtualGraphRevisionEntity,

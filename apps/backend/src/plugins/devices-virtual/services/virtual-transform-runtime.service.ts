@@ -426,7 +426,14 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 				else {
 					result.value = computed.value;
 					result.quality = 'good';
-					result.expiresAt = new Date(sample.sampledAt.getTime() + config.maximumAgeSeconds * 1000);
+					result.expiresAt = new Date(
+						Math.min(
+							sample.sampledAt.getTime() + config.maximumAgeSeconds * 1000,
+							this.producers.readDiagnosticState(sample.propertyId)?.producer.expiresAt
+								? Date.parse(this.producers.readDiagnosticState(sample.propertyId).producer.expiresAt)
+								: Infinity,
+						),
+					);
 				}
 			}
 
@@ -438,9 +445,7 @@ export class VirtualTransformRuntimeService implements OnApplicationBootstrap, O
 				evaluation,
 				result,
 				now,
-				sample?.acceptanceGeneration === undefined
-					? undefined
-					: { propertyId: sample.propertyId, acceptanceGeneration: sample.acceptanceGeneration },
+				source && sample ? (this.values.captureIncorporatedSample(source) ?? undefined) : undefined,
 			);
 		}
 		const retainedSources = new Set(Array.from(this.freshBarriers.values(), (barrier) => barrier.sourceId));

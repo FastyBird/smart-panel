@@ -100,6 +100,7 @@ export interface ThermostatActuationAdapter<Qualification> {
 		claim: VirtualThermostatActuatorClaimEntity,
 		qualification: Qualification | null,
 		isAdmitted: () => boolean,
+		dispatch?: { readonly commandId: string },
 	): Promise<ThermostatActuationResult>;
 	/** Only tested ordered/correlated or cancellation barriers may return proof; RPC acceptance is insufficient. */
 	reconcile(

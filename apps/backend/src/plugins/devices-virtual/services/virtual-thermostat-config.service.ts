@@ -1,3 +1,4 @@
+import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import { DataSource, EntityManager, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -36,6 +37,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import {
 	ThermostatSetting,
@@ -47,6 +49,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
+import { ThermostatCoolingDependencyService } from './thermostat-cooling-dependency.service';
 import {
 	resolveThermostatProtectionSource,
 	validateProtectionConsumerIndex,
@@ -86,6 +89,10 @@ export class VirtualThermostatConfigService {
 		private readonly values: PropertyValueService,
 		@Optional() private readonly resolver: VirtualTransformResolver = new VirtualTransformResolver(),
 	) {}
+
+	private coolingDependencies(): ThermostatCoolingDependencyService {
+		return new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims);
+	}
 
 	async configure(controllerId: string, dto: ConfigureVirtualThermostatDto) {
 		// Revoke captured ON authority synchronously, before lock acquisition or any validation I/O.
@@ -140,6 +147,8 @@ export class VirtualThermostatConfigService {
 		await manager.save(prepared.settings);
 		await manager.save(prepared.actuators);
 		await manager.save(ThermostatMemberProtectionEntity, prepared.protections);
+		if (prepared.coolingDependencies.length)
+			await manager.save(ThermostatCoolingDependencyEntity, prepared.coolingDependencies);
 	}
 	async describe(prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>) {
 		return this.model(
@@ -149,6 +158,7 @@ export class VirtualThermostatConfigService {
 			prepared.settings,
 			undefined,
 			prepared.protections,
+			prepared.coolingDependencies,
 		);
 	}
 	/** Capture the persisted response inside the creating transaction, before fallible publication. */
@@ -635,7 +645,7 @@ export class VirtualThermostatConfigService {
 					controllerId,
 					role: input.role,
 					physicalIdentity: identity,
-					providerProfile: old?.providerProfile ?? SHELLY_GUARDED_PROFILE,
+					providerProfile: input.role === 'cooling' && dto.policy.cooling ? REMOTE_DEW_POINT_PROFILE : old?.providerProfile ?? SHELLY_GUARDED_PROFILE,
 					providerProfileVersion: old?.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
 					sourcePropertyId: target.property.id,
 					sourcePropertyIdentity: target.property.id,
@@ -657,6 +667,25 @@ export class VirtualThermostatConfigService {
 			fail('Unresolved actuator reservation cannot be detached.');
 		if (new Set(actuators.map((claim) => claim.physicalIdentity)).size !== actuators.length)
 			fail('Branch members cannot own the same physical actuator more than once.');
+		const coolingDependencies: ThermostatCoolingDependencyEntity[] = [];
+		for (const claim of actuators) {
+			const input = dto.actuators.find((member) => member.sourcePropertyId === claim.sourcePropertyIdentity);
+			if (input.coolingProtection || (dto.policy.cooling && claim.role === 'cooling')) {
+				if (!dto.policy.cooling) fail('Cooling dependency requires the separate cooling policy.');
+				const dependency = await this.coolingDependencies().prepare(manager, claim, input.coolingProtection);
+				if (
+					sources.some(
+						(source) =>
+							source.role === 'ambient' &&
+							(source.sourcePropertyId === dependency.surfacePropertyId ||
+								source.physicalIdentity === `property:${dependency.physicalSurfaceIdentity}`),
+					)
+				)
+					fail('Ambient temperature cannot substitute for a cooled-surface probe.');
+				coolingDependencies.push(dependency);
+				claim.qualificationGeneration = uuid();
+			}
+		}
 		const protections: ThermostatMemberProtectionEntity[] = [];
 		const heating = actuators.filter((claim) => claim.role === 'heating');
 		for (const claim of actuators) {
@@ -783,7 +812,7 @@ export class VirtualThermostatConfigService {
 			configuredAt: new Date(),
 			releaseRequestedAt: previous?.releaseRequestedAt ?? null,
 		});
-		return { config, sources, actuators, settings, protections };
+		return { config, sources, actuators, settings, protections, coolingDependencies };
 	}
 	private settingContract(setting: ThermostatSetting) {
 		if (setting === 'locked')
@@ -802,10 +831,21 @@ export class VirtualThermostatConfigService {
 		settings: VirtualThermostatSettingEntity[],
 		manager?: EntityManager,
 		preparedProtections?: ThermostatMemberProtectionEntity[],
+		preparedCoolingDependencies?: ThermostatCoolingDependencyEntity[],
 	) {
 		const protections =
 			preparedProtections ?? (await (manager ?? this.dataSource.manager).find(ThermostatMemberProtectionEntity));
+		const coolingDependencies =
+			preparedCoolingDependencies ??
+			(this.dataSource.hasMetadata?.(ThermostatCoolingDependencyEntity)
+				? await (manager ?? this.dataSource.manager).find(ThermostatCoolingDependencyEntity)
+				: []);
+		const coolingService = this.coolingDependencies();
+		const coolingDiagnostics = this.dataSource.hasMetadata?.(ThermostatCoolingDependencyEntity)
+			? coolingService.read(await coolingService.load(config, actuators, coolingDependencies), Date.now())
+			: [];
 		const reasons = ['controller_runtime_unavailable'];
+		if (config.policy.cooling && coolingDiagnostics.some((d) => d.reasons.includes('cooling_remote_profile_installation_unqualified'))) reasons.push('cooling_remote_profile_installation_unqualified');
 		for (const claim of actuators) {
 			if (!claim.sourcePropertyId || !claim.sourceDeviceId) reasons.push(claim.role + '_actuator_missing');
 			if (!this.claims.qualification(claim, thermostatHasOpposedBranches(actuators)))
@@ -814,6 +854,20 @@ export class VirtualThermostatConfigService {
 		}
 		for (const source of sources) if (!source.sourcePropertyId) reasons.push(source.role + '_source_missing');
 		const modelClaim = (claim: VirtualThermostatActuatorClaimEntity) => ({
+			cooling_diagnostics: coolingDiagnostics.find((entry) => entry.claim === claim.id) ?? null,
+			cooling_protection:
+				coolingDependencies
+					.filter((row) => row.claimId === claim.id)
+					.map((row) => ({
+						schema_version: row.schemaVersion,
+						revision: row.revision,
+						purpose: row.purpose,
+						dew_point_property: row.dewPointPropertyId,
+						dew_point_identity: row.dewPointIdentity,
+						surface_property: row.surfacePropertyId,
+						surface_identity: row.surfaceIdentity,
+						maximum_age_seconds: row.maximumAgeSeconds,
+					}))[0] ?? null,
 			protection:
 				protections
 					.filter((row) => row.claimId === claim.id)

@@ -8,6 +8,7 @@ import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
 	AcceptedPropertySample,
 	DerivedPropertyPublication,
+	IncorporatedPropertySample,
 	PropertySampleEvidence,
 	QualifiedPropertySample,
 } from '../models/property-sample.model';
@@ -132,7 +133,9 @@ export class PropertyValueService {
 		private readonly valueLock: PropertyValueLockService,
 		@Optional() private readonly producers?: PropertyProducerRegistryService,
 		@Optional() private readonly events?: EventEmitter2,
-	) {}
+	) {
+		this.producers?.setEvidenceValidator((sources) => this.incorporatedEvidenceCurrent(sources));
+	}
 
 	/**
 	 * Write property value to storage
@@ -287,14 +290,10 @@ export class PropertyValueService {
 		const unavailable = this.valueSourceRegistry.unavailableReason(property);
 		const produced = key === null ? null : this.producers?.readDiagnosticState(key)?.producer;
 		const physical = key === null ? null : this.samples.get(key);
-		const incorporated = key === null ? null : this.producers?.readIncorporatedSample(key);
-		const source = incorporated ? this.samples.get(incorporated.propertyId) : null;
+		const incorporated = key === null ? null : this.producers?.readIncorporatedSamples(key);
 		const current =
 			!unavailable &&
-			(produced
-				? !incorporated ||
-					(source?.acceptanceGeneration === incorporated.acceptanceGeneration && source?.isCurrent?.() !== false)
-				: physical?.isCurrent?.() !== false);
+			(produced ? !incorporated || this.incorporatedEvidenceCurrent(incorporated) : physical?.isCurrent?.() !== false);
 		const timestamp = produced?.sampledAt ?? physical?.sampledAt.toISOString() ?? null;
 		const sampled = timestamp === null ? NaN : Date.parse(timestamp);
 		const clockValid =
@@ -381,16 +380,8 @@ export class PropertyValueService {
 				produced.producer.sampledAt === null
 			)
 				return null;
-			const incorporated = this.producers.readIncorporatedSample(key);
-			if (incorporated) {
-				const sourceSample = this.samples.get(incorporated.propertyId);
-				if (
-					!sourceSample ||
-					sourceSample.acceptanceGeneration !== incorporated.acceptanceGeneration ||
-					sourceSample.isCurrent?.() === false
-				)
-					return null;
-			}
+			const incorporated = this.producers.readIncorporatedSamples(key);
+			if (incorporated && !this.incorporatedEvidenceCurrent(incorporated)) return null;
 
 			const sampledAt = new Date(produced.producer.sampledAt);
 			if (
@@ -426,6 +417,46 @@ export class PropertyValueService {
 		return this.cloneSample(sample);
 	}
 
+	/** Captures the resolved physical acceptance or exact recursive producer publication. */
+	captureIncorporatedSample(property: ChannelPropertyEntity): IncorporatedPropertySample | null {
+		const key = this.resolveBestEffort(property, 'incorporated evidence');
+		if (!key || this.valueSourceRegistry.unavailableReason(property) !== null) return null;
+		if (this.producers?.owns(key)) return this.producers.captureEvidence(key);
+		const sample = this.samples.get(key);
+		if (!sample || sample.quality !== 'good' || sample.isCurrent?.() === false) return null;
+		return Object.freeze({ propertyId: key, acceptanceGeneration: sample.acceptanceGeneration });
+	}
+
+	/** Bounded, fail-closed walk. Duplicates include shared leaves: protective evidence must be unambiguous. */
+	incorporatedEvidenceCurrent(sources: readonly IncorporatedPropertySample[]): boolean {
+		const visited = new Set<string>();
+		const visit = (items: readonly IncorporatedPropertySample[], depth: number): boolean => {
+			if (!Array.isArray(items) || !items.length || items.length > 32 || depth > 16) return false;
+			for (const item of items) {
+				if (!item || visited.has(item.propertyId) || visited.size >= 256) return false;
+				visited.add(item.propertyId);
+				if (item.producer) {
+					if (!this.producers?.isPublicationCurrent(item) || !visit(item.sources, depth + 1)) return false;
+				} else {
+					const sample = this.samples.get(item.propertyId);
+					if (
+						item.sources ||
+						!Number.isSafeInteger(item.acceptanceGeneration) ||
+						!sample ||
+						sample.acceptanceGeneration !== item.acceptanceGeneration ||
+						sample.isCurrent?.() === false ||
+						sample.quality !== 'good' ||
+						sample.receivedAt.getTime() > Date.now() ||
+						sample.sampledAt.getTime() > Date.now()
+					)
+						return false;
+				}
+			}
+			return true;
+		};
+		return visit(sources, 0);
+	}
+
 	async publishDerived(
 		property: ChannelPropertyEntity,
 		lease: PropertyProducerLease,
@@ -433,6 +464,13 @@ export class PropertyValueService {
 		publication: DerivedPropertyPublication,
 		evaluation?: PropertyProducerEvaluation,
 	): Promise<PropertyValueWriteResult> {
+		// Reject ambiguous/unbounded lineage before recursively copying internal evidence.
+		if (
+			(publication.sourceSample && publication.sourceSamples) ||
+			(publication.sourceSamples && !this.incorporatedEvidenceCurrent(publication.sourceSamples)) ||
+			(publication.sourceSample && !this.incorporatedEvidenceCurrent([publication.sourceSample]))
+		)
+			return { changed: false, state: null };
 		// Capture evaluation evidence before queuing: callers cannot revise pending work in place.
 		publication = Object.freeze({
 			...publication,
@@ -440,7 +478,10 @@ export class PropertyValueService {
 			sampledAt: new Date(publication.sampledAt),
 			evaluatedAt: new Date(publication.evaluatedAt),
 			expiresAt: new Date(publication.expiresAt),
-			sourceSample: publication.sourceSample ? Object.freeze({ ...publication.sourceSample }) : undefined,
+			sourceSample: publication.sourceSample
+				? this.freezeIncorporatedEvidence([publication.sourceSample])[0]
+				: undefined,
+			sourceSamples: publication.sourceSamples ? this.freezeIncorporatedEvidence(publication.sourceSamples) : undefined,
 		});
 
 		const key = this.valueSourceRegistry.resolve(property);
@@ -476,6 +517,22 @@ export class PropertyValueService {
 				return { changed: false, state: this.producers.read(key) };
 			return { changed: result.changed, state: this.producers.read(key) };
 		});
+	}
+
+	private freezeIncorporatedEvidence(
+		sources: readonly IncorporatedPropertySample[],
+		depth = 0,
+	): readonly IncorporatedPropertySample[] {
+		if (!Array.isArray(sources) || !sources.length || sources.length > 32 || depth > 16) return Object.freeze([]);
+		return Object.freeze(
+			sources.map((source) =>
+				Object.freeze({
+					...source,
+					producer: source.producer ? Object.freeze({ ...source.producer }) : undefined,
+					sources: source.sources ? this.freezeIncorporatedEvidence(source.sources, depth + 1) : undefined,
+				}),
+			),
+		);
 	}
 
 	invalidateDerived(
