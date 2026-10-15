@@ -153,5 +153,15 @@
         "title": "Hinzufügen"
       }
     }
+  },
+  "coverRecovery": {
+    "warning": "Ein zuvor gesendeter Befehl kann auch nach der Wiederherstellung ausgeführt werden; die Bedienperson übernimmt die Verantwortung für die physische Rückgabe der Steuerung",
+    "load": "Kontext der ungeklärten Befehlsreihenfolge laden",
+    "reservation": "Reservierung {token}, begonnen {started}",
+    "acknowledgement": "Ich akzeptiere ausdrücklich die Unsicherheit und die Verantwortung für die physische Rückgabe der Steuerung",
+    "reason": "Begründung für die Übernahme der physischen Verantwortung (erforderlich)",
+    "accept": "Unsicherheit ausdrücklich übergehen",
+    "advisory": "Die ungeklärte Reihenfolge wurde durch eine Bedienperson übergangen. Dies belegt weder eine leere Warteschlange noch einen abgeschlossenen Befehl.",
+    "unavailable": "Wiederherstellung nicht verfügbar; aktuellen Kontext neu laden und Ablehnungsgrund prüfen"
   }
 }

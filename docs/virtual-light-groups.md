@@ -238,6 +238,35 @@ unavailable as commands in the current adapter; they can still display qualified
 providers, tag uncertainty, uncalibrated/unavailable position and missing bindings retain concrete refusal reasons.
 The backend rechecks readiness and all core evidence/ordering guards at execution.
 
+## Explicit operator recovery of uncertain cover ordering
+
+A possibly sent Shelly NG action with an unresolved RPC response keeps its physical motor blocked. Elapsed time,
+reconnection, fresh idle feedback and application restart do not clear that reservation. Readiness reports
+`cover_ordering_unresolved_operator_recovery_required`.
+
+An identified Owner or Admin can explicitly accept the uncertainty from the physical cover's Admin detail or its group
+member's recovery action. Previously sent actions may still execute after recovery; the operator accepts responsibility
+for physical handback. Load the current context, review the motor identity/reservation, select the acknowledgement and
+enter a reason. Neither displays nor ordinary users can use the recovery API. Recovery never sends OPEN, CLOSE, STOP,
+POSITION or TILT, and it never changes the original command's terminal outcome.
+
+The authorized GET/POST endpoint is
+`/plugins/devices-shelly-ng/devices/{deviceId}/channels/{channelId}/properties/{propertyId}/cover-ordering-recovery`.
+GET returns an expiring, actor-bound context with the exact unresolved token and mapping/source/configuration/connection
+revision. POST requires those values, `acknowledgement: accept_uncertain_physical_handback` and a nonblank reason of at
+most 500 characters. Active/prepared local dispatch, expired/stale context, moving/faulted/uncalibrated status, lost
+connection or a failed audit transaction refuses the override. A failed attempt requires a new context and explicit
+acknowledgement; no automatic retry or replay is performed.
+
+Recovery revokes old motor windows, queued/retry guards and the old session, then reads a distinct guarded native
+`Cover.GetStatus` on the current connection. An explicit calibrated/tag-capable open, closed or stopped response is only
+a current-condition prerequisite. **It does not prove upstream drain or completion.** Exact token deletion and the
+operator's actor/time, old identity/token, reason, observed condition and new override epoch are committed together in the
+migration-42 audit table. A fresh session is published behind the closed motor lane only on commit; rollback retires it.
+The result is labelled `operator_overridden_unresolved_ordering`, an advisory rather than command evidence. Subsequent
+commands still require their own current core admission and qualified action/readback proof. POSITION/TILT remain
+unavailable on the current qualified adapter.
+
 ## Scenes and room intent scope
 
 Admin scene action add/edit reads the same native group access/readiness metadata, including derived output properties

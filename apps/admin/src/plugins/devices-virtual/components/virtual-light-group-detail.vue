@@ -43,6 +43,12 @@
 					<span>
 						{{ configuration.reported_state?.members.find((state) => state.source_identity === member.source_identity)?.reasons?.join('; ') }}
 					</span>
+					<shelly-cover-recovery
+						v-if="recoveryTarget(member)"
+						v-bind="recoveryTarget(member)!"
+						:connected="connected"
+						@recovered="load"
+					/>
 				</li>
 			</ul>
 			<ul>
@@ -242,6 +248,7 @@ import { injectSockets, injectStoresManager, useBackend } from '../../../common'
 import type { IDevice } from '../../../modules/devices';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices/store/keys';
 import type { components } from '../../../openapi';
+import ShellyCoverRecovery from '../../devices-shelly-ng/components/shelly-cover-recovery.vue';
 import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';
 import { useLightGroupAuthoring } from '../composables/useLightGroupAuthoring';
 import { useLightGroupCommandOutcomes } from '../composables/useLightGroupCommandOutcomes';
@@ -343,6 +350,22 @@ const numericControls = computed(() => {
 		.map((categories) => categories.map((category) => available.find((control) => control.category === category)!));
 });
 const terminal = ref<components['schemas']['DevicesModuleDataCompositeCommandOutcome'][]>([]);
+const recoveryTarget = (member: GeneratedConfiguration['members'][number]) => {
+	if (
+		configuration.value?.profile !== 'cover' ||
+		!member.source_channel ||
+		!configuration.value.operations?.some((operation) =>
+			operation.members.some(
+				(entry) => entry.source_identity === member.source_identity && entry.reasons.includes('cover_ordering_unresolved_operator_recovery_required')
+			)
+		)
+	)
+		return null;
+	const channel = channels.findById(member.source_channel);
+	const device = channel ? devices.findById(channel.device) : null;
+	const command = member.bindings.find((binding) => binding.quantity === 'command')?.source_property;
+	return device?.type === 'devices-shelly-ng' && command ? { deviceId: device.id, channelId: member.source_channel, propertyId: command } : null;
+};
 const memberNames = computed(() =>
 	Object.fromEntries(
 		channels.findAll().map((channel) => [channel.id, `${devices.findById(channel.device)?.name ?? channel.device} / ${channel.name}`])

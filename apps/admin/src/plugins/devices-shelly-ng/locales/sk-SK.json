@@ -153,5 +153,15 @@
 				"title": "Pridať"
 			}
 		}
+	},
+	"coverRecovery": {
+		"warning": "Predtým odoslaný príkaz sa môže vykonať aj po obnovení; obsluha preberá zodpovednosť za fyzické odovzdanie ovládania",
+		"load": "Načítať kontext nevyriešeného poradia príkazov",
+		"reservation": "Rezervácia {token}, začatá {started}",
+		"acknowledgement": "Výslovne prijímam neistotu a zodpovednosť za fyzické odovzdanie ovládania",
+		"reason": "Dôvod prevzatia zodpovednosti za fyzické ovládanie (povinný)",
+		"accept": "Prijať výnimku z neistého poradia",
+		"advisory": "Obsluha potvrdila výnimku z nevyriešeného poradia. Nejde o dôkaz vyprázdnenia frontu ani dokončenia príkazu.",
+		"unavailable": "Obnovenie nie je dostupné; načítajte aktuálny kontext a skontrolujte dôvod odmietnutia"
 	}
 }
