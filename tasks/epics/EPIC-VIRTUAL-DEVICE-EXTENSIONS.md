@@ -16,8 +16,14 @@ The user explicitly selected both Home Assistant climate and Zigbee2MQTT native-
 
 ## Delivery tasks
 
-Each row becomes one tracked issue and may require several reviewable PRs. Checkboxes mean merged, tested software,
-not candidate code or installed qualification. A child closes only after its entire acceptance is satisfied.
+Rows track independently verifiable acceptance, not one PR per issue. The user prefers fewer, larger cohesive PRs
+because CodeRabbit provides one review per hour. Assemble related issue work and its tests/documentation into a shared
+delivery PR after local implementation and independent review. The first combined delivery is PR #1464, covering the
+plan plus VD3-1 and VD3-4. Keep it draft until both implementations and composed checks are ready. Split later work only
+where dependency, compatibility or the actual reviewer file limit requires a separate batch.
+
+Checkboxes mean merged, tested software, not candidate code or installed qualification. A child closes only after its
+entire acceptance is satisfied, even when its PR also closes other issues.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |

@@ -184,6 +184,13 @@ lanes each have one writer while their contracts change. Stabilize backend contr
 Use medium-effort implementation agents for bounded slices and independent higher-effort review for concurrency,
 ownership, transport and protective-policy changes. Do not introduce dependencies without a demonstrated need.
 
+Delivery uses fewer, larger cohesive PRs rather than one PR per issue, honoring the user's one-review-per-hour
+CodeRabbit allowance. Assemble independently checked local commits from related tasks, run composed checks and update
+the PR description before requesting review. Keep an assembling batch draft to avoid consuming reviews on unfinished
+increments. The first batch reuses PR #1464 for this plan, weighted aggregates (VD3-1) and switch/outlet group profiles
+(VD3-4). Later batch boundaries follow actual dependencies and reviewer file limits; issue-level acceptance remains
+independent. Do not merge the planning-only head in place of the combined implementation.
+
 Each delivery PR requires exact-head green CI and a completed nonblocking CodeRabbit main summary, or explicit operator
 approval. Rate-limited/skipped SUCCESS is not review approval; retry once after the stated quota deadline and dedupe.
 Every capability needs named acceptance cases, incremental upgrade coverage, user documentation and a clear unsupported
