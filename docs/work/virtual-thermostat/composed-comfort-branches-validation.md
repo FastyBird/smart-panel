@@ -30,14 +30,33 @@ cleanly were retained from both accepted implementations.
 
 ## New composed interaction coverage
 
-The runtime suite adds three parallel-group scenarios: override expiry, explicit OFF and committed manual settings
-while one ON waits at the transport final-send guard and its sibling may already be running. Each scenario verifies
-one shared decision, two durable ON journal identities, cancellation of the queued leaf, sibling release, retention
-of both journal identities and eventual all-leaf drainage. Expiry uses a new evaluation for release proof bound to
-its newly persisted configuration revision. Existing tests retain all-opposed fresh OFF/last-OFF timing, late ON,
+The runtime suite adds three parallel-group scenarios: override expiry, explicit OFF and manual settings.
+Independent review found that the initial sibling-OFF assertion could match startup reconciliation and that its
+manual/OFF changes edited the config entity directly. Those assertions did not establish the claimed command-path
+and post-mutation release coverage; the reviewed cases replace that weaker evidence.
+
+Each scenario now waits on explicit transport promises proving that the first leaf entered its queued ON gate and
+that the sibling actually sent ON and published ON feedback. Before mutation it asserts two durable ON journals
+with the same decision revision, a `dispatching` queued journal, a settled `accepted` sibling ON journal without a release proof,
+sibling ON feedback and its latest ON send, and no
+ON send from the queued leaf. It records `sentTargets.length` immediately before mutation, then requires a **new**
+sibling OFF in the slice after that boundary. Startup OFF cannot satisfy this assertion. The queued leaf must never
+send ON, its exact prepared journal must finish cancelled, and the sibling's exact prepared journal must finish
+confirmed with a nonempty qualified drainage proof. Both identities remain in the durable journal, with no pending ON diagnostics.
+
+Manual and OFF mutations use the real `VirtualThermostatConfigService.command()` with persisted virtual local
+properties, real `VirtualThermostatSettingEntity` registrations and matching contract fingerprints. The manual case
+commands the registered heating setpoint from a selected comfort preset with no temporary override and verifies
+that selection clears while the new setpoint persists. The OFF case commands registered `heating_enabled = false`
+and verifies user OFF while preserving its active temporary override. The property value service and physical
+transport remain controlled test doubles; this is the real configuration command path, not an end-to-end
+`PropertyCommandService` test or hardware evidence.
+
+Expiry advances the comfort clock to its exact deadline and uses a new evaluation for release proof bound to its
+newly persisted configuration revision. Existing tests retain all-opposed fresh OFF/last-OFF timing, late ON,
 partial capacity, missing members, restart and release ownership coverage.
 
-## Local validation
+## Initial integration validation (head `8c4f794a03df341f4a2076aec89d84e6499cf353`)
 
 The expanded backend command is:
 
@@ -47,7 +66,8 @@ pnpm exec jest --runInBand --testPathPatterns='virtual-thermostat|thermostat-own
 
 Commands run in this integration clone, with Jest `--runInBand`, Vitest `--maxWorkers=2` and Flutter
 `--concurrency=2`. The source tree under test includes the semantic resolutions and new interaction cases above;
-individual source-branch results are not counted as composed passes.
+individual source-branch results are not counted as composed passes. The initial interaction result is superseded
+by the strengthened review follow-up below; unchanged Admin/Panel and other earlier checks remain historical context.
 
 - Expanded backend thermostat runtime/comfort/config/claims/installation/ownership/model and actual Shelly
   HTTP/RPC guard/session suites: 20 suites, 317 tests passed (`/tmp/vd-composed-backend-final.log`).
@@ -71,6 +91,24 @@ individual source-branch results are not counted as composed passes.
 The first broad backend run exposed the legacy fixture's missing migration 39; it was corrected as described above.
 A first new expiry assertion required a subsequent current-revision evaluation for qualified drainage, matching the
 existing conservative proof fence. Neither failure was hidden or counted as a pass.
+
+## Independent-review test correction
+
+This follow-up changes only `virtual-thermostat-runtime.service.spec.ts` and this evidence record. No production,
+migration, generated-contract, Admin or Panel code changes were needed; no production integration fault was found.
+The three strengthened interaction cases passed (`/tmp/vd-composed-review-interactions-final.log`), and the focused
+runtime/config/comfort suites passed **3 suites / 117 tests** (`/tmp/vd-composed-review-focused.log`). Scoped test
+ESLint, Prettier and backend `tsc --noEmit` passed (`/tmp/vd-composed-review-lint.log`,
+`/tmp/vd-composed-review-format-check.log`, `/tmp/vd-composed-review-types.log`). Unchanged Admin/Panel checks were
+not rerun for this correction. The parent handoff records the final commit and committed-head focused log.
+
+```sh
+pnpm exec jest --runInBand src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts --testNamePattern='fences a queued parallel leaf'
+pnpm exec jest --runInBand src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts src/plugins/devices-virtual/services/virtual-thermostat-config.integration.spec.ts src/plugins/devices-virtual/services/virtual-thermostat-comfort.integration.spec.ts
+pnpm exec eslint src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts
+pnpm exec prettier src/plugins/devices-virtual/services/virtual-thermostat-runtime.service.spec.ts --check
+pnpm exec tsc --noEmit
+```
 
 ## Remaining acceptance boundary
 

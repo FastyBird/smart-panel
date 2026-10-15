@@ -50,6 +50,7 @@ import {
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
+	VirtualThermostatSettingEntity,
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
@@ -60,6 +61,7 @@ import { VirtualProducerConfigService } from './virtual-producer-config.service'
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
+import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
@@ -76,6 +78,9 @@ describe('virtual thermostat durable runtime', () => {
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
 	let comfort: VirtualThermostatComfortService;
+	let configs: VirtualThermostatConfigService;
+	let onSent: ((propertyId: string) => void) | null;
+	let onQueued: (() => void) | null;
 	let controllerId: string;
 	let sensorId: string;
 	let relayId: string;
@@ -136,6 +141,8 @@ describe('virtual thermostat durable runtime', () => {
 		onOutcome = 'accepted';
 		offOutcome = 'accepted';
 		onGate = null;
+		onSent = null;
+		onQueued = null;
 		offGate = null;
 		beforeProof = null;
 		reconciledCommandIds.length = 0;
@@ -277,6 +284,13 @@ describe('virtual thermostat durable runtime', () => {
 		sample(relayId, false);
 		producers = new PropertyProducerRegistryService(events);
 		values = {
+			write: jest.fn((property: ChannelPropertyEntity, value: number | boolean) => {
+				sample(property.id, value);
+				return Promise.resolve();
+			}),
+			readLatest: jest.fn((property: ChannelPropertyEntity) =>
+				Promise.resolve(Object.assign(new PropertyValueState(), { value: samples.get(property.id)?.value })),
+			),
 			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) =>
 				unavailableMembers.has(property.id) ? null : (samples.get(property.id) ?? null),
 			),
@@ -328,7 +342,10 @@ describe('virtual thermostat durable runtime', () => {
 			canReconcile: () => true,
 			send: async (target, _claim, _qualification, isAdmitted) => {
 				actuationAttempts.push(target.value === true);
-				if (target.property.id === relayId && target.value === true && onGate !== null) await onGate;
+				if (target.property.id === relayId && target.value === true && onGate !== null) {
+					onQueued?.();
+					await onGate;
+				}
 				if (target.value === false && offGate !== null) await offGate;
 				if (!isAdmitted() && !(target.value === true && allowLateOn))
 					return { outcome: 'refused' as const, reasons: ['revoked'] };
@@ -339,6 +356,7 @@ describe('virtual thermostat durable runtime', () => {
 				sentTargets.push({ propertyId: target.property.id, on: target.value as boolean });
 				if (target.value !== true || target.property.id !== acceptedWithoutFeedback)
 					sample(target.property.id, target.value as boolean);
+				if (target.value === true) onSent?.(target.property.id);
 				if (target.property.id === relayId && target.value === true && afterOnGate !== null) await afterOnGate;
 				if (outcome === 'unknown') return { outcome, outputConfirmed: false, pendingOnDrained: false };
 				return {
@@ -378,6 +396,14 @@ describe('virtual thermostat durable runtime', () => {
 				return () => graphValidated && generation === graphGeneration;
 			},
 		} as unknown as VirtualDependencyGraphService;
+		configs = new VirtualThermostatConfigService(
+			database,
+			new DeviceStructureLockService(),
+			new VirtualDependencyGraphService(database),
+			claims,
+			events,
+			values,
+		);
 		comfort = new VirtualThermostatComfortService(
 			database,
 			new DeviceStructureLockService(),
@@ -1535,10 +1561,47 @@ describe('virtual thermostat durable runtime', () => {
 		},
 	);
 
+	const registeredHeatingCommand = async (setting: 'heating_setpoint' | 'heating_enabled') => {
+		const channelId = uuid(),
+			propertyId = uuid();
+		await database.manager.insert(VirtualChannelEntity, {
+			id: channelId,
+			name: 'Heating settings',
+			category: ChannelCategory.HEATER,
+			device: controllerId,
+		} as never);
+		await database.manager.insert(VirtualChannelPropertyEntity, {
+			id: propertyId,
+			channel: channelId,
+			identifier: setting,
+			category: setting === 'heating_setpoint' ? PropertyCategory.TEMPERATURE : PropertyCategory.ON,
+			dataType: setting === 'heating_setpoint' ? DataTypeType.FLOAT : DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+			valueOrigin: VirtualValueOrigin.LOCAL,
+		} as never);
+		const property = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+			where: { id: propertyId },
+			relations: ['channel', 'channel.device'],
+		});
+		const channel = property.channel as ChannelEntity,
+			device = channel.device as DeviceEntity;
+		await database.manager.insert(VirtualThermostatSettingEntity, {
+			propertyId,
+			controllerId,
+			setting,
+			contractFingerprint: thermostatPropertyContract(property, channel, device),
+		});
+		return { property, channel, device };
+	};
+
 	it.each(['override expiry', 'explicit OFF', 'manual configuration'] as const)(
 		'fences a queued parallel leaf and drains every journal after %s',
 		async (change) => {
 			const sibling = await addMandatoryMember();
+			const commandTarget =
+				change === 'override expiry'
+					? null
+					: await registeredHeatingCommand(change === 'explicit OFF' ? 'heating_enabled' : 'heating_setpoint');
 			runtime.request(controllerId);
 			await settle();
 			await configureComfort();
@@ -1546,6 +1609,14 @@ describe('virtual thermostat durable runtime', () => {
 			let resumeOn!: () => void;
 			onGate = new Promise<void>((resolve) => {
 				resumeOn = resolve;
+			});
+			const relayQueued = new Promise<void>((resolve) => {
+				onQueued = resolve;
+			});
+			const siblingEnergized = new Promise<void>((resolve) => {
+				onSent = (propertyId) => {
+					if (propertyId === sibling) resolve();
+				};
 			});
 			const now = Date.now();
 			jest.spyOn(Date, 'now').mockReturnValue(now);
@@ -1560,24 +1631,43 @@ describe('virtual thermostat durable runtime', () => {
 				);
 			}
 			await waitForOnJournal();
+			await Promise.all([relayQueued, siblingEnergized]);
 			await runtime.flush();
 			const prepared = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(prepared).toHaveLength(2);
 			expect(new Set(prepared.map((command) => command.decisionRevision)).size).toBe(1);
+			const queuedClaim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				sourcePropertyId: relayId,
+			});
+			expect(prepared.find((command) => command.claimId === queuedClaim.id).status).toBe('dispatching');
+			const siblingJournal = prepared.find((command) => command.claimId !== queuedClaim.id);
+			await (runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.get(siblingJournal.id);
+			expect(
+				await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: siblingJournal.id }),
+			).toMatchObject({ status: 'accepted', proofId: null });
+			expect(samples.get(sibling)?.value).toBe(true);
+			expect(sentTargets.filter((send) => send.propertyId === sibling).at(-1)).toEqual({
+				propertyId: sibling,
+				on: true,
+			});
+			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			const mutationBoundary = sentTargets.length;
 			if (change === 'override expiry') {
 				jest.spyOn(Date, 'now').mockReturnValue(now + 1000);
 			} else {
-				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-				if (change === 'explicit OFF') {
-					config.requestedMode = 'off';
-					config.comfort.user_off = true;
+				await expect(
+					configs.command([{ ...commandTarget, value: change === 'explicit OFF' ? false : 21 }]),
+				).resolves.toBe(true);
+				const committed = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				if (change === 'manual configuration') {
+					expect(committed.policy.heatingSetpoint).toBe(21);
+					expect(committed.comfort.selected_preset).toBeNull();
+					expect(committed.comfort.temporary_override).toBeNull();
 				} else {
-					config.policy.heatingSetpoint = 21;
-					config.comfort.selected_preset = null;
+					expect(committed.requestedMode).toBe('off');
+					expect(committed.comfort.user_off).toBe(true);
+					expect(committed.comfort.temporary_override.status).toBe('active');
 				}
-				config.revision++;
-				await database.manager.save(config);
-				events.emit('devices-virtual.thermostat.config.changed', controllerId);
 			}
 			resumeOn();
 			onGate = null;
@@ -1586,10 +1676,17 @@ describe('virtual thermostat durable runtime', () => {
 			runtime.request(controllerId);
 			await settle();
 			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
-			expect(sentTargets.some((send) => send.propertyId === sibling && !send.on)).toBe(true);
+			expect(sentTargets.slice(mutationBoundary)).toContainEqual({ propertyId: sibling, on: false });
 			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(retained.map((command) => command.id).sort()).toEqual(prepared.map((command) => command.id).sort());
-			expect(retained.every((command) => ['confirmed', 'cancelled'].includes(command.status))).toBe(true);
+			expect(retained.find((command) => command.claimId === queuedClaim.id).status).toBe('cancelled');
+			expect(retained.find((command) => command.claimId !== queuedClaim.id).status).toBe('confirmed');
+			expect(retained.find((command) => command.id === siblingJournal.id).proofId).toBeTruthy();
+			if (change === 'override expiry') {
+				const expired = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				expect(expired.comfort.temporary_override.status).toBe('expired');
+				expect(expired.revision).toBeGreaterThan(prepared[0].configurationRevision);
+			}
 			expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => !branch.pending_on)).toBe(true);
 		},
