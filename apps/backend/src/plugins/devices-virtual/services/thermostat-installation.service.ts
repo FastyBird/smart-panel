@@ -43,11 +43,27 @@ export class ThermostatInstallationService {
 		setup: ThermostatGuardSetup | ThermostatMemberGuardSetup,
 		attestations: ThermostatOperatorAttestation[],
 		actorId: string,
+		authoringFence?: {
+			configurationRevision?: number;
+			claimRevision?: number;
+			qualificationGeneration?: string | null;
+		},
 	): Promise<void> {
 		const release = this.beginMutation(claimId);
 		try {
 			await this.lock.runExclusive(async () => {
 				const binding = await this.bindings.resolve(this.dataSource.manager, claimId);
+				if (
+					authoringFence &&
+					((authoringFence.configurationRevision !== undefined &&
+						authoringFence.configurationRevision !== binding.config.revision) ||
+						(authoringFence.claimRevision !== undefined && authoringFence.claimRevision !== binding.claim.revision) ||
+						('qualificationGeneration' in authoringFence &&
+							authoringFence.qualificationGeneration !== binding.claim.qualificationGeneration))
+				)
+					throw new ConflictException(
+						'Reviewed configuration, claim or recovery generation changed; reload installation context.',
+					);
 				const resolvedSetup = resolveInstallationSetup(setup, binding);
 				validateThermostatInstallation(resolvedSetup, attestations, binding);
 				const prior = await this.dataSource.manager.findOneBy(ThermostatInstallationEntity, { claimId });

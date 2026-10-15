@@ -164,6 +164,25 @@ export class ThermostatMemberGuardSetupDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginStageThermostatInstallation' })
 export class StageThermostatInstallationDto {
+	@ApiPropertyOptional({ description: 'Current controller revision reviewed by the authoring client' })
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	expected_configuration_revision?: number;
+	@ApiPropertyOptional({ description: 'Current claim revision reviewed by the authoring client' })
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	expected_claim_revision?: number;
+	@ApiPropertyOptional({
+		type: String,
+		nullable: true,
+		description: 'Current recovery qualification generation reviewed by the authoring client',
+	})
+	@IsOptional()
+	@IsString()
+	expected_qualification_generation?: string | null;
+
 	@ApiProperty() @IsInt() @Min(0) expected_revision: number;
 	@ApiPropertyOptional({
 		type: ThermostatMemberGuardSetupDto,

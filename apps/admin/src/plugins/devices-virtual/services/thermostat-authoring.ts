@@ -1,4 +1,11 @@
-import { SpacesModuleClimateIntentMode, type components } from '../../../openapi';
+import { toRaw } from 'vue';
+
+import {
+	DevicesVirtualPluginThermostatMemberProtectionKind,
+	DevicesVirtualPluginThermostatMemberProtectionSchema_version,
+	SpacesModuleClimateIntentMode,
+	type components,
+} from '../../../openapi';
 
 export type ThermostatConfiguration = components['schemas']['DevicesVirtualPluginDataThermostatConfiguration'];
 export type ThermostatRequest = components['schemas']['DevicesVirtualPluginConfigureThermostat'];
@@ -6,7 +13,15 @@ export type ThermostatSource = ThermostatRequest['sources'][number];
 export type ThermostatActuator = ThermostatRequest['actuators'][number];
 export type ThermostatSetting = ThermostatRequest['settings'][number];
 
+export type ThermostatClaim = ThermostatConfiguration['actuators'][number];
+export type ThermostatMemberDraft = Omit<ThermostatActuator, 'lease_seconds' | 'source_property'> & {
+	source_property: string | null;
+	lease_seconds: number | null;
+	retained?: ThermostatClaim;
+};
+
 export interface ThermostatDraft {
+	display_floor_claim?: string | null;
 	requested_mode: ThermostatRequest['requested_mode'];
 	policy: {
 		heatingSetpoint: number | null;
@@ -32,7 +47,7 @@ export interface ThermostatDraft {
 	contact_opening_ms: number | null;
 	contact_closing_ms: number | null;
 	sources: (Omit<ThermostatSource, 'maximum_age_seconds'> & { maximum_age_seconds: number | null })[];
-	actuators: (Omit<ThermostatActuator, 'lease_seconds'> & { lease_seconds: number | null })[];
+	actuators: ThermostatMemberDraft[];
 	settings: ThermostatSetting[];
 }
 
@@ -57,9 +72,10 @@ export const emptyThermostatDraft = (): ThermostatDraft => ({
 });
 
 export const draftFromConfiguration = (config: ThermostatConfiguration): ThermostatDraft => ({
+	display_floor_claim: config.display_floor_claim ?? null,
 	requested_mode: config.requested_mode,
-	policy: structuredClone(config.policy),
-	heuristic: config.heuristic ? structuredClone(config.heuristic) : null,
+	policy: structuredClone(toRaw(config.policy)),
+	heuristic: config.heuristic ? structuredClone(toRaw(config.heuristic)) : null,
 	contact_opening_ms: config.contact_opening_ms,
 	contact_closing_ms: config.contact_closing_ms,
 	sources: config.sources.map((source) => ({
@@ -72,8 +88,19 @@ export const draftFromConfiguration = (config: ThermostatConfiguration): Thermos
 	})),
 	actuators: config.actuators.map((claim) => ({
 		role: claim.role,
-		source_property: claim.source_property ?? '',
+		source_property: claim.source_property ?? claim.source_identity,
 		lease_seconds: claim.lease_seconds,
+		retained: structuredClone(toRaw(claim)),
+		...(claim.protection
+			? {
+					protection: {
+						schema_version: DevicesVirtualPluginThermostatMemberProtectionSchema_version.Value1,
+						kind: DevicesVirtualPluginThermostatMemberProtectionKind.local_floor,
+						source_property: claim.protection.source_property,
+						maximum_age_seconds: claim.protection.maximum_age_seconds,
+					},
+				}
+			: {}),
 	})),
 	settings: config.settings.map((setting) => ({ ...setting })),
 });
@@ -105,24 +132,49 @@ export const buildThermostatRequest = (
 		errors.push('Enter both contact debounce intervals in milliseconds.');
 	}
 	if (draft.sources.filter((source) => source.role === 'ambient').length !== 1) errors.push('Configure exactly one ambient source.');
-	if (draft.sources.filter((source) => source.role === 'floor').length !== (policy.floor ? 1 : 0)) errors.push('Floor protection requires exactly one independent floor source.');
+	if (draft.sources.some((source) => source.role === 'floor') && !policy.floor)
+		errors.push('Retain a common floor policy for the existing global guard.');
+	if (
+		policy.floor &&
+		!draft.sources.some((source) => source.role === 'floor') &&
+		!(
+			draft.actuators.some((member) => member.role === 'heating') &&
+			draft.actuators.filter((member) => member.role === 'heating').every((member) => !!member.protection)
+		)
+	)
+		errors.push('Floor protection requires a global source or an explicit local guard for every heating member.');
 	if (draft.sources.filter((source) => source.role === 'contact').length > 1) errors.push('Configure at most one contact source.');
 	for (const source of draft.sources) {
 		if (!whole(source.maximum_age_seconds) || source.maximum_age_seconds < 1) errors.push(`Enter a positive maximum age for ${source.role}.`);
 		if (!source.source_property && !source.id) errors.push(`Select a ${source.role} source.`);
-		if (source.role === 'contact' && (source.open_value == null || source.closed_value == null)) errors.push('Map both contact open and closed values.');
+		if (source.role === 'contact' && (source.open_value == null || source.closed_value == null))
+			errors.push('Map both contact open and closed values.');
 		if (source.role === 'contact' && source.open_value === source.closed_value) errors.push('Contact open and closed values must differ.');
 	}
 	if (!draft.actuators.length) errors.push('Select at least one physical actuator.');
 	for (const role of ['heating', 'cooling'] as const) {
-		if (draft.actuators.filter((actuator) => actuator.role === role).length !== (finite(policy[`${role}Setpoint`]) ? 1 : 0))
+		if (draft.actuators.some((actuator) => actuator.role === role) !== finite(policy[`${role}Setpoint`]))
 			errors.push(`${role} actuator must match its comfort setpoint branch.`);
 	}
+	if (draft.actuators.length > 8) errors.push('At most eight mandatory members, including retained claims, are allowed.');
+	if (new Set(draft.actuators.map((member) => member.source_property)).size !== draft.actuators.length)
+		errors.push('Each physical member must be distinct.');
+	const parallelHeating = draft.actuators.filter((member) => member.role === 'heating').length > 1;
 	for (const actuator of draft.actuators) {
+		if (actuator.retained && !actuator.retained.source_property)
+			errors.push(`Repair retained claim ${actuator.retained.id}; its ownership is preserved.`);
+		if (actuator.role === 'heating' && (parallelHeating || actuator.protection)) {
+			if (!policy.floor) errors.push('Enter the shared floor limit and hysteresis for local protection.');
+			if (!actuator.protection || (!actuator.protection.source_property && !actuator.retained?.protection))
+				errors.push('Every heating member requires an explicit local protective source.');
+			if (actuator.protection && (!whole(actuator.protection.maximum_age_seconds) || actuator.protection.maximum_age_seconds < 1))
+				errors.push('Enter a positive protective source maximum age.');
+		}
 		if (!actuator.source_property) errors.push(`Repair the ${actuator.role} actuator before saving.`);
 		if (!finite(actuator.lease_seconds) || actuator.lease_seconds <= 0) errors.push(`Enter a positive ${actuator.role} ON lease.`);
 	}
-	if (new Set(draft.settings.map((setting) => setting.setting)).size !== draft.settings.length) errors.push('Each local setting role may be registered once.');
+	if (new Set(draft.settings.map((setting) => setting.setting)).size !== draft.settings.length)
+		errors.push('Each local setting role may be registered once.');
 	if (draft.settings.some((setting) => !setting.property)) errors.push('Select a local property for each setting.');
 	if (errors.length) return { errors };
 	return {
@@ -131,13 +183,19 @@ export const buildThermostatRequest = (
 			schema_version: 1,
 			expected_revision: revision,
 			...(graphRevision === undefined ? {} : { expected_graph_revision: graphRevision }),
+			display_floor_claim: draft.display_floor_claim,
 			requested_mode: draft.requested_mode,
 			policy: policy as ThermostatRequest['policy'],
 			heuristic: draft.heuristic as ThermostatRequest['heuristic'],
 			contact_opening_ms: draft.contact_opening_ms as number,
 			contact_closing_ms: draft.contact_closing_ms as number,
 			sources: draft.sources as ThermostatSource[],
-			actuators: draft.actuators as ThermostatActuator[],
+			actuators: draft.actuators.map((member) => ({
+				role: member.role,
+				source_property: member.source_property,
+				lease_seconds: member.lease_seconds,
+				...(member.protection ? { protection: member.protection } : {}),
+			})) as ThermostatActuator[],
 			settings: draft.settings,
 		},
 	};

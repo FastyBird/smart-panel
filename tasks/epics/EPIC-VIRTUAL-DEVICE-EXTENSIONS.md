@@ -104,11 +104,13 @@ is recorded; software checkmarks do not establish installed safety or imply rela
 
 The provider-neutral mandatory-branch backend foundation is integrated locally on the merged PR #1465 base; see the
 [implementation and validation record](../../docs/work/virtual-thermostat/parallel-branches-validation.md).
-Migration 40 retains singleton claim/journal identities and unresolved ownership. Independent parent review of
-ownership/concurrency/protection, a separately reviewed per-member floor-protection design, and multi-member
-Admin/Panel authoring/diagnostics remain before alpha delivery. Current clients retain the single-member authoring
-flow and existing comfort controls; this integration adds no multi-member UI. Multi-Shelly floor-protected groups
-remain ineligible.
+Migration 40 retains singleton claim/journal identities and unresolved ownership. The composed foundation/comfort
+head `5cabef74eb9f914d6970e3cfd526df5a8c4f4608` passed independent local review, without publication.
+Per-member floor protection (migration 41) is being integrated with Admin member arrays, read-only source/setup
+context, diagnostics and fenced staging/recovery; see the [client integration record](../../docs/work/virtual-thermostat/member-client-validation.md).
+Its backend safety follow-up and fresh composed review remain open. Panel ordinary intents and all-member diagnostics
+are a separate coordinated local worker stage. Multi-Shelly groups require explicitly bound local guards, separately
+reviewed/staged member installations and actual qualification; no installed eligibility is supplied by these local changes.
 The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
 qualification is claimed by this backend slice.
 

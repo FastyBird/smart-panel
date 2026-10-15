@@ -337,6 +337,27 @@ describe('durable thermostat installation profiles', () => {
 		await db.destroy();
 		await rm(directory, { recursive: true, force: true });
 	});
+	it('rejects stale authoring configuration, claim and recovery generation without creating a staged record', async () => {
+		const binding = await bindings.resolve(db.manager, claim.id);
+		const currentFence = {
+			configurationRevision: binding.config.revision,
+			claimRevision: binding.claim.revision,
+			qualificationGeneration: binding.claim.qualificationGeneration,
+		};
+		for (const stale of [
+			{ ...currentFence, configurationRevision: currentFence.configurationRevision + 1 },
+			{ ...currentFence, claimRevision: currentFence.claimRevision + 1 },
+			{ ...currentFence, qualificationGeneration: 'stale-generation' },
+		]) {
+			await expect(profiles.stage(claim.id, 0, setup, attestations(), 'operator', stale)).rejects.toThrow(
+				'generation changed',
+			);
+			expect(await db.manager.count(ThermostatInstallationEntity)).toBe(0);
+		}
+		await profiles.stage(claim.id, 0, setup, [], 'operator', currentFence);
+		expect((await profiles.inspect(claim.id)).revision).toBe(1);
+	});
+
 	it('persists explicit attestation separately and restarts without trusting old observations', async () => {
 		await profiles.stage(claim.id, 0, setup, attestations(), 'operator');
 		await loader.verify(claim.id, 1, 'operator');

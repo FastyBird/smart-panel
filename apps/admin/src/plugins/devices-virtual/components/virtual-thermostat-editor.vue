@@ -1,5 +1,6 @@
 <template>
 	<el-card
+		v-if="canAuthor"
 		shadow="never"
 		class="mt-2"
 		data-test-id="virtual-thermostat-editor"
@@ -190,6 +191,12 @@
 				</div>
 			</el-form>
 			<el-divider content-position="left">Temperature and contact sources</el-divider>
+			<el-checkbox
+				v-if="configuration?.sources.some((entry) => entry.role === 'floor')"
+				v-model="removeLegacyFloor"
+			>
+				{{ memberLabel('removeLegacyGuard') }}
+			</el-checkbox>
 			<p class="text-sm">Select original-age-qualified sources. Floor is an independent Celsius protection input; contact is optional.</p>
 			<div
 				v-for="(source, index) in draft.sources"
@@ -204,6 +211,7 @@
 					<el-button
 						type="danger"
 						link
+						:disabled="source.role === 'floor' && !!configuration?.sources.some((entry) => entry.role === 'floor') && !removeLegacyFloor"
 						@click="draft.sources.splice(index, 1)"
 					>
 						Remove
@@ -256,48 +264,58 @@
 					Add contact
 				</el-button>
 			</div>
-			<el-divider content-position="left">Exclusive physical actuators</el-divider>
-			<div
-				v-for="(actuator, index) in draft.actuators"
-				:key="actuator.role"
-				class="border rounded p-3 mb-2"
+			<el-divider content-position="left">{{ memberLabel('members') }} · {{ draft.actuators.length }}/8</el-divider>
+			<p>{{ memberLabel('mandatoryHelp') }}</p>
+			<p>{{ memberLabel('nativeUnavailable') }}</p>
+			<section
+				v-for="role in [ThermostatActuatorRole.heating, ThermostatActuatorRole.cooling]"
+				:key="role"
 			>
-				<div class="flex items-center justify-between">
-					<strong>{{ actuator.role }}</strong>
-					<el-button
-						type="danger"
-						link
-						@click="draft.actuators.splice(index, 1)"
-					>
-						Remove
-					</el-button>
-				</div>
-				<thermostat-property-picker
-					v-model="actuator.source_property"
-					kind="actuator"
+				<h3>{{ role }}</h3>
+				<thermostat-member-card
+					v-for="(actuator, index) in draft.actuators.filter((member) => member.role === role)"
+					:key="actuator.retained?.id ?? `${role}-${index}`"
+					:member="actuator"
+					:parallel="draft.actuators.filter((member) => member.role === 'heating').length > 1"
+					:controller="deviceId"
+					:configuration-revision="configuration?.revision ?? 0"
+					:requested-limit="draft.policy.floor?.limit ?? null"
+					:disabled="busy"
+					:runtime="memberRuntime.value.value?.snapshot.branches.find((branch) => branch.claim === actuator.retained?.id) ?? null"
+					:setup-disabled="!!configuration && JSON.stringify(draft) !== JSON.stringify(draftFromConfiguration(configuration))"
+					:received-at="memberRuntime.value.value?.receivedAt ?? now"
+					:now="now"
+					@remove="draft.actuators.splice(draft.actuators.indexOf(actuator), 1)"
+					@changed="reload"
 				/>
-				<el-form-item
-					label="Qualified maximum ON lease (seconds)"
-					class="mt-2"
+				<el-button
+					:disabled="busy || draft.actuators.length >= 8"
+					@click="addActuator(role)"
 				>
-					<el-input-number
-						v-model="actuator.lease_seconds"
-						:controls="false"
+					{{ memberLabel('addMember') }} · {{ role }}
+				</el-button>
+			</section>
+			<el-form-item :label="memberLabel('displayFloor')">
+				<el-select
+					v-model="draft.display_floor_claim"
+					clearable
+				>
+					<el-option
+						v-for="member in draft.actuators.filter((member) => member.retained?.protection)"
+						:key="member.retained!.id"
+						:value="member.retained!.id"
+						:label="`${member.role} · ${member.retained!.physical_identity}`"
 					/>
-				</el-form-item>
-			</div>
-			<el-button
-				:disabled="draft.actuators.some((entry) => entry.role === 'heating')"
-				@click="addActuator(ThermostatActuatorRole.heating)"
-			>
-				Add heating
-			</el-button>
-			<el-button
-				:disabled="draft.actuators.some((entry) => entry.role === 'cooling')"
-				@click="addActuator(ThermostatActuatorRole.cooling)"
-			>
-				Add cooling
-			</el-button>
+				</el-select>
+			</el-form-item>
+			<details v-if="configuration?.released_actuators?.length">
+				<summary>{{ memberLabel('releasedHistory') }}</summary>
+				<pre
+					v-for="claim in configuration.released_actuators"
+					:key="claim.id"
+					>{{ JSON.stringify(claim, null, 2) }}</pre
+				>
+			</details>
 			<el-divider content-position="left">Owned local command settings</el-divider>
 			<p
 				v-if="create"
@@ -411,7 +429,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import {
 	ElAlert,
@@ -429,7 +448,8 @@ import {
 } from 'element-plus';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, injectSockets, useBackend } from '../../../common';
+import { useSession } from '../../../modules/auth/composables/useSession';
 import {
 	SpacesModuleClimateIntentMode,
 	DevicesVirtualPluginThermostatActuatorRole as ThermostatActuatorRole,
@@ -437,6 +457,7 @@ import {
 	DevicesVirtualPluginThermostatSourceRole as ThermostatSourceRole,
 	type operations,
 } from '../../../openapi';
+import { useThermostatMemberContext } from '../composables/use-thermostat-member-context';
 import { useThermostatPreviewGate } from '../composables/use-thermostat-preview-gate';
 import { DEVICES_VIRTUAL_PLUGIN_PREFIX } from '../devices-virtual.constants';
 import {
@@ -449,13 +470,64 @@ import {
 } from '../services/thermostat-authoring';
 import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
 
+import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
 import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
 
 const props = defineProps<{ deviceId?: string; create?: boolean }>();
 const emit = defineEmits<{ created: [deviceId: string] }>();
 const backend = useBackend();
+const sockets = injectSockets();
+let alive = true;
+const { profile } = useSession();
+const canAuthor = computed(() => ['owner', 'admin'].includes(profile.value?.role ?? ''));
+const { t } = useI18n();
+const memberLabel = (key: string) => t(`devicesVirtualPlugin.members.${key}`);
+const removeLegacyFloor = ref(false),
+	now = ref(Date.now());
 const configuration = ref<ThermostatConfiguration | null>(null);
+const memberRuntime = useThermostatMemberContext(
+	computed(() => (props.deviceId && configuration.value ? `${props.deviceId}:${configuration.value.revision}` : '')),
+	async (_, signal) => {
+		const { data, error } = await backend.client.GET('/plugins/devices-virtual/producers/thermostats/{id}/runtime', {
+			params: { path: { id: props.deviceId! } },
+			signal,
+		});
+		if (!data) throw new Error(JSON.stringify(error));
+		if (data.data.configuration_revision !== configuration.value?.revision) throw new Error('configuration_revision_changed');
+		return { snapshot: data.data, receivedAt: Date.now() };
+	}
+);
+const clock = setInterval(() => {
+	now.value = Date.now();
+}, 1000);
+const disconnectMembers = () => memberRuntime.invalidate();
+const refreshMembers = () => {
+	void memberRuntime.reload();
+};
+const memberHint = (event: { event: string; payload: unknown }) => {
+	if (
+		event.event === 'DevicesVirtualPlugin.Thermostat.RuntimeChanged' &&
+		event.payload &&
+		typeof event.payload === 'object' &&
+		'controller' in event.payload &&
+		event.payload.controller === props.deviceId
+	)
+		refreshMembers();
+};
+onMounted(() => {
+	sockets.on('event', memberHint);
+	sockets.on('connect', refreshMembers);
+	sockets.on('disconnect', disconnectMembers);
+});
+onBeforeUnmount(() => {
+	alive = false;
+	clearInterval(clock);
+	requestSequence++;
+	sockets.off('event', memberHint);
+	sockets.off('connect', refreshMembers);
+	sockets.off('disconnect', disconnectMembers);
+});
 const preview = ref<ThermostatConfiguration | null>(null);
 const draft = ref(emptyThermostatDraft());
 const name = ref('');
@@ -492,7 +564,15 @@ const previewGate = useThermostatPreviewGate(
 	}
 );
 const canSavePreview = previewGate.canSave;
-const validationErrors = computed(() => [...(props.create && !name.value.trim() ? ['Enter a thermostat name.'] : []), ...payload().errors]);
+const validationErrors = computed(() => [
+	...(props.create && !name.value.trim() ? ['Enter a thermostat name.'] : []),
+	...(configuration.value?.sources.some((source) => source.role === 'floor') &&
+	!draft.value.sources.some((source) => source.role === 'floor') &&
+	!removeLegacyFloor.value
+		? [memberLabel('removeLegacyGuard')]
+		: []),
+	...payload().errors,
+]);
 const modeNames = Object.values(SpacesModuleClimateIntentMode);
 const settingNames = Object.values(ThermostatSettingRole);
 type TrendKey = keyof NonNullable<typeof draft.value.heuristic>;
@@ -513,12 +593,13 @@ const path = `/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/ther
 const reload = async (): Promise<void> => {
 	if (props.create || !props.deviceId) return;
 	const sequence = ++requestSequence;
+	mutationBusy.value = false;
 	loading.value = true;
 	loadError.value = null;
 	previewGate.invalidate();
 	try {
 		const { data, error, response } = await backend.client.GET(path, { params: { path: { id: props.deviceId } } });
-		if (sequence !== requestSequence) return;
+		if (!alive || sequence !== requestSequence) return;
 		if (response.status === 404) {
 			configuration.value = null;
 			draft.value = emptyThermostatDraft();
@@ -545,7 +626,7 @@ const errorText = (error: unknown): string => {
 	return 'Thermostat request failed.';
 };
 const runPreview = async (): Promise<void> => {
-	if (mutationBusy.value) return;
+	if (mutationBusy.value || !canAuthor.value) return;
 	const result = payload();
 	if (!result.request) return;
 	const request = {
@@ -574,9 +655,12 @@ const runPreview = async (): Promise<void> => {
 	);
 };
 const save = async (): Promise<void> => {
-	if (!preview.value || !previewGate.canSave.value || busy.value) return;
+	if (!canAuthor.value || !preview.value || !previewGate.canSave.value || busy.value) return;
 	const result = payload();
 	if (!result.request) return;
+	const identity = props.deviceId,
+		ticket = ++requestSequence,
+		draftSignature = JSON.stringify(draft.value);
 	mutationBusy.value = true;
 	requestError.value = null;
 	try {
@@ -584,25 +668,28 @@ const save = async (): Promise<void> => {
 			const { data, error } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_VIRTUAL_PLUGIN_PREFIX}/producers/thermostats`, {
 				body: { device: creationGraph().device, configuration: result.request },
 			});
+			if (!alive || ticket !== requestSequence) return;
 			if (data) emit('created', data.data.device.id);
 			else requestError.value = errorText(error);
 			return;
 		}
 		const { data, error } = await backend.client.PUT(path, { params: { path: { id: props.deviceId! } }, body: result.request });
+		if (!alive || ticket !== requestSequence || identity !== props.deviceId) return;
 		if (data) {
 			configuration.value = data.data;
-			draft.value = draftFromConfiguration(data.data);
+			if (JSON.stringify(draft.value) === draftSignature) draft.value = draftFromConfiguration(data.data);
 			preview.value = null;
 		} else requestError.value = errorText(error);
 	} catch (error) {
-		requestError.value = errorText(error);
+		if (alive && ticket === requestSequence) requestError.value = errorText(error);
 	} finally {
-		mutationBusy.value = false;
+		if (alive && ticket === requestSequence) mutationBusy.value = false;
 	}
 };
 const requestRelease = async (): Promise<void> => {
 	const deviceId = props.deviceId;
-	if (!configuration.value || !deviceId) return;
+	if (!canAuthor.value || !configuration.value || !deviceId || busy.value) return;
+	const ticket = ++requestSequence;
 	mutationBusy.value = true;
 	requestError.value = null;
 	try {
@@ -610,18 +697,24 @@ const requestRelease = async (): Promise<void> => {
 			params: { path: { id: deviceId } },
 			body: { expected_revision: configuration.value.revision },
 		});
+		if (!alive || ticket !== requestSequence || deviceId !== props.deviceId) return;
 		if (data) {
 			configuration.value = data.data;
 			draft.value = draftFromConfiguration(data.data);
 			preview.value = null;
 		} else requestError.value = errorText(error);
 	} catch (error) {
-		requestError.value = errorText(error);
+		if (alive && ticket === requestSequence) requestError.value = errorText(error);
 	} finally {
-		mutationBusy.value = false;
+		if (alive && ticket === requestSequence) mutationBusy.value = false;
 	}
 };
 const toggleFloor = (enabled: string | number | boolean): void => {
+	if (
+		enabled !== true &&
+		(draft.value.actuators.some((member) => !!member.protection) || draft.value.sources.some((source) => source.role === 'floor'))
+	)
+		return;
 	draft.value.policy.floor = enabled === true ? { limit: null, recoveryHysteresis: null } : null;
 };
 const toggleTrend = (enabled: string | number | boolean): void => {
@@ -632,6 +725,7 @@ const addSource = (role: ThermostatSource['role']): void => {
 	draft.value.sources.push({ role, source_property: null, maximum_age_seconds: null });
 };
 const addActuator = (role: ThermostatActuatorRole): void => {
+	if (draft.value.actuators.length >= 8 || !canAuthor.value) return;
 	draft.value.actuators.push({ role, source_property: '', lease_seconds: null });
 };
 const addSetting = (): void => {

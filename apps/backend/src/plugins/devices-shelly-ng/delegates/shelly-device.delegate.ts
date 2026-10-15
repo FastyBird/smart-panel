@@ -404,6 +404,61 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		};
 	}
 
+	/** Read cached public switch metadata only; this never performs an RPC or changes output. */
+	captureThermostatSetupMetadata(componentId: number) {
+		const component = this.switches.get(componentId),
+			config = component?.config;
+		if (!this.connected || !this.rpcConnected || !config || !this.shelly.firmware.id) return null;
+		const allowed = [
+			'id',
+			'name',
+			'in_mode',
+			'in_locked',
+			'initial_state',
+			'auto_on',
+			'auto_on_delay',
+			'auto_off',
+			'auto_off_delay',
+			'autorecover_voltage_errors',
+			'input_id',
+			'power_limit',
+			'voltage_limit',
+			'undervoltage_limit',
+			'current_limit',
+			'reverse',
+		];
+		if (
+			Object.entries(config).some(
+				([key, value]) =>
+					!allowed.includes(key) ||
+					(value !== null && !['string', 'boolean', 'number'].includes(typeof value)) ||
+					(typeof value === 'number' && !Number.isFinite(value)),
+			)
+		)
+			return null;
+		if (
+			config.id !== componentId ||
+			typeof config.auto_on !== 'boolean' ||
+			typeof config.auto_off !== 'boolean' ||
+			!config.initial_state ||
+			!config.in_mode
+		)
+			return null;
+		const json = JSON.stringify(config),
+			firmware = this.shelly.firmware.id;
+		return {
+			device_hardware_id: this.shelly.id,
+			firmware,
+			switch_configuration_json: json,
+			isCurrent: () =>
+				this.connected &&
+				this.rpcConnected &&
+				this.switches.get(componentId) === component &&
+				JSON.stringify(component.config) === json &&
+				this.shelly.firmware.id === firmware,
+		};
+	}
+
 	public get id(): string {
 		return this.shelly.id;
 	}

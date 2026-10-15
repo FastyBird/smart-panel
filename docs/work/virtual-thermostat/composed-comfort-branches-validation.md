@@ -118,3 +118,6 @@ Multi-Shelly floor-protected groups remain ineligible pending a separately revie
 no qualification bypass, fake flag, native-unit activation or installed evidence has been introduced. Native-unit
 support remains a typed seam whose activation is refused. Existing installation artifact hashes and legacy identities
 are preserved. Hardware commissioning and alpha publication remain separate authorized work.
+
+The later [member client integration](member-client-validation.md) supersedes the client-work backlog above; its
+local code and acceptance are tracked separately and do not retroactively change this historical validation result.

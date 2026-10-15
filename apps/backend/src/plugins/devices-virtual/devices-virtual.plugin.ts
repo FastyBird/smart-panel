@@ -30,6 +30,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { ThermostatAuthoringContextController } from './controllers/thermostat-authoring-context.controller';
 import { ThermostatInstallationController } from './controllers/thermostat-installation.controller';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
@@ -91,6 +92,7 @@ import { VirtualProjectionListener } from './listeners/virtual-projection.listen
 import { VirtualStatusListener } from './listeners/virtual-status.listener';
 import { VirtualConfigModel } from './models/config.model';
 import { VirtualDevicePlatform } from './platforms/virtual-device.platform';
+import { ThermostatAuthoringContextService } from './services/thermostat-authoring-context.service';
 import { ThermostatInstallationBindingsService } from './services/thermostat-installation-bindings.service';
 import { ThermostatInstallationLoaderService } from './services/thermostat-installation-loader.service';
 import { ThermostatInstallationService } from './services/thermostat-installation.service';
@@ -162,6 +164,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		ThermostatAuthoringContextService,
 		ThermostatMemberProtectionService,
 		ThermostatInstallationService,
 		ThermostatInstallationBindingsService,
@@ -203,6 +206,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 	],
 	controllers: [
 		ThermostatInstallationController,
+		ThermostatAuthoringContextController,
 		VirtualThermostatConfigController,
 		VirtualThermostatComfortController,
 		VirtualThermostatAuthoringController,
