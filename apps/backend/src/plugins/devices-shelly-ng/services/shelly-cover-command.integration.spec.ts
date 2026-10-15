@@ -33,6 +33,8 @@ import { PropertyStateCoordinatorService } from '../../../modules/devices/servic
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { IntentEventType, IntentStatus, IntentTargetStatus } from '../../../modules/intents/intents.constants';
+import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { ConfigureVirtualLightGroupDto } from '../../devices-virtual/dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -497,6 +499,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			getLastCoversMode: () => Promise.resolve(null),
 			getModeValidity: () => Promise.resolve(null),
 			storeModeValidity: () => Promise.resolve(),
+			storeIntentCompletion: () => Promise.resolve(),
 		};
 		const state = new SpaceCoversStateService(
 			spaces as never,
@@ -505,7 +508,10 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			{ getAllCoversModeOrchestrations: () => new Map() } as never,
 			contributions,
 		);
-		const completeIntent = jest.fn();
+		const intents = new IntentsService(events, timeseries as never);
+		const completeIntent = jest.spyOn(intents, 'completeIntent');
+		const completed = jest.fn();
+		events.on(IntentEventType.COMPLETED, completed);
 		const room = new CoversIntentService(
 			spaces as never,
 			platforms,
@@ -515,10 +521,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			{ captureSnapshot: () => Promise.resolve(null) } as never,
 			{} as never,
 			timeseries as never,
-			{
-				createIntent: () => ({ id: 'unknown-group-room', expiresAt: new Date(Date.now() + 5000) }),
-				completeIntent,
-			} as never,
+			intents,
 			new CoverGroupIntentPort(
 				{
 					captureCommandEntry: () =>
@@ -543,7 +546,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 				events.off(CoversEventType.COVERS_STATE_CHANGED, published);
 			}
 		};
-		return { room, state, execute, completeIntent, ...connectivity };
+		return { room, state, execute, completeIntent, completed, ...connectivity };
 	};
 	it.each([false, true])(
 		'discovers and commands an actual UNKNOWN group with raw room participants=%s without fallback or connectivity promotion',
@@ -571,9 +574,13 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			]);
 			if (includeRaw)
 				expect(fixture.completeIntent).toHaveBeenCalledWith(
-					'unknown-group-room',
+					expect.any(String),
 					expect.arrayContaining([
-						expect.objectContaining({ channelId: physical[0].channel.id, error: 'represented_by_cover_group' }),
+						expect.objectContaining({
+							channelId: physical[0].channel.id,
+							status: IntentTargetStatus.SKIPPED,
+							error: 'represented_by_cover_group',
+						}),
 					]),
 					expect.any(Array),
 				);
@@ -583,6 +590,46 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			});
 		},
 	);
+	it('reports a raw-only role request as failed over the real intent transport even when its outside-role UNKNOWN group is ready', async () => {
+		const fixture = await actualCoverRoom([group, physical[0].channel.id]);
+		expect(
+			(await fixture.state.getCoversState('room')).groupOperations.find((op) => op.operation === 'open').commandable,
+		).toBe(true);
+		const dispatch = jest.spyOn(dispatcher, 'dispatchBatch');
+		expect(
+			await fixture.execute({ type: CoversIntentType.ROLE_POSITION, role: CoversRole.PRIMARY, position: 90 }),
+		).toMatchObject({
+			success: false,
+			affectedDevices: 0,
+			failedDevices: 1,
+			failedTargets: [physical[0].device.id],
+		});
+		expect(fixture.completeIntent.mock.results.at(-1)?.value).toMatchObject({
+			status: IntentStatus.COMPLETED_FAILED,
+			results: [
+				{
+					channelId: physical[0].channel.id,
+					status: IntentTargetStatus.FAILED,
+					error: 'cover_group_representative_not_targeted',
+				},
+			],
+		});
+		expect(fixture.completed).toHaveBeenCalledTimes(1);
+		expect(fixture.completed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: IntentStatus.COMPLETED_FAILED,
+				results: [
+					expect.objectContaining({
+						channel_id: physical[0].channel.id,
+						status: IntentTargetStatus.FAILED,
+						error: 'cover_group_representative_not_targeted',
+					}),
+				],
+			}),
+		);
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(transports.flatMap((rpc) => rpc.frames).filter((frame) => frame.method !== 'Cover.GetStatus')).toEqual([]);
+	});
 	it('keeps an unready UNKNOWN group visible and refuses through composites without a raw-role fallback', async () => {
 		const fixture = await actualCoverRoom([group, physical[0].channel.id]);
 		for (let i = 0; i < transports.length; i++) {
@@ -602,7 +649,36 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect(dispatch.mock.calls[0][0].map((update) => update.property.id)).toEqual([groupCommand]);
 		// A role assigned to the represented raw participant does not authorize a direct fallback either.
 		dispatch.mockClear();
-		await fixture.execute({ type: CoversIntentType.ROLE_POSITION, role: CoversRole.PRIMARY, position: 90 });
+		expect(
+			await fixture.execute({ type: CoversIntentType.ROLE_POSITION, role: CoversRole.PRIMARY, position: 90 }),
+		).toMatchObject({
+			success: false,
+			affectedDevices: 0,
+			failedDevices: 1,
+			failedTargets: [physical[0].device.id],
+		});
+		expect(fixture.completeIntent.mock.results.at(-1)?.value).toMatchObject({
+			status: IntentStatus.COMPLETED_FAILED,
+			results: [
+				{
+					channelId: physical[0].channel.id,
+					status: IntentTargetStatus.FAILED,
+					error: 'cover_group_representative_not_targeted',
+				},
+			],
+		});
+		expect(fixture.completed).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				status: IntentStatus.COMPLETED_FAILED,
+				results: [
+					expect.objectContaining({
+						channel_id: physical[0].channel.id,
+						status: IntentTargetStatus.FAILED,
+						error: 'cover_group_representative_not_targeted',
+					}),
+				],
+			}),
+		);
 		expect(dispatch).not.toHaveBeenCalled();
 		for (const type of [CoversIntentType.POSITION_DELTA, CoversIntentType.SET_MODE]) {
 			const result = await fixture.execute({ type, mode: CoversMode.OPEN });
@@ -741,11 +817,12 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(plan).not.toHaveBeenCalled();
 			// A non-targeted group cannot block an ordinary role-specific request.
 			covers[1].role = CoversRole.BLACKOUT;
-			await room.executeCoversIntent('room', {
+			const ordinaryRoleResult = await room.executeCoversIntent('room', {
 				type: CoversIntentType.ROLE_POSITION,
 				role: CoversRole.PRIMARY,
 				position: 35,
 			});
+			expect(ordinaryRoleResult).toMatchObject({ success: true, affectedDevices: 1, failedDevices: 0 });
 			expect(legacySend).toHaveBeenCalledWith([
 				expect.objectContaining({ value: 35, property: expect.objectContaining({ id: positionId }) as unknown }),
 			]);

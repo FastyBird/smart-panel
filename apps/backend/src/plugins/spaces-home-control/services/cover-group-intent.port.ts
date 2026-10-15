@@ -142,13 +142,22 @@ export class CoverGroupIntentPort {
 				status: IntentTargetStatus.FAILED,
 				error,
 			});
-		for (const cover of targeted.filter((cover) => selection.excludedRawChannels.includes(cover.coverChannel.id)))
+		for (const cover of targeted.filter((cover) => selection.excludedRawChannels.includes(cover.coverChannel.id))) {
+			// Deduplication is a skip only when this request also targets its representative.
+			// A raw-only role request cannot claim success or commandeer a group outside that role.
+			if (
+				!handled.some((group) => selection.coverage.get(group.coverChannel.id)?.leaves.includes(cover.coverChannel.id))
+			) {
+				refuse(cover, 'cover_group_representative_not_targeted');
+				continue;
+			}
 			results.push({
 				deviceId: cover.device.id,
 				channelId: cover.coverChannel.id,
 				status: IntentTargetStatus.SKIPPED,
 				error: 'represented_by_cover_group',
 			});
+		}
 		const simple = [CoversIntentType.OPEN, CoversIntentType.CLOSE, CoversIntentType.STOP].includes(intent.type);
 		const updates: IDevicePropertyData[] = [];
 		for (const cover of handled) {
