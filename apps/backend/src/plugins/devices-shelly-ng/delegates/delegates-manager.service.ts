@@ -2680,6 +2680,26 @@ export class DelegatesManagerService {
 	async coverCommandReadiness(update: IDevicePropertyData): Promise<{ commandable: boolean; reasons: string[] }> {
 		if (update.property.category !== PropertyCategory.COMMAND)
 			return { commandable: false, reasons: ['qualified_cover_position_or_tilt_adapter_unavailable'] };
+		// Durable uncertainty survives faults and telemetry expiry. Expose its recovery
+		// requirement independently of the fresh safe-condition checks performed by recovery.
+		const canonicalMac = (update.device as ShellyNgDeviceEntity).canonicalMac;
+		if (
+			update.device.type === 'devices-shelly-ng' &&
+			canonicalMac &&
+			/^cover:\d+$/.test(update.channel.identifier ?? '') &&
+			this.coverOrdering
+		) {
+			const componentId = Number(update.channel.identifier.split(':')[1]);
+			for (const id of this.identifierToDelegates.get(update.device.identifier) ?? []) {
+				const delegate = this.delegates.get(id);
+				if (
+					delegate?.covers.has(componentId) &&
+					this.delegateDeviceIds.get(id) === update.device.id &&
+					(await this.coverOrdering.blocked(`${canonicalMac.toUpperCase()}|cover:${componentId}`))
+				)
+					return { commandable: false, reasons: ['cover_ordering_unresolved_operator_recovery_required'] };
+			}
+		}
 		const properties = await this.channelsPropertiesService.findAll<ShellyNgChannelPropertyEntity>(update.channel.id);
 		const issue = this.coverIssues.get(`${update.device.id}|${update.channel.id}`);
 		if (issue) return { commandable: false, reasons: [issue] };
@@ -2691,15 +2711,6 @@ export class DelegatesManagerService {
 		for (const id of this.identifierToDelegates.get(update.device.identifier) ?? []) {
 			const delegate = this.delegates.get(id);
 			if (!delegate || this.delegateDeviceIds.get(id) !== update.device.id) continue;
-			const canonicalMac = (update.device as ShellyNgDeviceEntity).canonicalMac;
-			if (
-				canonicalMac &&
-				this.coverOrdering &&
-				(await this.coverOrdering.blocked(
-					`${canonicalMac.toUpperCase()}|cover:${Number(update.channel.identifier.split(':')[1])}`,
-				))
-			)
-				return { commandable: false, reasons: ['cover_ordering_unresolved_operator_recovery_required'] };
 			const componentId = Number(update.channel.identifier?.split(':')[1]);
 			const component = delegate.covers.get(componentId);
 			if (component && !nativeCoverStatus(component, componentId))
