@@ -53,7 +53,7 @@ describe('covers room port to core composites', () => {
 			const snapshot = port.capture();
 			const result = await port.execute([group, cover('member-a', false)], { type }, intent as never, snapshot);
 			port.release(snapshot);
-			expect(plan).toHaveBeenCalledWith(expect.any(Array), 'covers');
+			expect(plan).toHaveBeenCalledWith(expect.any(Array), 'covers', undefined);
 			expect(dispatchBatch).toHaveBeenCalledWith(
 				[
 					expect.objectContaining({

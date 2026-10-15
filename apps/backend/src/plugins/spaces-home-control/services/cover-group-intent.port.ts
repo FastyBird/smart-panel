@@ -66,7 +66,8 @@ export class CoverGroupIntentPort {
 			intent.type === CoversIntentType.ROLE_POSITION
 				? covers.filter((cover) => cover.role === (intent.role ?? CoversRole.PRIMARY))
 				: covers;
-		if (!targeted.some((cover) => this.isGroup(cover))) return null;
+		if (!covers.some((cover) => this.isGroup(cover))) return null;
+		const targetIds = new Set(targeted.map((cover) => cover.coverChannel.id));
 		const results: IntentTargetResult[] = [];
 		const refuse = (cover: CoverDevice, error: string) =>
 			results.push({
@@ -93,15 +94,17 @@ export class CoverGroupIntentPort {
 		let selection: Awaited<ReturnType<LightingContributionPlannerService['plan']>>;
 		try {
 			selection = await this.contributions.plan(
-				targeted.map((cover) => ({ ...cover, channel: cover.coverChannel })),
+				covers.map((cover) => ({ ...cover, channel: cover.coverChannel })),
 				'covers',
+				intent.type === CoversIntentType.ROLE_POSITION ? targetIds : undefined,
 			);
 		} catch (error) {
 			return refused(error instanceof Error ? error.message : 'covers_contribution_conflict');
 		}
-		const handled = (selection.targets as (CoverDevice & { channel: CoverDevice['coverChannel'] })[]).filter((cover) =>
-			this.isGroup(cover),
+		const handled = (selection.targets as (CoverDevice & { channel: CoverDevice['coverChannel'] })[]).filter(
+			(cover) => targetIds.has(cover.coverChannel.id) && this.isGroup(cover),
 		);
+		if (!handled.length && !selection.excludedRawChannels.some((id) => targetIds.has(id))) return null;
 		const selectedIds = new Set([...handled.map((cover) => cover.coverChannel.id), ...selection.excludedRawChannels]);
 		const remaining = targeted.filter((cover) => !selectedIds.has(cover.coverChannel.id));
 		const deadlineAt = record.expiresAt.getTime() - COMPOSITE_INTENT_FINISH_MARGIN_MS;

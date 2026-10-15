@@ -19,6 +19,8 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { CompositePropertyCommandRegistryService } from '../../../modules/devices/services/composite-property-command.registry.service';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
+import { DeviceContributionRegistryService } from '../../../modules/devices/services/device-contribution.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
@@ -40,8 +42,10 @@ import {
 	VirtualValueOrigin,
 } from '../../devices-virtual/entities/devices-virtual.entity';
 import { VirtualLightGroupProfile } from '../../devices-virtual/entities/virtual-producer.entity';
+import { VirtualStatusListener } from '../../devices-virtual/listeners/virtual-status.listener';
 import { VirtualDependencyGraphService } from '../../devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualLightGroupCommandService } from '../../devices-virtual/services/virtual-light-group-command.service';
+import { VirtualLightGroupContributionService } from '../../devices-virtual/services/virtual-light-group-contribution.service';
 import { VirtualLightGroupStateService } from '../../devices-virtual/services/virtual-light-group-state.service';
 import { VirtualProducerConfigService } from '../../devices-virtual/services/virtual-producer-config.service';
 import { VirtualProducerStateService } from '../../devices-virtual/services/virtual-producer-state.service';
@@ -49,8 +53,13 @@ import { VirtualValueSourceService } from '../../devices-virtual/services/virtua
 import { CoverGroupIntentPort } from '../../spaces-home-control/services/cover-group-intent.port';
 import { CoversIntentService } from '../../spaces-home-control/services/covers-intent.service';
 import { LightingContributionPlannerService } from '../../spaces-home-control/services/lighting-contribution-planner.service';
-import { CoverDevice } from '../../spaces-home-control/services/space-covers-state.service';
-import { CoversIntentType, CoversMode, CoversRole } from '../../spaces-home-control/spaces-home-control.constants';
+import { CoverDevice, SpaceCoversStateService } from '../../spaces-home-control/services/space-covers-state.service';
+import {
+	EventType as CoversEventType,
+	CoversIntentType,
+	CoversMode,
+	CoversRole,
+} from '../../spaces-home-control/spaces-home-control.constants';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
 import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -158,6 +167,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	let sources: PropertyValueSourceRegistryService;
 	let events: EventEmitter2;
 	let structure: DeviceStructureLockService;
+	let graph: VirtualDependencyGraphService;
 	beforeEach(async () => {
 		db = await new SqliteDataSource({
 			type: 'sqlite',
@@ -168,7 +178,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		events = new EventEmitter2();
 		sources = new PropertyValueSourceRegistryService();
 		structure = new DeviceStructureLockService();
-		const graph = new VirtualDependencyGraphService(db);
+		graph = new VirtualDependencyGraphService(db);
 		sources.register(new VirtualValueSourceService(graph));
 		producers = new PropertyProducerRegistryService(events);
 		windows = new PropertyCommandWindowService();
@@ -426,9 +436,204 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			);
 		}
 	});
+	const producerConnectivity = async () => {
+		const channel = await db.manager.findOneOrFail(VirtualChannelEntity, {
+			where: { id: group },
+			relations: ['device'],
+		});
+		const device = channel.device as VirtualDeviceEntity;
+		const connections = new DeviceConnectionStateService({ isConnected: () => false } as never);
+		const record = async (id: string, state: ConnectionState) =>
+			connections.write(
+				{ id } as DeviceEntity,
+				{ id: `${id}-connectivity`, category: PropertyCategory.STATUS } as ChannelPropertyEntity,
+				state,
+			);
+		const listener = new VirtualStatusListener(
+			{ findProducerMode: () => device.mode } as never,
+			{ setConnectionState: (id: string, update: { state: ConnectionState }) => record(id, update.state) } as never,
+			connections,
+		);
+		await listener.recompute(device.id, 'real producer connectivity policy');
+		const status = await connections.readLatest(device);
+		expect(status).toMatchObject({ online: false, status: ConnectionState.UNKNOWN });
+		return { connections, record, device, status };
+	};
+	const actualCoverRoom = async (channels: string[]) => {
+		const connectivity = await producerConnectivity();
+		const roles = new Map<string, { role: CoversRole }>();
+		for (const id of channels) {
+			const channel = await db.manager.findOneOrFail(ChannelEntity, { where: { id }, relations: ['device'] });
+			const device = channel.device as DeviceEntity;
+			if (device.type !== 'virtual') await connectivity.record(device.id, ConnectionState.CONNECTED);
+			roles.set(`${device.id}:${id}`, { role: id === group ? CoversRole.BLACKOUT : CoversRole.PRIMARY });
+		}
+		const spaces = {
+			findOne: () => Promise.resolve({ id: 'room' }),
+			findDevicesBySpace: async () => {
+				const owners = new Set<string>();
+				for (const id of channels) {
+					const channel = await db.manager.findOneOrFail(ChannelEntity, { where: { id }, relations: ['device'] });
+					owners.add((channel.device as DeviceEntity).id);
+				}
+				const devices = await Promise.all(
+					[...owners].map(async (id) => {
+						const device = await db.manager.findOneOrFail(DeviceEntity, {
+							where: { id },
+							relations: ['channels', 'channels.properties'],
+						});
+						device.channels = device.channels.filter((channel) => channels.includes(channel.id));
+						device.status = await connectivity.connections.readLatest(device);
+						return device;
+					}),
+				);
+				return devices;
+			},
+		};
+		const registry = new DeviceContributionRegistryService();
+		registry.register(new VirtualLightGroupContributionService(registry, configs, graph, metadata, runtime));
+		const contributions = new LightingContributionPlannerService(registry);
+		const timeseries = {
+			getLastCoversMode: () => Promise.resolve(null),
+			getModeValidity: () => Promise.resolve(null),
+			storeModeValidity: () => Promise.resolve(),
+		};
+		const state = new SpaceCoversStateService(
+			spaces as never,
+			{ getRoleMap: () => Promise.resolve(roles) } as never,
+			timeseries as never,
+			{ getAllCoversModeOrchestrations: () => new Map() } as never,
+			contributions,
+		);
+		const completeIntent = jest.fn();
+		const room = new CoversIntentService(
+			spaces as never,
+			platforms,
+			dispatcher,
+			state,
+			events,
+			{ captureSnapshot: () => Promise.resolve(null) } as never,
+			{} as never,
+			timeseries as never,
+			{
+				createIntent: () => ({ id: 'unknown-group-room', expiresAt: new Date(Date.now() + 5000) }),
+				completeIntent,
+			} as never,
+			new CoverGroupIntentPort(
+				{
+					captureCommandEntry: () =>
+						PropertyCommandEntrySnapshot.capture(windows, () => undefined, false, guards.capture()),
+					releaseCommandEntry: (entry: PropertyCommandEntrySnapshot) => entry.dispose(),
+				} as never,
+				dispatcher,
+				contributions,
+			),
+		);
+		const execute = async (intent: Parameters<CoversIntentService['executeCoversIntent']>[1]) => {
+			let published: () => void;
+			const publication = new Promise<void>((resolve) => {
+				published = resolve;
+			});
+			events.once(CoversEventType.COVERS_STATE_CHANGED, published);
+			try {
+				const result = await room.executeCoversIntent('room', intent);
+				if (result.success) await publication;
+				return result;
+			} finally {
+				events.off(CoversEventType.COVERS_STATE_CHANGED, published);
+			}
+		};
+		return { room, state, execute, completeIntent, ...connectivity };
+	};
+	it.each([false, true])(
+		'discovers and commands an actual UNKNOWN group with raw room participants=%s without fallback or connectivity promotion',
+		async (includeRaw) => {
+			const fixture = await actualCoverRoom(includeRaw ? [group, physical[0].channel.id] : [group]);
+			const discovery = await fixture.state.getCoversInSpace('room');
+			expect(discovery.map((cover) => cover.coverChannel.id)).toEqual([group]);
+			expect(discovery[0].device.status).toMatchObject({ online: false, status: ConnectionState.UNKNOWN });
+			const reported = await fixture.state.getCoversState('room');
+			expect(reported.hasCovers).toBe(true);
+			expect(reported.devicesCount).toBe(2);
+			expect(reported.groupOperations.find((op) => op.operation === 'open').commandable).toBe(true);
+			const dispatch = jest.spyOn(dispatcher, 'dispatchBatch');
+			const result = await fixture.execute({ type: CoversIntentType.OPEN });
+			expect(result).toMatchObject({
+				success: true,
+				affectedDevices: 1,
+				skippedOfflineDevices: 0,
+				composites: [expect.objectContaining({ status: 'confirmed' })],
+			});
+			expect(dispatch).toHaveBeenCalledTimes(1);
+			expect(dispatch.mock.calls[0][0].map((update) => update.property.id)).toEqual([groupCommand]);
+			expect(transports.map((rpc) => rpc.frames.filter((frame) => frame.method === 'Cover.Open').length)).toEqual([
+				1, 1,
+			]);
+			if (includeRaw)
+				expect(fixture.completeIntent).toHaveBeenCalledWith(
+					'unknown-group-room',
+					expect.arrayContaining([
+						expect.objectContaining({ channelId: physical[0].channel.id, error: 'represented_by_cover_group' }),
+					]),
+					expect.any(Array),
+				);
+			expect(await fixture.connections.readLatest(fixture.device)).toMatchObject({
+				online: false,
+				status: ConnectionState.UNKNOWN,
+			});
+		},
+	);
+	it('keeps an unready UNKNOWN group visible and refuses through composites without a raw-role fallback', async () => {
+		const fixture = await actualCoverRoom([group, physical[0].channel.id]);
+		for (let i = 0; i < transports.length; i++) {
+			transports[i].state.pos_control = false;
+			emitRaw(i, { ...transports[i].state });
+		}
+		await until(
+			async () => !(await configs.getLightGroup(group)).operations.find((op) => op.operation === 'open').commandable,
+		);
+		const reported = await fixture.state.getCoversState('room');
+		expect(reported.groupOperations.find((op) => op.operation === 'open').commandable).toBe(false);
+		expect(reported.averagePosition).toBeNull();
+		const dispatch = jest.spyOn(dispatcher, 'dispatchBatch');
+		const refused = await fixture.execute({ type: CoversIntentType.OPEN });
+		expect(refused).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1, skippedOfflineDevices: 0 });
+		expect(dispatch).toHaveBeenCalledTimes(1);
+		expect(dispatch.mock.calls[0][0].map((update) => update.property.id)).toEqual([groupCommand]);
+		// A role assigned to the represented raw participant does not authorize a direct fallback either.
+		dispatch.mockClear();
+		await fixture.execute({ type: CoversIntentType.ROLE_POSITION, role: CoversRole.PRIMARY, position: 90 });
+		expect(dispatch).not.toHaveBeenCalled();
+		for (const type of [CoversIntentType.POSITION_DELTA, CoversIntentType.SET_MODE]) {
+			const result = await fixture.execute({ type, mode: CoversMode.OPEN });
+			expect(result).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 2 });
+		}
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(transports.flatMap((rpc) => rpc.frames).filter((frame) => frame.method !== 'Cover.GetStatus')).toEqual([]);
+		expect(await fixture.connections.readLatest(fixture.device)).toMatchObject({
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		});
+	});
+	it.each([ConnectionState.UNKNOWN, ConnectionState.DISCONNECTED])(
+		'still skips an ordinary physical %s cover without dispatch',
+		async (status) => {
+			const fixture = await actualCoverRoom([physical[0].channel.id]);
+			await fixture.record(physical[0].device.id, status);
+			const dispatch = jest.spyOn(dispatcher, 'dispatchBatch');
+			expect(await fixture.execute({ type: CoversIntentType.OPEN })).toMatchObject({
+				success: false,
+				affectedDevices: 0,
+				skippedOfflineDevices: 1,
+			});
+			expect(dispatch).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each(['confirmed', 'timeout', 'refusal'] as const)(
 		'mixed room preserves nonprepared position-first ordinary dispatch independently of a %s qualified group',
 		async (outcome) => {
+			const producer = await producerConnectivity();
 			const legacyId = uuid(),
 				channelId = uuid(),
 				positionId = uuid();
@@ -467,7 +672,8 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 					relations: ['device', 'properties'],
 				});
 				const device = entity.device as DeviceEntity;
-				device.status = { online: true, status: ConnectionState.CONNECTED, lastChanged: null };
+				device.status =
+					channel === group ? producer.status : { online: true, status: ConnectionState.CONNECTED, lastChanged: null };
 				return {
 					device,
 					coverChannel: entity,
@@ -531,7 +737,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 				skippedOfflineDevices: 0,
 			});
 			expect(legacySend).not.toHaveBeenCalled();
-			covers[0].device.status = { ...covers[0].device.status, online: true };
+			covers[0].device.status = producer.status;
 			expect(plan).not.toHaveBeenCalled();
 			// A non-targeted group cannot block an ordinary role-specific request.
 			covers[1].role = CoversRole.BLACKOUT;
@@ -543,6 +749,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			expect(legacySend).toHaveBeenCalledWith([
 				expect.objectContaining({ value: 35, property: expect.objectContaining({ id: positionId }) as unknown }),
 			]);
+			plan.mockClear();
 			legacySend.mockClear();
 			if (outcome === 'timeout') for (const rpc of transports) rpc.post = () => HOLD;
 			if (outcome === 'refusal') for (const rpc of transports) rpc.pre = (raw) => ({ ...raw, pos_control: false });

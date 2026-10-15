@@ -24,6 +24,8 @@ export class LightingContributionPlannerService {
 	async plan<T extends LightingContributionTarget>(
 		targets: readonly T[],
 		domain: 'lighting' | 'covers' = 'lighting',
+		/** Optional command scope; non-targeted representatives still exclude their raw leaves. */
+		targetChannels?: ReadonlySet<string>,
 	): Promise<LightingContributionPlan<T>> {
 		const coverage = new Map<string, DeviceContributionCoverage>();
 		const owners = new Map<string, string>();
@@ -33,7 +35,14 @@ export class LightingContributionPlannerService {
 			coverage.set(target.channel.id, composite);
 			for (const leaf of new Set(composite.leaves)) {
 				const previous = owners.get(leaf);
-				if (previous && previous !== target.channel.id)
+				if (
+					previous &&
+					previous !== target.channel.id &&
+					(!targetChannels ||
+						targetChannels.has(leaf) ||
+						targetChannels.has(previous) ||
+						targetChannels.has(target.channel.id))
+				)
 					throw new ConflictException({
 						message:
 							domain === 'lighting'

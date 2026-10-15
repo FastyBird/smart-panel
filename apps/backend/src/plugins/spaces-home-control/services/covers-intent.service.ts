@@ -174,8 +174,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			[CoversIntentType.POSITION_DELTA, CoversIntentType.SET_MODE].includes(intent.type) &&
 			allCovers.some((cover) => this.groups?.isGroup(cover));
 
-		// Filter out offline devices
-		const { online: covers, offlineIds } = this.filterOfflineCoverDevices(allCovers);
+		// Producer connectivity is not member readiness. Keep groups in canonical selection;
+		// only ordinary physical candidates use the legacy connectivity filter.
+		const { candidates: covers, offlineIds } = this.partitionCoverCandidates(allCovers);
 
 		if (offlineIds.length > 0) {
 			this.logger.debug(`Skipping ${offlineIds.length} offline cover device(s) in space id=${spaceId}`);
@@ -184,14 +185,14 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		// Filter offline IDs by role for role-specific intents (applied early for all-offline check)
 		const targetedOfflineIds = refuseWholeOperation ? [] : this.filterOfflineIdsByRole(allCovers, offlineIds, intent);
 
-		// For role-specific intents, also check if there are any online devices with the target role
-		const hasOnlineTargetedDevices =
+		// Groups remain candidates regardless of connectivity; ordinary targets have passed the offline filter.
+		const hasTargetedCandidates =
 			intent.type === CoversIntentType.ROLE_POSITION && intent.role
 				? covers.some((c) => c.role === intent.role)
 				: covers.length > 0;
 
 		// If all targeted devices are offline, return early with appropriate result
-		if (!hasOnlineTargetedDevices && targetedOfflineIds.length > 0) {
+		if (!hasTargetedCandidates && targetedOfflineIds.length > 0) {
 			this.logger.warn(`All ${targetedOfflineIds.length} targeted cover device(s) are offline in space id=${spaceId}`);
 
 			return {
@@ -204,7 +205,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			};
 		}
 
-		this.logger.debug(`Found ${covers.length} online covers in space id=${spaceId}`);
+		this.logger.debug(`Found ${covers.length} cover intent candidates in space id=${spaceId}`);
 
 		// Build targets for intent (all covers including offline for tracking)
 		const targets = this.buildCoversTargets(allCovers, intent);
@@ -374,31 +375,17 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		return result;
 	}
 
-	/**
-	 * Filter out offline devices from a list of cover devices.
-	 * Returns online devices and list of unique offline device IDs.
-	 *
-	 * Only devices with status.online = true are considered online.
-	 * Devices with UNKNOWN or other non-online statuses are treated as offline
-	 * and skipped to provide better user feedback.
-	 *
-	 * Note: A device may have multiple channels, so we use a Set to ensure
-	 * each device ID appears only once in offlineIds.
+	/** Keep producer identities for canonical planning without promoting their connectivity.
+	 * Ordinary physical UNKNOWN/offline devices retain the existing skip policy.
 	 */
-	private filterOfflineCoverDevices(covers: CoverDevice[]): { online: CoverDevice[]; offlineIds: string[] } {
-		const online: CoverDevice[] = [];
+	private partitionCoverCandidates(covers: CoverDevice[]): { candidates: CoverDevice[]; offlineIds: string[] } {
+		const candidates: CoverDevice[] = [];
 		const offlineIdSet = new Set<string>();
-
 		for (const cover of covers) {
-			// Only treat devices as online if status.online is explicitly true
-			if (cover.device.status.online) {
-				online.push(cover);
-			} else {
-				offlineIdSet.add(cover.device.id);
-			}
+			if (this.groups?.isGroup(cover) || cover.device.status.online) candidates.push(cover);
+			else offlineIdSet.add(cover.device.id);
 		}
-
-		return { online, offlineIds: [...offlineIdSet] };
+		return { candidates, offlineIds: [...offlineIdSet] };
 	}
 
 	/**

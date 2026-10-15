@@ -247,6 +247,10 @@ scene's existing absolute deadline, estimated group budget and per-member outcom
 
 The existing covers room domain dispatches group OPEN/CLOSE/STOP as native COMMAND operations.
 It uses shared canonical-leaf contribution selection to exclude represented raw members and reject overlapping groups.
+Producer connectivity stays UNKNOWN and does not determine group command eligibility: room discovery and intents retain
+the group identity, while the composite dispatcher revalidates qualified member readiness. An unavailable group never
+falls back to its represented raw members, including members assigned a different room role. Ordinary physical
+UNKNOWN/offline covers keep their existing offline refusal.
 Repair overlap by changing membership or the existing cover participation role (HIDDEN excludes a representative).
 Unrelated ordinary covers keep their existing position-first controls and dispatch independently of group convergence,
 under the captured intent authority and absolute deadline. A refused or timed-out group does not suppress their sends.
