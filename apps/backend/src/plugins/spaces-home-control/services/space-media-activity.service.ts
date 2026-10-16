@@ -1126,8 +1126,12 @@ export class SpaceMediaActivityService {
 	 * Build an activation result from an existing record
 	 */
 	private buildResultFromRecord(record: SpaceActiveMediaActivityEntity): MediaActivityActivationResultModel {
-		const resolved = record.resolved ? (JSON.parse(record.resolved) as MediaActivityResolvedModel) : undefined;
-		const summary = record.lastResult ? (JSON.parse(record.lastResult) as MediaActivityLastResultModel) : undefined;
+		const resolved = record.resolved
+			? toInstance(MediaActivityResolvedModel, JSON.parse(record.resolved) as Record<string, unknown>)
+			: undefined;
+		const summary = record.lastResult
+			? toInstance(MediaActivityLastResultModel, JSON.parse(record.lastResult) as Record<string, unknown>)
+			: undefined;
 
 		return {
 			activityKey: record.activityKey,

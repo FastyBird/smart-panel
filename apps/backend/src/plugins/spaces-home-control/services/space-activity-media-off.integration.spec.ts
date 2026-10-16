@@ -19,7 +19,7 @@ import { ActivityDomain, ActivityDomainStatus, ActivityMode } from '../activity/
 import { defaultActivityConfiguration } from '../activity/space-activity.defaults';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
-import { MediaActivationState, MediaActivityKey } from '../spaces-home-control.constants';
+import { MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces-home-control.constants';
 
 import { activityTestDatabase } from './activity-test-support';
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -32,6 +32,8 @@ jest.setTimeout(30000);
 describe('activity OFF through persisted real media deactivation', () => {
 	let harness: Awaited<ReturnType<typeof activityTestDatabase>>;
 	let media: SpaceMediaActivityService;
+	let endpoints: DerivedMediaEndpointService;
+	let mediaDeviceId: string;
 	let domains: SpaceActivityDomainsService;
 	let dispatch: jest.Mock<Promise<{ success: boolean }>, [IDevicePropertyData[]]>;
 	let playback: ChannelPropertyEntity;
@@ -43,6 +45,7 @@ describe('activity OFF through persisted real media deactivation', () => {
 		const device = await devices.save(
 			devices.create({ name: 'Persisted speaker', roomId: room.id, category: DeviceCategory.SPEAKER }),
 		);
+		mediaDeviceId = device.id;
 		const channels = database.getRepository(ChannelEntity);
 		const channel = await channels.save(
 			channels.create({ name: 'Playback', device: device.id, category: ChannelCategory.MEDIA_PLAYBACK }),
@@ -76,7 +79,7 @@ describe('activity OFF through persisted real media deactivation', () => {
 		const platforms = new PlatformRegistryService();
 		platforms.register({ getType: () => device.type } as never);
 		const capabilities = new MediaCapabilityService(spaces);
-		const endpoints = new DerivedMediaEndpointService(spaces, capabilities);
+		endpoints = new DerivedMediaEndpointService(spaces, capabilities);
 		const bindings = new SpaceMediaActivityBindingService(
 			database.getRepository(SpaceMediaActivityBindingEntity),
 			spaces,
@@ -221,6 +224,123 @@ describe('activity OFF through persisted real media deactivation', () => {
 			(await harness.database.getRepository(SpaceActiveMediaActivityEntity).findOneByOrFail({ id: state.id })).state,
 		).toBe(MediaActivationState.ACTIVE);
 	});
+	it.each(['snake_case', 'camelCase'])(
+		'preserves a persisted noncritical failure on repeated Background activation (%s)',
+		async (storageShape) => {
+			const { database, room } = harness;
+			const channels = database.getRepository(ChannelEntity);
+			const speaker = await channels.save(
+				channels.create({ name: 'Speaker controls', device: mediaDeviceId, category: ChannelCategory.SPEAKER }),
+			);
+			const switcher = await channels.save(
+				channels.create({ name: 'Speaker power', device: mediaDeviceId, category: ChannelCategory.SWITCHER }),
+			);
+			const properties = database.getRepository(ChannelPropertyEntity);
+			const volume = await properties.save(
+				properties.create({
+					name: 'Volume',
+					channel: speaker.id,
+					category: PropertyCategory.VOLUME,
+					dataType: DataTypeType.INT,
+					permissions: [PermissionType.READ_WRITE],
+					format: [0, 100],
+					step: 1,
+					invalid: null,
+				}),
+			);
+			await properties.save(
+				properties.create({
+					name: 'Power',
+					channel: switcher.id,
+					category: PropertyCategory.ON,
+					dataType: DataTypeType.BOOL,
+					permissions: [PermissionType.READ_WRITE],
+					format: null,
+					step: null,
+					invalid: null,
+				}),
+			);
+			const derived = await endpoints.buildEndpointsForSpace(room.id);
+			const audio = derived.endpoints.find((endpoint) => endpoint.type === MediaEndpointType.AUDIO_OUTPUT);
+			expect(audio).toBeDefined();
+			const bindings = database.getRepository(SpaceMediaActivityBindingEntity);
+			await bindings.save(
+				bindings.create({
+					spaceId: room.id,
+					activityKey: MediaActivityKey.BACKGROUND,
+					audioEndpointId: audio.endpointId,
+					audioVolumePreset: 25,
+				}),
+			);
+			await database.getRepository(SpaceActiveMediaActivityEntity).delete(state.id);
+			dispatch.mockImplementation((updates) =>
+				Promise.resolve({
+					success: updates.every(
+						(update) =>
+							update.property.id !== volume.id && validatePropertyCommandValue(update.property, update.value).valid,
+					),
+				}),
+			);
+			// The first real plan succeeds at power, fails noncritically at volume, and persists ACTIVE plus its failed summary.
+			const initial = await media.activate(room.id, MediaActivityKey.BACKGROUND);
+			expect(initial.state).toBe(MediaActivationState.ACTIVE);
+			expect(initial.summary).toMatchObject({
+				stepsTotal: 2,
+				stepsSucceeded: 1,
+				stepsFailed: 1,
+				warningCount: 1,
+				errorCount: 0,
+			});
+			expect(initial.summary.warnings[0]).toMatchObject({
+				critical: false,
+				propertyId: volume.id,
+				targetDeviceId: mediaDeviceId,
+			});
+			const repository = database.getRepository(SpaceActiveMediaActivityEntity);
+			let persisted = await repository.findOneByOrFail({ spaceId: room.id });
+			expect(JSON.parse(persisted.lastResult) as Record<string, unknown>).toMatchObject({ steps_failed: 1 });
+			expect(JSON.parse(persisted.resolved) as Record<string, unknown>).toMatchObject({
+				audio_device_id: mediaDeviceId,
+			});
+			if (storageShape === 'camelCase') {
+				// Legacy rows store the same genuine result using the pre-wire camelCase model keys.
+				await repository.update(persisted.id, {
+					resolved: JSON.stringify(initial.resolved),
+					lastResult: JSON.stringify(initial.summary),
+				});
+				persisted = await repository.findOneByOrFail({ id: persisted.id });
+			}
+			const preview = await media.preview(room.id, MediaActivityKey.BACKGROUND);
+			expect(preview.warnings).toEqual([]);
+			expect(preview.plan).toHaveLength(2);
+			const sent = dispatch.mock.calls.length;
+			expect(sent).toBe(2);
+			const repeated = await media.activate(room.id, MediaActivityKey.BACKGROUND);
+			expect(repeated.resolved.audioDeviceId).toBe(mediaDeviceId);
+			expect(repeated.summary).toMatchObject({
+				stepsTotal: 2,
+				stepsSucceeded: 1,
+				stepsFailed: 1,
+				warningCount: 1,
+				errorCount: 0,
+			});
+			expect(repeated.summary.warnings[0]).toMatchObject({
+				critical: false,
+				propertyId: volume.id,
+				targetDeviceId: mediaDeviceId,
+			});
+			expect(
+				(await domains.run(ActivityDomain.MEDIA, defaultActivityConfiguration(ActivityMode.RELAX), identity(), room.id))
+					.status,
+			).toBe(ActivityDomainStatus.FAILED);
+			expect(dispatch).toHaveBeenCalledTimes(sent);
+			expect(await repository.findOneByOrFail({ id: persisted.id })).toMatchObject({
+				state: MediaActivationState.ACTIVE,
+				resolved: persisted.resolved,
+				lastResult: persisted.lastResult,
+			});
+		},
+	);
 	it('retains the existing binding preview path for Background and never creates a binding', async () => {
 		const preview = jest.spyOn(media, 'preview');
 		expect(

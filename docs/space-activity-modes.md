@@ -42,7 +42,9 @@ plans or diagnostics report unsupported. Preview never manufactures media bindin
 
 Every domain reports `disabled`, `no_targets`, `unsupported`, `failed` or `succeeded`; preview uses `ready`.
 A domain's failure does not prevent the other domains from running. Failed/offline targets make its result failed,
-even if some commands applied. The selected mode remains persisted with active/partial/failed status. These results
+even if some commands applied. Repeating an already active media activity preserves its persisted failed-step summary;
+it does not turn a prior noncritical failure into a fresh success or replay the media plan. The selected mode remains
+persisted with active/partial/failed status. These results
 represent command execution, not independent physical acknowledgement or whole-room state convergence.
 
 Overlapping activation requests for a space receive conflict; there is no deferred physical plan queue.
