@@ -5,10 +5,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
+import { toInstance, toSnakeCaseKeys } from '../../../common/utils/transform.utils';
+import { PermissionType } from '../../../modules/devices/devices.constants';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
+import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
@@ -152,7 +154,11 @@ export class SpaceMediaActivityService {
 	/**
 	 * Activate a media activity for a space
 	 */
-	async activate(spaceId: string, activityKey: MediaActivityKey): Promise<MediaActivityActivationResultModel> {
+	async activate(
+		spaceId: string,
+		activityKey: MediaActivityKey,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<MediaActivityActivationResultModel> {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		// Validate activity key
@@ -253,7 +259,7 @@ export class SpaceMediaActivityService {
 			// Handle conflicts (best-effort, non-critical)
 			const conflictWarnings = await this.handleConflicts(spaceId, activityKey, endpointMap);
 
-			const executionResult = await this.executePlan(plan);
+			const executionResult = await this.executePlan(plan, activityCurrent);
 
 			// Determine final state
 			const hasCriticalFailure = executionResult.failures.some((f) => f.critical);
@@ -404,12 +410,54 @@ export class SpaceMediaActivityService {
 		};
 	}
 
+	/** Read-only admission for OFF, which has no activation binding or activation preview. */
+	async previewDeactivation(
+		spaceId: string,
+	): Promise<{ hasActivity: boolean; targetCount: number; warnings: string[] }> {
+		await this.spacesService.getOneOrThrow(spaceId);
+		const record = await this.getActiveRecord(spaceId);
+		if (!record || record.state === MediaActivationState.DEACTIVATED)
+			return { hasActivity: false, targetCount: 0, warnings: [] };
+		if (!record.resolved) return { hasActivity: true, targetCount: 0, warnings: [] };
+		try {
+			const resolved = toInstance(MediaActivityResolvedModel, JSON.parse(record.resolved) as Record<string, unknown>);
+			const targets = await this.deactivationEndpoints(spaceId, resolved);
+			const warnings: string[] = [];
+			for (const endpoint of targets) {
+				const devices = await this.spacesService.findDevicesByIds([endpoint.deviceId]);
+				const device = devices[0];
+				const property = device?.channels
+					?.flatMap((channel) => channel.properties ?? [])
+					.find((candidate) => candidate.id === endpoint.links.playback.propertyId);
+				if (
+					!device ||
+					device.enabled === false ||
+					device.hidden ||
+					!this.platformRegistryService.get(device) ||
+					!property ||
+					!property.permissions?.some((permission) =>
+						[PermissionType.WRITE_ONLY, PermissionType.READ_WRITE].includes(permission),
+					) ||
+					!validatePropertyCommandValue(property, 'pause').valid
+				)
+					warnings.push(`Playback pause unavailable for ${endpoint.deviceId}`);
+			}
+			return { hasActivity: true, targetCount: targets.length, warnings };
+		} catch {
+			return { hasActivity: true, targetCount: 0, warnings: ['Persisted media deactivation plan unavailable'] };
+		}
+	}
+
 	/**
 	 * Deactivate the current media activity for a space
 	 */
-	async deactivate(spaceId: string): Promise<MediaActivityActivationResultModel> {
+	async deactivate(
+		spaceId: string,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<MediaActivityActivationResultModel> {
 		await this.spacesService.getOneOrThrow(spaceId);
 
+		if (activityCurrent && !(await activityCurrent())) throw new SpacesValidationException('Space activity superseded');
 		const record = await this.getActiveRecord(spaceId);
 		const deactivationWarnings: string[] = [];
 
@@ -417,8 +465,11 @@ export class SpaceMediaActivityService {
 			// Best-effort: try to stop playback on resolved devices before deactivating
 			if (record.resolved && record.state !== MediaActivationState.DEACTIVATED) {
 				try {
-					const resolved = JSON.parse(record.resolved) as MediaActivityResolvedModel;
-					const stopWarnings = await this.bestEffortStopPlayback(spaceId, resolved);
+					const resolved = toInstance(
+						MediaActivityResolvedModel,
+						JSON.parse(record.resolved) as Record<string, unknown>,
+					);
+					const stopWarnings = await this.bestEffortStopPlayback(spaceId, resolved, activityCurrent);
 					deactivationWarnings.push(...stopWarnings);
 				} catch (error) {
 					const err = error as Error;
@@ -427,6 +478,8 @@ export class SpaceMediaActivityService {
 				}
 			}
 
+			if (activityCurrent && !(await activityCurrent()))
+				throw new SpacesValidationException('Space activity superseded');
 			// Always set to deactivated regardless of stop playback outcome
 			record.activityKey = null;
 			record.state = MediaActivationState.DEACTIVATED;
@@ -448,21 +501,36 @@ export class SpaceMediaActivityService {
 	 * Best-effort: try to stop/pause playback on resolved devices.
 	 * Returns warning messages for any failures (never throws).
 	 */
-	private async bestEffortStopPlayback(spaceId: string, resolved: MediaActivityResolvedModel): Promise<string[]> {
+	private async deactivationEndpoints(
+		spaceId: string,
+		resolved: MediaActivityResolvedModel,
+	): Promise<DerivedMediaEndpointModel[]> {
 		const endpointsResult = await this.derivedEndpointService.buildEndpointsForSpace(spaceId);
-
-		const playbackEndpoints = endpointsResult.endpoints.filter((e) => e.capabilities.playback && e.links.playback);
-
-		// Only target endpoints that are part of the resolved activity
 		const resolvedDeviceIds = new Set(
 			[resolved.displayDeviceId, resolved.audioDeviceId, resolved.sourceDeviceId, resolved.remoteDeviceId].filter(
 				Boolean,
 			),
 		);
-
-		const targetEndpoints = playbackEndpoints.filter((ep) => resolvedDeviceIds.has(ep.deviceId));
-
-		return this.pausePlaybackOnEndpoints(targetEndpoints, (ep) => `Failed to stop playback on ${ep.name}`);
+		// One physical pause per playback property, even when a device exposes multiple endpoint projections.
+		const targets = new Map<string, DerivedMediaEndpointModel>();
+		for (const endpoint of endpointsResult.endpoints) {
+			if (endpoint.capabilities.playback && endpoint.links.playback && resolvedDeviceIds.has(endpoint.deviceId))
+				targets.set(endpoint.links.playback.propertyId, endpoint);
+		}
+		return [...targets.values()];
+	}
+	private async bestEffortStopPlayback(
+		spaceId: string,
+		resolved: MediaActivityResolvedModel,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<string[]> {
+		const targets = await this.deactivationEndpoints(spaceId, resolved);
+		return this.pausePlaybackOnEndpoints(
+			targets,
+			(endpoint) => `Failed to stop playback on ${endpoint.name}`,
+			undefined,
+			activityCurrent,
+		);
 	}
 
 	/**
@@ -655,7 +723,10 @@ export class SpaceMediaActivityService {
 	/**
 	 * Execute a plan with timeouts and partial success, emitting step progress events
 	 */
-	private async executePlan(plan: MediaActivityExecutionPlanModel): Promise<ExecutionResult> {
+	private async executePlan(
+		plan: MediaActivityExecutionPlanModel,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<ExecutionResult> {
 		let succeeded = 0;
 		const failures: ExecutionFailure[] = [];
 
@@ -665,6 +736,7 @@ export class SpaceMediaActivityService {
 		const deviceMap = new Map(devices.map((d) => [d.id, d]));
 
 		for (let i = 0; i < plan.steps.length; i++) {
+			if (activityCurrent && !(await activityCurrent())) throw new Error('Space activity superseded');
 			const step = plan.steps[i];
 			const stepLabel = step.label ?? `Step ${i + 1}`;
 			const device = deviceMap.get(step.targetDeviceId);
@@ -973,21 +1045,28 @@ export class SpaceMediaActivityService {
 		endpoints: DerivedMediaEndpointModel[],
 		failureMessage: (ep: DerivedMediaEndpointModel) => string,
 		successMessage?: (ep: DerivedMediaEndpointModel) => string,
+		activityCurrent?: () => Promise<boolean>,
 	): Promise<string[]> {
 		const messages: string[] = [];
 
 		for (const ep of endpoints) {
 			try {
+				if (activityCurrent && !(await activityCurrent())) {
+					messages.push('Space activity superseded');
+					break;
+				}
 				const devices = await this.spacesService.findDevicesByIds([ep.deviceId]);
 				const device = devices[0];
 
 				if (!device) {
+					if (activityCurrent) messages.push(failureMessage(ep));
 					continue;
 				}
 
 				const platform = this.platformRegistryService.get(device);
 
 				if (!platform) {
+					if (activityCurrent) messages.push(failureMessage(ep));
 					continue;
 				}
 
@@ -1009,6 +1088,10 @@ export class SpaceMediaActivityService {
 				}
 
 				if (foundChannel && foundProperty) {
+					if (activityCurrent && !(await activityCurrent())) {
+						messages.push('Space activity superseded');
+						break;
+					}
 					const command = {
 						device,
 						channel: foundChannel,
@@ -1028,7 +1111,7 @@ export class SpaceMediaActivityService {
 					} else if (!success) {
 						messages.push(failureMessage(ep));
 					}
-				}
+				} else if (activityCurrent) messages.push(failureMessage(ep));
 			} catch (error) {
 				const err = error as Error;
 				messages.push(`${failureMessage(ep)}: ${err.message}`);
@@ -1043,8 +1126,12 @@ export class SpaceMediaActivityService {
 	 * Build an activation result from an existing record
 	 */
 	private buildResultFromRecord(record: SpaceActiveMediaActivityEntity): MediaActivityActivationResultModel {
-		const resolved = record.resolved ? (JSON.parse(record.resolved) as MediaActivityResolvedModel) : undefined;
-		const summary = record.lastResult ? (JSON.parse(record.lastResult) as MediaActivityLastResultModel) : undefined;
+		const resolved = record.resolved
+			? toInstance(MediaActivityResolvedModel, JSON.parse(record.resolved) as Record<string, unknown>)
+			: undefined;
+		const summary = record.lastResult
+			? toInstance(MediaActivityLastResultModel, JSON.parse(record.lastResult) as Record<string, unknown>)
+			: undefined;
 
 		return {
 			activityKey: record.activityKey,

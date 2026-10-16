@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: planned
+Status: in_progress (backend foundation implemented; client UI and climate bridge pending)
 Tracking: #1287
 Issues: #1292 (definitions and config), #1293 (orchestration), #1294 (activation endpoints and events)
 
@@ -78,21 +78,21 @@ Admin and panel work is tracked in separate tasks (`FEATURE-SPACE-MODE-ADMIN-UI`
 
 ## 4. Acceptance criteria
 
-- [ ] `ActivityMode` enum exists with at least: WORK, RELAX, SLEEP, ENTERTAINMENT, AWAY
-- [ ] Each mode has a default configuration specifying per-domain intents; climate defaults disabled/unset until an operator configures a validated setpoint or thermostat preset reference
+- [x] `ActivityMode` enum exists with at least: WORK, RELAX, SLEEP, ENTERTAINMENT, AWAY
+- [x] Each mode has a default configuration specifying per-domain intents; climate defaults disabled/unset until an operator configures a validated setpoint or thermostat preset reference
 - [ ] `SpaceModeService.activateMode()` executes appropriate intents for all domains
-- [ ] Mode activation returns aggregated results from all domain intents
-- [ ] Active mode is persisted per space
-- [ ] Admin can customize mode behavior per space
-- [ ] Admin can enable/disable modes per space
+- [x] Mode activation returns aggregated results from all domain intents
+- [x] Active mode is persisted per space
+- [x] Admin can customize mode behavior per space
+- [x] Admin can enable/disable modes per space
 - [ ] Panel shows available modes and allows one-tap activation
 - [ ] Panel shows active mode indicator
-- [ ] Modes only affect domains that have devices in the space
+- [x] Modes only affect domains that have devices in the space
 - [ ] Unit tests cover:
   - [ ] Mode activation with all domains present
-  - [ ] Mode activation with partial domains (e.g., no media)
-  - [ ] Mode customization override
-  - [ ] Partial failure handling (some domains fail)
+  - [x] Mode activation with partial domains (e.g., no media)
+  - [x] Mode customization override
+  - [x] Partial failure handling (some domains fail)
 
 ## 5. Example scenarios
 
@@ -271,3 +271,34 @@ async activateMode(spaceId: string, mode: ActivityMode): Promise<ModeResult> {
 - Keep changes scoped to this task and its `Scope`.
 - For each acceptance criterion, either implement it or explain why it's skipped.
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+
+## Backend foundation implementation (#1292–#1294)
+
+The backend foundation lives in `plugins/spaces-home-control`. Migration 46 materializes five built-in
+configurations per existing room/zone; the generic space lifecycle registry initializes new rooms/zones
+atomically and removes plugin rows when transitioning to unsupported types. No global/null-space rows
+or mutation during GET are used. Returning to a supported type creates fresh authored defaults.
+
+REST supports available modes, configuration read/replace/reset with expected revision, persisted active
+state, read-only readiness preview, activation and identity-checked deactivation. Configuration writes require
+owner/admin; manual activation follows existing space WebSocket policy (display tokens or owner/admin users).
+Actors come from authentication. Committed refresh events carry space/activation/revision identities.
+
+Lighting, covers and existing media activity services provide real commands. Sleep/Away use lighting OFF.
+Custom brightness overrides only roles selected ON by the lighting mode. Covers percentages require writable
+position controls that can represent the exact range/grid/value. A present read-only position cannot fall through to
+a writable command. Command-only intermediate positions and unsupported group percentages are refused explicitly.
+Media activation requires an existing operator binding; OFF follows actual guarded deactivation with read-only admission,
+pausing persisted resolved playback without requiring an OFF binding. No defaults are created during preview/activation.
+Enabled security and climate explicitly report unsupported in this foundation. Climate configuration is validated
+and persisted, but no adapter, thermostat preset creation or climate command is provided. The trusted climate port
+is internal only; controller owner/baseline CAS, graph fencing and source tombstones remain future bridge work.
+
+Each domain reports disabled/no_targets/unsupported/failed/succeeded (preview uses ready). Partial failure preserves
+the selected mode. Per-space overlap is rejected without a queue. Revision/identity fences prevent stale completion
+and stop later physical steps; a command already admitted to a provider cannot be undone. Deactivation clears manual
+selection and does not restore prior device state. Restart marks unfinished activation interrupted without replay.
+
+Panel/admin UI (#1295/#1296), scheduling, presence, the VD1458 climate adapter, additional presets/custom authoring,
+and installed-hardware qualification remain pending. The full all-domains actuation criterion stays unchecked until
+the trusted climate bridge and security actuation exist. See `docs/space-activity-modes.md` for API details and limits.

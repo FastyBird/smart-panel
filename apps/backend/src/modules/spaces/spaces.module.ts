@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { SpaceModesController } from '../../plugins/spaces-home-control/controllers/space-modes.controller';
 import { SpacesDomainController } from '../../plugins/spaces-home-control/controllers/spaces-domain.controller';
 import { RoomSpaceEntity } from '../../plugins/spaces-home-control/entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from '../../plugins/spaces-home-control/entities/space-active-media-activity.entity';
@@ -30,6 +31,7 @@ import { SpacesConfigModel } from './models/config.model';
 import { SpacesModuleResetService } from './services/module-reset.service';
 import { SpaceActivityService } from './services/space-activity.service';
 import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
+import { SpaceLifecycleRegistryService } from './services/space-lifecycle-registry.service';
 import { SpaceRelationsLoaderRegistryService } from './services/space-relations-loader-registry.service';
 import { SpaceRolesTypeMapperService } from './services/space-roles-type-mapper.service';
 import { SpacesBulkService } from './services/spaces-bulk.service';
@@ -72,10 +74,11 @@ import { SpaceActivitySubscriber } from './subscribers/space-activity.subscriber
 	// (lighting, climate, covers, sensors, media, suggestions, undo, intent
 	// catalog) that admin and panel clients expect. Once they migrate to the
 	// plugin's own prefix, this dual-location registration can move back.
-	controllers: [SpacesController, SpacesDomainController],
+	controllers: [SpacesController, SpacesDomainController, SpaceModesController],
 	providers: [
 		SpacesService,
 		SpaceActivityService,
+		SpaceLifecycleRegistryService,
 		SpaceActivitySubscriber,
 		SpacesBulkService,
 		SpacesTypeMapperService,
@@ -87,6 +90,7 @@ import { SpaceActivitySubscriber } from './subscribers/space-activity.subscriber
 	exports: [
 		SpacesService,
 		SpaceActivityService,
+		SpaceLifecycleRegistryService,
 		SpacesBulkService,
 		SpacesTypeMapperService,
 		SpaceRolesTypeMapperService,

@@ -46,6 +46,8 @@ export enum SpaceRoleType {
 	SENSOR = 'sensor',
 	MEDIA_BINDING = 'media_binding',
 	ACTIVE_MEDIA = 'active_media',
+	ACTIVITY_CONFIG = 'activity_config',
+	ACTIVITY_STATE = 'activity_state',
 }
 
 /**

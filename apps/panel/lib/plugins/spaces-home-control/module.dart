@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/climate_targets.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/media_activity.dart';
@@ -37,11 +38,14 @@ class SpacesHomeControlPluginService {
   late CoversTargetsRepository _coversTargetsRepository;
   late SpaceStateRepository _spaceStateRepository;
   late MediaActivityRepository _mediaActivityRepository;
+  late ActivityModesRegistry _activityModesRegistry;
   late MediaActivityService _mediaActivityService;
   late SpacesService _spacesService;
   late SpaceSuggestionProvider _suggestionProvider;
 
   bool _isLoading = true;
+  DisplayRepository? _activityDisplay;
+  String? _activityDisplaySpace;
 
   /// Tail of the target-refresh queue. See [_refreshSpaceTargets].
   Future<void> _targetsRefresh = Future<void>.value();
@@ -51,9 +55,7 @@ class SpacesHomeControlPluginService {
     required SocketService socketService,
     required Dio dio,
   }) : _socketService = socketService {
-    _spacesRepository = SpacesRepository(
-      apiClient: apiClient.spacesModule,
-    );
+    _spacesRepository = SpacesRepository(apiClient: apiClient.spacesModule);
 
     _lightTargetsRepository = LightTargetsRepository(
       apiClient: apiClient.spacesHomeControlPlugin,
@@ -73,9 +75,9 @@ class SpacesHomeControlPluginService {
       commandDispatch: CommandDispatchService(socketService: socketService),
     );
 
-    _mediaActivityRepository = MediaActivityRepository(
-      dio: dio,
-    );
+    _activityModesRegistry = ActivityModesRegistry(dio: dio);
+
+    _mediaActivityRepository = MediaActivityRepository(dio: dio);
 
     _mediaActivityService = MediaActivityService(
       repository: _mediaActivityRepository,
@@ -95,6 +97,7 @@ class SpacesHomeControlPluginService {
     locator.registerSingleton(_coversTargetsRepository);
     locator.registerSingleton(_spaceStateRepository);
     locator.registerSingleton(_mediaActivityRepository);
+    locator.registerSingleton(_activityModesRegistry);
     locator.registerSingleton(_mediaActivityService);
     locator.registerSingleton(_spacesService);
   }
@@ -105,7 +108,9 @@ class SpacesHomeControlPluginService {
     // Register space suggestion provider with global notification service
     _suggestionProvider = SpaceSuggestionProvider();
     try {
-      locator<SuggestionNotificationService>().registerProvider(_suggestionProvider);
+      locator<SuggestionNotificationService>().registerProvider(
+        _suggestionProvider,
+      );
     } catch (_) {
       // Global notification service not yet available
     }
@@ -118,6 +123,13 @@ class SpacesHomeControlPluginService {
       SpacesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    _socketService.addConnectionListener(_onActivityConnectionChanged);
+    if (locator.isRegistered<DisplayRepository>()) {
+      _activityDisplay = locator<DisplayRepository>();
+      _activityDisplaySpace = _activityDisplay?.display?.spaceId;
+      _activityDisplay?.addListener(_onActivityDisplayChanged);
+    }
 
     // Listen for devices module events to sync channel/device names
     // and refresh media endpoints when device assignments change
@@ -139,9 +151,7 @@ class SpacesHomeControlPluginService {
     );
 
     if (kDebugMode) {
-      debugPrint(
-        '[SPACES MODULE] Module was successfully initialized',
-      );
+      debugPrint('[SPACES MODULE] Module was successfully initialized');
     }
   }
 
@@ -150,6 +160,7 @@ class SpacesHomeControlPluginService {
   /// Re-fetch all spaces, targets, and media data.
   Future<void> refresh() async {
     await _spacesRepository.fetchAll();
+    await _activityModesRegistry.refresh();
 
     // Refresh media activity data for the display's space
     try {
@@ -162,7 +173,29 @@ class SpacesHomeControlPluginService {
     }
   }
 
+  void _onActivityDisplayChanged() {
+    final next = _activityDisplay?.display?.spaceId;
+    if (next != _activityDisplaySpace) {
+      _activityDisplaySpace = next;
+      _activityModesRegistry.refresh();
+    }
+  }
+
+  void _onActivityConnectionChanged(bool connected) {
+    if (connected) {
+      _activityModesRegistry.refresh();
+    } else {
+      _activityModesRegistry.markStale();
+    }
+  }
+
   void dispose() {
+    _socketService.removeConnectionListener(_onActivityConnectionChanged);
+    _activityDisplay?.removeListener(_onActivityDisplayChanged);
+    _activityModesRegistry.dispose();
+    if (locator.isRegistered<ActivityModesRegistry>()) {
+      locator.unregister<ActivityModesRegistry>();
+    }
     // Unregister space suggestion provider from global service
     try {
       locator<SuggestionNotificationService>().unregisterProvider(
@@ -224,15 +257,24 @@ class SpacesHomeControlPluginService {
   /// ////////////////
 
   void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    if (event == 'SpacesModule.ActivityMode.ConfigChanged' ||
+        event == 'SpacesModule.ActivityMode.StateChanged') {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) _activityModesRegistry.refresh(spaceId);
+      return;
+    }
+
     /// Space CREATE/UPDATE
     if (event == SpacesModuleConstants.spaceCreatedEvent ||
         event == SpacesModuleConstants.spaceUpdatedEvent) {
       _spacesRepository.insert([payload]);
+      _activityModesRegistry.refresh(payload['id'] as String?);
 
       /// Space DELETE
     } else if (event == SpacesModuleConstants.spaceDeletedEvent &&
         payload.containsKey('id')) {
       _spacesRepository.delete(payload['id']);
+      _activityModesRegistry.clearSpace(payload['id'] as String);
       _lightTargetsRepository.deleteForSpace(payload['id']);
       _climateTargetsRepository.deleteForSpace(payload['id']);
       _coversTargetsRepository.deleteForSpace(payload['id']);
@@ -395,9 +437,7 @@ class SpacesHomeControlPluginService {
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE] Error handling suggestion event: $e',
-        );
+        debugPrint('[SPACES MODULE] Error handling suggestion event: $e');
       }
     }
   }
@@ -455,14 +495,16 @@ class SpacesHomeControlPluginService {
     // carrying the pre-hide list can land after the correct post-hide one and
     // make the physical source commandable again until something else
     // refreshes.
-    _targetsRefresh = _targetsRefresh.then((_) async {
-      await _lightTargetsRepository.fetchForSpace(spaceId);
-      await _climateTargetsRepository.fetchForSpace(spaceId);
-      await _coversTargetsRepository.fetchForSpace(spaceId);
-    }).catchError((Object _) {
-      // A failed refresh is already logged by the repository it came from, and
-      // must not close the queue behind it.
-    });
+    _targetsRefresh = _targetsRefresh
+        .then((_) async {
+          await _lightTargetsRepository.fetchForSpace(spaceId);
+          await _climateTargetsRepository.fetchForSpace(spaceId);
+          await _coversTargetsRepository.fetchForSpace(spaceId);
+        })
+        .catchError((Object _) {
+          // A failed refresh is already logged by the repository it came from, and
+          // must not close the queue behind it.
+        });
   }
 
   /// Handle devices module events to sync names to targets and refresh
@@ -476,6 +518,38 @@ class SpacesHomeControlPluginService {
 
   void _deviceSocketEventHandler(String event, Map<String, dynamic> payload) {
     if (!payload.containsKey('id')) return;
+    _activityModesRegistry.refreshAffected((spaceId) {
+      // Device updates/deletes may omit the previous membership; keep those conservative.
+      if (event == DevicesModuleConstants.deviceUpdatedEvent ||
+          event == DevicesModuleConstants.deviceDeletedEvent) {
+        return true;
+      }
+      // Missing membership is unknown, including the space a device just left.
+      if (payload['room_id'] is! String || payload['zone_ids'] is! List) {
+        return true;
+      }
+      if (_couldAffectSpace(spaceId, event, payload)) return true;
+      final id = payload['id'];
+      final channel = event == DevicesModuleConstants.channelUpdatedEvent;
+      return _lightTargetsRepository
+              .getLightTargetsForSpace(spaceId)
+              .any(
+                (target) =>
+                    channel ? target.channelId == id : target.deviceId == id,
+              ) ||
+          _climateTargetsRepository
+              .getClimateTargetsForSpace(spaceId)
+              .any(
+                (target) =>
+                    channel ? target.channelId == id : target.deviceId == id,
+              ) ||
+          _coversTargetsRepository
+              .getCoversTargetsForSpace(spaceId)
+              .any(
+                (target) =>
+                    channel ? target.channelId == id : target.deviceId == id,
+              );
+    });
 
     final id = payload['id'] as String;
 
