@@ -23,6 +23,7 @@ describe('thermostat durable comfort lifecycle', () => {
 	let makeService: () => VirtualThermostatComfortService;
 	let id: string;
 	let events: EventEmitter2;
+	let structure: DeviceStructureLockService;
 	let wall: number;
 	let elapsed: number;
 	const input = () => ({
@@ -50,6 +51,25 @@ describe('thermostat durable comfort lifecycle', () => {
 			'authenticated-operator',
 		);
 
+	const pauseNextSharedRead = () => {
+		let resume: () => void;
+		let observed: () => void;
+		const gate = new Promise<void>((resolve) => {
+			resume = resolve;
+		});
+		const entered = new Promise<void>((resolve) => {
+			observed = resolve;
+		});
+		const shared = structure.runShared.bind(structure) as DeviceStructureLockService['runShared'];
+		jest.spyOn(structure, 'runShared').mockImplementationOnce(async <T>(operation: () => Promise<T>): Promise<T> => {
+			const result = await shared(operation);
+			observed();
+			await gate;
+			return result;
+		});
+		return { entered, resume };
+	};
+
 	beforeEach(async () => {
 		wall = Date.UTC(2026, 9, 15);
 		elapsed = 100;
@@ -61,7 +81,7 @@ describe('thermostat durable comfort lifecycle', () => {
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 			synchronize: true,
 		}).initialize();
-		const structure = new DeviceStructureLockService();
+		structure = new DeviceStructureLockService();
 		const graph = new VirtualDependencyGraphService(database);
 		events = new EventEmitter2();
 		const claims = {
@@ -288,6 +308,116 @@ describe('thermostat durable comfort lifecycle', () => {
 		expect(
 			comfort.isCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
 		).toBe(false);
+	});
+
+	it('keeps no-override reads shared and does not open watermark transactions', async () => {
+		await configured();
+		const exclusive = jest.spyOn(structure, 'runExclusive');
+		const transaction = jest.spyOn(database, 'transaction');
+		await Promise.all([comfort.settle(id), comfort.settle(id), comfort.get(id)]);
+		expect(exclusive).not.toHaveBeenCalled();
+		expect(transaction).not.toHaveBeenCalled();
+	});
+
+	it('preserves an override created after the no-active shared read and returns the new intent', async () => {
+		await configured();
+		const paused = pauseNextSharedRead();
+		const reading = comfort.get(id);
+		await paused.entered;
+		const created = await overridden();
+		paused.resume();
+		const result = await reading;
+		expect(result.revision).toBe(created.revision);
+		expect(result.configuration.temporary_override.id).toBe(created.configuration.temporary_override.id);
+		expect(result.effective.source).toBe('override');
+		expect(
+			comfort.isCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
+		).toBe(true);
+	});
+
+	it.each(['cancel', 'replace'] as const)(
+		're-reads current identity and revision after a concurrent %s before exclusive settlement',
+		async (action) => {
+			await configured();
+			const original = await overridden();
+			const stale = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			wall += 500;
+			elapsed += 500;
+			const paused = pauseNextSharedRead();
+			const settling = comfort.settle(id);
+			await paused.entered;
+			await comfort.cancel(id, await fence(), original.configuration.temporary_override.id);
+			if (action === 'replace') await overridden(2000);
+			const expected = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			wall += 600;
+			elapsed += 600;
+			paused.resume();
+			await Promise.all([settling, comfort.settle(id)]);
+			const current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			expect(current.revision).toBe(expected.revision);
+			expect(current.comfort.temporary_override).toMatchObject({
+				id: expected.comfort.temporary_override.id,
+				status: action === 'replace' ? 'active' : 'cancelled',
+				expires_at: expected.comfort.temporary_override.expires_at,
+			});
+			expect(comfort.isCurrent(stale)).toBe(false);
+			if (action === 'replace') expect(comfort.isCurrent(current)).toBe(true);
+		},
+	);
+
+	it('persists every advancing active watermark without an intent revision or expiry renewal', async () => {
+		await configured();
+		const original = await overridden();
+		for (let step = 0; step < 2; step++) {
+			wall++;
+			elapsed++;
+			await comfort.settle(id);
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			expect(row.revision).toBe(original.revision);
+			expect(row.comfort.temporary_override).toMatchObject({
+				id: original.configuration.temporary_override.id,
+				expires_at: original.configuration.temporary_override.expires_at,
+				wall_watermark_ms: wall,
+			});
+		}
+	});
+
+	it('fails closed on a lost watermark CAS and retries persistence without mutating the intent', async () => {
+		await configured();
+		const original = await overridden();
+		wall += 500;
+		elapsed += 500;
+		await database.query(
+			'CREATE TRIGGER ignore_watermark BEFORE UPDATE ON devices_virtual_thermostat_configs BEGIN SELECT RAISE(IGNORE); END',
+		);
+		await expect(comfort.settle(id)).rejects.toThrow('revision changed during watermark settlement');
+		const unchanged = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		expect(unchanged.comfort.temporary_override.wall_watermark_ms).toBe(
+			original.configuration.temporary_override.wall_watermark_ms,
+		);
+		await database.query('DROP TRIGGER ignore_watermark');
+		await comfort.settle(id);
+		const current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+		expect(current.revision).toBe(original.revision);
+		expect(current.comfort.temporary_override.wall_watermark_ms).toBe(wall);
+	});
+
+	it('retries pending notifications exclusively even without an active override, then returns to shared reads', async () => {
+		const listener = () => {
+			throw new Error('notification retry fixture');
+		};
+		events.on('devices-virtual.thermostat.config.changed', listener);
+		const original = await configured();
+		events.off('devices-virtual.thermostat.config.changed', listener);
+		const notified = jest.fn();
+		events.on('devices-virtual.thermostat.config.changed', notified);
+		const exclusive = jest.spyOn(structure, 'runExclusive');
+		await comfort.settle(id);
+		expect(exclusive).toHaveBeenCalledTimes(1);
+		expect(notified).toHaveBeenCalledWith(id);
+		await comfort.settle(id);
+		expect(exclusive).toHaveBeenCalledTimes(1);
+		expect((await comfort.get(id)).revision).toBe(original.revision);
 	});
 
 	it('bounds process state through replacements, cancellation, expiry and stale dispatch snapshots', async () => {

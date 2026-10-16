@@ -144,6 +144,95 @@ describe('durable Shelly sensor metadata and process-local generation leases', (
 		);
 	});
 
+	it.each([
+		{
+			component: 'input:100',
+			configuration: { id: 100, type: 'analog', enable: true, xpercent: { expr: 'x/2', unit: 'Celsius' } },
+			catalog: {
+				analog_in: { 'input:100': { io: 0 } },
+				ds18b20: {},
+				dht22: {},
+				digital_in: { 'input:101': {} },
+			},
+		},
+		{
+			component: 'temperature:102',
+			configuration: { id: 102, offset_C: 0, report_thr_C: 0.1 },
+			catalog: {
+				digital_in: { 'input:100': { io: 0 }, 'input:101': { io: 1 } },
+				ds18b20: { 'temperature:102': { addr: '40:255:100:6:199:204:149:177', io: 0 } },
+				dht22: { 'temperature:104': { io: 1 }, 'humidity:104': { io: 1 } },
+				analog_in: { 'input:105': { io: 0 } },
+				voltmeter: { 'voltmeter:106': { io: 1 } },
+				digital_out: { 'switch:107': { io: 0 } },
+			},
+		},
+	])(
+		'retains the complete documented catalog for qualified $component',
+		async ({ component, configuration, catalog }) => {
+			const snapshot = nativeTemperatureIdentity(component, configuration, catalog);
+			expect(snapshot).not.toBeNull();
+			expect(snapshot.installationSnapshot).toEqual({ configuration, peripherals: catalog });
+			expect(snapshot.installationSnapshot.configuration).not.toBe(configuration);
+			expect(snapshot.installationSnapshot.peripherals).not.toBe(catalog);
+			await sources.bind(propertyId, deviceId, snapshot);
+			expect((await sources.get(propertyId)).metadata.installationSnapshot).toEqual({
+				configuration,
+				peripherals: catalog,
+			});
+		},
+	);
+
+	it('revokes the source lease when an unrelated documented catalog link changes', async () => {
+		const configuration = { id: 100, type: 'analog', enable: true, xpercent: { expr: 'x/2', unit: 'Celsius' } };
+		const catalog = { analog_in: { 'input:100': {} }, dht22: {}, digital_in: { 'input:101': {} } };
+		const original = nativeTemperatureIdentity('input:100', configuration, catalog);
+		await sources.bind(propertyId, deviceId, original);
+		const lease = await sources.get(propertyId);
+		const changedCatalog = { ...catalog, digital_in: { 'input:102': {} } };
+		const changed = nativeTemperatureIdentity('input:100', configuration, changedCatalog);
+		expect(changed.fingerprint).toBe(original.fingerprint);
+		const saving = sources.bind(propertyId, deviceId, changed);
+		expect(sources.isCurrent(lease, new Date(Date.now() + 1))).toBe(false);
+		await saving;
+		expect((await sources.get(propertyId)).metadata.installationSnapshot.peripherals).toEqual(changedCatalog);
+	});
+
+	it.each([
+		{ dht22: null },
+		{ digital_in: [] },
+		{ digital_out: { 'switch:107': null } },
+		{ digital_out: { 'switch:107': [] } },
+		{ digital_out: { 'switch:107': { io: -1 } } },
+		{ digital_in: { 'input:101': { io: 0.5 } } },
+		{ dht22: { 'temperature:104': { io: Number.POSITIVE_INFINITY } } },
+		{ ds18b20: { 'temperature:102': { addr: 123 } } },
+		{ digital_out: { 'switch:107': { credential: 'must-not-store' } } },
+		{ unknown_peripheral: {} },
+	])('refuses malformed or unknown complete catalog entries: %j', (extra) => {
+		const snapshot = nativeTemperatureIdentity(
+			'input:100',
+			{ id: 100, type: 'analog', enable: true, xpercent: { expr: 'x/2', unit: 'Celsius' } },
+			{ analog_in: { 'input:100': {} }, ...extra },
+		);
+		expect(snapshot).not.toBeNull();
+		expect(snapshot.installationSnapshot).toBeUndefined();
+	});
+
+	it('retains the exact 8192-character snapshot ceiling and does not qualify newly retained peripheral kinds', () => {
+		const configuration = { id: 100, name: '', type: 'analog', xpercent: { expr: 'x/2', unit: 'Celsius' } };
+		const catalog = { analog_in: { 'input:100': {} }, digital_in: { 'input:101': {} }, dht22: {} };
+		const length = JSON.stringify({ configuration, peripherals: catalog }).length;
+		configuration.name = 'x'.repeat(8192 - length);
+		expect(nativeTemperatureIdentity('input:100', configuration, catalog).installationSnapshot).toBeDefined();
+		configuration.name += 'x';
+		expect(nativeTemperatureIdentity('input:100', configuration, catalog).installationSnapshot).toBeUndefined();
+		expect(nativeTemperatureIdentity('input:101', { ...configuration, id: 101 }, catalog)).toBeNull();
+		expect(
+			nativeTemperatureIdentity('temperature:104', { id: 104 }, { dht22: { 'temperature:104': { io: 0 } } }),
+		).toBeNull();
+	});
+
 	it('a new or restarted source refuses packets observed before identity/connection activation', async () => {
 		await sources.bind(propertyId, deviceId, nativeTemperatureIdentity('input:100', config, peripheral));
 		const lease = await sources.get(propertyId);
