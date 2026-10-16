@@ -4676,4 +4676,75 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get thermostatMemberActivityExpiry =>
       'Original relay observation expiry';
+
+  @override
+  String get space_activity_title => 'Modes';
+
+  @override
+  String get space_activity_work => 'Work';
+
+  @override
+  String get space_activity_relax => 'Relax';
+
+  @override
+  String get space_activity_sleep => 'Sleep';
+
+  @override
+  String get space_activity_entertainment => 'Entertainment';
+
+  @override
+  String get space_activity_away => 'Away';
+
+  @override
+  String get space_activity_manual => 'Manual';
+
+  @override
+  String get space_activity_active => 'Selected · commands completed';
+
+  @override
+  String get space_activity_partial =>
+      'Selected · some commands could not complete';
+
+  @override
+  String get space_activity_failed => 'Selected · commands failed';
+
+  @override
+  String get space_activity_interrupted => 'Selected · interrupted';
+
+  @override
+  String get space_activity_pending => 'Sending request…';
+
+  @override
+  String get space_activity_details => 'Mode details';
+
+  @override
+  String get space_activity_security => 'Security';
+
+  @override
+  String get space_activity_commands_sent => 'Commands completed';
+
+  @override
+  String get space_activity_disabled => 'Disabled';
+
+  @override
+  String get space_activity_no_targets => 'No matching devices';
+
+  @override
+  String get space_activity_unsupported => 'Not supported';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Request unconfirmed. Check the current selection before trying again.';
+
+  @override
+  String get space_activity_conflict =>
+      'The mode changed elsewhere. Review the refreshed selection and try again.';
+
+  @override
+  String get space_activity_unavailable =>
+      'Modes could not be loaded. Refresh to continue.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings.';
 }

@@ -8475,6 +8475,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Original relay observation expiry'**
   String get thermostatMemberActivityExpiry;
+
+  /// No description provided for @space_activity_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Modes'**
+  String get space_activity_title;
+
+  /// No description provided for @space_activity_work.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get space_activity_work;
+
+  /// No description provided for @space_activity_relax.
+  ///
+  /// In en, this message translates to:
+  /// **'Relax'**
+  String get space_activity_relax;
+
+  /// No description provided for @space_activity_sleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get space_activity_sleep;
+
+  /// No description provided for @space_activity_entertainment.
+  ///
+  /// In en, this message translates to:
+  /// **'Entertainment'**
+  String get space_activity_entertainment;
+
+  /// No description provided for @space_activity_away.
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get space_activity_away;
+
+  /// No description provided for @space_activity_manual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get space_activity_manual;
+
+  /// No description provided for @space_activity_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected · commands completed'**
+  String get space_activity_active;
+
+  /// No description provided for @space_activity_partial.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected · some commands could not complete'**
+  String get space_activity_partial;
+
+  /// No description provided for @space_activity_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected · commands failed'**
+  String get space_activity_failed;
+
+  /// No description provided for @space_activity_interrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected · interrupted'**
+  String get space_activity_interrupted;
+
+  /// No description provided for @space_activity_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending request…'**
+  String get space_activity_pending;
+
+  /// No description provided for @space_activity_details.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode details'**
+  String get space_activity_details;
+
+  /// No description provided for @space_activity_security.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get space_activity_security;
+
+  /// No description provided for @space_activity_commands_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands completed'**
+  String get space_activity_commands_sent;
+
+  /// No description provided for @space_activity_disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get space_activity_disabled;
+
+  /// No description provided for @space_activity_no_targets.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching devices'**
+  String get space_activity_no_targets;
+
+  /// No description provided for @space_activity_unsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported'**
+  String get space_activity_unsupported;
+
+  /// No description provided for @space_activity_unconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Request unconfirmed. Check the current selection before trying again.'**
+  String get space_activity_unconfirmed;
+
+  /// No description provided for @space_activity_conflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The mode changed elsewhere. Review the refreshed selection and try again.'**
+  String get space_activity_conflict;
+
+  /// No description provided for @space_activity_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Modes could not be loaded. Refresh to continue.'**
+  String get space_activity_unavailable;
+
+  /// No description provided for @space_activity_outcome_notice.
+  ///
+  /// In en, this message translates to:
+  /// **'These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings.'**
+  String get space_activity_outcome_notice;
 }
 
 class _AppLocalizationsDelegate

@@ -4716,4 +4716,75 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get thermostatMemberActivityExpiry =>
       'Původní konec platnosti pozorování relé';
+
+  @override
+  String get space_activity_title => 'Režimy';
+
+  @override
+  String get space_activity_work => 'Práce';
+
+  @override
+  String get space_activity_relax => 'Odpočinek';
+
+  @override
+  String get space_activity_sleep => 'Spánek';
+
+  @override
+  String get space_activity_entertainment => 'Zábava';
+
+  @override
+  String get space_activity_away => 'Pryč';
+
+  @override
+  String get space_activity_manual => 'Ručně';
+
+  @override
+  String get space_activity_active => 'Vybráno · příkazy dokončeny';
+
+  @override
+  String get space_activity_partial =>
+      'Vybráno · některé příkazy nebyly dokončeny';
+
+  @override
+  String get space_activity_failed => 'Vybráno · příkazy selhaly';
+
+  @override
+  String get space_activity_interrupted => 'Vybráno · přerušeno';
+
+  @override
+  String get space_activity_pending => 'Odesílání požadavku…';
+
+  @override
+  String get space_activity_details => 'Podrobnosti režimu';
+
+  @override
+  String get space_activity_security => 'Zabezpečení';
+
+  @override
+  String get space_activity_commands_sent => 'Příkazy dokončeny';
+
+  @override
+  String get space_activity_disabled => 'Vypnuto';
+
+  @override
+  String get space_activity_no_targets => 'Žádná odpovídající zařízení';
+
+  @override
+  String get space_activity_unsupported => 'Nepodporováno';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Požadavek není potvrzen. Před dalším pokusem zkontrolujte aktuální výběr.';
+
+  @override
+  String get space_activity_conflict =>
+      'Režim byl změněn jinde. Zkontrolujte obnovený výběr a zkuste to znovu.';
+
+  @override
+  String get space_activity_unavailable =>
+      'Režimy se nepodařilo načíst. Pro pokračování obnovte data.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'Jde o výsledky příkazů. Stav zařízení se může lišit. Ruční ovládání zruší výběr bez obnovení předchozího nastavení.';
 }

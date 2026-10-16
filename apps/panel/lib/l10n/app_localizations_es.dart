@@ -4722,4 +4722,75 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get thermostatMemberActivityExpiry =>
       'Caducidad original de observación del relé';
+
+  @override
+  String get space_activity_title => 'Modos';
+
+  @override
+  String get space_activity_work => 'Trabajo';
+
+  @override
+  String get space_activity_relax => 'Descanso';
+
+  @override
+  String get space_activity_sleep => 'Sueño';
+
+  @override
+  String get space_activity_entertainment => 'Entretenimiento';
+
+  @override
+  String get space_activity_away => 'Ausente';
+
+  @override
+  String get space_activity_manual => 'Manual';
+
+  @override
+  String get space_activity_active => 'Seleccionado · órdenes completadas';
+
+  @override
+  String get space_activity_partial =>
+      'Seleccionado · algunas órdenes no se completaron';
+
+  @override
+  String get space_activity_failed => 'Seleccionado · órdenes fallidas';
+
+  @override
+  String get space_activity_interrupted => 'Seleccionado · interrumpido';
+
+  @override
+  String get space_activity_pending => 'Enviando solicitud…';
+
+  @override
+  String get space_activity_details => 'Detalles del modo';
+
+  @override
+  String get space_activity_security => 'Seguridad';
+
+  @override
+  String get space_activity_commands_sent => 'Órdenes completadas';
+
+  @override
+  String get space_activity_disabled => 'Desactivado';
+
+  @override
+  String get space_activity_no_targets => 'Sin dispositivos compatibles';
+
+  @override
+  String get space_activity_unsupported => 'No compatible';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Solicitud sin confirmar. Compruebe la selección actual antes de reintentarlo.';
+
+  @override
+  String get space_activity_conflict =>
+      'El modo cambió en otro lugar. Revise la selección actualizada y vuelva a intentarlo.';
+
+  @override
+  String get space_activity_unavailable =>
+      'No se pudieron cargar los modos. Actualice para continuar.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'Son resultados de órdenes. El estado del dispositivo puede variar. Manual borra la selección sin restaurar los ajustes anteriores.';
 }
