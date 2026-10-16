@@ -1,9 +1,8 @@
 import { DataSource } from 'typeorm';
 
-import { ActivityMode } from '../plugins/spaces-home-control/activity/space-activity.constants';
-import { defaultActivityConfiguration } from '../plugins/spaces-home-control/activity/space-activity.defaults';
-
-import { AddSpaceActivityModes1000000000046 } from './1000000000046-AddSpaceActivityModes';
+import { AddSpaceActivityModes1000000000046 } from '../1000000000046-AddSpaceActivityModes';
+import { ActivityMode } from '../../plugins/spaces-home-control/activity/space-activity.constants';
+import { defaultActivityConfiguration } from '../../plugins/spaces-home-control/activity/space-activity.defaults';
 
 describe('migration 46 on real SQLite', () => {
 	it('backfills room/zone defaults, preserves other roles and reverses incrementally', async () => {
