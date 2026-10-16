@@ -1,3 +1,8 @@
+import { DataSource } from 'typeorm';
+
+import { ConfigService as NestConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { domainResult } from '../activity/activity-result.utils';
 import {
@@ -15,6 +20,36 @@ import { SpaceActivationIdentity } from './space-climate-automation.port';
 import { SpaceModeService } from './space-mode.service';
 
 jest.setTimeout(30000);
+describe('activity startup CLI boundary', () => {
+	it.each([false, true])(
+		'does not touch an uninitialized or empty database in real CLI mode (initialized: %s)',
+		async (initialized) => {
+			const database = new DataSource({ type: 'sqlite', database: ':memory:' });
+			if (initialized) await database.initialize();
+			const getRepository = jest.spyOn(database, 'getRepository');
+			const query = jest.spyOn(database, 'query');
+			const run = jest.fn();
+			const events = new EventEmitter2();
+			const emit = jest.spyOn(events, 'emit');
+			const priorCli = process.env.FB_CLI;
+			try {
+				process.env.FB_CLI = 'on';
+				// Omit optional config injection to exercise its real environment-backed default.
+				const service = new SpaceModeService(database, {} as never, { run } as never, events);
+				await service.onApplicationBootstrap();
+				expect(getRepository).not.toHaveBeenCalled();
+				expect(query).not.toHaveBeenCalled();
+				expect(database.isInitialized).toBe(initialized);
+				expect(run).not.toHaveBeenCalled();
+				expect(emit).not.toHaveBeenCalled();
+			} finally {
+				if (priorCli === undefined) delete process.env.FB_CLI;
+				else process.env.FB_CLI = priorCli;
+				if (database.isInitialized) await database.destroy();
+			}
+		},
+	);
+});
 describe('SQLite activity orchestration persistence and fencing', () => {
 	let harness: Awaited<ReturnType<typeof activityTestDatabase>>;
 	let service: SpaceModeService;
@@ -152,11 +187,31 @@ describe('SQLite activity orchestration persistence and fencing', () => {
 			activityStatus: State.ACTIVATING,
 			activityResults: [],
 		});
+		const update = jest.spyOn(database.getRepository(SpaceActivityStateEntity), 'update');
+		const emit = jest.spyOn(harness.events, 'emit');
 		await service.onApplicationBootstrap();
+		expect(update).toHaveBeenCalledTimes(1);
+		expect(update).toHaveBeenCalledWith({ activityStatus: State.ACTIVATING }, { activityStatus: State.INTERRUPTED });
+		expect(emit).not.toHaveBeenCalled();
 		expect(await service.getActiveMode(room.id)).toMatchObject({
 			selectedActivityMode: ActivityMode.WORK,
 			activityStatus: State.INTERRUPTED,
 		});
 		expect(run).not.toHaveBeenCalled();
+	});
+	it('preserves ordinary runtime database failures without startup dispatch', async () => {
+		const { database, configs, events } = harness;
+		const runtime = new SpaceModeService(
+			database,
+			configs,
+			{ run } as never,
+			events,
+			new NestConfigService({ FB_CLI: 'off' }),
+		);
+		const emit = jest.spyOn(events, 'emit');
+		await database.query('DROP TABLE spaces_module_space_roles');
+		await expect(runtime.onApplicationBootstrap()).rejects.toThrow('no such table');
+		expect(run).not.toHaveBeenCalled();
+		expect(emit).not.toHaveBeenCalled();
 	});
 });

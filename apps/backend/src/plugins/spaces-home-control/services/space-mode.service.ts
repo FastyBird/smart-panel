@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 
-import { ConflictException, Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { ConflictException, Injectable, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { getEnvValue } from '../../../common/utils/config.utils';
 import { activationStatus } from '../activity/activity-result.utils';
 import {
 	ACTIVITY_STATE_CHANGED,
@@ -28,8 +30,10 @@ export class SpaceModeService implements OnApplicationBootstrap {
 		private readonly configs: SpaceActivityConfigService,
 		private readonly domains: SpaceActivityDomainsService,
 		private readonly events: EventEmitter2,
+		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {}
 	async onApplicationBootstrap(): Promise<void> {
+		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
 		// A process crash is not proof of completed actuation. Never replay startup plans.
 		await this.dataSource
 			.getRepository(SpaceActivityStateEntity)
