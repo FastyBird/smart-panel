@@ -1002,8 +1002,9 @@ class SpaceStateRepository extends ChangeNotifier {
         )) {
       return true;
     }
-    // Positive group evidence always wins over an older ordinary room snapshot.
-    if (_coversStates.containsKey(spaceId) || devices?.devicesLoaded == true) {
+    // Cached absence of group operations is not authoritative after assignment changes.
+    // Only the complete device catalogue can establish an ordinary target.
+    if (devices?.devicesLoaded == true) {
       return false;
     }
     return null;

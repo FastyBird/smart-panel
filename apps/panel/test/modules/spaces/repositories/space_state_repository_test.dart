@@ -7,7 +7,8 @@ import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/export.dart' show DeviceView, DevicesModuleDeviceCategory;
+import 'package:fastybird_smart_panel/modules/devices/export.dart'
+    show DeviceView, DevicesModuleDeviceCategory;
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_covers_intent.dart';
 
@@ -190,35 +191,57 @@ void main() {
   });
 
   group('single-shot cover classification', () {
-    for (final loading in [false, true]) {
-      for (final composite in [false, true]) {
-        test(
-          'unknown targets loading=$loading use one REST request, server composite=$composite, no WebSocket',
-          () async {
-            if (loading) {
-              final devices = UnknownDevices();
-              when(() => devices.devicesLoaded).thenReturn(false);
-              locator.registerSingleton<DevicesService>(devices);
-            }
-            final adapter = CoverAdapter()..composite = composite;
-            final dio = Dio()..httpClientAdapter = adapter;
-            locator.registerSingleton<Dio>(dio);
-            final result = await repository.openCovers('room');
-            expect(result?.success, isTrue);
-            expect(adapter.calls, 1);
-            expect(fakeSocketService.sends, 0);
-            expect(adapter.last?.extra['retryExhausted'], isTrue);
-            expect(adapter.last?.extra['noActuationReplay'], isTrue);
-            expect(adapter.last?.receiveTimeout, const Duration(seconds: 35));
-            dio.close();
-          },
-        );
+    for (final cachedOrdinary in [false, true]) {
+      for (final loading in [false, true]) {
+        for (final composite in [false, true]) {
+          test(
+            'unknown targets cachedOrdinary=$cachedOrdinary loading=$loading use one REST request, server composite=$composite, no WebSocket',
+            () async {
+              if (cachedOrdinary) {
+                repository.updateCoversState('room', {'has_covers': true});
+              }
+              if (loading) {
+                final devices = UnknownDevices();
+                when(() => devices.devicesLoaded).thenReturn(false);
+                locator.registerSingleton<DevicesService>(devices);
+              }
+              final adapter = CoverAdapter()..composite = composite;
+              final dio = Dio()..httpClientAdapter = adapter;
+              locator.registerSingleton<Dio>(dio);
+              final result = await repository.openCovers('room');
+              expect(result?.success, isTrue);
+              expect(adapter.calls, 1);
+              expect(fakeSocketService.sends, 0);
+              expect(adapter.last?.extra['retryExhausted'], isTrue);
+              expect(adapter.last?.extra['noActuationReplay'], isTrue);
+              expect(adapter.last?.receiveTimeout, const Duration(seconds: 35));
+              dio.close();
+            },
+          );
+        }
       }
     }
-    for (final status in [401, 500, 0]) {
+    for (final status in [200, 401, 500, 0]) {
       test(
-        'unknown target HTTP $status cannot be replayed by transport or token refresh interceptors',
+        'stale ordinary cache and unloaded newly assigned group HTTP $status never dispatch WebSocket or replay',
         () async {
+          repository.updateCoversState('room', {'has_covers': true});
+          final devices = UnknownDevices();
+          when(() => devices.devicesLoaded).thenReturn(false);
+          when(() => devices.devicesList).thenReturn([
+            DeviceView(
+              id: 'new-group',
+              name: 'New group',
+              type: 'virtual',
+              channels: [],
+              isCompositeGroup: true,
+              category: DevicesModuleDeviceCategory.windowCovering,
+              roomId: 'room',
+            ),
+          ]);
+          locator.registerSingleton<DevicesService>(devices);
+          // A failed socket acknowledgement must never trigger composite replay.
+          fakeSocketService.ackSuccess = false;
           final adapter = CoverAdapter()
             ..status = status
             ..timeout = status == 0;
@@ -229,10 +252,22 @@ void main() {
             TokenRefreshInterceptor(display),
           ]);
           locator.registerSingleton<Dio>(dio);
-          expect(await repository.openCovers('room'), isNull);
+          final result = await repository.openCovers('room');
+          if (status == 200) {
+            expect(result?.success, isTrue);
+            expect(result?.composites, hasLength(1));
+          } else {
+            expect(result, isNull);
+          }
           expect(adapter.calls, 1);
           expect(fakeSocketService.sends, 0);
           verifyNever(() => display.refreshToken());
+          verifyNever(
+            () => mockClient.createSpacesModuleSpaceCoversIntent(
+              id: any(named: 'id'),
+              body: any(named: 'body'),
+            ),
+          );
           dio.close();
         },
       );
@@ -261,28 +296,48 @@ void main() {
         dio.close();
       },
     );
-    test('known ordinary covers retain WebSocket then REST fallback', () async {
-      repository.updateCoversState('room', {'has_covers': true});
-      fakeSocketService.ackSuccess = false;
-      when(
-        () => mockClient.createSpacesModuleSpaceCoversIntent(
-          id: 'room',
-          body: any(named: 'body'),
-        ),
-      ).thenAnswer(
-        (_) async => createMockHttpResponse(FakeCoverResponse(), {
-          'data': {'success': true, 'affected_devices': 1, 'failed_devices': 0},
-        }, 200),
-      );
-      expect((await repository.openCovers('room'))?.success, isTrue);
-      expect(fakeSocketService.sends, 1);
-      verify(
-        () => mockClient.createSpacesModuleSpaceCoversIntent(
-          id: 'room',
-          body: any(named: 'body'),
-        ),
-      ).called(1);
-    });
+    test(
+      'loaded ordinary catalogue retains WebSocket then REST fallback',
+      () async {
+        repository.updateCoversState('room', {'has_covers': true});
+        final devices = UnknownDevices();
+        when(() => devices.devicesLoaded).thenReturn(true);
+        when(() => devices.devicesList).thenReturn([
+          DeviceView(
+            id: 'physical-cover',
+            name: 'Physical cover',
+            type: 'ordinary',
+            channels: [],
+            category: DevicesModuleDeviceCategory.windowCovering,
+            roomId: 'room',
+          ),
+        ]);
+        locator.registerSingleton<DevicesService>(devices);
+        fakeSocketService.ackSuccess = false;
+        when(
+          () => mockClient.createSpacesModuleSpaceCoversIntent(
+            id: 'room',
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => createMockHttpResponse(FakeCoverResponse(), {
+            'data': {
+              'success': true,
+              'affected_devices': 1,
+              'failed_devices': 0,
+            },
+          }, 200),
+        );
+        expect((await repository.openCovers('room'))?.success, isTrue);
+        expect(fakeSocketService.sends, 1);
+        verify(
+          () => mockClient.createSpacesModuleSpaceCoversIntent(
+            id: 'room',
+            body: any(named: 'body'),
+          ),
+        ).called(1);
+      },
+    );
     test(
       'known group catalogue overrides an older ordinary room classification without replay',
       () async {
