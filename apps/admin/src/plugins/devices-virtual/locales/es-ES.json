@@ -413,5 +413,28 @@
 		"qualificationHelp": "Comprueba únicamente la protección instalada y el destino actual. No confirma que el controlador esté listo ni certifica la seguridad del equipo físico.",
 		"activitySample": "Muestra observada del relé",
 		"activityExpiry": "Observación válida hasta"
+	},
+	"dewPoint": {
+		"title": "Punto de rocío",
+		"dry_bulb": "Temperatura de bulbo seco (°C)",
+		"relative_humidity": "Humedad relativa (%)",
+		"skew": "Desfase temporal máximo (s)",
+		"retained": "Identidad de origen conservada",
+		"boundary": "El punto de rocío es una magnitud distinta. Requiere ambas entradas recientes; no es temperatura ambiente ni del suelo.",
+		"cooling": "Protección de refrigeración contra condensación",
+		"margin": "Margen positivo sobre el punto de rocío (°C)",
+		"hysteresis": "Histéresis estricta de recuperación (°C)",
+		"absoluteMinimum": "Mínimo absoluto opcional de superficie (°C)",
+		"surface": "UUID de sonda local de superficie refrigerada",
+		"installation": "La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa.",
+		"errors": {
+			"reload": "Recargue la configuración.",
+			"inputs": "Seleccione ambas entradas.",
+			"preview": "Vista previa rechazada; revise fuentes, reglas y grafo.",
+			"revision": "La configuración cambió; recargue y repita la vista previa.",
+			"coolingPolicy": "Introduzca un margen positivo de refrigeración y una histéresis de recuperación de como máximo 60 °C.",
+			"coolingMinimum": "Introduzca un mínimo opcional finito de superficie superior a −45 °C y como máximo 60 °C.",
+			"coolingDependencies": "Cada miembro de refrigeración requiere punto de rocío, una sonda local de superficie refrigerada y una antigüedad válida."
+		}
 	}
 }

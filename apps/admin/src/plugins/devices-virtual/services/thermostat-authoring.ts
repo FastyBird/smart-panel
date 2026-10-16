@@ -1,8 +1,9 @@
 import { toRaw } from 'vue';
 
 import {
+	DevicesVirtualPluginConfigureDewPointSchema_version,
+	DevicesVirtualPluginCoolingDependencyPurpose,
 	DevicesVirtualPluginThermostatMemberProtectionKind,
-	DevicesVirtualPluginThermostatMemberProtectionSchema_version,
 	SpacesModuleClimateIntentMode,
 	type components,
 } from '../../../openapi';
@@ -32,6 +33,7 @@ export interface ThermostatDraft {
 		minimumOffMs: number | null;
 		changeoverMs: number | null;
 		floor: { limit: number | null; recoveryHysteresis: number | null } | null;
+		cooling?: { schemaVersion: 1; marginC: number | null; recoveryHysteresisC: number | null; absoluteMinimumC?: number | null } | null;
 	};
 	heuristic: {
 		sampleWindowMs: number | null;
@@ -91,10 +93,21 @@ export const draftFromConfiguration = (config: ThermostatConfiguration): Thermos
 		source_property: claim.source_property ?? claim.source_identity,
 		lease_seconds: claim.lease_seconds,
 		retained: structuredClone(toRaw(claim)),
+		...(claim.cooling_protection
+			? {
+					cooling_protection: {
+						schemaVersion: DevicesVirtualPluginConfigureDewPointSchema_version.Value1,
+						purpose: DevicesVirtualPluginCoolingDependencyPurpose.cooled_surface,
+						dew_point_property: claim.cooling_protection.dew_point_property,
+						surface_property: claim.cooling_protection.surface_property,
+						maximum_age_seconds: claim.cooling_protection.maximum_age_seconds,
+					} as ThermostatActuator['cooling_protection'],
+				}
+			: {}),
 		...(claim.protection
 			? {
 					protection: {
-						schema_version: DevicesVirtualPluginThermostatMemberProtectionSchema_version.Value1,
+						schema_version: DevicesVirtualPluginConfigureDewPointSchema_version.Value1,
 						kind: DevicesVirtualPluginThermostatMemberProtectionKind.local_floor,
 						source_property: claim.protection.source_property,
 						maximum_age_seconds: claim.protection.maximum_age_seconds,
@@ -134,6 +147,34 @@ export const buildThermostatRequest = (
 ): { request?: ThermostatRequest; errors: string[] } => {
 	const errors: string[] = [];
 	const policy = draft.policy;
+	if (policy.cooling) {
+		if (
+			!finite(policy.cooling.marginC) ||
+			policy.cooling.marginC <= 0 ||
+			policy.cooling.marginC > 60 ||
+			!finite(policy.cooling.recoveryHysteresisC) ||
+			policy.cooling.recoveryHysteresisC <= 0 ||
+			policy.cooling.recoveryHysteresisC > 60
+		)
+			errors.push('devicesVirtualPlugin.dewPoint.errors.coolingPolicy');
+		if (
+			policy.cooling.absoluteMinimumC != null &&
+			(!finite(policy.cooling.absoluteMinimumC) || policy.cooling.absoluteMinimumC <= -45 || policy.cooling.absoluteMinimumC > 60)
+		)
+			errors.push('devicesVirtualPlugin.dewPoint.errors.coolingMinimum');
+		for (const member of draft.actuators.filter((m) => m.role === 'cooling'))
+			if (
+				!member.cooling_protection ||
+				(!member.cooling_protection.dew_point_property &&
+					!(member.cooling_protection.dew_point_property === null && member.retained?.cooling_protection?.dew_point_property === null)) ||
+				(!member.cooling_protection.surface_property &&
+					!(member.cooling_protection.surface_property === null && member.retained?.cooling_protection?.surface_property === null)) ||
+				!whole(member.cooling_protection.maximum_age_seconds) ||
+				member.cooling_protection.maximum_age_seconds < 1 ||
+				member.cooling_protection.maximum_age_seconds > 86400
+			)
+				errors.push('devicesVirtualPlugin.dewPoint.errors.coolingDependencies');
+	}
 	if (!finite(policy.heatingSetpoint) && !finite(policy.coolingSetpoint)) errors.push('Select at least one comfort branch and setpoint.');
 	if (!finite(policy.coldTolerance) || policy.coldTolerance < 0) errors.push('Enter a nonnegative cold tolerance.');
 	if (!finite(policy.hotTolerance) || policy.hotTolerance < 0) errors.push('Enter a nonnegative hot tolerance.');
@@ -213,6 +254,7 @@ export const buildThermostatRequest = (
 				source_property: member.source_property,
 				lease_seconds: member.lease_seconds,
 				...(member.protection ? { protection: member.protection } : {}),
+				...(member.cooling_protection ? { cooling_protection: member.cooling_protection } : {}),
 			})) as ThermostatActuator[],
 			settings: draft.settings,
 		},

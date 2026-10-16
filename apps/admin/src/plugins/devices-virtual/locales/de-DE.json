@@ -413,5 +413,28 @@
 		"qualificationHelp": "Prüft nur den installierten Schutz und das aktuelle Ziel. Bestätigt weder die Reglerbereitschaft noch die Sicherheit physischer Geräte.",
 		"activitySample": "Beobachtete Relaisprobe",
 		"activityExpiry": "Beobachtung gültig bis"
+	},
+	"dewPoint": {
+		"title": "Taupunkt",
+		"dry_bulb": "Trockentemperatur (°C)",
+		"relative_humidity": "Relative Luftfeuchte (%)",
+		"skew": "Maximaler Zeitversatz (s)",
+		"retained": "Beibehaltene Quellidentität",
+		"boundary": "Der Taupunkt ist eine eigene Messgröße. Beide frischen Eingänge sind erforderlich; er ist keine Raum- oder Bodentemperatur.",
+		"cooling": "Kondensationsschutz bei Kühlung",
+		"margin": "Positiver Taupunktabstand (°C)",
+		"hysteresis": "Strikte Rückkehrhysterese (°C)",
+		"absoluteMinimum": "Optionales absolutes Oberflächenminimum (°C)",
+		"surface": "UUID des lokalen gekühlten Oberflächenfühlers",
+		"installation": "Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt.",
+		"errors": {
+			"reload": "Konfiguration neu laden.",
+			"inputs": "Beide Eingänge auswählen.",
+			"preview": "Vorschau abgelehnt; Quellen, Regeln und Graph prüfen.",
+			"revision": "Konfiguration geändert; neu laden und Vorschau wiederholen.",
+			"coolingPolicy": "Geben Sie einen positiven Kühlabstand und eine Rückkehrhysterese von höchstens 60 °C ein.",
+			"coolingMinimum": "Geben Sie ein endliches optionales Oberflächenminimum über −45 °C und höchstens 60 °C ein.",
+			"coolingDependencies": "Jedes Kühlmitglied benötigt Taupunkt, einen lokalen Fühler der gekühlten Oberfläche und ein gültiges Quellenalter."
+		}
 	}
 }

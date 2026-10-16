@@ -413,5 +413,28 @@
 		"qualificationHelp": "Sprawdza wyłącznie zainstalowane zabezpieczenie i aktualne wyjście. Nie potwierdza gotowości regulatora ani bezpieczeństwa fizycznego urządzenia.",
 		"activitySample": "Zaobserwowana próbka przekaźnika",
 		"activityExpiry": "Obserwacja ważna do"
+	},
+	"dewPoint": {
+		"title": "Punkt rosy",
+		"dry_bulb": "Temperatura suchego termometru (°C)",
+		"relative_humidity": "Wilgotność względna (%)",
+		"skew": "Maksymalne przesunięcie czasu próbek (s)",
+		"retained": "Zachowana tożsamość źródła",
+		"boundary": "Punkt rosy to odrębna wielkość. Wymaga obu świeżych wejść; nie jest temperaturą pomieszczenia ani podłogi.",
+		"cooling": "Ochrona chłodzenia przed kondensacją",
+		"margin": "Dodatni margines punktu rosy (°C)",
+		"hysteresis": "Ścisła histereza wznowienia (°C)",
+		"absoluteMinimum": "Opcjonalne bezwzględne minimum powierzchni (°C)",
+		"surface": "UUID lokalnej sondy chłodzonej powierzchni",
+		"installation": "Zainstalowane chłodzenie pozostaje niedopuszczone do kwalifikacji powierzchni, uwierzytelniania, czasu, izolacji zapisu i wyłączenia po restarcie po wersji alfa.",
+		"errors": {
+			"reload": "Wczytaj konfigurację ponownie.",
+			"inputs": "Wybierz oba wejścia.",
+			"preview": "Podgląd odrzucony; sprawdź źródła, reguły i graf.",
+			"revision": "Konfiguracja uległa zmianie; wczytaj ją i ponów podgląd.",
+			"coolingPolicy": "Podaj dodatni margines chłodzenia i histerezę wznowienia nie większe niż 60 °C.",
+			"coolingMinimum": "Podaj skończone opcjonalne minimum powierzchni powyżej −45 °C i nie większe niż 60 °C.",
+			"coolingDependencies": "Każdy element chłodzenia wymaga punktu rosy, lokalnej sondy chłodzonej powierzchni i prawidłowego wieku źródeł."
+		}
 	}
 }

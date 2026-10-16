@@ -413,5 +413,28 @@
 		"qualificationHelp": "Checks the installed guard and current target only. It does not establish controller readiness or certify physical equipment.",
 		"activitySample": "Observed relay sample",
 		"activityExpiry": "Observation valid until"
+	},
+	"dewPoint": {
+		"title": "Dew point",
+		"dry_bulb": "Dry-bulb temperature (°C)",
+		"relative_humidity": "Relative humidity (%)",
+		"skew": "Maximum timestamp skew (s)",
+		"retained": "Retained source identity",
+		"boundary": "Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.",
+		"cooling": "Cooling condensation protection",
+		"margin": "Positive dew-point margin (°C)",
+		"hysteresis": "Strict recovery hysteresis (°C)",
+		"absoluteMinimum": "Optional absolute surface minimum (°C)",
+		"surface": "Local cooled-surface probe UUID",
+		"installation": "Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.",
+		"errors": {
+			"reload": "Reload configuration and retry.",
+			"inputs": "Select both input roles.",
+			"preview": "Preview refused; check sources, policy and graph.",
+			"revision": "Configuration changed; reload and preview again.",
+			"coolingPolicy": "Enter an explicit positive cooling margin and recovery hysteresis of at most 60 °C.",
+			"coolingMinimum": "Enter a finite optional surface minimum above −45 °C and at most 60 °C.",
+			"coolingDependencies": "Every cooling member requires dew point, a local cooled-surface probe and a valid source age."
+		}
 	}
 }

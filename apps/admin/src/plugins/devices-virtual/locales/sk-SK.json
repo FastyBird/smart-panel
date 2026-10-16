@@ -413,5 +413,28 @@
 		"qualificationHelp": "Kontrola sa týka iba nainštalovanej ochrany a aktuálneho výstupu. Nepotvrdzuje pripravenosť regulátora ani bezpečnosť fyzického zariadenia.",
 		"activitySample": "Pozorovaná vzorka relé",
 		"activityExpiry": "Pozorovanie platí do"
+	},
+	"dewPoint": {
+		"title": "Rosný bod",
+		"dry_bulb": "Teplota suchého teplomera (°C)",
+		"relative_humidity": "Relatívna vlhkosť (%)",
+		"skew": "Najväčší rozdiel časov vzoriek (s)",
+		"retained": "Zachovaná identita zdroja",
+		"boundary": "Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; nie je teplotou priestoru ani podlahy.",
+		"cooling": "Ochrana chladenia pred kondenzáciou",
+		"margin": "Kladná rezerva nad rosným bodom (°C)",
+		"hysteresis": "Hysteréza prísneho obnovenia (°C)",
+		"absoluteMinimum": "Voliteľné absolútne minimum povrchu (°C)",
+		"surface": "UUID miestnej sondy chladeného povrchu",
+		"installation": "Inštalované chladenie nie je spôsobilé do kvalifikácie povrchu, autentifikácie, časovania, izolácie zápisu a dokončenia OFF po reštarte po vydaní alfa.",
+		"errors": {
+			"reload": "Načítajte konfiguráciu znova.",
+			"inputs": "Vyberte oba vstupy.",
+			"preview": "Náhľad odmietnutý; overte zdroje, pravidlá a graf.",
+			"revision": "Konfigurácia sa zmenila; načítajte ju a zopakujte náhľad.",
+			"coolingPolicy": "Zadajte kladnú rezervu a hysteréziu obnovenia chladenia najviac 60 °C.",
+			"coolingMinimum": "Zadajte konečné voliteľné minimum povrchu nad −45 °C a najviac 60 °C.",
+			"coolingDependencies": "Každý člen chladenia vyžaduje rosný bod, miestne čidlo chladeného povrchu a platný vek zdrojov."
+		}
 	}
 }
