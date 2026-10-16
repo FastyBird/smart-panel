@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -70,7 +70,7 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly connectivity: DeviceConnectionStateService,
 		private readonly events: EventEmitter2,
-		private readonly config: ConfigService,
+		@Optional() private readonly config: ConfigService = new ConfigService(),
 	) {}
 
 	async onApplicationBootstrap(): Promise<void> {
