@@ -204,12 +204,18 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		const epoch = this.epoch;
 		const ready = this.ready;
 		const claimedProperties = new Set(this.byProperty.keys());
-		const isCurrent = (update?: IDevicePropertyData) =>
+		const isCurrent = (update?: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>) =>
 			!!update && !claimedProperties.has(update.property.id) && !this.requiresGuardedDispatch(update)
 				? true
 				: ready && this.ready && epoch === this.epoch;
 		return {
 			isCurrent,
+			isEffectCurrent: isCurrent,
+			assertEffectAllowed: async (effect): Promise<void> => {
+				if (!isCurrent(effect))
+					throw new DevicesValidationException('Actuator effect ownership changed before dispatch');
+				await this.assertAllowed(effect);
+			},
 			isRequestCurrent: () => true,
 			assertAllowed: async (update: IDevicePropertyData): Promise<void> => {
 				if (!isCurrent(update))
@@ -219,14 +225,14 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		};
 	}
 	/** Claimable hardware and reserved property aliases require transport-time admission guards. */
-	requiresGuardedDispatch(update: IDevicePropertyData): boolean {
+	requiresGuardedDispatch(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): boolean {
 		return (
 			!!thermostatActuatorIdentity(update.property, update.channel, update.device) ||
 			this.byProperty.has(update.property.id)
 		);
 	}
 	/** Rejects ordinary commands to reserved leaves and closes claimable outputs during reconciliation. */
-	assertAllowed(update: IDevicePropertyData): Promise<void> {
+	assertAllowed(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): Promise<void> {
 		if (!this.requiresGuardedDispatch(update)) return Promise.resolve();
 		if (!this.ready) throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
 		const identity = thermostatActuatorIdentity(update.property, update.channel, update.device);

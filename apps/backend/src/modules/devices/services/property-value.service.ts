@@ -247,6 +247,11 @@ export class PropertyValueService {
 						sampledAt: new Date(sampledAt),
 						receivedAt: new Date(receivedAt),
 						provenance: evidence.provenance,
+						...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
+						...(evidence.nativeCoverTagPresent !== undefined
+							? { nativeCoverTagPresent: evidence.nativeCoverTagPresent }
+							: {}),
+						...(evidence.commandObservation ? { commandObservation: evidence.commandObservation } : {}),
 						...(live ? { acceptanceGeneration: ++this.sampleGeneration } : {}),
 						quality: 'good',
 						reasons: Object.freeze([]),
@@ -267,7 +272,7 @@ export class PropertyValueService {
 					snapshot.value = clonePropertyValueState(result.state);
 					this.events?.emit(
 						EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
-						Object.freeze({ propertyId: key, property: snapshot, sample: this.cloneSample(sample) }),
+						Object.freeze({ propertyId: key, property: snapshot, sample: this.cloneSample(sample, false) }),
 					);
 				}
 				return result;
@@ -496,17 +501,20 @@ export class PropertyValueService {
 			sampledAt: new Date(evidence.sampledAt),
 			receivedAt: new Date(evidence.receivedAt),
 			provenance: evidence.provenance,
+			...(evidence.semanticOrigin ? { semanticOrigin: evidence.semanticOrigin } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 		});
 	}
 
-	private cloneSample<T extends AcceptedPropertySample>(sample: T): T {
+	private cloneSample<T extends AcceptedPropertySample>(sample: T, includeCommandProof = true): T {
+		const { commandObservation, ...ordinary } = sample;
 		return Object.freeze({
-			...sample,
+			...ordinary,
+			...(includeCommandProof && commandObservation ? { commandObservation } : {}),
 			sampledAt: new Date(sample.sampledAt),
 			receivedAt: new Date(sample.receivedAt),
 			reasons: Object.freeze([...sample.reasons]),
-		});
+		}) as T;
 	}
 
 	private isSampleValueValid(property: ChannelPropertyEntity, value: string | boolean | number | null): boolean {

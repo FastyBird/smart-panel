@@ -484,6 +484,7 @@ describe('light group actual feedback with real SQLite bindings', () => {
 	});
 	it.each([
 		[VirtualLightGroupProfile.LIGHT, DeviceCategory.LIGHTING, ChannelCategory.LIGHT],
+		[VirtualLightGroupProfile.FAN, DeviceCategory.FAN, ChannelCategory.FAN],
 		[VirtualLightGroupProfile.SWITCH, DeviceCategory.SWITCHER, ChannelCategory.SWITCHER],
 		[VirtualLightGroupProfile.OUTLET, DeviceCategory.OUTLET, ChannelCategory.OUTLET],
 	] as const)(

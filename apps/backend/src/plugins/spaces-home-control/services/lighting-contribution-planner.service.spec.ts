@@ -46,6 +46,18 @@ describe('room lighting leaf coverage', () => {
 		}
 		await expect(planner.plan([channel('first'), channel('c')])).resolves.toMatchObject({ excludedRawChannels: [] });
 	});
+	it('excludes represented raw leaves before role targeting without blocking unrelated physical roles on unrelated overlaps', async () => {
+		const planner = setup({ first: ['a', 'b'], second: ['b', 'c'] });
+		const targets = ['first', 'second', 'a', 'other'].map(channel);
+		const plan = await planner.plan(targets, 'covers', new Set(['other']));
+		expect(plan.excludedRawChannels).toEqual(['a']);
+		expect(plan.targets.map((target) => target.channel.id)).toEqual(['first', 'second', 'other']);
+		for (const id of ['first', 'second', 'b']) {
+			await expect(planner.plan(targets, 'covers', new Set([id]))).rejects.toBeInstanceOf(ConflictException);
+		}
+		const rawRole = await setup({ group: ['a'] }).plan(['group', 'a'].map(channel), 'covers', new Set(['a']));
+		expect(rawRole.excludedRawChannels).toEqual(['a']);
+	});
 	it('invalidates a paused room selection when membership changes before raw leaf selection completes', async () => {
 		const registry = new DeviceContributionRegistryService();
 		let revision = 1;

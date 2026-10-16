@@ -842,6 +842,23 @@ describe('DeviceManagerService battery devices', () => {
 });
 
 describe('DeviceManagerService property metadata', () => {
+	test('preserves operator-selected singleton cover TYPE across rediscovery without a value write', async () => {
+		const svc: any = makeService();
+		const channel = { id: 'canonical-cover-component', category: ChannelCategory.WINDOW_COVERING };
+		const selected = {
+			id: 'selected-type',
+			dataType: DataTypeType.ENUM,
+			permissions: [PermissionType.READ_ONLY],
+			format: ['venetian_blind'],
+		};
+		mockChannelsPropertiesService.findOneBy.mockResolvedValue(selected);
+		const beforeUpdates = mockChannelsPropertiesService.update.mock.calls.length;
+		const beforeCreates = mockChannelsPropertiesService.create.mock.calls.length;
+		expect(await svc.ensureProperty(channel, PropertyCategory.TYPE, 'category', PropertyCategory.TYPE)).toBe(selected);
+		expect(mockChannelsPropertiesService.update.mock.calls).toHaveLength(beforeUpdates);
+		expect(mockChannelsPropertiesService.create.mock.calls).toHaveLength(beforeCreates);
+	});
+
 	test('copies the schema step to created and updated properties', async () => {
 		const svc: any = makeService();
 		const channel = { id: 'light-channel', category: ChannelCategory.LIGHT };

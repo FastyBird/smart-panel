@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import {
 	IDevicePlatform,
 	IDevicePropertyData,
@@ -129,8 +134,26 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		);
 	}
 
+	getCoverEffectScope(update: IDevicePropertyData): string | null {
+		const mac = (update.device as ShellyNgDeviceEntity).canonicalMac;
+		return mac &&
+			update.channel.category === ChannelCategory.WINDOW_COVERING &&
+			/^cover:\d+$/.test(update.channel.identifier ?? '')
+			? `shelly-ng:${mac.toUpperCase()}|cover:${Number(update.channel.identifier.split(':')[1])}`
+			: null;
+	}
+	async getCommandReadiness(update: IDevicePropertyData): Promise<{ commandable: boolean; reasons: string[] }> {
+		if (update.channel.category !== ChannelCategory.WINDOW_COVERING)
+			return { commandable: false, reasons: ['unsupported_readiness_profile'] };
+		return this.delegatesManagerService.coverCommandReadiness(update);
+	}
 	async prepareCompositeBatch(updates: Array<IDevicePropertyData>): Promise<PreparedCompositeDeviceBatch | null> {
 		if (updates.length === 0) return null;
+		if (updates.some((update) => update.channel.category === ChannelCategory.WINDOW_COVERING)) {
+			if (updates.length !== 1) return null;
+			return this.delegatesManagerService.prepareCoverAction(updates[0]);
+		}
+
 		const groups = new Map<
 			string,
 			{

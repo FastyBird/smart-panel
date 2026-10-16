@@ -42,7 +42,7 @@ const inverse = (value: number, modulus: number): number => {
 	return ((oldT % modulus) + modulus) % modulus;
 };
 /** Exact common decimal step grids, up to six decimals; never round incompatible source metadata. */
-function intersectNumericGrid(
+export function intersectNumericGrid(
 	properties: ChannelPropertyEntity[],
 ): { format: number[] | null; step: number | null } | null {
 	const bounded = properties.filter((property) => property.format !== null && property.format !== undefined);
@@ -174,8 +174,9 @@ export interface LightGroupReportedState {
 	properties: Map<
 		PropertyCategory,
 		{
-			value: number | boolean | null;
-			representativeValue?: number | boolean;
+			value: string | number | boolean | null;
+			representativeValue?: string | number | boolean;
+			provenance?: 'configured';
 			rounded?: boolean;
 			mixed: boolean;
 			contributors: string[];

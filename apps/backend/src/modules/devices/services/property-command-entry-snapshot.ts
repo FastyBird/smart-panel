@@ -1,6 +1,6 @@
 import { IDevicePropertyData } from '../platforms/device.platform';
 
-import { PropertyCommandAdmissionSnapshot } from './property-command-admission.registry.service';
+import { PropertyCommandAdmissionSnapshot, PropertyCommandEffect } from './property-command-admission.registry.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
 
 const minted = new WeakSet<PropertyCommandEntrySnapshot>();
@@ -72,6 +72,14 @@ export class PropertyCommandEntrySnapshot {
 	async assertAllowed(update: IDevicePropertyData): Promise<void> {
 		if (!this.isActive(update)) throw new Error('Command entry admission changed or expired');
 		await this.admission?.assertAllowed(update);
+	}
+
+	isEffectActive(effect: PropertyCommandEffect): boolean {
+		return this.isActive() && (!this.admission || this.admission.isEffectCurrent?.(effect) === true);
+	}
+	async assertEffectAllowed(effect: PropertyCommandEffect): Promise<void> {
+		if (!this.isEffectActive(effect)) throw new Error('Command entry effect admission changed or is unsupported');
+		await this.admission?.assertEffectAllowed?.(effect);
 	}
 
 	canPreservePower(id: string): boolean {
