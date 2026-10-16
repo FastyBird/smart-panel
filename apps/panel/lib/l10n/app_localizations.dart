@@ -8475,6 +8475,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Original relay observation expiry'**
   String get thermostatMemberActivityExpiry;
+
+  /// No description provided for @dewPointTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dew point'**
+  String get dewPointTitle;
+
+  /// No description provided for @dewPointDryBulb.
+  ///
+  /// In en, this message translates to:
+  /// **'Dry-bulb temperature (°C)'**
+  String get dewPointDryBulb;
+
+  /// No description provided for @dewPointHumidity.
+  ///
+  /// In en, this message translates to:
+  /// **'Relative humidity (%)'**
+  String get dewPointHumidity;
+
+  /// No description provided for @dewPointSkew.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum timestamp skew (s)'**
+  String get dewPointSkew;
+
+  /// No description provided for @dewPointRetained.
+  ///
+  /// In en, this message translates to:
+  /// **'Retained source identity'**
+  String get dewPointRetained;
+
+  /// No description provided for @dewPointBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.'**
+  String get dewPointBoundary;
+
+  /// No description provided for @dewPointCooling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling condensation protection'**
+  String get dewPointCooling;
+
+  /// No description provided for @dewPointSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Local cooled-surface probe UUID'**
+  String get dewPointSurface;
+
+  /// No description provided for @dewPointSurfaceTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooled-surface temperature (°C)'**
+  String get dewPointSurfaceTemperature;
+
+  /// No description provided for @dewPointInstallation.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.'**
+  String get dewPointInstallation;
 }
 
 class _AppLocalizationsDelegate
