@@ -2221,9 +2221,19 @@ void main() {
         DateTime at,
         Duration clock,
       ) {
-        fence.accept({'actuators': [c]}, {'branches': [d]}, at, clock);
+        fence.accept(
+          {
+            'actuators': [c],
+          },
+          {
+            'branches': [d],
+          },
+          at,
+          clock,
+        );
         return fence.freshClaims(rows, at, clock);
       }
+
       expect(acceptedClaims(members(), now, Duration.zero), {'one'});
       expect(
         acceptedClaims(
@@ -2483,19 +2493,23 @@ class MemberDetailFixture {
                           if (hasMember)
                             {
                               ...claim(claimId, role, 'reserved'),
-                              'revision': configurationRevision ?? revision,
+                              if (role == 'cooling')
+                                'revision': configurationRevision ?? revision,
                               if (role == 'cooling')
                                 'cooling_protection': {
                                   ...coolingBinding(
                                     dew:
-                                        cooling?['dew_point_identity'] as String? ??
+                                        cooling?['dew_point_identity']
+                                            as String? ??
                                         'retained-dew',
                                     surface:
-                                        cooling?['surface_identity'] as String? ??
+                                        cooling?['surface_identity']
+                                            as String? ??
                                         'retained-surface',
                                     revision: configurationRevision ?? revision,
                                   ),
-                                  if (missingCoolingSurface) 'surface_property': null,
+                                  if (missingCoolingSurface)
+                                    'surface_property': null,
                                 },
                               if (!declaresMemberProtection) 'protection': null,
                             },
@@ -5460,220 +5474,352 @@ void coolingHttpAdmissionRegressions() {
   }) => fence.accept({'actuators': c}, {'branches': d}, at ?? t, clock);
   final e = t.add(const Duration(seconds: 2));
 
-  test('cooling queries never mint or replace HTTP publications or budgets', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = [configured()], d = [diagnostic(e)];
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
-    expect(fence.recordCount, 0);
-    accept(fence, c, d);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), {'one'});
-    final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), isEmpty);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
-    accept(fence, c, newer);
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
-    expect(fence.recordCount, 1);
-  });
+  test(
+    'cooling queries never mint or replace HTTP publications or budgets',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final c = [configured()], d = [diagnostic(e)];
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
+      expect(fence.recordCount, 0);
+      accept(fence, c, d);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), {'one'});
+      final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
+      expect(fence.freshClaims(rows(c, newer), t, Duration.zero), isEmpty);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
+      accept(fence, c, newer);
+      expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
+      expect(fence.recordCount, 1);
+    },
+  );
 
-  test('cooling first HTTP deadline survives delayed rendering and wall rollback', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = [configured()], d = [diagnostic(e)];
-    accept(fence, c, d);
-    accept(fence, c, d,
+  test(
+    'cooling first HTTP deadline survives delayed rendering and wall rollback',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final c = [configured()], d = [diagnostic(e)];
+      accept(fence, c, d);
+      accept(
+        fence,
+        c,
+        d,
         at: t.subtract(const Duration(seconds: 10)),
-        clock: const Duration(seconds: 1));
-    expect(fence.freshClaims(rows(c, d), t.subtract(const Duration(seconds: 10)),
-        const Duration(seconds: 2)), isEmpty);
-    accept(fence, c, d, at: t, clock: const Duration(seconds: 3));
-    expect(fence.freshClaims(rows(c, d), t, const Duration(seconds: 3)), isEmpty);
-  });
+        clock: const Duration(seconds: 1),
+      );
+      expect(
+        fence.freshClaims(
+          rows(c, d),
+          t.subtract(const Duration(seconds: 10)),
+          const Duration(seconds: 2),
+        ),
+        isEmpty,
+      );
+      accept(fence, c, d, at: t, clock: const Duration(seconds: 3));
+      expect(
+        fence.freshClaims(rows(c, d), t, const Duration(seconds: 3)),
+        isEmpty,
+      );
+    },
+  );
 
   test('equal cooling expiry can only tighten the original HTTP deadline', () {
     final fence = VirtualThermostatCoolingFence();
     final c = [configured()], d = [diagnostic(e)];
     accept(fence, c, d);
     accept(fence, c, d, at: t.add(const Duration(seconds: 1)));
-    expect(fence.freshClaims(rows(c, d), t, const Duration(seconds: 1)), isEmpty);
+    expect(
+      fence.freshClaims(rows(c, d), t, const Duration(seconds: 1)),
+      isEmpty,
+    );
   });
 
-  test('query identity mismatch cannot repair itself or create a newer publication', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = [configured()], d = [diagnostic(e)];
-    accept(fence, c, d);
-    final mismatch = [{...diagnostic(e), 'physical_identity': 'wrong'}];
-    expect(fence.freshClaims(rows(c, mismatch), t, Duration.zero), isEmpty);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
-    accept(fence, c, d);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
-  });
-
-  for (final field in ['surface', 'dew_point', 'expires_at', 'ready', 'latched']) {
-    test('accepted cooling $field gap before query fences corrected cached expiry', () {
+  test(
+    'query identity mismatch cannot repair itself or create a newer publication',
+    () {
       final fence = VirtualThermostatCoolingFence();
-      final c = [configured()], good = diagnostic(e);
-      accept(fence, c, [good]);
-      final invalid = {...good, 'cooling_protection': {
-        ...(good['cooling_protection'] as Map), field: null,
-      }};
-      accept(fence, c, [invalid]);
-      accept(fence, c, [good]);
-      expect(fence.freshClaims(rows(c, [good]), t, Duration.zero), isEmpty);
-      final newer = diagnostic(e.add(const Duration(seconds: 1)));
-      accept(fence, c, [newer]);
-      expect(fence.freshClaims(rows(c, [newer]), t, Duration.zero), {'one'});
-    });
+      final c = [configured()], d = [diagnostic(e)];
+      accept(fence, c, d);
+      final mismatch = [
+        {...diagnostic(e), 'physical_identity': 'wrong'},
+      ];
+      expect(fence.freshClaims(rows(c, mismatch), t, Duration.zero), isEmpty);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
+      accept(fence, c, d);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
+    },
+  );
+
+  for (final field in [
+    'surface',
+    'dew_point',
+    'expires_at',
+    'ready',
+    'latched',
+  ]) {
+    test(
+      'accepted cooling $field gap before query fences corrected cached expiry',
+      () {
+        final fence = VirtualThermostatCoolingFence();
+        final c = [configured()], good = diagnostic(e);
+        accept(fence, c, [good]);
+        final invalid = {
+          ...good,
+          'cooling_protection': {
+            ...(good['cooling_protection'] as Map),
+            field: null,
+          },
+        };
+        accept(fence, c, [invalid]);
+        accept(fence, c, [good]);
+        expect(fence.freshClaims(rows(c, [good]), t, Duration.zero), isEmpty);
+        final newer = diagnostic(e.add(const Duration(seconds: 1)));
+        accept(fence, c, [newer]);
+        expect(fence.freshClaims(rows(c, [newer]), t, Duration.zero), {'one'});
+      },
+    );
   }
 
   for (final reverse in [false, true]) {
-    test('raw duplicate cooling expiry high-water is order independent $reverse', () {
-      final fence = VirtualThermostatCoolingFence();
-      final c = [configured()];
-      final newerExpiry = e.add(const Duration(seconds: 1));
-      final duplicate = [diagnostic(e), diagnostic(newerExpiry)];
-      accept(fence, c, reverse ? duplicate.reversed.toList() : duplicate);
-      accept(fence, c, [diagnostic(newerExpiry)]);
-      expect(fence.freshClaims(rows(c, [diagnostic(newerExpiry)]), t, Duration.zero), isEmpty);
-      final renewal = [diagnostic(newerExpiry.add(const Duration(seconds: 1)))];
-      accept(fence, c, renewal);
-      expect(fence.freshClaims(rows(c, renewal), t, Duration.zero), {'one'});
-    });
+    test(
+      'raw duplicate cooling expiry high-water is order independent $reverse',
+      () {
+        final fence = VirtualThermostatCoolingFence();
+        final c = [configured()];
+        final newerExpiry = e.add(const Duration(seconds: 1));
+        final duplicate = [diagnostic(e), diagnostic(newerExpiry)];
+        accept(fence, c, reverse ? duplicate.reversed.toList() : duplicate);
+        accept(fence, c, [diagnostic(newerExpiry)]);
+        expect(
+          fence.freshClaims(
+            rows(c, [diagnostic(newerExpiry)]),
+            t,
+            Duration.zero,
+          ),
+          isEmpty,
+        );
+        final renewal = [
+          diagnostic(newerExpiry.add(const Duration(seconds: 1))),
+        ];
+        accept(fence, c, renewal);
+        expect(fence.freshClaims(rows(c, renewal), t, Duration.zero), {'one'});
+      },
+    );
   }
 
-  test('unknown invalid first expiry quarantines first parseable baseline only', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = [configured()];
-    accept(fence, c, [{'claim': 'one', 'role': 'cooling'}]);
-    expect(fence.recordCount, 1);
-    accept(fence, c, [diagnostic(e)]);
-    expect(fence.freshClaims(rows(c, [diagnostic(e)]), t, Duration.zero), isEmpty);
-    accept(fence, c, [diagnostic(e)]);
-    expect(fence.freshClaims(rows(c, [diagnostic(e)]), t, Duration.zero), isEmpty);
-    final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
-    accept(fence, c, newer);
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
-  });
-
-  test('invalid first parseable baseline remains invalid even when still malformed', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = [configured()];
-    accept(fence, c, [{'claim': 'one', 'role': 'cooling'}]);
-    accept(fence, c, [{...diagnostic(e), 'physical_identity': 'wrong'}]);
-    final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
-    accept(fence, c, newer);
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
-  });
-
-  for (final identity in [null, '', 'wrong', 7]) {
-    test('raw runtime physical identity $identity cannot admit or query cooling', () {
+  test(
+    'unknown invalid first expiry quarantines first parseable baseline only',
+    () {
       final fence = VirtualThermostatCoolingFence();
       final c = [configured()];
-      final bad = [{...diagnostic(e), 'physical_identity': identity}];
-      accept(fence, c, bad);
-      expect(fence.freshClaims(rows(c, bad), t, Duration.zero), isEmpty);
+      accept(fence, c, [
+        {'claim': 'one', 'role': 'cooling'},
+      ]);
+      expect(fence.recordCount, 1);
       accept(fence, c, [diagnostic(e)]);
-      expect(fence.freshClaims(rows(c, [diagnostic(e)]), t, Duration.zero), isEmpty);
+      expect(
+        fence.freshClaims(rows(c, [diagnostic(e)]), t, Duration.zero),
+        isEmpty,
+      );
+      accept(fence, c, [diagnostic(e)]);
+      expect(
+        fence.freshClaims(rows(c, [diagnostic(e)]), t, Duration.zero),
+        isEmpty,
+      );
       final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
       accept(fence, c, newer);
       expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
-    });
+    },
+  );
+
+  test(
+    'invalid first parseable baseline remains invalid even when still malformed',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final c = [configured()];
+      accept(fence, c, [
+        {'claim': 'one', 'role': 'cooling'},
+      ]);
+      accept(fence, c, [
+        {...diagnostic(e), 'physical_identity': 'wrong'},
+      ]);
+      final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
+      accept(fence, c, newer);
+      expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
+    },
+  );
+
+  for (final identity in [null, '', 'wrong', 7]) {
+    test(
+      'raw runtime physical identity $identity cannot admit or query cooling',
+      () {
+        final fence = VirtualThermostatCoolingFence();
+        final c = [configured()];
+        final bad = [
+          {...diagnostic(e), 'physical_identity': identity},
+        ];
+        accept(fence, c, bad);
+        expect(fence.freshClaims(rows(c, bad), t, Duration.zero), isEmpty);
+        accept(fence, c, [diagnostic(e)]);
+        expect(
+          fence.freshClaims(rows(c, [diagnostic(e)]), t, Duration.zero),
+          isEmpty,
+        );
+        final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
+        accept(fence, c, newer);
+        expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
+      },
+    );
   }
 
-  test('duplicate configured claims and missing bindings never admit cooling', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = configured(), d = diagnostic(e);
-    accept(fence, [c, c], [d]);
-    accept(fence, [c], [d]);
-    expect(fence.freshClaims(rows([c], [d]), t, Duration.zero), isEmpty);
-    final newer = diagnostic(e.add(const Duration(seconds: 1)));
-    accept(fence, [{...c, 'cooling_protection': null}], [newer]);
-    accept(fence, [c], [newer]);
-    expect(fence.freshClaims(rows([c], [newer]), t, Duration.zero), isEmpty);
-    final renewal = diagnostic(e.add(const Duration(seconds: 2)));
-    accept(fence, [c], [renewal]);
-    expect(fence.freshClaims(rows([c], [renewal]), t, Duration.zero), {'one'});
-  });
+  test(
+    'duplicate configured claims and missing bindings never admit cooling',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final c = configured(), d = diagnostic(e);
+      accept(fence, [c, c], [d]);
+      accept(fence, [c], [d]);
+      expect(fence.freshClaims(rows([c], [d]), t, Duration.zero), isEmpty);
+      final newer = diagnostic(e.add(const Duration(seconds: 1)));
+      accept(
+        fence,
+        [
+          {...c, 'cooling_protection': null},
+        ],
+        [newer],
+      );
+      accept(fence, [c], [newer]);
+      expect(fence.freshClaims(rows([c], [newer]), t, Duration.zero), isEmpty);
+      final renewal = diagnostic(e.add(const Duration(seconds: 2)));
+      accept(fence, [c], [renewal]);
+      expect(fence.freshClaims(rows([c], [renewal]), t, Duration.zero), {
+        'one',
+      });
+    },
+  );
 
-  test('runtime-only cooling cannot promote same expiry after configuration appears', () {
-    final fence = VirtualThermostatCoolingFence();
-    final d = [diagnostic(e)], c = [configured()];
-    accept(fence, [], d);
-    expect(fence.freshClaims(rows([], d), t, Duration.zero), isEmpty);
-    accept(fence, c, d);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
-    final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
-    accept(fence, c, newer);
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
-  });
+  test(
+    'runtime-only cooling cannot promote same expiry after configuration appears',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final d = [diagnostic(e)], c = [configured()];
+      accept(fence, [], d);
+      expect(fence.freshClaims(rows([], d), t, Duration.zero), isEmpty);
+      accept(fence, c, d);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
+      final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
+      accept(fence, c, newer);
+      expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
+    },
+  );
 
-  test('missing branches and authoritative retirement keep per-claim tombstones', () {
-    final fence = VirtualThermostatCoolingFence();
-    final c = [configured()], d = [diagnostic(e)];
-    accept(fence, c, d);
-    fence.accept({'actuators': c}, {'branches': null}, t, Duration.zero);
-    accept(fence, c, d);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
-    final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
-    accept(fence, c, newer);
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
-    accept(fence, [], []);
-    expect(fence.recordCount, 1);
-    accept(fence, c, newer);
-    expect(fence.freshClaims(rows(c, newer), t, Duration.zero), isEmpty);
-    final renewed = [diagnostic(e.add(const Duration(seconds: 2)))];
-    accept(fence, c, renewed);
-    expect(fence.freshClaims(rows(c, renewed), t, Duration.zero), {'one'});
-  });
+  test(
+    'missing branches and authoritative retirement keep per-claim tombstones',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final c = [configured()], d = [diagnostic(e)];
+      accept(fence, c, d);
+      fence.accept({'actuators': c}, {'branches': null}, t, Duration.zero);
+      accept(fence, c, d);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), isEmpty);
+      final newer = [diagnostic(e.add(const Duration(seconds: 1)))];
+      accept(fence, c, newer);
+      expect(fence.freshClaims(rows(c, newer), t, Duration.zero), {'one'});
+      accept(fence, [], []);
+      expect(fence.recordCount, 1);
+      accept(fence, c, newer);
+      expect(fence.freshClaims(rows(c, newer), t, Duration.zero), isEmpty);
+      final renewed = [diagnostic(e.add(const Duration(seconds: 2)))];
+      accept(fence, c, renewed);
+      expect(fence.freshClaims(rows(c, renewed), t, Duration.zero), {'one'});
+    },
+  );
 
-  test('invalid future expiry pins only its claim and cap128 never evicts tombstones', () {
-    final fence = VirtualThermostatCoolingFence();
-    final future = t.add(const Duration(days: 365));
-    accept(fence, [configured()], [{...diagnostic(future), 'physical_identity': 'wrong'}]);
-    accept(fence, [configured()], [diagnostic(e)]);
-    expect(fence.freshClaims(rows([configured()], [diagnostic(e)]), t, Duration.zero), isEmpty);
-    final c = [configured('other')], d = [diagnostic(e, 'other')];
-    accept(fence, c, d);
-    expect(fence.freshClaims(rows(c, d), t, Duration.zero), {'other'});
-    for (var index = 2; index < 128; index++) {
-      accept(fence, [configured('claim$index')], []);
-    }
-    expect(fence.recordCount, 128);
-    accept(fence, [], []);
-    final refusedC = [configured('refused')], refusedD = [diagnostic(e, 'refused')];
-    accept(fence, refusedC, refusedD);
-    expect(fence.recordCount, 128);
-    expect(fence.freshClaims(rows(refusedC, refusedD), t, Duration.zero), isEmpty);
-    final renewed = [diagnostic(e.add(const Duration(seconds: 1)), 'other')];
-    accept(fence, c, renewed);
-    expect(fence.freshClaims(rows(c, renewed), t, Duration.zero), {'other'});
-  });
+  test(
+    'invalid future expiry pins only its claim and cap128 never evicts tombstones',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      final future = t.add(const Duration(days: 365));
+      accept(
+        fence,
+        [configured()],
+        [
+          {...diagnostic(future), 'physical_identity': 'wrong'},
+        ],
+      );
+      accept(fence, [configured()], [diagnostic(e)]);
+      expect(
+        fence.freshClaims(
+          rows([configured()], [diagnostic(e)]),
+          t,
+          Duration.zero,
+        ),
+        isEmpty,
+      );
+      final c = [configured('other')], d = [diagnostic(e, 'other')];
+      accept(fence, c, d);
+      expect(fence.freshClaims(rows(c, d), t, Duration.zero), {'other'});
+      for (var index = 2; index < 128; index++) {
+        accept(fence, [configured('claim$index')], []);
+      }
+      expect(fence.recordCount, 128);
+      accept(fence, [], []);
+      final refusedC = [configured('refused')],
+          refusedD = [diagnostic(e, 'refused')];
+      accept(fence, refusedC, refusedD);
+      expect(fence.recordCount, 128);
+      expect(
+        fence.freshClaims(rows(refusedC, refusedD), t, Duration.zero),
+        isEmpty,
+      );
+      final renewed = [diagnostic(e.add(const Duration(seconds: 1)), 'other')];
+      accept(fence, c, renewed);
+      expect(fence.freshClaims(rows(c, renewed), t, Duration.zero), {'other'});
+    },
+  );
 
-  testWidgets('actual HTTP cooling gap and corrected cache before frame cannot hide gap', (tester) async {
-    final f = MemberDetailFixture();
-    final now = DateTime.now();
-    f.role = 'cooling';
-    f.configurationRevision = 1;
-    f.cooling = coolingObservation(now);
-    await f.mount(tester);
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    final reads = f.runtimeReads;
-    final good = f.cooling!;
-    await f.acceptBeforeFrame(tester);
-    f.cooling = {...good, 'surface': null};
-    await f.acceptBeforeFrame(tester);
-    f.cooling = good;
-    await f.acceptBeforeFrame(tester);
-    expect(f.runtimeReads, reads + 3);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    f.cooling = coolingObservation(now.add(const Duration(seconds: 1)));
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    await f.dispose(tester);
-  });
+  testWidgets(
+    'actual HTTP cooling gap and corrected cache before frame cannot hide gap',
+    (tester) async {
+      final f = MemberDetailFixture();
+      final now = DateTime.now();
+      f.role = 'cooling';
+      f.configurationRevision = 1;
+      f.cooling = coolingObservation(now);
+      await f.mount(tester);
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      final reads = f.runtimeReads;
+      final good = f.cooling!;
+      await f.acceptBeforeFrame(tester);
+      f.cooling = {...good, 'surface': null};
+      await f.acceptBeforeFrame(tester);
+      f.cooling = good;
+      await f.acceptBeforeFrame(tester);
+      expect(f.runtimeReads, reads + 3);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.cooling = coolingObservation(now.add(const Duration(seconds: 1)));
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      await f.dispose(tester);
+    },
+  );
 
-  for (final mode in ['both absent', 'both malformed', 'runtime cooling', 'config cooling', 'runtime only', 'physical mismatch', 'duplicate forward', 'duplicate reverse', 'missing branch', 'missing physical', 'nonnumeric surface']) {
-    testWidgets('actual detail cooling READY barrier includes $mode', (tester) async {
+  for (final mode in [
+    'both absent',
+    'both malformed',
+    'runtime cooling',
+    'config cooling',
+    'runtime only',
+    'physical mismatch',
+    'duplicate forward',
+    'duplicate reverse',
+    'missing branch',
+    'missing physical',
+    'nonnumeric surface',
+  ]) {
+    testWidgets('actual detail cooling READY barrier includes $mode', (
+      tester,
+    ) async {
       final f = MemberDetailFixture();
       final now = DateTime.now();
       final c = configured();
@@ -5699,10 +5845,17 @@ void coolingHttpAdmissionRegressions() {
       }
       f.overrideMembership = true;
       f.configuredMembership = mode == 'runtime only' ? <Map>[] : [c];
-      final duplicate = [d, {...d, 'cooling_protection': null}];
-      f.runtimeMembership = mode == 'missing branch' ? <Map>[]
-          : mode == 'duplicate forward' ? duplicate
-          : mode == 'duplicate reverse' ? duplicate.reversed.toList() : [d];
+      final duplicate = [
+        d,
+        {...d, 'cooling_protection': null},
+      ];
+      f.runtimeMembership = mode == 'missing branch'
+          ? <Map>[]
+          : mode == 'duplicate forward'
+          ? duplicate
+          : mode == 'duplicate reverse'
+          ? duplicate.reversed.toList()
+          : [d];
       await f.mount(tester);
       // Fixture deliberately reports server ready: client cooling barrier must withhold it.
       expect(find.text('Controller readiness: ready'), findsNothing);
@@ -5712,76 +5865,92 @@ void coolingHttpAdmissionRegressions() {
   }
 
   for (final reverse in [false, true]) {
-    testWidgets('actual duplicate HTTP cooling gap before frame stays fenced $reverse', (tester) async {
-      final f = MemberDetailFixture();
-      final now = DateTime.now();
-      final expiry = now.add(const Duration(minutes: 1));
-      final c = configured(), good = diagnostic(expiry);
-      f.overrideMembership = true;
-      f.configuredMembership = [c];
-      f.runtimeMembership = [good];
-      await f.mount(tester);
-      expect(find.text('Dew point: 9.25'), findsOneWidget);
-      final reads = f.runtimeReads;
-      final duplicates = [good, {...good, 'physical_identity': 'wrong'}];
-      f.runtimeMembership = reverse ? duplicates.reversed.toList() : duplicates;
-      await f.acceptBeforeFrame(tester);
-      f.runtimeMembership = [good];
-      await f.acceptBeforeFrame(tester);
-      expect(f.runtimeReads, reads + 2);
-      await tester.pump();
-      expect(find.text('Dew point: 9.25'), findsNothing);
-      expect(find.text('Controller readiness: ready'), findsNothing);
-      f.runtimeMembership = [diagnostic(expiry.add(const Duration(seconds: 1)))];
-      await f.acceptBeforeFrame(tester);
-      await tester.pump();
-      expect(find.text('Dew point: 9.25'), findsOneWidget);
-      expect(find.text('Controller readiness: ready'), findsOneWidget);
-      await f.dispose(tester);
-    });
+    testWidgets(
+      'actual duplicate HTTP cooling gap before frame stays fenced $reverse',
+      (tester) async {
+        final f = MemberDetailFixture();
+        final now = DateTime.now();
+        final expiry = now.add(const Duration(minutes: 1));
+        final c = configured(), good = diagnostic(expiry);
+        f.overrideMembership = true;
+        f.configuredMembership = [c];
+        f.runtimeMembership = [good];
+        await f.mount(tester);
+        expect(find.text('Dew point: 9.25'), findsOneWidget);
+        final reads = f.runtimeReads;
+        final duplicates = [
+          good,
+          {...good, 'physical_identity': 'wrong'},
+        ];
+        f.runtimeMembership = reverse
+            ? duplicates.reversed.toList()
+            : duplicates;
+        await f.acceptBeforeFrame(tester);
+        f.runtimeMembership = [good];
+        await f.acceptBeforeFrame(tester);
+        expect(f.runtimeReads, reads + 2);
+        await tester.pump();
+        expect(find.text('Dew point: 9.25'), findsNothing);
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        f.runtimeMembership = [
+          diagnostic(expiry.add(const Duration(seconds: 1))),
+        ];
+        await f.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Dew point: 9.25'), findsOneWidget);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        await f.dispose(tester);
+      },
+    );
   }
 
-  testWidgets('rejected revision and runtime-null refresh do not invalidate admitted cooling', (tester) async {
-    final f = MemberDetailFixture();
-    final now = DateTime.now();
-    f.role = 'cooling';
-    f.configurationRevision = 1;
-    f.cooling = coolingObservation(now);
-    await f.mount(tester);
-    final good = f.cooling!;
-    f.runtimeConfigurationRevision = 2;
-    f.cooling = {...good, 'surface': null};
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    f.runtimeConfigurationRevision = null;
-    f.cooling = good;
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    f.failRuntimeReads = true;
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    f.failRuntimeReads = false;
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    await f.dispose(tester);
-  });
+  testWidgets(
+    'rejected revision and runtime-null refresh do not invalidate admitted cooling',
+    (tester) async {
+      final f = MemberDetailFixture();
+      final now = DateTime.now();
+      f.role = 'cooling';
+      f.configurationRevision = 1;
+      f.cooling = coolingObservation(now);
+      await f.mount(tester);
+      final good = f.cooling!;
+      f.runtimeConfigurationRevision = 2;
+      f.cooling = {...good, 'surface': null};
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.runtimeConfigurationRevision = null;
+      f.cooling = good;
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.failRuntimeReads = true;
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.failRuntimeReads = false;
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      await f.dispose(tester);
+    },
+  );
 
-  testWidgets('heating-only member keeps independent floor and relay diagnostics', (tester) async {
-    final f = MemberDetailFixture();
-    final now = DateTime.now();
-    f.sample = protection(now, 20);
-    f.observation = activityObservation(now, 'on');
-    await f.mount(tester);
-    expect(find.text('Controller readiness: ready'), findsOneWidget);
-    expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
-    expect(find.text('Reported observation: on'), findsOneWidget);
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    await f.dispose(tester);
-  });
+  testWidgets(
+    'heating-only member keeps independent floor and relay diagnostics',
+    (tester) async {
+      final f = MemberDetailFixture();
+      final now = DateTime.now();
+      f.sample = protection(now, 20);
+      f.observation = activityObservation(now, 'on');
+      await f.mount(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+      expect(find.text('Reported observation: on'), findsOneWidget);
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      await f.dispose(tester);
+    },
+  );
 }
 
 void coolingReleasedBranchRegressions() {
@@ -5792,150 +5961,187 @@ void coolingReleasedBranchRegressions() {
     'revision': 1,
     'cooling_protection': coolingBinding(),
   };
-  Map diagnostic(DateTime expiry, {String id = 'one', bool released = false}) => {
-    'claim': id,
-    'physical_identity': 'canonical-$id',
-    'role': 'cooling',
-    'claim_state': released ? 'released' : 'reserved',
-    'cooling_protection': {
-      ...coolingObservation(t),
-      'claim': id,
-      'expires_at': expiry.toIso8601String(),
-    },
-  };
+  Map diagnostic(DateTime expiry, {String id = 'one', bool released = false}) =>
+      {
+        'claim': id,
+        'physical_identity': 'canonical-$id',
+        'role': 'cooling',
+        'claim_state': released ? 'released' : 'reserved',
+        'cooling_protection': {
+          ...coolingObservation(t),
+          'claim': id,
+          'expires_at': expiry.toIso8601String(),
+        },
+      };
   void accept(VirtualThermostatCoolingFence fence, List<Map> c, List<Map> d) =>
       fence.accept({'actuators': c}, {'branches': d}, t, Duration.zero);
-  Set<String> fresh(VirtualThermostatCoolingFence fence, List<Map> c, List<Map> d) =>
-      fence.freshClaims(VirtualThermostatMember.read({'actuators': c}, {'branches': d}), t, Duration.zero);
+  Set<String> fresh(
+    VirtualThermostatCoolingFence fence,
+    List<Map> c,
+    List<Map> d,
+  ) => fence.freshClaims(
+    VirtualThermostatMember.read({'actuators': c}, {'branches': d}),
+    t,
+    Duration.zero,
+  );
 
-  test('configured released cooling is unavailable until strictly newer active expiry', () {
-    final fence = VirtualThermostatCoolingFence(), c = [configured()];
-    final released = [diagnostic(e, released: true)];
-    accept(fence, c, released);
-    expect(fence.recordCount, 1);
-    expect(fresh(fence, c, released), isEmpty);
-    final active = [diagnostic(e)];
-    accept(fence, c, active);
-    expect(fresh(fence, c, active), isEmpty);
-    final renewal = [diagnostic(e.add(const Duration(seconds: 1)))];
-    accept(fence, c, renewal);
-    expect(fresh(fence, c, renewal), {'one'});
-  });
-
-  test('released query and HTTP admission withdraw prior live equal-expiry cooling', () {
-    for (final queryFirst in [false, true]) {
+  test(
+    'configured released cooling is unavailable until strictly newer active expiry',
+    () {
       final fence = VirtualThermostatCoolingFence(), c = [configured()];
-      final active = [diagnostic(e)], released = [diagnostic(e, released: true)];
-      accept(fence, c, active);
-      expect(fresh(fence, c, active), {'one'});
-      if (queryFirst) {
-        expect(fresh(fence, c, released), isEmpty);
-      } else {
-        accept(fence, c, released);
-      }
+      final released = [diagnostic(e, released: true)];
+      accept(fence, c, released);
+      expect(fence.recordCount, 1);
+      expect(fresh(fence, c, released), isEmpty);
+      final active = [diagnostic(e)];
       accept(fence, c, active);
       expect(fresh(fence, c, active), isEmpty);
       final renewal = [diagnostic(e.add(const Duration(seconds: 1)))];
       accept(fence, c, renewal);
       expect(fresh(fence, c, renewal), {'one'});
-    }
-  });
+    },
+  );
 
-  test('retained runtime-only release keeps invalid observed expiry without allocating', () {
-    final fence = VirtualThermostatCoolingFence(), c = [configured()];
-    accept(fence, c, [diagnostic(e)]);
-    final later = e.add(const Duration(seconds: 1));
-    accept(fence, [], [diagnostic(later, released: true)]);
-    expect(fence.recordCount, 1);
-    accept(fence, c, [diagnostic(later)]);
-    expect(fresh(fence, c, [diagnostic(later)]), isEmpty);
-    final renewal = [diagnostic(later.add(const Duration(seconds: 1)))];
-    accept(fence, c, renewal);
-    expect(fresh(fence, c, renewal), {'one'});
-  });
+  test(
+    'released query and HTTP admission withdraw prior live equal-expiry cooling',
+    () {
+      for (final queryFirst in [false, true]) {
+        final fence = VirtualThermostatCoolingFence(), c = [configured()];
+        final active = [diagnostic(e)],
+            released = [diagnostic(e, released: true)];
+        accept(fence, c, active);
+        expect(fresh(fence, c, active), {'one'});
+        if (queryFirst) {
+          expect(fresh(fence, c, released), isEmpty);
+        } else {
+          accept(fence, c, released);
+        }
+        accept(fence, c, active);
+        expect(fresh(fence, c, active), isEmpty);
+        final renewal = [diagnostic(e.add(const Duration(seconds: 1)))];
+        accept(fence, c, renewal);
+        expect(fresh(fence, c, renewal), {'one'});
+      }
+    },
+  );
 
-  for (final reverse in [false, true]) {
-    test('released duplicate contributes invalid expiry high-water in both orders $reverse', () {
+  test(
+    'retained runtime-only release keeps invalid observed expiry without allocating',
+    () {
       final fence = VirtualThermostatCoolingFence(), c = [configured()];
+      accept(fence, c, [diagnostic(e)]);
       final later = e.add(const Duration(seconds: 1));
-      final duplicate = [diagnostic(e), diagnostic(later, released: true)];
-      accept(fence, c, reverse ? duplicate.reversed.toList() : duplicate);
-      expect(fresh(fence, c, duplicate), isEmpty);
+      accept(fence, [], [diagnostic(later, released: true)]);
+      expect(fence.recordCount, 1);
       accept(fence, c, [diagnostic(later)]);
       expect(fresh(fence, c, [diagnostic(later)]), isEmpty);
       final renewal = [diagnostic(later.add(const Duration(seconds: 1)))];
       accept(fence, c, renewal);
       expect(fresh(fence, c, renewal), {'one'});
-    });
+    },
+  );
+
+  for (final reverse in [false, true]) {
+    test(
+      'released duplicate contributes invalid expiry high-water in both orders $reverse',
+      () {
+        final fence = VirtualThermostatCoolingFence(), c = [configured()];
+        final later = e.add(const Duration(seconds: 1));
+        final duplicate = [diagnostic(e), diagnostic(later, released: true)];
+        accept(fence, c, reverse ? duplicate.reversed.toList() : duplicate);
+        expect(fresh(fence, c, duplicate), isEmpty);
+        accept(fence, c, [diagnostic(later)]);
+        expect(fresh(fence, c, [diagnostic(later)]), isEmpty);
+        final renewal = [diagnostic(later.add(const Duration(seconds: 1)))];
+        accept(fence, c, renewal);
+        expect(fresh(fence, c, renewal), {'one'});
+      },
+    );
   }
 
-  test('released runtime-only declarations consume no new cooling record capacity', () {
-    final fence = VirtualThermostatCoolingFence();
-    for (var index = 0; index < 129; index++) {
-      accept(fence, [], [diagnostic(e, id: 'released$index', released: true)]);
-    }
-    expect(fence.recordCount, 0);
-    final c = [configured()], d = [diagnostic(e)];
-    accept(fence, c, d);
-    expect(fence.recordCount, 1);
-    expect(fresh(fence, c, d), {'one'});
-  });
+  test(
+    'released runtime-only declarations consume no new cooling record capacity',
+    () {
+      final fence = VirtualThermostatCoolingFence();
+      for (var index = 0; index < 129; index++) {
+        accept(fence, [], [
+          diagnostic(e, id: 'released$index', released: true),
+        ]);
+      }
+      expect(fence.recordCount, 0);
+      final c = [configured()], d = [diagnostic(e)];
+      accept(fence, c, d);
+      expect(fence.recordCount, 1);
+      expect(fresh(fence, c, d), {'one'});
+    },
+  );
 
-  testWidgets('actual configured released cooling cannot display values or READY', (tester) async {
-    final f = MemberDetailFixture();
-    final expiry = DateTime.now().add(const Duration(minutes: 1));
-    f.overrideMembership = true;
-    f.configuredMembership = [configured()];
-    f.runtimeMembership = [diagnostic(expiry, released: true)];
-    await f.mount(tester);
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    expect(find.text('Controller readiness: ready'), findsNothing);
-    expect(find.textContaining('retained-dew'), findsOneWidget);
-    await f.dispose(tester);
-  });
+  testWidgets(
+    'actual configured released cooling cannot display values or READY',
+    (tester) async {
+      final f = MemberDetailFixture();
+      final expiry = DateTime.now().add(const Duration(minutes: 1));
+      f.overrideMembership = true;
+      f.configuredMembership = [configured()];
+      f.runtimeMembership = [diagnostic(expiry, released: true)];
+      await f.mount(tester);
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.textContaining('retained-dew'), findsOneWidget);
+      await f.dispose(tester);
+    },
+  );
 
-  testWidgets('actual accepted release before frame fences same-E active restoration', (tester) async {
-    final f = MemberDetailFixture();
-    final expiry = DateTime.now().add(const Duration(minutes: 1));
-    f.overrideMembership = true;
-    f.configuredMembership = [configured()];
-    f.runtimeMembership = [diagnostic(expiry)];
-    await f.mount(tester);
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    expect(find.text('Controller readiness: ready'), findsOneWidget);
-    final reads = f.runtimeReads;
-    f.runtimeMembership = [diagnostic(expiry, released: true)];
-    await f.acceptBeforeFrame(tester);
-    f.runtimeMembership = [diagnostic(expiry)];
-    await f.acceptBeforeFrame(tester);
-    expect(f.runtimeReads, reads + 2);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    expect(find.text('Controller readiness: ready'), findsNothing);
-    f.runtimeMembership = [diagnostic(expiry.add(const Duration(seconds: 1)))];
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    expect(find.text('Controller readiness: ready'), findsOneWidget);
-    await f.dispose(tester);
-  });
+  testWidgets(
+    'actual accepted release before frame fences same-E active restoration',
+    (tester) async {
+      final f = MemberDetailFixture();
+      final expiry = DateTime.now().add(const Duration(minutes: 1));
+      f.overrideMembership = true;
+      f.configuredMembership = [configured()];
+      f.runtimeMembership = [diagnostic(expiry)];
+      await f.mount(tester);
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      final reads = f.runtimeReads;
+      f.runtimeMembership = [diagnostic(expiry, released: true)];
+      await f.acceptBeforeFrame(tester);
+      f.runtimeMembership = [diagnostic(expiry)];
+      await f.acceptBeforeFrame(tester);
+      expect(f.runtimeReads, reads + 2);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      f.runtimeMembership = [
+        diagnostic(expiry.add(const Duration(seconds: 1))),
+      ];
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await f.dispose(tester);
+    },
+  );
 
-  testWidgets('actual runtime-only released rows stay outside active cooling requirements', (tester) async {
-    final f = MemberDetailFixture();
-    final expiry = DateTime.now().add(const Duration(minutes: 1));
-    f.overrideMembership = true;
-    f.configuredMembership = <Map>[];
-    f.runtimeMembership = [diagnostic(expiry, released: true)];
-    await f.mount(tester);
-    expect(find.text('Dew point: 9.25'), findsNothing);
-    expect(find.textContaining('retained-dew'), findsNothing);
-    expect(find.text('Controller readiness: ready'), findsOneWidget);
-    f.configuredMembership = [configured()];
-    f.runtimeMembership = [diagnostic(expiry)];
-    await f.acceptBeforeFrame(tester);
-    await tester.pump();
-    expect(find.text('Dew point: 9.25'), findsOneWidget);
-    expect(find.text('Controller readiness: ready'), findsOneWidget);
-    await f.dispose(tester);
-  });
+  testWidgets(
+    'actual runtime-only released rows stay outside active cooling requirements',
+    (tester) async {
+      final f = MemberDetailFixture();
+      final expiry = DateTime.now().add(const Duration(minutes: 1));
+      f.overrideMembership = true;
+      f.configuredMembership = <Map>[];
+      f.runtimeMembership = [diagnostic(expiry, released: true)];
+      await f.mount(tester);
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      expect(find.textContaining('retained-dew'), findsNothing);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      f.configuredMembership = [configured()];
+      f.runtimeMembership = [diagnostic(expiry)];
+      await f.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await f.dispose(tester);
+    },
+  );
 }

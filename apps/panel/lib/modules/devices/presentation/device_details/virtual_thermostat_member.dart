@@ -1023,8 +1023,10 @@ class VirtualThermostatCoolingFence {
       for (final entry in diagnostics.entries)
         if (entry.value.any(_requiresCooling) &&
             (_samples.containsKey(entry.key) ||
-                entry.value.any((row) =>
-                    row['claim_state'] != 'released' && _requiresCooling(row))))
+                entry.value.any(
+                  (row) =>
+                      row['claim_state'] != 'released' && _requiresCooling(row),
+                )))
           entry.key,
     };
     final complete = VirtualThermostatMember.membershipComplete(
@@ -1068,7 +1070,8 @@ class VirtualThermostatCoolingFence {
         record.invalid = true;
         continue;
       }
-      final valid = configs.length == 1 &&
+      final valid =
+          configs.length == 1 &&
           rows.length == 1 &&
           _valid(configs.single, rows.single);
       if (!valid) {
@@ -1079,7 +1082,8 @@ class VirtualThermostatCoolingFence {
       final expiry = _expiry(rows.single)!;
       final context = _context(configs.single, rows.single);
       final remaining = expiry.difference(now);
-      final deadline = clock + (remaining.isNegative ? Duration.zero : remaining);
+      final deadline =
+          clock + (remaining.isNegative ? Duration.zero : remaining);
       if (previous == null || expiry.isAfter(previous)) {
         record.expiry = expiry;
         record.deadline = deadline;
@@ -1111,7 +1115,8 @@ class VirtualThermostatCoolingFence {
       final record = _samples[member.claim];
       if (record == null) continue;
       final diagnostic = member.diagnostic;
-      final valid = !member.historical &&
+      final valid =
+          !member.historical &&
           !member.ambiguous &&
           _valid(member.configuration, diagnostic);
       if (!valid ||

@@ -436,17 +436,19 @@ class _VirtualThermostatDeviceDetailState
               null,
         );
     bool requiresCooling(VirtualThermostatMember member) {
-      bool declared(Object? raw, String key) => raw is List &&
+      bool declared(Object? raw, String key) =>
+          raw is List &&
           raw.whereType<Map>().any(
-            (row) => row[key] == member.claim &&
+            (row) =>
+                row[key] == member.claim &&
                 (key != 'claim' || row['claim_state'] != 'released') &&
-                (row['role'] == 'cooling' ||
-                    row['cooling_protection'] != null),
+                (row['role'] == 'cooling' || row['cooling_protection'] != null),
           );
       return !member.historical &&
           (declared(config?['actuators'], 'id') ||
               declared(runtime?['branches'], 'claim'));
     }
+
     final coolingProtectionCurrent = members
         .where(requiresCooling)
         .every((member) => freshCoolingClaims.contains(member.claim));
