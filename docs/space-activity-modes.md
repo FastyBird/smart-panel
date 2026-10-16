@@ -32,10 +32,12 @@ returning creates fresh defaults. Space deletion cascades. Other role kinds rema
 
 Lighting calls the existing mode plan and preserves its role exclusions. Brightness overrides apply only to
 roles already selected ON; zero switches those roles OFF. Sleep and Away use actual whole-space OFF. Covers use
-absolute positions through the existing intent service. Command-only intermediate positions, read-only controls
+absolute positions through the existing intent service. Activity admission follows its position-first route: a present
+position property must be writable, canonically valid and able to represent the exact requested value without
+clamping or changing its step/grid. Only an absent position property permits the command-only endpoint route. Command-only intermediate positions, read-only controls
 and group percentages without supported semantics report unsupported; no percentage-to-open guess is made.
 If any selected cover cannot honor the request, the covers domain is conservatively refused as a whole.
-Media uses an operator-created binding and the existing media preview/execution plan. Missing bindings, empty
+Media Background and other activation activities use an operator-created binding and the existing media preview/execution plan. OFF uses read-only deactivation admission and the existing deactivation action to pause resolved playback and clear media selection; it requires no OFF binding. Missing activation bindings, empty
 plans or diagnostics report unsupported. Preview never manufactures media bindings.
 
 Every domain reports `disabled`, `no_targets`, `unsupported`, `failed` or `succeeded`; preview uses `ready`.

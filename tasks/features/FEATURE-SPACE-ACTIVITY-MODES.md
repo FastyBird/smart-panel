@@ -286,8 +286,10 @@ Actors come from authentication. Committed refresh events carry space/activation
 
 Lighting, covers and existing media activity services provide real commands. Sleep/Away use lighting OFF.
 Custom brightness overrides only roles selected ON by the lighting mode. Covers percentages require writable
-position controls; command-only intermediate positions and unsupported group percentages are refused explicitly.
-Media requires an existing operator binding; no defaults are created during preview/activation.
+position controls that can represent the exact range/grid/value. A present read-only position cannot fall through to
+a writable command. Command-only intermediate positions and unsupported group percentages are refused explicitly.
+Media activation requires an existing operator binding; OFF follows actual guarded deactivation with read-only admission,
+pausing persisted resolved playback without requiring an OFF binding. No defaults are created during preview/activation.
 Enabled security and climate explicitly report unsupported in this foundation. Climate configuration is validated
 and persisted, but no adapter, thermostat preset creation or climate command is provided. The trusted climate port
 is internal only; controller owner/baseline CAS, graph fencing and source tombstones remain future bridge work.

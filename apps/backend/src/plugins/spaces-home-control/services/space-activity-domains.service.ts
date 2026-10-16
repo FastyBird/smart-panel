@@ -1,6 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 
-import { PermissionType } from '../../../modules/devices/devices.constants';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { domainResult, intentDomainResult } from '../activity/activity-result.utils';
 import { ActivityDomain, ActivityDomainStatus } from '../activity/space-activity.constants';
@@ -11,6 +10,7 @@ import {
 	LightingIntentType,
 	LightingMode,
 	MediaActivationState,
+	MediaActivityKey,
 } from '../spaces-home-control.constants';
 
 import { CoversIntentService } from './covers-intent.service';
@@ -80,20 +80,13 @@ export class SpaceActivityDomainsService {
 				// Never turn a requested intermediate position into the legacy command-only OPEN fallback.
 				// Refuse the domain atomically if any selected target cannot honor the exact action.
 				const position = config.covers.position;
-				const writable = (permissions?: PermissionType[]) =>
-					permissions?.includes(PermissionType.WRITE_ONLY) || permissions?.includes(PermissionType.READ_WRITE);
 				if (
 					targets.some((target) => {
 						const group = target.device.type === 'virtual' && Reflect.get(target.device, 'mode') === 'actuator_group';
 						if (target.device.enabled === false || target.device.hidden || !this.platforms.get(target.device))
 							return true;
 						if (group && position !== 0 && position !== 100) return true;
-						if (target.positionProperty && writable(target.positionProperty.permissions)) return false;
-						return (
-							!(position === 0 || position === 100) ||
-							!target.commandProperty ||
-							!writable(target.commandProperty.permissions)
-						);
+						return !this.covers.supportsExactActivityPosition(target, position);
 					})
 				)
 					return domainResult(
@@ -111,6 +104,31 @@ export class SpaceActivityDomainsService {
 						{ type: CoversIntentType.SET_POSITION, position },
 						identity.isCurrent,
 					),
+				);
+			}
+			if (config.media.activity === MediaActivityKey.OFF) {
+				const admission = await this.media.previewDeactivation(spaceId);
+				if (admission.warnings.length)
+					return domainResult(domain, ActivityDomainStatus.UNSUPPORTED, 'media_deactivation_targets_unavailable');
+				if (!admission.hasActivity)
+					return domainResult(domain, ActivityDomainStatus.NO_TARGETS, 'no_active_media_activity');
+				if (!identity)
+					return domainResult(
+						domain,
+						admission.targetCount ? ActivityDomainStatus.READY : ActivityDomainStatus.NO_TARGETS,
+						'existing_media_deactivation_plan',
+					);
+				if (!(await identity.isCurrent()))
+					return domainResult(domain, ActivityDomainStatus.FAILED, 'activation_superseded');
+				const result = await this.media.deactivate(spaceId, identity.isCurrent);
+				if (result.state !== MediaActivationState.DEACTIVATED || result.warnings?.length)
+					return domainResult(domain, ActivityDomainStatus.FAILED, 'media_deactivation_failed');
+				return domainResult(
+					domain,
+					admission.targetCount ? ActivityDomainStatus.SUCCEEDED : ActivityDomainStatus.NO_TARGETS,
+					admission.targetCount
+						? 'media_playback_paused_and_selection_cleared'
+						: 'media_selection_cleared_without_playback_targets',
 				);
 			}
 			const endpoints = await this.endpoints.buildEndpointsForSpace(spaceId);

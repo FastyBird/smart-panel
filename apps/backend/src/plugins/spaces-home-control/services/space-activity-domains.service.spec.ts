@@ -11,7 +11,7 @@ import { SpaceActivityDomainsService } from './space-activity-domains.service';
 
 describe('real activity domain adapter contracts', () => {
 	const lighting = { getLightsInSpace: jest.fn(), executeLightingIntent: jest.fn() };
-	const covers = { executeCoversIntent: jest.fn() };
+	const covers = { executeCoversIntent: jest.fn(), supportsExactActivityPosition: jest.fn() };
 	const coversState = { getCoversInSpace: jest.fn() };
 	const endpoints = { buildEndpointsForSpace: jest.fn() };
 	const media = { preview: jest.fn(), activate: jest.fn() };

@@ -4,6 +4,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { PermissionType } from '../../../modules/devices/devices.constants';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import {
@@ -11,6 +12,7 @@ import {
 	PropertyCommandDispatchService,
 } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
+import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -128,6 +130,26 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		@Optional() private readonly groups?: CoverGroupIntentPort,
 	) {
 		super();
+	}
+
+	/** Activity-only admission: ordinary intents retain their established position-first/clamping behavior. */
+	supportsExactActivityPosition(cover: CoverDevice, position: number): boolean {
+		const writable = (permissions: PermissionType[] | undefined): boolean =>
+			permissions?.some((permission) => [PermissionType.WRITE_ONLY, PermissionType.READ_WRITE].includes(permission)) ??
+			false;
+		if (cover.positionProperty) {
+			// A present position property is always used by setCoverPosition, even if a command exists.
+			if (!writable(cover.positionProperty.permissions)) return false;
+			const { min, max } = this.getPropertyMinMax(cover.positionProperty, 0, 100);
+			if (!Number.isFinite(min) || !Number.isFinite(max) || min > max || position < min || position > max) return false;
+			const validation = validatePropertyCommandValue(cover.positionProperty, position);
+			return validation.valid && validation.value === position;
+		}
+		if ((position !== 0 && position !== 100) || !cover.commandProperty || !writable(cover.commandProperty.permissions))
+			return false;
+		const command = position === 0 ? 'close' : 'open';
+		const validation = validatePropertyCommandValue(cover.commandProperty, command);
+		return validation.valid && validation.value === command;
 	}
 
 	/**
