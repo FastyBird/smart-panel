@@ -615,6 +615,7 @@ class VirtualThermostatSourceFence {
           (source.containsKey('source_identity') &&
               !(identity is String && identity.isNotEmpty))) {
         complete = false;
+        valid = false;
       }
       if (source.containsKey('source_property') &&
           source['source_property'] == null) {
@@ -753,6 +754,18 @@ class VirtualThermostatSourceFence {
       _aliases[row.alias] = record;
       row.record = record;
       _current[row.alias] = row;
+    }
+    if (!_joinsComplete) {
+      // Accepted incomplete catalogs withdraw omitted records, not historical
+      // aliases sharing a record with a valid, retained current binding.
+      final represented = _pending
+          .where((row) => row.valid)
+          .map((row) => row.record)
+          .whereType<_ObservationBudget>()
+          .toSet();
+      for (final record in _aliases.values) {
+        if (!represented.contains(record)) record.withdrawn = true;
+      }
     }
   }
 

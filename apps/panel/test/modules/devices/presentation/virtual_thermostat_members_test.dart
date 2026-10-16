@@ -1300,6 +1300,208 @@ void main() {
     });
   }
 
+  for (final omittedRole in ['ambient', 'floor']) {
+    for (final shape in ['missing', 'null', 'non-list', 'opaque', 'orphan']) {
+      testWidgets(
+        'accepted configured $shape omitting $omittedRole cannot revive same S before original deadline',
+        (tester) async {
+          final externalClock = Stopwatch()..start();
+          final fixture = MemberDetailFixture()
+            ..hasMember = false
+            ..ambientTemperature = 19.5
+            ..floorTemperature = 22;
+          fixture.inputs.single['maximum_age_seconds'] = 2;
+          final ambient = fixture.sources.single,
+              ambientInput = fixture.inputs.single;
+          fixture.sources.add({
+            ...ambient,
+            'id': 'floor',
+            'role': 'floor',
+            'source_identity': 'floor',
+            'source_property': 'floor-property',
+          });
+          fixture.inputs.add({
+            ...ambientInput,
+            'binding': 'floor',
+            'role': 'floor',
+            'source_property': 'floor-property',
+          });
+          final declared = fixture.sources.toList(),
+              readings = fixture.inputs.toList();
+          await fixture.mount(
+            tester,
+          ); // Accepted initial budget; display clock100ms.
+          expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+          final partial = shape == 'opaque' || shape == 'orphan';
+          final survivors = declared
+              .where((row) => row['role'] != omittedRole)
+              .toList();
+          fixture.overrideSourceArrays = true;
+          fixture.omitSources = shape == 'missing';
+          fixture.configuredSources = shape == 'missing' || shape == 'null'
+              ? null
+              : shape == 'non-list'
+              ? {'opaque': true}
+              : [
+                  ...survivors,
+                  shape == 'opaque'
+                      ? 'opaque'
+                      : {
+                          'id': 'orphan',
+                          'role': 'contact',
+                          'source_identity': 'orphan',
+                        },
+                ];
+          fixture.runtimeInputs = partial
+              ? readings.where((row) => row['role'] != omittedRole).toList()
+              : readings;
+          await fixture.acceptBeforeFrame(
+            tester,
+          ); // Gap at100ms, before any frame.
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(find.text('Controller readiness: ready'), findsNothing);
+          if (partial) {
+            expect(
+              find.text(
+                omittedRole == 'ambient'
+                    ? 'Floor: 22.0 °C'
+                    : 'Ambient: 19.5 °C',
+              ),
+              findsOneWidget,
+            );
+          }
+          fixture.overrideSourceArrays = false;
+          fixture.omitSources = false;
+          await fixture.acceptBeforeFrame(
+            tester,
+          ); // Cached same S at200ms, not expired.
+          await tester.pump();
+          expect(
+            find.text(
+              omittedRole == 'ambient' ? 'Ambient: 19.5 °C' : 'Floor: 22.0 °C',
+            ),
+            findsNothing,
+          );
+          expect(find.text('Controller readiness: ready'), findsNothing);
+          if (partial) {
+            expect(
+              find.text(
+                omittedRole == 'ambient'
+                    ? 'Floor: 22.0 °C'
+                    : 'Ambient: 19.5 °C',
+              ),
+              findsOneWidget,
+            );
+          }
+          final newer = DateTime.now().toIso8601String();
+          fixture.inputs = [
+            for (final row in readings)
+              if (!partial || row['role'] == omittedRole)
+                {...row, 'sampled_at': newer}
+              else
+                row,
+          ];
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          final externalElapsed = externalClock.elapsed;
+          externalClock.stop();
+          const knownFakeElapsed = Duration(milliseconds: 200);
+          final admissionUpperBound = externalElapsed > knownFakeElapsed
+              ? externalElapsed
+              : knownFakeElapsed;
+          final advance = admissionUpperBound + const Duration(seconds: 3);
+          final readsBeforeAdvance = fixture.runtimeReads;
+          debugPrint(
+            'MEASURED_EXPIRY role=$omittedRole shape=$shape external_us=${externalElapsed.inMicroseconds} fake_us=${knownFakeElapsed.inMicroseconds} upper_us=${admissionUpperBound.inMicroseconds} advance_us=${advance.inMicroseconds} runtime_before_advance=$readsBeforeAdvance',
+          );
+          await tester.pump(advance);
+          final runtimeBeforeFresh = fixture.runtimeReads;
+          final modeBeforeFresh = fixture.modeReads;
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          debugPrint(
+            'MEASURED_EXPIRY_GET role=$omittedRole shape=$shape runtime_before=$runtimeBeforeFresh runtime_after=${fixture.runtimeReads} mode_before=$modeBeforeFresh mode_after=${fixture.modeReads}',
+          );
+          expect(fixture.runtimeReads, runtimeBeforeFresh + 1);
+          expect(fixture.modeReads, modeBeforeFresh + 1);
+          expect(find.text('Ambient: 19.5 °C'), findsNothing);
+          expect(find.text('Floor: 22.0 °C'), findsNothing);
+          await fixture.dispose(tester);
+        },
+      );
+    }
+  }
+
+  for (final known in [true, false]) {
+    for (final malformed in <String, Object?>{
+      'null': null,
+      'empty': '',
+      'non-string': 7,
+    }.entries) {
+      testWidgets(
+        'legacy known=$known explicit identity ${malformed.key} refuses evidence with documented first-admission distinction',
+        (tester) async {
+          final fixture = MemberDetailFixture()
+            ..hasMember = false
+            ..ambientTemperature = 19.5;
+          fixture.sources.single.remove('source_identity');
+          fixture.inputs.single['maximum_age_seconds'] = 2;
+          final declaration = fixture.sources.single,
+              original = fixture.inputs.single;
+          if (!known) {
+            fixture.sources = [];
+            fixture.inputs = [];
+          }
+          await fixture.mount(tester);
+          expect(
+            find.text('Ambient: 19.5 °C'),
+            known ? findsOneWidget : findsNothing,
+          );
+          final invalidS = DateTime.now();
+          expect(
+            invalidS.isAfter(DateTime.parse(original['sampled_at'])),
+            isTrue,
+          );
+          fixture.sources = [
+            {...declaration, 'source_identity': malformed.value},
+          ];
+          fixture.inputs = [
+            {...original, 'sampled_at': invalidS.toIso8601String()},
+          ];
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(find.text('Ambient: 19.5 °C'), findsNothing);
+          expect(find.text('Controller readiness: ready'), findsNothing);
+          fixture.sources = [declaration];
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          // Never-seen invalid candidates store no history. This is first admission;
+          // the known record instead retains invalidS and cannot revive same S.
+          expect(
+            find.text('Ambient: 19.5 °C'),
+            known ? findsNothing : findsOneWidget,
+          );
+          if (known) {
+            final newer = DateTime.now();
+            expect(newer.isAfter(invalidS), isTrue);
+            fixture.inputs = [
+              {...original, 'sampled_at': newer.toIso8601String()},
+            ];
+            await fixture.acceptBeforeFrame(tester);
+            await tester.pump();
+            expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+            expect(find.text('Controller readiness: ready'), findsOneWidget);
+          }
+          await fixture.dispose(tester);
+        },
+      );
+    }
+  }
+
   for (final field in ['configuration', 'runtime']) {
     for (final invalid in <String, Object?>{
       'missing': null,
@@ -1944,6 +2146,516 @@ void deadlineFenceTests() {
     },
     wall,
     mono,
+  );
+
+  for (final omittedRole in ['ambient', 'floor']) {
+    for (final shape in ['missing', 'null', 'non-list', 'opaque', 'orphan']) {
+      test(
+        'accepted configured $shape omitting $omittedRole withdraws original S at100ms not merely expiry',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final declared = [
+            source('ambient', 'a', 'ambient'),
+            source('floor', 'f', 'floor'),
+          ];
+          final readings = [input('ambient', 'a', t), input('floor', 'f', t)];
+          accept(fence, declared, readings, t, Duration.zero);
+          final partial = shape == 'opaque' || shape == 'orphan';
+          final surviving = declared
+              .where((row) => row['role'] != omittedRole)
+              .toList();
+          final config = <String, dynamic>{
+            'revision': 1,
+            'actuators': [],
+            if (shape != 'missing')
+              'sources': shape == 'null'
+                  ? null
+                  : shape == 'non-list'
+                  ? 'opaque'
+                  : [
+                      ...surviving,
+                      shape == 'opaque'
+                          ? 'opaque'
+                          : source('contact', 'orphan', 'orphan'),
+                    ],
+          };
+          fence.accept(
+            config,
+            {
+              'configuration_revision': 1,
+              'branches': [],
+              'inputs': partial
+                  ? readings.where((row) => row['role'] != omittedRole).toList()
+                  : readings,
+            },
+            t.add(const Duration(milliseconds: 100)),
+            const Duration(milliseconds: 100),
+          );
+          expect(fence.sources.recordCount, 2);
+          expect(fence.sources.aliasCount, 2);
+          expect(fence.sources.legacyFallbackClosed, isFalse);
+          final survivorRole = omittedRole == 'ambient' ? 'floor' : 'ambient';
+          if (partial) {
+            expect(
+              fence.sources.roleCurrent(
+                survivorRole,
+                t.add(const Duration(milliseconds: 100)),
+                const Duration(milliseconds: 100),
+              ),
+              isTrue,
+            );
+          }
+          final restoredAt = t.add(const Duration(milliseconds: 200));
+          accept(
+            fence,
+            declared,
+            readings,
+            restoredAt,
+            const Duration(milliseconds: 200),
+          );
+          expect(
+            fence.sources.roleCurrent(
+              omittedRole,
+              restoredAt,
+              const Duration(milliseconds: 200),
+            ),
+            isFalse,
+          );
+          expect(
+            fence.sources.allCurrent(
+              restoredAt,
+              const Duration(milliseconds: 200),
+            ),
+            isFalse,
+          );
+          if (partial) {
+            expect(
+              fence.sources.roleCurrent(
+                survivorRole,
+                restoredAt,
+                const Duration(milliseconds: 200),
+              ),
+              isTrue,
+            );
+          }
+          final newer = t.add(const Duration(milliseconds: 201));
+          final recovered = [
+            for (final row in readings)
+              if (!partial || row['role'] == omittedRole)
+                {...row, 'sampled_at': newer.toIso8601String()}
+              else
+                row,
+          ];
+          accept(
+            fence,
+            declared,
+            recovered,
+            newer,
+            const Duration(milliseconds: 201),
+          );
+          expect(
+            fence.sources.allCurrent(newer, const Duration(milliseconds: 201)),
+            isTrue,
+          );
+          expect(
+            fence.sources.allCurrent(
+              t.add(const Duration(seconds: 2)),
+              const Duration(seconds: 2),
+            ),
+            isFalse,
+          );
+        },
+      );
+    }
+  }
+
+  for (final reverse in [false, true]) {
+    for (final extra in ['opaque', 'orphan']) {
+      test(
+        'shared canonical aliases preserve represented record reverse=$reverse extra=$extra but cannot borrow context',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final a = source('contact', 'a', 'shared'),
+              b = source('contact', 'b', 'shared');
+          accept(fence, [a], [input('contact', 'a', t)], t, Duration.zero);
+          final newerB = t.add(const Duration(milliseconds: 10));
+          void incomplete(Map row, DateTime stamp, int milliseconds) {
+            final Object opaque = extra == 'opaque'
+                ? 'opaque'
+                : source('ambient', 'orphan', 'orphan');
+            fence.accept(
+              {
+                'revision': 1,
+                'actuators': [],
+                'sources': reverse ? [opaque, row] : [row, opaque],
+              },
+              {
+                'configuration_revision': 1,
+                'branches': [],
+                'inputs': [input('contact', row['id'], stamp)],
+              },
+              t.add(Duration(milliseconds: milliseconds)),
+              Duration(milliseconds: milliseconds),
+            );
+          }
+
+          incomplete(b, newerB, 10);
+          expect(fence.sources.aliasCount, 2);
+          expect(fence.sources.recordCount, 1);
+          incomplete(b, newerB, 100);
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              t.add(const Duration(milliseconds: 100)),
+              const Duration(milliseconds: 100),
+            ),
+            isTrue,
+          );
+          incomplete(a, newerB, 200);
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              t.add(const Duration(milliseconds: 200)),
+              const Duration(milliseconds: 200),
+            ),
+            isFalse,
+          );
+          final recovered = t.add(const Duration(milliseconds: 300));
+          incomplete(a, recovered, 300);
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              recovered,
+              const Duration(milliseconds: 300),
+            ),
+            isTrue,
+          );
+          final invalidS = t.add(const Duration(milliseconds: 400));
+          final duplicateRows = reverse ? [b, a] : [a, b];
+          accept(
+            fence,
+            duplicateRows,
+            [
+              for (final row in duplicateRows)
+                input('contact', row['id'], invalidS),
+            ],
+            invalidS,
+            const Duration(milliseconds: 400),
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              invalidS,
+              const Duration(milliseconds: 400),
+            ),
+            isFalse,
+          );
+          incomplete(a, invalidS, 400);
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              invalidS,
+              const Duration(milliseconds: 400),
+            ),
+            isFalse,
+          );
+          final finalS = t.add(const Duration(milliseconds: 500));
+          incomplete(a, finalS, 500);
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              finalS,
+              const Duration(milliseconds: 500),
+            ),
+            isTrue,
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              finalS,
+              const Duration(milliseconds: 2500),
+            ),
+            isFalse,
+          );
+        },
+      );
+    }
+  }
+
+  for (final known in [true, false]) {
+    for (final malformed in <String, Object?>{
+      'null': null,
+      'empty': '',
+      'non-string': 7,
+    }.entries) {
+      test(
+        'legacy known=$known explicit identity ${malformed.key} preserves existing no-allocation versus sticky-record policy',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final declaration = source('ambient', 'legacy', null);
+          if (known) {
+            accept(
+              fence,
+              [declaration],
+              [input('ambient', 'legacy', t)],
+              t,
+              Duration.zero,
+            );
+            expect(
+              fence.sources.roleCurrent('ambient', t, Duration.zero),
+              isTrue,
+            );
+          }
+          final invalidS = t.add(const Duration(milliseconds: 100));
+          accept(
+            fence,
+            [
+              {...declaration, 'source_identity': malformed.value},
+            ],
+            [input('ambient', 'legacy', invalidS)],
+            invalidS,
+            const Duration(milliseconds: 100),
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'ambient',
+              invalidS,
+              const Duration(milliseconds: 100),
+            ),
+            isFalse,
+          );
+          expect(fence.sources.recordCount, known ? 1 : 0);
+          expect(fence.sources.aliasCount, known ? 1 : 0);
+          expect(fence.sources.legacyFallbackClosed, isFalse);
+          accept(
+            fence,
+            [declaration],
+            [input('ambient', 'legacy', invalidS)],
+            invalidS,
+            const Duration(milliseconds: 200),
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'ambient',
+              invalidS,
+              const Duration(milliseconds: 200),
+            ),
+            known ? isFalse : isTrue,
+          );
+          if (known) {
+            final newer = t.add(const Duration(milliseconds: 201));
+            accept(
+              fence,
+              [declaration],
+              [input('ambient', 'legacy', newer)],
+              newer,
+              const Duration(milliseconds: 201),
+            );
+            expect(
+              fence.sources.roleCurrent(
+                'ambient',
+                newer,
+                const Duration(milliseconds: 201),
+              ),
+              isTrue,
+            );
+          }
+        },
+      );
+    }
+  }
+
+  for (final known in [true, false]) {
+    for (final malformed in <String, Object?>{
+      'null': null,
+      'empty': '',
+      'non-string': 7,
+    }.entries) {
+      test(
+        'malformed legacy known=$known ${malformed.key} future does not poison qualified retirement floor',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final declaration = source('ambient', 'legacy', null);
+          if (known) {
+            accept(
+              fence,
+              [declaration],
+              [input('ambient', 'legacy', t)],
+              t,
+              Duration.zero,
+            );
+          }
+          final future = t.add(const Duration(days: 1));
+          accept(
+            fence,
+            [
+              {...declaration, 'source_identity': malformed.value},
+            ],
+            [input('ambient', 'legacy', future)],
+            t,
+            const Duration(milliseconds: 100),
+          );
+          expect(fence.sources.recordCount, known ? 1 : 0);
+          expect(fence.sources.aliasCount, known ? 1 : 0);
+          accept(
+            fence,
+            [],
+            [],
+            t,
+            const Duration(milliseconds: 200),
+            revision: 2,
+          );
+          expect(fence.sources.recordCount, 0);
+          final qualified = t.add(const Duration(milliseconds: 300));
+          accept(
+            fence,
+            [source('ambient', 'replacement', 'replacement')],
+            [input('ambient', 'replacement', qualified)],
+            qualified,
+            const Duration(milliseconds: 300),
+            revision: 3,
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'ambient',
+              qualified,
+              const Duration(milliseconds: 300),
+            ),
+            isTrue,
+          );
+        },
+      );
+    }
+  }
+
+  for (final reverse in [false, true]) {
+    for (final extra in ['opaque', 'orphan']) {
+      test(
+        'shared represented B keeps original deadline reverse=$reverse extra=$extra',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final a = source('contact', 'a', 'shared'),
+              b = source('contact', 'b', 'shared');
+          accept(fence, [a], [input('contact', 'a', t)], t, Duration.zero);
+          final originalB = t.add(const Duration(milliseconds: 10));
+          final Object opaque = extra == 'opaque'
+              ? 'opaque'
+              : source('ambient', 'orphan', 'orphan');
+          final config = {
+            'revision': 1,
+            'actuators': [],
+            'sources': reverse ? [opaque, b] : [b, opaque],
+          };
+          final runtime = {
+            'configuration_revision': 1,
+            'branches': [],
+            'inputs': [input('contact', 'b', originalB)],
+          };
+          fence.accept(
+            config,
+            runtime,
+            originalB,
+            const Duration(milliseconds: 10),
+          );
+          fence.accept(
+            config,
+            runtime,
+            t.add(const Duration(milliseconds: 100)),
+            const Duration(milliseconds: 100),
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              t.add(const Duration(milliseconds: 2009)),
+              const Duration(milliseconds: 2009),
+            ),
+            isTrue,
+          );
+          expect(
+            fence.sources.roleCurrent(
+              'contact',
+              t.add(const Duration(milliseconds: 2010)),
+              const Duration(milliseconds: 2010),
+            ),
+            isFalse,
+          );
+        },
+      );
+    }
+  }
+
+  test(
+    'capacity-refused alias cannot exempt omitted shared record from sticky withdrawal',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      for (var n = 0; n < 36; n++) {
+        final stamp = t.add(Duration(milliseconds: n));
+        fence.accept(
+          {
+            'revision': 1,
+            'actuators': [],
+            'sources': [source('contact', 'alias$n', 'shared'), 'opaque'],
+          },
+          {
+            'configuration_revision': 1,
+            'branches': [],
+            'inputs': [input('contact', 'alias$n', stamp)],
+          },
+          stamp,
+          Duration(milliseconds: n),
+        );
+      }
+      expect(fence.sources.aliasCount, 36);
+      expect(fence.sources.recordCount, 1);
+      final original = t.add(const Duration(milliseconds: 35));
+      fence.accept(
+        {
+          'revision': 1,
+          'actuators': [],
+          'sources': [source('contact', 'overflow', 'shared'), 'opaque'],
+        },
+        {
+          'configuration_revision': 1,
+          'branches': [],
+          'inputs': [input('contact', 'overflow', original)],
+        },
+        t.add(const Duration(milliseconds: 100)),
+        const Duration(milliseconds: 100),
+      );
+      expect(fence.sources.overflow, isTrue);
+      expect(fence.sources.aliasCount, 36);
+      accept(
+        fence,
+        [source('contact', 'alias35', 'shared')],
+        [input('contact', 'alias35', original)],
+        t.add(const Duration(milliseconds: 200)),
+        const Duration(milliseconds: 200),
+      );
+      expect(
+        fence.sources.roleCurrent(
+          'contact',
+          t.add(const Duration(milliseconds: 200)),
+          const Duration(milliseconds: 200),
+        ),
+        isFalse,
+      );
+      final newer = t.add(const Duration(milliseconds: 201));
+      accept(
+        fence,
+        [source('contact', 'alias35', 'shared')],
+        [input('contact', 'alias35', newer)],
+        newer,
+        const Duration(milliseconds: 201),
+      );
+      expect(
+        fence.sources.roleCurrent(
+          'contact',
+          newer,
+          const Duration(milliseconds: 201),
+        ),
+        isTrue,
+      );
+    },
   );
 
   for (final field in ['configuration', 'runtime']) {
