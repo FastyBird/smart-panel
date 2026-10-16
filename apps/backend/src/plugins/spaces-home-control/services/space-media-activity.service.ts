@@ -152,7 +152,11 @@ export class SpaceMediaActivityService {
 	/**
 	 * Activate a media activity for a space
 	 */
-	async activate(spaceId: string, activityKey: MediaActivityKey): Promise<MediaActivityActivationResultModel> {
+	async activate(
+		spaceId: string,
+		activityKey: MediaActivityKey,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<MediaActivityActivationResultModel> {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		// Validate activity key
@@ -253,7 +257,7 @@ export class SpaceMediaActivityService {
 			// Handle conflicts (best-effort, non-critical)
 			const conflictWarnings = await this.handleConflicts(spaceId, activityKey, endpointMap);
 
-			const executionResult = await this.executePlan(plan);
+			const executionResult = await this.executePlan(plan, activityCurrent);
 
 			// Determine final state
 			const hasCriticalFailure = executionResult.failures.some((f) => f.critical);
@@ -655,7 +659,10 @@ export class SpaceMediaActivityService {
 	/**
 	 * Execute a plan with timeouts and partial success, emitting step progress events
 	 */
-	private async executePlan(plan: MediaActivityExecutionPlanModel): Promise<ExecutionResult> {
+	private async executePlan(
+		plan: MediaActivityExecutionPlanModel,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<ExecutionResult> {
 		let succeeded = 0;
 		const failures: ExecutionFailure[] = [];
 
@@ -665,6 +672,7 @@ export class SpaceMediaActivityService {
 		const deviceMap = new Map(devices.map((d) => [d.id, d]));
 
 		for (let i = 0; i < plan.steps.length; i++) {
+			if (activityCurrent && !(await activityCurrent())) throw new Error('Space activity superseded');
 			const step = plan.steps[i];
 			const stepLabel = step.label ?? `Step ${i + 1}`;
 			const device = deviceMap.get(step.targetDeviceId);

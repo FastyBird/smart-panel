@@ -33,6 +33,8 @@ import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto'
 import { UpdateHomeControlSpaceDto } from './dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
+import { SpaceActivityConfigEntity } from './entities/space-activity-config.entity';
+import { SpaceActivityStateEntity } from './entities/space-activity-state.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
@@ -55,6 +57,8 @@ import { HomeControlSpacesService } from './services/home-control-spaces.service
 import { LightingContributionPlannerService } from './services/lighting-contribution-planner.service';
 import { LightingIntentService } from './services/lighting-intent.service';
 import { MediaCapabilityService } from './services/media-capability.service';
+import { SpaceActivityConfigService } from './services/space-activity-config.service';
+import { SpaceActivityDomainsService } from './services/space-activity-domains.service';
 import { SpaceClimateRoleService } from './services/space-climate-role.service';
 import { SpaceClimateStateService } from './services/space-climate-state.service';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
@@ -67,6 +71,7 @@ import { SpaceLightingStateService } from './services/space-lighting-state.servi
 import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
+import { SpaceModeService } from './services/space-mode.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceStateReadService } from './services/space-state-read.service';
@@ -123,6 +128,8 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceSensorRoleEntity,
 			SpaceMediaActivityBindingEntity,
 			SpaceActiveMediaActivityEntity,
+			SpaceActivityConfigEntity,
+			SpaceActivityStateEntity,
 			DeviceEntity,
 			ChannelEntity,
 		]),
@@ -137,6 +144,9 @@ import { IntentSpecLoaderService } from './spec';
 		WebsocketModule,
 	],
 	providers: [
+		SpaceActivityConfigService,
+		SpaceActivityDomainsService,
+		SpaceModeService,
 		CoverGroupIntentPort,
 		LightingContributionPlannerService,
 		ClimateContributionPlannerService,
@@ -182,6 +192,8 @@ import { IntentSpecLoaderService } from './spec';
 	],
 	controllers: [],
 	exports: [
+		SpaceActivityConfigService,
+		SpaceModeService,
 		HomeControlSpacesService,
 		IntentSpecLoaderService,
 		ClimateIntentService,
@@ -329,6 +341,14 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		});
 
 		// Role subtype mappings — entities live in this plugin.
+		this.spaceRolesTypeMapper.registerMapping<SpaceActivityConfigEntity>({
+			type: SpaceRoleType.ACTIVITY_CONFIG,
+			class: SpaceActivityConfigEntity,
+		});
+		this.spaceRolesTypeMapper.registerMapping<SpaceActivityStateEntity>({
+			type: SpaceRoleType.ACTIVITY_STATE,
+			class: SpaceActivityStateEntity,
+		});
 		this.spaceRolesTypeMapper.registerMapping<SpaceLightingRoleEntity>({
 			type: SpaceRoleType.LIGHTING,
 			class: SpaceLightingRoleEntity,

@@ -3,7 +3,7 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, In, Repository } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -44,6 +44,7 @@ import {
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 
+import { SpaceLifecycleRegistryService } from './space-lifecycle-registry.service';
 import { SpaceTypeMapping, SpacesTypeMapperService } from './spaces-type-mapper.service';
 
 export interface SpaceSnapshotScope {
@@ -136,6 +137,7 @@ export class SpacesService {
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
+		@Optional() private readonly lifecycle?: SpaceLifecycleRegistryService,
 	) {}
 
 	async findAll(): Promise<SpaceEntity[]> {
@@ -532,7 +534,10 @@ export class SpacesService {
 			}),
 		);
 
-		await subtypeRepository.save(space);
+		await this.dataSource.transaction(async (manager) => {
+			await manager.save(space);
+			await this.lifecycle?.reconcile(space, manager);
+		});
 
 		// Re-fetch to get database default values populated
 		const savedSpace = await this.getOneOrThrow(space.id);
@@ -785,6 +790,7 @@ export class SpacesService {
 					this.logger.error(`Space with id=${id} disappeared during type-change UPDATE`);
 					throw new SpacesNotFoundException('Requested space does not exist');
 				}
+				await this.lifecycle?.reconcile(fresh, transactionalManager);
 				return fresh;
 			});
 			// A type change is always a semantically-meaningful update even when no other

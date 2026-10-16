@@ -150,6 +150,20 @@ export function selectLightsForMode(
 	return selections;
 }
 
+/** Override only mode-selected ON roles; excluded roles stay OFF. Zero is actual OFF. */
+export function applyModeBrightnessOverride(
+	selections: LightModeSelection[],
+	brightness?: number,
+): LightModeSelection[] {
+	return selections.map((selection) => ({
+		...selection,
+		rule:
+			brightness === undefined || !selection.rule.on
+				? { ...selection.rule }
+				: { on: brightness > 0, brightness: brightness > 0 ? brightness : null },
+	}));
+}
+
 /**
  * Service handling all lighting-related intent operations.
  * Manages light state, mode-based orchestration, and brightness control.
@@ -162,6 +176,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		outcomes: CompositeCommandOutcomeModel[];
 		entry?: PropertyCommandEntrySnapshot;
 		selectionCurrent?: () => boolean;
+		activityCurrent?: () => Promise<boolean>;
 	}>();
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'LightingIntentService');
 
@@ -192,11 +207,13 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		spaceId: string,
 		intent: LightingIntentDto,
 		executionContext?: IntentContext,
+		modeBrightnessOverride?: number,
+		activityCurrent?: () => Promise<boolean>,
 	): Promise<IntentExecutionResult | null> {
 		const entry = this.commands?.captureCommandEntry();
 		try {
-			return await this.commandContext.run({ id: '', deadline: 0, outcomes: [], entry }, () =>
-				this.executeRoomLightingIntent(spaceId, intent, executionContext),
+			return await this.commandContext.run({ id: '', deadline: 0, outcomes: [], entry, activityCurrent }, () =>
+				this.executeRoomLightingIntent(spaceId, intent, executionContext, modeBrightnessOverride),
 			);
 		} finally {
 			this.commands?.releaseCommandEntry(entry);
@@ -207,6 +224,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		spaceId: string,
 		intent: LightingIntentDto,
 		executionContext?: IntentContext,
+		modeBrightnessOverride?: number,
 	): Promise<IntentExecutionResult | null> {
 		// Verify space exists - return null for controller to throw 404
 		const space = await this.spacesService.findOne(spaceId);
@@ -304,7 +322,14 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
-			result = await this.executeModeIntentWithResults(spaceId, lights, intent.mode, allLights.length, targetResults);
+			result = await this.executeModeIntentWithResults(
+				spaceId,
+				lights,
+				intent.mode,
+				allLights.length,
+				targetResults,
+				modeBrightnessOverride,
+			);
 		} else if (this.isRoleSpecificIntent(intent.type)) {
 			// For role-specific intents, only affect lights with the specified role
 			result = await this.executeRoleIntentWithResults(spaceId, lights, intent, targetResults);
@@ -629,6 +654,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		mode: LightingMode,
 		totalLightsCount: number,
 		targetResults: IntentTargetResult[],
+		modeBrightnessOverride?: number,
 	): Promise<IntentExecutionResult> {
 		// Get mode orchestration config from YAML spec
 		const modeConfig = this.intentSpecLoaderService.getLightingModeOrchestration(mode);
@@ -640,7 +666,10 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		}
 
 		// Use the pure function to determine what to do with each light
-		const selections = selectLightsForMode(lights, mode, modeConfig);
+		const selections = applyModeBrightnessOverride(
+			selectLightsForMode(lights, mode, modeConfig),
+			modeBrightnessOverride,
+		);
 
 		// Log telemetry for role-based selection
 		const onLights = selections.filter((s) => s.rule.on);
@@ -752,7 +781,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 * Iterates ALL light channels per device (multi-channel devices have multiple outputs).
 	 * Excludes disabled/hidden devices, lights with HIDDEN role, and non-writable properties.
 	 */
-	private async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
+	async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
 		const lights: LightDevice[] = [];
 
@@ -861,6 +890,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 
 	private async dispatchRoomCommands(commands: IDevicePropertyData[]) {
 		const context = this.commandContext.getStore();
+		if (context?.activityCurrent && !(await context.activityCurrent()))
+			return { success: false, reason: 'Space activity superseded' };
 		if (context?.deadline && context.deadline <= Date.now())
 			return { success: false, reason: 'Room command deadline expired' };
 		if (context?.selectionCurrent && !context.selectionCurrent())

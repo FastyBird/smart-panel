@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -110,6 +112,7 @@ export function selectCoversForMode(covers: CoverDevice[], mode: CoversMode): Co
  */
 @Injectable()
 export class CoversIntentService extends SpaceIntentBaseService {
+	private readonly activityContext = new AsyncLocalStorage<() => Promise<boolean>>();
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'CoversIntentService');
 
 	constructor(
@@ -139,10 +142,16 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 * Execute a covers intent for all covers in a space.
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
+	async executeCoversIntent(
+		spaceId: string,
+		intent: CoversIntentDto,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<CoversIntentResult | null> {
 		const entry = this.groups?.capture();
 		try {
-			return await this.executeRoomCoversIntent(spaceId, intent, entry);
+			return await this.activityContext.run(activityCurrent, () =>
+				this.executeRoomCoversIntent(spaceId, intent, entry),
+			);
 		} finally {
 			this.groups?.release(entry);
 		}
@@ -244,6 +253,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			}
 		}
 
+		if (this.activityContext.getStore() && !(await this.activityContext.getStore()()))
+			return { success: false, affectedDevices: 0, failedDevices: allCovers.length, newPosition: null };
 		const groupPlan = await this.groups?.prepare(
 			refuseWholeOperation ? allCovers : covers,
 			intent,
@@ -892,6 +903,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		position: number,
 		options?: PropertyCommandDispatchOptions,
 	): Promise<boolean> {
+		const current = this.activityContext.getStore();
+		if (current && !(await current())) return false;
 		const platform = this.platformRegistryService.get(cover.device);
 
 		if (!platform) {
@@ -951,6 +964,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 * Stop movement on a single cover device.
 	 */
 	private async stopCover(cover: CoverDevice, options?: PropertyCommandDispatchOptions): Promise<boolean> {
+		const current = this.activityContext.getStore();
+		if (current && !(await current())) return false;
 		const platform = this.platformRegistryService.get(cover.device);
 
 		if (!platform) {
