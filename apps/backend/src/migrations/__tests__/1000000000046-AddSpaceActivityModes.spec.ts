@@ -6,7 +6,7 @@ import { defaultActivityConfiguration } from '../../plugins/spaces-home-control/
 
 interface ActivityConfigurationRow {
 	spaceId: string;
-	activityMode: string;
+	activityMode: ActivityMode;
 	activityConfiguration: string;
 }
 
