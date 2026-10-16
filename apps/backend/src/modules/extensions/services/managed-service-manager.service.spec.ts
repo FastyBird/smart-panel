@@ -11,8 +11,8 @@ import { ConfigService } from '../../config/services/config.service';
 import { ModuleConfigMutationRegistryService } from '../../config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginConfigMutationRegistryService } from '../../config/services/plugin-config-mutation-registry.service';
-import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
 import { PluginConfigValidatorService } from '../../config/services/plugin-config-validator.service';
+import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
 import {
 	NotificationActionType,
 	NotificationKind,
@@ -62,7 +62,9 @@ function createMockService(
 
 function admissionDeferred<T = void>() {
 	let resolve: (value: T) => void;
-	const promise = new Promise<T>((done) => { resolve = done; });
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
 	return { promise, resolve: (value: T) => resolve(value) };
 }
 
@@ -114,7 +116,12 @@ describe('ManagedServiceManagerService', () => {
 		const startup = (target: ManagedServiceManagerService, complete: boolean) => {
 			(target as unknown as { startupComplete: boolean }).startupComplete = complete;
 		};
-		const admittedService = (target: ManagedServiceManagerService, owner = 'admission-owner', id = 'runtime', policy: ManagedServiceActivationPolicy = 'owner-enabled') => {
+		const admittedService = (
+			target: ManagedServiceManagerService,
+			owner = 'admission-owner',
+			id = 'runtime',
+			policy: ManagedServiceActivationPolicy = 'owner-enabled',
+		) => {
 			const service = createMockService('plugin', owner, id, 'stopped', policy);
 			const tokens: ManagedStartAdmission[] = [];
 			const revoke = jest.fn();
@@ -132,7 +139,9 @@ describe('ManagedServiceManagerService', () => {
 			return { service, tokens, revoke, start };
 		};
 		const registerBeforeStartup = (service: IManagedExtensionService) => {
-			startup(manager, false); manager.register(service); startup(manager, true);
+			startup(manager, false);
+			manager.register(service);
+			startup(manager, true);
 		};
 
 		it('keeps original runtime evidence after operation close without allowing GET or duplicate events to mint tokens', async () => {
@@ -158,24 +167,27 @@ describe('ManagedServiceManagerService', () => {
 			expect(original.runtime.isCurrent()).toBe(false);
 		});
 
-		it.each(['stopped', 'starting', 'started'] as ServiceState[])('records disable before startup scheduling for a %s registration', async (state) => {
-			const fixture = admittedService(manager);
-			registerBeforeStartup(fixture.service);
-			await manager.startServiceManually('plugin', 'admission-owner', 'runtime');
-			const old = fixture.tokens[0];
-			fixture.service._state = state;
-			fixture.revoke.mockClear();
-			startup(manager, false);
-			configService.getPluginConfig.mockReturnValue({ enabled: false });
-			const disabled = manager.handleConfigUpdated();
-			expect(old.runtime.isCurrent()).toBe(false);
-			expect(fixture.revoke).toHaveBeenCalledTimes(1);
-			await disabled;
-			configService.getPluginConfig.mockReturnValue({ enabled: true });
-			await manager.handleConfigUpdated();
-			expect(old.runtime.isCurrent()).toBe(false);
-			expect(fixture.start).toHaveBeenCalledTimes(1);
-		});
+		it.each(['stopped', 'starting', 'started'] as ServiceState[])(
+			'records disable before startup scheduling for a %s registration',
+			async (state) => {
+				const fixture = admittedService(manager);
+				registerBeforeStartup(fixture.service);
+				await manager.startServiceManually('plugin', 'admission-owner', 'runtime');
+				const old = fixture.tokens[0];
+				fixture.service._state = state;
+				fixture.revoke.mockClear();
+				startup(manager, false);
+				configService.getPluginConfig.mockReturnValue({ enabled: false });
+				const disabled = manager.handleConfigUpdated();
+				expect(old.runtime.isCurrent()).toBe(false);
+				expect(fixture.revoke).toHaveBeenCalledTimes(1);
+				await disabled;
+				configService.getPluginConfig.mockReturnValue({ enabled: true });
+				await manager.handleConfigUpdated();
+				expect(old.runtime.isCurrent()).toBe(false);
+				expect(fixture.start).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		it('does not revoke an always-active runtime when only its owner is disabled', async () => {
 			const fixture = admittedService(manager, 'always-owner', 'discovery', 'always');
@@ -192,12 +204,20 @@ describe('ManagedServiceManagerService', () => {
 		});
 
 		it('does not rescue a validator token across disable-enable or deduplicate a new request onto its authority', async () => {
-			const firstEntered = admissionDeferred(), secondEntered = admissionDeferred();
-			const first = admissionDeferred<{ valid: boolean }>(), second = admissionDeferred<{ valid: boolean }>();
+			const firstEntered = admissionDeferred(),
+				secondEntered = admissionDeferred();
+			const first = admissionDeferred<{ valid: boolean }>(),
+				second = admissionDeferred<{ valid: boolean }>();
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
 			pluginConfigValidator.validate
-				.mockImplementationOnce(() => { firstEntered.resolve(); return first.promise; })
-				.mockImplementationOnce(() => { secondEntered.resolve(); return second.promise; });
+				.mockImplementationOnce(() => {
+					firstEntered.resolve();
+					return first.promise;
+				})
+				.mockImplementationOnce(() => {
+					secondEntered.resolve();
+					return second.promise;
+				});
 			const fixture = admittedService(manager);
 			registerBeforeStartup(fixture.service);
 			const oldRequest = manager.handleConfigUpdated();
@@ -217,9 +237,13 @@ describe('ManagedServiceManagerService', () => {
 		});
 
 		it('closes a pending validator synchronously even when manual stop finds the service still stopped', async () => {
-			const entered = admissionDeferred(), validation = admissionDeferred<{ valid: boolean }>();
+			const entered = admissionDeferred(),
+				validation = admissionDeferred<{ valid: boolean }>();
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
-			pluginConfigValidator.validate.mockImplementationOnce(() => { entered.resolve(); return validation.promise; });
+			pluginConfigValidator.validate.mockImplementationOnce(() => {
+				entered.resolve();
+				return validation.promise;
+			});
 			const fixture = admittedService(manager);
 			registerBeforeStartup(fixture.service);
 			const request = manager.handleConfigUpdated();
@@ -236,14 +260,18 @@ describe('ManagedServiceManagerService', () => {
 		});
 
 		it('cannot reopen an old held start and starts the currently wanted generation after cleanup', async () => {
-			const entered = admissionDeferred(), release = admissionDeferred();
+			const entered = admissionDeferred(),
+				release = admissionDeferred();
 			const fixture = admittedService(manager);
 			fixture.service.start = jest.fn(async () => {
 				const token = manager.captureCurrentStartAdmission(fixture.service.owner, 'runtime');
 				if (!token) throw new Error('Missing original start');
 				fixture.tokens.push(token);
 				fixture.service._state = 'starting';
-				if (fixture.tokens.length === 1) { entered.resolve(); await release.promise; }
+				if (fixture.tokens.length === 1) {
+					entered.resolve();
+					await release.promise;
+				}
 				fixture.service._state = 'started';
 			});
 			registerBeforeStartup(fixture.service);
@@ -269,15 +297,19 @@ describe('ManagedServiceManagerService', () => {
 		});
 
 		it('keeps same-object registration ABA separate and cannot publish old completion into replacement status', async () => {
-			const firstEntered = admissionDeferred(), release = admissionDeferred(), secondEntered = admissionDeferred();
+			const firstEntered = admissionDeferred(),
+				release = admissionDeferred(),
+				secondEntered = admissionDeferred();
 			const fixture = admittedService(manager);
 			fixture.service.start = jest.fn(async () => {
 				const token = manager.captureCurrentStartAdmission(fixture.service.owner, 'runtime');
 				if (!token) throw new Error('Missing original start');
 				fixture.tokens.push(token);
 				fixture.service._state = 'starting';
-				if (fixture.tokens.length === 1) { firstEntered.resolve(); await release.promise; }
-				else secondEntered.resolve();
+				if (fixture.tokens.length === 1) {
+					firstEntered.resolve();
+					await release.promise;
+				} else secondEntered.resolve();
 				fixture.service._state = 'started';
 			});
 			registerBeforeStartup(fixture.service);
@@ -298,34 +330,55 @@ describe('ManagedServiceManagerService', () => {
 			);
 		});
 
-		it.each(['stopAllServices', 'onModuleDestroy'] as const)('closes all admissions at %s entry without old-token revival', async (operation) => {
-			const first = admittedService(manager, 'first-owner'), second = admittedService(manager, 'second-owner');
-			startup(manager, false); manager.register(first.service); manager.register(second.service); startup(manager, true);
-			await manager.handleConfigUpdated();
-			const entered = admissionDeferred(), release = admissionDeferred();
-			second.service.stop = jest.fn(async () => { entered.resolve(); await release.promise; second.service._state = 'stopped'; });
-			const stopping = manager[operation]();
-			await entered.promise;
-			expect(first.tokens[0].runtime.isCurrent()).toBe(false);
-			expect(second.tokens[0].runtime.isCurrent()).toBe(false);
-			release.resolve(); await stopping;
-			expect(first.tokens[0].runtime.isCurrent()).toBe(false);
-			await manager.handleConfigUpdated();
-			if (operation === 'stopAllServices') expect(first.tokens[1].runtime.isCurrent()).toBe(true);
-			else {
-				expect(first.tokens).toHaveLength(1);
-				await expect(manager.startServiceManually('plugin', 'first-owner', 'runtime')).resolves.toBe(false);
-			}
-			expect(first.tokens[0].runtime.isCurrent()).toBe(false);
-		});
+		it.each(['stopAllServices', 'onModuleDestroy'] as const)(
+			'closes all admissions at %s entry without old-token revival',
+			async (operation) => {
+				const first = admittedService(manager, 'first-owner'),
+					second = admittedService(manager, 'second-owner');
+				startup(manager, false);
+				manager.register(first.service);
+				manager.register(second.service);
+				startup(manager, true);
+				await manager.handleConfigUpdated();
+				const entered = admissionDeferred(),
+					release = admissionDeferred();
+				second.service.stop = jest.fn(async () => {
+					entered.resolve();
+					await release.promise;
+					second.service._state = 'stopped';
+				});
+				const stopping = manager[operation]();
+				await entered.promise;
+				expect(first.tokens[0].runtime.isCurrent()).toBe(false);
+				expect(second.tokens[0].runtime.isCurrent()).toBe(false);
+				release.resolve();
+				await stopping;
+				expect(first.tokens[0].runtime.isCurrent()).toBe(false);
+				await manager.handleConfigUpdated();
+				if (operation === 'stopAllServices') expect(first.tokens[1].runtime.isCurrent()).toBe(true);
+				else {
+					expect(first.tokens).toHaveLength(1);
+					await expect(manager.startServiceManually('plugin', 'first-owner', 'runtime')).resolves.toBe(false);
+				}
+				expect(first.tokens[0].runtime.isCurrent()).toBe(false);
+			},
+		);
 
 		it('does not write stale validator errors into a replacement registration or its notifications', async () => {
 			const entered = admissionDeferred();
 			let reject: (error: Error) => void;
-			const validation = new Promise<{ valid: boolean }>((_resolve, fail) => { reject = fail; });
+			const validation = new Promise<{ valid: boolean }>((_resolve, fail) => {
+				reject = fail;
+			});
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
-			pluginConfigValidator.validate.mockImplementationOnce(() => { entered.resolve(); return validation; }).mockResolvedValue({ valid: true });
-			const old = admittedService(manager), replacement = admittedService(manager);
+			pluginConfigValidator.validate
+				.mockImplementationOnce(() => {
+					entered.resolve();
+					return validation;
+				})
+				.mockResolvedValue({ valid: true });
+			const old = admittedService(manager),
+				replacement = admittedService(manager);
 			registerBeforeStartup(old.service);
 			const oldRequest = manager.handleConfigUpdated();
 			await entered.promise;
@@ -345,7 +398,9 @@ describe('ManagedServiceManagerService', () => {
 
 		it('does not let a readiness retry from an unregistered incarnation start the replacement twice', async () => {
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
-			pluginConfigValidator.validate.mockResolvedValueOnce({ valid: false, transient: true }).mockResolvedValue({ valid: true });
+			pluginConfigValidator.validate
+				.mockResolvedValueOnce({ valid: false, transient: true })
+				.mockResolvedValue({ valid: true });
 			const fixture = admittedService(manager);
 			registerBeforeStartup(fixture.service);
 			await manager.handleConfigUpdated();
@@ -359,7 +414,9 @@ describe('ManagedServiceManagerService', () => {
 
 		const actualEventFixture = async (initialize = true) => {
 			let store = Object.assign(new AppConfigModel(), {
-				plugins: ['route-owner', 'second-route-owner'].map((type) => Object.assign(new AdmissionFixturePluginConfig(), { type, enabled: true })),
+				plugins: ['route-owner', 'second-route-owner'].map((type) =>
+					Object.assign(new AdmissionFixturePluginConfig(), { type, enabled: true }),
+				),
 				modules: [],
 			});
 			const module = await Test.createTestingModule({
@@ -369,41 +426,79 @@ describe('ManagedServiceManagerService', () => {
 					{ provide: NestConfigService, useValue: nestConfigService },
 					{ provide: PluginConfigValidatorService, useValue: pluginConfigValidator },
 					{ provide: NotificationsService, useValue: notifications },
-					{ provide: ConfigService, inject: [EventEmitter2], useFactory: (events: EventEmitter2) => {
-						const plugins = new PluginsTypeMapperService(), modules = new ModulesTypeMapperService();
-						for (const type of ['route-owner', 'second-route-owner']) plugins.registerMapping({ type, class: AdmissionFixturePluginConfig, configDto: UpdatePluginConfigDto });
-						const config = new ConfigService(nestConfigService as unknown as NestConfigService, plugins, modules,
-							new ConfigSecretsService(), new ModuleConfigMutationRegistryService(), new PluginConfigMutationRegistryService(),
-							{} as PlatformService, events);
-						// Only persistence is in memory; actual DTO/merge/validation/setPluginConfig + emitter/OnEvent loader run.
-						const storage = config as unknown as { readonly appConfig: AppConfigModel; saveConfig(value: AppConfigModel): void };
-						jest.spyOn(storage, 'appConfig', 'get').mockImplementation(() => store);
-						jest.spyOn(storage, 'saveConfig').mockImplementation((saved) => { store = saved; });
-						return config;
-					} },
+					{
+						provide: ConfigService,
+						inject: [EventEmitter2],
+						useFactory: (events: EventEmitter2) => {
+							const plugins = new PluginsTypeMapperService(),
+								modules = new ModulesTypeMapperService();
+							for (const type of ['route-owner', 'second-route-owner'])
+								plugins.registerMapping({
+									type,
+									class: AdmissionFixturePluginConfig,
+									configDto: UpdatePluginConfigDto,
+								});
+							const config = new ConfigService(
+								nestConfigService as unknown as NestConfigService,
+								plugins,
+								modules,
+								new ConfigSecretsService(),
+								new ModuleConfigMutationRegistryService(),
+								new PluginConfigMutationRegistryService(),
+								{} as PlatformService,
+								events,
+							);
+							// Only persistence is in memory; actual DTO/merge/validation/setPluginConfig + emitter/OnEvent loader run.
+							const storage = config as unknown as {
+								readonly appConfig: AppConfigModel;
+								saveConfig(value: AppConfigModel): void;
+							};
+							jest.spyOn(storage, 'appConfig', 'get').mockImplementation(() => store);
+							jest.spyOn(storage, 'saveConfig').mockImplementation((saved) => {
+								store = saved;
+							});
+							return config;
+						},
+					},
 				],
 			}).compile();
 			if (initialize) {
 				await module.init();
 				await module.get(EventEmitterReadinessWatcher).waitUntilReady();
 			}
-			return { module, target: module.get(ManagedServiceManagerService), config: module.get(ConfigService), events: module.get(EventEmitter2), store };
+			return {
+				module,
+				target: module.get(ManagedServiceManagerService),
+				config: module.get(ConfigService),
+				events: module.get(EventEmitter2),
+				store,
+			};
 		};
 
 		it('bootstrap reconciles actual prestartup disable-enable events after a held validator without another event', async () => {
 			const fixture = await actualEventFixture(false);
-			const entered = admissionDeferred(), validation = admissionDeferred<{ valid: boolean }>();
+			const entered = admissionDeferred(),
+				validation = admissionDeferred<{ valid: boolean }>();
 			try {
 				pluginConfigValidator.hasValidator.mockReturnValue(true);
-				pluginConfigValidator.validate.mockImplementationOnce(() => { entered.resolve(); return validation.promise; });
+				pluginConfigValidator.validate.mockImplementationOnce(() => {
+					entered.resolve();
+					return validation.promise;
+				});
 				const service = admittedService(fixture.target, 'route-owner');
 				fixture.target.register(service.service);
 				const boot = fixture.module.init();
 				await entered.promise;
 				await fixture.module.get(EventEmitterReadinessWatcher).waitUntilReady();
 				const delivery = jest.spyOn(fixture.events, 'emit');
-				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: false }));
-				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: true }));
+				fixture.config.setPluginConfig(
+					'route-owner',
+					Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: false }),
+				);
+				fixture.config.setPluginConfig(
+					'route-owner',
+					Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: true }),
+				);
 				expect(delivery.mock.calls.filter(([event]) => event === ConfigModuleEventType.CONFIG_UPDATED)).toEqual([
 					[ConfigModuleEventType.CONFIG_UPDATED, { source: 'route-owner', type: 'plugin' }],
 					[ConfigModuleEventType.CONFIG_UPDATED, { source: 'route-owner', type: 'plugin' }],
@@ -416,127 +511,175 @@ describe('ManagedServiceManagerService', () => {
 				expect(service.start).toHaveBeenCalledTimes(1);
 				expect(service.service.getState()).toBe('started');
 				expect(service.tokens[0].runtime.isCurrent()).toBe(true);
-			} finally { validation.resolve({ valid: true }); await fixture.module.close(); }
-		});
-
-		it.each(['replacement', 'late-registration'] as const)('Nest bootstrap discovers current %s dependencies registered during a later held level', async (mutation) => {
-			const fixture = await actualEventFixture(false);
-			const entered = admissionDeferred(), release = admissionDeferred();
-			const order: string[] = [];
-			try {
-				const initial = admittedService(fixture.target, 'route-owner', 'base');
-				const held = admittedService(fixture.target, 'second-route-owner', 'held');
-				held.service.getDependencies = () => ['plugin:route-owner:base'];
-				// Keep the original admission-capturing implementation in each start wrapper.
-				const initialStart = initial.start.getMockImplementation();
-				const heldStart = held.start.getMockImplementation();
-				if (!initialStart || !heldStart) throw new Error('Expected original start implementations');
-				initial.start.mockImplementationOnce(() => { order.push('initial'); return initialStart(); });
-				held.service.start = jest.fn(async () => {
-					await heldStart();
-					order.push('held entered'); entered.resolve();
-					await release.promise; order.push('held complete');
-				});
-				// Registrations precede Nest init: its actual lifecycle hook owns this bootstrap.
-				fixture.target.register(initial.service); fixture.target.register(held.service);
-				const boot = fixture.module.init();
-				await entered.promise;
-				await fixture.module.get(EventEmitterReadinessWatcher).waitUntilReady();
-				const id = mutation === 'replacement' ? 'base' : 'late-base';
-				const current = admittedService(fixture.target, 'route-owner', id);
-				const child = admittedService(fixture.target, 'second-route-owner', 'late-child');
-				child.service.getDependencies = () => [`plugin:route-owner:${id}`];
-				const currentStart = current.start.getMockImplementation(), childStart = child.start.getMockImplementation();
-				if (!currentStart || !childStart) throw new Error('Expected new start implementations');
-				current.service.start = jest.fn(() => { order.push('current base'); return currentStart(); });
-				child.service.start = jest.fn(() => { order.push('late child'); return childStart(); });
-				if (mutation === 'replacement') fixture.target.unregister('plugin', 'route-owner', 'base');
-				// Deliberately register the dependent first; actual dependency levels must order them.
-				fixture.target.register(child.service); fixture.target.register(current.service);
-				expect(current.start).not.toHaveBeenCalled();
-				expect(child.start).not.toHaveBeenCalled();
-				expect(initial.tokens[0].runtime.isCurrent()).toBe(mutation !== 'replacement');
-				release.resolve(); await boot;
-				expect(order).toEqual(['initial', 'held entered', 'held complete', 'current base', 'late child']);
-				expect(initial.start).toHaveBeenCalledTimes(1);
-				expect(current.start).toHaveBeenCalledTimes(1);
-				expect(child.start).toHaveBeenCalledTimes(1);
-				expect(current.tokens[0].runtime.isCurrent()).toBe(true);
-				expect(child.tokens[0].runtime.isCurrent()).toBe(true);
-				expect(current.tokens[0]).not.toBe(initial.tokens[0]);
-				expect(current.service.getState()).toBe('started');
-				expect(child.service.getState()).toBe('started');
-			} finally { release.resolve(); await fixture.module.close(); }
-		});
-
-		it.each(['success', 'failure', 'not-persisted'] as const)('retires only the original pending notification before replacement %s', async (outcome) => {
-			const entered = admissionDeferred(), persistence = admissionDeferred();
-			const originalRow = { id: 'original-issue', resolved: false };
-			const successorRow = { id: 'successor-issue', resolved: false };
-			let activeRow: typeof originalRow | null = null;
-			const writes: string[] = [];
-			notifications.notify.mockImplementationOnce(async () => {
-				entered.resolve();
-				await persistence.promise;
-				if (outcome === 'not-persisted') return null;
-				activeRow = originalRow;
-				writes.push('persist original');
-				return originalRow;
-			}).mockImplementation(async () => {
-				activeRow = successorRow;
-				writes.push('persist successor');
-				return successorRow;
-			});
-			notifications.resolve.mockImplementation(() => {
-				if (activeRow) { writes.push(`resolve ${activeRow.id}`); activeRow.resolved = true; activeRow = null; }
-				return Promise.resolve(true);
-			});
-			const original = createMockService('plugin', 'issue-owner', 'runtime');
-			original.start = jest.fn().mockRejectedValue(new Error('original failure'));
-			registerBeforeStartup(original);
-			const old = manager.startServiceManually('plugin', 'issue-owner', 'runtime');
-			await entered.promise;
-			manager.unregister('plugin', 'issue-owner', 'runtime');
-			const replacement = createMockService('plugin', 'issue-owner', 'runtime');
-			if (outcome === 'failure') replacement.start = jest.fn().mockRejectedValue(new Error('successor failure'));
-			startup(manager, false);
-			manager.register(replacement);
-			startup(manager, true);
-			const current = manager.startServiceManually('plugin', 'issue-owner', 'runtime');
-			expect(replacement.start).not.toHaveBeenCalled();
-			persistence.resolve();
-			await Promise.all([old, current]);
-			expect(replacement.start).toHaveBeenCalledTimes(1);
-			if (outcome === 'failure') {
-				expect(writes).toEqual(['persist original', 'resolve original-issue', 'persist successor']);
-				expect(originalRow.resolved).toBe(true);
-				expect(successorRow.resolved).toBe(false);
-				expect(activeRow).toBe(successorRow);
-				expect(notifications.resolve).toHaveBeenCalledTimes(1);
-				await expect(manager.getServiceStatus('plugin', 'issue-owner', 'runtime')).resolves.toEqual(
-					expect.objectContaining({ lastError: 'successor failure', startCount: 0 }),
-				);
-			} else {
-				expect(activeRow).toBeNull();
-				expect(writes).toEqual(outcome === 'success' ? ['persist original', 'resolve original-issue'] : []);
-				expect(notifications.resolve).toHaveBeenCalledTimes(outcome === 'success' ? 1 : 0);
-				expect(replacement.getState()).toBe('started');
+			} finally {
+				validation.resolve({ valid: true });
+				await fixture.module.close();
 			}
 		});
 
+		it.each(['replacement', 'late-registration'] as const)(
+			'Nest bootstrap discovers current %s dependencies registered during a later held level',
+			async (mutation) => {
+				const fixture = await actualEventFixture(false);
+				const entered = admissionDeferred(),
+					release = admissionDeferred();
+				const order: string[] = [];
+				try {
+					const initial = admittedService(fixture.target, 'route-owner', 'base');
+					const held = admittedService(fixture.target, 'second-route-owner', 'held');
+					held.service.getDependencies = () => ['plugin:route-owner:base'];
+					// Keep the original admission-capturing implementation in each start wrapper.
+					const initialStart = initial.start.getMockImplementation();
+					const heldStart = held.start.getMockImplementation();
+					if (!initialStart || !heldStart) throw new Error('Expected original start implementations');
+					initial.start.mockImplementationOnce(() => {
+						order.push('initial');
+						return initialStart();
+					});
+					held.service.start = jest.fn(async () => {
+						await heldStart();
+						order.push('held entered');
+						entered.resolve();
+						await release.promise;
+						order.push('held complete');
+					});
+					// Registrations precede Nest init: its actual lifecycle hook owns this bootstrap.
+					fixture.target.register(initial.service);
+					fixture.target.register(held.service);
+					const boot = fixture.module.init();
+					await entered.promise;
+					await fixture.module.get(EventEmitterReadinessWatcher).waitUntilReady();
+					const id = mutation === 'replacement' ? 'base' : 'late-base';
+					const current = admittedService(fixture.target, 'route-owner', id);
+					const child = admittedService(fixture.target, 'second-route-owner', 'late-child');
+					child.service.getDependencies = () => [`plugin:route-owner:${id}`];
+					current.service.start = jest.fn(() => {
+						order.push('current base');
+						return current.start();
+					});
+					child.service.start = jest.fn(() => {
+						order.push('late child');
+						return child.start();
+					});
+					if (mutation === 'replacement') fixture.target.unregister('plugin', 'route-owner', 'base');
+					// Deliberately register the dependent first; actual dependency levels must order them.
+					fixture.target.register(child.service);
+					fixture.target.register(current.service);
+					expect(current.start).not.toHaveBeenCalled();
+					expect(child.start).not.toHaveBeenCalled();
+					expect(initial.tokens[0].runtime.isCurrent()).toBe(mutation !== 'replacement');
+					release.resolve();
+					await boot;
+					expect(order).toEqual(['initial', 'held entered', 'held complete', 'current base', 'late child']);
+					expect(initial.start).toHaveBeenCalledTimes(1);
+					expect(current.start).toHaveBeenCalledTimes(1);
+					expect(child.start).toHaveBeenCalledTimes(1);
+					expect(current.tokens[0].runtime.isCurrent()).toBe(true);
+					expect(child.tokens[0].runtime.isCurrent()).toBe(true);
+					expect(current.tokens[0]).not.toBe(initial.tokens[0]);
+					expect(current.service.getState()).toBe('started');
+					expect(child.service.getState()).toBe('started');
+				} finally {
+					release.resolve();
+					await fixture.module.close();
+				}
+			},
+		);
+
+		it.each(['success', 'failure', 'not-persisted'] as const)(
+			'retires only the original pending notification before replacement %s',
+			async (outcome) => {
+				const entered = admissionDeferred(),
+					persistence = admissionDeferred();
+				const originalRow = { id: 'original-issue', resolved: false };
+				const successorRow = { id: 'successor-issue', resolved: false };
+				let activeRow: typeof originalRow | null = null;
+				const writes: string[] = [];
+				notifications.notify
+					.mockImplementationOnce(async () => {
+						entered.resolve();
+						await persistence.promise;
+						if (outcome === 'not-persisted') return null;
+						activeRow = originalRow;
+						writes.push('persist original');
+						return originalRow;
+					})
+					.mockImplementation(() => {
+						activeRow = successorRow;
+						writes.push('persist successor');
+						return Promise.resolve(successorRow);
+					});
+				notifications.resolve.mockImplementation(() => {
+					if (activeRow) {
+						writes.push(`resolve ${activeRow.id}`);
+						activeRow.resolved = true;
+						activeRow = null;
+					}
+					return Promise.resolve(true);
+				});
+				const original = createMockService('plugin', 'issue-owner', 'runtime');
+				original.start = jest.fn().mockRejectedValue(new Error('original failure'));
+				registerBeforeStartup(original);
+				const old = manager.startServiceManually('plugin', 'issue-owner', 'runtime');
+				await entered.promise;
+				manager.unregister('plugin', 'issue-owner', 'runtime');
+				const replacement = createMockService('plugin', 'issue-owner', 'runtime');
+				const replacementStart = jest.spyOn(replacement, 'start');
+				if (outcome === 'failure') replacementStart.mockRejectedValue(new Error('successor failure'));
+				startup(manager, false);
+				manager.register(replacement);
+				startup(manager, true);
+				const current = manager.startServiceManually('plugin', 'issue-owner', 'runtime');
+				expect(replacementStart).not.toHaveBeenCalled();
+				persistence.resolve();
+				await Promise.all([old, current]);
+				expect(replacementStart).toHaveBeenCalledTimes(1);
+				if (outcome === 'failure') {
+					expect(writes).toEqual(['persist original', 'resolve original-issue', 'persist successor']);
+					expect(originalRow.resolved).toBe(true);
+					expect(successorRow.resolved).toBe(false);
+					expect(activeRow).toBe(successorRow);
+					expect(notifications.resolve).toHaveBeenCalledTimes(1);
+					await expect(manager.getServiceStatus('plugin', 'issue-owner', 'runtime')).resolves.toEqual(
+						expect.objectContaining({ lastError: 'successor failure', startCount: 0 }),
+					);
+				} else {
+					expect(activeRow).toBeNull();
+					expect(writes).toEqual(outcome === 'success' ? ['persist original', 'resolve original-issue'] : []);
+					expect(notifications.resolve).toHaveBeenCalledTimes(outcome === 'success' ? 1 : 0);
+					expect(replacement.getState()).toBe('started');
+				}
+			},
+		);
+
 		it('actual ConfigService set route synchronously revokes every matching service before the first held stop', async () => {
 			const fixture = await actualEventFixture();
-			const release = admissionDeferred(), secondStopped = admissionDeferred();
+			const release = admissionDeferred(),
+				secondStopped = admissionDeferred();
 			try {
 				const first = admittedService(fixture.target, 'route-owner', 'first');
 				const second = admittedService(fixture.target, 'route-owner', 'second');
 				const unrelated = admittedService(fixture.target, 'second-route-owner');
-				fixture.target.register(first.service); fixture.target.register(second.service); fixture.target.register(unrelated.service);
+				fixture.target.register(first.service);
+				fixture.target.register(second.service);
+				fixture.target.register(unrelated.service);
 				await fixture.target.handleConfigUpdated();
-				first.revoke.mockClear(); second.revoke.mockClear(); unrelated.revoke.mockClear();
-				first.service.stop = jest.fn(async () => { await release.promise; first.service._state = 'stopped'; });
-				second.service.stop = jest.fn(() => { second.service._state = 'stopped'; secondStopped.resolve(); return Promise.resolve(); });
-				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: false }));
+				first.revoke.mockClear();
+				second.revoke.mockClear();
+				unrelated.revoke.mockClear();
+				first.service.stop = jest.fn(async () => {
+					await release.promise;
+					first.service._state = 'stopped';
+				});
+				second.service.stop = jest.fn(() => {
+					second.service._state = 'stopped';
+					secondStopped.resolve();
+					return Promise.resolve();
+				});
+				fixture.config.setPluginConfig(
+					'route-owner',
+					Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: false }),
+				);
 				// No await between actual config.emit and this assertion: later matching service is already revoked.
 				expect(first.revoke).toHaveBeenCalledTimes(1);
 				expect(second.revoke).toHaveBeenCalledTimes(1);
@@ -544,23 +687,41 @@ describe('ManagedServiceManagerService', () => {
 				expect(second.tokens[0].runtime.isCurrent()).toBe(false);
 				expect(unrelated.revoke).not.toHaveBeenCalled();
 				expect(unrelated.tokens[0].runtime.isCurrent()).toBe(true);
-				release.resolve(); await secondStopped.promise;
-			} finally { release.resolve(); await fixture.module.close(); }
+				release.resolve();
+				await secondStopped.promise;
+			} finally {
+				release.resolve();
+				await fixture.module.close();
+			}
 		});
 
 		it('actual broad config event prepasses different owners before serial waits and preserves always-active policy', async () => {
 			const fixture = await actualEventFixture();
-			const release = admissionDeferred(), stopped = admissionDeferred();
+			const release = admissionDeferred(),
+				stopped = admissionDeferred();
 			try {
 				const first = admittedService(fixture.target, 'route-owner');
 				const later = admittedService(fixture.target, 'second-route-owner');
 				const always = admittedService(fixture.target, 'route-owner', 'discovery', 'always');
-				fixture.target.register(first.service); fixture.target.register(later.service); fixture.target.register(always.service);
+				fixture.target.register(first.service);
+				fixture.target.register(later.service);
+				fixture.target.register(always.service);
 				await fixture.target.handleConfigUpdated();
-				first.revoke.mockClear(); later.revoke.mockClear(); always.revoke.mockClear();
-				first.revoke.mockImplementationOnce(() => { throw new Error('injected first revocation hook failure'); });
-				first.service.stop = jest.fn(async () => { await release.promise; first.service._state = 'stopped'; });
-				later.service.stop = jest.fn(() => { later.service._state = 'stopped'; stopped.resolve(); return Promise.resolve(); });
+				first.revoke.mockClear();
+				later.revoke.mockClear();
+				always.revoke.mockClear();
+				first.revoke.mockImplementationOnce(() => {
+					throw new Error('injected first revocation hook failure');
+				});
+				first.service.stop = jest.fn(async () => {
+					await release.promise;
+					first.service._state = 'stopped';
+				});
+				later.service.stop = jest.fn(() => {
+					later.service._state = 'stopped';
+					stopped.resolve();
+					return Promise.resolve();
+				});
 				for (const config of fixture.store.plugins) config.enabled = false;
 				fixture.events.emit(ConfigModuleEventType.CONFIG_UPDATED, { source: 'all', type: 'section' });
 				expect(first.revoke).toHaveBeenCalledTimes(1);
@@ -568,8 +729,12 @@ describe('ManagedServiceManagerService', () => {
 				expect(later.tokens[0].runtime.isCurrent()).toBe(false);
 				expect(always.revoke).not.toHaveBeenCalled();
 				expect(always.tokens[0].runtime.isCurrent()).toBe(true);
-				release.resolve(); await stopped.promise;
-			} finally { release.resolve(); await fixture.module.close(); }
+				release.resolve();
+				await stopped.promise;
+			} finally {
+				release.resolve();
+				await fixture.module.close();
+			}
 		});
 	});
 

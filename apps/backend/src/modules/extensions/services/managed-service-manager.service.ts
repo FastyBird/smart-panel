@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -234,9 +235,9 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			const current = new Set(this.services.values());
 			for (const registration of visited) if (!current.has(registration)) visited.delete(registration);
 			const levels = this.getServiceLevels();
-			const level = levels.findIndex((registrations) => registrations.some((registration) =>
-				!visited.has(registration) || this.bootstrapDirty.has(registration),
-			));
+			const level = levels.findIndex((registrations) =>
+				registrations.some((registration) => !visited.has(registration) || this.bootstrapDirty.has(registration)),
+			);
 			if (level === -1) break;
 			const wave = levels[level]
 				.filter((registration) => !visited.has(registration) || this.bootstrapDirty.has(registration))
@@ -247,11 +248,13 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 				this.bootstrapDirty.delete(registration);
 			}
 			this.logger.log(`Starting level ${level} services (${wave.length} services)`);
-			await Promise.all(wave.map(async ({ registration, firstVisit }) => {
-				if (!this.isCurrentRegistration(registration)) return;
-				if (firstVisit) await this.startServiceIfDesired(registration);
-				else await this.syncServiceState(registration);
-			}));
+			await Promise.all(
+				wave.map(async ({ registration, firstVisit }) => {
+					if (!this.isCurrentRegistration(registration)) return;
+					if (firstVisit) await this.startServiceIfDesired(registration);
+					else await this.syncServiceState(registration);
+				}),
+			);
 		}
 
 		this.startupComplete = true;
@@ -347,9 +350,10 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	async handleConfigUpdated(payload?: { source: string; type: 'plugin' | 'module' | 'section' }): Promise<void> {
-		const affected = [...this.services.values()].filter((registration) =>
-			payload?.type !== 'plugin' && payload?.type !== 'module' ||
-			registration.owner.kind === payload.type && registration.owner.type === payload.source,
+		const affected = [...this.services.values()].filter(
+			(registration) =>
+				(payload?.type !== 'plugin' && payload?.type !== 'module') ||
+				(registration.owner.kind === payload.type && registration.owner.type === payload.source),
 		);
 		// EventEmitter invokes this synchronous prefix before any service wait or bootstrap scheduling gate.
 		for (const registration of affected) {
@@ -612,8 +616,11 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		const attempt = this.startAdmissionContext.getStore();
 		if (!attempt || !attempt.token.isCurrent()) return null;
 		const registration = attempt.state.registration;
-		return registration.owner.kind === owner.kind && registration.owner.type === owner.type &&
-			registration.serviceId === serviceId ? attempt.token : null;
+		return registration.owner.kind === owner.kind &&
+			registration.owner.type === owner.type &&
+			registration.serviceId === serviceId
+			? attempt.token
+			: null;
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────────
@@ -646,22 +653,33 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			registration.service.revokeCurrentAuthority?.();
 		} catch (error) {
 			// One failing provider hook cannot leave later affected registrations authorized.
-			this.logger.error(`Failed to revoke service authority: ${this.getRegistrationKey(registration)}`,
-				error instanceof Error ? error.stack : undefined);
+			this.logger.error(
+				`Failed to revoke service authority: ${this.getRegistrationKey(registration)}`,
+				error instanceof Error ? error.stack : undefined,
+			);
 		}
 	}
 
 	private isGenerationCurrent(attempt: ManagedStartAttempt): boolean {
 		const state = attempt.state;
-		return !this.shutdownInProgress && !this.isCliMode && !state.revoked &&
-			this.isCurrentRegistration(state.registration) && this.admissions.get(state.registration) === state &&
-			state.incarnation === attempt.incarnation && state.desiredGeneration === attempt.desiredGeneration &&
-			state.lifecycleGeneration === attempt.lifecycleGeneration;
+		return (
+			!this.shutdownInProgress &&
+			!this.isCliMode &&
+			!state.revoked &&
+			this.isCurrentRegistration(state.registration) &&
+			this.admissions.get(state.registration) === state &&
+			state.incarnation === attempt.incarnation &&
+			state.desiredGeneration === attempt.desiredGeneration &&
+			state.lifecycleGeneration === attempt.lifecycleGeneration
+		);
 	}
 
 	private isAttemptCurrent(attempt: ManagedStartAttempt): boolean {
-		return attempt.control.active && this.isGenerationCurrent(attempt) &&
-			(!attempt.requireDesiredState || attempt.state.desired);
+		return (
+			attempt.control.active &&
+			this.isGenerationCurrent(attempt) &&
+			(!attempt.requireDesiredState || attempt.state.desired)
+		);
 	}
 
 	private createStartAttempt(state: RegistrationAdmission, requireDesiredState: boolean): ManagedStartAttempt {
@@ -670,18 +688,26 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		state.lifecycleGeneration = Symbol('runtime lifecycle');
 		state.revoked = false;
 		const control = { active: true, invoked: false, successful: false };
-		let attempt: ManagedStartAttempt;
 		const token: ManagedStartAdmission = Object.freeze({
 			owner: Object.freeze({ ...state.registration.owner }),
 			serviceId: state.registration.serviceId,
 			isCurrent: () => this.isAttemptCurrent(attempt) && state.desired,
 			runtime: Object.freeze({
-				isCurrent: () => this.isGenerationCurrent(attempt) && state.desired &&
-					(control.successful || control.active && control.invoked),
+				isCurrent: () =>
+					this.isGenerationCurrent(attempt) &&
+					state.desired &&
+					(control.successful || (control.active && control.invoked)),
 			}),
 		});
-		attempt = { state, incarnation: state.incarnation, desiredGeneration: state.desiredGeneration,
-			lifecycleGeneration: state.lifecycleGeneration, requireDesiredState, control, token };
+		const attempt: ManagedStartAttempt = {
+			state,
+			incarnation: state.incarnation,
+			desiredGeneration: state.desiredGeneration,
+			lifecycleGeneration: state.lifecycleGeneration,
+			requireDesiredState,
+			control,
+			token,
+		};
 		return attempt;
 	}
 
@@ -700,7 +726,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private async startService(registration: ServiceRegistration, requireDesiredState: boolean = true): Promise<void> {
 		const key = this.getRegistrationKey(registration);
 		const state = this.refreshAdmissionIntent(registration);
-		if (!state || this.shutdownInProgress || this.isCliMode || requireDesiredState && !state.desired) return;
+		if (!state || this.shutdownInProgress || this.isCliMode || (requireDesiredState && !state.desired)) return;
 		const pending = this.serviceStartPromises.get(key);
 		if (pending) {
 			const sameAttempt = pending.attempt.state === state && this.isAttemptCurrent(pending.attempt);
@@ -708,8 +734,11 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			if (sameAttempt) return;
 			// A replacement/current request can wait for old work, but cannot reuse its admission.
 			if (!this.isCurrentRegistration(registration) || this.shutdownInProgress) return;
-			if (pending.attempt.state.registration !== registration &&
-				pending.attempt.state.registration.service === registration.service && pending.attempt.control.invoked) {
+			if (
+				pending.attempt.state.registration !== registration &&
+				pending.attempt.state.registration.service === registration.service &&
+				pending.attempt.control.invoked
+			) {
 				await this.stopService(registration);
 			}
 			await this.startService(registration, requireDesiredState);
@@ -723,7 +752,8 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		// Publish single-flight ownership BEFORE a validator can synchronously emit a config event.
 		const entry: PendingServiceStart = {
 			attempt,
-			promise: Promise.resolve().then(() => this.startServiceOnce(registration, key, requireDesiredState, attempt))
+			promise: Promise.resolve()
+				.then(() => this.startServiceOnce(registration, key, requireDesiredState, attempt))
 				.finally(() => {
 					attempt.control.active = false;
 					if (this.serviceStartPromises.get(key) === entry) this.serviceStartPromises.delete(key);
@@ -819,7 +849,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		// complete while that work is pending and observe this service as still stopped, so re-read the
 		// user's intent immediately before allocating runtime resources.
 		this.refreshAdmissionIntent(registration);
-		if (!this.isAttemptCurrent(attempt) || requireDesiredState && !this.shouldBeRunning(registration)) {
+		if (!this.isAttemptCurrent(attempt) || (requireDesiredState && !this.shouldBeRunning(registration))) {
 			this.clearReadinessRetry(key);
 			return;
 		}
@@ -922,8 +952,10 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		if (!state) return;
 		const desiredGeneration = state.desiredGeneration;
 		const lifecycleGeneration = state.lifecycleGeneration;
-		const isCurrent = () => this.isCurrentRegistration(registration) &&
-			state.desiredGeneration === desiredGeneration && state.lifecycleGeneration === lifecycleGeneration;
+		const isCurrent = () =>
+			this.isCurrentRegistration(registration) &&
+			state.desiredGeneration === desiredGeneration &&
+			state.lifecycleGeneration === lifecycleGeneration;
 		const key = this.getRegistrationKey(registration);
 		let currentState = registration.service.getState();
 		const shouldBeRunning = this.shouldBeRunning(registration);
@@ -1276,10 +1308,16 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		const state = this.admissions.get(registration);
 		if (!state || !this.isCurrentRegistration(registration)) return;
-		const issue: ServiceIssue = { registration, desiredGeneration: state.desiredGeneration, closed: false, persisted: false };
+		const issue: ServiceIssue = {
+			registration,
+			desiredGeneration: state.desiredGeneration,
+			closed: false,
+			persisted: false,
+		};
 		this.openIssues.set(key, issue);
 		await this.enqueueIssueWrite(key, async () => {
-			const isCurrent = () => this.isCurrentRegistration(registration) &&
+			const isCurrent = () =>
+				this.isCurrentRegistration(registration) &&
 				this.admissions.get(registration)?.desiredGeneration === issue.desiredGeneration;
 			if (!isCurrent()) {
 				issue.closed = true;
