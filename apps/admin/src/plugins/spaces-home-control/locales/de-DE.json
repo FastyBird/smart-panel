@@ -418,6 +418,7 @@
 		"cancel": "Abbrechen",
 		"reset": "Auf Standardwerte zurücksetzen",
 		"preview": "Gespeicherte Einstellungen prüfen",
+		"enableBeforePreview": "Aktivieren und speichern Sie diesen Modus vor der Vorschau.",
 		"saveBeforePreview": "Speichern Sie Ihre Änderungen vor der Vorschau.",
 		"loading": "Aktivitätsmodi werden geladen…",
 		"loadFailed": "Aktivitätsmodi konnten nicht geladen werden. Versuchen Sie es mit Aktualisieren.",

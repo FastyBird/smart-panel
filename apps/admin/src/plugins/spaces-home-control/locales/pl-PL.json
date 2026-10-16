@@ -418,6 +418,7 @@
 		"cancel": "Anuluj",
 		"reset": "Przywróć ustawienia domyślne",
 		"preview": "Podgląd zapisanych ustawień",
+		"enableBeforePreview": "Włącz i zapisz ten tryb przed wyświetleniem podglądu.",
 		"saveBeforePreview": "Zapisz zmiany przed wyświetleniem podglądu.",
 		"loading": "Ładowanie trybów aktywności…",
 		"loadFailed": "Nie udało się wczytać trybów aktywności. Spróbuj odświeżyć.",

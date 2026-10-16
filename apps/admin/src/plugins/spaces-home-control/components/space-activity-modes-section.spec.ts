@@ -1,6 +1,6 @@
 import { nextTick } from 'vue';
 
-import { ElDialog, ElInputNumber, ElSelect, ElSwitch } from 'element-plus';
+import { ElButton, ElDialog, ElInputNumber, ElSelect, ElSwitch } from 'element-plus';
 import createClient from 'openapi-fetch';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -116,6 +116,36 @@ describe('actual activity mode section and saved API editor', () => {
 		expect(saved?.body?.data.configuration).toEqual(configuration());
 		await click(wrapper, 'reset');
 		expect(requests.at(-1)?.body).toEqual({ data: { expected_revision: 2 } });
+		wrapper.unmount();
+	});
+	it('requires enabling and saving a disabled mode before sending a saved preview', async () => {
+		const wrapper = render();
+		await flushPromises();
+		await click(wrapper, 'edit-away');
+		const previewButton = () =>
+			wrapper
+				.findComponent(ElDialog)
+				.findAllComponents(ElButton)
+				.find((button) => button.attributes('data-testid') === 'preview')!;
+		expect(wrapper.text()).toContain('enableBeforePreview');
+		expect(wrapper.get('[data-testid="preview"]').attributes('disabled')).toBeDefined();
+		previewButton().vm.$emit('click', new MouseEvent('click'));
+		await flushPromises();
+		expect(requests.filter((request) => request.method !== 'GET')).toHaveLength(0);
+		wrapper.findComponent(ElDialog).findAllComponents(ElSwitch)[0].vm.$emit('update:modelValue', true);
+		await nextTick();
+		expect(wrapper.get('[data-testid="preview"]').attributes('disabled')).toBeDefined();
+		previewButton().vm.$emit('click', new MouseEvent('click'));
+		await flushPromises();
+		expect(requests.filter((request) => request.method !== 'GET')).toHaveLength(0);
+		await click(wrapper, 'save');
+		expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+		expect(wrapper.get('[data-testid="preview"]').attributes('disabled')).toBeUndefined();
+		await click(wrapper, 'preview');
+		expect(requests.at(-1)?.path).toContain('/away/preview');
+		expect(requests.at(-1)?.body).toEqual({ data: { expected_revision: 2 } });
+		expect(requests.filter((request) => request.method !== 'GET')).toHaveLength(2);
+		expect(wrapper.findAll('[data-testid="domain-result"]')).toHaveLength(1);
 		wrapper.unmount();
 	});
 	it('previews saved revision only and invalidates displayed results on any draft edit', async () => {

@@ -418,6 +418,7 @@
 		"cancel": "Zrušiť",
 		"reset": "Obnoviť predvolené nastavenia",
 		"preview": "Náhľad uložených nastavení",
+		"enableBeforePreview": "Pred náhľadom režim povoľte a uložte.",
 		"saveBeforePreview": "Pred zobrazením náhľadu uložte zmeny.",
 		"loading": "Načítavajú sa režimy aktivít…",
 		"loadFailed": "Režimy aktivít sa nepodarilo načítať. Skúste ich obnoviť.",

@@ -236,9 +236,9 @@
 				type="warning"
 				:closable="false"
 			/>
-			<p>{{ text(dirty ? 'saveBeforePreview' : 'previewDescription') }}</p>
+			<p>{{ text(!selected.activity_enabled ? 'enableBeforePreview' : dirty ? 'saveBeforePreview' : 'previewDescription') }}</p>
 			<el-button
-				:disabled="dirty || busy || previewing || error === 'conflict'"
+				:disabled="!canPreview"
 				:loading="previewing"
 				data-testid="preview"
 				@click="showPreview"
@@ -333,6 +333,9 @@ const icons: Record<ActivityMode, string> = {
 };
 const dirty = computed(() => !!draft.value && !!selected.value && JSON.stringify(draft.value) !== JSON.stringify(activityDraft(selected.value)));
 const valid = computed(() => ActivityDraftSchema.safeParse(draft.value).success);
+const canPreview = computed(
+	() => selected.value?.activity_enabled === true && !dirty.value && !busy.value && !previewing.value && error.value !== 'conflict'
+);
 const climateKinds = ['none', 'preset', 'setpoint', 'delta'] as const;
 const climateInputKind = ref('none');
 const climateKind = computed(() => climateInputKind.value);
@@ -396,7 +399,7 @@ const reset = async () => {
 	if (row) edit(row);
 };
 const showPreview = async () => {
-	if (!selected.value || dirty.value || busy.value || previewing.value) return;
+	if (!selected.value || !canPreview.value) return;
 	const token = ++previewGeneration;
 	previewing.value = true;
 	previewResults.value = null;

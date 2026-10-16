@@ -418,6 +418,7 @@
 		"cancel": "Cancel",
 		"reset": "Reset to defaults",
 		"preview": "Preview saved settings",
+		"enableBeforePreview": "Enable and save this mode before previewing.",
 		"saveBeforePreview": "Save your changes before previewing.",
 		"loading": "Loading activity modes…",
 		"loadFailed": "Activity modes could not be loaded. Try refreshing.",

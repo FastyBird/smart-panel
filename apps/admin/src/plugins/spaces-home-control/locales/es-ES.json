@@ -418,6 +418,7 @@
 		"cancel": "Cancelar",
 		"reset": "Restablecer valores predeterminados",
 		"preview": "Vista previa de los ajustes guardados",
+		"enableBeforePreview": "Activa y guarda este modo antes de ver la vista previa.",
 		"saveBeforePreview": "Guarda los cambios antes de ver la vista previa.",
 		"loading": "Cargando modos de actividad…",
 		"loadFailed": "No se pudieron cargar los modos de actividad. Prueba a actualizar.",

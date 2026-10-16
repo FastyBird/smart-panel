@@ -418,6 +418,7 @@
 		"cancel": "Zrušit",
 		"reset": "Obnovit výchozí nastavení",
 		"preview": "Náhled uloženého nastavení",
+		"enableBeforePreview": "Před náhledem režim povolte a uložte.",
 		"saveBeforePreview": "Před zobrazením náhledu uložte změny.",
 		"loading": "Načítání režimů aktivit…",
 		"loadFailed": "Režimy aktivit se nepodařilo načíst. Zkuste je obnovit.",
