@@ -21,8 +21,7 @@ export class SpaceActivityStateEntity extends SpaceRoleEntity {
 	@ApiProperty({
 		name: 'selected_activity_mode',
 		description: 'Selected mode; null after deactivation',
-		enum: ActivityMode,
-		nullable: true,
+		anyOf: [{ type: 'string', enum: Object.values(ActivityMode) }, { type: 'null' }],
 	})
 	@Expose({ name: 'selected_activity_mode' })
 	@Column({ type: 'varchar', nullable: true })
