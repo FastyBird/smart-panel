@@ -232,13 +232,11 @@ class _VirtualThermostatDeviceDetailState
         configuration,
         candidate,
       )) {
-        _coolingFence.retainClaims(
-          acceptedMembers.map((member) => member.claim),
-        );
         _activityFence.retainClaims(
           acceptedMembers.map((member) => member.claim),
         );
       }
+      _coolingFence.accept(configuration, candidate, acceptedAt, acceptedClock);
       _activityFence.accept(acceptedMembers, acceptedAt, acceptedClock);
       setState(() {
         _configuration = configuration;
@@ -437,12 +435,20 @@ class _VirtualThermostatDeviceDetailState
               ) !=
               null,
         );
+    bool requiresCooling(VirtualThermostatMember member) {
+      bool declared(Object? raw, String key) => raw is List &&
+          raw.whereType<Map>().any(
+            (row) => row[key] == member.claim &&
+                (key != 'claim' || row['claim_state'] != 'released') &&
+                (row['role'] == 'cooling' ||
+                    row['cooling_protection'] != null),
+          );
+      return !member.historical &&
+          (declared(config?['actuators'], 'id') ||
+              declared(runtime?['branches'], 'claim'));
+    }
     final coolingProtectionCurrent = members
-        .where(
-          (member) =>
-              member.cooling != null ||
-              member.configuration['cooling_protection'] != null,
-        )
+        .where(requiresCooling)
         .every((member) => freshCoolingClaims.contains(member.claim));
     final readinessCurrent =
         current &&

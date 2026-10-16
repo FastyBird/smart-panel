@@ -935,15 +935,165 @@ class _ActivityWatermark {
   );
 }
 
-/// Cooling has no heating-floor sample. Keep its original expiry and a monotonic
-/// display budget separately: identical HTTP refetches cannot revive stale data.
-/// This is only a display fence, never installed qualification or command authority.
+/// Cooling display history belongs only to this mounted detail's fence instance.
+/// HTTP admission captures original expiry budgets; rendering cannot mint them.
 class VirtualThermostatCoolingFence {
   final _samples = <String, _CoolingWatermark>{};
+  int get recordCount => _samples.length;
 
-  void retainClaims(Iterable<String> claims) {
-    final active = claims.toSet();
-    _samples.removeWhere((claim, _) => !active.contains(claim));
+  bool _requiresCooling(Map row) =>
+      row['role'] == 'cooling' || row['cooling_protection'] != null;
+
+  DateTime? _expiry(Map? diagnostic) {
+    final cooling = diagnostic?['cooling_protection'];
+    final value = cooling is Map ? cooling['expires_at'] : null;
+    return value is String ? DateTime.tryParse(value) : null;
+  }
+
+  bool _valid(Map configuration, Map? diagnostic) {
+    final claim = configuration['id'];
+    final physical = configuration['physical_identity'];
+    final binding = configuration['cooling_protection'];
+    final cooling = diagnostic?['cooling_protection'];
+    bool identity(Object? value) => value is String && value.isNotEmpty;
+    bool reading(Object? value) =>
+        value is num && value.isFinite && value > -45 && value <= 60;
+    return identity(claim) &&
+        configuration['role'] == 'cooling' &&
+        diagnostic?['role'] == 'cooling' &&
+        diagnostic?['claim'] == claim &&
+        identity(physical) &&
+        diagnostic?['physical_identity'] == physical &&
+        binding is Map &&
+        cooling is Map &&
+        cooling['claim'] == claim &&
+        binding['schema_version'] == 1 &&
+        binding['purpose'] == 'cooled_surface' &&
+        identity(binding['dew_point_property']) &&
+        identity(binding['surface_property']) &&
+        identity(cooling['dew_point_identity']) &&
+        identity(cooling['surface_identity']) &&
+        binding['dew_point_identity'] == cooling['dew_point_identity'] &&
+        binding['surface_identity'] == cooling['surface_identity'] &&
+        reading(cooling['dew_point']) &&
+        reading(cooling['surface']) &&
+        cooling['ready'] is bool &&
+        cooling['latched'] is bool &&
+        _expiry(diagnostic) != null;
+  }
+
+  String _context(Map configuration, Map diagnostic) {
+    final binding = configuration['cooling_protection'] as Map;
+    final cooling = diagnostic['cooling_protection'] as Map;
+    return jsonEncode([
+      configuration['id'],
+      configuration['physical_identity'],
+      diagnostic['claim'],
+      diagnostic['physical_identity'],
+      configuration['revision'],
+      configuration['qualification_generation'],
+      binding['revision'],
+      cooling['dew_point_identity'],
+      cooling['surface_identity'],
+    ]);
+  }
+
+  /// Called only after the caller's coherent/current HTTP revision admission.
+  /// Raw rows preserve invalid duplicate expiries discarded by member projection.
+  void accept(Map configuration, Map runtime, DateTime now, Duration clock) {
+    Map<String, List<Map>> group(Object? raw, String field) {
+      final grouped = <String, List<Map>>{};
+      if (raw is List) {
+        for (final row in raw.whereType<Map>()) {
+          final id = row[field];
+          if (id is String && id.isNotEmpty) {
+            (grouped[id] ??= []).add(row);
+          }
+        }
+      }
+      return grouped;
+    }
+
+    final configured = group(configuration['actuators'], 'id');
+    final diagnostics = group(runtime['branches'], 'claim');
+    final candidates = {
+      for (final entry in configured.entries)
+        if (entry.value.any(_requiresCooling)) entry.key,
+      for (final entry in diagnostics.entries)
+        if (entry.value.any(_requiresCooling)) entry.key,
+    };
+    final complete = VirtualThermostatMember.membershipComplete(
+      configuration,
+      runtime,
+    );
+    // Tombstones retain per-claim high-water within the existing bounded instance.
+    // Complete membership proves retirement; incomplete omission is only a gap.
+    for (final entry in _samples.entries) {
+      if (!candidates.contains(entry.key)) {
+        entry.value.invalid = true;
+        if (complete &&
+            !configured.containsKey(entry.key) &&
+            !diagnostics.containsKey(entry.key)) {
+          entry.value.retired = true;
+        }
+      }
+    }
+    for (final claim in candidates) {
+      var record = _samples[claim];
+      if (record == null) {
+        if (_samples.length >= 128) continue;
+        record = _samples[claim] = _CoolingWatermark();
+      }
+      final configs = configured[claim] ?? const <Map>[];
+      final rows = diagnostics[claim] ?? const <Map>[];
+      final previous = record.observedExpiry;
+      DateTime? observed;
+      for (final row in rows) {
+        final expiry = _expiry(row);
+        if (expiry != null && (observed == null || expiry.isAfter(observed))) {
+          observed = expiry;
+        }
+      }
+      if (observed != null &&
+          (previous == null || observed.isAfter(previous))) {
+        record.observedExpiry = observed;
+      }
+      if (record.awaitingBaseline && observed != null) {
+        record.awaitingBaseline = false;
+        record.invalid = true;
+        continue;
+      }
+      final valid = configs.length == 1 &&
+          rows.length == 1 &&
+          _valid(configs.single, rows.single);
+      if (!valid) {
+        record.invalid = true;
+        if (record.observedExpiry == null) record.awaitingBaseline = true;
+        continue;
+      }
+      final expiry = _expiry(rows.single)!;
+      final context = _context(configs.single, rows.single);
+      final remaining = expiry.difference(now);
+      final deadline = clock + (remaining.isNegative ? Duration.zero : remaining);
+      if (previous == null || expiry.isAfter(previous)) {
+        record.expiry = expiry;
+        record.deadline = deadline;
+        record.context = context;
+        record.invalid = !now.isBefore(expiry);
+        record.retired = false;
+      } else if (expiry == record.expiry &&
+          expiry == record.observedExpiry &&
+          context == record.context &&
+          !record.invalid &&
+          !record.retired) {
+        if (deadline < record.deadline!) record.deadline = deadline;
+        if (!now.isBefore(expiry) || clock >= record.deadline!) {
+          record.invalid = true;
+        }
+      } else {
+        record.invalid = true;
+      }
+    }
   }
 
   Set<String> freshClaims(
@@ -953,68 +1103,33 @@ class VirtualThermostatCoolingFence {
   ) {
     final fresh = <String>{};
     for (final member in members) {
-      final previous = _samples[member.claim];
-      final cooling = member.cooling;
-      final binding = member.configuration['cooling_protection'] is Map
-          ? member.configuration['cooling_protection'] as Map
-          : null;
-      final expiry = DateTime.tryParse(
-        cooling?['expires_at']?.toString() ?? '',
-      );
-      bool reading(Object? value) =>
-          value is num && value.isFinite && value > -45 && value <= 60;
-      if (member.historical ||
-          member.role != 'cooling' ||
-          expiry == null ||
-          member.configuration['id'] != member.claim ||
-          cooling?['claim'] != member.claim ||
-          binding == null ||
-          binding['schema_version'] != 1 ||
-          binding['purpose'] != 'cooled_surface' ||
-          binding['dew_point_property'] is! String ||
-          binding['surface_property'] is! String ||
-          binding['dew_point_identity'] != cooling?['dew_point_identity'] ||
-          binding['surface_identity'] != cooling?['surface_identity'] ||
-          !reading(cooling?['dew_point']) ||
-          !reading(cooling?['surface']) ||
-          cooling?['ready'] is! bool ||
-          cooling?['latched'] is! bool ||
-          cooling?['dew_point_identity'] is! String ||
-          cooling?['surface_identity'] is! String) {
-        if (previous != null) previous.invalid = true;
+      final record = _samples[member.claim];
+      if (record == null) continue;
+      final diagnostic = member.diagnostic;
+      final valid = !member.historical &&
+          !member.ambiguous &&
+          _valid(member.configuration, diagnostic);
+      if (!valid ||
+          record.invalid ||
+          record.retired ||
+          _expiry(diagnostic) != record.expiry ||
+          record.expiry != record.observedExpiry ||
+          _context(member.configuration, diagnostic!) != record.context ||
+          record.deadline == null ||
+          !now.isBefore(record.expiry!) ||
+          clock >= record.deadline!) {
+        record.invalid = true;
         continue;
       }
-      final context =
-          '${member.identity}/${member.configuration['revision']}/${member.configuration['qualification_generation']}/${binding['revision']}/${cooling!['dew_point_identity']}/${cooling['surface_identity']}';
-      if (previous != null &&
-          (expiry.isBefore(previous.expiry) ||
-              (expiry == previous.expiry && previous.context != context))) {
-        previous.invalid = true;
-        continue;
-      }
-      if (previous == null || expiry.isAfter(previous.expiry)) {
-        if (previous == null && _samples.length >= 128) continue;
-        final remaining = expiry.difference(now);
-        _samples[member.claim] = _CoolingWatermark(
-          expiry,
-          clock + (remaining.isNegative ? Duration.zero : remaining),
-          context,
-        );
-      }
-      final sample = _samples[member.claim]!;
-      if (!now.isBefore(expiry) || clock >= sample.deadline) {
-        sample.invalid = true;
-      }
-      if (!sample.invalid) fresh.add(member.claim);
+      fresh.add(member.claim);
     }
     return fresh;
   }
 }
 
 class _CoolingWatermark {
-  final DateTime expiry;
-  final Duration deadline;
-  final String context;
-  bool invalid = false;
-  _CoolingWatermark(this.expiry, this.deadline, this.context);
+  DateTime? observedExpiry, expiry;
+  Duration? deadline;
+  String? context;
+  bool invalid = true, awaitingBaseline = false, retired = false;
 }
