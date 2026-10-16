@@ -1,8 +1,9 @@
 # Dew point and cooling software candidate — issue #1459
 
-Status: preliminary source-only composition on current climate/main; fresh generation, checks and composed review pending. Not merged, published, deployed or installation-qualified.
+Status: locally generated and validated on current climate/main after bounded regression corrections.
+Final independent composed review and parent publication gates remain; this is not installed qualification.
 Base: `cf8a5b656bc1eab246389cd73412f03228a66d32` from `origin/feat/virtual-thermostat-comfort-branches`.
-Composition target: climate UI `0117d3f96786df5a4f412b83d77fb540b7d4e9cf`, including merged PR #1466 main
+Composition target: final climate UI `8ce7a5a38d4aea602e43203dee76031b46f2b823`, including merged PR #1466 main
 `6414291237813856b9a4b7c05401b225820df677`. The extension epic and issue remain open. This record does not complete native HA/Zigbee takeovers.
 
 ## Measurement contract
@@ -135,18 +136,67 @@ The cooling response has no independent physical-input publication token. Displa
 conservative: a report whose original expiry does not advance cannot revive a withdrawn display reading, even if a
 new HTTP response is received. No fetch timestamp or invented acceptance identity fills that gap.
 
-## Preliminary current-climate composition
+## Current-climate composition and own generation
 
-The accepted dew-point source `2fb98eb3a7265ae58c4fab9aa8f5a3e2861bfe13` is merged with the exact climate
-UI target above. Source JSON/ARB leaves and metadata retain both parents' changes. Swagger registration includes
+The accepted dew-point source `2fb98eb3a7265ae58c4fab9aa8f5a3e2861bfe13` was merged with climate source
+`0117d3f96786df5a4f412b83d77fb540b7d4e9cf`, then its generated-only final climate head above. Source JSON/ARB leaves and metadata retain both parents' changes. Swagger registration includes
 both dew-point and group catalogue models. Current HomeKit metadata handling and the dedicated `dew_point`
 exclusion are retained together. Native HA/Zigbee takeover remains incomplete; no staging source is imported.
 
-All seven tracked `app_localizations*.dart` files are exact climate-parent versions, inherited from main as
-**PROVISIONAL placeholders**. They do not contain the complete merged ARB interface and must be regenerated
-with Flutter 3.41.5 from all six merged ARB sources before review or publication. API/spec/client generation,
-fresh backend/Admin/Panel checks and independent composed review also remain pending under the parent's serial
-heavy-check grant. No generator, heavy test, type check, lint or Flutter command ran during this composition.
+The preliminary source merges used seven exact-parent **PROVISIONAL localization placeholders**. These were
+replaced only by own Flutter 3.41.5 generation from all six merged ARBs in the separate generated-only commit
+`be0b28221b1bd0c00fc71f9bebbc7153ee39e9af`. All dew-point, climate and main group keys are present. Own backend
+spec/OpenAPI, Admin API/spec, Panel API/build_runner/spec/localization generation passed with unchanged dependency
+locks. Generated ignored API/spec files were neither hand-edited nor staged. No provisional localization output remains.
+
+## Fresh composed local validation
+
+The initial broad lineage pack on `be0b282` exposed five failures out of 531 cases (526 passed). Two aggregate
+implementation defects admitted evaluator-excluded stale rows into lineage and reconstructed an age budget from
+an already shortened result interval. Separate fix `52c0b7f7455c69d7831b564f0f0c987313d9254a` selects the complete
+admitted comparison cohort by evaluator ID, including outliers, and uses the evaluator's original expiry directly.
+The existing degraded-quorum and weighted/outlier deadline expectations remain unchanged. Two obsolete stale-display
+expectations were strengthened to require null/unavailable views, unchanged stored publication/history/authority,
+and actual later fresh incorporation. No read-time or queued recursive evidence guard was relaxed.
+
+Subsequent bounded typing/format cleanup ended at backend source checkpoint
+`1c0196475758a214e813a7bfea68b6dc5a6e3e27`. Readonly array aliases preserve every runtime array/size/depth/identity/
+quality guard; explicit Promise presence checks preserve drain/generation scheduling. Fixture promises and typings
+retain outcomes and assertions. Formatting/import-only changes have an independent normalized syntax-tree proof.
+
+Fresh results are recorded per checked source head, not combined into a claim that every suite ran on every head:
+
+- On `52c0b7`: the three formerly failing SQLite integration files passed 104 cases; a separate producer, lineage,
+  remote protocol, claims and cooling pack passed 493 cases in ten suites; standard-environment virtual-device/API
+  envelope E2E passed 63 cases in two suites.
+- On final backend source `1c019647`: eight affected property/recursive-lineage, real localhost Digest/remote protocol,
+  cooling, dew-point SQLite/formula/DI and regression suites passed 242 cases. Full backend types, scoped lint and
+  formatting passed. Lint has zero errors and the two repository-configured migration 44/45 ignore warnings.
+- Earlier fresh composed main regressions on `be0b282` passed: thermostat 357, core/guards 408, HomeKit 109 and
+  thermostat protocol 30 cases. They preceded the bounded aggregate correction and are not represented as reruns
+  on the final backend tree. Their main-owned production paths remain unchanged.
+- On `1c019647`: Admin 28 files / 192 cases, full 8 GiB type checking, scoped lint and formatting passed. Panel
+  13 files / 166 cases, analysis of 25 files and six-file source/test formatting passed. Actual detail rendering,
+  missing dependencies, original-expiry/watermark/cache/rollback fences, heating/floor/relay/comfort and room-cover
+  single-REST/no-replay behavior are covered.
+- Strict Spectral passed with no warnings/errors. API conventions passed through the own no-space alias, avoiding
+  the physical-path whitespace defect. Final backend OpenAPI regeneration after cleanup is byte-identical to own
+  initial generation: SHA-256 `9ea661a2e9ae9e81be2c581727d7ba10c9f3e0355ae5748d047961bd5a2bce24`.
+  The 348-path contract adds four dew-point routes and removes no climate route; existing paths are unchanged.
+  All 702 API annotation files are unchanged by the cleanup. Cooling request `schemaVersion`, dependency response
+  `schema_version`, optional preview graph revision and required write CAS are retained.
+
+Initial failures remain separate evidence: the five lineage failures above; an E2E wrapper error that incorrectly
+applied generator migration flags to synchronized in-memory tests (57 setup failures, six passes); initial scoped
+lint 167 errors / nine warnings and an intermediate two-error typing pass. The standard E2E rerun corrected only
+wrapper-local environment scope, without source/assertion/timeout changes. Its optional localhost InfluxDB refusal
+and resulting managed-service startup logs did not fail either suite. No devices or live HomeKit bridge were contacted.
+
+The final delta is 95 paths against climate `8ce7`: the original 92 plus three existing regression-test files.
+All twelve JSON/ARB source files and metadata retain the proven union. Original input generations/expiries,
+recursive ancestry, protective OFF/release/journal barriers, current-main finalization and HomeKit admission remain
+explicit review boundaries. Final independent review, exact publication/CI gates and installed qualification remain
+separate. This bounded local pack is not a full-monorepo rerun, release or equipment certification.
 
 ## Historical verification record
 

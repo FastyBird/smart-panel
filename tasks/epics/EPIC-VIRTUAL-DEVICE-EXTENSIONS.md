@@ -52,8 +52,8 @@ Software completion does not establish installed hardware qualification.
 
 VD3-2 and VD3-3 merged in [PR #1465](https://github.com/FastyBird/smart-panel/pull/1465) at
 `4f4dd1f346fa5e9508c729f5b0d11a23a416f465`. Thermostat comfort and mandatory branches are now composed locally
-onto PR #1466 main for source review; neither #1454 nor #1455 is marked delivered here. Fresh composed checks
-and generated localization regeneration remain pending. This source preparation is not acceptance.
+onto PR #1466 main; neither #1454 nor #1455 is marked delivered here. Climate own generation and bounded local
+checks completed at backend `db7ed20` and UI `8ce7a5a`. Local validation does not establish publication or complete acceptance.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -139,8 +139,10 @@ qualification or physical actuation is part of this local implementation stage.
 
 VD3-9 / #1459 has a locally committed dew-point/cooling software candidate on the composed climate+SDK base.
 Historical backend round-two and client round-one reviews accepted their source checkpoints. The candidate is now
-composed with current climate/main sources, including merged PR #1466; fresh generation, checks and composed review
-remain pending. Historical source generation, backend (135), Admin (53) and Panel (76) cases do not validate this merge. Its
+composed with current climate/main sources, including merged PR #1466 and final climate UI `8ce7a5a`. Own generation
+and fresh scoped checks passed after bounded aggregate cohort/expiry corrections; final independent composed review
+and parent publication gates remain separate. Historical backend (135), Admin (53) and Panel (76) results do not
+validate this merge. Fresh per-head results, retained failures and limits are recorded in its
 [contract and verification record](../../docs/work/virtual-thermostat/dew-point-cooling-validation.md) keeps generated
 contracts, UI/protocol/persistence tests, independent review and installed qualification explicitly separate. The
 acceptance checkboxes remain open; no issue closure, publication, hardware deployment or certification is claimed.
