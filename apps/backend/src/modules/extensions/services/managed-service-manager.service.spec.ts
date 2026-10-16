@@ -388,6 +388,84 @@ describe('ManagedServiceManagerService', () => {
 			return { module, target: module.get(ManagedServiceManagerService), config: module.get(ConfigService), events: module.get(EventEmitter2), store };
 		};
 
+		it('bootstrap reconciles actual prestartup disable-enable events after a held validator without another event', async () => {
+			const fixture = await actualEventFixture();
+			const entered = admissionDeferred(), validation = admissionDeferred<{ valid: boolean }>();
+			try {
+				startup(fixture.target, false);
+				pluginConfigValidator.hasValidator.mockReturnValue(true);
+				pluginConfigValidator.validate.mockImplementationOnce(() => { entered.resolve(); return validation.promise; });
+				const service = admittedService(fixture.target, 'route-owner');
+				fixture.target.register(service.service);
+				const boot = fixture.target.onApplicationBootstrap();
+				await entered.promise;
+				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: false }));
+				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: true }));
+				expect(service.start).not.toHaveBeenCalled();
+				validation.resolve({ valid: true });
+				await boot;
+				expect(pluginConfigValidator.validate).toHaveBeenCalledTimes(2);
+				expect(service.start).toHaveBeenCalledTimes(1);
+				expect(service.service.getState()).toBe('started');
+				expect(service.tokens[0].runtime.isCurrent()).toBe(true);
+			} finally { validation.resolve({ valid: true }); await fixture.module.close(); }
+		});
+
+		it.each(['success', 'failure', 'not-persisted'] as const)('retires only the original pending notification before replacement %s', async (outcome) => {
+			const entered = admissionDeferred(), persistence = admissionDeferred();
+			const originalRow = { id: 'original-issue', resolved: false };
+			const successorRow = { id: 'successor-issue', resolved: false };
+			let activeRow: typeof originalRow | null = null;
+			const writes: string[] = [];
+			notifications.notify.mockImplementationOnce(async () => {
+				entered.resolve();
+				await persistence.promise;
+				if (outcome === 'not-persisted') return null;
+				activeRow = originalRow;
+				writes.push('persist original');
+				return originalRow;
+			}).mockImplementation(async () => {
+				activeRow = successorRow;
+				writes.push('persist successor');
+				return successorRow;
+			});
+			notifications.resolve.mockImplementation(() => {
+				if (activeRow) { writes.push(`resolve ${activeRow.id}`); activeRow.resolved = true; activeRow = null; }
+				return Promise.resolve(true);
+			});
+			const original = createMockService('plugin', 'issue-owner', 'runtime');
+			original.start = jest.fn().mockRejectedValue(new Error('original failure'));
+			registerBeforeStartup(original);
+			const old = manager.startServiceManually('plugin', 'issue-owner', 'runtime');
+			await entered.promise;
+			manager.unregister('plugin', 'issue-owner', 'runtime');
+			const replacement = createMockService('plugin', 'issue-owner', 'runtime');
+			if (outcome === 'failure') replacement.start = jest.fn().mockRejectedValue(new Error('successor failure'));
+			startup(manager, false);
+			manager.register(replacement);
+			startup(manager, true);
+			const current = manager.startServiceManually('plugin', 'issue-owner', 'runtime');
+			expect(replacement.start).not.toHaveBeenCalled();
+			persistence.resolve();
+			await Promise.all([old, current]);
+			expect(replacement.start).toHaveBeenCalledTimes(1);
+			if (outcome === 'failure') {
+				expect(writes).toEqual(['persist original', 'resolve original-issue', 'persist successor']);
+				expect(originalRow.resolved).toBe(true);
+				expect(successorRow.resolved).toBe(false);
+				expect(activeRow).toBe(successorRow);
+				expect(notifications.resolve).toHaveBeenCalledTimes(1);
+				await expect(manager.getServiceStatus('plugin', 'issue-owner', 'runtime')).resolves.toEqual(
+					expect.objectContaining({ lastError: 'successor failure', startCount: 0 }),
+				);
+			} else {
+				expect(activeRow).toBeNull();
+				expect(writes).toEqual(outcome === 'success' ? ['persist original', 'resolve original-issue'] : []);
+				expect(notifications.resolve).toHaveBeenCalledTimes(outcome === 'success' ? 1 : 0);
+				expect(replacement.getState()).toBe('started');
+			}
+		});
+
 		it('actual ConfigService set route synchronously revokes every matching service before the first held stop', async () => {
 			const fixture = await actualEventFixture();
 			const release = admissionDeferred(), secondStopped = admissionDeferred();
