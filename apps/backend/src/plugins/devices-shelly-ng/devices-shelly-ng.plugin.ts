@@ -1,6 +1,6 @@
 import { networkInterfaces } from 'os';
 
-import { Module } from '@nestjs/common';
+import { Module, OnModuleDestroy } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -19,7 +19,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../module
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
-import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { OwnedDevicePlatformRegistration, PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
@@ -118,7 +118,9 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 	],
 	controllers: [ShellyNgDevicesController, ShellyCoverRecoveryController],
 })
-export class DevicesShellyNgPlugin {
+export class DevicesShellyNgPlugin implements OnModuleDestroy {
+	private platformRegistration: OwnedDevicePlatformRegistration | null = null;
+
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly shellyNgService: ShellyNgService,
@@ -205,7 +207,9 @@ export class DevicesShellyNgPlugin {
 			class: ShellyNgChannelPropertyEntity,
 		});
 
-		this.platformRegistryService.register(this.shellyNgDevicePlatform);
+		if (!this.platformRegistration) {
+			this.platformRegistration = this.platformRegistryService.registerOwned(this.shellyNgDevicePlatform);
+		}
 
 		for (const model of DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
@@ -327,6 +331,13 @@ Shelly Plus (Plus 1, Plus 2PM, Plus Plug, …), Shelly Pro (Pro 1, Pro 2, Pro 4P
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
 		this.managedServiceManager.register(this.shellyNgService);
+	}
+
+	onModuleDestroy(): void {
+		// Close only our original registration at hook entry, before any asynchronous teardown.
+		const registration = this.platformRegistration;
+		this.platformRegistration = null;
+		registration?.dispose();
 	}
 
 	/**
