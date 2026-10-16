@@ -1027,22 +1027,53 @@ describe('measurement atomic authoring with real SQLite and core creation servic
 		expect(producers.readDiagnosticState(converter.outputPropertyId)).toEqual(before);
 	});
 	it('rejects a transformed cached publication when its incorporated physical acceptance has been replaced', async () => {
-		const { report } = await previewRuntime();
+		const { report, storage, values } = await previewRuntime();
 		const converter = draft();
 		await authoring.createTransform(converter);
 		await report(sourceId, 12);
 		const before = producers.readDiagnosticState(converter.outputPropertyId);
+		// Inspect the stored publication separately from the intentionally fail-closed diagnostic view.
+		const stored = (
+			producers as unknown as { entries: Map<string, { state: PropertyValueState; publication: number }> }
+		).entries.get(converter.outputPropertyId);
+		const storedState = stored.state;
+		const publication = stored.publication;
 		const dto = aggregateDraft([converter.outputPropertyId, sourceId]);
 		dto.configuration.minimumValidInputs = 2;
 		const paused = jest.spyOn(transformRuntime, 'requestRecompute').mockImplementation(() => undefined);
 		jest.setSystemTime(Date.now() + 1000);
 		await report(sourceId, 13);
+		const writes = storage.enqueueWritePoint.mock.calls.length;
+		const generation = values.currentSampleGeneration();
+		const eventsBeforePreview = [...publications];
+		const incorporated = producers.readIncorporatedSamples(converter.outputPropertyId);
 		const result = (await authoring.previewAggregate(dto)).preview_result;
 		expect(result).toMatchObject({ value: null, quality: 'unavailable' });
 		expect(
 			result.inputs.find((input) => input.source_identity === converter.outputPropertyId).current_value,
 		).toBeNull();
-		expect(producers.readDiagnosticState(converter.outputPropertyId)).toEqual(before);
+		expect(producers.readDiagnosticState(converter.outputPropertyId)).toMatchObject({
+			value: null,
+			producer: { quality: 'unavailable', sampledAt: null, expiresAt: null },
+		});
+		expect(stored.state).toBe(storedState);
+		expect(stored.state).toEqual(before);
+		expect(stored.publication).toBe(publication);
+		expect(producers.readIncorporatedSamples(converter.outputPropertyId)).toEqual(incorporated);
+		expect(values.currentSampleGeneration()).toBe(generation);
+		expect(storage.enqueueWritePoint).toHaveBeenCalledTimes(writes);
+		expect(publications).toEqual(eventsBeforePreview);
 		paused.mockRestore();
+		transformRuntime.requestRecompute();
+		await transformRuntime.flush();
+		await aggregateRuntime.flush();
+		expect(producers.readDiagnosticState(converter.outputPropertyId)).toMatchObject({
+			value: 27,
+			producer: {
+				quality: 'good',
+				sampledAt: new Date().toISOString(),
+				expiresAt: new Date(Date.now() + 10000).toISOString(),
+			},
+		});
 	});
 });

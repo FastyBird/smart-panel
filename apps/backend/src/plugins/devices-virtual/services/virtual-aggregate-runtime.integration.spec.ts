@@ -693,6 +693,10 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 				value: 22,
 				producer: { quality: 'degraded', sampledAt: new Date(base + 10000).toISOString() },
 			});
+			expect(producers.readIncorporatedSamples(output.id).map((input) => input.propertyId)).toEqual([b.id]);
+			expect(runtime.readDiagnostics(output.id).inputs.find((input) => input.sourceIdentity === a.id).exclusion).toBe(
+				'stale',
+			);
 			jest.setSystemTime(base + 12000);
 			await sample(a, 20, base + 8000);
 			expect(outputState(output)).toMatchObject({
@@ -829,6 +833,12 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 		await sample(a, 20);
 		await sample(b, 22);
 		expect(outputState(output).producer.expiresAt).toBe(new Date(base + 10000).toISOString());
+		expect(
+			producers
+				.readIncorporatedSamples(output.id)
+				.map((input) => input.propertyId)
+				.sort(),
+		).toEqual([a.id, b.id, c.id].sort());
 		jest.setSystemTime(base + 10000);
 		runtime.requestRecompute();
 		await runtime.flush();

@@ -746,7 +746,8 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			await acceptLeaf(11);
 			await first.entered;
 			await runtime.flush();
-			expect(outputState(transformed)?.value).toBe(21);
+			expect(outputState(transformed)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+			expect((await values.readLatest(transformed))?.value).toBeNull();
 			expect(outputState(aggregate)?.value).toBeNull();
 			expect(observed.some((property) => property.value?.producer?.quality === 'good')).toBe(false);
 			// A second acceptance fences the pending evaluation; its publication cannot claim this report.
@@ -769,7 +770,8 @@ describe('numeric transform real SQLite contract and runtime', () => {
 			await acceptLeaf(13);
 			await next.entered;
 			await runtime.flush();
-			expect(outputState(transformed)?.value).toBe(25);
+			expect(outputState(transformed)).toMatchObject({ value: null, producer: { quality: 'unavailable' } });
+			expect((await values.readLatest(transformed))?.value).toBeNull();
 			expect(outputState(aggregate)?.value).toBeNull();
 			expect(observed.some((property) => property.value?.producer?.quality === 'good')).toBe(false);
 			next.release();

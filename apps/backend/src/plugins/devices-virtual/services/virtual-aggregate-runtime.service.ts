@@ -325,7 +325,12 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) continue;
 			this.diagnostics.set(property.id, result);
 			// Capture the entire admitted comparison cohort, including samples later filtered as outliers.
-			const cohort = evidence.filter((input) => input.sample && !input.exclusion);
+			const admitted = new Set(
+				result.inputs
+					.filter((input) => input.exclusion === null || input.exclusion === 'outlier')
+					.map((input) => input.id),
+			);
+			const cohort = evidence.filter((input) => input.sample && admitted.has(input.id));
 			const lineage = cohort.map((input) => input.incorporated);
 			if (result.quality === 'good' && lineage.some((input) => !input)) {
 				this.producers.invalidate(output.lease, ['protective_lineage_unavailable']);
@@ -337,7 +342,6 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				result,
 				now,
 				lineage.filter((input) => !!input),
-				cohort,
 			);
 		}
 	}
@@ -435,7 +439,6 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		result: AggregateEvaluation,
 		now: Date,
 		sourceSamples: import('../../../modules/devices/models/property-sample.model').IncorporatedPropertySample[],
-		cohort: AggregateInputEvidence[],
 	): Promise<void> {
 		if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) return;
 		if (result.quality === 'unavailable') {
@@ -452,17 +455,8 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				reasons: result.reasons,
 				sampledAt: result.sampledAt,
 				evaluatedAt: now,
-				expiresAt: new Date(
-					Math.min(
-						result.expiresAt.getTime(),
-						...cohort.map((input) =>
-							Math.min(
-								input.sample.sampledAt.getTime() + (result.expiresAt.getTime() - result.sampledAt.getTime()),
-								input.expiresAt?.getTime() ?? Infinity,
-							),
-						),
-					),
-				),
+				// Evaluation already bounds every admitted comparison by its original configured/inherited expiry.
+				expiresAt: result.expiresAt,
 				...(sourceSamples.length ? { sourceSamples } : {}),
 			},
 			evaluation,
