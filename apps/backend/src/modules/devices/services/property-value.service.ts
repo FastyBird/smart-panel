@@ -530,7 +530,8 @@ export class PropertyValueService {
 		depth = 0,
 	): readonly IncorporatedPropertySample[] {
 		const evidence: readonly IncorporatedPropertySample[] = sources;
-		if (!Array.isArray(sources) || !sources.length || sources.length > 32 || depth > 16) return Object.freeze([]);
+		if (!Array.isArray(sources) || !sources.length || sources.length > 32 || depth > 16)
+			return Object.freeze<IncorporatedPropertySample[]>([]);
 		return Object.freeze(
 			evidence.map((source) =>
 				Object.freeze({

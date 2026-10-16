@@ -1148,7 +1148,7 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 			expect(journals[0].id).not.toBe(journals[1].id);
 			expect(journals.map((j) => j.status)).toEqual(['accepted', 'accepted']);
 			const packets = jest
-				.mocked(http.request)
+				.spyOn(http, 'request')
 				.mock.calls.filter(
 					([method, packet]) => method === 'POST' && packet && 'action' in packet && packet.action === 'on',
 				)
