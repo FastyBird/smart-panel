@@ -4718,34 +4718,73 @@ class AppLocalizationsCs extends AppLocalizations {
       'Původní konec platnosti pozorování relé';
 
   @override
-  String get dewPointTitle => 'Rosný bod';
+  String get space_activity_title => 'Režimy';
 
   @override
-  String get dewPointDryBulb => 'Teplota suchého teploměru (°C)';
+  String get space_activity_work => 'Práce';
 
   @override
-  String get dewPointHumidity => 'Relativní vlhkost (%)';
+  String get space_activity_relax => 'Odpočinek';
 
   @override
-  String get dewPointSkew => 'Nejvyšší rozdíl časů vzorků (s)';
+  String get space_activity_sleep => 'Spánek';
 
   @override
-  String get dewPointRetained => 'Zachovaná identita zdroje';
+  String get space_activity_entertainment => 'Zábava';
 
   @override
-  String get dewPointBoundary =>
-      'Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; není teplotou prostoru ani podlahy.';
+  String get space_activity_away => 'Pryč';
 
   @override
-  String get dewPointCooling => 'Ochrana chlazení před kondenzací';
+  String get space_activity_manual => 'Ručně';
 
   @override
-  String get dewPointSurface => 'UUID místního čidla chlazeného povrchu';
+  String get space_activity_active => 'Vybráno · příkazy dokončeny';
 
   @override
-  String get dewPointSurfaceTemperature => 'Teplota chlazeného povrchu (°C)';
+  String get space_activity_partial =>
+      'Vybráno · některé příkazy nebyly dokončeny';
 
   @override
-  String get dewPointInstallation =>
-      'Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa.';
+  String get space_activity_failed => 'Vybráno · příkazy selhaly';
+
+  @override
+  String get space_activity_interrupted => 'Vybráno · přerušeno';
+
+  @override
+  String get space_activity_pending => 'Odesílání požadavku…';
+
+  @override
+  String get space_activity_details => 'Podrobnosti režimu';
+
+  @override
+  String get space_activity_security => 'Zabezpečení';
+
+  @override
+  String get space_activity_commands_sent => 'Příkazy dokončeny';
+
+  @override
+  String get space_activity_disabled => 'Vypnuto';
+
+  @override
+  String get space_activity_no_targets => 'Žádná odpovídající zařízení';
+
+  @override
+  String get space_activity_unsupported => 'Nepodporováno';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Požadavek není potvrzen. Před dalším pokusem zkontrolujte aktuální výběr.';
+
+  @override
+  String get space_activity_conflict =>
+      'Režim byl změněn jinde. Zkontrolujte obnovený výběr a zkuste to znovu.';
+
+  @override
+  String get space_activity_unavailable =>
+      'Režimy se nepodařilo načíst. Pro pokračování obnovte data.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'Jde o výsledky příkazů. Stav zařízení se může lišit. Ruční ovládání zruší výběr bez obnovení předchozího nastavení.';
 }

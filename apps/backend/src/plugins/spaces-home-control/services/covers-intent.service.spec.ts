@@ -7,22 +7,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
 	ChannelCategory,
 	ConnectionState,
+	DataTypeType,
 	DeviceCategory,
+	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
-import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
+import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus } from '../../../modules/intents/intents.constants';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { ActivityDomain, ActivityDomainStatus, ActivityMode } from '../activity/space-activity.constants';
+import { defaultActivityConfiguration } from '../activity/space-activity.defaults';
 import { CoversIntentDto } from '../dto/covers-intent.dto';
 import { CoversIntentType, CoversMode, CoversRole } from '../spaces-home-control.constants';
 
 import { CoverGroupIntentPort } from './cover-group-intent.port';
 import { CoversIntentService } from './covers-intent.service';
+import { SpaceActivityDomainsService } from './space-activity-domains.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { CoverDevice, SpaceCoversStateService } from './space-covers-state.service';
 import { SpaceUndoHistoryService } from './space-undo-history.service';
@@ -581,5 +586,172 @@ describe('CoversIntentService', () => {
 		const moduleToClose = module;
 		module = undefined;
 		await moduleToClose?.close();
+	});
+	describe('activity admission against the actual position-first sender', () => {
+		const identity = {
+			spaceId: mockSpaceId,
+			activationId: 'activity',
+			configurationRevision: 1,
+			isCurrent: () => Promise.resolve(true),
+		};
+		const positionProperty = (overrides: Partial<ChannelPropertyEntity> = {}): ChannelPropertyEntity =>
+			({
+				id: uuid(),
+				category: PropertyCategory.POSITION,
+				dataType: DataTypeType.INT,
+				permissions: [PermissionType.READ_WRITE],
+				format: [0, 100],
+				step: null,
+				invalid: null,
+				...overrides,
+			}) as ChannelPropertyEntity;
+		const commandProperty = (): ChannelPropertyEntity =>
+			({
+				id: uuid(),
+				category: PropertyCategory.COMMAND,
+				dataType: DataTypeType.ENUM,
+				permissions: [PermissionType.WRITE_ONLY],
+				format: ['open', 'close', 'stop'],
+				step: null,
+				invalid: null,
+			}) as ChannelPropertyEntity;
+		const activityDomains = (): SpaceActivityDomainsService =>
+			new SpaceActivityDomainsService(
+				{} as never,
+				service,
+				coversStateService,
+				{} as never,
+				{} as never,
+				module.get(PlatformRegistryService),
+			);
+		it('refuses a present read-only position even with a writable command at both endpoints', async () => {
+			const cover = createMockCoverDevice({
+				positionProperty: positionProperty({ permissions: [PermissionType.READ_ONLY] }),
+				commandProperty: commandProperty(),
+			});
+			coversStateService.getCoversInSpace.mockResolvedValue([cover]);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			for (const position of [0, 100]) {
+				const config = defaultActivityConfiguration(ActivityMode.SLEEP);
+				config.covers.position = position;
+				expect((await activityDomains().run(ActivityDomain.COVERS, config, null, mockSpaceId)).status).toBe(
+					ActivityDomainStatus.UNSUPPORTED,
+				);
+				expect((await activityDomains().run(ActivityDomain.COVERS, config, identity, mockSpaceId)).status).toBe(
+					ActivityDomainStatus.UNSUPPORTED,
+				);
+			}
+			expect(dispatch).not.toHaveBeenCalled();
+		});
+		it.each([
+			{ format: [0, 50], step: null, invalid: null },
+			{ format: [80, 100], step: null, invalid: null },
+			{ format: [0, 100], step: 10, invalid: null },
+			{ format: [0, 100], step: null, invalid: '75' },
+		])('refuses exact Work 75 when canonical metadata cannot represent it: %j', async (constraints) => {
+			const cover = createMockCoverDevice({ positionProperty: positionProperty(constraints) });
+			// A compatible peer must not receive a partial room plan when another selected cover is incompatible.
+			const compatible = createMockCoverDevice({ positionProperty: positionProperty() });
+			coversStateService.getCoversInSpace.mockResolvedValue([compatible, cover]);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			const config = defaultActivityConfiguration(ActivityMode.WORK);
+			expect((await activityDomains().run(ActivityDomain.COVERS, config, null, mockSpaceId)).status).toBe(
+				ActivityDomainStatus.UNSUPPORTED,
+			);
+			expect((await activityDomains().run(ActivityDomain.COVERS, config, identity, mockSpaceId)).status).toBe(
+				ActivityDomainStatus.UNSUPPORTED,
+			);
+			expect(dispatch).not.toHaveBeenCalled();
+		});
+
+		it('does not create an intent or undo snapshot for an already superseded activity', async () => {
+			coversStateService.getCoversInSpace.mockResolvedValue([
+				createMockCoverDevice({ positionProperty: positionProperty() }),
+			]);
+			const createIntent = jest.spyOn(module.get(IntentsService), 'createIntent');
+			const captureSnapshot = jest.spyOn(module.get(SpaceContextSnapshotService), 'captureSnapshot');
+			const pushSnapshot = jest.spyOn(module.get(SpaceUndoHistoryService), 'pushSnapshot');
+			const result = await service.executeCoversIntent(
+				mockSpaceId,
+				{ type: CoversIntentType.SET_POSITION, position: 75 },
+				() => Promise.resolve(false),
+			);
+			expect(result).toMatchObject({ success: false, affectedDevices: 0 });
+			expect(createIntent).not.toHaveBeenCalled();
+			expect(captureSnapshot).not.toHaveBeenCalled();
+			expect(pushSnapshot).not.toHaveBeenCalled();
+			expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+		});
+		it.each([CoversIntentType.SET_POSITION, CoversIntentType.STOP])(
+			'retains the late %s sender fence and completes the admitted intent without false confirmation',
+			async (type) => {
+				coversStateService.getCoversInSpace.mockResolvedValue([
+					createMockCoverDevice({ positionProperty: positionProperty(), commandProperty: commandProperty() }),
+				]);
+				let current = true;
+				module
+					.get<jest.Mocked<SpaceContextSnapshotService>>(SpaceContextSnapshotService)
+					.captureSnapshot.mockImplementationOnce(() => {
+						current = false;
+						return Promise.resolve(null);
+					});
+				const completeIntent = jest.spyOn(module.get(IntentsService), 'completeIntent');
+				const result = await service.executeCoversIntent(mockSpaceId, { type, position: 75 }, () =>
+					Promise.resolve(current),
+				);
+				expect(result).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+				expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+				expect(completeIntent).toHaveBeenCalledWith(
+					mockIntentId,
+					expect.arrayContaining([expect.objectContaining({ status: IntentTargetStatus.FAILED })]),
+				);
+			},
+		);
+		it('sends exact admitted values through the real intent and retains ordinary clamping semantics', async () => {
+			const cover = createMockCoverDevice({ positionProperty: positionProperty({ format: [0, 75], step: 25 }) });
+			coversStateService.getCoversInSpace.mockResolvedValue([cover]);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			expect(
+				(
+					await activityDomains().run(
+						ActivityDomain.COVERS,
+						defaultActivityConfiguration(ActivityMode.WORK),
+						identity,
+						mockSpaceId,
+					)
+				).status,
+			).toBe(ActivityDomainStatus.SUCCEEDED);
+			expect(dispatch).toHaveBeenLastCalledWith(
+				[expect.objectContaining({ property: cover.positionProperty, value: 75 })],
+				undefined,
+			);
+			await service.executeCoversIntent(mockSpaceId, { type: CoversIntentType.SET_POSITION, position: 100 });
+			expect(dispatch).toHaveBeenLastCalledWith(
+				[expect.objectContaining({ property: cover.positionProperty, value: 75 })],
+				undefined,
+			);
+		});
+		it.each([0, 100])('admits command-only endpoint %s and sends the matching real command', async (position) => {
+			const cover = createMockCoverDevice({ positionProperty: null, commandProperty: commandProperty() });
+			coversStateService.getCoversInSpace.mockResolvedValue([cover]);
+			const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+			const config = defaultActivityConfiguration(ActivityMode.SLEEP);
+			config.covers.position = position;
+			expect((await activityDomains().run(ActivityDomain.COVERS, config, identity, mockSpaceId)).status).toBe(
+				ActivityDomainStatus.SUCCEEDED,
+			);
+			expect(dispatch).toHaveBeenLastCalledWith(
+				[expect.objectContaining({ property: cover.commandProperty, value: position === 0 ? 'close' : 'open' })],
+				undefined,
+			);
+		});
+		it('refuses command-only endpoints whose enum or permissions cannot honor the command', () => {
+			const command = commandProperty();
+			command.format = ['open'];
+			const cover = createMockCoverDevice({ positionProperty: null, commandProperty: command });
+			expect(service.supportsExactActivityPosition(cover, 0)).toBe(false);
+			command.permissions = [PermissionType.READ_ONLY];
+			expect(service.supportsExactActivityPosition(cover, 100)).toBe(false);
+		});
 	});
 });

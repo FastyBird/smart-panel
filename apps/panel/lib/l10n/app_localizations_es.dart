@@ -4724,36 +4724,73 @@ class AppLocalizationsEs extends AppLocalizations {
       'Caducidad original de observación del relé';
 
   @override
-  String get dewPointTitle => 'Punto de rocío';
+  String get space_activity_title => 'Modos';
 
   @override
-  String get dewPointDryBulb => 'Temperatura de bulbo seco (°C)';
+  String get space_activity_work => 'Trabajo';
 
   @override
-  String get dewPointHumidity => 'Humedad relativa (%)';
+  String get space_activity_relax => 'Descanso';
 
   @override
-  String get dewPointSkew => 'Desfase temporal máximo (s)';
+  String get space_activity_sleep => 'Sueño';
 
   @override
-  String get dewPointRetained => 'Identidad de origen conservada';
+  String get space_activity_entertainment => 'Entretenimiento';
 
   @override
-  String get dewPointBoundary =>
-      'El punto de rocío es una magnitud distinta. Requiere ambas entradas recientes; no es temperatura ambiente ni del suelo.';
+  String get space_activity_away => 'Ausente';
 
   @override
-  String get dewPointCooling =>
-      'Protección de refrigeración contra condensación';
+  String get space_activity_manual => 'Manual';
 
   @override
-  String get dewPointSurface => 'UUID de sonda local de superficie refrigerada';
+  String get space_activity_active => 'Seleccionado · órdenes completadas';
 
   @override
-  String get dewPointSurfaceTemperature =>
-      'Temperatura de la superficie refrigerada (°C)';
+  String get space_activity_partial =>
+      'Seleccionado · algunas órdenes no se completaron';
 
   @override
-  String get dewPointInstallation =>
-      'La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa.';
+  String get space_activity_failed => 'Seleccionado · órdenes fallidas';
+
+  @override
+  String get space_activity_interrupted => 'Seleccionado · interrumpido';
+
+  @override
+  String get space_activity_pending => 'Enviando solicitud…';
+
+  @override
+  String get space_activity_details => 'Detalles del modo';
+
+  @override
+  String get space_activity_security => 'Seguridad';
+
+  @override
+  String get space_activity_commands_sent => 'Órdenes completadas';
+
+  @override
+  String get space_activity_disabled => 'Desactivado';
+
+  @override
+  String get space_activity_no_targets => 'Sin dispositivos compatibles';
+
+  @override
+  String get space_activity_unsupported => 'No compatible';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Solicitud sin confirmar. Compruebe la selección actual antes de reintentarlo.';
+
+  @override
+  String get space_activity_conflict =>
+      'El modo cambió en otro lugar. Revise la selección actualizada y vuelva a intentarlo.';
+
+  @override
+  String get space_activity_unavailable =>
+      'No se pudieron cargar los modos. Actualice para continuar.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'Son resultados de órdenes. El estado del dispositivo puede variar. Manual borra la selección sin restaurar los ajustes anteriores.';
 }

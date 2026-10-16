@@ -400,5 +400,99 @@
 				"sensorRoles": "Roles de sensores"
 			}
 		}
+	},
+	"activityModes": {
+		"reasons": {
+			"coversUnsupported": "Algunas persianas no admiten esta posición. Comprueba sus controles y disponibilidad.",
+			"mediaBindingMissing": "Configura esta actividad multimedia antes de usarla en un modo.",
+			"mediaUnavailable": "La actividad multimedia guardada no tiene un plan de reproducción compatible. Comprueba su configuración y sus dispositivos.",
+			"noActiveMedia": "No hay ninguna actividad multimedia activa que detener.",
+			"noTargets": "No hay dispositivos compatibles disponibles en este espacio."
+		},
+		"title": "Modos de actividad",
+		"description": "Elige qué hace cada modo de actividad en este espacio.",
+		"enabled": "Activado",
+		"disabled": "Desactivado",
+		"edit": "Editar",
+		"save": "Guardar",
+		"cancel": "Cancelar",
+		"reset": "Restablecer valores predeterminados",
+		"preview": "Vista previa de los ajustes guardados",
+		"enableBeforePreview": "Activa y guarda este modo antes de ver la vista previa.",
+		"saveBeforePreview": "Guarda los cambios antes de ver la vista previa.",
+		"loading": "Cargando modos de actividad…",
+		"loadFailed": "No se pudieron cargar los modos de actividad. Prueba a actualizar.",
+		"saveFailed": "No se pudieron guardar los cambios. Tu borrador se ha conservado.",
+		"conflict": "Estos ajustes se cambiaron en otro lugar. Tu borrador se ha conservado.",
+		"conflictReview": "Tu borrador sigue visible. Descártalo para cargar los últimos ajustes guardados y después vuelve a editarlos y guardarlos.",
+		"discard": "Descartar borrador",
+		"order": "Orden de visualización",
+		"orderHelp": "Los números más bajos aparecen primero. El orden de cada modo se guarda por separado.",
+		"lighting": "Iluminación",
+		"climate": "Climatización",
+		"covers": "Persianas",
+		"media": "Multimedia",
+		"security": "Seguridad",
+		"brightness": "Brillo (%)",
+		"defaultBrightness": "Usar el brillo predeterminado del modo de iluminación",
+		"position": "Posición (0 % cerrada, 100 % abierta)",
+		"lightingMode": "Modo de iluminación",
+		"mediaActivity": "Actividad multimedia",
+		"climateKind": "Ajuste de temperatura",
+		"none": "Sin configurar",
+		"preset": "Preajuste del termostato",
+		"setpoint": "Temperatura objetivo (°C)",
+		"delta": "Cambio de temperatura (°C)",
+		"climateMode": "Modo de climatización",
+		"climateUnsupported": "Puedes guardar los ajustes de climatización, pero los modos de actividad aún no pueden aplicarlos.",
+		"securityUnsupported": "Puedes guardar los ajustes de seguridad, pero los modos de actividad aún no pueden aplicarlos.",
+		"invalid": "Revisa los ajustes antes de guardar.",
+		"readOnly": "No tienes permiso para editar los modos de actividad.",
+		"refresh": "Actualizar",
+		"previewDescription": "Comprueba los ajustes guardados sin cambiarlos ni controlar dispositivos.",
+		"missing": "No disponible",
+		"modes": {
+			"work": "Trabajo",
+			"relax": "Descanso",
+			"sleep": "Sueño",
+			"entertainment": "Entretenimiento",
+			"away": "Ausente"
+		},
+		"statuses": {
+			"ready": "Listo",
+			"disabled": "Desactivado",
+			"no_targets": "Sin dispositivos compatibles",
+			"unsupported": "Aún no compatible",
+			"failed": "Fallido",
+			"succeeded": "Órdenes aceptadas"
+		},
+		"lightingModes": {
+			"off": "Apagado",
+			"work": "Trabajo",
+			"relax": "Descanso",
+			"night": "Noche"
+		},
+		"climateKinds": {
+			"none": "Sin configurar",
+			"preset": "Preajuste del termostato",
+			"setpoint": "Temperatura objetivo",
+			"delta": "Cambio de temperatura"
+		},
+		"climateModes": {
+			"heat": "Calefacción",
+			"cool": "Refrigeración"
+		},
+		"presets": {
+			"comfort": "Confort",
+			"eco": "Eco",
+			"away": "Ausente"
+		},
+		"mediaActivities": {
+			"watch": "Ver",
+			"listen": "Escuchar",
+			"gaming": "Jugar",
+			"background": "De fondo",
+			"off": "Apagado"
+		}
 	}
 }

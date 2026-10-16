@@ -4727,35 +4727,73 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ursprünglicher Ablauf der Relaisbeobachtung';
 
   @override
-  String get dewPointTitle => 'Taupunkt';
+  String get space_activity_title => 'Modi';
 
   @override
-  String get dewPointDryBulb => 'Trockentemperatur (°C)';
+  String get space_activity_work => 'Arbeit';
 
   @override
-  String get dewPointHumidity => 'Relative Luftfeuchte (%)';
+  String get space_activity_relax => 'Entspannen';
 
   @override
-  String get dewPointSkew => 'Maximaler Zeitversatz (s)';
+  String get space_activity_sleep => 'Schlafen';
 
   @override
-  String get dewPointRetained => 'Beibehaltene Quellidentität';
+  String get space_activity_entertainment => 'Unterhaltung';
 
   @override
-  String get dewPointBoundary =>
-      'Der Taupunkt ist eine eigene Messgröße. Beide frischen Eingänge sind erforderlich; er ist keine Raum- oder Bodentemperatur.';
+  String get space_activity_away => 'Abwesend';
 
   @override
-  String get dewPointCooling => 'Kondensationsschutz bei Kühlung';
+  String get space_activity_manual => 'Manuell';
 
   @override
-  String get dewPointSurface => 'UUID des lokalen gekühlten Oberflächenfühlers';
+  String get space_activity_active => 'Ausgewählt · Befehle abgeschlossen';
 
   @override
-  String get dewPointSurfaceTemperature =>
-      'Temperatur der gekühlten Oberfläche (°C)';
+  String get space_activity_partial =>
+      'Ausgewählt · einige Befehle nicht abgeschlossen';
 
   @override
-  String get dewPointInstallation =>
-      'Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt.';
+  String get space_activity_failed => 'Ausgewählt · Befehle fehlgeschlagen';
+
+  @override
+  String get space_activity_interrupted => 'Ausgewählt · unterbrochen';
+
+  @override
+  String get space_activity_pending => 'Anfrage wird gesendet…';
+
+  @override
+  String get space_activity_details => 'Modusdetails';
+
+  @override
+  String get space_activity_security => 'Sicherheit';
+
+  @override
+  String get space_activity_commands_sent => 'Befehle abgeschlossen';
+
+  @override
+  String get space_activity_disabled => 'Deaktiviert';
+
+  @override
+  String get space_activity_no_targets => 'Keine passenden Geräte';
+
+  @override
+  String get space_activity_unsupported => 'Nicht unterstützt';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Anfrage unbestätigt. Prüfen Sie die aktuelle Auswahl vor einem weiteren Versuch.';
+
+  @override
+  String get space_activity_conflict =>
+      'Der Modus wurde andernorts geändert. Prüfen Sie die aktualisierte Auswahl und versuchen Sie es erneut.';
+
+  @override
+  String get space_activity_unavailable =>
+      'Modi konnten nicht geladen werden. Aktualisieren Sie zum Fortfahren.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'Dies sind Befehlsergebnisse. Der Gerätezustand kann abweichen. Manuell löscht die Auswahl, ohne frühere Einstellungen wiederherzustellen.';
 }

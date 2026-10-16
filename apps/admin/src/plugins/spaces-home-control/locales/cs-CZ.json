@@ -400,5 +400,99 @@
 				"sensorRoles": "Role senzorů"
 			}
 		}
+	},
+	"activityModes": {
+		"reasons": {
+			"coversUnsupported": "Některé stínicí prvky nelze nastavit do této polohy. Zkontrolujte jejich ovládání a dostupnost.",
+			"mediaBindingMissing": "Než tuto mediální aktivitu použijete v režimu, nakonfigurujte ji.",
+			"mediaUnavailable": "Uložená mediální aktivita nemá kompatibilní plán přehrávání. Zkontrolujte její nastavení a zařízení.",
+			"noActiveMedia": "Není spuštěna žádná mediální aktivita, kterou by bylo možné zastavit.",
+			"noTargets": "V tomto prostoru nejsou dostupná žádná kompatibilní zařízení."
+		},
+		"title": "Režimy aktivit",
+		"description": "Zvolte, co jednotlivé režimy aktivit v tomto prostoru provedou.",
+		"enabled": "Povoleno",
+		"disabled": "Zakázáno",
+		"edit": "Upravit",
+		"save": "Uložit",
+		"cancel": "Zrušit",
+		"reset": "Obnovit výchozí nastavení",
+		"preview": "Náhled uloženého nastavení",
+		"enableBeforePreview": "Před náhledem režim povolte a uložte.",
+		"saveBeforePreview": "Před zobrazením náhledu uložte změny.",
+		"loading": "Načítání režimů aktivit…",
+		"loadFailed": "Režimy aktivit se nepodařilo načíst. Zkuste je obnovit.",
+		"saveFailed": "Změny se nepodařilo uložit. Váš návrh zůstal zachován.",
+		"conflict": "Toto nastavení bylo změněno jinde. Váš návrh zůstal zachován.",
+		"conflictReview": "Váš návrh zůstává zobrazený. Zahoďte ho, aby se načetlo nejnovější uložené nastavení, a poté ho znovu upravte a uložte.",
+		"discard": "Zahodit návrh",
+		"order": "Pořadí zobrazení",
+		"orderHelp": "Nižší čísla se zobrazí dříve. Pořadí každého režimu se ukládá samostatně.",
+		"lighting": "Osvětlení",
+		"climate": "Klima",
+		"covers": "Stínění",
+		"media": "Média",
+		"security": "Zabezpečení",
+		"brightness": "Jas (%)",
+		"defaultBrightness": "Použít výchozí jas režimu osvětlení",
+		"position": "Poloha (0 % zavřeno, 100 % otevřeno)",
+		"lightingMode": "Režim osvětlení",
+		"mediaActivity": "Mediální aktivita",
+		"climateKind": "Nastavení teploty",
+		"none": "Nenastaveno",
+		"preset": "Předvolba termostatu",
+		"setpoint": "Cílová teplota (°C)",
+		"delta": "Změna teploty (°C)",
+		"climateMode": "Režim klimatu",
+		"climateUnsupported": "Nastavení klimatu lze uložit, ale režimy aktivit ho zatím nedokážou použít.",
+		"securityUnsupported": "Nastavení zabezpečení lze uložit, ale režimy aktivit ho zatím nedokážou použít.",
+		"invalid": "Před uložením zkontrolujte nastavení.",
+		"readOnly": "Nemáte oprávnění upravovat režimy aktivit.",
+		"refresh": "Obnovit",
+		"previewDescription": "Ověří uložené nastavení, aniž by ho měnil nebo ovládal zařízení.",
+		"missing": "Není k dispozici",
+		"modes": {
+			"work": "Práce",
+			"relax": "Odpočinek",
+			"sleep": "Spánek",
+			"entertainment": "Zábava",
+			"away": "Pryč"
+		},
+		"statuses": {
+			"ready": "Připraveno",
+			"disabled": "Zakázáno",
+			"no_targets": "Žádná kompatibilní zařízení",
+			"unsupported": "Zatím nepodporováno",
+			"failed": "Nezdařilo se",
+			"succeeded": "Příkazy přijaty"
+		},
+		"lightingModes": {
+			"off": "Vypnuto",
+			"work": "Práce",
+			"relax": "Odpočinek",
+			"night": "Noc"
+		},
+		"climateKinds": {
+			"none": "Nenastaveno",
+			"preset": "Předvolba termostatu",
+			"setpoint": "Cílová teplota",
+			"delta": "Změna teploty"
+		},
+		"climateModes": {
+			"heat": "Vytápění",
+			"cool": "Chlazení"
+		},
+		"presets": {
+			"comfort": "Komfort",
+			"eco": "Úsporný",
+			"away": "Pryč"
+		},
+		"mediaActivities": {
+			"watch": "Sledování",
+			"listen": "Poslech",
+			"gaming": "Hraní",
+			"background": "Na pozadí",
+			"off": "Vypnuto"
+		}
 	}
 }

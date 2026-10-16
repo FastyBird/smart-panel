@@ -8476,65 +8476,137 @@ abstract class AppLocalizations {
   /// **'Original relay observation expiry'**
   String get thermostatMemberActivityExpiry;
 
-  /// No description provided for @dewPointTitle.
+  /// No description provided for @space_activity_title.
   ///
   /// In en, this message translates to:
-  /// **'Dew point'**
-  String get dewPointTitle;
+  /// **'Modes'**
+  String get space_activity_title;
 
-  /// No description provided for @dewPointDryBulb.
+  /// No description provided for @space_activity_work.
   ///
   /// In en, this message translates to:
-  /// **'Dry-bulb temperature (°C)'**
-  String get dewPointDryBulb;
+  /// **'Work'**
+  String get space_activity_work;
 
-  /// No description provided for @dewPointHumidity.
+  /// No description provided for @space_activity_relax.
   ///
   /// In en, this message translates to:
-  /// **'Relative humidity (%)'**
-  String get dewPointHumidity;
+  /// **'Relax'**
+  String get space_activity_relax;
 
-  /// No description provided for @dewPointSkew.
+  /// No description provided for @space_activity_sleep.
   ///
   /// In en, this message translates to:
-  /// **'Maximum timestamp skew (s)'**
-  String get dewPointSkew;
+  /// **'Sleep'**
+  String get space_activity_sleep;
 
-  /// No description provided for @dewPointRetained.
+  /// No description provided for @space_activity_entertainment.
   ///
   /// In en, this message translates to:
-  /// **'Retained source identity'**
-  String get dewPointRetained;
+  /// **'Entertainment'**
+  String get space_activity_entertainment;
 
-  /// No description provided for @dewPointBoundary.
+  /// No description provided for @space_activity_away.
   ///
   /// In en, this message translates to:
-  /// **'Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.'**
-  String get dewPointBoundary;
+  /// **'Away'**
+  String get space_activity_away;
 
-  /// No description provided for @dewPointCooling.
+  /// No description provided for @space_activity_manual.
   ///
   /// In en, this message translates to:
-  /// **'Cooling condensation protection'**
-  String get dewPointCooling;
+  /// **'Manual'**
+  String get space_activity_manual;
 
-  /// No description provided for @dewPointSurface.
+  /// No description provided for @space_activity_active.
   ///
   /// In en, this message translates to:
-  /// **'Local cooled-surface probe UUID'**
-  String get dewPointSurface;
+  /// **'Selected · commands completed'**
+  String get space_activity_active;
 
-  /// No description provided for @dewPointSurfaceTemperature.
+  /// No description provided for @space_activity_partial.
   ///
   /// In en, this message translates to:
-  /// **'Cooled-surface temperature (°C)'**
-  String get dewPointSurfaceTemperature;
+  /// **'Selected · some commands could not complete'**
+  String get space_activity_partial;
 
-  /// No description provided for @dewPointInstallation.
+  /// No description provided for @space_activity_failed.
   ///
   /// In en, this message translates to:
-  /// **'Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.'**
-  String get dewPointInstallation;
+  /// **'Selected · commands failed'**
+  String get space_activity_failed;
+
+  /// No description provided for @space_activity_interrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected · interrupted'**
+  String get space_activity_interrupted;
+
+  /// No description provided for @space_activity_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending request…'**
+  String get space_activity_pending;
+
+  /// No description provided for @space_activity_details.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode details'**
+  String get space_activity_details;
+
+  /// No description provided for @space_activity_security.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get space_activity_security;
+
+  /// No description provided for @space_activity_commands_sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands completed'**
+  String get space_activity_commands_sent;
+
+  /// No description provided for @space_activity_disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get space_activity_disabled;
+
+  /// No description provided for @space_activity_no_targets.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching devices'**
+  String get space_activity_no_targets;
+
+  /// No description provided for @space_activity_unsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported'**
+  String get space_activity_unsupported;
+
+  /// No description provided for @space_activity_unconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Request unconfirmed. Check the current selection before trying again.'**
+  String get space_activity_unconfirmed;
+
+  /// No description provided for @space_activity_conflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The mode changed elsewhere. Review the refreshed selection and try again.'**
+  String get space_activity_conflict;
+
+  /// No description provided for @space_activity_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Modes could not be loaded. Refresh to continue.'**
+  String get space_activity_unavailable;
+
+  /// No description provided for @space_activity_outcome_notice.
+  ///
+  /// In en, this message translates to:
+  /// **'These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings.'**
+  String get space_activity_outcome_notice;
 }
 
 class _AppLocalizationsDelegate

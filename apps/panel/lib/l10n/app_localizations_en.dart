@@ -4678,34 +4678,73 @@ class AppLocalizationsEn extends AppLocalizations {
       'Original relay observation expiry';
 
   @override
-  String get dewPointTitle => 'Dew point';
+  String get space_activity_title => 'Modes';
 
   @override
-  String get dewPointDryBulb => 'Dry-bulb temperature (°C)';
+  String get space_activity_work => 'Work';
 
   @override
-  String get dewPointHumidity => 'Relative humidity (%)';
+  String get space_activity_relax => 'Relax';
 
   @override
-  String get dewPointSkew => 'Maximum timestamp skew (s)';
+  String get space_activity_sleep => 'Sleep';
 
   @override
-  String get dewPointRetained => 'Retained source identity';
+  String get space_activity_entertainment => 'Entertainment';
 
   @override
-  String get dewPointBoundary =>
-      'Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.';
+  String get space_activity_away => 'Away';
 
   @override
-  String get dewPointCooling => 'Cooling condensation protection';
+  String get space_activity_manual => 'Manual';
 
   @override
-  String get dewPointSurface => 'Local cooled-surface probe UUID';
+  String get space_activity_active => 'Selected · commands completed';
 
   @override
-  String get dewPointSurfaceTemperature => 'Cooled-surface temperature (°C)';
+  String get space_activity_partial =>
+      'Selected · some commands could not complete';
 
   @override
-  String get dewPointInstallation =>
-      'Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.';
+  String get space_activity_failed => 'Selected · commands failed';
+
+  @override
+  String get space_activity_interrupted => 'Selected · interrupted';
+
+  @override
+  String get space_activity_pending => 'Sending request…';
+
+  @override
+  String get space_activity_details => 'Mode details';
+
+  @override
+  String get space_activity_security => 'Security';
+
+  @override
+  String get space_activity_commands_sent => 'Commands completed';
+
+  @override
+  String get space_activity_disabled => 'Disabled';
+
+  @override
+  String get space_activity_no_targets => 'No matching devices';
+
+  @override
+  String get space_activity_unsupported => 'Not supported';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Request unconfirmed. Check the current selection before trying again.';
+
+  @override
+  String get space_activity_conflict =>
+      'The mode changed elsewhere. Review the refreshed selection and try again.';
+
+  @override
+  String get space_activity_unavailable =>
+      'Modes could not be loaded. Refresh to continue.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings.';
 }

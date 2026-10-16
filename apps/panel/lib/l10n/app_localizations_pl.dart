@@ -4759,35 +4759,73 @@ class AppLocalizationsPl extends AppLocalizations {
       'Pierwotny termin ważności obserwacji przekaźnika';
 
   @override
-  String get dewPointTitle => 'Punkt rosy';
+  String get space_activity_title => 'Tryby';
 
   @override
-  String get dewPointDryBulb => 'Temperatura suchego termometru (°C)';
+  String get space_activity_work => 'Praca';
 
   @override
-  String get dewPointHumidity => 'Wilgotność względna (%)';
+  String get space_activity_relax => 'Relaks';
 
   @override
-  String get dewPointSkew => 'Maksymalne przesunięcie czasu próbek (s)';
+  String get space_activity_sleep => 'Sen';
 
   @override
-  String get dewPointRetained => 'Zachowana tożsamość źródła';
+  String get space_activity_entertainment => 'Rozrywka';
 
   @override
-  String get dewPointBoundary =>
-      'Punkt rosy to odrębna wielkość. Wymaga obu świeżych wejść; nie jest temperaturą pomieszczenia ani podłogi.';
+  String get space_activity_away => 'Poza domem';
 
   @override
-  String get dewPointCooling => 'Ochrona chłodzenia przed kondensacją';
+  String get space_activity_manual => 'Ręcznie';
 
   @override
-  String get dewPointSurface => 'UUID lokalnej sondy chłodzonej powierzchni';
+  String get space_activity_active => 'Wybrano · polecenia ukończone';
 
   @override
-  String get dewPointSurfaceTemperature =>
-      'Temperatura chłodzonej powierzchni (°C)';
+  String get space_activity_partial =>
+      'Wybrano · część poleceń nie została ukończona';
 
   @override
-  String get dewPointInstallation =>
-      'Zainstalowane chłodzenie pozostaje niedopuszczone do kwalifikacji powierzchni, uwierzytelniania, czasu, izolacji zapisu i wyłączenia po restarcie po wersji alfa.';
+  String get space_activity_failed => 'Wybrano · polecenia nie powiodły się';
+
+  @override
+  String get space_activity_interrupted => 'Wybrano · przerwano';
+
+  @override
+  String get space_activity_pending => 'Wysyłanie żądania…';
+
+  @override
+  String get space_activity_details => 'Szczegóły trybu';
+
+  @override
+  String get space_activity_security => 'Bezpieczeństwo';
+
+  @override
+  String get space_activity_commands_sent => 'Polecenia ukończone';
+
+  @override
+  String get space_activity_disabled => 'Wyłączone';
+
+  @override
+  String get space_activity_no_targets => 'Brak pasujących urządzeń';
+
+  @override
+  String get space_activity_unsupported => 'Nieobsługiwane';
+
+  @override
+  String get space_activity_unconfirmed =>
+      'Żądanie niepotwierdzone. Sprawdź aktualny wybór przed ponowną próbą.';
+
+  @override
+  String get space_activity_conflict =>
+      'Tryb zmieniono w innym miejscu. Sprawdź odświeżony wybór i spróbuj ponownie.';
+
+  @override
+  String get space_activity_unavailable =>
+      'Nie udało się wczytać trybów. Odśwież, aby kontynuować.';
+
+  @override
+  String get space_activity_outcome_notice =>
+      'To wyniki poleceń. Stan urządzeń może się różnić. Sterowanie ręczne usuwa wybór bez przywracania poprzednich ustawień.';
 }

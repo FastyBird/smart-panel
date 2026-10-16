@@ -178,7 +178,7 @@ describe('SpacesService', () => {
 								createQueryBuilder: () => mockQueryBuilder,
 								findOne: (...args: unknown[]): unknown => spaceRepositoryMock.findOne(...(args as [never])),
 								remove: jest.fn().mockResolvedValue(undefined),
-								save: jest.fn().mockResolvedValue(mockSpace),
+								save: (...args: unknown[]): unknown => spaceRepositoryMock.save(...(args as [never])),
 							}),
 						),
 						createQueryRunner: jest.fn().mockReturnValue({

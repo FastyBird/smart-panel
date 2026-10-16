@@ -21,7 +21,7 @@ import { IntentsService } from '../../../modules/intents/services/intents.servic
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
-import { LightingIntentType, LightingRole } from '../spaces-home-control.constants';
+import { LightingIntentType, LightingMode, LightingRole } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService } from '../spec';
 
 import { LightingIntentService } from './lighting-intent.service';
@@ -517,5 +517,53 @@ describe('LightingIntentService', () => {
 		const moduleToClose = module;
 		module = undefined;
 		await moduleToClose?.close();
+	});
+	it('applies an activity brightness override to ON roles while keeping excluded roles OFF', async () => {
+		const main = createMockDeviceWithLightChannel('main', true, ConnectionState.CONNECTED);
+		const task = createMockDeviceWithLightChannel('task', true, ConnectionState.CONNECTED);
+		spacesService.findDevicesBySpace.mockResolvedValue([main, task] as unknown as DeviceEntity[]);
+		lightingRoleService.getRoleMap.mockResolvedValue(
+			new Map([
+				['main:channel-main', { role: LightingRole.MAIN } as SpaceLightingRoleEntity],
+				['task:channel-task', { role: LightingRole.TASK } as SpaceLightingRoleEntity],
+			]),
+		);
+		module.get(IntentSpecLoaderService).getLightingModeOrchestration = jest.fn().mockReturnValue({
+			mvpBrightness: 50,
+			roles: {
+				[LightingRole.MAIN]: { on: true, brightness: 50 },
+				[LightingRole.TASK]: { on: false, brightness: null },
+			},
+		});
+		const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+		await service.executeLightingIntent(
+			mockSpaceId,
+			{ type: LightingIntentType.SET_MODE, mode: LightingMode.RELAX },
+			undefined,
+			40,
+		);
+		const commands = dispatch.mock.calls.flatMap((call: unknown[]) => call[0] as IDevicePropertyData[]);
+		expect(commands).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ property: expect.objectContaining({ id: 'on-prop-main' }), value: true }),
+				expect.objectContaining({ property: expect.objectContaining({ id: 'brightness-prop-main' }), value: 40 }),
+				expect.objectContaining({ property: expect.objectContaining({ id: 'on-prop-task' }), value: false }),
+			]),
+		);
+		expect(commands.some((command) => command.property.id === 'brightness-prop-task')).toBe(false);
+	});
+	it('does not send late physical lighting commands after an activity fence is invalidated', async () => {
+		const main = createMockDeviceWithLightChannel('main', true, ConnectionState.CONNECTED);
+		spacesService.findDevicesBySpace.mockResolvedValue([main] as unknown as DeviceEntity[]);
+		const dispatch = jest.spyOn(module.get(PropertyCommandDispatchService), 'dispatchBatch');
+		const result = await service.executeLightingIntent(
+			mockSpaceId,
+			{ type: LightingIntentType.OFF },
+			undefined,
+			undefined,
+			() => Promise.resolve(false),
+		);
+		expect(result.failedDevices).toBe(1);
+		expect(dispatch).not.toHaveBeenCalled();
 	});
 });

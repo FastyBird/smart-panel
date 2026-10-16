@@ -1,7 +1,10 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { PermissionType } from '../../../modules/devices/devices.constants';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import {
@@ -9,6 +12,7 @@ import {
 	PropertyCommandDispatchService,
 } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyCommandEntrySnapshot } from '../../../modules/devices/services/property-command-entry-snapshot';
+import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -110,6 +114,7 @@ export function selectCoversForMode(covers: CoverDevice[], mode: CoversMode): Co
  */
 @Injectable()
 export class CoversIntentService extends SpaceIntentBaseService {
+	private readonly activityContext = new AsyncLocalStorage<() => Promise<boolean>>();
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'CoversIntentService');
 
 	constructor(
@@ -127,6 +132,26 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		super();
 	}
 
+	/** Activity-only admission: ordinary intents retain their established position-first/clamping behavior. */
+	supportsExactActivityPosition(cover: CoverDevice, position: number): boolean {
+		const writable = (permissions: PermissionType[] | undefined): boolean =>
+			permissions?.some((permission) => [PermissionType.WRITE_ONLY, PermissionType.READ_WRITE].includes(permission)) ??
+			false;
+		if (cover.positionProperty) {
+			// A present position property is always used by setCoverPosition, even if a command exists.
+			if (!writable(cover.positionProperty.permissions)) return false;
+			const { min, max } = this.getPropertyMinMax(cover.positionProperty, 0, 100);
+			if (!Number.isFinite(min) || !Number.isFinite(max) || min > max || position < min || position > max) return false;
+			const validation = validatePropertyCommandValue(cover.positionProperty, position);
+			return validation.valid && validation.value === position;
+		}
+		if ((position !== 0 && position !== 100) || !cover.commandProperty || !writable(cover.commandProperty.permissions))
+			return false;
+		const command = position === 0 ? 'close' : 'open';
+		const validation = validatePropertyCommandValue(cover.commandProperty, command);
+		return validation.valid && validation.value === command;
+	}
+
 	/**
 	 * Get the current covers state for a space.
 	 * Delegates to SpaceCoversStateService.
@@ -139,10 +164,16 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 * Execute a covers intent for all covers in a space.
 	 * Returns null if space doesn't exist (controller should throw 404).
 	 */
-	async executeCoversIntent(spaceId: string, intent: CoversIntentDto): Promise<CoversIntentResult | null> {
+	async executeCoversIntent(
+		spaceId: string,
+		intent: CoversIntentDto,
+		activityCurrent?: () => Promise<boolean>,
+	): Promise<CoversIntentResult | null> {
 		const entry = this.groups?.capture();
 		try {
-			return await this.executeRoomCoversIntent(spaceId, intent, entry);
+			return await this.activityContext.run(activityCurrent, () =>
+				this.executeRoomCoversIntent(spaceId, intent, entry),
+			);
 		} finally {
 			this.groups?.release(entry);
 		}
@@ -206,6 +237,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		this.logger.debug(`Found ${covers.length} cover intent candidates in space id=${spaceId}`);
+
+		if (this.activityContext.getStore() && !(await this.activityContext.getStore()()))
+			return { success: false, affectedDevices: 0, failedDevices: allCovers.length, newPosition: null };
 
 		// Build targets for intent (all covers including offline for tracking)
 		const targets = this.buildCoversTargets(allCovers, intent);
@@ -892,6 +926,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		position: number,
 		options?: PropertyCommandDispatchOptions,
 	): Promise<boolean> {
+		const current = this.activityContext.getStore();
+		if (current && !(await current())) return false;
 		const platform = this.platformRegistryService.get(cover.device);
 
 		if (!platform) {
@@ -951,6 +987,8 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	 * Stop movement on a single cover device.
 	 */
 	private async stopCover(cover: CoverDevice, options?: PropertyCommandDispatchOptions): Promise<boolean> {
+		const current = this.activityContext.getStore();
+		if (current && !(await current())) return false;
 		const platform = this.platformRegistryService.get(cover.device);
 
 		if (!platform) {

@@ -400,5 +400,99 @@
 				"sensorRoles": "Sensorrollen"
 			}
 		}
+	},
+	"activityModes": {
+		"reasons": {
+			"coversUnsupported": "Einige Beschattungen können diese Position nicht nutzen. Prüfen Sie ihre Steuerung und Verfügbarkeit.",
+			"mediaBindingMissing": "Konfigurieren Sie diese Medienaktivität, bevor Sie sie in einem Modus verwenden.",
+			"mediaUnavailable": "Für die gespeicherte Medienaktivität gibt es keinen kompatiblen Wiedergabeplan. Prüfen Sie ihre Konfiguration und Geräte.",
+			"noActiveMedia": "Es ist keine Medienaktivität aktiv, die beendet werden könnte.",
+			"noTargets": "In diesem Raum sind keine kompatiblen Geräte verfügbar."
+		},
+		"title": "Aktivitätsmodi",
+		"description": "Wählen Sie, was jeder Aktivitätsmodus in diesem Raum bewirkt.",
+		"enabled": "Aktiviert",
+		"disabled": "Deaktiviert",
+		"edit": "Bearbeiten",
+		"save": "Speichern",
+		"cancel": "Abbrechen",
+		"reset": "Auf Standardwerte zurücksetzen",
+		"preview": "Gespeicherte Einstellungen prüfen",
+		"enableBeforePreview": "Aktivieren und speichern Sie diesen Modus vor der Vorschau.",
+		"saveBeforePreview": "Speichern Sie Ihre Änderungen vor der Vorschau.",
+		"loading": "Aktivitätsmodi werden geladen…",
+		"loadFailed": "Aktivitätsmodi konnten nicht geladen werden. Versuchen Sie es mit Aktualisieren.",
+		"saveFailed": "Änderungen konnten nicht gespeichert werden. Ihr Entwurf bleibt erhalten.",
+		"conflict": "Diese Einstellungen wurden an anderer Stelle geändert. Ihr Entwurf bleibt erhalten.",
+		"conflictReview": "Ihr Entwurf bleibt sichtbar. Verwerfen Sie ihn, um die neuesten gespeicherten Einstellungen zu laden. Bearbeiten und speichern Sie diese anschließend erneut.",
+		"discard": "Entwurf verwerfen",
+		"order": "Anzeigereihenfolge",
+		"orderHelp": "Niedrigere Zahlen erscheinen zuerst. Die Reihenfolge jedes Modus wird einzeln gespeichert.",
+		"lighting": "Beleuchtung",
+		"climate": "Klima",
+		"covers": "Beschattung",
+		"media": "Medien",
+		"security": "Sicherheit",
+		"brightness": "Helligkeit (%)",
+		"defaultBrightness": "Standardhelligkeit des Beleuchtungsmodus verwenden",
+		"position": "Position (0 % geschlossen, 100 % offen)",
+		"lightingMode": "Beleuchtungsmodus",
+		"mediaActivity": "Medienaktivität",
+		"climateKind": "Temperatureinstellung",
+		"none": "Nicht festgelegt",
+		"preset": "Thermostatvorgabe",
+		"setpoint": "Zieltemperatur (°C)",
+		"delta": "Temperaturänderung (°C)",
+		"climateMode": "Klimamodus",
+		"climateUnsupported": "Sie können Klimaeinstellungen speichern, aber Aktivitätsmodi können sie noch nicht anwenden.",
+		"securityUnsupported": "Sie können Sicherheitseinstellungen speichern, aber Aktivitätsmodi können sie noch nicht anwenden.",
+		"invalid": "Prüfen Sie die Einstellungen vor dem Speichern.",
+		"readOnly": "Sie haben keine Berechtigung, Aktivitätsmodi zu bearbeiten.",
+		"refresh": "Aktualisieren",
+		"previewDescription": "Prüft die gespeicherten Einstellungen, ohne sie zu ändern oder Geräte zu steuern.",
+		"missing": "Nicht verfügbar",
+		"modes": {
+			"work": "Arbeiten",
+			"relax": "Entspannen",
+			"sleep": "Schlafen",
+			"entertainment": "Unterhaltung",
+			"away": "Abwesend"
+		},
+		"statuses": {
+			"ready": "Bereit",
+			"disabled": "Deaktiviert",
+			"no_targets": "Keine kompatiblen Geräte",
+			"unsupported": "Noch nicht unterstützt",
+			"failed": "Fehlgeschlagen",
+			"succeeded": "Befehle angenommen"
+		},
+		"lightingModes": {
+			"off": "Aus",
+			"work": "Arbeiten",
+			"relax": "Entspannen",
+			"night": "Nacht"
+		},
+		"climateKinds": {
+			"none": "Nicht festgelegt",
+			"preset": "Thermostatvorgabe",
+			"setpoint": "Zieltemperatur",
+			"delta": "Temperaturänderung"
+		},
+		"climateModes": {
+			"heat": "Heizen",
+			"cool": "Kühlen"
+		},
+		"presets": {
+			"comfort": "Komfort",
+			"eco": "Eco",
+			"away": "Abwesend"
+		},
+		"mediaActivities": {
+			"watch": "Ansehen",
+			"listen": "Anhören",
+			"gaming": "Spielen",
+			"background": "Hintergrund",
+			"off": "Aus"
+		}
 	}
 }
