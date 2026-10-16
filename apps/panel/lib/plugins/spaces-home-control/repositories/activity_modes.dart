@@ -57,7 +57,9 @@ class ActivityModesRepository extends ChangeNotifier {
   /// Losing the connection invalidates admission, without resubmitting anything.
   void markStale() {
     fresh = false;
-    if (!busy) {
+    if (busy) {
+      _refreshAfterAction = true;
+    } else {
       _generation++;
       loading = false;
     }
@@ -248,11 +250,17 @@ class ActivityModesRegistry {
     if (_sessions.remove(session)) session.dispose();
   }
 
-  Future<void> refresh([String? spaceId]) async {
+  Future<void> refresh([String? spaceId]) =>
+      refreshAffected((id) => spaceId == null || id == spaceId);
+
+  Future<void> refreshAffected(
+    bool Function(String spaceId) couldAffect,
+  ) async {
     if (_disposed) return;
     await Future.wait([
       for (final session in _sessions.toList())
-        if (spaceId == null || session.spaceId == spaceId) session.refresh(),
+        if (session.spaceId != null && couldAffect(session.spaceId!))
+          session.refresh(),
     ]);
   }
 

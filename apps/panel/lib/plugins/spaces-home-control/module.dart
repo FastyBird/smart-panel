@@ -518,7 +518,38 @@ class SpacesHomeControlPluginService {
 
   void _deviceSocketEventHandler(String event, Map<String, dynamic> payload) {
     if (!payload.containsKey('id')) return;
-    _activityModesRegistry.refresh();
+    _activityModesRegistry.refreshAffected((spaceId) {
+      // Device updates/deletes may omit the previous membership; keep those conservative.
+      if (event == DevicesModuleConstants.deviceUpdatedEvent ||
+          event == DevicesModuleConstants.deviceDeletedEvent) {
+        return true;
+      }
+      // Missing membership is unknown, including the space a device just left.
+      if (payload['room_id'] is! String || payload['zone_ids'] is! List) {
+        return true;
+      }
+      if (_couldAffectSpace(spaceId, event, payload)) return true;
+      final id = payload['id'];
+      final channel = event == DevicesModuleConstants.channelUpdatedEvent;
+      return _lightTargetsRepository
+              .getLightTargetsForSpace(spaceId)
+              .any(
+                (target) =>
+                    channel ? target.channelId == id : target.deviceId == id,
+              ) ||
+          _climateTargetsRepository
+              .getClimateTargetsForSpace(spaceId)
+              .any(
+                (target) =>
+                    channel ? target.channelId == id : target.deviceId == id,
+              ) ||
+          _coversTargetsRepository
+              .getCoversTargetsForSpace(spaceId)
+              .any(
+                (target) =>
+                    channel ? target.channelId == id : target.deviceId == id,
+              );
+    });
 
     final id = payload['id'] as String;
 

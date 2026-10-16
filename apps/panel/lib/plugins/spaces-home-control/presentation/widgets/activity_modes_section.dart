@@ -77,7 +77,8 @@ class _ActivityModesSectionState extends State<ActivityModesSection> {
     'climate' => l.domain_climate,
     'covers' => l.domain_shading,
     'media' => l.domain_media,
-    _ => l.space_activity_security,
+    'security' => l.space_activity_security,
+    _ => l.filter_status_unknown,
   };
 
   String _domainStatus(AppLocalizations l, String status) => switch (status) {
@@ -85,7 +86,8 @@ class _ActivityModesSectionState extends State<ActivityModesSection> {
     'failed' => l.space_activity_failed,
     'disabled' => l.space_activity_disabled,
     'no_targets' => l.space_activity_no_targets,
-    _ => l.space_activity_unsupported,
+    'unsupported' => l.space_activity_unsupported,
+    _ => l.filter_status_unknown,
   };
 
   @override
@@ -237,7 +239,7 @@ class _ActivityModesSectionState extends State<ActivityModesSection> {
                 Padding(
                   padding: EdgeInsets.only(top: AppSpacings.pSm),
                   child: Text(
-                    '${_domain(l, value['domain'] as String)}: ${_domainStatus(l, value['status'] as String)}',
+                    '${_domain(l, value['domain'] as String? ?? '')}: ${_domainStatus(l, value['status'] as String? ?? '')}',
                   ),
                 ),
             ],

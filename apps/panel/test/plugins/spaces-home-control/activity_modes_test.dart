@@ -4,6 +4,12 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/devices/constants.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/module.dart';
+import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
@@ -59,6 +65,8 @@ Map<String, dynamic> active({
 };
 
 class ActivityDisplay extends Mock implements DisplayRepository {}
+
+class ActivitySocket extends Mock implements SocketService {}
 
 class ActivityAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
@@ -314,6 +322,152 @@ void main() {
       await action;
       expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
       expect(repository.fresh, isTrue);
+    },
+  );
+
+  for (final failed in [false, true]) {
+    test(
+      'markStale during a held POST reconciles read-only after completion (failed: $failed)',
+      () async {
+        await repository.bind(space);
+        adapter.postGate = Completer<void>();
+        adapter.timeout = failed;
+        final action = repository.activate(repository.modes.first);
+        await pumpEventQueue();
+        expect(repository.busy, isTrue);
+        repository.markStale();
+        expect(repository.canSubmit, isFalse);
+        adapter.postGate!.complete();
+        await action;
+        expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
+        expect(adapter.requests.where((r) => r.method == 'GET').length, 4);
+        expect(repository.fresh, isTrue);
+        expect(repository.busy, isFalse);
+        expect(repository.canSubmit, isTrue);
+        expect(
+          repository.issue,
+          failed ? ActivityModeIssue.unconfirmed : isNull,
+        );
+        if (failed) expect(repository.state, isNull);
+      },
+    );
+  }
+  test(
+    'a stale pending action cannot reconcile into a newly bound space',
+    () async {
+      const other = 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c9';
+      await repository.bind(space);
+      adapter.postGate = Completer<void>();
+      final action = repository.activate(repository.modes.first);
+      await pumpEventQueue();
+      repository.markStale();
+      await repository.bind(other);
+      final reads = adapter.requests.where((r) => r.method == 'GET').length;
+      adapter.postGate!.complete();
+      await action;
+      expect(repository.spaceId, other);
+      expect(repository.canSubmit, isTrue);
+      expect(repository.state, isNull);
+      expect(adapter.requests.where((r) => r.method == 'POST').length, 1);
+      expect(adapter.requests.where((r) => r.method == 'GET').length, reads);
+    },
+  );
+
+  testWidgets(
+    'actual module device events scope independent activity sessions and conservatively refresh unknown membership',
+    (tester) async {
+      const other = 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c9';
+      const deviceId = 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8d0';
+      const channelId = 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8d1';
+      final intents = IntentsRepository();
+      locator.registerSingleton<IntentsRepository>(intents);
+      final module = SpacesHomeControlPluginService(
+        apiClient: ApiClient(dio),
+        socketService: ActivitySocket(),
+        dio: dio,
+      );
+      final registry = locator<ActivityModesRegistry>();
+      final first = registry.create(), second = registry.create();
+      try {
+        await tester.runAsync(() async {
+          await first.bind(space);
+          await second.bind(other);
+        });
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: Column(
+                children: [
+                  ActivityModesSection(spaceId: space, repository: first),
+                  ActivityModesSection(spaceId: other, repository: second),
+                ],
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        adapter.requests.clear();
+        await tester.runAsync(() async {
+          module.handleDeviceSocketEvent(
+            DevicesModuleConstants.channelUpdatedEvent,
+            {'id': channelId, 'room_id': space, 'zone_ids': <String>[]},
+          );
+          await pumpEventQueue();
+        });
+        await tester.pumpAndSettle();
+        expect(adapter.requests.length, 2);
+        expect(
+          adapter.requests.every(
+            (r) => r.method == 'GET' && r.path.contains('/$space/'),
+          ),
+          isTrue,
+        );
+        expect(first.canSubmit, isTrue);
+        expect(second.canSubmit, isTrue);
+        // A cached former membership must also refresh when the payload names the new room.
+        locator<LightTargetsRepository>().insert(other, [
+          {'device_id': deviceId, 'channel_id': channelId},
+        ]);
+        adapter.requests.clear();
+        await tester.runAsync(() async {
+          module.handleDeviceSocketEvent(
+            DevicesModuleConstants.channelUpdatedEvent,
+            {'id': channelId, 'room_id': space, 'zone_ids': <String>[]},
+          );
+          await pumpEventQueue();
+        });
+        await tester.pumpAndSettle();
+        expect(adapter.requests.length, 4);
+        expect(adapter.requests.every((r) => r.method == 'GET'), isTrue);
+        adapter.requests.clear();
+        await tester.runAsync(() async {
+          module.handleDeviceSocketEvent(
+            DevicesModuleConstants.deviceDeletedEvent,
+            {'id': deviceId},
+          );
+          await pumpEventQueue();
+        });
+        await tester.pumpAndSettle();
+        expect(adapter.requests.length, 4);
+        expect(adapter.requests.every((r) => r.method == 'GET'), isTrue);
+        adapter.requests.clear();
+        await tester.runAsync(() async {
+          module.handleDeviceSocketEvent(
+            DevicesModuleConstants.deviceUpdatedEvent,
+            {'room_id': space},
+          );
+          await pumpEventQueue();
+        });
+        await tester.pumpAndSettle();
+        expect(adapter.requests, isEmpty);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        module.dispose();
+        locator.unregister<IntentsRepository>();
+        intents.dispose();
+      }
     },
   );
 
@@ -643,6 +797,49 @@ void main() {
         adapter.requests.where((request) => request.method == 'POST').length,
         1,
       );
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'generated HTTP unknown domain/status renders honest details without throwing',
+    (tester) async {
+      adapter.state = {
+        ...active(),
+        'activity_results': [
+          {
+            'domain': 'future-domain',
+            'status': 'future-status',
+            'reason': 'new server result',
+          },
+        ],
+      };
+      await tester.runAsync(() => repository.bind(space));
+      final result = repository.state!.activityResults.single;
+      expect(result.domain.json, isNull);
+      expect(result.status.json, isNull);
+      // The enum wire values are null, while generated model serialization
+      // currently represents both unknown values with this sentinel.
+      expect(result.toJson()['domain'], r'$unknown');
+      expect(result.toJson()['status'], r'$unknown');
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ActivityModesSection(spaceId: space, repository: repository),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Mode details'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Unknown: Unknown'), findsOneWidget);
+      expect(find.textContaining('Security:'), findsNothing);
+      expect(find.textContaining('Commands sent'), findsNothing);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
