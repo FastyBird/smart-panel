@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: planned
+Status: in_progress (UI implemented; independent review and alpha acceptance pending)
 Tracking: #1287
 Issues: #1295
 
@@ -46,16 +46,16 @@ I want to configure mode settings per space including which domains are affected
 
 ## 4. Acceptance criteria
 
-- [ ] Space detail page shows "Activity Modes" section
-- [ ] Admin can enable/disable each mode for the space
-- [ ] Admin can click on a mode to edit its configuration
-- [ ] Mode editor shows per-domain settings with current values
-- [ ] Admin can override default values for any domain
-- [ ] Admin can reset mode to defaults
-- [ ] Changes are saved via API and reflected immediately
-- [ ] Disabled modes are hidden from panel UI
-- [ ] UI is responsive and follows existing admin patterns
-- [ ] All strings are localized (en-US at minimum)
+- [x] Space detail page shows "Activity Modes" section
+- [x] Admin can enable/disable each mode for the space
+- [x] Admin can click on a mode to edit its configuration
+- [x] Mode editor shows per-domain settings with current values
+- [x] Admin can override default values for any domain
+- [x] Admin can reset mode to defaults
+- [x] Changes are saved via API and reflected immediately
+- [x] Disabled modes are hidden from panel UI
+- [x] UI is responsive and follows existing admin patterns
+- [x] All strings are localized (en-US at minimum)
 
 ## 5. Example scenarios
 
@@ -101,14 +101,17 @@ SpaceModeSection/
 
 ### API Integration
 ```typescript
-// Get modes for space
-GET /api/v1/spaces/{spaceId}/modes
+// Read every built-in configuration, including disabled modes
+GET /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config
 
-// Update mode configuration
-PATCH /api/v1/spaces/{spaceId}/modes/{modeId}
+// Full configuration replacement with data.expected_revision
+PUT /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config
 
-// Reset mode to defaults
-DELETE /api/v1/spaces/{spaceId}/modes/{modeId}/config
+// Explicit reset with data.expected_revision
+POST /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/config/reset
+
+// Readiness of SAVED configuration only, with data.expected_revision
+POST /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/preview
 ```
 
 ### Localization Keys
@@ -141,3 +144,20 @@ DELETE /api/v1/spaces/{spaceId}/modes/{modeId}/config
 - Keep changes scoped to this task and its `Scope`.
 - For each acceptance criterion, either implement it or explain why it's skipped.
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+
+## Implementation and acceptance boundary
+
+Implemented in the home-control space detail Domains tab. The five built-ins are read through their configuration
+endpoints so disabled modes remain editable. Each independent display-order save and reset uses that mode's saved
+revision. Conflicts refresh saved truth, preserve the visible draft and require explicit discard/review before a new
+edit; no automatic overwrite or retry is performed. Preview accepts the saved revision only and is invalidated by
+any draft change. Climate defaults stay disabled/unset and explicit enabled intent requires a supported preset
+reference or a heat/cool target/delta. Climate/security actuation remains visibly unsupported.
+
+All six Admin locales are translated. Mounted editor/API tests cover disabled-mode reads and toggles, order/revision
+saves, reset, saved-only preview invalidation, late-space preview fencing, climate validation, role permissions and
+409 draft preservation. Existing configure/detail tests verify the section's placement and preserve ordinary details.
+These checked criteria record local UI implementation; independent review, composed CI and alpha acceptance remain
+pending. VD1458 climate integration, security actuation, scheduler/presence and post-alpha hardware qualification are
+not completed by this task. The referenced `/.ai-rules/GUIDELINES.md` was unavailable; repository AGENTS.md and
+CONTRIBUTING.md were followed.

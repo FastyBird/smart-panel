@@ -400,5 +400,99 @@
 				"sensorRoles": "Role czujnikow"
 			}
 		}
+	},
+	"activityModes": {
+		"reasons": {
+			"coversUnsupported": "Niektórych osłon okiennych nie można ustawić w tej pozycji. Sprawdź ich sterowanie i dostępność.",
+			"mediaBindingMissing": "Skonfiguruj tę aktywność multimedialną przed użyciem jej w trybie.",
+			"mediaUnavailable": "Zapisana aktywność multimedialna nie ma zgodnego planu odtwarzania. Sprawdź jej konfigurację i urządzenia.",
+			"noActiveMedia": "Nie ma aktywnej aktywności multimedialnej do zatrzymania.",
+			"noTargets": "W tej przestrzeni nie ma dostępnych zgodnych urządzeń."
+		},
+		"title": "Tryby aktywności",
+		"description": "Wybierz, co robi każdy tryb aktywności w tej przestrzeni.",
+		"enabled": "Włączony",
+		"disabled": "Wyłączony",
+		"edit": "Edytuj",
+		"save": "Zapisz",
+		"cancel": "Anuluj",
+		"reset": "Przywróć ustawienia domyślne",
+		"preview": "Podgląd zapisanych ustawień",
+		"enableBeforePreview": "Włącz i zapisz ten tryb przed wyświetleniem podglądu.",
+		"saveBeforePreview": "Zapisz zmiany przed wyświetleniem podglądu.",
+		"loading": "Ładowanie trybów aktywności…",
+		"loadFailed": "Nie udało się wczytać trybów aktywności. Spróbuj odświeżyć.",
+		"saveFailed": "Nie udało się zapisać zmian. Twoja wersja robocza została zachowana.",
+		"conflict": "Te ustawienia zmieniono w innym miejscu. Twoja wersja robocza została zachowana.",
+		"conflictReview": "Twoja wersja robocza pozostaje widoczna. Odrzuć ją, aby wczytać najnowsze zapisane ustawienia, a następnie ponownie je edytuj i zapisz.",
+		"discard": "Odrzuć wersję roboczą",
+		"order": "Kolejność wyświetlania",
+		"orderHelp": "Niższe liczby są wyświetlane wcześniej. Kolejność każdego trybu jest zapisywana osobno.",
+		"lighting": "Oświetlenie",
+		"climate": "Klimat",
+		"covers": "Osłony okienne",
+		"media": "Media",
+		"security": "Bezpieczeństwo",
+		"brightness": "Jasność (%)",
+		"defaultBrightness": "Użyj domyślnej jasności trybu oświetlenia",
+		"position": "Pozycja (0% zamknięte, 100% otwarte)",
+		"lightingMode": "Tryb oświetlenia",
+		"mediaActivity": "Aktywność multimedialna",
+		"climateKind": "Ustawienie temperatury",
+		"none": "Nie ustawiono",
+		"preset": "Ustawienie termostatu",
+		"setpoint": "Temperatura docelowa (°C)",
+		"delta": "Zmiana temperatury (°C)",
+		"climateMode": "Tryb klimatu",
+		"climateUnsupported": "Możesz zapisać ustawienia klimatu, ale tryby aktywności nie mogą ich jeszcze zastosować.",
+		"securityUnsupported": "Możesz zapisać ustawienia bezpieczeństwa, ale tryby aktywności nie mogą ich jeszcze zastosować.",
+		"invalid": "Sprawdź ustawienia przed zapisaniem.",
+		"readOnly": "Nie masz uprawnień do edycji trybów aktywności.",
+		"refresh": "Odśwież",
+		"previewDescription": "Sprawdza zapisane ustawienia bez ich zmiany ani sterowania urządzeniami.",
+		"missing": "Niedostępne",
+		"modes": {
+			"work": "Praca",
+			"relax": "Relaks",
+			"sleep": "Sen",
+			"entertainment": "Rozrywka",
+			"away": "Poza domem"
+		},
+		"statuses": {
+			"ready": "Gotowe",
+			"disabled": "Wyłączone",
+			"no_targets": "Brak zgodnych urządzeń",
+			"unsupported": "Jeszcze nieobsługiwane",
+			"failed": "Niepowodzenie",
+			"succeeded": "Polecenia przyjęte"
+		},
+		"lightingModes": {
+			"off": "Wyłączone",
+			"work": "Praca",
+			"relax": "Relaks",
+			"night": "Noc"
+		},
+		"climateKinds": {
+			"none": "Nie ustawiono",
+			"preset": "Ustawienie termostatu",
+			"setpoint": "Temperatura docelowa",
+			"delta": "Zmiana temperatury"
+		},
+		"climateModes": {
+			"heat": "Ogrzewanie",
+			"cool": "Chłodzenie"
+		},
+		"presets": {
+			"comfort": "Komfort",
+			"eco": "Eko",
+			"away": "Poza domem"
+		},
+		"mediaActivities": {
+			"watch": "Oglądanie",
+			"listen": "Słuchanie",
+			"gaming": "Granie",
+			"background": "W tle",
+			"off": "Wyłączone"
+		}
 	}
 }

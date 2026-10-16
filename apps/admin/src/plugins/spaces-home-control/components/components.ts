@@ -48,3 +48,5 @@ export { default as SpaceMediaActivitiesDialog } from './space-media-activities-
 
 // Setup wizard
 export { default as SpacesWizard } from '../views/view-spaces-wizard.vue';
+
+export { default as SpaceActivityModesSection } from './space-activity-modes-section.vue';

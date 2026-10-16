@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: planned
+Status: in_progress (UI implemented; independent review and alpha acceptance pending)
 Tracking: #1287
 Issues: #1296
 
@@ -18,7 +18,7 @@ I want to see available activity modes and activate them with a single tap.
 
 ### Existing Code References
 - **Space plugin**: `apps/panel/lib/plugins/spaces-home-control/`
-- **Space page**: `apps/panel/lib/features/dashboard/presentation/spaces/`
+- **Space page**: `apps/panel/lib/plugins/spaces-home-control/presentation/system_pages/room_overview.dart`
 - **Quick actions**: `apps/panel/lib/features/dashboard/presentation/widgets/`
 - **Lighting modes**: Existing mode buttons in lighting section
 - **House modes page**: `apps/panel/lib/features/dashboard/presentation/pages/house_mode/`
@@ -47,18 +47,18 @@ I want to see available activity modes and activate them with a single tap.
 
 ## 4. Acceptance criteria
 
-- [ ] SpacePage shows "Modes" section when modes are available
-- [ ] Each enabled mode is shown as a tappable button
-- [ ] Buttons show mode icon and localized name
-- [ ] Active mode button is visually highlighted
-- [ ] Tapping a mode activates it (API call)
-- [ ] Loading indicator shown during activation
-- [ ] Success feedback on completion
-- [ ] Partial failure shows warning indicator
-- [ ] Tapping active mode deactivates it (returns to manual)
-- [ ] Modes section hidden when no modes enabled for space
-- [ ] UI is responsive across different panel sizes
-- [ ] All strings are localized (en, cs at minimum)
+- [x] SpacePage shows "Modes" section when modes are available
+- [x] Each enabled mode is shown as a tappable button
+- [x] Buttons show mode icon and localized name
+- [x] Active mode button is visually highlighted
+- [x] Tapping a mode activates it (API call)
+- [x] Loading indicator shown during activation
+- [x] Success feedback on completion
+- [x] Partial failure shows warning indicator
+- [x] Tapping active mode deactivates it (returns to manual)
+- [x] Modes section hidden when no modes enabled for space
+- [x] UI is responsive across different panel sizes
+- [x] All strings are localized (en, cs at minimum)
 
 ## 5. Example scenarios
 
@@ -118,12 +118,6 @@ IconData getModeIcon(ActivityMode mode) {
       return MdiIcons.bedKing;
     case ActivityMode.entertainment:
       return MdiIcons.televisionPlay;
-    case ActivityMode.cooking:
-      return MdiIcons.stove;
-    case ActivityMode.gaming:
-      return MdiIcons.gamepadVariant;
-    case ActivityMode.reading:
-      return MdiIcons.bookOpenPageVariant;
     case ActivityMode.away:
       return MdiIcons.exitRun;
     default:
@@ -134,15 +128,17 @@ IconData getModeIcon(ActivityMode mode) {
 
 ### API Integration
 ```dart
-// Activate mode
-Future<ModeActivationResult> activateMode(String spaceId, String modeId);
+// Enabled configurations in saved display order
+GET /api/v1/modules/spaces/spaces/{id}/activity-modes
 
-// Deactivate mode
-Future<void> deactivateMode(String spaceId);
+// Persisted selection/result; data:null and data.selected_activity_mode:null are distinct valid states
+GET /api/v1/modules/spaces/spaces/{id}/activity-modes/active
 
-// Get space modes (cached from space data)
-List<SpaceMode> getAvailableModes(String spaceId);
-SpaceMode? getActiveMode(String spaceId);
+// Manual single submission with data.expected_revision
+POST /api/v1/modules/spaces/spaces/{id}/activity-modes/{mode}/activate
+
+// Clear exact server identity with data.activation_id; no device rollback
+POST /api/v1/modules/spaces/spaces/{id}/activity-modes/deactivate
 ```
 
 ### Layout Suggestion
@@ -194,3 +190,22 @@ SpaceMode? getActiveMode(String spaceId);
 - Keep changes scoped to this task and its `Scope`.
 - For each acceptance criterion, either implement it or explain why it's skipped.
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+
+## Implementation and acceptance boundary
+
+Implemented above the actual room overview domain cards. Each mounted room section owns an independent, fenced
+read model so retained routes cannot replace another room's selection. Enabled modes use saved order and localized
+icons/names. Pending requests show loading only; persisted active/partial/failed/interrupted/deactivated/null states
+remain distinct. Manual clears the exact server activation identity without restoring earlier device values.
+Details describe per-domain command outcomes and do not claim physical convergence. An unconfirmed response stays
+uncertain even if read-only reconciliation finds a saved selection. Socket/configuration/device/reconnect hints only
+refetch; stale/busy/released sessions cannot send. Manual submissions opt out of network/token-refresh replay and have
+no WebSocket actuation fallback or automatic conflict retry.
+
+All six Panel ARBs and the seven pinned-generated localization files are updated. Generated-HTTP repository and actual
+widget tests cover revision/identity inputs, single-send 401/500/timeout/missing/conflict responses, partial/null states,
+late space/request responses, reconnect, retained routes, pending duplicate-tap prevention and a narrow Czech layout.
+Ordinary room/cover transport and view regressions remain covered. These checked criteria record local UI implementation;
+independent review, composed CI and alpha acceptance remain pending. VD1458 climate integration, security actuation,
+scheduler/presence and post-alpha hardware qualification remain open. The referenced `/.ai-rules/GUIDELINES.md` was
+unavailable; repository AGENTS.md and CONTRIBUTING.md were followed.

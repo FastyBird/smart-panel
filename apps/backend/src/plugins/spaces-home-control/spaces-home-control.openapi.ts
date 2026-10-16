@@ -1,5 +1,13 @@
 import { Type } from '@nestjs/common';
 
+import {
+	ActivityRevisionDto,
+	DeactivateActivityDto,
+	ReqActivityRevisionDto,
+	ReqDeactivateActivityDto,
+	ReqUpdateActivityModeDto,
+	UpdateActivityModeDto,
+} from './dto/activity-mode.dto';
 import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import {
 	BulkSetClimateRolesDto,
@@ -39,12 +47,29 @@ import { SpacesHomeControlUpdatePluginConfigDto } from './dto/update-config.dto'
 import { UpdateHomeControlSpaceDto } from './dto/update-home-control-space.dto';
 import { RoomSpaceEntity } from './entities/room-space.entity';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
+import { SpaceActivityConfigEntity } from './entities/space-activity-config.entity';
+import { SpaceActivityStateEntity } from './entities/space-activity-state.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { ZoneSpaceEntity } from './entities/zone-space.entity';
+import {
+	ActivityActionModel,
+	ActivityClimateModel,
+	ActivityConfigurationModel,
+	ActivityCoversModel,
+	ActivityLightingModel,
+	ActivityMediaModel,
+} from './models/activity-configuration.model';
+import {
+	ActivityConfigurationResponseModel,
+	ActivityModesResponseModel,
+	ActivityPreviewResponseModel,
+	ActivityStateResponseModel,
+} from './models/activity-response.model';
+import { ActivityDomainResultModel } from './models/activity-result.model';
 import { ClimateContributionConflictModel, ClimateContributionModel } from './models/climate-contribution.model';
 import { SpacesHomeControlConfigModel } from './models/config.model';
 import {
@@ -154,6 +179,25 @@ export const SPACES_HOME_CONTROL_PLUGIN_SWAGGER_EXTRA_MODELS: (
 	| Type<unknown>
 	| (abstract new (...args: unknown[]) => unknown)
 )[] = [
+	UpdateActivityModeDto,
+	ActivityRevisionDto,
+	DeactivateActivityDto,
+	ReqUpdateActivityModeDto,
+	ReqActivityRevisionDto,
+	ReqDeactivateActivityDto,
+	SpaceActivityConfigEntity,
+	SpaceActivityStateEntity,
+	ActivityActionModel,
+	ActivityLightingModel,
+	ActivityClimateModel,
+	ActivityCoversModel,
+	ActivityMediaModel,
+	ActivityConfigurationModel,
+	ActivityDomainResultModel,
+	ActivityModesResponseModel,
+	ActivityConfigurationResponseModel,
+	ActivityStateResponseModel,
+	ActivityPreviewResponseModel,
 	// Plugin config
 	SpacesHomeControlConfigModel,
 	SpacesHomeControlUpdatePluginConfigDto,

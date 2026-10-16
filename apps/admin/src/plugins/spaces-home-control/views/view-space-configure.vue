@@ -81,6 +81,10 @@
 				</template>
 
 				<el-scrollbar class="h-full">
+					<space-activity-modes-section
+						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
+						:space-id="props.space.id"
+					/>
 					<space-domains-section :space="props.space" />
 				</el-scrollbar>
 			</el-tab-pane>
@@ -266,6 +270,7 @@ import { useDisplays } from '../../../modules/displays/composables/useDisplays';
 import { useScenes } from '../../../modules/scenes/composables/useScenes';
 import { SpaceType, useSpaces } from '../../../modules/spaces';
 import {
+	SpaceActivityModesSection,
 	SpaceAddDeviceDialog,
 	SpaceAddDisplayDialog,
 	SpaceAddSceneDialog,
