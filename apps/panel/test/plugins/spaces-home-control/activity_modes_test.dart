@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
 import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/repositories/activity_modes.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/widgets/activity_modes_section.dart';
@@ -64,6 +65,56 @@ Map<String, dynamic> active({
   ],
 };
 
+DisplayModel activityDisplayFor(String spaceId) => DisplayModel(
+  id: 'display',
+  macAddress: '00:11:22:33:44:55',
+  version: '1.0.0',
+  screenWidth: 800,
+  screenHeight: 480,
+  pixelRatio: 1,
+  unitSize: 10,
+  rows: 4,
+  cols: 6,
+  darkMode: false,
+  brightness: 80,
+  screenLockDuration: 60,
+  screenSaver: true,
+  audioOutputSupported: false,
+  audioInputSupported: false,
+  speaker: false,
+  speakerVolume: 0,
+  microphone: false,
+  microphoneVolume: 0,
+  spaceId: spaceId,
+  createdAt: DateTime(2026, 1, 1),
+);
+
+Widget retainedActivityViews(
+  ActivityModesRepository first,
+  ActivityModesRepository second,
+  int index,
+) => MaterialApp(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(
+    body: IndexedStack(
+      index: index,
+      children: [
+        ActivityModesSection(
+          key: const ValueKey('retained-first'),
+          spaceId: space,
+          repository: first,
+        ),
+        ActivityModesSection(
+          key: const ValueKey('retained-second'),
+          spaceId: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c9',
+          repository: second,
+        ),
+      ],
+    ),
+  ),
+);
+
 class ActivityDisplay extends Mock implements DisplayRepository {}
 
 class ActivitySocket extends Mock implements SocketService {}
@@ -112,6 +163,8 @@ class ActivityAdapter implements HttpClientAdapter {
       }
       if (staleIdentity && result != null) result['activation_id'] = activation;
       state = result;
+    } else if (options.path == '/modules/spaces/spaces') {
+      result = <Map<String, dynamic>>[];
     } else if (options.path.endsWith('/active')) {
       result = statesBySpace.containsKey(options.path.split('/')[4])
           ? statesBySpace[options.path.split('/')[4]]
@@ -135,7 +188,21 @@ class ActivityAdapter implements HttpClientAdapter {
                 options.method == 'GET' &&
                 options.path.endsWith('/active')
             ? <String, dynamic>{}
-            : {'data': result},
+            : {
+                'data': result,
+                if (options.path == '/modules/spaces/spaces') ...{
+                  'status': 'success',
+                  'timestamp': '2026-01-01T00:00:00Z',
+                  'request_id': 'spaces-list',
+                  'path': options.path,
+                  'method': options.method,
+                  'metadata': {
+                    'request_duration_ms': 1,
+                    'server_time': '2026-01-01T00:00:00Z',
+                    'cpu_usage': 0,
+                  },
+                },
+              },
       ),
       options.method == 'POST' ? postStatus : 200,
       headers: {
@@ -182,6 +249,34 @@ void main() {
     repository.dispose();
     dio.close();
   });
+
+  Future<(SpacesHomeControlPluginService, DisplayRepository, IntentsRepository)>
+  initializeActivityModule() async {
+    final intents = IntentsRepository();
+    locator.registerSingleton<IntentsRepository>(intents);
+    final liveDisplay = DisplayRepository(apiClient: ApiClient(dio), dio: dio)
+      ..setDisplay(activityDisplayFor(space));
+    locator.registerSingleton<DisplayRepository>(liveDisplay);
+    final module = SpacesHomeControlPluginService(
+      apiClient: ApiClient(dio),
+      socketService: ActivitySocket(),
+      dio: dio,
+    );
+    await module.initialize();
+    return (module, liveDisplay, intents);
+  }
+
+  void disposeActivityModule(
+    SpacesHomeControlPluginService module,
+    DisplayRepository liveDisplay,
+    IntentsRepository intents,
+  ) {
+    module.dispose();
+    locator.unregister<DisplayRepository>();
+    liveDisplay.dispose();
+    locator.unregister<IntentsRepository>();
+    intents.dispose();
+  }
 
   test(
     'decodes generated configuration and null state, filters disabled and orders modes',
@@ -372,6 +467,190 @@ void main() {
       expect(adapter.requests.where((r) => r.method == 'GET').length, reads);
     },
   );
+
+  testWidgets(
+    'production display changes refresh retained same-space sections and fence older GETs',
+    (tester) async {
+      final fixture = (await tester.runAsync(initializeActivityModule))!;
+      final (module, liveDisplay, intents) = fixture;
+      final registry = locator<ActivityModesRegistry>();
+      final first = registry.create(), second = registry.create();
+      const other = 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c9';
+      try {
+        await tester.runAsync(() async {
+          await first.bind(space);
+          await second.bind(other);
+        });
+        await tester.pumpWidget(retainedActivityViews(first, second, 0));
+        await tester.pumpAndSettle();
+        final retained = tester.state(
+          find.byKey(const ValueKey('retained-first')),
+        );
+        adapter.requests.clear();
+        liveDisplay.setDisplay(activityDisplayFor(space));
+        await tester.pumpAndSettle();
+        expect(adapter.requests, isEmpty);
+        adapter.state = active();
+        final oldGate = Completer<void>();
+        adapter.readGate = oldGate;
+        await tester.runAsync(() async {
+          liveDisplay.setDisplay(activityDisplayFor(other));
+          await pumpEventQueue();
+        });
+        expect(adapter.requests.length, 4);
+        expect(first.loading, isTrue);
+        expect(second.loading, isTrue);
+        expect(first.canSubmit, isFalse);
+        await tester.pumpWidget(retainedActivityViews(first, second, 1));
+        await tester.pump();
+        adapter.readGate = null;
+        adapter.state = null;
+        await tester.runAsync(() async {
+          liveDisplay.setDisplay(activityDisplayFor(space));
+          await pumpEventQueue();
+        });
+        await tester.pumpWidget(retainedActivityViews(first, second, 0));
+        await tester.pumpAndSettle();
+        expect(
+          tester.state(find.byKey(const ValueKey('retained-first'))),
+          same(retained),
+        );
+        expect(first.spaceId, space);
+        expect(second.spaceId, other);
+        expect(first.canSubmit, isTrue);
+        expect(second.canSubmit, isTrue);
+        expect(first.state, isNull);
+        expect(second.state, isNull);
+        final chips = find.descendant(
+          of: find.byKey(const ValueKey('retained-first')),
+          matching: find.byType(FilterChip),
+        );
+        expect(chips, findsNWidgets(2));
+        expect(
+          tester
+              .widgetList<FilterChip>(chips)
+              .every((chip) => chip.onSelected != null),
+          isTrue,
+        );
+        await tester.runAsync(() async {
+          oldGate.complete();
+          await pumpEventQueue();
+        });
+        await tester.pumpAndSettle();
+        expect(first.state, isNull);
+        expect(second.state, isNull);
+        expect(first.canSubmit, isTrue);
+        expect(second.canSubmit, isTrue);
+        expect(adapter.requests.length, 8);
+        expect(
+          adapter.requests.every((request) => request.method == 'GET'),
+          isTrue,
+        );
+        expect(
+          adapter.requests
+              .where((request) => request.path.contains('/$space/'))
+              .length,
+          4,
+        );
+        expect(
+          adapter.requests
+              .where((request) => request.path.contains('/$other/'))
+              .length,
+          4,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        await tester.pumpWidget(const SizedBox.shrink());
+        disposeActivityModule(module, liveDisplay, intents);
+      }
+    },
+  );
+
+  for (final failed in [false, true]) {
+    testWidgets(
+      'production display change defers busy refresh after one POST (timeout: $failed)',
+      (tester) async {
+        final fixture = (await tester.runAsync(initializeActivityModule))!;
+        final (module, liveDisplay, intents) = fixture;
+        final registry = locator<ActivityModesRegistry>();
+        final first = registry.create(), second = registry.create();
+        const other = 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c9';
+        try {
+          await tester.runAsync(() async {
+            await first.bind(space);
+            await second.bind(other);
+          });
+          await tester.pumpWidget(retainedActivityViews(first, second, 0));
+          await tester.pumpAndSettle();
+          adapter.requests.clear();
+          adapter.postGate = Completer<void>();
+          adapter.timeout = failed;
+          late Future<void> action;
+          await tester.runAsync(() async {
+            action = first.activate(first.modes.first);
+            await pumpEventQueue();
+            liveDisplay.setDisplay(activityDisplayFor(other));
+            await pumpEventQueue();
+          });
+          await tester.pump();
+          expect(first.busy, isTrue);
+          expect(first.canSubmit, isFalse);
+          expect(second.canSubmit, isTrue);
+          expect(
+            adapter.requests
+                .where((request) => request.method == 'POST')
+                .length,
+            1,
+          );
+          expect(
+            adapter.requests.where((request) => request.method == 'GET').length,
+            2,
+          );
+          expect(
+            adapter.requests
+                .where((request) => request.method == 'GET')
+                .every((request) => request.path.contains('/$other/')),
+            isTrue,
+          );
+          await tester.runAsync(() async {
+            adapter.postGate!.complete();
+            await action;
+            await pumpEventQueue();
+          });
+          await tester.pumpAndSettle();
+          expect(first.busy, isFalse);
+          expect(first.fresh, isTrue);
+          expect(first.canSubmit, isTrue);
+          expect(first.issue, failed ? ActivityModeIssue.unconfirmed : isNull);
+          expect(first.state == null, failed);
+          expect(
+            adapter.requests
+                .where((request) => request.method == 'POST')
+                .length,
+            1,
+          );
+          expect(
+            adapter.requests.where((request) => request.method == 'GET').length,
+            4,
+          );
+          expect(
+            adapter.requests
+                .where(
+                  (request) =>
+                      request.method == 'GET' &&
+                      request.path.contains('/$space/'),
+                )
+                .length,
+            2,
+          );
+          expect(tester.takeException(), isNull);
+        } finally {
+          await tester.pumpWidget(const SizedBox.shrink());
+          disposeActivityModule(module, liveDisplay, intents);
+        }
+      },
+    );
+  }
 
   testWidgets(
     'actual module device events scope independent activity sessions and conservatively refresh unknown membership',

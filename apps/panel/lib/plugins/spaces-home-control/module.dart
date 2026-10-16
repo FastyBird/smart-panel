@@ -177,7 +177,7 @@ class SpacesHomeControlPluginService {
     final next = _activityDisplay?.display?.spaceId;
     if (next != _activityDisplaySpace) {
       _activityDisplaySpace = next;
-      _activityModesRegistry.markStale();
+      _activityModesRegistry.refresh();
     }
   }
 
