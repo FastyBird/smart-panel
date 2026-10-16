@@ -4,6 +4,12 @@ import { AddSpaceActivityModes1000000000046 } from '../1000000000046-AddSpaceAct
 import { ActivityMode } from '../../plugins/spaces-home-control/activity/space-activity.constants';
 import { defaultActivityConfiguration } from '../../plugins/spaces-home-control/activity/space-activity.defaults';
 
+interface ActivityConfigurationRow {
+	spaceId: string;
+	activityMode: string;
+	activityConfiguration: string;
+}
+
 describe('migration 46 on real SQLite', () => {
 	it('backfills room/zone defaults, preserves other roles and reverses incrementally', async () => {
 		const database = await new DataSource({ type: 'sqlite', database: ':memory:' }).initialize();
@@ -21,12 +27,20 @@ describe('migration 46 on real SQLite', () => {
 			);
 			const migration = new AddSpaceActivityModes1000000000046();
 			await migration.up(runner);
-			const rows = await runner.query(`SELECT * FROM spaces_module_space_roles WHERE type = 'activity_config'`);
+			const rows = await database.query<ActivityConfigurationRow[]>(
+				`SELECT spaceId, activityMode, activityConfiguration FROM spaces_module_space_roles WHERE type = 'activity_config'`,
+				undefined,
+				runner,
+			);
 			expect(rows).toHaveLength(10);
 			for (const mode of Object.values(ActivityMode)) {
-				expect(
-					JSON.parse(rows.find((row) => row.spaceId === 'room' && row.activityMode === mode).activityConfiguration),
-				).toEqual(defaultActivityConfiguration(mode));
+				const row = rows.find((row) => row.spaceId === 'room' && row.activityMode === mode);
+				expect(row).toBeDefined();
+				if (!row) {
+					throw new Error(`Missing room activity configuration for ${mode}`);
+				}
+				const configuration: unknown = JSON.parse(row.activityConfiguration);
+				expect(configuration).toEqual(defaultActivityConfiguration(mode));
 			}
 			await expect(
 				runner.query(
