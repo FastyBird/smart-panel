@@ -42,7 +42,11 @@ export function thermostatComfortTransport(backend: ReturnType<typeof useBackend
 				]);
 				if (!comfort.data || !configuration.data || !runtime.data) throw failure(comfort.error ?? configuration.error ?? runtime.error);
 				const revision = comfort.data.data.revision;
-				if (configuration.data.data.revision !== revision || runtime.data.data.configuration_revision !== revision) {
+				if (
+					configuration.data.data.revision !== revision ||
+					runtime.data.data.configuration_revision !== revision ||
+					configuration.data.data.graph_revision !== comfort.data.data.graph_revision
+				) {
 					if (attempt === 0 && !signal?.aborted) continue;
 					throw new Error('revision_conflict');
 				}

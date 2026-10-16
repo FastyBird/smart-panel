@@ -62,7 +62,9 @@ Map<String, dynamic> protection(
   DateTime now,
   double temperature, {
   bool stale = false,
+  String claimId = 'one',
 }) => {
+  'claim': claimId,
   'status': stale ? 'stale' : 'fresh',
   'quality': 'good',
   'temperature': temperature,
@@ -91,6 +93,7 @@ Map<String, dynamic> activityObservation(
 
 void main() {
   deadlineFenceTests();
+  membershipAndIdentityRegressions();
   test(
     'claim join preserves missing members, false and zero, and fences history',
     () {
@@ -145,10 +148,11 @@ void main() {
     () {
       final now = DateTime.utc(2026, 10, 15);
       final fence = VirtualThermostatReadingFence();
-      VirtualThermostatMember sample(DateTime time) => VirtualThermostatMember(
-        claim('one', 'heating', 'reserved'),
-        {'protection': protection(time, 0)},
-      );
+      VirtualThermostatMember sample(DateTime time) =>
+          VirtualThermostatMember(claim('one', 'heating', 'reserved'), {
+            'physical_identity': 'canonical-one',
+            'protection': protection(time, 0),
+          });
       fence.accept([sample(now)], now, Duration.zero);
       expect(fence.expiredClaims([sample(now)], Duration.zero, now), isEmpty);
       expect(
@@ -433,6 +437,7 @@ void main() {
         'branches': [
           {
             'claim': 'h1',
+            'physical_identity': 'canonical-h1',
             'role': 'heating',
             ...activityObservation(
               now.subtract(Duration(seconds: 4 - rev)),
@@ -442,19 +447,21 @@ void main() {
             'release_pending': false,
             'release_attempts': 0,
             'release_proven': true,
-            'protection': protection(now, 0),
+            'protection': protection(now, 0, claimId: 'h1'),
           },
           {
             'claim': 'h2',
+            'physical_identity': 'canonical-h2',
             'role': 'heating',
             'activity': 'unknown',
             'pending_on': true,
             'release_pending': true,
             'fault': 'actuator_missing',
-            'protection': protection(now, 35, stale: true),
+            'protection': protection(now, 35, stale: true, claimId: 'h2'),
           },
           {
             'claim': 'c1',
+            'physical_identity': 'canonical-c1',
             'role': 'cooling',
             'activity': 'unknown',
             'pending_on': true,
@@ -878,7 +885,10 @@ void main() {
             'role': 'heating',
             'claim_state': state,
             'physical_identity': 'retained-relay',
-            'protection': sample(time, temperature, maximumAge: maximumAge),
+            'protection': {
+              ...sample(time, temperature, maximumAge: maximumAge),
+              'claim': 'retained',
+            },
           },
         ];
       }
@@ -1298,8 +1308,11 @@ class MemberDetailFixture {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
   final held = <void Function()>[];
   int revision = 1;
+  int modeReads = 0, runtimeReads = 0;
   int? configurationRevision;
   bool hold = false, hasMember = true, declaresMemberProtection = true;
+  bool overrideMembership = false;
+  Object? configuredMembership, runtimeMembership;
   List<Map<String, dynamic>> sources = [], inputs = [], extraBranches = [];
   String? displayFloorClaim;
   Locale? locale;
@@ -1339,6 +1352,11 @@ class MemberDetailFixture {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          if (options.path.endsWith('/runtime')) {
+            runtimeReads++;
+          } else if (!options.path.endsWith('/comfort')) {
+            modeReads++;
+          }
           final data = options.path.endsWith('/comfort')
               ? {
                   'controller': 'controller',
@@ -1356,17 +1374,20 @@ class MemberDetailFixture {
                   'readiness': 'ready',
                   'reasons': <String>[],
                   'inputs': inputs,
-                  'branches': [
-                    ...extraBranches,
-                    if (hasMember)
-                      {
-                        'claim': 'one',
-                        'role': 'heating',
-                        'activity': 'off',
-                        ...observation,
-                        'protection': sample,
-                      },
-                  ],
+                  'branches': overrideMembership
+                      ? runtimeMembership
+                      : [
+                          ...extraBranches,
+                          if (hasMember)
+                            {
+                              'claim': 'one',
+                              'physical_identity': 'canonical-one',
+                              'role': 'heating',
+                              'activity': 'off',
+                              ...observation,
+                              'protection': sample,
+                            },
+                        ],
                 }
               : {
                   'revision': configurationRevision ?? revision,
@@ -1375,13 +1396,15 @@ class MemberDetailFixture {
                   'settings': <Map>[],
                   'sources': sources,
                   'display_floor_claim': displayFloorClaim,
-                  'actuators': [
-                    if (hasMember)
-                      {
-                        ...claim('one', 'heating', 'reserved'),
-                        if (!declaresMemberProtection) 'protection': null,
-                      },
-                  ],
+                  'actuators': overrideMembership
+                      ? configuredMembership
+                      : [
+                          if (hasMember)
+                            {
+                              ...claim('one', 'heating', 'reserved'),
+                              if (!declaresMemberProtection) 'protection': null,
+                            },
+                        ],
                 };
           void respond() => handler.resolve(
             Response(
@@ -1438,6 +1461,14 @@ class MemberDetailFixture {
     socket.hint(++revision);
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump();
+  }
+
+  Future<void> acceptBeforeFrame(WidgetTester tester) async {
+    await tester.runAsync(
+      () => tester
+          .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+          .onRefresh(),
+    );
   }
 
   Future<void> dispose(WidgetTester tester) async {
@@ -1618,7 +1649,8 @@ void deadlineFenceTests() {
           replacement = claim('two', 'heating', 'reserved');
       Map branch(String id, DateTime stamp) => {
         'claim': id,
-        'protection': protection(stamp, 20),
+        'physical_identity': 'canonical-$id',
+        'protection': protection(stamp, 20, claimId: id),
       };
       accept(
         fence,
@@ -2232,7 +2264,11 @@ void deadlineFenceTests() {
       ];
       final branches = [
         for (var n = 0; n < 17; n++)
-          {'claim': 'member$n', 'protection': protection(t, 20)},
+          {
+            'claim': 'member$n',
+            'physical_identity': 'canonical-member$n',
+            'protection': protection(t, 20, claimId: 'member$n'),
+          },
       ];
       accept(
         fence,
@@ -2331,6 +2367,7 @@ void deadlineFenceTests() {
       final first = claim('one', 'heating', 'reserved')..['revision'] = 1;
       Map branch(DateTime stamp) => {
         'claim': 'one',
+        'physical_identity': 'canonical-one',
         'protection': protection(stamp, 20),
       };
       accept(
@@ -2401,7 +2438,11 @@ void deadlineFenceTests() {
     () {
       final fence = VirtualThermostatEvidenceFence();
       final member = claim('one', 'heating', 'reserved');
-      final branch = {'claim': 'one', 'protection': protection(t, 20)};
+      final branch = {
+        'claim': 'one',
+        'physical_identity': 'canonical-one',
+        'protection': protection(t, 20),
+      };
       accept(
         fence,
         [source('ambient', 'a')],
@@ -2457,4 +2498,569 @@ void deadlineFenceTests() {
       );
     },
   );
+}
+
+void membershipAndIdentityRegressions() {
+  final t = DateTime.utc(2026, 10, 16, 12);
+  Map<String, dynamic> configured() => {
+    ...claim('one', 'heating', 'reserved'),
+    'protection': {
+      'source_identity': 'protective-source',
+      'source_property': 'protective-property',
+      'physical_property': 'physical-leaf',
+    },
+  };
+  Map<String, dynamic> diagnostic(DateTime stamp, DateTime expiry) => {
+    'claim': 'one',
+    'role': 'heating',
+    'physical_identity': 'canonical-one',
+    ...activityObservation(stamp, 'off', lifetime: expiry.difference(stamp)),
+    'protection': {
+      ...protection(stamp, 20),
+      'source_property': 'protective-property',
+      'physical_property': 'physical-leaf',
+      'expires_at': expiry.toIso8601String(),
+      'maximum_age_seconds': 60,
+    },
+  };
+  const scenarios = [
+    'duplicate-runtime',
+    'reversed-duplicate-runtime',
+    'duplicate-configured',
+    'malformed-configured',
+    'malformed-runtime',
+  ];
+  for (final scenario in scenarios) {
+    test(
+      '$scenario cannot select positive evidence or prune member and activity records',
+      () {
+        final fence = VirtualThermostatEvidenceFence(),
+            activity = VirtualThermostatActivityFence();
+        final member = configured(),
+            good = diagnostic(t, t.add(const Duration(minutes: 1)));
+        final config = {
+          'revision': 1,
+          'actuators': [member],
+          'sources': [],
+        };
+        final runtime = {
+          'configuration_revision': 1,
+          'branches': [good],
+          'inputs': [],
+        };
+        fence.accept(config, runtime, t, Duration.zero);
+        final original = VirtualThermostatMember.read(config, runtime);
+        expect(
+          fence.members.expiredClaims(original, Duration.zero, t),
+          isEmpty,
+        );
+        expect(activity.unavailableClaims(original, t, Duration.zero), isEmpty);
+        final ambiguousStamp = t.add(const Duration(milliseconds: 1));
+        final ambiguousGood = diagnostic(
+          ambiguousStamp,
+          t.add(const Duration(minutes: 1)),
+        );
+        final bad = {
+          ...ambiguousGood,
+          'protection': {
+            ...(ambiguousGood['protection'] as Map),
+            'temperature': 99,
+          },
+        };
+        final brokenConfig = {
+          ...config,
+          'actuators': scenario == 'malformed-configured'
+              ? ['malformed']
+              : scenario == 'duplicate-configured'
+              ? [member, member]
+              : [member],
+        };
+        final brokenRuntime = {
+          ...runtime,
+          'branches': scenario == 'malformed-runtime'
+              ? ['malformed']
+              : scenario == 'malformed-configured'
+              ? []
+              : scenario == 'reversed-duplicate-runtime'
+              ? [bad, ambiguousGood]
+              : scenario == 'duplicate-runtime'
+              ? [ambiguousGood, bad]
+              : [ambiguousGood],
+        };
+        expect(
+          VirtualThermostatMember.membershipComplete(
+            brokenConfig,
+            brokenRuntime,
+          ),
+          isFalse,
+        );
+        fence.accept(
+          brokenConfig,
+          brokenRuntime,
+          ambiguousStamp,
+          const Duration(milliseconds: 1),
+        );
+        final ambiguous = VirtualThermostatMember.read(
+          brokenConfig,
+          brokenRuntime,
+        );
+        activity.withholdMissingOrAmbiguous(
+          ambiguous,
+          ambiguousStamp,
+          const Duration(milliseconds: 1),
+        );
+        expect(fence.members.recordCount, 1);
+        expect(fence.members.untracked, isTrue);
+        expect(fence.members.overflow, isFalse);
+        for (final row in ambiguous) {
+          expect(row.liveTemperature(Duration.zero, t, true), isNull);
+          expect(row.observed(true, t), isNull);
+          expect(row.qualification(true), isNull);
+        }
+        final cachedRuntime = {
+          ...runtime,
+          'branches': [scenario.startsWith('malformed') ? good : ambiguousGood],
+        };
+        final cached = VirtualThermostatMember.read(config, cachedRuntime);
+        fence.accept(
+          config,
+          cachedRuntime,
+          ambiguousStamp,
+          const Duration(milliseconds: 1),
+        );
+        expect(
+          fence.members.expiredClaims(cached, Duration.zero, ambiguousStamp),
+          contains('one'),
+        );
+        expect(
+          activity.unavailableClaims(
+            cached,
+            ambiguousStamp,
+            const Duration(milliseconds: 1),
+          ),
+          contains('one'),
+        );
+        final newer = t.add(const Duration(milliseconds: 2));
+        final recoveredRuntime = {
+          ...runtime,
+          'branches': [diagnostic(newer, t.add(const Duration(minutes: 1)))],
+        };
+        fence.accept(
+          config,
+          recoveredRuntime,
+          newer,
+          const Duration(milliseconds: 1),
+        );
+        final recovered = VirtualThermostatMember.read(
+          config,
+          recoveredRuntime,
+        );
+        expect(
+          fence.members.expiredClaims(
+            recovered,
+            Duration.zero,
+            newer,
+            clock: const Duration(milliseconds: 1),
+          ),
+          isEmpty,
+        );
+        expect(
+          activity.unavailableClaims(
+            recovered,
+            newer,
+            const Duration(milliseconds: 1),
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    testWidgets(
+      '$scenario actual detail withholds member selected floor readiness and observed activity through cached restoration',
+      (tester) async {
+        final fixture = MemberDetailFixture()
+          ..overrideMembership = true
+          ..displayFloorClaim = 'one';
+        final initial = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        final member = configured();
+        final expiry = initial.add(const Duration(minutes: 1));
+        final good = diagnostic(initial, expiry);
+        fixture.configuredMembership = [member];
+        fixture.runtimeMembership = [good];
+        await fixture.mount(tester);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        expect(
+          find.text(
+            'Selected member floor (not an average): canonical-one: 20.0 °C',
+          ),
+          findsOneWidget,
+        );
+        final ambiguousStamp = DateTime.now();
+        expect(ambiguousStamp.isAfter(initial), isTrue);
+        final ambiguousGood = diagnostic(ambiguousStamp, expiry);
+        final bad = {
+          ...ambiguousGood,
+          'protection': {
+            ...(ambiguousGood['protection'] as Map),
+            'temperature': 99,
+          },
+        };
+        fixture.configuredMembership = scenario == 'malformed-configured'
+            ? ['malformed']
+            : scenario == 'duplicate-configured'
+            ? [member, member]
+            : [member];
+        fixture.runtimeMembership = scenario == 'malformed-runtime'
+            ? ['malformed']
+            : scenario == 'malformed-configured'
+            ? []
+            : scenario == 'reversed-duplicate-runtime'
+            ? [bad, ambiguousGood]
+            : scenario == 'duplicate-runtime'
+            ? [ambiguousGood, bad]
+            : [ambiguousGood];
+        await fixture.refetch(tester);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        expect(find.text('Live protection reading: 20.0 °C'), findsNothing);
+        expect(find.textContaining(': 99.0 °C'), findsNothing);
+        expect(
+          find.text(
+            'Selected member floor (not an average): canonical-one: 20.0 °C',
+          ),
+          findsNothing,
+        );
+        expect(find.text('Reported observation: off'), findsNothing);
+        fixture.configuredMembership = [member];
+        fixture.runtimeMembership = [
+          scenario.startsWith('malformed') ? good : ambiguousGood,
+        ];
+        await fixture.refetch(tester);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        expect(
+          find.text('Live protection reading: Unavailable'),
+          findsOneWidget,
+        );
+        expect(find.text('Reported observation: off'), findsNothing);
+        final newer = DateTime.now();
+        expect(newer.isAfter(ambiguousStamp), isTrue);
+        fixture.runtimeMembership = [diagnostic(newer, expiry)];
+        await fixture.refetch(tester);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+        expect(
+          find.text(
+            'Selected member floor (not an average): canonical-one: 20.0 °C',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  for (final scenario in [
+    ...scenarios,
+    'runtime-only-duplicate',
+    'runtime-only-reversed',
+  ]) {
+    testWidgets(
+      '$scenario HTTP acceptance before render rejects a corrected cached sample and activity',
+      (tester) async {
+        final fixture = MemberDetailFixture()
+          ..overrideMembership = true
+          ..displayFloorClaim = 'one';
+        final initial = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        final expiry = initial.add(const Duration(minutes: 1));
+        final member = configured(), original = diagnostic(initial, expiry);
+        final runtimeOnly = scenario.startsWith('runtime-only');
+        fixture.configuredMembership = runtimeOnly ? [] : [member];
+        fixture.runtimeMembership = [original];
+        await fixture.mount(tester);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        final baselineModeReads = fixture.modeReads,
+            baselineRuntimeReads = fixture.runtimeReads;
+        final ambiguousStamp = DateTime.now();
+        expect(ambiguousStamp.isAfter(initial), isTrue);
+        final newer = diagnostic(ambiguousStamp, expiry);
+        final conflicting = {
+          ...newer,
+          'protection': {...(newer['protection'] as Map), 'temperature': 99},
+        };
+        fixture.configuredMembership = scenario == 'malformed-configured'
+            ? ['malformed']
+            : scenario == 'duplicate-configured'
+            ? [member, member]
+            : runtimeOnly
+            ? []
+            : [member];
+        fixture.runtimeMembership = scenario == 'malformed-runtime'
+            ? ['malformed']
+            : scenario == 'malformed-configured'
+            ? []
+            : scenario == 'duplicate-configured'
+            ? [newer]
+            : scenario.contains('reversed')
+            ? [conflicting, newer]
+            : [newer, conflicting];
+        await fixture.acceptBeforeFrame(tester);
+        expect(fixture.modeReads, baselineModeReads + 1);
+        expect(fixture.runtimeReads, baselineRuntimeReads + 1);
+        // No frame has consumed the ambiguous/missing response: the old tree is still displayed.
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        fixture.configuredMembership = runtimeOnly ? [] : [member];
+        fixture.runtimeMembership = [
+          scenario.startsWith('malformed') ? original : newer,
+        ];
+        await fixture.acceptBeforeFrame(tester);
+        expect(fixture.modeReads, baselineModeReads + 2);
+        expect(fixture.runtimeReads, baselineRuntimeReads + 2);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        await tester.pump();
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        expect(
+          find.text('Live protection reading: Unavailable'),
+          findsOneWidget,
+        );
+        expect(find.text('Reported observation: off'), findsNothing);
+        expect(find.text('Live protection reading: 20.0 °C'), findsNothing);
+        expect(
+          find.text(
+            'Selected member floor (not an average): canonical-one: 20.0 °C',
+          ),
+          findsNothing,
+        );
+        expect(find.text('Historical reading only: 20.0 °C'), findsOneWidget);
+        final recovery = DateTime.now();
+        expect(recovery.isAfter(ambiguousStamp), isTrue);
+        fixture.runtimeMembership = [diagnostic(recovery, expiry)];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  test(
+    'runtime-only duplicate claims never select first observed or protective evidence in either order',
+    () {
+      final good = diagnostic(t, t.add(const Duration(minutes: 1)));
+      final bad = {
+        ...good,
+        'protection': {...(good['protection'] as Map), 'temperature': 99},
+      };
+      for (final rows in [
+        [good, bad],
+        [bad, good],
+      ]) {
+        final config = {'actuators': []}, runtime = {'branches': rows};
+        expect(
+          VirtualThermostatMember.membershipComplete(config, runtime),
+          isFalse,
+        );
+        final members = VirtualThermostatMember.read(config, runtime);
+        expect(members, hasLength(1));
+        expect(members.single.claim, 'one');
+        expect(members.single.ambiguous, isTrue);
+        expect(members.single.liveTemperature(Duration.zero, t, true), isNull);
+        expect(members.single.observed(true, t), isNull);
+        expect(members.single.qualification(true), isNull);
+      }
+    },
+  );
+
+  for (final atCapacity in [false, true]) {
+    test(
+      'ambiguous future timestamp cannot poison qualified retirement at capacity=$atCapacity',
+      () {
+        final fence = VirtualThermostatReadingFence();
+        VirtualThermostatMember qualified(String id, DateTime stamp) {
+          final config = {
+            ...configured(),
+            'id': id,
+            'physical_identity': 'canonical-$id',
+          };
+          final row = diagnostic(stamp, t.add(const Duration(minutes: 1)));
+          row['claim'] = id;
+          row['physical_identity'] = 'canonical-$id';
+          row['protection'] = {...(row['protection'] as Map), 'claim': id};
+          return VirtualThermostatMember(config, row);
+        }
+
+        final count = atCapacity ? 16 : 1;
+        fence.accept(
+          [for (var i = 0; i < count; i++) qualified('member$i', t)],
+          t,
+          Duration.zero,
+        );
+        final invalid = VirtualThermostatMember(
+          {...configured(), 'id': atCapacity ? 'overflow' : 'member0'},
+          {
+            'claim': atCapacity ? 'overflow' : 'member0',
+            'protection': {
+              'sampled_at': t.add(const Duration(days: 1)).toIso8601String(),
+            },
+          },
+          ambiguous: true,
+        );
+        fence.accept([invalid], t, Duration.zero, complete: false);
+        expect(fence.recordCount, count);
+        expect(fence.overflow, atCapacity);
+        fence.retainClaims([]);
+        final newer = t.add(const Duration(milliseconds: 1));
+        final replacement = qualified('replacement', newer);
+        fence.accept([replacement], newer, const Duration(milliseconds: 1));
+        expect(
+          fence.expiredClaims(
+            [replacement],
+            Duration.zero,
+            newer,
+            clock: const Duration(milliseconds: 1),
+          ),
+          isEmpty,
+        );
+      },
+    );
+  }
+
+  for (final field in [
+    'source_identity',
+    'source_property',
+    'physical_property',
+    'physical_identity',
+    'claim',
+  ]) {
+    for (final gap in ['omitted', 'mismatched']) {
+      Map<String, dynamic> broken(Map<String, dynamic> original) {
+        final result = {
+          ...original,
+          'protection': {...(original['protection'] as Map)},
+        };
+        final target = field == 'physical_identity'
+            ? result
+            : result['protection'] as Map;
+        if (gap == 'omitted') {
+          target.remove(field);
+        } else {
+          target[field] = 'wrong-identity';
+        }
+        return result;
+      }
+
+      test(
+        'member $field $gap at same or newer S cannot qualify or revive on same-S restoration',
+        () {
+          for (final newerGap in [false, true]) {
+            final fence = VirtualThermostatReadingFence(),
+                member = configured();
+            final expiry = t.add(const Duration(minutes: 1));
+            final original = VirtualThermostatMember(
+              member,
+              diagnostic(t, expiry),
+            );
+            fence.accept([original], t, Duration.zero);
+            expect(fence.expiredClaims([original], Duration.zero, t), isEmpty);
+            final s = newerGap ? t.add(const Duration(milliseconds: 1)) : t;
+            final invalid = VirtualThermostatMember(
+              member,
+              broken(diagnostic(s, expiry)),
+            );
+            fence.accept([invalid], s, const Duration(milliseconds: 1));
+            expect(
+              fence.expiredClaims([invalid], Duration.zero, s),
+              contains('one'),
+            );
+            final restored = VirtualThermostatMember(
+              member,
+              diagnostic(s, expiry),
+            );
+            fence.accept([restored], s, const Duration(milliseconds: 1));
+            expect(
+              fence.expiredClaims([restored], Duration.zero, s),
+              contains('one'),
+            );
+            final next = s.add(const Duration(milliseconds: 1));
+            final recovered = VirtualThermostatMember(
+              member,
+              diagnostic(next, expiry),
+            );
+            fence.accept([recovered], next, const Duration(milliseconds: 2));
+            expect(
+              fence.expiredClaims(
+                [recovered],
+                Duration.zero,
+                next,
+                clock: const Duration(milliseconds: 2),
+              ),
+              isEmpty,
+            );
+          }
+        },
+      );
+      testWidgets(
+        'member $field $gap actual detail rejects newer omission and same-S restoration until newer qualification',
+        (tester) async {
+          final fixture = MemberDetailFixture()
+            ..overrideMembership = true
+            ..displayFloorClaim = 'one';
+          final initial = DateTime.now().subtract(
+            const Duration(milliseconds: 10),
+          );
+          final expiry = initial.add(const Duration(minutes: 1));
+          fixture.configuredMembership = [configured()];
+          fixture.runtimeMembership = [diagnostic(initial, expiry)];
+          await fixture.mount(tester);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          final newer = DateTime.now();
+          expect(newer.isAfter(initial), isTrue);
+          fixture.runtimeMembership = [broken(diagnostic(newer, expiry))];
+          await fixture.refetch(tester);
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          expect(find.text('Live protection reading: 20.0 °C'), findsNothing);
+          expect(
+            find.text(
+              'Selected member floor (not an average): canonical-one: 20.0 °C',
+            ),
+            findsNothing,
+          );
+          fixture.runtimeMembership = [diagnostic(newer, expiry)];
+          await fixture.refetch(tester);
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          expect(
+            find.text('Live protection reading: Unavailable'),
+            findsOneWidget,
+          );
+          final newest = DateTime.now();
+          expect(newest.isAfter(newer), isTrue);
+          fixture.runtimeMembership = [diagnostic(newest, expiry)];
+          await fixture.refetch(tester);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+          expect(
+            find.text(
+              'Selected member floor (not an average): canonical-one: 20.0 °C',
+            ),
+            findsOneWidget,
+          );
+          await fixture.dispose(tester);
+        },
+      );
+    }
+  }
 }

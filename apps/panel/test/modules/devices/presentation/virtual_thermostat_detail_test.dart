@@ -806,6 +806,7 @@ void cachedSourceDeadlineTests() {
                               if (role == 'member')
                                 {
                                   'claim': 'one',
+                                  'physical_identity': 'relay',
                                   'role': 'heating',
                                   'activity': 'off',
                                   'protection': {

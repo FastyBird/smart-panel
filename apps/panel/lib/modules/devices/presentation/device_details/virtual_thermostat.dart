@@ -217,12 +217,21 @@ class _VirtualThermostatDeviceDetailState
       // Prune against exactly the active membership displayed below: configured
       // claims plus non-released runtime-only reservations. Partial/loading
       // membership is not evidence of removal from either source.
-      if (configuration['actuators'] is List && candidate['branches'] is List) {
+      if (VirtualThermostatMember.membershipComplete(
+        configuration,
+        candidate,
+      )) {
         final activeClaims = VirtualThermostatMember.read(
           configuration,
           candidate,
         ).map((member) => member.claim).toSet();
         _activityFence.retainClaims(activeClaims);
+      } else {
+        _activityFence.withholdMissingOrAmbiguous(
+          VirtualThermostatMember.read(configuration, candidate),
+          acceptedAt,
+          acceptedClock,
+        );
       }
       setState(() {
         _configuration = configuration;

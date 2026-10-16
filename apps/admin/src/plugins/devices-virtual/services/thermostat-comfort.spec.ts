@@ -16,14 +16,15 @@ describe('comfort display completeness', () => {
 });
 
 describe('comfort read revision races', () => {
-	const setup = (revisions: number[][], fail = false) => {
+	const setup = (revisions: number[][], fail = false, graphs: number[][] = [[8, 8]]) => {
 		let calls = 0;
 		const GET = vi.fn(async (path: string, options: unknown) => {
 			expect(options).toHaveProperty('params.path.id', 'a');
 			const index = calls++,
+				graph = graphs[Math.min(Math.floor(index / 3), graphs.length - 1)][index % 3],
 				revision = revisions[Math.min(Math.floor(index / 3), revisions.length - 1)][index % 3];
 			if (fail) return { error: { message: 'read_unavailable' } };
-			return { data: { data: path.endsWith('/runtime') ? { configuration_revision: revision } : { revision } } };
+			return { data: { data: path.endsWith('/runtime') ? { configuration_revision: revision } : { revision, graph_revision: graph } } };
 		});
 		const POST = vi.fn().mockResolvedValue({ error: { message: 'revision_conflict' } });
 		const transport = thermostatComfortTransport({ client: { GET, POST } } as unknown as Parameters<typeof thermostatComfortTransport>[0]);
@@ -55,6 +56,30 @@ describe('comfort read revision races', () => {
 		controller.abort();
 		await expect(aborted.transport.read('a', controller.signal)).rejects.toThrow('revision_conflict');
 		expect(aborted.GET).toHaveBeenCalledTimes(3);
+	});
+	it('retries a graph-only split once with the same abort signal and accepts only the coherent graph', async () => {
+		const { transport, GET, POST } = setup([[4, 4, 4]], false, [
+			[8, 9],
+			[9, 9],
+		]);
+		const signal = new AbortController().signal;
+		const snapshot = await transport.read('a', signal);
+		expect(snapshot.comfort.graph_revision).toBe(9);
+		expect(snapshot.configuration.graph_revision).toBe(9);
+		expect(GET).toHaveBeenCalledTimes(6);
+		for (const call of GET.mock.calls) expect(call[1]).toEqual({ params: { path: { id: 'a' } }, signal });
+		expect(POST).not.toHaveBeenCalled();
+	});
+	it('refuses a persistent graph-only split after exactly two readonly attempts', async () => {
+		const { transport, GET, POST } = setup([[4, 4, 4]], false, [
+			[8, 9],
+			[9, 10],
+		]);
+		const signal = new AbortController().signal;
+		await expect(transport.read('a', signal)).rejects.toThrow('revision_conflict');
+		expect(GET).toHaveBeenCalledTimes(6);
+		for (const call of GET.mock.calls) expect(call[1]).toEqual({ params: { path: { id: 'a' } }, signal });
+		expect(POST).not.toHaveBeenCalled();
 	});
 	it('never replays a conflicting write', async () => {
 		const { transport, GET, POST } = setup([[4, 4, 4]]);

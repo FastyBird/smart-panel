@@ -7,12 +7,13 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 class VirtualThermostatMember {
   final Map configuration;
   final Map? diagnostic;
-  final bool historical;
+  final bool historical, ambiguous;
 
   const VirtualThermostatMember(
     this.configuration,
     this.diagnostic, {
     this.historical = false,
+    this.ambiguous = false,
   });
 
   String get claim =>
@@ -45,6 +46,8 @@ class VirtualThermostatMember {
 
   double? liveTemperature(Duration elapsed, DateTime now, bool current) =>
       !historical &&
+          !ambiguous &&
+          claim.isNotEmpty &&
           current &&
           input?.sampledAt != null &&
           input?.expiresAt != null &&
@@ -60,7 +63,8 @@ class VirtualThermostatMember {
   String? get activity => const ['on', 'off'].contains(diagnostic?['activity'])
       ? diagnostic!['activity'] as String
       : null;
-  bool? qualification(bool current) => !current || historical
+  bool? qualification(bool current) =>
+      !current || historical || ambiguous || claim.isEmpty
       ? null
       : diagnostic?['qualification_ready'] is bool
       ? diagnostic!['qualification_ready'] as bool
@@ -71,6 +75,8 @@ class VirtualThermostatMember {
     final expiry = activityExpiresAt;
     if (!current ||
         historical ||
+        ambiguous ||
+        claim.isEmpty ||
         sampled == null ||
         expiry == null ||
         sampled.isAfter(now) ||
@@ -81,37 +87,110 @@ class VirtualThermostatMember {
     return activity;
   }
 
+  /// Both record retention paths use the raw arrays, before any projection/deduplication.
+  static bool membershipComplete(Map? config, Map? runtime) {
+    bool complete(Object? value, String field) {
+      if (value is! List) return false;
+      final ids = <String>{};
+      return value.every(
+        (row) =>
+            row is Map &&
+            row[field] is String &&
+            (row[field] as String).isNotEmpty &&
+            ids.add(row[field] as String),
+      );
+    }
+
+    return complete(config?['actuators'], 'id') &&
+        complete(runtime?['branches'], 'claim');
+  }
+
+  // Ambiguous rows contribute only invalid high-water timestamps, never positive
+  // values or budgets. Correcting the join cannot qualify the same publication.
+  static Map _ambiguousDiagnostic(Object? id, List<Map> rows) {
+    DateTime? latest(Iterable<Object?> values) {
+      DateTime? result;
+      for (final value in values) {
+        final time = DateTime.tryParse(value?.toString() ?? '');
+        if (time != null && (result == null || time.isAfter(result))) {
+          result = time;
+        }
+      }
+      return result;
+    }
+
+    return {
+      'claim': id,
+      'protection': {
+        'sampled_at': latest(
+          rows.map(
+            (row) => row['protection'] is Map
+                ? (row['protection'] as Map)['sampled_at']
+                : null,
+          ),
+        )?.toIso8601String(),
+      },
+      'activity_sampled_at': latest(
+        rows.map((row) => row['activity_sampled_at']),
+      )?.toIso8601String(),
+    };
+  }
+
   static List<VirtualThermostatMember> read(
     Map? config,
     Map? runtime, {
     bool historical = false,
   }) {
     final claims = config?[historical ? 'released_actuators' : 'actuators'];
-    final diagnostics = runtime?['branches'];
-    final rows = diagnostics is List
-        ? diagnostics.whereType<Map>().toList()
+    final rows = runtime?['branches'] is List
+        ? (runtime!['branches'] as List).whereType<Map>().toList()
+        : <Map>[];
+    final configured = claims is List
+        ? claims.whereType<Map>().toList()
         : <Map>[];
     final result = <VirtualThermostatMember>[];
-    if (claims is List) {
-      for (final claim in claims.whereType<Map>()) {
-        final matching = rows.where((row) => row['claim'] == claim['id']);
-        result.add(
-          VirtualThermostatMember(
-            claim,
-            matching.firstOrNull,
-            historical: historical,
-          ),
-        );
-      }
+    final seen = <Object?>{};
+    for (final claim in configured) {
+      final id = claim['id'];
+      if (!seen.add(id)) continue;
+      final known = id is String && id.isNotEmpty;
+      final matching = known
+          ? rows.where((row) => row['claim'] == id).toList()
+          : <Map>[];
+      final unique = configured.where((row) => row['id'] == id).length == 1;
+      result.add(
+        VirtualThermostatMember(
+          known ? claim : ({...claim}..remove('id')),
+          !unique || matching.length > 1
+              ? _ambiguousDiagnostic(id, matching)
+              : matching.length == 1
+              ? matching.single
+              : null,
+          historical: historical,
+          ambiguous: !unique || matching.length > 1,
+        ),
+      );
     }
-    // Preserve runtime-only retained reservations (and legacy singleton payloads).
     if (!historical) {
       for (final row in rows.where((row) => row['claim_state'] != 'released')) {
-        if (!result.any(
-          (member) => member.claim == row['claim'] && row['claim'] != null,
-        )) {
-          result.add(VirtualThermostatMember(const {}, row));
-        }
+        final id = row['claim'];
+        if (!seen.add(id)) continue;
+        final known = id is String && id.isNotEmpty;
+        final matching = known
+            ? rows.where((other) => other['claim'] == id).toList()
+            : <Map>[];
+        // Preserve opaque diagnostics without granting them a claim identity.
+        result.add(
+          VirtualThermostatMember(
+            known && matching.length != 1 ? {'id': id} : const {},
+            !known
+                ? ({...row}..remove('claim'))
+                : matching.length == 1
+                ? matching.single
+                : _ambiguousDiagnostic(id, matching),
+            ambiguous: known && matching.length > 1,
+          ),
+        );
       }
     }
     return result;
@@ -140,18 +219,10 @@ class VirtualThermostatEvidenceFence {
     if (known) _revision = revision;
     // Revision admission precedes ALL aliases, contexts, retirements and samples.
     final rows = VirtualThermostatMember.read(configuration, runtime);
-    final configured = configuration['actuators'];
-    final branches = runtime['branches'];
-    bool identity(Object? value) => value is String && value.isNotEmpty;
-    final completeMembers =
-        configured is List &&
-        branches is List &&
-        configured.every((row) => row is Map && identity(row['id'])) &&
-        branches.every(
-          (row) =>
-              row is Map &&
-              (row['claim_state'] == 'released' || identity(row['claim'])),
-        );
+    final completeMembers = VirtualThermostatMember.membershipComplete(
+      configuration,
+      runtime,
+    );
     if (members.cannotRetain(rows, authoritative: completeMembers)) {
       sources.legacyFallbackClosed = true;
     }
@@ -160,7 +231,7 @@ class VirtualThermostatEvidenceFence {
       members.retainClaims(rows.map((row) => row.claim));
     }
     // Both namespaces have folded retirements before admitting replacements.
-    members.accept(rows, now, clock);
+    members.accept(rows, now, clock, complete: completeMembers);
     if (!completeMembers) {
       members.untracked = true;
     }
@@ -330,33 +401,35 @@ class VirtualThermostatReadingFence {
       ])
         row.binding?[field],
     ],
+    row.diagnostic?['physical_identity'],
+    row.protection?['claim'],
     row.protection?['source_identity'],
     row.protection?['source_property'],
     row.protection?['physical_property'],
   ]);
 
   bool _valid(VirtualThermostatMember row) {
-    if (row.historical || row.claim.isEmpty || row.temperature == null) {
+    if (row.historical ||
+        row.ambiguous ||
+        row.claim.isEmpty ||
+        row.temperature == null) {
       return false;
     }
     final p = row.protection, b = row.binding;
     if (row.configuration['physical_identity'] != null &&
-        row.diagnostic?['physical_identity'] != null &&
         row.configuration['physical_identity'] !=
-            row.diagnostic!['physical_identity']) {
+            row.diagnostic?['physical_identity']) {
       return false;
     }
-    if (p?['claim'] != null && p!['claim'] != row.claim) return false;
+    if (p == null || p['claim'] != row.claim) return false;
     for (final field in [
       'source_identity',
       'source_property',
       'physical_property',
     ]) {
       if (b != null &&
-          p != null &&
-          b.containsKey(field) &&
-          p.containsKey(field) &&
-          b[field] != p[field]) {
+          b[field] != null &&
+          (!p.containsKey(field) || b[field] != p[field])) {
         return false;
       }
     }
@@ -371,8 +444,15 @@ class VirtualThermostatReadingFence {
   void accept(
     List<VirtualThermostatMember> rows,
     DateTime now,
-    Duration clock,
-  ) {
+    Duration clock, {
+    bool complete = true,
+  }) {
+    if (!complete) {
+      final present = rows.map((row) => row.claim).toSet();
+      for (final key in _samples.keys) {
+        if (!present.contains(key)) _samples[key]!.withdrawn = true;
+      }
+    }
     final identities = rows
         .map((row) => row.claim)
         .where((id) => id.isNotEmpty)
@@ -692,6 +772,26 @@ class VirtualThermostatActivityFence {
   void retainClaims(Iterable<String> claims) {
     final active = claims.toSet();
     _samples.removeWhere((claim, _) => !active.contains(claim));
+  }
+
+  void withholdMissingOrAmbiguous(
+    List<VirtualThermostatMember> members,
+    DateTime now,
+    Duration clock,
+  ) {
+    final qualifiedJoins = members
+        .where((member) => member.diagnostic != null && !member.ambiguous)
+        .map((member) => member.claim)
+        .toSet();
+    for (final key in _samples.keys) {
+      if (!qualifiedJoins.contains(key)) _samples[key]!.invalid = true;
+    }
+    // Capture invalid ambiguous high-water evidence at HTTP acceptance, before any render.
+    unavailableClaims(
+      members.where((member) => member.ambiguous).toList(),
+      now,
+      clock,
+    );
   }
 
   Set<String> unavailableClaims(
