@@ -449,9 +449,8 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		if (!this.lease?.active) this.lease = await this.coordinator.acquire(this);
 		const previousDepth = this.transactionDepth;
 		// Start subscribers already run on this lease: retain their failures before the body can attach guards.
-		const outerScope: GuardedCommit | undefined = previousDepth === 0
-			? { lease: this.lease, guards: [], phase: 'starting', outcome: 'pending' }
-			: undefined;
+		const outerScope: GuardedCommit | undefined =
+			previousDepth === 0 ? { lease: this.lease, guards: [], phase: 'starting', outcome: 'pending' } : undefined;
 		if (outerScope) this.guardedCommit = outerScope;
 		try {
 			await this.withTransactionControl(() => super.startTransaction(isolationLevel));
@@ -541,21 +540,22 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		const scope = this.nativeCommitContext.getStore();
 		if (!scope) return connection;
 		const context = this.coordinator.captureCommitContext(scope.lease);
-		const runner = this;
 		// This handle belongs only to this outer COMMIT query. Never modify the driver's shared native object.
 		return new Proxy(connection, {
-			get(target, property) {
+			get: (target, property) => {
 				if (property === 'all') {
 					return (query: string, parameters: unknown[], callback: NativeQueryCallback) => {
 						if (query !== 'COMMIT' || scope.guards.length === 0) {
 							return target.all(query, parameters, callback);
 						}
-						runner.dispatchGuardedCommit(scope, context, target, query, parameters, callback);
+						this.dispatchGuardedCommit(scope, context, target, query, parameters, callback);
 						return target;
 					};
 				}
 				const value: unknown = Reflect.get(target, property);
-				return typeof value === 'function' ? (...args: unknown[]) => Reflect.apply(value, target, args) as unknown : value;
+				return typeof value === 'function'
+					? (...args: unknown[]) => Reflect.apply(value, target, args) as unknown
+					: value;
 			},
 		});
 	}
@@ -575,51 +575,53 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			delivered = true;
 			callback.call(this, error, rows);
 		};
-		void this.coordinator.drainCommitChildren(context, () => {
-			let submitted = false;
-			try {
-				if (
-					scope !== this.guardedCommit ||
-					!scope.lease.active ||
-					this.transactionDepth !== 1 ||
-					(scope.phase !== 'open' && scope.phase !== 'sealed')
-				) {
-					throw new Error('SQLite outer COMMIT scope expired');
-				}
-				scope.phase = 'sealed';
-				if (scope.childFailure) throw new SqliteCommitGuardRefusedError(scope.childFailure.cause);
-				for (const guard of scope.guards) {
-					if (guard() !== true) throw new SqliteCommitGuardRefusedError();
-				}
-				scope.phase = 'submitted';
-				scope.outcome = 'unknown';
-				submitted = true;
-				// UNKNOWN until an actual native acknowledgement; dispatch alone is never commit confirmation.
-				// No await, subscriber, timer or recapture between the ORIGINAL pure guards and native dispatch.
-				connection.all(query, parameters, function (error, rows) {
-					if (!error) {
-						scope.phase = 'committed';
-						scope.outcome = 'committed';
-					} else if (error.toString().includes('SQLITE_BUSY:')) {
-						scope.phase = 'sealed';
-					} else {
-						scope.outcome = 'unknown';
+		void this.coordinator
+			.drainCommitChildren(context, () => {
+				let submitted = false;
+				try {
+					if (
+						scope !== this.guardedCommit ||
+						!scope.lease.active ||
+						this.transactionDepth !== 1 ||
+						(scope.phase !== 'open' && scope.phase !== 'sealed')
+					) {
+						throw new Error('SQLite outer COMMIT scope expired');
 					}
-					deliver.call(this, error, rows);
-				});
-			} catch (error) {
-				if (delivered) return;
-				if (submitted) {
+					scope.phase = 'sealed';
+					if (scope.childFailure) throw new SqliteCommitGuardRefusedError(scope.childFailure.cause);
+					for (const guard of scope.guards) {
+						if (guard() !== true) throw new SqliteCommitGuardRefusedError();
+					}
+					scope.phase = 'submitted';
 					scope.outcome = 'unknown';
-					deliver.call(
-						connection,
-						error instanceof Error ? error : new Error('Native COMMIT dispatch threw', { cause: error }),
-					);
-				} else {
-					this.refuseCommit(scope, connection, deliver, error);
+					submitted = true;
+					// UNKNOWN until an actual native acknowledgement; dispatch alone is never commit confirmation.
+					// No await, subscriber, timer or recapture between the ORIGINAL pure guards and native dispatch.
+					connection.all(query, parameters, function (error, rows) {
+						if (!error) {
+							scope.phase = 'committed';
+							scope.outcome = 'committed';
+						} else if (error.toString().includes('SQLITE_BUSY:')) {
+							scope.phase = 'sealed';
+						} else {
+							scope.outcome = 'unknown';
+						}
+						deliver.call(this, error, rows);
+					});
+				} catch (error) {
+					if (delivered) return;
+					if (submitted) {
+						scope.outcome = 'unknown';
+						deliver.call(
+							connection,
+							error instanceof Error ? error : new Error('Native COMMIT dispatch threw', { cause: error }),
+						);
+					} else {
+						this.refuseCommit(scope, connection, deliver, error);
+					}
 				}
-			}
-		}).catch((error: unknown) => this.refuseCommit(scope, connection, deliver, error));
+			})
+			.catch((error: unknown) => this.refuseCommit(scope, connection, deliver, error));
 	}
 
 	private refuseCommit(

@@ -102,6 +102,12 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 
 	describe('guarded outer native COMMIT admission', () => {
 		const nativeConnection = () => (database.driver as SqliteDriver).databaseConnection as NativeConnection;
+		const guardRefusal: unknown = expect.any(SqliteCommitGuardRefusedError);
+		const captureNativeAll = (native: NativeConnection): NativeConnection['all'] => {
+			const method: unknown = Reflect.get(native, 'all');
+			if (typeof method !== 'function') throw new Error('Expected the real native SQLite all method');
+			return (query, parameters, callback) => Reflect.apply(method, native, [query, parameters, callback]) as unknown;
+		};
 
 		it('composes same-manager nested guards on outer COMMIT without self-wait or admitting another lease', async () => {
 			let checks = 0;
@@ -113,10 +119,16 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				return names();
 			})();
 			await database.transaction(async (manager) => {
-				first = registerSqliteCommitGuard(manager, () => { checks++; return true; });
+				first = registerSqliteCommitGuard(manager, () => {
+					checks++;
+					return true;
+				});
 				expect(() => registerSqliteCommitGuard(database.manager, () => true)).toThrow('scoped manager');
 				await manager.transaction(async (nested) => {
-					second = registerSqliteCommitGuard(nested, () => { checks++; return true; });
+					second = registerSqliteCommitGuard(nested, () => {
+						checks++;
+						return true;
+					});
 					await nested.save(TransactionRecord, { name: 'nested-candidate' });
 				});
 				expect(checks).toBe(0); // RELEASE SAVEPOINT cannot consume final admission.
@@ -129,18 +141,26 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		});
 
 		it('refuses after an awaited BeforeTransactionCommit subscriber and rolls back all candidates', async () => {
-			const entered = deferred(), release = deferred();
+			const entered = deferred(),
+				release = deferred();
 			let current = true;
 			let receipt: SqliteCommitGuardReceipt;
 			const guard = jest.fn(() => current);
-			database.subscribers.push({ beforeTransactionCommit: async () => { entered.resolve(); await release.promise; } });
+			database.subscribers.push({
+				beforeTransactionCommit: async () => {
+					entered.resolve();
+					await release.promise;
+				},
+			});
 			const native = nativeConnection();
 			const all = jest.spyOn(native, 'all');
 			const transaction = database.transaction(async (manager) => {
 				receipt = registerSqliteCommitGuard(manager, guard);
 				await manager.save(TransactionRecord, { name: 'candidate' });
 			});
-			const rejected = expect(transaction).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
+			const rejected = expect(transaction).rejects.toMatchObject({
+				driverError: guardRefusal,
+			});
 			await entered.promise;
 			expect(guard).not.toHaveBeenCalled();
 			current = false;
@@ -152,17 +172,21 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		});
 
 		it('drains BeforeQuery children in successive same-lease waves before sealing and evaluating guards', async () => {
-			const firstEntered = deferred(), firstRelease = deferred();
-			const secondEntered = deferred(), secondRelease = deferred();
+			const firstEntered = deferred(),
+				firstRelease = deferred();
+			const secondEntered = deferred(),
+				secondRelease = deferred();
 			const guard = jest.fn(() => false);
 			database.subscribers.push({
 				beforeQuery: async (event) => {
 					if (event.query === 'COMMIT') {
 						void event.manager.query("INSERT INTO transaction_record(name) VALUES ('wave-one')");
 					} else if (event.query.includes("VALUES ('wave-one')")) {
-						firstEntered.resolve(); await firstRelease.promise;
+						firstEntered.resolve();
+						await firstRelease.promise;
 					} else if (event.query.includes("VALUES ('wave-two')")) {
-						secondEntered.resolve(); await secondRelease.promise;
+						secondEntered.resolve();
+						await secondRelease.promise;
 					}
 				},
 				afterQuery: (event) => {
@@ -175,7 +199,9 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				registerSqliteCommitGuard(manager, guard);
 				await manager.save(TransactionRecord, { name: 'root-candidate' });
 			});
-			const rejected = expect(transaction).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
+			const rejected = expect(transaction).rejects.toMatchObject({
+				driverError: guardRefusal,
+			});
 			await firstEntered.promise;
 			expect(guard).not.toHaveBeenCalled();
 			firstRelease.resolve();
@@ -188,79 +214,96 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		});
 
 		it('settles a pending BeforeQuery child failure without a native COMMIT or stranded callback', async () => {
-			const entered = deferred(), release = deferred();
+			const entered = deferred(),
+				release = deferred();
 			const guard = jest.fn(() => true);
-			database.subscribers.push({ beforeQuery: async (event) => {
-				if (event.query === 'COMMIT') {
-					void event.manager.query("INSERT INTO transaction_record(name) VALUES ('failed-child')");
-				} else if (event.query.includes("VALUES ('failed-child')")) {
-					entered.resolve();
-					await release.promise;
-					throw new Error('child subscriber failure');
-				}
-			} });
-			const native = jest.spyOn(nativeConnection(), 'all');
-			const transaction = database.transaction(async (manager) => {
-				registerSqliteCommitGuard(manager, guard);
-				await manager.save(TransactionRecord, { name: 'candidate' });
-			});
-			const rejected = expect(transaction).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
-			await entered.promise;
-			await new Promise<void>((resolve) => setImmediate(resolve));
-			release.resolve();
-			await rejected;
-			expect(guard).not.toHaveBeenCalled();
-			expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
-			expect(await names()).toEqual([]);
-		});
-
-		it.each([false, true])('retains a settled child rejection before COMMIT subscriber release (late guard: %s)', async (lateGuard) => {
-			const settled = deferred(), subscriberRelease = deferred();
-			const failure = new Error('settled child subscriber failure');
-			const guard = jest.fn(() => true);
-			let receipt: SqliteCommitGuardReceipt;
 			let observed: unknown;
 			database.subscribers.push({
 				beforeQuery: async (event) => {
 					if (event.query === 'COMMIT') {
-						const child = event.manager.query("INSERT INTO transaction_record(name) VALUES ('settled-child')");
-						void child.catch((cause: unknown) => {
-							observed = cause;
-							settled.resolve();
-						});
-						await subscriberRelease.promise;
-						if (lateGuard) receipt = registerSqliteCommitGuard(event.manager, guard);
-					} else if (event.query.includes("VALUES ('settled-child')")) {
-						throw failure;
+						void event.manager
+							.query("INSERT INTO transaction_record(name) VALUES ('failed-child')")
+							.catch((cause: unknown) => {
+								observed = cause;
+							});
+					} else if (event.query.includes("VALUES ('failed-child')")) {
+						entered.resolve();
+						await release.promise;
+						throw new Error('child subscriber failure');
 					}
 				},
 			});
 			const native = jest.spyOn(nativeConnection(), 'all');
 			const transaction = database.transaction(async (manager) => {
-				if (!lateGuard) receipt = registerSqliteCommitGuard(manager, guard);
+				registerSqliteCommitGuard(manager, guard);
 				await manager.save(TransactionRecord, { name: 'candidate' });
 			});
-			const rejected = expect(transaction).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
-			await settled.promise;
-			expect(observed).toBe(failure);
-			expect(guard).not.toHaveBeenCalled();
-			expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
-			const queuedRead = names();
-			subscriberRelease.resolve();
-			await rejected;
-			expect(receipt.outcome).toBe('refused');
-			expect(guard).not.toHaveBeenCalled();
-			expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
-			expect(await queuedRead).toEqual([]);
-			database.subscribers.length = 0;
-			let recovered: SqliteCommitGuardReceipt;
-			await database.transaction(async (manager) => {
-				recovered = registerSqliteCommitGuard(manager, () => true);
-				await manager.save(TransactionRecord, { name: 'recovered-owner' });
+			const rejected = expect(transaction).rejects.toMatchObject({
+				driverError: guardRefusal,
 			});
-			expect(recovered.outcome).toBe('committed');
-			expect(await names()).toEqual(['recovered-owner']);
+			await entered.promise;
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			release.resolve();
+			await rejected;
+			expect(observed).toEqual(new Error('child subscriber failure'));
+			expect(guard).not.toHaveBeenCalled();
+			expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+			expect(await names()).toEqual([]);
 		});
+
+		it.each([false, true])(
+			'retains a settled child rejection before COMMIT subscriber release (late guard: %s)',
+			async (lateGuard) => {
+				const settled = deferred(),
+					subscriberRelease = deferred();
+				const failure = new Error('settled child subscriber failure');
+				const guard = jest.fn(() => true);
+				let receipt: SqliteCommitGuardReceipt;
+				let observed: unknown;
+				database.subscribers.push({
+					beforeQuery: async (event) => {
+						if (event.query === 'COMMIT') {
+							const child = event.manager.query("INSERT INTO transaction_record(name) VALUES ('settled-child')");
+							void child.catch((cause: unknown) => {
+								observed = cause;
+								settled.resolve();
+							});
+							await subscriberRelease.promise;
+							if (lateGuard) receipt = registerSqliteCommitGuard(event.manager, guard);
+						} else if (event.query.includes("VALUES ('settled-child')")) {
+							throw failure;
+						}
+					},
+				});
+				const native = jest.spyOn(nativeConnection(), 'all');
+				const transaction = database.transaction(async (manager) => {
+					if (!lateGuard) receipt = registerSqliteCommitGuard(manager, guard);
+					await manager.save(TransactionRecord, { name: 'candidate' });
+				});
+				const rejected = expect(transaction).rejects.toMatchObject({
+					driverError: guardRefusal,
+				});
+				await settled.promise;
+				expect(observed).toBe(failure);
+				expect(guard).not.toHaveBeenCalled();
+				expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+				const queuedRead = names();
+				subscriberRelease.resolve();
+				await rejected;
+				expect(receipt.outcome).toBe('refused');
+				expect(guard).not.toHaveBeenCalled();
+				expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
+				expect(await queuedRead).toEqual([]);
+				database.subscribers.length = 0;
+				let recovered: SqliteCommitGuardReceipt;
+				await database.transaction(async (manager) => {
+					recovered = registerSqliteCommitGuard(manager, () => true);
+					await manager.save(TransactionRecord, { name: 'recovered-owner' });
+				});
+				expect(recovered.outcome).toBe('committed');
+				expect(await names()).toEqual(['recovered-owner']);
+			},
+		);
 
 		it('does not broaden unguarded caught-failure semantics or poison a later guarded transaction', async () => {
 			await database.transaction(async (manager) => {
@@ -278,7 +321,8 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 
 		it('retains an AfterTransactionStart child rejection handled before the body attaches its first guard', async () => {
 			const failure = new Error('handled start child failure');
-			const startHandled = deferred(), startRelease = deferred();
+			const startHandled = deferred(),
+				startRelease = deferred();
 			let observed: unknown;
 			let receipt: SqliteCommitGuardReceipt;
 			const guard = jest.fn(() => true);
@@ -286,7 +330,9 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				afterTransactionStart: async (event) => {
 					// The child is settled/handled BEFORE this subscriber returns or the body can attach a guard.
 					const child = event.manager.query("INSERT INTO transaction_record(name) VALUES ('start-child')");
-					await child.catch((cause: unknown) => { observed = cause; });
+					await child.catch((cause: unknown) => {
+						observed = cause;
+					});
 					startHandled.resolve();
 					await startRelease.promise;
 				},
@@ -299,7 +345,9 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 				receipt = registerSqliteCommitGuard(manager, guard);
 				await manager.save(TransactionRecord, { name: 'start-window-candidate' });
 			});
-			const rejected = expect(transaction).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
+			const rejected = expect(transaction).rejects.toMatchObject({
+				driverError: guardRefusal,
+			});
 			await startHandled.promise;
 			expect(observed).toBe(failure);
 			expect(receipt).toBeUndefined();
@@ -334,7 +382,12 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 					throw failure;
 				},
 			});
-			await expect(database.transaction(() => { body(); return Promise.resolve(); })).rejects.toBe(failure);
+			await expect(
+				database.transaction(() => {
+					body();
+					return Promise.resolve();
+				}),
+			).rejects.toBe(failure);
 			expect(body).not.toHaveBeenCalled();
 			expect(isSqliteTransactionActive(database)).toBe(false);
 			database.subscribers.length = 0;
@@ -349,12 +402,15 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 
 		it('accepts a first guard attached by BeforeQuery and refuses without native submission', async () => {
 			let receipt: SqliteCommitGuardReceipt;
-			database.subscribers.push({ beforeQuery: (event) => {
-				if (event.query === 'COMMIT') receipt = registerSqliteCommitGuard(event.manager, () => false);
-			} });
+			database.subscribers.push({
+				beforeQuery: (event) => {
+					if (event.query === 'COMMIT') receipt = registerSqliteCommitGuard(event.manager, () => false);
+				},
+			});
 			const native = jest.spyOn(nativeConnection(), 'all');
-			await expect(database.transaction((manager) => manager.save(TransactionRecord, { name: 'late-guard' })))
-				.rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
+			await expect(
+				database.transaction((manager) => manager.save(TransactionRecord, { name: 'late-guard' })),
+			).rejects.toMatchObject({ driverError: guardRefusal });
 			expect(native.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(0);
 			expect(receipt.outcome).toBe('refused');
 			expect(await names()).toEqual([]);
@@ -367,10 +423,12 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			database.subscribers.push({
 				afterQuery: async (event) => {
 					if (event.query === 'COMMIT') {
-						await event.manager.query('SELECT 1'); afterQueryReads++;
+						await event.manager.query('SELECT 1');
+						afterQueryReads++;
 					}
 				},
-				afterTransactionCommit: (event) => event.manager.query("INSERT INTO transaction_record(name) VALUES ('post-commit')"),
+				afterTransactionCommit: (event) =>
+					event.manager.query("INSERT INTO transaction_record(name) VALUES ('post-commit')"),
 			});
 			await database.transaction(async (manager) => {
 				receipt = registerSqliteCommitGuard(manager, () => {
@@ -387,81 +445,125 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			expect(await names()).toEqual(['candidate', 'post-commit']);
 		});
 
-		it.each([false, true])('settles false/throw guard refusal through TypeORM and allows rollback recovery (throw: %s)', async (throws) => {
-			let receipt: SqliteCommitGuardReceipt;
-			let rollbackNotifications = 0;
-			database.subscribers.push({
-				beforeTransactionRollback: () => { throw new Error('injected rollback subscriber failure'); },
-				afterTransactionRollback: () => { rollbackNotifications++; },
-			});
-			await expect(database.transaction(async (manager) => {
-				receipt = registerSqliteCommitGuard(manager, () => {
-					if (throws) throw new Error('original guard failure');
-					return false;
+		it.each([false, true])(
+			'settles false/throw guard refusal through TypeORM and allows rollback recovery (throw: %s)',
+			async (throws) => {
+				let receipt: SqliteCommitGuardReceipt;
+				let rollbackNotifications = 0;
+				database.subscribers.push({
+					beforeTransactionRollback: () => {
+						throw new Error('injected rollback subscriber failure');
+					},
+					afterTransactionRollback: () => {
+						rollbackNotifications++;
+					},
 				});
-				await manager.save(TransactionRecord, { name: 'must-rollback' });
-			})).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
-			expect(receipt.outcome).toBe('refused');
-			expect(rollbackNotifications).toBe(1);
-			expect(isSqliteTransactionActive(database)).toBe(false);
-			expect(await names()).toEqual([]);
-			database.subscribers.length = 0;
-			await database.transaction((manager) => manager.save(TransactionRecord, { name: 'next-owner' }));
-			expect(await names()).toEqual(['next-owner']);
-		});
+				await expect(
+					database.transaction(async (manager) => {
+						receipt = registerSqliteCommitGuard(manager, () => {
+							if (throws) throw new Error('original guard failure');
+							return false;
+						});
+						await manager.save(TransactionRecord, { name: 'must-rollback' });
+					}),
+				).rejects.toMatchObject({ driverError: guardRefusal });
+				expect(receipt.outcome).toBe('refused');
+				expect(rollbackNotifications).toBe(1);
+				expect(isSqliteTransactionActive(database)).toBe(false);
+				expect(await names()).toEqual([]);
+				database.subscribers.length = 0;
+				await database.transaction((manager) => manager.save(TransactionRecord, { name: 'next-owner' }));
+				expect(await names()).toEqual(['next-owner']);
+			},
+		);
 
-		it.each([false, true])('rechecks the original guard on every actual TypeORM busy redispatch (revoke: %s)', async (revoke) => {
-			Object.assign(database.options, { busyErrorRetry: 1 });
-			const native = nativeConnection(), invoke = native.all.bind(native);
-			let attempts = 0, current = true;
-			let receipt: SqliteCommitGuardReceipt;
-			const guard = jest.fn(() => current);
-			jest.spyOn(native, 'all').mockImplementation(function (query, parameters, callback) {
-				if (query === 'COMMIT' && ++attempts === 1) {
-					current = !revoke;
-					queueMicrotask(() => callback.call(this, new Error('SQLITE_BUSY: injected busy commit')));
-					return this;
+		it.each([false, true])(
+			'rechecks the original guard on every actual TypeORM busy redispatch (revoke: %s)',
+			async (revoke) => {
+				Object.assign(database.options, { busyErrorRetry: 1 });
+				const native = nativeConnection(),
+					invoke = captureNativeAll(native);
+				let attempts = 0,
+					current = true;
+				let receipt: SqliteCommitGuardReceipt;
+				const guard = jest.fn(() => current);
+				jest.spyOn(native, 'all').mockImplementation(function (this: NativeConnection, query, parameters, callback) {
+					if (query === 'COMMIT' && ++attempts === 1) {
+						current = !revoke;
+						queueMicrotask(() => {
+							callback.call(this, new Error('SQLITE_BUSY: injected busy commit'));
+						});
+						return this;
+					}
+					return invoke(query, parameters, callback);
+				});
+				const log = jest.spyOn(database.logger, 'logQuery');
+				const transaction = database.transaction(async (manager) => {
+					receipt = registerSqliteCommitGuard(manager, guard);
+					await manager.save(TransactionRecord, { name: 'busy-candidate' });
+				});
+				if (revoke) {
+					await expect(transaction).rejects.toMatchObject({ driverError: guardRefusal });
+				} else {
+					await transaction;
 				}
-				return invoke(query, parameters, callback);
-			});
-			const log = jest.spyOn(database.logger, 'logQuery');
-			const transaction = database.transaction(async (manager) => {
-				receipt = registerSqliteCommitGuard(manager, guard);
-				await manager.save(TransactionRecord, { name: 'busy-candidate' });
-			});
-			if (revoke) {
-				await expect(transaction).rejects.toMatchObject({ driverError: expect.any(SqliteCommitGuardRefusedError) });
-			} else { await transaction; }
-			expect(guard).toHaveBeenCalledTimes(2);
-			expect(attempts).toBe(revoke ? 1 : 2);
-			expect(receipt.outcome).toBe(revoke ? 'refused' : 'committed');
-			expect(log.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(1);
-			expect(await names()).toEqual(revoke ? [] : ['busy-candidate']);
-		});
+				expect(guard).toHaveBeenCalledTimes(2);
+				expect(attempts).toBe(revoke ? 1 : 2);
+				expect(receipt.outcome).toBe(revoke ? 'refused' : 'committed');
+				expect(log.mock.calls.filter(([query]) => query === 'COMMIT')).toHaveLength(1);
+				expect(await names()).toEqual(revoke ? [] : ['busy-candidate']);
+			},
+		);
 
 		it('preserves native callback receiver, rows, logger and query/transaction broadcasts without patching the shared handle', async () => {
-			const native = nativeConnection(), invoke = native.all.bind(native);
+			const native = nativeConnection(),
+				invoke = captureNativeAll(native);
 			let receiverReads = 0;
 			const events: string[] = [];
-			const all = jest.spyOn(native, 'all').mockImplementation(function (query, parameters, callback) {
+			const all = jest.spyOn(native, 'all').mockImplementation(function (
+				this: NativeConnection,
+				query,
+				parameters,
+				callback,
+			) {
 				if (query !== 'COMMIT') return invoke(query, parameters, callback);
-				return invoke(query, parameters, function (error, rows) {
-					callback.call({ get changes() { receiverReads++; return 0; } }, error, rows);
+				return invoke(query, parameters, function (this: unknown, error, rows) {
+					callback.call(
+						{
+							get changes() {
+								receiverReads++;
+								return 0;
+							},
+						},
+						error,
+						rows,
+					);
 				});
 			});
 			const log = jest.spyOn(database.logger, 'logQuery');
 			database.subscribers.push({
-				beforeTransactionCommit: () => { events.push('before-transaction'); },
-				beforeQuery: (event) => { if (event.query === 'COMMIT') events.push('before-query'); },
+				beforeTransactionCommit: () => {
+					events.push('before-transaction');
+				},
+				beforeQuery: (event) => {
+					if (event.query === 'COMMIT') events.push('before-query');
+				},
 				afterQuery: (event) => {
 					if (event.query === 'COMMIT') {
-						expect(event.success).toBe(true); expect(event.rawResults).toEqual([]); events.push('after-query');
+						expect(event.success).toBe(true);
+						expect(event.rawResults).toEqual([]);
+						events.push('after-query');
 					}
 				},
-				afterTransactionCommit: () => { events.push('after-transaction'); },
+				afterTransactionCommit: () => {
+					events.push('after-transaction');
+				},
 			});
 			await database.transaction(async (manager) => {
-				registerSqliteCommitGuard(manager, () => { events.push('guard'); return true; });
+				registerSqliteCommitGuard(manager, () => {
+					events.push('guard');
+					return true;
+				});
 				await manager.query("INSERT INTO transaction_record(name) VALUES ('callback-candidate')");
 			});
 			expect(nativeConnection()).toBe(native);
@@ -473,19 +575,22 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		});
 
 		it('keeps a native-submitted ambiguous acknowledgement UNKNOWN even when rows actually committed', async () => {
-			const native = nativeConnection(), invoke = native.all.bind(native);
+			const native = nativeConnection(),
+				invoke = captureNativeAll(native);
 			let receipt: SqliteCommitGuardReceipt;
-			jest.spyOn(native, 'all').mockImplementation(function (query, parameters, callback) {
+			jest.spyOn(native, 'all').mockImplementation(function (this: NativeConnection, query, parameters, callback) {
 				if (query !== 'COMMIT') return invoke(query, parameters, callback);
 				expect(receipt.outcome).toBe('unknown');
-				return invoke(query, parameters, function (error, rows) {
+				return invoke(query, parameters, function (this: unknown, error, rows) {
 					callback.call(this, error ?? new Error('injected missing commit acknowledgement'), rows);
 				});
 			});
-			await expect(database.transaction(async (manager) => {
-				receipt = registerSqliteCommitGuard(manager, () => true);
-				await manager.save(TransactionRecord, { name: 'durable-but-unconfirmed' });
-			})).rejects.toThrow('missing commit acknowledgement');
+			await expect(
+				database.transaction(async (manager) => {
+					receipt = registerSqliteCommitGuard(manager, () => true);
+					await manager.save(TransactionRecord, { name: 'durable-but-unconfirmed' });
+				}),
+			).rejects.toThrow('missing commit acknowledgement');
 			expect(receipt.outcome).toBe('unknown');
 			expect(await names()).toEqual(['durable-but-unconfirmed']);
 		});
@@ -499,7 +604,9 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			database.subscribers.push({
 				afterQuery: (event) => {
 					if (event.query !== 'COMMIT') return;
-					const rejected = release.promise.then(() => { throw failure; });
+					const rejected = release.promise.then(() => {
+						throw failure;
+					});
 					// Attach our observer BEFORE handing the promise to TypeORM: no unhandled rejection.
 					observed = rejected.catch((cause: unknown) => {
 						handled = true;
@@ -527,12 +634,16 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		it('keeps a committed native receipt when an awaited AfterTransactionCommit subscriber fails', async () => {
 			let receipt: SqliteCommitGuardReceipt;
 			database.subscribers.push({
-				afterTransactionCommit: () => { throw new Error('post-commit subscriber failure'); },
+				afterTransactionCommit: () => {
+					throw new Error('post-commit subscriber failure');
+				},
 			});
-			await expect(database.transaction(async (manager) => {
-				receipt = registerSqliteCommitGuard(manager, () => true);
-				await manager.save(TransactionRecord, { name: 'committed-before-subscriber' });
-			})).rejects.toThrow('post-commit subscriber failure');
+			await expect(
+				database.transaction(async (manager) => {
+					receipt = registerSqliteCommitGuard(manager, () => true);
+					await manager.save(TransactionRecord, { name: 'committed-before-subscriber' });
+				}),
+			).rejects.toThrow('post-commit subscriber failure');
 			expect(receipt.outcome).toBe('committed');
 			expect(await names()).toEqual(['committed-before-subscriber']);
 		});
