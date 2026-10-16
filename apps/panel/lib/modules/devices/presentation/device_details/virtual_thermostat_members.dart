@@ -11,6 +11,7 @@ class VirtualThermostatMembers extends StatelessWidget {
   final DateTime now;
   final bool current;
   final Set<String> expiredMemberClaims;
+  final Set<String> freshCoolingClaims;
   final Set<String> unavailableActivityClaims;
   const VirtualThermostatMembers({
     super.key,
@@ -20,6 +21,7 @@ class VirtualThermostatMembers extends StatelessWidget {
     required this.now,
     required this.current,
     this.expiredMemberClaims = const {},
+    this.freshCoolingClaims = const {},
     this.unavailableActivityClaims = const {},
   });
 
@@ -37,6 +39,9 @@ class VirtualThermostatMembers extends StatelessWidget {
     Widget card(VirtualThermostatMember member) {
       final d = member.diagnostic;
       final p = member.protection;
+      final cooling = member.cooling;
+      // Independent source expiry/display fence, never heating-floor freshness or qualification.
+      final coolingFresh = current && freshCoolingClaims.contains(member.claim);
       final input = member.input;
       final live = member.liveTemperature(
         elapsed,
@@ -116,6 +121,39 @@ class VirtualThermostatMembers extends StatelessWidget {
                   member.configuration['provider_profile_version'],
                 ),
                 Text(l.thermostatMemberQualification),
+                if (cooling != null) ...[
+                  Text(l.dewPointCooling),
+                  Text(l.dewPointInstallation),
+                  field(
+                    l.dewPointTitle,
+                    coolingFresh ? cooling['dew_point'] : null,
+                  ),
+                  field(
+                    l.dewPointSurfaceTemperature,
+                    coolingFresh ? cooling['surface'] : null,
+                  ),
+                  field(
+                    '${l.dewPointRetained} (${l.dewPointTitle})',
+                    cooling['dew_point_identity'],
+                  ),
+                  field(
+                    '${l.dewPointRetained} (${l.dewPointSurface})',
+                    cooling['surface_identity'],
+                  ),
+                  field(
+                    l.thermostatMemberCutoff,
+                    coolingFresh ? cooling['threshold'] : null,
+                  ),
+                  field(
+                    l.thermostatMemberProtectionReady,
+                    coolingFresh ? cooling['ready'] : null,
+                  ),
+                  for (final reason
+                      in (cooling['reasons'] is List
+                          ? cooling['reasons'] as List
+                          : const []))
+                    field(l.thermostatMemberBlockers, reason),
+                ],
                 if (member.binding != null || p != null) ...[
                   field(
                     l.thermostatMemberProtectionSource,

@@ -4560,4 +4560,36 @@ class AppLocalizationsCs extends AppLocalizations {
   @override
   String get thermostatMemberActivityExpiry =>
       'Původní konec platnosti pozorování relé';
+
+  @override
+  String get dewPointTitle => 'Rosný bod';
+
+  @override
+  String get dewPointDryBulb => 'Teplota suchého teploměru (°C)';
+
+  @override
+  String get dewPointHumidity => 'Relativní vlhkost (%)';
+
+  @override
+  String get dewPointSkew => 'Nejvyšší rozdíl časů vzorků (s)';
+
+  @override
+  String get dewPointRetained => 'Zachovaná identita zdroje';
+
+  @override
+  String get dewPointBoundary =>
+      'Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; není teplotou prostoru ani podlahy.';
+
+  @override
+  String get dewPointCooling => 'Ochrana chlazení před kondenzací';
+
+  @override
+  String get dewPointSurface => 'UUID místního čidla chlazeného povrchu';
+
+  @override
+  String get dewPointSurfaceTemperature => 'Teplota chlazeného povrchu (°C)';
+
+  @override
+  String get dewPointInstallation =>
+      'Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa.';
 }

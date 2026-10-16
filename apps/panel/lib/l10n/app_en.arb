@@ -4965,5 +4965,15 @@
   "thermostatMemberActivitySnapshot": "Activity requires the original unexpired relay observation. The guard/target check is a separate server snapshot; neither proves full admission.",
   "thermostatMemberQualificationCheck": "Server guard/target check (snapshot)",
   "thermostatMemberActivitySample": "Original relay observation (history metadata)",
-  "thermostatMemberActivityExpiry": "Original relay observation expiry"
+  "thermostatMemberActivityExpiry": "Original relay observation expiry",
+  "dewPointTitle": "Dew point",
+  "dewPointDryBulb": "Dry-bulb temperature (°C)",
+  "dewPointHumidity": "Relative humidity (%)",
+  "dewPointSkew": "Maximum timestamp skew (s)",
+  "dewPointRetained": "Retained source identity",
+  "dewPointBoundary": "Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.",
+  "dewPointCooling": "Cooling condensation protection",
+  "dewPointSurface": "Local cooled-surface probe UUID",
+  "dewPointSurfaceTemperature": "Cooled-surface temperature (°C)",
+  "dewPointInstallation": "Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification."
 }

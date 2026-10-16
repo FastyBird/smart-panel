@@ -1376,5 +1376,15 @@
   "thermostatMemberActivitySnapshot": "Aktywność wymaga pierwotnej, niewygasłej obserwacji przekaźnika. Kontrola zabezpieczenia/celu jest oddzielną migawką serwera; żadna nie dowodzi pełnego dopuszczenia.",
   "thermostatMemberQualificationCheck": "Kontrola zabezpieczenia/celu przez serwer (migawka)",
   "thermostatMemberActivitySample": "Pierwotna obserwacja przekaźnika (metadane historyczne)",
-  "thermostatMemberActivityExpiry": "Pierwotny termin ważności obserwacji przekaźnika"
+  "thermostatMemberActivityExpiry": "Pierwotny termin ważności obserwacji przekaźnika",
+  "dewPointTitle": "Punkt rosy",
+  "dewPointDryBulb": "Temperatura suchego termometru (°C)",
+  "dewPointHumidity": "Wilgotność względna (%)",
+  "dewPointSkew": "Maksymalne przesunięcie czasu próbek (s)",
+  "dewPointRetained": "Zachowana tożsamość źródła",
+  "dewPointBoundary": "Punkt rosy to odrębna wielkość. Wymaga obu świeżych wejść; nie jest temperaturą pomieszczenia ani podłogi.",
+  "dewPointCooling": "Ochrona chłodzenia przed kondensacją",
+  "dewPointSurface": "UUID lokalnej sondy chłodzonej powierzchni",
+  "dewPointSurfaceTemperature": "Temperatura chłodzonej powierzchni (°C)",
+  "dewPointInstallation": "Zainstalowane chłodzenie pozostaje niedopuszczone do kwalifikacji powierzchni, uwierzytelniania, czasu, izolacji zapisu i wyłączenia po restarcie po wersji alfa."
 }

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_members.dart';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:mocktail/mocktail.dart';
@@ -87,6 +88,40 @@ Map<String, dynamic> activityObservation(
   'qualification_ready': qualification,
   'activity_sampled_at': time.toIso8601String(),
   'activity_expires_at': time.add(lifetime).toIso8601String(),
+};
+
+Map<String, dynamic> coolingBinding({
+  String dew = 'retained-dew',
+  String surface = 'retained-surface',
+  int revision = 1,
+}) => {
+  'schema_version': 1,
+  'revision': revision,
+  'purpose': 'cooled_surface',
+  'dew_point_property': dew,
+  'surface_property': surface,
+  'dew_point_identity': dew,
+  'surface_identity': surface,
+  'maximum_age_seconds': 30,
+};
+Map<String, dynamic> coolingObservation(
+  DateTime at, {
+  String dew = 'retained-dew',
+  String surface = 'retained-surface',
+}) => {
+  'claim': 'one',
+  'dew_point_identity': dew,
+  'surface_identity': surface,
+  'dew_point': 9.25,
+  'surface': 18.0,
+  'threshold': 11.25,
+  'latched': true,
+  'ready': false,
+  'expires_at': at.add(const Duration(seconds: 2)).toIso8601String(),
+  'reasons': [
+    'cooling_remote_profile_installation_unqualified',
+    'cooling_pending_release',
+  ],
 };
 
 void main() {
@@ -1203,6 +1238,408 @@ void main() {
       await fixture.dispose(tester);
     },
   );
+  testWidgets(
+    'cooling blockers and retained dependencies remain separate from requested mode and actual activity, and values expire inline',
+    (tester) async {
+      final now = DateTime.utc(2026, 10, 16, 10);
+      final config = {
+        'requested_mode': 'cool',
+        'actuators': [
+          {
+            ...claim('cooling', 'cooling', 'reserved'),
+            'revision': 1,
+            'cooling_protection': coolingBinding(),
+          },
+        ],
+      };
+      final runtime = {
+        'requested_mode': 'cool',
+        'branches': [
+          {
+            'claim': 'cooling',
+            'role': 'cooling',
+            'claim_state': 'reserved',
+            ...activityObservation(now, 'off', qualification: false),
+            'cooling_protection': {
+              'claim': 'cooling',
+              'dew_point_identity': 'retained-dew',
+              'surface_identity': 'retained-surface',
+              'dew_point': 9.25,
+              'surface': 18.0,
+              'threshold': 11.25,
+              'latched': true,
+              'ready': false,
+              'expires_at': now
+                  .add(const Duration(seconds: 2))
+                  .toIso8601String(),
+              'reasons': [
+                'cooling_remote_profile_installation_unqualified',
+                'cooling_pending_release',
+              ],
+            },
+          },
+        ],
+      };
+      final fence = VirtualThermostatCoolingFence();
+      var displayClock = Duration.zero;
+      Future<void> display(DateTime at, {bool current = true}) =>
+          tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: VirtualThermostatMembers(
+                    configuration: config,
+                    runtime: runtime,
+                    elapsed: displayClock,
+                    now: at,
+                    current: current,
+                    freshCoolingClaims: fence.freshClaims(
+                      VirtualThermostatMember.read(config, runtime),
+                      at,
+                      displayClock,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+      await display(now);
+      await tester.pump();
+      expect(find.textContaining('retained-dew'), findsOneWidget);
+      expect(find.textContaining('retained-surface'), findsOneWidget);
+      expect(
+        find.textContaining('cooling_remote_profile_installation_unqualified'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('cooling_pending_release'), findsOneWidget);
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      expect(
+        find.textContaining('Cooled-surface temperature (°C): 18.0'),
+        findsOneWidget,
+      );
+      expect(find.text('Controller requested mode: cool'), findsOneWidget);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      expect(find.text('Server protection readiness: false'), findsOneWidget);
+      displayClock = const Duration(seconds: 2);
+      await display(now.add(const Duration(seconds: 2)));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      expect(find.textContaining('retained-dew'), findsOneWidget);
+      displayClock = const Duration(seconds: 3);
+      await display(
+        now,
+      ); // Wall-clock rollback cannot revive the expired display budget.
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      await display(now, current: false);
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
+    'actual detail shows cooling without a floor probe, fences identical cached refetch and recovers only a new original expiry',
+    (tester) async {
+      final now = DateTime.now();
+      final f = MemberDetailFixture();
+      f.role = 'cooling';
+      f.configurationRevision = 1;
+      f.cooling = coolingObservation(now);
+      f.observation = activityObservation(now, 'off', qualification: false);
+      f.sample = null;
+      await f.mount(tester);
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      expect(find.text('Controller requested mode: cool'), findsOneWidget);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      expect(
+        find.textContaining('cooling_remote_profile_installation_unqualified'),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(
+        find.text('Dew point: 9.25'),
+        findsNothing,
+      ); // Fetch time does not renew the identical original expiry.
+      f.cooling = coolingObservation(now.add(const Duration(seconds: 5)));
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.cooling = coolingObservation(
+        now.add(const Duration(seconds: 1)),
+      ); // Older original evidence in a newer HTTP response.
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.cooling = coolingObservation(now.add(const Duration(seconds: 6)));
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      // Both sources are mandatory, even when the other original reading is still present.
+      f.cooling = {
+        ...f.cooling!,
+        'surface': null,
+        'expires_at': null,
+        'reasons': ['cooling_lineage_quality_or_age'],
+      };
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      expect(
+        find.textContaining('cooling_lineage_quality_or_age'),
+        findsOneWidget,
+      );
+      await f.dispose(tester);
+    },
+  );
+  testWidgets(
+    'actual detail withdraws cooling on source rebind, missing dependency, removal and stale configuration response',
+    (tester) async {
+      final now = DateTime.now();
+      final f = MemberDetailFixture();
+      f.role = 'cooling';
+      f.configurationRevision = 1;
+      f.cooling = coolingObservation(now);
+      await f.mount(tester);
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.configurationRevision = 2;
+      f.cooling = {...f.cooling!, 'dew_point_identity': 'rebound-dew'};
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      expect(find.textContaining('rebound-dew'), findsOneWidget);
+      f.cooling = coolingObservation(
+        now.add(const Duration(seconds: 5)),
+        dew: 'rebound-dew',
+      );
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.missingCoolingSurface = true;
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.missingCoolingSurface = false;
+      f.cooling = coolingObservation(
+        now.add(const Duration(seconds: 6)),
+        dew: 'rebound-dew',
+      );
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.runtimeConfigurationRevision = 1;
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.runtimeConfigurationRevision = null;
+      f.cooling = coolingObservation(
+        now.add(const Duration(seconds: 7)),
+        dew: 'rebound-dew',
+      );
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.claimId = 'replacement-claim';
+      f.configurationRevision = 3;
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      f.cooling = {
+        ...coolingObservation(
+          now.add(const Duration(seconds: 8)),
+          dew: 'rebound-dew',
+        ),
+        'claim': 'replacement-claim',
+      };
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsOneWidget);
+      f.hasMember = false;
+      f.configurationRevision = 4;
+      f.revision++;
+      f.socket.hint(f.revision);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Dew point: 9.25'), findsNothing);
+      await f.dispose(tester);
+    },
+  );
+  test(
+    'cooling fence binds original expiry, accepted source/claim revisions and monotonic budget across cached responses and clock rollback',
+    () {
+      final now = DateTime.utc(2026, 10, 16, 10);
+      final fence = VirtualThermostatCoolingFence();
+      Map<String, dynamic> c = {
+        ...claim('one', 'cooling', 'reserved'),
+        'revision': 1,
+        'cooling_protection': coolingBinding(),
+      };
+      Map<String, dynamic> d = {
+        'claim': 'one',
+        'role': 'cooling',
+        'cooling_protection': coolingObservation(now),
+      };
+      List<VirtualThermostatMember> members() => [
+        VirtualThermostatMember(c, d),
+      ];
+      expect(fence.freshClaims(members(), now, Duration.zero), {'one'});
+      expect(
+        fence.freshClaims(
+          members(),
+          now.subtract(const Duration(seconds: 10)),
+          const Duration(seconds: 3),
+        ),
+        isEmpty,
+      );
+      expect(
+        fence.freshClaims(members(), now, const Duration(seconds: 3)),
+        isEmpty,
+      ); // Identical fetch cannot revive.
+      d = {
+        ...d,
+        'cooling_protection': coolingObservation(
+          now.add(const Duration(seconds: 5)),
+        ),
+      };
+      expect(fence.freshClaims(members(), now, const Duration(seconds: 3)), {
+        'one',
+      });
+      c = {...c, 'revision': 2};
+      expect(
+        fence.freshClaims(members(), now, const Duration(seconds: 3)),
+        isEmpty,
+      );
+      d = {
+        ...d,
+        'cooling_protection': coolingObservation(
+          now.add(const Duration(seconds: 6)),
+        ),
+      };
+      expect(fence.freshClaims(members(), now, const Duration(seconds: 3)), {
+        'one',
+      });
+      final binding = c['cooling_protection'] as Map;
+      c = {
+        ...c,
+        'cooling_protection': {...binding, 'surface_property': null},
+      };
+      expect(
+        fence.freshClaims(members(), now, const Duration(seconds: 3)),
+        isEmpty,
+      );
+      c = {...c, 'cooling_protection': binding};
+      expect(
+        fence.freshClaims(members(), now, const Duration(seconds: 3)),
+        isEmpty,
+      );
+      d = {
+        ...d,
+        'cooling_protection': coolingObservation(
+          now.add(const Duration(seconds: 7)),
+        ),
+      };
+      expect(fence.freshClaims(members(), now, const Duration(seconds: 3)), {
+        'one',
+      });
+      d = {
+        ...d,
+        'cooling_protection': coolingObservation(
+          now.add(const Duration(seconds: 4)),
+        ),
+      };
+      expect(
+        fence.freshClaims(members(), now, const Duration(seconds: 3)),
+        isEmpty,
+      );
+    },
+  );
+  for (final source in ['dew_point', 'surface']) {
+    testWidgets(
+      'actual cooling detail refuses missing mandatory $source and does not revive a cached report after its gap',
+      (tester) async {
+        final now = DateTime.now();
+        final f = MemberDetailFixture();
+        f.role = 'cooling';
+        f.configurationRevision = 1;
+        f.cooling = {...coolingObservation(now), source: null};
+        await f.mount(tester);
+        expect(find.text('Dew point: 9.25'), findsNothing);
+        f.cooling = coolingObservation(now.add(const Duration(seconds: 5)));
+        f.revision++;
+        f.socket.hint(f.revision);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump();
+        expect(find.text('Dew point: 9.25'), findsOneWidget);
+        f.cooling = {...f.cooling!, source: null};
+        f.revision++;
+        f.socket.hint(f.revision);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump();
+        expect(find.text('Dew point: 9.25'), findsNothing);
+        f.cooling = coolingObservation(now.add(const Duration(seconds: 5)));
+        f.revision++;
+        f.socket.hint(f.revision);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump();
+        expect(find.text('Dew point: 9.25'), findsNothing);
+        f.cooling = coolingObservation(now.add(const Duration(seconds: 6)));
+        f.revision++;
+        f.socket.hint(f.revision);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump();
+        expect(find.text('Dew point: 9.25'), findsOneWidget);
+        await f.dispose(tester);
+      },
+    );
+  }
 }
 
 /// HTTP and socket fixture for the real detail lifecycle, including held reads.
@@ -1212,9 +1649,14 @@ class MemberDetailFixture {
   final held = <void Function()>[];
   int revision = 1;
   int? configurationRevision;
+  int? runtimeConfigurationRevision;
+  bool missingCoolingSurface = false;
+  String claimId = 'one';
   bool hold = false, hasMember = true, declaresMemberProtection = true;
   List<Map<String, dynamic>> sources = [], inputs = [], extraBranches = [];
   String? displayFloorClaim;
+  String role = 'heating';
+  Map<String, dynamic>? cooling;
   Locale? locale;
   Map<String, dynamic>? sample;
   Map<String, dynamic> observation = {};
@@ -1241,34 +1683,55 @@ class MemberDetailFixture {
               ? {
                   'epoch': 'epoch',
                   'sequence': revision,
-                  'configuration_revision': configurationRevision ?? revision,
-                  'requested_mode': 'heat',
-                  'readiness': 'ready',
+                  'configuration_revision':
+                      runtimeConfigurationRevision ??
+                      configurationRevision ??
+                      revision,
+                  'requested_mode': role == 'cooling' ? 'cool' : 'heat',
+                  'readiness': cooling != null ? 'unavailable' : 'ready',
                   'reasons': <String>[],
                   'inputs': inputs,
                   'branches': [
                     ...extraBranches,
                     if (hasMember)
                       {
-                        'claim': 'one',
-                        'role': 'heating',
+                        'claim': claimId,
+                        'role': role,
                         'activity': 'off',
                         ...observation,
                         'protection': sample,
+                        'cooling_protection': cooling,
                       },
                   ],
                 }
               : {
                   'revision': configurationRevision ?? revision,
                   'locked': false,
-                  'policy': {'heatingSetpoint': 21},
+                  'policy': {
+                    'heatingSetpoint': role == 'heating' ? 21 : null,
+                    'coolingSetpoint': role == 'cooling' ? 25 : null,
+                  },
                   'settings': <Map>[],
                   'sources': sources,
                   'display_floor_claim': displayFloorClaim,
                   'actuators': [
                     if (hasMember)
                       {
-                        ...claim('one', 'heating', 'reserved'),
+                        ...claim(claimId, role, 'reserved'),
+                        'revision': configurationRevision ?? revision,
+                        if (role == 'cooling')
+                          'cooling_protection': {
+                            ...coolingBinding(
+                              dew:
+                                  cooling?['dew_point_identity'] as String? ??
+                                  'retained-dew',
+                              surface:
+                                  cooling?['surface_identity'] as String? ??
+                                  'retained-surface',
+                              revision: configurationRevision ?? revision,
+                            ),
+                            if (missingCoolingSurface) 'surface_property': null,
+                          },
                         if (!declaresMemberProtection) 'protection': null,
                       },
                   ],

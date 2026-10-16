@@ -1427,5 +1427,15 @@
   "thermostatMemberActivitySnapshot": "Aktivita vyžaduje původní neprošlé pozorování relé. Kontrola ochrany/cíle je samostatný snímek serveru; ani jedno nedokládá úplné povolení.",
   "thermostatMemberQualificationCheck": "Kontrola ochrany/cíle serverem (snímek)",
   "thermostatMemberActivitySample": "Původní pozorování relé (historická metadata)",
-  "thermostatMemberActivityExpiry": "Původní konec platnosti pozorování relé"
+  "thermostatMemberActivityExpiry": "Původní konec platnosti pozorování relé",
+  "dewPointTitle": "Rosný bod",
+  "dewPointDryBulb": "Teplota suchého teploměru (°C)",
+  "dewPointHumidity": "Relativní vlhkost (%)",
+  "dewPointSkew": "Nejvyšší rozdíl časů vzorků (s)",
+  "dewPointRetained": "Zachovaná identita zdroje",
+  "dewPointBoundary": "Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; není teplotou prostoru ani podlahy.",
+  "dewPointCooling": "Ochrana chlazení před kondenzací",
+  "dewPointSurface": "UUID místního čidla chlazeného povrchu",
+  "dewPointSurfaceTemperature": "Teplota chlazeného povrchu (°C)",
+  "dewPointInstallation": "Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa."
 }

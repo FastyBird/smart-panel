@@ -1376,5 +1376,15 @@
   "thermostatMemberActivitySnapshot": "La actividad requiere la observación original vigente del relé. La comprobación de protección/destino es una instantánea separada del servidor; ninguna demuestra admisión completa.",
   "thermostatMemberQualificationCheck": "Comprobación de protección/destino del servidor (instantánea)",
   "thermostatMemberActivitySample": "Observación original del relé (metadatos históricos)",
-  "thermostatMemberActivityExpiry": "Caducidad original de observación del relé"
+  "thermostatMemberActivityExpiry": "Caducidad original de observación del relé",
+  "dewPointTitle": "Punto de rocío",
+  "dewPointDryBulb": "Temperatura de bulbo seco (°C)",
+  "dewPointHumidity": "Humedad relativa (%)",
+  "dewPointSkew": "Desfase temporal máximo (s)",
+  "dewPointRetained": "Identidad de origen conservada",
+  "dewPointBoundary": "El punto de rocío es una magnitud distinta. Requiere ambas entradas recientes; no es temperatura ambiente ni del suelo.",
+  "dewPointCooling": "Protección de refrigeración contra condensación",
+  "dewPointSurface": "UUID de sonda local de superficie refrigerada",
+  "dewPointSurfaceTemperature": "Temperatura de la superficie refrigerada (°C)",
+  "dewPointInstallation": "La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa."
 }

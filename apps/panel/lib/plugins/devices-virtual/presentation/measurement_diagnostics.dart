@@ -58,6 +58,7 @@ String measurementDiagnosticLabel(AppLocalizations l, String value) {
 
 class MeasurementInputDiagnostic {
   final String identity;
+  final String? role;
   final String? sourceId;
   final Object? value;
   final num? weight;
@@ -67,6 +68,7 @@ class MeasurementInputDiagnostic {
   final DateTime? expiresAt;
   const MeasurementInputDiagnostic({
     required this.identity,
+    this.role,
     this.sourceId,
     this.value,
     this.weight,
@@ -82,27 +84,21 @@ class MeasurementInputDiagnostic {
           sampledAt != null &&
           !sampledAt!.isAfter(now) &&
           expiresAt?.isAfter(now) == true &&
-          ![
-            'missing',
-            'offline',
-            'disabled',
-            'stale',
-            'incompatible',
-            'invalid',
-            'outlier',
-          ].contains(exclusion)
+          exclusion == null
       ? value
       : null;
 }
 
 class MeasurementDiagnostics {
   final bool transform;
+  final bool dewPoint;
   final List<MeasurementInputDiagnostic> inputs;
   final List<String> errors;
   final num? outputStep;
   final String? unit;
   const MeasurementDiagnostics({
     required this.transform,
+    this.dewPoint = false,
     required this.inputs,
     this.errors = const [],
     this.outputStep,
@@ -116,6 +112,32 @@ typedef MeasurementDiagnosticsLoader =
 /// Fetches converter or aggregate diagnostics without updating live values.
 Future<MeasurementDiagnostics> loadMeasurementDiagnostics(String id) async {
   final client = locator<ApiClient>().devicesVirtualPlugin;
+  try {
+    final response = await client.getDevicesVirtualPluginDewPoint(id: id);
+    final state = response.data.data;
+    return MeasurementDiagnostics(
+      transform: false,
+      dewPoint: true,
+      unit: state.unit.json,
+      errors: state.errors,
+      inputs: state.sources
+          .map(
+            (source) => MeasurementInputDiagnostic(
+              identity: source.sourceIdentity,
+              role: source.role.json,
+              sourceId: source.sourceProperty,
+              value: source.currentValue,
+              unit: source.unit,
+              exclusion: source.errors.firstOrNull,
+              sampledAt: source.sampledAt,
+              expiresAt: state.expiresAt,
+            ),
+          )
+          .toList(),
+    );
+  } on DioException catch (failure) {
+    if (failure.response?.statusCode != 404) rethrow;
+  }
   try {
     final response = await client.getDevicesVirtualPluginTransformConfiguration(
       id: id,
@@ -311,8 +333,11 @@ class _VirtualMeasurementDiagnosticsState
                 _data!.unit ?? '',
               ),
             ),
+          if (_data!.dewPoint) Text(l.dewPointBoundary),
           Text(
-            _data!.transform
+            _data!.dewPoint
+                ? l.dewPointTitle
+                : _data!.transform
                 ? l.virtual_measurement_conversion
                 : l.virtual_measurement_members,
           ),
@@ -320,7 +345,11 @@ class _VirtualMeasurementDiagnosticsState
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                '${_sourceLabel(input)}: ${_inputValue(l, input)} ${input.unit ?? ''}${input.exclusion == null ? '' : ' · ${measurementDiagnosticLabel(l, input.exclusion!)}'}${input.weight == null ? '' : ' · ${l.virtual_measurement_weight('${input.weight}')}'} · ${l.virtual_measurement_age(input.sampledAt == null ? '—' : '${DateTime.now().difference(input.sampledAt!).inSeconds}')}',
+                '${input.role == 'dry_bulb'
+                    ? '${l.dewPointDryBulb} · '
+                    : input.role == 'relative_humidity'
+                    ? '${l.dewPointHumidity} · '
+                    : ''}${_sourceLabel(input)}: ${_inputValue(l, input)} ${input.unit ?? ''}${input.exclusion == null ? '' : ' · ${measurementDiagnosticLabel(l, input.exclusion!)}'}${input.weight == null ? '' : ' · ${l.virtual_measurement_weight('${input.weight}')}'} · ${l.virtual_measurement_age(input.sampledAt == null ? '—' : '${DateTime.now().difference(input.sampledAt!).inSeconds}')}',
               ),
             ),
           if (_data!.errors.isNotEmpty)

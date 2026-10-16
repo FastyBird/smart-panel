@@ -1376,5 +1376,15 @@
   "thermostatMemberActivitySnapshot": "Aktivität erfordert die ursprüngliche, noch gültige Relaisbeobachtung. Die Schutz-/Zielprüfung ist ein separater Server-Snapshot; beides belegt keine vollständige Freigabe.",
   "thermostatMemberQualificationCheck": "Server-Schutz-/Zielprüfung (Snapshot)",
   "thermostatMemberActivitySample": "Ursprüngliche Relaisbeobachtung (historische Metadaten)",
-  "thermostatMemberActivityExpiry": "Ursprünglicher Ablauf der Relaisbeobachtung"
+  "thermostatMemberActivityExpiry": "Ursprünglicher Ablauf der Relaisbeobachtung",
+  "dewPointTitle": "Taupunkt",
+  "dewPointDryBulb": "Trockentemperatur (°C)",
+  "dewPointHumidity": "Relative Luftfeuchte (%)",
+  "dewPointSkew": "Maximaler Zeitversatz (s)",
+  "dewPointRetained": "Beibehaltene Quellidentität",
+  "dewPointBoundary": "Der Taupunkt ist eine eigene Messgröße. Beide frischen Eingänge sind erforderlich; er ist keine Raum- oder Bodentemperatur.",
+  "dewPointCooling": "Kondensationsschutz bei Kühlung",
+  "dewPointSurface": "UUID des lokalen gekühlten Oberflächenfühlers",
+  "dewPointSurfaceTemperature": "Temperatur der gekühlten Oberfläche (°C)",
+  "dewPointInstallation": "Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt."
 }

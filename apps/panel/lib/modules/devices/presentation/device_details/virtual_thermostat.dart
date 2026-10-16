@@ -48,6 +48,7 @@ class _VirtualThermostatDeviceDetailState
       : _displayTicks;
   VirtualThermostatActivityFence _activityFence =
       VirtualThermostatActivityFence();
+  VirtualThermostatCoolingFence _coolingFence = VirtualThermostatCoolingFence();
   VirtualThermostatReadingFence _readingFence = VirtualThermostatReadingFence();
   Map<String, dynamic>? _configuration;
   Map<String, dynamic>? _runtime;
@@ -107,6 +108,7 @@ class _VirtualThermostatDeviceDetailState
     _hintRefreshNeeded = true;
     _configurationMismatchSeen = false;
     if (replacedDevice) {
+      _coolingFence = VirtualThermostatCoolingFence();
       _readingFence = VirtualThermostatReadingFence();
       _activityFence = VirtualThermostatActivityFence();
     }
@@ -209,6 +211,7 @@ class _VirtualThermostatDeviceDetailState
           configuration,
           candidate,
         ).map((member) => member.claim).toSet();
+        _coolingFence.retainClaims(activeClaims);
         _readingFence.retainClaims(activeClaims);
         _activityFence.retainClaims(activeClaims);
       }
@@ -385,6 +388,7 @@ class _VirtualThermostatDeviceDetailState
         ? _number(runtime['current_temperature'])
         : null;
     final members = VirtualThermostatMember.read(config, runtime);
+    final freshCoolingClaims = _coolingFence.freshClaims(members, now, clock);
     final expiredMemberClaims = _readingFence.expiredClaims(
       members,
       elapsed,
@@ -431,9 +435,19 @@ class _VirtualThermostatDeviceDetailState
               ) !=
               null,
         );
+    final coolingProtectionCurrent = members
+        .where(
+          (member) =>
+              member.cooling != null ||
+              member.configuration['cooling_protection'] != null,
+        )
+        .every((member) => freshCoolingClaims.contains(member.claim));
     final readinessCurrent =
         current &&
-        (readiness != 'ready' || (inputsCurrent && memberProtectionCurrent));
+        (readiness != 'ready' ||
+            (inputsCurrent &&
+                memberProtectionCurrent &&
+                coolingProtectionCurrent));
     final selectedClaim = config?['display_floor_claim'];
     final selected = members
         .where((member) => member.claim == selectedClaim)
@@ -568,6 +582,7 @@ class _VirtualThermostatDeviceDetailState
               now: now,
               current: current,
               expiredMemberClaims: expiredMemberClaims,
+              freshCoolingClaims: freshCoolingClaims,
               unavailableActivityClaims: unavailableActivityClaims,
             ),
             VirtualThermostatComfort(
