@@ -40,6 +40,7 @@ interface GuardedCommit {
 	guards: Array<() => boolean>;
 	phase: 'open' | 'sealed' | 'submitted' | 'committed' | 'rolling_back' | 'settled';
 	outcome: SqliteGuardedCommitOutcome;
+	childFailure?: { cause: unknown };
 }
 
 type NativeQueryCallback = (this: unknown, error: Error | null, rows?: unknown[]) => void;
@@ -196,11 +197,15 @@ class SqliteConnectionCoordinator {
 		const parent = this.context.getStore();
 		if (!parent?.lease.active) return operation();
 		const child = this.createContext(parent.lease);
+		const recordFailure = parent.lease.runner.captureChildFailureRecorder(parent.lease);
 		const promise = this.runContext(child, nested ? () => this.runNested(operation, parent) : operation);
 		parent.operations.set(promise, child);
 		void promise.then(
 			() => parent.operations.delete(promise),
-			() => parent.operations.delete(promise),
+			(cause: unknown) => {
+				recordFailure?.(cause);
+				parent.operations.delete(promise);
+			},
 		);
 		return promise;
 	}
@@ -494,6 +499,17 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		}
 	}
 
+	/** Retain at most the first rejection, even if it settles before the guarded drain begins. */
+	captureChildFailureRecorder(lease: ConnectionLease): ((cause: unknown) => void) | undefined {
+		const scope = this.guardedCommit;
+		if (!scope || scope.lease !== lease || scope.phase !== 'open') return undefined;
+		return (cause: unknown) => {
+			if (scope === this.guardedCommit && lease.active && scope.phase === 'open' && !scope.childFailure) {
+				scope.childFailure = { cause };
+			}
+		};
+	}
+
 	registerCommitGuard(manager: EntityManager, guard: () => boolean): SqliteCommitGuardReceipt {
 		const scope = this.guardedCommit;
 		if (manager.queryRunner !== this || !scope || !this.isTransactionActive || scope.phase !== 'open') {
@@ -560,6 +576,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 					throw new Error('SQLite outer COMMIT scope expired');
 				}
 				scope.phase = 'sealed';
+				if (scope.childFailure) throw new SqliteCommitGuardRefusedError(scope.childFailure.cause);
 				for (const guard of scope.guards) {
 					if (guard() !== true) throw new SqliteCommitGuardRefusedError();
 				}
@@ -614,6 +631,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		if (!scope || this.isTransactionActive || this.transactionDepth !== 0) return;
 		if (scope.outcome === 'pending') scope.outcome = 'rolled_back';
 		scope.phase = 'settled';
+		scope.childFailure = undefined;
 		this.guardedCommit = undefined;
 	}
 
