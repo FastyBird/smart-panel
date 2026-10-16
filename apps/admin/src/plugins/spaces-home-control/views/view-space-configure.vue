@@ -81,7 +81,10 @@
 				</template>
 
 				<el-scrollbar class="h-full">
-					<space-activity-modes-section :space-id="props.space.id" />
+					<space-activity-modes-section
+						v-if="props.space.type === SpaceType.ROOM || props.space.type === SpaceType.ZONE"
+						:space-id="props.space.id"
+					/>
 					<space-domains-section :space="props.space" />
 				</el-scrollbar>
 			</el-tab-pane>

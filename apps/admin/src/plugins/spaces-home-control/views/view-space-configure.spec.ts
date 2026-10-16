@@ -1,15 +1,19 @@
 /* eslint-disable vue/one-component-per-file */
 import { nextTick } from 'vue';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import createClient from 'openapi-fetch';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { shallowMount } from '@vue/test-utils';
+import { flushPromises, mount, shallowMount } from '@vue/test-utils';
 
-import { SpaceType } from '../../../modules/spaces';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import type { paths } from '../../../openapi';
+import SpaceActivityModesSection from '../components/space-activity-modes-section.vue';
 
 import ViewSpaceConfigure from './view-space-configure.vue';
 
 const mocks = vi.hoisted(() => ({
+	client: null as unknown,
 	displaysLoaded: true,
 	fetchDevices: vi.fn(),
 	fetchDisplays: vi.fn(),
@@ -57,10 +61,16 @@ vi.mock('../../../common', async () => {
 		ViewError: defineComponent({
 			template: '<div><slot /><slot name="icon" /><slot name="message" /></div>',
 		}),
+		useBackend: () => ({ client: mocks.client }),
 		useBreakpoints: () => ({
 			isLGDevice: ref(mocks.isLGDevice),
 		}),
 	};
+});
+
+vi.mock('../../../modules/auth/composables/useSession', async () => {
+	const { computed } = await import('vue');
+	return { useSession: () => ({ profile: computed(() => ({ role: 'owner' })) }) };
 });
 
 vi.mock('../../../modules/devices/composables/useDevices', async () => {
@@ -98,15 +108,13 @@ vi.mock('../../../modules/scenes/composables/useScenes', async () => {
 
 vi.mock('../../../modules/spaces', async () => {
 	const { ref } = await import('vue');
+	const { SpaceType } = await import('../../../modules/spaces/spaces.constants');
 
 	return {
 		RouteNames: {
 			SPACE_EDIT: 'spaces-plugin-edit',
 		},
-		SpaceType: {
-			ROOM: 'room',
-			ZONE: 'zone',
-		},
+		SpaceType,
 		useSpaces: () => ({
 			fetchSpaces: mocks.fetchSpaces,
 			firstLoadFinished: ref(mocks.spacesFirstLoadFinished),
@@ -132,7 +140,7 @@ vi.mock('../components/components', async () => {
 		});
 
 	return {
-		SpaceActivityModesSection: StubComponent('SpaceActivityModesSection'),
+		SpaceActivityModesSection: (await import('../components/space-activity-modes-section.vue')).default,
 		SpaceAddDeviceDialog: StubComponent('SpaceAddDeviceDialog'),
 		SpaceAddDisplayDialog: StubComponent('SpaceAddDisplayDialog'),
 		SpaceAddSceneDialog: StubComponent('SpaceAddSceneDialog'),
@@ -295,5 +303,99 @@ describe('ViewSpaceConfigure', () => {
 		const domains = wrapper.findComponent({ name: 'SpaceDomainsSection' });
 		expect(modes.props('spaceId')).toBe('7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d');
 		expect(modes.element.compareDocumentPosition(domains.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+});
+
+describe('mounted configure activity mode support', () => {
+	afterEach(() => {
+		document.getElementById('space-manage-actions')?.remove();
+	});
+	const space = (type: SpaceType) => ({
+		id: '7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d',
+		name: 'Space',
+		category: null,
+		description: null,
+		type,
+		icon: null,
+		displayOrder: 0,
+		parentId: null,
+		suggestionsEnabled: false,
+		statusWidgets: null,
+		createdAt: new Date(),
+		updatedAt: null,
+		draft: false,
+	});
+	let requests: Request[];
+	beforeEach(() => {
+		mocks.routeMatched = [];
+		mocks.spacesFirstLoadFinished = true;
+		requests = [];
+		const target = document.createElement('div');
+		target.id = 'space-manage-actions';
+		document.body.appendChild(target);
+		mocks.client = createClient<paths>({
+			baseUrl: 'http://localhost/api/v1',
+			fetch: async (request: Request) => {
+				requests.push(request);
+				const mode = new URL(request.url).pathname.split('/')[8];
+				return new Response(
+					JSON.stringify({
+						data: {
+							id: mode,
+							space_id: space(SpaceType.ROOM).id,
+							created_at: '2026-10-16T00:00:00Z',
+							type: 'activity_config',
+							activity_mode: mode,
+							activity_enabled: true,
+							activity_order: 0,
+							activity_revision: 1,
+							activity_configuration: {
+								lighting: { enabled: true, mode: 'work' },
+								climate: { enabled: false },
+								covers: { enabled: true, position: 50 },
+								media: { enabled: false, activity: 'off' },
+								security: { enabled: false },
+							},
+						},
+					}),
+					{ headers: { 'Content-Type': 'application/json' } }
+				);
+			},
+		});
+	});
+	const render = (type: SpaceType) =>
+		mount(ViewSpaceConfigure, {
+			props: { space: space(type) },
+			global: { stubs: { RouterView: true, teleport: false } },
+		});
+	it.each([SpaceType.ROOM, SpaceType.ZONE, SpaceType.MASTER, SpaceType.ENTRY, SpaceType.SIGNAGE_INFO_PANEL])(
+		'only requests activity configuration for supported space type %s',
+		async (type) => {
+			const wrapper = render(type);
+			await flushPromises();
+			const supported = type === SpaceType.ROOM || type === SpaceType.ZONE;
+			expect(wrapper.findComponent(SpaceActivityModesSection).exists()).toBe(supported);
+			expect(requests).toHaveLength(supported ? 5 : 0);
+			expect(requests.every((request) => request.method === 'GET' && new URL(request.url).pathname.endsWith('/config'))).toBe(true);
+			expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
+			wrapper.unmount();
+		}
+	);
+	it('unmounts activity controls when a reactive space becomes unsupported and remounts for a zone', async () => {
+		const wrapper = render(SpaceType.ROOM);
+		await flushPromises();
+		expect(requests).toHaveLength(5);
+		const original = wrapper.getComponent(SpaceActivityModesSection).vm;
+		await wrapper.setProps({ space: space(SpaceType.MASTER) });
+		await flushPromises();
+		expect(wrapper.findComponent(SpaceActivityModesSection).exists()).toBe(false);
+		expect(requests).toHaveLength(5);
+		expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
+		await wrapper.setProps({ space: space(SpaceType.ZONE) });
+		await flushPromises();
+		expect(wrapper.getComponent(SpaceActivityModesSection).vm).not.toBe(original);
+		expect(requests).toHaveLength(10);
+		expect(wrapper.findComponent({ name: 'SpaceDomainsSection' }).exists()).toBe(true);
+		wrapper.unmount();
 	});
 });
