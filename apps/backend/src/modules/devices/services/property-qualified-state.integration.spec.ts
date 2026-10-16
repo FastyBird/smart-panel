@@ -882,15 +882,15 @@ describe('qualified samples and producer state', () => {
 		const incorporated = values.captureIncorporatedSample(property);
 		const output = Object.assign(new SampleProperty(), property, { id: 'late-output' });
 		const lease = producers.register(output, 1);
-		const original = (
-			values as unknown as { writeInternal: (...args: unknown[]) => Promise<unknown> }
-		).writeInternal.bind(values);
+		const internal = values as unknown as { writeInternal: (...args: unknown[]) => Promise<unknown> };
+		const method = internal.writeInternal;
+		const original = (...args: unknown[]): Promise<unknown> => Promise.resolve<unknown>(method.apply(values, args));
 		const gate = deferred<void>();
 		const entered = deferred<void>();
-		const spy = jest.spyOn(values as never, 'writeInternal' as never).mockImplementation((...args: unknown[]) => {
-			if ((args[0] as SampleProperty).id !== output.id) return original(...args) as never;
+		const spy = jest.spyOn(internal, 'writeInternal').mockImplementation((...args: unknown[]) => {
+			if ((args[0] as SampleProperty).id !== output.id) return original(...args);
 			entered.resolve();
-			return gate.promise.then(() => original(...args)) as never;
+			return gate.promise.then(() => original(...args));
 		});
 		const pending = values.publishDerived(output, lease, 10, { ...publication(), sourceSamples: [incorporated] });
 		await entered.promise;

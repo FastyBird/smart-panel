@@ -51,7 +51,11 @@ const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 
 export function compileRemoteDewPointArtifact(binding: RemoteDewPointArtifactBinding): RemoteDewPointArtifact {
 	if (
-		!binding || !/^[A-Za-z0-9.-]+(?::[0-9]{1,5})?$/.test(binding.endpointHostname) || !Number.isInteger(binding.scriptId) || binding.scriptId < 1 || binding.scriptId > 100 ||
+		!binding ||
+		!/^[A-Za-z0-9.-]+(?::[0-9]{1,5})?$/.test(binding.endpointHostname) ||
+		!Number.isInteger(binding.scriptId) ||
+		binding.scriptId < 1 ||
+		binding.scriptId > 100 ||
 		!/^[A-Za-z0-9_-]{1,80}$/.test(binding.deviceId) ||
 		!binding.model ||
 		binding.firmware !== '1.7.5' ||
@@ -99,15 +103,31 @@ export function compileRemoteDewPointArtifact(binding: RemoteDewPointArtifactBin
 			(!Number.isFinite(binding.absoluteMinimumC) || binding.absoluteMinimumC <= -45 || binding.absoluteMinimumC > 60))
 	)
 		throw new Error('Invalid remote dew point artifact binding');
-	for (const text of [binding.switchConfigurationJson, binding.localSurface.configurationJson, binding.localSurface.peripheralsJson]) {
+	for (const text of [
+		binding.switchConfigurationJson,
+		binding.localSurface.configurationJson,
+		binding.localSurface.peripheralsJson,
+	]) {
 		let parsed: unknown;
-		try { parsed = JSON.parse(text); } catch { throw new Error('Invalid component configuration JSON'); }
-		const safe = (value: unknown): boolean => value === null || typeof value !== 'object' ||
-			Object.entries(value).every(([key, child]) => !/password|credential|authorization|secret/i.test(key) && safe(child));
-		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !safe(parsed)) throw new Error('Unsafe component configuration JSON');
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			throw new Error('Invalid component configuration JSON');
+		}
+		const safe = (value: unknown): boolean =>
+			value === null ||
+			typeof value !== 'object' ||
+			Object.entries(value).every(
+				([key, child]) => !/password|credential|authorization|secret/i.test(key) && safe(child),
+			);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !safe(parsed))
+			throw new Error('Unsafe component configuration JSON');
 	}
 	const freeze = <T>(value: T): T => {
-		if (value && typeof value === 'object') { for (const child of Object.values(value)) freeze(child); Object.freeze(value); }
+		if (value && typeof value === 'object') {
+			for (const child of Object.values(value)) freeze(child);
+			Object.freeze(value);
+		}
 		return value;
 	};
 	const frozen = freeze(JSON.parse(JSON.stringify(binding)) as RemoteDewPointArtifactBinding);

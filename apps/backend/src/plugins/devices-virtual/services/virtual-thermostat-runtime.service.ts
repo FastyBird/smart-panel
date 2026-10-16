@@ -287,12 +287,21 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (this.active || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
 		this.active = true;
 		this.stopCoolingReader = this.transport.registerCoolingFrameReader?.((claim) => {
-			const context = this.contexts.get(claim.controllerId), binding = context?.coolingBindings.find((b) => b.claimId === claim.id);
+			const context = this.contexts.get(claim.controllerId),
+				binding = context?.coolingBindings.find((b) => b.claimId === claim.id);
 			if (!context || !binding || !context.publishGuard()) return null;
 			const captured = this.coolingDependencies.capture(binding);
-			return captured ? { ...captured, isCurrent: () => captured.isCurrent() && context.publishGuard() &&
-				this.contexts.get(claim.controllerId) === context && context.config.revision === captured.controllerRevision &&
-				context.claims.some((c) => c.id === claim.id && c.revision === claim.revision) } : null;
+			return captured
+				? {
+						...captured,
+						isCurrent: () =>
+							captured.isCurrent() &&
+							context.publishGuard() &&
+							this.contexts.get(claim.controllerId) === context &&
+							context.config.revision === captured.controllerRevision &&
+							context.claims.some((c) => c.id === claim.id && c.revision === claim.revision),
+					}
+				: null;
 		});
 		this.stopAdmission = this.claims.registerRuntimeAdmission((claim) => {
 			const context = this.contexts.get(claim.controllerId);
@@ -1066,7 +1075,9 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			enteredTransport = true;
 			const result = await this.transport
 				.get(update, claim)
-				.send(update, claim, this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)), guard, { commandId: command.id });
+				.send(update, claim, this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)), guard, {
+					commandId: command.id,
+				});
 			refusedOn = command.action === 'on' && result.outcome === 'refused';
 			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
 			command.settledAt = new Date();

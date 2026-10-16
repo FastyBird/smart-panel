@@ -89,7 +89,9 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 			producers,
 			values,
 			graph,
-			{ readLatest: async () => ({ status: ConnectionState.UNKNOWN }) } as unknown as DeviceConnectionStateService,
+			{
+				readLatest: () => Promise.resolve({ status: ConnectionState.UNKNOWN }),
+			} as unknown as DeviceConnectionStateService,
 			events,
 			new ConfigService(),
 		);
@@ -137,10 +139,10 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		values = new PropertyValueService(
 			{
 				isConnected: () => true,
-				enqueueWritePoint: async () => undefined,
-				flushQueuedWrites: async () => undefined,
-				writePoints: async () => undefined,
-				query: async () => [],
+				enqueueWritePoint: () => Promise.resolve(undefined),
+				flushQueuedWrites: () => Promise.resolve(undefined),
+				writePoints: () => Promise.resolve(undefined),
+				query: () => Promise.resolve([]),
 			} as unknown as StorageService,
 			new PropertyValueSourceRegistryService(),
 			new PropertyValueLockService({} as never),

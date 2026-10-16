@@ -436,8 +436,9 @@ export class PropertyValueService {
 	incorporatedEvidenceCurrent(sources: readonly IncorporatedPropertySample[]): boolean {
 		const visited = new Set<string>();
 		const visit = (items: readonly IncorporatedPropertySample[], depth: number): boolean => {
+			const evidence: readonly IncorporatedPropertySample[] = items;
 			if (!Array.isArray(items) || !items.length || items.length > 32 || depth > 16) return false;
-			for (const item of items) {
+			for (const item of evidence) {
 				if (!item || visited.has(item.propertyId) || visited.size >= 256) return false;
 				visited.add(item.propertyId);
 				if (item.producer) {
@@ -528,9 +529,10 @@ export class PropertyValueService {
 		sources: readonly IncorporatedPropertySample[],
 		depth = 0,
 	): readonly IncorporatedPropertySample[] {
+		const evidence: readonly IncorporatedPropertySample[] = sources;
 		if (!Array.isArray(sources) || !sources.length || sources.length > 32 || depth > 16) return Object.freeze([]);
 		return Object.freeze(
-			sources.map((source) =>
+			evidence.map((source) =>
 				Object.freeze({
 					...source,
 					producer: source.producer ? Object.freeze({ ...source.producer }) : undefined,

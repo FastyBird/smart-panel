@@ -1,4 +1,3 @@
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import { DataSource, EntityManager, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -23,6 +22,7 @@ import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import {
 	MAX_THERMOSTAT_ACTUATOR_MEMBERS,
 	SHELLY_GUARDED_PROFILE,
@@ -645,7 +645,10 @@ export class VirtualThermostatConfigService {
 					controllerId,
 					role: input.role,
 					physicalIdentity: identity,
-					providerProfile: input.role === 'cooling' && dto.policy.cooling ? REMOTE_DEW_POINT_PROFILE : old?.providerProfile ?? SHELLY_GUARDED_PROFILE,
+					providerProfile:
+						input.role === 'cooling' && dto.policy.cooling
+							? REMOTE_DEW_POINT_PROFILE
+							: (old?.providerProfile ?? SHELLY_GUARDED_PROFILE),
 					providerProfileVersion: old?.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
 					sourcePropertyId: target.property.id,
 					sourcePropertyIdentity: target.property.id,
@@ -845,7 +848,11 @@ export class VirtualThermostatConfigService {
 			? coolingService.read(await coolingService.load(config, actuators, coolingDependencies), Date.now())
 			: [];
 		const reasons = ['controller_runtime_unavailable'];
-		if (config.policy.cooling && coolingDiagnostics.some((d) => d.reasons.includes('cooling_remote_profile_installation_unqualified'))) reasons.push('cooling_remote_profile_installation_unqualified');
+		if (
+			config.policy.cooling &&
+			coolingDiagnostics.some((d) => d.reasons.includes('cooling_remote_profile_installation_unqualified'))
+		)
+			reasons.push('cooling_remote_profile_installation_unqualified');
 		for (const claim of actuators) {
 			if (!claim.sourcePropertyId || !claim.sourceDeviceId) reasons.push(claim.role + '_actuator_missing');
 			if (!this.claims.qualification(claim, thermostatHasOpposedBranches(actuators)))

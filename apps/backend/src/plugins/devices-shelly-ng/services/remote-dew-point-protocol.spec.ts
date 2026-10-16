@@ -104,7 +104,7 @@ function firmware(kvs = { value: { epoch: 10, reservedThrough: 0 }, revision: 1 
 				ver: binding.firmware,
 				auth_en: auth,
 			}),
-			getComponentConfig: (component: string) =>
+			getComponentConfig: (component: string): unknown =>
 				JSON.parse(
 					component.startsWith('switch:') ? binding.switchConfigurationJson : binding.localSurface.configurationJson,
 				),
@@ -135,7 +135,11 @@ function firmware(kvs = { value: { epoch: 10, reservedThrough: 0 }, revision: 1 
 							kvs.revision++;
 							callback({ etag: String(kvs.revision) });
 						}
-						if (method === 'SensorAddon.GetPeripherals') callback(JSON.parse(binding.localSurface.peripheralsJson));
+						if (method === 'SensorAddon.GetPeripherals') {
+							const peripherals: unknown = JSON.parse(binding.localSurface.peripheralsJson);
+							if (!peripherals || typeof peripherals !== 'object') throw new Error('Invalid fixture peripherals');
+							callback(peripherals);
+						}
 						if (method === 'Switch.GetStatus') callback({ output });
 						if (method === 'Switch.Set') {
 							const wasOn = output;
@@ -596,11 +600,12 @@ describe('backend remote session journal and restart uncertainty', () => {
 				sent?: () => void,
 			) => {
 				if (!current()) throw new Error('revoked');
-				if (method === 'GET') return { ...f.status, epoch, sessionId: `${f.artifact.artifactId}:${epoch}` };
+				if (method === 'GET')
+					return Promise.resolve({ ...f.status, epoch, sessionId: `${f.artifact.artifactId}:${epoch}` });
 				sent?.();
 				mutations.push({ ...packet });
 				if (packet.action === 'off') epoch++;
-				return {
+				return Promise.resolve({
 					...packet,
 					epoch,
 					accepted: true,
@@ -608,7 +613,7 @@ describe('backend remote session journal and restart uncertainty', () => {
 					output: packet.action === 'on',
 					pendingOn: false,
 					drained: packet.action === 'off',
-				};
+				});
 			},
 		);
 		const session = new RemoteDewPointSession({ request } as unknown as AuthenticatedShellyScriptHttp, f.artifact);
@@ -781,10 +786,11 @@ describe('actual remote adapter retained-journal qualification boundary', () => 
 				sent?: () => void,
 			) => {
 				if (!current()) throw new Error('revoked');
-				if (method === 'GET') return { ...f.status, epoch, sessionId: `${f.artifact.artifactId}:${epoch}` };
+				if (method === 'GET')
+					return Promise.resolve({ ...f.status, epoch, sessionId: `${f.artifact.artifactId}:${epoch}` });
 				sent?.();
 				if (p.action === 'off') epoch++;
-				return { ...p, epoch, accepted: true, wasOn: false };
+				return Promise.resolve({ ...p, epoch, accepted: true, wasOn: false });
 			},
 		);
 		const values = { writeSampleWithState: jest.fn(), readQualifiedSample: jest.fn() };
@@ -797,7 +803,7 @@ describe('actual remote adapter retained-journal qualification boundary', () => 
 				protectionFingerprint: binding.protectionFingerprint,
 				isCurrent: () => true,
 			}),
-			async () => ({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
+			() => Promise.resolve({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
 			() => ({ request }) as unknown as AuthenticatedShellyScriptHttp,
 		);
 		expect(
@@ -850,7 +856,7 @@ function firmwareHttp(f: ReturnType<typeof firmware>) {
 				const result = f.request(method, packet);
 				f.drain();
 				if (!current() || result.response.code !== 200) throw new Error('component refused');
-				return result.data();
+				return Promise.resolve(result.data());
 			},
 		),
 	} as unknown as AuthenticatedShellyScriptHttp;
@@ -867,10 +873,10 @@ describe('cooling recovery with real recursive accepted lineage and compiled OFF
 		const values = new PropertyValueService(
 			{
 				isConnected: () => true,
-				enqueueWritePoint: async () => undefined,
-				flushQueuedWrites: async () => undefined,
-				writePoints: async () => undefined,
-				query: async () => [],
+				enqueueWritePoint: () => Promise.resolve(undefined),
+				flushQueuedWrites: () => Promise.resolve(undefined),
+				writePoints: () => Promise.resolve(undefined),
+				query: () => Promise.resolve([]),
 			} as unknown as StorageService,
 			new PropertyValueSourceRegistryService(),
 			new PropertyValueLockService({} as never),
@@ -1048,12 +1054,13 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 		});
 		const journals: VirtualThermostatCommandEntity[] = [];
 		const manager = {
-			find: async () => [claim],
+			find: () => Promise.resolve([claim]),
 			create: (entity: new () => object, row: object) => Object.assign(new entity(), row),
-			insert: async (_entity: unknown, row: VirtualThermostatCommandEntity) => {
+			insert: (_entity: unknown, row: VirtualThermostatCommandEntity) => {
 				journals.push(row);
+				return Promise.resolve();
 			},
-			save: async () => undefined,
+			save: () => Promise.resolve(undefined),
 		};
 		const db = {
 			manager,
@@ -1085,7 +1092,7 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 					isCurrent: () => captured === generation,
 				};
 			},
-			async () => ({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
+			() => Promise.resolve({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
 			() => http,
 		);
 		const producers = new PropertyProducerRegistryService(events);
@@ -1140,9 +1147,16 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 			expect(journals).toHaveLength(2);
 			expect(journals[0].id).not.toBe(journals[1].id);
 			expect(journals.map((j) => j.status)).toEqual(['accepted', 'accepted']);
-			const packets = (http.request as jest.Mock).mock.calls
-				.filter((c) => c[0] === 'POST' && c[1]?.action === 'on')
-				.map((c) => c[1]);
+			const packets = jest
+				.mocked(http.request)
+				.mock.calls.filter(
+					([method, packet]) => method === 'POST' && packet && 'action' in packet && packet.action === 'on',
+				)
+				.map(([, packet]) => {
+					if (!packet || !('requestId' in packet) || !('thresholdC' in packet) || !('sequence' in packet))
+						throw new Error('Missing fixture packet identity or threshold');
+					return { requestId: packet.requestId, thresholdC: packet.thresholdC, sequence: packet.sequence };
+				});
 			expect(packets.map((p) => p.requestId)).toEqual(journals.map((j) => j.id));
 			expect(packets.map((p) => p.thresholdC)).toEqual([12, 15]);
 			expect(packets.map((p) => p.sequence)).toEqual([1, 2]);

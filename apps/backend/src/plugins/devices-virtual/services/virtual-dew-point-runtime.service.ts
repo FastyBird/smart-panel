@@ -117,7 +117,7 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			),
 		);
 		this.timer = setInterval(() => {
-			if (!this.running) this.requestRecompute();
+			if (this.running === undefined) this.requestRecompute();
 		}, 1000);
 		this.timer.unref();
 		this.requestRecompute();
@@ -176,7 +176,7 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 		this.generation++;
 		// Fences pending historical writes immediately, before any asynchronous metadata read.
 		for (const output of this.outputs.values()) this.producers.beginEvaluation(output.lease);
-		if (!this.running) {
+		if (this.running === undefined) {
 			this.running = this.drain().finally(() => {
 				this.running = undefined;
 			});

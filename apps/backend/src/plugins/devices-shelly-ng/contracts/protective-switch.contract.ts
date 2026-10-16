@@ -1,4 +1,5 @@
 import type { QualifiedRemoteDewPointProfile } from '../services/remote-dew-point-qualification';
+
 import { ShellyGuardScriptQualification } from './guard-script.contract';
 
 /** Internal only. Installed hardware evidence must be supplied by the qualification registry. */

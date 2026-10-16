@@ -1,7 +1,5 @@
-import { performance } from 'node:perf_hooks';
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import { qualifiedRemoteDewPointBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
 import { AsyncResource } from 'node:async_hooks';
+import { performance } from 'node:perf_hooks';
 import { DataSource, Not, QueryRunner } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
@@ -19,6 +17,8 @@ import {
 } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
+import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
+import { qualifiedRemoteDewPointBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
 import {
 	SHELLY_GUARDED_PROFILE,
 	SHELLY_GUARDED_PROFILE_VERSION,
@@ -253,22 +253,57 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		const profile = evidence.profile;
 		if (evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE) {
 			const remote = profile.remoteDewPoint;
-			if (!profile.evidenceId || !Number.isSafeInteger(profile.revision) || profile.revision < 1 || (evidence.contractVersion !== undefined && evidence.contractVersion !== 1) ||evidence.providerProfile.version !== 1 || qualifiedRemoteDewPointBlockers(remote).length ||
-				evidence.physicalIdentity !== remote?.artifact.binding.physicalActuator || !evidence.qualificationGeneration ||
-				typeof evidence.machineLeaseIsCurrent !== 'function' || !evidence.machineLeaseIsCurrent() ||
-				!evidence.upstreamWritersExcluded || !profile.releaseOrderingQualified || !profile.independentProtectionQualified ||
-				profile.guardScript || profile.deviceId !== remote.artifact.binding.deviceId || profile.model !== remote.artifact.binding.model ||
-				profile.firmware !== remote.artifact.binding.firmware || profile.componentId !== remote.artifact.binding.switchId ||
+			if (
+				!profile.evidenceId ||
+				!Number.isSafeInteger(profile.revision) ||
+				profile.revision < 1 ||
+				(evidence.contractVersion !== undefined && evidence.contractVersion !== 1) ||
+				evidence.providerProfile.version !== 1 ||
+				qualifiedRemoteDewPointBlockers(remote).length ||
+				evidence.physicalIdentity !== remote?.artifact.binding.physicalActuator ||
+				!evidence.qualificationGeneration ||
+				typeof evidence.machineLeaseIsCurrent !== 'function' ||
+				!evidence.machineLeaseIsCurrent() ||
+				!evidence.upstreamWritersExcluded ||
+				!profile.releaseOrderingQualified ||
+				!profile.independentProtectionQualified ||
+				profile.guardScript ||
+				profile.deviceId !== remote.artifact.binding.deviceId ||
+				profile.model !== remote.artifact.binding.model ||
+				profile.firmware !== remote.artifact.binding.firmware ||
+				profile.componentId !== remote.artifact.binding.switchId ||
 				profile.testedLeaseSeconds.min * 1000 !== remote.artifact.binding.timing.minimumLifetimeMs ||
-				profile.testedLeaseSeconds.max * 1000 !== remote.artifact.binding.timing.maximumLeaseMs)
+				profile.testedLeaseSeconds.max * 1000 !== remote.artifact.binding.timing.maximumLeaseMs
+			)
 				throw new DevicesValidationException('Separate installed remote cooling qualification is incomplete.');
-			this.qualifications.set(evidence.physicalIdentity, Object.freeze({ ...evidence,
-				providerProfile: Object.freeze({ id: REMOTE_DEW_POINT_PROFILE, version: 1 }),
-				profile: Object.freeze({ ...profile, testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
-					remoteDewPoint: Object.freeze({ ...remote, authenticatedStatus: Object.freeze({ ...remote.authenticatedStatus }),
-						installation: Object.freeze({ ...remote.installation, surface: Object.freeze({ ...remote.installation.surface }), restartDrainObservation: Object.freeze({ ...remote.installation.restartDrainObservation, coveredJournalIds: Object.freeze([...remote.installation.restartDrainObservation.coveredJournalIds]) }),
-							measuredTiming: Object.freeze({ ...remote.installation.measuredTiming }) }) }) }) }));
-			this.remoteDeadlines.set(this.qualifications.get(evidence.physicalIdentity), performance.now() + Math.max(0, remote.installation.expiresAt - Date.now()));
+			this.qualifications.set(
+				evidence.physicalIdentity,
+				Object.freeze({
+					...evidence,
+					providerProfile: Object.freeze({ id: REMOTE_DEW_POINT_PROFILE, version: 1 }),
+					profile: Object.freeze({
+						...profile,
+						testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
+						remoteDewPoint: Object.freeze({
+							...remote,
+							authenticatedStatus: Object.freeze({ ...remote.authenticatedStatus }),
+							installation: Object.freeze({
+								...remote.installation,
+								surface: Object.freeze({ ...remote.installation.surface }),
+								restartDrainObservation: Object.freeze({
+									...remote.installation.restartDrainObservation,
+									coveredJournalIds: Object.freeze([...remote.installation.restartDrainObservation.coveredJournalIds]),
+								}),
+								measuredTiming: Object.freeze({ ...remote.installation.measuredTiming }),
+							}),
+						}),
+					}),
+				}),
+			);
+			this.remoteDeadlines.set(
+				this.qualifications.get(evidence.physicalIdentity),
+				performance.now() + Math.max(0, remote.installation.expiresAt - Date.now()),
+			);
 			this.epoch++;
 			return;
 		}
@@ -342,11 +377,18 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		if (
 			!evidence ||
 			(claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== (evidence?.providerProfile?.id ?? SHELLY_GUARDED_PROFILE) ||
-			(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !== (evidence?.providerProfile?.version ?? SHELLY_GUARDED_PROFILE_VERSION) ||
-			(evidence?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE && (claim.role !== 'cooling' || (this.remoteDeadlines.get(evidence) ?? -Infinity) <= performance.now() || qualifiedRemoteDewPointBlockers(evidence.profile.remoteDewPoint).length > 0)) ||
+			(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !==
+				(evidence?.providerProfile?.version ?? SHELLY_GUARDED_PROFILE_VERSION) ||
+			(evidence?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE &&
+				(claim.role !== 'cooling' ||
+					(this.remoteDeadlines.get(evidence) ?? -Infinity) <= performance.now() ||
+					qualifiedRemoteDewPointBlockers(evidence.profile.remoteDewPoint).length > 0)) ||
 			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
 			(evidence.machineLeaseIsCurrent && !evidence.machineLeaseIsCurrent()) ||
-			(opposed && (!evidence.opposedOutputsInterlocked || (evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE && !evidence.profile.remoteDewPoint?.installation.opposedOutputInterlockAuditId))) ||
+			(opposed &&
+				(!evidence.opposedOutputsInterlocked ||
+					(evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE &&
+						!evidence.profile.remoteDewPoint?.installation.opposedOutputInterlockAuditId))) ||
 			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min ||
 			claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max
 		)
