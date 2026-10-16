@@ -335,15 +335,15 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
   }
 
   Future<void> _select(String value, Map<String, dynamic> intent) async {
-    if (!mounted) return;
-    final currentMenu = identical(intent, _selectionIntent);
-    if (currentMenu) {
-      _selectionIntent = null;
-      _editing = false;
+    // A retired route owns no state on a replacement controller or newer editor.
+    if (!mounted ||
+        !identical(intent, _selectionIntent) ||
+        intent['controller'] != widget.deviceId) {
+      return;
     }
-    if (currentMenu &&
-        intent['controller'] == widget.deviceId &&
-        intent['revision'] == _snapshot?['revision'] &&
+    _selectionIntent = null;
+    _editing = false;
+    if (intent['revision'] == _snapshot?['revision'] &&
         intent['graph'] == _snapshot?['graph_revision'] &&
         intent['epoch'] == _intentEpoch &&
         _canAct) {

@@ -11,6 +11,14 @@ import 'package:mocktail/mocktail.dart';
 
 class ComfortSocket extends Mock implements SocketService {}
 
+class ComfortRoutes extends NavigatorObserver {
+  Route<String>? popup;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute<String>) popup = route;
+  }
+}
+
 Map<String, dynamic> configured({bool cooling = false}) => {
   'controller': 'a',
   'revision': 4,
@@ -60,9 +68,11 @@ void main() {
     WidgetTester tester, {
     String id = 'a',
     String language = 'en',
+    ComfortRoutes? routes,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
+        navigatorObservers: [if (routes != null) routes],
         locale: Locale(language),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -666,11 +676,91 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    final reads = paths.length;
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+          .onPressed,
+      isNotNull,
+    );
     await tester.tap(find.text('Eco').last);
     await tester.pumpAndSettle();
     expect(writes, isEmpty);
+    expect(paths, hasLength(reads));
+    expect(
+      find.textContaining('Request failed; reload before retrying'),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+          .onPressed,
+      isNotNull,
+    );
     await tester.pumpWidget(const SizedBox());
   });
+
+  for (final editor in ['menu', 'dialog']) {
+    testWidgets(
+      'retired popup result cannot clear a replacement controller $editor',
+      (tester) async {
+        final routes = ComfortRoutes();
+        await open(tester, routes: routes);
+        await tap(tester, 'comfort-selection');
+        final oldRoute = routes.popup!;
+        state['controller'] = 'b';
+        await open(tester, id: 'b', routes: routes);
+        // Open the real replacement editor while the old popup future is unresolved.
+        // Calling its actual button callback models programmatic navigation above that route.
+        tester
+            .widget<TextButton>(
+              find.byKey(
+                ValueKey(
+                  editor == 'menu' ? 'comfort-selection' : 'comfort-create',
+                ),
+              ),
+            )
+            .onPressed!();
+        await tester.pumpAndSettle();
+        final reads = paths.length;
+        oldRoute.navigator!.removeRoute<String>(oldRoute, 'eco');
+        await tester.pumpAndSettle();
+        expect(paths, hasLength(reads));
+        expect(writes, isEmpty);
+        expect(
+          find.textContaining('Request failed; reload before retrying'),
+          findsNothing,
+        );
+        expect(
+          tester
+              .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+              .onPressed,
+          isNotNull,
+        );
+        // A retired route must not clear the newer editor's polling fence.
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+        expect(paths, hasLength(reads));
+        if (editor == 'menu') {
+          await tester.tap(find.text('Eco').last);
+          await tester.pumpAndSettle();
+          expect(writes, hasLength(1));
+          expect(
+            paths.where((path) => path.endsWith('/b/comfort/selection')),
+            hasLength(1),
+          );
+          expect(writes.single['expected_revision'], 4);
+          expect(writes.single['expected_graph_revision'], 9);
+        } else {
+          expect(find.byType(AlertDialog), findsOneWidget);
+          await tester.tap(find.text('Cancel').last);
+          await tester.pumpAndSettle();
+          expect(writes, isEmpty);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 
   testWidgets(
     'open preset menu suppresses periodic reads and cancellation resumes them',

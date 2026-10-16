@@ -767,28 +767,32 @@ void main() {
       (tester) async {
         final fixture = MemberDetailFixture()..hasMember = false;
         final now = DateTime.now();
-        fixture.sources = [
-          {'id': 'required-$role', 'role': role},
-        ];
+        if (role == 'ambient') {
+          fixture.sources.clear();
+          fixture.inputs.clear();
+        }
+        final ambientInputs = fixture.inputs.toList();
+        fixture.sources.add({'id': 'required-$role', 'role': role});
         Map<String, dynamic> input(DateTime time) => {
           ...protection(time, 0),
           'binding': 'required-$role',
           'role': role,
           'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
         };
-        fixture.inputs = [input(now)];
+        fixture.inputs = [...ambientInputs, input(now)];
         await fixture.mount(tester);
         expect(find.text('Controller readiness: ready'), findsOneWidget);
         await tester.pump(const Duration(seconds: 3));
         expect(find.text('Controller readiness: ready'), findsNothing);
         expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
-        fixture.inputs = [input(DateTime.now())];
+        fixture.inputs = [...ambientInputs, input(DateTime.now())];
         await fixture.refetch(tester);
         expect(find.text('Controller readiness: ready'), findsOneWidget);
-        fixture.inputs = [];
+        fixture.inputs = ambientInputs.toList();
         await fixture.refetch(tester);
         expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
         fixture.inputs = [
+          ...ambientInputs,
           {
             ...input(now.add(const Duration(seconds: 2))),
             'quality': 'degraded',
@@ -1269,12 +1273,18 @@ void main() {
   }
 
   testWidgets(
-    'legacy singleton without declared protection and empty membership preserve snapshot readiness',
+    'legacy singleton and empty membership require qualified ambient evidence for ready',
     (tester) async {
-      final fixture = MemberDetailFixture()..declaresMemberProtection = false;
+      final fixture = MemberDetailFixture()
+        ..declaresMemberProtection = false
+        ..sources = []
+        ..inputs = [];
       await fixture.mount(tester);
-      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       fixture.hasMember = false;
+      await fixture.refetch(tester);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      fixture.addQualifiedAmbient();
       await fixture.refetch(tester);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
       await fixture.dispose(tester);
@@ -1296,7 +1306,30 @@ class MemberDetailFixture {
   Map<String, dynamic>? sample;
   Map<String, dynamic> observation = {};
 
+  void addQualifiedAmbient() {
+    final now = DateTime.now();
+    sources.add({
+      'id': 'ambient',
+      'role': 'ambient',
+      'source_identity': 'ambient',
+      'source_property': 'ambient-property',
+    });
+    inputs.add({
+      'binding': 'ambient',
+      'role': 'ambient',
+      'source_property': 'ambient-property',
+      'source_kind': 'physical',
+      'status': 'fresh',
+      'quality': 'good',
+      'sampled_at': now.toIso8601String(),
+      'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
+      'age_seconds': 0,
+      'maximum_age_seconds': 120,
+    });
+  }
+
   MemberDetailFixture() {
+    addQualifiedAmbient();
     locator.registerSingleton<Dio>(dio);
     locator.registerSingleton<SocketService>(socket);
     addTearDown(() {
@@ -1463,6 +1496,70 @@ void deadlineFenceTests() {
     wall,
     mono,
   );
+
+  test(
+    'empty declared sources and diagnostics cannot establish positive readiness',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(fence, [], [], t, Duration.zero);
+      expect(fence.sources.allCurrent(t, Duration.zero), isFalse);
+      accept(
+        fence,
+        [source('ambient', 'a')],
+        [input('ambient', 'a', t)],
+        t,
+        Duration.zero,
+      );
+      expect(fence.sources.allCurrent(t, Duration.zero), isTrue);
+    },
+  );
+
+  for (final role in ['ambient', 'floor', 'contact']) {
+    for (final gap in ['omitted', 'mismatched']) {
+      test(
+        '$role known runtime property $gap withdraws the sample until strictly newer evidence',
+        () {
+          final fence = VirtualThermostatEvidenceFence(),
+              row = source(role, 'a');
+          accept(fence, [row], [input(role, 'a', t)], t, Duration.zero);
+          expect(fence.sources.roleCurrent(role, t, Duration.zero), isTrue);
+          final broken = input(role, 'a', t);
+          if (gap == 'omitted') {
+            broken.remove('source_property');
+          } else {
+            broken['source_property'] = 'wrong-property';
+          }
+          accept(fence, [row], [broken], t, Duration.zero);
+          expect(fence.sources.roleCurrent(role, t, Duration.zero), isFalse);
+          accept(fence, [row], [input(role, 'a', t)], t, Duration.zero);
+          expect(fence.sources.roleCurrent(role, t, Duration.zero), isFalse);
+          final newer = t.add(const Duration(milliseconds: 1));
+          accept(
+            fence,
+            [row],
+            [
+              input(
+                role,
+                'a',
+                newer,
+                expiry: t.add(const Duration(seconds: 2)),
+              ),
+            ],
+            newer,
+            const Duration(milliseconds: 1),
+          );
+          expect(
+            fence.sources.roleCurrent(
+              role,
+              newer,
+              const Duration(milliseconds: 1),
+            ),
+            isTrue,
+          );
+        },
+      );
+    }
+  }
 
   for (final role in ['ambient', 'floor', 'contact']) {
     test(
@@ -1762,16 +1859,32 @@ void deadlineFenceTests() {
       final newer = t.add(const Duration(seconds: 1));
       accept(
         fence,
-        [source('contact', 'a', 'x'), source('contact', 'b', 'y')],
-        [input('contact', 'a', newer), input('contact', 'b', newer)],
+        [
+          source('ambient', 'ambient', 'ambient'),
+          source('contact', 'a', 'x'),
+          source('contact', 'b', 'y'),
+        ],
+        [
+          input('ambient', 'ambient', newer),
+          input('contact', 'a', newer),
+          input('contact', 'b', newer),
+        ],
         newer,
         Duration.zero,
       );
       expect(fence.sources.allCurrent(newer, Duration.zero), isTrue);
       accept(
         fence,
-        [source('contact', 'a', 'y'), source('contact', 'b', 'y')],
-        [input('contact', 'a', newer), input('contact', 'b', newer)],
+        [
+          source('ambient', 'ambient', 'ambient'),
+          source('contact', 'a', 'y'),
+          source('contact', 'b', 'y'),
+        ],
+        [
+          input('ambient', 'ambient', newer),
+          input('contact', 'a', newer),
+          input('contact', 'b', newer),
+        ],
         newer,
         Duration.zero,
       );
@@ -1894,8 +2007,13 @@ void deadlineFenceTests() {
       expect(fence.sources.roleCurrent('floor', t, Duration.zero), isFalse);
       accept(
         fence,
-        [source('contact', 'a'), source('contact', 'b', 'second')],
         [
+          source('ambient', 'ambient', 'ambient'),
+          source('contact', 'a'),
+          source('contact', 'b', 'second'),
+        ],
+        [
+          input('ambient', 'ambient', t, maxAge: 60),
           input('contact', 'a', t.add(const Duration(seconds: 1))),
           input('contact', 'b', t.add(const Duration(seconds: 1))),
         ],

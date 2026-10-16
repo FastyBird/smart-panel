@@ -524,8 +524,8 @@ class VirtualThermostatSourceFence {
       }
       if (source.containsKey('source_property') &&
           raw != null &&
-          raw.containsKey('source_property') &&
-          source['source_property'] != raw['source_property']) {
+          (!raw.containsKey('source_property') ||
+              source['source_property'] != raw['source_property'])) {
         valid = false;
       }
       if (!(identity is String && identity.isNotEmpty) &&
@@ -544,6 +544,8 @@ class VirtualThermostatSourceFence {
         id,
         identity,
         source['source_property'],
+        raw?.containsKey('source_property') ?? false,
+        raw?['source_property'],
         source['physical_identity'],
         source['contract_fingerprint'],
         source['open_value'],
@@ -669,6 +671,7 @@ class VirtualThermostatSourceFence {
   bool allCurrent(DateTime now, Duration clock) =>
       !overflow &&
       _joinsComplete &&
+      roleCurrent('ambient', now, clock) &&
       _current.length == _pending.length &&
       _current.values.every((row) => _qualified(row, now, clock));
 

@@ -554,6 +554,168 @@ void staleDeviceResponseTest({bool sameId = false}) {
 }
 
 void cachedSourceDeadlineTests() {
+  for (final role in ['ambient', 'floor', 'contact']) {
+    for (final gap in ['omitted', 'mismatched']) {
+      testWidgets(
+        '$role runtime property $gap cannot recover at the same sample in actual detail',
+        (tester) async {
+          final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+          final initial = DateTime.now().subtract(
+            const Duration(milliseconds: 10),
+          );
+          final expiry = initial.add(const Duration(minutes: 1));
+          var stamp = initial;
+          var broken = false;
+          var reads = 0;
+          Map declared(String id, String sourceRole) => {
+            'id': id,
+            'role': sourceRole,
+            'source_identity': id,
+            'source_property': 'property-$id',
+          };
+          Map diagnostic(String id, String sourceRole) => {
+            'binding': id,
+            'role': sourceRole,
+            if (!(broken && sourceRole == role && gap == 'omitted'))
+              'source_property':
+                  broken && sourceRole == role && gap == 'mismatched'
+                  ? 'wrong-property'
+                  : 'property-$id',
+            'source_kind': 'physical',
+            'status': 'fresh',
+            'quality': 'good',
+            'sampled_at': (sourceRole == role ? stamp : initial)
+                .toIso8601String(),
+            'expires_at': expiry.toIso8601String(),
+            'age_seconds': 0,
+            'maximum_age_seconds': 60,
+          };
+          dio.interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) {
+                final runtime = options.path.endsWith('/runtime'),
+                    comfort = options.path.endsWith('/comfort');
+                if (runtime) reads++;
+                handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    statusCode: 200,
+                    data: {
+                      'data': comfort
+                          ? {
+                              'controller': 'controller',
+                              'revision': 1,
+                              'graph_revision': 1,
+                              'configuration': null,
+                              'effective': {'source': 'manual'},
+                            }
+                          : runtime
+                          ? {
+                              'configuration_revision': 1,
+                              'readiness': 'ready',
+                              'current_temperature': 19.5,
+                              'floor_temperature': 22,
+                              'inputs': [
+                                diagnostic('ambient', 'ambient'),
+                                if (role != 'ambient') diagnostic(role, role),
+                              ],
+                              'branches': [],
+                            }
+                          : {
+                              'revision': 1,
+                              'locked': false,
+                              'policy': {},
+                              'settings': [],
+                              'actuators': [],
+                              'sources': [
+                                declared('ambient', 'ambient'),
+                                if (role != 'ambient') declared(role, role),
+                              ],
+                            },
+                    },
+                  ),
+                );
+              },
+            ),
+          );
+          locator.registerSingleton<Dio>(dio);
+          addTearDown(() => locator.unregister<Dio>());
+          addTearDown(() async {
+            await tester.pumpWidget(const SizedBox());
+            await tester.pumpAndSettle();
+          });
+          await tester.binding.setSurfaceSize(const Size(1200, 4000));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          await tester.pumpWidget(
+            MaterialApp(
+              home: VirtualThermostatDeviceDetail(
+                device: ThermostatDeviceView(
+                  id: 'controller',
+                  type: 'virtual',
+                  name: 'Room',
+                  channels: const [],
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(reads, 1);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          if (role == 'ambient') {
+            expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          }
+          if (role == 'floor') {
+            expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+          }
+          broken = true;
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(reads, 2);
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          if (role == 'ambient') {
+            expect(find.textContaining('Ambient: 19.5'), findsNothing);
+          }
+          if (role == 'floor') {
+            expect(find.textContaining('Floor: 22.0'), findsNothing);
+          }
+          broken = false;
+          // Restoring the property without a publication must not resurrect S.
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(reads, 3);
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          if (role == 'ambient') {
+            expect(find.textContaining('Ambient: 19.5'), findsNothing);
+          }
+          if (role == 'floor') {
+            expect(find.textContaining('Floor: 22.0'), findsNothing);
+          }
+          stamp = DateTime.now();
+          expect(stamp.isAfter(initial), isTrue);
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(reads, 4);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          if (role == 'ambient') {
+            expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          }
+          if (role == 'floor') {
+            expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+          }
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpAndSettle();
+        },
+      );
+    }
+  }
+
   for (final role in ['member', 'ambient', 'floor', 'contact', 'contacts']) {
     testWidgets(
       'cached $role HTTP before an expired frame cannot renew its original monotonic deadline',
