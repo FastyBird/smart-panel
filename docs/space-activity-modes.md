@@ -1,9 +1,9 @@
-# Space activity modes: backend foundation
+# Space activity modes
 
 The home-control plugin provides Work, Relax, Sleep, Entertainment and Away for rooms and zones.
 These modes are independent of last-interaction tracking and media activities. Climate and security are
-disabled in authored defaults. No startup action, custom mode authoring, scheduler, presence trigger,
-admin/panel UI or virtual thermostat adapter is included.
+disabled in authored defaults. No startup action, custom mode authoring, scheduler, presence trigger or
+virtual thermostat adapter is included. The Admin and Panel interfaces use the same saved configuration and persisted selection contract.
 
 ## API
 
@@ -73,3 +73,33 @@ selection and retain source watermarks/tombstones so delayed Work cannot resurre
 or the existing broad baseline-clear operation cannot satisfy that contract. VD1458 remains open.
 
 Enabled security reports unsupported because current security services expose status/acknowledgement, not arm/disarm.
+
+## Admin configuration
+
+The space detail Domains tab includes Activity modes for all five built-ins, including disabled modes.
+Open Edit to enable or disable a mode, change its display order, and configure each domain. Lower display-order
+numbers appear first; each mode is saved independently, so changing several orders is not an atomic reorder.
+Reset to defaults is an explicit revision-checked write. Climate defaults remain disabled and unset. Enabling climate
+requires an explicit Comfort/Eco/Away preset or a heat/cool temperature target or delta; Work never chooses a preset
+implicitly. Climate and security settings can be saved but their unsupported actuation remains visible.
+
+Preview saved settings checks the saved revision only. Editing any field invalidates the preview and disables it until
+saved. It never saves the draft, creates a media binding or controls a device. Preview shows readiness per domain,
+including disabled domains, missing devices and unsupported configurations. A conflicting save/reset refreshes saved
+truth and leaves the draft visible. Discard draft explicitly loads the latest saved settings before editing again;
+there is no hidden overwrite or automatic retry.
+
+## Panel selection
+
+Room overview places enabled modes above its domain sections, with localized names, icons and saved display order.
+Tap a mode to submit its saved revision once. Tap the selected mode or Manual to clear the exact current activation
+identity. Clearing does not restore earlier device values. A loading indicator represents a pending request; a saved
+selection and its active/partial/failed/interrupted status describe command outcomes, not physical convergence.
+Details show per-domain outcomes. With no saved selection the panel shows Manual; with no enabled modes it hides the
+section. An unconfirmed response stays explicitly uncertain even when a read-only reconciliation finds server state.
+
+Configuration/state events, device changes and reconnection refetch HTTP state only. Each mounted room page owns an independent read model. Space/request generations fence
+late responses, and stale or busy controls cannot submit. Manual activation/deactivation bypass automatic network and
+token-refresh replay, use no WebSocket actuation fallback, and never retry a conflict automatically. Scheduling,
+presence, custom activity authoring, the VD1458 climate bridge, security actuation and hardware qualification remain
+separate work. Independent review, composed CI and alpha acceptance remain pending.
