@@ -180,6 +180,37 @@ jest.mock('../devices-shelly-ng.constants', () => {
 	};
 });
 
+describe('thermostat read-only switch catalog', () => {
+	it('uses only connected cached public fields and revokes a captured snapshot on mutation or disconnect', () => {
+		const { Device, Switch } = require('shellies-ds9');
+		const component = new Switch('switch:0');
+		component.config = {
+			id: 0,
+			name: null,
+			in_mode: 'detached',
+			in_locked: true,
+			initial_state: 'off',
+			auto_on: false,
+			auto_off: false,
+		};
+		component.getConfig = jest.fn();
+		const device = new Device('offline-fixture', 'FAKE_MODEL', new Map([['switch:0', component]]), true);
+		device.firmware = { id: 'offline-firmware' };
+		const delegate = new ShellyDeviceDelegate(device);
+		const captured = delegate.captureThermostatSetupMetadata(0);
+		expect(captured).toMatchObject({ device_hardware_id: 'offline-fixture', firmware: 'offline-firmware' });
+		expect(captured.isCurrent()).toBe(true);
+		expect(component.getConfig).not.toHaveBeenCalled();
+		component.config.initial_state = 'on';
+		expect(captured.isCurrent()).toBe(false);
+		component.config.password = 'never-export';
+		expect(delegate.captureThermostatSetupMetadata(0)).toBeNull();
+		delete component.config.password;
+		device.rpcHandler.triggerDisconnect();
+		expect(delegate.captureThermostatSetupMetadata(0)).toBeNull();
+	});
+});
+
 describe('ShellyDeviceDelegate', () => {
 	test('constructs for supported model and wires components', () => {
 		const {

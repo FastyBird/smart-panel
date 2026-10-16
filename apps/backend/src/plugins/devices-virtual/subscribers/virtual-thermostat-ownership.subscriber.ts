@@ -17,7 +17,10 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualThermostatClaimsService } from '../services/virtual-thermostat-claims.service';
-import { THERMOSTAT_OWNERSHIP_TRIGGERS } from '../services/virtual-thermostat-ownership.sql';
+import {
+	THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
+	THERMOSTAT_OWNERSHIP_TRIGGERS,
+} from '../services/virtual-thermostat-ownership.sql';
 
 /** Runs at the persistence boundary, including adapter metadata/pruning paths outside REST controllers. */
 @Injectable()
@@ -33,20 +36,29 @@ export class VirtualThermostatOwnershipSubscriber implements EntitySubscriberInt
 	}
 	async onApplicationBootstrap(): Promise<void> {
 		if (!(await this.dataSource.createQueryRunner().hasTable('devices_virtual_thermostat_actuator_claims'))) return;
-		for (const [name, sql] of Object.entries(THERMOSTAT_OWNERSHIP_TRIGGERS))
+		for (const [name, sql] of Object.entries({
+			...THERMOSTAT_OWNERSHIP_TRIGGERS,
+			...THERMOSTAT_BRANCH_MEMBER_TRIGGERS,
+		}))
 			await this.dataSource.query(`CREATE TRIGGER IF NOT EXISTS "${name}" ${sql}`);
 		this.installed = true;
 	}
 	private isCatalogMutation(query: string): boolean {
-		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings))["`\]]?\b/i.test(
+		return /^\s*(UPDATE|INSERT(?: OR \w+)? INTO|DELETE FROM)\s+["`[]?(devices_module_(devices|channels|channels_properties)|devices_virtual_thermostat_(?:configs|sources|actuator_claims|settings|member_protection)|devices_virtual_transform_[a-z_]+|devices_shelly_ng_sample_sources)["`\]]?\b/i.test(
 			query,
 		);
 	}
 	beforeQuery(event: BeforeQueryEvent<unknown>): void {
 		if (!this.installed || !this.isCatalogMutation(event.query)) return;
 		this.dirtyRunners.add(event.queryRunner);
-		if (!this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters))
-			this.claims.invalidate();
+		if (this.claims.isQualifiedReleaseWrite(event.queryRunner, event.query, event.parameters)) return;
+		this.claims.invalidate();
+		if (
+			/devices_virtual_(?:thermostat_(?:configs|sources|actuator_claims|member_protection)|transform_)|devices_shelly_ng_sample_sources/i.test(
+				event.query,
+			)
+		)
+			this.claims.revokeAllQualifications();
 	}
 	async afterQuery(event: AfterQueryEvent<unknown>): Promise<void> {
 		if (this.installed && !event.queryRunner.isTransactionActive && this.isCatalogMutation(event.query))

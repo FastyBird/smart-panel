@@ -1,56 +1,25 @@
 import { Injectable } from '@nestjs/common';
 
-import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { ShellyProtectiveCommandResult } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
+import {
+	ThermostatActuationAdapter as ProviderActuationAdapter,
+	ThermostatReconciliationScope as ProviderReconciliationScope,
+	ThermostatReleaseOrderingEvidence as ProviderReleaseOrderingEvidence,
+	SHELLY_GUARDED_PROFILE,
+	SHELLY_GUARDED_PROFILE_VERSION,
+} from '../contracts/thermostat-actuation.contract';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
 import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
 import { thermostatActuatorIdentity } from './virtual-thermostat-contract.utils';
 
-export interface ThermostatReconciliationScope {
-	readonly controllerId: string;
-	readonly controllerRevision: number;
-	readonly claimId: string;
-	readonly claimRevision: number;
-	readonly contractFingerprint: string;
-	readonly qualification: ThermostatInstalledQualification;
-}
-export interface ThermostatReleaseOrderingEvidence {
-	readonly proofId: string;
-	readonly scope: Omit<ThermostatReconciliationScope, 'qualification'>;
-	readonly observedAt: Date;
-	readonly isCurrent: () => boolean;
-	/** Stable provider lease, independent of a single evaluation/command admission window. */
-	readonly sourceIsCurrent: () => boolean;
-	readonly physicalIdentity: string;
-	readonly connectionIdentity: string;
-	readonly coveredCommandIds: readonly string[];
-	/** Provider barrier includes all earlier transport aliases and commands, including pre-claim ordinary writers. */
-	readonly externalWriterBarrier: true;
-	readonly offSample: QualifiedPropertySample;
-}
-export interface ThermostatActuationAdapter {
-	canReconcile(target: IDevicePropertyData, qualification: ThermostatInstalledQualification): boolean;
-	send(
-		target: IDevicePropertyData,
-		claim: VirtualThermostatActuatorClaimEntity,
-		qualification: ThermostatInstalledQualification | null,
-		isAdmitted: () => boolean,
-	): Promise<ShellyProtectiveCommandResult>;
-	/** Only tested ordered/correlated or cancellation barriers may return proof; RPC acceptance is insufficient. */
-	reconcile(
-		target: IDevicePropertyData,
-		commandIds: readonly string[],
-		off: QualifiedPropertySample,
-		isCurrent: () => boolean,
-		scope: ThermostatReconciliationScope,
-	): Promise<ThermostatReleaseOrderingEvidence | null>;
-}
+export type ThermostatReconciliationScope = ProviderReconciliationScope<ThermostatInstalledQualification>;
+export type ThermostatReleaseOrderingEvidence = ProviderReleaseOrderingEvidence<ThermostatInstalledQualification>;
+export type ThermostatActuationAdapter = ProviderActuationAdapter<ThermostatInstalledQualification>;
 
 /** Provider seam is internal; no HTTP payload can register an adapter or supply ordering evidence. */
 @Injectable()
@@ -61,16 +30,37 @@ export class VirtualThermostatTransportService {
 		private readonly values: PropertyValueService,
 	) {}
 	register(type: string, adapter: ThermostatActuationAdapter): () => void {
+		if (
+			adapter.contractVersion !== 1 ||
+			!adapter.providerProfile.id ||
+			!Number.isSafeInteger(adapter.providerProfile.version) ||
+			adapter.providerProfile.version < 1
+		)
+			throw new Error('Unsupported thermostat actuation contract/profile');
 		if (this.adapters.has(type)) throw new Error('Thermostat transport already registered');
 		this.adapters.set(type, adapter);
 		return () => this.adapters.delete(type);
 	}
-	get(target: IDevicePropertyData): ThermostatActuationAdapter | null {
+	get(target: IDevicePropertyData, claim?: VirtualThermostatActuatorClaimEntity): ThermostatActuationAdapter | null {
 		const supplied = this.adapters.get(target.device.type);
-		if (supplied) return supplied;
+		if (supplied)
+			return !claim ||
+				(supplied.contractVersion === 1 &&
+					supplied.providerProfile.id === (claim.providerProfile ?? SHELLY_GUARDED_PROFILE) &&
+					supplied.providerProfile.version === (claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION))
+				? supplied
+				: null;
+		if (
+			claim &&
+			((claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== SHELLY_GUARDED_PROFILE ||
+				(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !== SHELLY_GUARDED_PROFILE_VERSION)
+		)
+			return null;
 		const platform = this.platforms.get(target.device);
 		if (!(platform instanceof ShellyNgDevicePlatform)) return null;
 		return {
+			contractVersion: 1,
+			providerProfile: { id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION },
 			canReconcile: (target, qualification) =>
 				qualification.upstreamWritersExcluded &&
 				qualification.profile.releaseOrderingQualified &&

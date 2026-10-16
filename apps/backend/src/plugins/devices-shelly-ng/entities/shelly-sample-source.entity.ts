@@ -39,4 +39,8 @@ export class ShellySampleSourceEntity {
 
 	@Column({ type: 'boolean', default: true })
 	active: boolean;
+
+	/** Full catalog snapshot for reviewed installation derivation, never sample authority. */
+	@Column({ type: 'simple-json', nullable: true })
+	installationSnapshot: NativeTemperatureSnapshot['installationSnapshot'] | null;
 }

@@ -1,8 +1,10 @@
+import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { runInNewContext } from 'vm';
 
 import { SHELLY_GUARD_SOURCE } from '../contracts/guard-script-source';
+import { SHELLY_MEMBER_GUARD_SOURCE, buildShellyMemberGuardSource } from '../contracts/member-guard-script-source';
 
 // Execute the exact standalone candidate, not a reimplementation of its state machine.
 const source = readFileSync(
@@ -52,11 +54,11 @@ class DeviceFixture {
 	readonly calls: LocalCall[] = [];
 	readonly timers: (() => void)[] = [];
 	statusHandler: (event: unknown) => void;
-	start(overrides = {}): void {
+	start(overrides = {}, script = source): void {
 		this.handlers.clear();
 		this.calls.length = 0;
 		this.timers.length = 0;
-		runInNewContext(source, {
+		runInNewContext(script, {
 			SP_GUARD_CONFIG: { ...config, ...overrides },
 			Shelly: {
 				getDeviceInfo: () => ({ id: config.deviceId, model: config.model, fw_id: config.firmware }),
@@ -484,5 +486,80 @@ describe('offline Shelly guard protocol candidate', () => {
 		expect(fence.result).toBeUndefined();
 		expect(fence.error).toBe('on_execution_unknown');
 		expect(device.on().error).toBe('on_not_admitted');
+	});
+});
+
+describe('member guard artifact construction', () => {
+	const anchors = [
+		'function observeFloor(status) {\n',
+		'!finiteNumber(value) || (status.errors',
+		'cfg.floorHysteresisC > 0\n',
+	];
+	it('retains the exact reviewed member artifact bytes when every anchor is unique', () => {
+		expect(buildShellyMemberGuardSource(SHELLY_GUARD_SOURCE)).toBe(SHELLY_MEMBER_GUARD_SOURCE);
+		expect(createHash('sha256').update(SHELLY_MEMBER_GUARD_SOURCE).digest('hex')).toBe(
+			'96a61fd9c800f406357ba042fd0528d58ca034668521bde01120babceecb4059',
+		);
+	});
+	it.each(anchors)('refuses a missing patch anchor: %s', (anchor) => {
+		expect(() => buildShellyMemberGuardSource(SHELLY_GUARD_SOURCE.replace(anchor, ''))).toThrow(
+			'Member guard patch anchor must occur exactly once',
+		);
+	});
+	it.each(anchors)('refuses a duplicate patch anchor: %s', (anchor) => {
+		expect(() => buildShellyMemberGuardSource(SHELLY_GUARD_SOURCE + anchor)).toThrow(
+			'Member guard patch anchor must occur exactly once',
+		);
+	});
+});
+
+describe('member floor artifact admission', () => {
+	const memberFixture = () => {
+		const device = new DeviceFixture();
+		device.start({ floorDomainC: { minimum: -55, maximum: 125 } }, SHELLY_MEMBER_GUARD_SOURCE);
+		device.boot();
+		return device;
+	};
+	it('rearms after a stale gap and requires strict recovery from a new report', () => {
+		const device = memberFixture();
+		expect(device.request('SPGuardStatus').result.floorSafe).toBe(true);
+		device.time += config.floorMaxAgeMs;
+		device.floorReport(34);
+		expect(device.request('SPGuardStatus').result.floorSafe).toBe(false);
+		device.floorReport(33);
+		expect(device.request('SPGuardStatus').result.floorSafe).toBe(false);
+		device.floorReport(32.9);
+		expect(device.request('SPGuardStatus').result.floorSafe).toBe(true);
+	});
+	it('rejects nonfinite and out-of-domain reports without granting an ON lease', () => {
+		for (const value of [NaN, Infinity, -56, 126]) {
+			const device = memberFixture();
+			device.floorReport(value);
+			expect(device.request('SPGuardStatus').result.floorSafe).toBe(false);
+			expect(device.on().error).toBe('on_not_admitted');
+		}
+	});
+	it('accepts a strictly interior recovery boundary with an admitted below-recovery sample', () => {
+		const device = new DeviceFixture();
+		device.start(
+			{ floorDomainC: { minimum: -55, maximum: 125 }, floorLimitC: -53 + 0.000001, floorHysteresisC: 2 },
+			SHELLY_MEMBER_GUARD_SOURCE,
+		);
+		expect(device.handlers.size).toBe(1);
+		device.boot();
+		device.floorReport(-55);
+		expect(device.request('SPGuardStatus').result.floorSafe).toBe(true);
+	});
+	it('refuses cutoff and recovery boundaries outside the identical local domain', () => {
+		for (const overrides of [
+			{ floorLimitC: 126 },
+			{ floorLimitC: -54, floorHysteresisC: 2 },
+			{ floorLimitC: -53, floorHysteresisC: 2 },
+			{ floorDomainC: { minimum: 40, maximum: 30 } },
+		]) {
+			const device = new DeviceFixture();
+			device.start({ floorDomainC: { minimum: -55, maximum: 125 }, ...overrides }, SHELLY_MEMBER_GUARD_SOURCE);
+			expect(device.handlers.size).toBe(0);
+		}
 	});
 });
