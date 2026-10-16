@@ -19,8 +19,6 @@ class LightingDeviceView extends DeviceView
         DeviceIlluminanceMixin,
         DeviceButtonMixin,
         DeviceBinaryInputMixin {
-  final bool isCompositeGroup;
-
   LightingDeviceView({
     required super.id,
     required super.type,
@@ -36,7 +34,7 @@ class LightingDeviceView extends DeviceView
     super.lastStateChange,
     super.isValid,
     super.validationIssues,
-    this.isCompositeGroup = false,
+    super.isCompositeGroup,
   });
 
   @override
@@ -76,16 +74,17 @@ class LightingDeviceView extends DeviceView
   bool get isOn {
     final properties = lightChannels
         .expand((channel) => channel.properties)
-        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
+        .where(
+          (property) =>
+              property.category == DevicesModulePropertyCategory.valueOn,
+        )
         .toList();
 
-    return properties.every(
-      (prop) {
-        final value = prop.value;
+    return properties.every((prop) {
+      final value = prop.value;
 
-        return value is BooleanValueType ? value.value : false;
-      },
-    );
+      return value is BooleanValueType ? value.value : false;
+    });
   }
 
   bool get hasColor => lightChannels.any((channel) => channel.hasColor);

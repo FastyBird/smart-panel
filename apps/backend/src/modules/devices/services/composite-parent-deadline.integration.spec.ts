@@ -38,7 +38,7 @@ describe('composite parent intent lifetime', () => {
 	});
 	afterEach(() => jest.useRealTimers());
 	const lifetime = (path: 'property API' | 'local scene') => (path === 'local scene' ? DEFAULT_TTL_SCENE : 1000);
-	const setup = (path: 'property API' | 'local scene', delay: number, planningDelay = 200) => {
+	const setup = (path: 'property API' | 'local scene', delay: number, planningDelay = 200, silentPending = true) => {
 		const events = new EventEmitter2();
 		const completed = jest.fn();
 		const expired = jest.fn();
@@ -87,6 +87,7 @@ describe('composite parent intent lifetime', () => {
 					{ value: true, receivedAt: Date.now() },
 				);
 			}
+			if (updates[0].property.id === 'silent' && !silentPending) return Promise.resolve(false);
 			return Promise.resolve(true);
 		});
 		const platform = {
@@ -173,7 +174,7 @@ describe('composite parent intent lifetime', () => {
 		};
 	};
 	it.each(['property API', 'local scene'] as const)(
-		'records partial timeouts before cleanup after %s planning delay',
+		'records physical confirmation with unavailable final validation at the %s parent deadline',
 		async (path) => {
 			const fixture = setup(path, lifetime(path) - 700);
 			try {
@@ -185,12 +186,16 @@ describe('composite parent intent lifetime', () => {
 				expect(fixture.completed).toHaveBeenCalledTimes(1);
 				expect(fixture.completed).toHaveBeenCalledWith(
 					expect.objectContaining({
-						status: IntentStatus.COMPLETED_PARTIAL,
+						status: IntentStatus.COMPLETED_FAILED,
 						composites: [
 							expect.objectContaining({
-								status: 'partial',
+								status: 'failed',
 								children: [
-									expect.objectContaining({ status: 'confirmed' }),
+									expect.objectContaining({
+										status: 'unavailable',
+										generation: expect.any(String) as string,
+										reason: 'Physical confirmation observed; final binding validation unavailable before deadline',
+									}),
 									expect.objectContaining({ status: 'timed_out' }),
 								],
 							}),
@@ -198,6 +203,34 @@ describe('composite parent intent lifetime', () => {
 					}),
 				);
 				expect(fixture.history).toHaveBeenCalledTimes(1);
+			} finally {
+				fixture.stop();
+			}
+		},
+	);
+	it.each(['property API', 'local scene'] as const)(
+		'retains a genuine partial result after timely durable validation through %s',
+		async (path) => {
+			const fixture = setup(path, 0, 200, false);
+			try {
+				const execution = fixture.run();
+				await jest.advanceTimersByTimeAsync(300);
+				await execution;
+				expect(fixture.completed).toHaveBeenCalledWith(
+					expect.objectContaining({
+						status: IntentStatus.COMPLETED_PARTIAL,
+						composites: [
+							expect.objectContaining({
+								status: 'partial',
+								children: [
+									expect.objectContaining({ status: 'confirmed' }),
+									expect.objectContaining({ status: 'failed' }),
+								],
+							}),
+						],
+					}),
+				);
+				expect(fixture.expired).not.toHaveBeenCalled();
 			} finally {
 				fixture.stop();
 			}

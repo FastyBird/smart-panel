@@ -3,6 +3,10 @@ import { Characteristic, CharacteristicValue, HAPStatus, HapStatusError } from '
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 
 import { HomeKitMapperContext } from './homekit-mapper.interface';
+import { updateServiceFault } from './service-fault';
+
+/** Explicit mapper-owned semantic conversion; raw numeric measurements never opt in. */
+export type ManagedSemanticConversion = (value: unknown, property: ChannelPropertyEntity) => CharacteristicValue;
 
 export function communicationFailure(): HapStatusError {
 	return new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
@@ -24,23 +28,40 @@ export function readMappedProperty(
 	context: HomeKitMapperContext,
 	property: ChannelPropertyEntity,
 	characteristic: Characteristic,
-	map: (value: unknown) => CharacteristicValue,
+	map: (value: unknown, property?: ChannelPropertyEntity) => CharacteristicValue,
 	fault?: Characteristic,
+	semanticConversion?: ManagedSemanticConversion,
+	validateProperty?: (property: ChannelPropertyEntity) => void,
 ): CharacteristicValue {
 	const state = context.propertyState?.read(property);
 	if (!state && property.requiresLiveValue) {
-		fault?.updateValue(Characteristic.StatusFault.GENERAL_FAULT);
+		updateServiceFault(fault, characteristic, true);
 		throw communicationFailure();
 	}
 	const managed = state?.quality !== undefined && state.quality !== null;
-	fault?.updateValue(
-		context.availability?.isAvailable() === false || state?.unavailable || state?.quality === 'degraded'
-			? Characteristic.StatusFault.GENERAL_FAULT
-			: Characteristic.StatusFault.NO_FAULT,
-	);
+
 	try {
-		if (!managed) return map(property.value?.value);
+		validateProperty?.(property);
+		const value = read();
+		updateServiceFault(
+			fault,
+			characteristic,
+			context.availability?.isAvailable() === false || state?.quality === 'degraded',
+		);
+		return value;
+	} catch (error) {
+		updateServiceFault(fault, characteristic, true);
+		throw error;
+	}
+
+	function read(): CharacteristicValue {
+		if (!managed) return map(property.value?.value, property);
 		if (state.unavailable || state.value === null) throw communicationFailure();
+		if (semanticConversion) {
+			const converted = semanticConversion(state.value, property);
+			if (typeof converted !== 'number') throw communicationFailure();
+			return validateHapNumber(characteristic, converted);
+		}
 		if (
 			typeof state.value !== 'boolean' &&
 			(characteristic.props.format === 'float' ||
@@ -57,11 +78,8 @@ export function readMappedProperty(
 				numeric = 1_000_000 / numeric;
 			validateHapNumber(characteristic, numeric);
 		}
-		const value = map(state.value);
+		const value = map(state.value, property);
 		if (typeof value === 'number') validateHapNumber(characteristic, value);
 		return value;
-	} catch (error) {
-		fault?.updateValue(Characteristic.StatusFault.GENERAL_FAULT);
-		throw error;
 	}
 }

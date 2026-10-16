@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/actuator_group.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
@@ -90,6 +91,40 @@ void main() {
     );
     expect((projection as LightingDeviceView).isCompositeGroup, isFalse);
   });
+
+  for (final category in [
+    'lighting',
+    'switcher',
+    'outlet',
+    'fan',
+    'window_covering',
+  ]) {
+    test(
+      '$category group retains native category and uses composite detail; projection stays ordinary',
+      () {
+        final group = buildDeviceView(
+          VirtualDeviceModel.fromJson({
+            ...deviceJson,
+            'category': category,
+            'mode': 'actuator_group',
+          }),
+          const [],
+        );
+        expect(group.category.json, category);
+        expect(group.isCompositeGroup, isTrue);
+        expect(buildDeviceWidget(group), isA<ActuatorGroupDeviceDetail>());
+        final projection = buildDeviceView(
+          VirtualDeviceModel.fromJson({
+            ...deviceJson,
+            'category': category,
+            'mode': 'projection',
+          }),
+          const [],
+        );
+        expect(projection.isCompositeGroup, isFalse);
+      },
+    );
+  }
 
   test('derived origin owns its series and survives copyWith', () {
     final property = VirtualChannelPropertyModel.fromJson({

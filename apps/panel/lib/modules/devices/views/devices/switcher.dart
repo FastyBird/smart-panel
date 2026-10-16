@@ -17,6 +17,7 @@ class SwitcherDeviceView extends DeviceView
         DeviceButtonMixin,
         DeviceBinaryInputMixin {
   SwitcherDeviceView({
+    super.isCompositeGroup,
     required super.id,
     required super.type,
     super.category,
@@ -66,15 +67,16 @@ class SwitcherDeviceView extends DeviceView
   bool get isOn {
     final properties = switcherChannels
         .expand((channel) => channel.properties)
-        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
+        .where(
+          (property) =>
+              property.category == DevicesModulePropertyCategory.valueOn,
+        )
         .toList();
 
-    return properties.every(
-      (prop) {
-        final value = prop.value;
+    return properties.every((prop) {
+      final value = prop.value;
 
-        return value is BooleanValueType ? value.value : false;
-      },
-    );
+      return value is BooleanValueType ? value.value : false;
+    });
   }
 }

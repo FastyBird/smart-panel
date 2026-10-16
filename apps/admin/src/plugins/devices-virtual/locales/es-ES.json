@@ -144,7 +144,7 @@
 		"projection": "Proyección",
 		"aggregate": "Sensor agregado",
 		"transform": "Conversión numérica",
-		"group": "Grupo de luces",
+		"group": "Grupo de actuadores",
 		"name": "Nombre",
 		"profile": "Perfil de salida",
 		"temperature": "Temperatura (°C)",
@@ -271,9 +271,9 @@
 	},
 	"lightGroup": {
 		"apply": "Aplicar",
-		"createTitle": "Crear grupo de luces",
+		"createTitle": "Crear grupo de actuadores",
 		"members": "Miembros",
-		"selectMembers": "Seleccionar canales de luz físicos",
+		"selectMembers": "Seleccionar canales físicos compatibles",
 		"memberBounds": "Seleccione entre 2 y 256 canales físicos distintos. Los miembros siguen siendo controlables individualmente.",
 		"room": "Habitación",
 		"preview": "Vista previa",
@@ -282,9 +282,9 @@
 		"cancel": "Cancelar",
 		"step": "Paso {value}",
 		"commonOnly": "Estos controles opcionales no están disponibles porque todos los miembros deben tener propiedades compatibles.",
-		"loadFailed": "No se pudo cargar el grupo de luces.",
+		"loadFailed": "No se pudo cargar el grupo.",
 		"revisionConflict": "La configuración ha cambiado o un control utilizado necesita reparación. Vuelva a cargar antes de intentarlo de nuevo.",
-		"editTitle": "Editar grupo de luces",
+		"editTitle": "Editar grupo de actuadores",
 		"save": "Guardar",
 		"reload": "Volver a cargar",
 		"missingMember": "Miembro ausente: {identity}",
@@ -305,6 +305,22 @@
 		},
 		"turnOn": "Encender",
 		"turnOff": "Apagar",
-		"commandUncertain": "El resultado del comando es incierto. Actualice el estado informado antes de enviar otro comando."
+		"commandUncertain": "El resultado del comando es incierto. Actualice el estado informado antes de enviar otro comando.",
+		"profile": "Perfil",
+		"coverTypeGuide": "Configure el mismo TYPE explícito de un solo valor en cada persiana física mediante la API de metadatos: PATCH /api/v1/modules/devices/channels/<channel>/properties/<TYPE-property> con data.type y data.format, por ejemplo [\"blind\"]. No incluya data.value. Seleccione el tipo instalado; el nombre y modelo no lo demuestran.",
+		"coverCommandMeaning": "ABRIR/CERRAR confirma el inicio del movimiento o un extremo ya alcanzado, no el recorrido completo. STOP requiere información de parada cualificada.",
+		"readinessUnavailable": "Disponibilidad del comando desconocida",
+		"configured": "Metadatos de configuración",
+		"contributors": "{count}/{total} miembros contribuyentes",
+		"open": "Abrir",
+		"close": "Cerrar",
+		"stop": "Detener",
+		"profiles": {
+			"light": "Luz",
+			"switch": "Interruptor",
+			"outlet": "Enchufe",
+			"fan": "Ventilador",
+			"cover": "Persiana"
+		}
 	}
 }

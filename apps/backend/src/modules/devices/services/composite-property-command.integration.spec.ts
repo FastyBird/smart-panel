@@ -43,9 +43,12 @@ describe('core opt-in composite commands', () => {
 		const events = new EventEmitter2();
 		const registry = new CompositePropertyCommandRegistryService();
 		let current = true;
+		const checkCurrent = jest.fn(async () => current);
+		const disposed = jest.fn();
+		const plan = { revision: 1, children, isCurrent: checkCurrent };
 		registry.register({
 			canHandle: (property) => property.id === 'group',
-			plan: async () => ({ revision: 1, children, isCurrent: async () => current }),
+			plan: async () => plan,
 		});
 		const physical = children.flatMap((child) => (child.update ? [child.update] : []));
 		const metadata = {
@@ -70,6 +73,7 @@ describe('core opt-in composite commands', () => {
 							Promise.resolve({
 								updates: targets,
 								isCurrent: () => true,
+								dispose: disposed,
 								dispatch: (isAdmitted: () => boolean) => (isAdmitted() ? batch(targets) : Promise.resolve(false)),
 							}),
 					};
@@ -100,11 +104,100 @@ describe('core opt-in composite commands', () => {
 			events,
 			processBatch,
 			platforms,
+			checkCurrent,
+			disposed,
+			plan,
 			invalidate: () => {
 				current = false;
 			},
 		};
 	};
+	describe('durable parent completion within the absolute budget', () => {
+		beforeEach(() => {
+			jest.useFakeTimers();
+			jest.setSystemTime(0);
+		});
+		afterEach(() => jest.useRealTimers());
+		it.each([
+			'true',
+			'false',
+			'error',
+			'deadline true',
+			'deadline false',
+			'late returned true',
+			'late returned false',
+			'expired',
+			'missing',
+			'cancelled',
+		] as const)(
+			'final validation %s preserves physical evidence without inventing revision authority',
+			async (mode) => {
+				const fixture = setup([
+					{ memberId: 'a', update: update('a') },
+					{ memberId: 'b', update: update('b') },
+				]);
+				fixture.processBatch.mockResolvedValueOnce(false);
+				let settle: (value: boolean) => void;
+				const late = new Promise<boolean>((resolve) => {
+					settle = resolve;
+				});
+				let finalCalls = 0;
+				fixture.checkCurrent.mockImplementation(async () => {
+					if (fixture.disposed.mock.calls.length !== 2) return true;
+					finalCalls++;
+					if (mode === 'error') throw new Error('Validation unavailable');
+					if (mode === 'missing') return undefined;
+					if (mode.startsWith('deadline')) return late;
+					if (mode.startsWith('late returned')) jest.setSystemTime(1000);
+					if (mode === 'cancelled') fixture.windows.cancel('b');
+					return mode !== 'false' && mode !== 'late returned false';
+				});
+				if (mode === 'expired')
+					fixture.disposed.mockImplementation(() => {
+						if (fixture.disposed.mock.calls.length === 2) jest.setSystemTime(1000);
+					});
+				try {
+					const pending = fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 1000 });
+					await jest.advanceTimersByTimeAsync(1000);
+					const result = await pending;
+					const child = result.composite.children[1];
+					expect(result.composite.children[0].status).toBe('failed');
+					if (mode === 'true') expect(child.status).toBe('confirmed');
+					else if (mode === 'false' || mode === 'cancelled')
+						expect(child).toMatchObject({ status: 'superseded', generation: expect.any(String) as string });
+					else
+						expect(child).toMatchObject({
+							status: 'unavailable',
+							generation: expect.any(String) as string,
+							reason:
+								mode === 'error' || mode === 'missing'
+									? 'Physical confirmation observed; final binding validation failed'
+									: 'Physical confirmation observed; final binding validation unavailable before deadline',
+						});
+					expect(result.composite.status).toBe(mode === 'true' ? 'partial' : 'failed');
+					if (mode === 'expired') expect(finalCalls).toBe(0);
+					const terminal = JSON.stringify(result);
+					settle(mode !== 'deadline false');
+					await jest.advanceTimersByTimeAsync(1000);
+					expect(JSON.stringify(result)).toBe(terminal);
+				} finally {
+					fixture.dispatch.onModuleDestroy();
+				}
+			},
+		);
+		it('never dispatches or manufactures confirmed evidence when the durable checker is missing', async () => {
+			const fixture = setup([{ memberId: 'a', update: update('a') }]);
+			Object.assign(fixture.plan, { isCurrent: undefined, isDispatchCurrent: () => true });
+			try {
+				const result = await fixture.dispatch.dispatchBatch([update('group')], { ttlMs: 1000 });
+				expect(fixture.processBatch).not.toHaveBeenCalled();
+				expect(result.success).toBe(false);
+				expect(result.composite.children.every((child) => child.status !== 'confirmed')).toBe(true);
+			} finally {
+				fixture.dispatch.onModuleDestroy();
+			}
+		});
+	});
 	it('confirms different physical platforms/channels independently and deduplicates equal leaves', async () => {
 		const a = update('a', true, new WledDeviceEntity());
 		const b = update('b', true, new ShellyNgDeviceEntity());

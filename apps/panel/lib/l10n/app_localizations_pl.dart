@@ -4310,4 +4310,160 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Nie wykryto';
+
+  @override
+  String get groupActualFeedback => 'Zgłoszony stan fizyczny';
+
+  @override
+  String get groupReload => 'Wczytaj / połącz ponownie';
+
+  @override
+  String get groupRepair =>
+      'Konfiguracja lub możliwości uległy zmianie. Wczytaj ponownie i napraw członkostwo w Adminie.';
+
+  @override
+  String get groupUncertain =>
+      'Wynik polecenia niepewny. Przed kolejną próbą wczytaj rzeczywisty stan.';
+
+  @override
+  String get groupUnknown => 'Nieznany';
+
+  @override
+  String get groupMixed => 'Mieszany';
+
+  @override
+  String get groupOn => 'Włączone';
+
+  @override
+  String get groupOff => 'Wyłączone';
+
+  @override
+  String get groupUnavailable => 'Niedostępne';
+
+  @override
+  String get groupOpen => 'Otwórz';
+
+  @override
+  String get groupClose => 'Zamknij';
+
+  @override
+  String get groupStop => 'Zatrzymaj';
+
+  @override
+  String get groupSelectValue => 'Wybierz wartość natywną';
+
+  @override
+  String get groupApply => 'Zastosuj';
+
+  @override
+  String get groupApplyTogether => 'Zastosuj razem';
+
+  @override
+  String get groupConfigured => 'Metadane konfiguracji';
+
+  @override
+  String get groupMissing => 'Brak członka; napraw w Adminie';
+
+  @override
+  String get groupReadinessUnavailable => 'Gotowość polecenia niedostępna';
+
+  @override
+  String get groupCoverMeaning =>
+      'OTWÓRZ/ZAMKNIJ potwierdza rozpoczęcie ruchu lub osiągnięty koniec, nie cały przejazd. STOP wymaga kwalifikowanego potwierdzenia zatrzymania.';
+
+  @override
+  String groupContributors(int count, int total) {
+    return '$count/$total uczestniczących członków';
+  }
+
+  @override
+  String groupCommandOutcome(String status) {
+    return 'Polecenie grupy: $status';
+  }
+
+  @override
+  String groupStep(String value) {
+    return 'Krok $value';
+  }
+
+  @override
+  String get groupPending => 'Oczekiwanie';
+
+  @override
+  String get groupConfirmed => 'Potwierdzone';
+
+  @override
+  String get groupPartial => 'Częściowe';
+
+  @override
+  String get groupFailed => 'Niepowodzenie';
+
+  @override
+  String get groupSuperseded => 'Zastąpione';
+
+  @override
+  String get groupTimedOut => 'Upłynął czas';
+
+  @override
+  String get groupFieldOn => 'Zasilanie';
+
+  @override
+  String get groupFieldSpeed => 'Prędkość';
+
+  @override
+  String get groupFieldSwing => 'Oscylacja';
+
+  @override
+  String get groupFieldDirection => 'Kierunek';
+
+  @override
+  String get groupFieldMode => 'Tryb';
+
+  @override
+  String get groupFieldPosition => 'Pozycja';
+
+  @override
+  String get groupFieldTilt => 'Nachylenie';
+
+  @override
+  String get groupFieldType => 'Typ';
+
+  @override
+  String get groupFieldStatus => 'Stan';
+
+  @override
+  String get groupFieldObstruction => 'Przeszkoda';
+
+  @override
+  String get groupFieldInUse => 'W użyciu';
+
+  @override
+  String get groupFieldBrightness => 'Jasność';
+
+  @override
+  String get groupFieldColorTemperature => 'Temperatura barwowa';
+
+  @override
+  String get groupFieldColorRed => 'Czerwony';
+
+  @override
+  String get groupFieldColorGreen => 'Zielony';
+
+  @override
+  String get groupFieldColorBlue => 'Niebieski';
+
+  @override
+  String get groupFieldHue => 'Odcień';
+
+  @override
+  String get groupFieldSaturation => 'Nasycenie';
+
+  @override
+  String get groupOpenAll => 'Otwórz wszystkie';
+
+  @override
+  String get groupCloseAll => 'Zamknij wszystkie';
+
+  @override
+  String get groupStopAll => 'Zatrzymaj wszystkie';
 }

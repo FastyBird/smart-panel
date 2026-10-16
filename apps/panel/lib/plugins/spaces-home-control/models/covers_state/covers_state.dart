@@ -1,3 +1,20 @@
+class GroupCoverOperation {
+  final String operation;
+  final bool commandable;
+  final List<String> reasons;
+  const GroupCoverOperation({
+    required this.operation,
+    required this.commandable,
+    this.reasons = const [],
+  });
+  factory GroupCoverOperation.fromJson(Map<String, dynamic> json) =>
+      GroupCoverOperation(
+        operation: json['operation'] as String,
+        commandable: json['commandable'] == true,
+        reasons: (json['reasons'] as List<dynamic>? ?? []).cast<String>(),
+      );
+}
+
 /// Predefined covers modes that can be applied to a space.
 ///
 /// Each mode represents a different covers configuration:
@@ -5,12 +22,7 @@
 /// - [closed]: All covers fully closed (0%)
 /// - [privacy]: Optimized for privacy while allowing some light
 /// - [daylight]: Optimized for natural daylight
-enum CoversMode {
-  open,
-  closed,
-  privacy,
-  daylight,
-}
+enum CoversMode { open, closed, privacy, daylight }
 
 /// Parse CoversMode from string
 CoversMode? parseCoversMode(String? mode) {
@@ -30,11 +42,7 @@ CoversMode? parseCoversMode(String? mode) {
 }
 
 /// Confidence level of mode detection.
-enum CoversModeConfidence {
-  exact,
-  approximate,
-  none,
-}
+enum CoversModeConfidence { exact, approximate, none }
 
 /// Parse CoversModeConfidence from string
 CoversModeConfidence parseCoversModeConfidence(String? confidence) {
@@ -56,13 +64,7 @@ CoversModeConfidence parseCoversModeConfidence(String? confidence) {
 /// - [sheer]: Sheer/translucent curtains for diffused light
 /// - [outdoor]: Outdoor shutters or awnings
 /// - [hidden]: Covers excluded from group control
-enum CoversStateRole {
-  primary,
-  blackout,
-  sheer,
-  outdoor,
-  hidden,
-}
+enum CoversStateRole { primary, blackout, sheer, outdoor, hidden }
 
 /// Parse CoversStateRole from string
 CoversStateRole? parseCoversStateRole(String? role) {
@@ -115,7 +117,10 @@ class RoleCoversState {
     required this.devicesOpen,
   });
 
-  factory RoleCoversState.fromJson(Map<String, dynamic> json, CoversStateRole role) {
+  factory RoleCoversState.fromJson(
+    Map<String, dynamic> json,
+    CoversStateRole role,
+  ) {
     return RoleCoversState(
       role: role,
       position: json['position'] as int?,
@@ -144,6 +149,8 @@ class RoleCoversState {
 /// - Last applied mode (if any)
 class CoversStateModel {
   final String spaceId;
+  final List<GroupCoverOperation>? groupOperations;
+  final DateTime? groupExpiresAt;
   final bool hasCovers;
   final CoversMode? detectedMode;
   final CoversModeConfidence modeConfidence;
@@ -164,6 +171,8 @@ class CoversStateModel {
 
   CoversStateModel({
     required this.spaceId,
+    this.groupOperations,
+    this.groupExpiresAt,
     required this.hasCovers,
     this.detectedMode,
     required this.modeConfidence,
@@ -198,7 +207,8 @@ class CoversStateModel {
   }) {
     // Parse covers by role map
     Map<CoversStateRole, int> coversByRoleMap = {};
-    final coversByRoleJson = json['covers_by_role'] as Map<String, dynamic>? ?? {};
+    final coversByRoleJson =
+        json['covers_by_role'] as Map<String, dynamic>? ?? {};
 
     for (final entry in coversByRoleJson.entries) {
       final role = parseCoversStateRole(entry.key);
@@ -220,9 +230,17 @@ class CoversStateModel {
 
     return CoversStateModel(
       spaceId: spaceId,
+      groupExpiresAt: DateTime.tryParse(
+        json['group_expires_at'] as String? ?? '',
+      ),
+      groupOperations: (json['group_operations'] as List<dynamic>?)
+          ?.map((e) => GroupCoverOperation.fromJson(e as Map<String, dynamic>))
+          .toList(),
       hasCovers: json['has_covers'] as bool? ?? false,
       detectedMode: parseCoversMode(json['detected_mode'] as String?),
-      modeConfidence: parseCoversModeConfidence(json['mode_confidence'] as String?),
+      modeConfidence: parseCoversModeConfidence(
+        json['mode_confidence'] as String?,
+      ),
       modeMatchPercentage: json['mode_match_percentage'] as int?,
       isModeFromIntent: json['is_mode_from_intent'] as bool? ?? false,
       averagePosition: json['average_position'] as int?,
