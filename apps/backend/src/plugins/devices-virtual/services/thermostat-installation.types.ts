@@ -18,6 +18,11 @@ export interface ThermostatOperatorAttestation {
 	maximumObservedMs?: number;
 }
 export interface ThermostatGuardSetup {
+	/** Absent means the immutable legacy format. */
+	formatVersion?: 2;
+	installedFloorCeilingC?: number;
+	effectiveFloorCutoffC?: number;
+	floorDomainC?: { minimum: number; maximum: number };
 	deviceHardwareId: string;
 	firmware: string;
 	endpointHostname: string;
@@ -57,3 +62,19 @@ export interface ThermostatMachineObservation {
 	/** Metadata observations do not certify physical interlocks, cancellation, or electrical isolation. */
 	physicalSafetyCertified: false;
 }
+
+/** Catalog-derived fields are deliberately absent from the new authoring request. */
+export type ThermostatMemberGuardSetup = Pick<
+	ThermostatGuardSetup,
+	| 'deviceHardwareId'
+	| 'firmware'
+	| 'endpointHostname'
+	| 'scriptId'
+	| 'epochKey'
+	| 'heatingSetpointRange'
+	| 'coolingSetpointRange'
+	| 'minimumLeaseSeconds'
+	| 'maximumLeaseSeconds'
+	| 'watchdogMs'
+	| 'switchConfigurationJson'
+> & { formatVersion: 2; installedFloorCeilingC: number };

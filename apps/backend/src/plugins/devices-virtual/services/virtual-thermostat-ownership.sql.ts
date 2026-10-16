@@ -29,3 +29,16 @@ export const THERMOSTAT_OWNERSHIP_TRIGGERS: Readonly<Record<string, string>> = {
 			UPDATE "devices_virtual_thermostat_configs" SET "requestedMode" = 'off', "revision" = "revision" + 1, "releaseRequestedAt" = CURRENT_TIMESTAMP WHERE "ownerDeviceId" = OLD."id";
 		END`,
 };
+
+/** Bound includes pending, missing and releasing members. These reservations may never be silently dropped. */
+export const THERMOSTAT_BRANCH_MEMBER_TRIGGERS: Readonly<Record<string, string>> = Object.fromEntries(
+	['INSERT', 'UPDATE'].map((operation) => [
+		`virtual_thermostat_member_bound_${operation.toLowerCase()}`,
+		`BEFORE ${operation} ON "devices_virtual_thermostat_actuator_claims"
+		WHEN NEW."state" != 'released' AND (
+			NEW."role" NOT IN ('heating', 'cooling') OR
+			(SELECT COUNT(*) FROM "devices_virtual_thermostat_actuator_claims"
+			 WHERE "controllerId" = NEW."controllerId" AND "state" != 'released' AND "id" != NEW."id") >= 8)
+		BEGIN SELECT RAISE(ABORT, 'Thermostat branches require at most eight total mandatory members'); END`,
+	]),
+);

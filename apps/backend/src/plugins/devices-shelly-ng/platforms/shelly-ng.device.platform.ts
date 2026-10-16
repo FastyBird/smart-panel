@@ -43,6 +43,10 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 
 	constructor(private readonly delegatesManagerService: DelegatesManagerService) {}
 
+	captureThermostatSetupMetadata(device: ShellyNgDeviceEntity, componentId: number) {
+		return this.delegatesManagerService.captureThermostatSetupMetadata(device, componentId);
+	}
+
 	getType(): string {
 		return DEVICES_SHELLY_NG_TYPE;
 	}

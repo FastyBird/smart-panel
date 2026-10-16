@@ -183,6 +183,18 @@ describe('qualified samples and producer state', () => {
 		expect(scalar).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps a captured physical source guard tied to its original connection after later report replacement', async () => {
+		let oldConnection = true;
+		await report(20, { ...evidence(), sourceIsCurrent: () => oldConnection });
+		const captured = values.captureSampleSourceGuard(property);
+		expect(captured()).toBe(true);
+		oldConnection = false;
+		jest.setSystemTime(base + 1000);
+		await report(21, { ...evidence(base + 1000), sourceIsCurrent: () => true });
+		expect(captured()).toBe(false);
+		expect(values.captureSampleSourceGuard(property)()).toBe(true);
+	});
+
 	it('qualifies only the exact incorporated live acceptance and its current provider identity', async () => {
 		let sourceCurrent = true;
 		await report(20, { ...evidence(), sourceIsCurrent: () => sourceCurrent });

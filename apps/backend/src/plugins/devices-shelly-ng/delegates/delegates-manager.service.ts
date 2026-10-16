@@ -2670,6 +2670,21 @@ export class DelegatesManagerService {
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
 	}
 
+	captureThermostatSetupMetadata(device: ShellyNgDeviceEntity, componentId: number) {
+		for (const id of this.identifierToDelegates.get(device.identifier) ?? []) {
+			const delegate = this.delegates.get(id);
+			if (this.delegateDeviceIds.get(id) !== device.id) continue;
+			const snapshot = delegate?.captureThermostatSetupMetadata(componentId);
+			if (snapshot?.isCurrent())
+				return {
+					...snapshot,
+					isCurrent: () =>
+						this.delegates.get(id) === delegate && this.delegateDeviceIds.get(id) === device.id && snapshot.isCurrent(),
+				};
+		}
+		return null;
+	}
+
 	hasGuardedTransport(deviceIdentifier: string): boolean {
 		return [...(this.identifierToDelegates.get(deviceIdentifier) ?? [])].some(
 			(id) => this.delegates.get(id)?.guardedTransportActive === true,

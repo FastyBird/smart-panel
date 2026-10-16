@@ -337,6 +337,14 @@ export class PropertyValueService {
 		};
 	}
 
+	/** Captures physical source-lease continuity without treating later packets as new authority. */
+	captureSampleSourceGuard(property: ChannelPropertyEntity): () => boolean {
+		const key = this.resolveBestEffort(property, 'sample source lease');
+		const sample = key === null ? null : this.samples.get(key);
+		const guard = sample?.isCurrent;
+		return () => !!sample && guard?.() !== false;
+	}
+
 	/** Qualifies current live evidence; derived samples must still incorporate the current source acceptance. */
 	readQualifiedSample(
 		property: ChannelPropertyEntity,

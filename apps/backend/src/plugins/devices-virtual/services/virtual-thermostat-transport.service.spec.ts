@@ -118,6 +118,20 @@ describe('thermostat qualified guard bridge and core sample acceptance', () => {
 			{ readQualifiedSample: () => accepted } as unknown as PropertyValueService,
 		);
 	});
+	it('exposes the versioned real Shelly profile and refuses unsupported claim profiles', () => {
+		const adapter = transport.get(target);
+		expect(adapter.contractVersion).toBe(1);
+		expect(adapter.providerProfile).toEqual({ id: 'shelly-ng.guarded-switch', version: 1 });
+		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+			providerProfile: 'home-assistant.native-unit',
+			providerProfileVersion: 1,
+		});
+		expect(transport.get(target, claim)).toBeNull();
+		claim.providerProfile = 'shelly-ng.guarded-switch';
+		claim.providerProfileVersion = 2;
+		expect(transport.get(target, claim)).toBeNull();
+	});
+
 	it('requires an ordered script qualification before permitting any ON', async () => {
 		delete (qualification.profile as unknown as Record<string, unknown>).guardScript;
 		const adapter = transport.get(target);

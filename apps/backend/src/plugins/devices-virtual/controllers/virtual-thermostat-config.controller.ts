@@ -89,6 +89,7 @@ export class VirtualThermostatConfigController {
 	})
 	@ApiUnprocessableEntityResponse('Policy, reservation, source or revision conflict')
 	@ApiSuccessResponse(VirtualThermostatConfigurationResponseModel, 'Durable thermostat configuration')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@Put('thermostats/:id')
 	async configure(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

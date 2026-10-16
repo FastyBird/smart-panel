@@ -17,6 +17,12 @@ import {
 import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import {
+	SHELLY_GUARDED_PROFILE,
+	SHELLY_GUARDED_PROFILE_VERSION,
+	ThermostatProtectiveQualification,
+	thermostatHasOpposedBranches,
+} from '../contracts/thermostat-actuation.contract';
+import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
@@ -32,16 +38,7 @@ export interface ThermostatCommandAuthority {
 	readonly physicalIdentity: string;
 	readonly action: 'on' | 'off';
 }
-export interface ThermostatInstalledQualification {
-	readonly physicalIdentity: string;
-	/** Must match the retained claim after an operator restore; older durable profiles cannot be replayed. */
-	readonly qualificationGeneration?: string;
-	readonly profile: ShellyProtectiveQualification;
-	readonly upstreamWritersExcluded: boolean;
-	readonly opposedOutputsInterlocked: boolean;
-	/** Captured metadata/provider epoch, supplied only by the installation loader. */
-	readonly machineLeaseIsCurrent?: () => boolean;
-}
+export type ThermostatInstalledQualification = ThermostatProtectiveQualification<ShellyProtectiveQualification>;
 export interface ThermostatReleaseProof {
 	readonly claimId: string;
 	readonly revision: number;
@@ -252,6 +249,10 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		const profile = evidence.profile;
 		if (
 			!evidence.physicalIdentity ||
+			(evidence.contractVersion !== undefined && evidence.contractVersion !== 1) ||
+			(evidence.providerProfile !== undefined &&
+				(evidence.providerProfile.id !== SHELLY_GUARDED_PROFILE ||
+					evidence.providerProfile.version !== SHELLY_GUARDED_PROFILE_VERSION)) ||
 			!profile.evidenceId ||
 			!profile.firmware ||
 			!profile.deviceId ||
@@ -274,6 +275,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			evidence.physicalIdentity,
 			Object.freeze({
 				...evidence,
+				contractVersion: 1,
+				providerProfile: Object.freeze({ id: SHELLY_GUARDED_PROFILE, version: SHELLY_GUARDED_PROFILE_VERSION }),
 				profile: Object.freeze({
 					...profile,
 					testedLeaseSeconds: Object.freeze({ ...profile.testedLeaseSeconds }),
@@ -307,9 +310,13 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		opposed: boolean,
 	): ThermostatInstalledQualification | null {
 		const evidence = this.qualifications.get(claim.physicalIdentity);
-		opposed ||= [...this.reservations.values()].filter((row) => row.controllerId === claim.controllerId).length > 1;
+		opposed ||= thermostatHasOpposedBranches(
+			[...this.reservations.values()].filter((row) => row.controllerId === claim.controllerId),
+		);
 		if (
 			!evidence ||
+			(claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== SHELLY_GUARDED_PROFILE ||
+			(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !== SHELLY_GUARDED_PROFILE_VERSION ||
 			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
 			(evidence.machineLeaseIsCurrent && !evidence.machineLeaseIsCurrent()) ||
 			(opposed && !evidence.opposedOutputsInterlocked) ||

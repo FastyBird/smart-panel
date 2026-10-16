@@ -10,10 +10,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
+import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
+import { AddVirtualThermostatRuntime1000000000032 } from '../../../migrations/1000000000032-AddVirtualThermostatRuntime';
 import { AddVirtualThermostatRecoveries1000000000034 } from '../../../migrations/1000000000034-AddVirtualThermostatRecoveries';
+import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
+import { AddThermostatBranchGroups1000000000040 } from '../../../migrations/1000000000040-AddThermostatBranchGroups';
+import { AddThermostatMemberProtection1000000000041 } from '../../../migrations/1000000000041-AddThermostatMemberProtection';
 import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import {
@@ -234,6 +239,275 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		sources: [{ role: 'ambient', sourcePropertyId: sensor, maximumAgeSeconds: 300 }],
 		actuators: [{ role: 'heating', sourcePropertyId: heat, leaseSeconds: 30 }],
 		settings: [],
+	});
+
+	const protectMembers = async (input: ConfigureVirtualThermostatDto) => {
+		input.policy.floor = { limit: 30, recoveryHysteresis: 2 };
+		for (const member of input.actuators.filter((entry) => entry.role === 'heating')) {
+			const probe = await createProtectionProbe(database, member.sourcePropertyId);
+			member.protection = {
+				schemaVersion: 1,
+				kind: 'local_floor',
+				sourcePropertyId: probe.sourceId,
+				maximumAgeSeconds: 5,
+			};
+		}
+	};
+
+	it('requires explicit protection for every parallel heating member and retains it through omission, null and missing source edits', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			first = await actuator(),
+			secondRelay = await actuator('A8032ABE5099');
+		const input = dto(sensor, first);
+		input.actuators.push({ role: 'heating', sourcePropertyId: secondRelay, leaseSeconds: 30 });
+		await expect(configs.configure(controller, input)).rejects.toThrow(/protection|floor source/);
+		await protectMembers(input);
+		const configured = await configs.configure(controller, input);
+		const changed = {
+			...input,
+			expectedRevision: configured.revision,
+			actuators: input.actuators.map((member) => ({ ...member })),
+		};
+		delete changed.actuators[0].protection;
+		await expect(configs.configure(controller, changed)).rejects.toThrow(/protection|floor source/);
+		changed.actuators[0].protection = null;
+		await expect(configs.configure(controller, changed)).rejects.toThrow(/local floor|floor source/);
+		changed.actuators[0].protection = { ...input.actuators[1].protection };
+		await expect(configs.configure(controller, changed)).rejects.toThrow('actuator Shelly');
+		expect((await configs.get(controller)).actuators.map((member) => member.id)).toEqual(
+			configured.actuators.map((member) => member.id),
+		);
+	});
+	it('keeps a selected display member separate from a retained mandatory global floor input', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			globalFloor = await ambient(),
+			first = await actuator(),
+			secondRelay = await actuator('A8032ABE5099');
+		const input = dto(sensor, first);
+		input.actuators.push({ role: 'heating', sourcePropertyId: secondRelay, leaseSeconds: 30 });
+		await protectMembers(input);
+		input.sources.push({ role: 'floor', sourcePropertyId: globalFloor, maximumAgeSeconds: 5 });
+		const configured = await configs.configure(controller, input);
+		const selected = await configs.configure(controller, {
+			...input,
+			expectedRevision: configured.revision,
+			displayFloorClaimId: configured.actuators[0].id,
+		});
+		expect(selected.display_floor_claim).toBe(configured.actuators[0].id);
+		expect(selected.sources.some((source) => source.role === 'floor' && source.source_property === globalFloor)).toBe(
+			true,
+		);
+		expect(selected.actuators.every((member) => member.protection?.kind === 'local_floor')).toBe(true);
+	});
+
+	it('bounds mandatory members across both branches and preserves same-mode identities without opposed qualification', async () => {
+		const controller = await owner(),
+			sensor = await ambient();
+		const members = await Promise.all(
+			Array.from({ length: 9 }, (_, index) => actuator(`A8032ABE50${String(index).padStart(2, '0')}`)),
+		);
+		const input = dto(sensor, members[0]);
+		input.actuators = members.map((sourcePropertyId) => ({ role: 'heating', sourcePropertyId, leaseSeconds: 30 }));
+		await expect(configs.configure(controller, input)).rejects.toThrow('branches');
+		const mixed: ConfigureVirtualThermostatDto = {
+			...input,
+			policy: { ...input.policy, coolingSetpoint: 24 },
+			actuators: input.actuators.map((member, index) => ({ ...member, role: index < 4 ? 'heating' : 'cooling' })),
+		};
+		await expect(configs.preview(controller, mixed)).rejects.toThrow('branches');
+		mixed.actuators.pop();
+		await protectMembers(mixed);
+		expect((await configs.preview(controller, mixed)).actuators).toHaveLength(8);
+		input.actuators.pop();
+		await protectMembers(input);
+		const configured = await configs.configure(controller, input);
+		expect(configured.actuators).toHaveLength(8);
+		const retained = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+			id: configured.actuators[0].id,
+		});
+		claims.recordQualification({
+			physicalIdentity: retained.physicalIdentity,
+			qualificationGeneration: retained.qualificationGeneration,
+			upstreamWritersExcluded: true,
+			opposedOutputsInterlocked: false,
+			profile: {
+				deviceId: 'installed-fixture',
+				model: 'SNSW-001P16EU',
+				firmware: 'fixture-only',
+				componentId: 0,
+				evidenceId: 'installed-fixture',
+				revision: 1,
+				testedLeaseSeconds: { min: 1, max: 60 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+			},
+		});
+		expect(claims.qualification(retained, false)).not.toBeNull();
+		await expect(
+			database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+				...retained,
+				id: uuid(),
+				physicalIdentity: 'ninth-physical-member',
+			}),
+		).rejects.toThrow('eight');
+
+		expect(new Set(configured.actuators.map((claim) => claim.group_identity)).size).toBe(1);
+		const changed = await configs.configure(controller, { ...input, expectedRevision: configured.revision });
+		expect(changed.actuators.map((claim) => claim.id)).toEqual(configured.actuators.map((claim) => claim.id));
+		await expect(registry.assertAllowed(await target(members[7], true))).rejects.toThrow('reserved');
+		const duplicate = dto(sensor, members[8]);
+		duplicate.actuators.push({ ...duplicate.actuators[0] });
+		await expect(configs.preview(await owner(), duplicate)).rejects.toThrow('same physical actuator');
+		const detached = { ...input, expectedRevision: changed.revision, actuators: input.actuators.slice(1) };
+		await expect(configs.configure(controller, detached)).rejects.toThrow('cannot be detached');
+		const opposed = dto(sensor, members[8]);
+		opposed.policy.coolingSetpoint = 24;
+		opposed.actuators.push({ ...opposed.actuators[0], role: 'cooling' });
+		await expect(configs.preview(await owner(), opposed)).rejects.toThrow('same physical actuator');
+	});
+
+	it('upgrades actual legacy singleton rows in place with unresolved journal, release state and qualification generation', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			relay = await actuator();
+		const runner = database.createQueryRunner();
+		for (const table of [
+			'devices_virtual_thermostat_command_journal',
+			'devices_virtual_thermostat_branch_runtime',
+			'devices_virtual_thermostat_runtime',
+			'devices_virtual_thermostat_recoveries',
+			'devices_virtual_thermostat_settings',
+			'devices_virtual_thermostat_sources',
+			'devices_virtual_thermostat_actuator_claims',
+			'devices_virtual_thermostat_configs',
+		])
+			await runner.query(`DROP TABLE "${table}"`);
+		await new AddVirtualThermostatClaims1000000000031().up(runner);
+		await new AddVirtualThermostatRuntime1000000000032().up(runner);
+		await new AddVirtualThermostatRecoveries1000000000034().up(runner);
+		const policy = dto(sensor, relay).policy,
+			claimId = uuid();
+		const physical = await target(relay, false);
+		const identity = `shelly-ng:A8032ABE5084:switch:0:output`;
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_configs" ("controllerId", "ownerDeviceId", "schemaVersion", "revision", "requestedMode", "locked", "policy", "contactOpeningMs", "contactClosingMs", "configuredAt", "releaseRequestedAt") VALUES (?, ?, 1, 7, 'off', 0, ?, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			[controller, controller, JSON.stringify(policy)],
+		);
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_actuator_claims" ("id", "controllerId", "role", "physicalIdentity", "sourcePropertyId", "sourcePropertyIdentity", "sourceDeviceId", "sourceDeviceIdentity", "contractFingerprint", "revision", "qualificationGeneration", "state", "leaseSeconds", "reason", "releaseRequestedAt", "releaseEvidence") VALUES (?, ?, 'heating', ?, ?, ?, ?, ?, 'legacy-contract', 9, 'legacy-generation', 'releasing', 30, 'explicit_release_requested', CURRENT_TIMESTAMP, ?)`,
+			[
+				claimId,
+				controller,
+				identity,
+				relay,
+				relay,
+				physical.device.id,
+				physical.device.id,
+				JSON.stringify({ evidenceId: 'previous-proof' }),
+			],
+		);
+		const commandId = uuid();
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_command_journal" ("id", "controllerId", "claimId", "claimRevision", "configurationRevision", "decisionRevision", "action", "status", "preparedAt", "dispatchedAt", "fault") VALUES (?, ?, ?, 8, 6, 12, 'on', 'unknown', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'late_on')`,
+			[commandId, controller, claimId],
+		);
+		await runner.query(
+			`INSERT INTO "devices_virtual_thermostat_branch_runtime" ("claimId", "activity", "lastVerifiedOffAt", "releaseProofId", "releaseAttempts", "nextReleaseAt", "fault") VALUES (?, 'unknown', CURRENT_TIMESTAMP, 'earlier-proof', 3, CURRENT_TIMESTAMP, 'release_pending')`,
+			[claimId],
+		);
+		const beforeBranch: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime"');
+		const beforeConfig: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_configs"');
+		const beforeClaims: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_actuator_claims"');
+		const beforeJournal: unknown = await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"');
+		await new AddVirtualThermostatComfort1000000000039().up(runner);
+		await new AddThermostatBranchGroups1000000000040().up(runner);
+		await runner.query('DROP TABLE "devices_virtual_thermostat_member_protection"');
+		await runner.query('ALTER TABLE "devices_shelly_ng_sample_sources" DROP COLUMN "installationSnapshot"');
+		await new AddThermostatMemberProtection1000000000041().up(runner);
+		expect(
+			(
+				(await runner.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime"')) as Record<string, unknown>[]
+			).map(({ floorLatched: _latch, ...row }) => row),
+		).toEqual(beforeBranch);
+		const afterConfig = (await runner.query('SELECT * FROM "devices_virtual_thermostat_configs"')) as Record<
+			string,
+			unknown
+		>[];
+		expect(
+			afterConfig.map(
+				({ controlStrategy: _strategy, comfort: _comfort, displayFloorClaimId: _display, ...row }) => row,
+			),
+		).toEqual(beforeConfig);
+
+		expect(afterConfig[0].comfort).toBeNull();
+		expect(await runner.query('SELECT * FROM "devices_virtual_thermostat_command_journal"')).toEqual(beforeJournal);
+		const afterClaims = (await runner.query('SELECT * FROM "devices_virtual_thermostat_actuator_claims"')) as Record<
+			string,
+			unknown
+		>[];
+		expect(afterClaims.map(({ providerProfile: _profile, providerProfileVersion: _version, ...row }) => row)).toEqual(
+			beforeClaims,
+		);
+		await claims.refresh();
+		expect((await configs.get(controller)).actuators[0]).toMatchObject({
+			id: claimId,
+			revision: 9,
+			qualification_generation: 'legacy-generation',
+			state: 'releasing',
+			provider_profile: 'shelly-ng.guarded-switch',
+			group_identity: `${controller}:heating`,
+		});
+		await expect(registry.assertAllowed(await target(relay, false))).rejects.toThrow('reserved');
+		await runner.release();
+	});
+
+	it('retains sibling ownership and release demand through parallel disable, delete refusal, remap refusal and member recovery', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			first = await actuator(),
+			second = await actuator('A8032ABE5099');
+		const input = dto(sensor, first);
+		input.actuators.push({ role: 'heating', sourcePropertyId: second, leaseSeconds: 30 });
+		await protectMembers(input);
+		const configured = await configs.configure(controller, input);
+		await expect(database.manager.delete(DeviceEntity, { id: controller })).rejects.toThrow('reserved');
+		await expect(
+			configs.configure(controller, {
+				...input,
+				expectedRevision: configured.revision,
+				actuators: [input.actuators[0]],
+			}),
+		).rejects.toThrow('cannot be detached');
+		await database.manager.update(DeviceEntity, { id: controller }, { enabled: false });
+		const disabled = await configs.get(controller);
+		expect(disabled.actuators.every((claim) => claim.state === 'releasing')).toBe(true);
+		const firstClaim = disabled.actuators.find((claim) => claim.source_property === first);
+		const siblingClaim = disabled.actuators.find((claim) => claim.source_property === second);
+		const restored = await configs.restoreActuator(
+			controller,
+			firstClaim.id,
+			{
+				expectedRevision: disabled.revision,
+				expectedClaimRevision: firstClaim.revision,
+				physicalIdentity: firstClaim.physical_identity,
+				sourcePropertyId: first,
+				reason: 'operator checked the same retained physical actuator',
+				disconnectionAcknowledged: true,
+			},
+			'operator',
+		);
+		expect(restored.actuators.find((claim) => claim.id === siblingClaim.id)).toEqual(siblingClaim);
+		expect(restored.actuators.find((claim) => claim.id === firstClaim.id)).toMatchObject({
+			id: firstClaim.id,
+			state: 'releasing',
+			physical_identity: firstClaim.physical_identity,
+		});
+		expect(restored.actuators.find((claim) => claim.id === firstClaim.id).qualification_generation).not.toBe(
+			firstClaim.qualification_generation,
+		);
+		await expect(registry.assertAllowed(await target(second, true))).rejects.toThrow('reserved');
 	});
 
 	it('roundtrips draft authoring over HTTP with durable identities, exclusive claims and revision validation', async () => {
@@ -1640,6 +1914,66 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await expect(registry.assertAllowed(await target(relay, true))).rejects.toThrow('reserved');
 	});
 
+	it('preserves override and explicit OFF through legacy commands and atomic range reconfiguration', async () => {
+		const controller = await owner(),
+			sensor = await ambient(),
+			relay = await actuator();
+		const enable = await setting(controller, ChannelCategory.HEATER, PropertyCategory.ON);
+		const setpoint = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE);
+		const input = dto(sensor, relay);
+		input.requestedMode = 'heat';
+		input.settings = [
+			{ propertyId: enable, setting: 'heating_enabled' },
+			{ propertyId: setpoint, setting: 'heating_setpoint' },
+		];
+		input.comfort = { heating_range: { minimum: 10, maximum: 30 }, cooling_range: null, presets: [] };
+		await configs.configure(controller, input);
+		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		config.comfort.temporary_override = {
+			id: uuid(),
+			source: 'user',
+			actor_id: 'operator',
+			revision: config.revision,
+			created_at: new Date().toISOString(),
+			expires_at: new Date(Date.now() + 60_000).toISOString(),
+			preset: null,
+			setpoints: { heating_setpoint: 24, cooling_setpoint: null },
+			resolved_setpoints: { heating_setpoint: 24, cooling_setpoint: null },
+			status: 'active',
+			terminated_at: null,
+		};
+		await database.manager.save(config);
+		await configs.command([await target(enable, false)]);
+		await configs.command([await target(setpoint, 18)]);
+		let current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		expect(current).toMatchObject({
+			requestedMode: 'off',
+			policy: { heatingSetpoint: 18 },
+			comfort: { user_off: true, temporary_override: { resolved_setpoints: { heating_setpoint: 24 } } },
+		});
+		await configs.configure(controller, { ...input, expectedRevision: current.revision });
+		current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		expect(current.comfort.user_off).toBe(false);
+		await configs.command([await target(enable, true)]);
+		current = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+		expect(current.comfort.user_off).toBe(false);
+		await expect(
+			configs.configure(controller, {
+				...input,
+				expectedRevision: current.revision,
+				policy: { ...input.policy, heatingSetpoint: 31 },
+				comfort: undefined,
+			}),
+		).rejects.toThrow('setpoint_range');
+		await configs.configure(controller, {
+			...input,
+			expectedRevision: current.revision,
+			policy: { ...input.policy, heatingSetpoint: 31 },
+			comfort: { heating_range: { minimum: 10, maximum: 35 }, cooling_range: null, presets: [] },
+		});
+		expect((await configs.get(controller)).policy.heatingSetpoint).toBe(31);
+	});
+
 	it('migration matches synchronized reservation constraints and stable SET NULL foreign keys', async () => {
 		const runner = database.createQueryRunner();
 		await runner.dropTable('devices_virtual_thermostat_recoveries');
@@ -1654,6 +1988,13 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await migration.up(runner);
 		const recoveryMigration = new AddVirtualThermostatRecoveries1000000000034();
 		await recoveryMigration.up(runner);
+		const branchMigration = new AddThermostatBranchGroups1000000000040();
+		await branchMigration.up(runner);
+		await new AddVirtualThermostatComfort1000000000039().up(runner);
+		await runner.query('DROP TABLE "devices_virtual_thermostat_member_protection"');
+		await runner.query('ALTER TABLE "devices_virtual_thermostat_branch_runtime" DROP COLUMN "floorLatched"');
+		await runner.query('ALTER TABLE "devices_shelly_ng_sample_sources" DROP COLUMN "installationSnapshot"');
+		await new AddThermostatMemberProtection1000000000041().up(runner);
 		const indexes = await runner.query('PRAGMA index_list("devices_virtual_thermostat_actuator_claims")');
 		expect(indexes).toEqual(
 			expect.arrayContaining([
@@ -1670,8 +2011,12 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId: controller }))
 				.sourcePropertyId,
 		).toBeNull();
-		await recoveryMigration.down(runner);
-		await migration.down(runner);
+		await new AddThermostatMemberProtection1000000000041().down(runner);
+		await branchMigration.down(runner);
+		const cleanupRunner = database.createQueryRunner();
+		await recoveryMigration.down(cleanupRunner);
+		await migration.down(cleanupRunner);
+		await cleanupRunner.release();
 		await runner.release();
 	});
 });
