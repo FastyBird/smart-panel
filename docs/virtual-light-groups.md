@@ -151,6 +151,16 @@ Each child ends as confirmed, failed, unavailable, superseded or timed out. A pa
 intended child confirms, partial when some confirm, and failed when none confirm. New physical generations and
 cancellation notify active parents, including an already-confirmed early child; ordinary confirmation-grace expiry does
 not erase confirmation. Confirmation is recorded immediately even when a provider acknowledgement hangs.
+Parent completion additionally requires a durable binding check to return true before the absolute deadline.
+This tightens the earlier deadline behavior: finishing at or after expiry no longer skips that check. If no
+validation budget remains, or a read cannot finish in time, an observed physical confirmation is retained as
+an `unavailable` child with reason `Physical confirmation observed; final binding validation unavailable before deadline`.
+A validation error is likewise unavailable, rather than evidence that the physical action failed or the binding changed.
+A timely false binding check or actual generation fence supersedes the child. Identity and generation remain in the
+result; other terminal child outcomes are preserved. A late validation or physical sample cannot repair a completed
+snapshot. Thus a parent can be failed even after physical confirmation when no child has final validated authority;
+the child reason explicitly distinguishes that uncertainty from physical failure. The applied synchronous send guard
+does not replace durable validation, including in shared-writer configurations. This never extends the intent budget.
 Configuration remaps fence the parent. Observers are removed on completion, timeout and module
 shutdown. There is no promise of atomic hardware rollback after partial completion.
 

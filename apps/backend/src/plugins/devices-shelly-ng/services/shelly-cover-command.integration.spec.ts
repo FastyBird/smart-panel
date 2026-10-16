@@ -47,7 +47,10 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../../devices-virtual/entities/devices-virtual.entity';
-import { VirtualLightGroupProfile } from '../../devices-virtual/entities/virtual-producer.entity';
+import {
+	VirtualLightGroupConfigEntity,
+	VirtualLightGroupProfile,
+} from '../../devices-virtual/entities/virtual-producer.entity';
 import { VirtualStatusListener } from '../../devices-virtual/listeners/virtual-status.listener';
 import { VirtualDependencyGraphService } from '../../devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualLightGroupCommandService } from '../../devices-virtual/services/virtual-light-group-command.service';
@@ -96,6 +99,7 @@ class CoverTransport extends GuardedShellyRpcHandler {
 	actionResponse: () => unknown = () => null;
 	pre: (raw: Record<string, unknown>) => unknown = (raw) => raw;
 	gate: Promise<void> = Promise.resolve();
+	failStatusReads = false;
 	protected override createSocket(): WebSocket {
 		return Object.assign(new EventEmitter(), {
 			readyState: WebSocket.OPEN,
@@ -103,6 +107,16 @@ class CoverTransport extends GuardedShellyRpcHandler {
 				const frame = JSON.parse(data) as Frame;
 				this.frames.push(frame);
 				callback();
+				if (frame.method === 'Cover.GetStatus' && this.failStatusReads) {
+					queueMicrotask(() =>
+						this.client.receive({
+							jsonrpc: '2.0',
+							id: frame.id,
+							error: { code: -32603, message: 'Controlled moving observation transport failure' },
+						}),
+					);
+					return;
+				}
 				let result: unknown;
 				if (frame.method === 'Cover.GetStatus')
 					result = this.actionTag ? this.post({ ...this.state, tag: this.actionTag }) : this.pre(this.state);
@@ -939,6 +953,17 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 	};
 	const property = (index: number, category: PropertyCategory) =>
 		physical[index].properties.find((property) => property.category === category);
+	const expectDeadlineObservation = (result: Awaited<ReturnType<typeof send>>) => {
+		expect(result.composite.status).toBe('failed');
+		expect(
+			result.composite.children.find((child) => child.propertyId === property(1, PropertyCategory.COMMAND).id),
+		).toMatchObject({
+			status: 'unavailable',
+			generation: expect.any(String) as string,
+			reason: 'Physical confirmation observed; final binding validation unavailable before deadline',
+		});
+		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(0);
+	};
 
 	const recoveryActor = { auth: { type: 'user', id: 'operator', role: UserRole.OWNER } } as never;
 	const recoveryContext = async () => {
@@ -1614,8 +1639,8 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			tag: transports[0].actionTag,
 		});
 		const result = await pending;
-		expect(result.composite.status).toBe('partial');
-		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(1);
+		expectDeadlineObservation(result);
+		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(0);
 	});
 	it.each([{ current_pos: 55 }, { apower: 12 }, { state: 'opening' }])(
 		'refreshes native telemetry delta %j using a distinct full read without cached-field synthesis',
@@ -1772,7 +1797,7 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 			});
 			await until(() => values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value === 'opening');
 			expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
-			expect((await pending).composite.status).toBe('partial');
+			expectDeadlineObservation(await pending);
 		},
 	);
 	it('ACK-only stays pending, times out and cannot be repaired by a late readback', async () => {
@@ -1781,10 +1806,12 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		await until(() => transports[0].frames.length >= 3);
 		expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
 		const result = await pending;
-		expect(result.composite.status).toBe('partial');
+		expectDeadlineObservation(result);
+		const terminal = JSON.stringify(result);
 		transports[0].answer(transports[0].frames[2], { ...transports[0].state, tag: transports[0].actionTag });
 		await new Promise<void>((resolve) => setTimeout(resolve, 10));
-		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(1);
+		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(0);
+		expect(JSON.stringify(result)).toBe(terminal);
 	});
 
 	it('does not admit a pre-action/status replay while the action RPC response is pending', async () => {
@@ -1943,10 +1970,10 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		const action = transports[0].frames.find((frame) => frame.method === 'Cover.Open');
 		expect(action).toBeDefined();
 		const result = await pending;
-		expect(result.composite.status).toBe('partial');
+		expect(result.composite.status).toBe('failed');
 		expect(result.composite.children.find((child) => child.propertyId === healthyId)).toMatchObject({
-			status: 'confirmed',
-			reason: 'cover_action_begun',
+			status: 'unavailable',
+			reason: 'Physical confirmation observed; final binding validation unavailable before deadline',
 		});
 		expect(
 			result.composite.children.find((child) => child.propertyId === property(0, PropertyCategory.COMMAND).id),
@@ -2009,53 +2036,205 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		expect(transports[0].frames).toHaveLength(count);
 		expect(new PropertyCommandWindowService().get(property(0, PropertyCategory.COMMAND).id)).toBeNull();
 	});
-	it('STOP needs explicit nonmoving feedback; unchanged position while moving is not proof', async () => {
+	it.each([false, true])(
+		'STOP needs explicit nonmoving feedback; unchanged moving position plus injected observation failure (explicit grace expiry=%s)',
+		async (expireGrace) => {
+			const startedAt = Date.now();
+			const contextBefore = {
+				metadata: metadata.getGeneration(),
+				graph: await graph.revision(),
+				config: (await db.manager.findOneByOrFail(VirtualLightGroupConfigEntity, { groupChannelId: group })).revision,
+			};
+			type Progress = {
+				sequence: number;
+				revision: number;
+				deadlineAt: number;
+				children: Array<{ property_id: string; status: string; reason?: string; generation?: string }>;
+			};
+			const progress: Array<{
+				elapsed: number;
+				remaining: number;
+				sequence: number;
+				revision: number;
+				children: Progress['children'];
+			}> = [];
+			const recordProgress = (event: Progress) => {
+				progress.push({
+					elapsed: Date.now() - startedAt,
+					remaining: event.deadlineAt - Date.now(),
+					sequence: event.sequence,
+					revision: event.revision,
+					children: event.children.map(({ property_id, status, reason, generation }) => ({
+						property_id,
+						status,
+						reason,
+						generation,
+					})),
+				});
+				if (progress.length > 64) progress.shift();
+			};
+			events.on('DevicesModule.CompositeCommand.Progress', recordProgress);
+			transports[0].state.state = 'opening';
+			const unchangedPosition = transports[0].state.current_pos;
+			let readMoving: () => void, confirmed: () => void;
+			const movingRead = new Promise<void>((resolve) => {
+				readMoving = resolve;
+			});
+			const siblingConfirmed = new Promise<void>((resolve) => {
+				confirmed = resolve;
+			});
+			transports[0].post = (raw) => {
+				expect(raw.current_pos).toBe(unchangedPosition);
+				readMoving();
+				return { ...raw, state: 'opening' };
+			};
+			const healthyId = property(1, PropertyCategory.COMMAND).id;
+			const generations: Array<{ elapsed: number; generation: string | null }> = [];
+			const stopGenerations = windows.observeGeneration((propertyId, generation) => {
+				if (propertyId !== healthyId) return;
+				generations.push({ elapsed: Date.now() - startedAt, generation });
+				if (generations.length > 32) generations.shift();
+			});
+			let progressAtConfirmation: { before: (typeof progress)[number]; after?: (typeof progress)[number] };
+			let healthyWindow: ReturnType<PropertyCommandWindowService['get']>;
+			const stopObserving = windows.observeConfirmation((handle) => {
+				if (handle.canonicalPropertyId !== healthyId) return;
+				healthyWindow = windows.get(healthyId);
+				progressAtConfirmation = { before: progress.at(-1) };
+				queueMicrotask(() => {
+					progressAtConfirmation.after = progress.at(-1);
+				});
+				confirmed();
+			});
+			// SQLite/coverage preparation belongs to the absolute deadline. Require both
+			// actual protocol phases before testing the moving member's intentional expiry.
+			const pending = send('stop', groupCommand, 5000).finally(() => {
+				events.off('DevicesModule.CompositeCommand.Progress', recordProgress);
+				stopGenerations();
+			});
+			try {
+				await Promise.race([
+					Promise.all([movingRead, siblingConfirmed]),
+					pending.then((early) => {
+						throw new Error(`Required STOP phases missed deadline: ${JSON.stringify(early.composite)}`);
+					}),
+				]);
+			} finally {
+				stopObserving();
+			}
+			expect(healthyWindow.state).toBe('confirmed_grace');
+			expect(healthyWindow.confirmedAt).toBeLessThan(healthyWindow.expiresAt);
+			if (expireGrace) {
+				// Expiring an already-confirmed observation window alone is not a new
+				// generation or a binding revision and must retain the parent's partial result.
+				await new Promise<void>((resolve) =>
+					setTimeout(resolve, Math.max(1, healthyWindow.confirmationExpiresAt - Date.now() + 1)),
+				);
+				expect(windows.get(healthyId)).toBeNull();
+			}
+			// The actual SDK read error ends this member before parent expiry, leaving
+			// time for real durable SQLite validation of the healthy physical proof.
+			transports[0].failStatusReads = true;
+			const result = await pending;
+			if (result.composite.status !== 'partial') {
+				const terminalReasons = result.composite.children.map((child) => child.reason);
+				throw new Error(
+					`STOP composite diagnostic: ${JSON.stringify({
+						classification: terminalReasons.includes('Physical generation superseded or cancelled')
+							? 'generation_fenced'
+							: terminalReasons.includes('Binding revision changed before parent completion')
+								? 'final_plan_validation'
+								: terminalReasons.some((reason) =>
+											reason?.startsWith('Physical confirmation observed; final binding validation'),
+									  )
+									? 'final_validation_unavailable'
+									: progress.some((event) =>
+												event.children.some((child) => child.property_id === healthyId && child.status === 'confirmed'),
+										  )
+										? 'confirmed_child_lost_other_reason'
+										: 'healthy_confirmation_not_recorded_in_progress',
+						terminal: result.composite,
+						contextBefore,
+						contextAfter: {
+							metadata: metadata.getGeneration(),
+							graph: await graph.revision(),
+							config: (await db.manager.findOneByOrFail(VirtualLightGroupConfigEntity, { groupChannelId: group }))
+								.revision,
+						},
+						healthy: {
+							propertyId: healthyId,
+							generation: healthyWindow.generation,
+							state: healthyWindow.state,
+							openedAt: healthyWindow.openedAt,
+							expiresAt: healthyWindow.expiresAt,
+							confirmedAt: healthyWindow.confirmedAt,
+							confirmationExpiresAt: healthyWindow.confirmationExpiresAt,
+							effectScope: healthyWindow.effectScope,
+							currentGeneration: windows.peekGeneration(healthyId),
+						},
+						physicalScopes: physical.map((member) => `shelly-ng:${member.device.canonicalMac}|cover:0`),
+						progressAtConfirmation,
+						generations,
+						progress,
+					})}`,
+				);
+			}
+			expect(result.composite.status).toBe('partial');
+			expect(result.composite.children.find((child) => child.propertyId === healthyId)).toMatchObject({
+				status: 'confirmed',
+				reason: 'cover_stopped',
+			});
+			if (expireGrace) expect(generations.some((event) => event.generation === null)).toBe(false);
+			const movingId = property(0, PropertyCategory.COMMAND).id;
+			expect(result.composite.children.find((child) => child.propertyId === movingId)).toMatchObject({
+				status: 'failed',
+			});
+			expect(transports[0].frames.filter((frame) => frame.method === 'Cover.Stop')).toHaveLength(1);
+			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+			const terminal = JSON.stringify(result);
+			emitRaw(0, { ...transports[0].state, state: 'stopped', tag: transports[0].actionTag });
+			await until(() => values.readQualifiedSample(property(0, PropertyCategory.STATUS), 300000)?.value === 'stopped');
+			expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
+			expect(JSON.stringify(result)).toBe(terminal);
+		},
+	);
+	it('retains the durable config check independently of an insufficient true synchronous send guard', async () => {
+		const output = await metadata.findOne(groupCommand);
+		const channel = output.channel as ChannelEntity;
+		const plan = await planner.plan([
+			{ property: output, channel, device: channel.device as DeviceEntity, value: 'stop' },
+		]);
+		const generation = metadata.getGeneration();
+		const revision = await graph.revision();
+		await db.manager.increment(VirtualLightGroupConfigEntity, { groupChannelId: group }, 'revision', 1);
+		expect(metadata.getGeneration()).toBe(generation);
+		expect(await graph.revision()).toBe(revision);
+		expect(plan.isDispatchCurrent()).toBe(true);
+		expect(await plan.isCurrent()).toBe(false);
+		expect(transports.flatMap((rpc) => rpc.frames)).toEqual([]);
+	});
+	it('STOP moving-only expiry is timed out, and later stopped feedback cannot repair it', async () => {
 		transports[0].state.state = 'opening';
-		const unchangedPosition = transports[0].state.current_pos;
-		let readMoving: () => void, confirmed: () => void;
+		const position = transports[0].state.current_pos;
+		let moving: () => void;
 		const movingRead = new Promise<void>((resolve) => {
-			readMoving = resolve;
-		});
-		const siblingConfirmed = new Promise<void>((resolve) => {
-			confirmed = resolve;
+			moving = resolve;
 		});
 		transports[0].post = (raw) => {
-			expect(raw.current_pos).toBe(unchangedPosition);
-			readMoving();
+			expect(raw.current_pos).toBe(position);
+			moving();
 			return { ...raw, state: 'opening' };
 		};
-		const healthyId = property(1, PropertyCategory.COMMAND).id;
-		let healthyWindow: ReturnType<PropertyCommandWindowService['get']>;
-		const stopObserving = windows.observeConfirmation((handle) => {
-			if (handle.canonicalPropertyId !== healthyId) return;
-			healthyWindow = windows.get(healthyId);
-			confirmed();
-		});
-		// SQLite/coverage preparation belongs to the absolute deadline. Require both
-		// actual protocol phases before testing the moving member's intentional expiry.
-		const pending = send('stop', groupCommand, 5000);
-		try {
-			await Promise.race([
-				Promise.all([movingRead, siblingConfirmed]),
-				pending.then((early) => {
-					throw new Error(`Required STOP phases missed deadline: ${JSON.stringify(early.composite)}`);
-				}),
-			]);
-		} finally {
-			stopObserving();
-		}
-		expect(healthyWindow.state).toBe('confirmed_grace');
-		expect(healthyWindow.confirmedAt).toBeLessThan(healthyWindow.expiresAt);
+		const pending = send('stop', property(0, PropertyCategory.COMMAND).id, 5000);
+		await Promise.race([
+			movingRead,
+			pending.then((early) => {
+				throw new Error(`Moving STOP phases missed: ${JSON.stringify(early.composite)}`);
+			}),
+		]);
 		const result = await pending;
-		expect(result.composite.status).toBe('partial');
-		expect(result.composite.children.find((child) => child.propertyId === healthyId)).toMatchObject({
-			status: 'confirmed',
-			reason: 'cover_stopped',
-		});
-		const movingId = property(0, PropertyCategory.COMMAND).id;
-		expect(result.composite.children.find((child) => child.propertyId === movingId)).toMatchObject({
-			status: 'timed_out',
-		});
+		expect(result.composite.status).toBe('failed');
+		expect(result.composite.children).toEqual([expect.objectContaining({ status: 'timed_out' })]);
 		expect(transports[0].frames.filter((frame) => frame.method === 'Cover.Stop')).toHaveLength(1);
 		expect(values.readQualifiedSample(property(0, PropertyCategory.COMMAND), 300000)).toBeNull();
 		const terminal = JSON.stringify(result);
