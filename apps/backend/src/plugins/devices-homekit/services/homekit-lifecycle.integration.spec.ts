@@ -191,6 +191,90 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 		expect(commits).toBe(count);
 	});
 
+	it.each([ChannelCategory.CARBON_DIOXIDE, ChannelCategory.FAN])(
+		'pins %s admission metadata before its first name update, including snapshot restore',
+		async (category) => {
+			const source = channel(device, 'source', category);
+			if (category === ChannelCategory.FAN)
+				Object.assign(property(source, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+			const value = Object.assign(
+				property(
+					source,
+					'source-value',
+					category === ChannelCategory.FAN ? PropertyCategory.SPEED : PropertyCategory.CONCENTRATION,
+					40,
+				),
+				{
+					dataType: DataTypeType.FLOAT,
+					unit: category === ChannelCategory.FAN ? '%' : 'ppm',
+					format: [0, 100],
+					step: 1,
+				},
+			);
+			await bridge.start();
+			const original = accessory();
+			const snapshot = registry.getSnapshot();
+			registry.clearAllBindings();
+			registry.restoreSnapshot(snapshot);
+			const renamed = Object.assign(new ChannelPropertyEntity(), value, {
+				name: 'New display name',
+				channel: source.id,
+			});
+			if (category === ChannelCategory.FAN) await listener.handleFanMetadataChanged(renamed);
+			else await listener.handleCarbonDioxideMetadataChanged(renamed);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			expect(accessory()).toBe(original);
+			expect(registry.admissionMetadataChanged(renamed, source)).toBe(false);
+			expect(
+				registry.admissionMetadataChanged(
+					Object.assign(new ChannelPropertyEntity(), renamed, { unit: 'invalid' }),
+					source,
+				),
+			).toBe(true);
+		},
+	);
+	it.each([
+		[ChannelCategory.CARBON_DIOXIDE, 'reject'],
+		[ChannelCategory.FAN, 'reject'],
+		[ChannelCategory.CARBON_DIOXIDE, 'null'],
+		[ChannelCategory.FAN, 'null'],
+	] as const)(
+		'handles %s metadata channel lookup %s without silently dropping a mapped-owner rebuild',
+		async (category, outcome) => {
+			const source = channel(device, 'source', category);
+			if (category === ChannelCategory.FAN)
+				Object.assign(property(source, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+			const value = Object.assign(
+				property(
+					source,
+					'source-value',
+					category === ChannelCategory.FAN ? PropertyCategory.SPEED : PropertyCategory.CONCENTRATION,
+					40,
+				),
+				{
+					dataType: DataTypeType.FLOAT,
+					unit: category === ChannelCategory.FAN ? '%' : 'ppm',
+					format: [0, 100],
+					step: 1,
+				},
+			);
+			await bridge.start();
+			const maintain = jest.spyOn(bridge, 'maintainMapping');
+			listener.onModuleDestroy();
+			listener = new HomeKitEventListener(registry, bridge, undefined, {
+				findOne:
+					outcome === 'reject'
+						? jest.fn().mockRejectedValue(new Error('Channel query failed'))
+						: jest.fn().mockResolvedValue(null),
+			} as unknown as ChannelsService);
+			const changed = Object.assign(new ChannelPropertyEntity(), value, { channel: source.id });
+			if (category === ChannelCategory.FAN) await listener.handleFanMetadataChanged(changed);
+			else await listener.handleCarbonDioxideMetadataChanged(changed);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			if (outcome === 'reject') expect(maintain).toHaveBeenCalledWith({ rebuildDeviceIds: [device.id] });
+			else expect(maintain).not.toHaveBeenCalled();
+		},
+	);
 	it('retains mixed fan sensors through lifecycle rebuilds and withdraws CO2 levels after metadata drift', async () => {
 		device.channels = [];
 		const temperatureChannel = channel(device, 'temperature', ChannelCategory.TEMPERATURE);

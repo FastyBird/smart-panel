@@ -36,6 +36,7 @@ class _GroupedCoversRoomControlsState extends State<GroupedCoversRoomControls> {
   Timer? _coalesce;
   int _generation = 0;
   bool _loading = false;
+  bool _refreshQueued = false;
   @override
   void initState() {
     super.initState();
@@ -71,6 +72,7 @@ class _GroupedCoversRoomControlsState extends State<GroupedCoversRoomControls> {
   void _connection(bool value) {
     ++_generation;
     _loading = false;
+    _refreshQueued = false;
     setState(() {
       _available = false;
       _fresh = null;
@@ -82,6 +84,7 @@ class _GroupedCoversRoomControlsState extends State<GroupedCoversRoomControls> {
     if (_coalesce != null) return;
     ++_generation;
     _loading = false;
+    _refreshQueued = false;
     setState(() => _available = false);
     _coalesce = Timer(const Duration(milliseconds: 200), () {
       _coalesce = null;
@@ -89,13 +92,18 @@ class _GroupedCoversRoomControlsState extends State<GroupedCoversRoomControls> {
     });
   }
 
+  /// Coalesces a follow-up read so a pre-command fetch cannot satisfy command refresh.
   Future<void> _refresh() async {
-    if (_loading || _socket?.isConnected == false) return;
+    if (_socket?.isConnected == false || !mounted) return;
+    if (_loading) {
+      _refreshQueued = true;
+      return;
+    }
     final generation = ++_generation;
     _loading = true;
     try {
       final state = await widget.reload();
-      if (mounted && generation == _generation) {
+      if (mounted && generation == _generation && !_refreshQueued) {
         setState(() {
           _fresh = state;
           _available = state != null;
@@ -109,7 +117,13 @@ class _GroupedCoversRoomControlsState extends State<GroupedCoversRoomControls> {
         });
       }
     } finally {
-      if (generation == _generation) _loading = false;
+      if (generation == _generation) {
+        _loading = false;
+        if (_refreshQueued && mounted) {
+          _refreshQueued = false;
+          unawaited(_refresh());
+        }
+      }
     }
   }
 
@@ -135,6 +149,7 @@ class _GroupedCoversRoomControlsState extends State<GroupedCoversRoomControls> {
       setState(() {
         _result = result;
         _uncertain = result == null;
+        _available = false;
       });
       await _refresh();
     } catch (_) {

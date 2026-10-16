@@ -44,7 +44,7 @@ Admin/panel support for the new group profiles remains VD3-6; these checkmarks d
 
 The accepted backend commits are composed onto merged #1465 main `4f4dd1f346fa5e9508c729f5b0d11a23a416f465` in
 `feat/virtual-actuator-profiles-ui`. Existing numeric/binary editor changes are preserved; cover migration remains 38.
-No delivery PR is opened yet. POSITION/TILT completion and unqualified cover providers remain unavailable. There is
+Delivery [PR #1466](https://github.com/FastyBird/smart-panel/pull/1466) targets `main` and awaits exact-head CI and CodeRabbit review. POSITION/TILT completion and unqualified cover providers remain unavailable. There is
 no standalone switch/outlet/fan room intent domain; their native device and scene controls do not imply such a domain.
 These limits and software-only checks must remain explicit in review. Neither #1452 nor #1453 is marked complete here.
 

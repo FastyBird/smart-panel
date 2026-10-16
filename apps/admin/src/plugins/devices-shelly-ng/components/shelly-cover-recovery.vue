@@ -86,20 +86,37 @@ const acknowledged = ref(false),
 	completed = ref(false);
 const now = ref(Date.now());
 let generation = 0;
+let targetGeneration = 0;
+const submitting = ref(false);
 const clock = setInterval(() => {
 	now.value = Date.now();
 }, 1000);
-const invalidate = () => {
+/** Discard expired context without losing a submitted target's outcome on reconnect. */
+const invalidate = (resetOutcome = true) => {
 	generation++;
 	context.value = null;
 	acknowledged.value = false;
 	reason.value = '';
-	busy.value = false;
-	completed.value = false;
-	error.value = null;
+	busy.value = submitting.value;
+	if (resetOutcome) {
+		completed.value = false;
+		error.value = null;
+	}
 };
-watch(() => [props.deviceId, props.channelId, props.propertyId, props.connected, authorized.value], invalidate);
+watch(
+	() => [props.deviceId, props.channelId, props.propertyId, profile.value?.id, authorized.value],
+	() => {
+		targetGeneration++;
+		submitting.value = false;
+		invalidate();
+	}
+);
+watch(
+	() => props.connected,
+	() => invalidate(false)
+);
 onBeforeUnmount(() => {
+	targetGeneration++;
 	invalidate();
 	clearInterval(clock);
 });
@@ -144,7 +161,8 @@ const load = async () => {
 const recover = async () => {
 	if (!ready.value || !context.value) return;
 	const selected = context.value,
-		current = generation;
+		current = targetGeneration;
+	submitting.value = true;
 	busy.value = true;
 	error.value = null;
 	try {
@@ -163,17 +181,18 @@ const recover = async () => {
 				},
 			}
 		);
-		if (current !== generation) return;
+		if (current !== targetGeneration) return;
 		if (!result.data) throw result.error;
 		completed.value = true;
 		emit('recovered');
 	} catch (cause) {
-		if (current === generation) error.value = message(cause);
+		if (current === targetGeneration) error.value = message(cause);
 	} finally {
-		if (current === generation) {
+		if (current === targetGeneration) {
 			context.value = null;
 			acknowledged.value = false;
 			reason.value = '';
+			submitting.value = false;
 			busy.value = false;
 		}
 	}

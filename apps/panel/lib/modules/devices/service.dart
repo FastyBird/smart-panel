@@ -266,14 +266,21 @@ class DevicesService extends ChangeNotifier {
     PropertyCommandContext? context,
     bool requireAtomicBatch = false,
   }) async {
-    final groups = properties
+    final groupIds = properties
         .where((target) => getDevice(target.deviceId)?.isCompositeGroup == true)
-        .toList();
-    if (groups.isNotEmpty) {
+        .map((target) => target.deviceId)
+        .toSet();
+    final hasNonGroup = properties.any(
+      (target) => getDevice(target.deviceId)?.isCompositeGroup != true,
+    );
+    if (groupIds.length > 1 || (groupIds.isNotEmpty && hasNonGroup)) {
+      return false;
+    }
+    if (groupIds.isNotEmpty) {
       final commands = compositeCommands;
       if (commands == null) return false;
       return (await commands.send(
-        deviceId: groups.first.deviceId,
+        deviceId: groupIds.single,
         properties: properties,
         context:
             context ?? const PropertyCommandContext(origin: 'panel.device'),

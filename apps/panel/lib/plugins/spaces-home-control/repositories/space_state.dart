@@ -886,7 +886,8 @@ class SpaceStateRepository extends ChangeNotifier {
       if (mode != null) 'mode': mode,
     };
 
-    final compositeCovers = _hasCompositeCoverTarget(spaceId);
+    final classification = _hasCompositeCoverTarget(spaceId);
+    final compositeCovers = classification != false;
     // The group control remains pending for the same bounded composite request.
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
@@ -897,7 +898,16 @@ class SpaceStateRepository extends ChangeNotifier {
 
     try {
       // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = compositeCovers
+      final dispatchResult = classification == null
+          ? CommandDispatchResult(
+              success: true,
+              data: await _executeCompositeCoversIntentViaApi(
+                spaceId,
+                intentBody,
+              ).timeout(const Duration(seconds: 35)),
+              channel: CommandDispatchChannel.api,
+            )
+          : compositeCovers
           ? await _commandDispatch.dispatchComposite(
               event: SpacesModuleConstants.coversIntentEvent,
               handler: SpacesModuleEventHandlerName.coversIntent,
@@ -976,19 +986,30 @@ class SpaceStateRepository extends ChangeNotifier {
     return null;
   }
 
-  bool _hasCompositeCoverTarget(String spaceId) {
+  /// Unknown targets require one server-classified REST submission, never
+  /// WebSocket actuation followed by a possibly composite REST replay.
+  bool? _hasCompositeCoverTarget(String spaceId) {
     if (_coversStates[spaceId]?.groupOperations != null) return true;
-    if (!locator.isRegistered<DevicesService>()) return true;
-    final devices = locator<DevicesService>();
-    if (!devices.devicesLoaded) return true;
-    return devices.devicesList.any(
-      (device) =>
-          device.isCompositeGroup &&
-          device.category == DevicesModuleDeviceCategory.windowCovering &&
-          (device.roomId == spaceId || device.zoneIds.contains(spaceId)),
-    );
+    final devices = locator.isRegistered<DevicesService>()
+        ? locator<DevicesService>()
+        : null;
+    if (devices?.devicesLoaded == true &&
+        devices!.devicesList.any(
+          (device) =>
+              device.isCompositeGroup &&
+              device.category == DevicesModuleDeviceCategory.windowCovering &&
+              (device.roomId == spaceId || device.zoneIds.contains(spaceId)),
+        )) {
+      return true;
+    }
+    // Positive group evidence always wins over an older ordinary room snapshot.
+    if (_coversStates.containsKey(spaceId) || devices?.devicesLoaded == true) {
+      return false;
+    }
+    return null;
   }
 
+  /// Submits once with composite response/timeout semantics and no interceptor replay.
   Future<Map<String, dynamic>?> _executeCompositeCoversIntentViaApi(
     String spaceId,
     Map<String, dynamic> intentBody,
@@ -998,7 +1019,7 @@ class SpaceStateRepository extends ChangeNotifier {
       data: {'data': intentBody},
       options: Options(
         receiveTimeout: const Duration(seconds: 35),
-        extra: {'retryExhausted': true},
+        extra: {'retryExhausted': true, 'noActuationReplay': true},
       ),
     );
     return response.data?['data'] as Map<String, dynamic>?;

@@ -176,6 +176,9 @@ const metadataSignature = computed(() =>
 			.map(({ id, category, dataType, format, step, permissions, unit }) => ({ id, category, dataType, format, step, permissions, unit }))
 	)
 );
+watch(profile, () => {
+	memberIds.value = [];
+});
 watch(
 	[profile, memberIds, metadataSignature],
 	() => {
@@ -186,9 +189,6 @@ watch(
 	},
 	{ deep: true, immediate: true }
 );
-watch(profile, () => {
-	memberIds.value = [];
-});
 
 const categoryLabel = (category: string) => t(`devicesModule.categories.channelsProperties.${category}`);
 const draft = () => ({
@@ -208,6 +208,7 @@ watch(
 watch(
 	capabilities,
 	() => {
+		if (capabilities.value === undefined) return;
 		authoring.invalidatePreview();
 		void catalog.load({ profile: profile.value, selected_channels: memberIds.value, capabilities: capabilities.value });
 	},

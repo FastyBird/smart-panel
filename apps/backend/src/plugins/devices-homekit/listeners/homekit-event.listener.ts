@@ -96,28 +96,44 @@ export class HomeKitEventListener implements OnModuleDestroy {
 		}
 	}
 
-	/** CO2 numeric metadata determines service admission, including optional level withdrawal/recovery. */
+	/** Admission metadata is pinned at accessory creation, including currently withdrawn optionals. */
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	async handleCarbonDioxideMetadataChanged(property: ChannelPropertyEntity): Promise<void> {
-		if (!property || ![PropertyCategory.CONCENTRATION, PropertyCategory.PEAK_LEVEL].includes(property.category)) return;
-		const channel =
-			typeof property.channel === 'string' ? await this.channelsService?.findOne(property.channel) : property.channel;
-		if (channel?.category === ChannelCategory.CARBON_DIOXIDE) await this.handlePropertyStructureChanged(property);
+		await this.handleMetadataChanged(
+			property,
+			[PropertyCategory.CONCENTRATION, PropertyCategory.PEAK_LEVEL],
+			ChannelCategory.CARBON_DIOXIDE,
+		);
 	}
-
-	/** Optional fan services depend on the declared native contract, not merely the latest value. */
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	async handleFanMetadataChanged(property: ChannelPropertyEntity): Promise<void> {
-		if (
-			!property ||
-			![PropertyCategory.SPEED, PropertyCategory.SWING, PropertyCategory.DIRECTION, PropertyCategory.MODE].includes(
-				property.category,
-			)
-		)
+		await this.handleMetadataChanged(
+			property,
+			[PropertyCategory.SPEED, PropertyCategory.SWING, PropertyCategory.DIRECTION, PropertyCategory.MODE],
+			ChannelCategory.FAN,
+		);
+	}
+	/** Rebuild on contract drift or uncertain lookup, while a missing channel remains a no-op. */
+	private async handleMetadataChanged(
+		property: ChannelPropertyEntity,
+		categories: readonly PropertyCategory[],
+		expectedChannel: ChannelCategory,
+	): Promise<void> {
+		if (!property || !categories.includes(property.category)) return;
+		let channel: ChannelEntity;
+		try {
+			channel =
+				typeof property.channel === 'string' ? await this.channelsService?.findOne(property.channel) : property.channel;
+		} catch (error) {
+			const owner = this.mapperRegistry.getDeviceIdForProperty(property.id);
+			if (owner) this.scheduleRebuild(owner);
+			this.logger.warn(
+				`Failed to resolve HomeKit metadata channel: ${error instanceof Error ? error.message : String(error)}`,
+			);
 			return;
-		const channel =
-			typeof property.channel === 'string' ? await this.channelsService?.findOne(property.channel) : property.channel;
-		if (channel?.category === ChannelCategory.FAN) await this.handlePropertyStructureChanged(property);
+		}
+		if (channel?.category === expectedChannel && this.mapperRegistry.admissionMetadataChanged(property, channel))
+			await this.handlePropertyStructureChanged(property);
 	}
 
 	private isMapped(deviceId: string): boolean {

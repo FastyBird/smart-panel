@@ -12,7 +12,7 @@ import ShellyCoverRecovery from './shelly-cover-recovery.vue';
 
 const role = ref('owner');
 const client = { GET: vi.fn(), POST: vi.fn() };
-const sockets = { on: vi.fn(), off: vi.fn() };
+const sockets = { connected: true, on: vi.fn(), off: vi.fn() };
 vi.mock('../../../common', async (original) => ({
 	...(await original<typeof import('../../../common')>()),
 	injectSockets: () => sockets,
@@ -64,6 +64,7 @@ const acknowledge = async (wrapper: ReturnType<typeof setup>) => {
 beforeEach(() => {
 	vi.clearAllMocks();
 	role.value = 'owner';
+	sockets.connected = true;
 	client.GET.mockResolvedValue({ data: { data: context() } });
 	client.POST.mockResolvedValue({
 		data: { data: { override_epoch: 'epoch', advisory: 'operator_overridden_unresolved_ordering', observed_state: 'stopped' } },
@@ -106,6 +107,59 @@ describe('explicit operator cover ordering recovery', () => {
 		expect(wrapper.emitted('recovered')).toHaveLength(1);
 		expect(wrapper.find('[data-test-id="recovery-advisory"]').exists()).toBe(true);
 		expect(wrapper.findComponent(ElCheckbox).exists()).toBe(false);
+	});
+	it.each(['success', 'refusal', 'remapped'] as const)(
+		'retains pending POST %s across connection changes only for its captured target',
+		async (outcome) => {
+			let settle!: (result: unknown) => void;
+			client.POST.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						settle = resolve;
+					})
+			);
+			const wrapper = setup();
+			await load(wrapper);
+			await acknowledge(wrapper);
+			await button(wrapper, 'recovery-submit').trigger('click');
+			await wrapper.setProps({ connected: false });
+			await wrapper.setProps({ connected: true });
+			expect(button(wrapper, 'recovery-context').props('disabled')).toBe(true);
+			if (outcome === 'remapped') await wrapper.setProps({ propertyId: 'new-command' });
+			settle(
+				outcome === 'refusal'
+					? { error: { error: { message: 'Current condition rejected' } } }
+					: { data: { data: { advisory: 'operator_overridden_unresolved_ordering' } } }
+			);
+			await flushPromises();
+			expect(client.POST).toHaveBeenCalledTimes(1);
+			if (outcome === 'success') {
+				expect(wrapper.emitted('recovered')).toHaveLength(1);
+				expect(wrapper.find('[data-test-id="recovery-advisory"]').exists()).toBe(true);
+				await wrapper.setProps({ connected: false });
+				await wrapper.setProps({ connected: true });
+				expect(wrapper.find('[data-test-id="recovery-advisory"]').exists()).toBe(true);
+			} else {
+				expect(wrapper.emitted('recovered')).toBeUndefined();
+				expect(wrapper.text().includes('Current condition rejected')).toBe(outcome === 'refusal');
+				expect(wrapper.find('[data-test-id="recovery-advisory"]').exists()).toBe(false);
+			}
+		}
+	);
+	it('starts physical maintenance offline when mounted after the disconnect event', async () => {
+		sockets.connected = false;
+		const wrapper = mount(ShellyCoverRecoverySection, {
+			props: { device: { id: 'device', type: 'devices-shelly-ng' } as never },
+			global: { provide: { [backendKey as symbol]: client } },
+		});
+		wrappers.push(wrapper);
+		expect(wrapper.findComponent(ShellyCoverRecovery).props('connected')).toBe(false);
+		await button(wrapper.findComponent(ShellyCoverRecovery), 'recovery-context').trigger('click');
+		expect(client.GET).not.toHaveBeenCalled();
+		const connect = sockets.on.mock.calls.find(([event]) => event === 'connect')?.[1] as () => void;
+		connect();
+		await flushPromises();
+		expect(wrapper.findComponent(ShellyCoverRecovery).props('connected')).toBe(true);
 	});
 	it('never offers recovery to ordinary users', () => {
 		role.value = 'user';

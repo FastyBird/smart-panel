@@ -19,8 +19,8 @@ const props = defineProps<{ device: IDevice }>();
 const stores = injectStoresManager();
 const channels = stores.getStore(channelsStoreKey),
 	properties = stores.getStore(channelsPropertiesStoreKey);
-const connected = ref(true);
 const sockets = injectSockets();
+const connected = ref(sockets.connected);
 const connect = () => {
 		connected.value = true;
 	},

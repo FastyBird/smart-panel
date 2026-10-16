@@ -86,6 +86,27 @@ describe('light group actual state and command detail', () => {
 		mocks.GET.mockResolvedValue({ data: { data: configuration } });
 	});
 	afterEach(() => vi.restoreAllMocks());
+	it('reloads configuration after reconnect while the first configuration request is still pending', async () => {
+		let settle!: (response: unknown) => void;
+		mocks.GET.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					settle = resolve;
+				})
+		);
+		const wrapper = await mountDetail();
+		const disconnect = mocks.on.mock.calls.find(([event]) => event === 'disconnect')?.[1] as () => void;
+		const connect = mocks.on.mock.calls.find(([event]) => event === 'connect')?.[1] as () => void;
+		disconnect();
+		connect();
+		await flushPromises();
+		expect(mocks.GET).toHaveBeenCalledTimes(2);
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.mixed');
+		settle({ data: { data: { ...configuration, members: [] } } });
+		await flushPromises();
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.mixed');
+		wrapper.unmount();
+	});
 	it('shows partial member outcomes without treating accepted or mixed state as confirmation', async () => {
 		mocks.POST.mockResolvedValue({
 			data: {

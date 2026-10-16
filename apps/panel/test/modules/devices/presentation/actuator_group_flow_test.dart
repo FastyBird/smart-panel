@@ -1,18 +1,32 @@
 import 'dart:async';
-import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/actuator_group.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/actuator_group_state.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/plugins/spaces-home-control/presentation/domain_pages/grouped_covers_room_controls.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/composite_command_service.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class BatchDevicesRepo extends Mock implements DevicesRepository {}
+
+class BatchDeviceControls extends Mock implements DeviceControlsRepository {}
+
+class BatchChannels extends Mock implements ChannelsRepository {}
+
+class BatchProperties extends Mock implements ChannelPropertiesRepository {}
+
+class BatchChannelControls extends Mock implements ChannelControlsRepository {}
+
+class BatchValidation extends Mock implements DeviceValidationRepository {}
+
+class BatchComposite extends Mock implements CompositeCommandService {}
 
 class GroupSocket extends SocketService {
   bool online = true;
@@ -194,6 +208,9 @@ DeviceView groupDevice(String profile) => DeviceView(
   ],
 );
 void main() {
+  setUpAll(
+    () => registerFallbackValue(const PropertyCommandContext(origin: 'test')),
+  );
   test(
     'connection generation fences old HTTP and disposal; metadata drift requires explicit reload',
     () async {
@@ -223,6 +240,171 @@ void main() {
       state.dispose();
       expect(socket.handler, isNull);
       expect(socket.connection, isNull);
+    },
+  );
+  test(
+    'actual DevicesService rejects mixed/multiple groups before dispatch and preserves valid batches',
+    () async {
+      final raw = BatchProperties(), commands = BatchComposite();
+      final devices = DevicesService(
+        devicesRepository: BatchDevicesRepo(),
+        devicesControlsRepository: BatchDeviceControls(),
+        channelsRepository: BatchChannels(),
+        channelPropertiesRepository: raw,
+        channelControlsRepository: BatchChannelControls(),
+        validationRepository: BatchValidation(),
+        compositeCommands: commands,
+      );
+      devices.devices.addAll({
+        for (final id in ['a', 'b', 'raw'])
+          id: DeviceView(
+            id: id,
+            type: 'virtual',
+            name: id,
+            channels: [],
+            isCompositeGroup: id != 'raw',
+          ),
+      });
+      when(
+        () => commands.send(
+          deviceId: any(named: 'deviceId'),
+          properties: any(named: 'properties'),
+          context: any(named: 'context'),
+        ),
+      ).thenAnswer(
+        (_) async => const CompositeCommandOutcome(
+          id: 'parent',
+          requestId: 'request',
+          status: 'confirmed',
+          children: [],
+        ),
+      );
+      when(
+        () => raw.setMultipleValues(
+          properties: any(named: 'properties'),
+          context: any(named: 'context'),
+          requireAtomicBatch: any(named: 'requireAtomicBatch'),
+        ),
+      ).thenAnswer((_) async => true);
+      PropertyCommandItem target(String id) => PropertyCommandItem(
+        deviceId: id,
+        channelId: 'channel',
+        propertyId: 'command',
+        value: true,
+      );
+      expect(
+        await devices.setMultiplePropertyValues(
+          properties: [target('a'), target('b')],
+        ),
+        isFalse,
+      );
+      expect(
+        await devices.setMultiplePropertyValues(
+          properties: [target('a'), target('raw')],
+        ),
+        isFalse,
+      );
+      verifyNever(
+        () => commands.send(
+          deviceId: any(named: 'deviceId'),
+          properties: any(named: 'properties'),
+          context: any(named: 'context'),
+        ),
+      );
+      verifyNever(
+        () => raw.setMultipleValues(
+          properties: any(named: 'properties'),
+          context: any(named: 'context'),
+          requireAtomicBatch: any(named: 'requireAtomicBatch'),
+        ),
+      );
+      expect(
+        await devices.setMultiplePropertyValues(
+          properties: [target('a'), target('a')],
+        ),
+        isTrue,
+      );
+      verify(
+        () => commands.send(
+          deviceId: 'a',
+          properties: any(named: 'properties'),
+          context: any(named: 'context'),
+        ),
+      ).called(1);
+      expect(
+        await devices.setMultiplePropertyValues(properties: [target('raw')]),
+        isTrue,
+      );
+      devices.dispose();
+    },
+  );
+  testWidgets(
+    'queues a fresh post-command room read behind an in-flight periodic read',
+    (tester) async {
+      CoversStateModel state(bool enabled) => CoversStateModel.fromJson({
+        'has_covers': true,
+        'group_operations': [
+          {
+            'operation': 'open',
+            'commandable': enabled,
+            'reasons': enabled
+                ? <String>[]
+                : ['position_unavailable_uncalibrated'],
+          },
+        ],
+      }, spaceId: 'room');
+      final periodic = Completer<CoversStateModel?>(),
+          after = Completer<CoversStateModel?>(),
+          command = Completer<CoversIntentResult?>();
+      var reads = 0;
+      await tester.pumpWidget(
+        localized(
+          Scaffold(
+            body: GroupedCoversRoomControls(
+              state: state(true),
+              reload: () {
+                reads++;
+                return reads == 1
+                    ? Future.value(state(true))
+                    : reads == 2
+                    ? periodic.future
+                    : after.future;
+              },
+              send: (_) => command.future,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('room-cover-open')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 5));
+      expect(reads, 2);
+      command.complete(
+        CoversIntentResult.fromJson({
+          'success': true,
+          'affected_devices': 1,
+          'failed_devices': 0,
+        }),
+      );
+      await tester.pump();
+      expect(reads, 2);
+      periodic.complete(state(true));
+      await tester.pump();
+      expect(reads, 3);
+      after.complete(state(false));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('position_unavailable_uncalibrated'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const ValueKey('room-cover-open')))
+            .onPressed,
+        isNull,
+      );
+      await tester.pumpWidget(const SizedBox());
     },
   );
   testWidgets(

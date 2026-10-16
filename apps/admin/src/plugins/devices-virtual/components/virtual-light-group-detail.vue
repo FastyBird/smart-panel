@@ -646,7 +646,7 @@ sockets.on('event', onStateEvent);
 sockets.on('disconnect', disconnected);
 const reconnected = () => {
 	connected.value = true;
-	void refreshReportedState();
+	void (configuration.value ? refreshReportedState() : load());
 };
 sockets.on('connect', reconnected);
 onBeforeUnmount(() => {

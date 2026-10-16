@@ -46,6 +46,25 @@ describe('native group authoring profile selection', () => {
 		vi.clearAllMocks();
 		mocks.POST.mockImplementation((path: string) => Promise.resolve({ data: { data: path.endsWith('light-group-candidates') ? catalog : preview } }));
 	});
+	it('loads a new profile once with cleared members but retains ordinary member selections', async () => {
+		const wrapper = mount(Wizard);
+		await flushPromises();
+		const members = wrapper.findComponent({ name: 'VirtualLightGroupMembers' });
+		members.vm.$emit('update:modelValue', ['a']);
+		await flushPromises();
+		expect(members.props('modelValue')).toEqual(['a']);
+		const select = wrapper.findAllComponents(ElSelect).find((select) => select.attributes('data-test-id') === 'group-profile')!;
+		mocks.POST.mockClear();
+		select.vm.$emit('update:modelValue', 'cover');
+		await flushPromises();
+		const calls = mocks.POST.mock.calls.filter(([path]) => String(path).endsWith('light-group-candidates'));
+		expect(calls).toHaveLength(1);
+		expect(calls[0][1].body).toMatchObject({ profile: 'cover', selected_channels: [] });
+		members.vm.$emit('update:modelValue', ['b']);
+		await flushPromises();
+		expect(members.props('modelValue')).toEqual(['b']);
+		wrapper.unmount();
+	});
 	it('loads profiles from backend, presents diagnostics and invalidates the previous profile preview', async () => {
 		const wrapper = mount(Wizard);
 		await flushPromises();
