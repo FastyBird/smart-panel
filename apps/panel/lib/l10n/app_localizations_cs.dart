@@ -4270,326 +4270,158 @@ class AppLocalizationsCs extends AppLocalizations {
   String get virtual_measurement_false => 'Nedetekováno';
 
   @override
-  String get thermostatComfortTitle => 'Komfort termostatu';
+  String get groupActualFeedback => 'Nahlášená fyzická zpětná vazba';
 
   @override
-  String get thermostatComfortHelp =>
-      'Komfortní požadavek je oddělen od režimu HVAC a fyzické činnosti. Ochrany platí vždy.';
+  String get groupReload => 'Znovu načíst / připojit';
 
   @override
-  String get thermostatComfortUnconfigured =>
-      'Komfort není nastaven. Stávající ruční nastavení zůstává dostupné.';
+  String get groupRepair =>
+      'Konfigurace nebo schopnosti se změnily. Znovu načtěte a opravte členství v Adminu.';
 
   @override
-  String get thermostatComfortHeating => 'Topení';
+  String get groupUncertain =>
+      'Výsledek příkazu není jistý. Před dalším pokusem načtěte skutečnou zpětnou vazbu.';
 
   @override
-  String get thermostatComfortCooling => 'Chlazení';
+  String get groupUnknown => 'Neznámé';
 
   @override
-  String get thermostatComfortMinimum => 'Minimum';
+  String get groupMixed => 'Smíšené';
 
   @override
-  String get thermostatComfortMaximum => 'Maximum';
+  String get groupOn => 'Zapnuto';
 
   @override
-  String get thermostatComfortComfort => 'Komfort';
+  String get groupOff => 'Vypnuto';
 
   @override
-  String get thermostatComfortEco => 'Úsporný';
+  String get groupUnavailable => 'Nedostupné';
 
   @override
-  String get thermostatComfortAway => 'Nepřítomnost';
+  String get groupOpen => 'Otevřít';
 
   @override
-  String get thermostatComfortManual => 'Ruční základ';
+  String get groupClose => 'Zavřít';
 
   @override
-  String get thermostatComfortSelected => 'Základní předvolba';
+  String get groupStop => 'Zastavit';
 
   @override
-  String get thermostatComfortChoose => 'Vybrat základ';
+  String get groupSelectValue => 'Vyberte nativní hodnotu';
 
   @override
-  String get thermostatComfortConfigure => 'Nastavit komfort';
+  String get groupApply => 'Použít';
 
   @override
-  String get thermostatComfortAutomation =>
-      'Výslovně povolit automatizaci klimatu';
+  String get groupApplyTogether => 'Použít společně';
 
   @override
-  String get thermostatComfortSave => 'Uložit nastavení komfortu';
+  String get groupConfigured => 'Konfigurační metadata';
 
   @override
-  String get thermostatComfortReload => 'Načíst ze serveru';
+  String get groupMissing => 'Chybějící člen; opravte v Adminu';
 
   @override
-  String get thermostatComfortOverride => 'Dočasné přepsání';
+  String get groupReadinessUnavailable => 'Připravenost příkazu není dostupná';
 
   @override
-  String get thermostatComfortExplicit => 'Vlastní požadované teploty';
+  String get groupCoverMeaning =>
+      'OTEVŘÍT/ZAVŘÍT potvrzuje zahájení pohybu nebo již dosaženou krajní polohu, nikoli celý pohyb. STOP vyžaduje ověřené zastavení.';
 
   @override
-  String get thermostatComfortDuration => 'Doba (minuty, 1–10080)';
+  String groupContributors(int count, int total) {
+    return '$count/$total přispívajících členů';
+  }
 
   @override
-  String get thermostatComfortCreate => 'Vytvořit přepsání';
+  String groupCommandOutcome(String status) {
+    return 'Příkaz skupiny: $status';
+  }
 
   @override
-  String get thermostatComfortCancel => 'Zrušit toto přepsání';
+  String groupStep(String value) {
+    return 'Krok $value';
+  }
 
   @override
-  String get thermostatComfortClearOff => 'Zrušit uživatelské vypnutí';
+  String get groupPending => 'Čeká se';
 
   @override
-  String get thermostatComfortOffHeld =>
-      'Uživatelské vypnutí je zajištěno. Předvolby ani automatizace nemohou obnovit výstup.';
+  String get groupConfirmed => 'Potvrzeno';
 
   @override
-  String get thermostatComfortEffective => 'Účinný komfortní požadavek';
+  String get groupPartial => 'Částečně';
 
   @override
-  String get thermostatComfortExpires => 'Absolutní konec platnosti';
+  String get groupFailed => 'Selhalo';
 
   @override
-  String get thermostatComfortRemaining => 'Zbývající čas';
+  String get groupSuperseded => 'Nahrazeno';
 
   @override
-  String get thermostatComfortExpiryHint =>
-      'Odpočet je informativní. Je nutné potvrzení serveru; nepotvrzuje fyzickou činnost.';
+  String get groupTimedOut => 'Vypršel čas';
 
   @override
-  String get thermostatComfortStatus => 'Stav serveru';
+  String get groupFieldOn => 'Napájení';
 
   @override
-  String get thermostatComfortSource => 'Zdroj';
+  String get groupFieldSpeed => 'Rychlost';
 
   @override
-  String get thermostatComfortActor => 'Ověřený uživatel';
+  String get groupFieldSwing => 'Otáčení';
 
   @override
-  String get thermostatComfortIdentity => 'Identita přepsání';
+  String get groupFieldDirection => 'Směr';
 
   @override
-  String get thermostatComfortRevision => 'Revize';
+  String get groupFieldMode => 'Režim';
 
   @override
-  String get thermostatComfortClockPolicy => 'Časová politika serveru';
+  String get groupFieldPosition => 'Poloha';
 
   @override
-  String get thermostatComfortUncertain =>
-      'Stav přepsání vyžaduje pozornost. Nejisté hodiny blokují výstup; neznámé stavy vyžadují potvrzení serveru.';
+  String get groupFieldTilt => 'Náklon';
 
   @override
-  String get thermostatComfortError =>
-      'Požadavek selhal; před opakováním načtěte stav';
+  String get groupFieldType => 'Typ';
 
   @override
-  String get thermostatComfortOffClearHelp =>
-      'Zrušení vypnutí je samostatná výslovná akce a nemění požadovaný režim HVAC.';
+  String get groupFieldStatus => 'Stav';
 
   @override
-  String get thermostatComfortConfigHint =>
-      'Zadejte pouze rozsahy podporovaných větví a výslovně vybrané teploty předvoleb ve stupních Celsia. Výchozí teploty nejsou doplněny.';
+  String get groupFieldObstruction => 'Překážka';
 
   @override
-  String get thermostatComfortServerValidation =>
-      'Server ověřuje podporované větve, rozsahy, neutrální pásmo a revize.';
+  String get groupFieldInUse => 'Používá se';
 
   @override
-  String get thermostatComfortRequested => 'Požadovaný režim HVAC';
+  String get groupFieldBrightness => 'Jas';
 
   @override
-  String get thermostatComfortActivity => 'Hlášená činnost výstupů';
+  String get groupFieldColorTemperature => 'Teplota barvy';
 
   @override
-  String get thermostatMemberUnavailable => 'Nedostupné';
+  String get groupFieldColorRed => 'Červená';
 
   @override
-  String get thermostatMemberClaim => 'Rezervace';
+  String get groupFieldColorGreen => 'Zelená';
 
   @override
-  String get thermostatMemberState => 'Stav rezervace';
+  String get groupFieldColorBlue => 'Modrá';
 
   @override
-  String get thermostatMemberSource => 'Uchovaná vlastnost relé';
+  String get groupFieldHue => 'Odstín';
 
   @override
-  String get thermostatMemberRequested => 'Režim požadovaný regulátorem';
+  String get groupFieldSaturation => 'Sytost';
 
   @override
-  String get thermostatMemberObserved => 'Hlášené pozorování';
+  String get groupOpenAll => 'Otevřít vše';
 
   @override
-  String get thermostatMemberPending => 'Nevyřešené ON';
+  String get groupCloseAll => 'Zavřít vše';
 
   @override
-  String get thermostatMemberBlockers => 'Blokace serveru';
-
-  @override
-  String get thermostatMemberProfile => 'Profil poskytovatele';
-
-  @override
-  String get thermostatMemberQualification =>
-      'Kontrola ochrany/cíle není úplné povolení regulátoru, připravenost instalace ani fyzická certifikace. Instalaci zkontrolujte v Adminu.';
-
-  @override
-  String get thermostatMemberProtectionSource => 'Uchovaný ochranný zdroj';
-
-  @override
-  String get thermostatMemberReading => 'Živá ochranná hodnota';
-
-  @override
-  String get thermostatMemberQuality => 'Kvalita';
-
-  @override
-  String get thermostatMemberFreshness => 'Čerstvost';
-
-  @override
-  String get thermostatMemberAge => 'Stáří vzorku (s)';
-
-  @override
-  String get thermostatMemberSample => 'Původní čas vzorku';
-
-  @override
-  String get thermostatMemberHistoryReading => 'Pouze historická hodnota';
-
-  @override
-  String get thermostatMemberCutoff => 'Účinný limit (°C)';
-
-  @override
-  String get thermostatMemberLatch => 'Ochrana zajištěna';
-
-  @override
-  String get thermostatMemberProtectionReady =>
-      'Připravenost ochrany dle serveru';
-
-  @override
-  String get thermostatMemberReleasePending => 'Čeká na uvolnění';
-
-  @override
-  String get thermostatMemberAttempts => 'Pokusy o uvolnění';
-
-  @override
-  String get thermostatMemberNextRelease => 'Další pokus o uvolnění';
-
-  @override
-  String get thermostatMemberDrain => 'Důkaz OFF / vyprázdnění dle serveru';
-
-  @override
-  String get thermostatMemberGeneration => 'Uchovaná generace obnovy';
-
-  @override
-  String get thermostatMemberLastOff => 'Poslední ověřené OFF (historie)';
-
-  @override
-  String get thermostatMemberReleaseRequested => 'Uvolnění požadováno v';
-
-  @override
-  String get thermostatMemberReleasedAt => 'Uvolněno v';
-
-  @override
-  String get thermostatMemberEvidence =>
-      'Uchovaný důkaz OFF / vyprázdnění (historie, nikoli aktuální kvalifikace)';
-
-  @override
-  String get thermostatMemberMandatory => 'Povinné členy větví';
-
-  @override
-  String get thermostatMemberWholeBranch =>
-      'Každý člen je povinný. Porucha člena blokuje celou jeho větev. Požadovaný režim není fyzická aktivita.';
-
-  @override
-  String get thermostatMemberExpired =>
-      'Aktuální diagnostika nedostupná; uchované údaje jsou historické.';
-
-  @override
-  String get thermostatMemberReleasedHistory =>
-      'Uvolnění členové — historie, mimo aktivní kapacitu';
-
-  @override
-  String get thermostatMemberAdmin =>
-      'Pro opravu vazeb, kontrolu instalace nebo obnovu použijte Admin jako vlastník či správce. Vlastnictví zůstává rezervováno, dokud server nepotvrdí uvolnění.';
-
-  @override
-  String get thermostatMemberRoom => 'Regulace místnosti';
-
-  @override
-  String get thermostatMemberPolicy =>
-      'Společný požadovaný limit podlahy / hystereze obnovy';
-
-  @override
-  String get thermostatMemberSelectedFloor =>
-      'Podlaha vybraného člena (není průměr)';
-
-  @override
-  String get thermostatMemberGroup => 'Skupina větve';
-
-  @override
-  String get thermostatMemberVersion => 'Verze profilu';
-
-  @override
-  String get thermostatMemberMaximumAge => 'Maximální stáří vzorku (s)';
-
-  @override
-  String get thermostatMemberExpiry => 'Původní konec platnosti vzorku';
-
-  @override
-  String get thermostatMemberNoBlocker => 'Není hlášena blokace';
-
-  @override
-  String get thermostatMemberHistoryPending =>
-      'Poslední hlášené nevyřešené ON (historie)';
-
-  @override
-  String get thermostatMemberHistoryRelease =>
-      'Poslední hlášené čekající uvolnění (historie)';
-
-  @override
-  String get thermostatMemberActivitySnapshot =>
-      'Aktivita vyžaduje původní neprošlé pozorování relé. Kontrola ochrany/cíle je samostatný snímek serveru; ani jedno nedokládá úplné povolení.';
-
-  @override
-  String get thermostatMemberQualificationCheck =>
-      'Kontrola ochrany/cíle serverem (snímek)';
-
-  @override
-  String get thermostatMemberActivitySample =>
-      'Původní pozorování relé (historická metadata)';
-
-  @override
-  String get thermostatMemberActivityExpiry =>
-      'Původní konec platnosti pozorování relé';
-
-  @override
-  String get dewPointTitle => 'Rosný bod';
-
-  @override
-  String get dewPointDryBulb => 'Teplota suchého teploměru (°C)';
-
-  @override
-  String get dewPointHumidity => 'Relativní vlhkost (%)';
-
-  @override
-  String get dewPointSkew => 'Nejvyšší rozdíl časů vzorků (s)';
-
-  @override
-  String get dewPointRetained => 'Zachovaná identita zdroje';
-
-  @override
-  String get dewPointBoundary =>
-      'Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; není teplotou prostoru ani podlahy.';
-
-  @override
-  String get dewPointCooling => 'Ochrana chlazení před kondenzací';
-
-  @override
-  String get dewPointSurface => 'UUID místního čidla chlazeného povrchu';
-
-  @override
-  String get dewPointSurfaceTemperature => 'Teplota chlazeného povrchu (°C)';
-
-  @override
-  String get dewPointInstallation =>
-      'Instalované chlazení není způsobilé do kvalifikace povrchu, autentizace, časování, izolace zápisu a dokončení OFF po restartu po vydání alfa.';
+  String get groupStopAll => 'Zastavit vše';
 }

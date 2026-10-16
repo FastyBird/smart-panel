@@ -7,7 +7,12 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
 
-import { DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgNotImplementedException } from '../devices-shelly-ng.exceptions';
@@ -41,6 +46,16 @@ describe('ShellyNgDevicePlatform', () => {
 
 		return { platform: new ShellyNgDevicePlatform(delegates), delegates };
 	};
+
+	it('normalizes numeric component identity for shared motor generations across logical spellings', () => {
+		const { platform } = makePlatform();
+		const device = Object.assign(makeDevice(), { canonicalMac: 'aabbccddeeff' });
+		const channel = Object.assign(makeChannel(), { category: ChannelCategory.WINDOW_COVERING, identifier: 'cover:0' });
+		const update = { device, channel, property: makeProp(), value: 'stop' };
+		expect(platform.getCoverEffectScope(update)).toBe('shelly-ng:AABBCCDDEEFF|cover:0');
+		channel.identifier = 'cover:00';
+		expect(platform.getCoverEffectScope(update)).toBe('shelly-ng:AABBCCDDEEFF|cover:0');
+	});
 
 	it('getType returns DEVICES_SHELLY_NG_TYPE', () => {
 		const { platform } = makePlatform();

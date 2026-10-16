@@ -1,9 +1,10 @@
 import { Accessory, HAPStatus, HapStatusError } from '@homebridge/hap-nodejs';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { BatteryMapper } from '../mappers/battery.mapper';
 import { ButtonMapper } from '../mappers/button.mapper';
+import { FanMapper } from '../mappers/fan.mapper';
 import {
 	CharacteristicBinding,
 	HomeKitMapperContext,
@@ -35,6 +36,7 @@ interface AccessoryAvailability {
 }
 
 export interface RegistrySnapshot {
+	admissionMetadata?: Map<string, Map<string, string>>;
 	availability?: Map<string, AccessoryAvailability>;
 	deviceStates?: Map<string, DeviceAvailabilityState>;
 	propertyBindings: Map<string, CharacteristicBinding[]>;
@@ -44,6 +46,7 @@ export interface RegistrySnapshot {
 }
 
 export interface StagedAccessory {
+	admissionMetadata?: Map<string, string>;
 	availability?: AccessoryAvailability;
 	accessory: Accessory;
 	deviceId: string;
@@ -56,6 +59,7 @@ export interface StagedAccessory {
 export class HomeKitMapperRegistryService {
 	private readonly logger = new Logger(HomeKitMapperRegistryService.name);
 	private readonly mappers: IHomeKitAccessoryMapper[] = [];
+	private readonly admissionMetadata = new Map<string, Map<string, string>>();
 	private readonly availability = new Map<string, AccessoryAvailability>();
 	private readonly deviceStates = new Map<string, DeviceAvailabilityState>();
 
@@ -114,6 +118,7 @@ export class HomeKitMapperRegistryService {
 		this.mappers.push(new SwitchMapper());
 		this.mappers.push(new OutletMapper());
 		this.mappers.push(new ThermostatMapper());
+		this.mappers.push(new FanMapper());
 		this.mappers.push(new WindowCoveringMapper());
 		this.mappers.push(new LockMapper());
 		this.mappers.push(new SensorMapper());
@@ -192,6 +197,13 @@ export class HomeKitMapperRegistryService {
 
 		return {
 			accessory,
+			admissionMetadata: new Map(
+				(device.channels ?? []).flatMap((channel) =>
+					(channel.properties ?? []).map(
+						(property) => [property.id, this.metadataSignature(property, channel)] as const,
+					),
+				),
+			),
 			availability,
 			deviceId: device.id,
 			bindings: stagedBindings,
@@ -202,6 +214,7 @@ export class HomeKitMapperRegistryService {
 
 	commitStaged(staged: StagedAccessory): void {
 		this.clearDeviceBindings(staged.deviceId);
+		if (staged.admissionMetadata) this.admissionMetadata.set(staged.deviceId, new Map(staged.admissionMetadata));
 		if (staged.availability) {
 			staged.availability.active = true;
 			this.availability.set(staged.deviceId, staged.availability);
@@ -248,10 +261,33 @@ export class HomeKitMapperRegistryService {
 		}
 	}
 
+	/** Immutable admission contract; live values and presentation names do not rebuild services. */
+	private metadataSignature(property: ChannelPropertyEntity, channel: ChannelEntity): string {
+		return JSON.stringify([
+			channel.id,
+			channel.category,
+			property.category,
+			property.identifier,
+			property.dataType,
+			property.unit ?? null,
+			property.format ?? null,
+			property.step ?? null,
+			[...(property.permissions ?? [])].sort(),
+			property.type,
+			property.requiresLiveValue,
+		]);
+	}
+	/** Compare with the committed accessory snapshot, including withdrawn optional properties. */
+	admissionMetadataChanged(property: ChannelPropertyEntity, channel: ChannelEntity): boolean {
+		const owner = this.getDeviceIdForProperty(property.id);
+		const previous = owner ? this.admissionMetadata.get(owner)?.get(property.id) : undefined;
+		return previous === undefined || previous !== this.metadataSignature(property, channel);
+	}
 	getDeviceIdForProperty(propertyId: string): string | undefined {
 		for (const [deviceId, properties] of this.deviceProperties) {
 			if (properties.has(propertyId)) return deviceId;
 		}
+		for (const [deviceId, properties] of this.admissionMetadata) if (properties.has(propertyId)) return deviceId;
 		return undefined;
 	}
 
@@ -268,6 +304,7 @@ export class HomeKitMapperRegistryService {
 	}
 
 	clearDeviceBindings(deviceId: string): void {
+		this.admissionMetadata.delete(deviceId);
 		const holder = this.availability.get(deviceId);
 		if (holder) holder.active = false;
 		this.availability.delete(deviceId);
@@ -305,6 +342,7 @@ export class HomeKitMapperRegistryService {
 	}
 
 	clearAllBindings(): void {
+		this.admissionMetadata.clear();
 		for (const holder of this.availability.values()) holder.active = false;
 		this.availability.clear();
 		this.deviceStates.clear();
@@ -334,6 +372,7 @@ export class HomeKitMapperRegistryService {
 		return {
 			availability: new Map(this.availability),
 			deviceStates: new Map(this.deviceStates),
+			admissionMetadata: new Map([...this.admissionMetadata].map(([id, properties]) => [id, new Map(properties)])),
 			propertyBindings: cloneBindings,
 			propertyListeners: cloneListeners,
 			occurrenceListeners: cloneOcc,
@@ -343,6 +382,8 @@ export class HomeKitMapperRegistryService {
 
 	restoreSnapshot(snapshot: RegistrySnapshot): void {
 		this.clearAllBindings();
+		for (const [id, properties] of snapshot.admissionMetadata ?? [])
+			this.admissionMetadata.set(id, new Map(properties));
 		for (const [k, holder] of snapshot.availability ?? []) {
 			holder.active = true;
 			this.availability.set(k, holder);

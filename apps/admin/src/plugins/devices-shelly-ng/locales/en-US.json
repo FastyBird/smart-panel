@@ -153,5 +153,15 @@
 				"title": "Add"
 			}
 		}
+	},
+	"coverRecovery": {
+		"warning": "Previously sent action may still execute after recovery; operator accepts physical handback responsibility",
+		"load": "Load unresolved ordering context",
+		"reservation": "Reservation {token}, started {started}",
+		"acknowledgement": "I explicitly accept uncertainty and responsibility for physical handback",
+		"reason": "Reason for accepting physical handback responsibility (required)",
+		"accept": "Accept uncertainty override",
+		"advisory": "Ordering was overridden by an operator. This is not drain proof or command completion.",
+		"unavailable": "Recovery unavailable; reload the current context and review the refusal"
 	}
 }

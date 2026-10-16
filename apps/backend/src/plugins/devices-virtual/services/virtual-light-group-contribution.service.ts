@@ -50,6 +50,13 @@ export class VirtualLightGroupContributionService implements DeviceContributionP
 			?.properties.get(PropertyCategory.BRIGHTNESS);
 		return {
 			revision: config.revision,
+			operations: config.operations?.map((operation) => ({
+				operation: operation.operation,
+				commandable: operation.commandable,
+				reasons: operation.members.flatMap((member) =>
+					member.reasons.map((reason) => `${member.source_identity}: ${reason}`),
+				),
+			})),
 			isCurrent: () =>
 				this.metadata.getGeneration() === metadataGeneration && this.graph.isRevisionCurrent(config.graph_revision),
 			leaves: config.members.map((member) => member.source_identity),
@@ -69,6 +76,7 @@ export class VirtualLightGroupContributionService implements DeviceContributionP
 						category: property.category,
 						value: property.value,
 						contributors: property.contributors.length,
+						expiresAt: property.expires_at ? Date.parse(property.expires_at) : undefined,
 					})) ?? [],
 				mixedProperties:
 					state?.properties.filter((property) => property.mixed).map((property) => property.category) ?? [],

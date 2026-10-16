@@ -247,4 +247,33 @@ describe('PropertyCommandWindowService', () => {
 		expect(() => open()).not.toThrow();
 		expect(observer).toHaveBeenCalledTimes(1);
 	});
+	it('releases only the owned motor epoch without reviving superseded authority', () => {
+		const old = service.beginCoverEffect('motor');
+		const current = service.beginCoverEffect('motor');
+		service.releaseCoverEffect('motor', old);
+		expect(service.isCoverEffectCurrent('motor', old)).toBe(false);
+		expect(service.isCoverEffectCurrent('motor', current)).toBe(true);
+		service.releaseCoverEffect('motor', current);
+		expect(service.isCoverEffectCurrent('motor', current)).toBe(false);
+		const next = service.beginCoverEffect('motor');
+		expect(next).not.toBe(current);
+		expect(service.isCoverEffectCurrent('motor', current)).toBe(false);
+	});
+	it('holds an exclusive maintenance motor epoch without allowing refused commands or old releases to replace it', () => {
+		const old = service.beginCoverEffect('motor');
+		const window = open({ effectScope: 'motor' });
+		const held = service.reserveCoverEffect('motor');
+		expect(service.get(window.canonicalPropertyId)).toBeNull();
+		expect(service.isCoverEffectCurrent('motor', old)).toBe(false);
+		expect(service.beginCoverEffect('motor')).toBeNull();
+		expect(service.reserveCoverEffect('motor')).toBeNull();
+		service.releaseCoverEffectReservation('motor', old);
+		service.releaseCoverEffect('motor', old);
+		expect(service.isCoverEffectCurrent('motor', held)).toBe(true);
+		expect(service.beginCoverEffect('other')).not.toBeNull();
+		service.releaseCoverEffectReservation('motor', held);
+		expect(service.beginCoverEffect('motor')).not.toBeNull();
+		expect(service.isCoverEffectCurrent('motor', old)).toBe(false);
+		expect(service.isCoverEffectCurrent('motor', held)).toBe(false);
+	});
 });

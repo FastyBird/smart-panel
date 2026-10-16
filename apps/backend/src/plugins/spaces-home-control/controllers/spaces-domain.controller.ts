@@ -1127,6 +1127,7 @@ export class SpacesDomainController {
 		resultData.offlineDeviceIds = result.offlineDeviceIds;
 		resultData.failedTargets = result.failedTargets ?? null;
 		resultData.newPosition = result.newPosition;
+		resultData.composites = result.composites;
 
 		const response = new CoversIntentResponseModel();
 		response.data = resultData;

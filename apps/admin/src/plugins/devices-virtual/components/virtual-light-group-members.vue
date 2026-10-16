@@ -15,6 +15,7 @@
 			:key="candidate.id"
 			:value="candidate.id"
 			:label="candidate.label"
+			:disabled="candidate.eligible === false && !modelValue.includes(candidate.id)"
 		/>
 	</el-select>
 	<el-text size="small">{{ t('devicesVirtualPlugin.lightGroup.memberBounds') }}</el-text>
@@ -24,7 +25,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElOption, ElSelect, ElText } from 'element-plus';
 
-defineProps<{ modelValue: string[]; candidates: { id: string; label: string }[]; disabled?: boolean }>();
+defineProps<{ modelValue: string[]; candidates: { id: string; label: string; eligible?: boolean }[]; disabled?: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>();
 const { t } = useI18n();
 </script>

@@ -1,12 +1,15 @@
 import { Accessory, Categories, Characteristic, Service } from '@homebridge/hap-nodejs';
 
-import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
 import { BaseHomeKitMapper } from './base.mapper';
 import { HomeKitMapperContext } from './homekit-mapper.interface';
+import { communicationFailure, validateHapNumber } from './property-read';
+import { bindUnavailableCharacteristic } from './unavailable-characteristic';
 
 const SENSOR_CHANNEL_CATEGORIES = [
+	ChannelCategory.CARBON_DIOXIDE,
 	ChannelCategory.TEMPERATURE,
 	ChannelCategory.HUMIDITY,
 	ChannelCategory.MOTION,
@@ -20,6 +23,10 @@ const SENSOR_CHANNEL_CATEGORIES = [
 export class SensorMapper extends BaseHomeKitMapper {
 	canMap(device: DeviceEntity): boolean {
 		return (
+			this.findChannels(device, ChannelCategory.CARBON_DIOXIDE).some(
+				(channel) => !!this.findCarbonDioxideLevel(channel, PropertyCategory.CONCENTRATION),
+			) ||
+			this.hasValidSensorChannel(device, ChannelCategory.CARBON_DIOXIDE, PropertyCategory.DETECTED) ||
 			this.hasValidSensorChannel(device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE) ||
 			this.hasValidSensorChannel(device, ChannelCategory.HUMIDITY, PropertyCategory.HUMIDITY) ||
 			this.hasValidSensorChannel(device, ChannelCategory.MOTION, PropertyCategory.DETECTED) ||
@@ -51,7 +58,75 @@ export class SensorMapper extends BaseHomeKitMapper {
 
 	buildAccessory(device: DeviceEntity, context: HomeKitMapperContext): Accessory | null {
 		const accessory = this.createBaseAccessory(device, Categories.SENSOR);
+		return this.addSensorServices(accessory, device, context) ? accessory : null;
+	}
+
+	static attachSensorServices(accessory: Accessory, device: DeviceEntity, context: HomeKitMapperContext): void {
+		new SensorMapper().addSensorServices(accessory, device, context);
+	}
+
+	private findCarbonDioxideLevel(
+		channel: ChannelEntity,
+		category: PropertyCategory,
+	): ChannelPropertyEntity | undefined {
+		const property = this.findProperty(channel, category);
+		return property?.dataType === DataTypeType.FLOAT && property.unit === 'ppm' ? property : undefined;
+	}
+
+	private addSensorServices(accessory: Accessory, device: DeviceEntity, context: HomeKitMapperContext): boolean {
 		let addedService = false;
+
+		for (const channel of this.findChannels(device, ChannelCategory.CARBON_DIOXIDE)) {
+			const concentration = this.findCarbonDioxideLevel(channel, PropertyCategory.CONCENTRATION);
+			const detected = this.findProperty(channel, PropertyCategory.DETECTED);
+			if (!concentration && !detected) continue;
+			const service = accessory.addService(Service.CarbonDioxideSensor, `${device.name} CO2`, channel.id);
+			const fault = service.getCharacteristic(Characteristic.StatusFault);
+			const detection = service.getCharacteristic(Characteristic.CarbonDioxideDetected);
+			if (detected) {
+				this.bindCharacteristic(
+					context,
+					device,
+					channel,
+					detected,
+					detection,
+					(value) => {
+						if (typeof value !== 'boolean') throw communicationFailure();
+						return value
+							? Characteristic.CarbonDioxideDetected.CO2_LEVELS_ABNORMAL
+							: Characteristic.CarbonDioxideDetected.CO2_LEVELS_NORMAL;
+					},
+					undefined,
+					fault,
+				);
+			} else {
+				// Required by HAP, but concentration alone cannot prove a detection state.
+				bindUnavailableCharacteristic(context, detection, fault);
+			}
+			for (const [category, type] of [
+				[PropertyCategory.CONCENTRATION, Characteristic.CarbonDioxideLevel],
+				[PropertyCategory.PEAK_LEVEL, Characteristic.CarbonDioxidePeakLevel],
+			] as const) {
+				const property = this.findCarbonDioxideLevel(channel, category);
+				if (!property) continue;
+				const characteristic = service.getCharacteristic(type);
+				this.bindCharacteristic(
+					context,
+					device,
+					channel,
+					property,
+					characteristic,
+					(value) => validateHapNumber(characteristic, value),
+					undefined,
+					fault,
+					undefined,
+					(current) => {
+						if (current.dataType !== DataTypeType.FLOAT || current.unit !== 'ppm') throw communicationFailure();
+					},
+				);
+			}
+			addedService = true;
+		}
 
 		// 1. Temperature Sensor
 		const tempChannels = this.findChannels(device, ChannelCategory.TEMPERATURE).filter(
@@ -288,6 +363,6 @@ export class SensorMapper extends BaseHomeKitMapper {
 			addedService = true;
 		}
 
-		return addedService ? accessory : null;
+		return addedService;
 	}
 }

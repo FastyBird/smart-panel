@@ -13,6 +13,7 @@ class OutletDeviceView extends DeviceView
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin {
   OutletDeviceView({
+    super.isCompositeGroup,
     required super.id,
     required super.type,
     super.category,
@@ -48,16 +49,17 @@ class OutletDeviceView extends DeviceView
   bool get isOn {
     final properties = outletChannels
         .expand((channel) => channel.properties)
-        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
+        .where(
+          (property) =>
+              property.category == DevicesModulePropertyCategory.valueOn,
+        )
         .toList();
 
-    return properties.every(
-      (prop) {
-        final value = prop.value;
+    return properties.every((prop) {
+      final value = prop.value;
 
-        return value is BooleanValueType ? value.value : false;
-      },
-    );
+      return value is BooleanValueType ? value.value : false;
+    });
   }
 
   bool get hasOutletInUse => outletChannels.any((channel) => channel.hasInUse);
@@ -65,15 +67,16 @@ class OutletDeviceView extends DeviceView
   bool get isOutletInUse {
     final properties = outletChannels
         .expand((channel) => channel.properties)
-        .where((property) => property.category == DevicesModulePropertyCategory.inUse)
+        .where(
+          (property) =>
+              property.category == DevicesModulePropertyCategory.inUse,
+        )
         .toList();
 
-    return properties.every(
-      (prop) {
-        final value = prop.value;
+    return properties.every((prop) {
+      final value = prop.value;
 
-        return value is BooleanValueType ? value.value : false;
-      },
-    );
+      return value is BooleanValueType ? value.value : false;
+    });
   }
 }

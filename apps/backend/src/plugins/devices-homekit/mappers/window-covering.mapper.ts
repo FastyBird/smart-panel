@@ -5,6 +5,7 @@ import { ChannelEntity, DeviceEntity } from '../../../modules/devices/entities/d
 
 import { BaseHomeKitMapper } from './base.mapper';
 import { HomeKitMapperContext } from './homekit-mapper.interface';
+import { enumToHap } from './semantic-conversion';
 
 export class WindowCoveringMapper extends BaseHomeKitMapper {
 	canMap(device: DeviceEntity): boolean {
@@ -80,9 +81,56 @@ export class WindowCoveringMapper extends BaseHomeKitMapper {
 			const targetPosChar = service.getCharacteristic(Characteristic.TargetPosition);
 			const positionStateChar = service.getCharacteristic(Characteristic.PositionState);
 
-			this.bindCharacteristic(context, device, coveringChannel, posProp, currentPosChar, toPosition);
-			this.bindCharacteristic(context, device, coveringChannel, posProp, targetPosChar, toPosition, fromPosition);
-			this.bindCharacteristic(context, device, coveringChannel, statusProp, positionStateChar, toPositionState);
+			const semanticPosition = isEnum
+				? (value: unknown) =>
+						enumToHap(posProp, value, {
+							closed: 0,
+							quarter: 25,
+							half: 50,
+							three_quarter: 75,
+							open: 100,
+						})
+				: undefined;
+			this.bindCharacteristic(
+				context,
+				device,
+				coveringChannel,
+				posProp,
+				currentPosChar,
+				toPosition,
+				undefined,
+				undefined,
+				semanticPosition,
+			);
+			this.bindCharacteristic(
+				context,
+				device,
+				coveringChannel,
+				posProp,
+				targetPosChar,
+				toPosition,
+				fromPosition,
+				undefined,
+				semanticPosition,
+			);
+			this.bindCharacteristic(
+				context,
+				device,
+				coveringChannel,
+				statusProp,
+				positionStateChar,
+				toPositionState,
+				undefined,
+				undefined,
+				(value) =>
+					enumToHap(statusProp, value, {
+						opening: Characteristic.PositionState.INCREASING,
+						closing: Characteristic.PositionState.DECREASING,
+						opened: Characteristic.PositionState.STOPPED,
+						closed: Characteristic.PositionState.STOPPED,
+						stopped: Characteristic.PositionState.STOPPED,
+					}),
+			);
 
 			if (obstructionProp) {
 				const obstructionChar = service.getCharacteristic(Characteristic.ObstructionDetected);

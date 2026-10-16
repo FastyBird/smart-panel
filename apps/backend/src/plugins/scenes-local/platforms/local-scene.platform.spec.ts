@@ -37,6 +37,60 @@ describe('LocalScenePlatform', () => {
 		expect(results.map((result) => result.success)).toEqual([true, false]);
 	});
 
+	test.each([
+		['switcher', 'bool', true, null],
+		['outlet', 'bool', false, null],
+		['fan', 'enum', 'low', ['low', 'high']],
+		['window_covering', 'enum', 'stop', ['open', 'close', 'stop']],
+	])(
+		'validates %s native group actions and retains composite children and deadline',
+		async (category, dataType, value, format) => {
+			const device = { id: 'group', type: 'virtual', mode: 'actuator_group', category };
+			const channel = { id: 'group-channel', device };
+			const property = {
+				id: 'output',
+				category: category === 'window_covering' ? 'command' : category === 'fan' ? 'speed' : 'on',
+				dataType,
+				format,
+				permissions: ['ro'],
+			};
+			const composite = {
+				id: 'parent',
+				status: 'partial',
+				children: [
+					{ memberIdentity: 'a', status: 'confirmed' },
+					{ memberIdentity: 'b', status: 'unavailable', reason: 'disconnected' },
+				],
+			};
+			const dispatchBatch = jest.fn().mockResolvedValue({ success: false, composite });
+			const platform = new LocalScenePlatform(
+				{ findOne: () => Promise.resolve(device) } as any,
+				{ findOne: () => Promise.resolve(channel) } as any,
+				{ findOne: () => Promise.resolve(property) } as any,
+				{ get: () => ({}), getCommandTtlMs: () => 5000 } as any,
+				{ dispatchBatch } as any,
+				{} as any,
+				{ get: () => ({}), estimateTimeoutMs: () => Promise.resolve(30000) } as any,
+			);
+			const action = {
+				id: 'scene-action',
+				type: SCENES_LOCAL_TYPE,
+				deviceId: device.id,
+				channelId: channel.id,
+				propertyId: property.id,
+				value,
+			};
+			expect(await platform.validateAction(action as any)).toBe(true);
+			expect(await platform.getCommandTtlMs([action as any])).toBe(30000);
+			const context = { intentId: 'scene', deadlineAt: Date.now() + 1000 };
+			const result = await platform.execute({} as any, [action as any], context);
+			expect(result[0]).toMatchObject({ success: false, composite });
+			expect(dispatchBatch).toHaveBeenCalledTimes(1);
+			expect(dispatchBatch.mock.calls[0][1]).toMatchObject(context);
+			expect(dispatchBatch.mock.calls[0][1].ttlMs).toBeLessThanOrEqual(1000);
+		},
+	);
+
 	test('commits adjacent distinct thermostat settings in one command batch', async () => {
 		const dispatchBatch = jest.fn().mockResolvedValue({ success: true });
 		const platform = new LocalScenePlatform(

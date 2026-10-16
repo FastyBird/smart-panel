@@ -105,6 +105,7 @@ import { VirtualDevicesService } from './services/virtual-devices.service';
 import { VirtualDewPointConfigService } from './services/virtual-dew-point-config.service';
 import { VirtualDewPointRuntimeService } from './services/virtual-dew-point-runtime.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
+import { VirtualGroupCatalogService } from './services/virtual-group-catalog.service';
 import { VirtualLightGroupAuthoringService } from './services/virtual-light-group-authoring.service';
 import { VirtualLightGroupCommandService } from './services/virtual-light-group-command.service';
 import { VirtualLightGroupContributionService } from './services/virtual-light-group-contribution.service';
@@ -192,6 +193,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		{ provide: VIRTUAL_THERMOSTAT_COMMAND_HANDLER, useExisting: VirtualThermostatConfigService },
 		VirtualThermostatOwnershipSubscriber,
 		VirtualLightGroupAuthoringService,
+		VirtualGroupCatalogService,
 		VirtualLightGroupContributionService,
 		VirtualMeasurementContributionService,
 		VirtualValueSourceService,

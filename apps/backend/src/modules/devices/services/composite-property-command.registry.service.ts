@@ -35,9 +35,13 @@ export interface CompositeCommandChild {
 export interface CompositeCommandPlan {
 	readonly revision: number;
 	readonly children: readonly CompositeCommandChild[];
-	/** Checks the durable binding revision; dispatch and convergence both fence remaps. */
+	/**
+	 * Durable binding check for dispatch, convergence and parent completion. Confirmed children
+	 * require a true result before the absolute parent deadline; unavailable validation is not
+	 * physical failure or proof of a binding change. A late result cannot repair a terminal parent.
+	 */
 	readonly isCurrent: () => Promise<boolean>;
-	/** Pure applied-revision guard for a provider queue at its actual publish boundary. */
+	/** Pure applied-revision guard for provider sends; true is not a durable finalization certificate. */
 	readonly isDispatchCurrent?: () => boolean;
 	/** Release temporary planning observers on terminal/early failure. */
 	readonly dispose?: () => void;

@@ -7,7 +7,7 @@ import { ShellyNgDeviceEntity } from '../../../plugins/devices-shelly-ng/entitie
 import { VirtualThermostatActuatorClaimEntity } from '../../../plugins/devices-virtual/entities/virtual-thermostat.entity';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from '../../../plugins/devices-virtual/services/virtual-thermostat-claims.service';
-import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
+import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../platforms/device.platform';
 
@@ -107,6 +107,37 @@ describe('PropertyCommandDispatchService', () => {
 		expect(windows.get(sourceProperty.id)).toEqual(
 			expect.objectContaining({ intentId: 'intent', commandedValue: true, previousValue: false }),
 		);
+	});
+
+	it('keeps a direct nonprepared legacy cover on ordinary dispatch with the captured entry and absolute deadline', async () => {
+		const coverChannel = { ...channel, category: ChannelCategory.WINDOW_COVERING } as ChannelEntity;
+		const position = {
+			...sourceProperty,
+			category: PropertyCategory.POSITION,
+			dataType: DataTypeType.UCHAR,
+			format: [0, 100],
+			step: 1,
+			invalid: null,
+			unit: '%',
+			value: { value: 20 },
+			channel: coverChannel,
+		} as ChannelPropertyEntity;
+		properties.findOne.mockResolvedValue(position);
+		const entry = PropertyCommandEntrySnapshot.capture(windows, () => undefined);
+		try {
+			const target = { ...update(), channel: coverChannel, property: position, value: 100 };
+			await expect(
+				service.dispatchBatch([target], { commandEntry: entry, deadlineAt: Date.now() + 1000 }),
+			).resolves.toEqual({ success: true });
+			expect(platform.prepareCompositeBatch).toBeUndefined();
+			expect(platform.processBatch).toHaveBeenCalledWith([target]);
+			await expect(
+				service.dispatchBatch([target], { commandEntry: entry, deadlineAt: Date.now() - 1 }),
+			).resolves.toMatchObject({ success: false });
+			expect(platform.processBatch).toHaveBeenCalledTimes(1);
+		} finally {
+			entry.dispose();
+		}
 	});
 
 	it('coalesces alias windows by canonical source without another platform dispatch', async () => {

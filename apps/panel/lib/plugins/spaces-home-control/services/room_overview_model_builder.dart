@@ -128,7 +128,11 @@ class SubtitleItem {
   final String text;
   final bool compactHidden;
 
-  const SubtitleItem({this.icon, required this.text, this.compactHidden = false});
+  const SubtitleItem({
+    this.icon,
+    required this.text,
+    this.compactHidden = false,
+  });
 }
 
 /// Types of quick actions available on domain cards.
@@ -154,7 +158,12 @@ class QuickActionInfo {
   final String? label;
   final bool disabled;
 
-  const QuickActionInfo({required this.type, required this.icon, this.label, this.disabled = false});
+  const QuickActionInfo({
+    required this.type,
+    required this.icon,
+    this.label,
+    this.disabled = false,
+  });
 
   QuickActionInfo copyWith({IconData? icon, String? label}) => QuickActionInfo(
     type: type,
@@ -243,10 +252,7 @@ class SuggestedAction {
   });
 }
 
-enum SuggestedActionType {
-  scene,
-  turnOffLights,
-}
+enum SuggestedActionType { scene, turnOffLights }
 
 /// The complete room overview model for UI rendering.
 class RoomOverviewModel {
@@ -375,8 +381,9 @@ List<QuickScene> _buildQuickScenes(List<SceneView> scenes) {
 
   // Sort by category priority, then by order
   triggerableScenes.sort((a, b) {
-    final priorityCompare =
-        _getSceneCategoryPriority(a.category).compareTo(_getSceneCategoryPriority(b.category));
+    final priorityCompare = _getSceneCategoryPriority(
+      a.category,
+    ).compareTo(_getSceneCategoryPriority(b.category));
     if (priorityCompare != 0) return priorityCompare;
     return a.order.compareTo(b.order);
   });
@@ -416,25 +423,30 @@ List<SuggestedAction> _buildSuggestedActions({
   if (domainCounts.hasDomain(DomainType.lights) &&
       lightsOnCount != null &&
       lightsOnCount > 0) {
-    suggestions.add(SuggestedAction(
-      id: 'turn-off-lights',
-      label: input.localizations.suggested_action_turn_off_lights,
-      icon: MdiIcons.lightbulbOutline,
-      actionType: SuggestedActionType.turnOffLights,
-    ));
+    suggestions.add(
+      SuggestedAction(
+        id: 'turn-off-lights',
+        label: input.localizations.suggested_action_turn_off_lights,
+        icon: MdiIcons.lightbulbOutline,
+        actionType: SuggestedActionType.turnOffLights,
+      ),
+    );
   }
 
   // 2. Movie mode suggestion (if media + lights present and MOVIE scene exists)
   if (domainCounts.hasDomain(DomainType.lights) &&
       domainCounts.hasDomain(DomainType.media)) {
     final movieScene = findSceneByCategory(ScenesModuleDataSceneCategory.movie);
-    if (movieScene != null && !hasQuickSceneWithCategory(ScenesModuleDataSceneCategory.movie)) {
-      suggestions.add(SuggestedAction(
-        id: 'movie-mode',
-        label: input.localizations.suggested_action_movie_mode,
-        icon: MdiIcons.movieOutline,
-        sceneId: movieScene.id,
-      ));
+    if (movieScene != null &&
+        !hasQuickSceneWithCategory(ScenesModuleDataSceneCategory.movie)) {
+      suggestions.add(
+        SuggestedAction(
+          id: 'movie-mode',
+          label: input.localizations.suggested_action_movie_mode,
+          icon: MdiIcons.movieOutline,
+          sceneId: movieScene.id,
+        ),
+      );
     }
   }
 
@@ -443,13 +455,16 @@ List<SuggestedAction> _buildSuggestedActions({
   final isNightHours = hour >= 21 || hour < 6;
   if (isNightHours) {
     final nightScene = findSceneByCategory(ScenesModuleDataSceneCategory.night);
-    if (nightScene != null && !hasQuickSceneWithCategory(ScenesModuleDataSceneCategory.night)) {
-      suggestions.add(SuggestedAction(
-        id: 'night-mode',
-        label: input.localizations.suggested_action_night_mode,
-        icon: MdiIcons.weatherNight,
-        sceneId: nightScene.id,
-      ));
+    if (nightScene != null &&
+        !hasQuickSceneWithCategory(ScenesModuleDataSceneCategory.night)) {
+      suggestions.add(
+        SuggestedAction(
+          id: 'night-mode',
+          label: input.localizations.suggested_action_night_mode,
+          icon: MdiIcons.weatherNight,
+          sceneId: nightScene.id,
+        ),
+      );
     }
   }
 
@@ -535,9 +550,21 @@ DomainCardInfo _buildLightsCard(
     primaryValue: primaryValue,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(type: QuickActionType.lightsOff, icon: MdiIcons.lightbulbOff, label: l.space_lighting_mode_off),
-      QuickActionInfo(type: QuickActionType.lightsHalf, icon: MdiIcons.brightnessAuto, label: '50%'),
-      QuickActionInfo(type: QuickActionType.lightsFull, icon: MdiIcons.brightness7, label: '100%'),
+      QuickActionInfo(
+        type: QuickActionType.lightsOff,
+        icon: MdiIcons.lightbulbOff,
+        label: l.space_lighting_mode_off,
+      ),
+      QuickActionInfo(
+        type: QuickActionType.lightsHalf,
+        icon: MdiIcons.brightnessAuto,
+        label: '50%',
+      ),
+      QuickActionInfo(
+        type: QuickActionType.lightsFull,
+        icon: MdiIcons.brightness7,
+        label: '100%',
+      ),
     ],
     isActive: isActive,
   );
@@ -567,7 +594,7 @@ DomainCardInfo _buildClimateCard(
   final currentTemperature = contribution?.isUnavailable == true
       ? null
       : cs?.currentTemperature ??
-          (contribution == null ? input.temperature : null);
+            (contribution == null ? input.temperature : null);
   // Locale-aware number formatting
   final tempUnit = input.displayUnits.temperature;
 
@@ -577,11 +604,13 @@ DomainCardInfo _buildClimateCard(
     primaryValue = l.thermostat_mode_off;
   } else if (cs?.effectiveTargetTemperature != null) {
     final target = cs!.effectiveTargetTemperature!;
-    primaryValue = '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+    primaryValue =
+        '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
   } else {
     final temp = currentTemperature;
     if (temp != null) {
-      primaryValue = '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+      primaryValue =
+          '${NumberUtils.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
     } else {
       primaryValue = '$count';
     }
@@ -613,11 +642,13 @@ DomainCardInfo _buildClimateCard(
 
   final subtitle = contribution?.isUnavailable == true
       ? contribution!.hasConflict
-          ? l.climate_temperature_coverage_conflict
-          : l.climate_temperature_coverage_unavailable
+            ? l.climate_temperature_coverage_conflict
+            : l.climate_temperature_coverage_unavailable
       : l.room_overview_device_count(count);
   final temp = currentTemperature;
-  final isActive = cs != null ? (cs.mode != ClimateMode.off && cs.mode != null) : temp != null;
+  final isActive = cs != null
+      ? (cs.mode != ClimateMode.off && cs.mode != null)
+      : temp != null;
 
   return DomainCardInfo(
     domain: domain,
@@ -626,7 +657,11 @@ DomainCardInfo _buildClimateCard(
     primaryValue: primaryValue,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(type: QuickActionType.climateMode, icon: modeIcon, label: modeLabel),
+      QuickActionInfo(
+        type: QuickActionType.climateMode,
+        icon: modeIcon,
+        label: modeLabel,
+      ),
       QuickActionInfo(type: QuickActionType.climateMinus, icon: MdiIcons.minus),
       QuickActionInfo(type: QuickActionType.climatePlus, icon: MdiIcons.plus),
     ],
@@ -641,15 +676,27 @@ DomainCardInfo _buildShadingCard(
 ) {
   final l = input.localizations;
   final cvs = input.coversState;
+  final grouped = cvs?.groupOperations != null;
+  final current = !grouped || cvs?.groupExpiresAt?.isAfter(input.now) == true;
+  bool ready(String operation) =>
+      !grouped ||
+      (cvs?.groupOperations?.any(
+            (entry) => entry.operation == operation && entry.commandable,
+          ) ??
+          false);
 
   // Primary: detected mode label if intent active, else "Custom" when open, "Closed" when all closed
-  final isActive = cvs?.anyOpen ?? (input.shadingPosition != null && input.shadingPosition! > 0);
+  final isActive =
+      cvs?.anyOpen ??
+      (input.shadingPosition != null && input.shadingPosition! > 0);
   final allClosed = cvs?.allClosed ?? !isActive;
 
   String primaryValue;
-  if (cvs != null &&
-      cvs.isModeFromIntent &&
-      cvs.detectedMode != null) {
+  if (grouped && (!current || cvs?.averagePosition == null)) {
+    primaryValue = current && cvs?.isPositionMixed == true
+        ? l.groupMixed
+        : l.groupUnknown;
+  } else if (cvs != null && cvs.isModeFromIntent && cvs.detectedMode != null) {
     primaryValue = _coversModeLabel(cvs.detectedMode!, l);
   } else if (allClosed) {
     primaryValue = l.covers_mode_closed;
@@ -659,7 +706,9 @@ DomainCardInfo _buildShadingCard(
 
   // Subtitle: position description
   String subtitle;
-  final pos = cvs?.averagePosition ?? input.shadingPosition;
+  final pos = grouped
+      ? (current ? cvs?.averagePosition : null)
+      : cvs?.averagePosition ?? input.shadingPosition;
   if (pos != null) {
     if (pos == 0) {
       subtitle = l.shading_fully_closed;
@@ -679,9 +728,24 @@ DomainCardInfo _buildShadingCard(
     primaryValue: primaryValue,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(type: QuickActionType.coversOpen, icon: MdiIcons.arrowExpandVertical, label: l.shading_action_open),
-      QuickActionInfo(type: QuickActionType.coversHalf, icon: MdiIcons.arrowSplitHorizontal, label: '50%'),
-      QuickActionInfo(type: QuickActionType.coversClose, icon: MdiIcons.arrowCollapseVertical, label: l.shading_action_close),
+      QuickActionInfo(
+        type: QuickActionType.coversOpen,
+        disabled: !ready('open'),
+        icon: MdiIcons.arrowExpandVertical,
+        label: l.shading_action_open,
+      ),
+      QuickActionInfo(
+        type: QuickActionType.coversHalf,
+        disabled: cvs == null || grouped,
+        icon: MdiIcons.arrowSplitHorizontal,
+        label: '50%',
+      ),
+      QuickActionInfo(
+        type: QuickActionType.coversClose,
+        disabled: !ready('close'),
+        icon: MdiIcons.arrowCollapseVertical,
+        label: l.shading_action_close,
+      ),
     ],
     isActive: isActive,
   );
@@ -709,7 +773,10 @@ DomainCardInfo _buildMediaCard(
 
   // Primary: activity label if active, else "Off"
   final isActive = ms?.isActive ?? false;
-  final primaryValue = isActive && ms?.activityKey != null && ms!.activityKey != MediaActivityKey.off
+  final primaryValue =
+      isActive &&
+          ms?.activityKey != null &&
+          ms!.activityKey != MediaActivityKey.off
       ? _mediaActivityLabel(ms.activityKey!, l)
       : l.media_activity_off;
 
@@ -722,9 +789,21 @@ DomainCardInfo _buildMediaCard(
     primaryValue: primaryValue,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(type: QuickActionType.mediaPlay, icon: MdiIcons.play, disabled: !isActive),
-      QuickActionInfo(type: QuickActionType.mediaPause, icon: MdiIcons.pause, disabled: !isActive),
-      QuickActionInfo(type: QuickActionType.mediaStop, icon: MdiIcons.stop, disabled: !isActive),
+      QuickActionInfo(
+        type: QuickActionType.mediaPlay,
+        icon: MdiIcons.play,
+        disabled: !isActive,
+      ),
+      QuickActionInfo(
+        type: QuickActionType.mediaPause,
+        icon: MdiIcons.pause,
+        disabled: !isActive,
+      ),
+      QuickActionInfo(
+        type: QuickActionType.mediaStop,
+        icon: MdiIcons.stop,
+        disabled: !isActive,
+      ),
     ],
     isActive: isActive,
   );
@@ -760,35 +839,41 @@ DomainCardInfo _buildSensorsCard(
   final items = <SubtitleItem>[];
   final env = ss?.environment;
   if (env?.averageTemperature != null) {
-    items.add(SubtitleItem(
-      icon: MdiIcons.thermometer,
-      text: SensorUtils.formatNumericValueWithUnit(
-        env!.averageTemperature!,
-        DevicesModuleChannelCategory.temperature,
-        displayUnits: displayUnits,
+    items.add(
+      SubtitleItem(
+        icon: MdiIcons.thermometer,
+        text: SensorUtils.formatNumericValueWithUnit(
+          env!.averageTemperature!,
+          DevicesModuleChannelCategory.temperature,
+          displayUnits: displayUnits,
+        ),
       ),
-    ));
+    );
   }
   if (env?.averageHumidity != null) {
-    items.add(SubtitleItem(
-      icon: MdiIcons.waterPercent,
-      text: SensorUtils.formatNumericValueWithUnit(
-        env!.averageHumidity!,
-        DevicesModuleChannelCategory.humidity,
-        displayUnits: displayUnits,
+    items.add(
+      SubtitleItem(
+        icon: MdiIcons.waterPercent,
+        text: SensorUtils.formatNumericValueWithUnit(
+          env!.averageHumidity!,
+          DevicesModuleChannelCategory.humidity,
+          displayUnits: displayUnits,
+        ),
       ),
-    ));
+    );
   }
   if (env?.averageIlluminance != null) {
-    items.add(SubtitleItem(
-      icon: MdiIcons.weatherSunny,
-      text: SensorUtils.formatNumericValueWithUnit(
-        env!.averageIlluminance!,
-        DevicesModuleChannelCategory.illuminance,
-        displayUnits: displayUnits,
+    items.add(
+      SubtitleItem(
+        icon: MdiIcons.weatherSunny,
+        text: SensorUtils.formatNumericValueWithUnit(
+          env!.averageIlluminance!,
+          DevicesModuleChannelCategory.illuminance,
+          displayUnits: displayUnits,
+        ),
+        compactHidden: true,
       ),
-      compactHidden: true,
-    ));
+    );
   }
 
   final l = input.localizations;
@@ -816,52 +901,60 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
   final env = input.sensorState?.environment;
   final displayUnits = input.displayUnits;
 
-  final temp = env?.averageTemperature ??
+  final temp =
+      env?.averageTemperature ??
       (input.climateState?.temperatureContribution == null
           ? input.temperature
           : input.climateState!.temperatureContribution!.isUnavailable
-              ? null
-              : input.climateState!.currentTemperature);
+          ? null
+          : input.climateState!.currentTemperature);
   if (temp != null) {
-    readings.add(SensorReading(
-      icon: MdiIcons.thermometer,
-      label: l.device_temperature,
-      value: SensorUtils.formatNumericValueWithUnit(
-        temp,
-        DevicesModuleChannelCategory.temperature,
-        displayUnits: displayUnits,
+    readings.add(
+      SensorReading(
+        icon: MdiIcons.thermometer,
+        label: l.device_temperature,
+        value: SensorUtils.formatNumericValueWithUnit(
+          temp,
+          DevicesModuleChannelCategory.temperature,
+          displayUnits: displayUnits,
+        ),
+        color: SensorColors.temperature,
       ),
-      color: SensorColors.temperature,
-    ));
+    );
   }
 
   final humidity = env?.averageHumidity ?? input.humidity;
   if (humidity != null) {
-    readings.add(SensorReading(
-      icon: MdiIcons.waterPercent,
-      label: l.device_humidity,
-      value: SensorUtils.formatNumericValueWithUnit(
-        humidity,
-        DevicesModuleChannelCategory.humidity,
-        displayUnits: displayUnits,
+    readings.add(
+      SensorReading(
+        icon: MdiIcons.waterPercent,
+        label: l.device_humidity,
+        value: SensorUtils.formatNumericValueWithUnit(
+          humidity,
+          DevicesModuleChannelCategory.humidity,
+          displayUnits: displayUnits,
+        ),
+        color: SensorColors.humidity,
       ),
-      color: SensorColors.humidity,
-    ));
+    );
   }
 
   if (env?.averageIlluminance != null) {
-    readings.add(SensorReading(
-      icon: MdiIcons.weatherSunny,
-      label: l.sensor_label_light,
-      value: SensorUtils.formatNumericValueWithUnit(
-        env!.averageIlluminance!,
-        DevicesModuleChannelCategory.illuminance,
-        displayUnits: displayUnits,
+    readings.add(
+      SensorReading(
+        icon: MdiIcons.weatherSunny,
+        label: l.sensor_label_light,
+        value: SensorUtils.formatNumericValueWithUnit(
+          env!.averageIlluminance!,
+          DevicesModuleChannelCategory.illuminance,
+          displayUnits: displayUnits,
+        ),
+        color: SensorColors.themeColorForCategory(
+          DevicesModuleChannelCategory.illuminance,
+        ),
       ),
-      color: SensorColors.themeColorForCategory(DevicesModuleChannelCategory.illuminance),
-    ));
+    );
   }
 
   return readings;
 }
-

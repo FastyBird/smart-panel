@@ -1,8 +1,9 @@
 # Dew point and cooling software candidate — issue #1459
 
-Status: local software implementation delivered for independent client review and later composition; not merged, published, deployed or installation-qualified.
+Status: preliminary source-only composition on current climate/main; fresh generation, checks and composed review pending. Not merged, published, deployed or installation-qualified.
 Base: `cf8a5b656bc1eab246389cd73412f03228a66d32` from `origin/feat/virtual-thermostat-comfort-branches`.
-The extension epic and issue remain open. This record does not complete native HA/Zigbee takeovers.
+Composition target: climate UI `0117d3f96786df5a4f412b83d77fb540b7d4e9cf`, including merged PR #1466 main
+`6414291237813856b9a4b7c05401b225820df677`. The extension epic and issue remain open. This record does not complete native HA/Zigbee takeovers.
 
 ## Measurement contract
 
@@ -134,7 +135,25 @@ The cooling response has no independent physical-input publication token. Displa
 conservative: a report whose original expiry does not advance cannot revive a withdrawn display reading, even if a
 new HTTP response is received. No fetch timestamp or invented acceptance identity fills that gap.
 
-## Verification record
+## Preliminary current-climate composition
+
+The accepted dew-point source `2fb98eb3a7265ae58c4fab9aa8f5a3e2861bfe13` is merged with the exact climate
+UI target above. Source JSON/ARB leaves and metadata retain both parents' changes. Swagger registration includes
+both dew-point and group catalogue models. Current HomeKit metadata handling and the dedicated `dew_point`
+exclusion are retained together. Native HA/Zigbee takeover remains incomplete; no staging source is imported.
+
+All seven tracked `app_localizations*.dart` files are exact climate-parent versions, inherited from main as
+**PROVISIONAL placeholders**. They do not contain the complete merged ARB interface and must be regenerated
+with Flutter 3.41.5 from all six merged ARB sources before review or publication. API/spec/client generation,
+fresh backend/Admin/Panel checks and independent composed review also remain pending under the parent's serial
+heavy-check grant. No generator, heavy test, type check, lint or Flutter command ran during this composition.
+
+## Historical verification record
+
+The following results apply to the original accepted sources, not this new merge. Prior `/tmp` logs were cleared
+by a Mac restart; their paths below are historical references, not available evidence. Durable parent task/state
+reports and source commits preserve the reported outcomes. Independent backend round-two and client round-one
+reviews accepted their source checkpoints; fresh composition remains a separate gate.
 
 - Backend software checkpoint `c32bfeb73712ed9f263d67161fc31a7fb5779bb2` received independent GPT-6-Sol high round-two
   acceptance after both requested fixes. Its bounded pack passed backend types and 135 distinct targeted cases
@@ -167,10 +186,10 @@ new HTTP response is received. No fetch timestamp or invented acceptance identit
 - Initial client failures remain visible: missing ignored Admin specs/deduplicated enum, Node default 4 GiB heap exhaustion,
   incomplete legacy store mock, a misplaced new Dart test block, scoped prop-mutation lint, and integration-test input
   selectors that targeted Element Plus internals. They were corrected and rerun without weakening assertions. Initial
-  and targeted-rerun logs remain under `/tmp/virtual-1459-*-v6-*.log`; older v4 failure/rerun logs are also retained.
+  and targeted-rerun logs were recorded under `/tmp/virtual-1459-*-v6-*.log`; older v4 failure/rerun logs were also recorded there.
 - Local client commits: Admin `38dceaa29ea1391fe2c389a1cab66039f1ce7eef`, Panel
   `2d25c0c48b0e5e33e31f3221679972d6cf0c4777`. Full branch count is 92 changed source files relative to the exact base,
   including tracked localization output. No full-monorepo rerun was performed.
-- Independent client review, bounded constructor/Swagger-delta review, actual-main/HomeKit composition, CI and CodeRabbit
-  remain root gates. The narrow `dew_point` HomeKit `findProperty` exclusion must survive composition. No installed
+- Fresh composed review/checks, CI and CodeRabbit remain root gates; historical client acceptance does not validate
+  the current merge. The narrow `dew_point` HomeKit `findProperty` exclusion must survive composition. No installed
   certification, live integration contact, issue closure, push, PR or alpha release is claimed.

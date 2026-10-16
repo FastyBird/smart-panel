@@ -12,6 +12,7 @@ class FanDeviceView extends DeviceView
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin {
   FanDeviceView({
+    super.isCompositeGroup,
     required super.id,
     required super.type,
     super.category,

@@ -32,7 +32,8 @@ export const useLightGroupAuthoring = () => {
 		previewKey = null;
 		pending.value = false;
 	};
-	const key = (draft: PreviewGroup) => JSON.stringify({ members: draft.members, capabilities: draft.capabilities });
+	const key = (draft: PreviewGroup) =>
+		JSON.stringify({ profile: draft.profile ?? 'light', members: draft.members, capabilities: draft.capabilities });
 
 	const load = async (id: string) => {
 		const current = ++generation;
@@ -75,6 +76,7 @@ export const useLightGroupAuthoring = () => {
 
 	const create = async (draft: CreateGroup) => {
 		if (!preview.value || previewKey !== key(draft)) throw new Error(t('devicesVirtualPlugin.lightGroup.previewRequired'));
+		const current = ++generation;
 		pending.value = true;
 		error.value = null;
 		repairConflict.value = false;
@@ -82,6 +84,7 @@ export const useLightGroupAuthoring = () => {
 			const result = await backend.client.POST('/plugins/devices-virtual/producers/light-groups', {
 				body: { ...draft, expected_graph_revision: preview.value.graph_revision },
 			});
+			if (current !== generation) return null;
 			if (!result.data) {
 				repairConflict.value = result.response.status === 409 || result.response.status === 422;
 				throw new Error(describeError(result.error));
@@ -89,10 +92,10 @@ export const useLightGroupAuthoring = () => {
 			invalidatePreview();
 			return result.data.data;
 		} catch (cause) {
-			error.value = describeError(cause);
+			if (current === generation) error.value = describeError(cause);
 			return null;
 		} finally {
-			pending.value = false;
+			if (current === generation) pending.value = false;
 		}
 	};
 

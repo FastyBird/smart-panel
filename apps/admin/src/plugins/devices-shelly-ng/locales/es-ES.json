@@ -153,5 +153,15 @@
 				"title": "Añadir"
 			}
 		}
+	},
+	"coverRecovery": {
+		"warning": "Una acción enviada anteriormente puede ejecutarse después de la recuperación; el operador acepta la responsabilidad de devolver el control físico",
+		"load": "Cargar contexto del orden de órdenes sin resolver",
+		"reservation": "Reserva {token}, iniciada {started}",
+		"acknowledgement": "Acepto expresamente la incertidumbre y la responsabilidad de devolver el control físico",
+		"reason": "Motivo para aceptar la responsabilidad del control físico (obligatorio)",
+		"accept": "Aceptar la excepción por incertidumbre",
+		"advisory": "Un operador ha anulado el bloqueo de orden sin resolver. Esto no demuestra que la cola esté vacía ni que la orden haya terminado.",
+		"unavailable": "Recuperación no disponible; vuelva a cargar el contexto actual y revise el motivo del rechazo"
 	}
 }

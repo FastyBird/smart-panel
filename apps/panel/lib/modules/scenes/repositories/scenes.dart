@@ -4,7 +4,6 @@ import 'package:fastybird_smart_panel/api/models/scenes_module_req_trigger_scene
 import 'package:fastybird_smart_panel/api/models/scenes_module_trigger_scene.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/composite_command.dart';
 import 'package:fastybird_smart_panel/modules/scenes/constants.dart';
 import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
@@ -23,8 +22,8 @@ class ScenesRepository extends Repository<SceneModel> {
     required super.apiClient,
     required ActionsRepository actionsRepository,
     required CommandDispatchService commandDispatch,
-  })  : _actionsRepository = actionsRepository,
-        _commandDispatch = commandDispatch;
+  }) : _actionsRepository = actionsRepository,
+       _commandDispatch = commandDispatch;
 
   bool get isLoading => _isLoading;
 
@@ -54,9 +53,7 @@ class ScenesRepository extends Repository<SceneModel> {
         }
       } catch (e) {
         if (kDebugMode) {
-          debugPrint(
-            '[SCENES MODULE][SCENES] Failed to parse scene: $e',
-          );
+          debugPrint('[SCENES MODULE][SCENES] Failed to parse scene: $e');
         }
       }
     }
@@ -105,9 +102,7 @@ class ScenesRepository extends Repository<SceneModel> {
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint(
-          '[SCENES MODULE][SCENES] Unexpected error: $e',
-        );
+        debugPrint('[SCENES MODULE][SCENES] Unexpected error: $e');
       }
     }
 
@@ -145,7 +140,8 @@ class ScenesRepository extends Repository<SceneModel> {
   Future<TriggerSceneResult> triggerScene(String sceneId) async {
     try {
       // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = _hasCompositeAction(sceneId)
+      final compositeScene = _hasCompositeAction(sceneId);
+      final dispatchResult = compositeScene
           ? await _commandDispatch.dispatchComposite(
               event: ScenesModuleConstants.triggerSceneEvent,
               handler: ScenesModuleEventHandlerName.triggerScene,
@@ -153,23 +149,30 @@ class ScenesRepository extends Repository<SceneModel> {
               apiFallback: () => _triggerCompositeSceneViaApi(sceneId),
             )
           : await _commandDispatch.dispatch(
-        event: ScenesModuleConstants.triggerSceneEvent,
-        handler: ScenesModuleEventHandlerName.triggerScene,
-        payload: {
-          'sceneId': sceneId,
-        },
-        apiFallback: () => _triggerSceneViaApi(sceneId),
-      );
+              event: ScenesModuleConstants.triggerSceneEvent,
+              handler: ScenesModuleEventHandlerName.triggerScene,
+              payload: {'sceneId': sceneId},
+              apiFallback: () => _triggerSceneViaApi(sceneId),
+            );
 
+      if (compositeScene &&
+          dispatchResult.data?['action_results'] is! List &&
+          dispatchResult.data?['actionResults'] is! List) {
+        return TriggerSceneResult.error(
+          dispatchResult.reason ?? 'composite_scene_result_unconfirmed',
+        );
+      }
       if (dispatchResult.success ||
           dispatchResult.data?['action_results'] is List ||
           dispatchResult.data?['actionResults'] is List) {
         // Parse result from response data
         final data = dispatchResult.data;
-        final successCount = data?['successfulActions'] as int? ??
+        final successCount =
+            data?['successfulActions'] as int? ??
             data?['successful_actions'] as int? ??
             0;
-        final failureCount = data?['failedActions'] as int? ??
+        final failureCount =
+            data?['failedActions'] as int? ??
             data?['failed_actions'] as int? ??
             0;
 
@@ -183,15 +186,21 @@ class ScenesRepository extends Repository<SceneModel> {
         final error = data?['error'] as String?;
         final actionResults = data?['action_results'] ?? data?['actionResults'];
         final composites = actionResults is List
-            ? actionResults.whereType<Map<String, dynamic>>()
-                .map((action) => action['composite'])
-                .whereType<Map<String, dynamic>>()
-                .map((value) => CompositeCommandOutcome.fromJson(value, requestId: ''))
-                .toList()
+            ? actionResults
+                  .whereType<Map<String, dynamic>>()
+                  .map((action) => action['composite'])
+                  .whereType<Map<String, dynamic>>()
+                  .map(
+                    (value) =>
+                        CompositeCommandOutcome.fromJson(value, requestId: ''),
+                  )
+                  .toList()
             : <CompositeCommandOutcome>[];
 
         return TriggerSceneResult(
-          success: failureCount == 0 && composites.every((outcome) => outcome.confirmed),
+          success:
+              failureCount == 0 &&
+              composites.every((outcome) => outcome.confirmed),
           successCount: successCount,
           failureCount: failureCount,
           composites: composites,
@@ -225,9 +234,7 @@ class ScenesRepository extends Repository<SceneModel> {
       final response = await apiClient.triggerScenesModuleScene(
         id: sceneId,
         body: const ScenesModuleReqTriggerScene(
-          data: ScenesModuleTriggerScene(
-            source: 'panel',
-          ),
+          data: ScenesModuleTriggerScene(source: 'panel'),
         ),
       );
 
@@ -242,7 +249,9 @@ class ScenesRepository extends Repository<SceneModel> {
           'successfulActions': result.successfulActions,
           'failedActions': result.failedActions,
           'error': result.error,
-          'action_results': (response.response.data['data'] as Map<String, dynamic>?)?['action_results'],
+          'action_results':
+              (response.response.data['data']
+                  as Map<String, dynamic>?)?['action_results'],
         };
       }
     } on DioException catch (e) {
@@ -273,14 +282,18 @@ class ScenesRepository extends Repository<SceneModel> {
       if (action is! LocalActionModel || !action.enabled) return false;
       final device = devices.getDevice(action.deviceId);
       if (device == null) return true;
-      return device is LightingDeviceView && device.isCompositeGroup;
+      return device.isCompositeGroup;
     });
   }
 
-  Future<Map<String, dynamic>?> _triggerCompositeSceneViaApi(String sceneId) async {
+  Future<Map<String, dynamic>?> _triggerCompositeSceneViaApi(
+    String sceneId,
+  ) async {
     final response = await locator<Dio>().post<Map<String, dynamic>>(
       '/modules/scenes/scenes/$sceneId/trigger',
-      data: {'data': {'source': 'panel'}},
+      data: {
+        'data': {'source': 'panel'},
+      },
       options: Options(
         receiveTimeout: const Duration(seconds: 35),
         extra: {'retryExhausted': true},
@@ -307,9 +320,6 @@ class TriggerSceneResult {
   });
 
   factory TriggerSceneResult.error(String message) {
-    return TriggerSceneResult(
-      success: false,
-      errorMessage: message,
-    );
+    return TriggerSceneResult(success: false, errorMessage: message);
   }
 }

@@ -153,5 +153,15 @@
         "title": "Dodaj"
       }
     }
+  },
+  "coverRecovery": {
+    "warning": "Wcześniej wysłane polecenie może wykonać się po odzyskaniu sterowania; operator przyjmuje odpowiedzialność za fizyczne przekazanie sterowania",
+    "load": "Wczytaj kontekst nierozstrzygniętej kolejności poleceń",
+    "reservation": "Rezerwacja {token}, rozpoczęta {started}",
+    "acknowledgement": "Wyraźnie akceptuję niepewność i odpowiedzialność za fizyczne przekazanie sterowania",
+    "reason": "Powód przyjęcia odpowiedzialności za fizyczne sterowanie (wymagany)",
+    "accept": "Zaakceptuj wyjątek dotyczący niepewności",
+    "advisory": "Operator zatwierdził wyjątek od nierozstrzygniętej kolejności. Nie stanowi to dowodu opróżnienia kolejki ani zakończenia polecenia.",
+    "unavailable": "Odzyskanie sterowania niedostępne; wczytaj aktualny kontekst i sprawdź przyczynę odmowy"
   }
 }

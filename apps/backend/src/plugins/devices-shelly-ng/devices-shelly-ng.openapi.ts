@@ -2,6 +2,7 @@
  * OpenAPI extra models for Devices Shelly NG plugin
  */
 import { AdoptDeviceDto, AdoptDevicesDto } from './dto/adopt-devices.dto';
+import { RecoverCoverOrderingDto, ReqRecoverCoverOrderingDto } from './dto/cover-recovery.dto';
 import { CreateShellyNgChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyNgChannelDto } from './dto/create-channel.dto';
 import { CreateShellyNgDeviceDto } from './dto/create-device.dto';
@@ -19,6 +20,12 @@ import {
 	ShellyNgDeviceEntity,
 } from './entities/devices-shelly-ng.entity';
 import { ShellyNgConfigModel, ShellyNgMdnsConfigModel, ShellyNgWebsocketsConfigModel } from './models/config.model';
+import {
+	CoverRecoveryContextModel,
+	CoverRecoveryContextResponseModel,
+	CoverRecoveryModel,
+	CoverRecoveryResponseModel,
+} from './models/cover-recovery.model';
 import {
 	ShellyNgAdoptionResponseModel,
 	ShellyNgDeviceInfoResponseModel,
@@ -42,6 +49,12 @@ import {
 } from './models/shelly-ng.model';
 
 export const DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	RecoverCoverOrderingDto,
+	ReqRecoverCoverOrderingDto,
+	CoverRecoveryModel,
+	CoverRecoveryContextModel,
+	CoverRecoveryResponseModel,
+	CoverRecoveryContextResponseModel,
 	// DTOs
 	CreateShellyNgDeviceDto,
 	UpdateShellyNgDeviceDto,
