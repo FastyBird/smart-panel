@@ -13,10 +13,39 @@ interface ConnectionLease {
 
 interface OperationContext {
 	lease: ConnectionLease;
+	parent?: OperationContext;
+	active: boolean;
 	children: Promise<void>;
-	operations: Set<Promise<unknown>>;
+	operations: Map<Promise<unknown>, OperationContext>;
 	managedStart?: boolean;
 	failedStart?: boolean;
+}
+
+/** Internal admission evidence only; a submitted native error is never proof of rollback. */
+export type SqliteGuardedCommitOutcome = 'pending' | 'refused' | 'committed' | 'unknown' | 'rolled_back';
+
+export interface SqliteCommitGuardReceipt {
+	readonly outcome: SqliteGuardedCommitOutcome;
+}
+
+export class SqliteCommitGuardRefusedError extends Error {
+	constructor(cause?: unknown) {
+		super('SQLite outer COMMIT admission was refused before native submission', { cause });
+		this.name = 'SqliteCommitGuardRefusedError';
+	}
+}
+
+interface GuardedCommit {
+	lease: ConnectionLease;
+	guards: Array<() => boolean>;
+	phase: 'open' | 'sealed' | 'submitted' | 'committed' | 'rolling_back' | 'settled';
+	outcome: SqliteGuardedCommitOutcome;
+}
+
+type NativeQueryCallback = (this: unknown, error: Error | null, rows?: unknown[]) => void;
+
+interface NativeSqliteConnection {
+	all(query: string, parameters: unknown[], callback: NativeQueryCallback): unknown;
 }
 
 interface ConnectionWaiter {
@@ -35,6 +64,7 @@ export interface SqliteCoordinationOptions {
 class SqliteConnectionCoordinator {
 	private readonly context = new AsyncLocalStorage<OperationContext>();
 	private readonly queue: ConnectionWaiter[] = [];
+	private readonly contexts = new Set<OperationContext>();
 	private owner?: ConnectionLease;
 	private failure?: Error;
 	private closed = false;
@@ -131,7 +161,22 @@ class SqliteConnectionCoordinator {
 		if (lease?.aborted) throw lease.aborted;
 		if (!lease?.active) return operation();
 
-		const context: OperationContext = { lease, children: Promise.resolve(), operations: new Set() };
+		return this.runContext(this.createContext(lease), operation);
+	}
+
+	private createContext(lease: ConnectionLease): OperationContext {
+		const parent = this.context.getStore();
+		return {
+			lease,
+			parent: parent?.lease === lease ? parent : undefined,
+			active: true,
+			children: Promise.resolve(),
+			operations: new Map(),
+		};
+	}
+
+	private runContext<T>(context: OperationContext, operation: () => Promise<T>): Promise<T> {
+		this.contexts.add(context);
 		return this.context.run(context, async () => {
 			try {
 				const result = await operation();
@@ -140,19 +185,60 @@ class SqliteConnectionCoordinator {
 			} catch (error) {
 				await this.drainOperations(context, false);
 				throw error;
+			} finally {
+				context.active = false;
+				this.contexts.delete(context);
 			}
 		});
 	}
 
-	track<T>(operation: Promise<T>): Promise<T> {
-		const context = this.context.getStore();
-		if (!context?.lease.active) return operation;
-		context.operations.add(operation);
-		void operation.then(
-			() => context.operations.delete(operation),
-			() => context.operations.delete(operation),
+	track<T>(operation: () => Promise<T>, nested = false): Promise<T> {
+		const parent = this.context.getStore();
+		if (!parent?.lease.active) return operation();
+		const child = this.createContext(parent.lease);
+		const promise = this.runContext(child, nested ? () => this.runNested(operation, parent) : operation);
+		parent.operations.set(promise, child);
+		void promise.then(
+			() => parent.operations.delete(promise),
+			() => parent.operations.delete(promise),
 		);
-		return operation;
+		return promise;
+	}
+
+	captureCommitContext(lease: ConnectionLease): OperationContext {
+		const context = this.context.getStore();
+		if (!context?.active || context.lease !== lease || !lease.active || this.owner !== lease) {
+			throw new Error('SQLite COMMIT guard requires its current owning connection lease');
+		}
+		return context;
+	}
+
+	/** Drain every same-lease child except promises whose operation is awaiting this exact COMMIT. */
+	async drainCommitChildren(context: OperationContext, dispatch: () => void): Promise<void> {
+		while (true) {
+			this.assertAvailable();
+			if (!context.active || !context.lease.active || this.owner !== context.lease) {
+				throw new Error('SQLite guarded COMMIT lease expired');
+			}
+			const ancestors = new Set<OperationContext>();
+			for (let ancestor: OperationContext | undefined = context; ancestor; ancestor = ancestor.parent) {
+				ancestors.add(ancestor);
+			}
+			const children = new Set<Promise<unknown>>();
+			for (const candidate of this.contexts) {
+				if (candidate.lease !== context.lease) continue;
+				for (const [promise, child] of candidate.operations) {
+					if (!ancestors.has(child)) children.add(promise);
+				}
+			}
+			if (children.size === 0) {
+				dispatch();
+				return;
+			}
+			const results = await Promise.allSettled(children);
+			const failed = results.find((result) => result.status === 'rejected');
+			if (failed?.status === 'rejected') throw failed.reason as unknown;
+		}
 	}
 
 	async drainCurrent(propagateFailure = true): Promise<void> {
@@ -197,15 +283,14 @@ class SqliteConnectionCoordinator {
 
 	private async drainOperations(context: OperationContext, propagateFailure = true): Promise<void> {
 		while (context.operations.size > 0) {
-			const results = await Promise.allSettled([...context.operations]);
+			const results = await Promise.allSettled([...context.operations.keys()]);
 			const failed = results.find((result) => result.status === 'rejected');
 			if (propagateFailure && failed?.status === 'rejected') throw failed.reason as unknown;
 		}
 	}
 
 	/** Sibling nested transactions must not overlap their SAVEPOINT lifetimes. */
-	async runNested<T>(operation: () => Promise<T>): Promise<T> {
-		const context = this.context.getStore();
+	async runNested<T>(operation: () => Promise<T>, context = this.context.getStore()): Promise<T> {
 		if (!context?.lease.active) return operation();
 		const previous = context.children;
 		let unlock: () => void;
@@ -292,7 +377,7 @@ export class SqliteDataSource extends DataSource {
 						});
 					};
 
-					return coordinator.track(method === 'transaction' ? coordinator.runNested(execute) : execute());
+					return coordinator.track(execute, method === 'transaction');
 				},
 				configurable: true,
 				writable: true,
@@ -312,6 +397,8 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	private lease?: ConnectionLease;
 	private operationDepth = 0;
 	private transactionControlDepth = 0;
+	private guardedCommit?: GuardedCommit;
+	private readonly nativeCommitContext = new AsyncLocalStorage<GuardedCommit | undefined>();
 
 	constructor(
 		driver: SqliteDriver,
@@ -340,7 +427,16 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			throw new Error('Use QueryRunner transaction methods for SQLite transaction control');
 		}
 
-		return this.coordinator.track(this.withConnection(() => super.query(query, parameters, useStructuredResult)));
+		const scope = this.guardedCommit;
+		if (scope?.guards.length && (scope.phase === 'sealed' || scope.phase === 'submitted')) {
+			throw new Error('SQLite guarded COMMIT is sealed against new candidate queries');
+		}
+		const outerCommit = command === 'COMMIT' && this.transactionDepth === 1 ? scope : undefined;
+		return this.coordinator.track(() =>
+			this.withConnection(() =>
+				this.nativeCommitContext.run(outerCommit, () => super.query(query, parameters, useStructuredResult)),
+			),
+		);
 	}
 
 	async startTransaction(isolationLevel?: IsolationLevel): Promise<void> {
@@ -349,6 +445,9 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		const previousDepth = this.transactionDepth;
 		try {
 			await this.withTransactionControl(() => super.startTransaction(isolationLevel));
+			if (previousDepth === 0) {
+				this.guardedCommit = { lease: this.lease, guards: [], phase: 'open', outcome: 'pending' };
+			}
 		} catch (error) {
 			// TypeORM sets isTransactionActive before BEGIN and does not restore it on SQL failure.
 			// Only this owner can recover the connection; another queued request cannot be rolled back.
@@ -374,12 +473,14 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			await this.coordinator.drainCurrent();
 			await this.withTransactionControl(() => super.commitTransaction());
 		} finally {
+			this.settleCommitScope();
 			this.releaseIfSettled();
 		}
 	}
 
 	async rollbackTransaction(): Promise<void> {
 		if (this.coordinator.consumeFailedStart()) return;
+		if (this.guardedCommit && this.transactionDepth === 1) this.guardedCommit.phase = 'rolling_back';
 
 		try {
 			await this.coordinator.drainCurrent(false);
@@ -388,8 +489,132 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			if (this.lease?.active && this.isTransactionActive) await this.recoverTransaction();
 			throw error;
 		} finally {
+			this.settleCommitScope();
 			this.releaseIfSettled();
 		}
+	}
+
+	registerCommitGuard(manager: EntityManager, guard: () => boolean): SqliteCommitGuardReceipt {
+		const scope = this.guardedCommit;
+		if (manager.queryRunner !== this || !scope || !this.isTransactionActive || scope.phase !== 'open') {
+			throw new Error('SQLite COMMIT guards require an open transaction on its exact scoped manager');
+		}
+		this.coordinator.captureCommitContext(scope.lease);
+		scope.guards.push(guard);
+		// No disposer: inner helpers cannot silently remove an outer transaction's admission requirement.
+		return {
+			get outcome() {
+				return scope.outcome;
+			},
+		};
+	}
+
+	async connect(): Promise<NativeSqliteConnection> {
+		const connection = (await super.connect()) as NativeSqliteConnection;
+		const scope = this.nativeCommitContext.getStore();
+		if (!scope) return connection;
+		const context = this.coordinator.captureCommitContext(scope.lease);
+		const runner = this;
+		// This handle belongs only to this outer COMMIT query. Never modify the driver's shared native object.
+		return new Proxy(connection, {
+			get(target, property) {
+				if (property === 'all') {
+					return (query: string, parameters: unknown[], callback: NativeQueryCallback) => {
+						if (query !== 'COMMIT' || scope.guards.length === 0) {
+							return target.all(query, parameters, callback);
+						}
+						runner.dispatchGuardedCommit(scope, context, target, query, parameters, callback);
+						return target;
+					};
+				}
+				const value: unknown = Reflect.get(target, property);
+				return typeof value === 'function' ? (...args: unknown[]) => Reflect.apply(value, target, args) as unknown : value;
+			},
+		});
+	}
+
+	private dispatchGuardedCommit(
+		scope: GuardedCommit,
+		context: OperationContext,
+		connection: NativeSqliteConnection,
+		query: string,
+		parameters: unknown[],
+		callback: NativeQueryCallback,
+	): void {
+		// TypeORM's busy timer reuses this same facade, original scope and context on EVERY attempt.
+		let delivered = false;
+		const deliver: NativeQueryCallback = function (error, rows) {
+			if (delivered) return;
+			delivered = true;
+			callback.call(this, error, rows);
+		};
+		void this.coordinator.drainCommitChildren(context, () => {
+			let submitted = false;
+			try {
+				if (
+					scope !== this.guardedCommit ||
+					!scope.lease.active ||
+					this.transactionDepth !== 1 ||
+					(scope.phase !== 'open' && scope.phase !== 'sealed')
+				) {
+					throw new Error('SQLite outer COMMIT scope expired');
+				}
+				scope.phase = 'sealed';
+				for (const guard of scope.guards) {
+					if (guard() !== true) throw new SqliteCommitGuardRefusedError();
+				}
+				scope.phase = 'submitted';
+				scope.outcome = 'unknown';
+				submitted = true;
+				// UNKNOWN until an actual native acknowledgement; dispatch alone is never commit confirmation.
+				// No await, subscriber, timer or recapture between the ORIGINAL pure guards and native dispatch.
+				connection.all(query, parameters, function (error, rows) {
+					if (!error) {
+						scope.phase = 'committed';
+						scope.outcome = 'committed';
+					} else if (error.toString().includes('SQLITE_BUSY:')) {
+						scope.phase = 'sealed';
+					} else {
+						scope.outcome = 'unknown';
+					}
+					deliver.call(this, error, rows);
+				});
+			} catch (error) {
+				if (delivered) return;
+				if (submitted) {
+					scope.outcome = 'unknown';
+					deliver.call(
+						connection,
+						error instanceof Error ? error : new Error('Native COMMIT dispatch threw', { cause: error }),
+					);
+				} else {
+					this.refuseCommit(scope, connection, deliver, error);
+				}
+			}
+		}).catch((error: unknown) => this.refuseCommit(scope, connection, deliver, error));
+	}
+
+	private refuseCommit(
+		scope: GuardedCommit,
+		connection: NativeSqliteConnection,
+		callback: NativeQueryCallback,
+		cause: unknown,
+	): void {
+		scope.phase = 'sealed';
+		scope.outcome = 'refused';
+		// Deliver through the callback even on a busy TIMER retry, so TypeORM's original Promise settles.
+		callback.call(
+			connection,
+			cause instanceof SqliteCommitGuardRefusedError ? cause : new SqliteCommitGuardRefusedError(cause),
+		);
+	}
+
+	private settleCommitScope(): void {
+		const scope = this.guardedCommit;
+		if (!scope || this.isTransactionActive || this.transactionDepth !== 0) return;
+		if (scope.outcome === 'pending') scope.outcome = 'rolled_back';
+		scope.phase = 'settled';
+		this.guardedCommit = undefined;
 	}
 
 	async release(): Promise<void> {
@@ -460,6 +685,14 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			this.lease.aborted = new Error('Nested SQLite transaction recovery aborted the owning transaction scope');
 		}
 	}
+}
+
+/** Internal transaction admission only. Same-manager nested helpers attach to the owning OUTER scope. */
+export function registerSqliteCommitGuard(manager: EntityManager, guard: () => boolean): SqliteCommitGuardReceipt {
+	if (!(manager.queryRunner instanceof CoordinatedSqliteQueryRunner)) {
+		throw new Error('SQLite COMMIT guards require a coordinated scoped manager');
+	}
+	return manager.queryRunner.registerCommitGuard(manager, guard);
 }
 
 /** Observe the physical connection, rather than a newly created request's independent runner. */
