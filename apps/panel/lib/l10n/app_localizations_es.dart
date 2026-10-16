@@ -4506,7 +4506,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'El apagado del usuario está bloqueado. Los preajustes y la automatización no pueden reactivar la salida.';
 
   @override
-  String get thermostatComfortEffective => 'Consigna de confort efectiva';
+  String get thermostatComfortEffective => 'Intención de confort efectiva';
 
   @override
   String get thermostatComfortExpires => 'Vencimiento absoluto';

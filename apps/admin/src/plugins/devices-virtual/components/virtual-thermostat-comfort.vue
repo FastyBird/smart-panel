@@ -2,6 +2,8 @@
 	<el-card
 		data-test-id="thermostat-comfort"
 		class="mt-4"
+		@focusin="focused = true"
+		@focusout="focused = false"
 	>
 		<template #header>{{ label('title') }}</template>
 		<p>{{ label('help') }}</p>
@@ -140,6 +142,7 @@
 					:disabled="!canUse"
 					:aria-label="label('selected')"
 					@change="selectionEdited"
+					@visible-change="menuOpen = $event"
 				>
 					<el-option
 						value="manual"
@@ -172,7 +175,8 @@
 					v-model="overridePreset"
 					:disabled="disabled || state.pending.value"
 					:aria-label="label('override')"
-					@change="state.edit"
+					@change="overrideEdited"
+					@visible-change="menuOpen = $event"
 				>
 					<el-option
 						value="explicit"
@@ -197,7 +201,7 @@
 						<el-input-number
 							v-model="overrideSetpoints[`${branch}_setpoint`]"
 							:aria-label="`${label('override')} ${label(branch)}`"
-							@change="state.edit"
+							@change="overrideEdited"
 						/>
 					</el-form-item>
 					<el-form-item :label="label('duration')">
@@ -206,7 +210,7 @@
 							:min="1"
 							:max="10080"
 							:aria-label="label('duration')"
-							@change="state.edit"
+							@change="overrideEdited"
 						/>
 					</el-form-item>
 				</el-form>
@@ -271,7 +275,10 @@ const presets = reactive(
 );
 const automation = ref(false),
 	dirty = ref(false),
-	selectionDirty = ref(false);
+	selectionDirty = ref(false),
+	overrideDirty = ref(false),
+	focused = ref(false),
+	menuOpen = ref(false);
 const selection = ref<string>('manual'),
 	overridePreset = ref<string>('explicit');
 const overrideSetpoints = reactive({ heating_setpoint: null as number | null, cooling_setpoint: null as number | null });
@@ -315,6 +322,9 @@ watch(
 	() => {
 		dirty.value = false;
 		selectionDirty.value = false;
+		overrideDirty.value = false;
+		focused.value = false;
+		menuOpen.value = false;
 		overridePreset.value = 'explicit';
 		overrideSetpoints.heating_setpoint = null;
 		overrideSetpoints.cooling_setpoint = null;
@@ -336,9 +346,14 @@ const selectionEdited = () => {
 	selectionDirty.value = true;
 	state.edit();
 };
+const overrideEdited = () => {
+	overrideDirty.value = true;
+	state.edit();
+};
 const reload = () => {
 	dirty.value = false;
 	selectionDirty.value = false;
+	overrideDirty.value = false;
 	void state.reload();
 };
 const changed = () => emit('changed');
@@ -389,8 +404,10 @@ const createOverride = async () => {
 					: null,
 			expires_at: new Date(Date.now() + minutes.value! * 60_000).toISOString(),
 		})
-	)
+	) {
+		overrideDirty.value = false;
 		changed();
+	}
 };
 const cancel = async (id: string, revision: number) => {
 	if (override.value?.id !== id || snapshot.value?.comfort.revision !== revision) {
@@ -418,7 +435,8 @@ const hint = (event: { event: string; payload: unknown }) => {
 		state.serverRevision(event.payload.configuration_revision);
 };
 let timer: ReturnType<typeof setInterval> | undefined,
-	expiredId: string | null = null;
+	expiredId: string | null = null,
+	ticks = 0;
 onMounted(() => {
 	void state.reload();
 	sockets.on('event', hint);
@@ -426,10 +444,11 @@ onMounted(() => {
 	sockets.on('disconnect', disconnect);
 	timer = setInterval(() => {
 		now.value = Date.now();
+		const pollDue = ++ticks % 5 === 0;
 		if (override.value?.status === 'active' && remaining.value === 0 && expiredId !== override.value.id) {
 			expiredId = override.value.id;
 			reconnect();
-		} else if (!dirty.value && now.value % 5000 < 1000) void state.reload();
+		} else if (pollDue && !dirty.value && !selectionDirty.value && !overrideDirty.value && !focused.value && !menuOpen.value) void state.reload();
 	}, 1000);
 });
 onBeforeUnmount(() => {

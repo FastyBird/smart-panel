@@ -5,7 +5,9 @@ import type { ComfortAction, ComfortSnapshot, ComfortTransport } from '../servic
 /** Every edit, request, command and connection lifecycle fences older reads; writes never trust their response as actuator evidence. */
 export function useThermostatComfort(deviceId: Ref<string>, transport: ComfortTransport) {
 	const snapshot = shallowRef<ComfortSnapshot | null>(null);
-	const error = ref<string | null>(null);
+	const readError = ref<string | null>(null);
+	const actionError = ref<string | null>(null);
+	const error = computed(() => actionError.value ?? readError.value);
 	const loading = ref(false);
 	const pending = ref(false);
 	const ready = ref(false);
@@ -34,9 +36,10 @@ export function useThermostatComfort(deviceId: Ref<string>, transport: ComfortTr
 			if (result.comfort.controller !== id) throw new Error('controller_conflict');
 			if (result.comfort.revision < minimumRevision) return;
 			snapshot.value = result;
+			readError.value = null;
 			ready.value = true;
 		} catch (cause) {
-			if (!disposed && ticket === generation) error.value = String(cause);
+			if (!disposed && ticket === generation) readError.value = String(cause);
 		} finally {
 			if (ticket === generation) loading.value = false;
 		}
@@ -60,7 +63,8 @@ export function useThermostatComfort(deviceId: Ref<string>, transport: ComfortTr
 			operation = ++mutation;
 		invalidate();
 		pending.value = true;
-		error.value = null;
+		actionError.value = null;
+		readError.value = null;
 		const ticket = generation;
 		let accepted = false,
 			stale = false;
@@ -68,7 +72,7 @@ export function useThermostatComfort(deviceId: Ref<string>, transport: ComfortTr
 			await transport.write(id, state, request);
 			accepted = true;
 		} catch (cause) {
-			if (!disposed && operation === mutation && id === deviceId.value) error.value = String(cause);
+			if (!disposed && operation === mutation && id === deviceId.value) actionError.value = String(cause);
 		} finally {
 			if (!disposed && operation === mutation && id === deviceId.value) {
 				stale = ticket !== generation;
@@ -85,7 +89,8 @@ export function useThermostatComfort(deviceId: Ref<string>, transport: ComfortTr
 			mutation++;
 			pending.value = false;
 			snapshot.value = null;
-			error.value = null;
+			actionError.value = null;
+			readError.value = null;
 			minimumRevision = 0;
 			void reload();
 		},

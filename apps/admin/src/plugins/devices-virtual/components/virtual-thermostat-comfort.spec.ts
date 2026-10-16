@@ -217,4 +217,55 @@ describe('thermostat comfort editor', () => {
 		await flushPromises();
 		expect(view.text()).toContain('overlapping_setpoints');
 	});
+	it('polls every fifth tick independently of wall-clock jumps', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-10-16T12:00:00.499Z'));
+		await open();
+		for (let tick = 1; tick <= 10; tick++) {
+			vi.setSystemTime(Date.now() + 2345);
+			await vi.advanceTimersByTimeAsync(1000);
+			await flushPromises();
+			expect(mocks.read).toHaveBeenCalledTimes(1 + Math.floor(tick / 5));
+		}
+	});
+	it.each(['selection', 'override', 'configuration', 'menu', 'focus'])('withholds periodic reads during %s edits', async (kind) => {
+		vi.useFakeTimers();
+		mocks.read.mockResolvedValue(configured());
+		const view = await open();
+		if (kind === 'selection' || kind === 'menu') {
+			const select = view.findAllComponents(ElSelect)[0];
+			if (kind === 'menu') select.vm.$emit('visible-change', true);
+			else {
+				select.vm.$emit('update:modelValue', 'eco');
+				select.vm.$emit('change', 'eco');
+			}
+		} else if (kind === 'focus') await view.get('[data-test-id="thermostat-comfort"]').trigger('focusin');
+		else {
+			const inputs = view.findAllComponents(ElInputNumber);
+			const input = kind === 'override' ? inputs.at(-1)! : inputs[0];
+			input.vm.$emit('update:modelValue', 5);
+			input.vm.$emit('change', 5);
+		}
+		await flushPromises();
+		const reads = mocks.read.mock.calls.length;
+		await vi.advanceTimersByTimeAsync(10_000);
+		await flushPromises();
+		expect(mocks.read).toHaveBeenCalledTimes(reads);
+		expect(mocks.write).not.toHaveBeenCalled();
+	});
+	it('removes a transient read alert after recovery without hiding a write validation error', async () => {
+		mocks.read.mockRejectedValueOnce(new Error('network_read')).mockResolvedValue(configured());
+		const view = await open();
+		expect(view.text()).toContain('network_read');
+		await button(view, 'reload').trigger('click');
+		await flushPromises();
+		expect(view.text()).not.toContain('network_read');
+		mocks.write.mockRejectedValue(new Error('write_validation'));
+		await button(view, 'choose').trigger('click');
+		await flushPromises();
+		await button(view, 'reload').trigger('click');
+		await flushPromises();
+		expect(view.text()).toContain('write_validation');
+		expect(mocks.write).toHaveBeenCalledTimes(1);
+	});
 });

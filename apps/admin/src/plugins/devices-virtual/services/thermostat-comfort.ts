@@ -33,16 +33,21 @@ export function thermostatComfortTransport(backend: ReturnType<typeof useBackend
 	return {
 		async read(id, signal) {
 			const params = { path: { id } };
-			const [comfort, configuration, runtime] = await Promise.all([
-				backend.client.GET(`${path}/comfort`, { params, signal }),
-				backend.client.GET(path, { params, signal }),
-				backend.client.GET(`${path}/runtime`, { params, signal }),
-			]);
-			if (!comfort.data || !configuration.data || !runtime.data) throw failure(comfort.error ?? configuration.error ?? runtime.error);
-			const revision = comfort.data.data.revision;
-			if (configuration.data.data.revision !== revision || runtime.data.data.configuration_revision !== revision)
-				throw new Error('revision_conflict');
-			return { comfort: comfort.data.data, configuration: configuration.data.data, runtime: runtime.data.data };
+			// Retry only a split read snapshot, once. Mutations are never replayed.
+			for (let attempt = 0; ; attempt++) {
+				const [comfort, configuration, runtime] = await Promise.all([
+					backend.client.GET(`${path}/comfort`, { params, signal }),
+					backend.client.GET(path, { params, signal }),
+					backend.client.GET(`${path}/runtime`, { params, signal }),
+				]);
+				if (!comfort.data || !configuration.data || !runtime.data) throw failure(comfort.error ?? configuration.error ?? runtime.error);
+				const revision = comfort.data.data.revision;
+				if (configuration.data.data.revision !== revision || runtime.data.data.configuration_revision !== revision) {
+					if (attempt === 0 && !signal?.aborted) continue;
+					throw new Error('revision_conflict');
+				}
+				return { comfort: comfort.data.data, configuration: configuration.data.data, runtime: runtime.data.data };
+			}
 		},
 		async write(id, state, action) {
 			const params = { path: { id } };

@@ -109,11 +109,12 @@ The nine supporting suites passed in that combined run. Stronger final configura
 
 ## Required before alpha
 
-Admin needs multi-member creation/edit/repair while retaining missing reservations and enforcing the combined limit.
-Admin/Panel must render every member's readiness/fault, uncertain ON, release retry/proof, recovery generation and
-retained release evidence. Existing clients selecting only the first matching branch role must be updated; generated
-models alone do not deliver that UI. `released_actuators` exposes historical member evidence independently of active
-capacity. The existing claim recovery audit endpoint remains available.
+At this earlier backend checkpoint, multi-member Admin authoring and all-member Admin/Panel diagnostics were still
+client backlog. They are now integrated, including missing reservations, the combined limit, readiness/fault,
+uncertain ON, release retry/proof, recovery generation and retained evidence. Local client checks and localization
+generation are recorded in `member-client-validation.md`; review corrections have focused local checks recorded there, with fresh exact-head
+CI/review still required. `released_actuators` exposes historical member evidence independently of active capacity. The existing
+claim recovery audit endpoint remains available.
 
 HA/Zigbee native-unit adapters are separate work. This foundation reserves exactly-one-unit strategy types, rejects
 native activation, and grants no protective qualification through registration, service ACK or requested mode.

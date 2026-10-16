@@ -176,10 +176,12 @@ restart-drain and independent equipment-protection evidence. Network loss cannot
 shutdown; local protection and bounded leases remain essential. Hardware deployment/qualification follows a published
 alpha. HA/Zigbee native-unit protection and non-floor protective profiles remain unsupported.
 
-Before the extension milestone's alpha release, Admin still needs multi-member creation/edit/repair with the total
-limit and retained missing members; Admin/Panel need per-member readiness, uncertainty, release/recovery evidence and
-truthful mixed activity. The existing singleton controls remain compatible. Those client changes and native-unit
-adapters require their own implementation and composed review; the backend foundation does not mark them complete.
+Admin multi-member creation/edit/repair now retains missing members and enforces the combined limit. Admin/Panel
+render per-member readiness, uncertainty, release/recovery evidence and mixed activity, while preserving singleton
+compatibility. Client integration and localization generation have local validation evidence in
+`docs/work/virtual-thermostat/member-client-validation.md`. Review fixes have focused local validation recorded there;
+fresh independent review and exact-head CI remain required before publication. Native-unit adapters and installed qualification remain
+separate work; this client delivery does not close the complete climate issues or extension epic.
 
 ## Groups, spaces and provenance
 

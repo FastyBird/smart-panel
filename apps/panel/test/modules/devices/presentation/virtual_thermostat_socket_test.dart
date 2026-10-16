@@ -192,11 +192,13 @@ void main() {
       await tester.pump();
       expect(find.text('Requested mode: heat'), findsOneWidget);
       expect(runtimeReads, 3);
-      await tester.pump(const Duration(seconds: 1));
-      expect(
-        runtimeReads,
-        3,
-      ); // Matching inspect hint never creates a fetch loop.
+      // Remain before t6: a covered inspect hint does not create a fetch loop.
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(runtimeReads, 3);
+      // Crossing t6 admits exactly one scheduled three-second poll.
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump();
+      expect(runtimeReads, 4);
 
       hold = true;
       socket.hint('controller', epoch, ++sequence);
@@ -211,7 +213,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 150));
       await tester.pump();
       expect(find.text('Requested mode: cool'), findsOneWidget);
-      expect(runtimeReads, 5);
+      expect(runtimeReads, 6);
       // Old connection responses arriving last cannot overwrite the new epoch.
       for (final respond in held.toList()) {
         respond();
@@ -225,7 +227,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.text('Requested mode: cool'), findsOneWidget);
-      expect(runtimeReads, 6);
+      expect(runtimeReads, 7);
 
       staleConfigurationOnce = true;
       revision = 2;
@@ -238,7 +240,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 150));
       await tester.pump();
       expect(find.text('Requested mode: heat'), findsOneWidget);
-      expect(runtimeReads, 8);
+      expect(runtimeReads, 9);
 
       await tester.pumpWidget(detail('other'));
       await tester.pump();

@@ -404,12 +404,389 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets(
+    'background poll keeps controls enabled and an unchanged dialog intent can submit',
+    (tester) async {
+      await open(tester);
+      RequestInterceptorHandler? held;
+      RequestOptions? request;
+      dio.interceptors.insert(
+        0,
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.method == 'GET' && held == null) {
+              held = handler;
+              request = options;
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(held, isNotNull);
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+            .onPressed,
+        isNotNull,
+      );
+      await tap(tester, 'comfort-create');
+      await tester.enterText(
+        find.byKey(const ValueKey('override-heating')),
+        '18',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('override-duration')),
+        '5',
+      );
+      held!.resolve(
+        Response(
+          requestOptions: request!,
+          statusCode: 200,
+          data: {'data': jsonDecode(jsonEncode(state))},
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tap(tester, 'override-submit');
+      expect(writes, hasLength(1));
+      expect(writes.single['expected_revision'], 4);
+      expect(writes.single['expected_graph_revision'], 9);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final outcome in [
+    'revision',
+    'graph',
+    'failure',
+    'missing',
+    'controller',
+    'stale',
+    'unknown',
+  ]) {
+    testWidgets('background $outcome revokes the open dialog intent', (
+      tester,
+    ) async {
+      await open(tester);
+      RequestInterceptorHandler? held;
+      RequestOptions? request;
+      dio.interceptors.insert(
+        0,
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.method == 'GET' && held == null) {
+              held = handler;
+              request = options;
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(held, isNotNull);
+      await tap(tester, 'comfort-create');
+      await tester.enterText(
+        find.byKey(const ValueKey('override-heating')),
+        '18',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('override-duration')),
+        '5',
+      );
+      final response = jsonDecode(jsonEncode(state)) as Map<String, dynamic>;
+      if (outcome == 'revision') response['revision'] = 5;
+      if (outcome == 'graph') response['graph_revision'] = 10;
+      if (outcome == 'controller') response['controller'] = 'other';
+      if (outcome == 'stale') response['revision'] = 3;
+      if (outcome == 'unknown') {
+        ((response['configuration'] as Map)['temporary_override']
+                as Map)['status'] =
+            'future';
+      }
+      if (outcome == 'failure') {
+        held!.reject(
+          DioException(
+            requestOptions: request!,
+            message: 'background_read_failed',
+          ),
+        );
+      } else {
+        held!.resolve(
+          Response(
+            requestOptions: request!,
+            statusCode: 200,
+            data: {'data': outcome == 'missing' ? null : response},
+          ),
+        );
+      }
+      await tester.pumpAndSettle();
+      await tap(tester, 'override-submit');
+      expect(writes, isEmpty);
+      expect(
+        find.textContaining('Request failed; reload before retrying'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  for (final outcome in ['unchanged', 'revision', 'failure']) {
+    testWidgets(
+      'an open preset menu fences a delayed $outcome background response',
+      (tester) async {
+        await open(tester);
+        RequestInterceptorHandler? held;
+        RequestOptions? request;
+        dio.interceptors.insert(
+          0,
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              if (options.method == 'GET' && held == null) {
+                held = handler;
+                request = options;
+              } else {
+                handler.next(options);
+              }
+            },
+          ),
+        );
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pump();
+        expect(held, isNotNull);
+        await tap(tester, 'comfort-selection');
+        if (outcome == 'failure') {
+          held!.reject(
+            DioException(requestOptions: request!, message: 'menu_read_failed'),
+          );
+        } else {
+          final response =
+              jsonDecode(jsonEncode(state)) as Map<String, dynamic>;
+          if (outcome == 'revision') response['revision'] = 5;
+          held!.resolve(
+            Response(
+              requestOptions: request!,
+              statusCode: 200,
+              data: {'data': response},
+            ),
+          );
+        }
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Eco').last);
+        await tester.pumpAndSettle();
+        expect(writes, hasLength(outcome == 'unchanged' ? 1 : 0));
+        if (outcome == 'unchanged') {
+          expect(writes.single['expected_revision'], 4);
+          expect(writes.single['expected_graph_revision'], 9);
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'an action cancels an older background response without adopting it as the new baseline',
+    (tester) async {
+      await open(tester);
+      RequestInterceptorHandler? held;
+      RequestOptions? request;
+      dio.interceptors.insert(
+        0,
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.method == 'GET' && held == null) {
+              held = handler;
+              request = options;
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(held, isNotNull);
+      await tap(tester, 'comfort-clear-off');
+      expect(writes, hasLength(1));
+      held!.resolve(
+        Response(
+          requestOptions: request!,
+          statusCode: 200,
+          data: {
+            'data': {...configured(), 'revision': 99},
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tap(tester, 'comfort-cancel');
+      expect(writes.last['expected_revision'], 5);
+      expect(writes, hasLength(2));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'preset route retains its opening token through ordinary clock rebuilds',
+    (tester) async {
+      await open(tester);
+      await tap(tester, 'comfort-selection');
+      await tester.pump(const Duration(seconds: 2));
+      await tester.tap(find.text('Eco').last);
+      await tester.pumpAndSettle();
+      expect(writes, hasLength(1));
+      expect(writes.single, {
+        'preset': 'eco',
+        'clear_user_off': false,
+        'expected_revision': 4,
+        'expected_graph_revision': 9,
+      });
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('old preset route cannot write after a controller replacement', (
+    tester,
+  ) async {
+    await open(tester);
+    await tap(tester, 'comfort-selection');
+    // Preserve the Navigator and its open popup while replacing the underlying controller.
+    state['controller'] = 'b';
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: VirtualThermostatComfort(deviceId: 'b', onChanged: () {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eco').last);
+    await tester.pumpAndSettle();
+    expect(writes, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'open preset menu suppresses periodic reads and cancellation resumes them',
+    (tester) async {
+      await open(tester);
+      await tap(tester, 'comfort-selection');
+      final reads = paths.length;
+      await tester.pump(const Duration(seconds: 10));
+      expect(paths, hasLength(reads));
+      await tester.tapAt(const Offset(1, 1));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(paths.length, greaterThan(reads));
+      expect(writes, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'reconnect invalidates an open preset menu even after successful same-revision refresh',
+    (tester) async {
+      final socket = ComfortSocket();
+      void Function(bool)? connection;
+      when(() => socket.addConnectionListener(any())).thenAnswer((call) {
+        connection = call.positionalArguments[0] as void Function(bool);
+      });
+      locator.registerSingleton<SocketService>(socket);
+      await open(tester);
+      await tap(tester, 'comfort-selection');
+      connection!(true);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Eco').last);
+      await tester.pumpAndSettle();
+      expect(writes, isEmpty);
+      expect(
+        find.textContaining('Request failed; reload before retrying'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'a failed background read revokes actions, retries read-only and clears only the read error',
+    (tester) async {
+      await open(tester);
+      var fail = true;
+      dio.interceptors.insert(
+        0,
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.method == 'GET' && fail) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  message: 'transient_read',
+                ),
+              );
+            } else if (options.method == 'POST') {
+              writes.add(Map<String, dynamic>.from(options.data as Map));
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  message: 'write_conflict',
+                ),
+              );
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+      );
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('transient_read'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+            .onPressed,
+        isNull,
+      );
+      fail = false;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('transient_read'), findsNothing);
+      expect(
+        tester
+            .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+            .onPressed,
+        isNotNull,
+      );
+      await tap(tester, 'comfort-cancel');
+      expect(find.textContaining('write_conflict'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('write_conflict'), findsOneWidget);
+      expect(writes, hasLength(1));
+      await open(tester, id: 'b');
+      expect(find.textContaining('write_conflict'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   for (final language in ['cs', 'sk', 'de', 'es', 'pl']) {
     testWidgets('renders localized comfort controls in $language', (
       tester,
     ) async {
       await open(tester, language: language);
       expect(find.text('Thermostat comfort'), findsNothing);
+      if (language == 'es') {
+        expect(
+          find.textContaining('Intención de confort efectiva'),
+          findsOneWidget,
+        );
+      }
       expect(find.byKey(const ValueKey('comfort-create')), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });

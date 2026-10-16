@@ -56,7 +56,7 @@ Map<String, dynamic> claim(String id, String role, String state) => {
   'source_identity': 'retained-$id',
   'qualification_generation': 'generation-$id',
   'provider_profile': 'guarded-shelly',
-  if (role == 'heating') 'protection': {'source_identity': 'floor-$id'},
+  if (role == 'heating') 'protection': {'source_identity': 'protective-source'},
 };
 Map<String, dynamic> protection(
   DateTime now,
@@ -90,6 +90,7 @@ Map<String, dynamic> activityObservation(
 };
 
 void main() {
+  deadlineFenceTests();
   test(
     'claim join preserves missing members, false and zero, and fences history',
     () {
@@ -148,6 +149,7 @@ void main() {
         claim('one', 'heating', 'reserved'),
         {'protection': protection(time, 0)},
       );
+      fence.accept([sample(now)], now, Duration.zero);
       expect(fence.expiredClaims([sample(now)], Duration.zero, now), isEmpty);
       expect(
         fence.expiredClaims([sample(now)], const Duration(seconds: 3), now),
@@ -164,6 +166,7 @@ void main() {
         contains('one'),
       );
       final newer = now.add(const Duration(seconds: 4));
+      fence.accept([sample(newer)], newer, const Duration(seconds: 4));
       expect(
         fence.expiredClaims([sample(newer)], Duration.zero, newer),
         isEmpty,
@@ -172,9 +175,24 @@ void main() {
         fence.expiredClaims([sample(now)], Duration.zero, now),
         contains('one'),
       );
-      // Explicit authoritative removal drops the watermark and bounds memory.
+      // Removal frees the record but keeps the qualified retirement floor.
       fence.retainClaims([]);
-      expect(fence.expiredClaims([sample(now)], Duration.zero, now), isEmpty);
+      fence.accept([sample(now)], now, const Duration(seconds: 4));
+      expect(
+        fence.expiredClaims([sample(now)], Duration.zero, now),
+        contains('one'),
+      );
+      final recovery = newer.add(const Duration(seconds: 1));
+      fence.accept([sample(recovery)], recovery, const Duration(seconds: 5));
+      expect(
+        fence.expiredClaims(
+          [sample(recovery)],
+          Duration.zero,
+          recovery,
+          clock: const Duration(seconds: 5),
+        ),
+        isEmpty,
+      );
       final noTimestamp = VirtualThermostatMember(
         claim('one', 'heating', 'reserved'),
         {
@@ -590,6 +608,51 @@ void main() {
     },
   );
   testWidgets(
+    'three-second polling tolerates a one-second response but never extends the five-second display budget',
+    (tester) async {
+      final fixture = MemberDetailFixture();
+      final now = DateTime.now();
+      fixture.sample = {
+        ...protection(now, 20),
+        'maximum_age_seconds': 60,
+        'expires_at': now.add(const Duration(minutes: 1)).toIso8601String(),
+      };
+      await fixture.mount(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      fixture.hold = true;
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      expect(fixture.held, hasLength(2));
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await fixture.flush(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      fixture.hold = true;
+      await tester.pump(const Duration(seconds: 6));
+      expect(fixture.held, hasLength(2));
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      await fixture.flush(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      // A genuinely newer hint is never classified as a harmless self event,
+      // even with a request already in flight and unexpired member evidence.
+      fixture.hold = true;
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump();
+      fixture.socket.hint(++fixture.revision);
+      await tester.pump();
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      await fixture.flush(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
     'ready controller becomes unavailable on a hint and on stalled poll expiry',
     (tester) async {
       final fixture = MemberDetailFixture();
@@ -601,7 +664,7 @@ void main() {
       expect(find.text('Controller readiness: ready'), findsNothing);
       expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       fixture.sample = {
-        ...protection(now.add(const Duration(seconds: 1)), 0),
+        ...protection(DateTime.now(), 0),
         'maximum_age_seconds': 60,
         'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
       };
@@ -653,11 +716,9 @@ void main() {
       expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       expect(find.text('Server protection readiness: true'), findsNothing);
 
-      fixture.sample = sample(
-        now.add(const Duration(seconds: 1)),
-        11,
-        maximumAge: 2,
-      );
+      final recovered = DateTime.now();
+      expect(recovered.isAfter(now), isTrue);
+      fixture.sample = sample(recovered, 11, maximumAge: 2);
       await fixture.refetch(tester);
       expect(find.text('Live protection reading: 11.0 °C'), findsOneWidget);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
@@ -671,7 +732,7 @@ void main() {
         findsOneWidget,
       );
       // Simulate a cached age/expiry rollback across another same-id loading phase.
-      fixture.sample = sample(now.add(const Duration(seconds: 1)), 11);
+      fixture.sample = sample(recovered, 11);
       fixture.revision++;
       fixture.hold = true;
       await fixture.mount(tester);
@@ -686,7 +747,9 @@ void main() {
       await fixture.refetch(tester);
       expect(find.text('Live protection reading: 10.0 °C'), findsNothing);
       // Only genuinely newer qualified evidence recovers the live reading and flags.
-      fixture.sample = sample(now.add(const Duration(seconds: 2)), 12);
+      final newest = DateTime.now();
+      expect(newest.isAfter(recovered), isTrue);
+      fixture.sample = sample(newest, 12);
       await fixture.refetch(tester);
       expect(find.text('Live protection reading: 12.0 °C'), findsOneWidget);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
@@ -719,7 +782,7 @@ void main() {
         await tester.pump(const Duration(seconds: 3));
         expect(find.text('Controller readiness: ready'), findsNothing);
         expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
-        fixture.inputs = [input(now.add(const Duration(seconds: 1)))];
+        fixture.inputs = [input(DateTime.now())];
         await fixture.refetch(tester);
         expect(find.text('Controller readiness: ready'), findsOneWidget);
         fixture.inputs = [];
@@ -826,10 +889,8 @@ void main() {
         expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
       }
 
-      final t1 = now;
-      final t2 = now.add(const Duration(seconds: 1));
-      final t3 = now.add(const Duration(seconds: 2));
-      final t4 = now.add(const Duration(seconds: 3));
+      final t1 = now.subtract(const Duration(milliseconds: 100));
+      final t2 = now;
       retained(t2, 22);
       await fixture.mount(tester);
       expect(reading('Live protection reading: 22.0 °C'), findsOneWidget);
@@ -839,6 +900,8 @@ void main() {
       await fixture.refetch(tester);
       unavailable();
       expect(reading('Live protection reading: 21.0 °C'), findsNothing);
+      final t3 = DateTime.now();
+      expect(t3.isAfter(t2), isTrue);
       retained(t3, 23, maximumAge: 2);
       await fixture.refetch(tester);
       expect(reading('Live protection reading: 23.0 °C'), findsOneWidget);
@@ -852,11 +915,13 @@ void main() {
       retained(t1, 21);
       await fixture.refetch(tester);
       unavailable();
+      final t4 = DateTime.now();
+      expect(t4.isAfter(t3), isTrue);
       retained(t4, 24);
       await fixture.refetch(tester);
       expect(reading('Live protection reading: 24.0 °C'), findsOneWidget);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
-      // Once absent from BOTH accepted sources, its watermark may be discarded.
+      // Removal frees capacity but the retirement floor refuses the old sample.
       fixture.extraBranches = [];
       await fixture.refetch(tester);
       expect(
@@ -865,7 +930,13 @@ void main() {
       );
       retained(t1, 21);
       await fixture.refetch(tester);
-      expect(reading('Live protection reading: 21.0 °C'), findsOneWidget);
+      unavailable();
+      expect(reading('Live protection reading: 21.0 °C'), findsNothing);
+      final afterRemoval = DateTime.now();
+      expect(afterRemoval.isAfter(t4), isTrue);
+      retained(afterRemoval, 25);
+      await fixture.refetch(tester);
+      expect(reading('Live protection reading: 25.0 °C'), findsOneWidget);
       // Released runtime rows are excluded from the same active projection.
       retained(t1, 21, state: 'released');
       await fixture.refetch(tester);
@@ -875,7 +946,13 @@ void main() {
       );
       retained(now.subtract(const Duration(seconds: 1)), 20);
       await fixture.refetch(tester);
-      expect(reading('Live protection reading: 20.0 °C'), findsOneWidget);
+      unavailable();
+      expect(reading('Live protection reading: 20.0 °C'), findsNothing);
+      final afterRelease = DateTime.now();
+      expect(afterRelease.isAfter(afterRemoval), isTrue);
+      retained(afterRelease, 26);
+      await fixture.refetch(tester);
+      expect(reading('Live protection reading: 26.0 °C'), findsOneWidget);
       await fixture.dispose(tester);
     },
   );
@@ -1335,4 +1412,931 @@ class MemberDetailFixture {
     await flush(tester);
     expect(tester.takeException(), isNull);
   }
+}
+
+void deadlineFenceTests() {
+  final t = DateTime.utc(2026, 10, 16, 12);
+  Map source(String role, String id, [String? identity = 'sensor']) => {
+    'id': id,
+    'role': role,
+    if (identity != null) 'source_identity': identity,
+    'source_property': 'property-$id',
+    'physical_identity': 'physical-$id',
+    'contract_fingerprint': 'contract',
+  };
+  Map input(
+    String role,
+    String id,
+    DateTime stamp, {
+    int maxAge = 2,
+    DateTime? expiry,
+    String quality = 'good',
+  }) => {
+    'binding': id,
+    'role': role,
+    'source_property': 'property-$id',
+    'source_kind': 'physical',
+    'status': 'fresh',
+    'quality': quality,
+    'sampled_at': stamp.toIso8601String(),
+    'expires_at': (expiry ?? stamp.add(Duration(seconds: maxAge)))
+        .toIso8601String(),
+    'age_seconds': 0,
+    'maximum_age_seconds': maxAge,
+  };
+  bool accept(
+    VirtualThermostatEvidenceFence fence,
+    List<Map> sources,
+    List<Map> inputs,
+    DateTime wall,
+    Duration mono, {
+    int? revision = 1,
+    List<Map> claims = const [],
+    List<Map> branches = const [],
+  }) => fence.accept(
+    {'revision': revision, 'sources': sources, 'actuators': claims},
+    {
+      'configuration_revision': revision,
+      'inputs': inputs,
+      'branches': branches,
+    },
+    wall,
+    mono,
+  );
+
+  for (final role in ['ambient', 'floor', 'contact']) {
+    test(
+      'original $role deadline survives cached refetch before an expired frame and literal wall rollback',
+      () {
+        final fence = VirtualThermostatEvidenceFence(), row = source(role, 'a');
+        expect(
+          accept(fence, [row], [input(role, 'a', t)], t, Duration.zero),
+          isTrue,
+        );
+        // No query/build between first admission and cached HTTP at mono3.
+        expect(
+          accept(
+            fence,
+            [row],
+            [input(role, 'a', t, expiry: t.add(const Duration(minutes: 1)))],
+            t.add(const Duration(seconds: 1)),
+            const Duration(seconds: 3),
+          ),
+          isTrue,
+        );
+        expect(
+          fence.sources.roleCurrent(
+            role,
+            t.add(const Duration(seconds: 1)),
+            const Duration(seconds: 3),
+          ),
+          isFalse,
+        );
+        expect(
+          accept(
+            fence,
+            [row],
+            [input(role, 'a', t.add(const Duration(seconds: 1)))],
+            t.add(const Duration(seconds: 1)),
+            const Duration(seconds: 3),
+          ),
+          isTrue,
+        );
+        expect(
+          fence.sources.roleCurrent(
+            role,
+            t.add(const Duration(seconds: 1)),
+            const Duration(seconds: 3),
+          ),
+          isTrue,
+        );
+      },
+    );
+  }
+  test(
+    'member first-HTTP deadline and qualified retirement floor block same-batch and later replacement claims',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final old = claim('one', 'heating', 'reserved'),
+          replacement = claim('two', 'heating', 'reserved');
+      Map branch(String id, DateTime stamp) => {
+        'claim': id,
+        'protection': protection(stamp, 20),
+      };
+      accept(
+        fence,
+        [],
+        [],
+        t,
+        Duration.zero,
+        claims: [old],
+        branches: [branch('one', t)],
+      );
+      accept(
+        fence,
+        [],
+        [],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+        claims: [old],
+        branches: [branch('one', t)],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(old, branch('one', t))],
+          Duration.zero,
+          t.add(const Duration(seconds: 1)),
+          clock: const Duration(seconds: 3),
+        ),
+        contains('one'),
+      );
+      accept(
+        fence,
+        [],
+        [],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+        revision: 2,
+        claims: [replacement],
+        branches: [branch('two', t)],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(replacement, branch('two', t))],
+          Duration.zero,
+          t.add(const Duration(seconds: 1)),
+          clock: const Duration(seconds: 3),
+        ),
+        contains('two'),
+      );
+      accept(
+        fence,
+        [],
+        [],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+        revision: 3,
+      );
+      accept(
+        fence,
+        [],
+        [],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+        revision: 4,
+        claims: [replacement],
+        branches: [branch('two', t)],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(replacement, branch('two', t))],
+          Duration.zero,
+          t.add(const Duration(seconds: 1)),
+          clock: const Duration(seconds: 3),
+        ),
+        contains('two'),
+      );
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [],
+        [],
+        newer,
+        const Duration(seconds: 3),
+        revision: 4,
+        claims: [replacement],
+        branches: [branch('two', newer)],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(replacement, branch('two', newer))],
+          Duration.zero,
+          newer,
+          clock: const Duration(seconds: 3),
+        ),
+        isEmpty,
+      );
+    },
+  );
+  test(
+    'same-source binding replacement folds before admission and survives complete removal with global revision floor',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(
+        fence,
+        [source('ambient', 'a')],
+        [input('ambient', 'a', t)],
+        t,
+        Duration.zero,
+      );
+      accept(fence, [], [], t, Duration.zero, revision: 2);
+      accept(
+        fence,
+        [source('ambient', 'b')],
+        [input('ambient', 'b', t)],
+        t,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isFalse);
+      expect(
+        accept(
+          fence,
+          [source('ambient', 'a')],
+          [input('ambient', 'a', t.add(const Duration(seconds: 1)))],
+          t.add(const Duration(seconds: 1)),
+          Duration.zero,
+          revision: 1,
+        ),
+        isFalse,
+      );
+      expect(accept(fence, [], [], t, Duration.zero, revision: null), isFalse);
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('ambient', 'b')],
+        [input('ambient', 'b', newer)],
+        newer,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(
+        fence.sources.roleCurrent('ambient', newer, Duration.zero),
+        isTrue,
+      );
+    },
+  );
+  test(
+    'known alias canonical to missing to restored retains expired budget, and X to Y retires X',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(
+        fence,
+        [source('contact', 'a', 'x')],
+        [input('contact', 'a', t)],
+        t,
+        Duration.zero,
+      );
+      accept(
+        fence,
+        [source('contact', 'a', null)],
+        [input('contact', 'a', t)],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+      );
+      expect(
+        fence.sources.roleCurrent(
+          'contact',
+          t.add(const Duration(seconds: 1)),
+          const Duration(seconds: 3),
+        ),
+        isFalse,
+      );
+      accept(
+        fence,
+        [source('contact', 'a', 'x')],
+        [input('contact', 'a', t)],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+      );
+      expect(
+        fence.sources.roleCurrent(
+          'contact',
+          t.add(const Duration(seconds: 1)),
+          const Duration(seconds: 3),
+        ),
+        isFalse,
+      );
+      accept(
+        fence,
+        [source('contact', 'a', 'y')],
+        [input('contact', 'a', t)],
+        t,
+        const Duration(seconds: 3),
+      );
+      accept(
+        fence,
+        [source('contact', 'c', 'x')],
+        [input('contact', 'c', t)],
+        t,
+        const Duration(seconds: 3),
+      );
+      expect(
+        fence.sources.roleCurrent('contact', t, const Duration(seconds: 3)),
+        isFalse,
+      );
+      expect(fence.sources.legacyFallbackClosed, isTrue);
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('contact', 'c', 'x')],
+        [input('contact', 'c', newer)],
+        newer,
+        const Duration(seconds: 3),
+      );
+      expect(
+        fence.sources.roleCurrent('contact', newer, const Duration(seconds: 3)),
+        isTrue,
+      );
+    },
+  );
+  test(
+    'never-seen legacy alias migrates both ways without fresh admission; aliases collide conservatively',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(
+        fence,
+        [source('contact', 'a', null)],
+        [input('contact', 'a', t)],
+        t,
+        Duration.zero,
+      );
+      accept(
+        fence,
+        [source('contact', 'a', 'x')],
+        [input('contact', 'a', t)],
+        t,
+        Duration.zero,
+      );
+      expect(fence.sources.roleCurrent('contact', t, Duration.zero), isFalse);
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('contact', 'a', 'x'), source('contact', 'b', 'y')],
+        [input('contact', 'a', newer), input('contact', 'b', newer)],
+        newer,
+        Duration.zero,
+      );
+      expect(fence.sources.allCurrent(newer, Duration.zero), isTrue);
+      accept(
+        fence,
+        [source('contact', 'a', 'y'), source('contact', 'b', 'y')],
+        [input('contact', 'a', newer), input('contact', 'b', newer)],
+        newer,
+        Duration.zero,
+      );
+      expect(fence.sources.allCurrent(newer, Duration.zero), isFalse);
+    },
+  );
+  test(
+    'same-timestamp age and expiry can only tighten; exact deadline is unavailable',
+    () {
+      final fence = VirtualThermostatEvidenceFence(),
+          row = source('floor', 'a');
+      accept(
+        fence,
+        [row],
+        [input('floor', 'a', t, maxAge: 10)],
+        t,
+        Duration.zero,
+      );
+      accept(
+        fence,
+        [row],
+        [input('floor', 'a', t, maxAge: 1)],
+        t,
+        Duration.zero,
+      );
+      accept(
+        fence,
+        [row],
+        [input('floor', 'a', t, maxAge: 100)],
+        t,
+        Duration.zero,
+      );
+      expect(
+        fence.sources.roleCurrent('floor', t, const Duration(seconds: 1)),
+        isFalse,
+      );
+      accept(
+        fence,
+        [row],
+        [input('floor', 'a', t, maxAge: 100)],
+        t,
+        Duration.zero,
+      );
+      expect(fence.sources.roleCurrent('floor', t, Duration.zero), isFalse);
+    },
+  );
+  test(
+    'unqualified future/identity-mismatch retirement cannot poison a later qualified admission floor',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(
+        fence,
+        [source('ambient', 'bad')],
+        [input('ambient', 'bad', t.add(const Duration(days: 1)))],
+        t,
+        Duration.zero,
+      );
+      accept(fence, [], [], t, Duration.zero, revision: 2);
+      accept(
+        fence,
+        [source('ambient', 'good')],
+        [input('ambient', 'good', t)],
+        t,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isTrue);
+      final mismatch = input(
+        'ambient',
+        'wrong',
+        t.add(const Duration(seconds: 1)),
+      )..['source_property'] = 'mismatched';
+      accept(
+        fence,
+        [source('ambient', 'wrong')],
+        [mismatch],
+        t.add(const Duration(seconds: 1)),
+        Duration.zero,
+        revision: 4,
+      );
+      accept(
+        fence,
+        [],
+        [],
+        t.add(const Duration(seconds: 1)),
+        Duration.zero,
+        revision: 5,
+      );
+      accept(
+        fence,
+        [source('ambient', 'new')],
+        [input('ambient', 'new', t.add(const Duration(milliseconds: 500)))],
+        t.add(const Duration(seconds: 1)),
+        Duration.zero,
+        revision: 6,
+      );
+      expect(
+        fence.sources.roleCurrent(
+          'ambient',
+          t.add(const Duration(seconds: 1)),
+          Duration.zero,
+        ),
+        isTrue,
+      );
+    },
+  );
+  test(
+    'each contact and positive role needs its own declared unambiguous runtime join',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(
+        fence,
+        [source('contact', 'a'), source('contact', 'b', 'second')],
+        [input('contact', 'a', t)],
+        t,
+        Duration.zero,
+      );
+      expect(fence.sources.allCurrent(t, Duration.zero), isFalse);
+      expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isFalse);
+      expect(fence.sources.roleCurrent('floor', t, Duration.zero), isFalse);
+      accept(
+        fence,
+        [source('contact', 'a'), source('contact', 'b', 'second')],
+        [
+          input('contact', 'a', t.add(const Duration(seconds: 1))),
+          input('contact', 'b', t.add(const Duration(seconds: 1))),
+        ],
+        t.add(const Duration(seconds: 1)),
+        Duration.zero,
+      );
+      expect(
+        fence.sources.allCurrent(
+          t.add(const Duration(seconds: 1)),
+          Duration.zero,
+        ),
+        isTrue,
+      );
+    },
+  );
+  test(
+    'same-batch source key replacement folds first while a surviving contact keeps its own budget',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final sibling = source('contact', 'sibling', 'sibling');
+      accept(
+        fence,
+        [source('ambient', 'a', 'x'), sibling],
+        [input('ambient', 'a', t), input('contact', 'sibling', t, maxAge: 60)],
+        t,
+        Duration.zero,
+      );
+      accept(
+        fence,
+        [source('ambient', 'b', 'y'), sibling],
+        [input('ambient', 'b', t), input('contact', 'sibling', t, maxAge: 60)],
+        t,
+        Duration.zero,
+        revision: 2,
+      );
+      expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isFalse);
+      expect(fence.sources.roleCurrent('contact', t, Duration.zero), isTrue);
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('ambient', 'b', 'y'), sibling],
+        [
+          input('ambient', 'b', newer),
+          input('contact', 'sibling', t, maxAge: 60),
+        ],
+        newer,
+        const Duration(seconds: 1),
+        revision: 2,
+      );
+      expect(
+        fence.sources.allCurrent(newer, const Duration(seconds: 1)),
+        isTrue,
+      );
+      final records = fence.sources.recordCount,
+          aliases = fence.sources.aliasCount;
+      expect(
+        accept(
+          fence,
+          [source('ambient', 'b', null)],
+          [input('ambient', 'b', newer)],
+          newer,
+          const Duration(seconds: 1),
+          revision: 1,
+        ),
+        isFalse,
+      );
+      expect(
+        accept(
+          fence,
+          [],
+          [],
+          newer,
+          const Duration(seconds: 1),
+          revision: null,
+        ),
+        isFalse,
+      );
+      expect(fence.sources.recordCount, records);
+      expect(fence.sources.aliasCount, aliases);
+      expect(
+        fence.sources.allCurrent(newer, const Duration(seconds: 1)),
+        isTrue,
+      );
+    },
+  );
+  test(
+    'invalid newer timestamp stays withdrawn in its record but never poisons retirement',
+    () {
+      final fence = VirtualThermostatEvidenceFence(),
+          row = source('ambient', 'a');
+      accept(fence, [row], [input('ambient', 'a', t)], t, Duration.zero);
+      accept(
+        fence,
+        [row],
+        [input('ambient', 'a', t.add(const Duration(days: 1)))],
+        t,
+        Duration.zero,
+      );
+      accept(fence, [row], [input('ambient', 'a', t)], t, Duration.zero);
+      expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isFalse);
+      accept(fence, [], [], t, Duration.zero, revision: 2);
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('ambient', 'b')],
+        [input('ambient', 'b', newer)],
+        newer,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(
+        fence.sources.roleCurrent('ambient', newer, Duration.zero),
+        isTrue,
+      );
+    },
+  );
+  test(
+    'bounded source record/alias overflow withholds without eviction and closes unknown legacy admission',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      void partial(int start, int count, DateTime stamp) {
+        final rows = [
+          for (var n = start; n < start + count; n++)
+            source('contact', 'id$n', 'sensor$n'),
+        ];
+        fence.accept(
+          {
+            'revision': 1,
+            'sources': [...rows, 'incomplete'],
+            'actuators': [],
+          },
+          {
+            'configuration_revision': 1,
+            'inputs': [
+              for (var n = start; n < start + count; n++)
+                input('contact', 'id$n', stamp),
+            ],
+            'branches': [],
+          },
+          stamp,
+          Duration.zero,
+        );
+      }
+
+      partial(0, 18, t);
+      partial(18, 18, t);
+      expect(fence.sources.recordCount, 36);
+      expect(fence.sources.aliasCount, 36);
+      final capacityStamp = t.add(const Duration(seconds: 1));
+      partial(36, 1, capacityStamp);
+      expect(fence.sources.overflow, isTrue);
+      expect(fence.sources.allCurrent(capacityStamp, Duration.zero), isFalse);
+      expect(fence.sources.recordCount, 36);
+      expect(fence.sources.aliasCount, 36);
+      expect(fence.sources.legacyFallbackClosed, isTrue);
+      accept(fence, [], [], capacityStamp, Duration.zero, revision: 2);
+      expect(fence.sources.recordCount, 0);
+      accept(
+        fence,
+        [source('ambient', 'new', 'new')],
+        [input('ambient', 'new', capacityStamp)],
+        capacityStamp,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(
+        fence.sources.roleCurrent('ambient', capacityStamp, Duration.zero),
+        isFalse,
+      );
+      final newer = capacityStamp.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('ambient', 'new', 'new')],
+        [input('ambient', 'new', newer)],
+        newer,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(
+        fence.sources.roleCurrent('ambient', newer, Duration.zero),
+        isTrue,
+      );
+      accept(
+        fence,
+        [source('contact', 'unknown', null)],
+        [input('contact', 'unknown', newer)],
+        newer,
+        Duration.zero,
+        revision: 4,
+      );
+      expect(
+        fence.sources.roleCurrent('contact', newer, Duration.zero),
+        isFalse,
+      );
+      expect(fence.sources.legacyFallbackClosed, isTrue);
+    },
+  );
+  test(
+    'opaque identities are unqualified rather than capacity; real member overflow stays withheld',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      accept(
+        fence,
+        [],
+        [],
+        t,
+        Duration.zero,
+        branches: [
+          {'role': 'heating', 'activity': 'off'},
+        ],
+      );
+      expect(fence.members.untracked, isTrue);
+      expect(fence.members.overflow, isFalse);
+      final claims = [
+        for (var n = 0; n < 17; n++) claim('member$n', 'heating', 'reserved'),
+      ];
+      final branches = [
+        for (var n = 0; n < 17; n++)
+          {'claim': 'member$n', 'protection': protection(t, 20)},
+      ];
+      accept(
+        fence,
+        [],
+        [],
+        t,
+        Duration.zero,
+        revision: 2,
+        claims: claims,
+        branches: branches,
+      );
+      expect(fence.members.overflow, isTrue);
+      expect(fence.sources.legacyFallbackClosed, isTrue);
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(claims.last, branches.last)],
+          Duration.zero,
+          t,
+        ),
+        contains('member16'),
+      );
+    },
+  );
+  test('render query cannot initialize a member or source deadline', () {
+    final fence = VirtualThermostatEvidenceFence();
+    final row = VirtualThermostatMember(claim('one', 'heating', 'reserved'), {
+      'protection': protection(t, 20),
+    });
+    expect(
+      fence.members.expiredClaims([row], Duration.zero, t),
+      contains('one'),
+    );
+    expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isFalse);
+    expect(fence.sources.recordCount, 0);
+  });
+  test(
+    'alias-only capacity rejects a future candidate without poisoning qualified retirement',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      for (var n = 0; n < 36; n++) {
+        final stamp = t.add(Duration(milliseconds: n));
+        fence.accept(
+          {
+            'revision': 1,
+            'sources': [source('contact', 'a$n'), 'incomplete'],
+            'actuators': [],
+          },
+          {
+            'configuration_revision': 1,
+            'inputs': [input('contact', 'a$n', stamp)],
+            'branches': [],
+          },
+          stamp,
+          Duration.zero,
+        );
+      }
+      expect(fence.sources.recordCount, 1);
+      expect(fence.sources.aliasCount, 36);
+      final wall = t.add(const Duration(milliseconds: 36));
+      fence.accept(
+        {
+          'revision': 1,
+          'sources': [source('contact', 'overflow'), 'incomplete'],
+          'actuators': [],
+        },
+        {
+          'configuration_revision': 1,
+          'inputs': [
+            input('contact', 'overflow', t.add(const Duration(days: 1))),
+          ],
+          'branches': [],
+        },
+        wall,
+        Duration.zero,
+      );
+      expect(fence.sources.overflow, isTrue);
+      expect(fence.sources.aliasCount, 36);
+      expect(fence.sources.recordCount, 1);
+      expect(fence.sources.legacyFallbackClosed, isTrue);
+      accept(fence, [], [], wall, Duration.zero, revision: 2);
+      accept(
+        fence,
+        [source('ambient', 'new')],
+        [input('ambient', 'new', wall)],
+        wall,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(fence.sources.roleCurrent('ambient', wall, Duration.zero), isTrue);
+    },
+  );
+  test(
+    'claim revision and binding gap cannot reuse a publication; malformed budgets never qualify',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final first = claim('one', 'heating', 'reserved')..['revision'] = 1;
+      Map branch(DateTime stamp) => {
+        'claim': 'one',
+        'protection': protection(stamp, 20),
+      };
+      accept(
+        fence,
+        [],
+        [],
+        t,
+        Duration.zero,
+        claims: [first],
+        branches: [branch(t)],
+      );
+      final changed = {...first, 'revision': 2};
+      accept(
+        fence,
+        [],
+        [],
+        t,
+        Duration.zero,
+        revision: 2,
+        claims: [changed],
+        branches: [branch(t)],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(changed, branch(t))],
+          Duration.zero,
+          t,
+        ),
+        contains('one'),
+      );
+      final newer = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [],
+        [],
+        newer,
+        Duration.zero,
+        revision: 2,
+        claims: [changed],
+        branches: [branch(newer)],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(changed, branch(newer))],
+          Duration.zero,
+          newer,
+        ),
+        isEmpty,
+      );
+      final malformed = input('ambient', 'a', newer)
+        ..['maximum_age_seconds'] = 1e308;
+      accept(
+        fence,
+        [source('ambient', 'a')],
+        [malformed],
+        newer,
+        Duration.zero,
+        revision: 3,
+      );
+      expect(
+        fence.sources.roleCurrent('ambient', newer, Duration.zero),
+        isFalse,
+      );
+    },
+  );
+  test(
+    'incomplete membership cannot prune original budgets or establish positive readiness',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final member = claim('one', 'heating', 'reserved');
+      final branch = {'claim': 'one', 'protection': protection(t, 20)};
+      accept(
+        fence,
+        [source('ambient', 'a')],
+        [input('ambient', 'a', t)],
+        t,
+        Duration.zero,
+        claims: [member],
+        branches: [branch],
+      );
+      fence.accept(
+        {
+          'revision': 2,
+          'actuators': ['unknown'],
+          'sources': [
+            {'id': 'unknown', 'role': 'unknown'},
+          ],
+        },
+        {'configuration_revision': 2, 'branches': [], 'inputs': []},
+        t,
+        Duration.zero,
+      );
+      expect(fence.members.untracked, isTrue);
+      expect(fence.members.overflow, isFalse);
+      expect(fence.members.recordCount, 1);
+      expect(fence.sources.recordCount, 1);
+      final rolledWall = t.add(const Duration(seconds: 1));
+      accept(
+        fence,
+        [source('ambient', 'a')],
+        [input('ambient', 'a', t)],
+        rolledWall,
+        const Duration(seconds: 3),
+        revision: 3,
+        claims: [member],
+        branches: [branch],
+      );
+      expect(
+        fence.members.expiredClaims(
+          [VirtualThermostatMember(member, branch)],
+          Duration.zero,
+          rolledWall,
+          clock: const Duration(seconds: 3),
+        ),
+        contains('one'),
+      );
+      expect(
+        fence.sources.roleCurrent(
+          'ambient',
+          rolledWall,
+          const Duration(seconds: 3),
+        ),
+        isFalse,
+      );
+    },
+  );
 }
