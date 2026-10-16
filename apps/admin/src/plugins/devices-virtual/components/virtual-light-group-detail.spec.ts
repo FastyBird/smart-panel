@@ -7,6 +7,12 @@ import VirtualLightGroupDetail from './virtual-light-group-detail.vue';
 
 const mocks = vi.hoisted(() => ({ GET: vi.fn(), POST: vi.fn(), PUT: vi.fn(), on: vi.fn(), off: vi.fn(), controls: ['on'] as string[] }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock('../composables/useGroupCatalog', async () => {
+	const { ref } = await import('vue');
+	return {
+		useGroupCatalog: () => ({ catalog: ref(null), profiles: ref([]), pending: ref(false), error: ref(null), load: vi.fn(), invalidate: vi.fn() }),
+	};
+});
 vi.mock('../../../modules/devices/store/keys', () => ({
 	devicesStoreKey: 'devices',
 	channelsStoreKey: 'channels',
@@ -43,7 +49,7 @@ const configuration = {
 	profile: 'light',
 	revision: 1,
 	graph_revision: 1,
-	common_capabilities: [{ category: 'on' }],
+	common_capabilities: [{ category: 'on', data_type: 'bool', access: 'rw', format: null }],
 	members: ['a', 'b'].map((id) => ({
 		id,
 		source_channel: id,
@@ -80,6 +86,27 @@ describe('light group actual state and command detail', () => {
 		mocks.GET.mockResolvedValue({ data: { data: configuration } });
 	});
 	afterEach(() => vi.restoreAllMocks());
+	it('reloads configuration after reconnect while the first configuration request is still pending', async () => {
+		let settle!: (response: unknown) => void;
+		mocks.GET.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					settle = resolve;
+				})
+		);
+		const wrapper = await mountDetail();
+		const disconnect = mocks.on.mock.calls.find(([event]) => event === 'disconnect')?.[1] as () => void;
+		const connect = mocks.on.mock.calls.find(([event]) => event === 'connect')?.[1] as () => void;
+		disconnect();
+		connect();
+		await flushPromises();
+		expect(mocks.GET).toHaveBeenCalledTimes(2);
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.mixed');
+		settle({ data: { data: { ...configuration, members: [] } } });
+		await flushPromises();
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.mixed');
+		wrapper.unmount();
+	});
 	it('shows partial member outcomes without treating accepted or mixed state as confirmation', async () => {
 		mocks.POST.mockResolvedValue({
 			data: {
@@ -123,7 +150,7 @@ describe('light group actual state and command detail', () => {
 			data: {
 				data: {
 					...configuration,
-					common_capabilities: color.map((category) => ({ category, format: [0.125, 1.125], step: 0.25 })),
+					common_capabilities: color.map((category) => ({ category, data_type: 'float', access: 'rw', format: [0.125, 1.125], step: 0.25 })),
 					members: configuration.members.map((member) => ({
 						...member,
 						bindings: color.map((quantity) => ({ quantity, output_property: `group-channel-${quantity}` })),
@@ -152,6 +179,77 @@ describe('light group actual state and command detail', () => {
 		expect(mocks.POST.mock.calls[0][1].body.request_id).toEqual(expect.any(String));
 		wrapper.unmount();
 	});
+	it('offers qualified cover COMMAND operations and shows refusals without position/tilt inputs', async () => {
+		mocks.controls = ['type', 'status', 'position', 'command'];
+		mocks.GET.mockResolvedValue({
+			data: {
+				data: {
+					...configuration,
+					profile: 'cover',
+					common_capabilities: [
+						{ category: 'type', data_type: 'enum', access: 'ro', format: ['blind'] },
+						{ category: 'command', data_type: 'enum', access: 'wo', format: ['open', 'close', 'stop'] },
+						{ category: 'position', data_type: 'uchar', access: 'rw', format: [0, 100], step: 1 },
+					],
+					operations: [
+						{ operation: 'open', commandable: true, members: [] },
+						{ operation: 'close', commandable: false, members: [{ source_identity: 'a', reasons: ['tag_unavailable'] }] },
+						{ operation: 'stop', commandable: false, members: [] },
+						{ operation: 'position', commandable: false, members: [{ source_identity: 'a', reasons: ['position_completion_unavailable'] }] },
+					],
+				},
+			},
+		});
+		const wrapper = await mountDetail();
+		expect(wrapper.text()).toContain('tag_unavailable');
+		expect(wrapper.text()).toContain('position_completion_unavailable');
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.coverCommandMeaning');
+		expect(wrapper.find('[data-test-id="light-group-control-position"]').exists()).toBe(false);
+		const buttons = wrapper.findAll('button');
+		expect(buttons.find((button) => button.text() === 'devicesVirtualPlugin.lightGroup.open')?.attributes('disabled')).toBeUndefined();
+		expect(buttons.find((button) => button.text() === 'devicesVirtualPlugin.lightGroup.close')?.attributes('disabled')).toBeDefined();
+		wrapper.unmount();
+	});
+	it('distinguishes false, mixed and expired feedback and fences in-flight refresh after disconnect', async () => {
+		const actual = {
+			...configuration,
+			reported_state: {
+				...configuration.reported_state,
+				properties: [
+					{ category: 'on', value: false, mixed: false, contributors: ['a', 'b'], expires_at: new Date(Date.now() + 100000).toISOString() },
+					{ category: 'speed', value: null, mixed: true, contributors: ['a', 'b'], expires_at: new Date(Date.now() + 100000).toISOString() },
+					{ category: 'swing', value: true, mixed: false, contributors: ['a'], expires_at: new Date(Date.now() - 1).toISOString() },
+				],
+			},
+		};
+		mocks.GET.mockResolvedValue({ data: { data: actual } });
+		const wrapper = await mountDetail();
+		expect(wrapper.text()).toContain('false');
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.mixed');
+		expect(wrapper.text()).toContain('devicesVirtualPlugin.lightGroup.unknown');
+		let resolve!: (result: unknown) => void;
+		mocks.GET.mockImplementationOnce(
+			() =>
+				new Promise((done) => {
+					resolve = done;
+				})
+		);
+		const connect = mocks.on.mock.calls.find(([event]) => event === 'connect')![1];
+		const disconnect = () => mocks.on.mock.calls.filter(([event]) => event === 'disconnect').forEach(([, listener]) => listener());
+		connect();
+		disconnect();
+		resolve({ data: { data: actual } });
+		await flushPromises();
+		expect(
+			wrapper
+				.findAll('button')
+				.find((button) => button.text() === 'devicesVirtualPlugin.lightGroup.turnOn')
+				?.attributes('disabled')
+		).toBeDefined();
+		expect(wrapper.text()).not.toContain('devicesVirtualPlugin.lightGroup.mixed');
+		wrapper.unmount();
+	});
+
 	it.each([
 		[false, true],
 		[true, true],
@@ -198,6 +296,47 @@ describe('light group actual state and command detail', () => {
 		expect(mocks.PUT.mock.calls[0][1].body).toEqual(draft);
 		wrapper.unmount();
 	});
+	it.each(['switch', 'outlet', 'fan', 'cover'])('preserves %s profile and every output/binding identity through repair', async (profile) => {
+		const fields = profile === 'cover' ? ['type', 'status', 'position', 'command'] : profile === 'fan' ? ['on', 'speed', 'direction'] : ['on'];
+		mocks.controls = fields;
+		const configured = {
+			...configuration,
+			profile,
+			members: ['a', 'b'].map((id) => ({
+				id,
+				source_channel: id === 'a' ? null : id,
+				source_identity: id,
+				bindings: fields.map((quantity) => ({
+					id: `${id}-${quantity}`,
+					quantity,
+					output_property: `group-channel-${quantity}`,
+					source_property: id === 'a' ? null : `${id}-${quantity}`,
+				})),
+			})),
+		};
+		mocks.GET.mockResolvedValue({ data: { data: configured } });
+		mocks.POST.mockResolvedValue({ data: { data: configured } });
+		mocks.PUT.mockResolvedValue({ data: { data: configured } });
+		const wrapper = await mountDetail();
+		await click(wrapper, 'editTitle');
+		wrapper
+			.findAllComponents(ElSelect)
+			.find((select) => select.attributes('data-test-id') === 'repair-member-a')!
+			.vm.$emit('update:modelValue', 'c');
+		await flushPromises();
+		await click(wrapper, 'preview');
+		const draft = mocks.POST.mock.calls[0][1].body;
+		expect(draft.profile).toBe(profile);
+		expect(draft.members[0]).toEqual({
+			id: 'a',
+			source_channel: 'c',
+			bindings: fields.map((quantity) => ({ id: `a-${quantity}`, output_property: `group-channel-${quantity}`, source_property: `c-${quantity}` })),
+		});
+		await click(wrapper, 'save');
+		expect(mocks.PUT.mock.calls[0][1].body).toEqual(draft);
+		wrapper.unmount();
+	});
+
 	it('keeps save disabled when the server refuses a repair preview', async () => {
 		mocks.POST.mockResolvedValue({ error: { message: 'repair scene references' } });
 		const wrapper = await mountDetail();

@@ -1288,6 +1288,79 @@
   },
   "virtual_measurement_true": "Wykryto",
   "virtual_measurement_false": "Nie wykryto",
+  "groupActualFeedback": "Zgłoszony stan fizyczny",
+  "groupReload": "Wczytaj / połącz ponownie",
+  "groupRepair": "Konfiguracja lub możliwości uległy zmianie. Wczytaj ponownie i napraw członkostwo w Adminie.",
+  "groupUncertain": "Wynik polecenia niepewny. Przed kolejną próbą wczytaj rzeczywisty stan.",
+  "groupUnknown": "Nieznany",
+  "groupMixed": "Mieszany",
+  "groupOn": "Włączone",
+  "groupOff": "Wyłączone",
+  "groupUnavailable": "Niedostępne",
+  "groupOpen": "Otwórz",
+  "groupClose": "Zamknij",
+  "groupStop": "Zatrzymaj",
+  "groupSelectValue": "Wybierz wartość natywną",
+  "groupApply": "Zastosuj",
+  "groupApplyTogether": "Zastosuj razem",
+  "groupConfigured": "Metadane konfiguracji",
+  "groupMissing": "Brak członka; napraw w Adminie",
+  "groupReadinessUnavailable": "Gotowość polecenia niedostępna",
+  "groupCoverMeaning": "OTWÓRZ/ZAMKNIJ potwierdza rozpoczęcie ruchu lub osiągnięty koniec, nie cały przejazd. STOP wymaga kwalifikowanego potwierdzenia zatrzymania.",
+  "groupContributors": "{count}/{total} uczestniczących członków",
+  "groupCommandOutcome": "Polecenie grupy: {status}",
+  "groupStep": "Krok {value}",
+  "groupPending": "Oczekiwanie",
+  "groupConfirmed": "Potwierdzone",
+  "groupPartial": "Częściowe",
+  "groupFailed": "Niepowodzenie",
+  "groupSuperseded": "Zastąpione",
+  "groupTimedOut": "Upłynął czas",
+  "groupFieldOn": "Zasilanie",
+  "groupFieldSpeed": "Prędkość",
+  "groupFieldSwing": "Oscylacja",
+  "groupFieldDirection": "Kierunek",
+  "groupFieldMode": "Tryb",
+  "groupFieldPosition": "Pozycja",
+  "groupFieldTilt": "Nachylenie",
+  "groupFieldType": "Typ",
+  "groupFieldStatus": "Stan",
+  "groupFieldObstruction": "Przeszkoda",
+  "groupFieldInUse": "W użyciu",
+  "groupFieldBrightness": "Jasność",
+  "groupFieldColorTemperature": "Temperatura barwowa",
+  "groupFieldColorRed": "Czerwony",
+  "groupFieldColorGreen": "Zielony",
+  "groupFieldColorBlue": "Niebieski",
+  "groupFieldHue": "Odcień",
+  "groupFieldSaturation": "Nasycenie",
+  "@groupContributors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@groupCommandOutcome": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@groupStep": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOpenAll": "Otwórz wszystkie",
+  "groupCloseAll": "Zamknij wszystkie",
+  "groupStopAll": "Zatrzymaj wszystkie",
   "thermostatComfortTitle": "Komfort termostatu",
   "thermostatComfortHelp": "Żądanie komfortu, tryb HVAC i aktywność fizyczna są rozdzielone. Zabezpieczenia obowiązują zawsze.",
   "thermostatComfortUnconfigured": "Komfort nie jest skonfigurowany. Dotychczasowe ustawienia ręczne pozostają dostępne.",

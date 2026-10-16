@@ -7648,539 +7648,299 @@ abstract class AppLocalizations {
   /// **'Not detected'**
   String get virtual_measurement_false;
 
-  /// No description provided for @thermostatComfortTitle.
+  /// No description provided for @groupActualFeedback.
   ///
   /// In en, this message translates to:
-  /// **'Thermostat comfort'**
-  String get thermostatComfortTitle;
+  /// **'Reported physical feedback'**
+  String get groupActualFeedback;
 
-  /// No description provided for @thermostatComfortHelp.
+  /// No description provided for @groupReload.
   ///
   /// In en, this message translates to:
-  /// **'Comfort intent is separate from HVAC mode and physical activity. Safety guards always apply.'**
-  String get thermostatComfortHelp;
+  /// **'Reload / reconnect'**
+  String get groupReload;
 
-  /// No description provided for @thermostatComfortUnconfigured.
+  /// No description provided for @groupRepair.
   ///
   /// In en, this message translates to:
-  /// **'Comfort is not configured. Existing manual settings remain available.'**
-  String get thermostatComfortUnconfigured;
+  /// **'Configuration or capabilities changed. Reload and repair membership in Admin.'**
+  String get groupRepair;
 
-  /// No description provided for @thermostatComfortHeating.
+  /// No description provided for @groupUncertain.
   ///
   /// In en, this message translates to:
-  /// **'Heating'**
-  String get thermostatComfortHeating;
+  /// **'Command result uncertain. Reload actual feedback before another attempt.'**
+  String get groupUncertain;
 
-  /// No description provided for @thermostatComfortCooling.
+  /// No description provided for @groupUnknown.
   ///
   /// In en, this message translates to:
-  /// **'Cooling'**
-  String get thermostatComfortCooling;
+  /// **'Unknown'**
+  String get groupUnknown;
 
-  /// No description provided for @thermostatComfortMinimum.
+  /// No description provided for @groupMixed.
   ///
   /// In en, this message translates to:
-  /// **'Minimum'**
-  String get thermostatComfortMinimum;
+  /// **'Mixed'**
+  String get groupMixed;
 
-  /// No description provided for @thermostatComfortMaximum.
+  /// No description provided for @groupOn.
   ///
   /// In en, this message translates to:
-  /// **'Maximum'**
-  String get thermostatComfortMaximum;
+  /// **'On'**
+  String get groupOn;
 
-  /// No description provided for @thermostatComfortComfort.
+  /// No description provided for @groupOff.
   ///
   /// In en, this message translates to:
-  /// **'Comfort'**
-  String get thermostatComfortComfort;
+  /// **'Off'**
+  String get groupOff;
 
-  /// No description provided for @thermostatComfortEco.
-  ///
-  /// In en, this message translates to:
-  /// **'Eco'**
-  String get thermostatComfortEco;
-
-  /// No description provided for @thermostatComfortAway.
-  ///
-  /// In en, this message translates to:
-  /// **'Away'**
-  String get thermostatComfortAway;
-
-  /// No description provided for @thermostatComfortManual.
-  ///
-  /// In en, this message translates to:
-  /// **'Manual baseline'**
-  String get thermostatComfortManual;
-
-  /// No description provided for @thermostatComfortSelected.
-  ///
-  /// In en, this message translates to:
-  /// **'Baseline preset'**
-  String get thermostatComfortSelected;
-
-  /// No description provided for @thermostatComfortChoose.
-  ///
-  /// In en, this message translates to:
-  /// **'Select baseline'**
-  String get thermostatComfortChoose;
-
-  /// No description provided for @thermostatComfortConfigure.
-  ///
-  /// In en, this message translates to:
-  /// **'Configure comfort'**
-  String get thermostatComfortConfigure;
-
-  /// No description provided for @thermostatComfortAutomation.
-  ///
-  /// In en, this message translates to:
-  /// **'Explicitly enable climate automation'**
-  String get thermostatComfortAutomation;
-
-  /// No description provided for @thermostatComfortSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save comfort configuration'**
-  String get thermostatComfortSave;
-
-  /// No description provided for @thermostatComfortReload.
-  ///
-  /// In en, this message translates to:
-  /// **'Reload from server'**
-  String get thermostatComfortReload;
-
-  /// No description provided for @thermostatComfortOverride.
-  ///
-  /// In en, this message translates to:
-  /// **'Temporary override'**
-  String get thermostatComfortOverride;
-
-  /// No description provided for @thermostatComfortExplicit.
-  ///
-  /// In en, this message translates to:
-  /// **'Explicit setpoints'**
-  String get thermostatComfortExplicit;
-
-  /// No description provided for @thermostatComfortDuration.
-  ///
-  /// In en, this message translates to:
-  /// **'Duration (minutes, 1–10080)'**
-  String get thermostatComfortDuration;
-
-  /// No description provided for @thermostatComfortCreate.
-  ///
-  /// In en, this message translates to:
-  /// **'Create override'**
-  String get thermostatComfortCreate;
-
-  /// No description provided for @thermostatComfortCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel this override'**
-  String get thermostatComfortCancel;
-
-  /// No description provided for @thermostatComfortClearOff.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear user OFF latch'**
-  String get thermostatComfortClearOff;
-
-  /// No description provided for @thermostatComfortOffHeld.
-  ///
-  /// In en, this message translates to:
-  /// **'User OFF is latched. Presets and automation cannot resume output.'**
-  String get thermostatComfortOffHeld;
-
-  /// No description provided for @thermostatComfortEffective.
-  ///
-  /// In en, this message translates to:
-  /// **'Effective comfort intent'**
-  String get thermostatComfortEffective;
-
-  /// No description provided for @thermostatComfortExpires.
-  ///
-  /// In en, this message translates to:
-  /// **'Absolute expiry'**
-  String get thermostatComfortExpires;
-
-  /// No description provided for @thermostatComfortRemaining.
-  ///
-  /// In en, this message translates to:
-  /// **'Time remaining'**
-  String get thermostatComfortRemaining;
-
-  /// No description provided for @thermostatComfortExpiryHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Countdown is informational. Server confirmation is required; it does not confirm output activity.'**
-  String get thermostatComfortExpiryHint;
-
-  /// No description provided for @thermostatComfortStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Server status'**
-  String get thermostatComfortStatus;
-
-  /// No description provided for @thermostatComfortSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Source'**
-  String get thermostatComfortSource;
-
-  /// No description provided for @thermostatComfortActor.
-  ///
-  /// In en, this message translates to:
-  /// **'Authenticated actor'**
-  String get thermostatComfortActor;
-
-  /// No description provided for @thermostatComfortIdentity.
-  ///
-  /// In en, this message translates to:
-  /// **'Override identity'**
-  String get thermostatComfortIdentity;
-
-  /// No description provided for @thermostatComfortRevision.
-  ///
-  /// In en, this message translates to:
-  /// **'Revision'**
-  String get thermostatComfortRevision;
-
-  /// No description provided for @thermostatComfortClockPolicy.
-  ///
-  /// In en, this message translates to:
-  /// **'Server clock policy'**
-  String get thermostatComfortClockPolicy;
-
-  /// No description provided for @thermostatComfortUncertain.
-  ///
-  /// In en, this message translates to:
-  /// **'Override state needs attention. Uncertain clocks inhibit output; unknown states require server confirmation.'**
-  String get thermostatComfortUncertain;
-
-  /// No description provided for @thermostatComfortError.
-  ///
-  /// In en, this message translates to:
-  /// **'Request failed; reload before retrying'**
-  String get thermostatComfortError;
-
-  /// No description provided for @thermostatComfortOffClearHelp.
-  ///
-  /// In en, this message translates to:
-  /// **'Clearing OFF is a separate explicit action and does not change the requested HVAC mode.'**
-  String get thermostatComfortOffClearHelp;
-
-  /// No description provided for @thermostatComfortConfigHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter only supported branch ranges and explicitly chosen preset temperatures in Celsius. No temperatures are supplied by default.'**
-  String get thermostatComfortConfigHint;
-
-  /// No description provided for @thermostatComfortServerValidation.
-  ///
-  /// In en, this message translates to:
-  /// **'The server validates supported branches, ranges, deadband and revisions.'**
-  String get thermostatComfortServerValidation;
-
-  /// No description provided for @thermostatComfortRequested.
-  ///
-  /// In en, this message translates to:
-  /// **'Requested HVAC mode'**
-  String get thermostatComfortRequested;
-
-  /// No description provided for @thermostatComfortActivity.
-  ///
-  /// In en, this message translates to:
-  /// **'Reported output activity'**
-  String get thermostatComfortActivity;
-
-  /// No description provided for @thermostatMemberUnavailable.
+  /// No description provided for @groupUnavailable.
   ///
   /// In en, this message translates to:
   /// **'Unavailable'**
-  String get thermostatMemberUnavailable;
+  String get groupUnavailable;
 
-  /// No description provided for @thermostatMemberClaim.
+  /// No description provided for @groupOpen.
   ///
   /// In en, this message translates to:
-  /// **'Claim'**
-  String get thermostatMemberClaim;
+  /// **'Open'**
+  String get groupOpen;
 
-  /// No description provided for @thermostatMemberState.
+  /// No description provided for @groupClose.
   ///
   /// In en, this message translates to:
-  /// **'Reservation state'**
-  String get thermostatMemberState;
+  /// **'Close'**
+  String get groupClose;
 
-  /// No description provided for @thermostatMemberSource.
+  /// No description provided for @groupStop.
   ///
   /// In en, this message translates to:
-  /// **'Retained relay property'**
-  String get thermostatMemberSource;
+  /// **'Stop'**
+  String get groupStop;
 
-  /// No description provided for @thermostatMemberRequested.
+  /// No description provided for @groupSelectValue.
   ///
   /// In en, this message translates to:
-  /// **'Controller requested mode'**
-  String get thermostatMemberRequested;
+  /// **'Select native value'**
+  String get groupSelectValue;
 
-  /// No description provided for @thermostatMemberObserved.
+  /// No description provided for @groupApply.
   ///
   /// In en, this message translates to:
-  /// **'Reported observation'**
-  String get thermostatMemberObserved;
+  /// **'Apply'**
+  String get groupApply;
 
-  /// No description provided for @thermostatMemberPending.
+  /// No description provided for @groupApplyTogether.
   ///
   /// In en, this message translates to:
-  /// **'Unresolved ON'**
-  String get thermostatMemberPending;
+  /// **'Apply together'**
+  String get groupApplyTogether;
 
-  /// No description provided for @thermostatMemberBlockers.
+  /// No description provided for @groupConfigured.
   ///
   /// In en, this message translates to:
-  /// **'Server blocker'**
-  String get thermostatMemberBlockers;
+  /// **'Configured metadata'**
+  String get groupConfigured;
 
-  /// No description provided for @thermostatMemberProfile.
+  /// No description provided for @groupMissing.
   ///
   /// In en, this message translates to:
-  /// **'Provider profile'**
-  String get thermostatMemberProfile;
+  /// **'Missing member; repair in Admin'**
+  String get groupMissing;
 
-  /// No description provided for @thermostatMemberQualification.
+  /// No description provided for @groupReadinessUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'The guard/target check is not full controller admission, installation readiness or physical certification. Review installation in Admin.'**
-  String get thermostatMemberQualification;
+  /// **'Command readiness unavailable'**
+  String get groupReadinessUnavailable;
 
-  /// No description provided for @thermostatMemberProtectionSource.
+  /// No description provided for @groupCoverMeaning.
   ///
   /// In en, this message translates to:
-  /// **'Retained protective source'**
-  String get thermostatMemberProtectionSource;
+  /// **'OPEN/CLOSE confirms motion begun or an already reached endpoint, not full travel. STOP requires qualified stopped feedback.'**
+  String get groupCoverMeaning;
 
-  /// No description provided for @thermostatMemberReading.
+  /// No description provided for @groupContributors.
   ///
   /// In en, this message translates to:
-  /// **'Live protection reading'**
-  String get thermostatMemberReading;
+  /// **'{count}/{total} contributing members'**
+  String groupContributors(int count, int total);
 
-  /// No description provided for @thermostatMemberQuality.
+  /// No description provided for @groupCommandOutcome.
   ///
   /// In en, this message translates to:
-  /// **'Quality'**
-  String get thermostatMemberQuality;
+  /// **'Group command: {status}'**
+  String groupCommandOutcome(String status);
 
-  /// No description provided for @thermostatMemberFreshness.
+  /// No description provided for @groupStep.
   ///
   /// In en, this message translates to:
-  /// **'Freshness'**
-  String get thermostatMemberFreshness;
+  /// **'Step {value}'**
+  String groupStep(String value);
 
-  /// No description provided for @thermostatMemberAge.
+  /// No description provided for @groupPending.
   ///
   /// In en, this message translates to:
-  /// **'Sample age (s)'**
-  String get thermostatMemberAge;
+  /// **'Pending'**
+  String get groupPending;
 
-  /// No description provided for @thermostatMemberSample.
+  /// No description provided for @groupConfirmed.
   ///
   /// In en, this message translates to:
-  /// **'Original sample time'**
-  String get thermostatMemberSample;
+  /// **'Confirmed'**
+  String get groupConfirmed;
 
-  /// No description provided for @thermostatMemberHistoryReading.
+  /// No description provided for @groupPartial.
   ///
   /// In en, this message translates to:
-  /// **'Historical reading only'**
-  String get thermostatMemberHistoryReading;
+  /// **'Partial'**
+  String get groupPartial;
 
-  /// No description provided for @thermostatMemberCutoff.
+  /// No description provided for @groupFailed.
   ///
   /// In en, this message translates to:
-  /// **'Effective cutoff (°C)'**
-  String get thermostatMemberCutoff;
+  /// **'Failed'**
+  String get groupFailed;
 
-  /// No description provided for @thermostatMemberLatch.
+  /// No description provided for @groupSuperseded.
   ///
   /// In en, this message translates to:
-  /// **'Protection latched'**
-  String get thermostatMemberLatch;
+  /// **'Superseded'**
+  String get groupSuperseded;
 
-  /// No description provided for @thermostatMemberProtectionReady.
+  /// No description provided for @groupTimedOut.
   ///
   /// In en, this message translates to:
-  /// **'Server protection readiness'**
-  String get thermostatMemberProtectionReady;
+  /// **'Timed out'**
+  String get groupTimedOut;
 
-  /// No description provided for @thermostatMemberReleasePending.
+  /// No description provided for @groupFieldOn.
   ///
   /// In en, this message translates to:
-  /// **'Release pending'**
-  String get thermostatMemberReleasePending;
+  /// **'Power'**
+  String get groupFieldOn;
 
-  /// No description provided for @thermostatMemberAttempts.
+  /// No description provided for @groupFieldSpeed.
   ///
   /// In en, this message translates to:
-  /// **'Release attempts'**
-  String get thermostatMemberAttempts;
+  /// **'Speed'**
+  String get groupFieldSpeed;
 
-  /// No description provided for @thermostatMemberNextRelease.
+  /// No description provided for @groupFieldSwing.
   ///
   /// In en, this message translates to:
-  /// **'Next release attempt'**
-  String get thermostatMemberNextRelease;
+  /// **'Swing'**
+  String get groupFieldSwing;
 
-  /// No description provided for @thermostatMemberDrain.
+  /// No description provided for @groupFieldDirection.
   ///
   /// In en, this message translates to:
-  /// **'Server OFF / drain proof'**
-  String get thermostatMemberDrain;
+  /// **'Direction'**
+  String get groupFieldDirection;
 
-  /// No description provided for @thermostatMemberGeneration.
+  /// No description provided for @groupFieldMode.
   ///
   /// In en, this message translates to:
-  /// **'Retained recovery generation'**
-  String get thermostatMemberGeneration;
+  /// **'Mode'**
+  String get groupFieldMode;
 
-  /// No description provided for @thermostatMemberLastOff.
+  /// No description provided for @groupFieldPosition.
   ///
   /// In en, this message translates to:
-  /// **'Last verified OFF (history)'**
-  String get thermostatMemberLastOff;
+  /// **'Position'**
+  String get groupFieldPosition;
 
-  /// No description provided for @thermostatMemberReleaseRequested.
+  /// No description provided for @groupFieldTilt.
   ///
   /// In en, this message translates to:
-  /// **'Release requested at'**
-  String get thermostatMemberReleaseRequested;
+  /// **'Tilt'**
+  String get groupFieldTilt;
 
-  /// No description provided for @thermostatMemberReleasedAt.
+  /// No description provided for @groupFieldType.
   ///
   /// In en, this message translates to:
-  /// **'Released at'**
-  String get thermostatMemberReleasedAt;
+  /// **'Type'**
+  String get groupFieldType;
 
-  /// No description provided for @thermostatMemberEvidence.
+  /// No description provided for @groupFieldStatus.
   ///
   /// In en, this message translates to:
-  /// **'Retained OFF / drain evidence (history, not current qualification)'**
-  String get thermostatMemberEvidence;
+  /// **'Status'**
+  String get groupFieldStatus;
 
-  /// No description provided for @thermostatMemberMandatory.
+  /// No description provided for @groupFieldObstruction.
   ///
   /// In en, this message translates to:
-  /// **'Mandatory branch members'**
-  String get thermostatMemberMandatory;
+  /// **'Obstruction'**
+  String get groupFieldObstruction;
 
-  /// No description provided for @thermostatMemberWholeBranch.
+  /// No description provided for @groupFieldInUse.
   ///
   /// In en, this message translates to:
-  /// **'Every member is required. A member fault inhibits its whole branch. Requested mode is not physical activity.'**
-  String get thermostatMemberWholeBranch;
+  /// **'In use'**
+  String get groupFieldInUse;
 
-  /// No description provided for @thermostatMemberExpired.
+  /// No description provided for @groupFieldBrightness.
   ///
   /// In en, this message translates to:
-  /// **'Current diagnostics unavailable; retained details are historical.'**
-  String get thermostatMemberExpired;
+  /// **'Brightness'**
+  String get groupFieldBrightness;
 
-  /// No description provided for @thermostatMemberReleasedHistory.
+  /// No description provided for @groupFieldColorTemperature.
   ///
   /// In en, this message translates to:
-  /// **'Released members — history, excluded from active capacity'**
-  String get thermostatMemberReleasedHistory;
+  /// **'Color temperature'**
+  String get groupFieldColorTemperature;
 
-  /// No description provided for @thermostatMemberAdmin.
+  /// No description provided for @groupFieldColorRed.
   ///
   /// In en, this message translates to:
-  /// **'Use the Admin app as owner or administrator for binding repair, installation review or recovery. Ownership remains reserved until the server confirms release.'**
-  String get thermostatMemberAdmin;
+  /// **'Red'**
+  String get groupFieldColorRed;
 
-  /// No description provided for @thermostatMemberRoom.
+  /// No description provided for @groupFieldColorGreen.
   ///
   /// In en, this message translates to:
-  /// **'Room regulation'**
-  String get thermostatMemberRoom;
+  /// **'Green'**
+  String get groupFieldColorGreen;
 
-  /// No description provided for @thermostatMemberPolicy.
+  /// No description provided for @groupFieldColorBlue.
   ///
   /// In en, this message translates to:
-  /// **'Common requested floor limit / recovery hysteresis'**
-  String get thermostatMemberPolicy;
+  /// **'Blue'**
+  String get groupFieldColorBlue;
 
-  /// No description provided for @thermostatMemberSelectedFloor.
+  /// No description provided for @groupFieldHue.
   ///
   /// In en, this message translates to:
-  /// **'Selected member floor (not an average)'**
-  String get thermostatMemberSelectedFloor;
+  /// **'Hue'**
+  String get groupFieldHue;
 
-  /// No description provided for @thermostatMemberGroup.
+  /// No description provided for @groupFieldSaturation.
   ///
   /// In en, this message translates to:
-  /// **'Branch group'**
-  String get thermostatMemberGroup;
+  /// **'Saturation'**
+  String get groupFieldSaturation;
 
-  /// No description provided for @thermostatMemberVersion.
+  /// No description provided for @groupOpenAll.
   ///
   /// In en, this message translates to:
-  /// **'Profile version'**
-  String get thermostatMemberVersion;
+  /// **'Open all'**
+  String get groupOpenAll;
 
-  /// No description provided for @thermostatMemberMaximumAge.
+  /// No description provided for @groupCloseAll.
   ///
   /// In en, this message translates to:
-  /// **'Maximum sample age (s)'**
-  String get thermostatMemberMaximumAge;
+  /// **'Close all'**
+  String get groupCloseAll;
 
-  /// No description provided for @thermostatMemberExpiry.
+  /// No description provided for @groupStopAll.
   ///
   /// In en, this message translates to:
-  /// **'Original sample expiry'**
-  String get thermostatMemberExpiry;
-
-  /// No description provided for @thermostatMemberNoBlocker.
-  ///
-  /// In en, this message translates to:
-  /// **'No blocker reported'**
-  String get thermostatMemberNoBlocker;
-
-  /// No description provided for @thermostatMemberHistoryPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Last reported unresolved ON (history)'**
-  String get thermostatMemberHistoryPending;
-
-  /// No description provided for @thermostatMemberHistoryRelease.
-  ///
-  /// In en, this message translates to:
-  /// **'Last reported pending release (history)'**
-  String get thermostatMemberHistoryRelease;
-
-  /// No description provided for @thermostatMemberActivitySnapshot.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity requires the original unexpired relay observation. The guard/target check is a separate server snapshot; neither proves full admission.'**
-  String get thermostatMemberActivitySnapshot;
-
-  /// No description provided for @thermostatMemberQualificationCheck.
-  ///
-  /// In en, this message translates to:
-  /// **'Server guard/target check (snapshot)'**
-  String get thermostatMemberQualificationCheck;
-
-  /// No description provided for @thermostatMemberActivitySample.
-  ///
-  /// In en, this message translates to:
-  /// **'Original relay observation (history metadata)'**
-  String get thermostatMemberActivitySample;
-
-  /// No description provided for @thermostatMemberActivityExpiry.
-  ///
-  /// In en, this message translates to:
-  /// **'Original relay observation expiry'**
-  String get thermostatMemberActivityExpiry;
+  /// **'Stop all'**
+  String get groupStopAll;
 }
 
 class _AppLocalizationsDelegate

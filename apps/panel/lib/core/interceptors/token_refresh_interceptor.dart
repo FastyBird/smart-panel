@@ -15,6 +15,11 @@ class TokenRefreshInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // A possibly composite action is submitted once even when its response is
+    // unauthorized/uncertain. Token refresh must not silently replay that action.
+    if (err.requestOptions.extra['noActuationReplay'] == true) {
+      return handler.next(err);
+    }
     // Only handle 401 Unauthorized errors
     if (err.response?.statusCode != 401) {
       return handler.next(err);

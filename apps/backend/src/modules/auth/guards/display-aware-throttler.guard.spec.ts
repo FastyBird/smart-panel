@@ -291,19 +291,24 @@ describe('DisplayAwareThrottlerGuard', () => {
 		// `MAX_VERIFY_PER_SEC`/sec, so a slow-enough loop keeps the bucket
 		// net-flat. Setting state directly is the deterministic way to
 		// assert what `shouldSkip` does when the bucket is already drained.
-		const bucketState = guard as unknown as { verifyTokens: number; verifyTokensRefilledAt: number };
-		bucketState.verifyTokens = 0;
-		bucketState.verifyTokensRefilledAt = Date.now();
+		const clock = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+		try {
+			const bucketState = guard as unknown as { verifyTokens: number; verifyTokensRefilledAt: number };
+			bucketState.verifyTokens = 0;
+			bucketState.verifyTokensRefilledAt = Date.now();
 
-		jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
+			jwtService.decode.mockReturnValue({ sub: uuid(), type: TokenOwnerType.DISPLAY });
 
-		const skipped = await callShouldSkip(buildContext({ authorization: 'Bearer rotating.forged.token' }));
+			const skipped = await callShouldSkip(buildContext({ authorization: 'Bearer rotating.forged.token' }));
 
-		expect(skipped).toBe(false);
-		// CRITICAL: the bucket short-circuit means `verifyAsync` did NOT
-		// run, so an attacker can't burn CPU by rotating tokens past the
-		// cache.
-		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+			expect(skipped).toBe(false);
+			// CRITICAL: the bucket short-circuit means `verifyAsync` did NOT
+			// run, so an attacker can't burn CPU by rotating tokens past the
+			// cache.
+			expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+		} finally {
+			clock.mockRestore();
+		}
 	});
 
 	afterEach(async () => {

@@ -797,18 +797,31 @@ export class PropertyCommandDispatchService implements OnModuleDestroy {
 		});
 		try {
 			await Promise.all(workers);
-			let current = true;
+			let validation: 'current' | 'changed' | 'unavailable' = 'unavailable';
+			let validationReason = 'Physical confirmation observed; final binding validation unavailable before deadline';
 			if (Date.now() < deadline) {
 				try {
-					current = await this.withCompositeDeadline(plan.isCurrent(), deadline);
-				} catch {
-					current = false;
+					const current = await this.withCompositeDeadline(plan.isCurrent(), deadline);
+					// Even a fulfilled read cannot qualify after the absolute parent budget.
+					if (Date.now() < deadline) {
+						if (current === true) validation = 'current';
+						else if (current === false) validation = 'changed';
+						else validationReason = 'Physical confirmation observed; final binding validation failed';
+					}
+				} catch (error) {
+					if (!(error instanceof CompositeDeadlineExceededError))
+						validationReason = 'Physical confirmation observed; final binding validation failed';
 				}
 			}
-			if (!current)
+			if (validation !== 'current')
 				for (const child of outcomes)
 					if (child.status === 'confirmed')
-						Object.assign(child, { status: 'superseded', reason: 'Binding revision changed before parent completion' });
+						Object.assign(
+							child,
+							validation === 'changed'
+								? { status: 'superseded', reason: 'Binding revision changed before parent completion' }
+								: { status: 'unavailable', reason: validationReason },
+						);
 			const confirmed = outcomes.filter((child) => child.status === 'confirmed').length;
 			const composite: CompositeCommandOutcome = {
 				id,
