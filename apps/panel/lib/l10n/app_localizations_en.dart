@@ -4386,4 +4386,294 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupStopAll => 'Stop all';
+
+  @override
+  String get thermostatComfortTitle => 'Thermostat comfort';
+
+  @override
+  String get thermostatComfortHelp =>
+      'Comfort intent is separate from HVAC mode and physical activity. Safety guards always apply.';
+
+  @override
+  String get thermostatComfortUnconfigured =>
+      'Comfort is not configured. Existing manual settings remain available.';
+
+  @override
+  String get thermostatComfortHeating => 'Heating';
+
+  @override
+  String get thermostatComfortCooling => 'Cooling';
+
+  @override
+  String get thermostatComfortMinimum => 'Minimum';
+
+  @override
+  String get thermostatComfortMaximum => 'Maximum';
+
+  @override
+  String get thermostatComfortComfort => 'Comfort';
+
+  @override
+  String get thermostatComfortEco => 'Eco';
+
+  @override
+  String get thermostatComfortAway => 'Away';
+
+  @override
+  String get thermostatComfortManual => 'Manual baseline';
+
+  @override
+  String get thermostatComfortSelected => 'Baseline preset';
+
+  @override
+  String get thermostatComfortChoose => 'Select baseline';
+
+  @override
+  String get thermostatComfortConfigure => 'Configure comfort';
+
+  @override
+  String get thermostatComfortAutomation =>
+      'Explicitly enable climate automation';
+
+  @override
+  String get thermostatComfortSave => 'Save comfort configuration';
+
+  @override
+  String get thermostatComfortReload => 'Reload from server';
+
+  @override
+  String get thermostatComfortOverride => 'Temporary override';
+
+  @override
+  String get thermostatComfortExplicit => 'Explicit setpoints';
+
+  @override
+  String get thermostatComfortDuration => 'Duration (minutes, 1–10080)';
+
+  @override
+  String get thermostatComfortCreate => 'Create override';
+
+  @override
+  String get thermostatComfortCancel => 'Cancel this override';
+
+  @override
+  String get thermostatComfortClearOff => 'Clear user OFF latch';
+
+  @override
+  String get thermostatComfortOffHeld =>
+      'User OFF is latched. Presets and automation cannot resume output.';
+
+  @override
+  String get thermostatComfortEffective => 'Effective comfort intent';
+
+  @override
+  String get thermostatComfortExpires => 'Absolute expiry';
+
+  @override
+  String get thermostatComfortRemaining => 'Time remaining';
+
+  @override
+  String get thermostatComfortExpiryHint =>
+      'Countdown is informational. Server confirmation is required; it does not confirm output activity.';
+
+  @override
+  String get thermostatComfortStatus => 'Server status';
+
+  @override
+  String get thermostatComfortSource => 'Source';
+
+  @override
+  String get thermostatComfortActor => 'Authenticated actor';
+
+  @override
+  String get thermostatComfortIdentity => 'Override identity';
+
+  @override
+  String get thermostatComfortRevision => 'Revision';
+
+  @override
+  String get thermostatComfortClockPolicy => 'Server clock policy';
+
+  @override
+  String get thermostatComfortUncertain =>
+      'Override state needs attention. Uncertain clocks inhibit output; unknown states require server confirmation.';
+
+  @override
+  String get thermostatComfortError => 'Request failed; reload before retrying';
+
+  @override
+  String get thermostatComfortOffClearHelp =>
+      'Clearing OFF is a separate explicit action and does not change the requested HVAC mode.';
+
+  @override
+  String get thermostatComfortConfigHint =>
+      'Enter only supported branch ranges and explicitly chosen preset temperatures in Celsius. No temperatures are supplied by default.';
+
+  @override
+  String get thermostatComfortServerValidation =>
+      'The server validates supported branches, ranges, deadband and revisions.';
+
+  @override
+  String get thermostatComfortRequested => 'Requested HVAC mode';
+
+  @override
+  String get thermostatComfortActivity => 'Reported output activity';
+
+  @override
+  String get thermostatMemberUnavailable => 'Unavailable';
+
+  @override
+  String get thermostatMemberClaim => 'Claim';
+
+  @override
+  String get thermostatMemberState => 'Reservation state';
+
+  @override
+  String get thermostatMemberSource => 'Retained relay property';
+
+  @override
+  String get thermostatMemberRequested => 'Controller requested mode';
+
+  @override
+  String get thermostatMemberObserved => 'Reported observation';
+
+  @override
+  String get thermostatMemberPending => 'Unresolved ON';
+
+  @override
+  String get thermostatMemberBlockers => 'Server blocker';
+
+  @override
+  String get thermostatMemberProfile => 'Provider profile';
+
+  @override
+  String get thermostatMemberQualification =>
+      'The guard/target check is not full controller admission, installation readiness or physical certification. Review installation in Admin.';
+
+  @override
+  String get thermostatMemberProtectionSource => 'Retained protective source';
+
+  @override
+  String get thermostatMemberReading => 'Live protection reading';
+
+  @override
+  String get thermostatMemberQuality => 'Quality';
+
+  @override
+  String get thermostatMemberFreshness => 'Freshness';
+
+  @override
+  String get thermostatMemberAge => 'Sample age (s)';
+
+  @override
+  String get thermostatMemberSample => 'Original sample time';
+
+  @override
+  String get thermostatMemberHistoryReading => 'Historical reading only';
+
+  @override
+  String get thermostatMemberCutoff => 'Effective cutoff (°C)';
+
+  @override
+  String get thermostatMemberLatch => 'Protection latched';
+
+  @override
+  String get thermostatMemberProtectionReady => 'Server protection readiness';
+
+  @override
+  String get thermostatMemberReleasePending => 'Release pending';
+
+  @override
+  String get thermostatMemberAttempts => 'Release attempts';
+
+  @override
+  String get thermostatMemberNextRelease => 'Next release attempt';
+
+  @override
+  String get thermostatMemberDrain => 'Server OFF / drain proof';
+
+  @override
+  String get thermostatMemberGeneration => 'Retained recovery generation';
+
+  @override
+  String get thermostatMemberLastOff => 'Last verified OFF (history)';
+
+  @override
+  String get thermostatMemberReleaseRequested => 'Release requested at';
+
+  @override
+  String get thermostatMemberReleasedAt => 'Released at';
+
+  @override
+  String get thermostatMemberEvidence =>
+      'Retained OFF / drain evidence (history, not current qualification)';
+
+  @override
+  String get thermostatMemberMandatory => 'Mandatory branch members';
+
+  @override
+  String get thermostatMemberWholeBranch =>
+      'Every member is required. A member fault inhibits its whole branch. Requested mode is not physical activity.';
+
+  @override
+  String get thermostatMemberExpired =>
+      'Current diagnostics unavailable; retained details are historical.';
+
+  @override
+  String get thermostatMemberReleasedHistory =>
+      'Released members — history, excluded from active capacity';
+
+  @override
+  String get thermostatMemberAdmin =>
+      'Use the Admin app as owner or administrator for binding repair, installation review or recovery. Ownership remains reserved until the server confirms release.';
+
+  @override
+  String get thermostatMemberRoom => 'Room regulation';
+
+  @override
+  String get thermostatMemberPolicy =>
+      'Common requested floor limit / recovery hysteresis';
+
+  @override
+  String get thermostatMemberSelectedFloor =>
+      'Selected member floor (not an average)';
+
+  @override
+  String get thermostatMemberGroup => 'Branch group';
+
+  @override
+  String get thermostatMemberVersion => 'Profile version';
+
+  @override
+  String get thermostatMemberMaximumAge => 'Maximum sample age (s)';
+
+  @override
+  String get thermostatMemberExpiry => 'Original sample expiry';
+
+  @override
+  String get thermostatMemberNoBlocker => 'No blocker reported';
+
+  @override
+  String get thermostatMemberHistoryPending =>
+      'Last reported unresolved ON (history)';
+
+  @override
+  String get thermostatMemberHistoryRelease =>
+      'Last reported pending release (history)';
+
+  @override
+  String get thermostatMemberActivitySnapshot =>
+      'Activity requires the original unexpired relay observation. The guard/target check is a separate server snapshot; neither proves full admission.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Server guard/target check (snapshot)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Original relay observation (history metadata)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Original relay observation expiry';
 }
