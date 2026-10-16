@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_covers_state.dart';
@@ -45,6 +47,33 @@ class OutcomeSocket extends SocketService {
     sent++;
     onAck?.call(response);
   }
+}
+
+/// Captures real Dio submissions without sending to a device or server.
+class CoverRoomAdapter implements HttpClientAdapter {
+  CoverRoomAdapter(this.response);
+  Map<String, dynamic> response;
+  int sent = 0;
+  RequestOptions? last;
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    sent++;
+    last = options;
+    return ResponseBody.fromString(
+      jsonEncode(response),
+      200,
+      headers: {
+        'content-type': ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 const sceneId = '10000000-0000-4000-8000-000000000001';
@@ -212,7 +241,7 @@ void main() {
     },
   );
   test(
-    'group cover room retains failed composite payload and never treats a bare ACK as stopped',
+    'group cover room REST retains failed composite children and never treats a bare ACK as stopped',
     () async {
       final socket = OutcomeSocket();
       final intents = IntentsRepository();
@@ -227,26 +256,42 @@ void main() {
         ],
         'has_covers': true,
       });
-      socket.response = SocketCommandResponseModel(
-        status: false,
-        message: 'Partial',
-        data: {
+      final adapter = CoverRoomAdapter({
+        'data': {
           'success': false,
           'affected_devices': 0,
           'failed_devices': 1,
           'composites': [partial()],
         },
-      );
+      });
+      final dio = Dio()..httpClientAdapter = adapter;
+      locator.registerSingleton<Dio>(dio);
+      addTearDown(dio.close);
       final result = await repository.stopCovers(sceneId);
       expect(result?.success, isFalse);
+      expect(result?.failedDevices, 1);
+      expect(result?.composites.single.status, 'partial');
+      expect(result?.composites.single.children.first.status, 'confirmed');
+      expect(result?.composites.single.children.last.status, 'unavailable');
       expect(result?.composites.single.children.last.reason, 'tag_unavailable');
-      expect(socket.sent, 1);
-      socket.response = SocketCommandResponseModel(
-        status: true,
-        message: 'ACK',
+      expect(socket.sent, 0);
+      expect(adapter.sent, 1);
+      expect(
+        adapter.last?.path,
+        '/modules/spaces/spaces/$sceneId/intents/covers',
       );
+      expect(adapter.last?.data, {
+        'data': {'type': 'stop'},
+      });
+      expect(adapter.last?.extra['retryExhausted'], isTrue);
+      expect(adapter.last?.extra['noActuationReplay'], isTrue);
+      // A bare response has no server outcome and cannot confirm STOP or trigger replay.
+      adapter.response = {'status': true, 'message': 'ACK'};
       expect(await repository.stopCovers(sceneId), isNull);
-      expect(socket.sent, 2);
+      expect(socket.sent, 0);
+      expect(adapter.sent, 2);
+      expect(result?.success, isFalse);
+      expect(result?.composites.single.children.last.status, 'unavailable');
       repository.dispose();
       intents.dispose();
     },
