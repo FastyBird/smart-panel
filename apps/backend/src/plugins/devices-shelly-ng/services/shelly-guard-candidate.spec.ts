@@ -1,9 +1,10 @@
+import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { runInNewContext } from 'vm';
 
 import { SHELLY_GUARD_SOURCE } from '../contracts/guard-script-source';
-import { SHELLY_MEMBER_GUARD_SOURCE } from '../contracts/member-guard-script-source';
+import { SHELLY_MEMBER_GUARD_SOURCE, buildShellyMemberGuardSource } from '../contracts/member-guard-script-source';
 
 // Execute the exact standalone candidate, not a reimplementation of its state machine.
 const source = readFileSync(
@@ -485,6 +486,30 @@ describe('offline Shelly guard protocol candidate', () => {
 		expect(fence.result).toBeUndefined();
 		expect(fence.error).toBe('on_execution_unknown');
 		expect(device.on().error).toBe('on_not_admitted');
+	});
+});
+
+describe('member guard artifact construction', () => {
+	const anchors = [
+		'function observeFloor(status) {\n',
+		'!finiteNumber(value) || (status.errors',
+		'cfg.floorHysteresisC > 0\n',
+	];
+	it('retains the exact reviewed member artifact bytes when every anchor is unique', () => {
+		expect(buildShellyMemberGuardSource(SHELLY_GUARD_SOURCE)).toBe(SHELLY_MEMBER_GUARD_SOURCE);
+		expect(createHash('sha256').update(SHELLY_MEMBER_GUARD_SOURCE).digest('hex')).toBe(
+			'96a61fd9c800f406357ba042fd0528d58ca034668521bde01120babceecb4059',
+		);
+	});
+	it.each(anchors)('refuses a missing patch anchor: %s', (anchor) => {
+		expect(() => buildShellyMemberGuardSource(SHELLY_GUARD_SOURCE.replace(anchor, ''))).toThrow(
+			'Member guard patch anchor must occur exactly once',
+		);
+	});
+	it.each(anchors)('refuses a duplicate patch anchor: %s', (anchor) => {
+		expect(() => buildShellyMemberGuardSource(SHELLY_GUARD_SOURCE + anchor)).toThrow(
+			'Member guard patch anchor must occur exactly once',
+		);
 	});
 });
 

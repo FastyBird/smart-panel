@@ -72,9 +72,10 @@ function installationSnapshot(
 		if (value !== null && !['string', 'boolean', 'number'].includes(typeof value)) return undefined;
 		if (typeof value === 'number' && !Number.isFinite(value)) return undefined;
 	}
+	// Retain the complete SensorAddon/ProSensorAddon catalog, including documented empty groups.
 	for (const [kind, links] of Object.entries(peripherals)) {
 		if (
-			!['analog_in', 'voltmeter', 'ds18b20'].includes(kind) ||
+			!['analog_in', 'voltmeter', 'ds18b20', 'dht22', 'digital_in', 'digital_out'].includes(kind) ||
 			!links ||
 			typeof links !== 'object' ||
 			Array.isArray(links)
