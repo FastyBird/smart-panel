@@ -118,6 +118,26 @@ describe('actual activity mode section and saved API editor', () => {
 		expect(requests.at(-1)?.body).toEqual({ data: { expected_revision: 2 } });
 		wrapper.unmount();
 	});
+	it('clears numeric brightness to the mode default and saves a valid mounted draft', async () => {
+		const wrapper = render();
+		await flushPromises();
+		await click(wrapper, 'edit-work');
+		const brightness = () => wrapper.findAllComponents(ElInputNumber).find((input) => input.props('placeholder') === 'defaultBrightness')!;
+		await brightness().get('input').setValue('42');
+		await nextTick();
+		await click(wrapper, 'save');
+		expect(requests.find((request) => request.method === 'PUT')?.body?.data.configuration).toMatchObject({ lighting: { brightness: 42 } });
+		await brightness().get('input').setValue('');
+		await brightness().get('input').trigger('blur');
+		await nextTick();
+		expect(wrapper.get('[data-testid="save"]').attributes('disabled')).toBeUndefined();
+		await click(wrapper, 'save');
+		const writes = requests.filter((request) => request.method === 'PUT');
+		expect(writes).toHaveLength(2);
+		expect(writes[1].body?.data.configuration).toEqual(configuration());
+		expect(writes[1].body?.data.expected_revision).toBe(2);
+		wrapper.unmount();
+	});
 	it('requires enabling and saving a disabled mode before sending a saved preview', async () => {
 		const wrapper = render();
 		await flushPromises();

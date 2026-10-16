@@ -383,9 +383,9 @@ const discard = () => {
 const lightingChanged = () => {
 	if (draft.value?.configuration.lighting.mode === LightingMode.off) delete draft.value.configuration.lighting.brightness;
 };
-const brightnessChanged = (value: number | undefined) => {
+const brightnessChanged = (value: number | null | undefined) => {
 	if (!draft.value) return;
-	if (value === undefined) delete draft.value.configuration.lighting.brightness;
+	if (value === undefined || value === null) delete draft.value.configuration.lighting.brightness;
 	else draft.value.configuration.lighting.brightness = value;
 };
 const save = async () => {
