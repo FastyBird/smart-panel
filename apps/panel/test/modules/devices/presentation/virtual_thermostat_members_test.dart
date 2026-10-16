@@ -94,6 +94,7 @@ Map<String, dynamic> activityObservation(
 void main() {
   deadlineFenceTests();
   membershipAndIdentityRegressions();
+  activityHttpAdmissionRegressions();
   test(
     'claim join preserves missing members, false and zero, and fences history',
     () {
@@ -269,6 +270,7 @@ void main() {
                     'branches': [
                       {
                         'claim': 'one',
+                        'physical_identity': 'canonical-one',
                         'role': 'heating',
                         ...activityObservation(
                           DateTime.now().subtract(const Duration(seconds: 1)),
@@ -979,6 +981,7 @@ void main() {
       VirtualThermostatMember member(Map<String, dynamic> observation) =>
           VirtualThermostatMember(claim('one', 'heating', 'reserved'), {
             'claim': 'one',
+            'physical_identity': 'canonical-one',
             ...observation,
           });
       final first = activityObservation(
@@ -986,6 +989,7 @@ void main() {
         'on',
         lifetime: const Duration(seconds: 2),
       );
+      fence.accept([member(first)], now, Duration.zero);
       expect(
         fence.unavailableClaims([member(first)], now, Duration.zero),
         isEmpty,
@@ -1018,6 +1022,11 @@ void main() {
         now.add(const Duration(seconds: 1)),
         'off',
       );
+      fence.accept(
+        [member(next)],
+        now.add(const Duration(seconds: 1)),
+        const Duration(seconds: 4),
+      );
       expect(
         fence.unavailableClaims(
           [member(next)],
@@ -1025,6 +1034,13 @@ void main() {
           const Duration(seconds: 4),
         ),
         isEmpty,
+      );
+      fence.accept(
+        [
+          member({'activity': 'unknown'}),
+        ],
+        now,
+        const Duration(seconds: 4),
       );
       expect(
         fence.unavailableClaims(
@@ -1045,6 +1061,7 @@ void main() {
         contains('one'),
       );
       fence.retainClaims([]);
+      fence.accept([member(first)], now, Duration.zero);
       expect(
         fence.unavailableClaims([member(first)], now, Duration.zero),
         isEmpty,
@@ -2554,6 +2571,7 @@ void membershipAndIdentityRegressions() {
           fence.members.expiredClaims(original, Duration.zero, t),
           isEmpty,
         );
+        activity.accept(original, t, Duration.zero);
         expect(activity.unavailableClaims(original, t, Duration.zero), isEmpty);
         final ambiguousStamp = t.add(const Duration(milliseconds: 1));
         final ambiguousGood = diagnostic(
@@ -2604,7 +2622,7 @@ void membershipAndIdentityRegressions() {
           brokenConfig,
           brokenRuntime,
         );
-        activity.withholdMissingOrAmbiguous(
+        activity.accept(
           ambiguous,
           ambiguousStamp,
           const Duration(milliseconds: 1),
@@ -2664,6 +2682,7 @@ void membershipAndIdentityRegressions() {
           ),
           isEmpty,
         );
+        activity.accept(recovered, newer, const Duration(milliseconds: 1));
         expect(
           activity.unavailableClaims(
             recovered,
@@ -3063,4 +3082,488 @@ void membershipAndIdentityRegressions() {
       );
     }
   }
+}
+
+void activityHttpAdmissionRegressions() {
+  final t = DateTime.utc(2026, 10, 16, 12);
+  Map<String, dynamic> configured() => {
+    ...claim('one', 'heating', 'reserved'),
+    'protection': null,
+  };
+  Map<String, dynamic> relay(DateTime stamp, DateTime expiry) => {
+    'claim': 'one',
+    'role': 'heating',
+    'physical_identity': 'canonical-one',
+    ...activityObservation(stamp, 'off', lifetime: expiry.difference(stamp)),
+    'protection': null,
+  };
+  const cases = [
+    'missing-branch',
+    'missing-sample',
+    'invalid-sample',
+    'missing-expiry',
+    'invalid-expiry',
+    'expiry-before-sample',
+    'missing-activity',
+    'invalid-activity',
+    'future-sample',
+  ];
+  List<Map<String, dynamic>> broken(String scenario, Map<String, dynamic> row) {
+    final result = {...row};
+    switch (scenario) {
+      case 'missing-branch':
+        return [];
+      case 'missing-sample':
+        result.remove('activity_sampled_at');
+        break;
+      case 'invalid-sample':
+        result['activity_sampled_at'] = 'not-a-time';
+        break;
+      case 'missing-expiry':
+        result.remove('activity_expires_at');
+        break;
+      case 'invalid-expiry':
+        result['activity_expires_at'] = 'not-a-time';
+        break;
+      case 'expiry-before-sample':
+        result['activity_expires_at'] = result['activity_sampled_at'];
+        break;
+      case 'missing-activity':
+        result.remove('activity');
+        break;
+      case 'invalid-activity':
+        result['activity'] = 'unknown';
+        break;
+      case 'future-sample':
+        break; // The row's original timestamp is actually future at admission.
+    }
+    return [result];
+  }
+
+  bool usesOriginal(String scenario) =>
+      ['missing-branch', 'missing-sample', 'invalid-sample'].contains(scenario);
+  for (final scenario in cases) {
+    test(
+      'complete $scenario HTTP activity admission refuses cached correction before query and requires newer qualification',
+      () {
+        final fence = VirtualThermostatActivityFence();
+        final config = {
+          'actuators': [configured()],
+        };
+        List<VirtualThermostatMember> rows(
+          List<Map<String, dynamic>> branches,
+        ) => VirtualThermostatMember.read(config, {'branches': branches});
+        final expiry = t.add(const Duration(minutes: 1)),
+            original = relay(t, t.add(const Duration(minutes: 1)));
+        fence.accept(rows([original]), t, Duration.zero);
+        final s = usesOriginal(scenario)
+            ? t
+            : t.add(const Duration(seconds: 1));
+        final correction = relay(s, expiry);
+        final bad = broken(scenario, correction);
+        expect(
+          VirtualThermostatMember.membershipComplete(config, {'branches': bad}),
+          isTrue,
+        );
+        // Future S is invalid at wall t; other newer S is otherwise already qualified.
+        final firstWall = scenario == 'future-sample' ? t : s;
+        fence.accept(rows(bad), firstWall, Duration.zero);
+        // No query/render between invalid admission and correction. Literal wall matures future S.
+        fence.accept(rows([correction]), s, const Duration(seconds: 1));
+        expect(
+          fence.unavailableClaims(
+            rows([correction]),
+            s,
+            const Duration(seconds: 1),
+          ),
+          contains('one'),
+        );
+        final newer = s.add(const Duration(milliseconds: 1));
+        final recovered = rows([relay(newer, expiry)]);
+        fence.accept(recovered, newer, const Duration(milliseconds: 1001));
+        expect(
+          fence.unavailableClaims(
+            recovered,
+            newer,
+            const Duration(milliseconds: 1001),
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    testWidgets(
+      'complete $scenario HTTP before frame cannot restore relay activity from cached correction',
+      (tester) async {
+        final fixture = MemberDetailFixture()..overrideMembership = true;
+        final initial = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        final expiry = initial.add(const Duration(minutes: 2));
+        final original = relay(initial, expiry);
+        fixture.configuredMembership = [configured()];
+        fixture.runtimeMembership = [original];
+        await fixture.mount(tester);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        final reads = fixture.runtimeReads;
+        final s = usesOriginal(scenario)
+            ? initial
+            : scenario == 'future-sample'
+            ? DateTime.now().add(const Duration(minutes: 1))
+            : DateTime.now();
+        final correction = relay(s, expiry);
+        fixture.runtimeMembership = broken(scenario, correction);
+        await fixture.acceptBeforeFrame(tester);
+        expect(fixture.runtimeReads, reads + 1);
+        expect(
+          find.text('Reported observation: off'),
+          findsOneWidget,
+        ); // Original tree, no frame yet.
+        fixture.runtimeMembership = [correction];
+        await fixture.acceptBeforeFrame(tester);
+        expect(fixture.runtimeReads, reads + 2);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        await tester.pump();
+        expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+        if (scenario != 'future-sample') {
+          final newer = DateTime.now();
+          expect(newer.isAfter(s), isTrue);
+          fixture.runtimeMembership = [relay(newer, expiry)];
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(find.text('Reported observation: off'), findsOneWidget);
+        }
+        // Future wall maturity/recovery is proven by the literal-time direct test, not a wall wait here.
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  test(
+    'activity query cannot initialize or admit a publication and cannot extend an original deadline',
+    () {
+      final fence = VirtualThermostatActivityFence();
+      final row = VirtualThermostatMember(
+        configured(),
+        relay(t, t.add(const Duration(seconds: 2))),
+      );
+      expect(fence.unavailableClaims([row], t, Duration.zero), contains('one'));
+      expect(fence.recordCount, 0);
+      fence.accept([row], t, Duration.zero);
+      expect(fence.unavailableClaims([row], t, Duration.zero), isEmpty);
+      final newer = VirtualThermostatMember(
+        configured(),
+        relay(
+          t.add(const Duration(seconds: 1)),
+          t.add(const Duration(seconds: 3)),
+        ),
+      );
+      expect(
+        fence.unavailableClaims(
+          [newer],
+          t.add(const Duration(seconds: 1)),
+          const Duration(seconds: 1),
+        ),
+        contains('one'),
+      );
+      expect(fence.recordCount, 1);
+      fence.accept(
+        [newer],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 1),
+      );
+      expect(
+        fence.unavailableClaims(
+          [newer],
+          t.add(const Duration(seconds: 1)),
+          const Duration(seconds: 1),
+        ),
+        isEmpty,
+      );
+      expect(
+        fence.unavailableClaims(
+          [newer],
+          t.add(const Duration(seconds: 1)),
+          const Duration(seconds: 3),
+        ),
+        contains('one'),
+      );
+      final extended = VirtualThermostatMember(
+        configured(),
+        relay(
+          t.add(const Duration(seconds: 1)),
+          t.add(const Duration(minutes: 1)),
+        ),
+      );
+      fence.accept(
+        [extended],
+        t.add(const Duration(seconds: 1)),
+        const Duration(seconds: 3),
+      );
+      expect(
+        fence.unavailableClaims(
+          [extended],
+          t.add(const Duration(seconds: 1)),
+          const Duration(seconds: 3),
+        ),
+        contains('one'),
+      );
+    },
+  );
+
+  for (final field in ['physical_identity', 'claim']) {
+    for (final mode in ['omitted', 'mismatched']) {
+      test(
+        'relay $field $mode invalidates activity S but qualification remains only a joined current snapshot',
+        () {
+          final fence = VirtualThermostatActivityFence(), config = configured();
+          VirtualThermostatMember member(Map row) =>
+              VirtualThermostatMember(config, row);
+          final expiry = t.add(const Duration(minutes: 1));
+          fence.accept([member(relay(t, expiry))], t, Duration.zero);
+          final s = t.add(const Duration(milliseconds: 1)),
+              invalid = relay(t.add(const Duration(milliseconds: 1)), expiry);
+          if (mode == 'omitted') {
+            invalid.remove(field);
+          } else {
+            invalid[field] = 'other';
+          }
+          expect(member(invalid).observed(true, s), isNull);
+          expect(member(invalid).qualification(true), isNull);
+          fence.accept([member(invalid)], s, const Duration(milliseconds: 1));
+          final restored = member(relay(s, expiry));
+          fence.accept([restored], s, const Duration(milliseconds: 1));
+          expect(
+            fence.unavailableClaims(
+              [restored],
+              s,
+              const Duration(milliseconds: 1),
+            ),
+            contains('one'),
+          );
+          expect(
+            restored.qualification(true),
+            isTrue,
+          ); // Current server snapshot has no invented sample clock.
+          final next = s.add(const Duration(milliseconds: 1)),
+              recovered = member(
+                relay(s.add(const Duration(milliseconds: 1)), expiry),
+              );
+          fence.accept([recovered], next, const Duration(milliseconds: 2));
+          expect(
+            fence.unavailableClaims(
+              [recovered],
+              next,
+              const Duration(milliseconds: 2),
+            ),
+            isEmpty,
+          );
+        },
+      );
+    }
+  }
+  for (final mode in ['omitted', 'mismatched']) {
+    testWidgets(
+      'known relay physical identity $mode is captured before frame and restored S cannot revive observation',
+      (tester) async {
+        final fixture = MemberDetailFixture()..overrideMembership = true;
+        final initial = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        final expiry = initial.add(const Duration(minutes: 1));
+        fixture.configuredMembership = [configured()];
+        fixture.runtimeMembership = [relay(initial, expiry)];
+        await fixture.mount(tester);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        expect(
+          find.text('Server guard/target check (snapshot): true'),
+          findsOneWidget,
+        );
+        final s = DateTime.now();
+        expect(s.isAfter(initial), isTrue);
+        final invalid = relay(s, expiry);
+        if (mode == 'omitted') {
+          invalid.remove('physical_identity');
+        } else {
+          invalid['physical_identity'] = 'other';
+        }
+        final reads = fixture.runtimeReads;
+        fixture.runtimeMembership = [invalid];
+        await fixture.acceptBeforeFrame(tester);
+        expect(fixture.runtimeReads, reads + 1);
+        expect(
+          find.text('Reported observation: off'),
+          findsOneWidget,
+        ); // No invalidating render.
+        fixture.runtimeMembership = [relay(s, expiry)];
+        await fixture.acceptBeforeFrame(tester);
+        expect(fixture.runtimeReads, reads + 2);
+        await tester.pump();
+        expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+        expect(
+          find.text('Server guard/target check (snapshot): true'),
+          findsOneWidget,
+        );
+        // Separately expose an invalid joined snapshot, then restore it at that same S.
+        final secondS = DateTime.now();
+        expect(secondS.isAfter(s), isTrue);
+        final secondInvalid = relay(secondS, expiry);
+        if (mode == 'omitted') {
+          secondInvalid.remove('physical_identity');
+        } else {
+          secondInvalid['physical_identity'] = 'other';
+        }
+        fixture.runtimeMembership = [secondInvalid];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+        expect(
+          find.text('Server guard/target check (snapshot): Unavailable'),
+          findsOneWidget,
+        );
+        fixture.runtimeMembership = [relay(secondS, expiry)];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+        expect(
+          find.text('Server guard/target check (snapshot): true'),
+          findsOneWidget,
+        );
+        final newer = DateTime.now();
+        expect(newer.isAfter(secondS), isTrue);
+        fixture.runtimeMembership = [relay(newer, expiry)];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  test(
+    'relay evidence and qualification never depend on protective-floor validity',
+    () {
+      final config = claim('one', 'heating', 'reserved');
+      final row = {
+        ...relay(t, t.add(const Duration(minutes: 1))),
+        'protection': {'status': 'missing', 'source_identity': 'wrong-floor'},
+      };
+      final member = VirtualThermostatMember(config, row),
+          fence = VirtualThermostatActivityFence();
+      expect(member.qualification(true), isTrue);
+      expect(member.observed(true, t), 'off');
+      expect(member.liveTemperature(Duration.zero, t, true), isNull);
+      fence.accept([member], t, Duration.zero);
+      expect(fence.unavailableClaims([member], t, Duration.zero), isEmpty);
+    },
+  );
+  testWidgets(
+    'actual relay OFF and current qualification survive a protective-floor fault',
+    (tester) async {
+      final fixture = MemberDetailFixture()..overrideMembership = true;
+      final now = DateTime.now().subtract(const Duration(milliseconds: 10));
+      fixture.configuredMembership = [claim('one', 'heating', 'reserved')];
+      fixture.runtimeMembership = [
+        {
+          ...relay(now, now.add(const Duration(minutes: 1))),
+          'protection': {
+            'claim': 'one',
+            'status': 'missing',
+            'source_identity': 'wrong-floor',
+          },
+        },
+      ];
+      await fixture.mount(tester);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      expect(
+        find.text('Server guard/target check (snapshot): true'),
+        findsOneWidget,
+      );
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  test(
+    'invalid activity high-water never poisons qualified member retirement floor',
+    () {
+      final evidence = VirtualThermostatEvidenceFence(),
+          activity = VirtualThermostatActivityFence();
+      Map branch(String id, DateTime stamp) => {
+        'claim': id,
+        'physical_identity': 'canonical-$id',
+        'role': 'heating',
+        ...activityObservation(stamp, 'off'),
+        'protection': protection(stamp, 20, claimId: id),
+      };
+      final config = {
+        'revision': 1,
+        'actuators': [claim('one', 'heating', 'reserved')],
+        'sources': [],
+      };
+      final initial = branch('one', t);
+      final runtime = {
+        'configuration_revision': 1,
+        'branches': [initial],
+        'inputs': [],
+      };
+      evidence.accept(config, runtime, t, Duration.zero);
+      activity.accept(
+        VirtualThermostatMember.read(config, runtime),
+        t,
+        Duration.zero,
+      );
+      final invalid = {
+        ...initial,
+        'activity_sampled_at': t.add(const Duration(days: 1)).toIso8601String(),
+      };
+      final invalidRuntime = {
+        ...runtime,
+        'branches': [invalid],
+      };
+      evidence.accept(config, invalidRuntime, t, Duration.zero);
+      activity.accept(
+        VirtualThermostatMember.read(config, invalidRuntime),
+        t,
+        Duration.zero,
+      );
+      evidence.accept(
+        {'revision': 2, 'actuators': [], 'sources': []},
+        {'configuration_revision': 2, 'branches': [], 'inputs': []},
+        t,
+        Duration.zero,
+      );
+      activity.retainClaims(
+        [],
+      ); // Existing authoritative-removal semantics, no new activity floor.
+      final newer = t.add(const Duration(milliseconds: 1)),
+          next = branch('two', t.add(const Duration(milliseconds: 1)));
+      final nextConfig = {
+        'revision': 3,
+        'actuators': [claim('two', 'heating', 'reserved')],
+        'sources': [],
+      };
+      final nextRuntime = {
+        'configuration_revision': 3,
+        'branches': [next],
+        'inputs': [],
+      };
+      evidence.accept(
+        nextConfig,
+        nextRuntime,
+        newer,
+        const Duration(milliseconds: 1),
+      );
+      expect(
+        evidence.members.expiredClaims(
+          VirtualThermostatMember.read(nextConfig, nextRuntime),
+          Duration.zero,
+          newer,
+          clock: const Duration(milliseconds: 1),
+        ),
+        isEmpty,
+      );
+    },
+  );
 }

@@ -56,6 +56,22 @@ class VirtualThermostatMember {
       ? temperature
       : null;
 
+  /// Independent relay diagnostics require their own exact claim/physical join,
+  /// regardless of whether protective-floor evidence is available.
+  bool get relayBindingCurrent {
+    final rawClaim = diagnostic?['claim'];
+    final configuredClaim = configuration['id'];
+    return !historical &&
+        !ambiguous &&
+        rawClaim is String &&
+        rawClaim.isNotEmpty &&
+        rawClaim == claim &&
+        (configuredClaim == null || configuredClaim == rawClaim) &&
+        (configuration['physical_identity'] == null ||
+            configuration['physical_identity'] ==
+                diagnostic?['physical_identity']);
+  }
+
   DateTime? get activitySampledAt =>
       DateTime.tryParse(diagnostic?['activity_sampled_at']?.toString() ?? '');
   DateTime? get activityExpiresAt =>
@@ -63,8 +79,7 @@ class VirtualThermostatMember {
   String? get activity => const ['on', 'off'].contains(diagnostic?['activity'])
       ? diagnostic!['activity'] as String
       : null;
-  bool? qualification(bool current) =>
-      !current || historical || ambiguous || claim.isEmpty
+  bool? qualification(bool current) => !current || !relayBindingCurrent
       ? null
       : diagnostic?['qualification_ready'] is bool
       ? diagnostic!['qualification_ready'] as bool
@@ -74,9 +89,7 @@ class VirtualThermostatMember {
     final sampled = activitySampledAt;
     final expiry = activityExpiresAt;
     if (!current ||
-        historical ||
-        ambiguous ||
-        claim.isEmpty ||
+        !relayBindingCurrent ||
         sampled == null ||
         expiry == null ||
         sampled.isAfter(now) ||
@@ -774,39 +787,34 @@ class VirtualThermostatActivityFence {
     _samples.removeWhere((claim, _) => !active.contains(claim));
   }
 
-  void withholdMissingOrAmbiguous(
-    List<VirtualThermostatMember> members,
-    DateTime now,
-    Duration clock,
-  ) {
-    final qualifiedJoins = members
-        .where((member) => member.diagnostic != null && !member.ambiguous)
-        .map((member) => member.claim)
-        .toSet();
-    for (final key in _samples.keys) {
-      if (!qualifiedJoins.contains(key)) _samples[key]!.invalid = true;
-    }
-    // Capture invalid ambiguous high-water evidence at HTTP acceptance, before any render.
-    unavailableClaims(
-      members.where((member) => member.ambiguous).toList(),
-      now,
-      clock,
-    );
-  }
+  int get recordCount => _samples.length;
 
-  Set<String> unavailableClaims(
+  String _context(VirtualThermostatMember member) => jsonEncode([
+    member.claim,
+    member.identity,
+    member.configuration['qualification_generation'],
+    member.diagnostic?['claim'],
+    member.diagnostic?['physical_identity'],
+  ]);
+
+  /// Admission happens for EVERY coherent HTTP batch, before any render.
+  /// Membership completeness controls pruning separately, not evidence validity.
+  void accept(
     List<VirtualThermostatMember> members,
     DateTime now,
     Duration clock,
   ) {
-    final unavailable = <String>{};
+    final present = members.map((member) => member.claim).toSet();
+    for (final key in _samples.keys) {
+      if (!present.contains(key)) _samples[key]!.invalid = true;
+    }
     for (final member in members) {
+      if (member.claim.isEmpty) continue;
       final previous = _samples[member.claim];
       final sampled = member.activitySampledAt;
       final expiry = member.activityExpiresAt;
       final activity = member.observed(true, now);
-      final context =
-          '${member.identity}/${member.configuration['qualification_generation'] ?? ''}';
+      final context = _context(member);
       if (sampled == null ||
           expiry == null ||
           activity == null ||
@@ -823,7 +831,6 @@ class VirtualThermostatActivityFence {
             member.activity ?? 'unknown',
           )..invalid = true;
         }
-        unavailable.add(member.claim);
         continue;
       }
       final deadline = clock + expiry.difference(now);
@@ -838,7 +845,6 @@ class VirtualThermostatActivityFence {
             previous.activity != activity ||
             !now.isBefore(previous.expiry) ||
             clock >= previous.deadline;
-        if (previous.invalid) unavailable.add(member.claim);
       } else {
         _samples[member.claim] = _ActivityWatermark(
           sampled,
@@ -848,6 +854,31 @@ class VirtualThermostatActivityFence {
           activity,
         );
       }
+    }
+  }
+
+  /// Render/query can only withhold or expire admitted records. It cannot mint
+  /// a first observation, accept a newer publication or renew an original budget.
+  Set<String> unavailableClaims(
+    List<VirtualThermostatMember> members,
+    DateTime now,
+    Duration clock,
+  ) {
+    final unavailable = <String>{};
+    for (final member in members) {
+      final previous = _samples[member.claim];
+      if (previous == null) {
+        unavailable.add(member.claim);
+        continue;
+      }
+      if (member.activitySampledAt != previous.sampled ||
+          member.observed(true, now) != previous.activity ||
+          _context(member) != previous.context ||
+          !now.isBefore(previous.expiry) ||
+          clock >= previous.deadline) {
+        previous.invalid = true;
+      }
+      if (previous.invalid) unavailable.add(member.claim);
     }
     return unavailable;
   }
