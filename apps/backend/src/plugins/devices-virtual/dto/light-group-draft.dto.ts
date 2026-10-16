@@ -29,7 +29,11 @@ export class LightGroupDraftDeviceDto extends OmitType(CreateVirtualDeviceDto, [
 
 @ApiSchema({ name: 'DevicesVirtualPluginLightGroupDraftMember' })
 export class LightGroupDraftMemberDto {
-	@ApiProperty({ name: 'source_channel', description: 'Distinct physical light channel', format: 'uuid' })
+	@ApiProperty({
+		name: 'source_channel',
+		description: 'Distinct physical channel matching the selected group profile',
+		format: 'uuid',
+	})
 	@Expose({ name: 'source_channel' })
 	@IsUUID('4')
 	sourceChannelId: string;
@@ -55,7 +59,8 @@ export class LightGroupDraftDto {
 	@ApiPropertyOptional({
 		enum: PropertyCategory,
 		isArray: true,
-		description: 'Explicit exposed controls; defaults to the whole validated intersection. On is mandatory.',
+		description:
+			'Explicit exposed controls; defaults to the whole validated intersection. Required fields depend on the selected profile.',
 	})
 	@Expose()
 	@IsOptional()

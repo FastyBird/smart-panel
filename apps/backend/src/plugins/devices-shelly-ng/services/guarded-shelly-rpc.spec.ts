@@ -30,6 +30,11 @@ class FixtureTransport extends GuardedShellyRpcHandler {
 	): void {
 		this.client.receive({ jsonrpc: '2.0', id, ...(error ? { error } : { result }) });
 	}
+	throwOnSend(): void {
+		(this.socket.send as jest.Mock).mockImplementation(() => {
+			throw new Error('physical transport uncertain');
+		});
+	}
 	ackSend(): void {
 		(this.socket.send as jest.Mock).mockImplementation((_data: string, callback: (error?: Error) => void) =>
 			callback(),
@@ -77,6 +82,56 @@ describe('guarded Shelly transport at real SDK send and authentication retry', (
 		},
 	);
 
+	it('records possible send only after authority passes, retaining the first attempt across rejected auth retries', async () => {
+		const rpc = fixture();
+		const possible = jest.fn();
+		let current = true;
+		const result = Promise.resolve(
+			rpc.withSendGuard(
+				() => current,
+				() => rpc.request('Cover.Open', { id: 0, tag: 'proof' }),
+				possible,
+			),
+		).catch(() => false);
+		await flush();
+		expect(possible).toHaveBeenCalledTimes(1);
+		current = false;
+		rpc.answer({
+			code: 401,
+			message: JSON.stringify({ auth_type: 'digest', algorithm: 'SHA-256', realm: 'fixture', nonce: 1 }),
+		});
+		expect(await result).toBe(false);
+		expect(possible).toHaveBeenCalledTimes(1);
+		expect(rpc.frames).toHaveLength(1);
+		const neverSent = jest.fn();
+		await expect(
+			Promise.resolve(
+				rpc.withSendGuard(
+					() => false,
+					() => rpc.request('Cover.Stop', { id: 0 }),
+					neverSent,
+				),
+			),
+		).rejects.toThrow();
+		expect(neverSent).not.toHaveBeenCalled();
+		await rpc.destroy();
+	});
+	it('marks a physical send that throws as possible rather than proving it unsent', async () => {
+		const rpc = fixture();
+		const possible = jest.fn();
+		rpc.throwOnSend();
+		await expect(
+			Promise.resolve(
+				rpc.withSendGuard(
+					() => true,
+					() => rpc.request('Cover.Stop', { id: 0 }),
+					possible,
+				),
+			),
+		).rejects.toThrow();
+		expect(possible).toHaveBeenCalledTimes(1);
+		await rpc.destroy();
+	});
 	it('never sends queued Switch.set ON after its authority expires during connect', async () => {
 		const rpc = fixture();
 		const physical = new ShellyPlus1Pm({ id: 'physical', mac: '000000000001', model: ShellyPlus1Pm.model }, rpc);

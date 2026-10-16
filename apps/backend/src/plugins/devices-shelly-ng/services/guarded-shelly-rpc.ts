@@ -1,20 +1,25 @@
 import { RpcParams, WebSocketRpcHandler, WebSocketRpcHandlerFactory } from 'shellies-ds9';
 
 const sendGuard = Symbol('shelly-internal-send-guard');
-type GuardedParams = RpcParams & { [sendGuard]?: () => boolean };
+const possibleSend = Symbol('shelly-internal-possible-send');
+type GuardedParams = RpcParams & { [sendGuard]?: () => boolean; [possibleSend]?: () => void };
 
 /** Per-request authority survives connect waits and the pinned SDK's digest authentication retry. */
 export class GuardedShellyRpcHandler extends WebSocketRpcHandler {
 	private activeGuard: (() => boolean) | undefined;
+	private activePossibleSend: (() => void) | undefined;
 
 	/** Capture authority for requests created by invoke, restoring the previous scope even when invoke throws. */
-	withSendGuard<T>(isCurrent: () => boolean, invoke: () => T): T {
+	withSendGuard<T>(isCurrent: () => boolean, invoke: () => T, onPossibleSend?: () => void): T {
 		const previous = this.activeGuard;
+		const previousPossibleSend = this.activePossibleSend;
 		this.activeGuard = isCurrent;
+		this.activePossibleSend = onPossibleSend;
 		try {
 			return invoke();
 		} finally {
 			this.activeGuard = previous;
+			this.activePossibleSend = previousPossibleSend;
 		}
 	}
 
@@ -26,6 +31,7 @@ export class GuardedShellyRpcHandler extends WebSocketRpcHandler {
 		// The SDK's client timeout does not cancel handleRequest's asynchronous connect wait.
 		// Fence every request at settlement, including ordinary pre-claim switch commands.
 		const authority = this.activeGuard;
+		const onPossibleSend = this.activePossibleSend;
 		let pending = true;
 		const timeoutMs = this.options.requestTimeout * 1000;
 		if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return Promise.reject(new Error('Invalid Shelly timeout'));
@@ -34,6 +40,7 @@ export class GuardedShellyRpcHandler extends WebSocketRpcHandler {
 		Object.defineProperty(guarded, sendGuard, {
 			value: () => pending && Date.now() < expiresAt && (authority?.() ?? true),
 		});
+		Object.defineProperty(guarded, possibleSend, { value: onPossibleSend });
 		let timer: ReturnType<typeof setTimeout>;
 		const timeout = new Promise<never>((_, reject) => {
 			timer = setTimeout(() => reject(new Error('Shelly request deadline expired')), timeoutMs);
@@ -48,6 +55,8 @@ export class GuardedShellyRpcHandler extends WebSocketRpcHandler {
 	protected override sendRequest(payload: RpcParams): Promise<void> {
 		const guard = (payload.params as GuardedParams | undefined)?.[sendGuard];
 		if (guard && !guard()) return Promise.reject(new Error('Shelly request authority expired before send'));
+		// Latch before delegating: even a thrown/failed send may have reached the device.
+		(payload.params as GuardedParams | undefined)?.[possibleSend]?.();
 		return super.sendRequest(payload);
 	}
 }

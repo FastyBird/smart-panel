@@ -1,3 +1,4 @@
+import { instanceToPlain } from 'class-transformer';
 /*
 eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment,
 @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unnecessary-type-assertion
@@ -364,6 +365,42 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 			listener.onModuleInit();
 			const call = commandEventRegistry.register.mock.calls.find((c) => c[0] === SpacesWsEventType.COVERS_INTENT);
 			handleCoversIntent = call![2];
+		});
+
+		it('retains canonical member outcomes for cover composites on the production socket path', async () => {
+			spacesService.findOne.mockResolvedValue(mockSpace as SpaceEntity);
+			spaceIntentService.executeCoversIntent.mockResolvedValue({
+				success: false,
+				affectedDevices: 0,
+				failedDevices: 1,
+				newPosition: null,
+				composites: [
+					{
+						id: 'parent',
+						status: 'partial',
+						children: [
+							{
+								memberId: 'member',
+								memberIdentity: 'original-channel',
+								propertyId: null,
+								status: 'unavailable',
+								reason: 'tag_unavailable',
+							},
+						],
+					},
+				],
+			});
+			const result = instanceToPlain(
+				await handleCoversIntent(createMockUser(), { spaceId: mockSpace.id, intent: { type: 'stop' } }),
+			);
+			expect(result.data.success).toBe(false);
+			expect(result.data.new_position).toBeNull();
+			expect(result.data.composites[0].children[0]).toMatchObject({
+				member_id: 'member',
+				member_identity: 'original-channel',
+				property_id: null,
+				reason: 'tag_unavailable',
+			});
 		});
 
 		it('should return unauthorized for undefined user', async () => {

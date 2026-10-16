@@ -29,6 +29,7 @@ import {
 	VirtualLightGroupProfile,
 } from '../entities/virtual-producer.entity';
 
+import { loadCoverMemberContract } from './virtual-cover-contract.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import {
 	GROUP_PROFILES,
@@ -38,6 +39,7 @@ import {
 	groupSourceSupports,
 } from './virtual-group-profile';
 import { LIGHT_GROUP_MAXIMUM_AGE_MS } from './virtual-light-group.utils';
+import { typedGroupSourceMatchesOutput } from './virtual-typed-group.utils';
 
 @Injectable()
 export class VirtualLightGroupCommandService implements CompositePropertyCommandPlanner, OnModuleInit, OnModuleDestroy {
@@ -147,6 +149,14 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				where: { groupChannelId: channelId },
 			});
 			if (members.length < 2 || members.length > 256) throw new Error('Invalid light group member count');
+
+			const coverOutputs =
+				config.profile === VirtualLightGroupProfile.COVER
+					? await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
+							where: { channel: { id: channelId } },
+							relations: ['channel'],
+						})
+					: [];
 			for (const member of members) {
 				const binding = await this.dataSource.manager.findOne(VirtualLightGroupBindingEntity, {
 					where: { memberId: member.id, outputPropertyId: update.property.id },
@@ -157,7 +167,14 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 				const deviceId = channel ? (channel.device as DeviceEntity).id : null;
 				if (deviceId && !deviceCache.has(deviceId)) deviceCache.set(deviceId, await this.devices.findOne(deviceId));
 				const device = deviceId ? deviceCache.get(deviceId) : null;
+				const coverContract =
+					config.profile === VirtualLightGroupProfile.COVER
+						? await loadCoverMemberContract(this.dataSource.manager, member.id, member.sourceChannelId, coverOutputs)
+						: null;
+				const coverTypeCompatible = !coverContract?.reasons.length;
+
 				const available =
+					coverTypeCompatible &&
 					member.sourceChannelId &&
 					property &&
 					channel.id === member.sourceChannelId &&
@@ -173,7 +190,8 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					property.dataType === update.property.dataType &&
 					resolvePropertyUnit(property) === resolvePropertyUnit(update.property) &&
 					groupSourceSupports(property, field) &&
-					groupBooleanContractIsSupported(config.profile, property);
+					groupBooleanContractIsSupported(config.profile, property) &&
+					typedGroupSourceMatchesOutput(config.profile, field, property, update.property);
 				if (children.length >= 2048) throw new Error('Composite size exceeds bounds');
 				let preserved: CompositeCommandChild | null = null;
 				let powerAvailable = true;
@@ -230,11 +248,13 @@ export class VirtualLightGroupCommandService implements CompositePropertyCommand
 					memberIdentity: member.sourceChannelIdentity,
 					propertyIdentity: binding?.sourcePropertyIdentity ?? null,
 					update: available && powerAvailable ? { property, channel, device, value: update.value } : null,
-					reason: !powerAvailable
-						? 'Qualified member power is unknown or changed during brightness planning'
-						: available
-							? undefined
-							: 'Member is missing, disabled, offline, incompatible or quarantined',
+					reason: coverContract?.reasons.length
+						? coverContract.reasons.join(', ')
+						: !powerAvailable
+							? 'Qualified member power is unknown or changed during brightness planning'
+							: available
+								? undefined
+								: 'Member is missing, disabled, offline, incompatible or quarantined',
 				});
 				if (preserved) children.push(preserved);
 			}

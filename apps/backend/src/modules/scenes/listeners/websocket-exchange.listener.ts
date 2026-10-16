@@ -1,10 +1,12 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
+import { ActionExecutionResultModel } from '../models/scenes.model';
 import { SCENES_MODULE_NAME, SceneExecutionStatus } from '../scenes.constants';
 import { SceneExecutorService } from '../services/scene-executor.service';
 
@@ -93,6 +95,8 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					failed_actions: result.failedActions,
 					triggered_at: result.triggeredAt,
 					completed_at: result.completedAt,
+					action_results: toInstance(ActionExecutionResultModel, result.actionResults),
+					...(result.error ? { error: result.error } : {}),
 				},
 			};
 		} catch (error) {

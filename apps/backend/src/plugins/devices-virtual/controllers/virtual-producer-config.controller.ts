@@ -18,9 +18,11 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME } from '../devices-virtual.constants';
+import { GroupCatalogDto } from '../dto/group-catalog.dto';
 import { CreateLightGroupDraftDto, LightGroupDraftDto } from '../dto/light-group-draft.dto';
 import { ConfigureVirtualAggregateDto, ConfigureVirtualLightGroupDto } from '../dto/producer-config.dto';
 import { VirtualAggregateProfile } from '../entities/virtual-producer.entity';
+import { GroupCatalogResponseModel } from '../models/group-catalog.model';
 import { CreatedLightGroupResponseModel, LightGroupDraftResponseModel } from '../models/light-group-draft.model';
 import {
 	VirtualAggregateConfigurationResponseModel,
@@ -28,6 +30,7 @@ import {
 	VirtualAggregateSourcesResponseModel,
 	VirtualLightGroupConfigurationResponseModel,
 } from '../models/producer-response.model';
+import { VirtualGroupCatalogService } from '../services/virtual-group-catalog.service';
 import { VirtualLightGroupAuthoringService } from '../services/virtual-light-group-authoring.service';
 import { VirtualProducerConfigService } from '../services/virtual-producer-config.service';
 
@@ -37,7 +40,24 @@ export class VirtualProducerConfigController {
 	constructor(
 		private readonly configs: VirtualProducerConfigService,
 		private readonly groupAuthoring: VirtualLightGroupAuthoringService,
+		private readonly groupCatalog: VirtualGroupCatalogService,
 	) {}
+
+	@ApiOperation({
+		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
+		summary: 'Inspect group profiles and source compatibility',
+		description:
+			'Uses shared profile intersections and durable exposed-contract rules. Missing identities and incompatible metadata remain explicit. Structural eligibility is not live command readiness or dispatch authority.',
+		operationId: 'get-devices-virtual-plugin-group-candidates',
+	})
+	@ApiSuccessResponse(GroupCatalogResponseModel, 'Group profiles and candidate diagnostics')
+	@ApiUnprocessableEntityResponse('Group profile or repair target is invalid')
+	@Post('light-group-candidates')
+	async getGroupCandidates(@Body() dto: GroupCatalogDto): Promise<GroupCatalogResponseModel> {
+		const response = new GroupCatalogResponseModel();
+		response.data = await this.execute(() => this.groupCatalog.read(dto));
+		return response;
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_VIRTUAL_PLUGIN_API_TAG_NAME],
