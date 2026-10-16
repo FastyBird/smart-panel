@@ -238,6 +238,9 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 		this.logger.debug(`Found ${covers.length} cover intent candidates in space id=${spaceId}`);
 
+		if (this.activityContext.getStore() && !(await this.activityContext.getStore()()))
+			return { success: false, affectedDevices: 0, failedDevices: allCovers.length, newPosition: null };
+
 		// Build targets for intent (all covers including offline for tracking)
 		const targets = this.buildCoversTargets(allCovers, intent);
 
@@ -275,8 +278,6 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			}
 		}
 
-		if (this.activityContext.getStore() && !(await this.activityContext.getStore()()))
-			return { success: false, affectedDevices: 0, failedDevices: allCovers.length, newPosition: null };
 		const groupPlan = await this.groups?.prepare(
 			refuseWholeOperation ? allCovers : covers,
 			intent,

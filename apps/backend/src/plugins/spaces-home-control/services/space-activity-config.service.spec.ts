@@ -1,5 +1,10 @@
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
-import { ActivityMode } from '../activity/space-activity.constants';
+import {
+	ActivityActivationStatus,
+	ActivityDomain,
+	ActivityDomainStatus,
+	ActivityMode,
+} from '../activity/space-activity.constants';
 import { defaultActivityConfiguration } from '../activity/space-activity.defaults';
 import { SpaceActivityConfigEntity } from '../entities/space-activity-config.entity';
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
@@ -77,4 +82,37 @@ describe('persisted activity configuration and lifecycle', () => {
 			database.getRepository(SpaceActivityConfigEntity).insert({ ...existing, id: undefined }),
 		).rejects.toThrow();
 	});
+	it.each(Object.values(ActivityActivationStatus))(
+		'editing a selected %s configuration preserves completed outcomes and only interrupts pending work',
+		async (status) => {
+			const { database, configs, room } = harness;
+			const results = [
+				{ domain: ActivityDomain.LIGHTING, status: ActivityDomainStatus.SUCCEEDED, reason: 'completed' },
+			];
+			const repository = database.getRepository(SpaceActivityStateEntity);
+			const state = await repository.save(
+				repository.create({
+					spaceId: room.id,
+					activationId: 'existing-selection',
+					selectedActivityMode: status === ActivityActivationStatus.DEACTIVATED ? null : ActivityMode.WORK,
+					selectedActivityRevision: 1,
+					activityStatus: status,
+					activityResults: results,
+				}),
+			);
+			const saved = await configs.update(room.id, ActivityMode.WORK, {
+				expected_revision: 1,
+				enabled: true,
+				display_order: 0,
+				configuration: defaultActivityConfiguration(ActivityMode.WORK),
+			});
+			expect(saved.activityRevision).toBe(2);
+			expect(await repository.findOneByOrFail({ id: state.id })).toMatchObject({
+				activationId: state.activationId,
+				selectedActivityRevision: 1,
+				activityResults: results,
+				activityStatus: status === ActivityActivationStatus.ACTIVATING ? ActivityActivationStatus.INTERRUPTED : status,
+			});
+		},
+	);
 });

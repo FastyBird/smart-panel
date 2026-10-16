@@ -16,7 +16,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
-import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
+import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus } from '../../../modules/intents/intents.constants';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
@@ -663,6 +663,50 @@ describe('CoversIntentService', () => {
 			);
 			expect(dispatch).not.toHaveBeenCalled();
 		});
+
+		it('does not create an intent or undo snapshot for an already superseded activity', async () => {
+			coversStateService.getCoversInSpace.mockResolvedValue([
+				createMockCoverDevice({ positionProperty: positionProperty() }),
+			]);
+			const createIntent = jest.spyOn(module.get(IntentsService), 'createIntent');
+			const captureSnapshot = jest.spyOn(module.get(SpaceContextSnapshotService), 'captureSnapshot');
+			const pushSnapshot = jest.spyOn(module.get(SpaceUndoHistoryService), 'pushSnapshot');
+			const result = await service.executeCoversIntent(
+				mockSpaceId,
+				{ type: CoversIntentType.SET_POSITION, position: 75 },
+				() => Promise.resolve(false),
+			);
+			expect(result).toMatchObject({ success: false, affectedDevices: 0 });
+			expect(createIntent).not.toHaveBeenCalled();
+			expect(captureSnapshot).not.toHaveBeenCalled();
+			expect(pushSnapshot).not.toHaveBeenCalled();
+			expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+		});
+		it.each([CoversIntentType.SET_POSITION, CoversIntentType.STOP])(
+			'retains the late %s sender fence and completes the admitted intent without false confirmation',
+			async (type) => {
+				coversStateService.getCoversInSpace.mockResolvedValue([
+					createMockCoverDevice({ positionProperty: positionProperty(), commandProperty: commandProperty() }),
+				]);
+				let current = true;
+				module
+					.get<jest.Mocked<SpaceContextSnapshotService>>(SpaceContextSnapshotService)
+					.captureSnapshot.mockImplementationOnce(() => {
+						current = false;
+						return Promise.resolve(null);
+					});
+				const completeIntent = jest.spyOn(module.get(IntentsService), 'completeIntent');
+				const result = await service.executeCoversIntent(mockSpaceId, { type, position: 75 }, () =>
+					Promise.resolve(current),
+				);
+				expect(result).toMatchObject({ success: false, affectedDevices: 0, failedDevices: 1 });
+				expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+				expect(completeIntent).toHaveBeenCalledWith(
+					mockIntentId,
+					expect.arrayContaining([expect.objectContaining({ status: IntentTargetStatus.FAILED })]),
+				);
+			},
+		);
 		it('sends exact admitted values through the real intent and retains ordinary clamping semantics', async () => {
 			const cover = createMockCoverDevice({ positionProperty: positionProperty({ format: [0, 75], step: 25 }) });
 			coversStateService.getCoversInSpace.mockResolvedValue([cover]);

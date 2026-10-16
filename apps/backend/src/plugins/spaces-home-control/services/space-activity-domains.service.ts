@@ -50,7 +50,9 @@ export class SpaceActivityDomainsService {
 			if (domain === ActivityDomain.CLIMATE) {
 				if (!this.climate)
 					return domainResult(domain, ActivityDomainStatus.UNSUPPORTED, 'trusted_climate_adapter_unavailable');
-				return identity ? this.climate.apply(identity, config.climate) : this.climate.preview(spaceId, config.climate);
+				return await (identity
+					? this.climate.apply(identity, config.climate)
+					: this.climate.preview(spaceId, config.climate));
 			}
 			if (identity && !(await identity.isCurrent()))
 				return domainResult(domain, ActivityDomainStatus.FAILED, 'activation_superseded');

@@ -121,4 +121,31 @@ describe('real activity domain adapter contracts', () => {
 		).toBe(Status.FAILED);
 		expect(lighting.executeLightingIntent).not.toHaveBeenCalled();
 	});
+	it.each([null, identity])(
+		'contains asynchronous climate adapter rejection for preview/apply (%s)',
+		async (current) => {
+			const climate = {
+				preview: jest.fn().mockRejectedValue(new Error('adapter unavailable')),
+				apply: jest.fn().mockRejectedValue(new Error('adapter unavailable')),
+				withdraw: jest.fn(),
+			};
+			const adapter = new SpaceActivityDomainsService(
+				lighting as never,
+				covers as never,
+				coversState as never,
+				endpoints as never,
+				media as never,
+				platforms as never,
+				climate,
+			);
+			const config = defaultActivityConfiguration(ActivityMode.WORK);
+			config.climate = { enabled: true, thermostat_preset: 'comfort' };
+			await expect(adapter.run(Domain.CLIMATE, config, current, 'space')).resolves.toMatchObject({
+				domain: Domain.CLIMATE,
+				status: Status.FAILED,
+				reason: 'domain_execution_failed',
+			});
+			expect(current ? climate.apply : climate.preview).toHaveBeenCalledTimes(1);
+		},
+	);
 });

@@ -95,11 +95,15 @@ export class SpaceActivityConfigService implements OnModuleInit {
 			.createQueryBuilder()
 			.update()
 			.set({ activityStatus: ActivityActivationStatus.INTERRUPTED })
-			.where('spaceId = :spaceId AND selectedActivityMode = :mode AND selectedActivityRevision <= :revision', {
-				spaceId,
-				mode,
-				revision: dto.expected_revision,
-			})
+			.where(
+				'spaceId = :spaceId AND selectedActivityMode = :mode AND selectedActivityRevision <= :revision AND activityStatus = :activating',
+				{
+					spaceId,
+					mode,
+					revision: dto.expected_revision,
+					activating: ActivityActivationStatus.ACTIVATING,
+				},
+			)
 			.execute();
 		const fresh = await this.get(spaceId, mode);
 		this.events.emit(ACTIVITY_CONFIG_CHANGED, { space_id: spaceId, mode, revision: fresh.activityRevision });

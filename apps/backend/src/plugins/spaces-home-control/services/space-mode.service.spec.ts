@@ -16,6 +16,7 @@ import { defaultActivityConfiguration } from '../activity/space-activity.default
 import { SpaceActivityStateEntity } from '../entities/space-activity-state.entity';
 
 import { activityTestDatabase, deferred } from './activity-test-support';
+import { SpaceActivityDomainsService } from './space-activity-domains.service';
 import { SpaceActivationIdentity } from './space-climate-automation.port';
 import { SpaceModeService } from './space-mode.service';
 
@@ -213,5 +214,46 @@ describe('SQLite activity orchestration persistence and fencing', () => {
 		await expect(runtime.onApplicationBootstrap()).rejects.toThrow('no such table');
 		expect(run).not.toHaveBeenCalled();
 		expect(emit).not.toHaveBeenCalled();
+	});
+	it('collects other actual domain results when the optional climate adapter rejects preview and activation', async () => {
+		const { database, configs, room, events } = harness;
+		const configuration = defaultActivityConfiguration(ActivityMode.WORK);
+		configuration.climate = { enabled: true, thermostat_preset: 'comfort' };
+		await configs.update(room.id, ActivityMode.WORK, {
+			expected_revision: 1,
+			enabled: true,
+			display_order: 0,
+			configuration,
+		});
+		const domains = new SpaceActivityDomainsService(
+			{
+				getLightsInSpace: jest.fn().mockResolvedValue([{}]),
+				executeLightingIntent: jest.fn().mockResolvedValue({ success: true, affectedDevices: 1, failedDevices: 0 }),
+			} as never,
+			{} as never,
+			{ getCoversInSpace: jest.fn().mockResolvedValue([]) } as never,
+			{ buildEndpointsForSpace: jest.fn().mockResolvedValue({ endpoints: [] }) } as never,
+			{} as never,
+			{} as never,
+			{
+				preview: jest.fn().mockRejectedValue(new Error('offline')),
+				apply: jest.fn().mockRejectedValue(new Error('offline')),
+				withdraw: jest.fn(),
+			},
+		);
+		const orchestrator = new SpaceModeService(database, configs, domains, events);
+		const preview = await orchestrator.preview(room.id, ActivityMode.WORK, 2);
+		expect(preview).toHaveLength(5);
+		expect(preview).toContainEqual(expect.objectContaining({ domain: Domain.CLIMATE, status: Status.FAILED }));
+		const result = await orchestrator.activateMode(room.id, ActivityMode.WORK, 2, 'user:trusted');
+		expect(result.activityStatus).toBe(State.PARTIAL);
+		expect(result.activityResults).toHaveLength(5);
+		expect(result.activityResults).toContainEqual(
+			expect.objectContaining({ domain: Domain.CLIMATE, status: Status.FAILED }),
+		);
+		expect(result.activityResults).toContainEqual(
+			expect.objectContaining({ domain: Domain.LIGHTING, status: Status.SUCCEEDED }),
+		);
+		expect((await orchestrator.getActiveMode(room.id)).activityStatus).toBe(State.PARTIAL);
 	});
 });
