@@ -4432,4 +4432,297 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get groupStopAll => 'Alle stoppen';
+
+  @override
+  String get thermostatComfortTitle => 'Thermostatkomfort';
+
+  @override
+  String get thermostatComfortHelp =>
+      'Komfortwunsch, HVAC-Modus und physische Aktivität bleiben getrennt. Schutzfunktionen gelten immer.';
+
+  @override
+  String get thermostatComfortUnconfigured =>
+      'Komfort ist nicht konfiguriert. Bestehende manuelle Einstellungen bleiben verfügbar.';
+
+  @override
+  String get thermostatComfortHeating => 'Heizen';
+
+  @override
+  String get thermostatComfortCooling => 'Kühlen';
+
+  @override
+  String get thermostatComfortMinimum => 'Minimum';
+
+  @override
+  String get thermostatComfortMaximum => 'Maximum';
+
+  @override
+  String get thermostatComfortComfort => 'Komfort';
+
+  @override
+  String get thermostatComfortEco => 'Eco';
+
+  @override
+  String get thermostatComfortAway => 'Abwesend';
+
+  @override
+  String get thermostatComfortManual => 'Manuelle Basis';
+
+  @override
+  String get thermostatComfortSelected => 'Basisprofil';
+
+  @override
+  String get thermostatComfortChoose => 'Basis auswählen';
+
+  @override
+  String get thermostatComfortConfigure => 'Komfort konfigurieren';
+
+  @override
+  String get thermostatComfortAutomation =>
+      'Klimaautomatisierung ausdrücklich aktivieren';
+
+  @override
+  String get thermostatComfortSave => 'Komfortkonfiguration speichern';
+
+  @override
+  String get thermostatComfortReload => 'Vom Server neu laden';
+
+  @override
+  String get thermostatComfortOverride => 'Temporäre Übersteuerung';
+
+  @override
+  String get thermostatComfortExplicit => 'Eigene Sollwerte';
+
+  @override
+  String get thermostatComfortDuration => 'Dauer (Minuten, 1–10080)';
+
+  @override
+  String get thermostatComfortCreate => 'Übersteuerung erstellen';
+
+  @override
+  String get thermostatComfortCancel => 'Diese Übersteuerung abbrechen';
+
+  @override
+  String get thermostatComfortClearOff => 'Benutzer-AUS-Sperre aufheben';
+
+  @override
+  String get thermostatComfortOffHeld =>
+      'Benutzer-AUS ist verriegelt. Profile und Automatisierung können den Ausgang nicht wieder aktivieren.';
+
+  @override
+  String get thermostatComfortEffective => 'Wirksamer Komfortwunsch';
+
+  @override
+  String get thermostatComfortExpires => 'Absoluter Ablaufzeitpunkt';
+
+  @override
+  String get thermostatComfortRemaining => 'Verbleibende Zeit';
+
+  @override
+  String get thermostatComfortExpiryHint =>
+      'Der Countdown dient zur Information. Eine Serverbestätigung ist erforderlich; er bestätigt keine Ausgangsaktivität.';
+
+  @override
+  String get thermostatComfortStatus => 'Serverstatus';
+
+  @override
+  String get thermostatComfortSource => 'Quelle';
+
+  @override
+  String get thermostatComfortActor => 'Authentifizierter Akteur';
+
+  @override
+  String get thermostatComfortIdentity => 'Übersteuerungskennung';
+
+  @override
+  String get thermostatComfortRevision => 'Revision';
+
+  @override
+  String get thermostatComfortClockPolicy => 'Zeitregel des Servers';
+
+  @override
+  String get thermostatComfortUncertain =>
+      'Der Übersteuerungszustand erfordert Aufmerksamkeit. Unsichere Uhren sperren den Ausgang; unbekannte Zustände erfordern eine Serverbestätigung.';
+
+  @override
+  String get thermostatComfortError =>
+      'Anfrage fehlgeschlagen; vor Wiederholung neu laden';
+
+  @override
+  String get thermostatComfortOffClearHelp =>
+      'Das Aufheben von AUS ist eine separate ausdrückliche Aktion und ändert nicht den angeforderten HVAC-Modus.';
+
+  @override
+  String get thermostatComfortConfigHint =>
+      'Nur Bereiche unterstützter Zweige und ausdrücklich gewählte Profiltemperaturen in Celsius eingeben. Es gibt keine Standardtemperaturen.';
+
+  @override
+  String get thermostatComfortServerValidation =>
+      'Der Server prüft unterstützte Zweige, Bereiche, Totband und Revisionen.';
+
+  @override
+  String get thermostatComfortRequested => 'Angeforderter HVAC-Modus';
+
+  @override
+  String get thermostatComfortActivity => 'Gemeldete Ausgangsaktivität';
+
+  @override
+  String get thermostatMemberUnavailable => 'Nicht verfügbar';
+
+  @override
+  String get thermostatMemberClaim => 'Reservierung';
+
+  @override
+  String get thermostatMemberState => 'Reservierungsstatus';
+
+  @override
+  String get thermostatMemberSource => 'Gespeicherte Relaiseigenschaft';
+
+  @override
+  String get thermostatMemberRequested => 'Vom Regler angeforderter Modus';
+
+  @override
+  String get thermostatMemberObserved => 'Gemeldete Beobachtung';
+
+  @override
+  String get thermostatMemberPending => 'Ungeklärtes EIN';
+
+  @override
+  String get thermostatMemberBlockers => 'Serversperre';
+
+  @override
+  String get thermostatMemberProfile => 'Anbieterprofil';
+
+  @override
+  String get thermostatMemberQualification =>
+      'Die Schutz-/Zielprüfung ist keine vollständige Reglerfreigabe, Installationsbereitschaft oder physische Zertifizierung. Installation in Admin prüfen.';
+
+  @override
+  String get thermostatMemberProtectionSource => 'Gespeicherte Schutzquelle';
+
+  @override
+  String get thermostatMemberReading => 'Aktueller Schutzmesswert';
+
+  @override
+  String get thermostatMemberQuality => 'Qualität';
+
+  @override
+  String get thermostatMemberFreshness => 'Aktualität';
+
+  @override
+  String get thermostatMemberAge => 'Messwertalter (s)';
+
+  @override
+  String get thermostatMemberSample => 'Ursprünglicher Messzeitpunkt';
+
+  @override
+  String get thermostatMemberHistoryReading => 'Nur historischer Messwert';
+
+  @override
+  String get thermostatMemberCutoff => 'Wirksame Grenze (°C)';
+
+  @override
+  String get thermostatMemberLatch => 'Schutz verriegelt';
+
+  @override
+  String get thermostatMemberProtectionReady =>
+      'Schutzbereitschaft laut Server';
+
+  @override
+  String get thermostatMemberReleasePending => 'Freigabe ausstehend';
+
+  @override
+  String get thermostatMemberAttempts => 'Freigabeversuche';
+
+  @override
+  String get thermostatMemberNextRelease => 'Nächster Freigabeversuch';
+
+  @override
+  String get thermostatMemberDrain => 'Servernachweis AUS / Drainage';
+
+  @override
+  String get thermostatMemberGeneration =>
+      'Gespeicherte Wiederherstellungsgeneration';
+
+  @override
+  String get thermostatMemberLastOff => 'Letztes verifiziertes AUS (Historie)';
+
+  @override
+  String get thermostatMemberReleaseRequested => 'Freigabe angefordert um';
+
+  @override
+  String get thermostatMemberReleasedAt => 'Freigegeben um';
+
+  @override
+  String get thermostatMemberEvidence =>
+      'Gespeicherter AUS- / Drainagenachweis (Historie, keine aktuelle Qualifikation)';
+
+  @override
+  String get thermostatMemberMandatory => 'Erforderliche Zweigmitglieder';
+
+  @override
+  String get thermostatMemberWholeBranch =>
+      'Jedes Mitglied ist erforderlich. Ein Mitgliedsfehler sperrt seinen gesamten Zweig. Der angeforderte Modus ist keine physische Aktivität.';
+
+  @override
+  String get thermostatMemberExpired =>
+      'Aktuelle Diagnose nicht verfügbar; gespeicherte Details sind historisch.';
+
+  @override
+  String get thermostatMemberReleasedHistory =>
+      'Freigegebene Mitglieder — Historie, keine aktive Kapazität';
+
+  @override
+  String get thermostatMemberAdmin =>
+      'Für Bindungsreparatur, Installationsprüfung oder Wiederherstellung Admin als Eigentümer oder Administrator verwenden. Der Besitz bleibt bis zur serverbestätigten Freigabe reserviert.';
+
+  @override
+  String get thermostatMemberRoom => 'Raumregelung';
+
+  @override
+  String get thermostatMemberPolicy =>
+      'Gemeinsame angeforderte Bodengrenze / Erholungshysterese';
+
+  @override
+  String get thermostatMemberSelectedFloor =>
+      'Boden des ausgewählten Mitglieds (kein Mittelwert)';
+
+  @override
+  String get thermostatMemberGroup => 'Zweiggruppe';
+
+  @override
+  String get thermostatMemberVersion => 'Profilversion';
+
+  @override
+  String get thermostatMemberMaximumAge => 'Maximales Messwertalter (s)';
+
+  @override
+  String get thermostatMemberExpiry => 'Ursprünglicher Messwertablauf';
+
+  @override
+  String get thermostatMemberNoBlocker => 'Keine Sperre gemeldet';
+
+  @override
+  String get thermostatMemberHistoryPending =>
+      'Zuletzt gemeldetes ungeklärtes EIN (Historie)';
+
+  @override
+  String get thermostatMemberHistoryRelease =>
+      'Zuletzt gemeldete ausstehende Freigabe (Historie)';
+
+  @override
+  String get thermostatMemberActivitySnapshot =>
+      'Aktivität erfordert die ursprüngliche, noch gültige Relaisbeobachtung. Die Schutz-/Zielprüfung ist ein separater Server-Snapshot; beides belegt keine vollständige Freigabe.';
+
+  @override
+  String get thermostatMemberQualificationCheck =>
+      'Server-Schutz-/Zielprüfung (Snapshot)';
+
+  @override
+  String get thermostatMemberActivitySample =>
+      'Ursprüngliche Relaisbeobachtung (historische Metadaten)';
+
+  @override
+  String get thermostatMemberActivityExpiry =>
+      'Ursprünglicher Ablauf der Relaisbeobachtung';
 }
