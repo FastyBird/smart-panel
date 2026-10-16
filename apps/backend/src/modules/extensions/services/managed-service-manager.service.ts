@@ -227,31 +227,31 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		this.logger.log(`Starting ${this.services.size} registered services`);
 
-		const levels = this.getServiceLevels();
 		const visited = new Set<ServiceRegistration>();
-
-		for (let level = 0; level < levels.length; level++) {
-			const levelServices = levels[level];
-
-			if (levelServices.length === 0) {
-				continue;
+		while (!this.shutdownInProgress) {
+			// A held start may outlive registration replacement or a late registration. Rebuild
+			// dependency levels from current objects before choosing each next startup wave.
+			const current = new Set(this.services.values());
+			for (const registration of visited) if (!current.has(registration)) visited.delete(registration);
+			const levels = this.getServiceLevels();
+			const level = levels.findIndex((registrations) => registrations.some((registration) =>
+				!visited.has(registration) || this.bootstrapDirty.has(registration),
+			));
+			if (level === -1) break;
+			const wave = levels[level]
+				.filter((registration) => !visited.has(registration) || this.bootstrapDirty.has(registration))
+				.map((registration) => ({ registration, firstVisit: !visited.has(registration) }));
+			// Consume before awaiting: events during this wave must schedule another one.
+			for (const { registration } of wave) {
+				visited.add(registration);
+				this.bootstrapDirty.delete(registration);
 			}
-
-			this.logger.log(`Starting level ${level} services (${levelServices.length} services)`);
-
-			// Start all services at this level in parallel
-			await Promise.all(levelServices.map((registration) => this.startServiceIfDesired(registration)));
-			for (const registration of levelServices) visited.add(registration);
-			// Events received during a held start have already revoked its admission. Reconcile
-			// those current intents before moving past this dependency level, without reviving it.
-			while (!this.shutdownInProgress) {
-				const dirty = [...this.bootstrapDirty].filter((registration) => visited.has(registration));
-				if (dirty.length === 0) break;
-				for (const registration of dirty) this.bootstrapDirty.delete(registration);
-				await Promise.all(dirty.map(async (registration) => {
-					if (this.isCurrentRegistration(registration)) await this.syncServiceState(registration);
-				}));
-			}
+			this.logger.log(`Starting level ${level} services (${wave.length} services)`);
+			await Promise.all(wave.map(async ({ registration, firstVisit }) => {
+				if (!this.isCurrentRegistration(registration)) return;
+				if (firstVisit) await this.startServiceIfDesired(registration);
+				else await this.syncServiceState(registration);
+			}));
 		}
 
 		this.startupComplete = true;

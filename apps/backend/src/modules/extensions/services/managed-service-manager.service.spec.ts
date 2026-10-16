@@ -357,7 +357,7 @@ describe('ManagedServiceManagerService', () => {
 			expect(fixture.tokens[0].runtime.isCurrent()).toBe(true);
 		});
 
-		const actualEventFixture = async () => {
+		const actualEventFixture = async (initialize = true) => {
 			let store = Object.assign(new AppConfigModel(), {
 				plugins: ['route-owner', 'second-route-owner'].map((type) => Object.assign(new AdmissionFixturePluginConfig(), { type, enabled: true })),
 				modules: [],
@@ -383,24 +383,32 @@ describe('ManagedServiceManagerService', () => {
 					} },
 				],
 			}).compile();
-			await module.init();
-			await module.get(EventEmitterReadinessWatcher).waitUntilReady();
+			if (initialize) {
+				await module.init();
+				await module.get(EventEmitterReadinessWatcher).waitUntilReady();
+			}
 			return { module, target: module.get(ManagedServiceManagerService), config: module.get(ConfigService), events: module.get(EventEmitter2), store };
 		};
 
 		it('bootstrap reconciles actual prestartup disable-enable events after a held validator without another event', async () => {
-			const fixture = await actualEventFixture();
+			const fixture = await actualEventFixture(false);
 			const entered = admissionDeferred(), validation = admissionDeferred<{ valid: boolean }>();
 			try {
-				startup(fixture.target, false);
 				pluginConfigValidator.hasValidator.mockReturnValue(true);
 				pluginConfigValidator.validate.mockImplementationOnce(() => { entered.resolve(); return validation.promise; });
 				const service = admittedService(fixture.target, 'route-owner');
 				fixture.target.register(service.service);
-				const boot = fixture.target.onApplicationBootstrap();
+				const boot = fixture.module.init();
 				await entered.promise;
+				await fixture.module.get(EventEmitterReadinessWatcher).waitUntilReady();
+				const delivery = jest.spyOn(fixture.events, 'emit');
 				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: false }));
 				fixture.config.setPluginConfig('route-owner', Object.assign(new UpdatePluginConfigDto(), { type: 'route-owner', enabled: true }));
+				expect(delivery.mock.calls.filter(([event]) => event === ConfigModuleEventType.CONFIG_UPDATED)).toEqual([
+					[ConfigModuleEventType.CONFIG_UPDATED, { source: 'route-owner', type: 'plugin' }],
+					[ConfigModuleEventType.CONFIG_UPDATED, { source: 'route-owner', type: 'plugin' }],
+				]);
+				expect(pluginConfigValidator.validate).toHaveBeenCalledTimes(1);
 				expect(service.start).not.toHaveBeenCalled();
 				validation.resolve({ valid: true });
 				await boot;
@@ -409,6 +417,56 @@ describe('ManagedServiceManagerService', () => {
 				expect(service.service.getState()).toBe('started');
 				expect(service.tokens[0].runtime.isCurrent()).toBe(true);
 			} finally { validation.resolve({ valid: true }); await fixture.module.close(); }
+		});
+
+		it.each(['replacement', 'late-registration'] as const)('Nest bootstrap discovers current %s dependencies registered during a later held level', async (mutation) => {
+			const fixture = await actualEventFixture(false);
+			const entered = admissionDeferred(), release = admissionDeferred();
+			const order: string[] = [];
+			try {
+				const initial = admittedService(fixture.target, 'route-owner', 'base');
+				const held = admittedService(fixture.target, 'second-route-owner', 'held');
+				held.service.getDependencies = () => ['plugin:route-owner:base'];
+				// Keep the original admission-capturing implementation in each start wrapper.
+				const initialStart = initial.start.getMockImplementation();
+				const heldStart = held.start.getMockImplementation();
+				if (!initialStart || !heldStart) throw new Error('Expected original start implementations');
+				initial.start.mockImplementationOnce(() => { order.push('initial'); return initialStart(); });
+				held.service.start = jest.fn(async () => {
+					await heldStart();
+					order.push('held entered'); entered.resolve();
+					await release.promise; order.push('held complete');
+				});
+				// Registrations precede Nest init: its actual lifecycle hook owns this bootstrap.
+				fixture.target.register(initial.service); fixture.target.register(held.service);
+				const boot = fixture.module.init();
+				await entered.promise;
+				await fixture.module.get(EventEmitterReadinessWatcher).waitUntilReady();
+				const id = mutation === 'replacement' ? 'base' : 'late-base';
+				const current = admittedService(fixture.target, 'route-owner', id);
+				const child = admittedService(fixture.target, 'second-route-owner', 'late-child');
+				child.service.getDependencies = () => [`plugin:route-owner:${id}`];
+				const currentStart = current.start.getMockImplementation(), childStart = child.start.getMockImplementation();
+				if (!currentStart || !childStart) throw new Error('Expected new start implementations');
+				current.service.start = jest.fn(() => { order.push('current base'); return currentStart(); });
+				child.service.start = jest.fn(() => { order.push('late child'); return childStart(); });
+				if (mutation === 'replacement') fixture.target.unregister('plugin', 'route-owner', 'base');
+				// Deliberately register the dependent first; actual dependency levels must order them.
+				fixture.target.register(child.service); fixture.target.register(current.service);
+				expect(current.start).not.toHaveBeenCalled();
+				expect(child.start).not.toHaveBeenCalled();
+				expect(initial.tokens[0].runtime.isCurrent()).toBe(mutation !== 'replacement');
+				release.resolve(); await boot;
+				expect(order).toEqual(['initial', 'held entered', 'held complete', 'current base', 'late child']);
+				expect(initial.start).toHaveBeenCalledTimes(1);
+				expect(current.start).toHaveBeenCalledTimes(1);
+				expect(child.start).toHaveBeenCalledTimes(1);
+				expect(current.tokens[0].runtime.isCurrent()).toBe(true);
+				expect(child.tokens[0].runtime.isCurrent()).toBe(true);
+				expect(current.tokens[0]).not.toBe(initial.tokens[0]);
+				expect(current.service.getState()).toBe('started');
+				expect(child.service.getState()).toBe('started');
+			} finally { release.resolve(); await fixture.module.close(); }
 		});
 
 		it.each(['success', 'failure', 'not-persisted'] as const)('retires only the original pending notification before replacement %s', async (outcome) => {
