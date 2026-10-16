@@ -33,6 +33,7 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { VirtualDewPointConfigEntity } from '../entities/virtual-dew-point.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualDewPointConfigService } from './virtual-dew-point-config.service';
@@ -245,6 +246,18 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		expect(matchesAggregateNumericProfile(mislabeled, channel)).toBe(false);
 		expect(isThermostatTemperature(mislabeled, channel)).toBe(false);
 		expect(new SensorMapper().canMap(device)).toBe(false);
+	});
+
+	it('allows preview without a graph revision but requires the current transaction fence for writes', async () => {
+		const request = await dto();
+		delete request.expectedGraphRevision;
+		const preview = await configs.configure(output.id, request, true);
+		expect(preview.graph_revision).toBe(await graph.revision());
+		expect(await database.manager.countBy(VirtualDewPointConfigEntity, { outputPropertyId: output.id })).toBe(0);
+		await expect(configs.configure(output.id, request)).rejects.toThrow('graph revision');
+		expect(await database.manager.countBy(VirtualDewPointConfigEntity, { outputPropertyId: output.id })).toBe(0);
+		request.expectedGraphRevision = await graph.revision();
+		expect((await configs.configure(output.id, request)).revision).toBe(1);
 	});
 
 	it('adds both input edges to cycle validation and refuses one-input role abuse', async () => {

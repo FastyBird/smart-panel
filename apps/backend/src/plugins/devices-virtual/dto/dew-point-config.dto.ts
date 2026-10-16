@@ -13,7 +13,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { DEW_POINT_FORMULA, DEW_POINT_ROLES, DewPointRole } from '../services/virtual-dew-point.utils';
 
@@ -54,7 +54,11 @@ export class ConfigureVirtualDewPointDto {
 	@IsInt()
 	@Min(0)
 	expectedRevision: number;
-	@ApiProperty({ name: 'expected_graph_revision', minimum: 0, description: 'Current dependency graph revision' })
+	@ApiPropertyOptional({
+		name: 'expected_graph_revision',
+		minimum: 0,
+		description: 'May be omitted for preview; writes require the current dependency graph revision',
+	})
 	@Expose({ name: 'expected_graph_revision' })
 	@IsOptional()
 	@IsInt()
