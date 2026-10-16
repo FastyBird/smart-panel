@@ -122,3 +122,10 @@ Final composed publication review remains open; VD3-7 is not complete. Automatio
 internal trusted baseline port is reserved for the separate VD3-8 bridge. Bounded restart recovery preserves the
 absolute expiry; observable clock uncertainty inhibits output until an explicit operator action. No hardware
 qualification or physical actuation is part of this local implementation stage.
+
+VD3-9 / #1459 has a locally committed dew-point/cooling software candidate on the composed climate+SDK base.
+Backend software review accepted c32bfeb; the bounded DI/Swagger deltas, client review and later composition remain
+separate root gates. Source-generated contracts, focused Admin (53) and Panel (76) tests are recorded below. Its
+[contract and verification record](../../docs/work/virtual-thermostat/dew-point-cooling-validation.md) keeps generated
+contracts, UI/protocol/persistence tests, independent review and installed qualification explicitly separate. The
+acceptance checkboxes remain open; no issue closure, publication, hardware deployment or certification is claimed.

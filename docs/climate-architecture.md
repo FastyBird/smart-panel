@@ -99,6 +99,29 @@ A numeric converter binds one numeric physical source and declares its output qu
 
 The supplied Shelly Plus 1PM Gen2 pilot exposes its analog floor input as voltage at `voltmeter:100`; its existing NTC script logs Celsius but does not currently expose a Celsius RPC property. The prepared pilot path uses a separate converter with the script's explicit Steinhart–Hart coefficients. A separately configured native Shelly helper that _does_ report Celsius can be used as temperature, with its unit and quality, but raw voltage must not be silently substituted for temperature.
 
+## Dedicated dew point and cooling candidate
+
+Issue #1459 adds a separate persisted two-input dew-point producer (`dry_bulb` Celsius and relative humidity percent),
+versioned Magnus-over-water formula/domain, bounded timestamp skew, retained source identities and recursive current
+lineage. Its quantity is `dew_point`, so it cannot supply ambient/floor temperature, ordinary temperature aggregation,
+space temperature or generic HomeKit temperature. Both fresh good-quality inputs are required; sample time is the
+older input and expiry is the earliest inherited deadline. History/cache reads and same-millisecond equal reports do
+not manufacture fresh authority. Plural lineage is additive to the existing singular transform interface, and final
+publication rechecks physical acceptance plus ancestor publication identity after the awaited history write.
+
+Cooling protection is an independent optional policy and retained per-mandatory-leaf dependency, leaving heating
+`policy.floor`, `local_floor` rows and old artifact bytes unchanged. Each member requires dedicated dew-point evidence
+and a genuine local cooled-surface probe. Trip is inclusive at dew point plus positive margin and any explicit absolute
+minimum; recovery is strictly above each threshold plus hysteresis. One failed member inhibits all cooling siblings.
+Final dispatch reevaluates current arbitration and retains unresolved ON journals until actual qualified OFF/drain.
+
+The new `shelly-ng.remote-dew-point-lease` v1 software candidate uses a separate authenticated transport, artifact,
+epoch/block replay fence and finite remote-threshold lease. Installed cooling remains visibly ineligible pending later
+real post-alpha surface/authentication/timing/isolation/restart-drain qualification. The pilot has no humidity/cooling
+topology, and no hardware action is part of this source work. See the [candidate contract and current verification
+record](work/virtual-thermostat/dew-point-cooling-validation.md). Local backend software review and focused client checks
+are recorded separately from pending client review, composition, CI and installed qualification.
+
 ## Protective control
 
 The operator supplies setpoints, deadband and any enabled floor limit and recovery hysteresis for the installed equipment. No universal protective floor threshold is assumed. A heating floor guard releases heat when the valid floor reading is **at or above** its configured limit. Missing, invalid or stale mandatory floor data inhibits heating. Recovery requires a fresh valid reading **strictly below** `limit - hysteresis`, plus all other gates being clear. A new, lower limit is evaluated against the current reading; it does not await another sensor event.
