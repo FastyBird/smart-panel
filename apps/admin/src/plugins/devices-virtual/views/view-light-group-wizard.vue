@@ -19,6 +19,32 @@
 			@submit.prevent
 		>
 			<el-form-item :label="t('devicesVirtualPlugin.fields.devices.name.title')"><el-input v-model="name" /></el-form-item>
+			<el-form-item :label="t('devicesVirtualPlugin.lightGroup.profile')">
+				<el-select
+					v-model="profile"
+					:disabled="authoring.pending.value"
+					data-test-id="group-profile"
+				>
+					<el-option
+						v-for="option in catalog.profiles.value"
+						:key="option.profile"
+						:value="option.profile"
+						:label="t(`devicesVirtualPlugin.lightGroup.profiles.${option.profile}`)"
+					/>
+				</el-select>
+			</el-form-item>
+			<el-alert
+				v-if="profile === 'cover'"
+				:title="t('devicesVirtualPlugin.lightGroup.coverTypeGuide')"
+				type="info"
+				:closable="false"
+			/>
+			<el-alert
+				v-if="catalog.error.value"
+				:title="catalog.error.value"
+				type="error"
+				:closable="false"
+			/>
 			<el-form-item :label="t('devicesVirtualPlugin.lightGroup.members')">
 				<virtual-light-group-members
 					v-model="memberIds"
@@ -53,7 +79,7 @@
 					v-for="capability in availableCapabilities"
 					:key="capability.category"
 					:value="capability.category"
-					:disabled="capability.category === 'on'"
+					:disabled="requiredCapabilities.includes(capability.category)"
 				>
 					{{ categoryLabel(capability.category) }}
 				</el-checkbox>
@@ -63,7 +89,8 @@
 					v-for="capability in authoring.preview.value?.common_capabilities ?? []"
 					:key="capability.category"
 				>
-					{{ categoryLabel(capability.category) }} {{ capability.unit ?? '' }} {{ capability.format?.join(' – ') ?? '' }}
+					{{ categoryLabel(capability.category) }} {{ capability.unit ?? '' }}
+					{{ capability.format?.join(capability.data_type === 'enum' ? ', ' : ' – ') ?? '' }}
 					{{ capability.step === null ? '' : t('devicesVirtualPlugin.lightGroup.step', { value: capability.step }) }}
 				</li>
 			</ul>
@@ -98,8 +125,8 @@ import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '.
 import { spacesStoreKey } from '../../../modules/spaces/store/keys';
 import type { components } from '../../../openapi';
 import VirtualLightGroupMembers from '../components/virtual-light-group-members.vue';
+import { type GroupProfile, useGroupCatalog } from '../composables/useGroupCatalog';
 import { useLightGroupAuthoring } from '../composables/useLightGroupAuthoring';
-import { lightGroupChannelCandidates } from '../utils/light-group-candidates.utils';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -109,6 +136,9 @@ const channels = stores.getStore(channelsStoreKey);
 const properties = stores.getStore(channelsPropertiesStoreKey);
 const spaces = stores.getStore(spacesStoreKey);
 const authoring = useLightGroupAuthoring();
+const catalog = useGroupCatalog();
+const profile = ref<GroupProfile>('light' as GroupProfile);
+const requiredCapabilities = computed(() => catalog.profiles.value.find((entry) => entry.profile === profile.value)?.required_capabilities ?? ['on']);
 const name = ref('');
 const roomId = ref<string | null>(null);
 const memberIds = ref<string[]>([]);
@@ -118,7 +148,7 @@ const selectedCapabilities = computed({
 	get: () => capabilities.value ?? availableCapabilities.value.map((capability) => capability.category),
 	set: (values) => {
 		const previous = capabilities.value ?? availableCapabilities.value.map((capability) => capability.category);
-		const complete = new Set<string>(['on', ...values]);
+		const complete = new Set<string>([...requiredCapabilities.value, ...values]);
 		for (const tuple of [
 			['color_red', 'color_green', 'color_blue'],
 			['hue', 'saturation'],
@@ -133,13 +163,36 @@ const selectedCapabilities = computed({
 
 const rooms = computed(() => spaces.findAll().filter((space) => space.type === 'room'));
 const candidates = computed(() =>
-	lightGroupChannelCandidates(devices.findAll(), channels.findAll(), properties.findAll()).map((channel) => ({
-		id: channel.id,
-		label: `${devices.findById(channel.device)?.name ?? channel.device} / ${channel.name}`,
+	(catalog.catalog.value?.candidates ?? []).map((candidate) => ({
+		id: candidate.channel,
+		eligible: candidate.eligible,
+		label: `${candidate.name}${candidate.reasons.length ? ` — ${candidate.reasons.join('; ')}` : ''}`,
 	}))
 );
+const metadataSignature = computed(() =>
+	JSON.stringify(
+		properties
+			.findAll()
+			.map(({ id, category, dataType, format, step, permissions, unit }) => ({ id, category, dataType, format, step, permissions, unit }))
+	)
+);
+watch(profile, () => {
+	memberIds.value = [];
+});
+watch(
+	[profile, memberIds, metadataSignature],
+	() => {
+		capabilities.value = undefined;
+		availableCapabilities.value = [];
+		authoring.invalidatePreview();
+		void catalog.load({ profile: profile.value, selected_channels: memberIds.value });
+	},
+	{ deep: true, immediate: true }
+);
+
 const categoryLabel = (category: string) => t(`devicesModule.categories.channelsProperties.${category}`);
 const draft = () => ({
+	profile: profile.value,
 	members: memberIds.value.map((id) => ({ source_channel: id })),
 	...(capabilities.value ? { capabilities: capabilities.value } : {}),
 });
@@ -152,7 +205,15 @@ watch(
 	},
 	{ deep: true }
 );
-watch(capabilities, () => authoring.invalidatePreview(), { deep: true });
+watch(
+	capabilities,
+	() => {
+		if (capabilities.value === undefined) return;
+		authoring.invalidatePreview();
+		void catalog.load({ profile: profile.value, selected_channels: memberIds.value, capabilities: capabilities.value });
+	},
+	{ deep: true }
+);
 const preview = async () => {
 	const result = await authoring.previewDraft(draft());
 	if (result && !availableCapabilities.value.length) availableCapabilities.value = result.common_capabilities;
@@ -167,8 +228,11 @@ onBeforeMount(async () => {
 	await Promise.all(
 		devices
 			.findAll()
-			.filter((device) => device.type !== 'virtual' && device.category === 'lighting')
-			.map((device) => channels.fetch({ deviceId: device.id }))
+			.filter((device) => device.type !== 'virtual')
+			.map(async (device) => {
+				await channels.fetch({ deviceId: device.id });
+				await Promise.all(channels.findForDevice(device.id).map((channel) => properties.fetch({ channelId: channel.id })));
+			})
 	);
 });
 </script>

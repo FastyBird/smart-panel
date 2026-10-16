@@ -1287,5 +1287,78 @@
     }
   },
   "virtual_measurement_true": "Detectado",
-  "virtual_measurement_false": "No detectado"
+  "virtual_measurement_false": "No detectado",
+  "groupActualFeedback": "Información física recibida",
+  "groupReload": "Recargar / reconectar",
+  "groupRepair": "La configuración o las capacidades cambiaron. Recargue y repare los miembros en Admin.",
+  "groupUncertain": "Resultado del comando incierto. Recargue la información real antes de otro intento.",
+  "groupUnknown": "Desconocido",
+  "groupMixed": "Mixto",
+  "groupOn": "Encendido",
+  "groupOff": "Apagado",
+  "groupUnavailable": "No disponible",
+  "groupOpen": "Abrir",
+  "groupClose": "Cerrar",
+  "groupStop": "Detener",
+  "groupSelectValue": "Seleccionar valor nativo",
+  "groupApply": "Aplicar",
+  "groupApplyTogether": "Aplicar juntos",
+  "groupConfigured": "Metadatos de configuración",
+  "groupMissing": "Falta un miembro; reparar en Admin",
+  "groupReadinessUnavailable": "Disponibilidad del comando desconocida",
+  "groupCoverMeaning": "ABRIR/CERRAR confirma el inicio del movimiento o un extremo alcanzado, no todo el recorrido. STOP requiere información de parada cualificada.",
+  "groupContributors": "{count}/{total} miembros contribuyentes",
+  "groupCommandOutcome": "Comando de grupo: {status}",
+  "groupStep": "Paso {value}",
+  "groupPending": "Pendiente",
+  "groupConfirmed": "Confirmado",
+  "groupPartial": "Parcial",
+  "groupFailed": "Fallido",
+  "groupSuperseded": "Sustituido",
+  "groupTimedOut": "Tiempo agotado",
+  "groupFieldOn": "Alimentación",
+  "groupFieldSpeed": "Velocidad",
+  "groupFieldSwing": "Oscilación",
+  "groupFieldDirection": "Dirección",
+  "groupFieldMode": "Modo",
+  "groupFieldPosition": "Posición",
+  "groupFieldTilt": "Inclinación",
+  "groupFieldType": "Tipo",
+  "groupFieldStatus": "Estado",
+  "groupFieldObstruction": "Obstrucción",
+  "groupFieldInUse": "En uso",
+  "groupFieldBrightness": "Brillo",
+  "groupFieldColorTemperature": "Temperatura de color",
+  "groupFieldColorRed": "Rojo",
+  "groupFieldColorGreen": "Verde",
+  "groupFieldColorBlue": "Azul",
+  "groupFieldHue": "Tono",
+  "groupFieldSaturation": "Saturación",
+  "@groupContributors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@groupCommandOutcome": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "@groupStep": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOpenAll": "Abrir todas",
+  "groupCloseAll": "Cerrar todas",
+  "groupStopAll": "Detener todas"
 }

@@ -201,6 +201,22 @@ class DevicesService extends ChangeNotifier {
   }
 
   Future<bool> setPropertyValue(String id, dynamic value) async {
+    final property = getChannelProperty(id);
+    final channel = property == null ? null : getChannel(property.channel);
+    if (channel != null &&
+        getDevice(channel.device)?.isCompositeGroup == true) {
+      return (await setCompositeProperties(
+        deviceId: channel.device,
+        properties: [
+          PropertyCommandItem(
+            deviceId: channel.device,
+            channelId: channel.id,
+            propertyId: id,
+            value: value,
+          ),
+        ],
+      )).confirmed;
+    }
     return await _channelPropertiesRepository.setValue(id, value);
   }
 
@@ -213,6 +229,23 @@ class DevicesService extends ChangeNotifier {
     required dynamic value,
     PropertyCommandContext? context,
   }) async {
+    if (getDevice(deviceId)?.isCompositeGroup == true) {
+      final commands = compositeCommands;
+      if (commands == null) return false;
+      return (await commands.send(
+        deviceId: deviceId,
+        properties: [
+          PropertyCommandItem(
+            deviceId: deviceId,
+            channelId: channelId,
+            propertyId: propertyId,
+            value: value,
+          ),
+        ],
+        context:
+            context ?? const PropertyCommandContext(origin: 'panel.device'),
+      )).confirmed;
+    }
     return await _channelPropertiesRepository.setMultipleValues(
       properties: [
         PropertyCommandItem(
@@ -233,6 +266,26 @@ class DevicesService extends ChangeNotifier {
     PropertyCommandContext? context,
     bool requireAtomicBatch = false,
   }) async {
+    final groupIds = properties
+        .where((target) => getDevice(target.deviceId)?.isCompositeGroup == true)
+        .map((target) => target.deviceId)
+        .toSet();
+    final hasNonGroup = properties.any(
+      (target) => getDevice(target.deviceId)?.isCompositeGroup != true,
+    );
+    if (groupIds.length > 1 || (groupIds.isNotEmpty && hasNonGroup)) {
+      return false;
+    }
+    if (groupIds.isNotEmpty) {
+      final commands = compositeCommands;
+      if (commands == null) return false;
+      return (await commands.send(
+        deviceId: groupIds.single,
+        properties: properties,
+        context:
+            context ?? const PropertyCommandContext(origin: 'panel.device'),
+      )).confirmed;
+    }
     return await _channelPropertiesRepository.setMultipleValues(
       properties: properties,
       context: context,

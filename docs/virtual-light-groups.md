@@ -1,4 +1,4 @@
-# Virtual light groups
+# Virtual actuator groups
 
 A lighting device in `actuator_group` mode owns derived output rows and durable member/channel/property bindings.
 The initial profile accepts 2–256 physical light channels. Members keep their identities after deletion: nullable live
@@ -12,11 +12,11 @@ The authoring preview returns `common_capabilities`. Exposed output rows keep th
 An edit incompatible with an exposed optional output returns a repair conflict; it never silently deletes the output
 or its scene/tile references. Missing members retain the last validated exposed contract while requiring explicit repair.
 
-## Additional backend profiles
+## Switch and outlet profiles
 
 The backend authoring/configuration API also supports `switch` and `outlet` profiles with matching device/channel
 categories. Each group has 2–256 homogeneous physical members. Existing light-group endpoint, schema and storage names
-remain compatibility aliases. Admin/panel authoring for these profiles is tracked separately in #1453.
+remain compatibility aliases. The locally staged #1453 batch adds Admin authoring and Panel controls for all five profiles; delivery remains pending PR review and CI.
 
 Switch and outlet profiles expose common readable/writable ON. An outlet may additionally expose common read-only
 `in_use`; it is a reported value, not a command target. They do not create aggregate power or energy counters.
@@ -27,6 +27,80 @@ Their boolean fields must support both states: no format, an empty format, or ex
 (case-insensitive). One-state or malformed formats are refused by preview and persistence. Command planning rechecks
 both output and physical-member contracts, and runtime feedback becomes unavailable when those contracts drift.
 This also fences previously materialized invalid rows. The legacy light profile keeps its existing format policy.
+
+## Fan and cover contracts
+
+The existing group endpoints accept `fan` and `cover`. Both require 2–256 homogeneous physical members.
+The `LightGroup` API/storage names remain compatibility aliases. HomeKit/HA mappings remain separate work (#1461).
+
+| Profile | Required fields                         | Optional fields                       | Source access                                                         |
+| ------- | --------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| Fan     | `on` boolean                            | `speed`, `swing`, `direction`, `mode` | Read/write                                                            |
+| Cover   | `type`, `status`, `position`, `command` | `tilt`, `obstruction`                 | Type/status/obstruction read; position/tilt read/write; command write |
+
+Fan speed uses either native percentage (`uchar`, %) or discrete enum levels; these representations cannot mix.
+Cover position likewise preserves percentage versus discrete states. Tilt uses native degrees. Numeric fields require
+explicit finite ranges within the channel specification and a compatible common decimal grid. Enum controls expose
+only the shared supported values. Cover command sets must match exactly. Cover type requires the same singleton
+metadata declaration on every member; a broad list of possible installed types is refused. There is no inversion,
+calibration, unit conversion, speed-to-ON inference, timer, breeze or lock policy.
+
+New numeric and enum observations require exact agreement across every intended member, including powered-off fans.
+Conflicting or missing positions/speeds/status remain null with mixed/contributor diagnostics; they are never averaged
+or rounded into a physical observation. Obstruction also requires agreement; a mixed result retains its contributors
+and does not mean the obstruction cleared. Cover ON counts describe unavailable power fields; use each property's
+value/mixed/contributors and member reasons for covering feedback. Freshness remains 300 seconds and restart waits
+for fresh evidence. Membership repair preserves output UUIDs and the exact exposed range/grid/enum contract.
+
+Commands use the existing prepared canonical-leaf core path with revision, claims, deadline and per-member outcomes.
+Shelly NG now supplies the first qualified `cover_action` adapter for calibrated covers. Other adapters remain
+unavailable for strict cover commands: generic Zigbee `STOP` mapping, ordinary HA updates and Shelly V1 are not proof.
+
+For Shelly NG, select the physical cover TYPE explicitly through the existing property metadata API: set the TYPE
+property's `format` to a singleton supported type (for example `['blind']`). This is operator configuration on the
+canonical physical component, not an inferred model/name/default or live measurement. Rediscovery preserves it.
+Unconfigured or broad TYPE declarations remain visible but ineligible. The group reports TYPE with
+`provenance: configured`, without a physical sample timestamp or derived history publication.
+
+Preview and configuration responses expose per-operation `operations` readiness, with per-member refusal reasons.
+Structural `rw`/`wo` field access is separate from current commandability. Shelly POSITION and TILT commands are
+explicitly unavailable in this adapter; their truthful observations remain available. Full required TYPE/STATUS/
+POSITION/COMMAND and exposed optional metadata are checked together during creation, repair, planning and reporting.
+Drift or deletion excludes the entire affected member, preserving intended identities and unknowns.
+
+The native field contract follows the [Shelly Cover API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Cover/), including its nullable status tag and optional action tag. The pinned SDK cover helpers omit action tags, so the adapter uses its guarded native RPC transport.
+
+COMMAND confirmation uses the same pinned guarded RPC session for a tagged action and a distinct post-response
+`Cover.GetStatus`. OPEN/CLOSE confirm **motion begun in the requested direction**, or a freshly observed correct terminal
+endpoint. They do not claim full travel completed. Child reasons distinguish `cover_action_begun`,
+`cover_target_observed` and `cover_stopped`. Group STATUS/POSITION always come from actual samples, never the requested
+terminal target. STOP requires explicit native `open`, `closed` or `stopped`; unchanged position cannot prove cessation.
+A fresh idle no-op STOP is accepted only after the serialized successful action response and fresh matching idle state.
+Cover STATUS reporting also requires the internal native-status semantic classification; a generic live packet or imperative STOP mapping cannot establish stopped state.
+Moving confirmation requires the exact unique action tag. Incorrect tags cannot prove motion; freshly correct terminal endpoints and ordered idle STOP no-ops may retain an earlier tag. Calibration, malformed/out-of-range
+position, faults, cached data and pre-action replies cannot confirm a command. Readiness requires a fresh qualified native status that actually exposes the tag field. An opaque process-local observation token and acceptance boundary bind proof to the exact admitted STATUS/POSITION samples, never unrelated equal values. Raw validation precedes transformation;
+invalid/uncalibrated input immediately invalidates qualified position rather than clamping it into evidence.
+
+The existing absolute composite/intent deadline remains bounded by 30 seconds, without renewal. Every command and
+readback checks its core generation, physical motor effect scope, provider session/mapping, metadata and graph fences.
+Direct COMMAND/POSITION/shared-drive TILT requests supersede pending group observations for that motor, including when
+an unsupported new control is refused. Sibling motor effects consult the existing ownership admission guards too.
+Timeout, remap, deletion, disconnect and shutdown revoke confirmation authority and stop further polling/sends;
+late physical replies cannot repair terminal outcomes. SDK authentication retries and queued sends retain send guards.
+
+Migration `1000000000038` adds a durable unresolved-submission journal keyed by physical MAC/component, without a
+cascading device FK. Submission is journaled before send; only a matched successful action response retires a sent
+entry. An uncertain earlier action blocks newer qualification across rediscovery and restart. No command is replayed,
+and restart never restores process-local confirmation or physical sample authority. The pinned SDK collapses remote
+errors and transport failures to ordinary errors; this adapter conservatively retains the journal for either. There is
+no automatic journal reset or fabricated drain barrier; unresolved installations require separately qualified recovery.
+
+Acceptance uses mock RPC transport with the real pinned SDK, production Shelly adapter/delegate, real SQLite,
+normal qualified sample admission and core composite windows. It covers tagged motion/no-op endpoints/STOP, malformed
+and missing evidence, ACK-only/late responses, partial members, direct/group supersession, ownership effects,
+configuration/metadata/deletion/disconnect/shutdown fences, normal raw reports, TYPE persistence/readiness and journal
+migration/restart behavior. This is backend software evidence. The #1453 software UI flows below are staged locally; installed equipment
+qualification and hardware acceptance remain after alpha.
 
 ## Feedback and quality
 
@@ -51,7 +125,7 @@ RGB/saturation, 2 degrees for hue, and 25 K for color temperature. Any unknown/m
 ## Core command integration
 
 `CompositePropertyCommandRegistryService` is an internal opt-in planner registry. The virtual plugin registers only
-validated derived light outputs in a lighting actuator-group owner. Public DTOs cannot select planners or bypass a
+validated derived typed-group outputs in an actuator-group owner. Public DTOs cannot select planners or bypass a
 read-only property. Parent target values still validate against the durable exposed contract.
 
 The planner snapshots all intended bindings and the graph/configuration revisions. Core expansion covers an entire
@@ -77,6 +151,16 @@ Each child ends as confirmed, failed, unavailable, superseded or timed out. A pa
 intended child confirms, partial when some confirm, and failed when none confirm. New physical generations and
 cancellation notify active parents, including an already-confirmed early child; ordinary confirmation-grace expiry does
 not erase confirmation. Confirmation is recorded immediately even when a provider acknowledgement hangs.
+Parent completion additionally requires a durable binding check to return true before the absolute deadline.
+This tightens the earlier deadline behavior: finishing at or after expiry no longer skips that check. If no
+validation budget remains, or a read cannot finish in time, an observed physical confirmation is retained as
+an `unavailable` child with reason `Physical confirmation observed; final binding validation unavailable before deadline`.
+A validation error is likewise unavailable, rather than evidence that the physical action failed or the binding changed.
+A timely false binding check or actual generation fence supersedes the child. Identity and generation remain in the
+result; other terminal child outcomes are preserved. A late validation or physical sample cannot repair a completed
+snapshot. Thus a parent can be failed even after physical confirmation when no child has final validated authority;
+the child reason explicitly distinguishes that uncertainty from physical failure. The applied synchronous send guard
+does not replace durable validation, including in shared-writer configurations. This never extends the intent budget.
 Configuration remaps fence the parent. Observers are removed on completion, timeout and module
 shutdown. There is no promise of atomic hardware rollback after partial completion.
 
@@ -112,3 +196,120 @@ Production availability depends on adapters submitting qualified live feedback; 
 adapters that write only values remain unknown. WLED partial observations preserve omitted main RGB values; only full
 snapshots or explicitly unsafe main-segment identities invalidate those colors. A provider without guarded composite preparation is also refused at
 dispatch, so neither optimistic writes nor a queued obsolete command can count as group success.
+
+## Authoring and repairing native groups (locally staged #1453)
+
+In Admin, open the group wizard and select Light, Switch, Outlet, Fan or Cover. Profile definitions and candidate
+compatibility come from `POST /plugins/devices-virtual/producers/light-group-candidates`, using the same typed policy
+as creation and repair. Only homogeneous physical channels are eligible. Candidate diagnostics explain incompatible
+quantities, enum intersections, ranges/grids and required cover metadata. A catalog or UI readiness result grants no
+write authority: preview, persistence and dispatch each revalidate their own current contract.
+
+Select 2–256 members, preview their common capabilities, optionally remove non-required controls, then preview again
+before creating. Fan discrete speed, direction and mode display their native shared choices. A native percentage speed
+remains numeric; no percentage/discrete conversion is offered. Changing profile, selected members, optional fields or
+source metadata invalidates the previous preview. Existing measurement editors and light color tuples retain their
+own flows.
+
+For each physical Shelly NG cover, first choose the installed TYPE explicitly using its supported metadata endpoint:
+
+```http
+PATCH /api/v1/modules/devices/channels/<physical-channel>/properties/<type-property>
+Content-Type: application/json
+
+{"data":{"type":"devices-shelly-ng","format":["blind"]}}
+```
+
+Use the actual property integration `type` and a supported singleton installed covering type. Do not include `value`.
+This is a configuration change, not a motor command. It persists through rediscovery. The wizard displays this guidance
+and the precise TYPE incompatibility when the declaration is missing. It never guesses from names/models or publishes
+configured TYPE as a physical sample.
+
+Open the group's Admin detail to edit membership. Deleted members keep their original channel/property identities;
+replace their live source explicitly. Repair candidates must preserve every durable output UUID and its exposed
+capability contract. Metadata changes require reload/re-preview; an incompatible change cannot silently remove an
+output referenced by scenes or tiles.
+
+## Panel controls, quality and command outcomes
+
+Native group categories open a shared group detail with actual reported feedback, contributor counts, missing member
+identities and refusal reasons. False remains Off; missing, expired or unavailable is Unknown; disagreement is Mixed.
+Reported expiry comes from actual source sample clocks. Refreshing REST does not renew it. Configured TYPE is separately
+labelled. Numeric/enum fan speeds and cover positions are never averaged into an observation.
+
+On/Off, compatible fan native controls and light tuples use the existing composite command transport. All tuple fields
+are submitted together. Pending requests disable repeat submissions and retain actual feedback. Partial/failed,
+superseded, timed-out and unavailable outcomes retain individual member identities/reasons. Reload/reconnect fences
+late responses; configuration changes require an explicit reload and membership repair in Admin where necessary.
+
+Cover controls use each operation's backend readiness. OPEN/CLOSE confirms motion started or an already correct
+endpoint, not full travel. STOP requires the qualified stopped-feedback path described above. POSITION and TILT remain
+unavailable as commands in the current adapter; they can still display qualified actual observations. Unsupported
+providers, tag uncertainty, uncalibrated/unavailable position and missing bindings retain concrete refusal reasons.
+The backend rechecks readiness and all core evidence/ordering guards at execution.
+
+## Explicit operator recovery of uncertain cover ordering
+
+A possibly sent Shelly NG action with an unresolved RPC response keeps its physical motor blocked. Elapsed time,
+reconnection, fresh idle feedback and application restart do not clear that reservation. Readiness reports
+`cover_ordering_unresolved_operator_recovery_required`.
+
+An identified Owner or Admin can explicitly accept the uncertainty from the physical cover's Admin detail or its group
+member's recovery action. Previously sent actions may still execute after recovery; the operator accepts responsibility
+for physical handback. Load the current context, review the motor identity/reservation, select the acknowledgement and
+enter a reason. Neither displays nor ordinary users can use the recovery API. Recovery never sends OPEN, CLOSE, STOP,
+POSITION or TILT, and it never changes the original command's terminal outcome.
+
+The authorized GET/POST endpoint is
+`/plugins/devices-shelly-ng/devices/{deviceId}/channels/{channelId}/properties/{propertyId}/cover-ordering-recovery`.
+GET returns an expiring, actor-bound context with the exact unresolved token and mapping/source/configuration/connection
+revision. POST requires those values, `acknowledgement: accept_uncertain_physical_handback` and a nonblank reason of at
+most 500 characters. Active/prepared local dispatch, expired/stale context, moving/faulted/uncalibrated status, lost
+connection or a failed audit transaction refuses the override. A failed attempt requires a new context and explicit
+acknowledgement; no automatic retry or replay is performed.
+
+Recovery revokes old motor windows, queued/retry guards and the old session, then reads a distinct guarded native
+`Cover.GetStatus` on the current connection. An explicit calibrated/tag-capable open, closed or stopped response is only
+a current-condition prerequisite. **It does not prove upstream drain or completion.** Exact token deletion and the
+operator's actor/time, old identity/token, reason, observed condition and new override epoch are committed together in the
+migration-42 audit table. A fresh session is published behind the closed motor lane only on commit; rollback retires it.
+The result is labelled `operator_overridden_unresolved_ordering`, an advisory rather than command evidence. Subsequent
+commands still require their own current core admission and qualified action/readback proof. POSITION/TILT remain
+unavailable on the current qualified adapter.
+
+## Scenes and room intent scope
+
+Admin scene action add/edit reads the same native group access/readiness metadata, including derived output properties
+whose storage permission is read-only. Cover scene choices include only ready native COMMAND values; no position/tilt
+control is advertised as usable. Scene execution remains in `LocalScenePlatform` and core composite dispatch with the
+scene's existing absolute deadline, estimated group budget and per-member outcomes. There is no second command engine.
+
+The existing covers room domain dispatches group OPEN/CLOSE/STOP as native COMMAND operations.
+It uses shared canonical-leaf contribution selection to exclude represented raw members and reject overlapping groups.
+Producer connectivity stays UNKNOWN and does not determine group command eligibility: room discovery and intents retain
+the group identity, while the composite dispatcher revalidates qualified member readiness. An unavailable group never
+falls back to its represented raw members, including members assigned a different room role. Ordinary physical
+UNKNOWN/offline covers keep their existing offline refusal.
+Repair overlap by changing membership or the existing cover participation role (HIDDEN excludes a representative).
+Unrelated ordinary covers keep their existing position-first controls and dispatch independently of group convergence,
+under the captured intent authority and absolute deadline. A refused or timed-out group does not suppress their sends.
+Panel submits **all room-cover intents once through REST**, including ordinary physical-only rooms. The server
+classifies current targets and returns the actual ordinary or composite outcome. The request has a 35-second bound
+and disables network and token-refresh retries. There is no WebSocket-first send or REST replay after a lost response:
+even a loaded client catalogue can lag device creation or room reassignment. A missing or late response remains
+unconfirmed; it does not create optimistic success. Ordinary physical cover controls remain available through this
+single REST path; backend position-first behavior, intent authority and deadlines are unchanged. Device-level composite
+commands and the light/climate room transports retain their existing paths.
+
+Room controls display agreement/mixed/unknown actual position, source expiry, readiness/refusal and composite outcomes.
+Group-containing rooms offer no relative-position, preset-mode or guessed position-to-command conversion. Room-wide
+relative-position and mode requests fail for every target before any dispatch, including in mixed rooms. A group outside
+a role-specific target does not block that role's ordinary controls. The shading page removes mode popups and also guards
+retained popup callbacks when a room changes to grouped controls. Explicit
+position requests still reach core validation and remain unavailable on the current qualified adapter. Ordinary
+physical-only covers and the existing light room domain retain their policies.
+
+There is currently **no standalone switch, outlet or fan room intent domain**. Device controls and scene actions for
+those profiles are supported, but mapping them into lighting/HVAC or inventing a new room domain is outside this batch.
+Consequently the broad room-control portion of #1453 remains limited to existing light and cover domains; this guide
+and the epic do not mark #1453 delivered or close the issue. Installed-device qualification remains after alpha.

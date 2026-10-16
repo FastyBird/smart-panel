@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:flutter/material.dart';
 
 class DeviceView {
+  final bool isCompositeGroup;
   final String _id;
   final String _type;
   final DevicesModuleDeviceCategory _category;
@@ -21,6 +22,7 @@ class DeviceView {
   final List<ValidationIssue> _validationIssues;
 
   DeviceView({
+    this.isCompositeGroup = false,
     required String id,
     required String type,
     DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.generic,
@@ -35,20 +37,20 @@ class DeviceView {
     DateTime? lastStateChange,
     bool isValid = true,
     List<ValidationIssue> validationIssues = const [],
-  })  : _id = id,
-        _type = type,
-        _category = category,
-        _name = name,
-        _description = description,
-        _icon = icon,
-        _roomId = roomId,
-        _zoneIds = zoneIds,
-        _channels = channels,
-        _enabled = enabled,
-        _isOnline = isOnline,
-        _lastStateChange = lastStateChange,
-        _isValid = isValid,
-        _validationIssues = validationIssues;
+  }) : _id = id,
+       _type = type,
+       _category = category,
+       _name = name,
+       _description = description,
+       _icon = icon,
+       _roomId = roomId,
+       _zoneIds = zoneIds,
+       _channels = channels,
+       _enabled = enabled,
+       _isOnline = isOnline,
+       _lastStateChange = lastStateChange,
+       _isValid = isValid,
+       _validationIssues = validationIssues;
 
   String get id => _id;
 

@@ -16,6 +16,7 @@ import {
 } from '../../modules/devices';
 
 import { ShellyNgConfigForm, ShellyNgDeviceAddForm, ShellyNgDeviceEditForm } from './components/components';
+import ShellyCoverRecoverySection from './components/shelly-cover-recovery-section.vue';
 import { useDevicesWizard } from './composables/composables';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
 import { locales } from './locales';
@@ -76,6 +77,7 @@ export default {
 					components: {
 						deviceAddForm: ShellyNgDeviceAddForm,
 						deviceEditForm: ShellyNgDeviceEditForm,
+						deviceDetailSection: ShellyCoverRecoverySection,
 						deviceWizardAdapter: useDevicesWizard,
 					},
 					schemas: {

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { components } from '../../../openapi';
+
 import { useLightGroupAuthoring } from './useLightGroupAuthoring';
 
 const client = vi.hoisted(() => ({ GET: vi.fn(), POST: vi.fn() }));
@@ -43,6 +45,20 @@ describe('light group preview admission', () => {
 		await expect(authoring.create({ ...draft(['a', 'c']), device: { name: 'Group' } })).rejects.toThrow('previewRequired');
 		expect(client.POST).toHaveBeenCalledTimes(1);
 	});
+	it('requires a new preview when only the profile changes', async () => {
+		client.POST.mockReset().mockResolvedValue(response(3));
+		const authoring = useLightGroupAuthoring();
+		await authoring.previewDraft(draft(['a', 'b']));
+		await expect(
+			authoring.create({
+				...draft(['a', 'b']),
+				profile: 'fan' as components['schemas']['DevicesVirtualPluginCreateLightGroupDraft']['profile'],
+				device: { name: 'Fan' },
+			})
+		).rejects.toThrow('previewRequired');
+		expect(client.POST).toHaveBeenCalledTimes(1);
+	});
+
 	it('exposes server revision refusal without retrying or creating a second request', async () => {
 		client.POST.mockReset()
 			.mockResolvedValueOnce(response(4))

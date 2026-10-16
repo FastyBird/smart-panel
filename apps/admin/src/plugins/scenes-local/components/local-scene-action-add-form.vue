@@ -55,7 +55,7 @@
 		>
 			<template #label>
 				<div class="grow-1">
-					{{  t('scenesLocalPlugin.fields.device.title')  }}
+					{{ t('scenesLocalPlugin.fields.device.title') }}
 				</div>
 
 				<el-checkbox
@@ -127,7 +127,11 @@
 		>
 			<el-select
 				v-model="model.channelId"
-				:placeholder="channelsOptions.length === 0 && model.deviceId && !loadingChannels ? t('scenesLocalPlugin.fields.channel.noChannels') : t('scenesLocalPlugin.fields.channel.placeholder')"
+				:placeholder="
+					channelsOptions.length === 0 && model.deviceId && !loadingChannels
+						? t('scenesLocalPlugin.fields.channel.noChannels')
+						: t('scenesLocalPlugin.fields.channel.placeholder')
+				"
 				name="channelId"
 				:loading="loadingChannels"
 				:disabled="!model.deviceId || channelsOptions.length === 0"
@@ -150,7 +154,11 @@
 		>
 			<el-select
 				v-model="model.propertyId"
-				:placeholder="propertiesOptions.length === 0 && model.channelId && !loadingProperties ? t('scenesLocalPlugin.fields.property.noProperties') : t('scenesLocalPlugin.fields.property.placeholder')"
+				:placeholder="
+					propertiesOptions.length === 0 && model.channelId && !loadingProperties
+						? t('scenesLocalPlugin.fields.property.noProperties')
+						: t('scenesLocalPlugin.fields.property.placeholder')
+				"
 				name="propertyId"
 				:loading="loadingProperties"
 				:disabled="!model.channelId || propertiesOptions.length === 0"
@@ -167,6 +175,13 @@
 			</el-select>
 		</el-form-item>
 
+		<el-alert
+			v-if="groupControls.isGroup.value"
+			:title="t('devicesVirtualPlugin.lightGroup.commonOnly')"
+			:description="groupControls.diagnostics.value.join('; ')"
+			type="info"
+			:closable="false"
+		/>
 		<el-form-item
 			:label="t('scenesLocalPlugin.fields.value.title')"
 			prop="value"
@@ -246,11 +261,12 @@ import {
 	useChannelsProperties,
 	useDevices,
 } from '../../../modules/devices';
-import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
 import type { ISceneActionAddFormProps } from '../../../modules/scenes/components/actions/scene-action-add-form.types';
-import type { ISceneActionAddForm } from '../../../modules/scenes/schemas/scenes.types';
 import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
-import { SCENE_CATEGORY_DEVICE_RECOMMENDATIONS, SCENES_LOCAL_TYPE } from '../scenes-local.constants';
+import type { ISceneActionAddForm } from '../../../modules/scenes/schemas/scenes.types';
+import { DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
+import { useGroupSceneControls } from '../../devices-virtual/composables/useGroupSceneControls';
+import { SCENES_LOCAL_TYPE, SCENE_CATEGORY_DEVICE_RECOMMENDATIONS } from '../scenes-local.constants';
 import type { ILocalSceneActionAddForm } from '../schemas/actions.types';
 
 defineOptions({
@@ -304,20 +320,26 @@ const hasRecommendedCategories = computed<boolean>(() => {
 });
 
 const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
-const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({
+const {
+	channels,
+	fetchChannels,
+	areLoading: loadingChannels,
+} = useChannels({
 	deviceId: computed<string>((): string => model.deviceId),
 });
-const { properties, fetchProperties, areLoading: loadingProperties } = useChannelsProperties({
+const {
+	properties,
+	fetchProperties,
+	areLoading: loadingProperties,
+} = useChannelsProperties({
 	channelId: selectedChannelId,
 });
 
-// Helper to check if a property is writable
-const isPropertyWritable = (property: IChannelProperty): boolean => {
-	return (
-		property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) ||
-		property.permissions.includes(DevicesModuleChannelPropertyPermissions.wo)
-	);
-};
+const groupControls = useGroupSceneControls(
+	computed(() => devices.value.find((device) => device.id === model.deviceId)),
+	channels
+);
+const isPropertyWritable = (property: IChannelProperty): boolean => groupControls.allowed(property);
 
 // Filter properties to only writable ones
 const writableProperties = computed<IChannelProperty[]>(() => {
@@ -367,7 +389,9 @@ const selectedPropertyFormat = computed<string[] | null>(() => {
 	return stringValues.length > 0 ? stringValues : null;
 });
 
-const enumOptions = computed<string[]>(() => selectedPropertyFormat.value || []);
+const enumOptions = computed<string[]>(() =>
+	(selectedPropertyFormat.value || []).filter((value) => !selectedProperty.value || groupControls.allowed(selectedProperty.value, value))
+);
 
 const numberMin = computed<number | undefined>(() => {
 	if (!selectedProperty.value) return undefined;
@@ -528,7 +552,7 @@ const submit = async (): Promise<void> => {
 
 	const valid = await formEl.value.validate().catch(() => false);
 
-	if (!valid) {
+	if (!valid || (selectedProperty.value && !groupControls.allowed(selectedProperty.value, model.value))) {
 		formResult.value = FormResult.ERROR;
 		throw new Error('Form not valid');
 	}

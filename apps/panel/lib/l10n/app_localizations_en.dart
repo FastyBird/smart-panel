@@ -4230,4 +4230,160 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get virtual_measurement_false => 'Not detected';
+
+  @override
+  String get groupActualFeedback => 'Reported physical feedback';
+
+  @override
+  String get groupReload => 'Reload / reconnect';
+
+  @override
+  String get groupRepair =>
+      'Configuration or capabilities changed. Reload and repair membership in Admin.';
+
+  @override
+  String get groupUncertain =>
+      'Command result uncertain. Reload actual feedback before another attempt.';
+
+  @override
+  String get groupUnknown => 'Unknown';
+
+  @override
+  String get groupMixed => 'Mixed';
+
+  @override
+  String get groupOn => 'On';
+
+  @override
+  String get groupOff => 'Off';
+
+  @override
+  String get groupUnavailable => 'Unavailable';
+
+  @override
+  String get groupOpen => 'Open';
+
+  @override
+  String get groupClose => 'Close';
+
+  @override
+  String get groupStop => 'Stop';
+
+  @override
+  String get groupSelectValue => 'Select native value';
+
+  @override
+  String get groupApply => 'Apply';
+
+  @override
+  String get groupApplyTogether => 'Apply together';
+
+  @override
+  String get groupConfigured => 'Configured metadata';
+
+  @override
+  String get groupMissing => 'Missing member; repair in Admin';
+
+  @override
+  String get groupReadinessUnavailable => 'Command readiness unavailable';
+
+  @override
+  String get groupCoverMeaning =>
+      'OPEN/CLOSE confirms motion begun or an already reached endpoint, not full travel. STOP requires qualified stopped feedback.';
+
+  @override
+  String groupContributors(int count, int total) {
+    return '$count/$total contributing members';
+  }
+
+  @override
+  String groupCommandOutcome(String status) {
+    return 'Group command: $status';
+  }
+
+  @override
+  String groupStep(String value) {
+    return 'Step $value';
+  }
+
+  @override
+  String get groupPending => 'Pending';
+
+  @override
+  String get groupConfirmed => 'Confirmed';
+
+  @override
+  String get groupPartial => 'Partial';
+
+  @override
+  String get groupFailed => 'Failed';
+
+  @override
+  String get groupSuperseded => 'Superseded';
+
+  @override
+  String get groupTimedOut => 'Timed out';
+
+  @override
+  String get groupFieldOn => 'Power';
+
+  @override
+  String get groupFieldSpeed => 'Speed';
+
+  @override
+  String get groupFieldSwing => 'Swing';
+
+  @override
+  String get groupFieldDirection => 'Direction';
+
+  @override
+  String get groupFieldMode => 'Mode';
+
+  @override
+  String get groupFieldPosition => 'Position';
+
+  @override
+  String get groupFieldTilt => 'Tilt';
+
+  @override
+  String get groupFieldType => 'Type';
+
+  @override
+  String get groupFieldStatus => 'Status';
+
+  @override
+  String get groupFieldObstruction => 'Obstruction';
+
+  @override
+  String get groupFieldInUse => 'In use';
+
+  @override
+  String get groupFieldBrightness => 'Brightness';
+
+  @override
+  String get groupFieldColorTemperature => 'Color temperature';
+
+  @override
+  String get groupFieldColorRed => 'Red';
+
+  @override
+  String get groupFieldColorGreen => 'Green';
+
+  @override
+  String get groupFieldColorBlue => 'Blue';
+
+  @override
+  String get groupFieldHue => 'Hue';
+
+  @override
+  String get groupFieldSaturation => 'Saturation';
+
+  @override
+  String get groupOpenAll => 'Open all';
+
+  @override
+  String get groupCloseAll => 'Close all';
+
+  @override
+  String get groupStopAll => 'Stop all';
 }

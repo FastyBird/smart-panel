@@ -12,6 +12,7 @@ import { PluginsTypeMapperService } from '../../../modules/config/services/plugi
 import {
 	ChannelCategory,
 	ConnectionState,
+	DataTypeType,
 	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
@@ -188,6 +189,308 @@ describe('HomeKit lifecycle with real HAP accessories and serialized config muta
 		const count = commits;
 		await listener.handleDeviceDeleted(device);
 		expect(commits).toBe(count);
+	});
+
+	it.each([ChannelCategory.CARBON_DIOXIDE, ChannelCategory.FAN])(
+		'pins %s admission metadata before its first name update, including snapshot restore',
+		async (category) => {
+			const source = channel(device, 'source', category);
+			if (category === ChannelCategory.FAN)
+				Object.assign(property(source, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+			const value = Object.assign(
+				property(
+					source,
+					'source-value',
+					category === ChannelCategory.FAN ? PropertyCategory.SPEED : PropertyCategory.CONCENTRATION,
+					40,
+				),
+				{
+					dataType: DataTypeType.FLOAT,
+					unit: category === ChannelCategory.FAN ? '%' : 'ppm',
+					format: [0, 100],
+					step: 1,
+				},
+			);
+			await bridge.start();
+			const original = accessory();
+			const snapshot = registry.getSnapshot();
+			registry.clearAllBindings();
+			registry.restoreSnapshot(snapshot);
+			const renamed = Object.assign(new ChannelPropertyEntity(), value, {
+				name: 'New display name',
+				channel: source.id,
+			});
+			if (category === ChannelCategory.FAN) await listener.handleFanMetadataChanged(renamed);
+			else await listener.handleCarbonDioxideMetadataChanged(renamed);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			expect(accessory()).toBe(original);
+			expect(registry.admissionMetadataChanged(renamed, source)).toBe(false);
+			expect(
+				registry.admissionMetadataChanged(
+					Object.assign(new ChannelPropertyEntity(), renamed, { unit: 'invalid' }),
+					source,
+				),
+			).toBe(true);
+		},
+	);
+	it.each([
+		[ChannelCategory.CARBON_DIOXIDE, 'reject'],
+		[ChannelCategory.FAN, 'reject'],
+		[ChannelCategory.CARBON_DIOXIDE, 'null'],
+		[ChannelCategory.FAN, 'null'],
+	] as const)(
+		'handles %s metadata channel lookup %s without silently dropping a mapped-owner rebuild',
+		async (category, outcome) => {
+			const source = channel(device, 'source', category);
+			if (category === ChannelCategory.FAN)
+				Object.assign(property(source, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+			const value = Object.assign(
+				property(
+					source,
+					'source-value',
+					category === ChannelCategory.FAN ? PropertyCategory.SPEED : PropertyCategory.CONCENTRATION,
+					40,
+				),
+				{
+					dataType: DataTypeType.FLOAT,
+					unit: category === ChannelCategory.FAN ? '%' : 'ppm',
+					format: [0, 100],
+					step: 1,
+				},
+			);
+			await bridge.start();
+			const maintain = jest.spyOn(bridge, 'maintainMapping');
+			listener.onModuleDestroy();
+			listener = new HomeKitEventListener(registry, bridge, undefined, {
+				findOne:
+					outcome === 'reject'
+						? jest.fn().mockRejectedValue(new Error('Channel query failed'))
+						: jest.fn().mockResolvedValue(null),
+			} as unknown as ChannelsService);
+			const changed = Object.assign(new ChannelPropertyEntity(), value, { channel: source.id });
+			if (category === ChannelCategory.FAN) await listener.handleFanMetadataChanged(changed);
+			else await listener.handleCarbonDioxideMetadataChanged(changed);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			if (outcome === 'reject') expect(maintain).toHaveBeenCalledWith({ rebuildDeviceIds: [device.id] });
+			else expect(maintain).not.toHaveBeenCalled();
+		},
+	);
+	it('retains mixed fan sensors through lifecycle rebuilds and withdraws CO2 levels after metadata drift', async () => {
+		device.channels = [];
+		const temperatureChannel = channel(device, 'temperature', ChannelCategory.TEMPERATURE);
+		const temperature = property(temperatureChannel, 'temperature-value', PropertyCategory.TEMPERATURE, 21);
+		const co2 = channel(device, 'co2', ChannelCategory.CARBON_DIOXIDE);
+		const concentration = property(co2, 'concentration', PropertyCategory.CONCENTRATION, 450);
+		Object.assign(concentration, { dataType: DataTypeType.FLOAT, unit: 'ppm' });
+		property(co2, 'detection', PropertyCategory.DETECTED, false);
+		await bridge.start();
+		const original = accessory();
+		const oldTemperature = original.getService(Service.TemperatureSensor);
+		const fan = channel(device, 'fan', ChannelCategory.FAN);
+		Object.assign(property(fan, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+		listener.handleChannelStructureChanged(fan);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		const mixed = accessory();
+		expect(mixed.UUID).toBe(original.UUID);
+		expect(mixed.getService(Service.TemperatureSensor).subtype).toBe(oldTemperature.subtype);
+		expect(await mixed.getService(Service.Fanv2).getCharacteristic(Characteristic.Active).handleGetRequest()).toBe(1);
+		expect(
+			await mixed
+				.getService(Service.TemperatureSensor)
+				.getCharacteristic(Characteristic.CurrentTemperature)
+				.handleGetRequest(),
+		).toBe(21);
+		expect(registry.getBindingsForProperty(temperature.id)).toHaveLength(1);
+		expect(registry.getBindingsForProperty('fan-on')).toHaveLength(1);
+		expect(new Set(mixed.services.map((service) => `${service.UUID}:${service.subtype}`)).size).toBe(
+			mixed.services.length,
+		);
+		await expect(oldTemperature.getCharacteristic(Characteristic.CurrentTemperature).handleGetRequest()).rejects.toBe(
+			HAPStatus.SERVICE_COMMUNICATION_FAILURE,
+		);
+		const oldLevel = mixed.getService(Service.CarbonDioxideSensor).getCharacteristic(Characteristic.CarbonDioxideLevel);
+		expect(await oldLevel.handleGetRequest()).toBe(450);
+		concentration.unit = '%';
+		listener.handlePropertyValueChanged(concentration);
+		await expect(oldLevel.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		// Real update events may carry only the channel ID. Resolve it before scheduling the rebuild.
+		await listener.handleCarbonDioxideMetadataChanged(
+			Object.assign(new ChannelPropertyEntity(), concentration, { channel: co2.id }),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		expect(
+			accessory().getService(Service.CarbonDioxideSensor).testCharacteristic(Characteristic.CarbonDioxideLevel),
+		).toBe(false);
+		expect(registry.getBindingsForProperty(concentration.id)).toHaveLength(0);
+		await expect(oldLevel.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		concentration.unit = 'ppm';
+		await listener.handleCarbonDioxideMetadataChanged(concentration);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		expect(
+			await accessory()
+				.getService(Service.CarbonDioxideSensor)
+				.getCharacteristic(Characteristic.CarbonDioxideLevel)
+				.handleGetRequest(),
+		).toBe(450);
+		expect(registry.getBindingsForProperty(concentration.id)).toHaveLength(1);
+		expect(registry.getBindingsForProperty(temperature.id)).toHaveLength(1);
+		expect(commits).toBe(0);
+	});
+
+	it.each([
+		[
+			PropertyCategory.MODE,
+			Characteristic.TargetFanState,
+			{ dataType: DataTypeType.ENUM, format: ['auto', 'manual'] },
+			'manual',
+			{ format: ['auto', 'manual', 'sleep'] },
+			1,
+		],
+		[
+			PropertyCategory.MODE,
+			Characteristic.TargetFanState,
+			{ dataType: DataTypeType.ENUM, format: ['auto', 'manual'] },
+			'manual',
+			{ dataType: DataTypeType.STRING },
+			1,
+		],
+		[
+			PropertyCategory.DIRECTION,
+			Characteristic.RotationDirection,
+			{ dataType: DataTypeType.ENUM, format: ['clockwise', 'counter_clockwise'] },
+			'clockwise',
+			{ format: ['forward', 'reverse'] },
+			1,
+		],
+		[
+			PropertyCategory.SPEED,
+			Characteristic.RotationSpeed,
+			{ dataType: DataTypeType.UCHAR, unit: '%', format: [10, 90], step: 10 },
+			30,
+			{ dataType: DataTypeType.ENUM, format: ['low', 'high'] },
+			50,
+		],
+		[
+			PropertyCategory.SPEED,
+			Characteristic.RotationSpeed,
+			{ dataType: DataTypeType.UCHAR, unit: '%', format: [10, 90], step: 10 },
+			30,
+			{ unit: 'rpm' },
+			50,
+		],
+		[
+			PropertyCategory.SWING,
+			Characteristic.SwingMode,
+			{ dataType: DataTypeType.BOOL, format: null },
+			false,
+			{ dataType: DataTypeType.ENUM, format: ['off', 'on'] },
+			1,
+		],
+		[
+			PropertyCategory.SWING,
+			Characteristic.SwingMode,
+			{ dataType: DataTypeType.BOOL, format: null },
+			false,
+			{ format: ['true'] },
+			1,
+		],
+	] as const)(
+		'withdraws and recovers fan optional %s contracts with synchronous GET/SET fencing',
+		async (category, type, metadata, value, invalid, request) => {
+			device.channels = [];
+			const fan = channel(device, 'fan', ChannelCategory.FAN);
+			Object.assign(property(fan, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+			const optional = Object.assign(property(fan, 'fan-optional', category, value), metadata);
+			property(
+				channel(device, 'temperature', ChannelCategory.TEMPERATURE),
+				'temperature-value',
+				PropertyCategory.TEMPERATURE,
+				21,
+			);
+			await bridge.start();
+			const original = accessory(),
+				reading = original.getService(Service.Fanv2).getCharacteristic(type);
+			expect(await reading.handleGetRequest()).toBe(category === PropertyCategory.SPEED ? 30 : 0);
+			const changed = Object.assign(new ChannelPropertyEntity(), optional, invalid);
+			fan.properties = fan.properties.map((candidate) => (candidate.id === optional.id ? changed : candidate));
+			listener.handlePropertyValueChanged(changed);
+			// Neither operation may use the old contract during the 100 ms rebuild debounce.
+			await expect(reading.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			await expect(reading.handleSetRequest(request)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			expect(dispatch).not.toHaveBeenCalled();
+			expect(await original.getService(Service.Fanv2).getCharacteristic(Characteristic.Active).handleGetRequest()).toBe(
+				1,
+			);
+			expect(
+				await original
+					.getService(Service.TemperatureSensor)
+					.getCharacteristic(Characteristic.CurrentTemperature)
+					.handleGetRequest(),
+			).toBe(21);
+			await listener.handleFanMetadataChanged(Object.assign(new ChannelPropertyEntity(), changed, { channel: fan.id }));
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			await bridge.applyMapping();
+			expect(accessory().getService(Service.Fanv2).testCharacteristic(type)).toBe(false);
+			expect(registry.getBindingsForProperty(optional.id)).toHaveLength(0);
+			await expect(reading.handleSetRequest(request)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			fan.properties = fan.properties.map((candidate) => (candidate.id === optional.id ? optional : candidate));
+			await listener.handleFanMetadataChanged(optional);
+			await new Promise((resolve) => setTimeout(resolve, 140));
+			await bridge.applyMapping();
+			const recovered = accessory().getService(Service.Fanv2).getCharacteristic(type);
+			expect(await recovered.handleGetRequest()).toBe(category === PropertyCategory.SPEED ? 30 : 0);
+			expect(registry.getBindingsForProperty(optional.id)).toHaveLength(1);
+			await recovered.handleSetRequest(request);
+			expect(dispatch).toHaveBeenCalledTimes(1);
+			expect(dispatch).toHaveBeenCalledWith(
+				optional.id,
+				category === PropertyCategory.MODE
+					? 'auto'
+					: category === PropertyCategory.DIRECTION
+						? 'counter_clockwise'
+						: category === PropertyCategory.SPEED
+							? request
+							: true,
+			);
+			expect(accessory().UUID).toBe(original.UUID);
+			expect(registry.getBindingsForProperty('temperature-value')).toHaveLength(1);
+			expect(commits).toBe(0);
+		},
+	);
+
+	it('fences the previous speed grid until supported range and step changes are rebuilt', async () => {
+		device.channels = [];
+		const fan = channel(device, 'fan', ChannelCategory.FAN);
+		Object.assign(property(fan, 'fan-on', PropertyCategory.ON, true), { dataType: DataTypeType.BOOL });
+		const speed = Object.assign(property(fan, 'speed', PropertyCategory.SPEED, 30), {
+			dataType: DataTypeType.UCHAR,
+			unit: '%',
+			format: [10, 90],
+			step: 10,
+		});
+		await bridge.start();
+		const old = accessory().getService(Service.Fanv2).getCharacteristic(Characteristic.RotationSpeed);
+		const changed = Object.assign(new ChannelPropertyEntity(), speed, {
+			format: [20, 80],
+			step: 20,
+			value: new PropertyValueState(40),
+		});
+		fan.properties = fan.properties.map((candidate) => (candidate.id === speed.id ? changed : candidate));
+		listener.handlePropertyValueChanged(changed);
+		await expect(old.handleSetRequest(50)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		await expect(old.handleGetRequest()).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		expect(dispatch).not.toHaveBeenCalled();
+		await listener.handleFanMetadataChanged(changed);
+		await new Promise((resolve) => setTimeout(resolve, 140));
+		await bridge.applyMapping();
+		const current = accessory().getService(Service.Fanv2).getCharacteristic(Characteristic.RotationSpeed);
+		expect(current.props).toMatchObject({ minValue: 20, maxValue: 80, minStep: 20 });
+		expect(await current.handleGetRequest()).toBe(40);
+		await current.handleSetRequest(60);
+		expect(dispatch).toHaveBeenCalledWith(speed.id, 60);
 	});
 
 	it('debounces structure events per mapped device, retaining UUID and replacing old resources', async () => {

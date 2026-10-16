@@ -14,6 +14,7 @@ class WindowCoveringDeviceView extends DeviceView
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin {
   WindowCoveringDeviceView({
+    super.isCompositeGroup,
     required super.id,
     required super.type,
     super.category,
@@ -74,7 +75,8 @@ class WindowCoveringDeviceView extends DeviceView
   List<WindowCoveringStatusValue> get windowCoveringAvailableStatuses =>
       windowCoveringChannel.availableStatuses;
 
-  WindowCoveringTypeValue get windowCoveringType => windowCoveringChannel.windowCoveringType;
+  WindowCoveringTypeValue get windowCoveringType =>
+      windowCoveringChannel.windowCoveringType;
 
   bool get hasWindowCoveringPercentage => windowCoveringChannel.hasPosition;
 

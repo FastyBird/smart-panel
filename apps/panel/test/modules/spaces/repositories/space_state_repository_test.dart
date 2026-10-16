@@ -1,4 +1,22 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/interceptors/retry_interceptor.dart';
+import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart'
+    show DeviceView, DevicesModuleDeviceCategory;
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
+import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_res_devices.dart';
+import 'package:fastybird_smart_panel/modules/devices/module.dart';
+import 'package:fastybird_smart_panel/modules/devices/constants.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_climate_state.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_lighting_state.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_res_suggestion.dart';
@@ -17,11 +35,96 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:retrofit/retrofit.dart';
 
+class UnknownDevices extends Mock implements DevicesService {}
+
+class CoverDisplay extends Mock implements DisplayRepository {}
+
+class FakeCoverRequest extends Fake implements SpacesModuleReqCoversIntent {}
+
+class CoverApiClient extends Mock implements ApiClient {}
+
+class CoverDevicesClient extends Mock implements DevicesModuleClient {}
+
+class FakeDevicesResponse extends Fake implements DevicesModuleResDevices {}
+
+class CoverAdapter implements HttpClientAdapter {
+  int calls = 0;
+  int status = 200;
+  bool timeout = false;
+  bool composite = true;
+  bool success = true;
+  bool omitData = false;
+  RequestOptions? last;
+  Completer<void>? gate;
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    calls++;
+    last = options;
+    if (gate != null) await gate!.future;
+    if (timeout) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.receiveTimeout,
+      );
+    }
+    return ResponseBody.fromString(
+      jsonEncode({
+        'data': omitData
+            ? null
+            : {
+                'success': success,
+                'affected_devices': success ? 1 : 0,
+                'failed_devices': success ? 0 : 1,
+                if (composite)
+                  'composites': [
+                    {
+                      'id': 'parent',
+                      'status': success ? 'confirmed' : 'failed',
+                      'children': [],
+                    },
+                  ],
+              },
+      }),
+      status,
+      headers: {
+        'content-type': ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 // Mock classes
-class MockSpacesHomeControlPluginClient extends Mock implements SpacesHomeControlPluginClient {}
+class MockSpacesHomeControlPluginClient extends Mock
+    implements SpacesHomeControlPluginClient {}
 
 /// Fake SocketService that provides minimal implementation for testing
 class FakeSocketService extends SocketService {
+  int sends = 0;
+  bool ackSuccess = true;
+  final handlers = <String, void Function(String, Map<String, dynamic>)>{};
+  @override
+  void registerEventHandler(
+    String event,
+    void Function(String, Map<String, dynamic>) handler,
+  ) {
+    handlers[event] = handler;
+  }
+
+  @override
+  void unregisterEventHandler(
+    String event,
+    void Function(String, Map<String, dynamic>) handler,
+  ) {
+    handlers.remove(event);
+  }
+
   @override
   bool get isConnected => true;
 
@@ -32,13 +135,15 @@ class FakeSocketService extends SocketService {
     String handler, {
     Function(SocketCommandResponseModel?)? onAck,
   }) async {
-    onAck?.call(SocketCommandResponseModel(status: true, message: 'ok'));
+    sends++;
+    onAck?.call(SocketCommandResponseModel(status: ackSuccess, message: 'ok'));
   }
 }
 
 /// Fake IntentsRepository that provides minimal implementation for testing
 class FakeIntentsRepository extends Fake implements IntentsRepository {
   int _counter = 0;
+  int? lastTtlMs;
 
   @override
   IntentModel createLocalSpaceIntent({
@@ -48,6 +153,7 @@ class FakeIntentsRepository extends Fake implements IntentsRepository {
     int ttlMs = 5000,
   }) {
     _counter++;
+    lastTtlMs = ttlMs;
     // Generate a valid UUID-like ID for testing
     final fakeId =
         '00000000-0000-4000-8000-${_counter.toString().padLeft(12, '0')}';
@@ -96,6 +202,7 @@ HttpResponse<T> createMockHttpResponse<T>(
 }
 
 void main() {
+  setUpAll(() => registerFallbackValue(FakeCoverRequest()));
   late MockSpacesHomeControlPluginClient mockClient;
   late FakeIntentsRepository fakeIntentsRepository;
   late FakeSocketService fakeSocketService;
@@ -113,11 +220,300 @@ void main() {
     );
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await locator.reset();
     repository.dispose();
     reset(mockClient);
   });
 
+  group('single-shot cover classification', () {
+    for (final cachedOrdinary in [false, true]) {
+      for (final loading in [false, true]) {
+        for (final composite in [false, true]) {
+          test(
+            'unknown targets cachedOrdinary=$cachedOrdinary loading=$loading use one REST request, server composite=$composite, no WebSocket',
+            () async {
+              if (cachedOrdinary) {
+                repository.updateCoversState('room', {'has_covers': true});
+              }
+              if (loading) {
+                final devices = UnknownDevices();
+                when(() => devices.devicesLoaded).thenReturn(false);
+                locator.registerSingleton<DevicesService>(devices);
+              }
+              final adapter = CoverAdapter()..composite = composite;
+              final dio = Dio()..httpClientAdapter = adapter;
+              locator.registerSingleton<Dio>(dio);
+              final result = await repository.openCovers('room');
+              expect(result?.success, isTrue);
+              expect(adapter.calls, 1);
+              expect(fakeSocketService.sends, 0);
+              expect(adapter.last?.extra['retryExhausted'], isTrue);
+              expect(adapter.last?.extra['noActuationReplay'], isTrue);
+              expect(adapter.last?.receiveTimeout, const Duration(seconds: 35));
+              dio.close();
+            },
+          );
+        }
+      }
+    }
+    for (final status in [200, 401, 500, 0]) {
+      test(
+        'stale ordinary cache and unloaded newly assigned group HTTP $status never dispatch WebSocket or replay',
+        () async {
+          repository.updateCoversState('room', {'has_covers': true});
+          final devices = UnknownDevices();
+          when(() => devices.devicesLoaded).thenReturn(false);
+          when(() => devices.devicesList).thenReturn([
+            DeviceView(
+              id: 'new-group',
+              name: 'New group',
+              type: 'virtual',
+              channels: [],
+              isCompositeGroup: true,
+              category: DevicesModuleDeviceCategory.windowCovering,
+              roomId: 'room',
+            ),
+          ]);
+          locator.registerSingleton<DevicesService>(devices);
+          // A failed socket acknowledgement must never trigger composite replay.
+          fakeSocketService.ackSuccess = false;
+          final adapter = CoverAdapter()
+            ..status = status
+            ..timeout = status == 0;
+          final display = CoverDisplay();
+          final dio = Dio()..httpClientAdapter = adapter;
+          dio.interceptors.addAll([
+            RetryInterceptor(dio, config: RetryConfig.testConfig),
+            TokenRefreshInterceptor(display),
+          ]);
+          locator.registerSingleton<Dio>(dio);
+          final result = await repository.openCovers('room');
+          if (status == 200) {
+            expect(result?.success, isTrue);
+            expect(result?.composites, hasLength(1));
+          } else {
+            expect(result, isNull);
+          }
+          expect(adapter.calls, 1);
+          expect(fakeSocketService.sends, 0);
+          verifyNever(() => display.refreshToken());
+          verifyNever(
+            () => mockClient.createSpacesModuleSpaceCoversIntent(
+              id: any(named: 'id'),
+              body: any(named: 'body'),
+            ),
+          );
+          dio.close();
+        },
+      );
+    }
+    testWidgets(
+      'unknown REST timeout does not replay or accept a late completion',
+      (tester) async {
+        final adapter = CoverAdapter()..gate = Completer<void>();
+        final dio = Dio()..httpClientAdapter = adapter;
+        locator.registerSingleton<Dio>(dio);
+        final pending = repository.openCovers('room');
+        for (var phase = 0; phase < 10 && adapter.calls == 0; phase++) {
+          await tester.pump(Duration.zero);
+        }
+        expect(adapter.calls, 1);
+        expect(fakeSocketService.sends, 0);
+        await tester.pump(const Duration(seconds: 35));
+        expect(await pending, isNull);
+        adapter.gate!.complete();
+        // Drain Dio's late response interceptor timers without advancing the deadline.
+        for (var phase = 0; phase < 10; phase++) {
+          await tester.pump(Duration.zero);
+        }
+        expect(adapter.calls, 1);
+        expect(fakeSocketService.sends, 0);
+        dio.close();
+      },
+    );
+    test(
+      'loaded ordinary catalogue uses one REST submission without WebSocket fallback',
+      () async {
+        repository.updateCoversState('room', {'has_covers': true});
+        final devices = UnknownDevices();
+        when(() => devices.devicesLoaded).thenReturn(true);
+        when(() => devices.devicesList).thenReturn([
+          DeviceView(
+            id: 'physical-cover',
+            name: 'Physical cover',
+            type: 'ordinary',
+            channels: [],
+            category: DevicesModuleDeviceCategory.windowCovering,
+            roomId: 'room',
+          ),
+        ]);
+        locator.registerSingleton<DevicesService>(devices);
+        fakeSocketService.ackSuccess = false;
+        final adapter = CoverAdapter()..composite = false;
+        final dio = Dio()..httpClientAdapter = adapter;
+        locator.registerSingleton<Dio>(dio);
+        expect((await repository.openCovers('room'))?.success, isTrue);
+        expect(fakeSocketService.sends, 0);
+        expect(adapter.calls, 1);
+        expect(fakeIntentsRepository.lastTtlMs, 35000);
+        verify(
+          () => mockClient.getSpacesModuleSpaceUndoState(id: 'room'),
+        ).called(1);
+        dio.close();
+      },
+    );
+    for (final cachedGroup in [false, true]) {
+      test(
+        'known group cached=$cachedGroup uses one REST submission without WebSocket',
+        () async {
+          repository.updateCoversState('room', {
+            'has_covers': true,
+            if (cachedGroup)
+              'group_operations': [
+                {'operation': 'open', 'commandable': true},
+              ],
+          });
+          final devices = UnknownDevices();
+          when(() => devices.devicesLoaded).thenReturn(true);
+          when(() => devices.devicesList).thenReturn([
+            DeviceView(
+              id: 'group',
+              name: 'Group',
+              type: 'virtual',
+              channels: [],
+              isCompositeGroup: true,
+              category: DevicesModuleDeviceCategory.windowCovering,
+              roomId: 'room',
+            ),
+          ]);
+          locator.registerSingleton<DevicesService>(devices);
+          fakeSocketService.ackSuccess = false;
+          final adapter = CoverAdapter();
+          final dio = Dio()..httpClientAdapter = adapter;
+          locator.registerSingleton<Dio>(dio);
+          final result = await repository.openCovers('room');
+          expect(result?.success, isTrue);
+          expect(result?.composites, hasLength(1));
+          expect(fakeSocketService.sends, 0);
+          expect(adapter.calls, 1);
+          dio.close();
+        },
+      );
+    }
+    for (final composite in [false, true]) {
+      test(
+        'server refusal remains failure with composite=$composite',
+        () async {
+          final adapter = CoverAdapter()
+            ..success = false
+            ..composite = composite;
+          final dio = Dio()..httpClientAdapter = adapter;
+          locator.registerSingleton<Dio>(dio);
+          final result = await repository.openCovers('room');
+          expect(result?.success, isFalse);
+          expect(result?.affectedDevices, 0);
+          expect(result?.failedDevices, 1);
+          expect(result?.composites.length, composite ? 1 : 0);
+          if (composite) expect(result?.composites.single.status, 'failed');
+          expect(adapter.calls, 1);
+          expect(fakeSocketService.sends, 0);
+          dio.close();
+        },
+      );
+    }
+    test('missing response cannot fabricate success or request undo', () async {
+      final adapter = CoverAdapter()..omitData = true;
+      final dio = Dio()..httpClientAdapter = adapter;
+      locator.registerSingleton<Dio>(dio);
+      expect(await repository.openCovers('room'), isNull);
+      expect(adapter.calls, 1);
+      expect(fakeSocketService.sends, 0);
+      verifyNever(() => mockClient.getSpacesModuleSpaceUndoState(id: 'room'));
+      dio.close();
+    });
+    for (final event in [
+      DevicesModuleConstants.deviceCreatedEvent,
+      DevicesModuleConstants.deviceUpdatedEvent,
+    ]) {
+      testWidgets(
+        'actual $event update precedes loaded catalogue debounce but cannot replay',
+        (tester) async {
+          const groupId = '1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e';
+          final devicesClient = CoverDevicesClient();
+          when(() => devicesClient.getDevicesModuleDevices()).thenAnswer(
+            (_) async => createMockHttpResponse(FakeDevicesResponse(), {
+              'data': [],
+            }, 200),
+          );
+          when(
+            () => devicesClient.getDevicesModuleDevicesValidation(),
+          ).thenThrow(DioException(requestOptions: RequestOptions()));
+          final api = CoverApiClient();
+          when(() => api.devicesModule).thenReturn(devicesClient);
+          final module = DevicesModuleService(
+            apiClient: api,
+            socketService: fakeSocketService,
+          );
+          await module.initialize();
+          final devices = locator<DevicesService>();
+          final rows = locator<DevicesRepository>();
+          repository.updateCoversState('room', {'has_covers': true});
+          expect(devices.devicesLoaded, isTrue);
+          expect(devices.devicesList, isEmpty);
+          final payload = <String, dynamic>{
+            'id': groupId,
+            'type': 'virtual',
+            'mode': 'actuator_group',
+            'category': 'window_covering',
+            'name': 'New cover group',
+            'enabled': true,
+            'room_id': 'room',
+            'channels': [],
+          };
+          // Updated assignments start from an already mapped group outside this room.
+          if (event == DevicesModuleConstants.deviceUpdatedEvent) {
+            fakeSocketService.handlers[DevicesModuleConstants
+                .moduleWildcardEvent]!(
+              DevicesModuleConstants.deviceCreatedEvent,
+              {...payload, 'room_id': 'other-room'},
+            );
+            await tester.pump(const Duration(milliseconds: 50));
+            expect(devices.getDevice(groupId)?.roomId, 'other-room');
+          }
+          // Use the production socket handler, repository notifier and real 50ms view debounce.
+          fakeSocketService.handlers[DevicesModuleConstants
+              .moduleWildcardEvent]!(event, payload);
+          expect(rows.getItem(groupId)?.roomId, 'room');
+          expect(devices.devicesLoaded, isTrue);
+          expect(devices.getDevicesForRoom('room'), isEmpty);
+          final adapter = CoverAdapter();
+          final dio = Dio()..httpClientAdapter = adapter;
+          locator.registerSingleton<Dio>(dio);
+          fakeSocketService.ackSuccess = false;
+          final pending = repository.openCovers('room');
+          for (var phase = 0; phase < 10 && adapter.calls == 0; phase++) {
+            await tester.pump(Duration.zero);
+          }
+          expect(adapter.calls, 1);
+          expect(fakeSocketService.sends, 0);
+          expect(devices.getDevicesForRoom('room'), isEmpty);
+          for (var phase = 0; phase < 10; phase++) {
+            await tester.pump(Duration.zero);
+          }
+          expect((await pending)?.composites, hasLength(1));
+          await tester.pump(const Duration(milliseconds: 50));
+          expect(devices.getDevice(groupId)?.isCompositeGroup, isTrue);
+          expect(devices.getDevice(groupId)?.roomId, 'room');
+          expect(adapter.calls, 1);
+          expect(fakeSocketService.sends, 0);
+          devices.dispose();
+          module.dispose();
+          dio.close();
+        },
+      );
+    }
+  });
   group('SpaceStateRepository', () {
     group('isLoading', () {
       test('initially returns false', () {

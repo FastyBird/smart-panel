@@ -7647,6 +7647,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not detected'**
   String get virtual_measurement_false;
+
+  /// No description provided for @groupActualFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported physical feedback'**
+  String get groupActualFeedback;
+
+  /// No description provided for @groupReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload / reconnect'**
+  String get groupReload;
+
+  /// No description provided for @groupRepair.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration or capabilities changed. Reload and repair membership in Admin.'**
+  String get groupRepair;
+
+  /// No description provided for @groupUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'Command result uncertain. Reload actual feedback before another attempt.'**
+  String get groupUncertain;
+
+  /// No description provided for @groupUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get groupUnknown;
+
+  /// No description provided for @groupMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get groupMixed;
+
+  /// No description provided for @groupOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get groupOn;
+
+  /// No description provided for @groupOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get groupOff;
+
+  /// No description provided for @groupUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get groupUnavailable;
+
+  /// No description provided for @groupOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get groupOpen;
+
+  /// No description provided for @groupClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get groupClose;
+
+  /// No description provided for @groupStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get groupStop;
+
+  /// No description provided for @groupSelectValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Select native value'**
+  String get groupSelectValue;
+
+  /// No description provided for @groupApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get groupApply;
+
+  /// No description provided for @groupApplyTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply together'**
+  String get groupApplyTogether;
+
+  /// No description provided for @groupConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured metadata'**
+  String get groupConfigured;
+
+  /// No description provided for @groupMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing member; repair in Admin'**
+  String get groupMissing;
+
+  /// No description provided for @groupReadinessUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Command readiness unavailable'**
+  String get groupReadinessUnavailable;
+
+  /// No description provided for @groupCoverMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'OPEN/CLOSE confirms motion begun or an already reached endpoint, not full travel. STOP requires qualified stopped feedback.'**
+  String get groupCoverMeaning;
+
+  /// No description provided for @groupContributors.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}/{total} contributing members'**
+  String groupContributors(int count, int total);
+
+  /// No description provided for @groupCommandOutcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Group command: {status}'**
+  String groupCommandOutcome(String status);
+
+  /// No description provided for @groupStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {value}'**
+  String groupStep(String value);
+
+  /// No description provided for @groupPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get groupPending;
+
+  /// No description provided for @groupConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get groupConfirmed;
+
+  /// No description provided for @groupPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Partial'**
+  String get groupPartial;
+
+  /// No description provided for @groupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get groupFailed;
+
+  /// No description provided for @groupSuperseded.
+  ///
+  /// In en, this message translates to:
+  /// **'Superseded'**
+  String get groupSuperseded;
+
+  /// No description provided for @groupTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out'**
+  String get groupTimedOut;
+
+  /// No description provided for @groupFieldOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Power'**
+  String get groupFieldOn;
+
+  /// No description provided for @groupFieldSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get groupFieldSpeed;
+
+  /// No description provided for @groupFieldSwing.
+  ///
+  /// In en, this message translates to:
+  /// **'Swing'**
+  String get groupFieldSwing;
+
+  /// No description provided for @groupFieldDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Direction'**
+  String get groupFieldDirection;
+
+  /// No description provided for @groupFieldMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get groupFieldMode;
+
+  /// No description provided for @groupFieldPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get groupFieldPosition;
+
+  /// No description provided for @groupFieldTilt.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt'**
+  String get groupFieldTilt;
+
+  /// No description provided for @groupFieldType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get groupFieldType;
+
+  /// No description provided for @groupFieldStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get groupFieldStatus;
+
+  /// No description provided for @groupFieldObstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Obstruction'**
+  String get groupFieldObstruction;
+
+  /// No description provided for @groupFieldInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get groupFieldInUse;
+
+  /// No description provided for @groupFieldBrightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness'**
+  String get groupFieldBrightness;
+
+  /// No description provided for @groupFieldColorTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Color temperature'**
+  String get groupFieldColorTemperature;
+
+  /// No description provided for @groupFieldColorRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get groupFieldColorRed;
+
+  /// No description provided for @groupFieldColorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get groupFieldColorGreen;
+
+  /// No description provided for @groupFieldColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get groupFieldColorBlue;
+
+  /// No description provided for @groupFieldHue.
+  ///
+  /// In en, this message translates to:
+  /// **'Hue'**
+  String get groupFieldHue;
+
+  /// No description provided for @groupFieldSaturation.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturation'**
+  String get groupFieldSaturation;
+
+  /// No description provided for @groupOpenAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Open all'**
+  String get groupOpenAll;
+
+  /// No description provided for @groupCloseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Close all'**
+  String get groupCloseAll;
+
+  /// No description provided for @groupStopAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop all'**
+  String get groupStopAll;
 }
 
 class _AppLocalizationsDelegate

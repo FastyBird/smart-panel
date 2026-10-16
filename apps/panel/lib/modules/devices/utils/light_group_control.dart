@@ -16,14 +16,19 @@ class LightGroupNumericContract {
     if (!property.permission.contains(DevicesModulePermissionType.rw)) {
       return null;
     }
-    final format = property.format;
+    return fromMetadata(property.dataType, property.format, property.step);
+  }
+
+  static LightGroupNumericContract? fromMetadata(
+    DevicesModuleDataType datatype,
+    FormatType? format,
+    double? declaredStep,
+  ) {
     if (format is! NumberListFormatType || format.value.length != 2) {
       return null;
     }
     final min = format.value[0];
     final max = format.value[1];
-    final declaredStep = property.step;
-    final datatype = property.dataType;
     final integer = [
       DevicesModuleDataType.char,
       DevicesModuleDataType.uchar,

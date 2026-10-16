@@ -355,15 +355,33 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		if (database?.isInitialized) await database.destroy();
 	});
 
-	it.each([false, true])(
-		'routes read-only HAP group SET through real composite commands; partial=%s',
-		async (partial) => {
+	it.each([
+		[DeviceCategory.LIGHTING, ChannelCategory.LIGHT, Service.Lightbulb, 'confirmed'],
+		[DeviceCategory.LIGHTING, ChannelCategory.LIGHT, Service.Lightbulb, 'partial'],
+		...(
+			[
+				[DeviceCategory.SWITCHER, ChannelCategory.SWITCHER, Service.Switch],
+				[DeviceCategory.OUTLET, ChannelCategory.OUTLET, Service.Outlet],
+				[DeviceCategory.FAN, ChannelCategory.FAN, Service.Fanv2],
+			] as const
+		).flatMap(([device, channel, service]) =>
+			['confirmed', 'partial', 'rejected', 'accepted'].map((outcome) => [device, channel, service, outcome] as const),
+		),
+	] as const)(
+		'routes read-only %s HAP group SET through real composite commands; %s %s %s',
+		async (
+			deviceCategory: DeviceCategory,
+			channelCategory: ChannelCategory,
+			serviceType: typeof Service.Lightbulb,
+			outcome: string,
+		) => {
+			const partial = outcome === 'partial';
 			const group = await database
 				.getRepository(VirtualDeviceEntity)
-				.save({ name: 'Group', category: DeviceCategory.LIGHTING, mode: VirtualDeviceMode.ACTUATOR_GROUP });
+				.save({ name: 'Group', category: deviceCategory, mode: VirtualDeviceMode.ACTUATOR_GROUP });
 			const groupChannel = await database
 				.getRepository(VirtualChannelEntity)
-				.save({ device: group, name: 'Group light', category: ChannelCategory.LIGHT });
+				.save({ device: group, name: 'Group', category: channelCategory });
 			const output = await database.getRepository(VirtualChannelPropertyEntity).save({
 				channel: groupChannel,
 				category: PropertyCategory.ON,
@@ -406,15 +424,20 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			device.channels[0].properties = [output];
 			const staged = registry.buildAccessory(device, new HomeKitCommandDispatcher(commands));
 			registry.commitStaged(staged);
-			const on = staged.accessory.getService(Service.Lightbulb).getCharacteristic(Characteristic.On);
+			const isFan = channelCategory === ChannelCategory.FAN;
+			const on = staged.accessory
+				.getService(serviceType)
+				.getCharacteristic(isFan ? Characteristic.Active : Characteristic.On);
+			const hapValue = (value: boolean) => (isFan ? Number(value) : value);
 			provider.mockImplementation(async () => {
+				if (outcome === 'rejected') return false;
 				await values.writeSampleWithState(source, true, {
 					sampledAt: new Date(),
 					receivedAt: new Date(),
 					provenance: 'live',
 				});
 				// Deliver the newer reported group state before the parent is allowed to settle.
-				await publish(true);
+				if (outcome !== 'accepted') await publish(true);
 				const window = windows.get(source.id);
 				windows.confirm(
 					{ canonicalPropertyId: source.id, generation: window.generation },
@@ -422,12 +445,13 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 				);
 				return true;
 			});
-			if (partial) await expect(on.handleSetRequest(true)).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
-			else await expect(on.handleSetRequest(true)).resolves.toBe(true);
+			if (partial || outcome === 'rejected')
+				await expect(on.handleSetRequest(hapValue(true))).rejects.toBe(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			else await expect(on.handleSetRequest(hapValue(true))).resolves.toBe(hapValue(outcome !== 'accepted'));
 			expect(provider).toHaveBeenCalledTimes(1);
 			expect(output.permissions).toEqual([PermissionType.READ_ONLY]);
-			expect(await on.handleGetRequest()).toBe(true);
-			expect(await values.readLatest(source)).toMatchObject({ value: true });
+			expect(await on.handleGetRequest()).toBe(hapValue(!['rejected', 'accepted'].includes(outcome)));
+			expect(await values.readLatest(source)).toMatchObject({ value: outcome !== 'rejected' });
 		},
 	);
 	it('rejects offline HAP writes before the command pipeline and refreshes on reconnect', async () => {
