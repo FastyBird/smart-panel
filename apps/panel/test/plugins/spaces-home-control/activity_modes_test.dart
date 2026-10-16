@@ -612,6 +612,42 @@ void main() {
   );
 
   testWidgets(
+    'unconfirmed response stays visible while reconciliation finds an activation in progress',
+    (tester) async {
+      await tester.runAsync(() async {
+        await repository.bind(space);
+        adapter.state = active(status: 'activating');
+        adapter.timeout = true;
+        await repository.activate(repository.modes.first);
+      });
+      expect(repository.issue, ActivityModeIssue.unconfirmed);
+      expect(repository.state?.activityStatus.json, 'activating');
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ActivityModesSection(spaceId: space, repository: repository),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.text(
+          'Request unconfirmed. Check the current selection before trying again.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Sending request…'), findsNothing);
+      expect(
+        adapter.requests.where((request) => request.method == 'POST').length,
+        1,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
     'actual section renders localized ordered chips, partial details and manual clearing',
     (tester) async {
       adapter.state = active();

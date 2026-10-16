@@ -167,7 +167,7 @@ class _ActivityModesSectionState extends State<ActivityModesSection> {
                 ],
               ),
             ),
-            if (pending)
+            if (r.busy)
               Text(l.space_activity_pending)
             else if (r.issue != null)
               Row(
@@ -187,6 +187,8 @@ class _ActivityModesSectionState extends State<ActivityModesSection> {
                   ),
                 ],
               )
+            else if (status == 'activating')
+              Text(l.space_activity_pending)
             else if (status != null)
               Row(
                 children: [
