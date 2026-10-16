@@ -38,7 +38,7 @@ export class SqliteCommitGuardRefusedError extends Error {
 interface GuardedCommit {
 	lease: ConnectionLease;
 	guards: Array<() => boolean>;
-	phase: 'open' | 'sealed' | 'submitted' | 'committed' | 'rolling_back' | 'settled';
+	phase: 'starting' | 'open' | 'sealed' | 'submitted' | 'committed' | 'rolling_back' | 'settled';
 	outcome: SqliteGuardedCommitOutcome;
 	childFailure?: { cause: unknown };
 }
@@ -448,16 +448,21 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 		this.coordinator.assertAvailable();
 		if (!this.lease?.active) this.lease = await this.coordinator.acquire(this);
 		const previousDepth = this.transactionDepth;
+		// Start subscribers already run on this lease: retain their failures before the body can attach guards.
+		const outerScope: GuardedCommit | undefined = previousDepth === 0
+			? { lease: this.lease, guards: [], phase: 'starting', outcome: 'pending' }
+			: undefined;
+		if (outerScope) this.guardedCommit = outerScope;
 		try {
 			await this.withTransactionControl(() => super.startTransaction(isolationLevel));
-			if (previousDepth === 0) {
-				this.guardedCommit = { lease: this.lease, guards: [], phase: 'open', outcome: 'pending' };
-			}
+			if (outerScope) outerScope.phase = 'open';
 		} catch (error) {
 			// TypeORM sets isTransactionActive before BEGIN and does not restore it on SQL failure.
 			// Only this owner can recover the connection; another queued request cannot be rolled back.
-			if (previousDepth === 0) await this.recoverTransaction();
-			else {
+			if (previousDepth === 0) {
+				if (outerScope) outerScope.phase = 'rolling_back';
+				await this.recoverTransaction();
+			} else {
 				// A failing BeforeTransactionStart subscriber clears TypeORM's flag even though the
 				// outer transaction remains open. Preserve its ownership and depth.
 				this.isTransactionActive = true;
@@ -469,6 +474,7 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 			}
 			throw error;
 		} finally {
+			if (outerScope) this.settleCommitScope();
 			this.releaseIfSettled();
 		}
 	}
@@ -502,9 +508,14 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	/** Retain at most the first rejection, even if it settles before the guarded drain begins. */
 	captureChildFailureRecorder(lease: ConnectionLease): ((cause: unknown) => void) | undefined {
 		const scope = this.guardedCommit;
-		if (!scope || scope.lease !== lease || scope.phase !== 'open') return undefined;
+		if (!scope || scope.lease !== lease || (scope.phase !== 'starting' && scope.phase !== 'open')) return undefined;
 		return (cause: unknown) => {
-			if (scope === this.guardedCommit && lease.active && scope.phase === 'open' && !scope.childFailure) {
+			if (
+				scope === this.guardedCommit &&
+				lease.active &&
+				(scope.phase === 'starting' || scope.phase === 'open') &&
+				!scope.childFailure
+			) {
 				scope.childFailure = { cause };
 			}
 		};
