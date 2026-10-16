@@ -49,7 +49,7 @@ class _VirtualThermostatDeviceDetailState
   VirtualThermostatActivityFence _activityFence =
       VirtualThermostatActivityFence();
   VirtualThermostatCoolingFence _coolingFence = VirtualThermostatCoolingFence();
-  VirtualThermostatReadingFence _readingFence = VirtualThermostatReadingFence();
+  VirtualThermostatEvidenceFence _evidence = VirtualThermostatEvidenceFence();
   Map<String, dynamic>? _configuration;
   Map<String, dynamic>? _runtime;
   String? _error;
@@ -78,7 +78,9 @@ class _VirtualThermostatDeviceDetailState
       }
     });
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      // Leave two seconds for a response within the unchanged five-second
+      // display budget. Uncovered socket hints still invalidate immediately.
+      const Duration(seconds: 3),
       (_) => unawaited(_refresh()),
     );
   }
@@ -109,7 +111,7 @@ class _VirtualThermostatDeviceDetailState
     _configurationMismatchSeen = false;
     if (replacedDevice) {
       _coolingFence = VirtualThermostatCoolingFence();
-      _readingFence = VirtualThermostatReadingFence();
+      _evidence = VirtualThermostatEvidenceFence();
       _activityFence = VirtualThermostatActivityFence();
     }
     _configuration = null;
@@ -190,14 +192,30 @@ class _VirtualThermostatDeviceDetailState
       );
       final configurationRevision = configuration['revision'];
       final runtimeRevision = candidate['configuration_revision'];
-      if (configurationRevision is num &&
-          runtimeRevision is num &&
-          runtimeRevision > 0 &&
-          configurationRevision != runtimeRevision) {
-        // Concurrent GETs can straddle an edit. Retry once promptly, then let
-        // the bounded poll resync if authoring continues to change underneath us.
-        _hintRefreshNeeded = !_configurationMismatchSeen;
-        _configurationMismatchSeen = true;
+      if (!VirtualThermostatEvidenceFence.revisionsCoherent(
+        configuration,
+        candidate,
+      )) {
+        // Only a real numeric revision race receives one prompt retry. Malformed
+        // envelopes wait for the bounded poll and never mutate accepted evidence.
+        final mismatch =
+            VirtualThermostatEvidenceFence.revisionValid(
+              configurationRevision,
+            ) &&
+            VirtualThermostatEvidenceFence.revisionValid(runtimeRevision);
+        _hintRefreshNeeded = mismatch && !_configurationMismatchSeen;
+        if (mismatch) _configurationMismatchSeen = true;
+        setState(() => _runtime = null);
+        return;
+      }
+      final acceptedAt = DateTime.now();
+      final acceptedClock = _displayClock;
+      if (!_evidence.accept(
+        configuration,
+        candidate,
+        acceptedAt,
+        acceptedClock,
+      )) {
         setState(() => _runtime = null);
         return;
       }
@@ -206,21 +224,28 @@ class _VirtualThermostatDeviceDetailState
       // Prune against exactly the active membership displayed below: configured
       // claims plus non-released runtime-only reservations. Partial/loading
       // membership is not evidence of removal from either source.
-      if (configuration['actuators'] is List && candidate['branches'] is List) {
-        final activeClaims = VirtualThermostatMember.read(
-          configuration,
-          candidate,
-        ).map((member) => member.claim).toSet();
-        _coolingFence.retainClaims(activeClaims);
-        _readingFence.retainClaims(activeClaims);
-        _activityFence.retainClaims(activeClaims);
+      final acceptedMembers = VirtualThermostatMember.read(
+        configuration,
+        candidate,
+      );
+      if (VirtualThermostatMember.membershipComplete(
+        configuration,
+        candidate,
+      )) {
+        _coolingFence.retainClaims(
+          acceptedMembers.map((member) => member.claim),
+        );
+        _activityFence.retainClaims(
+          acceptedMembers.map((member) => member.claim),
+        );
       }
+      _activityFence.accept(acceptedMembers, acceptedAt, acceptedClock);
       setState(() {
         _configuration = configuration;
         _runtime = candidate;
-        _runtimeReceivedAt = DateTime.now();
+        _runtimeReceivedAt = acceptedAt;
         _runtimeAge = Duration.zero;
-        _runtimeReceivedClock = _displayClock;
+        _runtimeReceivedClock = acceptedClock;
         _error = null;
       });
     } catch (error) {
@@ -376,10 +401,8 @@ class _VirtualThermostatDeviceDetailState
             .whereType<Map>()
             .map(VirtualThermostatInput.fromJson)
             .toList();
-    bool roleFresh(String role) => !inputs.any(
-      (input) =>
-          input.role == role && input.currentStatus(elapsed, now) != 'fresh',
-    );
+    bool roleFresh(String role) =>
+        _evidence.sources.roleCurrent(role, now, clock);
     final current =
         runtime != null &&
         !_hintRefreshNeeded &&
@@ -388,42 +411,21 @@ class _VirtualThermostatDeviceDetailState
         ? _number(runtime['current_temperature'])
         : null;
     final members = VirtualThermostatMember.read(config, runtime);
-    final freshCoolingClaims = _coolingFence.freshClaims(members, now, clock);
-    final expiredMemberClaims = _readingFence.expiredClaims(
-      members,
-      elapsed,
-      now,
-    );
-    final unavailableActivityClaims = _activityFence.unavailableClaims(
-      members,
-      now,
-      clock,
-    );
+    final freshCoolingClaims = runtime == null
+        ? <String>{}
+        : _coolingFence.freshClaims(members, now, clock);
+    // Missing/rejected HTTP runtime is not an accepted diagnostic omission.
+    // Withhold display without withdrawing retained original evidence budgets.
+    final expiredMemberClaims = runtime == null
+        ? members.map((member) => member.claim).toSet()
+        : _evidence.members.expiredClaims(members, elapsed, now, clock: clock);
+    final unavailableActivityClaims = runtime == null
+        ? members.map((member) => member.claim).toSet()
+        : _activityFence.unavailableClaims(members, now, clock);
     // Withhold a positive snapshot label when its declared required evidence
     // has expired or been rejected locally. This does not calculate readiness
     // or change command authorization; only the server can report readiness.
-    bool inputCurrent(VirtualThermostatInput input) =>
-        input.quality == 'good' &&
-        input.sampledAt != null &&
-        input.expiresAt != null &&
-        input.currentStatus(elapsed, now) == 'fresh';
-    const requiredRoles = ['ambient', 'floor', 'contact'];
-    final declaredSources =
-        (config?['sources'] is List ? config!['sources'] as List : const [])
-            .whereType<Map>()
-            .where((source) => requiredRoles.contains(source['role']));
-    final inputsCurrent =
-        inputs
-            .where((input) => requiredRoles.contains(input.role))
-            .every(inputCurrent) &&
-        declaredSources.every(
-          (source) => inputs.any(
-            (input) =>
-                input.role == source['role'] &&
-                (source['id'] == null || input.binding == source['id']) &&
-                inputCurrent(input),
-          ),
-        );
+    final inputsCurrent = _evidence.sources.allCurrent(now, clock);
     final memberProtectionCurrent = members
         .where((member) => member.binding != null || member.protection != null)
         .every(
@@ -444,8 +446,10 @@ class _VirtualThermostatDeviceDetailState
         .every((member) => freshCoolingClaims.contains(member.claim));
     final readinessCurrent =
         current &&
+        !_evidence.members.overflow &&
         (readiness != 'ready' ||
-            (inputsCurrent &&
+            (!_evidence.members.untracked &&
+                inputsCurrent &&
                 memberProtectionCurrent &&
                 coolingProtectionCurrent));
     final selectedClaim = config?['display_floor_claim'];
@@ -507,7 +511,7 @@ class _VirtualThermostatDeviceDetailState
               for (final input in inputs)
                 ListTile(
                   title: Text(
-                    '${input.role}: ${current ? input.currentStatus(elapsed, now) : l.thermostatMemberUnavailable} (${input.sourceKind})',
+                    '${input.role}: ${current ? _evidence.sources.status(input, now, clock) : l.thermostatMemberUnavailable} (${input.sourceKind})',
                   ),
                   subtitle: Text(
                     [

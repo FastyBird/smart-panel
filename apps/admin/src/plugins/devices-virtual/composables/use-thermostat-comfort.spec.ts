@@ -119,4 +119,26 @@ describe('comfort request fencing', () => {
 		await Promise.resolve();
 		stop();
 	});
+	it('clears recovered read failures but preserves action errors through later successful reads', async () => {
+		const read = vi.fn().mockRejectedValueOnce(new Error('network_read')).mockResolvedValue(snapshot());
+		const write = vi.fn().mockRejectedValue(new Error('write_validation'));
+		const { state, id, stop } = setup({ read, write });
+		await state.reload();
+		expect(state.error.value).toContain('network_read');
+		expect(state.ready.value).toBe(false);
+		await state.reload();
+		expect(state.error.value).toBeNull();
+		expect(state.ready.value).toBe(true);
+		await state.act({ kind: 'selection', preset: null, clear_user_off: false });
+		expect(state.error.value).toContain('write_validation');
+		read.mockRejectedValueOnce(new Error('another_read_failure'));
+		await state.reload();
+		expect(state.error.value).toContain('write_validation');
+		await state.reload();
+		expect(state.error.value).toContain('write_validation');
+		expect(write).toHaveBeenCalledTimes(1);
+		id.value = 'b';
+		expect(state.error.value).toBeNull();
+		stop();
+	});
 });

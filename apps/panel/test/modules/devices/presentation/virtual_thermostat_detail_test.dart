@@ -15,6 +15,7 @@ import 'package:mocktail/mocktail.dart';
 class MockDevicesService extends Mock implements DevicesService {}
 
 void main() {
+  cachedSourceDeadlineTests();
   testWidgets('shows requested heat separately from suspended physical output', (
     tester,
   ) async {
@@ -61,6 +62,7 @@ void main() {
               data: {
                 'data': runtime
                     ? {
+                        'configuration_revision': 1,
                         'requested_mode': 'heat',
                         'heating_setpoint': 21.0,
                         'cooling_setpoint': null,
@@ -102,6 +104,7 @@ void main() {
                         ],
                       }
                     : {
+                        'revision': 1,
                         'requested_mode': 'heat',
                         'locked': false,
                         'policy': {
@@ -219,11 +222,13 @@ void commandSupersedesPollTest() {
               data: {
                 'data': options.path.endsWith('/runtime')
                     ? {
+                        'configuration_revision': 1,
                         'requested_mode': afterCommand ? 'heat' : 'off',
                         'readiness': 'draft',
                         'reasons': [],
                       }
                     : {
+                        'revision': 1,
                         'requested_mode': afterCommand ? 'heat' : 'off',
                         'locked': false,
                         'policy': {
@@ -291,8 +296,14 @@ void commandSupersedesPollTest() {
           statusCode: 200,
           data: {
             'data': entry.key.endsWith('/runtime')
-                ? {'requested_mode': 'off', 'readiness': 'draft', 'reasons': []}
+                ? {
+                    'configuration_revision': 1,
+                    'requested_mode': 'off',
+                    'readiness': 'draft',
+                    'reasons': [],
+                  }
                 : {
+                    'revision': 1,
                     'requested_mode': 'off',
                     'locked': false,
                     'policy': {
@@ -373,11 +384,13 @@ void disposePendingCommandTest() {
               data: {
                 'data': options.path.endsWith('/runtime')
                     ? {
+                        'configuration_revision': 1,
                         'requested_mode': 'off',
                         'readiness': 'draft',
                         'reasons': [],
                       }
                     : {
+                        'revision': 1,
                         'requested_mode': 'off',
                         'locked': false,
                         'policy': {
@@ -521,6 +534,7 @@ void staleDeviceResponseTest({bool sameId = false}) {
                 'data': {
                   'requested_mode': mode,
                   if (suffix.isEmpty) ...{
+                    'revision': 1,
                     'locked': false,
                     'policy': {
                       'heatingSetpoint': null,
@@ -528,6 +542,7 @@ void staleDeviceResponseTest({bool sameId = false}) {
                     },
                     'settings': [],
                   } else ...{
+                    'configuration_revision': 1,
                     'readiness': 'suspended',
                     'reasons': [],
                   },
@@ -550,4 +565,547 @@ void staleDeviceResponseTest({bool sameId = false}) {
       await tester.pumpAndSettle();
     },
   );
+}
+
+void cachedSourceDeadlineTests() {
+  for (final role in ['ambient', 'floor', 'contact']) {
+    for (final gap in ['omitted', 'mismatched']) {
+      testWidgets(
+        '$role runtime property $gap cannot recover at the same sample in actual detail',
+        (tester) async {
+          final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+          final initial = DateTime.now().subtract(
+            const Duration(milliseconds: 10),
+          );
+          final expiry = initial.add(const Duration(minutes: 1));
+          var stamp = initial;
+          var broken = false;
+          var reads = 0;
+          Map declared(String id, String sourceRole) => {
+            'id': id,
+            'role': sourceRole,
+            'source_identity': id,
+            'source_property': 'property-$id',
+          };
+          Map diagnostic(String id, String sourceRole) => {
+            'binding': id,
+            'role': sourceRole,
+            if (!(broken && sourceRole == role && gap == 'omitted'))
+              'source_property':
+                  broken && sourceRole == role && gap == 'mismatched'
+                  ? 'wrong-property'
+                  : 'property-$id',
+            'source_kind': 'physical',
+            'status': 'fresh',
+            'quality': 'good',
+            'sampled_at': (sourceRole == role ? stamp : initial)
+                .toIso8601String(),
+            'expires_at': expiry.toIso8601String(),
+            'age_seconds': 0,
+            'maximum_age_seconds': 60,
+          };
+          dio.interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) {
+                final runtime = options.path.endsWith('/runtime'),
+                    comfort = options.path.endsWith('/comfort');
+                if (runtime) reads++;
+                handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    statusCode: 200,
+                    data: {
+                      'data': comfort
+                          ? {
+                              'controller': 'controller',
+                              'revision': 1,
+                              'graph_revision': 1,
+                              'configuration': null,
+                              'effective': {'source': 'manual'},
+                            }
+                          : runtime
+                          ? {
+                              'configuration_revision': 1,
+                              'readiness': 'ready',
+                              'current_temperature': 19.5,
+                              'floor_temperature': 22,
+                              'inputs': [
+                                diagnostic('ambient', 'ambient'),
+                                if (role != 'ambient') diagnostic(role, role),
+                              ],
+                              'branches': [],
+                            }
+                          : {
+                              'revision': 1,
+                              'locked': false,
+                              'policy': {},
+                              'settings': [],
+                              'actuators': [],
+                              'sources': [
+                                declared('ambient', 'ambient'),
+                                if (role != 'ambient') declared(role, role),
+                              ],
+                            },
+                    },
+                  ),
+                );
+              },
+            ),
+          );
+          locator.registerSingleton<Dio>(dio);
+          addTearDown(() => locator.unregister<Dio>());
+          addTearDown(() async {
+            await tester.pumpWidget(const SizedBox());
+            await tester.pumpAndSettle();
+          });
+          await tester.binding.setSurfaceSize(const Size(1200, 4000));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          await tester.pumpWidget(
+            MaterialApp(
+              home: VirtualThermostatDeviceDetail(
+                device: ThermostatDeviceView(
+                  id: 'controller',
+                  type: 'virtual',
+                  name: 'Room',
+                  channels: const [],
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(reads, 1);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          if (role == 'ambient') {
+            expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          }
+          if (role == 'floor') {
+            expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+          }
+          broken = true;
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(reads, 2);
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          if (role == 'ambient') {
+            expect(find.textContaining('Ambient: 19.5'), findsNothing);
+          }
+          if (role == 'floor') {
+            expect(find.textContaining('Floor: 22.0'), findsNothing);
+          }
+          broken = false;
+          // Restoring the property without a publication must not resurrect S.
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(reads, 3);
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          if (role == 'ambient') {
+            expect(find.textContaining('Ambient: 19.5'), findsNothing);
+          }
+          if (role == 'floor') {
+            expect(find.textContaining('Floor: 22.0'), findsNothing);
+          }
+          stamp = DateTime.now();
+          expect(stamp.isAfter(initial), isTrue);
+          await tester.pump(const Duration(seconds: 3));
+          await tester.pump();
+          expect(reads, 4);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          if (role == 'ambient') {
+            expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          }
+          if (role == 'floor') {
+            expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+          }
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpAndSettle();
+        },
+      );
+    }
+  }
+
+  for (final role in ['member', 'ambient', 'floor', 'contact', 'contacts']) {
+    testWidgets(
+      'cached $role HTTP before an expired frame cannot renew its original monotonic deadline',
+      (tester) async {
+        final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+        final initial = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        var stamp = initial;
+        Map diagnostic(
+          String binding,
+          String inputRole, {
+          bool longLived = false,
+        }) => {
+          'binding': binding,
+          'role': inputRole,
+          'source_property': binding,
+          'source_kind': 'physical',
+          'status': 'fresh',
+          'quality': 'good',
+          'sampled_at': (longLived ? initial : stamp).toIso8601String(),
+          'expires_at':
+              (longLived
+                      ? initial.add(const Duration(minutes: 1))
+                      : stamp.add(const Duration(seconds: 2)))
+                  .toIso8601String(),
+          'age_seconds': 0,
+          'maximum_age_seconds': longLived ? 60 : 2,
+        };
+        Map declared(String binding, String inputRole) => {
+          'id': binding,
+          'role': inputRole,
+          'source_property': binding,
+          'source_identity': binding,
+        };
+        final member = {
+          'id': 'one',
+          'role': 'heating',
+          'state': 'reserved',
+          'source_identity': 'relay',
+          'physical_identity': 'relay',
+          'protection': {'source_identity': 'floor-sensor'},
+        };
+        dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final comfort = options.path.endsWith('/comfort'),
+                  runtime = options.path.endsWith('/runtime');
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'data': comfort
+                        ? {
+                            'controller': 'controller',
+                            'revision': 1,
+                            'graph_revision': 1,
+                            'configuration': null,
+                            'effective': {'source': 'manual'},
+                          }
+                        : runtime
+                        ? {
+                            'configuration_revision': 1,
+                            'requested_mode': 'heat',
+                            'readiness': 'ready',
+                            'reasons': [],
+                            'current_temperature': 19.5,
+                            'floor_temperature': 22,
+                            'inputs': [
+                              diagnostic(
+                                'ambient',
+                                'ambient',
+                                longLived: role != 'ambient',
+                              ),
+                              if (role == 'floor' || role == 'contact')
+                                diagnostic(role, role),
+                              if (role == 'contacts') ...[
+                                diagnostic(
+                                  'contact-a',
+                                  'contact',
+                                  longLived: true,
+                                ),
+                                diagnostic('contact-b', 'contact'),
+                              ],
+                            ],
+                            'branches': [
+                              if (role == 'member')
+                                {
+                                  'claim': 'one',
+                                  'physical_identity': 'relay',
+                                  'role': 'heating',
+                                  'activity': 'off',
+                                  'protection': {
+                                    ...diagnostic('floor-sensor', 'floor'),
+                                    'claim': 'one',
+                                    'source_identity': 'floor-sensor',
+                                    'temperature': 20,
+                                    'ready': true,
+                                    'latched': false,
+                                  },
+                                },
+                            ],
+                          }
+                        : {
+                            'revision': 1,
+                            'locked': false,
+                            'policy': {'heatingSetpoint': 21},
+                            'settings': [],
+                            'sources': [
+                              declared('ambient', 'ambient'),
+                              if (role == 'floor' || role == 'contact')
+                                declared(role, role),
+                              if (role == 'contacts') ...[
+                                declared('contact-a', 'contact'),
+                                declared('contact-b', 'contact'),
+                              ],
+                            ],
+                            'actuators': [if (role == 'member') member],
+                          },
+                  },
+                ),
+              );
+            },
+          ),
+        );
+        locator.registerSingleton<Dio>(dio);
+        addTearDown(() => locator.unregister<Dio>());
+        addTearDown(() async {
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpAndSettle();
+        });
+        await tester.binding.setSurfaceSize(const Size(1200, 4000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          MaterialApp(
+            home: VirtualThermostatDeviceDetail(
+              device: ThermostatDeviceView(
+                id: 'controller',
+                type: 'virtual',
+                name: 'Room',
+                channels: const [],
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        if (role == 'ambient') {
+          expect(find.textContaining('Ambient: 19.5'), findsOneWidget);
+        }
+        if (role == 'member') {
+          expect(
+            find.textContaining('Live protection reading: 20.0'),
+            findsOneWidget,
+          );
+        }
+        // Coalesced fake monotonic time. Real wall remains before original expiry;
+        // cached HTTP arrives before any frame has observed expiration.
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump();
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        if (role == 'ambient') {
+          expect(find.textContaining('Ambient: 19.5'), findsNothing);
+        }
+        if (role == 'member') {
+          expect(
+            find.text('Live protection reading: Unavailable'),
+            findsOneWidget,
+          );
+        }
+        // A genuine later wall timestamp, not fetch/config identity, recovers.
+        stamp = DateTime.now();
+        expect(stamp.isAfter(initial), isTrue);
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump();
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      },
+    );
+  }
+
+  for (final role in ['ambient', 'floor']) {
+    for (final missing in ['declaration', 'diagnostic']) {
+      testWidgets(
+        'positive $role value requires declared joined evidence: missing $missing',
+        (tester) async {
+          final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+          final now = DateTime.now();
+          dio.interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) {
+                final runtime = options.path.endsWith('/runtime'),
+                    comfort = options.path.endsWith('/comfort');
+                handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    statusCode: 200,
+                    data: {
+                      'data': comfort
+                          ? {
+                              'controller': 'controller',
+                              'revision': 1,
+                              'graph_revision': 1,
+                              'configuration': null,
+                            }
+                          : runtime
+                          ? {
+                              'configuration_revision': 1,
+                              'readiness': 'ready',
+                              'current_temperature': 19.5,
+                              'floor_temperature': 22,
+                              'branches': [],
+                              'inputs': [
+                                if (missing != 'diagnostic')
+                                  {
+                                    'binding': role,
+                                    'role': role,
+                                    'source_kind': 'physical',
+                                    'status': 'fresh',
+                                    'quality': 'good',
+                                    'sampled_at': now.toIso8601String(),
+                                    'expires_at': now
+                                        .add(const Duration(minutes: 1))
+                                        .toIso8601String(),
+                                    'age_seconds': 0,
+                                    'maximum_age_seconds': 60,
+                                  },
+                              ],
+                            }
+                          : {
+                              'revision': 1,
+                              'locked': false,
+                              'policy': {},
+                              'settings': [],
+                              'actuators': [],
+                              'sources': [
+                                if (missing != 'declaration')
+                                  {
+                                    'id': role,
+                                    'role': role,
+                                    'source_identity': role,
+                                  },
+                              ],
+                            },
+                    },
+                  ),
+                );
+              },
+            ),
+          );
+          locator.registerSingleton<Dio>(dio);
+          addTearDown(() => locator.unregister<Dio>());
+          await tester.pumpWidget(
+            MaterialApp(
+              home: VirtualThermostatDeviceDetail(
+                device: ThermostatDeviceView(
+                  id: 'controller',
+                  type: 'virtual',
+                  name: 'Room',
+                  channels: const [],
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(find.textContaining('Ambient: 19.5'), findsNothing);
+          expect(find.textContaining('Selected floor: 22'), findsNothing);
+          expect(find.text('Controller readiness: ready'), findsNothing);
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpAndSettle();
+        },
+      );
+    }
+  }
+  for (final scenario in [
+    'opaque-suspended',
+    'opaque-ready',
+    'overflow-ready',
+  ]) {
+    testWidgets(
+      'member identity classification $scenario never invents qualified readiness',
+      (tester) async {
+        final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+        final now = DateTime.now();
+        dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              final runtime = options.path.endsWith('/runtime'),
+                  comfort = options.path.endsWith('/comfort');
+              handler.resolve(
+                Response(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {
+                    'data': comfort
+                        ? {
+                            'controller': 'controller',
+                            'revision': 1,
+                            'graph_revision': 1,
+                            'configuration': null,
+                          }
+                        : runtime
+                        ? {
+                            'configuration_revision': 1,
+                            'readiness': scenario == 'opaque-suspended'
+                                ? 'suspended'
+                                : 'ready',
+                            'inputs': [],
+                            'branches': scenario.startsWith('opaque')
+                                ? [
+                                    {'role': 'heating', 'activity': 'off'},
+                                  ]
+                                : [
+                                    for (var n = 0; n < 17; n++)
+                                      {
+                                        'claim': 'claim$n',
+                                        'role': 'heating',
+                                        'protection': {
+                                          'status': 'fresh',
+                                          'quality': 'good',
+                                          'temperature': 20,
+                                          'sampled_at': now.toIso8601String(),
+                                          'expires_at': now
+                                              .add(const Duration(minutes: 1))
+                                              .toIso8601String(),
+                                          'age_seconds': 0,
+                                          'maximum_age_seconds': 60,
+                                        },
+                                      },
+                                  ],
+                          }
+                        : {
+                            'revision': 1,
+                            'locked': false,
+                            'policy': {},
+                            'settings': [],
+                            'sources': [],
+                            'actuators': [],
+                          },
+                  },
+                ),
+              );
+            },
+          ),
+        );
+        locator.registerSingleton<Dio>(dio);
+        addTearDown(() => locator.unregister<Dio>());
+        await tester.pumpWidget(
+          MaterialApp(
+            home: VirtualThermostatDeviceDetail(
+              device: ThermostatDeviceView(
+                id: 'controller',
+                type: 'virtual',
+                name: 'Room',
+                channels: const [],
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        expect(
+          find.text(
+            'Controller readiness: ${scenario == 'opaque-suspended' ? 'suspended' : 'Unavailable'}',
+          ),
+          findsOneWidget,
+        );
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      },
+    );
+  }
 }

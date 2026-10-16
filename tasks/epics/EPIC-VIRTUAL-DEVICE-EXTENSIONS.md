@@ -52,8 +52,11 @@ Software completion does not establish installed hardware qualification.
 
 VD3-2 and VD3-3 merged in [PR #1465](https://github.com/FastyBird/smart-panel/pull/1465) at
 `4f4dd1f346fa5e9508c729f5b0d11a23a416f465`. Thermostat comfort and mandatory branches are now composed locally
-onto PR #1466 main; neither #1454 nor #1455 is marked delivered here. Climate own generation and bounded local
-checks completed at backend `db7ed20` and UI `8ce7a5a`. Local validation does not establish publication or complete acceptance.
+onto the merged backend (PR #1469, main `2c90a80651b4fab1b6e2c1ffa44121c4595835db`). Client integration,
+composed local checks and pinned Flutter localization generation are recorded in
+`docs/work/virtual-thermostat/member-client-validation.md`; neither #1454 nor #1455 is marked fully delivered here.
+The review corrections pass focused local checks and the Spanish ARB correction has pinned localization generation.
+Fresh independent review and exact-head CI/CodeRabbit remain required before parent publication. Installed qualification, #1458 and the epic remain open.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |

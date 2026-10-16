@@ -30,11 +30,12 @@ class VirtualThermostatComfort extends StatefulWidget {
 class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
   static const event = 'DevicesVirtualPlugin.Thermostat.RuntimeChanged';
   Map<String, dynamic>? _snapshot;
-  String? _error;
+  String? _error, _readError;
   bool _pending = false, _reading = false, _ready = false, _editing = false;
   int _intentEpoch = 0;
   int _generation = 0, _operation = 0, _minimumRevision = 0, _ticks = 0;
   String? _expiredHint;
+  Map<String, dynamic>? _selectionIntent;
   Timer? _timer;
   CancelToken? _readToken;
   SocketService? _socket;
@@ -82,7 +83,7 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
         _expiredHint = _override?['id']?.toString();
         unawaited(_read());
       } else if (++_ticks % 5 == 0 && !_editing) {
-        unawaited(_read());
+        unawaited(_read(background: _ready));
       }
     });
   }
@@ -101,7 +102,9 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
       _editing = false;
       _minimumRevision = 0;
       _expiredHint = null;
+      _selectionIntent = null;
       _error = null;
+      _readError = null;
       unawaited(_read());
     } else if (oldWidget.revision != widget.revision ||
         oldWidget.disabled != widget.disabled) {
@@ -149,12 +152,19 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
     }
   }
 
-  Future<void> _read() async {
-    if (!locator.isRegistered<Dio>() || _pending || _reading) return;
+  Future<void> _read({bool background = false}) async {
+    if (!locator.isRegistered<Dio>() || _pending) return;
+    if (background &&
+        (widget.disabled || !_ready || !_known || _editing || _reading)) {
+      return;
+    }
     final id = widget.deviceId, ticket = ++_generation;
     setState(() {
       _reading = true;
-      _ready = false;
+      if (!background) {
+        _intentEpoch++;
+        _ready = false;
+      }
     });
     try {
       _readToken?.cancel('comfort read superseded');
@@ -170,16 +180,34 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
           state['controller'] != id ||
           state['revision'] is! num ||
           state['graph_revision'] is! num ||
-          (state['revision'] as num) < _minimumRevision) {
+          (state['revision'] as num) < _minimumRevision ||
+          (state['revision'] as num) < (_snapshot?['revision'] as num? ?? -1) ||
+          (state['graph_revision'] as num) <
+              (_snapshot?['graph_revision'] as num? ?? -1)) {
+        setState(() {
+          _intentEpoch++;
+          _ready = false;
+          _readError = l.thermostatComfortError;
+        });
         return;
       }
       setState(() {
+        if (_snapshot?['revision'] != state['revision'] ||
+            _snapshot?['graph_revision'] != state['graph_revision']) {
+          _intentEpoch++;
+        }
         _snapshot = state;
-        _ready = true;
+        _readError = null;
+        _ready = _known;
+        if (!_ready) _intentEpoch++;
       });
     } catch (error) {
       if (mounted && widget.deviceId == id && ticket == _generation) {
-        setState(() => _error = error.toString());
+        setState(() {
+          _intentEpoch++;
+          _ready = false;
+          _readError = error.toString();
+        });
       }
     } finally {
       if (mounted && ticket == _generation) setState(() => _reading = false);
@@ -195,12 +223,15 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
       'expected_revision': _snapshot!['revision'],
       'expected_graph_revision': _snapshot!['graph_revision'],
     };
+    _readToken?.cancel('comfort action superseded read');
     setState(() {
+      _intentEpoch++;
       _pending = true;
       _ready = false;
       _reading = false;
       _generation++;
       _error = null;
+      _readError = null;
     });
     try {
       await locator<Dio>().post<Map<String, dynamic>>(path, data: body);
@@ -223,6 +254,7 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
     if (!_canAct || _configuration == null) return;
     final id = widget.deviceId,
         revision = _snapshot!['revision'],
+        graph = _snapshot!['graph_revision'],
         epoch = _intentEpoch;
     _editing = true;
     final result = await showDialog<Map<String, dynamic>>(
@@ -233,13 +265,95 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
     if (!mounted || widget.deviceId != id) return;
     _editing = false;
     if (result != null &&
-        _ready &&
+        _canAct &&
+        _snapshot?['graph_revision'] == graph &&
         _intentEpoch == epoch &&
         _snapshot?['revision'] == revision &&
         (_snapshot?['revision'] as num? ?? -1) >= _minimumRevision) {
       await _act('override', result);
     } else if (result != null) {
       setState(() => _error = l.thermostatComfortError);
+      await _read();
+    }
+  }
+
+  Future<void> _openSelection(
+    BuildContext buttonContext,
+    String selected,
+    List<Map> presets,
+  ) async {
+    if (!_canAct) return;
+    final intent = <String, dynamic>{
+      'controller': widget.deviceId,
+      'revision': _snapshot?['revision'],
+      'graph': _snapshot?['graph_revision'],
+      'epoch': _intentEpoch,
+    };
+    _editing = true;
+    _selectionIntent = intent;
+    // Own the route future so rebuilds cannot replace either its opening token
+    // or its cancellation callback (PopupMenuButton uses its latest callbacks).
+    final button = buttonContext.findRenderObject()! as RenderBox;
+    final overlay =
+        Overlay.of(buttonContext).context.findRenderObject()! as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlay,
+        ),
+      ),
+      Offset.zero & overlay.size,
+    );
+    try {
+      final value = await showMenu<String>(
+        context: buttonContext,
+        position: position,
+        initialValue: selected,
+        items: [
+          PopupMenuItem(
+            value: 'manual',
+            child: Text(l.thermostatComfortManual),
+          ),
+          for (final preset in presets)
+            if (preset['preset'] is String)
+              PopupMenuItem(
+                value: preset['preset'] as String,
+                child: Text(_presetLabel(preset['preset'] as String)),
+              ),
+        ],
+      );
+      if (!mounted) return;
+      if (value != null) await _select(value, intent);
+    } finally {
+      if (identical(intent, _selectionIntent)) {
+        _editing = false;
+        _selectionIntent = null;
+      }
+    }
+  }
+
+  Future<void> _select(String value, Map<String, dynamic> intent) async {
+    // A retired route owns no state on a replacement controller or newer editor.
+    if (!mounted ||
+        !identical(intent, _selectionIntent) ||
+        intent['controller'] != widget.deviceId) {
+      return;
+    }
+    _selectionIntent = null;
+    _editing = false;
+    if (intent['revision'] == _snapshot?['revision'] &&
+        intent['graph'] == _snapshot?['graph_revision'] &&
+        intent['epoch'] == _intentEpoch &&
+        _canAct) {
+      await _act('selection', {
+        'preset': value == 'manual' ? null : value,
+        'clear_user_off': false,
+      });
+    } else {
+      setState(() => _error = l.thermostatComfortError);
+      await _read();
     }
   }
 
@@ -258,6 +372,7 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
         .whereType<Map>()
         .toList();
     final selected = configuration?['selected_preset']?.toString() ?? 'manual';
+    final error = _error ?? _readError;
     final effective = _map(_snapshot?['effective']);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,9 +383,9 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         Text(l.thermostatComfortHelp),
-        if (_error != null)
+        if (error != null)
           Text(
-            '${l.thermostatComfortError}: $_error',
+            '${l.thermostatComfortError}: $error',
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         TextButton(
@@ -336,31 +451,19 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
           ),
         if (configuration != null) ...[
           Text(l.thermostatComfortSelected),
-          DropdownButton<String>(
-            key: const ValueKey('comfort-selection'),
-            value:
-                selected == 'manual' ||
-                    presets.any((preset) => preset['preset'] == selected)
-                ? selected
-                : null,
-            isExpanded: true,
-            items: [
-              DropdownMenuItem(
-                value: 'manual',
-                child: Text(l.thermostatComfortManual),
+          Builder(
+            builder: (buttonContext) => TextButton(
+              key: const ValueKey('comfort-selection'),
+              onPressed: _canAct
+                  ? () => _openSelection(buttonContext, selected, presets)
+                  : null,
+              child: Row(
+                children: [
+                  Expanded(child: Text(_presetLabel(selected))),
+                  const Icon(Icons.arrow_drop_down),
+                ],
               ),
-              for (final preset in presets)
-                DropdownMenuItem(
-                  value: preset['preset']?.toString(),
-                  child: Text(_presetLabel(preset['preset']?.toString())),
-                ),
-            ],
-            onChanged: _canAct
-                ? (value) => _act('selection', {
-                    'preset': value == 'manual' ? null : value,
-                    'clear_user_off': false,
-                  })
-                : null,
+            ),
           ),
           TextButton(
             key: const ValueKey('comfort-create'),

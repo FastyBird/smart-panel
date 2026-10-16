@@ -1385,7 +1385,7 @@
   "thermostatComfortCancel": "Cancelar esta anulación",
   "thermostatComfortClearOff": "Quitar bloqueo de apagado del usuario",
   "thermostatComfortOffHeld": "El apagado del usuario está bloqueado. Los preajustes y la automatización no pueden reactivar la salida.",
-  "thermostatComfortEffective": "Consigna de confort efectiva",
+  "thermostatComfortEffective": "Intención de confort efectiva",
   "thermostatComfortExpires": "Vencimiento absoluto",
   "thermostatComfortRemaining": "Tiempo restante",
   "thermostatComfortExpiryHint": "La cuenta atrás es informativa. Se requiere confirmación del servidor; no confirma la actividad de la salida.",

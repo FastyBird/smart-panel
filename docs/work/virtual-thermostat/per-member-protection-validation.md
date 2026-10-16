@@ -189,8 +189,9 @@ exercise exact equality rejection and a just-inside reachable boundary in both b
 artifact execution. SQLite tests preserve the legacy upgrade/artifact/activation/UUID/generation/journal assertions.
 
 No API DTO/model/decorator/schema or generated client contract changes in this follow-up; unchanged Admin/Panel
-and client generation are not rerun. Coordinated authoring/diagnostics UI completion described above remains needed
-before alpha; physical commissioning remains after published alpha. No new migration is added, and migration 41,
+and client generation were not rerun at that historical backend checkpoint. Coordinated authoring/diagnostics UI
+and localization generation are now integrated with local checks recorded in `member-client-validation.md`. Current
+review corrections have focused local checks recorded there; fresh exact-head CI/review remains required; physical commissioning remains after published alpha. No new migration is added, and migration 41,
 migration 40 and the canonical legacy script bytes are unchanged. Fresh independent safety review remains required.
 
 The final installation rerun passed **54 tests / one suite** (`.vd1454-review-installation-final.log`). All 14 focused

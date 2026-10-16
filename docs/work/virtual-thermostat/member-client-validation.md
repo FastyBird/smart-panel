@@ -50,8 +50,9 @@ responses. The six existing locales retain comfort translations and gain transla
 The independently accepted Panel-only stack is now integrated: `81d47453` → `85f3b9214`, `94fa3e31` →
 `3f0957e80`, `51fb6ddd` → `17717bf99`, and `3774fe49` → `896c10e6f`. These changes retain ordinary comfort
 intents, all-member diagnostics, protective expiry/gap withholding, and config/runtime claim watermarks. The
-separate Panel worker still owns the small follow-up for the new public activity/qualification fields; no extra
-Panel handwritten changes were made in the integration clone.
+Panel follow-up for the public activity/qualification fields is also integrated and locally checked, as recorded
+below. The earlier integration clone made no extra Panel handwritten changes; that historical boundary is not an
+open client backlog. Review-fix validation and fresh exact-head CI/review remain separate gates.
 
 ## Verified source checkpoint
 
@@ -195,7 +196,76 @@ with `pnpm exec vitest run ... --maxWorkers=2`: **11 files / 63 tests passed**
 (`/tmp/vd-members-client-final-admin-tests.log`). Final Admin types and scoped lint/format passed
 (`/tmp/vd-members-client-final-admin-{types,lint,format}.log`). Independent review accepted the Admin freshness correction at `8b26f2f67`; parent publication/CI review remains pending. These local client results do not claim hardware qualification or alpha readiness.
 
-The current tracked source diff is 114 paths versus cached merged-main base. No tests/locales are omitted to change
+That historical combined checkpoint had 114 paths versus its cached merged-main base. No tests/locales are omitted to change
 that count; parent publication may split an identical final tree to meet the external 100-file review limit.
 No issue #1447/#1454/#1455 is marked merged or alpha-ready. No push, PR, hardware action, deployment or release was
 performed by this integration task.
+
+
+## PR #1470 review correction validation checkpoint
+
+The published client checkpoint `4ae7f8046083ae3a70e4cd597b6b1384bc671a26` is based on merged backend main
+`2c90a80651b4fab1b6e2c1ffa44121c4595835db`, with 52 feature paths. The earlier composed local validation and
+pinned Flutter 3.41.5 localization generation are complete; the historical source-only and client-backlog notes
+above do not describe remaining implementation. These results do not validate subsequent review corrections.
+
+The follow-up to review `5549762916` separates read errors from action errors, retries one inconsistent Admin
+read-only triplet without replaying writes, and gates tick-based Admin polling while editing. Panel comfort uses
+background reads only from an enabled, known, ready baseline outside editing/pending/reading. Failed, invalid or
+regressing reads revoke readiness; all foreground, controller, socket and revision invalidations still fence intent.
+An explicit popup-route future retains the opening controller/revision/graph/intent token through selection or
+cancellation, so rebuilds cannot replace the token and an old route cannot borrow a newer menu's authority. Server CAS remains
+mandatory. Successful reads clear only read errors; write conflicts remain visible.
+
+Detail polling moves from five to three seconds while the display remains current for strictly less than five
+seconds. This permits a response in under two seconds without the avoidable deadline gap. Slower or stalled polls
+still withhold at the original limit. Source expiry, monotonic clocks, cached observation watermarks, claim identity
+and generation fences are unchanged. An uncovered socket hint still invalidates immediately: the event has no
+request correlation or read-only reason, so a possibly self-generated hint cannot safely be distinguished from a
+real protective update. This is a partial flicker correction, not permission to retain unknown or stale authority.
+
+The review correction now passes **74 Admin tests across 11 suites**, full forced 8 GiB Admin types and scoped
+ESLint/Prettier. The final **six Panel presentation suites pass 98 tests**; scoped analysis of 12 files reports no
+issues and formatting checks seven changed source/test files with no changes. Pinned Flutter 3.41.5 `gen-l10n`
+changed only the expected Spanish getter from the corrected ARB. All seven generated localization files retain
+89 climate and 49 main group keys. Backend/API/schema/spec/SDK/dependency sources are unchanged; the existing own
+OpenAPI/Admin API and all generated API/spec trees match the earlier generation contract exactly. No API/spec/SDK
+regeneration, install, backend runtime or hardware action was needed.
+
+The first Panel run retained nine failures: eight revealed a real cached-observation renewal boundary when the
+three-second poll returned before any expired frame; one was the legitimate scheduled poll at six seconds. The
+new observation fence captures each original age/absolute-expiry minimum as a monotonic deadline at coherent HTTP
+acceptance, before resetting receipt elapsed. Render calls can withdraw evidence but cannot initialize or renew it.
+Equal timestamps only tighten deadlines; older samples refuse, and recovery requires strictly newer qualified
+original evidence. A controller-wide configuration revision floor precedes every merge/prune/admission. Member
+claim contexts and configured-source binding aliases preserve withdrawal through gaps, loading, rebind and cached
+refetch. Every positive ambient/global-floor value and required source, including each contact, requires its own
+unambiguous declared-source/runtime join. Opaque missing claim IDs are unqualified evidence, not capacity overflow;
+they cannot establish positive readiness, while the server's suspended diagnostic label remains truthful.
+
+Backend limits remain eight combined actuator members and eighteen configured sources. Defensive retained stores
+are bounded to sixteen claim records, thirty-six source records and thirty-six binding aliases; overflow withholds
+rather than evicting evidence. Qualified retirements fold into two namespace timestamp floors before any new or
+replacement-key admission, including same-response replacements. This deliberately strengthens the old removal
+policy: three old assertions expecting a pruned/released record's cached sample to become live are now unavailable,
+followed by strictly newer qualified recovery. No other age/expiry or elapsed bound was relaxed. Invalid/future or
+identity-mismatched observations cannot poison retirement floors. Discarded alias history or unavailable capacity
+closes unknown legacy fallback; known aliases and full canonical identities retain their ordinary qualified paths.
+
+The conservative tradeoff is availability: a new or re-added identity at or below a namespace's retired sample
+floor waits for newer qualified evidence. Unknown legacy bindings without retained identity are withheld once
+exact alias history has been discarded. These are bounded controller-widget-lifetime safeguards; they do not claim
+persistence across disposal/process restart or a new server publication identity. Same-millisecond samples cannot
+recover a withdrawn observation. No extra display grace or constructor clock seam was added.
+
+Five actual detail regressions (member, ambient, floor, contact and multiple contacts) fail behaviorally against the
+exact paused pre-fence three-second implementation, then pass with the correction. These negative controls compile
+successfully and restore the current source byte-for-byte. Direct helper tests additionally exercise literal wall
+rollback, first-HTTP admission, alias migration/collision, retirement/re-add, revision regression, invalid floor
+poisoning, overflow, sibling independence and exact deadline limits. Old invalid recovery fixtures using future
+sample timestamps now use genuinely later, already observed wall timestamps; their original ages, maximum ages,
+absolute expiry fixtures and cached identities remain intact. Socket assertions distinguish count three before the
+six-second deadline from exactly one periodic fourth read, preserving covered/uncovered hint and reconnect proofs.
+
+Fresh independent review and exact-head CI/CodeRabbit remain required before parent publication. These local results
+do not close full #1454/#1455 delivery, #1458, installed qualification or the epic.
