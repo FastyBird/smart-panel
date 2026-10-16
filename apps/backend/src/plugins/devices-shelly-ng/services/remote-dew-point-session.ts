@@ -22,6 +22,14 @@ interface RemoteResult {
 	drained: boolean;
 	wasOn?: boolean;
 }
+interface RemoteRequest {
+	readonly packet: Readonly<RemoteDewPointPacket>;
+	readonly deadline: RemoteDewPointDeadline;
+	readonly sourceDeadline: RemoteDewPointDeadline;
+	readonly sourceExpiresAt: number;
+	/** The first dispatch's captured source/graph/request/ownership fence is never replaced by a retry. */
+	readonly originalIsCurrent: () => boolean;
+}
 export type RemoteCoolingResult = {
 	outcome: 'accepted' | 'refused' | 'unknown';
 	pendingOnDrained: false;
@@ -35,17 +43,21 @@ export class RemoteDewPointSession {
 	private epoch: number | null = null;
 	private sequence = 0;
 	private authorityGeneration = 0;
-	private readonly requests = new Map<string, { packet: Readonly<RemoteDewPointPacket>; deadline: RemoteDewPointDeadline }>();
+	private readonly requests = new Map<string, Readonly<RemoteRequest>>();
 	private mutationUncertain = false;
 	private restartDrainUncertain = false;
 	private pendingOnPacket: Readonly<RemoteDewPointPacket> | null = null;
-	private unresolved: { packet: Readonly<RemoteDewPointPacket>; deadline: RemoteDewPointDeadline } | null = null;
+	private unresolved: Readonly<RemoteRequest> | null = null;
 	constructor(
 		private readonly http: AuthenticatedShellyScriptHttp,
 		private readonly artifact: RemoteDewPointArtifact,
 	) {}
 
-	private async status(deadline: RemoteDewPointDeadline, isCurrent: () => boolean, fence = false): Promise<RemoteDewPointStatus> {
+	private async status(
+		deadline: RemoteDewPointDeadline,
+		isCurrent: () => boolean,
+		fence = false,
+	): Promise<RemoteDewPointStatus> {
 		const status = await this.http.request<RemoteDewPointStatus>('GET', null, deadline, isCurrent);
 		const b = this.artifact.binding;
 		if (
@@ -87,8 +99,21 @@ export class RemoteDewPointSession {
 		const current = () => generation === this.authorityGeneration && isCurrent();
 		return this.serialize(async () => {
 			const existing = this.requests.get(requestId);
-			if (existing) return this.transmit(existing.packet, existing.deadline, current);
-			if (this.requests.size >= 256) return { outcome: 'refused', pendingOnDrained: false, reasons: ['remote_journal_capacity'] };
+			if (existing) {
+				if (
+					existing.packet.action !== action ||
+					existing.packet.thresholdC !== thresholdC ||
+					existing.sourceExpiresAt !== deadline.expiresAt ||
+					existing.packet.artifact !== this.artifact.artifactId ||
+					existing.packet.controllerRevision !== this.artifact.binding.controllerRevision ||
+					existing.packet.protectionFingerprint !== this.artifact.binding.protectionFingerprint ||
+					existing.packet.epoch !== this.epoch
+				)
+					return { outcome: 'refused', pendingOnDrained: false, reasons: ['remote_request_conflict'] };
+				return this.transmit(existing, current);
+			}
+			if (this.requests.size >= 256)
+				return { outcome: 'refused', pendingOnDrained: false, reasons: ['remote_journal_capacity'] };
 			if (this.mutationUncertain || this.restartDrainUncertain)
 				return { outcome: 'refused', pendingOnDrained: false, reasons: ['remote_unresolved_on'] };
 			if (!current() || !Number.isFinite(thresholdC) || thresholdC <= -45 || thresholdC > 60)
@@ -113,8 +138,15 @@ export class RemoteDewPointSession {
 				const packetDeadline = new RemoteDewPointDeadline(
 					Math.min(deadline.expiresAt, Date.now() + until - status.uptimeMs),
 				);
-				this.requests.set(requestId, { packet, deadline: packetDeadline });
-				return this.transmit(packet, packetDeadline, current);
+				const request: Readonly<RemoteRequest> = Object.freeze({
+					packet,
+					deadline: packetDeadline,
+					sourceDeadline: deadline,
+					sourceExpiresAt: deadline.expiresAt,
+					originalIsCurrent: current,
+				});
+				this.requests.set(requestId, request);
+				return this.transmit(request, current);
 			} catch {
 				return { outcome: 'refused', pendingOnDrained: false, reasons: ['remote_status_or_authentication'] };
 			}
@@ -124,36 +156,45 @@ export class RemoteDewPointSession {
 	/** Exact tuple only; no renewed deadline, sequence, epoch, request ID or threshold after ambiguity. */
 	retry(isCurrent: () => boolean): Promise<RemoteCoolingResult> {
 		const generation = this.authorityGeneration;
+		const request = this.unresolved;
 		return this.serialize(async () =>
-			this.unresolved
-				? this.transmit(this.unresolved.packet, this.unresolved.deadline, () => generation === this.authorityGeneration && isCurrent())
+			request
+				? this.transmit(request, () => generation === this.authorityGeneration && isCurrent())
 				: { outcome: 'refused', pendingOnDrained: false, reasons: ['remote_no_exact_retry'] },
 		);
 	}
 
 	private async transmit(
-		packet: Readonly<RemoteDewPointPacket>,
-		deadline: RemoteDewPointDeadline,
-		isCurrent: () => boolean,
+		request: Readonly<RemoteRequest>,
+		attemptIsCurrent: () => boolean,
 	): Promise<RemoteCoolingResult> {
+		const { packet, deadline, sourceDeadline } = request;
+		const isCurrent = () =>
+			request.originalIsCurrent() &&
+			attemptIsCurrent() &&
+			!this.restartDrainUncertain &&
+			this.epoch === packet.epoch &&
+			this.sequence === packet.sequence &&
+			packet.artifact === this.artifact.artifactId &&
+			packet.controllerRevision === this.artifact.binding.controllerRevision &&
+			packet.protectionFingerprint === this.artifact.binding.protectionFingerprint &&
+			Math.min(deadline.remaining(), sourceDeadline.remaining()) >= this.artifact.binding.timing.minimumLifetimeMs;
+		if (!isCurrent())
+			return {
+				outcome: 'refused',
+				pendingOnDrained: false,
+				reasons: ['remote_original_evidence_or_authority_revoked'],
+			};
 		let sent = false;
 		try {
-			const result = await this.http.request<RemoteResult>(
-				'POST',
-				packet,
-				deadline,
-				() =>
-					isCurrent() &&
-					this.epoch === packet.epoch &&
-					deadline.remaining() >= this.artifact.binding.timing.minimumLifetimeMs,
-				() => {
-					sent = true;
-					this.mutationUncertain = true;
-					this.unresolved = { packet, deadline };
-					if (packet.action === 'on') this.pendingOnPacket ??= packet;
-				},
-			);
+			const result = await this.http.request<RemoteResult>('POST', packet, deadline, isCurrent, () => {
+				sent = true;
+				this.mutationUncertain = true;
+				this.unresolved = request;
+				if (packet.action === 'on') this.pendingOnPacket ??= packet;
+			});
 			if (
+				!isCurrent() ||
 				!result ||
 				result.protocol !== packet.protocol ||
 				result.artifact !== packet.artifact ||
@@ -188,24 +229,50 @@ export class RemoteDewPointSession {
 	private async physicalOff(deadline: RemoteDewPointDeadline, current: () => boolean): Promise<RemoteCoolingResult> {
 		const requestId = randomUUID();
 		try {
-			const result = await this.http.request<RemoteResult>('POST', {
-				protocol: REMOTE_DEW_POINT_PROTOCOL, artifact: this.artifact.artifactId,
-				action: 'off', epoch: this.epoch, sequence: this.sequence, requestId,
-			}, deadline, current);
-			if (!result || result.protocol !== REMOTE_DEW_POINT_PROTOCOL || result.artifact !== this.artifact.artifactId ||
-				result.requestId !== requestId || result.accepted !== true || typeof result.wasOn !== 'boolean' ||
-				!Number.isSafeInteger(result.epoch) || result.epoch < 1) throw new Error('Unconfirmed OFF');
-			if (this.pendingOnPacket && this.epoch !== null && result.epoch !== this.epoch + 1) this.restartDrainUncertain = true;
+			const result = await this.http.request<RemoteResult>(
+				'POST',
+				{
+					protocol: REMOTE_DEW_POINT_PROTOCOL,
+					artifact: this.artifact.artifactId,
+					action: 'off',
+					epoch: this.epoch,
+					sequence: this.sequence,
+					requestId,
+				},
+				deadline,
+				current,
+			);
+			if (
+				!result ||
+				result.protocol !== REMOTE_DEW_POINT_PROTOCOL ||
+				result.artifact !== this.artifact.artifactId ||
+				result.requestId !== requestId ||
+				result.accepted !== true ||
+				typeof result.wasOn !== 'boolean' ||
+				!Number.isSafeInteger(result.epoch) ||
+				result.epoch < 1
+			)
+				throw new Error('Unconfirmed OFF');
+			if (this.pendingOnPacket && this.epoch !== null && result.epoch !== this.epoch + 1)
+				this.restartDrainUncertain = true;
 			this.epoch = result.epoch;
 			this.sequence = 0;
-			return { outcome: 'accepted', wasOn: result.wasOn, pendingOnDrained: false, reasons: ['actual_off_readback_and_drain_required'] };
+			return {
+				outcome: 'accepted',
+				wasOn: result.wasOn,
+				pendingOnDrained: false,
+				reasons: ['actual_off_readback_and_drain_required'],
+			};
 		} catch {
 			return { outcome: 'unknown', pendingOnDrained: false, reasons: ['remote_off_unconfirmed'] };
 		}
 	}
 
 	/** Neither epoch rotation nor repeated fences erase an uncertain native ON across restart. */
-	fence(deadline: RemoteDewPointDeadline, isCurrent: () => boolean): Promise<{ status: RemoteDewPointStatus; observedAt: Date; receivedAt: Date } | null> {
+	fence(
+		deadline: RemoteDewPointDeadline,
+		isCurrent: () => boolean,
+	): Promise<{ status: RemoteDewPointStatus; observedAt: Date; receivedAt: Date } | null> {
 		this.authorityGeneration++;
 		return this.serialize(async () => {
 			const observedAt = new Date();
@@ -213,7 +280,8 @@ export class RemoteDewPointSession {
 			try {
 				const previousEpoch = this.epoch;
 				before = await this.status(deadline, isCurrent, true);
-				if (this.pendingOnPacket && previousEpoch !== null && previousEpoch !== before.epoch) this.restartDrainUncertain = true;
+				if (this.pendingOnPacket && previousEpoch !== null && previousEpoch !== before.epoch)
+					this.restartDrainUncertain = true;
 			} catch {
 				if (this.pendingOnPacket) this.restartDrainUncertain = true;
 			}
@@ -233,7 +301,9 @@ export class RemoteDewPointSession {
 						return { status, observedAt, receivedAt: new Date() };
 					}
 				}
-			} catch { /* A timeout, ACK or new epoch is never drainage proof. */ }
+			} catch {
+				/* A timeout, ACK or new epoch is never drainage proof. */
+			}
 			return null;
 		});
 	}

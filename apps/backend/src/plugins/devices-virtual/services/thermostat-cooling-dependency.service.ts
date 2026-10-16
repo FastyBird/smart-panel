@@ -1,5 +1,3 @@
-import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { DataSource, EntityManager } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
@@ -7,6 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import { ThermostatCoolingDependencyDto } from '../dto/thermostat-config.dto';
 import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
 import { VirtualDewPointConfigEntity, VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -17,6 +16,7 @@ import {
 
 import { ThermostatProtectionSource, resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
 import { VirtualCoolingPolicy, evaluateCoolingProtection } from './virtual-cooling-policy.utils';
+import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
 
 export interface CoolingBinding {
@@ -160,7 +160,8 @@ export class ThermostatCoolingDependencyService {
 			result.push({
 				claimId: claim.id,
 				controllerRevision: config.revision,
-				claim, opposed: claims.some((c) => c.role === 'heating'),
+				claim,
+				opposed: claims.some((c) => c.role === 'heating'),
 				dependency,
 				dewPoint,
 				surface,
@@ -196,15 +197,39 @@ export class ThermostatCoolingDependencyService {
 	}
 
 	/** Capture one immutable threshold/evidence lease before any remote challenge/status/send await. */
-	capture(entry: CoolingBinding, now = Date.now()): { threshold: number; expiresAt: number; controllerRevision: number; protectionFingerprint: string; isCurrent: () => boolean } | null {
+	capture(
+		entry: CoolingBinding,
+		now = Date.now(),
+	): {
+		threshold: number;
+		expiresAt: number;
+		controllerRevision: number;
+		protectionFingerprint: string;
+		isCurrent: () => boolean;
+	} | null {
 		const diagnostic = this.read([entry], now)[0];
-		if (!diagnostic?.ready || diagnostic.threshold === null || !diagnostic.expires_at || !entry.dewPoint || !entry.surface) return null;
-		const dew = this.values.captureIncorporatedSample(entry.dewPoint), surface = this.values.captureIncorporatedSample(entry.surface.property);
+		if (
+			!diagnostic?.ready ||
+			diagnostic.threshold === null ||
+			!diagnostic.expires_at ||
+			!entry.dewPoint ||
+			!entry.surface
+		)
+			return null;
+		const dew = this.values.captureIncorporatedSample(entry.dewPoint),
+			surface = this.values.captureIncorporatedSample(entry.surface.property);
 		if (!dew || !surface) return null;
 		const expiry = Date.parse(diagnostic.expires_at);
-		return Object.freeze({ threshold: diagnostic.threshold, expiresAt: expiry, controllerRevision: entry.controllerRevision, protectionFingerprint: entry.basis,
-			isCurrent: () => Date.now() < expiry && this.values.incorporatedEvidenceCurrent([dew, surface]) &&
-				this.read([entry], Date.now())[0]?.ready === true });
+		return Object.freeze({
+			threshold: diagnostic.threshold,
+			expiresAt: expiry,
+			controllerRevision: entry.controllerRevision,
+			protectionFingerprint: entry.basis,
+			isCurrent: () =>
+				Date.now() < expiry &&
+				this.values.incorporatedEvidenceCurrent([dew, surface]) &&
+				this.read([entry], Date.now())[0]?.ready === true,
+		});
 	}
 
 	read(bindings: CoolingBinding[], now: number): CoolingDiagnostic[] {
@@ -242,6 +267,23 @@ export class ThermostatCoolingDependencyService {
 				!this.values.incorporatedEvidenceCurrent([dewEvidence, surfaceEvidence])
 			)
 				reasons.push('cooling_lineage_quality_or_age');
+			// Only the separately registered, current installed remote profile can clear this gate.
+			// Public flags, legacy heating bytes, adapter registration and ACKs do not supply it.
+			const qualification = this.claims?.qualification(entry.claim, entry.opposed);
+			const remote =
+				qualification?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE ? qualification.profile.remoteDewPoint : null;
+			if (!remote) reasons.push('cooling_remote_profile_installation_unqualified');
+			else if (
+				remote.artifact.binding.protectionFingerprint !== entry.basis ||
+				remote.artifact.binding.remoteLineageFingerprint !== entry.dependency?.dewPointFingerprint ||
+				remote.artifact.binding.localSurface.calibrationFingerprint !== entry.surface?.fingerprint
+			)
+				reasons.push('cooling_artifact_or_protection_mismatch');
+			const sourceGap = reasons.length > 0;
+			if (sourceGap && !state.gap) {
+				state.barrier = this.values.currentSampleGeneration();
+				state.releaseAfter ??= now;
+			}
 			if (!fresh(dewEvidence) || !fresh(surfaceEvidence)) reasons.push('cooling_fresh_report_required');
 			const result = evaluateCoolingProtection(
 				entry.policy,
@@ -249,26 +291,20 @@ export class ThermostatCoolingDependencyService {
 				reasons.length ? null : (surface.value as number),
 				state.latched,
 			);
-			if (result.latched && !state.latched) state.releaseAfter = now;
-			if (entry.surface && result.threshold !== null &&
-				result.threshold + entry.policy.recoveryHysteresisC >= entry.surface.domain.maximum) reasons.push('cooling_recovery_outside_surface_domain');
-			state.latched = result.latched;
-			if (reasons.length) {
-				state.latched = true;
-				state.releaseAfter ??= now;
-				if (!state.gap) state.barrier = this.values.currentSampleGeneration();
-			}
-			state.gap = reasons.length > 0;
+			if (
+				entry.surface &&
+				result.threshold !== null &&
+				result.threshold + entry.policy.recoveryHysteresisC >= entry.surface.domain.maximum
+			)
+				reasons.push('cooling_recovery_outside_surface_domain');
+			const inhibited = result.latched || reasons.length > 0;
+			if (inhibited && !state.latched) state.releaseAfter ??= now;
+			// Recovery cannot clear the latch before actual OFF/drain. Otherwise the first
+			// post-release freshness wait would look like a new trip and re-arm release forever.
+			state.latched = inhibited || state.releaseAfter !== null;
+			// Waiting for post-release reports is not a new physical release event on every read.
+			state.gap = sourceGap;
 			if (state.releaseAfter !== null) reasons.push('cooling_pending_release');
-			// Only the separately registered, current installed remote profile can clear this gate.
-			// Public flags, legacy heating bytes, adapter registration and ACKs do not supply it.
-			const qualification = this.claims?.qualification(entry.claim, entry.opposed);
-			const remote = qualification?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE ? qualification.profile.remoteDewPoint : null;
-			if (!remote) reasons.push('cooling_remote_profile_installation_unqualified');
-			else if (remote.artifact.binding.protectionFingerprint !== entry.basis ||
-				remote.artifact.binding.remoteLineageFingerprint !== entry.dependency?.dewPointFingerprint ||
-				remote.artifact.binding.localSurface.calibrationFingerprint !== entry.surface?.fingerprint)
-				reasons.push('cooling_artifact_or_protection_mismatch');
 
 			return {
 				claim: entry.claimId,
