@@ -219,17 +219,20 @@ class VirtualThermostatEvidenceFence {
   final sources = VirtualThermostatSourceFence();
   num? _revision;
 
+  static bool revisionValid(Object? value) =>
+      value is num && value.isFinite && value >= 0 && value % 1 == 0;
+
+  static bool revisionsCoherent(Map configuration, Map runtime) =>
+      revisionValid(configuration['revision']) &&
+      revisionValid(runtime['configuration_revision']) &&
+      configuration['revision'] == runtime['configuration_revision'];
+
   bool accept(Map configuration, Map runtime, DateTime now, Duration clock) {
-    final revision = configuration['revision'];
-    final known = revision is num && revision.isFinite && revision >= 0;
-    if (_revision != null && (!known || revision < _revision!)) return false;
-    final runtimeRevision = runtime['configuration_revision'];
-    if (runtimeRevision is num &&
-        runtimeRevision > 0 &&
-        runtimeRevision != revision) {
-      return false;
-    }
-    if (known) _revision = revision;
+    // Reject the whole envelope before changing revision/history/evidence.
+    if (!revisionsCoherent(configuration, runtime)) return false;
+    final revision = configuration['revision'] as num;
+    if (_revision != null && revision < _revision!) return false;
+    _revision = revision;
     // Revision admission precedes ALL aliases, contexts, retirements and samples.
     final rows = VirtualThermostatMember.read(configuration, runtime);
     final completeMembers = VirtualThermostatMember.membershipComplete(
@@ -570,9 +573,11 @@ class VirtualThermostatSourceFence {
         ? inputs.whereType<Map>().toList()
         : <Map>[];
     final seenAliases = <String>{}, seenKeys = <String>{};
-    var complete =
+    final rawSourcesComplete =
         sources is List && rows.length == sources.length && rows.length <= 18;
-    _joinsComplete = true;
+    final rawInputsComplete =
+        inputs is List && diagnostics.length == inputs.length;
+    var complete = rawSourcesComplete && rawInputsComplete;
     for (final source in rows) {
       final role = source['role']?.toString() ?? '';
       final id = source['id'];
@@ -676,23 +681,41 @@ class VirtualThermostatSourceFence {
       observation.record = record;
       _pending.add(observation);
     }
-    // Reject orphan diagnostics and ambiguous joins for positive readiness.
-    _joinsComplete = diagnostics.every(
-      (raw) =>
-          _pending
-              .where(
-                (row) =>
-                    row.source['id'] == raw['binding'] &&
-                    row.source['role'] == raw['role'],
-              )
-              .length ==
-          1,
-    );
+    // Filtered projections cannot certify the whole batch or authorize pruning.
+    // Independently unambiguous bindings keep their original observation budgets.
+    final diagnosticAliases = <String>{};
+    _joinsComplete =
+        complete &&
+        diagnostics.every(
+          (raw) =>
+              diagnosticAliases.add(
+                _alias(raw['role']?.toString() ?? '', raw['binding']),
+              ) &&
+              _pending
+                      .where(
+                        (row) =>
+                            row.source['id'] == raw['binding'] &&
+                            row.source['role'] == raw['role'],
+                      )
+                      .length ==
+                  1,
+        ) &&
+        _pending.every(
+          (row) =>
+              diagnostics
+                  .where(
+                    (raw) =>
+                        raw['binding'] == row.source['id'] &&
+                        raw['role'] == row.source['role'],
+                  )
+                  .length ==
+              1,
+        );
     final activeRecords = _pending
         .map((row) => row.record)
         .whereType<_ObservationBudget>()
         .toSet();
-    if (complete) {
+    if (_joinsComplete) {
       for (final alias in _aliases.keys.toList()) {
         if (!seenAliases.contains(alias)) {
           _fold(_aliases.remove(alias)!.qualifiedTime);
@@ -730,10 +753,6 @@ class VirtualThermostatSourceFence {
       _aliases[row.alias] = record;
       row.record = record;
       _current[row.alias] = row;
-    }
-    if (rows.length > 18 ||
-        rows.length != (sources is List ? sources.length : 0)) {
-      _joinsComplete = false;
     }
   }
 

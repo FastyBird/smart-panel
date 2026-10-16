@@ -265,6 +265,7 @@ void main() {
                   }
                 : options.path.endsWith('/runtime')
                 ? {
+                    'configuration_revision': 1,
                     'requested_mode': 'heat',
                     'heating_setpoint': 21,
                     'branches': [
@@ -1299,6 +1300,374 @@ void main() {
     });
   }
 
+  for (final field in ['configuration', 'runtime']) {
+    for (final invalid in <String, Object?>{
+      'missing': null,
+      'null': null,
+      'string': '100',
+      'nan': double.nan,
+      'infinite': double.infinity,
+      'negative': -1,
+      'fractional': 100.5,
+    }.entries) {
+      testWidgets(
+        '$field revision ${invalid.key} refuses detail envelope without retry or renewal',
+        (tester) async {
+          final fixture = MemberDetailFixture()..hasMember = false;
+          fixture.inputs.single['maximum_age_seconds'] = 2;
+          final originalInputs = fixture.inputs.toList();
+          await fixture.mount(tester);
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          fixture.overrideRevisionEnvelope = true;
+          fixture.envelopeConfigRevision = field == 'configuration'
+              ? invalid.value
+              : 100;
+          fixture.envelopeRuntimeRevision = field == 'runtime'
+              ? invalid.value
+              : 100;
+          fixture.omitConfigRevision =
+              field == 'configuration' && invalid.key == 'missing';
+          fixture.omitRuntimeRevision =
+              field == 'runtime' && invalid.key == 'missing';
+          fixture.overrideSourceArrays = true;
+          fixture.configuredSources = [];
+          fixture.runtimeInputs = [];
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          final reads = fixture.runtimeReads;
+          await tester.pump(const Duration(milliseconds: 200));
+          expect(fixture.runtimeReads, reads);
+          fixture.overrideRevisionEnvelope = false;
+          fixture.omitConfigRevision = false;
+          fixture.omitRuntimeRevision = false;
+          fixture.overrideSourceArrays = false;
+          // A rejected higher envelope cannot poison coherent revision 1.
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          // Receipt of the same publication cannot extend its original 2s budget.
+          await tester.pump(const Duration(seconds: 3));
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(
+            find.text('Controller readiness: Unavailable'),
+            findsOneWidget,
+          );
+          fixture.inputs = [
+            {
+              ...originalInputs.single,
+              'sampled_at': DateTime.now().toIso8601String(),
+            },
+          ];
+          await fixture.acceptBeforeFrame(tester);
+          await tester.pump();
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+          await fixture.dispose(tester);
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'numeric revision mismatch including zero retries once and lower revision cannot replace known evidence',
+    (tester) async {
+      final fixture = MemberDetailFixture()..hasMember = false;
+      await fixture.mount(tester);
+      fixture.overrideRevisionEnvelope = true;
+      fixture.envelopeConfigRevision = 1;
+      fixture.envelopeRuntimeRevision = 0;
+      await fixture.refetch(tester);
+      final reads = fixture.runtimeReads;
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      expect(fixture.runtimeReads, reads + 1);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(fixture.runtimeReads, reads + 1);
+      fixture.envelopeConfigRevision = 0;
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      fixture.overrideRevisionEnvelope = false;
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  testWidgets(
+    'rejected revision envelope cannot withdraw accepted relay activity',
+    (tester) async {
+      final now = DateTime.now().subtract(const Duration(seconds: 1));
+      final original = activityObservation(now, 'off');
+      final fixture = MemberDetailFixture()
+        ..declaresMemberProtection = false
+        ..observation = original;
+      await fixture.mount(tester);
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      fixture.overrideRevisionEnvelope = true;
+      fixture.envelopeConfigRevision = 100;
+      fixture.envelopeRuntimeRevision = null;
+      fixture.observation = activityObservation(DateTime.now(), 'invalid');
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Reported observation: off'), findsNothing);
+      fixture.overrideRevisionEnvelope = false;
+      fixture.observation = original;
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Reported observation: off'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
+  for (final rejection in ['envelope', 'http-failure']) {
+    testWidgets(
+      'null runtime after $rejection preserves original member and relay budgets',
+      (tester) async {
+        final original = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        final fixture = MemberDetailFixture()
+          ..displayFloorClaim = 'one'
+          ..sample = protection(original, 20)
+          ..observation = activityObservation(
+            original,
+            'off',
+            lifetime: const Duration(seconds: 2),
+          );
+        await fixture.mount(tester);
+        void expectPositive() {
+          expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+          expect(
+            find.text(
+              'Selected member floor (not an average): canonical-one: 20.0 °C',
+            ),
+            findsOneWidget,
+          );
+          expect(find.text('Reported observation: off'), findsOneWidget);
+          expect(
+            find.text('Server guard/target check (snapshot): true'),
+            findsOneWidget,
+          );
+          expect(find.text('Controller readiness: ready'), findsOneWidget);
+        }
+
+        expectPositive();
+        fixture.overrideRevisionEnvelope = rejection == 'envelope';
+        fixture.envelopeConfigRevision = 100;
+        fixture.envelopeRuntimeRevision = null;
+        fixture.failRuntimeReads = rejection == 'http-failure';
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Live protection reading: 20.0 °C'), findsNothing);
+        expect(
+          find.text(
+            'Selected member floor (not an average): canonical-one: 20.0 °C',
+          ),
+          findsNothing,
+        );
+        expect(find.text('Reported observation: off'), findsNothing);
+        expect(
+          find.text('Server guard/target check (snapshot): true'),
+          findsNothing,
+        );
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        fixture.overrideRevisionEnvelope = false;
+        fixture.failRuntimeReads = false;
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expectPositive();
+        // The same sample cannot acquire a new budget after null runtime/recovery.
+        await tester.pump(const Duration(seconds: 3));
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(
+          find.text('Live protection reading: Unavailable'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Selected member floor (not an average): canonical-one: 20.0 °C',
+          ),
+          findsNothing,
+        );
+        expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  for (final omission in ['missing-branch', 'invalid-fields']) {
+    testWidgets(
+      'coherent $omission still withdraws member and relay before rendering',
+      (tester) async {
+        final original = DateTime.now().subtract(
+          const Duration(milliseconds: 10),
+        );
+        final sample = protection(original, 20);
+        final branch = <String, dynamic>{
+          'claim': 'one',
+          'role': 'heating',
+          'physical_identity': 'canonical-one',
+          ...activityObservation(original, 'off'),
+          'protection': sample,
+        };
+        final fixture = MemberDetailFixture()..overrideMembership = true;
+        fixture.configuredMembership = [claim('one', 'heating', 'reserved')];
+        fixture.runtimeMembership = [branch];
+        await fixture.mount(tester);
+        expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        final invalid = {...branch}..remove('activity_expires_at');
+        invalid['protection'] = {...sample}..remove('expires_at');
+        fixture.runtimeMembership = omission == 'missing-branch'
+            ? []
+            : [invalid];
+        await fixture.acceptBeforeFrame(tester);
+        fixture.runtimeMembership = [branch];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(
+          find.text('Live protection reading: Unavailable'),
+          findsOneWidget,
+        );
+        expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+        final newer = DateTime.now();
+        expect(newer.isAfter(original), isTrue);
+        fixture.runtimeMembership = [
+          {
+            ...branch,
+            ...activityObservation(newer, 'off'),
+            'protection': {...sample, 'sampled_at': newer.toIso8601String()},
+          },
+        ];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
+        expect(find.text('Reported observation: off'), findsOneWidget);
+        await fixture.dispose(tester);
+      },
+    );
+  }
+
+  for (final array in ['sources', 'inputs']) {
+    for (final shape in [
+      'missing',
+      'null',
+      'non-list',
+      'opaque',
+      'duplicate',
+      'orphan',
+    ]) {
+      testWidgets('raw $array $shape cannot certify detail readiness', (
+        tester,
+      ) async {
+        final fixture = MemberDetailFixture()
+          ..hasMember = false
+          ..ambientTemperature = 19.5
+          ..floorTemperature = 22;
+        final ambient = fixture.sources.single;
+        final ambientInput = fixture.inputs.single;
+        fixture.sources.add({
+          ...ambient,
+          'id': 'floor',
+          'role': 'floor',
+          'source_identity': 'floor',
+          'source_property': 'floor-property',
+        });
+        fixture.inputs.add({
+          ...ambientInput,
+          'binding': 'floor',
+          'role': 'floor',
+          'source_property': 'floor-property',
+        });
+        final goodSources = fixture.sources.toList();
+        final goodInputs = fixture.inputs.toList();
+        await fixture.mount(tester);
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        Object? malformed(List<Map<String, dynamic>> rows) => switch (shape) {
+          'missing' || 'null' => null,
+          'non-list' => {'opaque': true},
+          'opaque' => [...rows, 'opaque'],
+          'duplicate' => [...rows, rows.first],
+          _ => [
+            ...rows,
+            array == 'sources'
+                ? {
+                    'id': 'orphan',
+                    'role': 'contact',
+                    'source_identity': 'orphan',
+                  }
+                : {'binding': 'orphan', 'role': 'contact'},
+          ],
+        };
+        fixture.overrideSourceArrays = true;
+        fixture.configuredSources = array == 'sources'
+            ? malformed(goodSources)
+            : goodSources;
+        fixture.runtimeInputs = array == 'inputs'
+            ? malformed(goodInputs)
+            : goodInputs;
+        fixture.omitSources = array == 'sources' && shape == 'missing';
+        fixture.omitInputs = array == 'inputs' && shape == 'missing';
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Controller readiness: ready'), findsNothing);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        // Unrelated opaque/orphan rows cannot invalidate independently joined readings.
+        if (shape == 'opaque' || shape == 'orphan') {
+          expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+          expect(find.text('Floor: 22.0 °C'), findsOneWidget);
+        }
+        fixture.overrideSourceArrays = false;
+        fixture.omitSources = false;
+        fixture.omitInputs = false;
+        // Duplicate/missing diagnostics withdraw affected records. Recovery is a
+        // genuinely newer qualified publication, never a new receipt identity.
+        final recovered = DateTime.now().toIso8601String();
+        fixture.inputs = [
+          for (final row in goodInputs) {...row, 'sampled_at': recovered},
+        ];
+        await fixture.acceptBeforeFrame(tester);
+        await tester.pump();
+        expect(find.text('Controller readiness: ready'), findsOneWidget);
+        await fixture.dispose(tester);
+      });
+    }
+  }
+
+  testWidgets(
+    'legitimate empty runtime inputs with declared ambient withhold detail readiness',
+    (tester) async {
+      final fixture = MemberDetailFixture()..hasMember = false;
+      final reading = fixture.inputs.single;
+      await fixture.mount(tester);
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      fixture.inputs = [];
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      fixture.inputs = [reading];
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      fixture.inputs = [
+        {...reading, 'sampled_at': DateTime.now().toIso8601String()},
+      ];
+      await fixture.acceptBeforeFrame(tester);
+      await tester.pump();
+      expect(find.text('Controller readiness: ready'), findsOneWidget);
+      await fixture.dispose(tester);
+    },
+  );
+
   testWidgets(
     'legacy singleton and empty membership require qualified ambient evidence for ready',
     (tester) async {
@@ -1327,9 +1696,17 @@ class MemberDetailFixture {
   int revision = 1;
   int modeReads = 0, runtimeReads = 0;
   int? configurationRevision;
+  bool overrideRevisionEnvelope = false,
+      omitConfigRevision = false,
+      omitRuntimeRevision = false;
+  Object? envelopeConfigRevision, envelopeRuntimeRevision;
   bool hold = false, hasMember = true, declaresMemberProtection = true;
+  bool failRuntimeReads = false;
   bool overrideMembership = false;
   Object? configuredMembership, runtimeMembership;
+  bool overrideSourceArrays = false, omitSources = false, omitInputs = false;
+  Object? configuredSources, runtimeInputs;
+  double? ambientTemperature, floorTemperature;
   List<Map<String, dynamic>> sources = [], inputs = [], extraBranches = [];
   String? displayFloorClaim;
   Locale? locale;
@@ -1374,6 +1751,16 @@ class MemberDetailFixture {
           } else if (!options.path.endsWith('/comfort')) {
             modeReads++;
           }
+          if (failRuntimeReads && !options.path.endsWith('/comfort')) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.connectionError,
+                message: 'deliberate read failure',
+              ),
+            );
+            return;
+          }
           final data = options.path.endsWith('/comfort')
               ? {
                   'controller': 'controller',
@@ -1386,11 +1773,19 @@ class MemberDetailFixture {
               ? {
                   'epoch': 'epoch',
                   'sequence': revision,
-                  'configuration_revision': configurationRevision ?? revision,
+                  if (!omitRuntimeRevision)
+                    'configuration_revision': overrideRevisionEnvelope
+                        ? envelopeRuntimeRevision
+                        : configurationRevision ?? revision,
                   'requested_mode': 'heat',
                   'readiness': 'ready',
                   'reasons': <String>[],
-                  'inputs': inputs,
+                  if (!omitInputs)
+                    'inputs': overrideSourceArrays ? runtimeInputs : inputs,
+                  if (ambientTemperature != null)
+                    'current_temperature': ambientTemperature,
+                  if (floorTemperature != null)
+                    'floor_temperature': floorTemperature,
                   'branches': overrideMembership
                       ? runtimeMembership
                       : [
@@ -1407,11 +1802,17 @@ class MemberDetailFixture {
                         ],
                 }
               : {
-                  'revision': configurationRevision ?? revision,
+                  if (!omitConfigRevision)
+                    'revision': overrideRevisionEnvelope
+                        ? envelopeConfigRevision
+                        : configurationRevision ?? revision,
                   'locked': false,
                   'policy': {'heatingSetpoint': 21},
                   'settings': <Map>[],
-                  'sources': sources,
+                  if (!omitSources)
+                    'sources': overrideSourceArrays
+                        ? configuredSources
+                        : sources,
                   'display_floor_claim': displayFloorClaim,
                   'actuators': overrideMembership
                       ? configuredMembership
@@ -1543,6 +1944,282 @@ void deadlineFenceTests() {
     },
     wall,
     mono,
+  );
+
+  for (final field in ['configuration', 'runtime']) {
+    for (final invalid in <String, Object?>{
+      'missing': null,
+      'null': null,
+      'string': '100',
+      'nan': double.nan,
+      'infinite': double.infinity,
+      'negative': -1,
+      'fractional': 100.5,
+      'zero mismatch': 0,
+    }.entries) {
+      test(
+        '$field revision ${invalid.key} refuses before history or watermark mutation',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final declared = [
+            source('ambient', 'a', 'ambient'),
+            source('floor', 'f', 'floor'),
+          ];
+          final readings = [input('ambient', 'a', t), input('floor', 'f', t)];
+          final member = claim('one', 'heating', 'reserved');
+          final branch = {
+            'claim': 'one',
+            'physical_identity': 'canonical-one',
+            'protection': protection(t, 20),
+          };
+          accept(
+            fence,
+            declared,
+            readings,
+            t,
+            Duration.zero,
+            revision: 4,
+            claims: [member],
+            branches: [branch],
+          );
+          final config = <String, dynamic>{
+            'revision': field == 'configuration' ? invalid.value : 100,
+            'sources': [],
+            'actuators': [],
+          };
+          final runtime = <String, dynamic>{
+            'configuration_revision': field == 'runtime' ? invalid.value : 100,
+            'inputs': [],
+            'branches': [],
+          };
+          if (invalid.key == 'missing') {
+            if (field == 'configuration') {
+              config.remove('revision');
+            } else {
+              runtime.remove('configuration_revision');
+            }
+          }
+          expect(
+            fence.accept(config, runtime, t, const Duration(seconds: 1)),
+            isFalse,
+          );
+          expect(fence.sources.recordCount, 2);
+          expect(fence.sources.aliasCount, 2);
+          expect(fence.sources.legacyFallbackClosed, isFalse);
+          expect(
+            fence.members.expiredClaims(
+              [VirtualThermostatMember(member, branch)],
+              Duration.zero,
+              t,
+            ),
+            isEmpty,
+          );
+          expect(
+            accept(
+              fence,
+              declared,
+              readings,
+              t,
+              const Duration(seconds: 1),
+              revision: 4,
+              claims: [member],
+              branches: [branch],
+            ),
+            isTrue,
+          );
+          expect(
+            fence.sources.allCurrent(t, const Duration(seconds: 1)),
+            isTrue,
+          );
+          expect(accept(fence, [], [], t, Duration.zero, revision: 3), isFalse);
+          expect(fence.sources.recordCount, 2);
+          accept(
+            fence,
+            declared,
+            readings,
+            t,
+            const Duration(seconds: 3),
+            revision: 4,
+            claims: [member],
+            branches: [branch],
+          );
+          expect(
+            fence.sources.allCurrent(t, const Duration(seconds: 3)),
+            isFalse,
+          );
+          expect(
+            fence.members.expiredClaims(
+              [VirtualThermostatMember(member, branch)],
+              Duration.zero,
+              t,
+              clock: const Duration(seconds: 3),
+            ),
+            contains('one'),
+          );
+        },
+      );
+    }
+  }
+
+  test(
+    'coherent zero revision is admitted initially and never bypasses a known positive revision',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final declared = [source('ambient', 'a')],
+          readings = [input('ambient', 'a', t)];
+      expect(
+        accept(fence, declared, readings, t, Duration.zero, revision: 0),
+        isTrue,
+      );
+      expect(fence.sources.allCurrent(t, Duration.zero), isTrue);
+      expect(
+        accept(fence, declared, readings, t, Duration.zero, revision: 1),
+        isTrue,
+      );
+      expect(accept(fence, [], [], t, Duration.zero, revision: 0), isFalse);
+      expect(fence.sources.recordCount, 1);
+    },
+  );
+
+  for (final array in ['sources', 'inputs']) {
+    for (final shape in [
+      'missing',
+      'null',
+      'non-list',
+      'opaque',
+      'duplicate',
+      'orphan',
+    ]) {
+      test(
+        'raw $array $shape withholds whole readiness and cannot prune source history',
+        () {
+          final fence = VirtualThermostatEvidenceFence();
+          final declared = [
+            source('ambient', 'a', 'ambient'),
+            source('floor', 'f', 'floor'),
+          ];
+          final readings = [input('ambient', 'a', t), input('floor', 'f', t)];
+          accept(fence, declared, readings, t, Duration.zero);
+          expect(fence.sources.allCurrent(t, Duration.zero), isTrue);
+          Object? malformed(List<Map> rows) => switch (shape) {
+            'missing' || 'null' => null,
+            'non-list' => {'opaque': true},
+            'opaque' => [...rows, 'opaque'],
+            'duplicate' => [...rows, rows.first],
+            _ => [
+              ...rows,
+              array == 'sources'
+                  ? source('contact', 'orphan', 'orphan')
+                  : input('contact', 'orphan', t.add(const Duration(days: 1))),
+            ],
+          };
+          final config = <String, dynamic>{
+            'revision': 1,
+            'actuators': [],
+            'sources': array == 'sources'
+                ? malformed([declared.first])
+                : [declared.first],
+          };
+          final runtime = <String, dynamic>{
+            'configuration_revision': 1,
+            'branches': [],
+            'inputs': array == 'inputs'
+                ? malformed([readings.first])
+                : [readings.first],
+          };
+          if (shape == 'missing') {
+            (array == 'sources' ? config : runtime).remove(array);
+          }
+          fence.accept(config, runtime, t, Duration.zero);
+          expect(fence.sources.allCurrent(t, Duration.zero), isFalse);
+          expect(fence.sources.recordCount, greaterThanOrEqualTo(2));
+          expect(fence.sources.aliasCount, greaterThanOrEqualTo(2));
+          expect(fence.sources.legacyFallbackClosed, isFalse);
+          if (shape == 'opaque' || shape == 'orphan') {
+            expect(
+              fence.sources.roleCurrent('ambient', t, Duration.zero),
+              isTrue,
+            );
+          }
+          // Returning an omitted binding is not first admission: its original
+          // deadline survives the malformed batch and cannot be renewed by cache.
+          accept(fence, declared, readings, t, const Duration(seconds: 3));
+          expect(
+            fence.sources.roleCurrent('floor', t, const Duration(seconds: 3)),
+            isFalse,
+          );
+          final newer = t.add(const Duration(milliseconds: 1));
+          accept(
+            fence,
+            declared,
+            [input('ambient', 'a', newer), input('floor', 'f', newer)],
+            newer,
+            const Duration(seconds: 3),
+          );
+          expect(
+            fence.sources.allCurrent(newer, const Duration(seconds: 3)),
+            isTrue,
+          );
+        },
+      );
+    }
+  }
+
+  test(
+    'unrelated opaque rows preserve individual ambient and floor budgets but not whole readiness',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final declared = [
+        source('ambient', 'a', 'ambient'),
+        source('floor', 'f', 'floor'),
+      ];
+      final readings = [input('ambient', 'a', t), input('floor', 'f', t)];
+      fence.accept(
+        {
+          'revision': 1,
+          'actuators': [],
+          'sources': [...declared, 'opaque'],
+        },
+        {
+          'configuration_revision': 1,
+          'branches': [],
+          'inputs': [...readings, 'opaque'],
+        },
+        t,
+        Duration.zero,
+      );
+      expect(fence.sources.allCurrent(t, Duration.zero), isFalse);
+      expect(fence.sources.roleCurrent('ambient', t, Duration.zero), isTrue);
+      expect(fence.sources.roleCurrent('floor', t, Duration.zero), isTrue);
+      accept(fence, declared, readings, t, Duration.zero);
+      expect(fence.sources.allCurrent(t, Duration.zero), isTrue);
+      accept(fence, declared, readings, t, const Duration(seconds: 2));
+      expect(fence.sources.allCurrent(t, const Duration(seconds: 2)), isFalse);
+    },
+  );
+
+  test(
+    'legitimate empty runtime array lacks required ambient and does not prune retained bindings',
+    () {
+      final fence = VirtualThermostatEvidenceFence();
+      final declared = [source('ambient', 'a')];
+      accept(fence, declared, [input('ambient', 'a', t)], t, Duration.zero);
+      accept(fence, declared, [], t, Duration.zero);
+      expect(fence.sources.allCurrent(t, Duration.zero), isFalse);
+      expect(fence.sources.recordCount, 1);
+      expect(fence.sources.aliasCount, 1);
+      accept(fence, declared, [input('ambient', 'a', t)], t, Duration.zero);
+      expect(fence.sources.allCurrent(t, Duration.zero), isFalse);
+      final newer = t.add(const Duration(milliseconds: 1));
+      accept(
+        fence,
+        declared,
+        [input('ambient', 'a', newer)],
+        newer,
+        Duration.zero,
+      );
+      expect(fence.sources.allCurrent(newer, Duration.zero), isTrue);
+    },
   );
 
   test(

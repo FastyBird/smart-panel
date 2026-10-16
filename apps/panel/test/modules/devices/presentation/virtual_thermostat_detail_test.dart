@@ -62,6 +62,7 @@ void main() {
               data: {
                 'data': runtime
                     ? {
+                        'configuration_revision': 1,
                         'requested_mode': 'heat',
                         'heating_setpoint': 21.0,
                         'cooling_setpoint': null,
@@ -103,6 +104,7 @@ void main() {
                         ],
                       }
                     : {
+                        'revision': 1,
                         'requested_mode': 'heat',
                         'locked': false,
                         'policy': {
@@ -220,11 +222,13 @@ void commandSupersedesPollTest() {
               data: {
                 'data': options.path.endsWith('/runtime')
                     ? {
+                        'configuration_revision': 1,
                         'requested_mode': afterCommand ? 'heat' : 'off',
                         'readiness': 'draft',
                         'reasons': [],
                       }
                     : {
+                        'revision': 1,
                         'requested_mode': afterCommand ? 'heat' : 'off',
                         'locked': false,
                         'policy': {
@@ -292,8 +296,14 @@ void commandSupersedesPollTest() {
           statusCode: 200,
           data: {
             'data': entry.key.endsWith('/runtime')
-                ? {'requested_mode': 'off', 'readiness': 'draft', 'reasons': []}
+                ? {
+                    'configuration_revision': 1,
+                    'requested_mode': 'off',
+                    'readiness': 'draft',
+                    'reasons': [],
+                  }
                 : {
+                    'revision': 1,
                     'requested_mode': 'off',
                     'locked': false,
                     'policy': {
@@ -374,11 +384,13 @@ void disposePendingCommandTest() {
               data: {
                 'data': options.path.endsWith('/runtime')
                     ? {
+                        'configuration_revision': 1,
                         'requested_mode': 'off',
                         'readiness': 'draft',
                         'reasons': [],
                       }
                     : {
+                        'revision': 1,
                         'requested_mode': 'off',
                         'locked': false,
                         'policy': {
@@ -522,6 +534,7 @@ void staleDeviceResponseTest({bool sameId = false}) {
                 'data': {
                   'requested_mode': mode,
                   if (suffix.isEmpty) ...{
+                    'revision': 1,
                     'locked': false,
                     'policy': {
                       'heatingSetpoint': null,
@@ -529,6 +542,7 @@ void staleDeviceResponseTest({bool sameId = false}) {
                     },
                     'settings': [],
                   } else ...{
+                    'configuration_revision': 1,
                     'readiness': 'suspended',
                     'reasons': [],
                   },

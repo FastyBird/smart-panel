@@ -190,14 +190,19 @@ class _VirtualThermostatDeviceDetailState
       );
       final configurationRevision = configuration['revision'];
       final runtimeRevision = candidate['configuration_revision'];
-      if (configurationRevision is num &&
-          runtimeRevision is num &&
-          runtimeRevision > 0 &&
-          configurationRevision != runtimeRevision) {
-        // Concurrent GETs can straddle an edit. Retry once promptly, then let
-        // the bounded poll resync if authoring continues to change underneath us.
-        _hintRefreshNeeded = !_configurationMismatchSeen;
-        _configurationMismatchSeen = true;
+      if (!VirtualThermostatEvidenceFence.revisionsCoherent(
+        configuration,
+        candidate,
+      )) {
+        // Only a real numeric revision race receives one prompt retry. Malformed
+        // envelopes wait for the bounded poll and never mutate accepted evidence.
+        final mismatch =
+            VirtualThermostatEvidenceFence.revisionValid(
+              configurationRevision,
+            ) &&
+            VirtualThermostatEvidenceFence.revisionValid(runtimeRevision);
+        _hintRefreshNeeded = mismatch && !_configurationMismatchSeen;
+        if (mismatch) _configurationMismatchSeen = true;
         setState(() => _runtime = null);
         return;
       }
@@ -401,17 +406,14 @@ class _VirtualThermostatDeviceDetailState
         ? _number(runtime['current_temperature'])
         : null;
     final members = VirtualThermostatMember.read(config, runtime);
-    final expiredMemberClaims = _evidence.members.expiredClaims(
-      members,
-      elapsed,
-      now,
-      clock: clock,
-    );
-    final unavailableActivityClaims = _activityFence.unavailableClaims(
-      members,
-      now,
-      clock,
-    );
+    // Missing/rejected HTTP runtime is not an accepted diagnostic omission.
+    // Withhold display without withdrawing retained original evidence budgets.
+    final expiredMemberClaims = runtime == null
+        ? members.map((member) => member.claim).toSet()
+        : _evidence.members.expiredClaims(members, elapsed, now, clock: clock);
+    final unavailableActivityClaims = runtime == null
+        ? members.map((member) => member.claim).toSet()
+        : _activityFence.unavailableClaims(members, now, clock);
     // Withhold a positive snapshot label when its declared required evidence
     // has expired or been rejected locally. This does not calculate readiness
     // or change command authorization; only the server can report readiness.
