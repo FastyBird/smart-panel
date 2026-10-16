@@ -4747,4 +4747,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get space_activity_outcome_notice =>
       'These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings.';
+
+  @override
+  String get dewPointTitle => 'Dew point';
+
+  @override
+  String get dewPointDryBulb => 'Dry-bulb temperature (°C)';
+
+  @override
+  String get dewPointHumidity => 'Relative humidity (%)';
+
+  @override
+  String get dewPointSkew => 'Maximum timestamp skew (s)';
+
+  @override
+  String get dewPointRetained => 'Retained source identity';
+
+  @override
+  String get dewPointBoundary =>
+      'Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.';
+
+  @override
+  String get dewPointCooling => 'Cooling condensation protection';
+
+  @override
+  String get dewPointSurface => 'Local cooled-surface probe UUID';
+
+  @override
+  String get dewPointSurfaceTemperature => 'Cooled-surface temperature (°C)';
+
+  @override
+  String get dewPointInstallation =>
+      'Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification.';
 }

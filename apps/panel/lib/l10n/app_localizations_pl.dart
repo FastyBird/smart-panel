@@ -4828,4 +4828,37 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String get space_activity_outcome_notice =>
       'To wyniki poleceń. Stan urządzeń może się różnić. Sterowanie ręczne usuwa wybór bez przywracania poprzednich ustawień.';
+
+  @override
+  String get dewPointTitle => 'Punkt rosy';
+
+  @override
+  String get dewPointDryBulb => 'Temperatura suchego termometru (°C)';
+
+  @override
+  String get dewPointHumidity => 'Wilgotność względna (%)';
+
+  @override
+  String get dewPointSkew => 'Maksymalne przesunięcie czasu próbek (s)';
+
+  @override
+  String get dewPointRetained => 'Zachowana tożsamość źródła';
+
+  @override
+  String get dewPointBoundary =>
+      'Punkt rosy to odrębna wielkość. Wymaga obu świeżych wejść; nie jest temperaturą pomieszczenia ani podłogi.';
+
+  @override
+  String get dewPointCooling => 'Ochrona chłodzenia przed kondensacją';
+
+  @override
+  String get dewPointSurface => 'UUID lokalnej sondy chłodzonej powierzchni';
+
+  @override
+  String get dewPointSurfaceTemperature =>
+      'Temperatura chłodzonej powierzchni (°C)';
+
+  @override
+  String get dewPointInstallation =>
+      'Zainstalowane chłodzenie pozostaje niedopuszczone do kwalifikacji powierzchni, uwierzytelniania, czasu, izolacji zapisu i wyłączenia po restarcie po wersji alfa.';
 }

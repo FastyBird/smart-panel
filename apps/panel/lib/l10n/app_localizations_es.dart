@@ -4793,4 +4793,38 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get space_activity_outcome_notice =>
       'Son resultados de órdenes. El estado del dispositivo puede variar. Manual borra la selección sin restaurar los ajustes anteriores.';
+
+  @override
+  String get dewPointTitle => 'Punto de rocío';
+
+  @override
+  String get dewPointDryBulb => 'Temperatura de bulbo seco (°C)';
+
+  @override
+  String get dewPointHumidity => 'Humedad relativa (%)';
+
+  @override
+  String get dewPointSkew => 'Desfase temporal máximo (s)';
+
+  @override
+  String get dewPointRetained => 'Identidad de origen conservada';
+
+  @override
+  String get dewPointBoundary =>
+      'El punto de rocío es una magnitud distinta. Requiere ambas entradas recientes; no es temperatura ambiente ni del suelo.';
+
+  @override
+  String get dewPointCooling =>
+      'Protección de refrigeración contra condensación';
+
+  @override
+  String get dewPointSurface => 'UUID de sonda local de superficie refrigerada';
+
+  @override
+  String get dewPointSurfaceTemperature =>
+      'Temperatura de la superficie refrigerada (°C)';
+
+  @override
+  String get dewPointInstallation =>
+      'La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa.';
 }
