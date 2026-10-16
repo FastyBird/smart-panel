@@ -293,6 +293,14 @@ UNKNOWN/offline covers keep their existing offline refusal.
 Repair overlap by changing membership or the existing cover participation role (HIDDEN excludes a representative).
 Unrelated ordinary covers keep their existing position-first controls and dispatch independently of group convergence,
 under the captured intent authority and absolute deadline. A refused or timed-out group does not suppress their sends.
+Panel submits **all room-cover intents once through REST**, including ordinary physical-only rooms. The server
+classifies current targets and returns the actual ordinary or composite outcome. The request has a 35-second bound
+and disables network and token-refresh retries. There is no WebSocket-first send or REST replay after a lost response:
+even a loaded client catalogue can lag device creation or room reassignment. A missing or late response remains
+unconfirmed; it does not create optimistic success. Ordinary physical cover controls remain available through this
+single REST path; backend position-first behavior, intent authority and deadlines are unchanged. Device-level composite
+commands and the light/climate room transports retain their existing paths.
+
 Room controls display agreement/mixed/unknown actual position, source expiry, readiness/refusal and composite outcomes.
 Group-containing rooms offer no relative-position, preset-mode or guessed position-to-command conversion. Room-wide
 relative-position and mode requests fail for every target before any dispatch, including in mixed rooms. A group outside

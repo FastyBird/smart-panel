@@ -1,10 +1,7 @@
-import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
@@ -861,9 +858,10 @@ class SpaceStateRepository extends ChangeNotifier {
   // COVERS INTENTS
   // ============================================
 
-  /// Execute a covers intent
+  /// Execute once through REST so the server classifies current room targets.
   ///
-  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
+  /// Client inventories and cached state cannot prove that a room has no group.
+  /// Neither a missing response nor an interceptor may replay this actuation.
   Future<CoversIntentResult?> executeCoversIntent({
     required String spaceId,
     required CoversIntentType type,
@@ -875,8 +873,6 @@ class SpaceStateRepository extends ChangeNotifier {
   }) async {
     final stopwatch = Stopwatch()..start();
     final intentName = 'covers_${coversIntentTypeToString(type)}';
-
-    // Build intent body for both WebSocket and API
     final Map<String, dynamic> intentBody = {
       'type': coversIntentTypeToString(type),
       if (delta != null) 'delta': positionDeltaToString(delta),
@@ -886,89 +882,36 @@ class SpaceStateRepository extends ChangeNotifier {
       if (mode != null) 'mode': mode,
     };
 
-    final classification = _hasCompositeCoverTarget(spaceId);
-    final compositeCovers = classification != false;
-    // The group control remains pending for the same bounded composite request.
     _intentsRepository.createLocalSpaceIntent(
       spaceId: spaceId,
       type: _mapCoversIntentType(type),
       value: intentBody,
-      ttlMs: compositeCovers ? 35000 : 5000,
+      ttlMs: 35000,
     );
 
     try {
-      // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = classification == null
-          ? CommandDispatchResult(
-              success: true,
-              data: await _executeCompositeCoversIntentViaApi(
-                spaceId,
-                intentBody,
-              ).timeout(const Duration(seconds: 35)),
-              channel: CommandDispatchChannel.api,
-            )
-          : compositeCovers
-          ? await _commandDispatch.dispatchComposite(
-              event: SpacesModuleConstants.coversIntentEvent,
-              handler: SpacesModuleEventHandlerName.coversIntent,
-              payload: {'spaceId': spaceId, 'intent': intentBody},
-              apiFallback: () =>
-                  _executeCompositeCoversIntentViaApi(spaceId, intentBody),
-            )
-          : await _commandDispatch.dispatch(
-              event: SpacesModuleConstants.coversIntentEvent,
-              handler: SpacesModuleEventHandlerName.coversIntent,
-              payload: {'spaceId': spaceId, 'intent': intentBody},
-              apiFallback: () =>
-                  _executeCoversIntentViaApi(spaceId, intentBody),
-            );
-
+      final data = await _executeCoversIntentViaApi(
+        spaceId,
+        intentBody,
+      ).timeout(const Duration(seconds: 35));
+      if (data == null) throw StateError('Missing covers intent response');
+      final result = CoversIntentResult.fromJson(data);
       stopwatch.stop();
-
-      if (dispatchResult.success ||
-          dispatchResult.data?['composites'] is List) {
-        if (compositeCovers && dispatchResult.data == null) return null;
-        final result = dispatchResult.data != null
-            ? CoversIntentResult.fromJson(dispatchResult.data!)
-            : CoversIntentResult(
-                success: true,
-                affectedDevices: 0,
-                failedDevices: 0,
-              );
-
-        MetricsService.instance.trackIntent(
-          intentName,
-          result.failedDevices > 0
-              ? MetricStatus.partial
-              : MetricStatus.success,
-          stopwatch.elapsed,
-          spaceId: spaceId,
-          affectedDevices: result.affectedDevices,
-          failedDevices: result.failedDevices,
+      MetricsService.instance.trackIntent(
+        intentName,
+        result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
+        stopwatch.elapsed,
+        spaceId: spaceId,
+        affectedDevices: result.affectedDevices,
+        failedDevices: result.failedDevices,
+      );
+      if (kDebugMode) {
+        debugPrint(
+          '[SPACES MODULE][STATE] Covers intent returned via api for $spaceId',
         );
-
-        if (kDebugMode) {
-          debugPrint(
-            '[SPACES MODULE][STATE] Covers intent executed via ${dispatchResult.channel.name} for $spaceId',
-          );
-        }
-
-        fetchUndoState(spaceId);
-
-        return result;
-      } else {
-        MetricsService.instance.trackIntent(
-          intentName,
-          MetricStatus.failure,
-          stopwatch.elapsed,
-          spaceId: spaceId,
-        );
-        if (kDebugMode) {
-          debugPrint(
-            '[SPACES MODULE][STATE] Covers intent failed for $spaceId: ${dispatchResult.reason}',
-          );
-        }
       }
+      fetchUndoState(spaceId);
+      return result;
     } catch (e) {
       stopwatch.stop();
       MetricsService.instance.trackIntent(
@@ -986,32 +929,8 @@ class SpaceStateRepository extends ChangeNotifier {
     return null;
   }
 
-  /// Unknown targets require one server-classified REST submission, never
-  /// WebSocket actuation followed by a possibly composite REST replay.
-  bool? _hasCompositeCoverTarget(String spaceId) {
-    if (_coversStates[spaceId]?.groupOperations != null) return true;
-    final devices = locator.isRegistered<DevicesService>()
-        ? locator<DevicesService>()
-        : null;
-    if (devices?.devicesLoaded == true &&
-        devices!.devicesList.any(
-          (device) =>
-              device.isCompositeGroup &&
-              device.category == DevicesModuleDeviceCategory.windowCovering &&
-              (device.roomId == spaceId || device.zoneIds.contains(spaceId)),
-        )) {
-      return true;
-    }
-    // Cached absence of group operations is not authoritative after assignment changes.
-    // Only the complete device catalogue can establish an ordinary target.
-    if (devices?.devicesLoaded == true) {
-      return false;
-    }
-    return null;
-  }
-
   /// Submits once with composite response/timeout semantics and no interceptor replay.
-  Future<Map<String, dynamic>?> _executeCompositeCoversIntentViaApi(
+  Future<Map<String, dynamic>?> _executeCoversIntentViaApi(
     String spaceId,
     Map<String, dynamic> intentBody,
   ) async {
@@ -1024,33 +943,6 @@ class SpaceStateRepository extends ChangeNotifier {
       ),
     );
     return response.data?['data'] as Map<String, dynamic>?;
-  }
-
-  /// Execute covers intent via API (used as fallback)
-  Future<Map<String, dynamic>?> _executeCoversIntentViaApi(
-    String spaceId,
-    Map<String, dynamic> intentBody,
-  ) async {
-    try {
-      final response = await _apiClient.createSpacesModuleSpaceCoversIntent(
-        id: spaceId,
-        body: SpacesModuleReqCoversIntent(
-          data: SpacesModuleCoversIntent.fromJson(intentBody),
-        ),
-      );
-
-      if (response.response.statusCode == 200 ||
-          response.response.statusCode == 201) {
-        return response.response.data['data'] as Map<String, dynamic>;
-      }
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] API error executing covers intent: ${e.response?.statusCode}',
-        );
-      }
-    }
-    return null;
   }
 
   /// Open all covers in a space
