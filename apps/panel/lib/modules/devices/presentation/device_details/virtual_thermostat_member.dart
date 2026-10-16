@@ -961,6 +961,7 @@ class VirtualThermostatCoolingFence {
     return identity(claim) &&
         configuration['role'] == 'cooling' &&
         diagnostic?['role'] == 'cooling' &&
+        diagnostic?['claim_state'] != 'released' &&
         diagnostic?['claim'] == claim &&
         identity(physical) &&
         diagnostic?['physical_identity'] == physical &&
@@ -1020,7 +1021,11 @@ class VirtualThermostatCoolingFence {
       for (final entry in configured.entries)
         if (entry.value.any(_requiresCooling)) entry.key,
       for (final entry in diagnostics.entries)
-        if (entry.value.any(_requiresCooling)) entry.key,
+        if (entry.value.any(_requiresCooling) &&
+            (_samples.containsKey(entry.key) ||
+                entry.value.any((row) =>
+                    row['claim_state'] != 'released' && _requiresCooling(row))))
+          entry.key,
     };
     final complete = VirtualThermostatMember.membershipComplete(
       configuration,

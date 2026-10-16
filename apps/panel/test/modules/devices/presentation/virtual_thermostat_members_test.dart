@@ -127,6 +127,7 @@ Map<String, dynamic> coolingObservation(
 };
 
 void main() {
+  coolingReleasedBranchRegressions();
   coolingHttpAdmissionRegressions();
   deadlineFenceTests();
   membershipAndIdentityRegressions();
@@ -5779,6 +5780,162 @@ void coolingHttpAdmissionRegressions() {
     expect(find.text('Live protection reading: 20.0 °C'), findsOneWidget);
     expect(find.text('Reported observation: on'), findsOneWidget);
     expect(find.text('Dew point: 9.25'), findsNothing);
+    await f.dispose(tester);
+  });
+}
+
+void coolingReleasedBranchRegressions() {
+  final t = DateTime.utc(2026, 10, 16, 12);
+  final e = t.add(const Duration(seconds: 2));
+  Map configured([String id = 'one']) => {
+    ...claim(id, 'cooling', 'reserved'),
+    'revision': 1,
+    'cooling_protection': coolingBinding(),
+  };
+  Map diagnostic(DateTime expiry, {String id = 'one', bool released = false}) => {
+    'claim': id,
+    'physical_identity': 'canonical-$id',
+    'role': 'cooling',
+    'claim_state': released ? 'released' : 'reserved',
+    'cooling_protection': {
+      ...coolingObservation(t),
+      'claim': id,
+      'expires_at': expiry.toIso8601String(),
+    },
+  };
+  void accept(VirtualThermostatCoolingFence fence, List<Map> c, List<Map> d) =>
+      fence.accept({'actuators': c}, {'branches': d}, t, Duration.zero);
+  Set<String> fresh(VirtualThermostatCoolingFence fence, List<Map> c, List<Map> d) =>
+      fence.freshClaims(VirtualThermostatMember.read({'actuators': c}, {'branches': d}), t, Duration.zero);
+
+  test('configured released cooling is unavailable until strictly newer active expiry', () {
+    final fence = VirtualThermostatCoolingFence(), c = [configured()];
+    final released = [diagnostic(e, released: true)];
+    accept(fence, c, released);
+    expect(fence.recordCount, 1);
+    expect(fresh(fence, c, released), isEmpty);
+    final active = [diagnostic(e)];
+    accept(fence, c, active);
+    expect(fresh(fence, c, active), isEmpty);
+    final renewal = [diagnostic(e.add(const Duration(seconds: 1)))];
+    accept(fence, c, renewal);
+    expect(fresh(fence, c, renewal), {'one'});
+  });
+
+  test('released query and HTTP admission withdraw prior live equal-expiry cooling', () {
+    for (final queryFirst in [false, true]) {
+      final fence = VirtualThermostatCoolingFence(), c = [configured()];
+      final active = [diagnostic(e)], released = [diagnostic(e, released: true)];
+      accept(fence, c, active);
+      expect(fresh(fence, c, active), {'one'});
+      if (queryFirst) {
+        expect(fresh(fence, c, released), isEmpty);
+      } else {
+        accept(fence, c, released);
+      }
+      accept(fence, c, active);
+      expect(fresh(fence, c, active), isEmpty);
+      final renewal = [diagnostic(e.add(const Duration(seconds: 1)))];
+      accept(fence, c, renewal);
+      expect(fresh(fence, c, renewal), {'one'});
+    }
+  });
+
+  test('retained runtime-only release keeps invalid observed expiry without allocating', () {
+    final fence = VirtualThermostatCoolingFence(), c = [configured()];
+    accept(fence, c, [diagnostic(e)]);
+    final later = e.add(const Duration(seconds: 1));
+    accept(fence, [], [diagnostic(later, released: true)]);
+    expect(fence.recordCount, 1);
+    accept(fence, c, [diagnostic(later)]);
+    expect(fresh(fence, c, [diagnostic(later)]), isEmpty);
+    final renewal = [diagnostic(later.add(const Duration(seconds: 1)))];
+    accept(fence, c, renewal);
+    expect(fresh(fence, c, renewal), {'one'});
+  });
+
+  for (final reverse in [false, true]) {
+    test('released duplicate contributes invalid expiry high-water in both orders $reverse', () {
+      final fence = VirtualThermostatCoolingFence(), c = [configured()];
+      final later = e.add(const Duration(seconds: 1));
+      final duplicate = [diagnostic(e), diagnostic(later, released: true)];
+      accept(fence, c, reverse ? duplicate.reversed.toList() : duplicate);
+      expect(fresh(fence, c, duplicate), isEmpty);
+      accept(fence, c, [diagnostic(later)]);
+      expect(fresh(fence, c, [diagnostic(later)]), isEmpty);
+      final renewal = [diagnostic(later.add(const Duration(seconds: 1)))];
+      accept(fence, c, renewal);
+      expect(fresh(fence, c, renewal), {'one'});
+    });
+  }
+
+  test('released runtime-only declarations consume no new cooling record capacity', () {
+    final fence = VirtualThermostatCoolingFence();
+    for (var index = 0; index < 129; index++) {
+      accept(fence, [], [diagnostic(e, id: 'released$index', released: true)]);
+    }
+    expect(fence.recordCount, 0);
+    final c = [configured()], d = [diagnostic(e)];
+    accept(fence, c, d);
+    expect(fence.recordCount, 1);
+    expect(fresh(fence, c, d), {'one'});
+  });
+
+  testWidgets('actual configured released cooling cannot display values or READY', (tester) async {
+    final f = MemberDetailFixture();
+    final expiry = DateTime.now().add(const Duration(minutes: 1));
+    f.overrideMembership = true;
+    f.configuredMembership = [configured()];
+    f.runtimeMembership = [diagnostic(expiry, released: true)];
+    await f.mount(tester);
+    expect(find.text('Dew point: 9.25'), findsNothing);
+    expect(find.text('Controller readiness: ready'), findsNothing);
+    expect(find.textContaining('retained-dew'), findsOneWidget);
+    await f.dispose(tester);
+  });
+
+  testWidgets('actual accepted release before frame fences same-E active restoration', (tester) async {
+    final f = MemberDetailFixture();
+    final expiry = DateTime.now().add(const Duration(minutes: 1));
+    f.overrideMembership = true;
+    f.configuredMembership = [configured()];
+    f.runtimeMembership = [diagnostic(expiry)];
+    await f.mount(tester);
+    expect(find.text('Dew point: 9.25'), findsOneWidget);
+    expect(find.text('Controller readiness: ready'), findsOneWidget);
+    final reads = f.runtimeReads;
+    f.runtimeMembership = [diagnostic(expiry, released: true)];
+    await f.acceptBeforeFrame(tester);
+    f.runtimeMembership = [diagnostic(expiry)];
+    await f.acceptBeforeFrame(tester);
+    expect(f.runtimeReads, reads + 2);
+    await tester.pump();
+    expect(find.text('Dew point: 9.25'), findsNothing);
+    expect(find.text('Controller readiness: ready'), findsNothing);
+    f.runtimeMembership = [diagnostic(expiry.add(const Duration(seconds: 1)))];
+    await f.acceptBeforeFrame(tester);
+    await tester.pump();
+    expect(find.text('Dew point: 9.25'), findsOneWidget);
+    expect(find.text('Controller readiness: ready'), findsOneWidget);
+    await f.dispose(tester);
+  });
+
+  testWidgets('actual runtime-only released rows stay outside active cooling requirements', (tester) async {
+    final f = MemberDetailFixture();
+    final expiry = DateTime.now().add(const Duration(minutes: 1));
+    f.overrideMembership = true;
+    f.configuredMembership = <Map>[];
+    f.runtimeMembership = [diagnostic(expiry, released: true)];
+    await f.mount(tester);
+    expect(find.text('Dew point: 9.25'), findsNothing);
+    expect(find.textContaining('retained-dew'), findsNothing);
+    expect(find.text('Controller readiness: ready'), findsOneWidget);
+    f.configuredMembership = [configured()];
+    f.runtimeMembership = [diagnostic(expiry)];
+    await f.acceptBeforeFrame(tester);
+    await tester.pump();
+    expect(find.text('Dew point: 9.25'), findsOneWidget);
+    expect(find.text('Controller readiness: ready'), findsOneWidget);
     await f.dispose(tester);
   });
 }
