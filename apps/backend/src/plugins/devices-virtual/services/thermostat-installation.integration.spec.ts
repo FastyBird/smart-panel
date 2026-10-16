@@ -1282,8 +1282,13 @@ describe('durable thermostat installation profiles', () => {
 		expect((await profiles.inspect(claim.id)).source_hash).toHaveLength(64);
 	});
 
-	const adopt = async (member: VirtualThermostatActuatorClaimEntity, converted = false) => {
+	const adopt = async (
+		member: VirtualThermostatActuatorClaimEntity,
+		converted = false,
+		beforeAdoption?: (probe: Awaited<ReturnType<typeof createProtectionProbe>>) => Promise<void>,
+	) => {
 		const probe = await createProtectionProbe(db, member.sourcePropertyId, converted);
+		await beforeAdoption?.(probe);
 		const source = await resolveThermostatProtectionSource(db.manager, probe.sourceId, member.physicalIdentity);
 		await db.manager.insert(ThermostatMemberProtectionEntity, {
 			claimId: member.id,
@@ -1517,6 +1522,43 @@ describe('durable thermostat installation profiles', () => {
 		expect(await db.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId: claim.controllerId })).toBe(
 			2,
 		);
+	});
+
+	it('stages complete documented catalogs and refuses omitted empty groups or changed sibling links', async () => {
+		let catalog: Record<string, unknown>;
+		await adopt(claim, false, async (local) => {
+			const metadata = await db.manager.findOneByOrFail(ShellySampleSourceEntity, { propertyId: local.physicalId });
+			const snapshot = metadata.installationSnapshot;
+			catalog = {
+				...snapshot.peripherals,
+				dht22: {},
+				digital_in: { 'input:101': {} },
+				analog_in: {},
+				voltmeter: {},
+				digital_out: { 'switch:107': { io: 0 } },
+			};
+			metadata.installationSnapshot = nativeTemperatureIdentity(
+				metadata.componentKey,
+				snapshot.configuration,
+				catalog,
+			).installationSnapshot;
+			expect(metadata.installationSnapshot.peripherals).toEqual(catalog);
+			await db.manager.save(metadata);
+		});
+		await profiles.stage(claim.id, 0, memberInstallationSetup(), attestations(), 'operator');
+		const profile = await db.manager.findOneByOrFail(ThermostatInstallationEntity, { claimId: claim.id });
+		const binding = await bindings.resolve(db.manager, claim.id);
+		expect(profile.setup.peripheralsJson).toBe(JSON.stringify(catalog));
+		const { dht22: emptyGroup, ...withoutEmptyGroup } = catalog;
+		expect(emptyGroup).toEqual({});
+		for (const changed of [withoutEmptyGroup, { ...catalog, digital_in: { 'input:102': {} } }])
+			expect(() =>
+				validateThermostatInstallation(
+					{ ...profile.setup, peripheralsJson: JSON.stringify(changed) },
+					attestations(),
+					binding,
+				),
+			).toThrow('current complete catalog');
 	});
 
 	it('rejects wrong device, changed peripheral, calibration, source age and converter domain drift', async () => {

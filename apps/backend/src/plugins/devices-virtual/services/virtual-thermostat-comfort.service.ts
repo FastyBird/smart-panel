@@ -68,6 +68,15 @@ export class VirtualThermostatComfortService {
 
 	/** Only committed settlement makes expiry durable. A sync dispatch refusal cannot promise crash durability. */
 	async settle(controllerId: string): Promise<void> {
+		const settled = await this.structure.runShared(async () => {
+			const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+			if (row?.comfort?.temporary_override?.status === 'active' || this.pendingNotifications.has(controllerId))
+				return false;
+			this.leases.delete(controllerId);
+			return true;
+		});
+		if (settled) return;
+		// Never upgrade a shared lock. Re-read after acquiring exclusive ownership; the override may have changed.
 		await this.structure.runExclusive(async () => {
 			const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			const override = row?.comfort?.temporary_override;
@@ -120,16 +129,19 @@ export class VirtualThermostatComfortService {
 				this.leases.delete(controllerId);
 				await this.changed(controllerId);
 			} else {
-				// Watermark is evidence only, not an intent revision, expiry renewal or sample refresh.
+				// Persist every observed watermark: batching would weaken rollback detection after a crash/restart.
+				// This is evidence only, not an intent revision, expiry renewal or sample refresh.
 				lease.watermark = Math.max(lease.watermark, now);
 				if (override.wall_watermark_ms !== lease.watermark) {
 					override.wall_watermark_ms = lease.watermark;
 					await this.database.transaction(async (manager) => {
-						await manager.update(
+						const updated = await manager.update(
 							VirtualThermostatConfigEntity,
 							{ controllerId, revision: row.revision },
 							{ comfort: row.comfort },
 						);
+						if (updated.affected !== 1)
+							throw new DevicesValidationException('Thermostat revision changed during watermark settlement.');
 					});
 				}
 				if (this.pendingNotifications.has(controllerId)) await this.changed(controllerId);
