@@ -132,6 +132,7 @@ vi.mock('../components/components', async () => {
 		});
 
 	return {
+		SpaceActivityModesSection: StubComponent('SpaceActivityModesSection'),
 		SpaceAddDeviceDialog: StubComponent('SpaceAddDeviceDialog'),
 		SpaceAddDisplayDialog: StubComponent('SpaceAddDisplayDialog'),
 		SpaceAddSceneDialog: StubComponent('SpaceAddSceneDialog'),
@@ -259,7 +260,7 @@ describe('ViewSpaceConfigure', () => {
 		expect(wrapper.find('[data-test-id="space-configure-edit-route"]').exists()).toBe(true);
 	});
 
-	it('renders the room floor selector inside the space detail rows', () => {
+	it('renders the floor selector and activity modes before domain controls', () => {
 		const wrapper = shallowMount(ViewSpaceConfigure, {
 			props: {
 				space: {
@@ -290,5 +291,9 @@ describe('ViewSpaceConfigure', () => {
 		const detail = wrapper.findComponent({ name: 'SpaceDetail' });
 
 		expect(detail.findComponent({ name: 'SpaceParentZoneSection' }).exists()).toBe(true);
+		const modes = wrapper.findComponent({ name: 'SpaceActivityModesSection' });
+		const domains = wrapper.findComponent({ name: 'SpaceDomainsSection' });
+		expect(modes.props('spaceId')).toBe('7a1bafdc-8c7d-4d5a-9e2a-4dfdc3c8253d');
+		expect(modes.element.compareDocumentPosition(domains.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 	});
 });

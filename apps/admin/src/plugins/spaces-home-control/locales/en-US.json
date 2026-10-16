@@ -400,5 +400,98 @@
 				"sensorRoles": "Sensor roles"
 			}
 		}
+	},
+	"activityModes": {
+		"reasons": {
+			"coversUnsupported": "Some window coverings cannot use this position. Check their controls and availability.",
+			"mediaBindingMissing": "Configure this media activity before using it in a mode.",
+			"mediaUnavailable": "The saved media activity has no compatible playback plan. Check its configuration and devices.",
+			"noActiveMedia": "There is no active media activity to stop.",
+			"noTargets": "No compatible devices are available in this space."
+		},
+		"title": "Activity modes",
+		"description": "Choose what each activity mode does in this space.",
+		"enabled": "Enabled",
+		"disabled": "Disabled",
+		"edit": "Edit",
+		"save": "Save",
+		"cancel": "Cancel",
+		"reset": "Reset to defaults",
+		"preview": "Preview saved settings",
+		"saveBeforePreview": "Save your changes before previewing.",
+		"loading": "Loading activity modes…",
+		"loadFailed": "Activity modes could not be loaded. Try refreshing.",
+		"saveFailed": "Changes could not be saved. Your draft is still available.",
+		"conflict": "These settings changed elsewhere. Your draft has been preserved.",
+		"conflictReview": "Your draft remains visible. Discard it to load the latest saved settings, then edit and save again.",
+		"discard": "Discard draft",
+		"order": "Display order",
+		"orderHelp": "Lower numbers appear first. Each mode’s order is saved separately.",
+		"lighting": "Lighting",
+		"climate": "Climate",
+		"covers": "Covers",
+		"media": "Media",
+		"security": "Security",
+		"brightness": "Brightness (%)",
+		"defaultBrightness": "Use the lighting mode’s default brightness",
+		"position": "Position (0% closed, 100% open)",
+		"lightingMode": "Lighting mode",
+		"mediaActivity": "Media activity",
+		"climateKind": "Temperature setting",
+		"none": "Not set",
+		"preset": "Thermostat preset",
+		"setpoint": "Target temperature (°C)",
+		"delta": "Temperature change (°C)",
+		"climateMode": "Climate mode",
+		"climateUnsupported": "You can save climate settings, but activity modes cannot apply them yet.",
+		"securityUnsupported": "You can save security settings, but activity modes cannot apply them yet.",
+		"invalid": "Check the settings before saving.",
+		"readOnly": "You do not have permission to edit activity modes.",
+		"refresh": "Refresh",
+		"previewDescription": "Checks the saved settings without changing them or controlling devices.",
+		"missing": "Not available",
+		"modes": {
+			"work": "Work",
+			"relax": "Relax",
+			"sleep": "Sleep",
+			"entertainment": "Entertainment",
+			"away": "Away"
+		},
+		"statuses": {
+			"ready": "Ready",
+			"disabled": "Disabled",
+			"no_targets": "No compatible devices",
+			"unsupported": "Not supported yet",
+			"failed": "Failed",
+			"succeeded": "Commands accepted"
+		},
+		"lightingModes": {
+			"off": "Off",
+			"work": "Work",
+			"relax": "Relax",
+			"night": "Night"
+		},
+		"climateKinds": {
+			"none": "Not set",
+			"preset": "Thermostat preset",
+			"setpoint": "Target temperature",
+			"delta": "Temperature change"
+		},
+		"climateModes": {
+			"heat": "Heating",
+			"cool": "Cooling"
+		},
+		"presets": {
+			"comfort": "Comfort",
+			"eco": "Eco",
+			"away": "Away"
+		},
+		"mediaActivities": {
+			"watch": "Watch",
+			"listen": "Listen",
+			"gaming": "Gaming",
+			"background": "Background",
+			"off": "Off"
+		}
 	}
 }
