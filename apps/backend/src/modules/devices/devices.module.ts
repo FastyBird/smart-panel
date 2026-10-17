@@ -39,6 +39,7 @@ import {
 } from './devices.constants';
 import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
 import { UpdateDevicesConfigDto } from './dto/update-config.dto';
+import { ClimateAutomationSlotEntity, ClimateAutomationSourceEntity } from './entities/climate-automation.entity';
 import { DeviceZoneEntity } from './entities/device-zone.entity';
 import {
 	ChannelControlEntity,
@@ -59,6 +60,8 @@ import { ChannelsControlsService } from './services/channels.controls.service';
 import { ChannelsPropertiesTypeMapperService } from './services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
+import { ClimateAutomationRegistryService } from './services/climate-automation.registry.service';
+import { ClimateAutomationWriterService } from './services/climate-automation-writer.service';
 import { CommandLatencyTraceCollectorService } from './services/command-latency-trace-collector.service';
 import { CompositePropertyCommandRegistryService } from './services/composite-property-command.registry.service';
 import { DeviceCommandGraphService } from './services/device-command-graph.service';
@@ -117,6 +120,8 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 			ChannelPropertyEntity,
 			SpaceEntity,
 			PropertyValueLockEntity,
+			ClimateAutomationSourceEntity,
+			ClimateAutomationSlotEntity,
 		]),
 		StorageModule,
 		IntentsModule,
@@ -127,6 +132,8 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		WebsocketModule,
 	],
 	providers: [
+		ClimateAutomationRegistryService,
+		ClimateAutomationWriterService,
 		DeviceContributionRegistryService,
 		PropertyCommandEntryInterceptor,
 		DeviceControlToolService,
@@ -190,6 +197,8 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		ChannelsPropertiesController,
 	],
 	exports: [
+		ClimateAutomationRegistryService,
+		ClimateAutomationWriterService,
 		DeviceContributionRegistryService,
 		DevicesService,
 		DevicesBulkService,

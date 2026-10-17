@@ -726,6 +726,11 @@ export function registerSqliteCommitGuard(manager: EntityManager, guard: () => b
 	return manager.queryRunner.registerCommitGuard(manager, guard);
 }
 
+/** Read-only caller lease presence, including ordinary nontransactional queries. Not writer ownership. */
+export function hasCurrentSqliteConnectionLease(dataSource: DataSource): boolean {
+	return coordinators.get(dataSource)?.currentRunner !== undefined;
+}
+
 /** Observe the physical connection, rather than a newly created request's independent runner. */
 export function isSqliteTransactionActive(dataSource: DataSource): boolean {
 	return coordinators.get(dataSource)?.isTransactionActive ?? dataSource.createQueryRunner().isTransactionActive;
