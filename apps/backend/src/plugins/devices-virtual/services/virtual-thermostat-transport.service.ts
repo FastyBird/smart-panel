@@ -16,7 +16,11 @@ import {
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
 import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
-import { thermostatActuatorIdentity, thermostatFingerprint, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+import {
+	thermostatActuatorIdentity,
+	thermostatFingerprint,
+	thermostatPropertyContract,
+} from './virtual-thermostat-contract.utils';
 
 export type ThermostatReconciliationScope = ProviderReconciliationScope<ThermostatInstalledQualification>;
 export type ThermostatReleaseOrderingEvidence = ProviderReleaseOrderingEvidence<ThermostatInstalledQualification>;
@@ -87,44 +91,94 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
 			const propertyChannelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
 			if (
-				!physicalIdentity || claim.sourcePropertyIdentity !== property.id || claim.sourceDeviceIdentity !== device.id ||
-				propertyChannelId !== channel.id || channelDeviceId !== device.id || qualification.contractVersion !== 1 ||
-				!profile || !Number.isSafeInteger(profile.version) || profile.version < 1 || typeof profile.id !== 'string' || !profile.id ||
-				typeof qualificationGeneration !== 'string' || !qualificationGeneration || claim.qualificationGeneration !== qualificationGeneration ||
-				typeof machineLease !== 'function' || machineLease.call(qualification) !== true ||
-				qualification.physicalIdentity !== physicalIdentity || claim.physicalIdentity !== physicalIdentity ||
-				claim.providerProfile !== profile.id || claim.providerProfileVersion !== profile.version ||
-				!claim.id || !claim.controllerId || !Number.isSafeInteger(claim.revision) || claim.revision < 1 ||
-				claim.state !== 'reserved' || claim.sourcePropertyId !== property.id || claim.sourceDeviceId !== device.id ||
-				claim.contractFingerprint !== thermostatPropertyContract(property, channel, device) || !localProfile
-			) return null;
+				!physicalIdentity ||
+				claim.sourcePropertyIdentity !== property.id ||
+				claim.sourceDeviceIdentity !== device.id ||
+				propertyChannelId !== channel.id ||
+				channelDeviceId !== device.id ||
+				qualification.contractVersion !== 1 ||
+				!profile ||
+				!Number.isSafeInteger(profile.version) ||
+				profile.version < 1 ||
+				typeof profile.id !== 'string' ||
+				!profile.id ||
+				typeof qualificationGeneration !== 'string' ||
+				!qualificationGeneration ||
+				claim.qualificationGeneration !== qualificationGeneration ||
+				typeof machineLease !== 'function' ||
+				machineLease.call(qualification) !== true ||
+				qualification.physicalIdentity !== physicalIdentity ||
+				claim.physicalIdentity !== physicalIdentity ||
+				claim.providerProfile !== profile.id ||
+				claim.providerProfileVersion !== profile.version ||
+				!claim.id ||
+				!claim.controllerId ||
+				!Number.isSafeInteger(claim.revision) ||
+				claim.revision < 1 ||
+				claim.state !== 'reserved' ||
+				claim.sourcePropertyId !== property.id ||
+				claim.sourceDeviceId !== device.id ||
+				claim.contractFingerprint !== thermostatPropertyContract(property, channel, device) ||
+				!localProfile
+			)
+				return null;
 			const script = localProfile.guardScript;
 			const bounds = localProfile.testedLeaseSeconds;
 			const metadata = script?.installationMetadata;
-			const snapshot = () => thermostatFingerprint({
-				target: { contract: thermostatPropertyContract(target.property, target.channel, target.device),
-					physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device),
-					enabled: target.device.enabled, identifier: target.device.identifier,
-					channelDeviceId: typeof target.channel.device === 'string' ? target.channel.device : target.channel.device?.id,
-					propertyChannelId: typeof target.property.channel === 'string' ? target.property.channel : target.property.channel?.id },
-				claim: { id: claim.id, controllerId: claim.controllerId, revision: claim.revision, role: claim.role,
-					physicalIdentity: claim.physicalIdentity, providerProfile: claim.providerProfile, providerProfileVersion: claim.providerProfileVersion,
-					qualificationGeneration: claim.qualificationGeneration, state: claim.state, leaseSeconds: claim.leaseSeconds,
-					sourcePropertyId: claim.sourcePropertyId, sourceDeviceId: claim.sourceDeviceId,
-					sourcePropertyIdentity: claim.sourcePropertyIdentity, sourceDeviceIdentity: claim.sourceDeviceIdentity,
-					contractFingerprint: claim.contractFingerprint },
-				qualification: { contractVersion: qualification.contractVersion, physicalIdentity: qualification.physicalIdentity,
-					qualificationGeneration: qualification.qualificationGeneration, providerProfile: qualification.providerProfile,
-					upstreamWritersExcluded: qualification.upstreamWritersExcluded, opposedOutputsInterlocked: qualification.opposedOutputsInterlocked,
-					profile: qualification.profile },
-			});
+			const snapshot = () =>
+				thermostatFingerprint({
+					target: {
+						contract: thermostatPropertyContract(target.property, target.channel, target.device),
+						physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device),
+						enabled: target.device.enabled,
+						identifier: target.device.identifier,
+						channelDeviceId:
+							typeof target.channel.device === 'string' ? target.channel.device : target.channel.device?.id,
+						propertyChannelId:
+							typeof target.property.channel === 'string' ? target.property.channel : target.property.channel?.id,
+					},
+					claim: {
+						id: claim.id,
+						controllerId: claim.controllerId,
+						revision: claim.revision,
+						role: claim.role,
+						physicalIdentity: claim.physicalIdentity,
+						providerProfile: claim.providerProfile,
+						providerProfileVersion: claim.providerProfileVersion,
+						qualificationGeneration: claim.qualificationGeneration,
+						state: claim.state,
+						leaseSeconds: claim.leaseSeconds,
+						sourcePropertyId: claim.sourcePropertyId,
+						sourceDeviceId: claim.sourceDeviceId,
+						sourcePropertyIdentity: claim.sourcePropertyIdentity,
+						sourceDeviceIdentity: claim.sourceDeviceIdentity,
+						contractFingerprint: claim.contractFingerprint,
+					},
+					qualification: {
+						contractVersion: qualification.contractVersion,
+						physicalIdentity: qualification.physicalIdentity,
+						qualificationGeneration: qualification.qualificationGeneration,
+						providerProfile: qualification.providerProfile,
+						upstreamWritersExcluded: qualification.upstreamWritersExcluded,
+						opposedOutputsInterlocked: qualification.opposedOutputsInterlocked,
+						profile: qualification.profile,
+					},
+				});
 			const originalSnapshot = snapshot();
-			const metadataCurrent = () => !this.destroyed && this.registrationEpochs.get(type) === epoch &&
-				target.device === device && target.channel === channel && target.property === property &&
-				qualification.providerProfile === profile && qualification.profile === localProfile &&
-				localProfile.guardScript === script && localProfile.testedLeaseSeconds === bounds &&
-				script?.installationMetadata === metadata && qualification.machineLeaseIsCurrent === machineLease &&
-				snapshot() === originalSnapshot && machineLease.call(qualification) === true;
+			const metadataCurrent = () =>
+				!this.destroyed &&
+				this.registrationEpochs.get(type) === epoch &&
+				target.device === device &&
+				target.channel === channel &&
+				target.property === property &&
+				qualification.providerProfile === profile &&
+				qualification.profile === localProfile &&
+				localProfile.guardScript === script &&
+				localProfile.testedLeaseSeconds === bounds &&
+				script?.installationMetadata === metadata &&
+				qualification.machineLeaseIsCurrent === machineLease &&
+				snapshot() === originalSnapshot &&
+				machineLease.call(qualification) === true;
 			let providerCurrent: () => boolean;
 			const supplied = this.adapters.get(type);
 			if (supplied) {
@@ -132,23 +186,46 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				const capture = supplied.captureReconcileReadiness;
 				const canReconcile = supplied.canReconcile;
 				const providerProfile = supplied.providerProfile;
-				if (!capture || supplied.contractVersion !== 1 || providerProfile.id !== profile.id ||
-					providerProfile.version !== profile.version || canReconcile.call(supplied, target, qualification) !== true) return null;
+				if (
+					!capture ||
+					supplied.contractVersion !== 1 ||
+					providerProfile.id !== profile.id ||
+					providerProfile.version !== profile.version ||
+					canReconcile.call(supplied, target, qualification) !== true
+				)
+					return null;
 				// Only the optional explicit pure contract is eligible. Legacy canReconcile alone is never called.
 				const original = capture.call(supplied, target, qualification);
-				if (!original || original.capabilityVersion !== 1 || original.physicalIdentity !== physicalIdentity ||
-					original.qualificationGeneration !== qualificationGeneration || original.providerProfile.id !== profile.id ||
-					original.providerProfile.version !== profile.version || typeof original.isCurrent !== 'function') return null;
+				if (
+					!original ||
+					original.capabilityVersion !== 1 ||
+					original.physicalIdentity !== physicalIdentity ||
+					original.qualificationGeneration !== qualificationGeneration ||
+					original.providerProfile.id !== profile.id ||
+					original.providerProfile.version !== profile.version ||
+					typeof original.isCurrent !== 'function'
+				)
+					return null;
 				const originalGuard = original.isCurrent;
 				const originalProfile = original.providerProfile;
-				providerCurrent = () => this.registrations.get(type) === registration && this.adapters.get(type) === supplied &&
-					supplied.contractVersion === 1 && supplied.providerProfile === providerProfile &&
-					providerProfile.id === profile.id && providerProfile.version === profile.version &&
-					supplied.captureReconcileReadiness === capture && supplied.canReconcile === canReconcile &&
-					original.capabilityVersion === 1 && original.physicalIdentity === physicalIdentity &&
-					original.qualificationGeneration === qualificationGeneration && original.providerProfile === originalProfile &&
-					originalProfile.id === profile.id && originalProfile.version === profile.version &&
-					original.isCurrent === originalGuard && originalGuard.call(original) === true && canReconcile.call(supplied, target, qualification) === true;
+				providerCurrent = () =>
+					this.registrations.get(type) === registration &&
+					this.adapters.get(type) === supplied &&
+					supplied.contractVersion === 1 &&
+					supplied.providerProfile === providerProfile &&
+					providerProfile.id === profile.id &&
+					providerProfile.version === profile.version &&
+					supplied.captureReconcileReadiness === capture &&
+					supplied.canReconcile === canReconcile &&
+					original.capabilityVersion === 1 &&
+					original.physicalIdentity === physicalIdentity &&
+					original.qualificationGeneration === qualificationGeneration &&
+					original.providerProfile === originalProfile &&
+					originalProfile.id === profile.id &&
+					originalProfile.version === profile.version &&
+					original.isCurrent === originalGuard &&
+					originalGuard.call(original) === true &&
+					canReconcile.call(supplied, target, qualification) === true;
 			} else {
 				if (profile.id !== SHELLY_GUARDED_PROFILE || profile.version !== SHELLY_GUARDED_PROFILE_VERSION) return null;
 				const platformLease = this.platforms.captureRegistration(device);
@@ -158,19 +235,34 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				const original = platform.prepareGuardRpcSession(target, localProfile);
 				if (!original || typeof original.isCurrent !== 'function') return null;
 				const originalGuard = original.isCurrent;
-				providerCurrent = () => !this.adapters.has(type) && platformLease.isCurrent() === true &&
-					original.isCurrent === originalGuard && originalGuard.call(original) === true &&
-					qualification.upstreamWritersExcluded === true && localProfile.releaseOrderingQualified === true &&
+				providerCurrent = () =>
+					!this.adapters.has(type) &&
+					platformLease.isCurrent() === true &&
+					original.isCurrent === originalGuard &&
+					originalGuard.call(original) === true &&
+					qualification.upstreamWritersExcluded === true &&
+					localProfile.releaseOrderingQualified === true &&
 					localProfile.independentProtectionQualified === true &&
 					qualification.physicalIdentity === thermostatActuatorIdentity(property, channel, device);
 			}
 			const isCurrent = () => {
-				try { return metadataCurrent() && providerCurrent(); } catch { return false; }
+				try {
+					return metadataCurrent() && providerCurrent();
+				} catch {
+					return false;
+				}
 			};
 			if (!isCurrent()) return null;
-			return Object.freeze({ capabilityVersion: 1, providerProfile: Object.freeze({ id: profile.id, version: profile.version }),
-				physicalIdentity, qualificationGeneration, isCurrent });
-		} catch { return null; }
+			return Object.freeze({
+				capabilityVersion: 1,
+				providerProfile: Object.freeze({ id: profile.id, version: profile.version }),
+				physicalIdentity,
+				qualificationGeneration,
+				isCurrent,
+			});
+		} catch {
+			return null;
+		}
 	}
 
 	get(target: IDevicePropertyData, claim?: VirtualThermostatActuatorClaimEntity): ThermostatActuationAdapter | null {
