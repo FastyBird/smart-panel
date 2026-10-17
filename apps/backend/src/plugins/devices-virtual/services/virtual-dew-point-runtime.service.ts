@@ -331,7 +331,7 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			const retained = new Set<string>();
 			let uncertainOwner = false;
 			const observe = (id: string, source?: ChannelPropertyEntity): void => {
-				if (!this.active || generation !== this.generation) return;
+				if (!this.active || this.outputs.get(property.id) !== output) return;
 				retained.add(id);
 				this.indexSource(property.id, id);
 				if (!source) return;
@@ -340,8 +340,12 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 				if (!channel?.id || !device?.id) return;
 				const owners = this.sourceOwners.get(property.id) ?? new Map<string, { deviceId: string; channelId: string }>();
 				const previous = owners.get(id);
-				if ((!previous || previous.channelId !== channel.id || previous.deviceId !== device.id) && discovery !== this.structuralChange)
+				if ((!previous || previous.channelId !== channel.id || previous.deviceId !== device.id) && discovery !== this.structuralChange) {
 					uncertainOwner = true;
+					// A concurrent global request must not discard the discovery-window barrier.
+					// Keep it on this same live output even when this candidate's generation is stale.
+					this.requireFreshInputs(property.id);
+				}
 				owners.set(id, { channelId: channel.id, deviceId: device.id });
 				this.sourceOwners.set(property.id, owners);
 			};

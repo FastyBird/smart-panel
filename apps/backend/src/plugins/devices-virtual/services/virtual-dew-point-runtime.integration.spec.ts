@@ -458,6 +458,8 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		await entered;
 		try {
 			events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: leafDevice.id } });
+			// A graph-validation/global request cannot erase the first-owner freshness barrier.
+			runtime.requestRecompute();
 		} finally { release(); }
 		await firstDiscovery;
 		lookup.mockRestore();
