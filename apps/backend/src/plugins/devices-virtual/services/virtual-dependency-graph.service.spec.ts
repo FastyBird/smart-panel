@@ -52,6 +52,10 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
 				return { controllerId: id, documentVersion: 1, configuration: desired, structural: desired, comfort: before.comfort, legacyBaseline: before.legacyBaseline };
 			},
+			planGraphReplacementInManager: async (manager, turn) => {
+				writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+				return { ownedOutputIds: [], beforeEdges: [], replacementEdges: [] };
+			},
 			applyInManager: async (manager, turn, before, next) => {
 				writer.assertParticipantTurn(manager, turn, ['APPLY']);
 				const result = await manager.createQueryBuilder().update('test_graph_participant').set({ revision: next.controllerRevision, document: climateAutomationCanonical(next.configuration) })

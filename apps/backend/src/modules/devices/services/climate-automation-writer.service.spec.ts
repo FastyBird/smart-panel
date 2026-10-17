@@ -32,9 +32,13 @@ import { ClimateAutomationWriterService } from './climate-automation-writer.serv
 import { ClimateAutomationRegistryService } from './climate-automation.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
-import { ClimateAutomationParticipant, ClimateAutomationParticipantImage, ClimateAutomationParticipantTurn, ClimateAutomationParticipantConflict } from '../contracts/climate-automation.contract';
+import { ClimateAutomationParticipant, ClimateAutomationParticipantImage, ClimateAutomationParticipantTurn, ClimateAutomationParticipantConflict, ClimateAutomationGraphReplacementPlan } from '../contracts/climate-automation.contract';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { VirtualGraphRevisionEntity } from '../../../plugins/devices-virtual/entities/virtual-producer.entity';
+
+import { DeviceCategory, ChannelCategory, PropertyCategory, PermissionType } from '../devices.constants';
+import { VirtualChannelEntity, VirtualChannelPropertyEntity, VirtualDeviceEntity, VirtualValueOrigin } from '../../../plugins/devices-virtual/entities/devices-virtual.entity';
+import { VirtualAggregateConfigEntity, VirtualAggregateInputEntity, VirtualAggregateOperator } from '../../../plugins/devices-virtual/entities/virtual-producer.entity';
 
 const deferred = () => {
 	let complete: () => void = () => {
@@ -1651,6 +1655,10 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 						comfort: kind === 'replace-comfort:v1' ? returnedComfort ?? desired : before.comfort,
 						structural: kind === 'replace-configuration:v1' ? desired : before.structural, legacyBaseline: before.legacyBaseline });
 				},
+				planGraphReplacementInManager: async (manager, turn, before, next) => {
+					writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+					return testProjectionPlan(before.structural, next.structural);
+				},
 				applyInManager: async (manager, turn, before, next) => {
 					writer.assertParticipantTurn(manager, turn, ['APPLY']);
 					if (applyBarrier) await applyBarrier();
@@ -1845,6 +1853,220 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 			expect(await readImage(database.manager, controllerId)).toEqual(before);
 			if (boundary !== 'graph') expect(apply).not.toHaveBeenCalled();
 		});
+
+		// BEGIN R1 owned edge-plan additions — UNEXECUTED
+		function testProjectionPlan(before: unknown, after: unknown): ClimateAutomationGraphReplacementPlan {
+			const projection = (value: unknown): { ids: string[]; edges: { outputPropertyId: string; sourcePropertyId: string }[] } => {
+				if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid TEST projection');
+				const rawIds: unknown = Reflect.get(value, 'ownedOutputIds'), rawEdges: unknown = Reflect.get(value, 'edges');
+				if (rawIds === undefined && rawEdges === undefined) return { ids: [], edges: [] };
+				if (!Array.isArray(rawIds) || !Array.isArray(rawEdges)) throw new Error('Incomplete TEST projection');
+				const ids = rawIds.map((id: unknown) => { if (typeof id !== 'string') throw new Error('Invalid TEST output'); return id; });
+				const edges = rawEdges.map((edge: unknown) => {
+					if (!edge || typeof edge !== 'object') throw new Error('Invalid TEST edge');
+					const outputPropertyId: unknown = Reflect.get(edge, 'outputPropertyId'), sourcePropertyId: unknown = Reflect.get(edge, 'sourcePropertyId');
+					if (typeof outputPropertyId !== 'string' || typeof sourcePropertyId !== 'string') throw new Error('Invalid TEST edge IDs');
+					return { outputPropertyId, sourcePropertyId };
+				});
+				return { ids, edges };
+			};
+			const original = projection(before), next = projection(after);
+			return { ownedOutputIds: [...new Set([...original.ids, ...next.ids])], beforeEdges: original.edges, replacementEdges: next.edges };
+		}
+		describe('independent owned graph candidates from complete TEST structural projection', () => {
+			const output = 'c0000000-0000-4000-8000-000000000001', unrelated = 'c0000000-0000-4000-8000-000000000002';
+			const sourceA = 'c0000000-0000-4000-8000-000000000003', sourceB = 'c0000000-0000-4000-8000-000000000004';
+			const device = 'c0000000-0000-4000-8000-000000000005', channel = 'c0000000-0000-4000-8000-000000000006';
+			const edge = (outputPropertyId: string, sourcePropertyId: string) => ({ outputPropertyId, sourcePropertyId });
+			const projection = (source: string) => ({ ownedOutputIds: [output], edges: [edge(output, source)] });
+			const replace = (desiredDocument: ReturnType<typeof projection>) => writer.runReserved(async (manager, scope) => writer.replaceController(manager, scope,
+				{ kind: 'replace-configuration:v1', providerKey: 'participant:v1', controllerId, expected: await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId }), desiredDocument }));
+			const allEdges = async () => (await graph.edges(database.manager)).sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+			beforeEach(async () => {
+				await database.manager.insert(VirtualDeviceEntity, { id: device, name: 'TEST graph catalog', category: DeviceCategory.GENERIC, enabled: true });
+				await database.manager.insert(VirtualChannelEntity, { id: channel, name: 'TEST graph properties', identifier: 'test-graph', category: ChannelCategory.GENERIC, device: { id: device } });
+				for (const id of [output, unrelated, sourceA, sourceB]) await database.manager.insert(VirtualChannelPropertyEntity,
+					{ id, channel: { id: channel }, identifier: id, category: PropertyCategory.GENERIC, permissions: [PermissionType.READ_ONLY], valueOrigin: VirtualValueOrigin.LOCAL });
+				await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId: sourceA });
+				await database.manager.update(VirtualChannelPropertyEntity, { id: unrelated }, { valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId: sourceA });
+				const original = climateAutomationCanonical(projection(sourceA));
+				await database.query('UPDATE test_participant SET configuration=?,structural=? WHERE id=?', [original, original, controllerId]);
+			});
+			it.each(['rewire', 'removal', 'addition'])( 'rolls back correct controller CAS plus undeclared unrelated real catalog %s', async (kind) => {
+				const before = await readImage(database.manager, controllerId), edges = await allEdges();
+				const slots = await database.manager.find(ClimateAutomationSlotEntity), sources = await database.manager.find(ClimateAutomationSourceEntity), catalog = await database.manager.find(VirtualChannelPropertyEntity);
+				afterApply = async () => {
+					await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { sourcePropertyId: sourceB });
+					if (kind === 'rewire') await database.manager.update(VirtualChannelPropertyEntity, { id: unrelated }, { sourcePropertyId: sourceB });
+					else if (kind === 'removal') await database.manager.update(VirtualChannelPropertyEntity, { id: unrelated }, { valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null });
+					else await database.manager.update(VirtualChannelPropertyEntity, { id: sourceB }, { valueOrigin: VirtualValueOrigin.SOURCE, sourcePropertyId: sourceA });
+				};
+				expect(await replace(projection(sourceB))).toEqual({ outcome: 'conflict', reason: 'stale' });
+				expect(await readImage(database.manager, controllerId)).toEqual(before); expect(await allEdges()).toEqual(edges); expect(await database.manager.find(VirtualChannelPropertyEntity)).toEqual(catalog);
+				expect(await graph.revision()).toBe(0); expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(slots); expect(await database.manager.find(ClimateAutomationSourceEntity)).toEqual(sources);
+			});
+			it('applies exactly an owned real edge replacement with one controller/graph CAS and unrelated edge retained', async () => {
+				afterApply = async () => { await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { sourcePropertyId: sourceB }); };
+				const apply = jest.spyOn(participant, 'applyInManager'), advance = jest.spyOn(graph, 'advanceReservedGraph');
+				expect((await replace(projection(sourceB))).outcome).toBe('applied');
+				expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(2); expect(await graph.revision()).toBe(1);
+				expect(await allEdges()).toEqual([edge(output, sourceB), edge(unrelated, sourceA)]);
+				expect(apply).toHaveBeenCalledTimes(1); expect(advance).toHaveBeenCalledTimes(1);
+			});
+			it.each(['self-edge', 'cycle', 'fanout', 'owned-bound', 'duplicate-output', 'foreign-output', 'before-mismatch'])( 'rejects %s in the candidate before any apply', async (kind) => {
+				const desired = projection(sourceB);
+				if (kind === 'self-edge') desired.edges = [edge(output, output)];
+				if (kind === 'cycle') {
+					await database.manager.update(VirtualChannelPropertyEntity, { id: unrelated }, { sourcePropertyId: output });
+					desired.edges = [edge(output, unrelated)];
+				}
+				if (kind === 'fanout') {
+					const ids = Array.from({ length: 257 }, (_, index) => `d0000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`);
+					desired.ownedOutputIds = [output, ...ids]; desired.edges = ids.map((id) => edge(id, sourceB));
+				}
+				if (kind === 'owned-bound' || kind === 'duplicate-output' || kind === 'foreign-output' || kind === 'before-mismatch') {
+					const original = participant.planGraphReplacementInManager;
+					jest.spyOn(participant, 'planGraphReplacementInManager').mockImplementation(async (...args) => {
+						const call: ReceiverCall<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['planGraphReplacementInManager']>, ReturnType<ClimateAutomationParticipant['planGraphReplacementInManager']>> = original;
+						const plan = await call.call(participant, ...args);
+						if (kind === 'owned-bound') return { ...plan, ownedOutputIds: Array.from({ length: 4097 }, (_, index) => `e0000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`) };
+						if (kind === 'duplicate-output') return { ...plan, ownedOutputIds: [output, output] };
+						if (kind === 'foreign-output') return { ...plan, replacementEdges: [edge(unrelated, sourceB)] };
+						return { ...plan, beforeEdges: [] };
+					});
+				}
+				const before = await readImage(database.manager, controllerId), edges = await allEdges(), apply = jest.spyOn(participant, 'applyInManager');
+				expect((await replace(desired)).outcome).toBe('conflict'); expect(apply).not.toHaveBeenCalled();
+				expect(await readImage(database.manager, controllerId)).toEqual(before); expect(await allEdges()).toEqual(edges); expect(await graph.revision()).toBe(0);
+			});
+			it('preserves duplicate edge multiplicity and permits an explicit empty owned replacement', async () => {
+				// Actual aggregate input and SOURCE projection can contribute the same pair independently.
+				await database.manager.insert(VirtualAggregateConfigEntity, { outputPropertyId: output, schemaVersion: 1, operator: VirtualAggregateOperator.MEAN, minimumValidInputs: 1, maximumAgeSeconds: 60 });
+				await database.manager.insert(VirtualAggregateInputEntity, { outputPropertyId: output, sourcePropertyId: sourceA, sourcePropertyIdentity: sourceA, quantity: 'test', unit: null });
+				const original = { ownedOutputIds: [output], edges: [edge(output, sourceA), edge(output, sourceA)] };
+				await database.query('UPDATE test_participant SET configuration=?,structural=? WHERE id=?', [climateAutomationCanonical(original), climateAutomationCanonical(original), controllerId]);
+				const desired = { ownedOutputIds: [output], edges: [edge(output, sourceB), edge(output, sourceB)] };
+				afterApply = async () => {
+					await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { sourcePropertyId: sourceB });
+					await database.manager.update(VirtualAggregateInputEntity, { outputPropertyId: output }, { sourcePropertyId: sourceB, sourcePropertyIdentity: sourceB });
+				};
+				// A real aggregate output is synthetic TEST metadata; no runtime evaluator or producer is installed.
+				const result = await replace(desired); expect(result.outcome).toBe('applied');
+				expect((await allEdges()).filter((row) => row.outputPropertyId === output)).toEqual(desired.edges); expect(await graph.revision()).toBe(1);
+				afterApply = async () => {
+					await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null });
+					await database.manager.delete(VirtualAggregateInputEntity, { outputPropertyId: output });
+				};
+				expect((await replace({ ownedOutputIds: [output], edges: [] })).outcome).toBe('applied');
+				expect(await allEdges()).toEqual([edge(unrelated, sourceA)]); expect(await graph.revision()).toBe(2);
+			});
+			it('owns a getter plan once before held apply and never borrows its later mutable replacement', async () => {
+				const entered = deferred(), release = deferred();
+				const returned = { ownedOutputIds: [output], beforeEdges: [edge(output, sourceA)], replacementEdges: [edge(output, sourceB)] };
+				let accesses = 0;
+				jest.spyOn(participant, 'planGraphReplacementInManager').mockImplementation(async () => ({ ownedOutputIds: returned.ownedOutputIds, beforeEdges: returned.beforeEdges,
+					get replacementEdges() { accesses++; return returned.replacementEdges; } }));
+				applyBarrier = async () => { entered.resolve(); await release.promise; };
+				afterApply = async () => { await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { sourcePropertyId: sourceB }); };
+				const operation = replace(projection(sourceB)); await entered.promise;
+				returned.ownedOutputIds.push(unrelated); returned.beforeEdges.splice(0); returned.replacementEdges[0] = edge(unrelated, sourceB);
+				release.resolve(); expect((await operation).outcome).toBe('applied'); expect(accesses).toBe(1);
+				expect(await allEdges()).toEqual([edge(output, sourceB), edge(unrelated, sourceA)]);
+			});
+			it.each(['copied-delta', 'foreign-turn', 'missing-delta', 'foreign-manager'])( 'refuses %s before SQL and retains that caught private-turn failure', async (boundary) => {
+				const apply = jest.spyOn(participant, 'applyInManager');
+				const original = graph.validateReservedReplacement;
+				jest.spyOn(graph, 'validateReservedReplacement').mockImplementation(async (manager, turn, delta) => {
+					const query = jest.spyOn(manager, 'findOneBy'), foreignQuery = jest.spyOn(database.manager, 'findOneBy'); query.mockClear(); foreignQuery.mockClear();
+					const call: ReceiverCall<VirtualDependencyGraphService, Parameters<VirtualDependencyGraphService['validateReservedReplacement']>, ReturnType<VirtualDependencyGraphService['validateReservedReplacement']>> = original;
+					if (boundary === 'copied-delta') await expect(call.call(graph, manager, turn, { ...delta })).rejects.toThrow();
+					else if (boundary === 'foreign-turn') await expect(call.call(graph, manager, { toJSON: () => ({}) }, delta)).rejects.toThrow();
+					else if (boundary === 'foreign-manager') await expect(call.call(graph, database.manager, turn, delta)).rejects.toThrow();
+					else { const missing: unknown = Reflect.apply(original, graph, [manager, turn]); await expect(missing).rejects.toThrow(); }
+					expect(query).not.toHaveBeenCalled(); expect(foreignQuery).not.toHaveBeenCalled();
+				});
+				await expect(replace(projection(sourceB))).rejects.toMatchObject({ commitOutcome: 'rolled_back' }); expect(apply).not.toHaveBeenCalled();
+			});
+			it('retains a caught admitted planner getter reentry failure without apply', async () => {
+				const apply = jest.spyOn(participant, 'applyInManager');
+				let current: { manager: EntityManager; scope: ClimateAutomationScope } | undefined;
+				jest.spyOn(participant, 'planGraphReplacementInManager').mockImplementation(async () => ({ ownedOutputIds: [output], beforeEdges: [edge(output, sourceA)],
+					get replacementEdges() {
+						if (!current) throw new Error('Missing TEST original operation');
+						try { writer.readSlot(current.manager, current.scope, controllerId); } catch { /* Writer retains the original refusal. */ }
+						return [edge(output, sourceB)];
+					} }));
+				const operation = writer.runReserved(async (manager, scope) => {
+					current = { manager, scope };
+					const expected = await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId });
+					return writer.replaceController(manager, scope, { kind: 'replace-configuration:v1', providerKey: 'participant:v1', controllerId, expected, desiredDocument: projection(sourceB) });
+				});
+				await expect(operation).rejects.toMatchObject({ commitOutcome: 'rolled_back' }); expect(apply).not.toHaveBeenCalled(); expect(await graph.revision()).toBe(0);
+			});
+			it('never rescues the originally pinned planner after replacement while its result is held', async () => {
+				const entered = deferred(), release = deferred(); const original = participant.planGraphReplacementInManager;
+				const spy = jest.spyOn(participant, 'planGraphReplacementInManager').mockImplementation(async (...args) => {
+					const call: ReceiverCall<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['planGraphReplacementInManager']>, ReturnType<ClimateAutomationParticipant['planGraphReplacementInManager']>> = original;
+					const plan = await call.call(participant, ...args); entered.resolve(); await release.promise; return plan;
+				});
+				const apply = jest.spyOn(participant, 'applyInManager'); const operation = replace(projection(sourceB));
+				await entered.promise; spy.mockRestore(); release.resolve(); expect((await operation).outcome).toBe('conflict'); expect(apply).not.toHaveBeenCalled(); expect(await graph.revision()).toBe(0);
+			});
+
+			it('plans only from owned original/normalized images while caller input changes across its await', async () => {
+				const entered = deferred(), release = deferred(), raw = projection(sourceB);
+				const original = participant.planGraphReplacementInManager;
+				jest.spyOn(participant, 'planGraphReplacementInManager').mockImplementation(async (manager, turn, before, next) => {
+					expect(Object.isFrozen(before)).toBe(true); expect(Object.isFrozen(next)).toBe(true); expect(Object.isFrozen(next.structural)).toBe(true);
+					entered.resolve(); await release.promise;
+					const call: ReceiverCall<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['planGraphReplacementInManager']>, ReturnType<ClimateAutomationParticipant['planGraphReplacementInManager']>> = original;
+					return call.call(participant, manager, turn, before, next);
+				});
+				afterApply = async () => { await database.manager.update(VirtualChannelPropertyEntity, { id: output }, { sourcePropertyId: sourceB }); };
+				const operation = replace(raw); await entered.promise; raw.edges[0] = edge(unrelated, sourceB); raw.ownedOutputIds.push(unrelated); release.resolve();
+				expect((await operation).outcome).toBe('applied'); expect(await allEdges()).toEqual([edge(output, sourceB), edge(unrelated, sourceA)]);
+			});
+			it.each(['coherent-global-postfacts', 'original-A-guard-lost'])( 'composes two actual graph capability instances with %s', async (boundary) => {
+				const graphB = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), writer);
+				const entered = deferred(), release = deferred();
+				const participantB: ClimateAutomationParticipant = { ...participant, graph: graphB,
+					planGraphReplacementInManager: async (manager, turn, before, next) => {
+						writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+						if (boundary === 'original-A-guard-lost') { entered.resolve(); await release.promise; }
+						return testProjectionPlan(before.structural, next.structural);
+					} };
+				const providerB: ClimateAutomationProvider = { ...providerPort, participantV1: participantB,
+					readControllerInManager: async (manager, id) => {
+						const image = await readImage(manager, id);
+						return image ? { controllerRevision: image.controllerRevision, graphRevision: await graphB.revision(manager), evidence: climateAutomationJson(image), legacyBaseline: image.legacyBaseline } : null;
+					} };
+				const ownerB = registry.registerProviderOwned('participant-B:v1', providerB); if (!ownerB) throw new Error('Missing original TEST B registration');
+				await writer.runReserved(async (manager, scope) => writer.initializeSlot(manager, scope, { providerKey: 'participant-B:v1', controllerId: bundleId, expected: await writer.readSlot(manager, scope, bundleId), configuration: {} }));
+				const validateA = jest.spyOn(graph, 'validateAcknowledgedGraph'), validateB = jest.spyOn(graphB, 'validateAcknowledgedGraph');
+				const beforeA = await readImage(database.manager, controllerId), beforeB = await readImage(database.manager, bundleId), edges = await allEdges();
+				const operation = writer.runReserved(async (manager, scope) => {
+					await writer.replaceController(manager, scope, { kind: 'replace-configuration:v1', providerKey: 'participant:v1', controllerId,
+						expected: await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId }), desiredDocument: { ...projection(sourceA), presentationIndependentCatalogVersion: 2 } });
+					return writer.replaceController(manager, scope, { kind: 'replace-configuration:v1', providerKey: 'participant-B:v1', controllerId: bundleId,
+						expected: await writer.readParticipant(manager, scope, { providerKey: 'participant-B:v1', controllerId: bundleId }), desiredDocument: { member: 2 } });
+				});
+				if (boundary === 'original-A-guard-lost') { await entered.promise; owner.dispose(); release.resolve(); }
+				try {
+					const result = await operation;
+					if (boundary === 'coherent-global-postfacts') {
+						expect(result.outcome).toBe('applied'); expect(await graph.revision()).toBe(2);
+						expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(2); expect((await readImage(database.manager, bundleId))?.controllerRevision).toBe(2);
+						expect(validateA).toHaveBeenCalledTimes(1); expect(validateB).toHaveBeenCalledTimes(1);
+					} else {
+						expect(result.outcome).toBe('conflict'); expect(await graph.revision()).toBe(0);
+						expect(await readImage(database.manager, controllerId)).toEqual(beforeA); expect(await readImage(database.manager, bundleId)).toEqual(beforeB);
+						expect(validateA).not.toHaveBeenCalled(); expect(validateB).not.toHaveBeenCalled();
+					}
+					expect(await allEdges()).toEqual(edges);
+				} finally { ownerB.dispose(); }
+			});
+		});
+		// END R1 owned edge-plan additions
 	});
 	// END dormant B participant drafts
 });

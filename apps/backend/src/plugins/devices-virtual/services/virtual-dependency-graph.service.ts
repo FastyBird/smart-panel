@@ -270,6 +270,27 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return Object.freeze({ revision: row.revision, edges: Object.freeze(edges) });
 	}
 
+	async validateReservedReplacement(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): Promise<void> {
+		// Identity/phase must precede descriptor getters and every SQL operation.
+		this.participantWriter().assertParticipantTurn(manager, turn, ['NORMALIZE'], delta);
+		if (!delta) throw new ClimateAutomationParticipantConflict('invalid');
+		const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
+		if (!row || row.revision !== delta.before.revision) throw new ClimateAutomationParticipantConflict('stale');
+		const actual = (await this.edges(manager)).map((edge) => Object.freeze({ ...edge }));
+		actual.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		if (climateAutomationCanonical(actual) !== climateAutomationCanonical(delta.before.edges)) throw new ClimateAutomationParticipantConflict('stale');
+		const outputs = new Set(delta.plan.ownedOutputIds);
+		if (outputs.size !== delta.plan.ownedOutputIds.length || outputs.size > 4096 || delta.plan.beforeEdges.length > 8192 || delta.plan.replacementEdges.length > 8192 ||
+			delta.plan.beforeEdges.some((edge) => !outputs.has(edge.outputPropertyId)) || delta.plan.replacementEdges.some((edge) => !outputs.has(edge.outputPropertyId))) throw new ClimateAutomationParticipantConflict('invalid');
+		const ownedBefore = actual.filter((edge) => outputs.has(edge.outputPropertyId));
+		if (climateAutomationCanonical(ownedBefore) !== climateAutomationCanonical(delta.plan.beforeEdges)) throw new ClimateAutomationParticipantConflict('stale');
+		const candidate = [...actual.filter((edge) => !outputs.has(edge.outputPropertyId)), ...delta.plan.replacementEdges];
+		candidate.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		if (climateAutomationCanonical(candidate) !== climateAutomationCanonical(delta.afterEdges)) throw new ClimateAutomationParticipantConflict('invalid');
+		try { this.validate(candidate); }
+		catch (cause) { if (cause instanceof DevicesValidationException) throw new ClimateAutomationParticipantConflict('invalid'); throw cause; }
+	}
+
 	beginReservedValidation(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): ClimateAutomationValidationTicket {
 		this.participantWriter().assertParticipantTurn(manager, turn, ['APPLY'], delta);
 		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter)) throw new ClimateAutomationParticipantConflict('invalid');
@@ -282,6 +303,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 
 	async advanceReservedGraph(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): Promise<ClimateAutomationGraphFacts> {
 		this.participantWriter().assertParticipantTurn(manager, turn, ['GRAPH_CAS'], delta);
+		if (!delta) throw new ClimateAutomationParticipantConflict('invalid');
 		const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
 		if (!row || row.revision !== delta.before.revision) throw new ClimateAutomationParticipantConflict('stale');
 		if (!Number.isSafeInteger(row.revision) || row.revision < 0 || row.revision === Number.MAX_SAFE_INTEGER) throw new ClimateAutomationParticipantConflict('invalid');

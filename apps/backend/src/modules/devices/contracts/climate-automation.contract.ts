@@ -183,8 +183,19 @@ export interface ClimateAutomationGraphFacts {
 	readonly revision: number;
 	readonly edges: readonly { readonly outputPropertyId: string; readonly sourcePropertyId: string }[];
 }
+/** Complete TEST/dormant ownership plan derived from the original and normalized full projection.
+ * C must audit complete concrete ownership; this is trusted read-only protocol, not a SQL sandbox.
+ * Owned IDs are unique, edge arrays are multisets (duplicates are significant), empty is valid.
+ */
+export interface ClimateAutomationGraphReplacementPlan {
+	readonly ownedOutputIds: readonly string[];
+	readonly beforeEdges: ClimateAutomationGraphFacts['edges'];
+	readonly replacementEdges: ClimateAutomationGraphFacts['edges'];
+}
 export interface ClimateAutomationGraphDelta {
 	readonly before: ClimateAutomationGraphFacts;
+	readonly plan: ClimateAutomationGraphReplacementPlan;
+	/** Independently computed BEFORE APPLY; never replaced by observed post-apply edges. */
 	readonly afterEdges: ClimateAutomationGraphFacts['edges'];
 	readonly structuralBefore: ClimateAutomationJson;
 	readonly structuralAfter: ClimateAutomationJson;
@@ -197,6 +208,7 @@ export type ClimateAutomationGraphValidation =
 	| { readonly outcome: 'THIS_JOB_NOT_VALIDATED'; readonly reason: ClimateAutomationValidationReason };
 export interface ClimateAutomationGraphParticipant {
 	readonly readReservedGraph: (manager: EntityManager, turn: ClimateAutomationParticipantTurn) => Promise<ClimateAutomationGraphFacts>;
+	readonly validateReservedReplacement: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta) => Promise<void>;
 	readonly beginReservedValidation: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta) => ClimateAutomationValidationTicket;
 	readonly advanceReservedGraph: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta) => Promise<ClimateAutomationGraphFacts>;
 	readonly validateAcknowledgedGraph: (job: ClimateAutomationAcknowledgedJob, ticket: ClimateAutomationValidationTicket, revision: number) => Promise<ClimateAutomationGraphValidation>;
@@ -207,6 +219,8 @@ export interface ClimateAutomationParticipant {
 	readonly graph: ClimateAutomationGraphParticipant;
 	readonly readInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, controllerId: string) => Promise<ClimateAutomationParticipantImage | null>;
 	readonly normalizeInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, kind: ClimateAutomationReplacementKind, desired: ClimateAutomationJson, before: ClimateAutomationParticipantImage) => Promise<ClimateAutomationParticipantDocument>;
+	/** Read-only complete ownership projection; no helpers, writes or I/O. Inputs are owned immutable images. */
+	readonly planGraphReplacementInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, before: ClimateAutomationParticipantImage, next: ClimateAutomationParticipantDocument) => Promise<ClimateAutomationGraphReplacementPlan>;
 	/** Exact affected-one controller CAS; no private source/slot or graph singleton writes, nested helpers or I/O. */
 	readonly applyInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, before: ClimateAutomationParticipantImage, next: ClimateAutomationParticipantImage) => Promise<void>;
 }

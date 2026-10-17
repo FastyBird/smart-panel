@@ -17,6 +17,7 @@ import {
 	ClimateAutomationGraphDelta,
 	ClimateAutomationGraphFacts,
 	ClimateAutomationGraphParticipant,
+	ClimateAutomationGraphReplacementPlan,
 	ClimateAutomationGraphValidation,
 	ClimateAutomationParticipant,
 	ClimateAutomationParticipantConflict,
@@ -84,8 +85,10 @@ interface PinnedParticipant {
 	readonly providerRead: ClimateAutomationProvider['readControllerInManager'];
 	readonly read: ClimateAutomationParticipant['readInManager'];
 	readonly normalize: ClimateAutomationParticipant['normalizeInManager'];
+	readonly plan: ClimateAutomationParticipant['planGraphReplacementInManager'];
 	readonly apply: ClimateAutomationParticipant['applyInManager'];
 	readonly graphRead: ClimateAutomationGraphParticipant['readReservedGraph'];
+	readonly graphPlan: ClimateAutomationGraphParticipant['validateReservedReplacement'];
 	readonly graphBegin: ClimateAutomationGraphParticipant['beginReservedValidation'];
 	readonly graphAdvance: ClimateAutomationGraphParticipant['advanceReservedGraph'];
 	readonly graphValidate: ClimateAutomationGraphParticipant['validateAcknowledgedGraph'];
@@ -722,13 +725,13 @@ export class ClimateAutomationWriterService {
 	}
 
 	/** Exact private turn check, before any participant/graph read. No caller scope adoption. */
-	assertParticipantTurn(manager: EntityManager, turn: ClimateAutomationParticipantTurn, phases: readonly ClimateAutomationParticipantPhase[], delta?: ClimateAutomationGraphDelta): void {
+	assertParticipantTurn(manager: EntityManager, turn: ClimateAutomationParticipantTurn, phases: readonly ClimateAutomationParticipantPhase[], ...descriptor: [] | [ClimateAutomationGraphDelta]): void {
 		const context = this.context.getStore();
 		const record = this.turns.get(turn);
 		if (!record || context?.operation !== record.operation || context.turn !== turn || !context.internal ||
 			record.operation.manager !== manager || manager.queryRunner !== record.operation.runner ||
 			!hasCurrentSqliteConnectionLease(this.dataSource) || record.operation.failure ||
-			!phases.includes(record.phase) || (delta !== undefined && record.delta !== delta) ||
+			!phases.includes(record.phase) || (descriptor.length > 0 && (!record.delta || record.delta !== descriptor[0])) ||
 			(record.phase === 'FINAL_READ' ? record.operation.phase !== 'FINALIZING' : !['BODY_OPEN', 'DRAINING'].includes(record.operation.phase))) {
 			if (context) throw this.refuse(context.operation);
 			throw new Error('Invalid private participant turn');
@@ -778,7 +781,18 @@ export class ClimateAutomationWriterService {
 			const structural = !same(image.structural, next.structural);
 			const graphBefore = before.participant.graph;
 			if (structural && graphBefore.revision === Number.MAX_SAFE_INTEGER) throw new Conflict('invalid');
-			record.delta = Object.freeze({ before: graphBefore, afterEdges: graphBefore.edges, structuralBefore: image.structural, structuralAfter: next.structural });
+			const rawPlan: unknown = await invoke<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['planGraphReplacementInManager']>, ReturnType<ClimateAutomationParticipant['planGraphReplacementInManager']>>(p.plan, p.cap, manager, turn, image, normalized);
+			this.requirePinned(p);
+			const plan = this.ownedGraphPlan(rawPlan);
+			this.requirePinned(p);
+			const ownedOutputs = new Set(plan.ownedOutputIds);
+			if (!same(graphBefore.edges.filter((edge) => ownedOutputs.has(edge.outputPropertyId)), plan.beforeEdges)) throw new Conflict('stale');
+			const candidate = [...graphBefore.edges.filter((edge) => !ownedOutputs.has(edge.outputPropertyId)), ...plan.replacementEdges];
+			candidate.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+			if (!structural && !same(candidate, graphBefore.edges)) throw new Conflict('invalid');
+			record.delta = Object.freeze({ before: graphBefore, plan, afterEdges: Object.freeze(candidate), structuralBefore: image.structural, structuralAfter: next.structural });
+			await invoke<ClimateAutomationGraphParticipant, Parameters<ClimateAutomationGraphParticipant['validateReservedReplacement']>, ReturnType<ClimateAutomationGraphParticipant['validateReservedReplacement']>>(p.graphPlan, p.graph, manager, turn, record.delta);
+			this.requirePinned(p);
 			record.phase = 'APPLY';
 			let ticket: ClimateAutomationValidationTicket | undefined;
 			if (structural) {
@@ -793,9 +807,8 @@ export class ClimateAutomationWriterService {
 			if (!after.participant || !same(after.participant.image, next) || !same(after.slot, before.slot) ||
 				!same(after.source ?? null, before.source ?? null) || !same(after.participant.referencedSource, before.participant.referencedSource) ||
 				after.participant.graph.revision !== graphBefore.revision) throw new Conflict('stale');
-			if (!structural && !same(after.participant.graph, graphBefore)) throw new Conflict('invalid');
+			if (!same(after.participant.graph.edges, record.delta.afterEdges)) throw new Conflict('stale');
 			if (structural) {
-				record.delta = Object.freeze({ ...record.delta, afterEdges: after.participant.graph.edges });
 				record.phase = 'GRAPH_CAS';
 				await invoke<ClimateAutomationGraphParticipant, Parameters<ClimateAutomationGraphParticipant['advanceReservedGraph']>, ReturnType<ClimateAutomationGraphParticipant['advanceReservedGraph']>>(p.graphAdvance, p.graph, manager, turn, record.delta);
 				this.requirePinned(p);
@@ -838,14 +851,14 @@ export class ClimateAutomationWriterService {
 		const cap = capture?.implementation.participantV1;
 		if (!capture || !cap || cap.version !== 1 || !cap.graph) throw new Conflict('unavailable');
 		const graph = cap.graph;
-		const { readInManager: read, normalizeInManager: normalize, applyInManager: apply } = cap;
-		const { readReservedGraph: graphRead, beginReservedValidation: graphBegin, advanceReservedGraph: graphAdvance, validateAcknowledgedGraph: graphValidate } = graph;
+		const { readInManager: read, normalizeInManager: normalize, planGraphReplacementInManager: plan, applyInManager: apply } = cap;
+		const { readReservedGraph: graphRead, validateReservedReplacement: graphPlan, beginReservedValidation: graphBegin, advanceReservedGraph: graphAdvance, validateAcknowledgedGraph: graphValidate } = graph;
 		const providerRead = capture.implementation.readControllerInManager;
-		if (![read, normalize, apply, graphRead, graphBegin, graphAdvance, graphValidate, providerRead].every((method) => typeof method === 'function')) throw new Conflict('unavailable');
-		return Object.freeze({ capture, cap, graph, read, normalize, apply, graphRead, graphBegin, graphAdvance, graphValidate, providerRead,
+		if (![read, normalize, plan, apply, graphRead, graphPlan, graphBegin, graphAdvance, graphValidate, providerRead].every((method) => typeof method === 'function')) throw new Conflict('unavailable');
+		return Object.freeze({ capture, cap, graph, read, normalize, plan, apply, graphRead, graphPlan, graphBegin, graphAdvance, graphValidate, providerRead,
 			current: () => capture.isCurrent() && capture.implementation.participantV1 === cap && cap.version === 1 && cap.graph === graph &&
-				cap.readInManager === read && cap.normalizeInManager === normalize && cap.applyInManager === apply &&
-				capture.implementation.readControllerInManager === providerRead && graph.readReservedGraph === graphRead &&
+				cap.readInManager === read && cap.normalizeInManager === normalize && cap.planGraphReplacementInManager === plan && cap.applyInManager === apply &&
+				capture.implementation.readControllerInManager === providerRead && graph.readReservedGraph === graphRead && graph.validateReservedReplacement === graphPlan &&
 				graph.beginReservedValidation === graphBegin && graph.advanceReservedGraph === graphAdvance && graph.validateAcknowledgedGraph === graphValidate });
 	}
 	private requirePinned(p: PinnedParticipant): void { if (!p.current()) throw new Conflict('unavailable'); }
@@ -906,6 +919,30 @@ export class ClimateAutomationWriterService {
 		return Object.freeze({ slot: { controllerId: id, value: slot }, ...(source ? { source } : {}),
 			controller: { providerKey, controllerId: id, value: facts, capture: p.capture },
 			participant: Object.freeze({ pinned: p, image, graph, referencedSource }) });
+	}
+	private ownedGraphPlan(value: unknown): ClimateAutomationGraphReplacementPlan {
+		// Traverse caller-owned plan/getters once; all later validation reads only owned parsed JSON.
+		const owned = this.ownedJson(value);
+		if (!owned || typeof owned !== 'object' || Array.isArray(owned) || Object.keys(owned).length !== 3) throw new Conflict('invalid');
+		const ids: unknown = Reflect.get(owned, 'ownedOutputIds');
+		const before: unknown = Reflect.get(owned, 'beforeEdges');
+		const replacement: unknown = Reflect.get(owned, 'replacementEdges');
+		if (!Array.isArray(ids) || ids.length > 4096 || !Array.isArray(before) || !Array.isArray(replacement) || before.length > 8192 || replacement.length > 8192) throw new Conflict('invalid');
+		const outputs = ids.map((id: unknown) => { if (typeof id !== 'string') throw new Conflict('invalid'); return uuid(id); });
+		if (new Set(outputs).size !== outputs.length) throw new Conflict('invalid');
+		outputs.sort();
+		const own = new Set(outputs);
+		const edges = (rows: readonly unknown[]): ClimateAutomationGraphFacts['edges'] => {
+			const result = rows.map((row) => {
+				if (!row || typeof row !== 'object' || Array.isArray(row) || Object.keys(row).length !== 2) throw new Conflict('invalid');
+				const output: unknown = Reflect.get(row, 'outputPropertyId'), source: unknown = Reflect.get(row, 'sourcePropertyId');
+				if (typeof output !== 'string' || typeof source !== 'string' || !own.has(output)) throw new Conflict('invalid');
+				return Object.freeze({ outputPropertyId: uuid(output), sourcePropertyId: uuid(source) });
+			});
+			result.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+			return Object.freeze(result);
+		};
+		return Object.freeze({ ownedOutputIds: Object.freeze(outputs), beforeEdges: edges(before), replacementEdges: edges(replacement) });
 	}
 	private graphFacts(value: unknown): ClimateAutomationGraphFacts {
 		const owned = this.ownedJson(value);
