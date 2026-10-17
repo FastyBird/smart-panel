@@ -3353,8 +3353,12 @@ describe('virtual thermostat durable runtime', () => {
 		let actualGraph: VirtualDependencyGraphService;
 		let fixture: Awaited<ReturnType<typeof realThermostatGuardFixture>>;
 		const barrier = () => {
-			let open: () => void = () => { throw new Error('Barrier not initialized'); };
-			const promise = new Promise<void>((resolve) => { open = resolve; });
+			let open: () => void = () => {
+				throw new Error('Barrier not initialized');
+			};
+			const promise = new Promise<void>((resolve) => {
+				open = resolve;
+			});
 			return { promise, open: () => open() };
 		};
 		beforeEach(async () => {
@@ -3362,7 +3366,14 @@ describe('virtual thermostat durable runtime', () => {
 			actualStructure = new DeviceStructureLockService();
 			actualGraph = new VirtualDependencyGraphService(database);
 			await actualGraph.onApplicationBootstrap();
-			actualClaims = new VirtualThermostatClaimsService(database, actualStructure, actualGraph, new PropertyCommandAdmissionRegistryService(), events, new ConfigService({ FB_CLI: 'off' }));
+			actualClaims = new VirtualThermostatClaimsService(
+				database,
+				actualStructure,
+				actualGraph,
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
 			await actualClaims.onApplicationBootstrap();
 			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications);
 			realGuardFixtures.push(fixture);
@@ -3371,16 +3382,34 @@ describe('virtual thermostat durable runtime', () => {
 			values = fixture.values;
 			comfort = new VirtualThermostatComfortService(database, actualStructure, actualGraph, actualClaims, events);
 			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-			await comfort.configure(controllerId, { expected_revision: row.revision, expected_graph_revision: await actualGraph.revision() }, {
-				heating_range: { minimum: 10, maximum: 30 }, cooling_range: null,
-				presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
-			});
+			await comfort.configure(
+				controllerId,
+				{ expected_revision: row.revision, expected_graph_revision: await actualGraph.revision() },
+				{
+					heating_range: { minimum: 10, maximum: 30 },
+					cooling_range: null,
+					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+				},
+			);
 			for (const [id, sample] of samples) {
-				if (typeof sample.value !== 'number' && typeof sample.value !== 'boolean') throw new Error('Unexpected synthetic sample');
+				if (typeof sample.value !== 'number' && typeof sample.value !== 'boolean')
+					throw new Error('Unexpected synthetic sample');
 				await fixture.report(id, sample.value);
 			}
 			await actualClaims.refresh();
-			runtime = new VirtualThermostatRuntimeService(database, actualStructure, actualClaims, new VirtualThermostatInputsService(database, values), fixture.transport, values, producers, events, actualGraph, comfort, new ConfigService({ FB_CLI: 'off' }));
+			runtime = new VirtualThermostatRuntimeService(
+				database,
+				actualStructure,
+				actualClaims,
+				new VirtualThermostatInputsService(database, values),
+				fixture.transport,
+				values,
+				producers,
+				events,
+				actualGraph,
+				comfort,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
 			await runtime.onApplicationBootstrap();
 			await settleReal(fixture);
 			expect(actualClaims.capture().isCurrent()).toBe(true);
@@ -3389,65 +3418,123 @@ describe('virtual thermostat durable runtime', () => {
 		});
 		afterEach(() => {
 			// Synchronous source/core revocation before outer teardown awaits or restores SDK/HTTP mocks.
-			runtime.onModuleDestroy(); actualClaims?.onModuleDestroy(); fixture?.revoke();
+			runtime.onModuleDestroy();
+			actualClaims?.onModuleDestroy();
+			fixture?.revoke();
 		});
 
-		it.each(['before-send', 'after-send'] as const)('keeps original actual SDK %s outcome truthful when comfort entry waits on its first real read', async (boundary) => {
-			const onEntered = barrier(), onResume = barrier(), resultObserved = barrier(), readEntered = barrier(), readResume = barrier();
-			const requestContext = new AsyncLocalStorage<boolean>();
-			const outcomes: Awaited<ReturnType<ThermostatActuationAdapter['send']>>[] = [];
-			const originalGet: { call: (receiver: VirtualThermostatTransportService, ...args: Parameters<VirtualThermostatTransportService['get']>) => ReturnType<VirtualThermostatTransportService['get']> } = fixture.transport.get;
-			// Observe, never replace, actual builtin adapter/session/RPC/HTTP guard execution and its returned outcome.
-			jest.spyOn(fixture.transport, 'get').mockImplementation((...args) => {
-				const adapter = originalGet.call(fixture.transport, ...args); if (!adapter) return null;
-				const originalSend: { call: (receiver: ThermostatActuationAdapter, ...args: Parameters<ThermostatActuationAdapter['send']>) => ReturnType<ThermostatActuationAdapter['send']> } = adapter.send;
-				return { ...adapter, send: async (...sendArgs) => {
-					const outcome = await originalSend.call(adapter, ...sendArgs);
-					if (sendArgs[0].property.id === relayId && sendArgs[0].value === true) { outcomes.push(outcome); resultObserved.open(); }
-					return outcome;
-				} };
-			});
-			fixture.controls[boundary === 'before-send' ? 'beforeOn' : 'afterOn'] = async (property) => {
-				if (property !== relayId) return; onEntered.open(); await onResume.promise;
-			};
-			let pauseRead = true;
-			database.subscribers.push({ beforeQuery: async (event) => {
-				if (!requestContext.getStore() || !pauseRead || !event.query.startsWith('SELECT') || !event.query.includes('devices_virtual_thermostat_configs')) return;
-				pauseRead = false; readEntered.open(); await readResume.promise;
-			} });
-			let mutation: ReturnType<VirtualThermostatComfortService['get']> | undefined;
-			try {
-				const expected = await comfortFence();
-				await fixture.report(sensorId, 18); await onEntered.promise;
-				const originalCapture = actualClaims.capture(); expect(originalCapture.isCurrent()).toBe(true);
-				// Positive reachability is beyond matched real SDK inspection/status and at actual HTTP ON pre/post onSend.
-				expect(fixture.controls.sends.filter((send) => send.property === relayId)).toHaveLength(boundary === 'before-send' ? 0 : 1);
-				const fences = fixture.controls.fences.length;
-				mutation = requestContext.run(true, () => comfort.select(controllerId, expected, 'eco', false)); void mutation.catch(() => undefined);
-				expect(originalCapture.isCurrent()).toBe(false); await readEntered.promise;
-				expect(actualClaims.capture().isCurrent()).toBe(false);
-				onResume.open(); await resultObserved.promise;
-				expect(outcomes).toHaveLength(1);
-				if (boundary === 'before-send') {
-					expect(outcomes[0]).toMatchObject({ outcome: 'refused' });
-					expect(fixture.controls.sends.filter((send) => send.property === relayId)).toHaveLength(0);
-				} else {
-					expect(outcomes[0]).toEqual({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false });
-					expect(fixture.controls.sends.filter((send) => send.property === relayId)).toHaveLength(1);
+		it.each(['before-send', 'after-send'] as const)(
+			'keeps original actual SDK %s outcome truthful when comfort entry waits on its first real read',
+			async (boundary) => {
+				const onEntered = barrier(),
+					onResume = barrier(),
+					resultObserved = barrier(),
+					readEntered = barrier(),
+					readResume = barrier();
+				const requestContext = new AsyncLocalStorage<boolean>();
+				const outcomes: Awaited<ReturnType<ThermostatActuationAdapter['send']>>[] = [];
+				const originalGetMethods: {
+					readonly get: {
+						call: (
+							receiver: VirtualThermostatTransportService,
+							...args: Parameters<VirtualThermostatTransportService['get']>
+						) => ReturnType<VirtualThermostatTransportService['get']>;
+					};
+				} = fixture.transport;
+				const originalGet = originalGetMethods.get;
+				// Observe, never replace, actual builtin adapter/session/RPC/HTTP guard execution and its returned outcome.
+				jest.spyOn(fixture.transport, 'get').mockImplementation((...args) => {
+					const adapter = originalGet.call(fixture.transport, ...args);
+					if (!adapter) return null;
+					const originalSendMethods: {
+						readonly send: {
+							call: (
+								receiver: ThermostatActuationAdapter,
+								...args: Parameters<ThermostatActuationAdapter['send']>
+							) => ReturnType<ThermostatActuationAdapter['send']>;
+						};
+					} = adapter;
+					const originalSend = originalSendMethods.send;
+					return {
+						...adapter,
+						send: async (...sendArgs) => {
+							const outcome = await originalSend.call(adapter, ...sendArgs);
+							if (sendArgs[0].property.id === relayId && sendArgs[0].value === true) {
+								outcomes.push(outcome);
+								resultObserved.open();
+							}
+							return outcome;
+						},
+					};
+				});
+				fixture.controls[boundary === 'before-send' ? 'beforeOn' : 'afterOn'] = async (property) => {
+					if (property !== relayId) return;
+					onEntered.open();
+					await onResume.promise;
+				};
+				let pauseRead = true;
+				database.subscribers.push({
+					beforeQuery: async (event) => {
+						if (
+							!requestContext.getStore() ||
+							!pauseRead ||
+							!event.query.startsWith('SELECT') ||
+							!event.query.includes('devices_virtual_thermostat_configs')
+						)
+							return;
+						pauseRead = false;
+						readEntered.open();
+						await readResume.promise;
+					},
+				});
+				let mutation: ReturnType<VirtualThermostatComfortService['get']> | undefined;
+				try {
+					const expected = await comfortFence();
+					await fixture.report(sensorId, 18);
+					await onEntered.promise;
+					const originalCapture = actualClaims.capture();
+					expect(originalCapture.isCurrent()).toBe(true);
+					// Positive reachability is beyond matched real SDK inspection/status and at actual HTTP ON pre/post onSend.
+					expect(fixture.controls.sends.filter((send) => send.property === relayId)).toHaveLength(
+						boundary === 'before-send' ? 0 : 1,
+					);
+					const fences = fixture.controls.fences.length;
+					mutation = requestContext.run(true, () => comfort.select(controllerId, expected, 'eco', false));
+					void mutation.catch(() => undefined);
+					expect(originalCapture.isCurrent()).toBe(false);
+					await readEntered.promise;
+					expect(actualClaims.capture().isCurrent()).toBe(false);
+					onResume.open();
+					await resultObserved.promise;
+					expect(outcomes).toHaveLength(1);
+					if (boundary === 'before-send') {
+						expect(outcomes[0]).toMatchObject({ outcome: 'refused' });
+						expect(fixture.controls.sends.filter((send) => send.property === relayId)).toHaveLength(0);
+					} else {
+						expect(outcomes[0]).toEqual({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false });
+						expect(fixture.controls.sends.filter((send) => send.property === relayId)).toHaveLength(1);
+					}
+					expect(fixture.controls.fences).toHaveLength(fences); // no fabricated physical OFF/drain while the comfort read is held
+					// Observation above precedes this stop: the refusal/uncertainty was caused by real comfort entry, not teardown.
+					runtime.onModuleDestroy();
+					readResume.open();
+					await mutation;
+					await settle();
+					const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+					expect(journal).toHaveLength(1);
+					expect(journal[0].status).toBe(boundary === 'before-send' ? 'cancelled' : 'unknown');
+					expect(originalCapture.isCurrent()).toBe(false);
+					expect(fixture.controls.errors).toEqual([]);
+				} finally {
+					// Revoke first; never release a held ON as a successful cleanup operation or invent drainage.
+					runtime.onModuleDestroy();
+					fixture.revoke();
+					readResume.open();
+					onResume.open();
+					if (mutation !== undefined) await mutation.catch(() => undefined);
 				}
-				expect(fixture.controls.fences).toHaveLength(fences); // no fabricated physical OFF/drain while the comfort read is held
-				// Observation above precedes this stop: the refusal/uncertainty was caused by real comfort entry, not teardown.
-				runtime.onModuleDestroy(); readResume.open(); await mutation; await settle();
-				const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
-				expect(journal).toHaveLength(1); expect(journal[0].status).toBe(boundary === 'before-send' ? 'cancelled' : 'unknown');
-				expect(originalCapture.isCurrent()).toBe(false); expect(fixture.controls.errors).toEqual([]);
-			} finally {
-				// Revoke first; never release a held ON as a successful cleanup operation or invent drainage.
-				runtime.onModuleDestroy(); fixture.revoke(); readResume.open(); onResume.open();
-				if (mutation !== undefined) await mutation.catch(() => undefined);
-			}
-		});
+			},
+		);
 	});
 	// END real claims comfort pending-ON regressions
-
 });
