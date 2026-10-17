@@ -91,10 +91,32 @@ export interface ThermostatReleaseOrderingEvidence<Qualification> {
 	readonly externalWriterBarrier: true;
 	readonly offSample: QualifiedPropertySample;
 }
+/**
+ * Read-only original provider/session continuity, NOT installed readiness, claim/CAS or sample authority.
+ * No session, command or disposal capability is exposed. Implementations must be synchronous and pure.
+ */
+export interface CapturedThermostatReconcileReadiness {
+	readonly capabilityVersion: 1;
+	readonly providerProfile: ThermostatProviderProfile;
+	readonly physicalIdentity: string;
+	readonly qualificationGeneration: string;
+	readonly isCurrent: () => boolean;
+}
+
 export interface ThermostatActuationAdapter<Qualification> {
 	readonly contractVersion: 1;
 	readonly providerProfile: ThermostatProviderProfile;
 	canReconcile(target: IDevicePropertyData, qualification: Qualification): boolean;
+	/**
+	 * Optional explicit opt-in by trusted INTERNAL registrations only. Missing means bridge-ineligible.
+	 * Opt-in certifies capture, isCurrent AND canReconcile as pure synchronous metadata predicates.
+	 * Capture must retain the ORIGINAL provider/session guard; later readiness cannot recapture/rescue it.
+	 * No I/O, inspection, polling, installation or actuation is permitted in these predicates.
+	 */
+	captureReconcileReadiness?(
+		target: IDevicePropertyData,
+		qualification: Qualification,
+	): CapturedThermostatReconcileReadiness | null;
 	send(
 		target: IDevicePropertyData,
 		claim: VirtualThermostatActuatorClaimEntity,
