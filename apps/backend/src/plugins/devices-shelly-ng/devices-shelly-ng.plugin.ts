@@ -19,7 +19,10 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../module
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
-import { OwnedDevicePlatformRegistration, PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import {
+	OwnedDevicePlatformRegistration,
+	PlatformRegistryService,
+} from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';

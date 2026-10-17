@@ -8,10 +8,9 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import { DevicesShellyNgPlugin } from '../../../plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { DEVICES_SHELLY_NG_TYPE } from '../../../plugins/devices-shelly-ng/devices-shelly-ng.constants';
+import { DevicesShellyNgPlugin } from '../../../plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { ShellyNgDevicePlatform } from '../../../plugins/devices-shelly-ng/platforms/shelly-ng.device.platform';
-
 import { INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
@@ -155,29 +154,33 @@ describe('PlatformRegistryService', () => {
 			expect(original.isCurrent()).toBe(false);
 		});
 
-		it.each(['same-object', 'new-provider'] as const)('does not let the old owner remove a %s replacement or revive its captures', (replacement) => {
-			const firstOwner = owned(service, mockPlatform);
-			const original = capture(service);
-			firstOwner.dispose();
-			const nextPlatform = replacement === 'same-object' ? mockPlatform : { ...mockPlatform };
-			const nextOwner = owned(service, nextPlatform);
-			const next = capture(service);
-			for (let index = 0; index < 3; index++) {
+		it.each(['same-object', 'new-provider'] as const)(
+			'does not let the old owner remove a %s replacement or revive its captures',
+			(replacement) => {
+				const firstOwner = owned(service, mockPlatform);
+				const original = capture(service);
 				firstOwner.dispose();
+				const nextPlatform = replacement === 'same-object' ? mockPlatform : { ...mockPlatform };
+				const nextOwner = owned(service, nextPlatform);
+				const next = capture(service);
+				for (let index = 0; index < 3; index++) {
+					firstOwner.dispose();
+					expect(original.isCurrent()).toBe(false);
+					expect(next.isCurrent()).toBe(true);
+					expect(service.get({ type: 'mock-platform' })).toBe(nextPlatform);
+				}
+				nextOwner.dispose();
+				expect(next.isCurrent()).toBe(false);
 				expect(original.isCurrent()).toBe(false);
-				expect(next.isCurrent()).toBe(true);
-				expect(service.get({ type: 'mock-platform' })).toBe(nextPlatform);
-			}
-			nextOwner.dispose();
-			expect(next.isCurrent()).toBe(false);
-			expect(original.isCurrent()).toBe(false);
-		});
+			},
+		);
 
 		it('binds continuity and disposal to the original registry instance', () => {
 			const other = new PlatformRegistryService();
 			const firstOwner = owned(service, mockPlatform);
 			const secondOwner = owned(other, mockPlatform);
-			const first = capture(service), second = capture(other);
+			const first = capture(service),
+				second = capture(other);
 			firstOwner.dispose();
 			expect(first.isCurrent()).toBe(false);
 			expect(second.isCurrent()).toBe(true);
@@ -192,11 +195,14 @@ describe('PlatformRegistryService', () => {
 			const owner = owned(service, mockPlatform);
 			const ordinary = { ...mockPlatform, getType: () => 'ordinary' };
 			expect(service.register(ordinary)).toBe(true);
-			const first = capture(service), second = capture(service, 'ordinary');
+			const first = capture(service),
+				second = capture(service, 'ordinary');
 			expect(service.onModuleDestroy()).toBeUndefined();
 			expect(first.isCurrent()).toBe(false);
 			expect(second.isCurrent()).toBe(false);
-			owner.dispose(); service.onModuleDestroy(); owner.dispose();
+			owner.dispose();
+			service.onModuleDestroy();
+			owner.dispose();
 			expect(service.list()).toEqual([]);
 			expect(service.get({ type: 'mock-platform' })).toBeNull();
 			expect(service.captureRegistration({ type: 'mock-platform' })).toBeNull();
@@ -207,50 +213,63 @@ describe('PlatformRegistryService', () => {
 		});
 
 		it('preserves owned platform TTL and authoritative readback behavior', () => {
-			const platform: IDevicePlatform = { ...mockPlatform, getCommandTimeoutMs: (count) => count * 10000, usesAuthoritativePropertyReadback: () => true };
+			const platform: IDevicePlatform = {
+				...mockPlatform,
+				getCommandTimeoutMs: (count) => count * 10000,
+				usesAuthoritativePropertyReadback: () => true,
+			};
 			owned(service, platform);
-			const device = new DeviceEntity(), property = new ChannelPropertyEntity();
-			device.type = 'mock-platform';
+			const device = new DeviceEntity(),
+				property = new ChannelPropertyEntity();
+			jest.spyOn(device, 'type', 'get').mockReturnValue('mock-platform');
 			expect(service.getCommandTtlMs([{ device, commandCount: 2 }], 5000)).toBe(20000 + 5000 + INTENT_CLEANUP_INTERVAL);
 			expect(service.usesAuthoritativePropertyReadback(device, property)).toBe(true);
 		});
 
-		it.each(['owned', 'duplicate'] as const)('actual Shelly plugin init/destroy disposes only its %s registration', async (scenario) => {
-			const registry = new PlatformRegistryService();
-			const incumbent: IDevicePlatform = { ...mockPlatform, getType: () => DEVICES_SHELLY_NG_TYPE };
-			if (scenario === 'duplicate') expect(registry.register(incumbent)).toBe(true);
-			const shellyPlatform: IDevicePlatform = { ...mockPlatform, getType: () => DEVICES_SHELLY_NG_TYPE };
-			// Only registration/mapping dependencies are mocked: real plugin lifecycle and registry execute.
-			// No device service, network client, module imports or physical platform methods are started.
-			const module = await Test.createTestingModule({
-				providers: [DevicesShellyNgPlugin,
-					{ provide: PlatformRegistryService, useValue: registry },
-					{ provide: ShellyNgDevicePlatform, useValue: shellyPlatform },
-				],
-			}).useMocker(() => ({ registerMapping: jest.fn(), register: jest.fn(), registerPluginMetadata: jest.fn() })).compile();
-			try {
-				await module.init();
-				const plugin = module.get(DevicesShellyNgPlugin);
-				const original = capture(registry, DEVICES_SHELLY_NG_TYPE);
-				expect(original.platform).toBe(scenario === 'owned' ? shellyPlatform : incumbent);
-				plugin.onModuleInit(); // Repeated init must not lose our original successful disposer.
-				expect(original.isCurrent()).toBe(true);
-				expect(plugin.onModuleDestroy()).toBeUndefined();
-				expect(original.isCurrent()).toBe(scenario === 'duplicate');
-				if (scenario === 'owned') {
-					const replacementOwner = owned(registry, shellyPlatform);
-					const replacement = capture(registry, DEVICES_SHELLY_NG_TYPE);
-					plugin.onModuleDestroy();
-					expect(original.isCurrent()).toBe(false);
-					expect(replacement.isCurrent()).toBe(true);
-					expect(registry.get({ type: DEVICES_SHELLY_NG_TYPE })).toBe(shellyPlatform);
-					replacementOwner.dispose();
-				} else {
-					plugin.onModuleDestroy();
+		it.each(['owned', 'duplicate'] as const)(
+			'actual Shelly plugin init/destroy disposes only its %s registration',
+			async (scenario) => {
+				const registry = new PlatformRegistryService();
+				const incumbent: IDevicePlatform = { ...mockPlatform, getType: () => DEVICES_SHELLY_NG_TYPE };
+				if (scenario === 'duplicate') expect(registry.register(incumbent)).toBe(true);
+				const shellyPlatform: IDevicePlatform = { ...mockPlatform, getType: () => DEVICES_SHELLY_NG_TYPE };
+				// Only registration/mapping dependencies are mocked: real plugin lifecycle and registry execute.
+				// No device service, network client, module imports or physical platform methods are started.
+				const module = await Test.createTestingModule({
+					providers: [
+						DevicesShellyNgPlugin,
+						{ provide: PlatformRegistryService, useValue: registry },
+						{ provide: ShellyNgDevicePlatform, useValue: shellyPlatform },
+					],
+				})
+					.useMocker(() => ({ registerMapping: jest.fn(), register: jest.fn(), registerPluginMetadata: jest.fn() }))
+					.compile();
+				try {
+					await module.init();
+					const plugin = module.get(DevicesShellyNgPlugin);
+					const original = capture(registry, DEVICES_SHELLY_NG_TYPE);
+					expect(original.platform).toBe(scenario === 'owned' ? shellyPlatform : incumbent);
+					plugin.onModuleInit(); // Repeated init must not lose our original successful disposer.
 					expect(original.isCurrent()).toBe(true);
-					expect(registry.get({ type: DEVICES_SHELLY_NG_TYPE })).toBe(incumbent);
+					expect(plugin.onModuleDestroy()).toBeUndefined();
+					expect(original.isCurrent()).toBe(scenario === 'duplicate');
+					if (scenario === 'owned') {
+						const replacementOwner = owned(registry, shellyPlatform);
+						const replacement = capture(registry, DEVICES_SHELLY_NG_TYPE);
+						plugin.onModuleDestroy();
+						expect(original.isCurrent()).toBe(false);
+						expect(replacement.isCurrent()).toBe(true);
+						expect(registry.get({ type: DEVICES_SHELLY_NG_TYPE })).toBe(shellyPlatform);
+						replacementOwner.dispose();
+					} else {
+						plugin.onModuleDestroy();
+						expect(original.isCurrent()).toBe(true);
+						expect(registry.get({ type: DEVICES_SHELLY_NG_TYPE })).toBe(incumbent);
+					}
+				} finally {
+					await module.close();
 				}
-			} finally { await module.close(); }
-		});
+			},
+		);
 	});
 });
