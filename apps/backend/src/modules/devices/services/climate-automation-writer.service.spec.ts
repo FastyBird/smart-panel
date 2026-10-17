@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { instanceToPlain } from 'class-transformer';
 import { DataSource, EntityManager } from 'typeorm';
 
@@ -411,4 +411,173 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 			await second.query(`UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0`);
 		} finally { await second.destroy(); await first.destroy(); await rm(directory, { recursive: true, force: true }); }
 	});
+
+	// BEGIN owned-input admission regressions (source-only drafts; original cases unchanged)
+	it('validates immutable selection A and stores those exact bytes when the caller changes selection/bundle/handles during validation', async () => {
+		await initialize(); await source();
+		const entered = deferred(), release = deferred();
+		const validation = jest.spyOn(provider, 'validateSelectionInManager');
+		selectionBarrier = async () => { entered.resolve(); await release.promise; };
+		const raw = { mode: 'heat', setpoint: 20, nested: { level: 1 } };
+		let mutate = () => { throw new Error('Request not admitted'); };
+		const result = writer.runReserved(async (manager, scope) => {
+			const request = { expectedSlot: await writer.readSlot(manager, scope, controllerId, true), expectedSource: await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), selection: raw, bundleId };
+			mutate = () => { raw.mode = 'cool'; raw.setpoint = 99; raw.nested.level = 9; request.selection = { mode: 'cool', setpoint: 10, nested: { level: 3 } }; request.bundleId = randomUUID(); request.expectedSlot = request.expectedSource; };
+			return writer.stageSlot(manager, scope, request);
+		});
+		try {
+			await entered.promise;
+			const checked = validation.mock.calls[0]?.[3];
+			expect(checked).toEqual({ mode: 'heat', setpoint: 20, nested: { level: 1 } });
+			expect(checked).not.toBe(raw); expect(Object.isFrozen(checked)).toBe(true);
+			if (checked === null || typeof checked !== 'object') throw new Error('Missing owned selection object');
+			const nested: unknown = Reflect.get(checked, 'nested'); expect(Object.isFrozen(nested)).toBe(true);
+			expect(Object.isFrozen(raw)).toBe(false); expect(Object.isFrozen(raw.nested)).toBe(false);
+			mutate(); release.resolve();
+			expect((await result).outcome).toBe('applied'); expect(validation).toHaveBeenCalledTimes(1);
+			const stored = await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId });
+			expect(stored.selection).toBe(climateAutomationCanonical({ mode: 'heat', setpoint: 20, nested: { level: 1 } }));
+			expect(stored.bundleId).toBe(bundleId); expect(stored.providerKey).toBe('thermostat:v1');
+			expect(checked).toEqual({ mode: 'heat', setpoint: 20, nested: { level: 1 } });
+		} finally { release.resolve(); }
+	});
+
+	it('initializes only admitted target/provider/config A when mutable request fields change to B during the actual config read', async () => {
+		const otherId = randomUUID(), entered = deferred(), release = deferred();
+		const originalRead = provider.readControllerInManager;
+		let hold = true;
+		const reads = jest.spyOn(provider, 'readControllerInManager').mockImplementation(async (manager, id) => {
+			if (hold && id === controllerId) { hold = false; entered.resolve(); await release.promise; }
+			return originalRead.call(provider, manager, id);
+		});
+		const creates = jest.spyOn(provider, 'createControllerInManager');
+		const otherRead = jest.fn(provider.readControllerInManager), otherCreate = jest.fn(provider.createControllerInManager);
+		registry.registerProviderOwned('other:v1', { ...provider, readControllerInManager: otherRead, createControllerInManager: otherCreate });
+		const raw = { nested: { label: 'A' } }; let mutate = () => { throw new Error('Request not admitted'); };
+		const result = writer.runReserved(async (manager, scope) => {
+			const expectedA = await writer.readSlot(manager, scope, controllerId), expectedB = await writer.readSlot(manager, scope, otherId);
+			const request = { providerKey: 'thermostat:v1', controllerId, expected: expectedA, configuration: raw };
+			mutate = () => { request.providerKey = 'other:v1'; request.controllerId = otherId; request.expected = expectedB; raw.nested.label = 'B'; request.configuration = { nested: { label: 'replacement' } }; };
+			return writer.initializeSlot(manager, scope, request);
+		});
+		try {
+			await entered.promise; mutate(); release.resolve();
+			expect((await result).outcome).toBe('applied');
+			expect(creates).toHaveBeenCalledTimes(1); expect(creates.mock.calls[0]?.[1]).toBe(controllerId);
+			expect(creates.mock.calls[0]?.[2]).toEqual({ nested: { label: 'A' } });
+			expect(Object.isFrozen(creates.mock.calls[0]?.[2])).toBe(true);
+			expect(Object.isFrozen(raw)).toBe(false); expect(Object.isFrozen(raw.nested)).toBe(false);
+			expect(reads.mock.calls.every(([, id]) => id === controllerId)).toBe(true);
+			expect(otherRead).not.toHaveBeenCalled(); expect(otherCreate).not.toHaveBeenCalled();
+			const slots = await database.getRepository(ClimateAutomationSlotEntity).find(); expect(slots).toHaveLength(1);
+			expect(slots[0].controllerId).toBe(controllerId); expect(slots[0].providerKey).toBe('thermostat:v1');
+			expect(await database.query('SELECT id,evidence FROM test_climate_controllers')).toEqual([{ id: controllerId, evidence: climateAutomationCanonical({ nested: { label: 'A' } }) }]);
+		} finally { release.resolve(); }
+	});
+
+	it('owns queued source key/subject/evidence/expected fields before another real FIFO command releases', async () => {
+		await initialize(); const entered = deferred(), release = deferred();
+		const originalRead = provider.readControllerInManager; let hold = true;
+		jest.spyOn(provider, 'readControllerInManager').mockImplementation(async (manager, id) => {
+			if (hold) { hold = false; entered.resolve(); await release.promise; }
+			return originalRead.call(provider, manager, id);
+		});
+		const raw = { revision: 1 }; let mutate = () => { throw new Error('Request not admitted'); };
+		const result = writer.runReserved(async (manager, scope) => {
+			const expectedA = await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), expectedB = await writer.readSource(manager, scope, 'other:v1', 'other-source');
+			const blocking = writer.readSlot(manager, scope, controllerId, true);
+			const request = { producerKey: 'activity:v1', subjectId: 'space-fixture', expected: expectedA, evidence: raw };
+			const queued = writer.stageSource(manager, scope, request);
+			mutate = () => { request.producerKey = 'other:v1'; request.subjectId = 'other-source'; request.expected = expectedB; raw.revision = 99; request.evidence = { revision: 999 }; };
+			await blocking; return queued;
+		});
+		try {
+			await entered.promise; mutate(); release.resolve(); expect((await result).outcome).toBe('applied');
+			const rows = await database.getRepository(ClimateAutomationSourceEntity).find(); expect(rows).toHaveLength(1);
+			expect(rows[0].producerKey).toBe('activity:v1'); expect(rows[0].subjectId).toBe('space-fixture');
+			expect(rows[0].evidence).toBe('{"revision":1}'); expect(Object.isFrozen(raw)).toBe(false);
+		} finally { release.resolve(); }
+	});
+
+	it('traverses source evidence getters once and hashes the exact canonical bytes stored', async () => {
+		let fieldReads = 0, evidenceReads = 0, keyReads = 0, subjectReads = 0, expectedReads = 0;
+		const raw = { get revision() { return ++fieldReads; } };
+		expect((await writer.runReserved(async (manager, scope) => {
+			const expected = await writer.readSource(manager, scope, 'activity:v1', 'space-fixture');
+			return writer.stageSource(manager, scope, { get producerKey() { keyReads++; return 'activity:v1'; }, get subjectId() { subjectReads++; return 'space-fixture'; }, get expected() { expectedReads++; return expected; }, get evidence() { evidenceReads++; return raw; } });
+		})).outcome).toBe('applied');
+		expect(fieldReads).toBe(1); expect(evidenceReads).toBe(1); expect(keyReads).toBe(1); expect(subjectReads).toBe(1); expect(expectedReads).toBe(1); expect(Object.isFrozen(raw)).toBe(false);
+		const stored = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture' });
+		expect(stored.evidence).toBe('{"revision":1}');
+		expect(stored.evidenceDigest).toBe(createHash('sha256').update(stored.evidence).digest('hex'));
+	});
+
+	it('owns the queued revocation slot set despite push/splice/replacement and leaves original owner B untouched', async () => {
+		await initialize(); await source(); await prepare(); const otherId = randomUUID();
+		await database.query('INSERT INTO test_climate_sources VALUES (?,?)', ['other-source', climateAutomationCanonical(evidence)]);
+		await writer.runReserved(async (manager, scope) => writer.initializeSlot(manager, scope, { providerKey: 'thermostat:v1', controllerId: otherId, configuration: {}, expected: await writer.readSlot(manager, scope, otherId) }));
+		await writer.runReserved(async (manager, scope) => writer.stageSource(manager, scope, { producerKey: 'activity:v1', subjectId: 'other-source', evidence, expected: await writer.readSource(manager, scope, 'activity:v1', 'other-source') }));
+		await writer.runReserved(async (manager, scope) => writer.stageSlot(manager, scope, { expectedSlot: await writer.readSlot(manager, scope, otherId, true), expectedSource: await writer.readSource(manager, scope, 'activity:v1', 'other-source'), selection: mode, bundleId: randomUUID() }));
+		const originalB = await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId: otherId });
+		const entered = deferred(), release = deferred(), originalRead = provider.readControllerInManager; let hold = true;
+		jest.spyOn(provider, 'readControllerInManager').mockImplementation(async (manager, id) => {
+			if (hold) { hold = false; entered.resolve(); await release.promise; }
+			return originalRead.call(provider, manager, id);
+		});
+		let mutate = () => { throw new Error('Revocation not admitted'); };
+		const result = writer.runReserved(async (manager, scope) => {
+			const expectedSource = await writer.readSource(manager, scope, 'activity:v1', 'space-fixture');
+			const a = await writer.readSlot(manager, scope, controllerId), b = await writer.readSlot(manager, scope, otherId);
+			const blocking = writer.readSlot(manager, scope, controllerId, true), rawSlots = [a];
+			const queued = writer.revokeSource(manager, scope, expectedSource, rawSlots);
+			mutate = () => { expect(Object.isFrozen(rawSlots)).toBe(false); rawSlots.push(b); rawSlots.splice(0,1); rawSlots[0] = b; };
+			await blocking; return queued;
+		});
+		try {
+			await entered.promise; mutate(); release.resolve(); expect((await result).outcome).toBe('applied');
+			expect((await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId })).state).toBe('RETIRED');
+			expect((await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true })).state).toBe('REVOKED');
+			expect({ ...await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId: otherId }) }).toEqual({ ...originalB });
+			expect((await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'other-source', isCurrent: true })).state).toBe('PENDING');
+		} finally { release.resolve(); }
+	});
+
+	it.each(['getter','canonical'])('retains an admitted %s snapshot failure even when the caller catches it', async (kind) => {
+		let reads = 0, observed: unknown;
+		const failure = new Error('owned getter failed');
+		await expect(writer.runReserved(async (manager, scope) => {
+			const original = await writer.readSource(manager, scope, 'activity:v1', 'space-fixture');
+			try {
+				void writer.stageSource(manager, scope, { producerKey: 'activity:v1', subjectId: 'space-fixture', expected: original, get evidence() { reads++; if (kind === 'getter') throw failure; return Number.NaN; } });
+			} catch (error) { observed = error; }
+			return original;
+		})).rejects.toMatchObject({ commitOutcome: 'rolled_back' });
+		expect(reads).toBe(1); expect(observed).toBeInstanceOf(Error);
+		if (kind === 'getter') expect(observed).toBe(failure);
+		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(0);
+		expect((await noop()).outcome).toBe('unchanged');
+	});
+
+	it.each(['reservation','closed','foreign'])('refuses %s helper entry before reading any caller business getter', async (boundary) => {
+		let reads = 0;
+		const invalidScope = { toJSON: () => ({}) };
+		const request = { get producerKey() { reads++; return 'activity:v1'; }, get subjectId() { reads++; return 'space-fixture'; }, expected: invalidScope, get evidence() { reads++; return evidence; } };
+		let original: { manager: EntityManager; scope: ClimateAutomationScope } | undefined;
+		database.subscribers.push({ beforeQuery: (event) => {
+			const reservation = boundary === 'reservation' && event.query.includes('WHERE 0');
+			const closed = boundary === 'closed' && event.query === 'COMMIT' && original;
+			if (!reservation && !closed) return;
+			// Reservation scope is intentionally not exposed before the work callback: forged negative only.
+			const scope = original?.scope ?? invalidScope;
+			try { void writer.stageSource(event.queryRunner.manager, scope, request); } catch (error) { expect(error).toBeInstanceOf(Error); }
+		} });
+		await expect(writer.runReserved(async (manager, scope) => {
+			original = { manager, scope }; const selected = await writer.readSlot(manager, scope, controllerId);
+			if (boundary === 'foreign') { try { void writer.stageSource(database.manager, scope, request); } catch (error) { expect(error).toBeInstanceOf(Error); } }
+			return selected;
+		})).rejects.toMatchObject({ commitOutcome: boundary === 'closed' ? 'refused' : 'rolled_back' });
+		expect(reads).toBe(0);
+	});
+	// END owned-input admission regressions
+
 });

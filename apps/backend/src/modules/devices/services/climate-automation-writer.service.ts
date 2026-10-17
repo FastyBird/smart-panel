@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
 import { Injectable, Optional } from '@nestjs/common';
@@ -9,7 +9,6 @@ import { hasCurrentSqliteConnectionLease, registerSqliteCommitGuard, SqliteCommi
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	climateAutomationCanonical,
-	climateAutomationDigest,
 	climateAutomationJson,
 	ClimateAutomationCapturedRegistration,
 	ClimateAutomationProducer,
@@ -181,22 +180,26 @@ export class ClimateAutomationWriterService {
 	}
 
 	stageSource(manager: EntityManager, scope: ClimateAutomationScope, request: { producerKey: string; subjectId: string; expected: ClimateAutomationHandle; evidence: ClimateAutomationJson }): Promise<ClimateAutomationHandle> {
-		return this.command(manager, scope, async (operation) => {
-			const record = this.record(operation, request.expected);
-			if (!record.source || record.source.key.producerKey !== request.producerKey || record.source.key.subjectId !== request.subjectId) throw new Conflict('invalid');
+		return this.ownedCommand(manager, scope, () => {
+			const { producerKey, subjectId, expected, evidence } = request;
+			const evidenceBytes = climateAutomationCanonical(evidence);
+			return Object.freeze({ producerKey, subjectId, expected, evidenceBytes, evidenceDigest: createHash('sha256').update(evidenceBytes).digest('hex') });
+		}, async (operation, owned) => {
+			const record = this.record(operation, owned.expected);
+			if (!record.source || record.source.key.producerKey !== owned.producerKey || record.source.key.subjectId !== owned.subjectId) throw new Conflict('invalid');
 			await this.validateSnapshot(manager, record);
 			const previous = record.source.value;
 			if (previous && !['REVOKED','DELETED','FINALIZED_INACTIVE'].includes(previous.state)) throw new Conflict('stale');
 			if (previous && await manager.countBy(ClimateAutomationSlotEntity, { generationId: previous.generationId, state: 'PROVISIONAL' }) > 0) throw new Conflict('stale');
 			if (previous && await manager.countBy(ClimateAutomationSlotEntity, { generationId: previous.generationId, state: 'LIVE' }) > 0) throw new Conflict('stale');
-			const capture = this.registry.captureProducer(request.producerKey);
+			const capture = this.registry.captureProducer(owned.producerKey);
 			if (!capture) throw new Conflict('unavailable');
 			operation.guards.push(capture.isCurrent);
 			const source: ClimateAutomationSourceFacts = Object.freeze({
 				generationId: randomUUID(), ownerId: previous && previous.state !== 'DELETED' ? previous.ownerId : randomUUID(),
-				producerKey: request.producerKey, subjectId: request.subjectId,
+				producerKey: owned.producerKey, subjectId: owned.subjectId,
 				generationIndex: previous && previous.state !== 'DELETED' ? increment(previous.generationIndex) : 1,
-				revision: 1, isCurrent: true, state: 'PENDING', evidence: climateAutomationCanonical(request.evidence), evidenceDigest: climateAutomationDigest(request.evidence),
+				revision: 1, isCurrent: true, state: 'PENDING', evidence: owned.evidenceBytes, evidenceDigest: owned.evidenceDigest,
 			});
 			const actual = await capture.implementation.validateInManager(manager, source, 'prepare');
 			if (actual === null || climateAutomationCanonical(actual) !== source.evidence) throw new Conflict('stale');
@@ -208,37 +211,47 @@ export class ClimateAutomationWriterService {
 	}
 
 	initializeSlot(manager: EntityManager, scope: ClimateAutomationScope, request: { providerKey: string; controllerId: string; expected: ClimateAutomationHandle; configuration: ClimateAutomationJson }): Promise<ClimateAutomationHandle> {
-		return this.command(manager, scope, async (operation) => {
-			uuid(request.controllerId);
-			const record = this.record(operation, request.expected);
-			if (!record.slot || record.slot.controllerId !== request.controllerId) throw new Conflict('invalid');
+		return this.ownedCommand(manager, scope, () => {
+			const { providerKey, controllerId, expected, configuration } = request;
+			const configurationBytes = climateAutomationCanonical(configuration);
+			const parsed: unknown = JSON.parse(configurationBytes);
+			return Object.freeze({ providerKey, controllerId, expected, configuration: climateAutomationJson(parsed) });
+		}, async (operation, owned) => {
+			uuid(owned.controllerId);
+			const record = this.record(operation, owned.expected);
+			if (!record.slot || record.slot.controllerId !== owned.controllerId) throw new Conflict('invalid');
 			await this.validateSnapshot(manager, record);
 			const previous = record.slot.value;
 			if (previous && !['EMPTY','LEGACY','RETIRED'].includes(previous.state)) throw new Conflict('stale');
-			const capture = this.registry.captureProvider(request.providerKey);
+			const capture = this.registry.captureProvider(owned.providerKey);
 			if (!capture) throw new Conflict('unavailable');
 			operation.guards.push(capture.isCurrent);
-			if (await capture.implementation.readControllerInManager(manager, request.controllerId)) throw new Conflict('uninitialized');
-			await capture.implementation.createControllerInManager(manager, request.controllerId, request.configuration);
+			if (await capture.implementation.readControllerInManager(manager, owned.controllerId)) throw new Conflict('uninitialized');
+			await capture.implementation.createControllerInManager(manager, owned.controllerId, owned.configuration);
 			operation.mutationEpoch++;
-			const facts = this.controllerFacts(await capture.implementation.readControllerInManager(manager, request.controllerId));
+			const facts = this.controllerFacts(await capture.implementation.readControllerInManager(manager, owned.controllerId));
 			if (!facts || facts.legacyBaseline !== null) throw new Conflict('invalid');
 			const slot: ClimateAutomationSlotFacts = Object.freeze({
-				controllerId: request.controllerId, providerKey: request.providerKey, controllerIncarnation: randomUUID(), slotRevision: previous ? increment(previous.slotRevision) : 1,
+				controllerId: owned.controllerId, providerKey: owned.providerKey, controllerIncarnation: randomUUID(), slotRevision: previous ? increment(previous.slotRevision) : 1,
 				manualGeneration: randomUUID(), manualCounter: previous ? increment(previous.manualCounter) : 1, manualHold: false, state: 'EMPTY',
 				ownerId: null, baselineId: null, generationId: null, candidateId: null, bundleId: null, selection: null, installEvidence: null, legacyDigest: null,
 			});
 			if (previous) await this.updateSlot(manager, previous, slot);
 			else await manager.insert(ClimateAutomationSlotEntity, slot);
 			operation.mutationEpoch++;
-			return this.handle(operation, { slot: { controllerId: request.controllerId, value: slot }, controller: { providerKey: request.providerKey, controllerId: request.controllerId, value: facts, capture } }, true);
+			return this.handle(operation, { slot: { controllerId: owned.controllerId, value: slot }, controller: { providerKey: owned.providerKey, controllerId: owned.controllerId, value: facts, capture } }, true);
 		});
 	}
 
 	stageSlot(manager: EntityManager, scope: ClimateAutomationScope, request: { expectedSlot: ClimateAutomationHandle; expectedSource: ClimateAutomationHandle; selection: ClimateAutomationJson; bundleId: string }): Promise<ClimateAutomationHandle> {
-		return this.command(manager, scope, async (operation) => {
-			const slotRecord = this.record(operation, request.expectedSlot);
-			const sourceRecord = this.record(operation, request.expectedSource);
+		return this.ownedCommand(manager, scope, () => {
+			const { expectedSlot, expectedSource, selection, bundleId } = request;
+			const selectionBytes = climateAutomationCanonical(selection);
+			const parsed: unknown = JSON.parse(selectionBytes);
+			return Object.freeze({ expectedSlot, expectedSource, bundleId, selectionBytes, selection: climateAutomationJson(parsed) });
+		}, async (operation, owned) => {
+			const slotRecord = this.record(operation, owned.expectedSlot);
+			const sourceRecord = this.record(operation, owned.expectedSource);
 			await this.validateSnapshot(manager, slotRecord);
 			await this.validateSnapshot(manager, sourceRecord);
 			const previous = slotRecord.slot?.value;
@@ -252,8 +265,8 @@ export class ClimateAutomationWriterService {
 			const actual = await producer.implementation.validateInManager(manager, source, 'prepare');
 			if (actual === null || climateAutomationCanonical(actual) !== source.evidence) throw new Conflict('stale');
 			const facts = slotRecord.controller.value;
-			if (!await provider.implementation.validateSelectionInManager(manager, previous.controllerId, facts, request.selection)) throw new Conflict('invalid');
-			const next: ClimateAutomationSlotFacts = Object.freeze({ ...previous, state: 'PROVISIONAL', slotRevision: increment(previous.slotRevision), ownerId: source.ownerId, generationId: source.generationId, baselineId: randomUUID(), candidateId: randomUUID(), bundleId: uuid(request.bundleId), selection: climateAutomationCanonical(request.selection), installEvidence: climateAutomationCanonical(facts), legacyDigest: null });
+			if (!await provider.implementation.validateSelectionInManager(manager, previous.controllerId, facts, owned.selection)) throw new Conflict('invalid');
+			const next: ClimateAutomationSlotFacts = Object.freeze({ ...previous, state: 'PROVISIONAL', slotRevision: increment(previous.slotRevision), ownerId: source.ownerId, generationId: source.generationId, baselineId: randomUUID(), candidateId: randomUUID(), bundleId: uuid(owned.bundleId), selection: owned.selectionBytes, installEvidence: climateAutomationCanonical(facts), legacyDigest: null });
 			await this.updateSlot(manager, previous, next, source);
 			operation.mutationEpoch++;
 			return this.handle(operation, { slot: { controllerId: previous.controllerId, value: next }, source: sourceRecord.source, controller: slotRecord.controller, producer: { value: source, capture: producer } }, true);
@@ -279,22 +292,22 @@ export class ClimateAutomationWriterService {
 	}
 
 	revokeSource(manager: EntityManager, scope: ClimateAutomationScope, expectedSource: ClimateAutomationHandle, slots: readonly ClimateAutomationHandle[], deleted = false): Promise<ClimateAutomationHandle> {
-		return this.command(manager, scope, async (operation) => {
-			const record = this.record(operation, expectedSource);
+		return this.ownedCommand(manager, scope, () => Object.freeze({ expectedSource, slots: Object.freeze([...slots]), deleted }), async (operation, owned) => {
+			const record = this.record(operation, owned.expectedSource);
 			await this.validateLedgerSnapshot(manager, record);
 			const sourceSnapshot = record.source;
 			const previous = sourceSnapshot?.value;
 			if (!sourceSnapshot || !previous || !previous.isCurrent) throw new Conflict('stale');
 			const rows = await manager.findBy(ClimateAutomationSlotEntity, { ownerId: previous.ownerId, generationId: previous.generationId });
 			const active = rows.filter((row) => row.state === 'LIVE' || row.state === 'PROVISIONAL');
-			const expected = slots.map((handle) => this.record(operation, handle).slot?.value);
+			const expected = owned.slots.map((handle) => this.record(operation, handle).slot?.value);
 			if (active.length !== expected.length || active.some((row) => !expected.some((value) => value && same(this.slotFacts(row), value)))) throw new Conflict('stale');
 			for (const row of active) {
 				const old = this.slotFacts(row);
 				await this.updateSlot(manager, old, { ...old, state: 'RETIRED', slotRevision: increment(old.slotRevision) }, previous);
 				operation.mutationEpoch++;
 			}
-			const state = deleted ? 'DELETED' : 'REVOKED';
+			const state = owned.deleted ? 'DELETED' : 'REVOKED';
 			if (previous.state === state && active.length === 0) return this.handle(operation, { source: record.source }, false);
 			const next: ClimateAutomationSourceFacts = Object.freeze({ ...previous, state, revision: increment(previous.revision) });
 			await this.updateSource(manager, previous, next);
@@ -313,12 +326,23 @@ export class ClimateAutomationWriterService {
 		if (operation.manager !== manager || manager.queryRunner !== operation.runner || context.internal || operation.phase !== 'BODY_OPEN' || !!operation.failure || !hasCurrentSqliteConnectionLease(this.dataSource)) throw this.refuse(operation);
 		return operation;
 	}
+	private ownedCommand<Input>(manager: EntityManager, scope: ClimateAutomationScope, snapshot: () => Input, work: (operation: Operation, input: Input) => Promise<ClimateAutomationHandle>): Promise<ClimateAutomationHandle> {
+		// Admission must precede every caller getter/JSON traversal, including invalid closed-phase calls.
+		const operation = this.admit(manager, scope);
+		let input: Input;
+		try { input = snapshot(); }
+		catch (cause) { this.fail(operation, cause); throw cause; }
+		return this.enqueue(operation, () => work(operation, input));
+	}
 	private command(manager: EntityManager, scope: ClimateAutomationScope, work: (operation: Operation) => Promise<ClimateAutomationHandle>): Promise<ClimateAutomationHandle> {
 		const operation = this.admit(manager, scope);
+		return this.enqueue(operation, () => work(operation));
+	}
+	private enqueue(operation: Operation, work: () => Promise<ClimateAutomationHandle>): Promise<ClimateAutomationHandle> {
 		operation.pending++;
 		const task = operation.tail.then(() => {
 			this.assertHealthy(operation);
-			return this.context.run({ operation, internal: true }, () => work(operation));
+			return this.context.run({ operation, internal: true }, work);
 		});
 		operation.tail = task.then(() => { operation.pending--; }, (cause: unknown) => { operation.pending--; this.fail(operation, cause); });
 		return task;
