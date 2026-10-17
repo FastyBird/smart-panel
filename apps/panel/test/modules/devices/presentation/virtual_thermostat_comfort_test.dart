@@ -766,6 +766,8 @@ void main() {
     await tester.pumpAndSettle();
     state['controller'] = 'b';
     await open(tester, id: 'b', routes: routes);
+    expect(oldRoute.isActive, isTrue);
+    expect(find.byType(PopupMenuItem<String>, skipOffstage: false), findsNothing);
     final button = tester.widget<TextButton>(find.byKey(
       const ValueKey('comfort-selection'), skipOffstage: false,
     ));
@@ -795,51 +797,47 @@ void main() {
       'retired popup result cannot clear a replacement controller $editor',
       (tester) async {
         final routes = ComfortRoutes();
-        late Route<String> oldRoute;
-        late NavigatorState oldNavigator;
-        var completionQueued = false;
-        Future<void> mount(String id) async {
-          await tester.pumpWidget(MaterialApp(
-            navigatorObservers: [routes],
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(body: Builder(builder: (context) {
-              if (id == 'b' && !completionQueued) {
-                completionQueued = true;
-                // Registered before the child's didUpdateWidget queues cleanup:
-                // complete the real old Future after its authority retires.
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  oldNavigator.removeRoute<String>(oldRoute, 'eco');
-                });
-              }
-              return SingleChildScrollView(child: VirtualThermostatComfort(
-                deviceId: id, onChanged: () {},
-              ));
-            })),
-          ));
-          await tester.pumpAndSettle();
-        }
-        await mount('a');
-        await tap(tester, 'comfort-selection');
-        oldRoute = routes.popup!;
-        oldNavigator = oldRoute.navigator!;
+        await open(tester, routes: routes);
+        final controllerState = tester.state(find.byType(VirtualThermostatComfort));
+        tester.widget<TextButton>(find.byKey(const ValueKey('comfort-selection'))).onPressed!();
+        final oldRoute = routes.popup!;
+        final oldNavigator = oldRoute.navigator!;
+        // Install an opaque public route before A's first item frame. It keeps
+        // the retired route installed and unbuilt while the same State reads B.
+        final coveringRoute = MaterialPageRoute<void>(
+          builder: (context) => const Scaffold(body: Text('Covering page')),
+        );
+        oldNavigator.push<void>(coveringRoute);
+        await tester.pumpAndSettle();
         state['controller'] = 'b';
-        await mount('b');
+        await open(tester, id: 'b', routes: routes);
+        expect(tester.state(find.byType(VirtualThermostatComfort, skipOffstage: false)), same(controllerState));
+        expect(oldRoute.isActive, isTrue);
+        expect(find.byType(PopupMenuItem<String>, skipOffstage: false), findsNothing);
+        expect(paths.any((path) => path.endsWith('/b/comfort')), isTrue);
         expect(writes, isEmpty);
         expect(find.textContaining('Request failed; reload before retrying'), findsNothing);
-        // The old completion and its queued cleanup must leave B's editor alone.
-        tester
-            .widget<TextButton>(
-              find.byKey(
-                ValueKey(
-                  editor == 'menu' ? 'comfort-selection' : 'comfort-create',
-                ),
-              ),
-            )
-            .onPressed!();
+        // Programmatic invocation of the real enabled B button sequences this
+        // ownership race under the cover; it is not a covered-page hit test.
+        final button = tester.widget<TextButton>(find.byKey(
+          ValueKey(editor == 'menu' ? 'comfort-selection' : 'comfort-create'),
+          skipOffstage: false,
+        ));
+        expect(button.onPressed, isNotNull);
+        button.onPressed!();
         await tester.pumpAndSettle();
+        final Route<dynamic> replacementRoute = editor == 'menu'
+            ? routes.popup!
+            : ModalRoute.of(tester.element(find.byType(AlertDialog)))!;
+        expect(replacementRoute.isActive, isTrue);
+        expect(identical(replacementRoute, oldRoute), isFalse);
+        expect(oldRoute.isActive, isTrue);
         final reads = paths.length;
+        // Complete the real A Future with a stale value WHILE B owns editing.
+        oldNavigator.removeRoute<String>(oldRoute, 'eco');
         await tester.pump();
+        expect(oldRoute.isActive, isFalse);
+        expect(replacementRoute.isActive, isTrue);
         expect(paths, hasLength(reads));
         expect(writes, isEmpty);
         expect(
@@ -848,7 +846,7 @@ void main() {
         );
         expect(
           tester
-              .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+              .widget<TextButton>(find.byKey(const ValueKey('comfort-create'), skipOffstage: false))
               .onPressed,
           isNotNull,
         );
@@ -856,6 +854,7 @@ void main() {
         await tester.pump(const Duration(seconds: 5));
         await tester.pumpAndSettle();
         expect(paths, hasLength(reads));
+        expect(replacementRoute.isActive, isTrue);
         if (editor == 'menu') {
           await tester.tap(find.text('Eco').last);
           await tester.pumpAndSettle();
