@@ -286,24 +286,30 @@ export class VirtualThermostatComfortService {
 		change: (row: VirtualThermostatConfigEntity) => void,
 		afterCommit?: () => void,
 	) {
-		await this.settle(id);
-		await this.structure.runExclusive(async () => {
-			await this.graph.withStructuralWrite(async (manager) => {
-				const row = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: id });
-				if (!row) throw new NotFoundException('Thermostat configuration does not exist.');
-				const owner = await manager.findOneBy(VirtualDeviceEntity, { id });
-				if (!owner || row.locked || row.revision !== fence.expected_revision)
-					throw new DevicesValidationException('Thermostat is missing, locked or its revision changed.');
-				change(row);
-				const errors = validateThermostatComfort(row.comfort, row.policy);
-				if (errors.length) throw new DevicesValidationException(errors.join(', '));
-				row.revision++;
-				await manager.save(row);
-			}, fence.expected_graph_revision);
-			afterCommit?.();
-			await this.changed(id);
-		});
-		return this.get(id);
+		const release = this.claims.holdRecoveryFence();
+		try {
+			await this.settle(id);
+			await this.structure.runExclusive(async () => {
+				await this.graph.withStructuralWrite(async (manager) => {
+					const row = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: id });
+					if (!row) throw new NotFoundException('Thermostat configuration does not exist.');
+					const owner = await manager.findOneBy(VirtualDeviceEntity, { id });
+					if (!owner || row.locked || row.revision !== fence.expected_revision)
+						throw new DevicesValidationException('Thermostat is missing, locked or its revision changed.');
+					change(row);
+					const errors = validateThermostatComfort(row.comfort, row.policy);
+					if (errors.length) throw new DevicesValidationException(errors.join(', '));
+					row.revision++;
+					await manager.save(row);
+				}, fence.expected_graph_revision);
+				afterCommit?.();
+				await this.changed(id);
+			});
+			return await this.get(id);
+		} finally {
+			release();
+			await this.claims.refresh().catch(() => undefined);
+		}
 	}
 
 	private async changed(id: string): Promise<void> {

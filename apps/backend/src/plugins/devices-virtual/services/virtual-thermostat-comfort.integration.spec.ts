@@ -1,18 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
+import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 
 jest.setTimeout(30_000);
@@ -85,6 +88,7 @@ describe('thermostat durable comfort lifecycle', () => {
 		const graph = new VirtualDependencyGraphService(database);
 		events = new EventEmitter2();
 		const claims = {
+			holdRecoveryFence: jest.fn(() => () => undefined),
 			invalidate: jest.fn(),
 			refresh: jest.fn().mockResolvedValue(undefined),
 		} as unknown as VirtualThermostatClaimsService;
@@ -587,4 +591,164 @@ describe('thermostat durable comfort lifecycle', () => {
 			await old.destroy();
 		}
 	});
+	// BEGIN comfort entry admission regressions (SOURCE-ONLY drafts; actual claims, no physical qualification)
+	describe('original actual claims capture across comfort mutation lifetime', () => {
+		let actualClaims: VirtualThermostatClaimsService;
+		let actualGraph: VirtualDependencyGraphService;
+		const barrier = () => {
+			let open: () => void = () => { throw new Error('Barrier not initialized'); };
+			const promise = new Promise<void>((resolve) => { open = resolve; });
+			return { promise, open: () => open() };
+		};
+		const observeOwnedHolds = () => {
+			const original: { call: (receiver: VirtualThermostatClaimsService) => () => void } = actualClaims.holdRecoveryFence;
+			const releases: jest.Mock<void, []>[] = [];
+			const hold = jest.spyOn(actualClaims, 'holdRecoveryFence').mockImplementation(() => {
+				const owned = original.call(actualClaims);
+				const release = jest.fn(() => owned()); releases.push(release); return release;
+			});
+			return { hold, releases };
+		};
+		beforeEach(async () => {
+			await configured(); // existing ordinary config setup, not an admission-positive stand-in
+			actualGraph = new VirtualDependencyGraphService(database);
+			actualClaims = new VirtualThermostatClaimsService(database, structure, actualGraph, new PropertyCommandAdmissionRegistryService(), events, new ConfigService({ FB_CLI: 'off' }));
+			await actualClaims.onApplicationBootstrap();
+			comfort = new VirtualThermostatComfortService(database, structure, actualGraph, actualClaims, events);
+			expect(actualClaims.capture().isCurrent()).toBe(true);
+		});
+		afterEach(() => { actualClaims?.onModuleDestroy(); });
+
+		it.each(['configure', 'select', 'override', 'cancel', 'baseline'] as const)('closes a previously current original no-argument capture before %s first settlement read', async (operation) => {
+			await comfort.configure(id, await fence(), { ...input(), automation_enabled: true });
+			if (operation === 'cancel') await overridden();
+			const before = await comfort.get(id), expected = await fence();
+			const overrideId = before.configuration?.temporary_override?.id;
+			const original = actualClaims.capture(); expect(original.isCurrent()).toBe(true);
+			const owned = observeOwnedHolds(), entered = barrier(), resume = barrier();
+			let first = true;
+			database.subscribers.push({ beforeQuery: async (event) => {
+				if (!first || !event.query.startsWith('SELECT') || !event.query.includes('devices_virtual_thermostat_configs')) return;
+				first = false; entered.open(); await resume.promise;
+			} });
+			let action: () => ReturnType<VirtualThermostatComfortService['get']>;
+			if (operation === 'configure') action = () => comfort.configure(id, expected, { ...input(), automation_enabled: true });
+			else if (operation === 'select') action = () => comfort.select(id, expected, 'eco', false);
+			else if (operation === 'override') action = () => comfort.override(id, expected, { preset: 'eco', setpoints: null, expires_at: new Date(wall + 1000).toISOString() }, 'operator');
+			else if (operation === 'cancel') {
+				if (!overrideId) throw new Error('Missing real override identity');
+				action = () => comfort.cancel(id, expected, overrideId);
+			} else action = () => comfort.applyAutomationBaseline(id, expected, { preset: 'eco', setpoints: null }, 'test-only-explicit-actor');
+			const result = action(); void result.catch(() => undefined);
+			try {
+				expect(original.isCurrent()).toBe(false); expect(owned.hold).toHaveBeenCalledTimes(1);
+				await entered.promise; expect(owned.releases[0]).not.toHaveBeenCalled(); expect(actualClaims.capture().isCurrent()).toBe(false);
+				resume.open(); await result;
+				expect(owned.releases[0]).toHaveBeenCalledTimes(1); expect(original.isCurrent()).toBe(false);
+				expect(actualClaims.capture().isCurrent()).toBe(true);
+			} finally { resume.open(); await result.catch(() => undefined); }
+		});
+
+		it.each(['missing', 'locked', 'stale', 'invalid'] as const)('releases exactly its own hold after actual %s rejection without changing the old row', async (failure) => {
+			const expected = await fence();
+			if (failure === 'locked') await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { locked: true });
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+			const original = actualClaims.capture(); expect(original.isCurrent()).toBe(true);
+			const owned = observeOwnedHolds();
+			const badInput = input(); if (failure === 'invalid') badInput.presets[0].setpoints.heating_setpoint = 99;
+			const result = comfort.configure(failure === 'missing' ? randomUUID() : id, failure === 'stale' ? { ...expected, expected_revision: expected.expected_revision + 1 } : expected, badInput);
+			expect(original.isCurrent()).toBe(false); await expect(result).rejects.toThrow();
+			expect(owned.hold).toHaveBeenCalledTimes(1); expect(owned.releases[0]).toHaveBeenCalledTimes(1);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).toEqual(before);
+			expect(original.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(true);
+		});
+
+		it.each([false, true])('keeps its hold through an awaited response and response rejection:%s', async (rejectResponse) => {
+			const expected = await fence(), original = actualClaims.capture(), owned = observeOwnedHolds();
+			const entered = barrier(), resume = barrier(), failure = new Error('response read rejected');
+			const realGet: { call: (receiver: VirtualThermostatComfortService, controllerId: string) => ReturnType<VirtualThermostatComfortService['get']> } = comfort.get;
+			jest.spyOn(comfort, 'get').mockImplementationOnce(async (controllerId) => {
+				const response = await realGet.call(comfort, controllerId); entered.open(); await resume.promise;
+				if (rejectResponse) throw failure; return response;
+			});
+			const result = comfort.select(id, expected, 'eco', false); void result.catch(() => undefined);
+			try {
+				await entered.promise; expect(owned.releases[0]).not.toHaveBeenCalled(); expect(actualClaims.capture().isCurrent()).toBe(false);
+				const committed = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				expect(committed.comfort.selected_preset).toBe('eco'); expect(committed.revision).toBe(expected.expected_revision + 1);
+				resume.open(); if (rejectResponse) await expect(result).rejects.toBe(failure); else expect((await result).configuration.selected_preset).toBe('eco');
+				expect(owned.releases[0]).toHaveBeenCalledTimes(1); expect(original.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(true);
+			} finally { resume.open(); await result.catch(() => undefined); }
+		});
+
+		it('keeps original result and closed admission when the actual final read-only refresh fails', async () => {
+			const expected = await fence(), original = actualClaims.capture();
+			const realHold: { call: (receiver: VirtualThermostatClaimsService) => () => void } = actualClaims.holdRecoveryFence;
+			let released = false, rejected = 0;
+			const release = jest.fn< void, []>();
+			jest.spyOn(actualClaims, 'holdRecoveryFence').mockImplementation(() => {
+				const owned = realHold.call(actualClaims); release.mockImplementation(() => { owned(); released = true; }); return release;
+			});
+			database.subscribers.push({ beforeQuery: (event) => {
+				if (released && event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_actuator_claims')) { rejected++; throw new Error('final refresh SQL failure'); }
+			} });
+			const response = await comfort.select(id, expected, 'eco', false);
+			expect(response.configuration.selected_preset).toBe('eco'); expect(release).toHaveBeenCalledTimes(1); expect(rejected).toBe(1);
+			expect(original.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(false);
+			released = false; await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true); expect(original.isCurrent()).toBe(false);
+		});
+
+		it.each(['refresh', 'event'] as const)('retains committed data and existing notification retry after changed %s failure', async (boundary) => {
+			const expected = await fence(), original = actualClaims.capture(), owned = observeOwnedHolds();
+			let fail = true;
+			if (boundary === 'refresh') database.subscribers.push({ beforeQuery: (event) => {
+				if (fail && event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_actuator_claims')) { fail = false; throw new Error('changed refresh failure'); }
+			} });
+			const listener = jest.fn(() => { if (boundary === 'event' && fail) { fail = false; throw new Error('changed event failure'); } });
+			events.on(THERMOSTAT_CONFIG_CHANGED, listener);
+			try {
+				const response = await comfort.select(id, expected, 'eco', false);
+				expect(response.configuration.selected_preset).toBe('eco'); expect(listener.mock.calls.length).toBeGreaterThanOrEqual(2);
+				expect(owned.releases[0]).toHaveBeenCalledTimes(1); expect(original.isCurrent()).toBe(false);
+				const calls = listener.mock.calls.length; await comfort.settle(id); expect(listener).toHaveBeenCalledTimes(calls);
+			} finally { events.off(THERMOSTAT_CONFIG_CHANGED, listener); }
+		});
+
+		it('does not reopen after A releases while B still owns its held response', async () => {
+			const expectedA = await fence(), original = actualClaims.capture(), owned = observeOwnedHolds();
+			const aEntered = barrier(), bEntered = barrier(), aResume = barrier(), bResume = barrier();
+			const realGet: { call: (receiver: VirtualThermostatComfortService, controllerId: string) => ReturnType<VirtualThermostatComfortService['get']> } = comfort.get;
+			let responses = 0;
+			jest.spyOn(comfort, 'get').mockImplementation(async (controllerId) => {
+				const ordinal = ++responses, response = await realGet.call(comfort, controllerId);
+				if (ordinal === 1) { aEntered.open(); await aResume.promise; }
+				if (ordinal === 2) { bEntered.open(); await bResume.promise; }
+				return response;
+			});
+			const a = comfort.select(id, expectedA, 'eco', false); void a.catch(() => undefined);
+			let b: ReturnType<VirtualThermostatComfortService['get']> | undefined;
+			try {
+				await aEntered.promise;
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				b = comfort.select(id, { expected_revision: row.revision, expected_graph_revision: await actualGraph.revision() }, 'comfort', false); void b.catch(() => undefined);
+				await bEntered.promise; aResume.open(); await a;
+				expect(owned.releases[0]).toHaveBeenCalledTimes(1); expect(owned.releases[1]).not.toHaveBeenCalled();
+				expect(actualClaims.capture().isCurrent()).toBe(false); expect(original.isCurrent()).toBe(false);
+				bResume.open(); await b; expect(owned.releases[1]).toHaveBeenCalledTimes(1); expect(actualClaims.capture().isCurrent()).toBe(true); expect(original.isCurrent()).toBe(false);
+			} finally { aResume.open(); bResume.open(); await a.catch(() => undefined); if (b !== undefined) await b.catch(() => undefined); }
+		});
+
+		it.each([null, 'eco'] as const)('preserves both explicit OFF-clear flags for preset:%s under the real hold', async (preset) => {
+			for (const clear of [false, true]) {
+				await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { requestedMode: 'off' });
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
+				row.comfort.user_off = true; await database.manager.save(row);
+				const response = await comfort.select(id, await fence(), preset, clear);
+				expect(response.configuration.selected_preset).toBe(preset); expect(response.configuration.user_off).toBe(!clear);
+				expect((await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).requestedMode).toBe('off');
+			}
+		});
+	});
+	// END comfort entry admission regressions
+
 });
