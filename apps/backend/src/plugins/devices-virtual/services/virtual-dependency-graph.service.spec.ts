@@ -1,7 +1,8 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { EntityManager } from 'typeorm';
+import { EntityManager, EntitySubscriberInterface, QueryRunner } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -18,7 +19,9 @@ import { ClimateAutomationWriterService } from '../../../modules/devices/service
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
-import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
+import { EventType, ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity, VirtualDeviceMode, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualAggregateConfigEntity, VirtualAggregateOperator, VirtualAggregateProfile, VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
@@ -161,6 +164,23 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 			}),
 		);
 
+	const seedPublisherOutput = async () => {
+		const device = Object.assign(new VirtualDeviceEntity(), { id: uuid(), name: 'TEST publisher', category: DeviceCategory.SENSOR, mode: VirtualDeviceMode.SENSOR_AGGREGATE });
+		const channel = Object.assign(new VirtualChannelEntity(), { id: uuid(), device, name: 'TEST temperature', category: ChannelCategory.TEMPERATURE });
+		const property = Object.assign(new VirtualChannelPropertyEntity(), { id: uuid(), channel, category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT, permissions: [PermissionType.READ_ONLY], valueOrigin: VirtualValueOrigin.DERIVED });
+		await database.manager.insert(VirtualDeviceEntity, device);
+		await database.manager.insert(VirtualChannelEntity, channel);
+		await database.manager.insert(VirtualChannelPropertyEntity, property);
+		return property;
+	};
+	const corruptProfile = async (property: VirtualChannelPropertyEntity) => {
+		await database.manager.insert(VirtualAggregateConfigEntity, Object.assign(new VirtualAggregateConfigEntity(), {
+			outputPropertyId: property.id, profile: VirtualAggregateProfile.HUMIDITY, operator: VirtualAggregateOperator.MEAN,
+			minimumValidInputs: 1, maximumAgeSeconds: 300, revision: 1,
+		}));
+	};
+
 	it('refuses a forged turn BEFORE graph query, with no missing-singleton ensure', async () => {
 		const query = jest.spyOn(database.manager, 'findOneBy');
 		await expect(graph.readReservedGraph(database.manager, { toJSON: () => ({}) })).rejects.toThrow();
@@ -171,6 +191,12 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 		const producers = new PropertyProducerRegistryService(new EventEmitter2());
 		const state = new VirtualProducerStateService(database, producers, graph, new EventEmitter2(), config);
 		await state.onModuleInit();
+		const legacyProperty = await seedPublisherOutput();
+		const legacy = jest.fn(async () => {
+			const actual = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: legacyProperty.id });
+			state.installUnavailable(actual, 1);
+		});
+		const stopLegacy = graph.observeValidation(legacy);
 		const register = jest.spyOn(producers, 'register'),
 			invalidate = jest.spyOn(producers, 'invalidate'),
 			remove = jest.spyOn(producers, 'remove');
@@ -182,10 +208,13 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 			expect(invalidate).not.toHaveBeenCalled();
 			expect(remove).not.toHaveBeenCalled();
 			expect(readonly).not.toHaveBeenCalled();
+			expect(legacy).not.toHaveBeenCalled();
 			expect(graph.isValidated()).toBe(false);
 			expect(await graph.revision()).toBe(1);
 		} finally {
+			stopLegacy();
 			state.onModuleDestroy();
+			producers.onModuleDestroy();
 		}
 	});
 	it('rejects a successor committed BEFORE its original snapshot rather than publishing successor metadata on old behalf', async () => {
@@ -293,4 +322,219 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 		await expect(graph.withStructuralWrite(() => Promise.resolve(), 0)).rejects.toThrow('revision changed');
 		expect(await graph.revision()).toBe(1);
 	});
+
+	describe('real owned producer staging and acknowledged publication', () => {
+		it('converts actual producer state separately from the retained unconverted-legacy refusal', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit();
+				expect((await change()).outcome).toBe('applied');
+				expect(graph.isRevisionCurrent(1)).toBe(true);
+				expect(state.readPublicationReport()).toMatchObject({ installed: true, attempted: 0, completed: 0, terminal: 'complete' });
+				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('prepared guard opens only SAME generation ready, old generation never revives and unload closes it', async () => {
+			const row = await seedPublisherOutput(); await corruptProfile(row);
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit();
+				const observed: string[][] = [];
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => observed.push(producers.read(row.id)?.producer?.reasons ?? []));
+				await change();
+				expect(observed).toEqual([['graph_validation_pending'], ['graph_validation_pending']]);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_quarantined']);
+				const originalLifecycle = graph.captureOwnedPublicationLifecycle();
+				graph.invalidateValidation();
+				expect(originalLifecycle.guard.isCurrent()).toBe(false);
+				await graph.refreshQuarantine();
+				expect(originalLifecycle.guard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_quarantined']);
+				state.onModuleDestroy();
+				expect(producers.read(row.id)?.producer?.quality).toBe('unavailable');
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('actual peer revision change during readonly stage refuses before any owned install/applied view', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const install = jest.spyOn(producers, 'installPreparedNoEvents');
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const entered = gate(), release = gate();
+			try {
+				await state.onModuleInit(); install.mockClear();
+				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
+				const operation = change();
+				const rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
+				await entered.promise;
+				await peer.query('UPDATE devices_virtual_graph_revision SET revision=2 WHERE id=1');
+				release.resolve(); await rejected;
+				expect(install).not.toHaveBeenCalled();
+				expect(state.readPublicationReport()).toMatchObject({ installed: false, attempted: 0, completed: 0 });
+				expect(graph.isRevisionCurrent(2)).toBe(false);
+			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('installed maps survive partial Q delivery while actual ACK late P remains exact COMMITTED primary', async () => {
+			const row = await seedPublisherOutput(); await corruptProfile(row);
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const primary = new Error('TEST late P');
+			let runner: QueryRunner | undefined, threw = false, delivered = 0;
+			const subscriber: EntitySubscriberInterface<object> = {
+				beforeQuery(event) { if (/UPDATE\s+"?test_graph_participant/i.test(event.query)) runner = event.queryRunner; },
+				afterTransactionCommit(event) { if (!threw && runner && event.queryRunner === runner) { threw = true; throw primary; } },
+			};
+			try {
+				await state.onModuleInit();
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => { delivered++; });
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => { throw new Error('PRIVATE Q'); });
+				database.subscribers.push(subscriber);
+				let failure: unknown;
+				try { await change(); } catch (error) { failure = error; }
+				expect(failure).toMatchObject({ commitOutcome: 'committed', cause: primary });
+				if (!(failure instanceof Error)) throw new Error('Expected real COMMITTED error');
+				expect(failure.cause).toBe(primary);
+				expect(threw).toBe(true);
+				expect(delivered).toBe(1);
+				expect(state.readPublicationReport()).toEqual({ installed: true, attempted: 1, completed: 0, terminal: 'notification_rejected' });
+				expect(graph.isValidated()).toBe(false);
+				expect(await graph.revision()).toBe(1);
+				expect((await database.query<{ revision: number }[]>('SELECT revision FROM test_graph_participant WHERE id=?', [id]))[0].revision).toBe(2);
+				expect(JSON.stringify(failure)).not.toContain('PRIVATE Q');
+			} finally { const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1); state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('ordinary nonactivation sees pending metadata and a real watched-slot mutation prevents stale ready', async () => {
+			const row = await seedPublisherOutput(); await corruptProfile(row);
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit();
+				let called = false;
+				graph.observeValidation(() => {
+					called = true;
+					expect(graph.isQuarantined(row.id)).toBe(true);
+					expect(graph.capturePublishGuard()()).toBe(false);
+					producers.register(row, 2);
+					return Promise.resolve();
+				});
+				await expect(graph.refreshQuarantine()).rejects.toThrow('incomplete');
+				expect(called).toBe(true);
+				expect(graph.isValidated()).toBe(false);
+				expect(state.readPublicationReport()?.installed).toBe(true);
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('held initialization cannot install after original service destruction or register again', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const install = jest.spyOn(producers, 'installPreparedNoEvents');
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const entered = gate(), release = gate(); let held = false;
+			const subscriber: EntitySubscriberInterface<object> = { async beforeQuery(event) {
+				if (!held && /SELECT/i.test(event.query) && event.query.includes('channels_properties')) {
+					held = true; entered.resolve(); await release.promise;
+				}
+			} };
+			database.subscribers.push(subscriber);
+			try {
+				const initialization = state.onModuleInit();
+				const observed = initialization.catch(() => undefined);
+				await entered.promise;
+				state.onModuleDestroy(); release.resolve(); await observed;
+				expect(install).not.toHaveBeenCalled();
+				await expect(state.onModuleInit()).rejects.toThrow('unavailable');
+				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+			} finally { release.resolve(); const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1); state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('explicit CLI state lifecycle has zero registry owner/DB work and required missing registry refuses', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const acquire = jest.spyOn(producers, 'acquireOwnedPublisher');
+			const state = new VirtualProducerStateService(database, producers, graph, events, new ConfigService({ FB_CLI: 'on' }));
+			const transaction = jest.spyOn(database, 'transaction');
+			try {
+				await state.onModuleInit();
+				expect(acquire).not.toHaveBeenCalled(); expect(transaction).not.toHaveBeenCalled();
+				const realOwner = producers.acquireOwnedPublisher('virtual-producer-state:v1', events);
+				if (!realOwner) throw new Error('Missing actual registry owner');
+				expect(() => graph.observeOwnedStaging(undefined, realOwner, Object.freeze({ version: 1, stage: state.stageOwned }), state, { requiresActivation: false })).toThrow();
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+		it('old held owned job never overwrites a newer ordinary ready generation or its last report', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const entered = gate(), release = gate();
+			try {
+				await state.onModuleInit();
+				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
+				const operation = change(), rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
+				await entered.promise;
+				await graph.refreshQuarantine();
+				expect(graph.isRevisionCurrent(1)).toBe(true);
+				const newer = state.readPublicationReport();
+				expect(newer?.terminal).toBe('complete');
+				release.resolve(); await rejected;
+				expect(graph.isRevisionCurrent(1)).toBe(true);
+				expect(state.readPublicationReport()).toBe(newer);
+			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('replacement of the original actual stage method cannot recapture through the new method', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit();
+				const replacement = jest.spyOn(state, 'stageOwned');
+				await expect(change()).rejects.toMatchObject({ commitOutcome: 'committed' });
+				expect(replacement).not.toHaveBeenCalled();
+				expect(graph.isValidated()).toBe(false);
+				replacement.mockRestore();
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('actual published role options are immutable and cannot change category while a readonly callback is held', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const registration = jest.spyOn(graph, 'observeOwnedStaging');
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const entered = gate(), release = gate();
+			try {
+				await state.onModuleInit();
+				const options = registration.mock.calls[0][4];
+				expect(Object.isFrozen(options)).toBe(true);
+				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
+				const operation = change();
+				await entered.promise;
+				expect(Reflect.set(options, 'requiresActivation', true)).toBe(false);
+				release.resolve(); expect((await operation).outcome).toBe('applied');
+				expect(options.requiresActivation).toBe(false);
+			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('pins original mutable registration option VALUE rather than accepting a role change during await', async () => {
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const original = graph.observeOwnedStaging;
+			const mutableOptions: { requiresActivation: false } = { requiresActivation: false };
+			// A valid mutable caller-options object is allowed by the internal readonly input contract.
+			// The real method/owner/stager still execute; only options storage differs from the production frozen literal.
+			jest.spyOn(graph, 'observeOwnedStaging').mockImplementation((registry, owner, capability, receiver) =>
+				original.call(graph, registry, owner, capability, receiver, mutableOptions));
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const entered = gate(), release = gate();
+			try {
+				await state.onModuleInit();
+				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
+				const operation = change(), rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
+				await entered.promise;
+				expect(Reflect.set(mutableOptions, 'requiresActivation', true)).toBe(true);
+				release.resolve(); await rejected;
+				expect(state.readPublicationReport()).toMatchObject({ installed: false, attempted: 0, completed: 0 });
+				expect(graph.isValidated()).toBe(false);
+			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+	});
+
 });
