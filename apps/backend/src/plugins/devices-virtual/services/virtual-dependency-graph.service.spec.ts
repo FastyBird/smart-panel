@@ -336,6 +336,102 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
 		});
 
+		// R1 correction: real nonempty no-config catalog, never a fabricated ready guard.
+		it('renews an owned unquarantined derived fallback for real bootstrap and each later ready generation', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const observations = jest.spyOn(producers, 'beginObservedBatch');
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit();
+				const initialGuard = observations.mock.calls.at(-1)?.[2];
+				if (!initialGuard) throw new Error('Missing actual initialization guard');
+				expect(initialGuard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_validation_pending']);
+				await graph.onApplicationBootstrap();
+				const bootstrapGuard = observations.mock.calls.at(-1)?.[2];
+				if (!bootstrapGuard) throw new Error('Missing actual bootstrap guard');
+				expect(graph.isValidated()).toBe(true);
+				expect(bootstrapGuard).not.toBe(initialGuard);
+				expect(initialGuard.isCurrent()).toBe(false);
+				expect(bootstrapGuard.isCurrent()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+				graph.invalidateValidation();
+				expect(bootstrapGuard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_validation_pending']);
+				await graph.refreshQuarantine();
+				const refreshedGuard = observations.mock.calls.at(-1)?.[2];
+				if (!refreshedGuard) throw new Error('Missing actual refreshed guard');
+				expect(graph.isValidated()).toBe(true);
+				expect(refreshedGuard).not.toBe(bootstrapGuard);
+				expect(initialGuard.isCurrent()).toBe(false);
+				expect(bootstrapGuard.isCurrent()).toBe(false);
+				expect(refreshedGuard.isCurrent()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('a held older refresh cannot revive its fallback or clobber the successor ready fallback', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const observations = jest.spyOn(producers, 'beginObservedBatch');
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const entered = gate(), release = gate();
+			let stop: (() => void) | undefined, pending: Promise<void> | undefined, observed: Promise<void> | undefined;
+			try {
+				await state.onModuleInit();
+				await graph.onApplicationBootstrap();
+				stop = graph.observeValidation(async () => { entered.resolve(); await release.promise; }, { requiresActivation: false });
+				pending = graph.refreshQuarantine();
+				observed = pending.catch(() => undefined);
+				await entered.promise;
+				const olderGuard = observations.mock.calls.at(-1)?.[2];
+				if (!olderGuard) throw new Error('Missing actual held refresh guard');
+				expect(olderGuard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_validation_pending']);
+				stop();
+				await graph.refreshQuarantine();
+				const successorGuard = observations.mock.calls.at(-1)?.[2];
+				if (!successorGuard) throw new Error('Missing actual successor guard');
+				expect(successorGuard).not.toBe(olderGuard);
+				expect(graph.isValidated()).toBe(true);
+				expect(successorGuard.isCurrent()).toBe(true);
+				expect(olderGuard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+				release.resolve(); await pending;
+				expect(graph.isValidated()).toBe(true);
+				expect(successorGuard.isCurrent()).toBe(true);
+				expect(olderGuard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+			} finally { stop?.(); release.resolve(); await observed; state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('bootstrap and later fallback refresh leave an independently registered runtime B lease unchanged', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit();
+				const b = producers.register(row, 1);
+				const version = producers.version(b), originalState = producers.read(row.id);
+				const notified = jest.fn();
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+				await graph.onApplicationBootstrap();
+				expect(graph.isValidated()).toBe(true);
+				expect(producers.isCurrent(b)).toBe(true);
+				expect(producers.isAvailable(b)).toBe(true);
+				expect(producers.version(b)).toBe(version);
+				expect(producers.read(row.id)).toEqual(originalState);
+				await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(true);
+				expect(producers.isCurrent(b)).toBe(true);
+				expect(producers.isAvailable(b)).toBe(true);
+				expect(producers.version(b)).toBe(version);
+				expect(producers.read(row.id)).toEqual(originalState);
+				expect(notified).not.toHaveBeenCalled();
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
 		it('prepared guard opens only SAME generation ready, old generation never revives and unload closes it', async () => {
 			const row = await seedPublisherOutput(); await corruptProfile(row);
 			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);

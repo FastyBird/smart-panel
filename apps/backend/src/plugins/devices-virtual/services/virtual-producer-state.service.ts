@@ -105,7 +105,8 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 				const hints = new Map(view.configurationRevisions.map((row) => [row.propertyId, row.revision]));
 				const masks = new Map(before.quarantineLeases.map((row) => [row.propertyId, row.lease]));
 				const kinds = new Map<string, 'retain' | 'unavailable' | 'retire-alias-mask' | 'retire-deleted-owned-overlay'>();
-				for (const id of this.engine.ownedPropertyIds.call(this.producers, owner)) {
+				const ownedIds = new Set(this.engine.ownedPropertyIds.call(this.producers, owner));
+				for (const id of ownedIds) {
 					if (!properties.has(id)) kinds.set(id, 'retire-deleted-owned-overlay');
 				}
 				for (const [id, lease] of masks) {
@@ -115,10 +116,14 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 				}
 				for (const property of view.properties) {
 					if (view.quarantined.has(property.id)) kinds.set(property.id, 'unavailable');
-					else if (property.isDerived && !this.producers.owns(property.id)) kinds.set(property.id, 'unavailable');
+					else if (property.isDerived && (ownedIds.has(property.id) || !this.producers.owns(property.id))) kinds.set(property.id, 'unavailable');
 				}
 				batch = this.engine.beginObservedBatch.call(this.producers, owner, [...kinds.keys()], lifecycle.guard);
 				if (this.engine.readOwnedView.call(this.producers, owner) !== before) throw new Error('Owned producer superseded');
+				const currentOwnedIds = new Set(this.engine.ownedPropertyIds.call(this.producers, owner));
+				for (const id of kinds.keys()) {
+					if (ownedIds.has(id) && !currentOwnedIds.has(id)) throw new Error('Owned producer superseded');
+				}
 				const operations: OwnedProducerOperation[] = [];
 				for (const [propertyId, kind] of kinds) {
 					const expected = this.engine.captureExpectedSlot.call(this.producers, batch, propertyId);
