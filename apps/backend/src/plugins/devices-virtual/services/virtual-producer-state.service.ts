@@ -85,7 +85,7 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 			return Object.freeze({ revision: -1, properties: Object.freeze(properties), configurationRevisions: Object.freeze(revisions), quarantined: new Set<string>() });
 		});
 		if (!this.current() || originalMutation !== this.mutation || !lifecycle.isCurrent()) return;
-		const stage = await this.stageOwned(view, lifecycle);
+		const stage = await this.capability.stage.call(this, view, lifecycle);
 		try {
 			if (!this.current() || originalMutation !== this.mutation || !lifecycle.isCurrent() || !this.engine.validatePreparedBatch.call(this.producers, stage.prepared)) return;
 			if (!this.engine.installPreparedNoEvents.call(this.producers, stage.prepared)) return;
@@ -229,7 +229,8 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 
 	private cli(): boolean { return getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on'; }
 	private current(): boolean {
-		return !this.destroyed && ownedProducerMethodCurrent(this.graph, 'captureOwnedPublicationLifecycle', this.captureLifecycle) &&
+		return !this.destroyed && ownedProducerMethodCurrent(this, 'stageOwned', this.capability.stage) &&
+			ownedProducerMethodCurrent(this.graph, 'captureOwnedPublicationLifecycle', this.captureLifecycle) &&
 			this.engine.isOwnedEngineCurrent.call(this.producers, this.engine) &&
 			!!this.owner && this.engine.isOwnedPublisherCurrent.call(this.producers, this.owner);
 	}

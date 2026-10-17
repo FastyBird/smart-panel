@@ -338,6 +338,58 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 
 		// R1 correction: real nonempty no-config catalog, never a fabricated ready guard.
 		// R2 correction: terminal A and fresh B share the SAME live registry and graph.
+		it('held nonempty initialization never invokes a replaced public stager and fresh native lifecycle still publishes', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const batches = jest.spyOn(producers, 'beginObservedBatch');
+			const install = jest.spyOn(producers, 'installPreparedNoEvents');
+			const notified = jest.fn(); events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			const methods: Readonly<{ stageOwned: (...args: Parameters<VirtualProducerStateService['stageOwned']>) => ReturnType<VirtualProducerStateService['stageOwned']> }> = state;
+			const originalStage = methods.stageOwned;
+			const entered = gate(), release = gate(); let held = false;
+			let initialization: Promise<void> | undefined, observed: Promise<void> | undefined;
+			let native: VirtualProducerStateService | undefined, restoreStage: (() => void) | undefined;
+			const subscriber: EntitySubscriberInterface<object> = { async beforeQuery(event) {
+				if (!held && /SELECT/i.test(event.query) && event.query.includes('channels_properties')) {
+					held = true; entered.resolve(); await release.promise;
+				}
+			} };
+			database.subscribers.push(subscriber);
+			try {
+				initialization = state.onModuleInit(); observed = initialization.catch(() => undefined);
+				await entered.promise;
+				const substituted = jest.spyOn(state, 'stageOwned').mockImplementation((view, lifecycle) => originalStage.call(state, view, lifecycle));
+				restoreStage = () => substituted.mockRestore();
+				release.resolve(); await initialization;
+				expect(held).toBe(true);
+				expect(substituted).not.toHaveBeenCalled();
+				expect(batches).not.toHaveBeenCalled();
+				expect(install).not.toHaveBeenCalled();
+				expect(notified).not.toHaveBeenCalled();
+				expect(producers.owns(row.id)).toBe(false);
+				expect(producers.read(row.id)).toBeNull();
+				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+				expect(graph.isValidated()).toBe(false);
+				restoreStage(); state.onModuleDestroy();
+				native = new VirtualProducerStateService(database, producers, graph, events, config);
+				await native.onModuleInit();
+				expect(batches).toHaveBeenCalled();
+				expect(install).toHaveBeenCalled();
+				await graph.onApplicationBootstrap();
+				expect(graph.isValidated()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+				expect(notified).toHaveBeenCalled();
+				state.onModuleDestroy();
+				expect(graph.isValidated()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+			} finally {
+				restoreStage?.(); state.onModuleDestroy(); native?.onModuleDestroy(); release.resolve(); await observed;
+				const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1);
+				producers.onModuleDestroy();
+			}
+		});
+
 		it.each(['refresh', 'synchronous-hook'])(
 			'only owns substitution after capture cannot overwrite independent runtime B through %s',
 			async (route) => {
