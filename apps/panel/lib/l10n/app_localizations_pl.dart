@@ -4860,5 +4860,5 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get dewPointInstallation =>
-      'Zainstalowane chłodzenie pozostaje niedopuszczone do kwalifikacji powierzchni, uwierzytelniania, czasu, izolacji zapisu i wyłączenia po restarcie po wersji alfa.';
+      'Zainstalowane chłodzenie pozostaje niedopuszczone do czasu kwalifikacji powierzchni, uwierzytelniania, synchronizacji czasowej, izolacji zapisu i opróżnienia po restarcie po wersji alfa.';
 }
