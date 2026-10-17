@@ -21,7 +21,11 @@ vi.mock('../../../modules/devices/store/keys', () => ({
 vi.mock('../../../common', () => ({
 	useBackend: () => ({ client: mocks }),
 	injectStoresManager: () => ({
-		getStore: (key: string) => ({ fetch: async () => {}, findAll: () => (key === 'properties' ? mocks.properties : []) }),
+		getStore: (key: string) => ({
+			fetch: async () => {},
+			findAll: () => (key === 'properties' ? mocks.properties : []),
+			findById: (id: string) => (key === 'properties' ? mocks.properties.find((property) => (property as { id: string }).id === id) : null),
+		}),
 	}),
 }));
 const profiles = [
@@ -354,6 +358,39 @@ describe('trusted numeric operator form', () => {
 		expect(input.props('min')).toBe(-10);
 		expect(input.props('max')).toBe(10);
 		expect(wrapper.get('[data-test-id="numeric-operator-domains"]').text()).toContain('temperature (°C)');
+		wrapper.unmount();
+	});
+});
+
+describe('measurement editor dedicated quantity routing', () => {
+	it('opens persisted dew-point repair through the actual wrapper instead of the one-input transform editor', async () => {
+		mocks.properties = [{ id: 'dew-output', measurementQuantity: 'dew_point' }];
+		mocks.GET.mockResolvedValue({
+			data: {
+				data: {
+					output_property: 'dew-output',
+					revision: 1,
+					graph_revision: 5,
+					quantity: 'dew_point',
+					unit: '°C',
+					maximum_age_seconds: 30,
+					maximum_skew_seconds: 2,
+					quality: 'unavailable',
+					current_value: null,
+					expires_at: null,
+					errors: ['missing'],
+					sources: [
+						{ role: 'dry_bulb', source_property: 't', source_identity: 't', errors: [] },
+						{ role: 'relative_humidity', source_property: null, source_identity: 'retained-rh', errors: ['missing'] },
+					],
+				},
+			},
+		});
+		const wrapper = mount(VirtualMeasurementEditor, { props: { mode: DevicesVirtualPluginDeviceMode.sensor_transform, outputId: 'dew-output' } });
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="dew-point-editor"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('retained-rh');
+		expect(mocks.GET.mock.calls.map((call) => call[0])).toEqual(['/plugins/devices-virtual/producers/dew-points/{id}']);
 		wrapper.unmount();
 	});
 });

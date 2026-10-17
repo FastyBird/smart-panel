@@ -33,20 +33,30 @@ entire acceptance is satisfied, even when its PR also closes other issues.
 - [x] VD3-3 / #1450: measurement authoring and quality presentation (merged in #1465).
 - [x] VD3-4 / #1451: typed group contracts and backend switch/outlet profiles.
 
-Both tasks merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
+VD3-1 and VD3-4 merged in #1464 at `ad5cf678d47eeae4f575c652e03e3c6f5f1998ba`. All CI checks passed on the reviewed
 head `0e6fe2d0f22988158867b74bc74711b76647c719`, and CodeRabbit's completed main summary reported no merge blockers.
-Admin/panel support for the new group profiles remains VD3-6; these checkmarks do not claim that UI work is delivered.
+Admin/Panel support for the new group profiles merged as the VD3-6 software slice in PR #1466.
 
-### Locally staged; pending PR review and CI
+### Group controls merged; remaining acceptance
 
-- [ ] VD3-5 / #1452: fan/cover backend with qualified Shelly NG COMMAND feedback, accepted independently before composition.
-- [ ] VD3-6 / #1453: five-profile Admin authoring/repair, native Panel controls, scenes and existing cover/light room paths.
+- [ ] VD3-5 / #1452: fan/cover backend with qualified Shelly NG COMMAND feedback merged in PR #1466;
+  POSITION/TILT completion and unqualified cover providers remain unavailable, so the full issue remains partial.
+- [x] VD3-6 / #1453: five-profile Admin authoring/repair, native Panel controls, scenes and existing cover/light room paths
+  merged as the group UI software slice in PR #1466.
 
-The accepted backend commits are composed onto merged #1465 main `4f4dd1f346fa5e9508c729f5b0d11a23a416f465` in
-`feat/virtual-actuator-profiles-ui`. Existing numeric/binary editor changes are preserved; cover migration remains 38.
-Delivery [PR #1466](https://github.com/FastyBird/smart-panel/pull/1466) targets `main` and awaits exact-head CI and CodeRabbit review. POSITION/TILT completion and unqualified cover providers remain unavailable. There is
-no standalone switch/outlet/fan room intent domain; their native device and scene controls do not imply such a domain.
-These limits and software-only checks must remain explicit in review. Neither #1452 nor #1453 is marked complete here.
+[PR #1466](https://github.com/FastyBird/smart-panel/pull/1466) merged at
+`6414291237813856b9a4b7c05401b225820df677` after exact-head CI and CodeRabbit approval.
+Existing numeric/binary editor changes are preserved; cover migration remains 38. There is no standalone
+switch/outlet/fan room intent domain; their native device and scene controls do not imply such a domain.
+Software completion does not establish installed hardware qualification.
+
+VD3-2 and VD3-3 merged in [PR #1465](https://github.com/FastyBird/smart-panel/pull/1465) at
+`4f4dd1f346fa5e9508c729f5b0d11a23a416f465`. Thermostat comfort and mandatory branches are now composed locally
+onto the merged backend (PR #1469, main `2c90a80651b4fab1b6e2c1ffa44121c4595835db`). Client integration,
+composed local checks and pinned Flutter localization generation are recorded in
+`docs/work/virtual-thermostat/member-client-validation.md`; neither #1454 nor #1455 is marked fully delivered here.
+The review corrections pass focused local checks and the Spanish ARB correction has pinned localization generation.
+Fresh independent review and exact-head CI/CodeRabbit remain required before parent publication. Installed qualification, #1458 and the epic remain open.
 
 | ID                                                                   | Deliverable                                                                   | Depends on                                                           | Primary ownership                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -106,3 +116,36 @@ Track calibration/limits, equipment protection, writer isolation, local release/
 supported native HA/Zigbee devices and real HomeKit pairing. The existing
 [Shelly commissioning record](../../docs/work/virtual-thermostat/shelly-commissioning.md) stays unqualified until evidence
 is recorded; software checkmarks do not establish installed safety or imply relay/script writes occurred.
+
+## VD3-10 local backend delivery
+
+The provider-neutral mandatory-branch backend foundation is integrated locally on the merged PR #1465 base; see the
+[implementation and validation record](../../docs/work/virtual-thermostat/parallel-branches-validation.md).
+Migration 40 retains singleton claim/journal identities and unresolved ownership. The composed foundation/comfort
+head `5cabef74eb9f914d6970e3cfd526df5a8c4f4608` passed independent local review, without publication.
+Per-member floor protection (migration 41) is being integrated with Admin member arrays, read-only source/setup
+context, diagnostics and fenced staging/recovery; see the [client integration record](../../docs/work/virtual-thermostat/member-client-validation.md).
+The original-owner safety correction and read-only runtime diagnostics passed independent local review; composed
+backend validation passed 26 suites / 508 tests. Admin member authoring corrections are independently accepted; narrow
+activity/qualification freshness correction also passed independent local review. The independently accepted Panel field follow-up is
+integrated locally; composed client validation passed 6 Panel suites / 50 tests and 11 Admin files / 63 tests. Multi-Shelly groups require explicitly bound local guards, separately
+reviewed/staged member installations and actual qualification; no installed eligibility is supplied by these local changes.
+The milestone checkboxes above remain open until composed acceptance; no native-unit adapter or installed equipment
+qualification is claimed by this backend slice.
+
+VD3-7 local implementation includes backend comfort configuration/API, arbitration, durable override recovery and
+dispatch fencing, plus Admin authoring and Panel selection/override diagnostics with all six locales and UI tests.
+Final composed publication review remains open; VD3-7 is not complete. Automation defaults disabled and the
+internal trusted baseline port is reserved for the separate VD3-8 bridge. Bounded restart recovery preserves the
+absolute expiry; observable clock uncertainty inhibits output until an explicit operator action. No hardware
+qualification or physical actuation is part of this local implementation stage.
+
+VD3-9 / #1459 has a locally committed dew-point/cooling software candidate on the composed climate+SDK base.
+Historical backend round-two and client round-one reviews accepted their source checkpoints. The candidate is now
+composed with current climate/main sources, including merged PR #1466 and final climate UI `8ce7a5a`. Own generation
+and fresh scoped checks passed after bounded aggregate cohort/expiry corrections; final independent composed review
+and parent publication gates remain separate. Historical backend (135), Admin (53) and Panel (76) results do not
+validate this merge. Fresh per-head results, retained failures and limits are recorded in its
+[contract and verification record](../../docs/work/virtual-thermostat/dew-point-cooling-validation.md), which keeps generated
+contracts, UI/protocol/persistence tests, independent review and installed qualification explicitly separate. The
+acceptance checkboxes remain open; no issue closure, publication, hardware deployment or certification is claimed.

@@ -90,6 +90,8 @@ export interface ThermostatReleaseOrderingEvidence<Qualification> {
 	/** Provider barrier includes all earlier transport aliases and commands, including pre-claim ordinary writers. */
 	readonly externalWriterBarrier: true;
 	readonly offSample: QualifiedPropertySample;
+	/** Metadata retirement only after the caller has committed these exact journal identities as confirmed. */
+	readonly retireConfirmedCommandIds?: (ids: readonly string[]) => void;
 }
 /**
  * Read-only original provider/session continuity, NOT installed readiness, claim/CAS or sample authority.
@@ -122,6 +124,7 @@ export interface ThermostatActuationAdapter<Qualification> {
 		claim: VirtualThermostatActuatorClaimEntity,
 		qualification: Qualification | null,
 		isAdmitted: () => boolean,
+		dispatch?: { readonly commandId: string },
 	): Promise<ThermostatActuationResult>;
 	/** Only tested ordered/correlated or cancellation barriers may return proof; RPC acceptance is insufficient. */
 	reconcile(

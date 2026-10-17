@@ -5,6 +5,7 @@ import { PlatformRegistryService } from '../../../modules/devices/services/platf
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ShellyNgDeviceEntity } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
+import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import {
 	CapturedThermostatReconcileReadiness,
 	ThermostatActuationAdapter as ProviderActuationAdapter,
@@ -15,6 +16,7 @@ import {
 } from '../contracts/thermostat-actuation.contract';
 import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermostat.entity';
 
+import { RemoteCoolingFrame, ThermostatRemoteCoolingAdapter } from './thermostat-remote-cooling-adapter';
 import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
 import {
 	thermostatActuatorIdentity,
@@ -42,6 +44,18 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 	/** Mutation-owned per-type epochs. Lookup never creates one; absence is a stable initial incarnation. */
 	private readonly registrationEpochs = new Map<string, symbol>();
 	private destroyed = false;
+	private remoteCooling?: ThermostatRemoteCoolingAdapter;
+	private coolingFrameReader?: (claim: VirtualThermostatActuatorClaimEntity) => RemoteCoolingFrame | null;
+	registerCoolingFrameReader(
+		reader: (claim: VirtualThermostatActuatorClaimEntity) => RemoteCoolingFrame | null,
+	): () => void {
+		if (this.coolingFrameReader) throw new Error('Cooling evidence reader already registered');
+		this.coolingFrameReader = reader;
+		return () => {
+			if (this.coolingFrameReader === reader) this.coolingFrameReader = undefined;
+		};
+	}
+
 	constructor(
 		private readonly platforms: PlatformRegistryService,
 		private readonly values: PropertyValueService,
@@ -293,6 +307,28 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 
 	get(target: IDevicePropertyData, claim?: VirtualThermostatActuatorClaimEntity): ThermostatActuationAdapter | null {
 		if (this.destroyed) return null;
+		if (
+			claim?.providerProfile === REMOTE_DEW_POINT_PROFILE &&
+			claim.providerProfileVersion === 1 &&
+			claim.role === 'cooling'
+		) {
+			return (this.remoteCooling ??= new ThermostatRemoteCoolingAdapter(
+				this.values,
+				(member) => this.coolingFrameReader?.(member) ?? null,
+				async (leaf, current) => {
+					const platform = this.platforms.get(leaf.device);
+					if (!(leaf.device instanceof ShellyNgDeviceEntity) || !(platform instanceof ShellyNgDevicePlatform))
+						return { outcome: 'refused', reasons: ['unsupported_protective_leaf'] };
+					return platform.processProtectiveCommand(
+						{ device: leaf.device, channel: leaf.channel, property: leaf.property },
+						{ on: false },
+						1000,
+						current,
+					);
+				},
+			));
+		}
+
 		const supplied = this.adapters.get(target.device.type);
 		if (supplied)
 			return !claim ||

@@ -1,3 +1,5 @@
+import { VirtualCoolingPolicy, validCoolingPolicy } from './virtual-cooling-policy.utils';
+
 /** Deterministic demand policy. The runtime owns claims, durable dispatch and physical confirmation. */
 export type VirtualThermostatMode = 'off' | 'heat' | 'cool' | 'auto';
 export interface VirtualThermostatPolicy {
@@ -9,6 +11,7 @@ export interface VirtualThermostatPolicy {
 	minimumOffMs: number;
 	changeoverMs: number;
 	floor: { limit: number; recoveryHysteresis: number } | null;
+	cooling?: VirtualCoolingPolicy | null;
 }
 export interface ThermostatActuatorEvidence {
 	activity: 'on' | 'off' | 'unknown';
@@ -43,6 +46,8 @@ export interface VirtualThermostatDecision {
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 export function validateVirtualThermostatPolicy(policy: VirtualThermostatPolicy): string[] {
 	const reasons: string[] = [];
+	if (policy?.cooling && (!validCoolingPolicy(policy.cooling) || policy.coolingSetpoint === null))
+		reasons.push('invalid_cooling_policy');
 	if (
 		!policy ||
 		!finite(policy.coldTolerance) ||

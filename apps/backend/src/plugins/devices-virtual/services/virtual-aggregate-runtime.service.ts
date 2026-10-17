@@ -324,7 +324,25 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 			if (!this.current(generation)) return;
 			if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) continue;
 			this.diagnostics.set(property.id, result);
-			await this.publish(output, evaluation, result, now);
+			// Capture the entire admitted comparison cohort, including samples later filtered as outliers.
+			const admitted = new Set(
+				result.inputs
+					.filter((input) => input.exclusion === null || input.exclusion === 'outlier')
+					.map((input) => input.id),
+			);
+			const cohort = evidence.filter((input) => input.sample && admitted.has(input.id));
+			const lineage = cohort.map((input) => input.incorporated);
+			if (result.quality === 'good' && lineage.some((input) => !input)) {
+				this.producers.invalidate(output.lease, ['protective_lineage_unavailable']);
+				continue;
+			}
+			await this.publish(
+				output,
+				evaluation,
+				result,
+				now,
+				lineage.filter((input) => !!input),
+			);
 		}
 	}
 
@@ -382,6 +400,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 					sourceIdentity: input.sourcePropertyIdentity,
 					weight: input.weight,
 					sample,
+					incorporated: sample ? this.values.captureIncorporatedSample(source) : undefined,
 					expiresAt:
 						source && this.producers.owns(source.id)
 							? new Date(this.producers.readDiagnosticState(source.id)?.producer.expiresAt ?? NaN)
@@ -419,6 +438,7 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 		evaluation: PropertyProducerEvaluation,
 		result: AggregateEvaluation,
 		now: Date,
+		sourceSamples: import('../../../modules/devices/models/property-sample.model').IncorporatedPropertySample[],
 	): Promise<void> {
 		if (!this.producers.isEvaluationCurrent(output.lease, evaluation)) return;
 		if (result.quality === 'unavailable') {
@@ -435,7 +455,9 @@ export class VirtualAggregateRuntimeService implements OnApplicationBootstrap, O
 				reasons: result.reasons,
 				sampledAt: result.sampledAt,
 				evaluatedAt: now,
+				// Evaluation already bounds every admitted comparison by its original configured/inherited expiry.
 				expiresAt: result.expiresAt,
+				...(sourceSamples.length ? { sourceSamples } : {}),
 			},
 			evaluation,
 		);

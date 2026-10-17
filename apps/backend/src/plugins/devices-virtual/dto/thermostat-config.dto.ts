@@ -35,8 +35,97 @@ export class VirtualThermostatFloorGuardDto {
 	recoveryHysteresis: number;
 }
 
+@ApiSchema({ name: 'DevicesVirtualPluginCoolingPolicy' })
+export class VirtualCoolingPolicyDto {
+	@ApiProperty({ enum: [1], description: 'Separate condensation protection schema' })
+	@Expose()
+	@IsIn([1])
+	schemaVersion: 1;
+	@ApiProperty({ minimum: 0, maximum: 60, description: 'Explicit positive dew point margin Celsius' })
+	@Expose()
+	@IsNumber()
+	@Min(Number.EPSILON)
+	@Max(60)
+	marginC: number;
+	@ApiProperty({ minimum: 0, maximum: 60, description: 'Strict recovery above threshold plus positive hysteresis' })
+	@Expose()
+	@IsNumber()
+	@Min(Number.EPSILON)
+	@Max(60)
+	recoveryHysteresisC: number;
+	@ApiPropertyOptional({
+		type: Number,
+		nullable: true,
+		description: 'Optional independent absolute cooled-surface minimum Celsius',
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-45 + Number.EPSILON)
+	@Max(60)
+	absoluteMinimumC?: number | null;
+}
+
+@ApiSchema({ name: 'DevicesVirtualPluginCoolingDependency' })
+export class ThermostatCoolingDependencyDto {
+	@ApiProperty({ enum: [1], description: 'Retained per-member cooling dependency version' })
+	@Expose()
+	@IsIn([1])
+	schemaVersion: 1;
+	@ApiProperty({
+		name: 'dew_point_property',
+		nullable: true,
+		type: String,
+		description: 'Dedicated dew point output; null only retains an existing missing identity',
+	})
+	@Expose({ name: 'dew_point_property' })
+	@IsOptional()
+	@IsUUID('4')
+	dewPointPropertyId: string | null;
+	@ApiProperty({
+		name: 'surface_property',
+		nullable: true,
+		type: String,
+		description: 'Genuine local cooled-surface probe; ambient cannot substitute',
+	})
+	@Expose({ name: 'surface_property' })
+	@IsOptional()
+	@IsUUID('4')
+	surfacePropertyId: string | null;
+	@ApiProperty({
+		enum: ['cooled_surface'],
+		description: 'Binding purpose; authoring alone does not qualify its installation',
+	})
+	@Expose()
+	@IsIn(['cooled_surface'])
+	purpose: 'cooled_surface';
+	@ApiProperty({
+		name: 'maximum_age_seconds',
+		minimum: 1,
+		maximum: 86400,
+		description: 'Original local-surface and dew-point evidence age bound',
+	})
+	@Expose({ name: 'maximum_age_seconds' })
+	@IsInt()
+	@Min(1)
+	@Max(86400)
+	maximumAgeSeconds: number;
+}
+
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatPolicy' })
 export class VirtualThermostatPolicyDto {
+	@ApiPropertyOptional({
+		type: VirtualCoolingPolicyDto,
+		nullable: true,
+		description:
+			'Independent optional dew point cooling cutoff; each mandatory cooling leaf requires explicit dependencies',
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => VirtualCoolingPolicyDto)
+	cooling?: VirtualCoolingPolicyDto | null;
+
 	@ApiProperty({
 		description: 'Heating comfort setpoint in Celsius; null means no heating branch',
 		type: Number,
@@ -267,6 +356,17 @@ export class ThermostatMemberProtectionDto {
 
 @ApiSchema({ name: 'DevicesVirtualPluginThermostatActuator' })
 export class VirtualThermostatActuatorDto {
+	@ApiPropertyOptional({
+		name: 'cooling_protection',
+		type: ThermostatCoolingDependencyDto,
+		description: 'Separate mandatory cooling-leaf dependencies',
+	})
+	@Expose({ name: 'cooling_protection' })
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ThermostatCoolingDependencyDto)
+	coolingProtection?: ThermostatCoolingDependencyDto;
+
 	@ApiPropertyOptional({
 		type: ThermostatMemberProtectionDto,
 		description: 'Mandatory for every parallel heating member; omission preserves only an existing legacy singleton',

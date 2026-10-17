@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -240,6 +242,173 @@ void main() {
         ),
       ]) {
         expect(diagnostic.valueAt(now), isNull);
+      }
+    },
+  );
+  test(
+    'source-generated API decodes both dew-point roles and retained missing identity through the actual diagnostics loader',
+    () async {
+      final now = DateTime.now();
+      final calls = <String>[];
+      final dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            calls.add(options.path);
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: {
+                  'status': 'success',
+                  'timestamp': now.toIso8601String(),
+                  'request_id': 'fixture',
+                  'path': options.path,
+                  'method': 'GET',
+                  'metadata': {
+                    'request_duration_ms': 1.0,
+                    'server_time': now.toIso8601String(),
+                    'cpu_usage': 0.0,
+                  },
+                  'data': {
+                    'output_property': 'output',
+                    'schema_version': 1,
+                    'formula_version': 'magnus-water-17.62-243.12-v1',
+                    'revision': 1,
+                    'graph_revision': 5,
+                    'maximum_age_seconds': 30,
+                    'maximum_skew_seconds': 2,
+                    'quantity': 'dew_point',
+                    'unit': '°C',
+                    'quality': 'unavailable',
+                    'current_value': null,
+                    'expires_at': null,
+                    'errors': ['missingRH', 'lineage'],
+                    'sources': [
+                      {
+                        'role': 'dry_bulb',
+                        'source_property': 't',
+                        'source_identity': 't',
+                        'contract_fingerprint': 't-fingerprint',
+                        'quantity': 'temperature',
+                        'unit': '°C',
+                        'domain': {
+                          'minimum': -45,
+                          'maximum': 60,
+                          'minimumExclusive': true,
+                        },
+                        'current_value': 20,
+                        'sampled_at': now.toIso8601String(),
+                        'age_seconds': 0,
+                        'errors': [],
+                      },
+                      {
+                        'role': 'relative_humidity',
+                        'source_property': null,
+                        'source_identity': 'retained-rh',
+                        'contract_fingerprint': 'rh-fingerprint',
+                        'quantity': 'humidity',
+                        'unit': '%',
+                        'domain': {
+                          'minimum': 0,
+                          'maximum': 100,
+                          'minimumExclusive': true,
+                        },
+                        'current_value': null,
+                        'sampled_at': null,
+                        'age_seconds': null,
+                        'errors': ['missing'],
+                      },
+                    ],
+                  },
+                },
+              ),
+            );
+          },
+        ),
+      );
+      locator.registerSingleton<ApiClient>(
+        ApiClient(dio, baseUrl: 'http://fixture.invalid'),
+      );
+      try {
+        final diagnostics = await loadMeasurementDiagnostics('output');
+        expect(calls, hasLength(1));
+        expect(calls.single, contains('/dew-points/output'));
+        expect(diagnostics.dewPoint, isTrue);
+        expect(diagnostics.transform, isFalse);
+        expect(diagnostics.errors, ['missingRH', 'lineage']);
+        expect(diagnostics.inputs.map((input) => input.role), [
+          'dry_bulb',
+          'relative_humidity',
+        ]);
+        expect(diagnostics.inputs[1].identity, 'retained-rh');
+        expect(diagnostics.inputs[1].sourceId, isNull);
+        expect(diagnostics.inputs[0].unit, '°C');
+        expect(diagnostics.inputs[1].unit, '%');
+        expect(
+          diagnostics.inputs.every((input) => input.valueAt(now) == null),
+          isTrue,
+        );
+      } finally {
+        locator.unregister<ApiClient>();
+        dio.close();
+      }
+    },
+  );
+  testWidgets(
+    'dew-point diagnostics label BOTH roles and retained source blockers without claiming a live ambient temperature',
+    (tester) async {
+      await tester.pumpWidget(
+        app(
+          property(),
+          (_) async => const MeasurementDiagnostics(
+            transform: false,
+            dewPoint: true,
+            inputs: [
+              MeasurementInputDiagnostic(
+                identity: 'temperature-id',
+                role: 'dry_bulb',
+                unit: '°C',
+              ),
+              MeasurementInputDiagnostic(
+                identity: 'retained-rh',
+                role: 'relative_humidity',
+                unit: '%',
+                exclusion: 'missing',
+              ),
+            ],
+            errors: ['lineage'],
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Dew point'), findsOneWidget);
+      expect(find.textContaining('Dry-bulb temperature'), findsOneWidget);
+      expect(find.textContaining('Relative humidity'), findsOneWidget);
+      expect(find.textContaining('retained-rh: —'), findsOneWidget);
+      expect(find.text('Quality: Unavailable'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  test(
+    'unknown or lineage input failures cannot display a qualified numeric value',
+    () {
+      final now = DateTime.now();
+      for (final reason in [
+        'lineage',
+        'skew',
+        'awaiting_fresh_sample',
+        'new_protection_failure',
+      ]) {
+        expect(
+          MeasurementInputDiagnostic(
+            identity: 'input',
+            value: 20,
+            exclusion: reason,
+            sampledAt: now,
+            expiresAt: now.add(const Duration(seconds: 30)),
+          ).valueAt(now),
+          isNull,
+        );
       }
     },
   );

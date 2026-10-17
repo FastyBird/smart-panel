@@ -23,6 +23,15 @@ export interface PropertySampleEvidence {
 export interface IncorporatedPropertySample {
 	readonly propertyId: string;
 	readonly acceptanceGeneration: number;
+	/** Derived authority is a real publication, never a physical acceptance with a leaf ID. */
+	readonly producer?: Readonly<{
+		lease: object;
+		publication: number;
+		revision: number;
+		expiresAt: number;
+		quality: PropertyProducerQuality;
+	}>;
+	readonly sources?: readonly IncorporatedPropertySample[];
 }
 
 export interface AcceptedPropertySample {
@@ -49,6 +58,8 @@ export interface DerivedPropertyPublication {
 	readonly evaluatedAt: Date;
 	readonly expiresAt: Date;
 	readonly sourceSample?: IncorporatedPropertySample;
+	/** Additive multi-input contract; supplying both forms is ambiguous and rejected. */
+	readonly sourceSamples?: readonly IncorporatedPropertySample[];
 }
 
 export interface QualifiedPropertySample extends AcceptedPropertySample {
