@@ -89,6 +89,7 @@ describe('virtual thermostat durable runtime', () => {
 	let directory: string;
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
+	let realGuardFixtures: Awaited<ReturnType<typeof realThermostatGuardFixture>>[];
 	let comfort: VirtualThermostatComfortService;
 	let configs: VirtualThermostatConfigService;
 	let onSent: ((propertyId: string) => void) | null;
@@ -143,6 +144,7 @@ describe('virtual thermostat durable runtime', () => {
 		});
 	};
 	beforeEach(async () => {
+		realGuardFixtures = [];
 		directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-runtime-'));
 		database = await new SqliteDataSource({
 			type: 'sqlite',
@@ -458,11 +460,17 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
-		jest.restoreAllMocks();
+		// Close runtime and original managed authority before awaiting resources or restoring protocol mocks.
 		runtime?.onModuleDestroy();
-		jest.useRealTimers();
-		if (database?.isInitialized) await database.destroy();
-		await rm(directory, { recursive: true, force: true });
+		for (const fixture of realGuardFixtures) fixture.revoke();
+		try {
+			await Promise.all(realGuardFixtures.map((fixture) => fixture.close()));
+		} finally {
+			jest.restoreAllMocks();
+			jest.useRealTimers();
+			if (database?.isInitialized) await database.destroy();
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 	const waitForOnJournal = async (): Promise<VirtualThermostatCommandEntity> => {
 		for (let attempt = 0; attempt < 6; attempt++) {
@@ -1762,12 +1770,54 @@ describe('virtual thermostat durable runtime', () => {
 	const useRealGuard = async () => {
 		runtime.onModuleDestroy();
 		const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications);
+		realGuardFixtures.push(fixture);
 		for (const [id, sample] of samples) await fixture.report(id, sample.value as number | boolean);
 		values = fixture.values;
 		runtime = makeRuntime(undefined, undefined, fixture.transport);
 		await runtime.onApplicationBootstrap();
 		return fixture;
 	};
+
+	it.each(['closed', 'unmanaged'] as const)(
+		'keeps actual %s delegate sessions closed without an original managed runtime admission',
+		async (mode) => {
+			runtime.onModuleDestroy();
+			const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, mode);
+			realGuardFixtures.push(fixture);
+			expect(fixture.captureSession(relayId)).toBeNull();
+			expect(fixture.controls.fences).toEqual([]);
+			expect(fixture.controls.sends).toEqual([]);
+			expect(fixture.controls.errors).toEqual([]);
+		},
+	);
+
+	it('requires an actual stopped-to-managed start and permanently revokes its original session at stop entry', async () => {
+		runtime.onModuleDestroy();
+		const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'unmanaged');
+		realGuardFixtures.push(fixture);
+		expect(fixture.captureSession(relayId)).toBeNull();
+		expect(await fixture.startManaged()).toBe(false); // A managed call cannot rescue an already unmanaged start.
+		expect(fixture.captureSession(relayId)).toBeNull();
+		expect(await fixture.stopManaged()).toBe(true);
+		expect(await fixture.startManaged()).toBe(true);
+		await fixture.insert();
+		const original = fixture.captureSession(relayId);
+		expect(original).not.toBeNull();
+		if (!original) throw new Error('Expected original real managed session');
+		expect(original.isCurrent()).toBe(true);
+		const stopping = fixture.stopManaged();
+		expect(original.isCurrent()).toBe(false); // Before the stop lifecycle lock/drain can await.
+		await stopping;
+		expect(await fixture.startManaged()).toBe(true);
+		await fixture.insert();
+		const fresh = fixture.captureSession(relayId);
+		expect(fresh).not.toBeNull();
+		expect(fresh?.isCurrent()).toBe(true);
+		expect(original.isCurrent()).toBe(false);
+		expect(fixture.controls.fences).toEqual([]);
+		expect(fixture.controls.sends).toEqual([]); // Lifecycle and capture never replay protective actuation.
+		expect(fixture.controls.errors).toEqual([]);
+	});
 
 	it('recovers startup, trip and restart through real guard-session OFF admission events including unchanged OFF', async () => {
 		const sibling = await addMandatoryMember();
