@@ -1,9 +1,17 @@
 import { EntityManager, EntityTarget, ObjectLiteral } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
+
+import { getEnvValue } from '../../../common/utils/config.utils';
 
 import {
+	ClimateAutomationControllerFacts,
 	ClimateAutomationGraphReplacementPlan,
+	ClimateAutomationManualCapability,
+	ClimateAutomationOwnedRegistration,
+	ClimateAutomationParticipant,
+	ClimateAutomationProvider,
 	ClimateAutomationJson,
 	ClimateAutomationManualIntent,
 	ClimateAutomationParticipantConflict,
@@ -24,6 +32,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import {
 	VirtualChannelPropertyEntity,
@@ -36,6 +45,7 @@ import { VirtualDewPointConfigEntity, VirtualDewPointSourceEntity } from '../ent
 import {
 	VirtualAggregateConfigEntity,
 	VirtualAggregateInputEntity,
+	VirtualGraphRevisionEntity,
 	VirtualLightGroupBindingEntity,
 	VirtualLightGroupConfigEntity,
 	VirtualLightGroupMemberEntity,
@@ -49,6 +59,7 @@ import {
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
@@ -1076,10 +1087,71 @@ export function planThermostatAutomationGraph(before: unknown, next: unknown): C
 	});
 }
 
-/** Dormant concrete codec/materializer only. No lifecycle/registration, private-ledger writes, values or actions. */
+/** Manual-only internal provider. Registration grants no creation, source, graph or physical authority. */
 @Injectable()
-export class VirtualThermostatAutomationService {
-	constructor(private readonly writer: ClimateAutomationWriterService) {}
+export class VirtualThermostatAutomationService implements OnModuleInit, OnModuleDestroy {
+	private readonly provider: ClimateAutomationProvider;
+	private registration?: ClimateAutomationOwnedRegistration;
+	private destroyed = false;
+
+	constructor(
+		private readonly writer: ClimateAutomationWriterService,
+		private readonly registry: ClimateAutomationRegistryService,
+		private readonly graph: VirtualDependencyGraphService,
+		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+	) {
+		// Published closures retain these exact original functions and receiver; never look up a newer alias.
+		const methods: {
+			readonly readInManager: (...args: Parameters<VirtualThermostatAutomationService['readInManager']>) => ReturnType<VirtualThermostatAutomationService['readInManager']>;
+			readonly readControllerFactsInManager: (...args: Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>) => ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>;
+			readonly validateManualIntentInManager: (...args: Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>) => ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>;
+			readonly readRetainedHistoryInManager: (...args: Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>) => ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>;
+			readonly applyManualIntentInManager: (...args: Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>) => ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>;
+		} = this;
+		const read = methods.readInManager,
+			facts = methods.readControllerFactsInManager,
+			validate = methods.validateManualIntentInManager,
+			history = methods.readRetainedHistoryInManager,
+			apply = methods.applyManualIntentInManager;
+		const unavailable = (): never => {
+			throw new ClimateAutomationParticipantConflict('unavailable');
+		};
+		const manual = Object.freeze<ClimateAutomationManualCapability>({
+			version: 1,
+			codec: 'virtual-thermostat-c0:v1',
+			validateInManager: (manager, turn, intent, before, next) => validate.call(this, manager, turn, intent, before, next),
+			readRetainedHistoryInManager: (manager, turn, controllerId) => history.call(this, manager, turn, controllerId),
+		});
+		const participant = Object.freeze<ClimateAutomationParticipant>({
+			version: 1,
+			graph: this.graph,
+			readInManager: (manager, turn, controllerId) => read.call(this, manager, turn, controllerId),
+			normalizeInManager: unavailable,
+			planGraphReplacementInManager: unavailable,
+			applyInManager: (manager, turn, before, next) => apply.call(this, manager, turn, before, next),
+			manualIntentV1: manual,
+		});
+		this.provider = Object.freeze<ClimateAutomationProvider>({
+			participantV1: participant,
+			readControllerInManager: (manager, controllerId) => facts.call(this, manager, controllerId),
+			validateSelectionInManager: unavailable,
+			createControllerInManager: unavailable,
+		});
+	}
+
+	onModuleInit(): void {
+		if (this.destroyed) throw new Error('Thermostat automation provider is destroyed');
+		if (this.registration || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
+		const registration = this.registry.registerProviderOwned('virtual-thermostat:v1', this.provider);
+		if (!registration) throw new Error('Thermostat automation provider registration unavailable');
+		this.registration = registration;
+	}
+
+	onModuleDestroy(): void {
+		this.destroyed = true;
+		this.registration?.dispose();
+		this.registration = undefined;
+	}
 
 	async readInManager(
 		manager: EntityManager,
@@ -1088,6 +1160,28 @@ export class VirtualThermostatAutomationService {
 	): Promise<ClimateAutomationParticipantImage | null> {
 		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 		id(controllerId);
+		const rows = await this.readRowsInManager(manager, controllerId);
+		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		return rows === null ? null : thermostatAutomationImage(rows);
+	}
+
+	/** Separate trusted provider callback: no turn exists here; every invocation queries this manager anew. */
+	async readControllerFactsInManager(manager: EntityManager, controllerId: string): Promise<ClimateAutomationControllerFacts | null> {
+		id(controllerId);
+		const rows = await this.readRowsInManager(manager, controllerId);
+		if (rows === null) return null;
+		const image = thermostatAutomationImage(rows);
+		if (image === null) return null;
+		const singleton = await manager.createQueryBuilder(VirtualGraphRevisionEntity, 'graph')
+			.where('graph.id = :id', { id: 1 }).callListeners(false).getOne();
+		if (!singleton) throw new ClimateAutomationParticipantConflict('uninitialized');
+		if (!Number.isSafeInteger(singleton.revision) || singleton.revision < 0)
+			throw new ClimateAutomationParticipantConflict('invalid');
+		return Object.freeze({ controllerRevision: image.controllerRevision, graphRevision: singleton.revision,
+			evidence: climateAutomationJson(image), legacyBaseline: image.legacyBaseline });
+	}
+
+	private async readRowsInManager(manager: EntityManager, controllerId: string): Promise<ThermostatAutomationRows | null> {
 		const read = <T extends ObjectLiteral>(
 			entity: EntityTarget<T>,
 			condition = '1=1',
@@ -1153,8 +1247,7 @@ export class VirtualThermostatAutomationService {
 				groupBindings: await read(VirtualLightGroupBindingEntity),
 			},
 		};
-		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
-		return thermostatAutomationImage(rows);
+		return rows;
 	}
 
 	planInManager(
