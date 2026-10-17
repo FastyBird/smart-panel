@@ -1,4 +1,7 @@
-import { QualifiedPropertySample } from '../../../modules/devices/models/property-sample.model';
+import {
+	IncorporatedPropertySample,
+	QualifiedPropertySample,
+} from '../../../modules/devices/models/property-sample.model';
 import { PropertyProducerQuality } from '../../../modules/devices/models/property-value-state.model';
 import { VirtualAggregateFilter, VirtualAggregateOperator } from '../entities/virtual-producer.entity';
 
@@ -9,6 +12,7 @@ export interface AggregateInputEvidence {
 	readonly id: string;
 	readonly sourceIdentity: string;
 	readonly sample: QualifiedPropertySample | null;
+	readonly incorporated?: IncorporatedPropertySample;
 	readonly weight?: number;
 	readonly expiresAt?: Date;
 	readonly exclusion?: AggregateExclusion;

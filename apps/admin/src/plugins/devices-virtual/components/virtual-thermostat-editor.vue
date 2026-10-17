@@ -264,6 +264,10 @@
 					Add contact
 				</el-button>
 			</div>
+			<virtual-cooling-policy-editor
+				v-model:draft="draft"
+				:disabled="busy"
+			/>
 			<el-divider content-position="left">{{ memberLabel('members') }} · {{ draft.actuators.length }}/8</el-divider>
 			<p>{{ memberLabel('mandatoryHelp') }}</p>
 			<p>{{ memberLabel('nativeUnavailable') }}</p>
@@ -475,6 +479,7 @@ import { thermostatDeviceDraft } from '../utils/thermostat-device-draft';
 
 import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
+import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 import VirtualThermostatComfort from './virtual-thermostat-comfort.vue';
 
 const props = defineProps<{ deviceId?: string; create?: boolean }>();
@@ -584,7 +589,7 @@ const validationErrors = computed(() => [
 	!removeLegacyFloor.value
 		? [memberLabel('removeLegacyGuard')]
 		: []),
-	...payload().errors,
+	...payload().errors.map((error) => (error.startsWith('devicesVirtualPlugin.') ? t(error) : error)),
 ]);
 const modeNames = Object.values(SpacesModuleClimateIntentMode);
 const settingNames = Object.values(ThermostatSettingRole);

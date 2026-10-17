@@ -33,6 +33,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { ThermostatAuthoringContextController } from './controllers/thermostat-authoring-context.controller';
 import { ThermostatInstallationController } from './controllers/thermostat-installation.controller';
 import { VirtualDevicesController } from './controllers/virtual-devices.controller';
+import { VirtualDewPointConfigController } from './controllers/virtual-dew-point-config.controller';
 import { VirtualMeasurementAuthoringController } from './controllers/virtual-measurement-authoring.controller';
 import { VirtualProducerConfigController } from './controllers/virtual-producer-config.controller';
 import { VirtualThermostatAuthoringController } from './controllers/virtual-thermostat-authoring.controller';
@@ -68,6 +69,7 @@ import {
 	VirtualDeviceEntity,
 	VirtualDeviceMode,
 } from './entities/devices-virtual.entity';
+import { ThermostatCoolingDependencyEntity } from './entities/thermostat-cooling-dependency.entity';
 import {
 	ThermostatInstallationAuditEntity,
 	ThermostatInstallationEntity,
@@ -100,6 +102,8 @@ import { ThermostatMemberProtectionService } from './services/thermostat-member-
 import { VirtualAggregateRuntimeService } from './services/virtual-aggregate-runtime.service';
 import { VirtualDependencyGraphService } from './services/virtual-dependency-graph.service';
 import { VirtualDevicesService } from './services/virtual-devices.service';
+import { VirtualDewPointConfigService } from './services/virtual-dew-point-config.service';
+import { VirtualDewPointRuntimeService } from './services/virtual-dew-point-runtime.service';
 import { VirtualEnergyClaimService } from './services/virtual-energy-claim.service';
 import { VirtualGroupCatalogService } from './services/virtual-group-catalog.service';
 import { VirtualLightGroupAuthoringService } from './services/virtual-light-group-authoring.service';
@@ -148,6 +152,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 			DeviceEntity,
 			...VIRTUAL_PRODUCER_ENTITIES,
 			ThermostatMemberProtectionEntity,
+			ThermostatCoolingDependencyEntity,
 			ThermostatInstallationEntity,
 			ThermostatInstallationAuditEntity,
 			VirtualThermostatConfigEntity,
@@ -168,6 +173,8 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		EnergyModule,
 	],
 	providers: [
+		VirtualDewPointConfigService,
+		VirtualDewPointRuntimeService,
 		ThermostatAuthoringContextService,
 		ThermostatMemberProtectionService,
 		VirtualNumericOperatorRegistry,
@@ -213,6 +220,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		SourceNotVirtualConstraintValidator,
 	],
 	controllers: [
+		VirtualDewPointConfigController,
 		ThermostatInstallationController,
 		ThermostatAuthoringContextController,
 		VirtualThermostatConfigController,

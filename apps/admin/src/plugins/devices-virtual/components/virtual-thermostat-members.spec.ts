@@ -12,6 +12,7 @@ import ThermostatMemberCard from './thermostat-member-card.vue';
 import ThermostatMemberInstallation from './thermostat-member-installation.vue';
 import ThermostatMemberRecovery from './thermostat-member-recovery.vue';
 import ThermostatPropertyPicker from './thermostat-property-picker.vue';
+import VirtualCoolingPolicyEditor from './virtual-cooling-policy-editor.vue';
 import VirtualThermostatEditor from './virtual-thermostat-editor.vue';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), post: vi.fn(), profile: { role: 'owner' }, on: vi.fn(), off: vi.fn() }));
@@ -132,6 +133,72 @@ const setNumber = (wrapper: VueWrapper, label: string, value: number) =>
 
 describe('actual mandatory-member authoring forms', () => {
 	vi.setConfig({ testTimeout: 30000 });
+	it('repairs retained cooling through the actual editor and invalidates preview approval after a protection edit', async () => {
+		const stored = configuration(1);
+		current = {
+			...stored,
+			policy: {
+				...stored.policy,
+				heatingSetpoint: null,
+				coolingSetpoint: 25,
+				floor: null,
+				cooling: { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1, absoluteMinimumC: null },
+			},
+			actuators: stored.actuators.map((claim) => ({
+				...claim,
+				role: 'cooling',
+				protection: null,
+				cooling_protection: {
+					schema_version: 1,
+					revision: 2,
+					purpose: 'cooled_surface',
+					dew_point_property: null,
+					dew_point_identity: 'retained-dew',
+					surface_property: 'surface',
+					surface_identity: 'surface',
+					maximum_age_seconds: 30,
+				},
+				cooling_diagnostics: { ready: false, reasons: ['cooling_remote_profile_installation_unqualified'] },
+			})),
+		} as unknown as typeof current;
+		const editor = await open();
+		const cooling = editor.findComponent(VirtualCoolingPolicyEditor);
+		expect(cooling.text()).toContain('retained-dew');
+		expect(cooling.text()).toContain('cooling_remote_profile_installation_unqualified');
+		const dewPointInput = cooling
+			.findAllComponents(ElFormItem)
+			.find((field) => field.props('label') === 'devicesVirtualPlugin.dewPoint.title')!
+			.findComponent(ElInput);
+		dewPointInput.vm.$emit('update:modelValue', 'repaired-dew');
+		await flushPromises();
+		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await flushPromises();
+		expect(dewPointInput.props('modelValue')).toBe('repaired-dew');
+		expect(mocks.post.mock.calls.find(([path]) => path.endsWith('/preview'))![1].body.actuators[0].cooling_protection.dew_point_property).toBe(
+			'repaired-dew'
+		);
+		expect(button(editor, 'Save configuration').props('disabled')).toBe(false);
+		cooling.findAllComponents(ElInputNumber)[0].vm.$emit('update:modelValue', 3);
+		await flushPromises();
+		expect(button(editor, 'Save configuration').props('disabled')).toBe(true);
+		await button(editor, 'Preview eligibility and claims').trigger('click');
+		await flushPromises();
+		await button(editor, 'Save configuration').trigger('click');
+		await flushPromises();
+		expect(mocks.put).toHaveBeenCalledTimes(1);
+		const request = mocks.put.mock.calls[0][1].body;
+		expect(request.policy.cooling).toMatchObject({ marginC: 3, recoveryHysteresisC: 1, absoluteMinimumC: null });
+		expect(request.actuators[0].cooling_protection).toEqual({
+			schemaVersion: 1,
+			purpose: 'cooled_surface',
+			dew_point_property: 'repaired-dew',
+			surface_property: 'surface',
+			maximum_age_seconds: 30,
+		});
+		expect(request.requested_mode).toBe('off');
+		expect(JSON.stringify(request)).not.toContain('qualification');
+		expect(mocks.post.mock.calls.some(([path]) => path.includes('/verify'))).toBe(false);
+	});
 	it('previews and creates two distinct local members through the real editor controls', async () => {
 		const editor = await open(true);
 		editor.findComponent(ElInput).vm.$emit('update:modelValue', 'Room');

@@ -6,6 +6,7 @@ import { CreateVirtualChannelPropertyDto } from './dto/create-channel-property.d
 import { CreateVirtualChannelDto } from './dto/create-channel.dto';
 import { CreateVirtualDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateVirtualDeviceDto } from './dto/create-device.dto';
+import * as DewPointDtos from './dto/dew-point-config.dto';
 import * as GroupCatalogDtos from './dto/group-catalog.dto';
 import * as LightGroupDraftDtos from './dto/light-group-draft.dto';
 import * as MeasurementAuthoringDtos from './dto/measurement-authoring.dto';
@@ -36,6 +37,7 @@ import {
 } from './entities/devices-virtual.entity';
 import { CompatibilityReportModel, CompatibilityResponseModel } from './models/compatibility-response.model';
 import { VirtualConfigModel } from './models/config.model';
+import * as DewPointModels from './models/dew-point-response.model';
 import * as GroupCatalogModels from './models/group-catalog.model';
 import * as LightGroupDraftModels from './models/light-group-draft.model';
 import * as MeasurementAuthoringModels from './models/measurement-authoring-response.model';
@@ -49,6 +51,8 @@ import * as TransformModels from './models/transform-response.model';
 import { VirtualSourceDevicesResponseModel } from './models/virtual-response.model';
 
 export const DEVICES_VIRTUAL_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	...Object.values(DewPointDtos),
+	...Object.values(DewPointModels),
 	...Object.values(GroupCatalogDtos),
 	...Object.values(GroupCatalogModels),
 	...Object.values(LightGroupDraftDtos),

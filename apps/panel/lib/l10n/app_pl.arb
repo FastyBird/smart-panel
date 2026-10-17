@@ -1471,5 +1471,15 @@
   "space_activity_unconfirmed": "Żądanie niepotwierdzone. Sprawdź aktualny wybór przed ponowną próbą.",
   "space_activity_conflict": "Tryb zmieniono w innym miejscu. Sprawdź odświeżony wybór i spróbuj ponownie.",
   "space_activity_unavailable": "Nie udało się wczytać trybów. Odśwież, aby kontynuować.",
-  "space_activity_outcome_notice": "To wyniki poleceń. Stan urządzeń może się różnić. Sterowanie ręczne usuwa wybór bez przywracania poprzednich ustawień."
+  "space_activity_outcome_notice": "To wyniki poleceń. Stan urządzeń może się różnić. Sterowanie ręczne usuwa wybór bez przywracania poprzednich ustawień.",
+  "dewPointTitle": "Punkt rosy",
+  "dewPointDryBulb": "Temperatura suchego termometru (°C)",
+  "dewPointHumidity": "Wilgotność względna (%)",
+  "dewPointSkew": "Maksymalne przesunięcie czasu próbek (s)",
+  "dewPointRetained": "Zachowana tożsamość źródła",
+  "dewPointBoundary": "Punkt rosy to odrębna wielkość. Wymaga obu świeżych wejść; nie jest temperaturą pomieszczenia ani podłogi.",
+  "dewPointCooling": "Ochrona chłodzenia przed kondensacją",
+  "dewPointSurface": "UUID lokalnej sondy chłodzonej powierzchni",
+  "dewPointSurfaceTemperature": "Temperatura chłodzonej powierzchni (°C)",
+  "dewPointInstallation": "Zainstalowane chłodzenie pozostaje niedopuszczone do czasu kwalifikacji powierzchni, uwierzytelniania, synchronizacji czasowej, izolacji zapisu i opróżnienia po restarcie po wersji alfa."
 }

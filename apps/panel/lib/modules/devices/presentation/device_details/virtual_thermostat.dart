@@ -48,6 +48,7 @@ class _VirtualThermostatDeviceDetailState
       : _displayTicks;
   VirtualThermostatActivityFence _activityFence =
       VirtualThermostatActivityFence();
+  VirtualThermostatCoolingFence _coolingFence = VirtualThermostatCoolingFence();
   VirtualThermostatEvidenceFence _evidence = VirtualThermostatEvidenceFence();
   Map<String, dynamic>? _configuration;
   Map<String, dynamic>? _runtime;
@@ -109,6 +110,7 @@ class _VirtualThermostatDeviceDetailState
     _hintRefreshNeeded = true;
     _configurationMismatchSeen = false;
     if (replacedDevice) {
+      _coolingFence = VirtualThermostatCoolingFence();
       _evidence = VirtualThermostatEvidenceFence();
       _activityFence = VirtualThermostatActivityFence();
       _configuration = null;
@@ -234,6 +236,7 @@ class _VirtualThermostatDeviceDetailState
           acceptedMembers.map((member) => member.claim),
         );
       }
+      _coolingFence.accept(configuration, candidate, acceptedAt, acceptedClock);
       _activityFence.accept(acceptedMembers, acceptedAt, acceptedClock);
       setState(() {
         _configuration = configuration;
@@ -406,6 +409,9 @@ class _VirtualThermostatDeviceDetailState
         ? _number(runtime['current_temperature'])
         : null;
     final members = VirtualThermostatMember.read(config, runtime);
+    final freshCoolingClaims = runtime == null
+        ? <String>{}
+        : _coolingFence.freshClaims(members, now, clock);
     // Missing/rejected HTTP runtime is not an accepted diagnostic omission.
     // Withhold display without withdrawing retained original evidence budgets.
     final expiredMemberClaims = runtime == null
@@ -429,13 +435,31 @@ class _VirtualThermostatDeviceDetailState
               ) !=
               null,
         );
+    bool requiresCooling(VirtualThermostatMember member) {
+      bool declared(Object? raw, String key) =>
+          raw is List &&
+          raw.whereType<Map>().any(
+            (row) =>
+                row[key] == member.claim &&
+                (key != 'claim' || row['claim_state'] != 'released') &&
+                (row['role'] == 'cooling' || row['cooling_protection'] != null),
+          );
+      return !member.historical &&
+          (declared(config?['actuators'], 'id') ||
+              declared(runtime?['branches'], 'claim'));
+    }
+
+    final coolingProtectionCurrent = members
+        .where(requiresCooling)
+        .every((member) => freshCoolingClaims.contains(member.claim));
     final readinessCurrent =
         current &&
         !_evidence.members.overflow &&
         (readiness != 'ready' ||
             (!_evidence.members.untracked &&
                 inputsCurrent &&
-                memberProtectionCurrent));
+                memberProtectionCurrent &&
+                coolingProtectionCurrent));
     final selectedClaim = config?['display_floor_claim'];
     final selected = members
         .where((member) => member.claim == selectedClaim)
@@ -570,6 +594,7 @@ class _VirtualThermostatDeviceDetailState
               now: now,
               current: current,
               expiredMemberClaims: expiredMemberClaims,
+              freshCoolingClaims: freshCoolingClaims,
               unavailableActivityClaims: unavailableActivityClaims,
             ),
             VirtualThermostatComfort(

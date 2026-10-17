@@ -4794,4 +4794,36 @@ class AppLocalizationsSk extends AppLocalizations {
   @override
   String get space_activity_outcome_notice =>
       'Ide o výsledky príkazov. Stav zariadení sa môže líšiť. Ručné ovládanie zruší výber bez obnovenia predošlých nastavení.';
+
+  @override
+  String get dewPointTitle => 'Rosný bod';
+
+  @override
+  String get dewPointDryBulb => 'Teplota suchého teplomera (°C)';
+
+  @override
+  String get dewPointHumidity => 'Relatívna vlhkosť (%)';
+
+  @override
+  String get dewPointSkew => 'Najväčší rozdiel časov vzoriek (s)';
+
+  @override
+  String get dewPointRetained => 'Zachovaná identita zdroja';
+
+  @override
+  String get dewPointBoundary =>
+      'Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; nie je teplotou priestoru ani podlahy.';
+
+  @override
+  String get dewPointCooling => 'Ochrana chladenia pred kondenzáciou';
+
+  @override
+  String get dewPointSurface => 'UUID miestnej sondy chladeného povrchu';
+
+  @override
+  String get dewPointSurfaceTemperature => 'Teplota chladeného povrchu (°C)';
+
+  @override
+  String get dewPointInstallation =>
+      'Inštalované chladenie nie je spôsobilé do kvalifikácie povrchu, autentifikácie, časovania, izolácie zápisu a dokončenia OFF po reštarte po vydaní alfa.';
 }

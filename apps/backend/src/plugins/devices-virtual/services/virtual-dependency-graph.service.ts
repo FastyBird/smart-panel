@@ -9,6 +9,7 @@ import { DevicesValidationException } from '../../../modules/devices/devices.exc
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
+import { VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
 import {
 	VirtualAggregateConfigEntity,
 	VirtualAggregateInputEntity,
@@ -125,10 +126,15 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			.where('property.sourcePropertyId IS NOT NULL')
 			.callListeners(false)
 			.getMany();
+		const dewPoints = await manager.find(VirtualDewPointSourceEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const transforms = await manager.find(VirtualTransformSourceEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const inputs = await manager.find(VirtualAggregateInputEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		const bindings = await manager.find(VirtualLightGroupBindingEntity, { where: { sourcePropertyId: Not(IsNull()) } });
 		return [
+			...dewPoints.map((input) => ({
+				outputPropertyId: input.outputPropertyId,
+				sourcePropertyId: input.sourcePropertyId,
+			})),
 			...transforms.map((input) => ({
 				outputPropertyId: input.outputPropertyId,
 				sourcePropertyId: input.sourcePropertyId,
@@ -174,7 +180,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		const transformInputs = await manager.count(VirtualTransformSourceEntity, {
 			where: { outputPropertyId: property.id },
 		});
-		if (producerInputs || groupBindings || transformInputs)
+		const dewPointInputs = await manager.count(VirtualDewPointSourceEntity, {
+			where: { outputPropertyId: property.id },
+		});
+		if (producerInputs || groupBindings || transformInputs || dewPointInputs)
 			throw new DevicesValidationException(
 				'A configured producer output must retain derived origin; edit or remove its producer configuration first.',
 			);

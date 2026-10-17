@@ -87,6 +87,7 @@ export function transformContractErrors(
 		config.maximumAgeSeconds > 86400
 	)
 		errors.push('invalid_policy');
+	if (config.quantity === 'dew_point') errors.push('dedicated_dew_point_required');
 	if (!isTransformOutput(output, config.quantity, config.unit)) errors.push('incompatible_output');
 	if (!source) return errors;
 	const device = (source.channel as ChannelEntity)?.device as DeviceEntity;

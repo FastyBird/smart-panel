@@ -5007,5 +5007,15 @@
   "space_activity_unconfirmed": "Request unconfirmed. Check the current selection before trying again.",
   "space_activity_conflict": "The mode changed elsewhere. Review the refreshed selection and try again.",
   "space_activity_unavailable": "Modes could not be loaded. Refresh to continue.",
-  "space_activity_outcome_notice": "These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings."
+  "space_activity_outcome_notice": "These are command outcomes. Device state may differ. Manual clears the selection without restoring previous settings.",
+  "dewPointTitle": "Dew point",
+  "dewPointDryBulb": "Dry-bulb temperature (°C)",
+  "dewPointHumidity": "Relative humidity (%)",
+  "dewPointSkew": "Maximum timestamp skew (s)",
+  "dewPointRetained": "Retained source identity",
+  "dewPointBoundary": "Dew point is a distinct quantity. Both fresh inputs are required; it is not ambient or floor temperature.",
+  "dewPointCooling": "Cooling condensation protection",
+  "dewPointSurface": "Local cooled-surface probe UUID",
+  "dewPointSurfaceTemperature": "Cooled-surface temperature (°C)",
+  "dewPointInstallation": "Installed cooling is ineligible until post-alpha surface, authentication, timing, writer isolation and restart-drain qualification."
 }

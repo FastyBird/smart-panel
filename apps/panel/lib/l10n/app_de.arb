@@ -1471,5 +1471,15 @@
   "space_activity_unconfirmed": "Anfrage unbestätigt. Prüfen Sie die aktuelle Auswahl vor einem weiteren Versuch.",
   "space_activity_conflict": "Der Modus wurde andernorts geändert. Prüfen Sie die aktualisierte Auswahl und versuchen Sie es erneut.",
   "space_activity_unavailable": "Modi konnten nicht geladen werden. Aktualisieren Sie zum Fortfahren.",
-  "space_activity_outcome_notice": "Dies sind Befehlsergebnisse. Der Gerätezustand kann abweichen. Manuell löscht die Auswahl, ohne frühere Einstellungen wiederherzustellen."
+  "space_activity_outcome_notice": "Dies sind Befehlsergebnisse. Der Gerätezustand kann abweichen. Manuell löscht die Auswahl, ohne frühere Einstellungen wiederherzustellen.",
+  "dewPointTitle": "Taupunkt",
+  "dewPointDryBulb": "Trockentemperatur (°C)",
+  "dewPointHumidity": "Relative Luftfeuchte (%)",
+  "dewPointSkew": "Maximaler Zeitversatz (s)",
+  "dewPointRetained": "Beibehaltene Quellidentität",
+  "dewPointBoundary": "Der Taupunkt ist eine eigene Messgröße. Beide frischen Eingänge sind erforderlich; er ist keine Raum- oder Bodentemperatur.",
+  "dewPointCooling": "Kondensationsschutz bei Kühlung",
+  "dewPointSurface": "UUID des lokalen gekühlten Oberflächenfühlers",
+  "dewPointSurfaceTemperature": "Temperatur der gekühlten Oberfläche (°C)",
+  "dewPointInstallation": "Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt."
 }

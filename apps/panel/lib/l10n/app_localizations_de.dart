@@ -4796,4 +4796,37 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get space_activity_outcome_notice =>
       'Dies sind Befehlsergebnisse. Der Gerätezustand kann abweichen. Manuell löscht die Auswahl, ohne frühere Einstellungen wiederherzustellen.';
+
+  @override
+  String get dewPointTitle => 'Taupunkt';
+
+  @override
+  String get dewPointDryBulb => 'Trockentemperatur (°C)';
+
+  @override
+  String get dewPointHumidity => 'Relative Luftfeuchte (%)';
+
+  @override
+  String get dewPointSkew => 'Maximaler Zeitversatz (s)';
+
+  @override
+  String get dewPointRetained => 'Beibehaltene Quellidentität';
+
+  @override
+  String get dewPointBoundary =>
+      'Der Taupunkt ist eine eigene Messgröße. Beide frischen Eingänge sind erforderlich; er ist keine Raum- oder Bodentemperatur.';
+
+  @override
+  String get dewPointCooling => 'Kondensationsschutz bei Kühlung';
+
+  @override
+  String get dewPointSurface => 'UUID des lokalen gekühlten Oberflächenfühlers';
+
+  @override
+  String get dewPointSurfaceTemperature =>
+      'Temperatur der gekühlten Oberfläche (°C)';
+
+  @override
+  String get dewPointInstallation =>
+      'Installierte Kühlung bleibt bis zur Qualifikation von Oberfläche, Authentifizierung, Zeitgrenzen, Schreibisolation und Neustartentleerung nach Alpha gesperrt.';
 }

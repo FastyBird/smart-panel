@@ -1471,5 +1471,15 @@
   "space_activity_unconfirmed": "Solicitud sin confirmar. Compruebe la selección actual antes de reintentarlo.",
   "space_activity_conflict": "El modo cambió en otro lugar. Revise la selección actualizada y vuelva a intentarlo.",
   "space_activity_unavailable": "No se pudieron cargar los modos. Actualice para continuar.",
-  "space_activity_outcome_notice": "Son resultados de órdenes. El estado del dispositivo puede variar. Manual borra la selección sin restaurar los ajustes anteriores."
+  "space_activity_outcome_notice": "Son resultados de órdenes. El estado del dispositivo puede variar. Manual borra la selección sin restaurar los ajustes anteriores.",
+  "dewPointTitle": "Punto de rocío",
+  "dewPointDryBulb": "Temperatura de bulbo seco (°C)",
+  "dewPointHumidity": "Humedad relativa (%)",
+  "dewPointSkew": "Desfase temporal máximo (s)",
+  "dewPointRetained": "Identidad de origen conservada",
+  "dewPointBoundary": "El punto de rocío es una magnitud distinta. Requiere ambas entradas recientes; no es temperatura ambiente ni del suelo.",
+  "dewPointCooling": "Protección de refrigeración contra condensación",
+  "dewPointSurface": "UUID de sonda local de superficie refrigerada",
+  "dewPointSurfaceTemperature": "Temperatura de la superficie refrigerada (°C)",
+  "dewPointInstallation": "La refrigeración instalada sigue inhabilitada hasta verificar superficie, autenticación, tiempos, aislamiento de escritura y drenaje tras reinicio después de alfa."
 }

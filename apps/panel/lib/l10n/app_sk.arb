@@ -1471,5 +1471,15 @@
   "space_activity_unconfirmed": "Požiadavka nie je potvrdená. Pred ďalším pokusom skontrolujte aktuálny výber.",
   "space_activity_conflict": "Režim bol zmenený inde. Skontrolujte obnovený výber a skúste znova.",
   "space_activity_unavailable": "Režimy sa nepodarilo načítať. Obnovte údaje.",
-  "space_activity_outcome_notice": "Ide o výsledky príkazov. Stav zariadení sa môže líšiť. Ručné ovládanie zruší výber bez obnovenia predošlých nastavení."
+  "space_activity_outcome_notice": "Ide o výsledky príkazov. Stav zariadení sa môže líšiť. Ručné ovládanie zruší výber bez obnovenia predošlých nastavení.",
+  "dewPointTitle": "Rosný bod",
+  "dewPointDryBulb": "Teplota suchého teplomera (°C)",
+  "dewPointHumidity": "Relatívna vlhkosť (%)",
+  "dewPointSkew": "Najväčší rozdiel časov vzoriek (s)",
+  "dewPointRetained": "Zachovaná identita zdroja",
+  "dewPointBoundary": "Rosný bod je samostatná veličina. Vyžaduje oba čerstvé vstupy; nie je teplotou priestoru ani podlahy.",
+  "dewPointCooling": "Ochrana chladenia pred kondenzáciou",
+  "dewPointSurface": "UUID miestnej sondy chladeného povrchu",
+  "dewPointSurfaceTemperature": "Teplota chladeného povrchu (°C)",
+  "dewPointInstallation": "Inštalované chladenie nie je spôsobilé do kvalifikácie povrchu, autentifikácie, časovania, izolácie zápisu a dokončenia OFF po reštarte po vydaní alfa."
 }
