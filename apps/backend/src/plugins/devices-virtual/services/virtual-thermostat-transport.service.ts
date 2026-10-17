@@ -84,8 +84,11 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			const machineLease = qualification.machineLeaseIsCurrent;
 			const profile = qualification.providerProfile;
 			const localProfile = qualification.profile;
+			const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+			const propertyChannelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
 			if (
-				!physicalIdentity || qualification.contractVersion !== 1 ||
+				!physicalIdentity || claim.sourcePropertyIdentity !== property.id || claim.sourceDeviceIdentity !== device.id ||
+				propertyChannelId !== channel.id || channelDeviceId !== device.id || qualification.contractVersion !== 1 ||
 				!profile || !Number.isSafeInteger(profile.version) || profile.version < 1 || typeof profile.id !== 'string' || !profile.id ||
 				typeof qualificationGeneration !== 'string' || !qualificationGeneration || claim.qualificationGeneration !== qualificationGeneration ||
 				typeof machineLease !== 'function' || machineLease.call(qualification) !== true ||

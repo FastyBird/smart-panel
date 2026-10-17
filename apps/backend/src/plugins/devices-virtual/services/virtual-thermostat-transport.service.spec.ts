@@ -404,6 +404,45 @@ describe('captured thermostat transport readiness continuity', () => {
 		} finally { await f.module.close(); }
 	});
 
+	it.each(['stable-property', 'stable-device', 'property-channel-string', 'property-channel-entity', 'channel-device-string', 'channel-device-entity'] as const)('refuses an already-wrong custom baseline %s before invoking any adapter predicate', async (mismatch) => {
+		const f = await fixture();
+		try {
+			const p = f.custom(); f.transport.register(f.target.device.type, p.adapter);
+			if (mismatch === 'stable-property') f.claim.sourcePropertyIdentity = randomUUID();
+			else if (mismatch === 'stable-device') f.claim.sourceDeviceIdentity = randomUUID();
+			else if (mismatch === 'property-channel-string') f.target.property.channel = randomUUID();
+			else if (mismatch === 'property-channel-entity') f.target.property.channel = Object.assign(new ShellyNgChannelEntity(), { id: randomUUID(), device: f.target.device });
+			else if (mismatch === 'channel-device-string') f.target.channel.device = randomUUID();
+			else f.target.channel.device = Object.assign(new ShellyNgDeviceEntity(), { id: randomUUID(), canonicalMac: '000000000001' });
+			// An otherwise matching fingerprint cannot establish either stable identity or the back references.
+			f.claim.contractFingerprint = thermostatPropertyContract(f.target.property, f.target.channel, f.target.device);
+			expect(f.capture()).toBeNull();
+			expect(p.canReconcile).not.toHaveBeenCalled(); expect(p.captureReadiness).not.toHaveBeenCalled();
+			expect(p.send).not.toHaveBeenCalled(); expect(p.reconcile).not.toHaveBeenCalled();
+		} finally { await f.module.close(); }
+	});
+
+	it.each(['stable-property', 'stable-device'] as const)('rejects an already-wrong builtin claim %s before preparing a session', async (mismatch) => {
+		const f = await fixture(), b = await f.builtin();
+		try {
+			if (mismatch === 'stable-property') f.claim.sourcePropertyIdentity = randomUUID();
+			else f.claim.sourceDeviceIdentity = randomUUID();
+			expect(f.capture()).toBeNull(); expect(b.prepare).not.toHaveBeenCalled();
+			expect(b.rpc.request).not.toHaveBeenCalled(); expect(b.on).not.toHaveBeenCalled(); expect(b.fence).not.toHaveBeenCalled();
+		} finally { await b.cleanup(); await f.module.close(); }
+	});
+
+	it.each(['custom', 'builtin'] as const)('accepts exactly matching string back references for %s without changing ordinary eligibility', async (kind) => {
+		const f = await fixture();
+		const b = kind === 'builtin' ? await f.builtin() : null;
+		try {
+			if (kind === 'custom') { const p = f.custom(); f.transport.register(f.target.device.type, p.adapter); }
+			f.target.property.channel = f.target.channel.id;
+			f.target.channel.device = f.target.device.id;
+			expect(f.requiredCapture().isCurrent()).toBe(true);
+		} finally { if (b) await b.cleanup(); await f.module.close(); }
+	});
+
 	it('fails closed for unknown/missing builtin session and terminal destroy cannot revive captures', async () => {
 		const f = await fixture();
 		try {
