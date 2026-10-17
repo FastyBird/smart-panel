@@ -338,6 +338,59 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 
 		// R1 correction: real nonempty no-config catalog, never a fabricated ready guard.
 		// R2 correction: terminal A and fresh B share the SAME live registry and graph.
+		it.each(['refresh', 'synchronous-hook'])(
+			'only owns substitution after capture cannot overwrite independent runtime B through %s',
+			async (route) => {
+				const row = await seedPublisherOutput();
+				const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+				const state = new VirtualProducerStateService(database, producers, graph, events, config);
+				try {
+					await state.onModuleInit(); await graph.onApplicationBootstrap();
+					const runtime = producers.register(row, 1);
+					const epoch = producers.version(runtime), original = producers.read(row.id), notified = jest.fn();
+					events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+					state.initializeOutput(row);
+					expect(producers.isCurrent(runtime)).toBe(true);
+					expect(producers.version(runtime)).toBe(epoch);
+					const substituted = jest.spyOn(producers, 'owns').mockReturnValue(false);
+					if (route === 'refresh') {
+						await graph.refreshQuarantine();
+						expect(graph.isValidated()).toBe(false);
+					} else expect(() => state.handlePropertyChanged(row)).toThrow('Owned producer superseded');
+					expect(substituted).not.toHaveBeenCalled();
+					expect(producers.isCurrent(runtime)).toBe(true);
+					expect(producers.isAvailable(runtime)).toBe(true);
+					expect(producers.version(runtime)).toBe(epoch);
+					expect(producers.read(row.id)).toEqual(original);
+					expect(notified).not.toHaveBeenCalled();
+				} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			},
+		);
+
+		it('mask query replacement after capture cannot publish repair using a substituted isCurrent', async () => {
+			const row = await seedPublisherOutput(); await corruptProfile(row);
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const observations = jest.spyOn(producers, 'beginObservedBatch');
+			const state = new VirtualProducerStateService(database, producers, graph, events, config);
+			try {
+				await state.onModuleInit(); await graph.onApplicationBootstrap();
+				const owned = observations.mock.calls.at(-1)?.[0];
+				if (!owned) throw new Error('Missing actual owner');
+				const before = producers.readOwnedView(owned), mask = before.quarantineLeases[0];
+				if (!mask) throw new Error('Missing actual quarantine mask');
+				const methods: Readonly<{ isCurrent: (...args: Parameters<PropertyProducerRegistryService['isCurrent']>) => boolean }> = producers;
+				const originalCurrent = methods.isCurrent;
+				const notified = jest.fn(); events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+				const substituted = jest.spyOn(producers, 'isCurrent').mockReturnValue(false);
+				await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(false);
+				expect(substituted).not.toHaveBeenCalled();
+				expect(originalCurrent.call(producers, mask.lease)).toBe(true);
+				expect(producers.readOwnedView(owned)).toBe(before);
+				expect(notified).not.toHaveBeenCalled();
+			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
 		it('a new state owner replaces only retired same-key fallback with its own bootstrap and refresh generation', async () => {
 			const row = await seedPublisherOutput();
 			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);

@@ -789,6 +789,64 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			return result;
 		};
 
+		it('closed nonquarantined fallback refuses an exact observed foreign live slot independently of owns', async () => {
+			producers.onModuleDestroy();
+			const events = new EventEmitter2(); producers = new PropertyProducerRegistryService(events);
+			const row = await property(), owned = owner(new EventEmitter2());
+			const runtime = producers.register(row, 1);
+			const epoch = producers.version(runtime), original = producers.read(row.id), notified = jest.fn();
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+			const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+			expect(() => producers.prepareOwnedBatch(batch, { revision: 0, configurationRevisions: [], operations: [{
+				kind: 'fallback-unavailable', propertyId: row.id, property: row, revision: 1, reason: 'runtime_unavailable',
+				expected: producers.captureExpectedSlot(batch, row.id),
+			}] })).toThrow('Foreign fallback producer replacement');
+			expect(producers.isObservedBatchCurrent(batch)).toBe(false);
+			expect(producers.isCurrent(runtime)).toBe(true);
+			expect(producers.isAvailable(runtime)).toBe(true);
+			expect(producers.version(runtime)).toBe(epoch);
+			expect(producers.read(row.id)).toEqual(original);
+			expect(notified).not.toHaveBeenCalled();
+		});
+
+		it('explicit trusted configuration invalidation retains its ability to replace a previous runtime', async () => {
+			producers.onModuleDestroy();
+			const events = new EventEmitter2(); producers = new PropertyProducerRegistryService(events);
+			const row = await property();
+			const state = new VirtualProducerStateService(database, producers, graph, events);
+			try {
+				await state.onModuleInit(); await graph.onApplicationBootstrap();
+				const runtime = producers.register(row, 1);
+				state.installUnavailable(row, 2);
+				expect(producers.isCurrent(runtime)).toBe(false);
+				expect(producers.read(row.id)?.producer).toMatchObject({ revision: 2, quality: 'unavailable', reasons: ['runtime_unavailable'] });
+			} finally { state.onModuleDestroy(); }
+		});
+
+		it('the native deletion hint fences observations while a substituted fence is visibly refused', async () => {
+			producers.onModuleDestroy();
+			const events = new EventEmitter2(); producers = new PropertyProducerRegistryService(events);
+			const row = await property();
+			const observations = jest.spyOn(producers, 'beginObservedBatch');
+			const state = new VirtualProducerStateService(database, producers, graph, events);
+			try {
+				await state.onModuleInit(); await graph.onApplicationBootstrap();
+				const owned = observations.mock.calls.at(-1)?.[0];
+				if (!owned) throw new Error('Missing actual state owner');
+				const native = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+				state.handlePropertyDeleted(row);
+				expect(producers.isObservedBatchCurrent(native)).toBe(false);
+				const pending = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+				const substituted = jest.spyOn(producers, 'invalidateObservedId').mockImplementation(() => undefined);
+				expect(() => state.handlePropertyDeleted(row)).toThrow('Owned producer superseded');
+				expect(substituted).not.toHaveBeenCalled();
+				await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(false);
+				state.onModuleDestroy();
+				expect(producers.isObservedBatchCurrent(pending)).toBe(false);
+			} finally { state.onModuleDestroy(); }
+		});
+
 		it.each(['current-owner', 'independent-runtime'])(
 			'the retired same-key replacement cannot authorize a live %s slot',
 			async (incumbent) => {

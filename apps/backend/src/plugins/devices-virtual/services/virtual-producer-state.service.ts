@@ -104,7 +104,7 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 				const properties = new Map(view.properties.map((property) => [property.id, property]));
 				const hints = new Map(view.configurationRevisions.map((row) => [row.propertyId, row.revision]));
 				const masks = new Map(before.quarantineLeases.map((row) => [row.propertyId, row.lease]));
-				const kinds = new Map<string, 'retain' | 'unavailable' | 'replace-retired-unavailable' | 'retire-alias-mask' | 'retire-deleted-owned-overlay'>();
+				const kinds = new Map<string, 'retain' | 'unavailable' | 'fallback-unavailable' | 'replace-retired-unavailable' | 'retire-alias-mask' | 'retire-deleted-owned-overlay'>();
 				const ownedIds = new Set(this.engine.ownedPropertyIds.call(this.producers, owner));
 				const retiredIds = new Set(this.engine.retiredSameKeyPropertyIds.call(this.producers, owner));
 				for (const id of ownedIds) {
@@ -112,13 +112,13 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 				}
 				for (const [id, lease] of masks) {
 					const property = properties.get(id);
-					if (!this.producers.isCurrent(lease)) kinds.set(id, 'retain');
+					if (!this.engine.isCurrent.call(this.producers, lease)) kinds.set(id, 'retain');
 					else if (property && !view.quarantined.has(id)) kinds.set(id, property.isDerived ? 'unavailable' : 'retire-alias-mask');
 				}
 				for (const property of view.properties) {
 					if (view.quarantined.has(property.id)) kinds.set(property.id, 'unavailable');
 					else if (property.isDerived && retiredIds.has(property.id)) kinds.set(property.id, 'replace-retired-unavailable');
-					else if (property.isDerived && (ownedIds.has(property.id) || !this.producers.owns(property.id))) kinds.set(property.id, 'unavailable');
+					else if (property.isDerived && (ownedIds.has(property.id) || !this.engine.owns.call(this.producers, property.id))) kinds.set(property.id, 'fallback-unavailable');
 				}
 				batch = this.engine.beginObservedBatch.call(this.producers, owner, [...kinds.keys()], lifecycle.guard);
 				if (this.engine.readOwnedView.call(this.producers, owner) !== before) throw new Error('Owned producer superseded');
@@ -133,7 +133,7 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 					if (kind === 'retain' || kind === 'retire-deleted-owned-overlay') operations.push({ kind, propertyId, expected });
 					else if (!property) throw new Error('Missing owned producer property');
 					else if (kind === 'retire-alias-mask') operations.push({ kind, propertyId, expected, property });
-					else if (kind === 'replace-retired-unavailable') operations.push({ kind, propertyId, expected, property, revision: hints.get(propertyId) ?? 0, reason: 'runtime_unavailable' });
+					else if (kind === 'replace-retired-unavailable' || kind === 'fallback-unavailable') operations.push({ kind, propertyId, expected, property, revision: hints.get(propertyId) ?? 0, reason: 'runtime_unavailable' });
 					else operations.push({ kind, propertyId, expected, property, revision: hints.get(propertyId) ?? 0,
 						reason: view.quarantined.has(propertyId) ? 'graph_quarantined' : 'runtime_unavailable' });
 				}
@@ -151,6 +151,10 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 
 	/** Existing synchronous mapping/configuration entry. It admits ownership, not a new graph observer. */
 	installUnavailable(property: VirtualChannelPropertyEntity, revision: number): void {
+		this.installUnavailableOperation(property, revision, 'unavailable');
+	}
+
+	private installUnavailableOperation(property: VirtualChannelPropertyEntity, revision: number, kind: 'unavailable' | 'fallback-unavailable'): void {
 		if (this.cli()) return;
 		if (this.destroyed) throw new Error('Owned producer unavailable');
 		if (!property.isDerived) return;
@@ -164,7 +168,7 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 		try {
 			const prepared = this.engine.prepareOwnedBatch.call(this.producers, batch, {
 				revision: before.revision, configurationRevisions: [...hints].map(([propertyId, value]) => ({ propertyId, revision: value })),
-				operations: [{ kind: 'unavailable', propertyId: property.id, property, revision, reason: 'runtime_unavailable',
+				operations: [{ kind, propertyId: property.id, property, revision, reason: 'runtime_unavailable',
 					expected: this.engine.captureExpectedSlot.call(this.producers, batch, property.id) }],
 			});
 			if (!this.current() || !lifecycle.isCurrent() || !this.engine.validatePreparedBatch.call(this.producers, prepared) ||
@@ -203,7 +207,8 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 
 	initializeOutput(property: VirtualChannelPropertyEntity): void {
 		if (this.cli() || this.destroyed) return;
-		if (property.isDerived && !this.producers.owns(property.id)) this.installUnavailable(property, 0);
+		if (!this.engine.isOwnedEngineCurrent.call(this.producers, this.engine)) throw new Error('Owned producer superseded');
+		if (property.isDerived && !this.engine.owns.call(this.producers, property.id)) this.installUnavailableOperation(property, 0, 'fallback-unavailable');
 		if (property.isDerived) property.value = this.producers.read(property.id);
 	}
 
@@ -216,7 +221,10 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
 	handlePropertyDeleted(property: VirtualChannelPropertyEntity): void {
 		// An ID-only event is not authority to delete a same-ID successor. Snapshot reconciliation owns retirement.
-		if (!this.cli() && !this.destroyed && property.type === 'virtual') this.producers.invalidateObservedId(property.id);
+		if (!this.cli() && !this.destroyed && property.type === 'virtual') {
+			if (!this.engine.isOwnedEngineCurrent.call(this.producers, this.engine)) throw new Error('Owned producer superseded');
+			this.engine.invalidateObservedId.call(this.producers, property.id);
+		}
 	}
 
 	private cli(): boolean { return getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on'; }
