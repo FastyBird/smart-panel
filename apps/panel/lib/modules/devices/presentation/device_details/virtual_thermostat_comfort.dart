@@ -305,7 +305,9 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
       owner.dismissalScheduled = false;
       if (!navigator.mounted ||
           !identical(route.navigator, navigator) ||
-          !route.isActive) return;
+          !route.isActive) {
+        return;
+      }
       navigator.removeRoute<String>(route);
     });
   }
@@ -319,7 +321,8 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
       }
       // A switch can precede the popup's first build. Capture only that old
       // popup, then honor its retirement without touching the current owner.
-      if (owner.retired || !mounted ||
+      if (owner.retired ||
+          !mounted ||
           !identical(owner.intent, _selectionIntent) ||
           owner.intent['controller'] != widget.deviceId) {
         _retireMenu(owner);
@@ -373,7 +376,10 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
             if (preset['preset'] is String)
               PopupMenuItem(
                 value: preset['preset'] as String,
-                child: _menuLabel(owner, _presetLabel(preset['preset'] as String)),
+                child: _menuLabel(
+                  owner,
+                  _presetLabel(preset['preset'] as String),
+                ),
               ),
         ],
       );

@@ -699,89 +699,118 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('replacement before popup first frame retires only that late menu', (tester) async {
-    final routes = ComfortRoutes();
-    await open(tester, routes: routes);
-    tester.widget<TextButton>(find.byKey(const ValueKey('comfort-selection'))).onPressed!();
-    final oldRoute = routes.popup!;
-    state['controller'] = 'b';
-    await open(tester, id: 'b', routes: routes);
-    expect(oldRoute.isActive, isFalse);
-    expect(find.byType(PopupMenuItem<String>), findsNothing);
-    expect(writes, isEmpty);
-    final reads = paths.length;
-    await tap(tester, 'comfort-selection');
-    final replacementRoute = routes.popup!;
-    expect(identical(oldRoute, replacementRoute), isFalse);
-    await tester.pump();
-    expect(replacementRoute.isActive, isTrue);
-    expect(paths, hasLength(reads));
-    await tester.tap(find.text('Eco').last);
-    await tester.pumpAndSettle();
-    expect(writes, hasLength(1));
-    expect(paths.where((path) => path.endsWith('/b/comfort/selection')), hasLength(1));
-    expect(writes.single['expected_revision'], 4);
-    expect(writes.single['expected_graph_revision'], 9);
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'replacement before popup first frame retires only that late menu',
+    (tester) async {
+      final routes = ComfortRoutes();
+      await open(tester, routes: routes);
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('comfort-selection')))
+          .onPressed!();
+      final oldRoute = routes.popup!;
+      state['controller'] = 'b';
+      await open(tester, id: 'b', routes: routes);
+      expect(oldRoute.isActive, isFalse);
+      expect(find.byType(PopupMenuItem<String>), findsNothing);
+      expect(writes, isEmpty);
+      final reads = paths.length;
+      await tap(tester, 'comfort-selection');
+      final replacementRoute = routes.popup!;
+      expect(identical(oldRoute, replacementRoute), isFalse);
+      await tester.pump();
+      expect(replacementRoute.isActive, isTrue);
+      expect(paths, hasLength(reads));
+      await tester.tap(find.text('Eco').last);
+      await tester.pumpAndSettle();
+      expect(writes, hasLength(1));
+      expect(
+        paths.where((path) => path.endsWith('/b/comfort/selection')),
+        hasLength(1),
+      );
+      expect(writes.single['expected_revision'], 4);
+      expect(writes.single['expected_graph_revision'], 9);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
-  testWidgets('retiring a preset route does not pop an unrelated dialog above it', (tester) async {
-    final routes = ComfortRoutes();
-    await open(tester, routes: routes);
-    await tap(tester, 'comfort-selection');
-    final oldRoute = routes.popup!;
-    final navigator = oldRoute.navigator!;
-    final dialog = showDialog<void>(
-      context: tester.element(find.byType(VirtualThermostatComfort)),
-      builder: (context) => const AlertDialog(content: Text('Unrelated dialog')),
-    );
-    await tester.pumpAndSettle();
-    state['controller'] = 'b';
-    await open(tester, id: 'b', routes: routes);
-    expect(oldRoute.isActive, isFalse);
-    expect(find.text('Unrelated dialog'), findsOneWidget);
-    expect(writes, isEmpty);
-    final reads = paths.length;
-    navigator.pop();
-    await dialog;
-    await tester.pumpAndSettle();
-    expect(paths, hasLength(reads));
-    expect(find.byType(PopupMenuItem<String>), findsNothing);
-    await tap(tester, 'comfort-selection');
-    expect(find.widgetWithText(PopupMenuItem<String>, 'Eco'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'retiring a preset route does not pop an unrelated dialog above it',
+    (tester) async {
+      final routes = ComfortRoutes();
+      await open(tester, routes: routes);
+      await tap(tester, 'comfort-selection');
+      final oldRoute = routes.popup!;
+      final navigator = oldRoute.navigator!;
+      final dialog = showDialog<void>(
+        context: tester.element(find.byType(VirtualThermostatComfort)),
+        builder: (context) =>
+            const AlertDialog(content: Text('Unrelated dialog')),
+      );
+      await tester.pumpAndSettle();
+      state['controller'] = 'b';
+      await open(tester, id: 'b', routes: routes);
+      expect(oldRoute.isActive, isFalse);
+      expect(find.text('Unrelated dialog'), findsOneWidget);
+      expect(writes, isEmpty);
+      final reads = paths.length;
+      navigator.pop();
+      await dialog;
+      await tester.pumpAndSettle();
+      expect(paths, hasLength(reads));
+      expect(find.byType(PopupMenuItem<String>), findsNothing);
+      await tap(tester, 'comfort-selection');
+      expect(find.widgetWithText(PopupMenuItem<String>, 'Eco'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
-  testWidgets('stale popup value after ID replacement cannot write or reload B', (tester) async {
+  testWidgets('stale popup value after ID replacement cannot write or reload B', (
+    tester,
+  ) async {
     final routes = ComfortRoutes();
     late Route<String> oldRoute;
     late NavigatorState oldNavigator;
     var completionQueued = false;
     Future<void> mount(String id) async {
-      await tester.pumpWidget(MaterialApp(
-        navigatorObservers: [routes],
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: Builder(builder: (context) {
-          if (id == 'b' && !completionQueued) {
-            completionQueued = true;
-            // This parent callback is queued before B's child didUpdateWidget
-            // queues owned-route cleanup. Authority is retired by callback time.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              expect(tester.widget<VirtualThermostatComfort>(
-                find.byType(VirtualThermostatComfort),
-              ).deviceId, 'b');
-              expect(oldRoute.isActive, isTrue);
-              oldNavigator.removeRoute<String>(oldRoute, 'eco');
-            });
-          }
-          return SingleChildScrollView(child: VirtualThermostatComfort(
-            deviceId: id, onChanged: () {},
-          ));
-        })),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [routes],
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                if (id == 'b' && !completionQueued) {
+                  completionQueued = true;
+                  // This parent callback is queued before B's child didUpdateWidget
+                  // queues owned-route cleanup. Authority is retired by callback time.
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    expect(
+                      tester
+                          .widget<VirtualThermostatComfort>(
+                            find.byType(VirtualThermostatComfort),
+                          )
+                          .deviceId,
+                      'b',
+                    );
+                    expect(oldRoute.isActive, isTrue);
+                    oldNavigator.removeRoute<String>(oldRoute, 'eco');
+                  });
+                }
+                return SingleChildScrollView(
+                  child: VirtualThermostatComfort(
+                    deviceId: id,
+                    onChanged: () {},
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
     }
+
     await mount('a');
     final controllerState = tester.state(find.byType(VirtualThermostatComfort));
     await tap(tester, 'comfort-selection');
@@ -791,7 +820,10 @@ void main() {
     state['controller'] = 'b';
     await mount('b');
     expect(await oldResult, 'eco');
-    expect(tester.state(find.byType(VirtualThermostatComfort)), same(controllerState));
+    expect(
+      tester.state(find.byType(VirtualThermostatComfort)),
+      same(controllerState),
+    );
     expect(oldRoute.isActive, isFalse);
     expect(find.byType(PopupMenuItem<String>), findsNothing);
     expect(paths, [
@@ -799,8 +831,16 @@ void main() {
       '/plugins/devices-virtual/producers/thermostats/b/comfort',
     ]);
     expect(writes, isEmpty);
-    expect(find.textContaining('Request failed; reload before retrying'), findsNothing);
-    expect(tester.widget<TextButton>(find.byKey(const ValueKey('comfort-create'))).onPressed, isNotNull);
+    expect(
+      find.textContaining('Request failed; reload before retrying'),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+          .onPressed,
+      isNotNull,
+    );
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -812,22 +852,30 @@ void main() {
         RequestInterceptorHandler? heldPost;
         RequestOptions? heldRequest;
         final ledger = <Map<String, dynamic>>[];
-        dio.interceptors.insert(0, InterceptorsWrapper(onRequest: (options, handler) {
-          if (options.method == 'POST') {
-            final body = Map<String, dynamic>.from(options.data as Map);
-            ledger.add({'path': options.path, 'body': body});
-            if (options.path == '/plugins/devices-virtual/producers/thermostats/a/comfort/selection') {
-              paths.add(options.path);
-              writes.add(body);
-              heldPost = handler;
-              heldRequest = options;
-              return;
-            }
-          }
-          handler.next(options);
-        }));
+        dio.interceptors.insert(
+          0,
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              if (options.method == 'POST') {
+                final body = Map<String, dynamic>.from(options.data as Map);
+                ledger.add({'path': options.path, 'body': body});
+                if (options.path ==
+                    '/plugins/devices-virtual/producers/thermostats/a/comfort/selection') {
+                  paths.add(options.path);
+                  writes.add(body);
+                  heldPost = handler;
+                  heldRequest = options;
+                  return;
+                }
+              }
+              handler.next(options);
+            },
+          ),
+        );
         await open(tester, routes: routes);
-        final controllerState = tester.state(find.byType(VirtualThermostatComfort));
+        final controllerState = tester.state(
+          find.byType(VirtualThermostatComfort),
+        );
         await tap(tester, 'comfort-selection');
         final oldRoute = routes.popup!;
         // A's real selection closes its popup normally, then awaits this POST.
@@ -836,32 +884,64 @@ void main() {
         expect(oldRoute.isActive, isFalse);
         expect(find.byType(PopupMenuItem<String>), findsNothing);
         expect(heldPost, isNotNull);
-        expect(ledger, [{
-          'path': '/plugins/devices-virtual/producers/thermostats/a/comfort/selection',
-          'body': {
-            'preset': 'eco',
-            'clear_user_off': false,
-            'expected_revision': 4,
-            'expected_graph_revision': 9,
+        expect(ledger, [
+          {
+            'path':
+                '/plugins/devices-virtual/producers/thermostats/a/comfort/selection',
+            'body': {
+              'preset': 'eco',
+              'clear_user_off': false,
+              'expected_revision': 4,
+              'expected_graph_revision': 9,
+            },
           },
-        }]);
+        ]);
         expect(writes, hasLength(1));
-        expect(tester.widget<TextButton>(find.byKey(const ValueKey('comfort-create'))).onPressed, isNull);
+        expect(
+          tester
+              .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+              .onPressed,
+          isNull,
+        );
         final oldResponse = jsonDecode(jsonEncode(state));
         state = configured()..['controller'] = 'b';
         await open(tester, id: 'b', routes: routes);
-        expect(tester.state(find.byType(VirtualThermostatComfort)), same(controllerState));
-        expect(paths.where((path) => path.endsWith('/b/comfort')), hasLength(1));
-        expect(tester.widget<TextButton>(find.byKey(const ValueKey('comfort-create'))).onPressed, isNotNull);
-        expect(tester.widget<TextButton>(find.byKey(const ValueKey('comfort-selection'))).onPressed, isNotNull);
-        await tap(tester, editor == 'menu' ? 'comfort-selection' : 'comfort-create');
+        expect(
+          tester.state(find.byType(VirtualThermostatComfort)),
+          same(controllerState),
+        );
+        expect(
+          paths.where((path) => path.endsWith('/b/comfort')),
+          hasLength(1),
+        );
+        expect(
+          tester
+              .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+              .onPressed,
+          isNotNull,
+        );
+        expect(
+          tester
+              .widget<TextButton>(
+                find.byKey(const ValueKey('comfort-selection')),
+              )
+              .onPressed,
+          isNotNull,
+        );
+        await tap(
+          tester,
+          editor == 'menu' ? 'comfort-selection' : 'comfort-create',
+        );
         final Route<dynamic> replacementRoute = editor == 'menu'
             ? routes.popup!
             : ModalRoute.of(tester.element(find.byType(AlertDialog)))!;
         expect(replacementRoute.isActive, isTrue);
         expect(identical(replacementRoute, oldRoute), isFalse);
         if (editor == 'menu') {
-          expect(find.widgetWithText(PopupMenuItem<String>, 'Eco'), findsOneWidget);
+          expect(
+            find.widgetWithText(PopupMenuItem<String>, 'Eco'),
+            findsOneWidget,
+          );
         } else {
           expect(find.byType(AlertDialog), findsOneWidget);
         }
@@ -869,21 +949,30 @@ void main() {
         // Resolve/reject the legitimate old operation while B owns editing.
         // _act catches rejection; this is not an unobserved Future failure.
         if (editor == 'menu') {
-          heldPost!.resolve(Response(
-            requestOptions: heldRequest!, statusCode: 200,
-            data: {'data': oldResponse},
-          ));
+          heldPost!.resolve(
+            Response(
+              requestOptions: heldRequest!,
+              statusCode: 200,
+              data: {'data': oldResponse},
+            ),
+          );
         } else {
-          heldPost!.reject(DioException(
-            requestOptions: heldRequest!, message: 'retired A selection rejected',
-          ));
+          heldPost!.reject(
+            DioException(
+              requestOptions: heldRequest!,
+              message: 'retired A selection rejected',
+            ),
+          );
         }
         await tester.pumpAndSettle();
         expect(replacementRoute.isActive, isTrue);
         expect(paths, hasLength(reads));
         expect(writes, hasLength(1));
         expect(ledger, hasLength(1));
-        expect(find.textContaining('retired A selection rejected'), findsNothing);
+        expect(
+          find.textContaining('retired A selection rejected'),
+          findsNothing,
+        );
         expect(
           find.textContaining('Request failed; reload before retrying'),
           findsNothing,
@@ -911,7 +1000,8 @@ void main() {
           expect(writes.last['expected_graph_revision'], 9);
           expect(ledger, hasLength(2));
           expect(ledger.last, {
-            'path': '/plugins/devices-virtual/producers/thermostats/b/comfort/selection',
+            'path':
+                '/plugins/devices-virtual/producers/thermostats/b/comfort/selection',
             'body': {
               'preset': 'eco',
               'clear_user_off': false,
@@ -926,7 +1016,10 @@ void main() {
           expect(writes, hasLength(1));
           expect(ledger, hasLength(1));
         }
-        expect(paths.where((path) => path.endsWith('/a/comfort/selection')), hasLength(1));
+        expect(
+          paths.where((path) => path.endsWith('/a/comfort/selection')),
+          hasLength(1),
+        );
         await tester.pumpWidget(const SizedBox());
       },
     );
