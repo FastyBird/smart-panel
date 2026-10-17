@@ -113,11 +113,17 @@ export class ClimateAutomationWriterService {
 						try { selected = await work(manager, operation.scope); }
 						catch (cause) { this.fail(operation, cause); }
 						operation.phase = 'DRAINING';
+						// Fix the selected identities before any drain await; caller arrays remain writable.
+						let capturedRecords: readonly HandleRecord[] | undefined;
+						try {
+							if (!selected) throw new Conflict('invalid');
+							capturedRecords = this.selection(operation, selected);
+						} catch (cause) { this.fail(operation, cause); }
 						await Promise.all(operation.callbacks);
 						await operation.tail;
 						this.assertHealthy(operation);
-						if (!selected) throw new Conflict('invalid');
-						const records = this.selection(operation, selected);
+						if (!capturedRecords) throw new Conflict('invalid');
+						const records = capturedRecords;
 						operation.phase = 'FINALIZING';
 						await this.context.run({ operation, internal: true }, async () => {
 							for (const record of records) await this.validateSnapshot(manager, record);
@@ -365,12 +371,19 @@ export class ClimateAutomationWriterService {
 		if (!record || record.operation !== operation) throw new Conflict('invalid');
 		return record;
 	}
-	private selection(operation: Operation, selected: ClimateAutomationSelection): HandleRecord[] {
+	private selection(operation: Operation, selected: ClimateAutomationSelection): readonly HandleRecord[] {
 		if (Array.isArray(selected)) {
-			if (selected.length === 0) throw new Conflict('invalid');
-			return selected.map((handle: ClimateAutomationHandle) => this.record(operation, handle));
+			const length = selected.length;
+			const records: HandleRecord[] = [];
+			for (let index = 0; index < length; index++) {
+				const handle: unknown = selected[index];
+				if (!(handle instanceof PrivateShell)) throw new Conflict('invalid');
+				records.push(this.record(operation, handle));
+			}
+			if (records.length === 0) throw new Conflict('invalid');
+			return Object.freeze(records);
 		}
-		if (selected instanceof PrivateShell) return [this.record(operation, selected)];
+		if (selected instanceof PrivateShell) return Object.freeze([this.record(operation, selected)]);
 		throw new Conflict('invalid');
 	}
 	private async source(manager: EntityManager, producerKey: string, subjectId: string): Promise<ClimateAutomationSourceFacts | null> {

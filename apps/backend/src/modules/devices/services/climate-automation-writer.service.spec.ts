@@ -580,4 +580,71 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 	});
 	// END owned-input admission regressions
 
+
+	// BEGIN fixed selected-set regressions (source-only drafts; all prior cases unchanged)
+	it.each(['fresh-child','unrelated'])('keeps the original selected fence when an admitted callback substitutes %s during drain', async (replacement) => {
+		await initialize(); await source();
+		const beforeSlot = await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId });
+		const beforeSource = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		const entered = deferred(), release = deferred(), mutated = deferred();
+		selectionBarrier = async () => { entered.resolve(); await release.promise; };
+		const validation = jest.spyOn(provider, 'validateSelectionInManager');
+		let callerSelection: ClimateAutomationHandle[] | undefined, originalFence: ClimateAutomationHandle | undefined;
+		let acceptedCallback: Promise<unknown> | undefined;
+		const result = writer.runReserved(async (manager, scope) => {
+			const original = await writer.readSlot(manager, scope, controllerId, true);
+			const expectedSource = await writer.readSource(manager, scope, 'activity:v1', 'space-fixture');
+			const unrelated = await writer.readSlot(manager, scope, randomUUID());
+			const selected = [original]; callerSelection = selected; originalFence = original;
+			// Both command and callback are admitted while BODY_OPEN; the callback submits NO new command.
+			const acceptedChild = writer.stageSlot(manager, scope, { expectedSlot: original, expectedSource, selection: mode, bundleId });
+			acceptedCallback = writer.inReservedManager(manager, scope, async () => {
+				const fresh = await acceptedChild;
+				expect(Object.isFrozen(selected)).toBe(false);
+				selected.splice(0, 1, replacement === 'fresh-child' ? fresh : unrelated);
+				mutated.resolve(); return unrelated;
+			});
+			void acceptedCallback.catch(() => undefined);
+			return selected; // root closes while the already-admitted child is held inside validation
+		});
+		try {
+			await entered.promise;
+			if (!callerSelection || !originalFence) throw new Error('Missing original selected set');
+			expect(callerSelection[0]).toBe(originalFence); expect(Object.isFrozen(callerSelection)).toBe(false);
+			release.resolve(); await mutated.promise;
+			expect(callerSelection[0]).not.toBe(originalFence);
+			expect(await result).toEqual({ outcome: 'conflict', reason: 'stale' });
+			if (!acceptedCallback) throw new Error('Missing accepted callback'); await acceptedCallback;
+			expect(validation).toHaveBeenCalledTimes(1); // no retry/revalidation of a replacement plan
+			const afterSlot = await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId });
+			expect({ ...afterSlot }).toEqual({ ...beforeSlot });
+			expect(afterSlot.slotRevision).toBe(1); expect(afterSlot.state).toBe('EMPTY'); expect(afterSlot.baselineId).toBeNull();
+			expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: beforeSource.generationId }) }).toEqual({ ...beforeSource });
+			callerSelection[0] = originalFence; expect(callerSelection[0]).toBe(originalFence); // remains caller-owned/writable
+			expect((await noop()).outcome).toBe('unchanged'); expect(validation).toHaveBeenCalledTimes(1);
+		} finally { release.resolve(); }
+	});
+
+	it.each(['throw','caught-reentry'])('retains a closed selected-array %s capture failure without accepting business work', async (failureKind) => {
+		let getters = 0, reads = 0, caught: unknown;
+		const failure = new Error('selected handle getter failed');
+		database.subscribers.push({ beforeQuery: (event) => { if (event.query.startsWith('SELECT') && event.query.includes(CLIMATE_SLOT_TABLE)) reads++; } });
+		const result = writer.runReserved(async (manager, scope) => {
+			const original = await writer.readSlot(manager, scope, controllerId);
+			const selected = [original];
+			Object.defineProperty(selected, '0', { configurable: true, get: () => {
+				getters++;
+				if (failureKind === 'throw') throw failure;
+				try { void writer.readSlot(manager, scope, controllerId); } catch (error) { caught = error; }
+				return original;
+			} });
+			return selected;
+		});
+		await expect(result).rejects.toMatchObject({ commitOutcome: 'rolled_back', cause: failureKind === 'throw' ? failure : expect.any(Error) });
+		expect(getters).toBe(1); expect(reads).toBe(1);
+		if (failureKind === 'caught-reentry') expect(caught).toBeInstanceOf(Error);
+		expect((await noop()).outcome).toBe('unchanged');
+	});
+	// END fixed selected-set regressions
+
 });
