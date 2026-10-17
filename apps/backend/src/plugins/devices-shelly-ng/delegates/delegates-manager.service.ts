@@ -1,3 +1,4 @@
+import { ManagedRuntimeAdmission } from '../../../modules/extensions/services/managed-service-manager.service';
 import { CharacteristicValue, Device, Ethernet, WiFi } from 'shellies-ds9';
 
 import { Injectable, Optional } from '@nestjs/common';
@@ -123,6 +124,18 @@ type ElectricalComponent = {
 	aenergy?: { total: number };
 };
 
+/** Owner of one closed-by-default guarded admission attempt, never returned by lookup. */
+export interface ShellyGuardedSessionAdmissionOwner {
+	open(): boolean;
+	revoke(): void;
+}
+
+interface GuardedSessionAdmission {
+	readonly runtime: ManagedRuntimeAdmission | null;
+	open: boolean;
+	revoked: boolean;
+}
+
 @Injectable()
 export class DelegatesManagerService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -245,6 +258,35 @@ export class DelegatesManagerService {
 	 */
 	private static readonly DISCONNECT_GRACE_MS = 15_000;
 	private readonly disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+
+	private guardedSessionAdmission: GuardedSessionAdmission | null = null;
+
+	beginGuardedSessionAdmission(runtime: ManagedRuntimeAdmission | null): ShellyGuardedSessionAdmissionOwner {
+		this.revokeGuardedSessionAdmission();
+		const admission: GuardedSessionAdmission = { runtime, open: false, revoked: false };
+		this.guardedSessionAdmission = admission;
+		return Object.freeze({
+			open: () => {
+				if (this.guardedSessionAdmission !== admission || admission.revoked || !runtime?.isCurrent()) return false;
+				admission.open = true;
+				return true;
+			},
+			revoke: () => { admission.revoked = true; admission.open = false; },
+		});
+	}
+
+	revokeGuardedSessionAdmission(): void {
+		const admission = this.guardedSessionAdmission;
+		if (admission) { admission.revoked = true; admission.open = false; }
+	}
+
+	/** Pure capture; unknown, pending, unmanaged and revoked starts are never ready. */
+	captureGuardedSessionAdmission(): ManagedRuntimeAdmission | null {
+		const admission = this.guardedSessionAdmission;
+		const isCurrent = () => this.guardedSessionAdmission === admission &&
+			admission !== null && admission.open && !admission.revoked && admission.runtime?.isCurrent() === true;
+		return isCurrent() ? Object.freeze({ isCurrent }) : null;
+	}
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -2487,6 +2529,8 @@ export class DelegatesManagerService {
 		componentId: number,
 		qualification: ShellyProtectiveQualification,
 	): ShellyGuardRpcSession | null {
+		const admission = this.captureGuardedSessionAdmission();
+		if (!admission) return null;
 		if (
 			!device.identifier ||
 			qualification.guardScript?.canonicalMac.toUpperCase() !== device.canonicalMac?.toUpperCase()
@@ -2500,6 +2544,7 @@ export class DelegatesManagerService {
 				componentId,
 				qualification,
 				() =>
+					admission.isCurrent() &&
 					this.delegates.get(id) === delegate &&
 					this.delegateDeviceIds.get(id) === device.id &&
 					(this.sampleGenerations.get(id) ?? 0) === generation,
@@ -4077,6 +4122,7 @@ export class DelegatesManagerService {
 	}
 
 	async detach(): Promise<void> {
+		this.revokeGuardedSessionAdmission();
 		// Remove event listeners from all delegates without triggering connection
 		// state updates. During a service restart, the UNKNOWN state set by
 		// performRemove() would race with the CONNECTED state from the new

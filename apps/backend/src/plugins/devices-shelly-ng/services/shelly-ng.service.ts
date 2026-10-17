@@ -14,7 +14,7 @@ import {
 	ConfigChangeResult,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-extension-service.interface';
-import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
+import { ManagedRuntimeAdmission, ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
@@ -42,6 +42,8 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	readonly serviceId = 'connector';
 
 	private shellies?: Shellies;
+
+	private guardedLifecycleGeneration = Symbol('Shelly guarded lifecycle');
 
 	private mdnsDiscoverer?: MdnsDeviceDiscoverer;
 
@@ -91,6 +93,9 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
+		// Capture ONLY the original manager invocation before the lifecycle queue can wait.
+		const admission = this.managedServiceManager.captureCurrentStartAdmission(this.owner, this.serviceId);
+		const generation = this.guardedLifecycleGeneration;
 		await this.withLock(async () => {
 			switch (this.state) {
 				case 'started':
@@ -101,16 +106,14 @@ export class ShellyNgService extends BaseManagedExtensionService {
 					await this.waitUntil('stopped');
 					// Clear cached config to ensure fresh values on restart
 					this.pluginConfig = null;
-					await this.initialize();
-					await this.doStart();
+					await this.startWithGuardedAdmission(admission?.runtime ?? null, generation);
 					return;
 				case 'stopped':
 				case 'error':
 					// Both stopped and error states can be started
 					// Clear cached config to ensure fresh values on restart
 					this.pluginConfig = null;
-					await this.initialize();
-					await this.doStart();
+					await this.startWithGuardedAdmission(admission?.runtime ?? null, generation);
 					return;
 			}
 		});
@@ -121,6 +124,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
+		this.revokeCurrentAuthority();
 		await this.withLock(async () => {
 			switch (this.state) {
 				case 'stopped':
@@ -143,6 +147,28 @@ export class ShellyNgService extends BaseManagedExtensionService {
 					return;
 			}
 		});
+	}
+
+	/** Fail closed synchronously, including a stop queued behind an earlier start. */
+	revokeCurrentAuthority(): void {
+		this.guardedLifecycleGeneration = Symbol('Shelly guarded lifecycle');
+		this.delegatesRegistryService.revokeGuardedSessionAdmission();
+	}
+
+	private async startWithGuardedAdmission(runtime: ManagedRuntimeAdmission | null, generation: symbol): Promise<void> {
+		const gate = this.delegatesRegistryService.beginGuardedSessionAdmission(runtime);
+		try {
+			await this.initialize();
+			await this.doStart();
+			if (this.state === 'started' && generation === this.guardedLifecycleGeneration && runtime?.isCurrent()) {
+				gate.open();
+			} else {
+				gate.revoke();
+			}
+		} catch (error) {
+			gate.revoke();
+			throw error;
+		}
 	}
 
 	isHealthy(): Promise<boolean> {
@@ -359,6 +385,8 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	}
 
 	private async doStop(): Promise<void> {
+		// Internal failure cleanup must close the current gate before mDNS/insertion drains.
+		this.delegatesRegistryService.revokeGuardedSessionAdmission();
 		this.stopHealthCheck();
 		this.stopStatusPoll();
 		this.wsServer.stop();
