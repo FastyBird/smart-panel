@@ -1,4 +1,3 @@
-import { ManagedRuntimeAdmission } from '../../../modules/extensions/services/managed-service-manager.service';
 import { CharacteristicValue, Device, Ethernet, WiFi } from 'shellies-ds9';
 
 import { Injectable, Optional } from '@nestjs/common';
@@ -30,6 +29,7 @@ import { CommandLatencyTraceCollectorService } from '../../../modules/devices/se
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { ManagedRuntimeAdmission } from '../../../modules/extensions/services/managed-service-manager.service';
 import { configuredCoverType, coverStatusReason, nativeCoverStatus } from '../contracts/cover-action.contract';
 import { CoverRecoveryTarget } from '../contracts/cover-recovery.contract';
 import {
@@ -271,20 +271,30 @@ export class DelegatesManagerService {
 				admission.open = true;
 				return true;
 			},
-			revoke: () => { admission.revoked = true; admission.open = false; },
+			revoke: () => {
+				admission.revoked = true;
+				admission.open = false;
+			},
 		});
 	}
 
 	revokeGuardedSessionAdmission(): void {
 		const admission = this.guardedSessionAdmission;
-		if (admission) { admission.revoked = true; admission.open = false; }
+		if (admission) {
+			admission.revoked = true;
+			admission.open = false;
+		}
 	}
 
 	/** Pure capture; unknown, pending, unmanaged and revoked starts are never ready. */
 	captureGuardedSessionAdmission(): ManagedRuntimeAdmission | null {
 		const admission = this.guardedSessionAdmission;
-		const isCurrent = () => this.guardedSessionAdmission === admission &&
-			admission !== null && admission.open && !admission.revoked && admission.runtime?.isCurrent() === true;
+		const isCurrent = () =>
+			this.guardedSessionAdmission === admission &&
+			admission !== null &&
+			admission.open &&
+			!admission.revoked &&
+			admission.runtime?.isCurrent() === true;
 		return isCurrent() ? Object.freeze({ isCurrent }) : null;
 	}
 

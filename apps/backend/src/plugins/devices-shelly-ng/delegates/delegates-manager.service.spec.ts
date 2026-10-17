@@ -8,8 +8,8 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Device, Switch, WiFi } from 'shellies-ds9';
-import WebSocket from 'ws';
 import { v4 as uuid } from 'uuid';
+import WebSocket from 'ws';
 
 import { Logger } from '@nestjs/common';
 
@@ -17,8 +17,6 @@ import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../mod
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { ShellyProtectiveQualification } from '../contracts/protective-switch.contract';
-import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
-
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
 import {
@@ -26,6 +24,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { GuardedShellyRpcHandler } from '../services/guarded-shelly-rpc';
 
 import { DelegatesManagerService } from './delegates-manager.service';
 
@@ -3511,25 +3510,33 @@ describe('DelegatesManagerService', () => {
 			expect(first.open()).toBe(true);
 			const captured = svc.captureGuardedSessionAdmission();
 			if (!captured) throw new Error('Expected first capture');
-			current = false; expect(captured.isCurrent()).toBe(false);
-			first.revoke(); current = true;
+			current = false;
+			expect(captured.isCurrent()).toBe(false);
+			first.revoke();
+			current = true;
 			expect(first.open()).toBe(false);
 			const second = svc.beginGuardedSessionAdmission({ isCurrent: () => true });
 			expect(second.open()).toBe(true);
 			const fresh = svc.captureGuardedSessionAdmission();
 			if (!fresh) throw new Error('Expected new capture');
-			first.revoke(); expect(first.open()).toBe(false);
-			expect(captured.isCurrent()).toBe(false); expect(fresh.isCurrent()).toBe(true);
+			first.revoke();
+			expect(first.open()).toBe(false);
+			expect(captured.isCurrent()).toBe(false);
+			expect(fresh.isCurrent()).toBe(true);
 			const detaching = svc.detach();
-			expect(fresh.isCurrent()).toBe(false); expect(second.open()).toBe(false);
+			expect(fresh.isCurrent()).toBe(false);
+			expect(second.open()).toBe(false);
 			await detaching;
 		});
 
 		it.each(['gate', 'component', 'connection-samples', 'mapping-replacement'] as const)(
-			'actual original delegate/session retains %s fencing without RPC or fresh-session rescue', async (mutation) => {
+			'actual original delegate/session retains %s fencing without RPC or fresh-session rescue',
+			async (mutation) => {
 				const actual = jest.requireActual<typeof import('./shelly-device.delegate')>('./shelly-device.delegate');
 				const mocked = jest.requireMock<typeof import('./shelly-device.delegate')>('./shelly-device.delegate');
-				const constructor = jest.spyOn(mocked, 'ShellyDeviceDelegate').mockImplementation((device) => new actual.ShellyDeviceDelegate(device));
+				const constructor = jest
+					.spyOn(mocked, 'ShellyDeviceDelegate')
+					.mockImplementation((device) => new actual.ShellyDeviceDelegate(device));
 				// Typed auto-mock constructor: does NOT invoke ws's real client/server constructor.
 				const OfflineSocket = jest.createMockFromModule<typeof WebSocket>('ws');
 				const socketCloses: jest.SpiedFunction<WebSocket['close']>[] = [];
@@ -3542,7 +3549,9 @@ describe('DelegatesManagerService', () => {
 						socketCloses.push(jest.spyOn(socket, 'close'));
 						return socket;
 					}
-					override get connected(): boolean { return this.online; }
+					override get connected(): boolean {
+						return this.online;
+					}
 					protected override disconnect(): Promise<void> {
 						// SDK destroy still clears its timeout/client; never enter ws.close/abortHandshake.
 						this.online = false;
@@ -3550,29 +3559,57 @@ describe('DelegatesManagerService', () => {
 						return Promise.resolve();
 					}
 				}
-				const rpc = new OfflineRpc('127.0.0.1', { clientId: 'source-fixture', requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 });
+				const rpc = new OfflineRpc('127.0.0.1', {
+					clientId: 'source-fixture',
+					requestTimeout: 1,
+					pingInterval: 0,
+					reconnectInterval: 0,
+				});
 				const request = jest.spyOn(rpc, 'request');
 				try {
 					const DeviceClass = Device.getClass('SNSW-001P16EU');
 					if (!DeviceClass) throw new Error('Expected pinned SDK device class');
-					const sdk = new DeviceClass({ id: 'offline-guard-device', mac: '000000000001', model: 'SNSW-001P16EU', fw_id: 'offline-fixture' }, rpc);
+					const sdk = new DeviceClass(
+						{ id: 'offline-guard-device', mac: '000000000001', model: 'SNSW-001P16EU', fw_id: 'offline-fixture' },
+						rpc,
+					);
 					const wifi = sdk.getComponent('wifi');
 					if (!(wifi instanceof WiFi)) throw new Error('Expected SDK WiFi component');
 					wifi.update({ sta_ip: '127.0.0.1' });
-					const device = Object.assign(new ShellyNgDeviceEntity(), { id: uuid(), identifier: sdk.id, canonicalMac: '000000000001', enabled: true });
+					const device = Object.assign(new ShellyNgDeviceEntity(), {
+						id: uuid(),
+						identifier: sdk.id,
+						canonicalMac: '000000000001',
+						enabled: true,
+					});
 					devicesService.findOneBy.mockResolvedValue(device);
 					devicesService.findOne.mockResolvedValue(device);
 					channelsService.findOneBy.mockResolvedValue(null);
 					channelsPropertiesService.findOneBy.mockResolvedValue(null);
 					const delegate = await svc.insert(sdk);
 					const qualification: ShellyProtectiveQualification = {
-						deviceId: sdk.id, model: sdk.model, firmware: 'offline-fixture', componentId: 0,
-						evidenceId: 'offline-fixture-not-installed', revision: 1, testedLeaseSeconds: { min: 1, max: 30 },
-						releaseOrderingQualified: true, independentProtectionQualified: true,
-						guardScript: { scriptId: 1, sourceHash: 'a'.repeat(64), endpointHostname: '127.0.0.1', canonicalMac: '000000000001',
-							protocol: 'sp-guard-candidate-1', evidenceId: 'offline-fixture', writerIsolationEvidenceId: 'offline-fixture',
-							commissioningBarrierEvidenceId: 'offline-fixture', endpointAuthenticationEvidenceId: 'offline-fixture',
-							restartDrainEvidenceId: 'offline-fixture', localExecutionBoundsEvidenceId: 'offline-fixture' },
+						deviceId: sdk.id,
+						model: sdk.model,
+						firmware: 'offline-fixture',
+						componentId: 0,
+						evidenceId: 'offline-fixture-not-installed',
+						revision: 1,
+						testedLeaseSeconds: { min: 1, max: 30 },
+						releaseOrderingQualified: true,
+						independentProtectionQualified: true,
+						guardScript: {
+							scriptId: 1,
+							sourceHash: 'a'.repeat(64),
+							endpointHostname: '127.0.0.1',
+							canonicalMac: '000000000001',
+							protocol: 'sp-guard-candidate-1',
+							evidenceId: 'offline-fixture',
+							writerIsolationEvidenceId: 'offline-fixture',
+							commissioningBarrierEvidenceId: 'offline-fixture',
+							endpointAuthenticationEvidenceId: 'offline-fixture',
+							restartDrainEvidenceId: 'offline-fixture',
+							localExecutionBoundsEvidenceId: 'offline-fixture',
+						},
 					};
 					expect(svc.prepareGuardRpcSession(device, 0, qualification)).toBeNull();
 					const owner = svc.beginGuardedSessionAdmission({ isCurrent: () => true });
@@ -3583,21 +3620,27 @@ describe('DelegatesManagerService', () => {
 					if (mutation === 'gate') {
 						svc.revokeGuardedSessionAdmission();
 						expect(original.isCurrent()).toBe(false);
-						const next = svc.beginGuardedSessionAdmission({ isCurrent: () => true }); expect(next.open()).toBe(true);
+						const next = svc.beginGuardedSessionAdmission({ isCurrent: () => true });
+						expect(next.open()).toBe(true);
 						expect(svc.prepareGuardRpcSession(device, 0, qualification)?.isCurrent()).toBe(true);
-						expect(owner.open()).toBe(false); owner.revoke();
+						expect(owner.open()).toBe(false);
+						owner.revoke();
 					} else if (mutation === 'component') {
 						delegate.switches.set(0, new Switch(sdk, 0));
 					} else if (mutation === 'connection-samples') {
-						rpc.online = false; rpc.emit('disconnect', 1000, 'offline fixture', null);
-						rpc.online = true; rpc.emit('connect');
+						rpc.online = false;
+						rpc.emit('disconnect', 1000, 'offline fixture', null);
+						rpc.online = true;
+						rpc.emit('connect');
 					} else {
 						await svc.insert(sdk, true);
 					}
 					expect(original.isCurrent()).toBe(false);
 					expect(request).not.toHaveBeenCalled(); // Metadata/session continuity only; no inspection/ON/network.
 				} finally {
-					try { await svc.detach(); } finally {
+					try {
+						await svc.detach();
+					} finally {
 						await rpc.destroy();
 						expect(rpc.disconnectCount).toBe(1);
 						expect(rpc.connected).toBe(false);
@@ -3610,5 +3653,4 @@ describe('DelegatesManagerService', () => {
 			},
 		);
 	});
-
 });

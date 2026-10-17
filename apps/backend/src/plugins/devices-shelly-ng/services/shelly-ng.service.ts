@@ -14,7 +14,10 @@ import {
 	ConfigChangeResult,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-extension-service.interface';
-import { ManagedRuntimeAdmission, ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
+import {
+	ManagedRuntimeAdmission,
+	ManagedServiceManagerService,
+} from '../../../modules/extensions/services/managed-service-manager.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
