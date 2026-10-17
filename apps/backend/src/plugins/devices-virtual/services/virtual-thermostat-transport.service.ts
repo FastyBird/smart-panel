@@ -26,6 +26,14 @@ export type ThermostatReconciliationScope = ProviderReconciliationScope<Thermost
 export type ThermostatReleaseOrderingEvidence = ProviderReleaseOrderingEvidence<ThermostatInstalledQualification>;
 export type ThermostatActuationAdapter = ProviderActuationAdapter<ThermostatInstalledQualification>;
 
+/**
+ * Structural view of an ORIGINAL function's existing call operation. This neither binds nor wraps it.
+ * Keep its declared result and explicit receiver when strictBindCallApply is not enabled by the project.
+ */
+type OriginalReceiverCall<Receiver, Args extends unknown[], Result> = {
+	readonly call: (receiver: Receiver, ...args: Args) => Result;
+};
+
 /** Provider seam is internal; no HTTP payload can register an adapter or supply ordering evidence. */
 @Injectable()
 export class VirtualThermostatTransportService implements OnModuleDestroy {
@@ -183,8 +191,20 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			const supplied = this.adapters.get(type);
 			if (supplied) {
 				const registration = this.registrations.get(type);
-				const capture = supplied.captureReconcileReadiness;
-				const canReconcile = supplied.canReconcile;
+				const suppliedMethods: {
+					readonly captureReconcileReadiness?: OriginalReceiverCall<
+						ThermostatActuationAdapter,
+						[IDevicePropertyData, ThermostatInstalledQualification],
+						CapturedThermostatReconcileReadiness | null
+					>;
+					readonly canReconcile: OriginalReceiverCall<
+						ThermostatActuationAdapter,
+						[IDevicePropertyData, ThermostatInstalledQualification],
+						boolean
+					>;
+				} = supplied;
+				const capture = suppliedMethods.captureReconcileReadiness;
+				const canReconcile = suppliedMethods.canReconcile;
 				const providerProfile = supplied.providerProfile;
 				if (
 					!capture ||
@@ -206,7 +226,10 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					typeof original.isCurrent !== 'function'
 				)
 					return null;
-				const originalGuard = original.isCurrent;
+				const originalMethods: {
+					readonly isCurrent: OriginalReceiverCall<typeof original, [], boolean>;
+				} = original;
+				const originalGuard = originalMethods.isCurrent;
 				const originalProfile = original.providerProfile;
 				providerCurrent = () =>
 					this.registrations.get(type) === registration &&
@@ -234,7 +257,10 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				// Capture EXACTLY once. Final checks must never ask a new wrapper/session to rescue this one.
 				const original = platform.prepareGuardRpcSession(target, localProfile);
 				if (!original || typeof original.isCurrent !== 'function') return null;
-				const originalGuard = original.isCurrent;
+				const originalMethods: {
+					readonly isCurrent: OriginalReceiverCall<typeof original, [], boolean>;
+				} = original;
+				const originalGuard = originalMethods.isCurrent;
 				providerCurrent = () =>
 					!this.adapters.has(type) &&
 					platformLease.isCurrent() === true &&

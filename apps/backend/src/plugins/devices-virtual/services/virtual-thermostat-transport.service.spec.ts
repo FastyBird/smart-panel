@@ -332,6 +332,7 @@ describe('captured thermostat transport readiness continuity', () => {
 				pingInterval: 0,
 				reconnectInterval: 0,
 			});
+			const request = jest.spyOn(rpc, 'request');
 			Object.defineProperty(rpc, 'connected', { value: true });
 			Object.defineProperty(rpc, 'hostname', { value: '127.0.0.1' });
 			const firstState = { current: true };
@@ -357,6 +358,7 @@ describe('captured thermostat transport readiness continuity', () => {
 				owner,
 				prepare,
 				rpc,
+				request,
 				on,
 				fence,
 				firstState,
@@ -508,7 +510,7 @@ describe('captured thermostat transport readiness continuity', () => {
 			expect(original.isCurrent()).toBe(true);
 			expect(original.isCurrent()).toBe(true);
 			expect(b.prepare).toHaveBeenCalledTimes(1);
-			expect(b.rpc.request).not.toHaveBeenCalled();
+			expect(b.request).not.toHaveBeenCalled();
 			expect(b.on).not.toHaveBeenCalled();
 			expect(b.fence).not.toHaveBeenCalled();
 			expect(f.readSample).not.toHaveBeenCalled();
@@ -551,7 +553,7 @@ describe('captured thermostat transport readiness continuity', () => {
 					Object.assign(f.qualification.profile, { releaseOrderingQualified: false });
 				else Object.assign(f.qualification.profile, { independentProtectionQualified: false });
 				expect(f.capture()).toBeNull();
-				expect(b.rpc.request).not.toHaveBeenCalled();
+				expect(b.request).not.toHaveBeenCalled();
 				expect(b.on).not.toHaveBeenCalled();
 				expect(b.fence).not.toHaveBeenCalled();
 				expect(f.readSample).not.toHaveBeenCalled();
@@ -673,7 +675,7 @@ describe('captured thermostat transport readiness continuity', () => {
 				else f.claim.sourceDeviceIdentity = randomUUID();
 				expect(f.capture()).toBeNull();
 				expect(b.prepare).not.toHaveBeenCalled();
-				expect(b.rpc.request).not.toHaveBeenCalled();
+				expect(b.request).not.toHaveBeenCalled();
 				expect(b.on).not.toHaveBeenCalled();
 				expect(b.fence).not.toHaveBeenCalled();
 			} finally {

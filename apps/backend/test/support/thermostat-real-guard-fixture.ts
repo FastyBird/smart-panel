@@ -48,6 +48,10 @@ import { VirtualThermostatActuatorClaimEntity } from '../../src/plugins/devices-
 import { ThermostatInstalledQualification } from '../../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatTransportService } from '../../src/plugins/devices-virtual/services/virtual-thermostat-transport.service';
 
+const isWebSocketSendCallback = (
+	value: unknown,
+): value is NonNullable<Parameters<WebSocket['send']>[2]> => typeof value === 'function';
+
 /** Keep packet age independent of SQLite/host latency, while retaining real asynchronous scheduling. */
 export function useThermostatPacketClock(): () => void {
 	// Logical receiver time advances only with simulated packets; SQLite/SDK scheduling remains real.
@@ -143,7 +147,9 @@ export async function realThermostatGuardFixture(
 		errors: [] as unknown[],
 	};
 	class EmptyDiscoverer extends DeviceDiscoverer {
-		run(): Promise<void> { return Promise.resolve(); }
+		run(): Promise<void> {
+			return Promise.resolve();
+		}
 	}
 	const deviceManager = { createOrUpdate: () => Promise.resolve() };
 	const connectivity = { setConnectionState: () => Promise.resolve() };
@@ -155,11 +161,14 @@ export async function realThermostatGuardFixture(
 			PlatformRegistryService,
 			PollPlacementDiagnosticsService,
 			{ provide: ChannelsPropertiesService, useValue: reports },
-			{ provide: ChannelsService, useValue: {
-				findOneBy: () => Promise.resolve(null),
-				// Telemetry remains the original explicit synthetic report() boundary, not installed SDK evidence.
-				findAll: () => Promise.resolve([]),
-			} },
+			{
+				provide: ChannelsService,
+				useValue: {
+					findOneBy: () => Promise.resolve(null),
+					// Telemetry remains the original explicit synthetic report() boundary, not installed SDK evidence.
+					findAll: () => Promise.resolve([]),
+				},
+			},
 			{
 				provide: DevicesService,
 				useValue: {
@@ -180,17 +189,24 @@ export async function realThermostatGuardFixture(
 			{ provide: ShellyWsServerService, useValue: { start: () => {}, stop: () => {}, isRunning: () => false } },
 			{
 				provide: ConfigService,
-				useValue: { getPluginConfig: () => ({
-					enabled: true, statusPollInterval: 0,
-					mdns: { enabled: false, interface: null },
-					websockets: { requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 },
-				}) },
+				useValue: {
+					getPluginConfig: () => ({
+						enabled: true,
+						statusPollInterval: 0,
+						mdns: { enabled: false, interface: null },
+						websockets: { requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 },
+					}),
+				},
 			},
 			{ provide: NestConfigService, useValue: { get: () => null } },
 			{ provide: PluginConfigValidatorService, useValue: { hasValidator: () => false } },
-			{ provide: NotificationsService, useValue: {
-				notify: () => Promise.resolve(null), resolve: () => Promise.resolve(true),
-			} },
+			{
+				provide: NotificationsService,
+				useValue: {
+					notify: () => Promise.resolve(null),
+					resolve: () => Promise.resolve(true),
+				},
+			},
 		],
 	}).compile();
 	expect(module.get(PollPlacementDiagnosticsService).isEnabled()).toBe(false);
@@ -205,12 +221,18 @@ export async function realThermostatGuardFixture(
 	const rpcs: GuardedShellyRpcHandler[] = [];
 	const sdkDevices: Device[] = [];
 	const delegates: ShellyDeviceDelegate[] = [];
-	const sessionTargets = new Map<string, {
-		device: ShellyNgDeviceEntity; profile: ThermostatInstalledQualification['profile'];
-	}>();
+	const sessionTargets = new Map<
+		string,
+		{
+			device: ShellyNgDeviceEntity;
+			profile: ThermostatInstalledQualification['profile'];
+		}
+	>();
 	managed.register(connector);
-	const startManaged = () => managed.startServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
-	const stopManaged = () => managed.stopServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
+	const startManaged = () =>
+		managed.startServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
+	const stopManaged = () =>
+		managed.stopServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
 	let revoked = false;
 	let closing: Promise<void> | null = null;
 	const revoke = () => {
@@ -225,13 +247,16 @@ export async function realThermostatGuardFixture(
 	const close = (): Promise<void> => {
 		revoke();
 		closing ??= (async () => {
-			try { await connector.stop(); }
-			finally {
-				try { await manager.detach(); }
-				finally {
+			try {
+				await connector.stop();
+			} finally {
+				try {
+					await manager.detach();
+				} finally {
 					for (const delegate of delegates) delegate.destroy();
-					try { await Promise.all(rpcs.map((rpc) => rpc.destroy())); }
-					finally {
+					try {
+						await Promise.all(rpcs.map((rpc) => rpc.destroy()));
+					} finally {
 						reports.onModuleDestroy();
 						registry.onModuleDestroy();
 						await module.close();
@@ -251,179 +276,207 @@ export async function realThermostatGuardFixture(
 	try {
 		if (mode === 'managed') expect(await startManaged()).toBe(true);
 		else if (mode === 'unmanaged') await connector.start();
-	for (const [index, claim] of claims.entries()) {
-		const device = await db.manager.findOneByOrFail(ShellyNgDeviceEntity, { id: claim.sourceDeviceId });
-		const hostname = `127.0.0.${index + 2}`;
-		const profile: ThermostatInstalledQualification['profile'] = {
-			deviceId: device.identifier,
-			model: 'SNSW-001P16EU',
-			firmware: 'fixture-only',
-			componentId: 0,
-			evidenceId: 'offline-only',
-			revision: 1,
-			testedLeaseSeconds: { min: 1, max: 30 },
-			releaseOrderingQualified: true,
-			independentProtectionQualified: true,
-			guardScript: {
-				scriptId: 1,
-				sourceHash: createHash('sha256').update(code).digest('hex'),
-				endpointHostname: hostname,
-				canonicalMac: device.canonicalMac,
-				evidenceId: 'offline-only',
-				protocol: 'sp-guard-candidate-1',
-				writerIsolationEvidenceId: 'offline-only',
-				commissioningBarrierEvidenceId: 'offline-only',
-				endpointAuthenticationEvidenceId: 'offline-only',
-				restartDrainEvidenceId: 'offline-only',
-				localExecutionBoundsEvidenceId: 'offline-only',
-			},
-		};
-		qualifications.set(claim.physicalIdentity, {
-			physicalIdentity: claim.physicalIdentity,
-			profile,
-			upstreamWritersExcluded: true,
-			opposedOutputsInterlocked: false,
-		});
-		members.set(hostname, { property: claim.sourcePropertyId, epoch: 1, output: false, profile });
-		const OfflineSocket = jest.createMockFromModule<typeof WebSocket>('ws');
-		class OfflineRpc extends GuardedShellyRpcHandler {
-			private online = true;
-			protected override createSocket(): WebSocket {
-				const socket = new OfflineSocket('ws://synthetic.invalid');
-				Object.defineProperty(socket, 'readyState', { value: WebSocket.OPEN });
-				jest.spyOn(socket, 'send').mockImplementation((data, options, callback) => {
-					if (typeof data !== 'string') throw new Error('Expected SDK JSON frame');
-					const frame: unknown = JSON.parse(data);
-					if (!frame || typeof frame !== 'object' ||
-						!('id' in frame) || typeof frame.id !== 'number' ||
-						!('method' in frame) || typeof frame.method !== 'string')
-						throw new Error('Invalid offline SDK frame');
-					if (frame.method !== 'Shelly.GetDeviceInfo' && frame.method !== 'Script.GetCode')
-						throw new Error('Unexpected offline actuation RPC');
-					const id = frame.id;
-					const result = frame.method === 'Shelly.GetDeviceInfo'
-						? { id: profile.deviceId, model: profile.model, fw_id: profile.firmware, mac: device.canonicalMac }
-						: { data: code, left: 0 };
-					const second: unknown = options;
-					if (typeof second === 'function') second();
-					else callback?.();
-					queueMicrotask(() => this.client.receive({ jsonrpc: '2.0', id, result }));
-				});
-				return socket;
-			}
-			override get connected(): boolean { return this.online; }
-			protected override connect(): Promise<void> { return Promise.resolve(); }
-			protected override disconnect(): Promise<void> {
-				// Never call real ws close/abortHandshake on an inert constructor fixture.
-				this.online = false;
-				return Promise.resolve();
-			}
-		}
-		const rpc = new OfflineRpc(hostname, {
-			clientId: 'runtime-offline-test-only', requestTimeout: 1, pingInterval: 0, reconnectInterval: 0,
-		});
-		rpcs.push(rpc);
-		const DeviceClass = Device.getClass('SNSW-001P16EU');
-		if (!DeviceClass) throw new Error('Expected pinned SDK class');
-		const sdk = new DeviceClass({
-			id: device.identifier, mac: device.canonicalMac, model: profile.model, fw_id: profile.firmware,
-		}, rpc);
-		const wifi = sdk.getComponent('wifi');
-		if (!(wifi instanceof WiFi)) throw new Error('Expected actual SDK WiFi');
-		wifi.update({ sta_ip: hostname });
-		sdkDevices.push(sdk);
-		sessionTargets.set(claim.sourcePropertyId, { device, profile });
-	}
-	await insert();
-	const admit: DelegatesManagerService['admitGuardFenceSample'] = manager.admitGuardFenceSample.bind(manager);
-	jest.spyOn(manager, 'admitGuardFenceSample').mockImplementation(async (...args) => {
-		try { await admit(...args); }
-		catch (error) { controls.errors.push(error); throw error; }
-	});
-	const telemetry = new Set<Promise<void>>();
-	const responses = new Set<() => void>();
-	const matchedOnResponses = () =>
-		new Promise<void>((resolve) => {
-			const finish = () => {
-				responses.delete(finish);
-				clearTimeout(timeout);
-				resolve();
-			};
-			const timeout = setTimeout(finish, 100);
-			responses.add(finish);
-			if (responses.size === members.size) for (const ready of [...responses]) ready();
-		});
-	jest.spyOn(http, 'guardedShellyHttp').mockImplementation(async (url, _deadline, guard, _request, onSend) => {
-		tick();
-		const member = members.get(url.hostname);
-		const action = url.searchParams.get('action');
-		if (action === 'fence') await controls.beforeFence?.(member.property);
-		if (action === 'on') await controls.beforeOn?.(member.property);
-		if (!guard()) throw new Error('revoked before simulated network send');
-		onSend?.();
-		if (action === 'status')
-			return {
-				protocol: 'sp-guard-candidate-1',
-				deviceId: member.profile.deviceId,
-				firmware: member.profile.firmware,
+		for (const [index, claim] of claims.entries()) {
+			const device = await db.manager.findOneByOrFail(ShellyNgDeviceEntity, { id: claim.sourceDeviceId });
+			const hostname = `127.0.0.${index + 2}`;
+			const profile: ThermostatInstalledQualification['profile'] = {
+				deviceId: device.identifier,
+				model: 'SNSW-001P16EU',
+				firmware: 'fixture-only',
 				componentId: 0,
 				evidenceId: 'offline-only',
-				epoch: member.epoch,
-				nowMs: 1000,
-				ready: true,
-				busy: false,
-				fault: null,
-				floorSafe: true,
-				output: member.output,
-			} as never;
-		if (action === 'on') {
-			member.output = true;
-			controls.sends.push({ property: member.property, on: true });
-			await controls.afterOn?.(member.property);
-			// Model independent matched replies before the SDK telemetry batch. Early/late replies remain fenced.
-			await matchedOnResponses();
-			// SDK telemetry is independent of the HTTP acceptance. Publish on the next event-loop turn,
-			// after the matched guard response, while retaining the real core sample/event path.
-			const feedback = new Promise<void>((resolve) =>
-				setImmediate(() => {
-					void report(member.property, true)
-						.catch((error) => controls.errors.push(error))
-						.finally(resolve);
-				}),
+				revision: 1,
+				testedLeaseSeconds: { min: 1, max: 30 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+				guardScript: {
+					scriptId: 1,
+					sourceHash: createHash('sha256').update(code).digest('hex'),
+					endpointHostname: hostname,
+					canonicalMac: device.canonicalMac,
+					evidenceId: 'offline-only',
+					protocol: 'sp-guard-candidate-1',
+					writerIsolationEvidenceId: 'offline-only',
+					commissioningBarrierEvidenceId: 'offline-only',
+					endpointAuthenticationEvidenceId: 'offline-only',
+					restartDrainEvidenceId: 'offline-only',
+					localExecutionBoundsEvidenceId: 'offline-only',
+				},
+			};
+			qualifications.set(claim.physicalIdentity, {
+				physicalIdentity: claim.physicalIdentity,
+				profile,
+				upstreamWritersExcluded: true,
+				opposedOutputsInterlocked: false,
+			});
+			members.set(hostname, { property: claim.sourcePropertyId, epoch: 1, output: false, profile });
+			const OfflineSocket = jest.createMockFromModule<typeof WebSocket>('ws');
+			class OfflineRpc extends GuardedShellyRpcHandler {
+				private online = true;
+				protected override createSocket(): WebSocket {
+					const socket = new OfflineSocket('ws://synthetic.invalid');
+					Object.defineProperty(socket, 'readyState', { value: WebSocket.OPEN });
+					jest.spyOn(socket, 'send').mockImplementation((data, options, callback) => {
+						if (typeof data !== 'string') throw new Error('Expected SDK JSON frame');
+						const frame: unknown = JSON.parse(data);
+						if (
+							!frame ||
+							typeof frame !== 'object' ||
+							!('id' in frame) ||
+							typeof frame.id !== 'number' ||
+							!('method' in frame) ||
+							typeof frame.method !== 'string'
+						)
+							throw new Error('Invalid offline SDK frame');
+						if (frame.method !== 'Shelly.GetDeviceInfo' && frame.method !== 'Script.GetCode')
+							throw new Error('Unexpected offline actuation RPC');
+						const id = frame.id;
+						const result =
+							frame.method === 'Shelly.GetDeviceInfo'
+								? { id: profile.deviceId, model: profile.model, fw_id: profile.firmware, mac: device.canonicalMac }
+								: { data: code, left: 0 };
+						const second: unknown = options;
+						if (isWebSocketSendCallback(second)) second();
+						else callback?.();
+						queueMicrotask(() => this.client.receive({ jsonrpc: '2.0', id, result }));
+					});
+					return socket;
+				}
+				override get connected(): boolean {
+					return this.online;
+				}
+				protected override connect(): Promise<void> {
+					return Promise.resolve();
+				}
+				protected override disconnect(): Promise<void> {
+					// Never call real ws close/abortHandshake on an inert constructor fixture.
+					this.online = false;
+					return Promise.resolve();
+				}
+			}
+			const rpc = new OfflineRpc(hostname, {
+				clientId: 'runtime-offline-test-only',
+				requestTimeout: 1,
+				pingInterval: 0,
+				reconnectInterval: 0,
+			});
+			rpcs.push(rpc);
+			const DeviceClass = Device.getClass('SNSW-001P16EU');
+			if (!DeviceClass) throw new Error('Expected pinned SDK class');
+			const sdk = new DeviceClass(
+				{
+					id: device.identifier,
+					mac: device.canonicalMac,
+					model: profile.model,
+					fw_id: profile.firmware,
+				},
+				rpc,
 			);
-			telemetry.add(feedback);
-			void feedback.finally(() => telemetry.delete(feedback));
-			return { accepted: true, epoch: member.epoch, untilMs: Number(url.searchParams.get('untilMs')) } as never;
+			const wifi = sdk.getComponent('wifi');
+			if (!(wifi instanceof WiFi)) throw new Error('Expected actual SDK WiFi');
+			wifi.update({ sta_ip: hostname });
+			sdkDevices.push(sdk);
+			sessionTargets.set(claim.sourcePropertyId, { device, profile });
 		}
-		member.output = false;
-		controls.fences.push(member.property);
+		await insert();
+		const managerMethods: {
+			readonly admitGuardFenceSample: {
+				readonly bind: (receiver: DelegatesManagerService) => DelegatesManagerService['admitGuardFenceSample'];
+			};
+		} = manager;
+		const admit = managerMethods.admitGuardFenceSample.bind(manager);
+		jest.spyOn(manager, 'admitGuardFenceSample').mockImplementation(async (...args) => {
+			try {
+				await admit(...args);
+			} catch (error) {
+				controls.errors.push(error);
+				throw error;
+			}
+		});
+		const telemetry = new Set<Promise<void>>();
+		const responses = new Set<() => void>();
+		const matchedOnResponses = () =>
+			new Promise<void>((resolve) => {
+				const finish = () => {
+					responses.delete(finish);
+					clearTimeout(timeout);
+					resolve();
+				};
+				const timeout = setTimeout(finish, 100);
+				responses.add(finish);
+				if (responses.size === members.size) for (const ready of [...responses]) ready();
+			});
+		jest.spyOn(http, 'guardedShellyHttp').mockImplementation(async (url, _deadline, guard, _request, onSend) => {
+			tick();
+			const member = members.get(url.hostname);
+			const action = url.searchParams.get('action');
+			if (action === 'fence') await controls.beforeFence?.(member.property);
+			if (action === 'on') await controls.beforeOn?.(member.property);
+			if (!guard()) throw new Error('revoked before simulated network send');
+			onSend?.();
+			if (action === 'status')
+				return {
+					protocol: 'sp-guard-candidate-1',
+					deviceId: member.profile.deviceId,
+					firmware: member.profile.firmware,
+					componentId: 0,
+					evidenceId: 'offline-only',
+					epoch: member.epoch,
+					nowMs: 1000,
+					ready: true,
+					busy: false,
+					fault: null,
+					floorSafe: true,
+					output: member.output,
+				} as never;
+			if (action === 'on') {
+				member.output = true;
+				controls.sends.push({ property: member.property, on: true });
+				await controls.afterOn?.(member.property);
+				// Model independent matched replies before the SDK telemetry batch. Early/late replies remain fenced.
+				await matchedOnResponses();
+				// SDK telemetry is independent of the HTTP acceptance. Publish on the next event-loop turn,
+				// after the matched guard response, while retaining the real core sample/event path.
+				const feedback = new Promise<void>((resolve) =>
+					setImmediate(() => {
+						void report(member.property, true)
+							.catch((error) => controls.errors.push(error))
+							.finally(resolve);
+					}),
+				);
+				telemetry.add(feedback);
+				void feedback.finally(() => telemetry.delete(feedback));
+				return { accepted: true, epoch: member.epoch, untilMs: Number(url.searchParams.get('untilMs')) } as never;
+			}
+			member.output = false;
+			controls.fences.push(member.property);
+			return {
+				epoch: ++member.epoch,
+				deviceId: member.profile.deviceId,
+				componentId: 0,
+				evidenceId: 'offline-only',
+				output: false,
+				localOnDrained: true,
+			} as never;
+		});
 		return {
-			epoch: ++member.epoch,
-			deviceId: member.profile.deviceId,
-			componentId: 0,
-			evidenceId: 'offline-only',
-			output: false,
-			localOnDrained: true,
-		} as never;
-	});
-	return {
-		values,
-		flushTelemetry: () => Promise.all([...telemetry]),
-		report,
-		controls,
-		reports,
-		transport,
-		startManaged,
-		stopManaged,
-		insert,
-		captureSession: (propertyId: string) => {
-			const target = sessionTargets.get(propertyId);
-			if (!target) throw new Error('Unknown offline session target');
-			return manager.prepareGuardRpcSession(target.device, 0, target.profile);
-		},
-		revoke,
-		close,
-	};
+			values,
+			flushTelemetry: () => Promise.all([...telemetry]),
+			report,
+			controls,
+			reports,
+			transport,
+			startManaged,
+			stopManaged,
+			insert,
+			captureSession: (propertyId: string) => {
+				const target = sessionTargets.get(propertyId);
+				if (!target) throw new Error('Unknown offline session target');
+				return manager.prepareGuardRpcSession(target.device, 0, target.profile);
+			},
+			revoke,
+			close,
+		};
 	} catch (error) {
 		await close();
 		throw error;
