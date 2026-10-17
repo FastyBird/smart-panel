@@ -243,6 +243,8 @@ export interface ClimateAutomationGraphParticipant {
 }
 /** Trusted SAME-manager protocol, NOT an EntityManager sandbox. No public caller-supplied functions. */
 export interface ClimateAutomationParticipant {
+	/** Optional closed manual codec; never inferred from generic replacement support. */
+	readonly manualIntentV1?: ClimateAutomationManualCapability;
 	readonly version: 1;
 	readonly graph: ClimateAutomationGraphParticipant;
 	readonly readInManager: (
@@ -276,4 +278,174 @@ export class ClimateAutomationParticipantConflict extends Error {
 	constructor(readonly reason: ClimateAutomationConflictReason) {
 		super('Private climate participant conflict');
 	}
+}
+
+/** DORMANT private manual protocol. No source/slot mutation policy is supplied by a caller/provider. */
+export type ClimateAutomationManualIntent =
+	| { readonly kind: 'manual-settings:v1'; readonly updates: readonly { readonly propertyId: string; readonly value: number | boolean }[] }
+	| { readonly kind: 'manual-preset:v1'; readonly preset: 'comfort' | 'eco' | 'away' | null; readonly clearUserOff: boolean };
+export type ClimateAutomationManualFence =
+	| { readonly kind: 'exact'; readonly controllerRevision: number; readonly graphRevision: number }
+	| { readonly kind: 'current-at-admitted-setting-submission' };
+export interface ClimateAutomationControllerIntentRequest {
+	readonly providerKey: string;
+	readonly controllerId: string;
+	readonly fence: ClimateAutomationManualFence;
+	readonly intent: ClimateAutomationManualIntent;
+}
+/** Private evidence only: exact retained recovery rows, never part of a participant document/receipt. */
+export interface ClimateAutomationRetainedRecoveryRow {
+	readonly id: string;
+	readonly controllerId: string;
+	readonly claimId: string;
+	readonly physicalIdentity: string;
+	readonly previousPropertyIdentity: string;
+	readonly restoredPropertyId: string;
+	readonly actorId: string;
+	readonly reason: string;
+	readonly disconnectionAcknowledged: boolean;
+	readonly configurationRevision: number;
+	readonly claimRevision: number;
+	readonly createdAt: string;
+}
+export interface ClimateAutomationManualCapability {
+	readonly version: 1;
+	readonly codec: 'virtual-thermostat-c0:v1';
+	readonly readRetainedHistoryInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
+	) => Promise<readonly ClimateAutomationRetainedRecoveryRow[]>;
+	/** Read-only exact-manager semantic/reference validation; no returned policy/changed flags. */
+	readonly validateInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		intent: ClimateAutomationManualIntent,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantDocument,
+	) => Promise<void>;
+}
+export type ClimateAutomationControllerIntentOutcome =
+	| { readonly outcome: 'conflict'; readonly reason: ClimateAutomationConflictReason }
+	| { readonly outcome: 'applied' | 'unchanged'; readonly controllerRevision: number; readonly graphRevision: number; readonly document: ClimateAutomationParticipantDocument };
+
+function manualInvalid(): never { throw new ClimateAutomationParticipantConflict('invalid'); }
+function manualRecord(value: unknown): Readonly<Record<string, ClimateAutomationJson>> {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return manualInvalid();
+	const result: Record<string, ClimateAutomationJson> = {};
+	for (const key of Object.keys(value)) Object.defineProperty(result, key, { value: climateAutomationJson(Reflect.get(value, key)), enumerable: true });
+	return Object.freeze(result);
+}
+function manualRows(value: unknown): readonly Readonly<Record<string, ClimateAutomationJson>>[] {
+	if (!Array.isArray(value)) return manualInvalid();
+	return value.map((row: unknown) => manualRecord(row));
+}
+function manualKeys(value: Readonly<Record<string, ClimateAutomationJson>>, keys: readonly string[]): void {
+	if (Object.keys(value).length !== keys.length || keys.some((key) => !Object.hasOwn(value, key))) manualInvalid();
+}
+function manualCounter(value: unknown, minimum: number): number {
+	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < minimum) return manualInvalid();
+	return value;
+}
+/** One owned traversal; full membership and all twelve persisted columns are retained. */
+export function climateAutomationRetainedRecoveryRows(value: unknown, controllerId: string): readonly ClimateAutomationRetainedRecoveryRow[] {
+	const rows = manualRows(value).map((row): ClimateAutomationRetainedRecoveryRow => {
+		manualKeys(row, ['id', 'controllerId', 'claimId', 'physicalIdentity', 'previousPropertyIdentity', 'restoredPropertyId', 'actorId', 'reason', 'disconnectionAcknowledged', 'configurationRevision', 'claimRevision', 'createdAt']);
+		const { id, controllerId: owner, claimId, physicalIdentity, previousPropertyIdentity, restoredPropertyId, actorId, reason, disconnectionAcknowledged, createdAt } = row;
+		if (typeof id !== 'string' || typeof owner !== 'string' || owner !== controllerId || typeof claimId !== 'string' || typeof physicalIdentity !== 'string' || typeof previousPropertyIdentity !== 'string' || typeof restoredPropertyId !== 'string' || typeof actorId !== 'string' || typeof reason !== 'string' || typeof disconnectionAcknowledged !== 'boolean' || typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt)) || new Date(createdAt).toISOString() !== createdAt) return manualInvalid();
+		return Object.freeze({ id, controllerId: owner, claimId, physicalIdentity, previousPropertyIdentity, restoredPropertyId, actorId, reason, disconnectionAcknowledged, configurationRevision: manualCounter(row.configurationRevision, 1), claimRevision: manualCounter(row.claimRevision, 1), createdAt });
+	});
+	rows.sort((a, b) => a.id.localeCompare(b.id));
+	if (new Set(rows.map((row) => row.id)).size !== rows.length) return manualInvalid();
+	return Object.freeze(rows);
+}
+function manualPreset(value: unknown): 'comfort' | 'eco' | 'away' | null {
+	if (value === null || value === 'comfort' || value === 'eco' || value === 'away') return value;
+	return manualInvalid();
+}
+/** Parse ONLY an already-owned snapshot; root admission must precede its caller getter traversal. */
+export function climateAutomationControllerIntentRequest(value: ClimateAutomationJson): ClimateAutomationControllerIntentRequest {
+	const input = manualRecord(value); manualKeys(input, ['providerKey', 'controllerId', 'fence', 'intent']);
+	if (typeof input.providerKey !== 'string' || typeof input.controllerId !== 'string') return manualInvalid();
+	const raw = manualRecord(input.intent); let intent: ClimateAutomationManualIntent;
+	if (raw.kind === 'manual-settings:v1') {
+		manualKeys(raw, ['kind', 'updates']);
+		if (!Array.isArray(raw.updates) || raw.updates.length === 0 || raw.updates.length > 5) return manualInvalid();
+		const updates = raw.updates.map((item: unknown) => {
+			const update = manualRecord(item); manualKeys(update, ['propertyId', 'value']);
+			if (typeof update.propertyId !== 'string' || (typeof update.value !== 'boolean' && !(typeof update.value === 'number' && Number.isFinite(update.value)))) return manualInvalid();
+			return Object.freeze({ propertyId: update.propertyId, value: update.value });
+		});
+		if (new Set(updates.map((update) => update.propertyId)).size !== updates.length) return manualInvalid();
+		intent = Object.freeze({ kind: 'manual-settings:v1', updates: Object.freeze(updates) });
+	} else if (raw.kind === 'manual-preset:v1') {
+		manualKeys(raw, ['kind', 'preset', 'clearUserOff']);
+		if (typeof raw.clearUserOff !== 'boolean') return manualInvalid();
+		intent = Object.freeze({ kind: 'manual-preset:v1', preset: manualPreset(raw.preset), clearUserOff: raw.clearUserOff });
+	} else return manualInvalid();
+	const rawFence = manualRecord(input.fence); let fence: ClimateAutomationManualFence;
+	if (rawFence.kind === 'exact') {
+		manualKeys(rawFence, ['kind', 'controllerRevision', 'graphRevision']);
+		fence = Object.freeze({ kind: 'exact', controllerRevision: manualCounter(rawFence.controllerRevision, 1), graphRevision: manualCounter(rawFence.graphRevision, 0) });
+	} else if (rawFence.kind === 'current-at-admitted-setting-submission' && intent.kind === 'manual-settings:v1') {
+		manualKeys(rawFence, ['kind']); fence = Object.freeze({ kind: 'current-at-admitted-setting-submission' });
+	} else return manualInvalid();
+	return Object.freeze({ providerKey: input.providerKey, controllerId: input.controllerId, fence, intent });
+}
+
+/** Fixed private C0 codec; this pure data reduction does not validate a database or grant a turn. */
+export function climateAutomationReduceManualIntent(before: ClimateAutomationParticipantImage, intent: ClimateAutomationManualIntent) {
+	const configuration = manualRecord(before.configuration), original = manualRecord(before.comfort);
+	manualKeys(original, ['requestedMode', 'locked', 'requestedSetpoints', 'configuration']);
+	if (configuration.projectionVersion !== 1 || typeof original.locked !== 'boolean') return manualInvalid();
+	let mode = original.requestedMode, locked = original.locked;
+	if (mode !== 'off' && mode !== 'heat' && mode !== 'cool' && mode !== 'auto') return manualInvalid();
+	const points = manualRecord(original.requestedSetpoints); manualKeys(points, ['heatingSetpoint', 'coolingSetpoint']);
+	for (const value of Object.values(points)) if (value !== null && !(typeof value === 'number' && Number.isFinite(value))) return manualInvalid();
+	let heating = points.heatingSetpoint, cooling = points.coolingSetpoint;
+	let state = original.configuration === null ? null : manualRecord(original.configuration);
+	if (state && (typeof state.user_off !== 'boolean' || !Object.hasOwn(state, 'selected_preset'))) return manualInvalid();
+	if (!state && before.legacyBaseline !== null) return manualInvalid();
+	const selected = state ? manualPreset(state.selected_preset) : null;
+	const oldManual = { mode, points, preset: selected, userOff: state ? state.user_off : null };
+	let manualCommand = intent.kind === 'manual-preset:v1';
+	let hold: 'takeover' | 'clear' | 'preserve' = 'preserve';
+	if (intent.kind === 'manual-settings:v1') {
+		const bindings = manualRows(configuration.settings);
+		const updates = intent.updates.map((update) => {
+			const matches = bindings.filter((row) => row.propertyId === update.propertyId);
+			if (matches.length !== 1) return manualInvalid();
+			const setting = matches[0].setting;
+			if (!['heating_setpoint', 'cooling_setpoint', 'heating_enabled', 'cooling_enabled', 'locked'].includes(String(setting))) return manualInvalid();
+			return { setting, value: update.value };
+		});
+		const owner = manualRows(manualRecord(configuration.catalog).devices).find((row) => row.id === before.controllerId);
+		if (!owner || owner.enabled !== true || (locked && updates.some((update) => update.setting !== 'locked'))) return manualInvalid();
+		let heat = mode === 'heat' || mode === 'auto', cool = mode === 'cool' || mode === 'auto';
+		let enabledCommand = false;
+		for (const update of updates) {
+			if (update.setting === 'heating_setpoint' || update.setting === 'cooling_setpoint') {
+				if (typeof update.value !== 'number' || !Number.isFinite(update.value) || (update.setting === 'heating_setpoint' ? heating : cooling) === null) return manualInvalid();
+				if (update.setting === 'heating_setpoint') heating = update.value; else cooling = update.value;
+			} else {
+				if (typeof update.value !== 'boolean') return manualInvalid();
+				if (update.setting === 'locked') locked = update.value;
+				else { enabledCommand = true; if (update.setting === 'heating_enabled') { if (heating === null) return manualInvalid(); heat = update.value; } else { if (cooling === null) return manualInvalid(); cool = update.value; } }
+			}
+		}
+		manualCommand = updates.some((update) => update.setting !== 'locked');
+		if (manualCommand) { hold = 'takeover'; mode = heat ? cool ? 'auto' : 'heat' : cool ? 'cool' : 'off';
+			if (state) state = Object.freeze({ ...state, selected_preset: null, ...(enabledCommand ? { user_off: !heat && !cool } : {}) });
+		}
+	} else {
+		if (!state || locked) return manualInvalid();
+		if (intent.preset !== null && !manualRows(state.presets).some((entry) => entry.preset === intent.preset)) return manualInvalid();
+		state = Object.freeze({ ...state, selected_preset: intent.preset, user_off: intent.clearUserOff ? false : state.user_off });
+		hold = intent.preset === null ? 'preserve' : 'clear';
+	}
+	const requestedSetpoints = Object.freeze({ heatingSetpoint: heating, coolingSetpoint: cooling });
+	const comfort = climateAutomationJson({ requestedMode: mode, locked, requestedSetpoints, configuration: state });
+	const document: ClimateAutomationParticipantDocument = Object.freeze({ controllerId: before.controllerId, documentVersion: 1, configuration: before.configuration, comfort, structural: before.structural, legacyBaseline: before.legacyBaseline });
+	const nextManual = { mode, points: requestedSetpoints, preset: state ? state.selected_preset : null, userOff: state ? state.user_off : null };
+	return Object.freeze({ document, manualCommand, hold, manualFieldsChanged: climateAutomationCanonical(oldManual) !== climateAutomationCanonical(nextManual) });
 }

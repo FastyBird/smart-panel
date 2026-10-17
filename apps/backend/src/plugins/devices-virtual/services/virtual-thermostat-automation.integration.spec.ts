@@ -1,9 +1,13 @@
+import { createHash, randomUUID } from 'node:crypto';
+
 import { EntityManager, EntityTarget, ObjectLiteral } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import {
+	ClimateAutomationControllerIntentRequest,
+	ClimateAutomationManualCapability,
 	ClimateAutomationParticipant,
 	ClimateAutomationParticipantImage,
 	ClimateAutomationParticipantTurn,
@@ -13,6 +17,7 @@ import {
 } from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
+	DataTypeType,
 	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
@@ -48,10 +53,15 @@ import {
 	ThermostatActuatorRole,
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
+	VirtualThermostatRecoveryEntity,
+	ThermostatSetting,
 	VirtualThermostatSettingEntity,
 	VirtualThermostatSourceEntity,
 } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
+
+import { ThermostatComfortConfiguration } from './virtual-thermostat-comfort.utils';
+import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { DEW_POINT_FORMULA, DewPointRole, dewPointInputDomain } from './virtual-dew-point.utils';
@@ -1036,3 +1046,402 @@ describe('dormant C0 concrete persisted projection (actual writer/registry/SQLit
 		expect(() => planThermostatAutomationGraph(current, current)).toThrow();
 	});
 });
+
+
+/** Independent fresh same-manager provider proof, separate from the guarded participant read. */
+const manualFreshRows = async (manager: EntityManager, controllerId: string): Promise<ThermostatAutomationRows> => {
+		const read = <T extends ObjectLiteral>(entity: EntityTarget<T>): Promise<T[]> =>
+			manager.createQueryBuilder(entity, 'fresh').callListeners(false).getMany();
+		return {
+			devices: await read(DeviceEntity),
+			channels: await manager
+				.createQueryBuilder(ChannelEntity, 'fresh')
+				.leftJoinAndSelect('fresh.device', 'device')
+				.callListeners(false)
+				.getMany(),
+			properties: await manager
+				.createQueryBuilder(ChannelPropertyEntity, 'fresh')
+				.leftJoinAndSelect('fresh.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.callListeners(false)
+				.getMany(),
+			tables: {
+				configurations: await manager
+					.createQueryBuilder(VirtualThermostatConfigEntity, 'fresh')
+					.where('fresh.controllerId = :controllerId', { controllerId })
+					.callListeners(false)
+					.getMany(),
+				sources: await read(VirtualThermostatSourceEntity),
+				actuators: await read(VirtualThermostatActuatorClaimEntity),
+				settings: await read(VirtualThermostatSettingEntity),
+				protections: await read(ThermostatMemberProtectionEntity),
+				cooling: await read(ThermostatCoolingDependencyEntity),
+				dewConfigurations: await read(VirtualDewPointConfigEntity),
+				dewSources: await read(VirtualDewPointSourceEntity),
+				transformConfigurations: await read(VirtualTransformConfigEntity),
+				transformSources: await read(VirtualTransformSourceEntity),
+				aggregateConfigurations: await read(VirtualAggregateConfigEntity),
+				aggregateInputs: await read(VirtualAggregateInputEntity),
+				groupConfigurations: await read(VirtualLightGroupConfigEntity),
+				groupMembers: await read(VirtualLightGroupMemberEntity),
+				groupBindings: await read(VirtualLightGroupBindingEntity),
+			},
+		};
+	};
+
+/** TEST registration only. Real SQLite/writer/graph/C0 codec/materializer, no production registration or devices. */
+describe('dormant C1a atomic manual controller intents (actual same-manager CAS)', () => {
+	let database: SqliteDataSource, registry: ClimateAutomationRegistryService, writer: ClimateAutomationWriterService;
+	let graph: VirtualDependencyGraphService, service: VirtualThermostatAutomationService, lock: DeviceStructureLockService;
+	let owner: { dispose: () => void }, participant: ClimateAutomationParticipant, provider: ClimateAutomationProvider;
+	let manual: ClimateAutomationManualCapability;
+	let duringValidation: ((manager: EntityManager, turn: ClimateAutomationParticipantTurn) => Promise<void>) | undefined;
+	let afterApply: ((manager: EntityManager) => Promise<void>) | undefined;
+	let validations: number, applies: number, historyReads: number;
+	const providerKey = 'c1a-test:v1';
+	const properties = {
+		heating_setpoint: 'e0000000-0000-4000-8000-000000000001',
+		cooling_setpoint: 'e0000000-0000-4000-8000-000000000002',
+		heating_enabled: 'e0000000-0000-4000-8000-000000000003',
+		cooling_enabled: 'e0000000-0000-4000-8000-000000000004',
+		locked: 'e0000000-0000-4000-8000-000000000005',
+	};
+	const comfort = (): ThermostatComfortConfiguration => ({
+		heating_range: { minimum: 5, maximum: 30 }, cooling_range: { minimum: 10, maximum: 35 },
+		presets: [
+			{ preset: 'comfort', setpoints: { heating_setpoint: 20, cooling_setpoint: 24 } },
+			{ preset: 'eco', setpoints: { heating_setpoint: 18, cooling_setpoint: 26 } },
+			{ preset: 'away', setpoints: { heating_setpoint: 16, cooling_setpoint: 28 } },
+		],
+		selected_preset: null, user_off: false, automation_enabled: false, automation_baseline: null, temporary_override: null,
+	});
+	const unavailable = (): Promise<never> => Promise.reject(new Error('Not a C1a closed command'));
+	const config = () => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ids.controller });
+	const slot = () => database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: ids.controller });
+	const whole = async () => ({
+		config: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_configs ORDER BY controllerId'),
+		slots: await database.manager.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots ORDER BY controllerId'),
+		sources: await database.manager.query<unknown[]>('SELECT * FROM devices_module_climate_automation_sources ORDER BY generationId'),
+		settings: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_settings ORDER BY propertyId'),
+		recovery: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_recoveries ORDER BY id'),
+		graph: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_graph_revision ORDER BY id'),
+	});
+	const settings = (updates: readonly { propertyId: string; value: number | boolean }[], exactRevision?: number) => writer.commitControllerIntentV1({
+		providerKey, controllerId: ids.controller,
+		fence: exactRevision === undefined ? { kind: 'current-at-admitted-setting-submission' } : { kind: 'exact', controllerRevision: exactRevision, graphRevision: 0 },
+		intent: { kind: 'manual-settings:v1', updates },
+	});
+	const select = async (preset: 'comfort' | 'eco' | 'away' | null, clearUserOff = false) => writer.commitControllerIntentV1({
+		providerKey, controllerId: ids.controller, fence: { kind: 'exact', controllerRevision: (await config()).revision, graphRevision: 0 },
+		intent: { kind: 'manual-preset:v1', preset, clearUserOff },
+	});
+	const recovery = (id = randomUUID()) => ({ id, controllerId: ids.controller, claimId: ids.claim,
+		physicalIdentity: 'stored physical identity', previousPropertyIdentity: 'retained previous identity', restoredPropertyId: properties.heating_enabled,
+		actorId: 'operator account text', reason: 'private recovery reason', disconnectionAcknowledged: true,
+		configurationRevision: Number.MAX_SAFE_INTEGER, claimRevision: Number.MAX_SAFE_INTEGER, createdAt: instant });
+	beforeEach(async () => {
+		database = await new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: true, entities: [__dirname + '/../../../**/*.entity.ts'] }).initialize();
+		registry = new ClimateAutomationRegistryService();
+		lock = new DeviceStructureLockService();
+		writer = new ClimateAutomationWriterService(database, lock, registry, new ConfigService({ FB_CLI: 'off' }));
+		graph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), writer);
+		service = new VirtualThermostatAutomationService(writer);
+		validations = 0; applies = 0; historyReads = 0; duringValidation = undefined; afterApply = undefined;
+		await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: 0 });
+		await database.manager.insert(VirtualDeviceEntity, { id: ids.controller, name: 'TEST C1a', category: DeviceCategory.THERMOSTAT, mode: VirtualDeviceMode.CLIMATE_CONTROLLER, enabled: true });
+		const channels = { heating: randomUUID(), cooling: randomUUID(), thermostat: randomUUID() };
+		for (const { id, category } of [
+			{ id: channels.heating, category: ChannelCategory.HEATER },
+			{ id: channels.cooling, category: ChannelCategory.COOLER },
+			{ id: channels.thermostat, category: ChannelCategory.THERMOSTAT },
+		]) {
+			await database.manager.insert(VirtualChannelEntity, { id, device: { id: ids.controller }, identifier: id, name: 'TEST setting', category });
+		}
+		const bindings: { propertyId: string; setting: ThermostatSetting; contractFingerprint: string }[] = [];
+		const settingNames: readonly ThermostatSetting[] = ['heating_setpoint', 'cooling_setpoint', 'heating_enabled', 'cooling_enabled', 'locked'];
+		for (const setting of settingNames) {
+			const numeric = setting === 'heating_setpoint' || setting === 'cooling_setpoint';
+			const channelId = setting === 'locked' ? channels.thermostat : setting === 'heating_setpoint' || setting === 'heating_enabled' ? channels.heating : channels.cooling;
+			await database.manager.insert(VirtualChannelPropertyEntity, { id: properties[setting], channel: { id: channelId }, identifier: setting, category: setting === 'locked' ? PropertyCategory.LOCKED : numeric ? PropertyCategory.TEMPERATURE : PropertyCategory.ON, dataType: numeric ? DataTypeType.FLOAT : DataTypeType.BOOL, permissions: [PermissionType.READ_WRITE], unit: numeric ? '°C' : null, valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null });
+			const property = await database.manager.createQueryBuilder(VirtualChannelPropertyEntity, 'property').leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device').where('property.id = :id', { id: properties[setting] }).getOneOrFail();
+			if (!property.channel || typeof property.channel === 'string' || !property.channel.device || typeof property.channel.device === 'string') throw new Error('TEST concrete property relation missing');
+			bindings.push({ propertyId: property.id, setting, contractFingerprint: thermostatPropertyContract(property, property.channel, property.channel.device) });
+		}
+		// Original receiver/function pairs, not fake currentness or a successful replacement stub.
+		const methods: {
+			readonly readInManager: (...args: Parameters<VirtualThermostatAutomationService['readInManager']>) => ReturnType<VirtualThermostatAutomationService['readInManager']>;
+			readonly validateManualIntentInManager: (...args: Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>) => ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>;
+			readonly readRetainedHistoryInManager: (...args: Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>) => ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>;
+			readonly applyManualIntentInManager: (...args: Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>) => ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>;
+		} = service;
+		const read = methods.readInManager, validate = methods.validateManualIntentInManager, history = methods.readRetainedHistoryInManager, apply = methods.applyManualIntentInManager;
+		manual = {
+			version: 1, codec: 'virtual-thermostat-c0:v1',
+			validateInManager: async (manager, turn, intent, before, next) => { validations++; await validate.call(service, manager, turn, intent, before, next); if (duringValidation) await duringValidation(manager, turn); },
+			readRetainedHistoryInManager: async (manager, turn, controllerId) => { historyReads++; return history.call(service, manager, turn, controllerId); },
+		};
+		participant = { version: 1, graph, readInManager: (manager, turn, controllerId) => read.call(service, manager, turn, controllerId), normalizeInManager: unavailable, planGraphReplacementInManager: unavailable,
+			applyInManager: async (manager, turn, before, next) => { applies++; await apply.call(service, manager, turn, before, next); if (afterApply) await afterApply(manager); }, manualIntentV1: manual };
+		provider = { participantV1: participant, readControllerInManager: async (manager, controllerId) => {
+			const image = thermostatAutomationImage(await manualFreshRows(manager, controllerId));
+			return image ? { controllerRevision: image.controllerRevision, graphRevision: await graph.revision(manager), evidence: climateAutomationJson(image), legacyBaseline: image.legacyBaseline } : null;
+		}, validateSelectionInManager: unavailable, createControllerInManager: async (manager, controllerId) => {
+			await manager.insert(VirtualThermostatConfigEntity, { controllerId, ownerDeviceId: controllerId, requestedMode: 'off', controlStrategy: 'guarded_branches', locked: false, comfort: comfort(), policy: { heatingSetpoint: 20, coolingSetpoint: 24, coldTolerance: 0.5, hotTolerance: 0.5, neutralMargin: 1, minimumOffMs: 1000, changeoverMs: 1000, floor: null }, heuristic: null, contactOpeningMs: 0, contactClosingMs: 0, configuredAt: instant, releaseRequestedAt: null });
+			for (const binding of bindings) await manager.insert(VirtualThermostatSettingEntity, { ...binding, controllerId });
+		} };
+		const registration = registry.registerProviderOwned(providerKey, provider);
+		if (!registration) throw new Error('TEST registration missing'); owner = registration;
+		expect((await writer.runReserved(async (manager, scope) => writer.initializeSlot(manager, scope, { providerKey, controllerId: ids.controller, expected: await writer.readSlot(manager, scope, ids.controller), configuration: {} }))).outcome).toBe('applied');
+	});
+	afterEach(async () => { owner?.dispose(); registry?.onModuleDestroy(); if (database?.isInitialized) await database.destroy(); });
+
+	it('updates a null comfort mixed setting batch without fabricating comfort, baseline or graph revision', async () => {
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { comfort: null });
+		const beforeSlot = await slot();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }, { propertyId: properties.heating_enabled, value: true }, { propertyId: properties.locked, value: true }])).outcome).toBe('applied');
+		const current = await config();
+		expect(current).toMatchObject({ revision: 2, requestedMode: 'heat', locked: true, comfort: null, policy: { heatingSetpoint: 21 } });
+		expect(await slot()).toMatchObject({ manualHold: true, manualCounter: 2, slotRevision: 2, state: 'EMPTY', controllerIncarnation: beforeSlot.controllerIncarnation });
+		expect(await graph.revision()).toBe(0);
+		const unchanged = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict'); // Locked numeric remains forbidden.
+		expect(await whole()).toEqual(unchanged);
+	});
+	it('allows exact null-comfort settings noop but refuses null-comfort manual preset', async () => {
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { comfort: null });
+		const before = await whole();
+		expect((await settings([{ propertyId: properties.locked, value: false }])).outcome).toBe('unchanged');
+		expect((await select(null)).outcome).toBe('conflict');
+		expect(await whole()).toEqual(before); expect(applies).toBe(0);
+	});
+	it.each([
+		{ preset: null, clearUserOff: false }, { preset: null, clearUserOff: true },
+		{ preset: 'eco', clearUserOff: false }, { preset: 'eco', clearUserOff: true },
+	] satisfies readonly { preset: 'eco' | null; clearUserOff: boolean }[])('preserves requested OFF/override/baseline for preset=$preset clearUserOff=$clearUserOff', async ({ preset, clearUserOff }) => {
+		const initial = comfort(); initial.selected_preset = 'comfort'; initial.user_off = true;
+		initial.automation_baseline = { preset: 'away', setpoints: null, actor_id: 'descriptive automation actor', revision: 3 };
+		initial.temporary_override = { id: randomUUID(), source: 'user', actor_id: 'user', revision: 2, created_at: instant.toISOString(), expires_at: '2026-01-02T04:04:05.000Z', preset: null, setpoints: { heating_setpoint: 19, cooling_setpoint: 25 }, resolved_setpoints: { heating_setpoint: 19, cooling_setpoint: 25 }, status: 'clock_uncertain', terminated_at: null };
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { comfort: initial });
+		await database.manager.update(ClimateAutomationSlotEntity, { controllerId: ids.controller }, { manualHold: true });
+		const original = await slot();
+		expect((await select(preset, clearUserOff)).outcome).toBe('applied');
+		expect(await config()).toMatchObject({ revision: 2, requestedMode: 'off', comfort: { ...initial, selected_preset: preset, user_off: !clearUserOff } });
+		expect(await slot()).toMatchObject({ manualHold: preset === null, manualCounter: 2, slotRevision: 2, controllerIncarnation: original.controllerIncarnation });
+	});
+	it('distinguishes disabled owner preset permission from numeric refusal and locked-only unlock', async () => {
+		await database.manager.update(VirtualDeviceEntity, { id: ids.controller }, { enabled: false });
+		expect((await select('eco')).outcome).toBe('applied');
+		const disabled = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(disabled);
+		await database.manager.update(VirtualDeviceEntity, { id: ids.controller }, { enabled: true });
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { locked: true });
+		expect((await settings([{ propertyId: properties.locked, value: false }, { propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		const original = await slot();
+		expect((await settings([{ propertyId: properties.locked, value: false }])).outcome).toBe('applied');
+		expect(await slot()).toEqual(original);
+	});
+	it('treats an echoed numeric value as one manual takeover then a true zero-churn noop', async () => {
+		const initial = comfort(); initial.selected_preset = 'eco';
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { comfort: initial });
+		const before = await slot();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 20 }])).outcome).toBe('applied');
+		expect(await config()).toMatchObject({ revision: 2, requestedMode: 'off', comfort: { selected_preset: null, user_off: false } });
+		expect(await slot()).toMatchObject({ manualHold: true, slotRevision: 2, manualCounter: 2 });
+		expect((await slot()).manualGeneration).not.toBe(before.manualGeneration);
+		const once = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 20 }])).outcome).toBe('unchanged');
+		expect(await whole()).toEqual(once); expect(applies).toBe(1);
+	});
+	it.each([
+		{ propertyId: properties.heating_setpoint, value: 31 },
+		{ propertyId: properties.heating_setpoint, value: 23 },
+		{ propertyId: properties.heating_enabled, value: 2 },
+		{ propertyId: ids.foreign, value: 20 },
+	])('refuses range/deadband/type/unbound setting $propertyId=$value without writes', async (update) => {
+		const before = await whole(); expect((await settings([update])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(before); expect(applies).toBe(0);
+	});
+	it('conflicts stale exact revisions before equal-payload normalization', async () => {
+		await settings([{ propertyId: properties.heating_setpoint, value: 21 }]); validations = 0;
+		const before = await whole(); expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }], 1)).outcome).toBe('conflict');
+		expect(validations).toBe(0); expect(await whole()).toEqual(before);
+	});
+	it('allows full no-op at MAX counters but refuses only counters an actual change increments', async () => {
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { revision: Number.MAX_SAFE_INTEGER });
+		await database.manager.update(ClimateAutomationSlotEntity, { controllerId: ids.controller }, { manualCounter: Number.MAX_SAFE_INTEGER, slotRevision: Number.MAX_SAFE_INTEGER, manualHold: true });
+		const before = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 20 }])).outcome).toBe('unchanged');
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(before); expect(applies).toBe(0);
+	});
+	it('retains all recovery columns/MAX facts privately on a real successful CAS and noop', async () => {
+		const row = recovery(); await database.manager.insert(VirtualThermostatRecoveryEntity, row);
+		const before = (await whole()).recovery;
+		const result = await settings([{ propertyId: properties.heating_setpoint, value: 21 }]);
+		expect(result.outcome).toBe('applied'); expect((await whole()).recovery).toEqual(before);
+		const serialized = JSON.stringify(result);
+		for (const secret of [row.actorId, row.reason, row.physicalIdentity, row.id]) expect(serialized).not.toContain(secret);
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('unchanged');
+		expect((await whole()).recovery).toEqual(before); expect(historyReads).toBeGreaterThan(3);
+	});
+	it.each(['append', 'change', 'delete'] satisfies readonly ('append' | 'change' | 'delete')[])('rolls back forbidden recovery %s during candidate validation', async (kind) => {
+		const row = recovery(); await database.manager.insert(VirtualThermostatRecoveryEntity, row); const before = await whole();
+		duringValidation = async (manager) => { if (kind === 'append') await manager.insert(VirtualThermostatRecoveryEntity, recovery()); else if (kind === 'change') await manager.update(VirtualThermostatRecoveryEntity, { id: row.id }, { reason: 'forbidden changed' }); else await manager.delete(VirtualThermostatRecoveryEntity, { id: row.id }); };
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict'); expect(await whole()).toEqual(before);
+	});
+	it('also refuses selected otherwise-noop recovery membership drift at finalization', async () => {
+		const before = await whole(); duringValidation = async (manager) => { await manager.insert(VirtualThermostatRecoveryEntity, recovery()); };
+		expect((await settings([{ propertyId: properties.locked, value: false }])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(before); expect(applies).toBe(0);
+	});
+	it.each(['registration', 'history-method', 'validation-method', 'apply-method'] satisfies readonly ('registration' | 'history-method' | 'validation-method' | 'apply-method')[])('cannot borrow replacement %s after original admission', async (kind) => {
+		const before = await whole();
+		duringValidation = async () => {
+			if (kind === 'registration') { owner.dispose(); const replacement = registry.registerProviderOwned(providerKey, provider); if (!replacement) throw new Error('TEST replacement missing'); owner = replacement; }
+			else if (kind === 'history-method') Object.assign(manual, { readRetainedHistoryInManager: unavailable });
+			else if (kind === 'validation-method') Object.assign(manual, { validateInManager: unavailable });
+			else Object.assign(participant, { applyInManager: unavailable });
+		};
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict'); expect(await whole()).toEqual(before);
+	});
+	it('rolls back a wrong child postimage despite a correct affected-one controller CAS', async () => {
+		const before = await whole(); afterApply = async (manager) => { await manager.update(VirtualThermostatSettingEntity, { propertyId: properties.heating_setpoint }, { contractFingerprint: 'wrong child' }); };
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict'); expect(await whole()).toEqual(before);
+	});
+	it('refuses stale full controller facts before apply after a forbidden validation write', async () => {
+		const before = await whole(); duringValidation = async (manager) => { await manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { contactOpeningMs: 1 }); };
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict'); expect(applies).toBe(0); expect(await whole()).toEqual(before);
+	});
+	it('owns queued request fields before a held readonly validator can observe caller mutation', async () => {
+		const entered = barrier(), release = barrier(); duringValidation = async () => { entered.resolve(); await release.promise; };
+		const request: ClimateAutomationControllerIntentRequest = { providerKey, controllerId: ids.controller, fence: { kind: 'current-at-admitted-setting-submission' }, intent: { kind: 'manual-settings:v1', updates: [{ propertyId: properties.heating_setpoint, value: 21 }] } };
+		const pending = writer.commitControllerIntentV1(request); await entered.promise;
+		Object.assign(request, { providerKey: 'foreign:v1', intent: { kind: 'manual-settings:v1', updates: [{ propertyId: properties.heating_setpoint, value: 29 }] } });
+		release.resolve(); expect((await pending).outcome).toBe('applied'); expect((await config()).policy.heatingSetpoint).toBe(21);
+	});
+	it('retains COMMITTED truth for late ACK subscriber rejection and does not retry or publish a success receipt', async () => {
+		const cause = new Error('C1a after committed'); database.subscribers.push({ afterTransactionCommit: () => Promise.reject(cause) });
+		await expect(settings([{ propertyId: properties.heating_setpoint, value: 21 }])).rejects.toMatchObject({ commitOutcome: 'committed', cause });
+		expect(applies).toBe(1); expect((await config()).revision).toBe(2); expect((await slot()).manualCounter).toBe(2);
+	});
+	it('detects actual controller affected-zero CAS without accepting a successful apply', async () => {
+		await database.manager.query('CREATE TRIGGER c1a_ignore_controller BEFORE UPDATE ON devices_virtual_thermostat_configs BEGIN SELECT RAISE(IGNORE); END');
+		const before = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect(applies).toBe(1); expect(await whole()).toEqual(before);
+	});
+	it.each(['PROVISIONAL', 'LIVE', 'RETIRED'] satisfies readonly ('PROVISIONAL' | 'LIVE' | 'RETIRED')[])('preserves original source A/current head B and exact %s identity during a manual overlay', async (state) => {
+		// Dormant TEST ledger rows only, never an installed slot or transport/physical qualification.
+		const ownerId = randomUUID(), generationA = randomUUID(), generationB = randomUUID();
+		const evidence = climateAutomationCanonical({ test: 'retained source facts' });
+		const source = { ownerId, producerKey: 'absent-activity:v1', subjectId: ids.controller, revision: 1, evidence, evidenceDigest: createHash('sha256').update(evidence).digest('hex') };
+		await database.manager.insert(ClimateAutomationSourceEntity, [
+			{ ...source, generationId: generationA, generationIndex: 1, isCurrent: false, state: 'REVOKED' },
+			{ ...source, generationId: generationB, generationIndex: 2, isCurrent: true, state: 'PENDING' },
+		]);
+		await database.manager.update(ClimateAutomationSlotEntity, { controllerId: ids.controller }, { state, ownerId, generationId: generationA, baselineId: randomUUID(), candidateId: randomUUID(), bundleId: randomUUID(), selection: '{"preset":"eco"}', installEvidence: '{"test":"not installed"}' });
+		const original = await slot(), sources = (await whole()).sources;
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('applied');
+		expect(await slot()).toMatchObject({ ...original, state: state === 'PROVISIONAL' ? 'RETIRED' : state, manualHold: true, manualCounter: 2, slotRevision: 2, manualGeneration: expect.any(String) });
+		expect((await slot()).manualGeneration).not.toBe(original.manualGeneration);
+		expect((await whole()).sources).toEqual(sources);
+		expect(registry.captureProducer('absent-activity:v1')).toBeNull();
+	});
+	it('requires exact C1a history capability but keeps the original C0/B read protocol compatible', async () => {
+		Object.assign(participant, { manualIntentV1: undefined });
+		const before = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect((await writer.runReserved((manager, scope) => writer.readParticipant(manager, scope, { providerKey, controllerId: ids.controller }))).outcome).toBe('unchanged');
+		expect(await whole()).toEqual(before); expect(historyReads).toBe(0);
+	});
+	it('retains original manual/history methods while a request waits for the actual structural lock', async () => {
+		const entered = barrier(), release = barrier(), original = await config();
+		const blocker = lock.runExclusive(async () => { entered.resolve(); await release.promise; });
+		await entered.promise;
+		const pending = settings([{ propertyId: properties.heating_setpoint, value: 21 }]);
+		Object.assign(manual, { readRetainedHistoryInManager: unavailable });
+		release.resolve(); await blocker;
+		expect((await pending).outcome).toBe('conflict'); expect(await config()).toEqual(original); expect(applies).toBe(0);
+	});
+	it('closes original manual guard at native COMMIT without borrowing a replacement reader', async () => {
+		const before = await whole();
+		database.subscribers.push({ beforeQuery: (event) => { if (event.query === 'COMMIT') Object.assign(manual, { readRetainedHistoryInManager: unavailable }); } });
+		await expect(settings([{ propertyId: properties.heating_setpoint, value: 21 }])).rejects.toMatchObject({ commitOutcome: 'refused' });
+		expect(await whole()).toEqual(before); expect(applies).toBe(1);
+	});
+	it('does not turn a submitted lost native ACK into a success receipt or automatic replay', async () => {
+		const runner = database.createQueryRunner();
+		const connection: unknown = await runner.connect();
+		if (!isManualNativeConnection(connection)) throw new Error('Missing actual TEST native driver');
+		const original = connection.all;
+		const spy = jest.spyOn(connection, 'all').mockImplementation(function (this: ManualNativeConnection, query, parameters, callback) {
+			return original.call(this, query, parameters, function (this: unknown, error, rows) { callback.call(this, query === 'COMMIT' && !error ? new Error('C1a lost native ACK') : error, rows); });
+		});
+		try {
+			await expect(settings([{ propertyId: properties.heating_setpoint, value: 21 }])).rejects.toMatchObject({ commitOutcome: 'unknown' });
+			expect(applies).toBe(1);
+		} finally { spy.mockRestore(); await runner.release(); }
+	});
+
+	it('does not reject immutable child/retained counters at MAX when only actual controller/manual counters increment', async () => {
+		await database.manager.insert(VirtualThermostatActuatorClaimEntity, { id: ids.claim, controllerId: ids.controller, role: 'heating', physicalIdentity: 'TEST absent historical hardware', providerProfile: 'shelly-ng.guarded-switch', providerProfileVersion: 1, sourcePropertyId: null, sourcePropertyIdentity: ids.actuator, sourceDeviceId: null, sourceDeviceIdentity: ids.foreign, contractFingerprint: 'TEST retained contract', revision: Number.MAX_SAFE_INTEGER, qualificationGeneration: null, state: 'missing', leaseSeconds: 10, reason: null, releaseRequestedAt: null, releasedAt: null, releaseEvidence: { revision: Number.MAX_SAFE_INTEGER } });
+		const original = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: ids.claim });
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('applied');
+		expect(await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: ids.claim })).toEqual(original);
+		expect((await config()).revision).toBe(2);
+	});
+	it.each(['slotRevision', 'manualCounter'] satisfies readonly ('slotRevision' | 'manualCounter')[])('refuses actual %s overflow before controller apply or private generation allocation', async (counter) => {
+		await database.manager.update(ClimateAutomationSlotEntity, { controllerId: ids.controller }, { [counter]: Number.MAX_SAFE_INTEGER });
+		const original = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(original); expect(applies).toBe(0);
+	});
+	it('rejects unknown persisted JSON without persisting a lossy codec', async () => {
+		const original = comfort();
+		await database.manager.query('UPDATE devices_virtual_thermostat_configs SET comfort=? WHERE controllerId=?', [JSON.stringify({ ...original, unknown_extension: { revision: 1 } }), ids.controller]);
+		const before = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(before); expect(applies).toBe(0);
+	});
+
+	it('refuses malformed actual recovery counters before apply without treating MAX as overflow', async () => {
+		const row = recovery(); await database.manager.insert(VirtualThermostatRecoveryEntity, { ...row, configurationRevision: 0 });
+		const original = await whole();
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('conflict');
+		expect(await whole()).toEqual(original); expect(applies).toBe(0);
+	});
+	it('rejects a detached or forged history turn before its first actual query', async () => {
+		const queries = jest.spyOn(database.manager, 'createQueryBuilder');
+		await expect(service.readRetainedHistoryInManager(database.manager, Object.freeze({}), ids.controller)).rejects.toBeInstanceOf(Error);
+		expect(queries).not.toHaveBeenCalled();
+	});
+
+	it('validates all five actual setting bindings as one merged heat/cool/lock intent', async () => {
+		expect((await settings([
+			{ propertyId: properties.heating_setpoint, value: 21 }, { propertyId: properties.cooling_setpoint, value: 25 },
+			{ propertyId: properties.heating_enabled, value: true }, { propertyId: properties.cooling_enabled, value: true },
+			{ propertyId: properties.locked, value: false },
+		])).outcome).toBe('applied');
+		expect(await config()).toMatchObject({ revision: 2, requestedMode: 'auto', locked: false, policy: { heatingSetpoint: 21, coolingSetpoint: 25 }, comfort: { user_off: false, selected_preset: null } });
+		expect(await slot()).toMatchObject({ manualHold: true, manualCounter: 2, slotRevision: 2 }); expect(applies).toBe(1);
+	});
+	it('retains legacy classification/digest and independent hold when null preset is explicitly selected', async () => {
+		const initial = comfort(); initial.selected_preset = 'comfort';
+		initial.automation_baseline = { preset: 'away', setpoints: null, actor_id: 'unowned legacy actor', revision: 1 };
+		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { comfort: initial });
+		const digest = createHash('sha256').update(climateAutomationCanonical(initial.automation_baseline)).digest('hex');
+		await database.manager.update(ClimateAutomationSlotEntity, { controllerId: ids.controller }, { state: 'LEGACY', legacyDigest: digest, manualHold: true });
+		expect((await select(null)).outcome).toBe('applied');
+		expect(await slot()).toMatchObject({ state: 'LEGACY', legacyDigest: digest, manualHold: true, ownerId: null, baselineId: null, generationId: null });
+		expect((await config()).comfort?.automation_baseline).toEqual(initial.automation_baseline);
+	});
+
+});
+
+interface ManualNativeConnection {
+	all: (this: ManualNativeConnection, query: string, parameters: unknown[], callback: (this: unknown, error: Error | null, rows?: unknown[]) => void) => unknown;
+}
+function isManualNativeConnection(value: unknown): value is ManualNativeConnection {
+	return value !== null && typeof value === 'object' && typeof Reflect.get(value, 'all') === 'function';
+}
