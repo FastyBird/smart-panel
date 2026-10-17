@@ -222,6 +222,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const previous = this.entries.get(property.id);
 		const state = this.unavailable(revision, ['initializing'], new Date());
 		this.dirtyObserved(property.id);
+		if (previous?.owner) this.forgetOwnedMetadata(previous.owner, property.id);
 		this.entries.set(property.id, {
 			property,
 			lease,
@@ -373,7 +374,9 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 
 	remove(propertyId: string): void {
-		if (this.entries.has(propertyId)) this.dirtyObserved(propertyId);
+		const previous = this.entries.get(propertyId);
+		if (previous) this.dirtyObserved(propertyId);
+		if (previous?.owner) this.forgetOwnedMetadata(previous.owner, propertyId);
 		this.entries.delete(propertyId);
 	}
 
@@ -589,10 +592,14 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		}
 		if (seen.size !== batch.observations.size) throw new Error('Incomplete owned producer batch');
 		const quarantineLeases = Object.freeze([...masks].sort(([a], [b]) => a.localeCompare(b)).map(([propertyId, lease]) => Object.freeze({ propertyId, lease })));
-		const sameView = revision === batch.view.revision && hints.length === batch.view.configurationRevisions.length &&
-			hints.every((hint, i) => hint.propertyId === batch.view.configurationRevisions[i].propertyId && hint.revision === batch.view.configurationRevisions[i].revision) &&
+		// Hints describe CURRENT owned entries, not a history of every catalog ID ever seen.
+		const ownedIds = new Set([...this.entries].filter(([, entry]) => entry.owner === batch.owner).map(([id]) => id));
+		for (const write of writes) { if (write.entry?.owner === batch.owner) ownedIds.add(write.propertyId); else ownedIds.delete(write.propertyId); }
+		const ownedHints = hints.filter((hint) => ownedIds.has(hint.propertyId));
+		const sameView = revision === batch.view.revision && ownedHints.length === batch.view.configurationRevisions.length &&
+			ownedHints.every((hint, i) => hint.propertyId === batch.view.configurationRevisions[i].propertyId && hint.revision === batch.view.configurationRevisions[i].revision) &&
 			quarantineLeases.length === batch.view.quarantineLeases.length && quarantineLeases.every((mask, i) => mask.lease === batch.view.quarantineLeases[i].lease);
-		const view = sameView ? batch.view : Object.freeze({ revision, configurationRevisions: Object.freeze(hints), quarantineLeases });
+		const view = sameView ? batch.view : Object.freeze({ revision, configurationRevisions: Object.freeze(ownedHints), quarantineLeases });
 		const prepared = Object.freeze(new PreparedProducerBatch());
 		this.prepared.set(prepared, {
 			batch, writes, anchors, view, notifications,
@@ -719,6 +726,14 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			observers?.delete(batch);
 			if (!observers?.size) this.observingIds.delete(id);
 		}
+	}
+	private forgetOwnedMetadata(owner: OwnedPublisherRecord, id: string): void {
+		if (!owner.active) return;
+		const hints = owner.view.configurationRevisions.filter((row) => row.propertyId !== id);
+		const masks = owner.view.quarantineLeases.filter((row) => row.propertyId !== id);
+		if (hints.length === owner.view.configurationRevisions.length && masks.length === owner.view.quarantineLeases.length) return;
+		for (const batch of owner.batches) this.closeBatch(batch);
+		owner.view = Object.freeze({ revision: owner.view.revision, configurationRevisions: Object.freeze(hints), quarantineLeases: Object.freeze(masks) });
 	}
 	private disposeOwner(owner: OwnedPublisherRecord): void {
 		owner.active = false;

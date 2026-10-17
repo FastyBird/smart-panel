@@ -1095,6 +1095,22 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
 		});
 
+		it('retains revision metadata only for current owned entries and drops it on exact legacy replacement', async () => {
+			const row = await property(), owned = owner(new EventEmitter2());
+			const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+			const prepared = producers.prepareOwnedBatch(batch, { revision: 0, configurationRevisions: [{ propertyId: row.id, revision: 7 }], operations: [
+				{ kind: 'unavailable', propertyId: row.id, property: row, revision: 7, reason: 'runtime_unavailable', expected: producers.captureExpectedSlot(batch, row.id) },
+			] });
+			expect(producers.installPreparedNoEvents(prepared)).toBe(true);
+			producers.closeObservedBatch(batch);
+			expect(producers.readOwnedView(owned).configurationRevisions).toEqual([{ propertyId: row.id, revision: 7 }]);
+			const b = producers.register(row, 7);
+			expect(producers.readOwnedView(owned).configurationRevisions).toEqual([]);
+			expect(producers.readOwnedView(owned).quarantineLeases).toEqual([]);
+			expect(producers.isCurrent(b)).toBe(true);
+			expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+		});
+
 	});
 
 });
