@@ -5,6 +5,12 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import {
+	ClimateAutomationAcknowledgedJob, ClimateAutomationGraphDelta, ClimateAutomationGraphFacts,
+	ClimateAutomationGraphValidation, ClimateAutomationParticipantConflict, ClimateAutomationParticipantTurn,
+	ClimateAutomationValidationReason, ClimateAutomationValidationTicket, climateAutomationCanonical,
+} from '../../../modules/devices/contracts/climate-automation.contract';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
@@ -24,6 +30,8 @@ export interface VirtualDependencyEdge {
 	sourcePropertyId: string;
 }
 
+class GuardedValidationShell { toJSON(): Readonly<Record<string, never>> { return {}; } }
+
 /** Database writer reservation precedes all graph validation, including across independent processes. */
 @Injectable()
 export class VirtualDependencyGraphService implements OnApplicationBootstrap {
@@ -35,6 +43,11 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		(revision: number, quarantined: ReadonlySet<string>) => Promise<void>,
 		{ requiresActivation?: boolean }
 	>();
+	private readonly validationTickets = new WeakMap<ClimateAutomationValidationTicket, number>();
+	private readonly guardedListeners = new Set<{
+		readonly listener: (view: Readonly<{ revision: number; quarantinedIds: readonly string[] }>) => Promise<void>;
+		readonly options: { requiresActivation?: boolean };
+	}>();
 	private quarantineRevision = -1;
 	// Module initialization may install leases before bootstrap validates the durable graph.
 	private validationPending = true;
@@ -44,6 +57,7 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	constructor(
 		private readonly dataSource: DataSource,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
+		@Optional() private readonly writer?: ClimateAutomationWriterService,
 	) {}
 
 	/** Synchronous structural-event fence; a settled owner must refresh after commit or rollback. */
@@ -239,6 +253,136 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	): () => void {
 		this.validationListeners.set(listener, options);
 		return () => this.validationListeners.delete(listener);
+	}
+
+	private participantWriter(): ClimateAutomationWriterService {
+		if (!this.writer) throw new ClimateAutomationParticipantConflict('unavailable');
+		return this.writer;
+	}
+
+	async readReservedGraph(manager: EntityManager, turn: ClimateAutomationParticipantTurn): Promise<ClimateAutomationGraphFacts> {
+		this.participantWriter().assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
+		if (!row) throw new ClimateAutomationParticipantConflict('uninitialized');
+		if (!Number.isSafeInteger(row.revision) || row.revision < 0) throw new ClimateAutomationParticipantConflict('invalid');
+		const edges = (await this.edges(manager)).map((edge) => Object.freeze({ outputPropertyId: edge.outputPropertyId, sourcePropertyId: edge.sourcePropertyId }));
+		edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		return Object.freeze({ revision: row.revision, edges: Object.freeze(edges) });
+	}
+
+	beginReservedValidation(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): ClimateAutomationValidationTicket {
+		this.participantWriter().assertParticipantTurn(manager, turn, ['APPLY'], delta);
+		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter)) throw new ClimateAutomationParticipantConflict('invalid');
+		this.validationGeneration++;
+		this.validationPending = true;
+		const ticket = Object.freeze(new GuardedValidationShell());
+		this.validationTickets.set(ticket, this.validationGeneration);
+		return ticket;
+	}
+
+	async advanceReservedGraph(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): Promise<ClimateAutomationGraphFacts> {
+		this.participantWriter().assertParticipantTurn(manager, turn, ['GRAPH_CAS'], delta);
+		const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
+		if (!row || row.revision !== delta.before.revision) throw new ClimateAutomationParticipantConflict('stale');
+		if (!Number.isSafeInteger(row.revision) || row.revision < 0 || row.revision === Number.MAX_SAFE_INTEGER) throw new ClimateAutomationParticipantConflict('invalid');
+		const edges = (await this.edges(manager)).map((edge) => Object.freeze({ ...edge }));
+		edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		if (climateAutomationCanonical(edges) !== climateAutomationCanonical(delta.afterEdges)) throw new ClimateAutomationParticipantConflict('stale');
+		this.validate(edges);
+		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter)) throw new ClimateAutomationParticipantConflict('invalid');
+		const result = await manager.update(VirtualGraphRevisionEntity, { id: 1, revision: row.revision }, { revision: row.revision + 1 });
+		if (result.affected !== 1) throw new ClimateAutomationParticipantConflict('stale');
+		return Object.freeze({ revision: row.revision + 1, edges: Object.freeze(edges) });
+	}
+
+	/** Trusted READ-ONLY checks only. No production consumer is converted by this dormant port. */
+	observeGuardedValidation(listener: (view: Readonly<{ revision: number; quarantinedIds: readonly string[] }>) => Promise<void>, options: { requiresActivation?: boolean } = {}): () => void {
+		const registration = Object.freeze({ listener, options });
+		this.guardedListeners.add(registration);
+		return () => { this.guardedListeners.delete(registration); };
+	}
+
+	async validateAcknowledgedGraph(job: ClimateAutomationAcknowledgedJob, ticket: ClimateAutomationValidationTicket, revision: number): Promise<ClimateAutomationGraphValidation> {
+		const writer = this.writer;
+		const generation = this.validationTickets.get(ticket);
+		const ordinary = [...this.validationListeners].map(([listener, options]) => Object.freeze({ listener, options, activation: options.requiresActivation }));
+		const readonly = [...this.guardedListeners].map((registration) => Object.freeze({ registration, activation: registration.options.requiresActivation }));
+		const refused = (reason: ClimateAutomationValidationReason): ClimateAutomationGraphValidation => Object.freeze({ outcome: 'THIS_JOB_NOT_VALIDATED', reason });
+		const status = (): ClimateAutomationValidationReason | null => {
+			if (!writer?.isAcknowledgedJobCurrent(job, ticket, revision)) return 'original_identity_lost';
+			if (generation === undefined || generation !== this.validationGeneration) return 'validation_superseded';
+			if (ordinary.length !== this.validationListeners.size || ordinary.some(({ listener, options, activation }) => this.validationListeners.get(listener) !== options || options.requiresActivation !== activation) ||
+				readonly.length !== this.guardedListeners.size || readonly.some(({ registration, activation }) => !this.guardedListeners.has(registration) || registration.options.requiresActivation !== activation)) return 'listener_set_changed';
+			return null;
+		};
+		const entry = status();
+		if (entry) return refused(entry);
+		// Never call/mute a side-effectful legacy listener and then label this graph ready.
+		if (ordinary.some(({ activation }) => !activation)) return refused('unsupported_legacy_listener');
+		const snapshot = await this.dataSource.transaction(async (manager) => ({
+			edges: await this.edges(manager),
+			aggregates: await manager.find(VirtualAggregateConfigEntity),
+			knownProperties: await this.readProjectionSources(manager),
+			properties: await manager.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device')
+				.callListeners(false).getMany(),
+			row: await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }),
+		}));
+		let reason = status();
+		if (reason) return refused(reason);
+		if (!snapshot.row) return refused('missing_graph');
+		if (snapshot.row.revision !== revision || revision < this.quarantineRevision) return refused('revision_mismatch');
+		// Everything stays local until ALL callbacks and the final actual durable observation settle.
+		const quarantined = new Set<string>();
+		const neighbors = new Map<string, Set<string>>();
+		for (const edge of snapshot.edges) for (const [node, neighbor] of [[edge.outputPropertyId, edge.sourcePropertyId], [edge.sourcePropertyId, edge.outputPropertyId]]) {
+			const adjacent = neighbors.get(node) ?? new Set<string>(); adjacent.add(neighbor); neighbors.set(node, adjacent);
+		}
+		const visited = new Set<string>();
+		for (const root of neighbors.keys()) {
+			if (visited.has(root)) continue;
+			const component = new Set<string>(); const queue = [root];
+			for (let index = 0; index < queue.length; index++) {
+				const node = queue[index]; if (component.has(node)) continue;
+				component.add(node); visited.add(node); queue.push(...(neighbors.get(node) ?? []));
+			}
+			try { this.validate(snapshot.edges.filter((edge) => component.has(edge.outputPropertyId))); }
+			catch (error) { if (!(error instanceof DevicesValidationException)) throw error; for (const node of component) quarantined.add(node); }
+		}
+		if (snapshot.edges.length > 8192 || neighbors.size > 4096) for (const node of neighbors.keys()) quarantined.add(node);
+		for (const config of snapshot.aggregates) {
+			const property = snapshot.properties.find((candidate) => candidate.id === config.outputPropertyId);
+			const channel = property?.channel;
+			const device = channel && typeof channel !== 'string' ? channel.device : null;
+			if (!property || !channel || typeof channel === 'string' || !device || typeof device === 'string' ||
+				!isEligibleAggregateOutput(property, channel, device) || aggregateProfile(property, channel)?.id !== config.profile) quarantined.add(config.outputPropertyId);
+		}
+		const staged = {
+			known: new Set(snapshot.knownProperties.map((property) => property.id)),
+			sources: new Map(snapshot.properties.map((property) => [property.id, { valueOrigin: property.valueOrigin, sourcePropertyId: property.sourcePropertyId ?? null }])),
+			live: new Set(snapshot.properties.filter((property) => property.requiresLiveValue).map((property) => property.id)),
+		};
+		const probe = async (): Promise<ClimateAutomationValidationReason | null> => {
+			const row = await this.dataSource.transaction((manager) => manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }));
+			return status() ?? (!row ? 'missing_graph' : row.revision !== revision ? 'revision_mismatch' : null);
+		};
+		for (const { registration, activation } of readonly) {
+			if (activation) continue;
+			reason = await probe(); if (reason) return refused(reason);
+			await registration.listener(Object.freeze({ revision, quarantinedIds: Object.freeze([...quarantined].sort()) }));
+			reason = status(); if (reason) return refused(reason);
+		}
+		reason = await probe(); if (reason) return refused(reason);
+		// No await/callback/getter between original pure checks and these assignments.
+		reason = status(); if (reason) return refused(reason);
+		this.quarantined = quarantined;
+		this.knownProperties = staged.known;
+		this.valueSources = staged.sources;
+		this.liveValueProperties = staged.live;
+		this.quarantineRevision = revision;
+		this.validationPending = false;
+		// Only r at the completed observation; a foreign process may commit immediately afterwards.
+		return Object.freeze({ outcome: 'VALIDATED_AT_OBSERVED_REVISION', revision });
 	}
 
 	async onApplicationBootstrap(): Promise<void> {

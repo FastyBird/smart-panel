@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import {
@@ -13,6 +13,20 @@ import {
 } from '../../../common/database/sqlite-data-source';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
+	ClimateAutomationAcknowledgedJob,
+	ClimateAutomationGraphDelta,
+	ClimateAutomationGraphFacts,
+	ClimateAutomationGraphParticipant,
+	ClimateAutomationGraphValidation,
+	ClimateAutomationParticipant,
+	ClimateAutomationParticipantConflict,
+	ClimateAutomationParticipantDocument,
+	ClimateAutomationParticipantImage,
+	ClimateAutomationParticipantPhase,
+	ClimateAutomationParticipantTurn,
+	ClimateAutomationReplacement,
+	ClimateAutomationValidationReason,
+	ClimateAutomationValidationTicket,
 	ClimateAutomationCapturedRegistration,
 	ClimateAutomationCommittedOutcome,
 	ClimateAutomationConflictReason,
@@ -53,12 +67,62 @@ interface Operation {
 	failure?: { cause: unknown };
 	readonly guards: Array<() => boolean>;
 	readonly issued: Set<ClimateAutomationHandle>;
+	readonly mandatory: Map<string, HandleRecord>;
+	latestGraph?: ClimateAutomationGraphFacts;
+	readonly jobs: Map<ClimateAutomationGraphParticipant, ValidationJob>;
+	sequence: number;
 }
 interface Context {
 	readonly operation: Operation;
 	readonly internal: boolean;
+	readonly turn?: ClimateAutomationParticipantTurn;
+}
+interface PinnedParticipant {
+	readonly capture: ClimateAutomationCapturedRegistration<ClimateAutomationProvider>;
+	readonly cap: ClimateAutomationParticipant;
+	readonly graph: ClimateAutomationGraphParticipant;
+	readonly providerRead: ClimateAutomationProvider['readControllerInManager'];
+	readonly read: ClimateAutomationParticipant['readInManager'];
+	readonly normalize: ClimateAutomationParticipant['normalizeInManager'];
+	readonly apply: ClimateAutomationParticipant['applyInManager'];
+	readonly graphRead: ClimateAutomationGraphParticipant['readReservedGraph'];
+	readonly graphBegin: ClimateAutomationGraphParticipant['beginReservedValidation'];
+	readonly graphAdvance: ClimateAutomationGraphParticipant['advanceReservedGraph'];
+	readonly graphValidate: ClimateAutomationGraphParticipant['validateAcknowledgedGraph'];
+	readonly current: () => boolean;
+}
+interface TurnRecord {
+	readonly operation: Operation;
+	readonly sequence: number;
+	phase: ClimateAutomationParticipantPhase;
+	delta?: ClimateAutomationGraphDelta;
+}
+interface ValidationJob {
+	readonly pinned: PinnedParticipant;
+	readonly ticket: ClimateAutomationValidationTicket;
+	readonly revision: number;
+	readonly guards: readonly (() => boolean)[];
+}
+interface SettlementEnvelope {
+	receipt?: SqliteCommitGuardReceipt;
+	jobs: readonly ValidationJob[];
+}
+interface AcknowledgedRecord {
+	readonly envelope: SettlementEnvelope;
+	readonly descriptor: ValidationJob;
+	attempting: boolean;
+}
+interface ReceiverCall<R, A extends unknown[], V> { readonly call: (receiver: R, ...args: A) => V; }
+function invoke<R, A extends unknown[], V>(method: ReceiverCall<R, A, V>, receiver: R, ...args: A): V {
+	return method.call(receiver, ...args);
 }
 interface Snapshot {
+	readonly participant?: {
+		readonly pinned: PinnedParticipant;
+		readonly image: ClimateAutomationParticipantImage;
+		readonly graph: ClimateAutomationGraphFacts;
+		readonly referencedSource: ClimateAutomationSourceFacts | null;
+	};
 	readonly source?: {
 		readonly key: { producerKey: string; subjectId: string };
 		readonly value: ClimateAutomationSourceFacts | null;
@@ -113,6 +177,10 @@ export class ClimateAutomationWriterService {
 	private readonly context = new AsyncLocalStorage<Context>();
 	private readonly scopes = new WeakMap<ClimateAutomationScope, Operation>();
 	private readonly handles = new WeakMap<ClimateAutomationHandle, HandleRecord>();
+	private readonly turns = new WeakMap<ClimateAutomationParticipantTurn, TurnRecord>();
+	private readonly acknowledged = new WeakMap<ClimateAutomationAcknowledgedJob, AcknowledgedRecord>();
+	private readonly secondary = new WeakMap<ClimateAutomationWriteError, readonly ClimateAutomationValidationReason[]>();
+	private readonly logger = new Logger(ClimateAutomationWriterService.name);
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly structureLock: DeviceStructureLockService,
@@ -133,7 +201,11 @@ export class ClimateAutomationWriterService {
 				new Error('An independent coordinated writer lease is required'),
 			);
 		}
-		return this.structureLock.runExclusive(async () => {
+		const envelope: SettlementEnvelope = { jobs: Object.freeze([]) };
+		let result: ClimateAutomationCommittedOutcome | undefined;
+		let primary: { cause: unknown } | undefined;
+		try {
+		result = await this.structureLock.runExclusiveReleased(async () => {
 			const operation: Operation = {
 				phase: 'OPENING',
 				scope: shell(),
@@ -144,6 +216,9 @@ export class ClimateAutomationWriterService {
 				frozenEpoch: 0,
 				guards: [],
 				issued: new Set(),
+				mandatory: new Map(),
+				jobs: new Map(),
+				sequence: 0,
 			};
 			this.scopes.set(operation.scope, operation);
 			return this.context.run({ operation, internal: false }, async () => {
@@ -160,6 +235,7 @@ export class ClimateAutomationWriterService {
 								operation.mutationEpoch === operation.frozenEpoch &&
 								operation.guards.every((guard) => guard()),
 						);
+						envelope.receipt = operation.receipt;
 						operation.phase = 'RESERVING';
 						await manager.query(`UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0`);
 						this.assertHealthy(operation);
@@ -187,8 +263,12 @@ export class ClimateAutomationWriterService {
 						operation.phase = 'FINALIZING';
 						await this.context.run({ operation, internal: true }, async () => {
 							for (const record of records) await this.validateSnapshot(manager, record);
+							for (const record of operation.mandatory.values()) {
+								await this.validateMandatory(manager, record);
+							}
 						});
 						this.assertHealthy(operation);
+						envelope.jobs = Object.freeze([...operation.jobs.values()].map((job) => Object.freeze({ ...job, revision: operation.latestGraph?.revision ?? job.revision, guards: Object.freeze([...job.guards, ...operation.guards]) })));
 						operation.frozenEpoch = operation.mutationEpoch;
 						operation.phase = 'READY_TO_COMMIT';
 						const outcome: ClimateAutomationCommittedOutcome = Object.freeze({
@@ -203,7 +283,7 @@ export class ClimateAutomationWriterService {
 					return result;
 				} catch (cause) {
 					const receipt = operation.receipt?.outcome;
-					if (cause instanceof Conflict && receipt === 'rolled_back')
+					if ((cause instanceof Conflict || cause instanceof ClimateAutomationParticipantConflict) && receipt === 'rolled_back')
 						return Object.freeze({ outcome: 'conflict', reason: cause.reason });
 					const outcome =
 						receipt === 'committed' || receipt === 'unknown' || receipt === 'refused' || receipt === 'rolled_back'
@@ -217,12 +297,31 @@ export class ClimateAutomationWriterService {
 					operation.issued.clear();
 					operation.callbacks.length = 0;
 					operation.guards.length = 0;
+					operation.mandatory.clear();
+					operation.latestGraph = undefined;
+					operation.jobs.clear();
 					operation.tail = Promise.resolve();
 					operation.manager = undefined;
 					operation.runner = undefined;
 				}
 			});
 		});
+		} catch (cause) {
+			primary = { cause: cause instanceof ClimateAutomationWriteError ? cause : new ClimateAutomationWriteError('not_started', cause) };
+		}
+		// The release-aware entry settled after ORIGINAL ownership release, even on a late COMMITTED error.
+		const failures = await this.validateAcknowledgedJobs(envelope);
+		if (primary) {
+			if (primary.cause instanceof ClimateAutomationWriteError && failures.length) this.secondary.set(primary.cause, failures);
+			throw primary.cause;
+		}
+		if (failures.length) {
+			const error = new ClimateAutomationWriteError('committed', new Error('Acknowledged metadata validation incomplete'));
+			this.secondary.set(error, failures);
+			throw error;
+		}
+		if (!result) throw new ClimateAutomationWriteError('not_started', new Error('Missing ownership result'));
+		return result;
 	}
 
 	inReservedManager(
@@ -622,6 +721,246 @@ export class ClimateAutomationWriterService {
 		);
 	}
 
+	/** Exact private turn check, before any participant/graph read. No caller scope adoption. */
+	assertParticipantTurn(manager: EntityManager, turn: ClimateAutomationParticipantTurn, phases: readonly ClimateAutomationParticipantPhase[], delta?: ClimateAutomationGraphDelta): void {
+		const context = this.context.getStore();
+		const record = this.turns.get(turn);
+		if (!record || context?.operation !== record.operation || context.turn !== turn || !context.internal ||
+			record.operation.manager !== manager || manager.queryRunner !== record.operation.runner ||
+			!hasCurrentSqliteConnectionLease(this.dataSource) || record.operation.failure ||
+			!phases.includes(record.phase) || (delta !== undefined && record.delta !== delta) ||
+			(record.phase === 'FINAL_READ' ? record.operation.phase !== 'FINALIZING' : !['BODY_OPEN', 'DRAINING'].includes(record.operation.phase))) {
+			if (context) throw this.refuse(context.operation);
+			throw new Error('Invalid private participant turn');
+		}
+	}
+
+	isAcknowledgedJobCurrent(job: ClimateAutomationAcknowledgedJob, ticket: ClimateAutomationValidationTicket, revision: number): boolean {
+		const record = this.acknowledged.get(job);
+		return !!record && record.attempting && record.envelope.receipt?.outcome === 'committed' &&
+			record.descriptor.ticket === ticket && record.descriptor.revision === revision &&
+			record.descriptor.guards.every((guard) => guard()) && record.descriptor.pinned.current();
+	}
+
+	readParticipant(manager: EntityManager, scope: ClimateAutomationScope, request: { readonly providerKey: string; readonly controllerId: string }): Promise<ClimateAutomationHandle> {
+		return this.participantCommand(manager, scope, () => {
+			const { providerKey, controllerId } = request;
+			return Object.freeze({ providerKey, controllerId, pinned: this.pinParticipant(providerKey) });
+		}, async (operation, owned) => this.inParticipantTurn(operation, async (turn) => {
+			const snapshot = await this.participantSnapshot(manager, turn, owned.controllerId, owned.providerKey, owned.pinned);
+			return this.handle(operation, snapshot, false);
+		}));
+	}
+
+	replaceController(manager: EntityManager, scope: ClimateAutomationScope, request: ClimateAutomationReplacement): Promise<ClimateAutomationHandle> {
+		return this.participantCommand(manager, scope, () => {
+			const { kind, providerKey, controllerId, expected, desiredDocument } = request;
+			if (kind !== 'replace-configuration:v1' && kind !== 'replace-comfort:v1') throw new Conflict('invalid');
+			const desired = this.ownedJson(desiredDocument);
+			return Object.freeze({ kind, providerKey, controllerId, expected, desired, pinned: this.pinParticipant(providerKey) });
+		}, async (operation, owned) => this.inParticipantTurn(operation, async (turn, record) => {
+			const before = this.record(operation, owned.expected);
+			if (!before.participant || !before.slot || before.slot.controllerId !== owned.controllerId ||
+				before.slot.value?.providerKey !== owned.providerKey) throw new Conflict('invalid');
+			await this.validateSnapshot(manager, before);
+			this.requirePinned(owned.pinned);
+			const p = owned.pinned;
+			const image = before.participant.image;
+			record.phase = 'NORMALIZE';
+			const raw: unknown = await invoke<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['normalizeInManager']>, ReturnType<ClimateAutomationParticipant['normalizeInManager']>>(p.normalize, p.cap, manager, turn, owned.kind, owned.desired, image);
+			this.requirePinned(p);
+			const normalized = this.participantDocument(raw);
+			if (normalized.controllerId !== image.controllerId || !same(normalized.legacyBaseline, image.legacyBaseline) ||
+				(owned.kind === 'replace-comfort:v1' ? !same(normalized.configuration, image.configuration) || !same(normalized.structural, image.structural) : !same(normalized.comfort, image.comfort))) throw new Conflict('invalid');
+			const originalDocument = this.documentOf(image);
+			if (same(normalized, originalDocument)) return this.handle(operation, before, false);
+			const next = Object.freeze({ ...normalized, controllerRevision: increment(image.controllerRevision) });
+			const structural = !same(image.structural, next.structural);
+			const graphBefore = before.participant.graph;
+			if (structural && graphBefore.revision === Number.MAX_SAFE_INTEGER) throw new Conflict('invalid');
+			record.delta = Object.freeze({ before: graphBefore, afterEdges: graphBefore.edges, structuralBefore: image.structural, structuralAfter: next.structural });
+			record.phase = 'APPLY';
+			let ticket: ClimateAutomationValidationTicket | undefined;
+			if (structural) {
+				ticket = invoke<ClimateAutomationGraphParticipant, Parameters<ClimateAutomationGraphParticipant['beginReservedValidation']>, ClimateAutomationValidationTicket>(p.graphBegin, p.graph, manager, turn, record.delta);
+				this.requirePinned(p);
+			}
+			await invoke<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['applyInManager']>, ReturnType<ClimateAutomationParticipant['applyInManager']>>(p.apply, p.cap, manager, turn, image, next);
+			this.requirePinned(p);
+			operation.mutationEpoch++;
+			record.phase = 'READ_AFTER';
+			let after = await this.participantSnapshot(manager, turn, owned.controllerId, owned.providerKey, p);
+			if (!after.participant || !same(after.participant.image, next) || !same(after.slot, before.slot) ||
+				!same(after.source ?? null, before.source ?? null) || !same(after.participant.referencedSource, before.participant.referencedSource) ||
+				after.participant.graph.revision !== graphBefore.revision) throw new Conflict('stale');
+			if (!structural && !same(after.participant.graph, graphBefore)) throw new Conflict('invalid');
+			if (structural) {
+				record.delta = Object.freeze({ ...record.delta, afterEdges: after.participant.graph.edges });
+				record.phase = 'GRAPH_CAS';
+				await invoke<ClimateAutomationGraphParticipant, Parameters<ClimateAutomationGraphParticipant['advanceReservedGraph']>, ReturnType<ClimateAutomationGraphParticipant['advanceReservedGraph']>>(p.graphAdvance, p.graph, manager, turn, record.delta);
+				this.requirePinned(p);
+				record.phase = 'READ_AFTER';
+				after = await this.participantSnapshot(manager, turn, owned.controllerId, owned.providerKey, p);
+				if (!after.participant || after.participant.graph.revision !== graphBefore.revision + 1 ||
+					!same(after.participant.graph.edges, record.delta.afterEdges) || !same(after.participant.image, next) ||
+					!same(after.slot, before.slot) || !same(after.source ?? null, before.source ?? null) ||
+					!same(after.participant.referencedSource, before.participant.referencedSource) || !ticket) throw new Conflict('stale');
+				operation.mutationEpoch++;
+				const previous = operation.jobs.get(p.graph);
+				operation.jobs.set(p.graph, Object.freeze({ pinned: p, ticket, revision: after.participant.graph.revision,
+					guards: Object.freeze([...(previous?.guards ?? []), ...operation.guards]) }));
+			}
+			if (!after.participant) throw new Conflict('invalid');
+			operation.latestGraph = after.participant.graph;
+			return this.handle(operation, after, true);
+		}));
+	}
+
+	private participantCommand<I>(manager: EntityManager, scope: ClimateAutomationScope, snapshot: () => I & { pinned: PinnedParticipant }, work: (operation: Operation, input: I & { pinned: PinnedParticipant }) => Promise<ClimateAutomationHandle>): Promise<ClimateAutomationHandle> {
+		const operation = this.admit(manager, scope);
+		let owned: I & { pinned: PinnedParticipant };
+		try { owned = this.context.run({ operation, internal: true }, snapshot); }
+		catch (cause) { this.fail(operation, cause); throw cause; }
+		operation.guards.push(owned.pinned.current);
+		return this.enqueue(operation, () => work(operation, owned));
+	}
+
+	private async inParticipantTurn<T>(operation: Operation, work: (turn: ClimateAutomationParticipantTurn, record: TurnRecord) => Promise<T>, final = false): Promise<T> {
+		const turn = shell();
+		const record: TurnRecord = { operation, sequence: ++operation.sequence, phase: final ? 'FINAL_READ' : 'READ_BEFORE' };
+		this.turns.set(turn, record);
+		try { return await this.context.run({ operation, internal: true, turn }, () => work(turn, record)); }
+		finally { this.turns.delete(turn); }
+	}
+
+	private pinParticipant(key: string): PinnedParticipant {
+		const capture = this.registry.captureProvider(key);
+		const cap = capture?.implementation.participantV1;
+		if (!capture || !cap || cap.version !== 1 || !cap.graph) throw new Conflict('unavailable');
+		const graph = cap.graph;
+		const { readInManager: read, normalizeInManager: normalize, applyInManager: apply } = cap;
+		const { readReservedGraph: graphRead, beginReservedValidation: graphBegin, advanceReservedGraph: graphAdvance, validateAcknowledgedGraph: graphValidate } = graph;
+		const providerRead = capture.implementation.readControllerInManager;
+		if (![read, normalize, apply, graphRead, graphBegin, graphAdvance, graphValidate, providerRead].every((method) => typeof method === 'function')) throw new Conflict('unavailable');
+		return Object.freeze({ capture, cap, graph, read, normalize, apply, graphRead, graphBegin, graphAdvance, graphValidate, providerRead,
+			current: () => capture.isCurrent() && capture.implementation.participantV1 === cap && cap.version === 1 && cap.graph === graph &&
+				cap.readInManager === read && cap.normalizeInManager === normalize && cap.applyInManager === apply &&
+				capture.implementation.readControllerInManager === providerRead && graph.readReservedGraph === graphRead &&
+				graph.beginReservedValidation === graphBegin && graph.advanceReservedGraph === graphAdvance && graph.validateAcknowledgedGraph === graphValidate });
+	}
+	private requirePinned(p: PinnedParticipant): void { if (!p.current()) throw new Conflict('unavailable'); }
+	private ownedJson(value: unknown): ClimateAutomationJson {
+		const bytes = climateAutomationCanonical(value);
+		const parsed: unknown = JSON.parse(bytes);
+		return climateAutomationJson(parsed);
+	}
+	private participantDocument(value: unknown, image = false): ClimateAutomationParticipantDocument {
+		const owned = this.ownedJson(value);
+		if (!owned || typeof owned !== 'object' || Array.isArray(owned)) throw new Conflict('invalid');
+		const keys = ['controllerId', 'documentVersion', 'configuration', 'comfort', 'structural', 'legacyBaseline'];
+		if (image) keys.push('controllerRevision');
+		if (Object.keys(owned).length !== keys.length || keys.some((key) => !Object.hasOwn(owned, key))) throw new Conflict('invalid');
+		const id: unknown = Reflect.get(owned, 'controllerId');
+		if (typeof id !== 'string' || Reflect.get(owned, 'documentVersion') !== 1) throw new Conflict('invalid');
+		return Object.freeze({ controllerId: uuid(id), documentVersion: 1,
+			configuration: climateAutomationJson(Reflect.get(owned, 'configuration')),
+			comfort: climateAutomationJson(Reflect.get(owned, 'comfort')),
+			structural: climateAutomationJson(Reflect.get(owned, 'structural')),
+			legacyBaseline: climateAutomationJson(Reflect.get(owned, 'legacyBaseline')) });
+	}
+	private participantImage(value: unknown): ClimateAutomationParticipantImage {
+		const owned = this.ownedJson(value);
+		const document = this.participantDocument(owned, true);
+		if (!owned || typeof owned !== 'object') throw new Conflict('invalid');
+		const revision: unknown = Reflect.get(owned, 'controllerRevision');
+		if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 1) throw new Conflict('invalid');
+		return Object.freeze({ ...document, controllerRevision: revision });
+	}
+	private documentOf(image: ClimateAutomationParticipantImage): ClimateAutomationParticipantDocument {
+		return Object.freeze({ controllerId: image.controllerId, documentVersion: image.documentVersion,
+			configuration: image.configuration, comfort: image.comfort, structural: image.structural, legacyBaseline: image.legacyBaseline });
+	}
+	private async participantSnapshot(manager: EntityManager, turn: ClimateAutomationParticipantTurn, id: string, providerKey: string, p: PinnedParticipant): Promise<Snapshot> {
+		this.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		this.requirePinned(p);
+		const slot = await this.slot(manager, uuid(id));
+		this.requirePinned(p);
+		if (!slot || slot.providerKey !== providerKey) throw new Conflict('uninitialized');
+		const raw: unknown = await invoke<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['readInManager']>, ReturnType<ClimateAutomationParticipant['readInManager']>>(p.read, p.cap, manager, turn, id);
+		this.requirePinned(p);
+		if (raw === null) throw new Conflict('uninitialized');
+		const image = this.participantImage(raw);
+		if (image.controllerId !== id) throw new Conflict('invalid');
+		const graph = this.graphFacts(await invoke<ClimateAutomationGraphParticipant, Parameters<ClimateAutomationGraphParticipant['readReservedGraph']>, ReturnType<ClimateAutomationGraphParticipant['readReservedGraph']>>(p.graphRead, p.graph, manager, turn));
+		this.requirePinned(p);
+		const facts = this.controllerFacts(await invoke<ClimateAutomationProvider, Parameters<ClimateAutomationProvider['readControllerInManager']>, ReturnType<ClimateAutomationProvider['readControllerInManager']>>(p.providerRead, p.capture.implementation, manager, id));
+		this.requirePinned(p);
+		if (!facts || facts.controllerRevision !== image.controllerRevision || facts.graphRevision !== graph.revision ||
+			!same(facts.legacyBaseline, image.legacyBaseline) || !same(facts.evidence, image)) throw new Conflict('invalid');
+		const reference = slot.generationId ? await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: slot.generationId }) : null;
+		this.requirePinned(p);
+		const referencedSource = reference ? this.sourceFacts(reference) : null;
+		if (slot.generationId && !referencedSource) throw new Conflict('stale');
+		const source = referencedSource ? { key: { producerKey: referencedSource.producerKey, subjectId: referencedSource.subjectId }, value: await this.source(manager, referencedSource.producerKey, referencedSource.subjectId) } : undefined;
+		this.requirePinned(p);
+		return Object.freeze({ slot: { controllerId: id, value: slot }, ...(source ? { source } : {}),
+			controller: { providerKey, controllerId: id, value: facts, capture: p.capture },
+			participant: Object.freeze({ pinned: p, image, graph, referencedSource }) });
+	}
+	private graphFacts(value: unknown): ClimateAutomationGraphFacts {
+		const owned = this.ownedJson(value);
+		if (!owned || typeof owned !== 'object' || Array.isArray(owned)) throw new Conflict('invalid');
+		const revision: unknown = Reflect.get(owned, 'revision');
+		const rawEdges: unknown = Reflect.get(owned, 'edges');
+		if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0 || !Array.isArray(rawEdges)) throw new Conflict('invalid');
+		const edges = rawEdges.map((edge: unknown) => {
+			if (!edge || typeof edge !== 'object') throw new Conflict('invalid');
+			const outputPropertyId: unknown = Reflect.get(edge, 'outputPropertyId');
+			const sourcePropertyId: unknown = Reflect.get(edge, 'sourcePropertyId');
+			if (typeof outputPropertyId !== 'string' || typeof sourcePropertyId !== 'string') throw new Conflict('invalid');
+			return Object.freeze({ outputPropertyId, sourcePropertyId });
+		});
+		edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		return Object.freeze({ revision, edges: Object.freeze(edges) });
+	}
+	private async validateParticipantSnapshot(manager: EntityManager, snapshot: Snapshot): Promise<void> {
+		const expected = snapshot.participant;
+		const operation = this.context.getStore()?.operation;
+		if (!expected || !operation || !snapshot.controller) throw new Conflict('invalid');
+		await this.inParticipantTurn(operation, async (turn) => {
+			const actual = await this.participantSnapshot(manager, turn, expected.image.controllerId, snapshot.controller?.providerKey ?? '', expected.pinned);
+			if (!actual.participant || !same(actual.participant.image, expected.image) || !same(actual.participant.graph, expected.graph) ||
+				!same(actual.participant.referencedSource, expected.referencedSource) || !same(actual.source ?? null, snapshot.source ?? null) || !same(actual.slot, snapshot.slot)) throw new Conflict('stale');
+		}, operation.phase === 'FINALIZING');
+	}
+	private async validateMandatory(manager: EntityManager, record: HandleRecord): Promise<void> {
+		const participant = record.participant;
+		const graph = participant && record.operation.latestGraph;
+		if (!participant || !graph || !record.controller?.value) { await this.validateSnapshot(manager, record); return; }
+		await this.validateSnapshot(manager, { ...record,
+			controller: { ...record.controller, value: { ...record.controller.value, graphRevision: graph.revision } },
+			participant: { ...participant, graph } });
+	}
+	private async validateAcknowledgedJobs(envelope: SettlementEnvelope): Promise<readonly ClimateAutomationValidationReason[]> {
+		const failures: ClimateAutomationValidationReason[] = [];
+		if (envelope.receipt?.outcome !== 'committed') return Object.freeze(failures);
+		for (const descriptor of envelope.jobs) {
+			const job = shell();
+			this.acknowledged.set(job, { envelope, descriptor, attempting: true });
+			try {
+				const result: ClimateAutomationGraphValidation = await invoke<ClimateAutomationGraphParticipant, Parameters<ClimateAutomationGraphParticipant['validateAcknowledgedGraph']>, ReturnType<ClimateAutomationGraphParticipant['validateAcknowledgedGraph']>>(descriptor.pinned.graphValidate, descriptor.pinned.graph, job, descriptor.ticket, descriptor.revision);
+				if (!this.isAcknowledgedJobCurrent(job, descriptor.ticket, descriptor.revision)) failures.push('original_identity_lost');
+				else if (result.outcome === 'THIS_JOB_NOT_VALIDATED') {
+					const allowed: readonly ClimateAutomationValidationReason[] = ['original_identity_lost', 'validation_superseded', 'revision_mismatch', 'missing_graph', 'unsupported_legacy_listener', 'listener_set_changed', 'validation_rejected'];
+					failures.push(allowed.includes(result.reason) ? result.reason : 'validation_rejected');
+				} else if (result.outcome !== 'VALIDATED_AT_OBSERVED_REVISION' || result.revision !== descriptor.revision) failures.push('validation_rejected');
+			} catch { failures.push('validation_rejected'); }
+			finally { this.acknowledged.delete(job); }
+		}
+		for (const reason of failures) this.logger.error('Acknowledged climate metadata validation incomplete', { stage: 'graph-validation', reason });
+		return Object.freeze(failures);
+	}
+
 	private admit(manager: EntityManager, scope: ClimateAutomationScope): Operation {
 		const context = this.context.getStore();
 		const operation = this.scopes.get(scope);
@@ -700,6 +1039,12 @@ export class ClimateAutomationWriterService {
 		const handle = shell();
 		this.handles.set(handle, Object.freeze({ ...snapshot, operation, changed }));
 		operation.issued.add(handle);
+		if (changed) {
+			const record = this.handles.get(handle);
+			if (!record) throw new Conflict('invalid');
+			if (snapshot.slot) operation.mandatory.set('slot:' + snapshot.slot.controllerId, record);
+			else if (snapshot.source) operation.mandatory.set('source:' + snapshot.source.key.producerKey + ':' + snapshot.source.key.subjectId, record);
+		}
 		return handle;
 	}
 	private record(operation: Operation, handle: ClimateAutomationHandle): HandleRecord {
@@ -801,6 +1146,10 @@ export class ClimateAutomationWriterService {
 	}
 	private async validateSnapshot(manager: EntityManager, snapshot: Snapshot): Promise<void> {
 		await this.validateLedgerSnapshot(manager, snapshot);
+		if (snapshot.participant) {
+			await this.validateParticipantSnapshot(manager, snapshot);
+			return;
+		}
 		if (snapshot.controller) {
 			const capture = snapshot.controller.capture;
 			if (!capture.isCurrent()) throw new Conflict('unavailable');

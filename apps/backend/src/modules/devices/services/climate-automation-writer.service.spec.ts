@@ -32,6 +32,10 @@ import { ClimateAutomationWriterService } from './climate-automation-writer.serv
 import { ClimateAutomationRegistryService } from './climate-automation.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
+import { ClimateAutomationParticipant, ClimateAutomationParticipantImage, ClimateAutomationParticipantTurn, ClimateAutomationParticipantConflict } from '../contracts/climate-automation.contract';
+import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
+import { VirtualGraphRevisionEntity } from '../../../plugins/devices-virtual/entities/virtual-producer.entity';
+
 const deferred = () => {
 	let complete: () => void = () => {
 		throw new Error('Deferred not initialized');
@@ -270,7 +274,7 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 	});
 
 	it('joins only explicit original manager/scope without a second lock/transaction and retains caught settled child failures', async () => {
-		const locks = jest.spyOn(lock, 'runExclusive');
+		const locks = jest.spyOn(lock, 'runExclusiveReleased');
 		let starts = 0;
 		database.subscribers.push({
 			beforeTransactionStart: () => {
@@ -304,7 +308,7 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 				begins = 0,
 				commits = 0;
 			const readAuthority = jest.fn(() => Promise.reject(new Error('must not run')));
-			const locks = jest.spyOn(lock, 'runExclusive');
+			const locks = jest.spyOn(lock, 'runExclusiveReleased');
 			const reenter = async () => {
 				await expect(writer.runReserved(readAuthority)).rejects.toThrow();
 			};
@@ -594,7 +598,7 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 		const empty = new SqliteDataSource({ type: 'sqlite', database: ':memory:' });
 		const sql = jest.spyOn(empty, 'query'),
 			tx = jest.spyOn(empty, 'transaction'),
-			locks = jest.spyOn(lock, 'runExclusive');
+			locks = jest.spyOn(lock, 'runExclusiveReleased');
 		const cli = new ClimateAutomationWriterService(empty, lock, registry, new ConfigService({ FB_CLI: 'on' }));
 		await expect(cli.runReserved(() => Promise.reject(new Error('must not run')))).rejects.toMatchObject({
 			commitOutcome: 'not_started',
@@ -1604,4 +1608,243 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(2);
 	});
 	// END terminal deleted-source regressions
+
+	// BEGIN dormant B participant drafts — UNEXECUTED, original41 preserved except approved3 observer targets
+	describe('owned participant commands with actual graph/lock/coordinated SQLite', () => {
+		let graph: VirtualDependencyGraphService;
+		let participant: ClimateAutomationParticipant;
+		let normalizeBarrier: (() => Promise<void>) | undefined;
+		let applyBarrier: (() => Promise<void>) | undefined;
+		let afterApply: (() => Promise<void>) | undefined;
+		let returnedComfort: Record<string, number> | undefined;
+		let observedTurn: ClimateAutomationParticipantTurn | undefined;
+		let owner: { dispose: () => void };
+		let providerPort: ClimateAutomationProvider;
+		const parse = (text: string) => { const raw: unknown = JSON.parse(text); return climateAutomationJson(raw); };
+		const readImage = async (manager: EntityManager, id: string): Promise<ClimateAutomationParticipantImage | null> => {
+			const rows = await manager.query<{ id: string; revision: number; configuration: string; comfort: string; structural: string; baseline: string }[]>(
+				'SELECT id,revision,configuration,comfort,structural,baseline FROM test_participant WHERE id=?', [id]);
+			const row = rows[0];
+			return row ? Object.freeze({ controllerId: row.id, documentVersion: 1, controllerRevision: row.revision,
+				configuration: parse(row.configuration), comfort: parse(row.comfort), structural: parse(row.structural), legacyBaseline: parse(row.baseline) }) : null;
+		};
+		beforeEach(async () => {
+			await database.destroy();
+			database = await createSqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: true, entities: [__dirname + '/../../../**/*.entity.ts'] });
+			await database.query('CREATE TABLE test_participant (id TEXT PRIMARY KEY,revision INTEGER NOT NULL CHECK(revision BETWEEN 1 AND 9007199254740991),configuration TEXT NOT NULL,comfort TEXT NOT NULL,structural TEXT NOT NULL,baseline TEXT NOT NULL)');
+			await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: 0 });
+			writer = new ClimateAutomationWriterService(database, lock, registry, new ConfigService({ FB_CLI: 'off' }));
+			graph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), writer);
+			normalizeBarrier = undefined; applyBarrier = undefined; afterApply = undefined; returnedComfort = undefined; observedTurn = undefined;
+			participant = {
+				version: 1, graph,
+				readInManager: (manager, turn, id) => {
+					writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+					observedTurn = turn;
+					return readImage(manager, id);
+				},
+				normalizeInManager: async (manager, turn, kind, desired, before) => {
+					writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+					if (normalizeBarrier) await normalizeBarrier();
+					return Object.freeze({ controllerId: before.controllerId, documentVersion: 1,
+						configuration: kind === 'replace-configuration:v1' ? desired : before.configuration,
+						comfort: kind === 'replace-comfort:v1' ? returnedComfort ?? desired : before.comfort,
+						structural: kind === 'replace-configuration:v1' ? desired : before.structural, legacyBaseline: before.legacyBaseline });
+				},
+				applyInManager: async (manager, turn, before, next) => {
+					writer.assertParticipantTurn(manager, turn, ['APPLY']);
+					if (applyBarrier) await applyBarrier();
+					const result = await manager.createQueryBuilder().update('test_participant').set({ revision: next.controllerRevision,
+						configuration: climateAutomationCanonical(next.configuration), comfort: climateAutomationCanonical(next.comfort),
+						structural: climateAutomationCanonical(next.structural), baseline: climateAutomationCanonical(next.legacyBaseline) })
+						.where('id=:id AND revision=:revision', { id: before.controllerId, revision: before.controllerRevision }).execute();
+					if (result.affected !== 1) throw new ClimateAutomationParticipantConflict('stale');
+					if (afterApply) await afterApply();
+				},
+			};
+			providerPort = {
+				participantV1: participant,
+				readControllerInManager: async (manager, id) => {
+					const image = await readImage(manager, id);
+					return image ? { controllerRevision: image.controllerRevision, graphRevision: await graph.revision(manager), evidence: climateAutomationJson(image), legacyBaseline: image.legacyBaseline } : null;
+				},
+				validateSelectionInManager: async () => true,
+				createControllerInManager: async (manager, id) => { await manager.query('INSERT INTO test_participant VALUES (?,1,?,?,?,?)', [id, '{}', '{}', '{}', 'null']); },
+			};
+			const registration = registry.registerProviderOwned('participant:v1', providerPort);
+			if (!registration) throw new Error('Missing actual participant owner'); owner = registration;
+			await writer.runReserved(async (manager, scope) => writer.initializeSlot(manager, scope, { providerKey: 'participant:v1', controllerId,
+				expected: await writer.readSlot(manager, scope, controllerId), configuration: {} }));
+		});
+		const edit = (kind: 'replace-comfort:v1' | 'replace-configuration:v1', desiredDocument: Record<string, number>) => writer.runReserved(async (manager, scope) => writer.replaceController(manager, scope,
+			{ kind, providerKey: 'participant:v1', controllerId, expected: await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId }), desiredDocument }));
+		it('owns caller JSON before held normalize, preserves slot/manual/source and changes comfort without graph churn', async () => {
+			const entered = deferred(), release = deferred();
+			normalizeBarrier = async () => { entered.resolve(); await release.promise; };
+			const raw = { setpoint: 20 };
+			const slot = await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId });
+			const operation = edit('replace-comfort:v1', raw);
+			await entered.promise; raw.setpoint = 99; release.resolve();
+			expect((await operation).outcome).toBe('applied');
+			expect((await readImage(database.manager, controllerId))?.comfort).toEqual({ setpoint: 20 });
+			expect(await graph.revision()).toBe(0);
+			expect(await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId })).toEqual(slot);
+		});
+
+		it('owns queued primitive fields, expected identity and JSON before the first command releases its FIFO turn', async () => {
+			const entered = deferred(), release = deferred(); let firstTurn = true;
+			normalizeBarrier = async () => { if (firstTurn) { firstTurn = false; entered.resolve(); await release.promise; } };
+			const operation = writer.runReserved(async (manager, scope) => {
+				const expected = await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId });
+				const ordinary = await writer.readSlot(manager, scope, controllerId);
+				const first = writer.replaceController(manager, scope, { kind: 'replace-comfort:v1', providerKey: 'participant:v1', controllerId, expected, desiredDocument: {} });
+				const raw: { kind: 'replace-comfort:v1'; providerKey: string; controllerId: string; expected: ClimateAutomationHandle; desiredDocument: { setpoint: number } } = { kind: 'replace-comfort:v1', providerKey: 'participant:v1', controllerId, expected, desiredDocument: { setpoint: 20 } };
+				const second = writer.replaceController(manager, scope, raw);
+				raw.providerKey = 'missing:v1'; raw.controllerId = bundleId; raw.expected = ordinary; raw.desiredDocument.setpoint = 99;
+				await first; return second;
+			});
+			await entered.promise; release.resolve(); expect((await operation).outcome).toBe('applied');
+			expect((await readImage(database.manager, controllerId))?.comfort).toEqual({ setpoint: 20 });
+		});
+		it('persists the owned normalized section even if the provider-owned result mutates during apply', async () => {
+			const entered = deferred(), release = deferred(); returnedComfort = { setpoint: 20 };
+			applyBarrier = async () => { entered.resolve(); await release.promise; };
+			const operation = edit('replace-comfort:v1', { setpoint: 20 }); await entered.promise;
+			returnedComfort.setpoint = 99; release.resolve(); expect((await operation).outcome).toBe('applied');
+			expect((await readImage(database.manager, controllerId))?.comfort).toEqual({ setpoint: 20 });
+		});
+
+		it('keeps actual turn/handle JSON private and refuses a real expired turn before any graph read', async () => {
+			expect((await edit('replace-comfort:v1', {})).outcome).toBe('unchanged');
+			if (observedTurn === undefined) throw new Error('No actual participant turn observed');
+			expect(JSON.stringify(observedTurn)).toBe('{}');
+			const read = jest.spyOn(database.manager, 'findOneBy');
+			await expect(graph.readReservedGraph(database.manager, observedTurn)).rejects.toThrow();
+			expect(read).not.toHaveBeenCalled();
+		});
+		it('has true no-op zero apply/version/events/jobs and structural same-edge catalog delta advances graph exactly once', async () => {
+			const apply = jest.spyOn(participant, 'applyInManager'); const validate = jest.spyOn(graph, 'validateAcknowledgedGraph');
+			expect((await edit('replace-comfort:v1', {})).outcome).toBe('unchanged');
+			expect(apply).not.toHaveBeenCalled(); expect(validate).not.toHaveBeenCalled();
+			expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(1);
+			expect((await edit('replace-configuration:v1', { member: 1 })).outcome).toBe('applied');
+			expect(await graph.revision()).toBe(1); expect(await graph.edges(database.manager)).toEqual([]);
+			expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(2);
+			expect(validate).toHaveBeenCalledTimes(1);
+		});
+		it.each(['before-start', 'after-start', 'reservation'])('refuses actual %s subscriber helper before getters/authority reads and poisons even caught', async (phase) => {
+			let enabled = true; const getter = jest.fn(() => 'participant:v1'); const read = jest.spyOn(participant, 'readInManager'); const locks = jest.spyOn(lock, 'runExclusiveReleased');
+			const request = { get providerKey() { return getter(); }, controllerId };
+			const reenter = async (manager: EntityManager) => { await expect(writer.runReserved((inner, scope) => writer.readParticipant(inner, scope, request))).rejects.toThrow(); void manager; };
+			database.subscribers.push({ beforeTransactionStart: async (event) => { if (enabled && phase === 'before-start') await reenter(event.manager); },
+				afterTransactionStart: async (event) => { if (enabled && phase === 'after-start') await reenter(event.manager); },
+				beforeQuery: async (event) => { if (enabled && phase === 'reservation' && event.query.includes('WHERE 0')) await reenter(event.manager); } });
+			await expect(edit('replace-comfort:v1', {})).rejects.toMatchObject({ commitOutcome: 'rolled_back' });
+			expect(getter).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled(); expect(locks).toHaveBeenCalledTimes(1); enabled = false;
+			expect((await edit('replace-comfort:v1', {})).outcome).toBe('unchanged');
+		});
+		it('retains an admitted getter reentry failure and never invokes participant normalization', async () => {
+			const normalize = jest.spyOn(participant, 'normalizeInManager');
+			await expect(writer.runReserved(async (manager, scope) => {
+				const expected = await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId });
+				try { writer.replaceController(manager, scope, { kind: 'replace-comfort:v1', providerKey: 'participant:v1', controllerId, expected,
+					get desiredDocument() { void writer.readSlot(manager, scope, controllerId); return {}; } }); } catch { /* original failure is retained */ }
+				return expected;
+			})).rejects.toMatchObject({ commitOutcome: 'rolled_back' });
+			expect(normalize).not.toHaveBeenCalled();
+		});
+		it('rolls back stale selected no-op and admitted child even if a callback replaces the caller selected array during drain', async () => {
+			const entered = deferred(), release = deferred(); normalizeBarrier = async () => { entered.resolve(); await release.promise; };
+			let selected: ClimateAutomationHandle[] = [];
+			const operation = writer.runReserved(async (manager, scope) => {
+				const original = await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId }); selected = [original];
+				const child = writer.replaceController(manager, scope, { kind: 'replace-comfort:v1', providerKey: 'participant:v1', controllerId, expected: original, desiredDocument: { setpoint: 21 } });
+				void writer.inReservedManager(manager, scope, async () => { const next = await child; selected.splice(0, 1, next); return next; });
+				await entered.promise; return selected;
+			});
+			await entered.promise; release.resolve();
+			expect(await operation).toMatchObject({ outcome: 'conflict', reason: 'stale' });
+			expect(selected).toHaveLength(1); expect(Object.isFrozen(selected)).toBe(false);
+			expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(1);
+			normalizeBarrier = undefined; expect((await edit('replace-comfort:v1', {})).outcome).toBe('unchanged');
+		});
+		it.each(['wrong-image', 'private-slot', 'CAS-zero'])( 'rejects %s from the concrete same-manager participant and rolls back the entire unit', async (failure) => {
+			if (failure === 'wrong-image') afterApply = async () => { await database.manager.query('UPDATE test_participant SET comfort=? WHERE id=?', ['{}', controllerId]); };
+			if (failure === 'private-slot') afterApply = async () => { await database.manager.update(ClimateAutomationSlotEntity, { controllerId }, { manualCounter: 2 }); };
+			if (failure === 'CAS-zero') applyBarrier = async () => { await database.manager.query('UPDATE test_participant SET revision=2 WHERE id=?', [controllerId]); };
+			const result = await edit('replace-comfort:v1', { setpoint: 21 });
+			expect(result).toMatchObject({ outcome: 'conflict', reason: 'stale' });
+			expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(1);
+			expect((await database.getRepository(ClimateAutomationSlotEntity).findOneByOrFail({ controllerId })).manualCounter).toBe(1);
+		});
+		it('invalidates an original same-object registration across dispose/re-register while normalization waits', async () => {
+			const entered = deferred(), release = deferred(); normalizeBarrier = async () => { entered.resolve(); await release.promise; };
+			const operation = edit('replace-comfort:v1', { setpoint: 21 }); await entered.promise;
+			owner.dispose(); const successor = registry.registerProviderOwned('participant:v1', providerPort); expect(successor).not.toBeNull();
+			release.resolve(); expect(await operation).toMatchObject({ outcome: 'conflict', reason: 'unavailable' });
+			owner.dispose(); expect(registry.captureProvider('participant:v1')?.implementation).toBe(providerPort);
+		});
+
+		it('accounts a changed participant even when only an unrelated unchanged source handle is selected', async () => {
+			const result = await writer.runReserved(async (manager, scope) => {
+				const unrelated = await writer.readSource(manager, scope, 'unrelated:v1', 'absent');
+				const expected = await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId });
+				await writer.replaceController(manager, scope, { kind: 'replace-comfort:v1', providerKey: 'participant:v1', controllerId, expected, desiredDocument: { setpoint: 21 } });
+				return unrelated;
+			});
+			expect(result).toEqual({ outcome: 'applied', items: [{ outcome: 'unchanged' }] });
+			expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(2);
+		});
+		it('never validates a structural attempt refused by its original pure native guard', async () => {
+			const validate = jest.spyOn(graph, 'validateAcknowledgedGraph');
+			await expect(writer.runReserved(async (manager, scope) => {
+				writer.addOriginalCommitGuard(manager, scope, () => false);
+				return writer.replaceController(manager, scope, { kind: 'replace-configuration:v1', providerKey: 'participant:v1', controllerId,
+					expected: await writer.readParticipant(manager, scope, { providerKey: 'participant:v1', controllerId }), desiredDocument: { member: 1 } });
+			})).rejects.toMatchObject({ commitOutcome: 'refused' });
+			expect(validate).not.toHaveBeenCalled(); expect(await graph.revision()).toBe(0);
+		});
+		it('keeps native submitted UNKNOWN distinct and performs zero post-ACK jobs even if SQLite actually committed', async () => {
+			const validate = jest.spyOn(graph, 'validateAcknowledgedGraph');
+			const runner = database.createQueryRunner(); const native: unknown = await runner.connect();
+			if (!isNative(native)) throw new Error('Missing own actual native connection');
+			const original: ReceiverCall<NativeConnection, Parameters<NativeConnection['all']>, unknown> = native.all;
+			const spy = jest.spyOn(native, 'all').mockImplementation(function (this: NativeConnection, query, parameters, callback) {
+				return original.call(this, query, parameters, function (this: unknown, error, rows) {
+					callback.call(this, query === 'COMMIT' && !error ? new Error('TEST lost native ACK') : error, rows);
+				});
+			});
+			try { await expect(edit('replace-configuration:v1', { member: 1 })).rejects.toMatchObject({ commitOutcome: 'unknown' }); }
+			finally { spy.mockRestore(); await runner.release(); }
+			expect(validate).not.toHaveBeenCalled();
+		});
+		it('runs validation after actual release even on native ACK+late subscriber rejection and preserves primary cause when validation rejects too', async () => {
+			const primary = new Error('original after-ACK failure'); const secondary = new Error('private listener detail');
+			graph.observeGuardedValidation(async () => { await lock.runExclusiveReleased(() => Promise.resolve()); throw secondary; });
+			let late = true;
+			database.subscribers.push({ afterTransactionCommit: () => { if (late) { late = false; return Promise.reject(primary); } return Promise.resolve(); } });
+			const observed = jest.spyOn(graph, 'validateAcknowledgedGraph');
+			await expect(edit('replace-configuration:v1', { member: 1 })).rejects.toMatchObject({ commitOutcome: 'committed', cause: primary });
+			expect(observed).toHaveBeenCalledTimes(1); expect(await graph.revision()).toBe(1);
+			expect((await readImage(database.manager, controllerId))?.controllerRevision).toBe(2);
+		});
+		it('returns a committed-stage error on successful ACK with validation rejection and does not replay', async () => {
+			graph.observeGuardedValidation(async () => { throw new Error('private listener fault'); });
+			const apply = jest.spyOn(participant, 'applyInManager');
+			let error: unknown; try { await edit('replace-configuration:v1', { member: 1 }); } catch (cause) { error = cause; }
+			expect(error).toBeInstanceOf(ClimateAutomationWriteError);
+			expect(JSON.stringify(error)).toBe('{"outcome":"error","commitOutcome":"committed"}');
+			expect(apply).toHaveBeenCalledTimes(1); expect(await graph.revision()).toBe(1);
+		});
+		it.each(['controller', 'graph', 'missing-graph'])( 'refuses %s overflow/absence without controller or graph writes', async (boundary) => {
+			if (boundary === 'controller') await database.query('UPDATE test_participant SET revision=? WHERE id=?', [Number.MAX_SAFE_INTEGER, controllerId]);
+			else if (boundary === 'graph') await database.manager.update(VirtualGraphRevisionEntity, { id: 1 }, { revision: Number.MAX_SAFE_INTEGER });
+			else await database.manager.delete(VirtualGraphRevisionEntity, { id: 1 });
+			const before = await readImage(database.manager, controllerId); const apply = jest.spyOn(participant, 'applyInManager');
+			expect(await edit('replace-configuration:v1', { member: 2 })).toMatchObject({ outcome: 'conflict' });
+			expect(await readImage(database.manager, controllerId)).toEqual(before);
+			if (boundary !== 'graph') expect(apply).not.toHaveBeenCalled();
+		});
+	});
+	// END dormant B participant drafts
 });
