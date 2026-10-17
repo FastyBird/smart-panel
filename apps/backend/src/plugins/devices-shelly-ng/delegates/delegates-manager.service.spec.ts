@@ -20,13 +20,13 @@ import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PluginConfigValidatorService } from '../../../modules/config/services/plugin-config-validator.service';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
-import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
-
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
+import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
 import { ShellyProtectiveQualification } from '../contracts/protective-switch.contract';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
@@ -3672,9 +3672,13 @@ describe('DelegatesManagerService', () => {
 	});
 
 	describe('real managed stop at the original session HTTP ON boundary (synthetic, not installed)', () => {
-		const deferred = <T,>() => {
-			let resolve: (value: T) => void = () => { throw new Error('Deferred not initialized'); };
-			const promise = new Promise<T>((done) => { resolve = done; });
+		const deferred = <T>() => {
+			let resolve: (value: T) => void = () => {
+				throw new Error('Deferred not initialized');
+			};
+			const promise = new Promise<T>((done) => {
+				resolve = done;
+			});
 			return { promise, resolve: (value: T) => resolve(value) };
 		};
 		const scriptCode = 'synthetic managed admission fixture, NOT installed';
@@ -3698,24 +3702,53 @@ describe('DelegatesManagerService', () => {
 				const request = new MockHttp.ClientRequest(url);
 				const socket = new MockNet.Socket();
 				const events = new EventEmitter();
-				Object.assign(request, { on: events.on.bind(events), once: events.once.bind(events), emit: events.emit.bind(events) });
+				Object.assign(request, {
+					on: events.on.bind(events),
+					once: events.once.bind(events),
+					emit: events.emit.bind(events),
+				});
 				const socketEvents = new EventEmitter();
-				Object.assign(socket, { once: socketEvents.once.bind(socketEvents), emit: socketEvents.emit.bind(socketEvents) });
+				Object.assign(socket, {
+					once: socketEvents.once.bind(socketEvents),
+					emit: socketEvents.emit.bind(socketEvents),
+				});
 				Object.defineProperty(socket, 'connecting', { value: true });
 				const errors: string[] = [];
 				jest.spyOn(request, 'destroy').mockImplementation((error) => {
-					if (error) { errors.push(error.message); request.emit('error', error); }
+					if (error) {
+						errors.push(error.message);
+						request.emit('error', error);
+					}
 					return request;
 				});
 				const reply = () => {
 					const response = new MockHttp.IncomingMessage(socket);
 					const responseEvents = new EventEmitter();
-					Object.assign(response, { statusCode: 200, headers: { 'content-type': 'application/json' }, on: responseEvents.on.bind(responseEvents), emit: responseEvents.emit.bind(responseEvents) });
+					Object.assign(response, {
+						statusCode: 200,
+						headers: { 'content-type': 'application/json' },
+						on: responseEvents.on.bind(responseEvents),
+						emit: responseEvents.emit.bind(responseEvents),
+					});
 					if (!callback) throw new Error('Expected actual guarded HTTP response callback');
 					callback(response);
-					const result = url.searchParams.get('action') === 'status'
-						? { protocol: 'sp-guard-candidate-1', deviceId: 'combined-fixture', firmware: 'fixture-only', componentId: 0, evidenceId: 'synthetic-not-installed', epoch: 10, nowMs: 1000, ready: true, busy: false, fault: null, floorSafe: true, output: false }
-						: { accepted: true, epoch: 10, untilMs: Number(url.searchParams.get('untilMs')) };
+					const result =
+						url.searchParams.get('action') === 'status'
+							? {
+									protocol: 'sp-guard-candidate-1',
+									deviceId: 'combined-fixture',
+									firmware: 'fixture-only',
+									componentId: 0,
+									evidenceId: 'synthetic-not-installed',
+									epoch: 10,
+									nowMs: 1000,
+									ready: true,
+									busy: false,
+									fault: null,
+									floorSafe: true,
+									output: false,
+								}
+							: { accepted: true, epoch: 10, untilMs: Number(url.searchParams.get('untilMs')) };
 					response.emit('data', JSON.stringify({ nonce: url.searchParams.get('nonce'), result }));
 					response.emit('end');
 				};
@@ -3735,8 +3768,12 @@ describe('DelegatesManagerService', () => {
 			return {
 				requests,
 				waitForOn: () => nextOn.promise,
-				nextOn: () => { nextOn = deferred<PendingHttp>(); },
-				setAutoOnReply: () => { autoOnReply = true; },
+				nextOn: () => {
+					nextOn = deferred<PendingHttp>();
+				},
+				setAutoOnReply: () => {
+					autoOnReply = true;
+				},
 				restore: () => {
 					for (const record of requests) record.request.destroy(new Error('Synthetic fixture teardown'));
 					requestSpy.mockRestore();
@@ -3746,7 +3783,9 @@ describe('DelegatesManagerService', () => {
 		const combinedFixture = async () => {
 			const actual = jest.requireActual<typeof import('./shelly-device.delegate')>('./shelly-device.delegate');
 			const mocked = jest.requireMock<typeof import('./shelly-device.delegate')>('./shelly-device.delegate');
-			const constructor = jest.spyOn(mocked, 'ShellyDeviceDelegate').mockImplementation((sdk) => new actual.ShellyDeviceDelegate(sdk));
+			const constructor = jest
+				.spyOn(mocked, 'ShellyDeviceDelegate')
+				.mockImplementation((sdk) => new actual.ShellyDeviceDelegate(sdk));
 			const OfflineSocket = jest.createMockFromModule<typeof WebSocket>('ws');
 			class InspectionRpc extends GuardedShellyRpcHandler {
 				readonly methods: string[] = [];
@@ -3757,13 +3796,23 @@ describe('DelegatesManagerService', () => {
 					jest.spyOn(socket, 'send').mockImplementation((data, options, callback) => {
 						if (typeof data !== 'string') throw new Error('Expected SDK JSON frame');
 						const frame: unknown = JSON.parse(data);
-						if (!frame || typeof frame !== 'object' || !('id' in frame) || typeof frame.id !== 'number' || !('method' in frame) || typeof frame.method !== 'string') throw new Error('Invalid SDK frame');
+						if (
+							!frame ||
+							typeof frame !== 'object' ||
+							!('id' in frame) ||
+							typeof frame.id !== 'number' ||
+							!('method' in frame) ||
+							typeof frame.method !== 'string'
+						)
+							throw new Error('Invalid SDK frame');
 						const id = frame.id;
 						this.methods.push(frame.method);
-						if (frame.method !== 'Shelly.GetDeviceInfo' && frame.method !== 'Script.GetCode') throw new Error('Unexpected actuation RPC');
-						const result = frame.method === 'Shelly.GetDeviceInfo'
-							? { id: 'combined-fixture', model: 'SNSW-001P16EU', fw_id: 'fixture-only', mac: '000000000001' }
-							: { data: scriptCode, left: 0 };
+						if (frame.method !== 'Shelly.GetDeviceInfo' && frame.method !== 'Script.GetCode')
+							throw new Error('Unexpected actuation RPC');
+						const result =
+							frame.method === 'Shelly.GetDeviceInfo'
+								? { id: 'combined-fixture', model: 'SNSW-001P16EU', fw_id: 'fixture-only', mac: '000000000001' }
+								: { data: scriptCode, left: 0 };
 						// SDK calls the two-argument overload; retain the typed optional third-argument overload too.
 						const second: unknown = options;
 						if (typeof second === 'function') second();
@@ -3772,50 +3821,111 @@ describe('DelegatesManagerService', () => {
 					});
 					return socket;
 				}
-				override get connected(): boolean { return this.online; }
-				protected override connect(): Promise<void> { return Promise.resolve(); }
-				protected override disconnect(): Promise<void> { this.online = false; return Promise.resolve(); }
+				override get connected(): boolean {
+					return this.online;
+				}
+				protected override connect(): Promise<void> {
+					return Promise.resolve();
+				}
+				protected override disconnect(): Promise<void> {
+					this.online = false;
+					return Promise.resolve();
+				}
 			}
-			const rpc = new InspectionRpc(hostname, { clientId: 'combined-test-only', requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 });
+			const rpc = new InspectionRpc(hostname, {
+				clientId: 'combined-test-only',
+				requestTimeout: 1,
+				pingInterval: 0,
+				reconnectInterval: 0,
+			});
 			const transport = transportFixture();
 			const DeviceClass = Device.getClass('SNSW-001P16EU');
 			if (!DeviceClass) throw new Error('Expected pinned SDK fixture class');
-			const sdk = new DeviceClass({ id: 'combined-fixture', mac: '000000000001', model: 'SNSW-001P16EU', fw_id: 'fixture-only' }, rpc);
+			const sdk = new DeviceClass(
+				{ id: 'combined-fixture', mac: '000000000001', model: 'SNSW-001P16EU', fw_id: 'fixture-only' },
+				rpc,
+			);
 			const wifi = sdk.getComponent('wifi');
 			if (!(wifi instanceof WiFi)) throw new Error('Expected actual WiFi');
 			wifi.update({ sta_ip: hostname });
-			const device = Object.assign(new ShellyNgDeviceEntity(), { id: uuid(), identifier: sdk.id, canonicalMac: '000000000001', enabled: true });
+			const device = Object.assign(new ShellyNgDeviceEntity(), {
+				id: uuid(),
+				identifier: sdk.id,
+				canonicalMac: '000000000001',
+				enabled: true,
+			});
 			devicesService.findOneBy.mockResolvedValue(device);
 			devicesService.findOne.mockResolvedValue(device);
 			channelsService.findOneBy.mockResolvedValue(null);
 			channelsPropertiesService.findOneBy.mockResolvedValue(null);
-			class EmptyDiscoverer extends DeviceDiscoverer { run = jest.fn().mockResolvedValue(undefined); }
+			class EmptyDiscoverer extends DeviceDiscoverer {
+				run = jest.fn().mockResolvedValue(undefined);
+			}
 			const owners: ReturnType<DelegatesManagerService['beginGuardedSessionAdmission']>[] = [];
-			const begin = svc.beginGuardedSessionAdmission.bind(svc);
+			const begin: DelegatesManagerService['beginGuardedSessionAdmission'] = svc.beginGuardedSessionAdmission.bind(svc);
 			const beginSpy = jest.spyOn(svc, 'beginGuardedSessionAdmission').mockImplementation((runtime) => {
-				const owner = begin(runtime); owners.push(owner); return owner;
+				const owner = begin(runtime);
+				owners.push(owner);
+				return owner;
 			});
-			const module = await Test.createTestingModule({ providers: [
-				ShellyNgService, ManagedServiceManagerService, PollPlacementDiagnosticsService,
-				{ provide: DelegatesManagerService, useValue: svc },
-				{ provide: ConfigService, useValue: { getPluginConfig: () => ({ enabled: true, statusPollInterval: 0, mdns: { enabled: false, interface: null }, websockets: { requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 } }) } },
-				{ provide: NestConfigService, useValue: { get: () => null } },
-				{ provide: PluginConfigValidatorService, useValue: { hasValidator: () => false } },
-				{ provide: NotificationsService, useValue: { notify: jest.fn().mockResolvedValue(null), resolve: jest.fn().mockResolvedValue(true) } },
-				{ provide: DatabaseDiscovererService, useValue: new EmptyDiscoverer() },
-				{ provide: DevicesService, useValue: { findAll: jest.fn().mockResolvedValue([]) } },
-				{ provide: DeviceManagerService, useValue: deviceManagerService },
-				{ provide: DeviceConnectivityService, useValue: deviceConnectivityService },
-				{ provide: ShellyWsServerService, useValue: { start: jest.fn(), stop: jest.fn(), isRunning: () => false } },
-			] }).compile();
+			const module = await Test.createTestingModule({
+				providers: [
+					ShellyNgService,
+					ManagedServiceManagerService,
+					PollPlacementDiagnosticsService,
+					{ provide: DelegatesManagerService, useValue: svc },
+					{
+						provide: ConfigService,
+						useValue: {
+							getPluginConfig: () => ({
+								enabled: true,
+								statusPollInterval: 0,
+								mdns: { enabled: false, interface: null },
+								websockets: { requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 },
+							}),
+						},
+					},
+					{ provide: NestConfigService, useValue: { get: () => null } },
+					{ provide: PluginConfigValidatorService, useValue: { hasValidator: () => false } },
+					{
+						provide: NotificationsService,
+						useValue: { notify: jest.fn().mockResolvedValue(null), resolve: jest.fn().mockResolvedValue(true) },
+					},
+					{ provide: DatabaseDiscovererService, useValue: new EmptyDiscoverer() },
+					{ provide: DevicesService, useValue: { findAll: jest.fn().mockResolvedValue([]) } },
+					{ provide: DeviceManagerService, useValue: deviceManagerService },
+					{ provide: DeviceConnectivityService, useValue: deviceConnectivityService },
+					{ provide: ShellyWsServerService, useValue: { start: jest.fn(), stop: jest.fn(), isRunning: () => false } },
+				],
+			}).compile();
 			expect(module.get(PollPlacementDiagnosticsService).isEnabled()).toBe(false);
-			const connector = module.get(ShellyNgService), manager = module.get(ManagedServiceManagerService);
+			const connector = module.get(ShellyNgService),
+				manager = module.get(ManagedServiceManagerService);
 			manager.register(connector);
 			const start = () => manager.startServiceManually(connector.owner.kind, connector.owner.type, connector.serviceId);
 			const qualification: ShellyProtectiveQualification = {
-				deviceId: sdk.id, model: sdk.model, firmware: 'fixture-only', componentId: 0, evidenceId: 'synthetic-not-installed', revision: 1,
-				testedLeaseSeconds: { min: 1, max: 30 }, releaseOrderingQualified: true, independentProtectionQualified: true,
-				guardScript: { scriptId: 1, sourceHash: createHash('sha256').update(scriptCode).digest('hex'), endpointHostname: hostname, canonicalMac: '000000000001', protocol: 'sp-guard-candidate-1', evidenceId: 'synthetic-not-installed', writerIsolationEvidenceId: 'synthetic-only', commissioningBarrierEvidenceId: 'synthetic-only', endpointAuthenticationEvidenceId: 'synthetic-only', restartDrainEvidenceId: 'synthetic-only', localExecutionBoundsEvidenceId: 'synthetic-only' },
+				deviceId: sdk.id,
+				model: sdk.model,
+				firmware: 'fixture-only',
+				componentId: 0,
+				evidenceId: 'synthetic-not-installed',
+				revision: 1,
+				testedLeaseSeconds: { min: 1, max: 30 },
+				releaseOrderingQualified: true,
+				independentProtectionQualified: true,
+				guardScript: {
+					scriptId: 1,
+					sourceHash: createHash('sha256').update(scriptCode).digest('hex'),
+					endpointHostname: hostname,
+					canonicalMac: '000000000001',
+					protocol: 'sp-guard-candidate-1',
+					evidenceId: 'synthetic-not-installed',
+					writerIsolationEvidenceId: 'synthetic-only',
+					commissioningBarrierEvidenceId: 'synthetic-only',
+					endpointAuthenticationEvidenceId: 'synthetic-only',
+					restartDrainEvidenceId: 'synthetic-only',
+					localExecutionBoundsEvidenceId: 'synthetic-only',
+				},
 			};
 			const session = () => {
 				const captured = svc.prepareGuardRpcSession(device, 0, qualification);
@@ -3823,16 +3933,28 @@ describe('DelegatesManagerService', () => {
 				expect(captured).toBeInstanceOf(ShellyGuardRpcSession);
 				return captured;
 			};
-			return { connector, start, session, rpc, transport, owners,
+			return {
+				connector,
+				start,
+				session,
+				rpc,
+				transport,
+				owners,
 				insert: async () => {
 					const delegate = await svc.insert(sdk);
 					expect(delegate).toBeInstanceOf(actual.ShellyDeviceDelegate);
 					return delegate;
 				},
 				cleanup: async () => {
-					try { await module.close(); } finally {
-						await connector.stop(); await svc.detach(); await rpc.destroy();
-						beginSpy.mockRestore(); constructor.mockRestore(); transport.restore();
+					try {
+						await module.close();
+					} finally {
+						await connector.stop();
+						await svc.detach();
+						await rpc.destroy();
+						beginSpy.mockRestore();
+						constructor.mockRestore();
+						transport.restore();
 					}
 				},
 			};
@@ -3850,12 +3972,22 @@ describe('DelegatesManagerService', () => {
 				expect(original.isCurrent()).toBe(true);
 				expect(control.ends).not.toHaveBeenCalled();
 				control.connect();
-				expect(await positive).toEqual({ outcome: 'accepted', wasOn: false, outputConfirmed: false, pendingOnDrained: false });
+				expect(await positive).toEqual({
+					outcome: 'accepted',
+					wasOn: false,
+					outputConfirmed: false,
+					pendingOnDrained: false,
+				});
 				expect(control.ends).toHaveBeenCalledTimes(1);
 				f.transport.nextOn();
 				const pending = original.on(5, 1000, () => true);
 				const held = await f.transport.waitForOn();
-				expect(f.rpc.methods).toEqual(['Shelly.GetDeviceInfo', 'Script.GetCode', 'Shelly.GetDeviceInfo', 'Script.GetCode']);
+				expect(f.rpc.methods).toEqual([
+					'Shelly.GetDeviceInfo',
+					'Script.GetCode',
+					'Shelly.GetDeviceInfo',
+					'Script.GetCode',
+				]);
 				expect(held.ends).not.toHaveBeenCalled();
 				expect(original.isCurrent()).toBe(true);
 				const previousLifecycleCall = f.connector.start(); // Actual withLock reserves before its first await.
@@ -3867,14 +3999,18 @@ describe('DelegatesManagerService', () => {
 				expect(held.ends).not.toHaveBeenCalled();
 				expect(held.errors).toEqual(['Shelly HTTP authority expired before send']);
 				await Promise.all([previousLifecycleCall, stopping]);
-			} finally { await f.cleanup(); }
+			} finally {
+				await f.cleanup();
+			}
 		});
 
 		it('keeps a possible ON send unknown when stop precedes the held matching acknowledgement', async () => {
 			const f = await combinedFixture();
 			try {
-				expect(await f.start()).toBe(true); await f.insert();
-				const original = f.session(), pending = original.on(5, 1000, () => true);
+				expect(await f.start()).toBe(true);
+				await f.insert();
+				const original = f.session(),
+					pending = original.on(5, 1000, () => true);
 				const held = await f.transport.waitForOn();
 				held.connect();
 				expect(held.ends).toHaveBeenCalledTimes(1); // onSend has latched possible-send before this actual end boundary.
@@ -3884,29 +4020,37 @@ describe('DelegatesManagerService', () => {
 				expect(await pending).toEqual({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false });
 				expect(held.ends).toHaveBeenCalledTimes(1);
 				await stopping;
-			} finally { await f.cleanup(); }
+			} finally {
+				await f.cleanup();
+			}
 		});
 
 		it('cannot rescue held session A with a fresh managed B or let A owner revoke B', async () => {
 			const f = await combinedFixture();
 			try {
-				expect(await f.start()).toBe(true); await f.insert();
-				const original = f.session(), pending = original.on(5, 1000, () => true);
+				expect(await f.start()).toBe(true);
+				await f.insert();
+				const original = f.session(),
+					pending = original.on(5, 1000, () => true);
 				const held = await f.transport.waitForOn();
 				const ownerA = f.owners[0];
 				if (!ownerA) throw new Error('Expected actual start A owner');
 				await f.connector.stop();
-				expect(await f.start()).toBe(true); await f.insert();
+				expect(await f.start()).toBe(true);
+				await f.insert();
 				const successor = f.session();
 				expect(successor.isCurrent()).toBe(true);
 				expect(original.isCurrent()).toBe(false);
-				expect(ownerA.open()).toBe(false); ownerA.revoke();
+				expect(ownerA.open()).toBe(false);
+				ownerA.revoke();
 				expect(successor.isCurrent()).toBe(true);
 				held.connect();
 				expect(await pending).toEqual({ outcome: 'refused', reasons: ['ordered_script_not_ready'] });
 				expect(held.ends).not.toHaveBeenCalled();
 				expect(held.errors).toEqual(['Shelly HTTP authority expired before send']);
-			} finally { await f.cleanup(); }
+			} finally {
+				await f.cleanup();
+			}
 		});
 	});
 });
