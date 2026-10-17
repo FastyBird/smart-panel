@@ -3,8 +3,13 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_member.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_members.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_commands.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_comfort.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
@@ -34,6 +39,16 @@ class _VirtualThermostatDeviceDetailState
   bool _hintRefreshNeeded = false;
   bool _configurationMismatchSeen = false;
   DateTime? _runtimeReceivedAt;
+  Duration _runtimeAge = Duration.zero;
+  final _displayStopwatch = Stopwatch()..start();
+  Duration _displayTicks = Duration.zero;
+  Duration _runtimeReceivedClock = Duration.zero;
+  Duration get _displayClock => _displayStopwatch.elapsed > _displayTicks
+      ? _displayStopwatch.elapsed
+      : _displayTicks;
+  VirtualThermostatActivityFence _activityFence =
+      VirtualThermostatActivityFence();
+  VirtualThermostatEvidenceFence _evidence = VirtualThermostatEvidenceFence();
   Map<String, dynamic>? _configuration;
   Map<String, dynamic>? _runtime;
   String? _error;
@@ -54,10 +69,17 @@ class _VirtualThermostatDeviceDetailState
     }
     unawaited(_refresh());
     _freshnessTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          _runtimeAge += const Duration(seconds: 1);
+          _displayTicks += const Duration(seconds: 1);
+        });
+      }
     });
     _refreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
+      // Leave two seconds for a response within the unchanged five-second
+      // display budget. Uncovered socket hints still invalidate immediately.
+      const Duration(seconds: 3),
       (_) => unawaited(_refresh()),
     );
   }
@@ -66,6 +88,7 @@ class _VirtualThermostatDeviceDetailState
   void dispose() {
     _refreshGeneration++;
     _refreshInFlightFor = null;
+    _displayStopwatch.stop();
     _refreshTimer?.cancel();
     _freshnessTimer?.cancel();
     _resyncTimer?.cancel();
@@ -77,17 +100,23 @@ class _VirtualThermostatDeviceDetailState
   @override
   void didUpdateWidget(covariant VirtualThermostatDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.device.id == widget.device.id) return;
+    if (identical(oldWidget.device, widget.device)) return;
+    final replacedDevice = oldWidget.device.id != widget.device.id;
     _refreshGeneration++;
     _resyncTimer?.cancel();
     _latestHint = null;
-    _hintRefreshNeeded = false;
+    _hintSerial++;
+    _hintRefreshNeeded = true;
     _configurationMismatchSeen = false;
-    _configuration = null;
-    _runtime = null;
+    if (replacedDevice) {
+      _evidence = VirtualThermostatEvidenceFence();
+      _activityFence = VirtualThermostatActivityFence();
+      _configuration = null;
+      _runtime = null;
+    }
     _error = null;
-    _busy = false;
-    unawaited(_refresh());
+    if (replacedDevice) _busy = false;
+    unawaited(_refresh(force: true));
   }
 
   bool _coversHint(Map<String, dynamic>? runtime, Map<String, dynamic>? hint) =>
@@ -107,7 +136,7 @@ class _VirtualThermostatDeviceDetailState
     }
     _latestHint = Map<String, dynamic>.from(payload);
     _hintSerial++;
-    _hintRefreshNeeded = true;
+    setState(() => _hintRefreshNeeded = true);
     _scheduleResync();
   }
 
@@ -118,7 +147,7 @@ class _VirtualThermostatDeviceDetailState
     _refreshInFlightFor = null;
     _latestHint = null;
     _hintSerial++;
-    _hintRefreshNeeded = true;
+    setState(() => _hintRefreshNeeded = true);
     _scheduleResync();
   }
 
@@ -161,24 +190,57 @@ class _VirtualThermostatDeviceDetailState
       );
       final configurationRevision = configuration['revision'];
       final runtimeRevision = candidate['configuration_revision'];
-      if (configurationRevision is num &&
-          runtimeRevision is num &&
-          runtimeRevision > 0 &&
-          configurationRevision != runtimeRevision) {
-        // Concurrent GETs can straddle an edit. Retry once promptly, then let
-        // the bounded poll resync if authoring continues to change underneath us.
-        _hintRefreshNeeded = !_configurationMismatchSeen;
-        _configurationMismatchSeen = true;
+      if (!VirtualThermostatEvidenceFence.revisionsCoherent(
+        configuration,
+        candidate,
+      )) {
+        // Only a real numeric revision race receives one prompt retry. Malformed
+        // envelopes wait for the bounded poll and never mutate accepted evidence.
+        final mismatch =
+            VirtualThermostatEvidenceFence.revisionValid(
+              configurationRevision,
+            ) &&
+            VirtualThermostatEvidenceFence.revisionValid(runtimeRevision);
+        _hintRefreshNeeded = mismatch && !_configurationMismatchSeen;
+        if (mismatch) _configurationMismatchSeen = true;
+        setState(() => _runtime = null);
+        return;
+      }
+      final acceptedAt = DateTime.now();
+      final acceptedClock = _displayClock;
+      if (!_evidence.accept(
+        configuration,
+        candidate,
+        acceptedAt,
+        acceptedClock,
+      )) {
+        setState(() => _runtime = null);
         return;
       }
       _configurationMismatchSeen = false;
       _hintRefreshNeeded = false;
+      // Prune against exactly the active membership displayed below: configured
+      // claims plus non-released runtime-only reservations. Partial/loading
+      // membership is not evidence of removal from either source.
+      final acceptedMembers = VirtualThermostatMember.read(
+        configuration,
+        candidate,
+      );
+      if (VirtualThermostatMember.membershipComplete(
+        configuration,
+        candidate,
+      )) {
+        _activityFence.retainClaims(
+          acceptedMembers.map((member) => member.claim),
+        );
+      }
+      _activityFence.accept(acceptedMembers, acceptedAt, acceptedClock);
       setState(() {
         _configuration = configuration;
-        _runtime = Map<String, dynamic>.from(
-          responses[1].data?['data'] as Map? ?? {},
-        );
-        _runtimeReceivedAt = DateTime.now();
+        _runtime = candidate;
+        _runtimeReceivedAt = acceptedAt;
+        _runtimeAge = Duration.zero;
+        _runtimeReceivedClock = acceptedClock;
         _error = null;
       });
     } catch (error) {
@@ -233,7 +295,11 @@ class _VirtualThermostatDeviceDetailState
       return;
     }
     final deviceId = widget.device.id;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _refreshGeneration++;
+      _refreshInFlightFor = null;
+    });
     try {
       final accepted = await locator<DevicesService>()
           .setMultiplePropertyValues(
@@ -289,6 +355,7 @@ class _VirtualThermostatDeviceDetailState
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context) ?? AppLocalizationsEn();
     final config = _configuration;
     final runtime = _runtime;
     final policy = config?['policy'] is Map
@@ -305,9 +372,6 @@ class _VirtualThermostatDeviceDetailState
         : config?['reasons'] is List
         ? config!['reasons'] as List
         : const [];
-    final branches = runtime?['branches'] is List
-        ? runtime!['branches'] as List
-        : const [];
     final heatSetpoint =
         _number(runtime?['heating_setpoint']) ??
         _number(policy['heatingSetpoint']);
@@ -318,23 +382,72 @@ class _VirtualThermostatDeviceDetailState
     // readiness still gates physical output at the backend.
     final canControl = config != null && config['locked'] != true && !_busy;
     final now = DateTime.now();
-    final elapsed = _runtimeReceivedAt == null
+    final wallElapsed = _runtimeReceivedAt == null
         ? Duration.zero
         : now.difference(_runtimeReceivedAt!);
+    final clock = _displayClock;
+    final clockElapsed = clock - _runtimeReceivedClock;
+    final localElapsed = clockElapsed > _runtimeAge
+        ? clockElapsed
+        : _runtimeAge;
+    final elapsed = wallElapsed > localElapsed ? wallElapsed : localElapsed;
     final inputs =
         (runtime?['inputs'] is List ? runtime!['inputs'] as List : const [])
             .whereType<Map>()
             .map(VirtualThermostatInput.fromJson)
             .toList();
-    bool roleFresh(String role) => !inputs.any(
-      (input) =>
-          input.role == role && input.currentStatus(elapsed, now) != 'fresh',
-    );
-    final ambient = roleFresh('ambient')
-        ? _number(runtime?['current_temperature'])
+    bool roleFresh(String role) =>
+        _evidence.sources.roleCurrent(role, now, clock);
+    final current =
+        runtime != null &&
+        !_hintRefreshNeeded &&
+        elapsed < const Duration(seconds: 5);
+    final ambient = current && roleFresh('ambient')
+        ? _number(runtime['current_temperature'])
         : null;
-    final floor = roleFresh('floor')
-        ? _number(runtime?['floor_temperature'])
+    final members = VirtualThermostatMember.read(config, runtime);
+    // Missing/rejected HTTP runtime is not an accepted diagnostic omission.
+    // Withhold display without withdrawing retained original evidence budgets.
+    final expiredMemberClaims = runtime == null
+        ? members.map((member) => member.claim).toSet()
+        : _evidence.members.expiredClaims(members, elapsed, now, clock: clock);
+    final unavailableActivityClaims = runtime == null
+        ? members.map((member) => member.claim).toSet()
+        : _activityFence.unavailableClaims(members, now, clock);
+    // Withhold a positive snapshot label when its declared required evidence
+    // has expired or been rejected locally. This does not calculate readiness
+    // or change command authorization; only the server can report readiness.
+    final inputsCurrent = _evidence.sources.allCurrent(now, clock);
+    final memberProtectionCurrent = members
+        .where((member) => member.binding != null || member.protection != null)
+        .every(
+          (member) =>
+              member.liveTemperature(
+                elapsed,
+                now,
+                current && !expiredMemberClaims.contains(member.claim),
+              ) !=
+              null,
+        );
+    final readinessCurrent =
+        current &&
+        !_evidence.members.overflow &&
+        (readiness != 'ready' ||
+            (!_evidence.members.untracked &&
+                inputsCurrent &&
+                memberProtectionCurrent));
+    final selectedClaim = config?['display_floor_claim'];
+    final selected = members
+        .where((member) => member.claim == selectedClaim)
+        .firstOrNull;
+    final floor = selectedClaim != null
+        ? selected?.liveTemperature(
+            elapsed,
+            now,
+            current && !expiredMemberClaims.contains(selectedClaim),
+          )
+        : current && roleFresh('floor')
+        ? _number(runtime['floor_temperature'])
         : null;
 
     return Scaffold(
@@ -350,21 +463,39 @@ class _VirtualThermostatDeviceDetailState
                 _error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
+            Text(l.thermostatMemberRoom),
+            if (policy['floor'] is Map)
+              Text(
+                '${l.thermostatMemberPolicy}: ${(policy['floor'] as Map)['limit']} °C / ${(policy['floor'] as Map)['recoveryHysteresis']} °C',
+              ),
             Text('Requested mode: ${requestedMode ?? 'unknown'}'),
-            Text('Controller readiness: $readiness'),
+            Text(
+              'Controller readiness: ${readinessCurrent ? readiness : l.thermostatMemberUnavailable}',
+            ),
             if (ambient != null)
               Text('Ambient: ${ambient.toStringAsFixed(1)} °C'),
-            if (floor != null) Text('Floor: ${floor.toStringAsFixed(1)} °C'),
-            if (runtime?['floor_latched'] == true)
+            if (selectedClaim != null)
+              Text(
+                '${l.thermostatMemberSelectedFloor}: ${selected?.identity ?? selectedClaim}: ${floor == null ? l.thermostatMemberUnavailable : '${floor.toStringAsFixed(1)} °C'}',
+              )
+            else if (floor != null)
+              Text('Floor: ${floor.toStringAsFixed(1)} °C'),
+            if (current && runtime['floor_latched'] == true)
               const Text('Floor protection is holding heating OFF.'),
-            for (final reason in reasons) Text('Inhibited: $reason'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (current)
+                  for (final reason in reasons) Text('Inhibited: $reason'),
+              ],
+            ),
             if (inputs.isNotEmpty) ...[
               const Divider(),
               const Text('Input freshness'),
               for (final input in inputs)
                 ListTile(
                   title: Text(
-                    '${input.role}: ${input.currentStatus(elapsed, now)} (${input.sourceKind})',
+                    '${input.role}: ${current ? _evidence.sources.status(input, now, clock) : l.thermostatMemberUnavailable} (${input.sourceKind})',
                   ),
                   subtitle: Text(
                     [
@@ -432,20 +563,22 @@ class _VirtualThermostatDeviceDetailState
                 canControl,
               ),
             const Divider(),
-            const Text('Reported output activity'),
-            for (final raw in branches)
-              if (raw is Map)
-                ListTile(
-                  title: Text(raw['role']?.toString() ?? 'Branch'),
-                  subtitle: Text(
-                    raw['fault']?.toString() ??
-                        raw['activity']?.toString() ??
-                        'unknown',
-                  ),
-                  trailing: raw['release_pending'] == true
-                      ? const Icon(Icons.warning_amber)
-                      : null,
-                ),
+            VirtualThermostatMembers(
+              configuration: config,
+              runtime: runtime,
+              elapsed: elapsed,
+              now: now,
+              current: current,
+              expiredMemberClaims: expiredMemberClaims,
+              unavailableActivityClaims: unavailableActivityClaims,
+            ),
+            VirtualThermostatComfort(
+              key: const ValueKey('virtual-thermostat-comfort'),
+              deviceId: widget.device.id,
+              revision: (config?['revision'] as num?)?.toInt(),
+              disabled: !canControl,
+              onChanged: () => unawaited(_refresh(force: true)),
+            ),
           ],
         ),
       ),

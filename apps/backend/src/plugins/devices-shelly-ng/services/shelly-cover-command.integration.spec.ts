@@ -93,6 +93,7 @@ const HOLD = Symbol('no response');
 type Frame = { id: number; method: string; params: Record<string, unknown> };
 class CoverTransport extends GuardedShellyRpcHandler {
 	frames: Frame[] = [];
+	onFrameForTest?: (method: string, id: number) => void;
 	state: Record<string, unknown> = { id: 0, state: 'stopped', current_pos: 40, pos_control: true, tag: null };
 	actionTag: string | null = null;
 	post: (raw: Record<string, unknown>) => unknown = (raw) => raw;
@@ -106,6 +107,7 @@ class CoverTransport extends GuardedShellyRpcHandler {
 			send: (data: string, callback: () => void) => {
 				const frame = JSON.parse(data) as Frame;
 				this.frames.push(frame);
+				this.onFrameForTest?.(frame.method, frame.id);
 				callback();
 				if (frame.method === 'Cover.GetStatus' && this.failStatusReads) {
 					queueMicrotask(() =>
@@ -1801,17 +1803,83 @@ describe('real Shelly cover adapter, SQLite samples and core composite proof', (
 		},
 	);
 	it('ACK-only stays pending, times out and cannot be repaired by a late readback', async () => {
-		transports[0].post = () => HOLD;
-		const pending = send('open', groupCommand, 400);
-		await until(() => transports[0].frames.length >= 3);
-		expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
-		const result = await pending;
-		expectDeadlineObservation(result);
-		const terminal = JSON.stringify(result);
-		transports[0].answer(transports[0].frames[2], { ...transports[0].state, tag: transports[0].actionTag });
-		await new Promise<void>((resolve) => setTimeout(resolve, 10));
-		expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(0);
-		expect(JSON.stringify(result)).toBe(terminal);
+		const startedAt = Date.now();
+		const diagnostics: string[] = [];
+		let observing = true;
+		const text = (value: unknown): string | null => (typeof value === 'string' ? value.slice(0, 256) : null);
+		const record = (kind: string, ...fields: Array<string | number | boolean | null>): void => {
+			try {
+				if (!observing) return;
+				diagnostics.push(JSON.stringify([Date.now() - startedAt, kind, ...fields]).slice(0, 512));
+				if (diagnostics.length > 128) diagnostics.shift();
+			} catch {
+				// Primitive-only bounded diagnostics must never affect the command or transport.
+			}
+		};
+		const priorFrameObservers = transports.map((transport) => transport.onFrameForTest);
+		for (const [index, transport] of transports.entries())
+			transport.onFrameForTest = (method, id) => record('frame', index, text(method), id);
+		const onProgress = (event: {
+			sequence: number;
+			deadlineAt: number;
+			children: Array<{ status: string; reason?: string }>;
+		}): void => {
+			try {
+				record('progress', event.sequence, event.deadlineAt - Date.now());
+				for (const [index, child] of event.children.slice(0, 8).entries())
+					record('progress-child', event.sequence, index, text(child.status), text(child.reason));
+			} catch {
+				// An observer must never throw back into the synchronous event emitter.
+			}
+		};
+		events.on('DevicesModule.CompositeCommand.Progress', onProgress);
+		try {
+			transports[0].post = () => HOLD;
+			const pending = send('open', groupCommand, 400);
+			// Observe a side branch without replacing/awaiting pending or changing its rejection.
+			void pending.then(
+				(result) => {
+					try {
+						record('settled', result.success, text(result.reason), text(result.composite?.status));
+						for (const [index, child] of (result.composite?.children ?? []).slice(0, 8).entries())
+							record('terminal-child', index, text(child.status), text(child.reason));
+					} catch {
+						// Diagnostics must not create an unhandled rejection or alter the original result.
+					}
+				},
+				(error: unknown) => {
+					try {
+						record(
+							'rejected',
+							error instanceof Error ? text(error.name) : typeof error,
+							error instanceof Error ? text(error.message) : null,
+						);
+					} catch {
+						// The original pending promise still rejects at its existing await.
+					}
+				},
+			);
+			try {
+				await until(() => transports[0].frames.length >= 3);
+			} catch (error) {
+				throw new Error(
+					`Fixture did not reach expected transport boundary; ACK-only diagnostics: ${JSON.stringify(diagnostics)}`,
+					{ cause: error },
+				);
+			}
+			expect(windows.get(property(0, PropertyCategory.COMMAND).id)?.state).toBe('pending');
+			const result = await pending;
+			expectDeadlineObservation(result);
+			const terminal = JSON.stringify(result);
+			transports[0].answer(transports[0].frames[2], { ...transports[0].state, tag: transports[0].actionTag });
+			await new Promise<void>((resolve) => setTimeout(resolve, 10));
+			expect(result.composite.children.filter((child) => child.status === 'confirmed')).toHaveLength(0);
+			expect(JSON.stringify(result)).toBe(terminal);
+		} finally {
+			observing = false;
+			events.off('DevicesModule.CompositeCommand.Progress', onProgress);
+			for (const [index, transport] of transports.entries()) transport.onFrameForTest = priorFrameObservers[index];
+		}
 	});
 
 	it('does not admit a pre-action/status replay while the action RPC response is pending', async () => {

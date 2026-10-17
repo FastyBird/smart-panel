@@ -48,6 +48,49 @@ HTTP and event snapshots share process epoch and sequence stamps, so a fetch cov
 refresh loop; newer hints, commands, reconnects or device replacement fence older pending responses. Socket payloads
 are not treated as actuator acknowledgement or independent control evidence.
 
+## Thermostat comfort intent
+
+The controller stores optional comfort configuration alongside its version-1 requested settings. A null comfort
+configuration preserves installed manual behavior and does not seed any preset or enable automation. Explicit
+`comfort`, `eco` and `away` presets use operator-defined Celsius setpoints and ranges matching the configured
+branches and neutral deadband. HVAC `requested_mode`, selected preset and reported branch activity stay separate.
+The original requested setpoint properties and configuration response retain their meaning. Runtime
+`effective_comfort` reports the resolved source, preset, setpoints, override identity and expiry.
+
+The `/plugins/devices-virtual/producers/thermostats/{id}/comfort` endpoint reads this state; PUT configures explicit
+ranges/presets. POST `selection` selects a preset or null for the manual baseline, POST `override` selects a preset
+or explicit setpoints until an absolute ISO expiry, and POST `override/cancel` terminates the identified active
+override. Writes require both current thermostat and graph revisions. Override source is assigned by the backend
+and actor identity comes from an authenticated user session or a display-owned token (recorded as source `panel` with display/token identity); public requests cannot impersonate internal automation.
+The optional `comfort` definition on the existing thermostat configuration PUT permits an atomic policy/range change.
+Incompatible active override setpoints must be cancelled before such a change; neither reconfiguration nor preset
+editing silently replaces a live override.
+
+A live override keeps the setpoints resolved at its creation and precedes an explicitly enabled trusted automation
+baseline, then the current selected preset/manual baseline. The internal `applyAutomationBaseline` port accepts only
+a current validated preset or explicit setpoints, authenticated bridge actor identity and revision fences; it has no
+public HTTP route. Operator configuration defaults automation disabled. Explicitly disabling it clears its baseline. Background edits change that baseline only. Cancellation and expiry resolve the then-current baseline;
+there is no saved settings restoration or historical command replay. Explicit OFF through the registered enable
+controls latches OFF across comfort edits. An explicit non-OFF command or `clear_user_off` selection action clears
+the latch; clearing it does not change the separate requested HVAC mode. All existing protective inputs, claims,
+qualification and unresolved-output barriers still dominate comfort and are checked again at physical dispatch.
+
+Override expiry uses both an absolute wall-clock deadline and a process-local monotonic budget. Equality expires.
+Committed terminal expiry cannot revive on rollback or restart. A restart recovers remaining absolute lifetime capped
+by the original duration, retaining identity and setpoints. A persisted wall watermark detects observable rollback;
+invalid lifetime evidence or clock uncertainty holds the override as `clock_uncertain` and inhibits output until an
+explicit cancellation/replacement, rather than falling through to a potentially higher-demand baseline. No method can
+prove unobservable wall-clock shifts across downtime without an independent trusted clock. The API reports
+`bounded_absolute_recovery_with_uncertainty_inhibit`. Synchronous dispatch refusal is immediately fail-closed, but durable
+expiry observation occurs at committed settlement; a synchronous guard cannot promise persistence across a crash.
+Temporary overrides are bounded to seven days. Cache state is bounded to one live identity per controller.
+
+This backend stage does not implement a space activity/schedule/presence engine. The trusted baseline port is ready
+for the separate bridge, and no engine invokes it here.
+Admin authoring and Panel selection/override/cancel controls expose server diagnostics in all six locales. Local UI
+tests cover legacy/manual controllers, explicit branch setpoints, OFF-latch actions, expiry invalidation and stale
+requests. Independent backend review, composed UI acceptance and release gates remain before VD3-7 is complete.
+
 ## Input graph and measurements
 
 Virtual measurement bindings are durable graph edges. An aggregate reports a read-only temperature from compatible sources according to its configured operator, freshness and quorum. The output has its own identity and history, while source identity, timestamp and quality remain visible for diagnostics. Losing quorum or seeing only stale inputs makes the current output unavailable; history is not treated as a live reading.
@@ -63,6 +106,82 @@ The operator supplies setpoints, deadband and any enabled floor limit and recove
 A configured physical window contact and automatic temperature-change detection are independent pause policies. Either can inhibit output. A contact closing or heuristic pause expiring triggers a fresh evaluation of the latest user mode and setpoint; it does not replay the settings that existed when the pause began. User OFF, input faults, floor protection, window pauses, cycle/changeover waits and actuator uncertainty take precedence over comfort demand. Protective release must be confirmed or remain visible as uncertain; a virtual status alone cannot qualify an installed protective system.
 
 Actuator claims bind a qualified physical output to one controller and refuse unsupported or conflicting configurations at preview and persistence. Stop, restart and binding changes reconcile outstanding commands and claims before output may resume. The controller's software safeguards still require independent equipment protection and an operator-approved installation qualification before a live heating or cooling output is activated.
+
+## Mandatory parallel thermostat branches
+
+Guarded controllers group physical actuator claims by the stable `(controllerId, role)` identity. The existing
+`actuators` request/response array remains compatible: repeating `heating` or `cooling` adds a mandatory parallel
+member to that branch. At most eight total non-released members are admitted across both roles, including missing,
+releasing and suspended reservations. Singleton upgrades change neither physical claim IDs nor their qualification
+generation, lease, revision, release state or command journal. Migration `1000000000040` removes only the singleton
+role uniqueness constraint and adds the installed provider profile/version and explicit `guarded_branches` strategy.
+The shared journal decision identity remains the existing `(controllerId, decisionRevision)` tuple; every leaf gets
+its own persisted command identity before transport entry.
+
+The versioned internal actuation contract separates transport acceptance, causal observation, local protective
+qualification and qualified OFF/drain evidence. Shelly remains the only implemented guarded adapter. A profile/version
+mismatch or an unsupported provider cannot qualify a protected branch by registering an adapter or acknowledging a
+service call. `native_unit` is a typed, mutually exclusive strategy seam binding one canonical HA/Zigbee physical unit;
+its adapters, requested bundle and observations are outside this backend foundation and cannot be activated here.
+
+Demand uses all mandatory members. Same-mode siblings require no opposed-output attestation merely because they are
+parallel. Unknown, unavailable, unqualified or failed members inhibit the demanded branch and drive release of its
+remaining members. Acceptance without fresh ON observation does not establish completed parallel capacity. Each
+uncertain/late ON remains unresolved in its own journal until its own qualified drainage proof. Final send guards
+recheck the complete branch, physical ownership, input evidence and configuration/mapping/request fences. Settlement
+feedback can reevaluate a parallel decision without revoking its siblings; external changes still revoke admission.
+
+An opposed branch must have every member freshly OFF and every earlier ON drained. Its changeover clock starts at
+the last member's qualified OFF, not the earliest sibling. Reported aggregate activity requires unanimous fresh member
+observations; mixed/unknown activity remains unavailable. Runtime diagnostics remain per physical claim, including
+group/canonical identity, reservation state, pending ON, release attempts and last qualified OFF. Configuration also
+returns `released_actuators` with retained per-member completion evidence; recovery audit remains claim-specific.
+Disable/delete/remap/restart preserve unresolved identities and reservations rather than reducing branch capacity.
+
+Each parallel heating member now requires an explicit version-one `local_floor` protection binding. Its Celsius
+source must be a qualified sensor on that actuator's canonical Shelly, or the reviewed Steinhart–Hart converter over
+one qualified physical voltage input on that same Shelly. Aggregates, projections, nested converters, controller
+outputs and unsupported protective profiles remain ineligible. One ambient source regulates the entire branch.
+
+Migration `1000000000041` adds retained claim-keyed safety dependencies, nullable diagnostic latch/display fields and
+a nullable full Shelly catalog snapshot. It rewrites no claim, journal, generation, installation, activation or audit.
+Without a member-binding row, the singleton resolver, fingerprint and artifact source remain exactly the legacy path.
+Previously ineligible groups do not activate through migration or registration.
+
+The version-two `member_setup` installation request derives sensor/component/peripheral/calibration metadata from
+the catalog under the structural lock. Operators supply the existing equipment evidence, native switch snapshot,
+endpoint/script slot, watchdog/lease bounds and an installed floor ceiling. The reviewed artifact enforces
+`min(common requested floor limit, installed member ceiling)` with the common hysteresis and an identical finite
+native/converter domain in backend and local script. Thresholds are immutable artifact configuration, never ON
+parameters. Changing bindings, calibration, topology or common safety policy invalidates applicable sibling profiles;
+explicit restaging and activation are required. Staging retains the real guarded queue/session/epoch/retry and
+OFF/drain proof, existing attestation requirements and the distinction between metadata and physical qualification.
+
+Every member latch starts set after startup, reconnect, contract/lease changes and observation gaps. Only a new
+qualified sample strictly below effective cutoff minus hysteresis clears it. Persisted clear state grants no startup
+authority. Missing, stale, degraded, incompatible, nonfinite or faulted input inhibits and releases the entire heating
+branch, including at final queued/authentication-retry sends. Each leaf retains its independent unresolved ON and
+reservation. Positive local `floorSafe`, metadata inspection and ACKs do not refresh backend measurements; unsafe
+floors do not prevent protective OFF/drain reconciliation. Consumer dependencies include converter leaves and remain
+separate from ambient measurement provenance.
+
+An existing controller `sources.floor` remains an additional mandatory global guard. Explicit removal is a fenced
+safety configuration change. `display_floor_claim` selects only a member's displayed floor reading and cannot remove
+or replace a safety dependency. Configuration includes retained member bindings; runtime branches expose individual
+reading/age, effective cutoff, latch and blockers alongside pending ON and release/recovery evidence.
+
+This software supplies no installed qualification evidence and performs no commissioning. Each floor-protected relay
+still needs an actual supported local sensor/calibration and the existing per-device isolation, execution-bound,
+restart-drain and independent equipment-protection evidence. Network loss cannot promise instantaneous cross-device
+shutdown; local protection and bounded leases remain essential. Hardware deployment/qualification follows a published
+alpha. HA/Zigbee native-unit protection and non-floor protective profiles remain unsupported.
+
+Admin multi-member creation/edit/repair now retains missing members and enforces the combined limit. Admin/Panel
+render per-member readiness, uncertainty, release/recovery evidence and mixed activity, while preserving singleton
+compatibility. Client integration and localization generation have local validation evidence in
+`docs/work/virtual-thermostat/member-client-validation.md`. Review fixes have focused local validation recorded there;
+fresh independent review and exact-head CI remain required before publication. Native-unit adapters and installed qualification remain
+separate work; this client delivery does not close the complete climate issues or extension epic.
 
 ## Groups, spaces and provenance
 
