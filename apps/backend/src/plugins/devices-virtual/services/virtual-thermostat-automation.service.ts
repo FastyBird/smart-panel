@@ -4,20 +4,19 @@ import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/com
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
-
 import {
 	ClimateAutomationControllerFacts,
 	ClimateAutomationGraphReplacementPlan,
+	ClimateAutomationJson,
 	ClimateAutomationManualCapability,
+	ClimateAutomationManualIntent,
 	ClimateAutomationOwnedRegistration,
 	ClimateAutomationParticipant,
-	ClimateAutomationProvider,
-	ClimateAutomationJson,
-	ClimateAutomationManualIntent,
 	ClimateAutomationParticipantConflict,
 	ClimateAutomationParticipantDocument,
 	ClimateAutomationParticipantImage,
 	ClimateAutomationParticipantTurn,
+	ClimateAutomationProvider,
 	ClimateAutomationRetainedRecoveryRow,
 	climateAutomationCanonical,
 	climateAutomationJson,
@@ -64,6 +63,27 @@ import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
+
+interface AutomationReceiverCall<R, A extends unknown[], V> {
+	readonly call: (receiver: R, ...args: A) => V;
+}
+type AutomationMethodReferences = {
+	readonly readInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['readInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['readInManager']>;
+	readonly readControllerFactsInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>;
+	readonly validateManualIntentInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>;
+	readonly readRetainedHistoryInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>;
+	readonly applyManualIntentInManager: (
+		...args: Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>
+	) => ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>;
+};
 
 /** PRIVATE version1 persisted column map. Never a public response or an installed qualification. */
 export const THERMOSTAT_AUTOMATION_COLUMNS = {
@@ -1101,25 +1121,40 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 	) {
 		// Published closures retain these exact original functions and receiver; never look up a newer alias.
-		const methods: {
-			readonly readInManager: (...args: Parameters<VirtualThermostatAutomationService['readInManager']>) => ReturnType<VirtualThermostatAutomationService['readInManager']>;
-			readonly readControllerFactsInManager: (...args: Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>) => ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>;
-			readonly validateManualIntentInManager: (...args: Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>) => ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>;
-			readonly readRetainedHistoryInManager: (...args: Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>) => ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>;
-			readonly applyManualIntentInManager: (...args: Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>) => ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>;
-		} = this;
-		const read = methods.readInManager,
-			facts = methods.readControllerFactsInManager,
-			validate = methods.validateManualIntentInManager,
-			history = methods.readRetainedHistoryInManager,
-			apply = methods.applyManualIntentInManager;
+		const methods: AutomationMethodReferences = this satisfies AutomationMethodReferences;
+		const read: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['readInManager']>,
+				ReturnType<VirtualThermostatAutomationService['readInManager']>
+			> = methods.readInManager,
+			facts: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>,
+				ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>
+			> = methods.readControllerFactsInManager,
+			validate: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>,
+				ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>
+			> = methods.validateManualIntentInManager,
+			history: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>,
+				ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>
+			> = methods.readRetainedHistoryInManager,
+			apply: AutomationReceiverCall<
+				VirtualThermostatAutomationService,
+				Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>,
+				ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>
+			> = methods.applyManualIntentInManager;
 		const unavailable = (): never => {
 			throw new ClimateAutomationParticipantConflict('unavailable');
 		};
 		const manual = Object.freeze<ClimateAutomationManualCapability>({
 			version: 1,
 			codec: 'virtual-thermostat-c0:v1',
-			validateInManager: (manager, turn, intent, before, next) => validate.call(this, manager, turn, intent, before, next),
+			validateInManager: (manager, turn, intent, before, next) =>
+				validate.call(this, manager, turn, intent, before, next),
 			readRetainedHistoryInManager: (manager, turn, controllerId) => history.call(this, manager, turn, controllerId),
 		});
 		const participant = Object.freeze<ClimateAutomationParticipant>({
@@ -1166,22 +1201,35 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 	}
 
 	/** Separate trusted provider callback: no turn exists here; every invocation queries this manager anew. */
-	async readControllerFactsInManager(manager: EntityManager, controllerId: string): Promise<ClimateAutomationControllerFacts | null> {
+	async readControllerFactsInManager(
+		manager: EntityManager,
+		controllerId: string,
+	): Promise<ClimateAutomationControllerFacts | null> {
 		id(controllerId);
 		const rows = await this.readRowsInManager(manager, controllerId);
 		if (rows === null) return null;
 		const image = thermostatAutomationImage(rows);
 		if (image === null) return null;
-		const singleton = await manager.createQueryBuilder(VirtualGraphRevisionEntity, 'graph')
-			.where('graph.id = :id', { id: 1 }).callListeners(false).getOne();
+		const singleton = await manager
+			.createQueryBuilder(VirtualGraphRevisionEntity, 'graph')
+			.where('graph.id = :id', { id: 1 })
+			.callListeners(false)
+			.getOne();
 		if (!singleton) throw new ClimateAutomationParticipantConflict('uninitialized');
 		if (!Number.isSafeInteger(singleton.revision) || singleton.revision < 0)
 			throw new ClimateAutomationParticipantConflict('invalid');
-		return Object.freeze({ controllerRevision: image.controllerRevision, graphRevision: singleton.revision,
-			evidence: climateAutomationJson(image), legacyBaseline: image.legacyBaseline });
+		return Object.freeze({
+			controllerRevision: image.controllerRevision,
+			graphRevision: singleton.revision,
+			evidence: climateAutomationJson(image),
+			legacyBaseline: image.legacyBaseline,
+		});
 	}
 
-	private async readRowsInManager(manager: EntityManager, controllerId: string): Promise<ThermostatAutomationRows | null> {
+	private async readRowsInManager(
+		manager: EntityManager,
+		controllerId: string,
+	): Promise<ThermostatAutomationRows | null> {
 		const read = <T extends ObjectLiteral>(
 			entity: EntityTarget<T>,
 			condition = '1=1',

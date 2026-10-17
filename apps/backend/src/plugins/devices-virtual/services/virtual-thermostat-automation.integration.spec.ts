@@ -2015,7 +2015,6 @@ function isManualNativeConnection(value: unknown): value is ManualNativeConnecti
 	return value !== null && typeof value === 'object' && typeof Reflect.get(value, 'all') === 'function';
 }
 
-
 /** Real registered manual-only provider. TEST creator seeds EMPTY; not authoring or installed authority. */
 describe('C1b R0 real provider registration and manual-only persistence', () => {
 	const key = 'virtual-thermostat:v1';
@@ -2030,35 +2029,54 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 	let graph: VirtualDependencyGraphService, service: VirtualThermostatAutomationService;
 	let instances: VirtualThermostatAutomationService[];
 	const comfort = (): ThermostatComfortConfiguration => ({
-		heating_range: { minimum: 5, maximum: 30 }, cooling_range: { minimum: 10, maximum: 35 },
+		heating_range: { minimum: 5, maximum: 30 },
+		cooling_range: { minimum: 10, maximum: 35 },
 		presets: [
 			{ preset: 'comfort', setpoints: { heating_setpoint: 20, cooling_setpoint: 24 } },
 			{ preset: 'eco', setpoints: { heating_setpoint: 18, cooling_setpoint: 26 } },
 			{ preset: 'away', setpoints: { heating_setpoint: 16, cooling_setpoint: 28 } },
 		],
-		selected_preset: null, user_off: false, automation_enabled: false,
-		automation_baseline: null, temporary_override: null,
+		selected_preset: null,
+		user_off: false,
+		automation_enabled: false,
+		automation_baseline: null,
+		temporary_override: null,
 	});
-	const config = () => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ids.controller });
+	const config = () =>
+		database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ids.controller });
 	const slot = () => database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: ids.controller });
 	const whole = async () => ({
-		config: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_configs ORDER BY controllerId'),
-		slots: await database.manager.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots ORDER BY controllerId'),
-		sources: await database.manager.query<unknown[]>('SELECT * FROM devices_module_climate_automation_sources ORDER BY generationId'),
+		config: await database.manager.query<unknown[]>(
+			'SELECT * FROM devices_virtual_thermostat_configs ORDER BY controllerId',
+		),
+		slots: await database.manager.query<unknown[]>(
+			'SELECT * FROM devices_module_climate_automation_slots ORDER BY controllerId',
+		),
+		sources: await database.manager.query<unknown[]>(
+			'SELECT * FROM devices_module_climate_automation_sources ORDER BY generationId',
+		),
 		graph: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_graph_revision ORDER BY id'),
-		settings: await database.manager.query<unknown[]>('SELECT * FROM devices_virtual_thermostat_settings ORDER BY propertyId'),
+		settings: await database.manager.query<unknown[]>(
+			'SELECT * FROM devices_virtual_thermostat_settings ORDER BY propertyId',
+		),
 	});
-	const settings = (value = 21, exactRevision?: number) => writer.commitControllerIntentV1({
-		providerKey: key, controllerId: ids.controller,
-		fence: exactRevision === undefined ? { kind: 'current-at-admitted-setting-submission' }
-			: { kind: 'exact', controllerRevision: exactRevision, graphRevision: 0 },
-		intent: { kind: 'manual-settings:v1', updates: [{ propertyId: properties.heating_setpoint, value }] },
-	});
-	const select = async (preset: 'comfort' | 'eco' | 'away' | null, clearUserOff = false) => writer.commitControllerIntentV1({
-		providerKey: key, controllerId: ids.controller,
-		fence: { kind: 'exact', controllerRevision: (await config()).revision, graphRevision: 0 },
-		intent: { kind: 'manual-preset:v1', preset, clearUserOff },
-	});
+	const settings = (value = 21, exactRevision?: number) =>
+		writer.commitControllerIntentV1({
+			providerKey: key,
+			controllerId: ids.controller,
+			fence:
+				exactRevision === undefined
+					? { kind: 'current-at-admitted-setting-submission' }
+					: { kind: 'exact', controllerRevision: exactRevision, graphRevision: 0 },
+			intent: { kind: 'manual-settings:v1', updates: [{ propertyId: properties.heating_setpoint, value }] },
+		});
+	const select = async (preset: 'comfort' | 'eco' | 'away' | null, clearUserOff = false) =>
+		writer.commitControllerIntentV1({
+			providerKey: key,
+			controllerId: ids.controller,
+			fence: { kind: 'exact', controllerRevision: (await config()).revision, graphRevision: 0 },
+			intent: { kind: 'manual-preset:v1', preset, clearUserOff },
+		});
 	const currentProvider = () => {
 		const capture = registry.captureProvider(key);
 		if (!capture) throw new Error('Missing real R0 registration');
@@ -2070,63 +2088,151 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		return next;
 	};
 	beforeEach(async () => {
-		database = await new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: true,
-			entities: [__dirname + '/../../../**/*.entity.ts'] }).initialize();
+		database = await new SqliteDataSource({
+			type: 'sqlite',
+			database: ':memory:',
+			synchronize: true,
+			entities: [__dirname + '/../../../**/*.entity.ts'],
+		}).initialize();
 		registry = new ClimateAutomationRegistryService();
-		writer = new ClimateAutomationWriterService(database, new DeviceStructureLockService(), registry, new ConfigService({ FB_CLI: 'off' }));
+		writer = new ClimateAutomationWriterService(
+			database,
+			new DeviceStructureLockService(),
+			registry,
+			new ConfigService({ FB_CLI: 'off' }),
+		);
 		graph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), writer);
 		instances = [];
 		await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: 0 });
-		await database.manager.insert(VirtualDeviceEntity, { id: ids.controller, name: 'TEST R0 controller',
-			category: DeviceCategory.THERMOSTAT, mode: VirtualDeviceMode.CLIMATE_CONTROLLER, enabled: true });
+		await database.manager.insert(VirtualDeviceEntity, {
+			id: ids.controller,
+			name: 'TEST R0 controller',
+			category: DeviceCategory.THERMOSTAT,
+			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
+			enabled: true,
+		});
 		const channels = { heating: randomUUID(), cooling: randomUUID(), thermostat: randomUUID() };
 		for (const row of [
 			{ id: channels.heating, category: ChannelCategory.HEATER },
 			{ id: channels.cooling, category: ChannelCategory.COOLER },
 			{ id: channels.thermostat, category: ChannelCategory.THERMOSTAT },
-		]) await database.manager.insert(VirtualChannelEntity, { ...row, device: { id: ids.controller }, identifier: row.id, name: 'TEST setting' });
+		])
+			await database.manager.insert(VirtualChannelEntity, {
+				...row,
+				device: { id: ids.controller },
+				identifier: row.id,
+				name: 'TEST setting',
+			});
 		const bindings: { propertyId: string; setting: ThermostatSetting; contractFingerprint: string }[] = [];
-		const names: readonly ThermostatSetting[] = ['heating_setpoint', 'cooling_setpoint', 'heating_enabled', 'cooling_enabled', 'locked'];
+		const names: readonly ThermostatSetting[] = [
+			'heating_setpoint',
+			'cooling_setpoint',
+			'heating_enabled',
+			'cooling_enabled',
+			'locked',
+		];
 		for (const setting of names) {
 			const numeric = setting === 'heating_setpoint' || setting === 'cooling_setpoint';
-			const channelId = setting === 'locked' ? channels.thermostat
-				: setting === 'heating_setpoint' || setting === 'heating_enabled' ? channels.heating : channels.cooling;
-			await database.manager.insert(VirtualChannelPropertyEntity, { id: properties[setting], channel: { id: channelId },
-				identifier: setting, category: setting === 'locked' ? PropertyCategory.LOCKED : numeric ? PropertyCategory.TEMPERATURE : PropertyCategory.ON,
-				dataType: numeric ? DataTypeType.FLOAT : DataTypeType.BOOL, permissions: [PermissionType.READ_WRITE],
-				unit: numeric ? '°C' : null, valueOrigin: VirtualValueOrigin.LOCAL, sourcePropertyId: null });
-			const property = await database.manager.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
-				.leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device')
-				.where('property.id = :id', { id: properties[setting] }).getOneOrFail();
-			if (!property.channel || typeof property.channel === 'string' || !property.channel.device || typeof property.channel.device === 'string')
+			const channelId =
+				setting === 'locked'
+					? channels.thermostat
+					: setting === 'heating_setpoint' || setting === 'heating_enabled'
+						? channels.heating
+						: channels.cooling;
+			await database.manager.insert(VirtualChannelPropertyEntity, {
+				id: properties[setting],
+				channel: { id: channelId },
+				identifier: setting,
+				category:
+					setting === 'locked' ? PropertyCategory.LOCKED : numeric ? PropertyCategory.TEMPERATURE : PropertyCategory.ON,
+				dataType: numeric ? DataTypeType.FLOAT : DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+				unit: numeric ? '°C' : null,
+				valueOrigin: VirtualValueOrigin.LOCAL,
+				sourcePropertyId: null,
+			});
+			const property = await database.manager
+				.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.where('property.id = :id', { id: properties[setting] })
+				.getOneOrFail();
+			if (
+				!property.channel ||
+				typeof property.channel === 'string' ||
+				!property.channel.device ||
+				typeof property.channel.device === 'string'
+			)
 				throw new Error('Missing actual TEST R0 property owner');
-			bindings.push({ propertyId: property.id, setting, contractFingerprint: thermostatPropertyContract(property, property.channel, property.channel.device) });
+			bindings.push({
+				propertyId: property.id,
+				setting,
+				contractFingerprint: thermostatPropertyContract(property, property.channel, property.channel.device),
+			});
 		}
 		// Only TEST absence creation. Production create capability remains unavailable.
-		const unavailable = (): never => { throw new ClimateAutomationParticipantConflict('unavailable'); };
+		const unavailable = (): never => {
+			throw new ClimateAutomationParticipantConflict('unavailable');
+		};
 		const creator: ClimateAutomationProvider = {
 			readControllerInManager: async (manager, controllerId) => {
 				const image = thermostatAutomationImage(await manualFreshRows(manager, controllerId));
-				return image ? { controllerRevision: image.controllerRevision, graphRevision: await graph.revision(manager),
-					evidence: climateAutomationJson(image), legacyBaseline: image.legacyBaseline } : null;
+				return image
+					? {
+							controllerRevision: image.controllerRevision,
+							graphRevision: await graph.revision(manager),
+							evidence: climateAutomationJson(image),
+							legacyBaseline: image.legacyBaseline,
+						}
+					: null;
 			},
 			validateSelectionInManager: unavailable,
 			createControllerInManager: async (manager, controllerId) => {
-				await manager.insert(VirtualThermostatConfigEntity, { controllerId, ownerDeviceId: controllerId,
-					requestedMode: 'off', controlStrategy: 'guarded_branches', locked: false, comfort: comfort(),
-					policy: { heatingSetpoint: 20, coolingSetpoint: 24, coldTolerance: 0.5, hotTolerance: 0.5,
-						neutralMargin: 1, minimumOffMs: 1000, changeoverMs: 1000, floor: null },
-					contactOpeningMs: 0, contactClosingMs: 0, heuristic: null, configuredAt: instant, releaseRequestedAt: null });
-				for (const binding of bindings) await manager.insert(VirtualThermostatSettingEntity, { ...binding, controllerId });
+				await manager.insert(VirtualThermostatConfigEntity, {
+					controllerId,
+					ownerDeviceId: controllerId,
+					requestedMode: 'off',
+					controlStrategy: 'guarded_branches',
+					locked: false,
+					comfort: comfort(),
+					policy: {
+						heatingSetpoint: 20,
+						coolingSetpoint: 24,
+						coldTolerance: 0.5,
+						hotTolerance: 0.5,
+						neutralMargin: 1,
+						minimumOffMs: 1000,
+						changeoverMs: 1000,
+						floor: null,
+					},
+					contactOpeningMs: 0,
+					contactClosingMs: 0,
+					heuristic: null,
+					configuredAt: instant,
+					releaseRequestedAt: null,
+				});
+				for (const binding of bindings)
+					await manager.insert(VirtualThermostatSettingEntity, { ...binding, controllerId });
 			},
 		};
 		const owner = registry.registerProviderOwned(key, creator);
 		if (!owner) throw new Error('Missing TEST creator registration');
 		try {
-			expect((await writer.runReserved(async (manager, scope) => writer.initializeSlot(manager, scope, {
-				providerKey: key, controllerId: ids.controller, expected: await writer.readSlot(manager, scope, ids.controller), configuration: {},
-			}))).outcome).toBe('applied');
-		} finally { owner.dispose(); }
+			expect(
+				(
+					await writer.runReserved(async (manager, scope) =>
+						writer.initializeSlot(manager, scope, {
+							providerKey: key,
+							controllerId: ids.controller,
+							expected: await writer.readSlot(manager, scope, ids.controller),
+							configuration: {},
+						}),
+					)
+				).outcome,
+			).toBe('applied');
+		} finally {
+			owner.dispose();
+		}
 		service = freshInstance();
 		service.onModuleInit();
 	}, 30_000);
@@ -2172,45 +2278,71 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		expect((await select('eco')).outcome).toBe('conflict');
 	});
 	const presetCases: readonly { preset: 'eco' | null; clear: boolean }[] = [
-		{ preset: null, clear: false }, { preset: null, clear: true },
-		{ preset: 'eco', clear: false }, { preset: 'eco', clear: true },
+		{ preset: null, clear: false },
+		{ preset: null, clear: true },
+		{ preset: 'eco', clear: false },
+		{ preset: 'eco', clear: true },
 	];
-	it.each(presetCases)('keeps requested OFF for registered preset=$preset clearOFF=$clear', async ({ preset, clear }) => {
-		await settings();
-		const row = await config();
-		if (!row.comfort) throw new Error('Missing TEST comfort');
-		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { comfort: { ...row.comfort, selected_preset: 'comfort', user_off: true } });
-		expect((await select(preset, clear)).outcome).toBe('applied');
-		const current = await config();
-		expect(current.requestedMode).toBe('off');
-		expect(current.comfort?.user_off).toBe(!clear);
-		expect(current.comfort?.selected_preset).toBe(preset);
-		expect((await slot()).manualHold).toBe(preset === null);
-	});
+	it.each(presetCases)(
+		'keeps requested OFF for registered preset=$preset clearOFF=$clear',
+		async ({ preset, clear }) => {
+			await settings();
+			const row = await config();
+			if (!row.comfort) throw new Error('Missing TEST comfort');
+			await database.manager.update(
+				VirtualThermostatConfigEntity,
+				{ controllerId: ids.controller },
+				{ comfort: { ...row.comfort, selected_preset: 'comfort', user_off: true } },
+			);
+			expect((await select(preset, clear)).outcome).toBe('applied');
+			const current = await config();
+			expect(current.requestedMode).toBe('off');
+			expect(current.comfort?.user_off).toBe(!clear);
+			expect(current.comfort?.selected_preset).toBe(preset);
+			expect((await slot()).manualHold).toBe(preset === null);
+		},
+	);
 	it('keeps an exact full intent noop free of all row and graph churn', async () => {
 		await settings();
 		const before = await whole();
 		const statements: string[] = [];
-		database.subscribers.push({ beforeQuery: (event) => { statements.push(event.query); } });
+		database.subscribers.push({
+			beforeQuery: (event) => {
+				statements.push(event.query);
+			},
+		});
 		expect((await settings(21, (await config()).revision)).outcome).toBe('unchanged');
 		expect(await whole()).toEqual(before);
-		expect(statements.filter((query) => /^\s*(INSERT|UPDATE|DELETE)/i.test(query) && !query.includes('WHERE 0'))).toEqual([]);
+		expect(
+			statements.filter((query) => /^\s*(INSERT|UPDATE|DELETE)/i.test(query) && !query.includes('WHERE 0')),
+		).toEqual([]);
 	});
 	it('distinguishes stale exact fences from current-at-admitted settings', async () => {
-		expect((await settings(21, 0)).outcome).toBe('conflict');
+		expect(await settings(21, 2)).toEqual({ outcome: 'conflict', reason: 'stale' });
 		expect((await settings(21)).outcome).toBe('applied');
-		expect((await settings(22, 1)).outcome).toBe('conflict');
+		expect(await settings(22, 1)).toEqual({ outcome: 'conflict', reason: 'stale' });
 		expect((await settings(22)).outcome).toBe('applied');
 	});
 	it('performs fresh provider queries and refuses mismatch with the guarded first image', async () => {
 		const before = await whole();
-		let reads = 0, changed = false;
-		database.subscribers.push({ beforeQuery: async (event) => {
-			if (/^SELECT/i.test(event.query) && event.query.includes('"devices_virtual_thermostat_configs"') && ++reads === 2) {
-				changed = true;
-				await event.queryRunner.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { locked: true });
-			}
-		} });
+		let reads = 0,
+			changed = false;
+		database.subscribers.push({
+			beforeQuery: async (event) => {
+				if (
+					/^SELECT/i.test(event.query) &&
+					event.query.includes('"devices_virtual_thermostat_configs"') &&
+					++reads === 2
+				) {
+					changed = true;
+					await event.queryRunner.manager.update(
+						VirtualThermostatConfigEntity,
+						{ controllerId: ids.controller },
+						{ locked: true },
+					);
+				}
+			},
+		});
 		expect((await settings()).outcome).toBe('conflict');
 		expect(changed).toBe(true);
 		expect(await whole()).toEqual(before);
@@ -2218,15 +2350,28 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 	it('independently rereads actual provider facts instead of borrowing a previous image', async () => {
 		const provider = currentProvider().implementation;
 		let first: unknown, second: unknown;
-		await writer.runReserved(async (manager) => { first = await provider.readControllerInManager(manager, ids.controller); return []; });
+		await writer.runReserved(async (manager) => {
+			first = await provider.readControllerInManager(manager, ids.controller);
+			return [];
+		});
 		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: ids.controller }, { locked: true });
-		await writer.runReserved(async (manager) => { second = await provider.readControllerInManager(manager, ids.controller); return []; });
+		await writer.runReserved(async (manager) => {
+			second = await provider.readControllerInManager(manager, ids.controller);
+			return [];
+		});
 		expect(second).not.toEqual(first);
 	});
 	it('refuses an absent or invalid singleton without graph fallback or ensure', async () => {
 		const provider = currentProvider().implementation;
 		await database.manager.delete(VirtualGraphRevisionEntity, { id: 1 });
-		expect((await writer.runReserved(async (manager) => { await provider.readControllerInManager(manager, ids.controller); return []; })).outcome).toBe('conflict');
+		expect(
+			(
+				await writer.runReserved(async (manager) => {
+					await provider.readControllerInManager(manager, ids.controller);
+					return [];
+				})
+			).outcome,
+		).toBe('conflict');
 		expect(await database.manager.count(VirtualGraphRevisionEntity)).toBe(0);
 		await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: -1 });
 		expect((await settings()).outcome).toBe('conflict');
@@ -2236,7 +2381,11 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		const before = await whole();
 		service.onModuleDestroy();
 		const statements: string[] = [];
-		database.subscribers.push({ beforeQuery: (event) => { statements.push(event.query); } });
+		database.subscribers.push({
+			beforeQuery: (event) => {
+				statements.push(event.query);
+			},
+		});
 		service = freshInstance();
 		service.onModuleInit();
 		const capture = currentProvider();
@@ -2244,12 +2393,14 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		expect(statements).toEqual([]);
 		expect(currentProvider().implementation).toBe(capture.implementation);
 		await writer.runReserved(async (manager) => {
-			expect(await capture.implementation.readControllerInManager(manager, ids.missing)).toBeNull(); return [];
+			expect(await capture.implementation.readControllerInManager(manager, ids.missing)).toBeNull();
+			return [];
 		});
 		expect(await whole()).toEqual(before);
 	});
 	it('visibly refuses a foreign duplicate and its cleanup cannot dispose the incumbent', async () => {
-		const incumbent = currentProvider(), duplicate = freshInstance();
+		const incumbent = currentProvider(),
+			duplicate = freshInstance();
 		expect(() => duplicate.onModuleInit()).toThrow('registration unavailable');
 		duplicate.onModuleDestroy();
 		expect(incumbent.isCurrent()).toBe(true);
@@ -2263,25 +2414,46 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		expect(original.isCurrent()).toBe(false);
 		expect(sharedDestroy).not.toHaveBeenCalled();
 		expect(() => service.onModuleInit()).toThrow('destroyed');
-		const next = freshInstance(); next.onModuleInit(); const replacement = currentProvider();
-		service.onModuleDestroy(); next.onModuleInit();
+		const next = freshInstance();
+		next.onModuleInit();
+		const replacement = currentProvider();
+		service.onModuleDestroy();
+		next.onModuleInit();
 		expect(original.isCurrent()).toBe(false);
 		expect(replacement.isCurrent()).toBe(true);
 		expect((await settings()).outcome).toBe('applied');
 	});
 	it('refuses original A at the native guard after unload while new B stays usable', async () => {
-		const before = await whole(), original = currentProvider(), entered = barrier(), release = barrier();
+		const before = await whole(),
+			original = currentProvider(),
+			entered = barrier(),
+			release = barrier();
 		let first = true;
-		database.subscribers.push({ beforeQuery: async (event) => {
-			if (event.query === 'COMMIT' && first) { first = false; entered.resolve(); await release.promise; }
-		} });
-		const pending = settings().then((result) => ({ result }), (error: unknown) => ({ error }));
+		database.subscribers.push({
+			beforeQuery: async (event) => {
+				if (event.query === 'COMMIT' && first) {
+					first = false;
+					entered.resolve();
+					await release.promise;
+				}
+			},
+		});
+		const pending = settings().then(
+			(result) => ({ result }),
+			(error: unknown) => ({ error }),
+		);
 		let replacement: ReturnType<typeof currentProvider> | undefined;
 		try {
-			await entered.promise; service.onModuleDestroy();
-			const next = freshInstance(); next.onModuleInit(); replacement = currentProvider();
-			expect(original.isCurrent()).toBe(false); expect(replacement.isCurrent()).toBe(true);
-		} finally { release.resolve(); }
+			await entered.promise;
+			service.onModuleDestroy();
+			const next = freshInstance();
+			next.onModuleInit();
+			replacement = currentProvider();
+			expect(original.isCurrent()).toBe(false);
+			expect(replacement.isCurrent()).toBe(true);
+		} finally {
+			release.resolve();
+		}
 		expect(await pending).toMatchObject({ error: { commitOutcome: 'refused' } });
 		expect(await whole()).toEqual(before);
 		service.onModuleDestroy();
@@ -2289,51 +2461,83 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		expect((await settings()).outcome).toBe('applied');
 		expect(original.isCurrent()).toBe(false);
 	});
-	it('refuses unsupported published capabilities synchronously without SQL or positive defaults', async () => {
-		const provider = currentProvider().implementation, participant = provider.participantV1;
-		if (!participant) throw new Error('Missing production participant');
-		const statements: string[] = [];
-		database.subscribers.push({ beforeQuery: (event) => { statements.push(event.query); } });
-		// Missing arguments are intentional negative input, not a manufactured successful turn.
-		expect(() => { Reflect.apply(provider.createControllerInManager, provider, []); }).toThrow(ClimateAutomationParticipantConflict);
-		expect(() => { Reflect.apply(provider.validateSelectionInManager, provider, []); }).toThrow(ClimateAutomationParticipantConflict);
-		expect(() => { Reflect.apply(participant.normalizeInManager, participant, []); }).toThrow(ClimateAutomationParticipantConflict);
-		expect(() => { Reflect.apply(participant.planGraphReplacementInManager, participant, []); }).toThrow(ClimateAutomationParticipantConflict);
-		expect(statements).toEqual([]);
-	});
+	it('refuses unsupported published capabilities synchronously without SQL or positive defaults', () =>
+		new Promise<void>((resolve) => {
+			const provider = currentProvider().implementation,
+				participant = provider.participantV1;
+			if (!participant) throw new Error('Missing production participant');
+			const statements: string[] = [];
+			database.subscribers.push({
+				beforeQuery: (event) => {
+					statements.push(event.query);
+				},
+			});
+			// Missing arguments are intentional negative input, not a manufactured successful turn.
+			expect(() => {
+				Reflect.apply(provider.createControllerInManager, provider, []);
+			}).toThrow(ClimateAutomationParticipantConflict);
+			expect(() => {
+				Reflect.apply(provider.validateSelectionInManager, provider, []);
+			}).toThrow(ClimateAutomationParticipantConflict);
+			expect(() => {
+				Reflect.apply(participant.normalizeInManager, participant, []);
+			}).toThrow(ClimateAutomationParticipantConflict);
+			expect(() => {
+				Reflect.apply(participant.planGraphReplacementInManager, participant, []);
+			}).toThrow(ClimateAutomationParticipantConflict);
+			expect(statements).toEqual([]);
+			resolve(undefined);
+		}));
 	it('resolves the real service with actual writer registry graph in a partial Nest lifecycle', async () => {
 		service.onModuleDestroy();
-		const module = await Test.createTestingModule({ providers: [VirtualThermostatAutomationService,
-			{ provide: ClimateAutomationWriterService, useValue: writer },
-			{ provide: ClimateAutomationRegistryService, useValue: registry },
-			{ provide: VirtualDependencyGraphService, useValue: graph },
-			{ provide: ConfigService, useValue: new ConfigService({ FB_CLI: 'off' }) },
-		] }).compile();
+		const module = await Test.createTestingModule({
+			providers: [
+				VirtualThermostatAutomationService,
+				{ provide: ClimateAutomationWriterService, useValue: writer },
+				{ provide: ClimateAutomationRegistryService, useValue: registry },
+				{ provide: VirtualDependencyGraphService, useValue: graph },
+				{ provide: ConfigService, useValue: new ConfigService({ FB_CLI: 'off' }) },
+			],
+		}).compile();
 		try {
-			await module.init(); const resolved = module.get(VirtualThermostatAutomationService); instances.push(resolved);
+			await module.init();
+			const resolved = module.get(VirtualThermostatAutomationService);
+			instances.push(resolved);
 			expect(resolved).toBeInstanceOf(VirtualThermostatAutomationService);
 			expect(currentProvider().implementation.participantV1?.graph).toBe(graph);
 			expect((await settings()).outcome).toBe('applied');
-		} finally { await module.close(); }
+		} finally {
+			await module.close();
+		}
 		expect(registry.captureProvider(key)).toBeNull();
 		// Actual graph bootstrap may query here. This is NOT a full DevicesVirtualPlugin bootstrap claim.
 	});
 	it('keeps real CLI constructor and partial Nest initialization empty-DB zero I/O', async () => {
 		const empty = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false, entities: [] });
-		const emptyRegistry = new ClimateAutomationRegistryService(), cli = new ConfigService({ FB_CLI: 'on' });
+		const emptyRegistry = new ClimateAutomationRegistryService(),
+			cli = new ConfigService({ FB_CLI: 'on' });
 		const cliWriter = new ClimateAutomationWriterService(empty, new DeviceStructureLockService(), emptyRegistry, cli);
 		const cliGraph = new VirtualDependencyGraphService(empty, cli, cliWriter);
-		const query = jest.spyOn(empty, 'query'), managerQuery = jest.spyOn(empty.manager, 'query');
-		const module = await Test.createTestingModule({ providers: [VirtualThermostatAutomationService,
-			{ provide: ClimateAutomationWriterService, useValue: cliWriter },
-			{ provide: ClimateAutomationRegistryService, useValue: emptyRegistry },
-			{ provide: VirtualDependencyGraphService, useValue: cliGraph }, { provide: ConfigService, useValue: cli },
-		] }).compile();
+		const query = jest.spyOn(empty, 'query'),
+			managerQuery = jest.spyOn(empty.manager, 'query');
+		const module = await Test.createTestingModule({
+			providers: [
+				VirtualThermostatAutomationService,
+				{ provide: ClimateAutomationWriterService, useValue: cliWriter },
+				{ provide: ClimateAutomationRegistryService, useValue: emptyRegistry },
+				{ provide: VirtualDependencyGraphService, useValue: cliGraph },
+				{ provide: ConfigService, useValue: cli },
+			],
+		}).compile();
 		try {
-			await module.init(); expect(empty.isInitialized).toBe(false);
+			await module.init();
+			expect(empty.isInitialized).toBe(false);
 			expect(emptyRegistry.captureProvider(key)).toBeNull();
-			expect(query).not.toHaveBeenCalled(); expect(managerQuery).not.toHaveBeenCalled();
-		} finally { await module.close(); }
+			expect(query).not.toHaveBeenCalled();
+			expect(managerQuery).not.toHaveBeenCalled();
+		} finally {
+			await module.close();
+		}
 	});
 	it('keeps a core-only registry unregistered when the optional plugin is absent', () => {
 		const coreOnly = new ClimateAutomationRegistryService();
