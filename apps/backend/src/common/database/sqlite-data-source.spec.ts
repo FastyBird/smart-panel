@@ -20,8 +20,8 @@ import {
 	SqliteCommitGuardRefusedError,
 	SqliteDataSource,
 	createSqliteDataSource,
-	isSqliteTransactionActive,
 	hasCurrentSqliteConnectionLease,
+	isSqliteTransactionActive,
 	outsideSqliteTransaction,
 	registerSqliteCommitGuard,
 } from './sqlite-data-source';
@@ -1193,7 +1193,6 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 	});
 });
 
-
 describe('read-only caller SQLite connection lease presence', () => {
 	it('does not allocate a runner/coordinator or issue a query on unknown or destroyed data sources', async () => {
 		const unknown = new DataSource({ type: 'sqlite', database: ':memory:' });
@@ -1211,42 +1210,56 @@ describe('read-only caller SQLite connection lease presence', () => {
 
 	it('reports this ordinary SELECT caller lease despite TXfalse, but not another caller or a detached callback', async () => {
 		const database = await createSqliteDataSource({ type: 'sqlite', database: ':memory:' });
-		const entered = deferred(), release = deferred();
-		database.subscribers.push({ beforeQuery: async (event) => {
-			if (event.query !== 'SELECT 11 AS caller_lease_probe') return;
-			expect(event.queryRunner.isTransactionActive).toBe(false);
-			expect(hasCurrentSqliteConnectionLease(database)).toBe(true);
-			expect(outsideSqliteTransaction(database, () => hasCurrentSqliteConnectionLease(database))).toBe(false);
-			entered.resolve();
-			await release.promise;
-		} });
+		const entered = deferred(),
+			release = deferred();
+		database.subscribers.push({
+			beforeQuery: async (event) => {
+				if (event.query !== 'SELECT 11 AS caller_lease_probe') return;
+				expect(event.queryRunner.isTransactionActive).toBe(false);
+				expect(hasCurrentSqliteConnectionLease(database)).toBe(true);
+				expect(outsideSqliteTransaction(database, () => hasCurrentSqliteConnectionLease(database))).toBe(false);
+				entered.resolve();
+				await release.promise;
+			},
+		});
 		const query = database.query('SELECT 11 AS caller_lease_probe');
 		try {
 			await entered.promise;
 			expect(hasCurrentSqliteConnectionLease(database)).toBe(false);
-		} finally { release.resolve(); await query; await database.destroy(); }
+		} finally {
+			release.resolve();
+			await query;
+			await database.destroy();
+		}
 		expect(hasCurrentSqliteConnectionLease(database)).toBe(false);
 	});
 
 	it('conservatively retains an inactive child context while its parent lease is active, then closes it', async () => {
 		const database = await createSqliteDataSource({ type: 'sqlite', database: ':memory:' });
-		const childResume = deferred(), parentResume = deferred();
+		const childResume = deferred(),
+			parentResume = deferred();
 		let child: Promise<boolean> | undefined, releasedChild: Promise<boolean> | undefined;
-		database.subscribers.push({ beforeQuery: (event) => {
-			if (event.query !== 'SELECT 12 AS inactive_child_probe') return;
-			child = childResume.promise.then(() => hasCurrentSqliteConnectionLease(database));
-			releasedChild = parentResume.promise.then(() => hasCurrentSqliteConnectionLease(database));
-		} });
+		database.subscribers.push({
+			beforeQuery: (event) => {
+				if (event.query !== 'SELECT 12 AS inactive_child_probe') return;
+				child = childResume.promise.then(() => hasCurrentSqliteConnectionLease(database));
+				releasedChild = parentResume.promise.then(() => hasCurrentSqliteConnectionLease(database));
+			},
+		});
 		try {
 			await database.transaction(async (manager) => {
 				await manager.query('SELECT 12 AS inactive_child_probe');
 				childResume.resolve();
-				if (!child) throw new Error('Missing child context probe');
+				if (child === undefined) throw new Error('Missing child context probe');
 				expect(await child).toBe(true); // conservative presence, not a writer scope certificate
 			});
 			parentResume.resolve();
-			if (!releasedChild) throw new Error('Missing released child context probe');
+			if (releasedChild === undefined) throw new Error('Missing released child context probe');
 			expect(await releasedChild).toBe(false);
-		} finally { childResume.resolve(); parentResume.resolve(); await database.destroy(); }
+		} finally {
+			childResume.resolve();
+			parentResume.resolve();
+			await database.destroy();
+		}
 	});
 });

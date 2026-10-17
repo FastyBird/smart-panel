@@ -1,7 +1,12 @@
 import { Exclude } from 'class-transformer';
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn, Unique } from 'typeorm';
 
-import { ClimateAutomationSlotFacts, ClimateAutomationSlotState, ClimateAutomationSourceFacts, ClimateAutomationSourceState } from '../contracts/climate-automation.contract';
+import {
+	ClimateAutomationSlotFacts,
+	ClimateAutomationSlotState,
+	ClimateAutomationSourceFacts,
+	ClimateAutomationSourceState,
+} from '../contracts/climate-automation.contract';
 
 export const CLIMATE_SOURCE_TABLE = 'devices_module_climate_automation_sources';
 export const CLIMATE_SLOT_TABLE = 'devices_module_climate_automation_slots';
@@ -32,7 +37,9 @@ export class ClimateAutomationSourceEntity implements ClimateAutomationSourceFac
 	@Column({ type: 'varchar' }) state!: ClimateAutomationSourceState;
 	@Column({ type: 'text' }) evidence!: string;
 	@Column({ type: 'varchar' }) evidenceDigest!: string;
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 
 @Exclude()
@@ -56,7 +63,12 @@ export class ClimateAutomationSlotEntity implements ClimateAutomationSlotFacts {
 	@Column({ type: 'text', nullable: true }) installEvidence!: string | null;
 	@Column({ type: 'varchar', nullable: true }) legacyDigest!: string | null;
 	@ManyToOne(() => ClimateAutomationSourceEntity, { nullable: true, onDelete: 'RESTRICT' })
-	@JoinColumn([{ name: 'ownerId', referencedColumnName: 'ownerId' }, { name: 'generationId', referencedColumnName: 'generationId' }])
+	@JoinColumn([
+		{ name: 'ownerId', referencedColumnName: 'ownerId' },
+		{ name: 'generationId', referencedColumnName: 'generationId' },
+	])
 	private source?: ClimateAutomationSourceEntity | null;
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }

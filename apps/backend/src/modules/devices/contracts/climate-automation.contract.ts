@@ -18,12 +18,16 @@ export function climateAutomationCanonical(value: unknown): string {
 	}
 	if (Array.isArray(value)) return `[${value.map((item: unknown) => climateAutomationCanonical(item)).join(',')}]`;
 	if (typeof value !== 'object') throw new Error('Invalid private climate JSON');
-	return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${climateAutomationCanonical(Reflect.get(value, key))}`).join(',')}}`;
+	return `{${Object.keys(value)
+		.sort()
+		.map((key) => `${JSON.stringify(key)}:${climateAutomationCanonical(Reflect.get(value, key))}`)
+		.join(',')}}`;
 }
 
 /** Validate and copy private JSON; never retain mutable provider-owned evidence objects. */
 export function climateAutomationJson(value: unknown): ClimateAutomationJson {
-	if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
+	if (value === null) return null;
+	if (typeof value === 'boolean' || typeof value === 'string') return value;
 	if (typeof value === 'number' && Number.isFinite(value)) return value;
 	if (Array.isArray(value)) return Object.freeze(value.map((item: unknown) => climateAutomationJson(item)));
 	if (typeof value !== 'object' || value === null) throw new Error('Invalid private climate JSON');
@@ -91,7 +95,10 @@ export interface ClimateAutomationProducer {
 }
 
 export interface ClimateAutomationProvider {
-	readonly readControllerInManager: (manager: EntityManager, controllerId: string) => Promise<ClimateAutomationControllerFacts | null>;
+	readonly readControllerInManager: (
+		manager: EntityManager,
+		controllerId: string,
+	) => Promise<ClimateAutomationControllerFacts | null>;
 	readonly validateSelectionInManager: (
 		manager: EntityManager,
 		controllerId: string,
@@ -99,27 +106,43 @@ export interface ClimateAutomationProvider {
 		selection: ClimateAutomationJson,
 	) => Promise<boolean>;
 	/** Trusted creation ONLY; called after config AND retained-slot checks. No network or nested transaction. */
-	readonly createControllerInManager: (manager: EntityManager, controllerId: string, configuration: ClimateAutomationJson) => Promise<void>;
+	readonly createControllerInManager: (
+		manager: EntityManager,
+		controllerId: string,
+		configuration: ClimateAutomationJson,
+	) => Promise<void>;
 }
 
-export interface ClimateAutomationOwnedRegistration { readonly dispose: () => void; }
+export interface ClimateAutomationOwnedRegistration {
+	readonly dispose: () => void;
+}
 export interface ClimateAutomationCapturedRegistration<T> {
 	readonly implementation: T;
 	readonly isCurrent: () => boolean;
 }
 
 /** Empty serializable shells. Actual identity is verified against writer-owned WeakMaps. */
-export interface ClimateAutomationScope { readonly toJSON: () => Readonly<Record<string, never>>; }
-export interface ClimateAutomationHandle { readonly toJSON: () => Readonly<Record<string, never>>; }
+export interface ClimateAutomationScope {
+	readonly toJSON: () => Readonly<Record<string, never>>;
+}
+export interface ClimateAutomationHandle {
+	readonly toJSON: () => Readonly<Record<string, never>>;
+}
 export type ClimateAutomationSelection = ClimateAutomationHandle | readonly ClimateAutomationHandle[];
 export type ClimateAutomationConflictReason = 'stale' | 'uninitialized' | 'unavailable' | 'invalid';
 export type ClimateAutomationCommittedOutcome =
-	| { readonly outcome: 'applied' | 'unchanged'; readonly items: readonly { readonly outcome: 'applied' | 'unchanged' }[] }
+	| {
+			readonly outcome: 'applied' | 'unchanged';
+			readonly items: readonly { readonly outcome: 'applied' | 'unchanged' }[];
+	  }
 	| { readonly outcome: 'conflict'; readonly reason: ClimateAutomationConflictReason };
 export type ClimateAutomationCommitOutcome = 'not_started' | 'rolled_back' | 'refused' | 'unknown' | 'committed';
 
 export class ClimateAutomationWriteError extends Error {
-	constructor(readonly commitOutcome: ClimateAutomationCommitOutcome, cause: unknown) {
+	constructor(
+		readonly commitOutcome: ClimateAutomationCommitOutcome,
+		cause: unknown,
+	) {
 		super('Private climate ownership operation failed', { cause });
 		this.name = 'ClimateAutomationWriteError';
 	}
