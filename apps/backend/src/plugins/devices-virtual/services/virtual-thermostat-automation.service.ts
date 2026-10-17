@@ -318,18 +318,22 @@ export function thermostatAutomationMutationIssues(value: unknown): readonly str
 			if (override.original_duration_ms !== undefined && (integer(override.original_duration_ms, 1) > 7 * 86400000)) issues.push('override_clock_shape');
 			check(override.setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints'); check(override.resolved_setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints'); }
 	}
-	const inspect = (input: unknown): void => {
-		if (Array.isArray(input)) { for (const item of input) inspect(item); return; }
-		if (!input || typeof input !== 'object') return;
-		for (const [key, entry] of Object.entries(object(input))) {
-			if ((key === 'revision' || key === 'controllerRevision') && entry === Number.MAX_SAFE_INTEGER) issues.push('increment_overflow');
-			inspect(entry);
-		}
+	// Only these persisted counters may require a future increment. Opaque JSON is data.
+	const counter = (value: unknown): void => {
+		if (integer(value, 1) === Number.MAX_SAFE_INTEGER) issues.push('increment_overflow');
 	};
-	inspect(captured);
+	const capturedEnvelope = object(captured);
+	if (Object.hasOwn(capturedEnvelope, 'controllerRevision')) counter(capturedEnvelope.controllerRevision);
+	for (const section of ['actuators', 'protections', 'coolingDependencies']) for (const row of list(configuration[section]).map(object)) counter(row.revision);
+	for (const baseline of [doc.legacyBaseline, comfort.configuration === null ? null : object(comfort.configuration).automation_baseline]) if (baseline !== null && baseline !== undefined) counter(object(baseline).revision);
+	if (comfort.configuration !== null) {
+		const override = object(comfort.configuration).temporary_override;
+		if (override !== null && override !== undefined) counter(object(override).revision);
+	}
 	const catalog = object(configuration.catalog);
 	check(catalog, ['ownedOutputIds', 'ownedChannelIds', 'edges', 'devices', 'channels', 'properties', 'producerFacts', 'missingPropertyIds', 'missingChannelIds', 'missingDeviceIds'], 'unknown_catalog');
 	const producers = object(catalog.producerFacts);
+	for (const section of ['dewConfigurations', 'transformConfigurations', 'aggregateConfigurations', 'groupConfigurations']) for (const row of list(producers[section]).map(object)) counter(row.revision);
 	if (Object.keys(producers).some((key) => !['dewConfigurations', 'dewSources', 'transformConfigurations', 'transformSources', 'aggregateConfigurations', 'aggregateInputs', 'groupConfigurations', 'groupMembers', 'groupBindings'].includes(key))) issues.push('unrepresented_producer');
 	const ownIds = list(catalog.ownedOutputIds).map(id);
 	const owner = list(catalog.devices).map(object).find((row) => row.id === doc.controllerId);

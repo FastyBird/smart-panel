@@ -338,4 +338,26 @@ describe('dormant C0 concrete persisted projection (actual writer/registry/SQLit
 		expect(thermostatAutomationMutationIssues(current)).not.toContain('source_scalar_domain');
 		expect(() => planThermostatAutomationGraph(current, current)).not.toThrow();
 	});
+
+	it('keeps persisted extension parameters.revision MAX as finite data rather than an incremented counter', async () => {
+		await database.manager.insert(VirtualTransformConfigEntity, { outputPropertyId: ids.temperature, schemaVersion: 1,
+			policy: { operator: VirtualNumericTransformOperator.EXTENSION, contractVersion: 1, operatorId: '@fixture/operator:offset', operatorVersion: 1, inputRange: { minimum: -40, maximum: 100 }, outputRange: { minimum: -50, maximum: 110 }, parameters: { revision: Number.MAX_SAFE_INTEGER } },
+			maximumAgeSeconds: 60, revision: 1, configuredAt: instant, quantity: 'temperature', unit: '°C' });
+		await database.manager.insert(VirtualTransformSourceEntity, { outputPropertyId: ids.temperature, sourcePropertyId: ids.humidity, sourcePropertyIdentity: ids.humidity, quantity: 'temperature', unit: '°C' });
+		const current = await image(), rows = array(rec(rec(rec(current.configuration).catalog).producerFacts).transformConfigurations).map(rec);
+		expect(rows).toHaveLength(1); expect(rows[0]?.revision).toBe(1);
+		expect(rec(rec(rows[0]?.policy).parameters).revision).toBe(Number.MAX_SAFE_INTEGER);
+		expect(thermostatAutomationMutationIssues(current)).not.toContain('increment_overflow');
+		expect(() => planThermostatAutomationGraph(current, current)).not.toThrow();
+	});
+	it('refuses increment-dependent planning for an actual persisted transform ROW revision MAX', async () => {
+		await database.manager.insert(VirtualTransformConfigEntity, { outputPropertyId: ids.temperature, schemaVersion: 1,
+			policy: { operator: VirtualNumericTransformOperator.EXTENSION, contractVersion: 1, operatorId: '@fixture/operator:offset', operatorVersion: 1, inputRange: { minimum: -40, maximum: 100 }, outputRange: { minimum: -50, maximum: 110 }, parameters: { revision: 1 } },
+			maximumAgeSeconds: 60, revision: Number.MAX_SAFE_INTEGER, configuredAt: instant, quantity: 'temperature', unit: '°C' });
+		await database.manager.insert(VirtualTransformSourceEntity, { outputPropertyId: ids.temperature, sourcePropertyId: ids.humidity, sourcePropertyIdentity: ids.humidity, quantity: 'temperature', unit: '°C' });
+		const current = await image(), rows = array(rec(rec(rec(current.configuration).catalog).producerFacts).transformConfigurations).map(rec);
+		expect(rows).toHaveLength(1); expect(rows[0]?.revision).toBe(Number.MAX_SAFE_INTEGER);
+		expect(thermostatAutomationMutationIssues(current)).toContain('increment_overflow');
+		expect(() => planThermostatAutomationGraph(current, current)).toThrow();
+	});
 });
