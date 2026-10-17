@@ -347,12 +347,16 @@ function manualCounter(value: unknown, minimum: number): number {
 	if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < minimum) return manualInvalid();
 	return value;
 }
+function manualUuid(value: string): void {
+	if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) manualInvalid();
+}
 /** One owned traversal; full membership and all twelve persisted columns are retained. */
 export function climateAutomationRetainedRecoveryRows(value: unknown, controllerId: string): readonly ClimateAutomationRetainedRecoveryRow[] {
 	const rows = manualRows(value).map((row): ClimateAutomationRetainedRecoveryRow => {
 		manualKeys(row, ['id', 'controllerId', 'claimId', 'physicalIdentity', 'previousPropertyIdentity', 'restoredPropertyId', 'actorId', 'reason', 'disconnectionAcknowledged', 'configurationRevision', 'claimRevision', 'createdAt']);
 		const { id, controllerId: owner, claimId, physicalIdentity, previousPropertyIdentity, restoredPropertyId, actorId, reason, disconnectionAcknowledged, createdAt } = row;
 		if (typeof id !== 'string' || typeof owner !== 'string' || owner !== controllerId || typeof claimId !== 'string' || typeof physicalIdentity !== 'string' || typeof previousPropertyIdentity !== 'string' || typeof restoredPropertyId !== 'string' || typeof actorId !== 'string' || typeof reason !== 'string' || typeof disconnectionAcknowledged !== 'boolean' || typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt)) || new Date(createdAt).toISOString() !== createdAt) return manualInvalid();
+		for (const identity of [id, claimId, restoredPropertyId]) manualUuid(identity);
 		return Object.freeze({ id, controllerId: owner, claimId, physicalIdentity, previousPropertyIdentity, restoredPropertyId, actorId, reason, disconnectionAcknowledged, configurationRevision: manualCounter(row.configurationRevision, 1), claimRevision: manualCounter(row.claimRevision, 1), createdAt });
 	});
 	rows.sort((a, b) => a.id.localeCompare(b.id));

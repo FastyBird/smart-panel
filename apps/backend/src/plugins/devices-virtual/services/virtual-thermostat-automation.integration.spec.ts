@@ -1437,6 +1437,28 @@ describe('dormant C1a atomic manual controller intents (actual same-manager CAS)
 		expect((await config()).comfort?.automation_baseline).toEqual(initial.automation_baseline);
 	});
 
+	it.each([
+		{ field: 'id', value: 'not-a-uuid' },
+		{ field: 'claimId', value: '' },
+		{ field: 'restoredPropertyId', value: 'invalid' },
+	])('refuses malformed persisted recovery $field at READ_BEFORE without changing any row', async ({ field, value }) => {
+		const row = { ...recovery(), [field]: value };
+		await database.manager.insert(VirtualThermostatRecoveryEntity, row);
+		expect(await database.manager.findOneByOrFail(VirtualThermostatRecoveryEntity, { id: row.id })).toMatchObject({ [field]: value });
+		const original = await whole();
+		expect(await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).toEqual({ outcome: 'conflict', reason: 'invalid' });
+		expect(historyReads).toBe(1); expect(validations).toBe(0); expect(applies).toBe(0);
+		expect(await whole()).toEqual(original);
+	});
+	it('preserves ordinary historical text with valid recovery UUID identities and MAX counters', async () => {
+		const row = { ...recovery(), actorId: 'operator account, not a UUID', physicalIdentity: 'retained physical: identity', reason: 'ordinary historical reason', previousPropertyIdentity: 'previous historical property text' };
+		await database.manager.insert(VirtualThermostatRecoveryEntity, row);
+		const original = (await whole()).recovery;
+		expect((await settings([{ propertyId: properties.heating_setpoint, value: 21 }])).outcome).toBe('applied');
+		expect(await database.manager.findOneByOrFail(VirtualThermostatRecoveryEntity, { id: row.id })).toEqual(row);
+		expect((await whole()).recovery).toEqual(original); expect(applies).toBe(1);
+	});
+
 });
 
 interface ManualNativeConnection {
