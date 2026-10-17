@@ -48,9 +48,8 @@ import { VirtualThermostatActuatorClaimEntity } from '../../src/plugins/devices-
 import { ThermostatInstalledQualification } from '../../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatTransportService } from '../../src/plugins/devices-virtual/services/virtual-thermostat-transport.service';
 
-const isWebSocketSendCallback = (
-	value: unknown,
-): value is NonNullable<Parameters<WebSocket['send']>[2]> => typeof value === 'function';
+const isWebSocketSendCallback = (value: unknown): value is NonNullable<Parameters<WebSocket['send']>[2]> =>
+	typeof value === 'function';
 
 /** Keep packet age independent of SQLite/host latency, while retaining real asynchronous scheduling. */
 export function useThermostatPacketClock(): () => void {
