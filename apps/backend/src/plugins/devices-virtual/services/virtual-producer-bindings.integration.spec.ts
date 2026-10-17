@@ -789,6 +789,31 @@ describe('virtual producer bindings with coordinated SQLite', () => {
 			return result;
 		};
 
+		it.each(['current-owner', 'independent-runtime'])(
+			'the retired same-key replacement cannot authorize a live %s slot',
+			async (incumbent) => {
+				const row = await property(), owned = owner(new EventEmitter2());
+				await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(true);
+				const a = admitted(owned, [row]);
+				expect(producers.installPreparedNoEvents(a.prepared)).toBe(true);
+				producers.closeObservedBatch(a.batch);
+				if (incumbent === 'independent-runtime') producers.register(row, 1);
+				const original = producers.read(row.id), counts = producers.readOwnedOperationCounts();
+				expect(producers.retiredSameKeyPropertyIds(owned)).toEqual([]);
+				expect(producers.retiredSameKeyPropertyIds(owned)).toEqual([]);
+				expect(producers.readOwnedOperationCounts()).toEqual(counts);
+				const batch = producers.beginObservedBatch(owned, [row.id], graph.captureOwnedPublicationLifecycle().guard);
+				expect(() => producers.prepareOwnedBatch(batch, { revision: 0, configurationRevisions: [], operations: [{
+					kind: 'replace-retired-unavailable', propertyId: row.id, property: row, revision: 1,
+					reason: 'runtime_unavailable', expected: producers.captureExpectedSlot(batch, row.id),
+				}] })).toThrow('Foreign retired producer replacement');
+				expect(producers.isObservedBatchCurrent(batch)).toBe(false);
+				expect(producers.read(row.id)).toEqual(original);
+				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
+			},
+		);
+
 		it('captures only pre-admitted expected slots, retains absent ABA while active and drops all observations', async () => {
 			const row = await property();
 			const owned = owner(new EventEmitter2());

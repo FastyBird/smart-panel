@@ -104,8 +104,9 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 				const properties = new Map(view.properties.map((property) => [property.id, property]));
 				const hints = new Map(view.configurationRevisions.map((row) => [row.propertyId, row.revision]));
 				const masks = new Map(before.quarantineLeases.map((row) => [row.propertyId, row.lease]));
-				const kinds = new Map<string, 'retain' | 'unavailable' | 'retire-alias-mask' | 'retire-deleted-owned-overlay'>();
+				const kinds = new Map<string, 'retain' | 'unavailable' | 'replace-retired-unavailable' | 'retire-alias-mask' | 'retire-deleted-owned-overlay'>();
 				const ownedIds = new Set(this.engine.ownedPropertyIds.call(this.producers, owner));
+				const retiredIds = new Set(this.engine.retiredSameKeyPropertyIds.call(this.producers, owner));
 				for (const id of ownedIds) {
 					if (!properties.has(id)) kinds.set(id, 'retire-deleted-owned-overlay');
 				}
@@ -116,6 +117,7 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 				}
 				for (const property of view.properties) {
 					if (view.quarantined.has(property.id)) kinds.set(property.id, 'unavailable');
+					else if (property.isDerived && retiredIds.has(property.id)) kinds.set(property.id, 'replace-retired-unavailable');
 					else if (property.isDerived && (ownedIds.has(property.id) || !this.producers.owns(property.id))) kinds.set(property.id, 'unavailable');
 				}
 				batch = this.engine.beginObservedBatch.call(this.producers, owner, [...kinds.keys()], lifecycle.guard);
@@ -131,6 +133,7 @@ export class VirtualProducerStateService implements OnModuleInit, OnModuleDestro
 					if (kind === 'retain' || kind === 'retire-deleted-owned-overlay') operations.push({ kind, propertyId, expected });
 					else if (!property) throw new Error('Missing owned producer property');
 					else if (kind === 'retire-alias-mask') operations.push({ kind, propertyId, expected, property });
+					else if (kind === 'replace-retired-unavailable') operations.push({ kind, propertyId, expected, property, revision: hints.get(propertyId) ?? 0, reason: 'runtime_unavailable' });
 					else operations.push({ kind, propertyId, expected, property, revision: hints.get(propertyId) ?? 0,
 						reason: view.quarantined.has(propertyId) ? 'graph_quarantined' : 'runtime_unavailable' });
 				}

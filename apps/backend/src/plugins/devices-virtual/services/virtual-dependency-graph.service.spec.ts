@@ -337,6 +337,112 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 		});
 
 		// R1 correction: real nonempty no-config catalog, never a fabricated ready guard.
+		// R2 correction: terminal A and fresh B share the SAME live registry and graph.
+		it('a new state owner replaces only retired same-key fallback with its own bootstrap and refresh generation', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const observations = jest.spyOn(producers, 'beginObservedBatch');
+			const a = new VirtualProducerStateService(database, producers, graph, events, config);
+			let b: VirtualProducerStateService | undefined;
+			try {
+				await a.onModuleInit(); await graph.onApplicationBootstrap();
+				const aGuard = observations.mock.calls.at(-1)?.[2];
+				if (!aGuard) throw new Error('Missing actual A guard');
+				expect(aGuard.isCurrent()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+				a.onModuleDestroy();
+				expect(aGuard.isCurrent()).toBe(false);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_validation_pending']);
+				b = new VirtualProducerStateService(database, producers, graph, events, config);
+				await b.onModuleInit();
+				const bInitialGuard = observations.mock.calls.at(-1)?.[2];
+				if (!bInitialGuard) throw new Error('Missing actual B initialization guard');
+				expect(bInitialGuard).not.toBe(aGuard);
+				expect(bInitialGuard.isCurrent()).toBe(false);
+				await graph.onApplicationBootstrap();
+				const bGuard = observations.mock.calls.at(-1)?.[2];
+				if (!bGuard) throw new Error('Missing actual B bootstrap guard');
+				expect(graph.isValidated()).toBe(true);
+				expect(aGuard.isCurrent()).toBe(false);
+				expect(bInitialGuard.isCurrent()).toBe(false);
+				expect(bGuard.isCurrent()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+				a.onModuleDestroy();
+				expect(bGuard.isCurrent()).toBe(true);
+				await graph.refreshQuarantine();
+				const refreshedGuard = observations.mock.calls.at(-1)?.[2];
+				if (!refreshedGuard) throw new Error('Missing actual successor refresh guard');
+				expect(graph.isValidated()).toBe(true);
+				expect(aGuard.isCurrent()).toBe(false);
+				expect(bInitialGuard.isCurrent()).toBe(false);
+				expect(bGuard.isCurrent()).toBe(false);
+				expect(refreshedGuard.isCurrent()).toBe(true);
+				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
+			} finally { a.onModuleDestroy(); b?.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('successor state initialization never replaces an independent runtime that replaced retired A', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const a = new VirtualProducerStateService(database, producers, graph, events, config);
+			let b: VirtualProducerStateService | undefined;
+			try {
+				await a.onModuleInit(); await graph.onApplicationBootstrap(); a.onModuleDestroy();
+				const runtime = producers.register(row, 1);
+				const epoch = producers.version(runtime), original = producers.read(row.id), notified = jest.fn();
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+				b = new VirtualProducerStateService(database, producers, graph, events, config);
+				await b.onModuleInit(); await graph.onApplicationBootstrap(); await graph.refreshQuarantine();
+				expect(graph.isValidated()).toBe(true);
+				expect(producers.isCurrent(runtime)).toBe(true);
+				expect(producers.isAvailable(runtime)).toBe(true);
+				expect(producers.version(runtime)).toBe(epoch);
+				expect(producers.read(row.id)).toEqual(original);
+				expect(notified).not.toHaveBeenCalled();
+			} finally { a.onModuleDestroy(); b?.onModuleDestroy(); producers.onModuleDestroy(); }
+		});
+
+		it('actual successor preparation refuses its retired-slot plan when independent runtime intervenes before install', async () => {
+			const row = await seedPublisherOutput();
+			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const a = new VirtualProducerStateService(database, producers, graph, events, config);
+			let b: VirtualProducerStateService | undefined, initialization: Promise<void> | undefined, observed: Promise<void> | undefined;
+			try {
+				await a.onModuleInit(); await graph.onApplicationBootstrap(); a.onModuleDestroy();
+				const entered = gate();
+				const methods: Readonly<{ prepareOwnedBatch: (...args: Parameters<PropertyProducerRegistryService['prepareOwnedBatch']>) => ReturnType<PropertyProducerRegistryService['prepareOwnedBatch']> }> = producers;
+				const originalPrepare = methods.prepareOwnedBatch;
+				let prepared: ReturnType<PropertyProducerRegistryService['prepareOwnedBatch']> | undefined;
+				const preparation = jest.spyOn(producers, 'prepareOwnedBatch').mockImplementation((...args) => {
+					prepared = originalPrepare.call(producers, ...args);
+					// Observe actual sync preparation. Its caller still awaits the real stage Promise.
+					entered.resolve();
+					return prepared;
+				});
+				const install = jest.spyOn(producers, 'installPreparedNoEvents');
+				b = new VirtualProducerStateService(database, producers, graph, events, config);
+				initialization = b.onModuleInit(); observed = initialization.catch(() => undefined);
+				await entered.promise;
+				if (!prepared) throw new Error('Missing actual prepared successor plan');
+				expect(preparation.mock.calls[0]?.[1].operations).toEqual(expect.arrayContaining([
+					expect.objectContaining({ kind: 'replace-retired-unavailable', propertyId: row.id }),
+				]));
+				expect(install).not.toHaveBeenCalled();
+				const runtime = producers.register(row, 1);
+				const epoch = producers.version(runtime), original = producers.read(row.id);
+				await initialization;
+				expect(install).not.toHaveBeenCalled();
+				expect(producers.validatePreparedBatch(prepared)).toBe(false);
+				expect(producers.installPreparedNoEvents(prepared)).toBe(false);
+				await graph.onApplicationBootstrap();
+				expect(graph.isValidated()).toBe(true);
+				expect(producers.isCurrent(runtime)).toBe(true);
+				expect(producers.isAvailable(runtime)).toBe(true);
+				expect(producers.version(runtime)).toBe(epoch);
+				expect(producers.read(row.id)).toEqual(original);
+			} finally { a.onModuleDestroy(); b?.onModuleDestroy(); await observed; producers.onModuleDestroy(); }
+		});
+
 		it('renews an owned unquarantined derived fallback for real bootstrap and each later ready generation', async () => {
 			const row = await seedPublisherOutput();
 			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
