@@ -196,5 +196,4 @@ describe('thermostat authoring payload', () => {
 		expect(result.request?.actuators[0]).not.toHaveProperty('cooling_protection');
 		expect(draft.actuators[0].cooling_protection).toBe(retainedDependency);
 	});
-
 });

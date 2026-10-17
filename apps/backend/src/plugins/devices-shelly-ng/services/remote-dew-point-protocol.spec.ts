@@ -1179,28 +1179,45 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 		component.sample();
 		const http = firmwareHttp(component);
 		const target = {
-			device: Object.assign(new ShellyNgDeviceEntity(), { canonicalMac: binding.deviceHardwareId, password: 'fixture-private' }),
+			device: Object.assign(new ShellyNgDeviceEntity(), {
+				canonicalMac: binding.deviceHardwareId,
+				password: 'fixture-private',
+			}),
 			channel: Object.assign(new ChannelEntity(), { identifier: 'switch:0' }),
 			property: Object.assign(new ChannelPropertyEntity(), {
-				id: 'retirement-relay', identifier: 'output', category: PropertyCategory.ON,
-				dataType: DataTypeType.BOOL, permissions: [PermissionType.READ_WRITE],
+				id: 'retirement-relay',
+				identifier: 'output',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
 			}),
 			value: true,
 		};
 		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
-			id: 'retirement-claim', controllerId: 'retirement-controller', revision: 1,
-			physicalIdentity: binding.physicalActuator, role: 'cooling', leaseSeconds: 5,
+			id: 'retirement-claim',
+			controllerId: 'retirement-controller',
+			revision: 1,
+			physicalIdentity: binding.physicalActuator,
+			role: 'cooling',
+			leaseSeconds: 5,
 		});
 		let accepted: ReturnType<PropertyValueService['readQualifiedSample']> = null;
 		let beforeWrite: (() => Promise<void>) | undefined;
 		const values = {
-			writeSampleWithState: async (...[property, value, evidence]: Parameters<PropertyValueService['writeSampleWithState']>) => {
+			writeSampleWithState: async (
+				...[property, value, evidence]: Parameters<PropertyValueService['writeSampleWithState']>
+			) => {
 				await beforeWrite?.();
 				if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false) return;
 				if (value === null) throw new Error('fixture OFF observation cannot be null');
 				accepted = {
-					propertyId: property.id, value, sampledAt: evidence.sampledAt, receivedAt: evidence.receivedAt,
-					provenance: 'live', quality: 'good', reasons: [],
+					propertyId: property.id,
+					value,
+					sampledAt: evidence.sampledAt,
+					receivedAt: evidence.receivedAt,
+					provenance: 'live',
+					quality: 'good',
+					reasons: [],
 				};
 			},
 			readQualifiedSample: () => accepted,
@@ -1208,17 +1225,41 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 		const expiresAt = Date.now() + 5000;
 		const adapter = new ThermostatRemoteCoolingAdapter(
 			values as unknown as PropertyValueService,
-			() => ({ threshold: 12, expiresAt, controllerRevision: 3, protectionFingerprint: binding.protectionFingerprint, isCurrent: () => true }),
+			() => ({
+				threshold: 12,
+				expiresAt,
+				controllerRevision: 3,
+				protectionFingerprint: binding.protectionFingerprint,
+				isCurrent: () => true,
+			}),
 			() => Promise.resolve({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
 			() => http,
 		);
 		const scope = {
-			controllerId: claim.controllerId, controllerRevision: 3, claimId: claim.id,
-			claimRevision: 1, contractFingerprint: 'retirement-contract', qualification: installed.qualification,
+			controllerId: claim.controllerId,
+			controllerRevision: 3,
+			claimId: claim.id,
+			claimRevision: 1,
+			contractFingerprint: 'retirement-contract',
+			qualification: installed.qualification,
 		};
 		const send = (id: string) => adapter.send(target, claim, installed.qualification, () => true, { commandId: id });
-		const reconcile = (ids: readonly string[]) => adapter.reconcile({ ...target, value: false }, ids, accepted, () => true, scope);
-		return { installed, component, http, target, claim, adapter, scope, send, reconcile, setBeforeWrite: (task: () => Promise<void>) => { beforeWrite = task; } };
+		const reconcile = (ids: readonly string[]) =>
+			adapter.reconcile({ ...target, value: false }, ids, accepted, () => true, scope);
+		return {
+			installed,
+			component,
+			http,
+			target,
+			claim,
+			adapter,
+			scope,
+			send,
+			reconcile,
+			setBeforeWrite: (task: () => Promise<void>) => {
+				beforeWrite = task;
+			},
+		};
 	}
 	it('allows more than256 completed drained cycles without increasing unresolved capacity', async () => {
 		const f = fixture();
@@ -1239,7 +1280,10 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 			f.component.sample();
 			expect((await f.send(`unresolved-${n}`)).outcome).toBe('accepted');
 		}
-		expect(await f.send('unresolved-257')).toMatchObject({ outcome: 'refused', reasons: ['cooling_pending_journal_capacity'] });
+		expect(await f.send('unresolved-257')).toMatchObject({
+			outcome: 'refused',
+			reasons: ['cooling_pending_journal_capacity'],
+		});
 	});
 	it('retires only the original covered and confirmed subset, idempotently, and keeps unknown IDs unqualified', async () => {
 		const f = fixture();
@@ -1304,13 +1348,19 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 		expect((await f.send('old-A')).outcome).toBe('accepted');
 		let enter: () => void = () => undefined;
 		let release: () => void = () => undefined;
-		const entered = new Promise<void>((resolve) => { enter = resolve; });
-		const held = new Promise<void>((resolve) => { release = resolve; });
-		const originalRequest = f.http.request.bind(f.http);
-		const request = jest.spyOn(f.http, 'request').mockImplementationOnce(async (...args) => {
+		const entered = new Promise<void>((resolve) => {
+			enter = resolve;
+		});
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const request = jest.spyOn(f.http, 'request');
+		const originalRequest = request.getMockImplementation();
+		if (!originalRequest) throw new Error('fixture original request missing');
+		request.mockImplementationOnce(async (...args) => {
 			enter();
 			await held;
-			return originalRequest(...args);
+			return Reflect.apply(originalRequest, f.http, args);
 		});
 		const pending = f.reconcile(['old-A']);
 		await entered;
@@ -1320,9 +1370,10 @@ describe('remote cooling confirmed-journal metadata retirement', () => {
 			};
 			const owner = internal.sessions.get(binding.physicalActuator);
 			internal.sessions.set(binding.physicalActuator, { ...owner, journals: new Set(['replacement']) });
-		} finally { release(); }
+		} finally {
+			release();
+		}
 		expect(await pending).toBeNull();
 		request.mockRestore();
 	});
-
 });

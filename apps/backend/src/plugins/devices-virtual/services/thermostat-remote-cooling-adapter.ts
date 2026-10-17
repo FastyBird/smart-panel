@@ -173,8 +173,7 @@ export class ThermostatRemoteCoolingAdapter implements ThermostatActuationAdapte
 		if (!owner || owner.session !== session) return null;
 		const coveredIds = Object.freeze([...commandIds]);
 		const originallyOwned = new Set(owner.journals);
-		const sameSession = () =>
-			this.sessions.get(qualification.physicalIdentity) === owner && owner.session === session;
+		const sameSession = () => this.sessions.get(qualification.physicalIdentity) === owner && owner.session === session;
 		const fence = await session.fence(
 			new RemoteDewPointDeadline(Date.now() + 3000),
 			() => sameSession() && isCurrent() && this.valid(target, qualification),
@@ -184,10 +183,7 @@ export class ThermostatRemoteCoolingAdapter implements ThermostatActuationAdapte
 		const installed = qualification.profile.remoteDewPoint.installation.restartDrainObservation;
 		// A live status cannot cover a journal from another process or an untracked native dispatch.
 		// Only the trusted installed native-completion + OFF-readback witness can cover those identities.
-		if (
-			coveredIds.length > 256 ||
-			coveredIds.some((id) => !owned.has(id) && !installed.coveredJournalIds.includes(id))
-		)
+		if (coveredIds.length > 256 || coveredIds.some((id) => !owned.has(id) && !installed.coveredJournalIds.includes(id)))
 			return null;
 		const sourceIsCurrent = () =>
 			sameSession() && qualification.machineLeaseIsCurrent?.() === true && this.valid(target, qualification);

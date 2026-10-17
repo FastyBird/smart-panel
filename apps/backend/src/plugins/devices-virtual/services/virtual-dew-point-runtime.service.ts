@@ -103,12 +103,15 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 					EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
 					EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
 				].includes(event);
-				const deviceEvent = [EventType.DEVICE_UPDATED, EventType.DEVICE_DELETED, EventType.DEVICE_CONNECTION_CHANGED].includes(event);
+				const deviceEvent = [
+					EventType.DEVICE_UPDATED,
+					EventType.DEVICE_DELETED,
+					EventType.DEVICE_CONNECTION_CHANGED,
+				].includes(event);
 				const id = payload?.propertyId ?? (deviceEvent ? (payload?.device?.id ?? payload?.id) : payload?.id);
 				if (sampleEvent) {
 					// A producer's own publication is not feedback to itself, but may feed another output.
-					for (const outputId of this.sourceOutputs.get(id) ?? [])
-						if (outputId !== id) this.requestOutput(outputId);
+					for (const outputId of this.sourceOutputs.get(id) ?? []) if (outputId !== id) this.requestOutput(outputId);
 					return;
 				}
 				this.structuralChange = {};
@@ -340,7 +343,10 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 				if (!channel?.id || !device?.id) return;
 				const owners = this.sourceOwners.get(property.id) ?? new Map<string, { deviceId: string; channelId: string }>();
 				const previous = owners.get(id);
-				if ((!previous || previous.channelId !== channel.id || previous.deviceId !== device.id) && discovery !== this.structuralChange) {
+				if (
+					(!previous || previous.channelId !== channel.id || previous.deviceId !== device.id) &&
+					discovery !== this.structuralChange
+				) {
 					uncertainOwner = true;
 					// A concurrent global request must not discard the discovery-window barrier.
 					// Keep it on this same live output even when this candidate's generation is stale.
@@ -351,7 +357,13 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			};
 			observe(property.id, property);
 			for (const row of rows) observe(row.sourcePropertyId ?? row.sourcePropertyIdentity);
-			const { result, samples, lineage, observedEvidence } = await this.snapshot(config, property, rows, output.barrier, observe);
+			const { result, samples, lineage, observedEvidence } = await this.snapshot(
+				config,
+				property,
+				rows,
+				output.barrier,
+				observe,
+			);
 			// Newly captured ancestry is already bounded/validated by PropertyValueService.
 			// Index every validated ancestor before publication can await; invalid branches never gain authority.
 			if (generation !== this.generation || !this.active) return;
@@ -374,7 +386,8 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			for (const id of ancestors) {
 				observe(id);
 				const ancestor = await this.dataSource.manager.findOne(ChannelPropertyEntity, {
-					where: { id }, relations: ['channel', 'channel.device'],
+					where: { id },
+					relations: ['channel', 'channel.device'],
 				});
 				observe(id, ancestor ?? undefined);
 			}

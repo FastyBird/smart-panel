@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { TransactionCommitEvent } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { ConfigService } from '@nestjs/config';
@@ -3299,9 +3300,19 @@ describe('virtual thermostat durable runtime', () => {
 		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(), controllerId, claimId: claim.id, claimRevision: claim.revision,
-			configurationRevision: 1, decisionRevision: 1, action: 'on', status: 'accepted',
-			preparedAt: new Date(), dispatchedAt: null, settledAt: null, proofId: null, fault: null,
+			id: uuid(),
+			controllerId,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: 1,
+			decisionRevision: 1,
+			action: 'on',
+			status: 'accepted',
+			preparedAt: new Date(),
+			dispatchedAt: null,
+			settledAt: null,
+			proofId: null,
+			fault: null,
 		});
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
 		const retire = jest.fn<void, [readonly string[]]>();
@@ -3310,7 +3321,10 @@ describe('virtual thermostat durable runtime', () => {
 		const subscriber = {
 			listenTo: () => VirtualThermostatBranchRuntimeEntity,
 			afterUpdate: () => {
-				if (rollback) { rollback = false; throw new Error('fixture settlement rollback'); }
+				if (rollback) {
+					rollback = false;
+					throw new Error('fixture settlement rollback');
+				}
 			},
 		};
 		database.subscribers.push(subscriber);
@@ -3322,9 +3336,13 @@ describe('virtual thermostat durable runtime', () => {
 			const context = await internal.load(controllerId);
 			await expect(internal.reconcile(context, claim)).rejects.toThrow('fixture settlement rollback');
 			expect(retire).not.toHaveBeenCalled();
-			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe('accepted');
+			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
+				'accepted',
+			);
 			await internal.reconcile(context, claim);
-			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe('confirmed');
+			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
+				'confirmed',
+			);
 			expect(retire).toHaveBeenCalledWith([command.id]);
 			expect(reconciledCommandIds.slice(-2)).toEqual([[command.id], [command.id]]);
 		} finally {
@@ -3336,12 +3354,24 @@ describe('virtual thermostat durable runtime', () => {
 		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(), controllerId, claimId: claim.id, claimRevision: claim.revision,
-			configurationRevision: 1, decisionRevision: 1, action: 'on', status: 'accepted',
-			preparedAt: new Date(), dispatchedAt: null, settledAt: null, proofId: null, fault: null,
+			id: uuid(),
+			controllerId,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			configurationRevision: 1,
+			decisionRevision: 1,
+			action: 'on',
+			status: 'accepted',
+			preparedAt: new Date(),
+			dispatchedAt: null,
+			settledAt: null,
+			proofId: null,
+			fault: null,
 		});
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		const retire = jest.fn(() => { throw new Error('optional metadata only'); });
+		const retire = jest.fn(() => {
+			throw new Error('optional metadata only');
+		});
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 		const internal = runtime as unknown as {
 			load(id: string): Promise<unknown>;
@@ -3349,7 +3379,9 @@ describe('virtual thermostat durable runtime', () => {
 		};
 		await internal.reconcile(await internal.load(controllerId), claim);
 		expect(retire).toHaveBeenCalledWith([command.id]);
-		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe('confirmed');
+		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
+			'confirmed',
+		);
 	});
 	it('uses the later cooling/member release barrier by default without changing heating or explicit zero', async () => {
 		await settle();
@@ -3388,7 +3420,8 @@ describe('virtual thermostat durable runtime', () => {
 		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 		await database.manager.update(VirtualThermostatActuatorClaimEntity, claim.id, { role: 'cooling' });
 		await database.manager.update(VirtualThermostatConfigEntity, controllerId, {
-			requestedMode: 'off', policy: { ...config.policy, heatingSetpoint: null, coolingSetpoint: 24 },
+			requestedMode: 'off',
+			policy: { ...config.policy, heatingSetpoint: null, coolingSetpoint: 24 },
 		});
 		const internal = runtime as unknown as {
 			coolingDependencies: { requiredReleaseAfter: () => number | null };
@@ -3402,7 +3435,9 @@ describe('virtual thermostat durable runtime', () => {
 		expect(oldProof).toBeDefined();
 		const before = proofCalls;
 		after = oldProof.observedAt;
-		expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId, status: 'accepted' })).toBe(0);
+		expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId, status: 'accepted' })).toBe(
+			0,
+		);
 		packetTick();
 		runtime.request(controllerId);
 		await settle();
@@ -3411,57 +3446,87 @@ describe('virtual thermostat durable runtime', () => {
 		expect(sentTargets.some((entry) => entry.on)).toBe(false);
 	});
 
-	it.each(['held acknowledgement', 'unknown acknowledgement'] as const)('waits for a known SQLite commit acknowledgement before retirement: %s', async (mode) => {
-		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		const command = database.manager.create(VirtualThermostatCommandEntity, {
-			id: uuid(), controllerId, claimId: claim.id, claimRevision: claim.revision,
-			configurationRevision: 1, decisionRevision: 1, action: 'on', status: 'accepted',
-			preparedAt: new Date(), dispatchedAt: null, settledAt: null, proofId: null, fault: null,
-		});
-		await database.manager.insert(VirtualThermostatCommandEntity, command);
-		const retire = jest.fn<void, [readonly string[]]>();
-		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
-		let enter: () => void = () => undefined;
-		let release: () => void = () => undefined;
-		const entered = new Promise<void>((resolve) => { enter = resolve; });
-		const held = new Promise<void>((resolve) => { release = resolve; });
-		let once = true;
-		const subscriber = {
-			afterTransactionCommit: async () => {
-				if (!once) return;
-				once = false;
-				enter();
-				await held;
-				if (mode === 'unknown acknowledgement') throw new Error('fixture lost commit acknowledgement');
-			},
-		};
-		database.subscribers.push(subscriber);
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
-		try {
-			const pending = internal.reconcile(await internal.load(controllerId), claim);
-			// Attach both outcomes before releasing the controlled commit gate.
-			const outcome = pending.then(() => null, (error: unknown) => error);
-			await entered;
-			expect(retire).not.toHaveBeenCalled();
-			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe('confirmed');
-			release();
-			const error = await outcome;
-			if (mode === 'held acknowledgement') {
-				expect(error).toBeNull();
-				expect(retire).toHaveBeenCalledWith([command.id]);
-			} else {
-				expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
+	it.each(['held acknowledgement', 'unknown acknowledgement'] as const)(
+		'waits for a known SQLite commit acknowledgement before retirement: %s',
+		async (mode) => {
+			await settle();
+			jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+			const command = database.manager.create(VirtualThermostatCommandEntity, {
+				id: uuid(),
+				controllerId,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: 1,
+				decisionRevision: 1,
+				action: 'on',
+				status: 'accepted',
+				preparedAt: new Date(),
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			});
+			await database.manager.insert(VirtualThermostatCommandEntity, command);
+			const retire = jest.fn<void, [readonly string[]]>();
+			proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+			let enter: () => void = () => undefined;
+			let rejectObservation: (error: unknown) => void = () => undefined;
+			let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
+			let release: () => void = () => undefined;
+			const entered = new Promise<void>((resolve, reject) => {
+				enter = resolve;
+				rejectObservation = reject;
+			});
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			let once = true;
+			const subscriber = {
+				afterTransactionCommit: async (event: TransactionCommitEvent) => {
+					if (!once) return;
+					once = false;
+					try {
+						committedStatus = (
+							await event.queryRunner.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })
+						).status;
+					} catch (error: unknown) {
+						rejectObservation(error);
+						throw error;
+					}
+					enter();
+					await held;
+					if (mode === 'unknown acknowledgement') throw new Error('fixture lost commit acknowledgement');
+				},
+			};
+			database.subscribers.push(subscriber);
+			const internal = runtime as unknown as {
+				load(id: string): Promise<unknown>;
+				reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
+			};
+			try {
+				const pending = internal.reconcile(await internal.load(controllerId), claim);
+				// Attach both outcomes before releasing the controlled commit gate.
+				const outcome: Promise<unknown> = pending.then<unknown, unknown>(
+					() => null,
+					(error: unknown) => error,
+				);
+				await entered;
 				expect(retire).not.toHaveBeenCalled();
+				expect(committedStatus).toBe('confirmed');
+				release();
+				const error = await outcome;
+				if (mode === 'held acknowledgement') {
+					expect(error).toBeNull();
+					expect(retire).toHaveBeenCalledWith([command.id]);
+				} else {
+					expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
+					expect(retire).not.toHaveBeenCalled();
+				}
+			} finally {
+				release();
+				database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
 			}
-		} finally {
-			release();
-			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
-		}
-	});
-
+		},
+	);
 });

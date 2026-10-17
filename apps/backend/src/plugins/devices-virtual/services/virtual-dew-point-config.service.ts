@@ -195,9 +195,10 @@ export class VirtualDewPointConfigService {
 			unit: '°C',
 			current_value: live ? (diagnostic?.value ?? null) : null,
 			quality: live ? (diagnostic?.quality ?? 'unavailable') : 'unavailable',
-			errors: diagnostic && (diagnostic.errors.length || (live && diagnostic.quality === 'good'))
-				? diagnostic.errors
-				: [live ? 'awaiting_fresh_inputs' : 'awaiting_fresh_inputs_after_save'],
+			errors:
+				diagnostic && (diagnostic.errors.length || (live && diagnostic.quality === 'good'))
+					? diagnostic.errors
+					: [live ? 'awaiting_fresh_inputs' : 'awaiting_fresh_inputs_after_save'],
 			expires_at: diagnostic?.expiresAt?.toISOString() ?? null,
 			sources: sources.map((s) => ({
 				role: s.role,

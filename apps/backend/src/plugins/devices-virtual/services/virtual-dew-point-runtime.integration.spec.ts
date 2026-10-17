@@ -304,17 +304,33 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		{ live: true, quality: 'unavailable' as const, errors: [], expected: ['awaiting_fresh_inputs'] },
 		{ live: true, quality: 'unavailable' as const, errors: ['dry_bulb:quality'], expected: ['dry_bulb:quality'] },
 		{ live: false, quality: 'good' as const, errors: [], expected: ['awaiting_fresh_inputs_after_save'] },
-		{ live: false, quality: 'unavailable' as const, errors: ['relative_humidity:missing'], expected: ['relative_humidity:missing'] },
-	])('keeps live=$live diagnostic quality=$quality context without promoting inspection', async ({ live, quality, errors, expected }) => {
-		await configs.configure(output.id, await dto());
-		const config = await database.manager.findOneByOrFail(VirtualDewPointConfigEntity, { outputPropertyId: output.id });
-		const diagnostic = { value: quality === 'good' ? 9 : null, quality, errors, expiresAt: new Date(base + 10000), sources: {} };
-		jest.spyOn(runtime, 'readDiagnostics').mockReturnValue(diagnostic);
-		const result = configs.describe(config, [], await graph.revision(), live, diagnostic);
-		expect(result.errors).toEqual(expected);
-		expect(result.quality).toBe(live ? quality : 'unavailable');
-		if (!live) expect(result.current_value).toBeNull();
-	});
+		{
+			live: false,
+			quality: 'unavailable' as const,
+			errors: ['relative_humidity:missing'],
+			expected: ['relative_humidity:missing'],
+		},
+	])(
+		'keeps live=$live diagnostic quality=$quality context without promoting inspection',
+		async ({ live, quality, errors, expected }) => {
+			await configs.configure(output.id, await dto());
+			const config = await database.manager.findOneByOrFail(VirtualDewPointConfigEntity, {
+				outputPropertyId: output.id,
+			});
+			const diagnostic = {
+				value: quality === 'good' ? 9 : null,
+				quality,
+				errors,
+				expiresAt: new Date(base + 10000),
+				sources: {},
+			};
+			jest.spyOn(runtime, 'readDiagnostics').mockReturnValue(diagnostic);
+			const result = configs.describe(config, [], await graph.revision(), live, diagnostic);
+			expect(result.errors).toEqual(expected);
+			expect(result.quality).toBe(live ? quality : 'unavailable');
+			if (!live) expect(result.current_value).toBeNull();
+		},
+	);
 
 	it('does not revoke a known dew point for unrelated samples or owner connection chatter', async () => {
 		await configs.configure(output.id, await dto());
@@ -323,54 +339,81 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		const evidence = values.captureIncorporatedSample(output);
 		const publication = producers.read(output.id);
 		for (let n = 0; n < 32; n++) {
-			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: 'unrelated', sample: { provenance: 'live' } });
+			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, {
+				propertyId: 'unrelated',
+				sample: { provenance: 'live' },
+			});
 			events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: 'unrelated-owner' } });
-			events.emit(EventType.CHANNEL_UPDATED, { id: 'unrelated-channel', device: { id: ((temperature.channel as ChannelEntity).device as DeviceEntity).id } });
+			events.emit(EventType.CHANNEL_UPDATED, {
+				id: 'unrelated-channel',
+				device: { id: ((temperature.channel as ChannelEntity).device as DeviceEntity).id },
+			});
 		}
 		await runtime.flush();
 		expect(values.captureIncorporatedSample(output)).toEqual(evidence);
 		expect(producers.read(output.id)).toEqual(publication);
 		expect((await configs.get(output.id)).quality).toBe('good');
 	});
-	it.each(['relevant', 'unrelated'] as const)('requires BOTH reports if %s reconnect overlaps first owner discovery, then retains the known index', async (kind) => {
-		let enter: () => void = () => undefined;
-		let release: () => void = () => undefined;
-		const entered = new Promise<void>((resolve) => { enter = resolve; });
-		const held = new Promise<void>((resolve) => { release = resolve; });
-		const original = database.manager.findOne.bind(database.manager);
-		let once = true;
-		const lookup = jest.spyOn(database.manager, 'findOne').mockImplementation(async (entity, options) => {
-			const result = await original(entity, options);
-			if (once && entity === ChannelPropertyEntity && result?.id === temperature.id) {
-				once = false;
-				enter();
-				await held;
+	it.each(['relevant', 'unrelated'] as const)(
+		'requires BOTH reports if %s reconnect overlaps first owner discovery, then retains the known index',
+		async (kind) => {
+			let enter: () => void = () => undefined;
+			let release: () => void = () => undefined;
+			const entered = new Promise<void>((resolve) => {
+				enter = resolve;
+			});
+			const held = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const lookup = jest.spyOn(database.manager, 'findOne');
+			const original = lookup.getMockImplementation();
+			if (!original) throw new Error('fixture original findOne missing');
+			let once = true;
+			lookup.mockImplementation(async (entity, options) => {
+				const result = await Reflect.apply(original, database.manager, [entity, options]);
+				const id: unknown = result?.id;
+				if (once && entity === ChannelPropertyEntity && id === temperature.id) {
+					once = false;
+					enter();
+					await held;
+				}
+				return result;
+			});
+			const pending = configs.configure(output.id, await dto());
+			try {
+				await entered;
+				await values.writeSampleWithState(temperature, 20, {
+					sampledAt: new Date(),
+					receivedAt: new Date(),
+					provenance: 'live',
+				});
+				await values.writeSampleWithState(humidity, 50, {
+					sampledAt: new Date(),
+					receivedAt: new Date(),
+					provenance: 'live',
+				});
+				const device = (temperature.channel as ChannelEntity).device as DeviceEntity;
+				events.emit(EventType.DEVICE_CONNECTION_CHANGED, {
+					device: { id: kind === 'relevant' ? device.id : 'unrelated-owner' },
+				});
+			} finally {
+				release();
+				await pending;
+				lookup.mockRestore();
 			}
-			return result;
-		});
-		const pending = configs.configure(output.id, await dto());
-		try {
-			await entered;
-			await values.writeSampleWithState(temperature, 20, { sampledAt: new Date(), receivedAt: new Date(), provenance: 'live' });
-			await values.writeSampleWithState(humidity, 50, { sampledAt: new Date(), receivedAt: new Date(), provenance: 'live' });
-			const device = (temperature.channel as ChannelEntity).device as DeviceEntity;
-			events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: kind === 'relevant' ? device.id : 'unrelated-owner' } });
-		} finally {
-			release();
-			await pending;
-			lookup.mockRestore();
-		}
-		await runtime.flush();
-		expect(values.readQualifiedSample(output, 10000)).toBeNull();
-		await report(temperature, 20);
-		expect(values.readQualifiedSample(output, 10000)).toBeNull();
-		await report(humidity, 50);
-		expect((await configs.get(output.id)).quality).toBe('good');
-		const evidence = values.captureIncorporatedSample(output);
-		for (let n = 0; n < 32; n++) events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: 'unrelated-owner' } });
-		await runtime.flush();
-		expect(values.captureIncorporatedSample(output)).toEqual(evidence);
-	});
+			await runtime.flush();
+			expect(values.readQualifiedSample(output, 10000)).toBeNull();
+			await report(temperature, 20);
+			expect(values.readQualifiedSample(output, 10000)).toBeNull();
+			await report(humidity, 50);
+			expect((await configs.get(output.id)).quality).toBe('good');
+			const evidence = values.captureIncorporatedSample(output);
+			for (let n = 0; n < 32; n++)
+				events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: 'unrelated-owner' } });
+			await runtime.flush();
+			expect(values.captureIncorporatedSample(output)).toEqual(evidence);
+		},
+	);
 	it('an input event for output A cannot cancel an independent output B while B publication awaits', async () => {
 		await configs.configure(output.id, await dto());
 		await report(temperature, 20);
@@ -384,21 +427,41 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		await report(rh2, 55);
 		let enter: () => void = () => undefined;
 		let release: () => void = () => undefined;
-		const entered = new Promise<void>((resolve) => { enter = resolve; });
-		const held = new Promise<void>((resolve) => { release = resolve; });
-		const original = values.publishDerived.bind(values);
-		let once = true;
-		const publish = jest.spyOn(values, 'publishDerived').mockImplementation(async (...args) => {
-			if (once && args[0].id === b.id) { once = false; enter(); await held; }
-			return original(...args);
+		const entered = new Promise<void>((resolve) => {
+			enter = resolve;
 		});
-		const write = values.writeSampleWithState(t2, 23, { sampledAt: new Date(), receivedAt: new Date(), provenance: 'live' });
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const publish = jest.spyOn(values, 'publishDerived');
+		const original = publish.getMockImplementation();
+		if (!original) throw new Error('fixture original publishDerived missing');
+		let once = true;
+		publish.mockImplementation(async (...args) => {
+			if (once && args[0].id === b.id) {
+				once = false;
+				enter();
+				await held;
+			}
+			return Reflect.apply(original, values, args);
+		});
+		const write = values.writeSampleWithState(t2, 23, {
+			sampledAt: new Date(),
+			receivedAt: new Date(),
+			provenance: 'live',
+		});
 		await write;
 		await entered;
 		try {
-			await values.writeSampleWithState(temperature, 21, { sampledAt: new Date(), receivedAt: new Date(), provenance: 'live' });
+			await values.writeSampleWithState(temperature, 21, {
+				sampledAt: new Date(),
+				receivedAt: new Date(),
+				provenance: 'live',
+			});
 			for (let n = 0; n < 32; n++) events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: 'unrelated' });
-		} finally { release(); }
+		} finally {
+			release();
+		}
 		await runtime.flush();
 		expect((await configs.get(b.id)).quality).toBe('good');
 		expect(values.readQualifiedSample(b, 10000)?.value).toBeCloseTo(calculateDewPoint(23, 55), 8);
@@ -423,30 +486,54 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 	});
 
 	it('keeps recursive ancestor owner events relevant and refuses cached ancestor recovery', async () => {
-		const derived = await measurement(ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, true) as VirtualChannelPropertyEntity;
+		const derived = (await measurement(
+			ChannelCategory.TEMPERATURE,
+			PropertyCategory.TEMPERATURE,
+			true,
+		)) as VirtualChannelPropertyEntity;
 		await graph.refreshQuarantine();
 		await configs.configure(output.id, await dto(0, derived.id, humidity.id));
-		const upstream = producers.register(derived, 1, { isCurrent: graph.capturePublishGuard() });
+		const upstream = producers.register(derived, 1, {
+			isCurrent: graph.capturePublishGuard(),
+			reason: 'graph_validation_pending',
+		});
 		const publishUpstream = async () => {
 			const leaf = values.captureIncorporatedSample(temperature);
 			if (!leaf) throw new Error('fixture missing original physical acceptance');
-			await values.publishDerived(derived, upstream, 20, {
-				quality: 'good', reasons: [], sampledAt: new Date(base), evaluatedAt: new Date(),
-				expiresAt: new Date(base + 10000), sourceSamples: [leaf],
-			}, producers.beginEvaluation(upstream));
+			await values.publishDerived(
+				derived,
+				upstream,
+				20,
+				{
+					quality: 'good',
+					reasons: [],
+					sampledAt: new Date(base),
+					evaluatedAt: new Date(),
+					expiresAt: new Date(base + 10000),
+					sourceSamples: [leaf],
+				},
+				producers.beginEvaluation(upstream),
+			);
 			await runtime.flush();
 		};
 		await report(temperature, 20);
 		await report(humidity, 50);
 		let enter: () => void = () => undefined;
 		let release: () => void = () => undefined;
-		const entered = new Promise<void>((resolve) => { enter = resolve; });
-		const held = new Promise<void>((resolve) => { release = resolve; });
-		const originalLookup = database.manager.findOne.bind(database.manager);
+		const entered = new Promise<void>((resolve) => {
+			enter = resolve;
+		});
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const lookup = jest.spyOn(database.manager, 'findOne');
+		const originalLookup = lookup.getMockImplementation();
+		if (!originalLookup) throw new Error('fixture original ancestor findOne missing');
 		let once = true;
-		const lookup = jest.spyOn(database.manager, 'findOne').mockImplementation(async (entity, options) => {
-			const result = await originalLookup(entity, options);
-			if (once && entity === ChannelPropertyEntity && result?.id === temperature.id) {
+		lookup.mockImplementation(async (entity, options) => {
+			const result = await Reflect.apply(originalLookup, database.manager, [entity, options]);
+			const id: unknown = result?.id;
+			if (once && entity === ChannelPropertyEntity && id === temperature.id) {
 				once = false;
 				enter();
 				await held;
@@ -460,7 +547,9 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 			events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: leafDevice.id } });
 			// A graph-validation/global request cannot erase the first-owner freshness barrier.
 			runtime.requestRecompute();
-		} finally { release(); }
+		} finally {
+			release();
+		}
 		await firstDiscovery;
 		lookup.mockRestore();
 		expect(values.readQualifiedSample(output, 10000)).toBeNull();
@@ -512,5 +601,4 @@ describe('dedicated dew point SQLite persistence and live authority', () => {
 		expect(result.quality).toBe('unavailable');
 		expect(result.errors).toEqual([live ? 'awaiting_fresh_inputs' : 'awaiting_fresh_inputs_after_save']);
 	});
-
 });

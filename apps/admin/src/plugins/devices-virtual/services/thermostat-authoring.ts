@@ -254,9 +254,7 @@ export const buildThermostatRequest = (
 				source_property: member.source_property,
 				lease_seconds: member.lease_seconds,
 				...(member.protection ? { protection: member.protection } : {}),
-				...(policy.cooling && member.role === 'cooling' && member.cooling_protection
-					? { cooling_protection: member.cooling_protection }
-					: {}),
+				...(policy.cooling && member.role === 'cooling' && member.cooling_protection ? { cooling_protection: member.cooling_protection } : {}),
 			})) as ThermostatActuator[],
 			settings: draft.settings,
 		},
