@@ -27,6 +27,15 @@ class VirtualThermostatComfort extends StatefulWidget {
       _VirtualThermostatComfortState();
 }
 
+// One owner per showMenu Future; never borrow the replacement controller's route.
+class _ComfortMenuRoute {
+  final Map<String, dynamic> intent;
+  ModalRoute<String>? route;
+  NavigatorState? navigator;
+  bool retired = false, dismissalScheduled = false;
+  _ComfortMenuRoute(this.intent);
+}
+
 class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
   static const event = 'DevicesVirtualPlugin.Thermostat.RuntimeChanged';
   Map<String, dynamic>? _snapshot;
@@ -36,6 +45,7 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
   int _generation = 0, _operation = 0, _minimumRevision = 0, _ticks = 0;
   String? _expiredHint;
   Map<String, dynamic>? _selectionIntent;
+  _ComfortMenuRoute? _selectionMenu;
   Timer? _timer;
   CancelToken? _readToken;
   SocketService? _socket;
@@ -92,6 +102,7 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
   void didUpdateWidget(covariant VirtualThermostatComfort oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.deviceId != widget.deviceId) {
+      final oldMenu = _selectionMenu;
       _intentEpoch++;
       _generation++;
       _operation++;
@@ -105,6 +116,8 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
       _selectionIntent = null;
       _error = null;
       _readError = null;
+      _selectionMenu = null;
+      if (oldMenu != null) _retireMenu(oldMenu);
       unawaited(_read());
     } else if (oldWidget.revision != widget.revision ||
         oldWidget.disabled != widget.disabled) {
@@ -118,6 +131,9 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
 
   @override
   void dispose() {
+    final oldMenu = _selectionMenu;
+    _selectionMenu = null;
+    if (oldMenu != null) _retireMenu(oldMenu);
     _readToken?.cancel('comfort disposed');
     _generation++;
     _operation++;
@@ -277,6 +293,41 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
     }
   }
 
+  void _retireMenu(_ComfortMenuRoute owner) {
+    owner.retired = true;
+    final route = owner.route;
+    final navigator = owner.navigator;
+    if (route == null || navigator == null || owner.dismissalScheduled) return;
+    owner.dismissalScheduled = true;
+    // didUpdateWidget/menu builders can run while Navigator is locked. Remove
+    // this exact route after the frame, even if an unrelated route is above it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      owner.dismissalScheduled = false;
+      if (!navigator.mounted ||
+          !identical(route.navigator, navigator) ||
+          !route.isActive) return;
+      navigator.removeRoute<String>(route);
+    });
+  }
+
+  Widget _menuLabel(_ComfortMenuRoute owner, String label) => Builder(
+    builder: (menuContext) {
+      final route = ModalRoute.of<String>(menuContext);
+      if (owner.route == null && route != null) {
+        owner.route = route;
+        owner.navigator = route.navigator;
+      }
+      // A switch can precede the popup's first build. Capture only that old
+      // popup, then honor its retirement without touching the current owner.
+      if (owner.retired || !mounted ||
+          !identical(owner.intent, _selectionIntent) ||
+          owner.intent['controller'] != widget.deviceId) {
+        _retireMenu(owner);
+      }
+      return Text(label);
+    },
+  );
+
   Future<void> _openSelection(
     BuildContext buttonContext,
     String selected,
@@ -291,6 +342,8 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
     };
     _editing = true;
     _selectionIntent = intent;
+    final owner = _ComfortMenuRoute(intent);
+    _selectionMenu = owner;
     // Own the route future so rebuilds cannot replace either its opening token
     // or its cancellation callback (PopupMenuButton uses its latest callbacks).
     final button = buttonContext.findRenderObject()! as RenderBox;
@@ -314,19 +367,20 @@ class _VirtualThermostatComfortState extends State<VirtualThermostatComfort> {
         items: [
           PopupMenuItem(
             value: 'manual',
-            child: Text(l.thermostatComfortManual),
+            child: _menuLabel(owner, l.thermostatComfortManual),
           ),
           for (final preset in presets)
             if (preset['preset'] is String)
               PopupMenuItem(
                 value: preset['preset'] as String,
-                child: Text(_presetLabel(preset['preset'] as String)),
+                child: _menuLabel(owner, _presetLabel(preset['preset'] as String)),
               ),
         ],
       );
       if (!mounted) return;
       if (value != null) await _select(value, intent);
     } finally {
+      if (identical(owner, _selectionMenu)) _selectionMenu = null;
       if (identical(intent, _selectionIntent)) {
         _editing = false;
         _selectionIntent = null;

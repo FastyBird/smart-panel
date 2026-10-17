@@ -662,7 +662,7 @@ void main() {
   ) async {
     await open(tester);
     await tap(tester, 'comfort-selection');
-    // Preserve the Navigator and its open popup while replacing the underlying controller.
+    // Preserve the Navigator while replacing the underlying controller.
     state['controller'] = 'b';
     await tester.pumpWidget(
       MaterialApp(
@@ -683,8 +683,7 @@ void main() {
           .onPressed,
       isNotNull,
     );
-    await tester.tap(find.text('Eco').last);
-    await tester.pumpAndSettle();
+    expect(find.byType(PopupMenuItem<String>), findsNothing);
     expect(writes, isEmpty);
     expect(paths, hasLength(reads));
     expect(
@@ -700,18 +699,135 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('replacement before popup first frame retires only that late menu', (tester) async {
+    final routes = ComfortRoutes();
+    await open(tester, routes: routes);
+    tester.widget<TextButton>(find.byKey(const ValueKey('comfort-selection'))).onPressed!();
+    final oldRoute = routes.popup!;
+    state['controller'] = 'b';
+    await open(tester, id: 'b', routes: routes);
+    expect(oldRoute.isActive, isFalse);
+    expect(find.byType(PopupMenuItem<String>), findsNothing);
+    expect(writes, isEmpty);
+    final reads = paths.length;
+    await tap(tester, 'comfort-selection');
+    final replacementRoute = routes.popup!;
+    expect(identical(oldRoute, replacementRoute), isFalse);
+    await tester.pump();
+    expect(replacementRoute.isActive, isTrue);
+    expect(paths, hasLength(reads));
+    await tester.tap(find.text('Eco').last);
+    await tester.pumpAndSettle();
+    expect(writes, hasLength(1));
+    expect(paths.where((path) => path.endsWith('/b/comfort/selection')), hasLength(1));
+    expect(writes.single['expected_revision'], 4);
+    expect(writes.single['expected_graph_revision'], 9);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('retiring a preset route does not pop an unrelated dialog above it', (tester) async {
+    final routes = ComfortRoutes();
+    await open(tester, routes: routes);
+    await tap(tester, 'comfort-selection');
+    final oldRoute = routes.popup!;
+    final navigator = oldRoute.navigator!;
+    final dialog = showDialog<void>(
+      context: tester.element(find.byType(VirtualThermostatComfort)),
+      builder: (context) => const AlertDialog(content: Text('Unrelated dialog')),
+    );
+    await tester.pumpAndSettle();
+    state['controller'] = 'b';
+    await open(tester, id: 'b', routes: routes);
+    expect(oldRoute.isActive, isFalse);
+    expect(find.text('Unrelated dialog'), findsOneWidget);
+    expect(writes, isEmpty);
+    final reads = paths.length;
+    navigator.pop();
+    await dialog;
+    await tester.pumpAndSettle();
+    expect(paths, hasLength(reads));
+    expect(find.byType(PopupMenuItem<String>), findsNothing);
+    await tap(tester, 'comfort-selection');
+    expect(find.widgetWithText(PopupMenuItem<String>, 'Eco'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('late old capture cannot remove a replacement menu above another route', (tester) async {
+    final routes = ComfortRoutes();
+    await open(tester, routes: routes);
+    tester.widget<TextButton>(find.byKey(const ValueKey('comfort-selection'))).onPressed!();
+    final oldRoute = routes.popup!;
+    final navigator = oldRoute.navigator!;
+    // Keep the old popup unbuilt beneath an opaque public route until B is ready.
+    final coveringRoute = MaterialPageRoute<void>(
+      builder: (context) => const Scaffold(body: Text('Covering page')),
+    );
+    navigator.push<void>(coveringRoute);
+    await tester.pumpAndSettle();
+    state['controller'] = 'b';
+    await open(tester, id: 'b', routes: routes);
+    final button = tester.widget<TextButton>(find.byKey(
+      const ValueKey('comfort-selection'), skipOffstage: false,
+    ));
+    expect(button.onPressed, isNotNull);
+    button.onPressed!();
+    final replacementRoute = routes.popup!;
+    navigator.removeRoute<void>(coveringRoute);
+    await tester.pumpAndSettle();
+    expect(oldRoute.isActive, isFalse);
+    expect(replacementRoute.isActive, isTrue);
+    expect(find.widgetWithText(PopupMenuItem<String>, 'Eco'), findsOneWidget);
+    final reads = paths.length;
+    await tester.pump(const Duration(seconds: 5));
+    expect(paths, hasLength(reads));
+    expect(writes, isEmpty);
+    await tester.tap(find.text('Eco').last);
+    await tester.pumpAndSettle();
+    expect(writes, hasLength(1));
+    expect(paths.where((path) => path.endsWith('/b/comfort/selection')), hasLength(1));
+    expect(writes.single['expected_revision'], 4);
+    expect(writes.single['expected_graph_revision'], 9);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   for (final editor in ['menu', 'dialog']) {
     testWidgets(
       'retired popup result cannot clear a replacement controller $editor',
       (tester) async {
         final routes = ComfortRoutes();
-        await open(tester, routes: routes);
+        late Route<String> oldRoute;
+        late NavigatorState oldNavigator;
+        var completionQueued = false;
+        Future<void> mount(String id) async {
+          await tester.pumpWidget(MaterialApp(
+            navigatorObservers: [routes],
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(body: Builder(builder: (context) {
+              if (id == 'b' && !completionQueued) {
+                completionQueued = true;
+                // Registered before the child's didUpdateWidget queues cleanup:
+                // complete the real old Future after its authority retires.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  oldNavigator.removeRoute<String>(oldRoute, 'eco');
+                });
+              }
+              return SingleChildScrollView(child: VirtualThermostatComfort(
+                deviceId: id, onChanged: () {},
+              ));
+            })),
+          ));
+          await tester.pumpAndSettle();
+        }
+        await mount('a');
         await tap(tester, 'comfort-selection');
-        final oldRoute = routes.popup!;
+        oldRoute = routes.popup!;
+        oldNavigator = oldRoute.navigator!;
         state['controller'] = 'b';
-        await open(tester, id: 'b', routes: routes);
-        // Open the real replacement editor while the old popup future is unresolved.
-        // Calling its actual button callback models programmatic navigation above that route.
+        await mount('b');
+        expect(writes, isEmpty);
+        expect(find.textContaining('Request failed; reload before retrying'), findsNothing);
+        // The old completion and its queued cleanup must leave B's editor alone.
         tester
             .widget<TextButton>(
               find.byKey(
@@ -723,8 +839,7 @@ void main() {
             .onPressed!();
         await tester.pumpAndSettle();
         final reads = paths.length;
-        oldRoute.navigator!.removeRoute<String>(oldRoute, 'eco');
-        await tester.pumpAndSettle();
+        await tester.pump();
         expect(paths, hasLength(reads));
         expect(writes, isEmpty);
         expect(

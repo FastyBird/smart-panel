@@ -1584,15 +1584,16 @@ void sameIdMappedViewLifecycleTests() {
       expect(find.text('Ambient: 19.5 °C'), findsNothing);
       expect(find.text('Controller readiness: ready'), findsNothing);
       final readsBefore = h.detailGets;
-      await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Eco'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(PopupMenuItem<String>), findsNothing);
       expect(h.writes, isEmpty);
       expect(h.detailGets, readsBefore);
       expect(find.text('Heating target: 21.0 °C'), findsNothing);
       h.completeHeld();
       await h.flush(tester);
       expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+      await h.tap(tester, 'comfort-selection');
+      expect(find.widgetWithText(PopupMenuItem<String>, 'Eco'), findsOneWidget);
+      expect(h.writes, isEmpty);
     },
   );
 }
