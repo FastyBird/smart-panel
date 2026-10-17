@@ -21,6 +21,8 @@ import { VirtualAggregateConfigEntity, VirtualAggregateInputEntity, VirtualAggre
 import { ThermostatActuatorRole, VirtualThermostatActuatorClaimEntity, VirtualThermostatConfigEntity, VirtualThermostatSettingEntity, VirtualThermostatSourceEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
+import { VirtualNumericTransformConfig, VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
+
 import {
 	THERMOSTAT_AUTOMATION_COLUMNS, ThermostatAutomationRows, VirtualThermostatAutomationService,
 	classifyThermostatAutomationImages, planThermostatAutomationGraph, thermostatAutomationImage,
@@ -293,5 +295,47 @@ describe('dormant C0 concrete persisted projection (actual writer/registry/SQLit
 		array(catalog(raw).edges).splice(0); expect(plan.beforeEdges).toHaveLength(1); expect(Object.isFrozen(raw)).toBe(false);
 		await expect(participant.normalizeInManager(database.manager, { toJSON: () => ({}) }, 'replace-comfort:v1', {}, current)).rejects.toThrow(/deliberately/);
 		await expect(participant.applyInManager(database.manager, { toJSON: () => ({}) }, current, current)).rejects.toThrow(/deliberately/);
+	});
+
+	it.each(['owned', 'referenced'])('preserves persisted %s transform parameters.revision as structural input', async (kind) => {
+		const outputPropertyId = kind === 'owned' ? ids.output : ids.temperature;
+		await database.manager.update(VirtualChannelPropertyEntity, { id: outputPropertyId }, { valueOrigin: VirtualValueOrigin.DERIVED, sourcePropertyId: null });
+		const policy: VirtualNumericTransformConfig = { operator: VirtualNumericTransformOperator.EXTENSION, contractVersion: 1, operatorId: '@fixture/operator:offset', operatorVersion: 1,
+			inputRange: { minimum: -40, maximum: 100 }, outputRange: { minimum: -50, maximum: 110 }, parameters: { revision: 1 } };
+		// Persisted numeric extension contract only; no operator execution, registration or availability claim.
+		await database.manager.insert(VirtualTransformConfigEntity, { outputPropertyId, schemaVersion: 1, policy, maximumAgeSeconds: 60, revision: 1, configuredAt: instant, quantity: 'temperature', unit: '°C' });
+		await database.manager.insert(VirtualTransformSourceEntity, { outputPropertyId, sourcePropertyId: ids.humidity, sourcePropertyIdentity: ids.humidity, quantity: 'temperature', unit: '°C' });
+		const before = await image();
+		await database.query('UPDATE devices_virtual_transform_configs SET policy=? WHERE outputPropertyId=?', [JSON.stringify({ ...policy, parameters: { revision: 2 } }), outputPropertyId]);
+		const after = await image();
+		expect(classifyThermostatAutomationImages(before, after)).toMatchObject({ exactFenceEqual: false, structuralChanged: true, semanticEqual: false });
+		expect(thermostatAutomationMutationIssues(before)).toEqual([]); expect(thermostatAutomationMutationIssues(after)).toEqual([]);
+		const facts = rec(rec(after.configuration).catalog).producerFacts;
+		const transform = array(rec(facts).transformConfigurations).map(rec).find((row) => row.outputPropertyId === outputPropertyId);
+		if (!transform) throw new Error('Missing fresh persisted transform');
+		expect(transform.revision).toBe(1); expect(rec(rec(transform.policy).parameters).revision).toBe(2);
+	});
+	it('fences only the top-level generated transform revision without structural churn', async () => {
+		await database.manager.insert(VirtualTransformConfigEntity, { outputPropertyId: ids.temperature, schemaVersion: 1,
+			policy: { operator: VirtualNumericTransformOperator.EXTENSION, contractVersion: 1, operatorId: '@fixture/operator:offset', operatorVersion: 1, inputRange: { minimum: -40, maximum: 100 }, outputRange: { minimum: -50, maximum: 110 }, parameters: { revision: 1 } },
+			maximumAgeSeconds: 60, revision: 1, configuredAt: instant, quantity: 'temperature', unit: '°C' });
+		await database.manager.insert(VirtualTransformSourceEntity, { outputPropertyId: ids.temperature, sourcePropertyId: ids.humidity, sourcePropertyIdentity: ids.humidity, quantity: 'temperature', unit: '°C' });
+		const before = await image(); await database.manager.update(VirtualTransformConfigEntity, { outputPropertyId: ids.temperature }, { revision: 2 }); const after = await image();
+		expect(classifyThermostatAutomationImages(before, after)).toMatchObject({ exactFenceEqual: false, structuralChanged: false, semanticEqual: true });
+	});
+	it.each(['openValue', 'closedValue'])('fences malformed persisted %s but refuses mutation planning', async (column) => {
+		await database.query('UPDATE devices_virtual_thermostat_sources SET "' + column + '"=? WHERE controllerId=? AND role=?', [JSON.stringify({ future: 1 }), ids.controller, 'contact']);
+		const current = await image(), source = array(rec(current.configuration).sources).map(rec).find((row) => row.role === 'contact');
+		if (!source) throw new Error('Missing fresh persisted contact source');
+		expect(source[column]).toEqual({ future: 1 }); expect(thermostatAutomationMutationIssues(current)).toContain('source_scalar_domain');
+		expect(() => planThermostatAutomationGraph(current, current)).toThrow();
+	});
+	it.each([null, 'open', 2.5, true, false])('retains valid persisted source scalar %s as plan-eligible representation', async (scalar) => {
+		await database.query('UPDATE devices_virtual_thermostat_sources SET openValue=?, closedValue=? WHERE controllerId=? AND role=?', [JSON.stringify(scalar), JSON.stringify(scalar), ids.controller, 'contact']);
+		const current = await image(), source = array(rec(current.configuration).sources).map(rec).find((row) => row.role === 'contact');
+		if (!source) throw new Error('Missing fresh persisted contact source');
+		expect(source.openValue).toEqual(scalar); expect(source.closedValue).toEqual(scalar);
+		expect(thermostatAutomationMutationIssues(current)).not.toContain('source_scalar_domain');
+		expect(() => planThermostatAutomationGraph(current, current)).not.toThrow();
 	});
 });

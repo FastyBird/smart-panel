@@ -143,25 +143,28 @@ const without = (row: JsonObject, keys: readonly string[]): JsonObject => {
 	for (const key of Object.keys(row)) if (!keys.includes(key)) Object.defineProperty(result, key, { value: row[key], enumerable: true });
 	return Object.freeze(result);
 };
-/** Semantic projection is descriptive only; excluded generated facts REMAIN in the full fence. */
-function semantic(value: ClimateAutomationJson): ClimateAutomationJson {
-	if (Array.isArray(value)) return value.map((entry: ClimateAutomationJson) => semantic(entry));
-	if (value === null || typeof value !== 'object') return value;
-	const row = object(value), result: Record<string, ClimateAutomationJson> = {};
-	for (const key of Object.keys(row)) if (!['revision', 'configuredAt', 'createdAt', 'updatedAt', 'qualificationGeneration', 'releaseEvidence', 'releasedAt', 'releaseRequestedAt', 'name', 'description'].includes(key)) Object.defineProperty(result, key, { value: semantic(own(row[key])), enumerable: true });
-	return Object.freeze(result);
-}
-
+/** Only mapped ROW fields are descriptive/generated. Nested policy JSON is never stripped. */
+const SEMANTIC_ROW_EXCLUSIONS: Partial<Record<TableName, readonly string[]>> = {
+	actuators: ['revision', 'qualificationGeneration', 'releaseEvidence', 'releasedAt', 'releaseRequestedAt'],
+	protections: ['revision'], cooling: ['revision'],
+	dewConfigurations: ['revision', 'configuredAt'], transformConfigurations: ['revision', 'configuredAt'],
+	aggregateConfigurations: ['revision'], groupConfigurations: ['revision'],
+};
 function derivedStructural(configuration: ClimateAutomationJson): ClimateAutomationJson {
 	const section = object(configuration), config = object(section.config), catalog = object(section.catalog);
-	const rowSet = (value: unknown) => sorted(list(value).map((row) => semantic(own(row))));
-	const producerSets: Record<string, ClimateAutomationJson> = {};
-	for (const [key, value] of Object.entries(object(catalog.producerFacts))) Object.defineProperty(producerSets, key, { value: rowSet(value), enumerable: true });
-	const catalogMeaning = { ...jsonRecord(catalog), devices: rowSet(catalog.devices), channels: rowSet(catalog.channels), properties: rowSet(catalog.properties), producerFacts: producerSets };
-	return semantic(own({ owner: list(catalog.devices).map(object).find((row) => row.id === config.controllerId) ?? null,
+	const rowSet = (value: unknown, exclusions: readonly string[] = []) => sorted(list(value).map((row) => without(jsonRecord(row), exclusions)));
+	const producerSets: Record<string, ClimateAutomationJson> = { ...jsonRecord(catalog.producerFacts) };
+	for (const key of ['dewConfigurations', 'dewSources', 'transformConfigurations', 'transformSources', 'aggregateConfigurations', 'aggregateInputs', 'groupConfigurations', 'groupMembers', 'groupBindings']) {
+		const exclusions = key === 'dewConfigurations' || key === 'transformConfigurations' ? ['revision', 'configuredAt'] : key === 'aggregateConfigurations' || key === 'groupConfigurations' ? ['revision'] : [];
+		Object.defineProperty(producerSets, key, { value: rowSet(object(catalog.producerFacts)[key], exclusions), enumerable: true });
+	}
+	const displayFields = ['createdAt', 'updatedAt', 'name', 'description'];
+	const devices = rowSet(catalog.devices, displayFields);
+	const catalogMeaning = { ...jsonRecord(catalog), devices, channels: rowSet(catalog.channels, displayFields), properties: rowSet(catalog.properties, displayFields), producerFacts: producerSets };
+	return own({ owner: devices.map(object).find((row) => row.id === config.controllerId) ?? null,
 		config: without(jsonRecord(config), ['displayFloorClaimId', 'configuredAt', 'releaseRequestedAt']),
-		policySafety: section.policySafety, sources: rowSet(section.sources), actuators: rowSet(section.actuators), settings: rowSet(section.settings),
-		protections: rowSet(section.protections), coolingDependencies: rowSet(section.coolingDependencies), heuristic: config.heuristic, catalog: catalogMeaning }));
+		policySafety: section.policySafety, sources: rowSet(section.sources), actuators: rowSet(section.actuators, SEMANTIC_ROW_EXCLUSIONS.actuators), settings: rowSet(section.settings),
+		protections: rowSet(section.protections, SEMANTIC_ROW_EXCLUSIONS.protections), coolingDependencies: rowSet(section.coolingDependencies, SEMANTIC_ROW_EXCLUSIONS.cooling), heuristic: config.heuristic, catalog: catalogMeaning });
 }
 function jsonRecord(value: unknown): JsonObject {
 	const result: Record<string, ClimateAutomationJson> = {};
@@ -275,6 +278,10 @@ function document(value: unknown): ClimateAutomationParticipantDocument {
 export function thermostatAutomationMutationIssues(value: unknown): readonly string[] {
 	const captured = own(value), doc = document(captured), configuration = object(doc.configuration), comfort = object(doc.comfort), issues: string[] = [];
 	if (configuration.projectionVersion !== 1) issues.push('projection_version');
+	for (const source of list(configuration.sources).map(object)) for (const key of ['openValue', 'closedValue']) {
+		const scalar = source[key];
+		if (scalar !== null && typeof scalar !== 'string' && typeof scalar !== 'boolean' && !(typeof scalar === 'number' && Number.isFinite(scalar))) issues.push('source_scalar_domain');
+	}
 	if (!equal(doc.structural, derivedStructural(doc.configuration))) issues.push('structural_projection');
 	if (!['off', 'heat', 'cool', 'auto'].includes(text(comfort.requestedMode)) || typeof comfort.locked !== 'boolean') issues.push('manual_shape');
 	const check = (input: unknown, keys: readonly string[], name: string): void => {
