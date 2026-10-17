@@ -927,7 +927,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		requiredAfter?: number,
 	): boolean {
 		const proof = this.reconciled.get(`${claim.id}:${claim.revision}`);
-		const after = requiredAfter ?? this.memberProtection.requiredReleaseAfter(context.memberBindings);
+		const member = this.memberProtection.requiredReleaseAfter(context.memberBindings);
+		const cooling =
+			claim.role === 'cooling' ? this.coolingDependencies.requiredReleaseAfter(context.coolingBindings) : null;
+		const after = requiredAfter ?? (member === null ? cooling : cooling === null ? member : Math.max(member, cooling));
 		const evidence = this.evidence(context, claim, Date.now());
 		const target = context.targets.get(claim.id);
 		return (
@@ -1288,6 +1291,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				}),
 		);
 		if (!settled) return;
+		// The transaction has acknowledged these exact IDs as confirmed. Later authority or
+		// reservation-release failure must not retain already committed provider metadata.
+		try {
+			proof.retireConfirmedCommandIds?.([...settled.currentIds]);
+		} catch {
+			// Optional provider bookkeeping cannot change the committed primary outcome.
+		}
 		Object.assign(branch, settled.branch);
 		for (const command of context.commands)
 			if (settled.currentIds.has(command.id) && unresolved(command)) {

@@ -172,4 +172,29 @@ describe('thermostat authoring payload', () => {
 		draft.actuators[0].cooling_protection.maximum_age_seconds = 30;
 		expect(buildThermostatRequest(draft, 1, 2).request?.policy.cooling?.absoluteMinimumC).toBe(8);
 	});
+	it('omits a stale cooling dependency after switching its policy off without erasing the repair draft', () => {
+		const draft = coolingDraft();
+		const retainedDependency = dependencies();
+		draft.actuators[0].cooling_protection = retainedDependency;
+		draft.policy.cooling = null;
+		const result = buildThermostatRequest(draft, 7, 12);
+		expect(result.errors).toEqual([]);
+		expect(result.request?.actuators[0]).not.toHaveProperty('cooling_protection');
+		expect(draft.actuators[0].cooling_protection).toBe(retainedDependency);
+		expect(result.request?.expected_revision).toBe(7);
+		expect(result.request?.expected_graph_revision).toBe(12);
+	});
+	it('does not send a retained cooling dependency for a member changed to heating', () => {
+		const draft = coolingDraft();
+		const retainedDependency = dependencies();
+		draft.actuators[0].cooling_protection = retainedDependency;
+		draft.actuators[0].role = ActuatorRole.heating;
+		draft.policy.heatingSetpoint = 21;
+		draft.policy.coolingSetpoint = null;
+		const result = buildThermostatRequest(draft, 7, 12);
+		expect(result.errors).toEqual([]);
+		expect(result.request?.actuators[0]).not.toHaveProperty('cooling_protection');
+		expect(draft.actuators[0].cooling_protection).toBe(retainedDependency);
+	});
+
 });

@@ -90,6 +90,8 @@ export interface ThermostatReleaseOrderingEvidence<Qualification> {
 	/** Provider barrier includes all earlier transport aliases and commands, including pre-claim ordinary writers. */
 	readonly externalWriterBarrier: true;
 	readonly offSample: QualifiedPropertySample;
+	/** Metadata retirement only after the caller has committed these exact journal identities as confirmed. */
+	readonly retireConfirmedCommandIds?: (ids: readonly string[]) => void;
 }
 export interface ThermostatActuationAdapter<Qualification> {
 	readonly contractVersion: 1;

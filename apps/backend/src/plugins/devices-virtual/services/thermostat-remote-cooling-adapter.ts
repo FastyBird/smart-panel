@@ -169,21 +169,28 @@ export class ThermostatRemoteCoolingAdapter implements ThermostatActuationAdapte
 		const qualification = scope.qualification,
 			session = this.session(target, qualification);
 		if (!session) return null;
+		const owner = this.sessions.get(qualification.physicalIdentity);
+		if (!owner || owner.session !== session) return null;
+		const coveredIds = Object.freeze([...commandIds]);
+		const originallyOwned = new Set(owner.journals);
+		const sameSession = () =>
+			this.sessions.get(qualification.physicalIdentity) === owner && owner.session === session;
 		const fence = await session.fence(
 			new RemoteDewPointDeadline(Date.now() + 3000),
-			() => isCurrent() && this.valid(target, qualification),
+			() => sameSession() && isCurrent() && this.valid(target, qualification),
 		);
-		if (!fence || !isCurrent() || !this.valid(target, qualification)) return null;
-		const owned = this.sessions.get(qualification.physicalIdentity)?.journals;
+		if (!fence || !sameSession() || !isCurrent() || !this.valid(target, qualification)) return null;
+		const owned = owner.journals;
 		const installed = qualification.profile.remoteDewPoint.installation.restartDrainObservation;
 		// A live status cannot cover a journal from another process or an untracked native dispatch.
 		// Only the trusted installed native-completion + OFF-readback witness can cover those identities.
 		if (
-			commandIds.length > 256 ||
-			commandIds.some((id) => !owned?.has(id) && !installed.coveredJournalIds.includes(id))
+			coveredIds.length > 256 ||
+			coveredIds.some((id) => !owned.has(id) && !installed.coveredJournalIds.includes(id))
 		)
 			return null;
-		const sourceIsCurrent = () => qualification.machineLeaseIsCurrent?.() === true && this.valid(target, qualification);
+		const sourceIsCurrent = () =>
+			sameSession() && qualification.machineLeaseIsCurrent?.() === true && this.valid(target, qualification);
 		await this.values.writeSampleWithState(target.property, false, {
 			sampledAt: fence.observedAt,
 			receivedAt: fence.receivedAt,
@@ -206,7 +213,12 @@ export class ThermostatRemoteCoolingAdapter implements ThermostatActuationAdapte
 			proofId: randomUUID(),
 			physicalIdentity: qualification.physicalIdentity,
 			connectionIdentity: `${qualification.physicalIdentity}:${fence.status.epoch}`,
-			coveredCommandIds: [...commandIds],
+			coveredCommandIds: [...coveredIds],
+			retireConfirmedCommandIds: (ids: readonly string[]): void => {
+				// Keep failed/unknown settlement recognizable. Never recapture a replacement owner.
+				if (!sameSession()) return;
+				for (const id of ids) if (coveredIds.includes(id) && originallyOwned.has(id)) owned.delete(id);
+			},
 			externalWriterBarrier: true as const,
 			offSample: sample,
 			observedAt: fence.observedAt,

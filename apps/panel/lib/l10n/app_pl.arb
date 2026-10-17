@@ -1481,5 +1481,5 @@
   "dewPointCooling": "Ochrona chłodzenia przed kondensacją",
   "dewPointSurface": "UUID lokalnej sondy chłodzonej powierzchni",
   "dewPointSurfaceTemperature": "Temperatura chłodzonej powierzchni (°C)",
-  "dewPointInstallation": "Zainstalowane chłodzenie pozostaje niedopuszczone do kwalifikacji powierzchni, uwierzytelniania, czasu, izolacji zapisu i wyłączenia po restarcie po wersji alfa."
+  "dewPointInstallation": "Zainstalowane chłodzenie pozostaje niedopuszczone do czasu kwalifikacji powierzchni, uwierzytelniania, synchronizacji czasowej, izolacji zapisu i opróżnienia po restarcie po wersji alfa."
 }

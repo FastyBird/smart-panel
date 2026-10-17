@@ -1170,3 +1170,159 @@ describe('actual runtime journal dispatch to remote provider continuity', () => 
 		}
 	});
 });
+
+describe('remote cooling confirmed-journal metadata retirement', () => {
+	function fixture() {
+		const installed = installedFixture();
+		const component = firmware();
+		component.drain();
+		component.sample();
+		const http = firmwareHttp(component);
+		const target = {
+			device: Object.assign(new ShellyNgDeviceEntity(), { canonicalMac: binding.deviceHardwareId, password: 'fixture-private' }),
+			channel: Object.assign(new ChannelEntity(), { identifier: 'switch:0' }),
+			property: Object.assign(new ChannelPropertyEntity(), {
+				id: 'retirement-relay', identifier: 'output', category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL, permissions: [PermissionType.READ_WRITE],
+			}),
+			value: true,
+		};
+		const claim = Object.assign(new VirtualThermostatActuatorClaimEntity(), {
+			id: 'retirement-claim', controllerId: 'retirement-controller', revision: 1,
+			physicalIdentity: binding.physicalActuator, role: 'cooling', leaseSeconds: 5,
+		});
+		let accepted: ReturnType<PropertyValueService['readQualifiedSample']> = null;
+		let beforeWrite: (() => Promise<void>) | undefined;
+		const values = {
+			writeSampleWithState: async (...[property, value, evidence]: Parameters<PropertyValueService['writeSampleWithState']>) => {
+				await beforeWrite?.();
+				if (evidence.isCurrent?.() === false || evidence.sourceIsCurrent?.() === false) return;
+				if (value === null) throw new Error('fixture OFF observation cannot be null');
+				accepted = {
+					propertyId: property.id, value, sampledAt: evidence.sampledAt, receivedAt: evidence.receivedAt,
+					provenance: 'live', quality: 'good', reasons: [],
+				};
+			},
+			readQualifiedSample: () => accepted,
+		};
+		const expiresAt = Date.now() + 5000;
+		const adapter = new ThermostatRemoteCoolingAdapter(
+			values as unknown as PropertyValueService,
+			() => ({ threshold: 12, expiresAt, controllerRevision: 3, protectionFingerprint: binding.protectionFingerprint, isCurrent: () => true }),
+			() => Promise.resolve({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false }),
+			() => http,
+		);
+		const scope = {
+			controllerId: claim.controllerId, controllerRevision: 3, claimId: claim.id,
+			claimRevision: 1, contractFingerprint: 'retirement-contract', qualification: installed.qualification,
+		};
+		const send = (id: string) => adapter.send(target, claim, installed.qualification, () => true, { commandId: id });
+		const reconcile = (ids: readonly string[]) => adapter.reconcile({ ...target, value: false }, ids, accepted, () => true, scope);
+		return { installed, component, http, target, claim, adapter, scope, send, reconcile, setBeforeWrite: (task: () => Promise<void>) => { beforeWrite = task; } };
+	}
+	it('allows more than256 completed drained cycles without increasing unresolved capacity', async () => {
+		const f = fixture();
+		for (let n = 0; n < 257; n++) {
+			f.component.sample();
+			const id = `confirmed-cycle-${n}`;
+			expect((await f.send(id)).outcome).toBe('accepted');
+			const proof = await f.reconcile([id]);
+			expect(proof).not.toBeNull();
+			// The adapter capability represents already committed confirmation in this isolated provider test.
+			// Actual SQLite commit/rollback ordering is covered in the runtime suite.
+			proof.retireConfirmedCommandIds([id]);
+		}
+	});
+	it('retains256 unresolved identities and refuses a257th without silently retiring any', async () => {
+		const f = fixture();
+		for (let n = 0; n < 256; n++) {
+			f.component.sample();
+			expect((await f.send(`unresolved-${n}`)).outcome).toBe('accepted');
+		}
+		expect(await f.send('unresolved-257')).toMatchObject({ outcome: 'refused', reasons: ['cooling_pending_journal_capacity'] });
+	});
+	it('retires only the original covered and confirmed subset, idempotently, and keeps unknown IDs unqualified', async () => {
+		const f = fixture();
+		expect((await f.send('covered')).outcome).toBe('accepted');
+		expect((await f.send('unrelated')).outcome).toBe('accepted');
+		const requested = ['covered'];
+		const proof = await f.reconcile(requested);
+		expect(proof).not.toBeNull();
+		requested.push('unrelated');
+		expect(proof.coveredCommandIds).toEqual(['covered']);
+		proof.retireConfirmedCommandIds(['covered', 'unrelated', 'external']);
+		proof.retireConfirmedCommandIds(['covered']);
+		expect(await f.reconcile(['covered'])).toBeNull();
+		expect(await f.reconcile(['external'])).toBeNull();
+		expect(await f.reconcile(['unrelated'])).not.toBeNull();
+	});
+	it('retains an owned pending identity when a returned proof has not been acknowledged as DB confirmed', async () => {
+		const f = fixture();
+		expect((await f.send('pending')).outcome).toBe('accepted');
+		expect(await f.reconcile(['pending'])).not.toBeNull();
+		// No callback: the runtime may have rolled back or lost commit acknowledgement.
+		const retry = await f.reconcile(['pending']);
+		expect(retry).not.toBeNull();
+		expect(retry.coveredCommandIds).toEqual(['pending']);
+	});
+	it('does not reuse a proof or delete replacement owner metadata after A-B-A-shaped session replacement', async () => {
+		const f = fixture();
+		expect((await f.send('old-A')).outcome).toBe('accepted');
+		const proof = await f.reconcile(['old-A']);
+		expect(proof).not.toBeNull();
+		const internal = f.adapter as unknown as {
+			sessions: Map<string, { session: RemoteDewPointSession; journals: Set<string> }>;
+		};
+		const original = internal.sessions.get(binding.physicalActuator);
+		const replacement = { ...original, journals: new Set(['old-A', 'new-B']) };
+		internal.sessions.set(binding.physicalActuator, replacement);
+		proof.retireConfirmedCommandIds(['old-A']);
+		expect(replacement.journals).toEqual(new Set(['old-A', 'new-B']));
+		expect(proof.isCurrent()).toBe(false);
+		const newA = { ...original, journals: new Set(['old-A']) };
+		internal.sessions.set(binding.physicalActuator, newA);
+		expect(proof.isCurrent()).toBe(false);
+		proof.retireConfirmedCommandIds(['old-A']);
+		expect(newA.journals.has('old-A')).toBe(true);
+	});
+	it('rejects a fence candidate if its original owner is replaced during the sample write await', async () => {
+		const f = fixture();
+		expect((await f.send('old-A')).outcome).toBe('accepted');
+		const internal = f.adapter as unknown as {
+			sessions: Map<string, { session: RemoteDewPointSession; journals: Set<string> }>;
+		};
+		f.setBeforeWrite(() => {
+			const owner = internal.sessions.get(binding.physicalActuator);
+			internal.sessions.set(binding.physicalActuator, { ...owner, journals: new Set(['replacement']) });
+			return Promise.resolve();
+		});
+		expect(await f.reconcile(['old-A'])).toBeNull();
+		expect(internal.sessions.get(binding.physicalActuator).journals.has('replacement')).toBe(true);
+	});
+	it('rejects the original fence when its owner is replaced while status I/O is held', async () => {
+		const f = fixture();
+		expect((await f.send('old-A')).outcome).toBe('accepted');
+		let enter: () => void = () => undefined;
+		let release: () => void = () => undefined;
+		const entered = new Promise<void>((resolve) => { enter = resolve; });
+		const held = new Promise<void>((resolve) => { release = resolve; });
+		const originalRequest = f.http.request.bind(f.http);
+		const request = jest.spyOn(f.http, 'request').mockImplementationOnce(async (...args) => {
+			enter();
+			await held;
+			return originalRequest(...args);
+		});
+		const pending = f.reconcile(['old-A']);
+		await entered;
+		try {
+			const internal = f.adapter as unknown as {
+				sessions: Map<string, { session: RemoteDewPointSession; journals: Set<string> }>;
+			};
+			const owner = internal.sessions.get(binding.physicalActuator);
+			internal.sessions.set(binding.physicalActuator, { ...owner, journals: new Set(['replacement']) });
+		} finally { release(); }
+		expect(await pending).toBeNull();
+		request.mockRestore();
+	});
+
+});

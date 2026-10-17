@@ -61,6 +61,13 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 		{ property: VirtualChannelPropertyEntity; lease: PropertyProducerLease; revision: number; barrier: number }
 	>();
 	private readonly barriers = new Map<string, number>();
+	private readonly dirty = new Set<string>();
+	private readonly sourceOutputs = new Map<string, Set<string>>();
+	private readonly outputSources = new Map<string, Set<string>>();
+	private readonly sourceLineages = new Map<string, Map<string, ReadonlySet<string>>>();
+	private readonly sourceOwners = new Map<string, Map<string, { deviceId: string; channelId: string }>>();
+	// Only structural/owner events change this token; it is not a publication identity.
+	private structuralChange: object = {};
 	private readonly diagnostics = new Map<string, DewPointDiagnostic>();
 
 	constructor(
@@ -90,19 +97,39 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			EventType.DEVICE_CONNECTION_CHANGED,
 			EventType.MODULE_RESET,
 		]) {
-			const listener = (payload: { id?: string; propertyId?: string }) => {
-				const id = payload?.propertyId ?? payload?.id;
-				if (event === EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED && this.outputs.has(id)) return;
-				// Structural/reconnect changes require new reports from both inputs. Never promote cache/history.
-				if (
-					![
-						EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
-						EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
-						EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
-					].includes(event)
-				)
+			const listener = (payload: { id?: string; propertyId?: string; device?: { id?: string } }) => {
+				const sampleEvent = [
+					EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
+					EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED,
+					EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
+				].includes(event);
+				const deviceEvent = [EventType.DEVICE_UPDATED, EventType.DEVICE_DELETED, EventType.DEVICE_CONNECTION_CHANGED].includes(event);
+				const id = payload?.propertyId ?? (deviceEvent ? (payload?.device?.id ?? payload?.id) : payload?.id);
+				if (sampleEvent) {
+					// A producer's own publication is not feedback to itself, but may feed another output.
+					for (const outputId of this.sourceOutputs.get(id) ?? [])
+						if (outputId !== id) this.requestOutput(outputId);
+					return;
+				}
+				this.structuralChange = {};
+				if (event === EventType.MODULE_RESET) {
 					for (const outputId of this.outputs.keys()) this.requireFreshInputs(outputId);
-				this.requestRecompute();
+					this.requestRecompute();
+					return;
+				}
+				const affected = new Set(this.sourceOutputs.get(id) ?? []);
+				for (const [outputId, owners] of this.sourceOwners)
+					if (Array.from(owners.values()).some((owner) => owner.deviceId === id || owner.channelId === id))
+						affected.add(outputId);
+				for (const [outputId, output] of this.outputs) {
+					const channel = output.property.channel as ChannelEntity;
+					if (outputId === id || channel?.id === id || (channel?.device as DeviceEntity)?.id === id)
+						affected.add(outputId);
+				}
+				for (const outputId of affected) {
+					this.requireFreshInputs(outputId);
+					this.requestOutput(outputId);
+				}
 			};
 			this.events.on(event, listener);
 			this.stops.push(() => this.events.off(event, listener));
@@ -133,10 +160,22 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 		this.outputs.clear();
 		this.barriers.clear();
 		this.diagnostics.clear();
+		this.dirty.clear();
+		this.sourceOutputs.clear();
+		this.outputSources.clear();
+		this.sourceLineages.clear();
+		this.sourceOwners.clear();
 	}
 
 	activate(property: VirtualChannelPropertyEntity, revision: number): void {
+		const previous = this.outputs.get(property.id);
 		this.requireFreshInputs(property.id);
+		if (previous && previous.revision !== revision) {
+			// A committed binding replacement already fenced its old lease before discarding old edges.
+			this.pruneSources(property.id, new Set());
+			this.sourceLineages.delete(property.id);
+			this.sourceOwners.delete(property.id);
+		}
 		this.outputs.set(property.id, {
 			property,
 			revision,
@@ -174,14 +213,49 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 	requestRecompute(): void {
 		if (!this.active) return;
 		this.generation++;
-		// Fences pending historical writes immediately, before any asynchronous metadata read.
-		for (const output of this.outputs.values()) this.producers.beginEvaluation(output.lease);
+		for (const id of this.outputs.keys()) this.markDirty(id);
+		this.startDrain();
+	}
+
+	private markDirty(id: string): void {
+		this.dirty.add(id);
+		const output = this.outputs.get(id);
+		if (output) this.producers.beginEvaluation(output.lease);
+	}
+
+	private requestOutput(id: string): void {
+		if (!this.active) return;
+		this.markDirty(id);
+		this.startDrain();
+	}
+
+	private startDrain(): void {
 		if (this.running === undefined) {
 			this.running = this.drain().finally(() => {
 				this.running = undefined;
 			});
 			void this.running.catch(() => undefined);
 		}
+	}
+
+	private indexSource(outputId: string, sourceId: string): void {
+		const sources = this.outputSources.get(outputId) ?? new Set<string>();
+		sources.add(sourceId);
+		this.outputSources.set(outputId, sources);
+		const outputs = this.sourceOutputs.get(sourceId) ?? new Set<string>();
+		outputs.add(outputId);
+		this.sourceOutputs.set(sourceId, outputs);
+	}
+
+	private pruneSources(outputId: string, retained: ReadonlySet<string>): void {
+		for (const sourceId of this.outputSources.get(outputId) ?? []) {
+			if (retained.has(sourceId)) continue;
+			const outputs = this.sourceOutputs.get(sourceId);
+			outputs?.delete(outputId);
+			if (!outputs?.size) this.sourceOutputs.delete(sourceId);
+			this.sourceOwners.get(outputId)?.delete(sourceId);
+		}
+		this.outputSources.set(outputId, new Set(retained));
 	}
 
 	async flush(): Promise<void> {
@@ -195,7 +269,7 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 	}
 
 	private async drain(): Promise<void> {
-		while (this.active && this.completed !== this.generation) {
+		while (this.active && (this.completed !== this.generation || this.dirty.size > 0)) {
 			const generation = this.generation;
 			try {
 				await this.evaluate(generation);
@@ -209,15 +283,23 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 
 	private async evaluate(generation: number): Promise<void> {
 		const configs = await this.dataSource.manager.find(VirtualDewPointConfigEntity);
-		if (generation !== this.generation) return;
+		if (generation !== this.generation || !this.active) return;
+		if (this.completed !== generation) for (const config of configs) this.dirty.add(config.outputPropertyId);
 		for (const [id, output] of this.outputs)
 			if (!configs.some((c) => c.outputPropertyId === id)) {
 				this.producers.unregister(output.lease);
 				this.outputs.delete(id);
 				this.barriers.delete(id);
 				this.diagnostics.delete(id);
+				this.pruneSources(id, new Set());
+				this.outputSources.delete(id);
+				this.sourceLineages.delete(id);
+				this.sourceOwners.delete(id);
+				this.dirty.delete(id);
 			}
 		for (const config of configs) {
+			if (!this.dirty.delete(config.outputPropertyId)) continue;
+			const discovery = this.structuralChange;
 			const property = await this.dataSource.manager.findOne(VirtualChannelPropertyEntity, {
 				where: { id: config.outputPropertyId },
 				relations: ['channel', 'channel.device'],
@@ -243,9 +325,64 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 				};
 				this.outputs.set(property.id, output);
 			}
+			output.property = property;
 			const evaluation = this.producers.beginEvaluation(output.lease);
 			const rows = await this.dataSource.manager.findBy(VirtualDewPointSourceEntity, { outputPropertyId: property.id });
-			const { result, samples, lineage } = await this.snapshot(config, property, rows, output.barrier);
+			const retained = new Set<string>();
+			let uncertainOwner = false;
+			const observe = (id: string, source?: ChannelPropertyEntity): void => {
+				if (!this.active || generation !== this.generation) return;
+				retained.add(id);
+				this.indexSource(property.id, id);
+				if (!source) return;
+				const channel = source.channel as ChannelEntity;
+				const device = channel?.device as DeviceEntity;
+				if (!channel?.id || !device?.id) return;
+				const owners = this.sourceOwners.get(property.id) ?? new Map<string, { deviceId: string; channelId: string }>();
+				const previous = owners.get(id);
+				if ((!previous || previous.channelId !== channel.id || previous.deviceId !== device.id) && discovery !== this.structuralChange)
+					uncertainOwner = true;
+				owners.set(id, { channelId: channel.id, deviceId: device.id });
+				this.sourceOwners.set(property.id, owners);
+			};
+			observe(property.id, property);
+			for (const row of rows) observe(row.sourcePropertyId ?? row.sourcePropertyIdentity);
+			const { result, samples, lineage, observedEvidence } = await this.snapshot(config, property, rows, output.barrier, observe);
+			// Newly captured ancestry is already bounded/validated by PropertyValueService.
+			// Index every validated ancestor before publication can await; invalid branches never gain authority.
+			if (generation !== this.generation || !this.active) return;
+			const lineages = this.sourceLineages.get(property.id) ?? new Map<string, ReadonlySet<string>>();
+			const directIds = new Set(rows.map((row) => row.sourcePropertyId ?? row.sourcePropertyIdentity));
+			for (const id of lineages.keys()) if (!directIds.has(id)) lineages.delete(id);
+			for (const evidence of observedEvidence) {
+				const ids = new Set<string>();
+				const collect = (entry: IncorporatedPropertySample): void => {
+					ids.add(entry.propertyId);
+					for (const child of entry.sources ?? []) collect(child);
+				};
+				collect(evidence);
+				lineages.set(evidence.propertyId, ids);
+			}
+			this.sourceLineages.set(property.id, lineages);
+			// One last validated ancestry per bound input, not an accumulating event history.
+			// Unavailable input evidence must not erase the owners needed to observe its recovery.
+			const ancestors = new Set(Array.from(lineages.values()).flatMap((ids) => [...ids]));
+			for (const id of ancestors) {
+				observe(id);
+				const ancestor = await this.dataSource.manager.findOne(ChannelPropertyEntity, {
+					where: { id }, relations: ['channel', 'channel.device'],
+				});
+				observe(id, ancestor ?? undefined);
+			}
+			if (generation !== this.generation || !this.active) return;
+			this.pruneSources(property.id, retained);
+			if (uncertainOwner) {
+				// Explicit first/new-owner discovery exception: even unrelated structural chatter in
+				// that unknown window withdraws this candidate once. Keep the resolved index for recovery.
+				this.requireFreshInputs(property.id);
+				this.requestOutput(property.id);
+				continue;
+			}
 			if (generation !== this.generation || !this.active) return;
 			const now = new Date();
 			const dry = samples.get('dry_bulb'),
@@ -295,6 +432,7 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 		property: VirtualChannelPropertyEntity,
 		rows: VirtualDewPointSourceEntity[],
 		barrier: number | null,
+		observe?: (id: string, source?: ChannelPropertyEntity) => void,
 	) {
 		const inputs: {
 			row: VirtualDewPointSourceEntity;
@@ -302,13 +440,17 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			status: ConnectionState;
 		}[] = [];
 		for (const row of rows) {
+			observe?.(row.sourcePropertyId ?? row.sourcePropertyIdentity);
 			const source = row.sourcePropertyId
 				? await this.dataSource.manager.findOne(ChannelPropertyEntity, {
 						where: { id: row.sourcePropertyId },
 						relations: ['channel', 'channel.device'],
 					})
 				: null;
-			if (source) await hydrateMeasurementContract(this.dataSource.manager, source);
+			if (source) {
+				observe?.(source.id, source);
+				await hydrateMeasurementContract(this.dataSource.manager, source);
+			}
 			const device = (source?.channel as ChannelEntity)?.device as DeviceEntity;
 			inputs.push({
 				row,
@@ -343,11 +485,13 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 			result.errors.push('missing_input_role');
 		const samples = new Map<DewPointRole, QualifiedPropertySample>();
 		const lineage: IncorporatedPropertySample[] = [];
+		const observedEvidence: IncorporatedPropertySample[] = [];
 		const expiries: number[] = [];
 		for (const { row, source, status } of inputs) {
 			const errors: string[] = [];
 			const sample = source ? this.values.readQualifiedSample(source, config.maximumAgeSeconds * 1000, now) : null;
 			const evidence = sample ? this.values.captureIncorporatedSample(source) : null;
+			if (evidence && this.values.incorporatedEvidenceCurrent([evidence])) observedEvidence.push(evidence);
 			if (!source) errors.push('missing');
 			else if (
 				row.domain?.minimum !== dewPointInputDomain(row.role).minimum ||
@@ -398,6 +542,6 @@ export class VirtualDewPointRuntimeService implements OnApplicationBootstrap, On
 				}
 			}
 		}
-		return { result, samples, lineage };
+		return { result, samples, lineage, observedEvidence };
 	}
 }
