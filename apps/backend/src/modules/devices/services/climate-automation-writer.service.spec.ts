@@ -2643,53 +2643,116 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 
 /** C1a pre-admission boundaries: real leases and event subscribers, never a fabricated positive turn. */
 describe('closed C1a root admission before caller getters', () => {
-	let database: SqliteDataSource, registry: ClimateAutomationRegistryService, lock: DeviceStructureLockService, writer: ClimateAutomationWriterService;
+	let database: SqliteDataSource,
+		registry: ClimateAutomationRegistryService,
+		lock: DeviceStructureLockService,
+		writer: ClimateAutomationWriterService;
 	let getters: number;
 	const request = (): ClimateAutomationControllerIntentRequest => ({
-		get providerKey() { getters++; return 'unregistered-manual:v1'; }, controllerId,
+		get providerKey() {
+			getters++;
+			return 'unregistered-manual:v1';
+		},
+		controllerId,
 		fence: { kind: 'current-at-admitted-setting-submission' },
 		intent: { kind: 'manual-settings:v1', updates: [{ propertyId: controllerId, value: 20 }] },
 	});
 	beforeEach(async () => {
-		database = await new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: true, entities: [ClimateAutomationSourceEntity, ClimateAutomationSlotEntity] }).initialize();
-		registry = new ClimateAutomationRegistryService(); lock = new DeviceStructureLockService(); getters = 0;
+		database = await new SqliteDataSource({
+			type: 'sqlite',
+			database: ':memory:',
+			synchronize: true,
+			entities: [ClimateAutomationSourceEntity, ClimateAutomationSlotEntity],
+		}).initialize();
+		registry = new ClimateAutomationRegistryService();
+		lock = new DeviceStructureLockService();
+		getters = 0;
 		writer = new ClimateAutomationWriterService(database, lock, registry, new ConfigService({ FB_CLI: 'off' }));
 	});
-	afterEach(async () => { registry.onModuleDestroy(); await database.destroy(); });
+	afterEach(async () => {
+		registry.onModuleDestroy();
+		await database.destroy();
+	});
 	it('rejects CLI before any caller getter, structural entry or query against an empty schema', async () => {
 		const empty = await new SqliteDataSource({ type: 'sqlite', database: ':memory:', entities: [] }).initialize();
 		const cli = new ClimateAutomationWriterService(empty, lock, registry, new ConfigService({ FB_CLI: 'on' }));
-		const entry = jest.spyOn(lock, 'runExclusiveReleased'), queries = jest.spyOn(empty.manager, 'query');
-		try { await expect(cli.commitControllerIntentV1(request())).rejects.toMatchObject({ commitOutcome: 'not_started' }); expect(getters).toBe(0); expect(entry).not.toHaveBeenCalled(); expect(queries).not.toHaveBeenCalled(); }
-		finally { entry.mockRestore(); queries.mockRestore(); await empty.destroy(); }
+		const entry = jest.spyOn(lock, 'runExclusiveReleased'),
+			queries = jest.spyOn(empty.manager, 'query');
+		try {
+			await expect(cli.commitControllerIntentV1(request())).rejects.toMatchObject({ commitOutcome: 'not_started' });
+			expect(getters).toBe(0);
+			expect(entry).not.toHaveBeenCalled();
+			expect(queries).not.toHaveBeenCalled();
+		} finally {
+			entry.mockRestore();
+			queries.mockRestore();
+			await empty.destroy();
+		}
 	});
 	it('poisons a root whose first input getter catches recursive orchestration before any lock or SQL', async () => {
 		let child: Promise<unknown> | undefined;
-		const input: ClimateAutomationControllerIntentRequest = { ...request(), get providerKey() { getters++; child = writer.runReserved(async () => []).catch((cause: unknown) => cause); return 'unregistered-manual:v1'; } };
+		const input: ClimateAutomationControllerIntentRequest = {
+			...request(),
+			get providerKey() {
+				getters++;
+				child = writer.runReserved(() => Promise.resolve([])).catch((cause: unknown) => cause);
+				return 'unregistered-manual:v1';
+			},
+		};
 		getters = 0;
-		const entry = jest.spyOn(lock, 'runExclusiveReleased'), queries = jest.spyOn(database.manager, 'query');
+		const entry = jest.spyOn(lock, 'runExclusiveReleased'),
+			queries = jest.spyOn(database.manager, 'query');
 		await expect(writer.commitControllerIntentV1(input)).rejects.toMatchObject({ commitOutcome: 'not_started' });
-		expect(await child).toBeInstanceOf(Error); expect(getters).toBe(1); expect(entry).not.toHaveBeenCalled(); expect(queries).not.toHaveBeenCalled();
+		expect(await child).toBeInstanceOf(Error);
+		expect(getters).toBe(1);
+		expect(entry).not.toHaveBeenCalled();
+		expect(queries).not.toHaveBeenCalled();
 	});
 	it('refuses an ordinary SELECT caller lease before its input getters or structural wait', async () => {
-		const entry = jest.spyOn(lock, 'runExclusiveReleased'); let refused = false;
-		database.subscribers.push({ beforeQuery: async (event) => {
-			if (!event.query.includes('c1a_ordinary_select_lease')) return;
-			await expect(writer.commitControllerIntentV1(request())).rejects.toMatchObject({ commitOutcome: 'not_started' }); refused = true;
-		} });
+		const entry = jest.spyOn(lock, 'runExclusiveReleased');
+		let refused = false;
+		database.subscribers.push({
+			beforeQuery: async (event) => {
+				if (!event.query.includes('c1a_ordinary_select_lease')) return;
+				await expect(writer.commitControllerIntentV1(request())).rejects.toMatchObject({
+					commitOutcome: 'not_started',
+				});
+				refused = true;
+			},
+		});
 		await database.manager.query('SELECT 1 AS c1a_ordinary_select_lease');
-		expect(refused).toBe(true); expect(getters).toBe(0); expect(entry).not.toHaveBeenCalled();
+		expect(refused).toBe(true);
+		expect(getters).toBe(0);
+		expect(entry).not.toHaveBeenCalled();
 	});
-	it.each(['start', 'reservation'] satisfies readonly ('start' | 'reservation')[])('refuses caught ambient manual entry during actual %s subscriber without traversing inputs', async (phase) => {
-		let attempted = false;
-		const attempt = async () => { if (attempted) return; attempted = true; await expect(writer.commitControllerIntentV1(request())).rejects.toBeInstanceOf(Error); };
-		if (phase === 'start') database.subscribers.push({ beforeTransactionStart: attempt });
-		else database.subscribers.push({ beforeQuery: async (event) => { if (event.query.includes('devices_module_climate_automation_slots') && event.query.includes('WHERE 0')) await attempt(); } });
-		await expect(writer.runReserved((manager, scope) => writer.readSlot(manager, scope, controllerId))).rejects.toBeInstanceOf(Error);
-		expect(attempted).toBe(true); expect(getters).toBe(0); expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
-	});
+	it.each(['start', 'reservation'] satisfies readonly ('start' | 'reservation')[])(
+		'refuses caught ambient manual entry during actual %s subscriber without traversing inputs',
+		async (phase) => {
+			let attempted = false;
+			const attempt = async () => {
+				if (attempted) return;
+				attempted = true;
+				await expect(writer.commitControllerIntentV1(request())).rejects.toBeInstanceOf(Error);
+			};
+			if (phase === 'start') database.subscribers.push({ beforeTransactionStart: attempt });
+			else
+				database.subscribers.push({
+					beforeQuery: async (event) => {
+						if (event.query.includes('devices_module_climate_automation_slots') && event.query.includes('WHERE 0'))
+							await attempt();
+					},
+				});
+			await expect(
+				writer.runReserved((manager, scope) => writer.readSlot(manager, scope, controllerId)),
+			).rejects.toBeInstanceOf(Error);
+			expect(attempted).toBe(true);
+			expect(getters).toBe(0);
+			expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
+		},
+	);
 	it('does not grant a missing original manual capability or create a slot on a refused request', async () => {
 		expect(await writer.commitControllerIntentV1(request())).toEqual({ outcome: 'conflict', reason: 'unavailable' });
-		expect(getters).toBe(1); expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
+		expect(getters).toBe(1);
+		expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
 	});
 });

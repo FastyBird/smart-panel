@@ -4,25 +4,32 @@ import { Injectable } from '@nestjs/common';
 
 import {
 	ClimateAutomationGraphReplacementPlan,
-	ClimateAutomationManualIntent,
-	ClimateAutomationRetainedRecoveryRow,
-	climateAutomationRetainedRecoveryRows,
-	ClimateAutomationParticipantConflict,
-	climateAutomationReduceManualIntent,
 	ClimateAutomationJson,
+	ClimateAutomationManualIntent,
+	ClimateAutomationParticipantConflict,
 	ClimateAutomationParticipantDocument,
 	ClimateAutomationParticipantImage,
 	ClimateAutomationParticipantTurn,
+	ClimateAutomationRetainedRecoveryRow,
 	climateAutomationCanonical,
 	climateAutomationJson,
+	climateAutomationReduceManualIntent,
+	climateAutomationRetainedRecoveryRows,
 } from '../../../modules/devices/contracts/climate-automation.contract';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { VirtualChannelPropertyEntity, VirtualDeviceEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
-import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
-import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
+import {
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
 import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
 import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
 import { VirtualDewPointConfigEntity, VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -43,6 +50,8 @@ import {
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
 import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
+import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
+import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
 
 /** PRIVATE version1 persisted column map. Never a public response or an installed qualification. */
@@ -1159,46 +1168,105 @@ export class VirtualThermostatAutomationService {
 	}
 
 	/** Full retained membership, not a retention policy. MAX_ROWS+1 refuses an oversized evidence set. */
-	async readRetainedHistoryInManager(manager: EntityManager, turn: ClimateAutomationParticipantTurn, controllerId: string): Promise<readonly ClimateAutomationRetainedRecoveryRow[]> {
+	async readRetainedHistoryInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
+	): Promise<readonly ClimateAutomationRetainedRecoveryRow[]> {
 		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 		const owner = id(controllerId);
-		const rows = await manager.createQueryBuilder(VirtualThermostatRecoveryEntity, 'recovery').where('recovery.controllerId = :owner', { owner }).orderBy('recovery.id', 'ASC').take(MAX_ROWS + 1).callListeners(false).getMany();
+		const rows = await manager
+			.createQueryBuilder(VirtualThermostatRecoveryEntity, 'recovery')
+			.where('recovery.controllerId = :owner', { owner })
+			.orderBy('recovery.id', 'ASC')
+			.take(MAX_ROWS + 1)
+			.callListeners(false)
+			.getMany();
 		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 		if (rows.length > MAX_ROWS) throw new ClimateAutomationParticipantConflict('invalid');
-		return climateAutomationRetainedRecoveryRows(rows.map((row) => ({
-			id: row.id, controllerId: row.controllerId, claimId: row.claimId, physicalIdentity: row.physicalIdentity,
-			previousPropertyIdentity: row.previousPropertyIdentity, restoredPropertyId: row.restoredPropertyId,
-			actorId: row.actorId, reason: row.reason, disconnectionAcknowledged: row.disconnectionAcknowledged,
-			configurationRevision: row.configurationRevision, claimRevision: row.claimRevision, createdAt: field('createdAt', row.createdAt),
-		})), owner);
+		return climateAutomationRetainedRecoveryRows(
+			rows.map((row) => ({
+				id: row.id,
+				controllerId: row.controllerId,
+				claimId: row.claimId,
+				physicalIdentity: row.physicalIdentity,
+				previousPropertyIdentity: row.previousPropertyIdentity,
+				restoredPropertyId: row.restoredPropertyId,
+				actorId: row.actorId,
+				reason: row.reason,
+				disconnectionAcknowledged: row.disconnectionAcknowledged,
+				configurationRevision: row.configurationRevision,
+				claimRevision: row.claimRevision,
+				createdAt: field('createdAt', row.createdAt),
+			})),
+			owner,
+		);
 	}
 
 	/** Dormant C1a validation only; original manager/phase checked BEFORE input access or SQL. */
-	async validateManualIntentInManager(manager: EntityManager, turn: ClimateAutomationParticipantTurn, intent: ClimateAutomationManualIntent, before: ClimateAutomationParticipantImage, next: ClimateAutomationParticipantDocument): Promise<void> {
+	async validateManualIntentInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		intent: ClimateAutomationManualIntent,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantDocument,
+	): Promise<void> {
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
-		const refused = (): never => { throw new ClimateAutomationParticipantConflict('invalid'); };
+		const refused = (): never => {
+			throw new ClimateAutomationParticipantConflict('invalid');
+		};
 		// Child MAX counters are immutable facts for this operation, not permission to increment them.
-		if ([...thermostatAutomationMutationIssues(before), ...thermostatAutomationMutationIssues(next)].some((issue) => issue !== 'increment_overflow')) return refused();
+		if (
+			[...thermostatAutomationMutationIssues(before), ...thermostatAutomationMutationIssues(next)].some(
+				(issue) => issue !== 'increment_overflow',
+			)
+		)
+			return refused();
 		const reduction = climateAutomationReduceManualIntent(before, intent);
 		if (!equal(next, reduction.document)) return refused();
 		const row = await this.manualConfig(manager, before.controllerId);
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
-		if (!row || !equal(project(row, THERMOSTAT_AUTOMATION_COLUMNS.configurations), manualConfigurationColumns(before))) throw new ClimateAutomationParticipantConflict('stale');
-		const owner = await manager.createQueryBuilder(VirtualDeviceEntity, 'owner').where('owner.id = :controllerId', { controllerId: before.controllerId }).callListeners(false).getOne();
+		if (!row || !equal(project(row, THERMOSTAT_AUTOMATION_COLUMNS.configurations), manualConfigurationColumns(before)))
+			throw new ClimateAutomationParticipantConflict('stale');
+		const owner = await manager
+			.createQueryBuilder(VirtualDeviceEntity, 'owner')
+			.where('owner.id = :controllerId', { controllerId: before.controllerId })
+			.callListeners(false)
+			.getOne();
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
 		if (!owner || row.ownerDeviceId !== before.controllerId) return refused();
 		const values = manualRowValues(row, next);
-		if (validateVirtualThermostatPolicy(values.policy).length || ((values.requestedMode === 'heat' || values.requestedMode === 'auto') && values.policy.heatingSetpoint === null) || ((values.requestedMode === 'cool' || values.requestedMode === 'auto') && values.policy.coolingSetpoint === null)) return refused();
+		if (
+			validateVirtualThermostatPolicy(values.policy).length ||
+			((values.requestedMode === 'heat' || values.requestedMode === 'auto') &&
+				values.policy.heatingSetpoint === null) ||
+			((values.requestedMode === 'cool' || values.requestedMode === 'auto') && values.policy.coolingSetpoint === null)
+		)
+			return refused();
 		if (values.comfort !== null && validateThermostatComfort(values.comfort, values.policy).length) return refused();
-		const config = object(before.configuration), bindings = list(config.settings).map(object);
-		const actualBindings = await manager.createQueryBuilder(VirtualThermostatSettingEntity, 'setting').where('setting.controllerId = :controllerId', { controllerId: before.controllerId }).orderBy('setting.propertyId', 'ASC').callListeners(false).getMany();
+		const config = object(before.configuration),
+			bindings = list(config.settings).map(object);
+		const actualBindings = await manager
+			.createQueryBuilder(VirtualThermostatSettingEntity, 'setting')
+			.where('setting.controllerId = :controllerId', { controllerId: before.controllerId })
+			.orderBy('setting.propertyId', 'ASC')
+			.callListeners(false)
+			.getMany();
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
 		const bindingColumns = THERMOSTAT_AUTOMATION_COLUMNS.settings;
-		const ordered = (rows: readonly object[]) => [...rows].sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
-		if (!equal(ordered(actualBindings.map((binding) => project(binding, bindingColumns))), ordered(bindings))) throw new ClimateAutomationParticipantConflict('stale');
+		const ordered = (rows: readonly object[]) =>
+			[...rows].sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+		if (!equal(ordered(actualBindings.map((binding) => project(binding, bindingColumns))), ordered(bindings)))
+			throw new ClimateAutomationParticipantConflict('stale');
 		for (const binding of bindings) {
 			const propertyId = id(binding.propertyId);
-			const property = await manager.createQueryBuilder(VirtualChannelPropertyEntity, 'property').leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device').where('property.id = :propertyId', { propertyId }).callListeners(false).getOne();
+			const property = await manager
+				.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.where('property.id = :propertyId', { propertyId })
+				.callListeners(false)
+				.getOne();
 			this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
 			if (!property || !property.channel || typeof property.channel === 'string') return refused();
 			const channel = property.channel;
@@ -1206,61 +1274,166 @@ export class VirtualThermostatAutomationService {
 			const device = channel.device;
 			const setting = binding.setting;
 			const numeric = setting === 'heating_setpoint' || setting === 'cooling_setpoint';
-			const category = setting === 'locked' ? ChannelCategory.THERMOSTAT : setting === 'heating_setpoint' || setting === 'heating_enabled' ? ChannelCategory.HEATER : setting === 'cooling_setpoint' || setting === 'cooling_enabled' ? ChannelCategory.COOLER : null;
-			if (device.id !== before.controllerId || !(device instanceof VirtualDeviceEntity) || property.valueOrigin !== VirtualValueOrigin.LOCAL || property.sourcePropertyId !== null || category === null || channel.category !== category || property.category !== (setting === 'locked' ? PropertyCategory.LOCKED : numeric ? PropertyCategory.TEMPERATURE : PropertyCategory.ON) || (numeric ? ![DataTypeType.FLOAT, DataTypeType.INT].includes(property.dataType) : property.dataType !== DataTypeType.BOOL) || !property.permissions.includes(PermissionType.READ_WRITE) || thermostatPropertyContract(property, channel, device) !== binding.contractFingerprint) return refused();
-			if ((setting === 'heating_setpoint' || setting === 'heating_enabled') && values.policy.heatingSetpoint === null || (setting === 'cooling_setpoint' || setting === 'cooling_enabled') && values.policy.coolingSetpoint === null) return refused();
+			const category =
+				setting === 'locked'
+					? ChannelCategory.THERMOSTAT
+					: setting === 'heating_setpoint' || setting === 'heating_enabled'
+						? ChannelCategory.HEATER
+						: setting === 'cooling_setpoint' || setting === 'cooling_enabled'
+							? ChannelCategory.COOLER
+							: null;
+			if (
+				device.id !== before.controllerId ||
+				!(device instanceof VirtualDeviceEntity) ||
+				property.valueOrigin !== VirtualValueOrigin.LOCAL ||
+				property.sourcePropertyId !== null ||
+				category === null ||
+				channel.category !== category ||
+				property.category !==
+					(setting === 'locked'
+						? PropertyCategory.LOCKED
+						: numeric
+							? PropertyCategory.TEMPERATURE
+							: PropertyCategory.ON) ||
+				(numeric
+					? ![DataTypeType.FLOAT, DataTypeType.INT].includes(property.dataType)
+					: property.dataType !== DataTypeType.BOOL) ||
+				!property.permissions.includes(PermissionType.READ_WRITE) ||
+				thermostatPropertyContract(property, channel, device) !== binding.contractFingerprint
+			)
+				return refused();
+			if (
+				((setting === 'heating_setpoint' || setting === 'heating_enabled') && values.policy.heatingSetpoint === null) ||
+				((setting === 'cooling_setpoint' || setting === 'cooling_enabled') && values.policy.coolingSetpoint === null)
+			)
+				return refused();
 		}
-		if (intent.kind === 'manual-settings:v1' && intent.updates.some((update) => !bindings.some((binding) => binding.propertyId === update.propertyId))) return refused();
+		if (
+			intent.kind === 'manual-settings:v1' &&
+			intent.updates.some((update) => !bindings.some((binding) => binding.propertyId === update.propertyId))
+		)
+			return refused();
 	}
 
 	/** Actual affected-one controller CAS only. Core alone writes private manual/source/slot accounting. */
-	async applyManualIntentInManager(manager: EntityManager, turn: ClimateAutomationParticipantTurn, before: ClimateAutomationParticipantImage, next: ClimateAutomationParticipantImage): Promise<void> {
+	async applyManualIntentInManager(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantImage,
+	): Promise<void> {
 		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
-		if (next.controllerId !== before.controllerId || before.controllerRevision === Number.MAX_SAFE_INTEGER || next.controllerRevision !== before.controllerRevision + 1 || !equal(next.configuration, before.configuration) || !equal(next.structural, before.structural) || !equal(next.legacyBaseline, before.legacyBaseline)) throw new ClimateAutomationParticipantConflict('invalid');
+		if (
+			next.controllerId !== before.controllerId ||
+			before.controllerRevision === Number.MAX_SAFE_INTEGER ||
+			next.controllerRevision !== before.controllerRevision + 1 ||
+			!equal(next.configuration, before.configuration) ||
+			!equal(next.structural, before.structural) ||
+			!equal(next.legacyBaseline, before.legacyBaseline)
+		)
+			throw new ClimateAutomationParticipantConflict('invalid');
 		const row = await this.manualConfig(manager, before.controllerId);
 		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
-		if (!row || !equal(project(row, THERMOSTAT_AUTOMATION_COLUMNS.configurations), manualConfigurationColumns(before))) throw new ClimateAutomationParticipantConflict('stale');
+		if (!row || !equal(project(row, THERMOSTAT_AUTOMATION_COLUMNS.configurations), manualConfigurationColumns(before)))
+			throw new ClimateAutomationParticipantConflict('stale');
 		const columns = THERMOSTAT_AUTOMATION_COLUMNS.configurations;
-		const records = await manager.query<Record<string, unknown>[]>('SELECT ' + columns.map((column) => '"' + column + '"').join(',') + ' FROM "devices_virtual_thermostat_configs" WHERE "controllerId"=?', [before.controllerId]);
+		const records = await manager.query<Record<string, unknown>[]>(
+			'SELECT ' +
+				columns.map((column) => '"' + column + '"').join(',') +
+				' FROM "devices_virtual_thermostat_configs" WHERE "controllerId"=?',
+			[before.controllerId],
+		);
 		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
 		if (records.length !== 1) throw new ClimateAutomationParticipantConflict('stale');
-		const raw = records[0], hydrated: Record<string, unknown> = {};
+		const raw = records[0],
+			hydrated: Record<string, unknown> = {};
 		const metadata = manager.connection.getMetadata(VirtualThermostatConfigEntity);
 		for (const column of metadata.columns) {
 			const value: unknown = manager.connection.driver.prepareHydratedValue(raw[column.databaseName], column);
 			Object.defineProperty(hydrated, column.propertyName, { value, enumerable: true });
 		}
-		if (!equal(project(hydrated, columns), manualConfigurationColumns(before))) throw new ClimateAutomationParticipantConflict('stale');
+		if (!equal(project(hydrated, columns), manualConfigurationColumns(before)))
+			throw new ClimateAutomationParticipantConflict('stale');
 		const values = manualRowValues(row, next);
-		const query = manager.createQueryBuilder().update(VirtualThermostatConfigEntity).set({ requestedMode: values.requestedMode, locked: values.locked, policy: values.policy, comfort: values.comfort, revision: next.controllerRevision }).callListeners(false);
-		for (const column of columns) query.andWhere('"' + column + '" IS :manual_' + column, { ['manual_' + column]: raw[column] });
+		const query = manager
+			.createQueryBuilder()
+			.update(VirtualThermostatConfigEntity)
+			.set({
+				requestedMode: values.requestedMode,
+				locked: values.locked,
+				policy: values.policy,
+				comfort: values.comfort,
+				revision: next.controllerRevision,
+			})
+			.callListeners(false);
+		for (const column of columns)
+			query.andWhere('"' + column + '" IS :manual_' + column, { ['manual_' + column]: raw[column] });
 		if ((await query.execute()).affected !== 1) throw new ClimateAutomationParticipantConflict('stale');
 		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
 	}
 	private manualConfig(manager: EntityManager, controllerId: string): Promise<VirtualThermostatConfigEntity | null> {
-		return manager.createQueryBuilder(VirtualThermostatConfigEntity, 'config').where('config.controllerId = :controllerId', { controllerId: id(controllerId) }).callListeners(false).getOne();
+		return manager
+			.createQueryBuilder(VirtualThermostatConfigEntity, 'config')
+			.where('config.controllerId = :controllerId', { controllerId: id(controllerId) })
+			.callListeners(false)
+			.getOne();
 	}
-
 }
-
 
 /** Reconstruct ONLY the explicit persisted config row for original-column equality, not an apply/default. */
 function manualConfigurationColumns(image: ClimateAutomationParticipantImage): JsonObject {
-	const config = object(image.configuration), comfort = object(image.comfort);
-	return jsonRecord({ ...object(config.config), revision: image.controllerRevision, requestedMode: comfort.requestedMode, locked: comfort.locked, comfort: comfort.configuration, policy: { ...object(config.policySafety), ...object(comfort.requestedSetpoints) } });
+	const config = object(image.configuration),
+		comfort = object(image.comfort);
+	return jsonRecord({
+		...object(config.config),
+		revision: image.controllerRevision,
+		requestedMode: comfort.requestedMode,
+		locked: comfort.locked,
+		comfort: comfort.configuration,
+		policy: { ...object(config.policySafety), ...object(comfort.requestedSetpoints) },
+	});
 }
-function manualRowValues(row: VirtualThermostatConfigEntity, next: ClimateAutomationParticipantDocument): Pick<VirtualThermostatConfigEntity, 'requestedMode' | 'locked' | 'policy' | 'comfort'> {
-	const comfort = object(next.comfort), points = object(comfort.requestedSetpoints);
+function manualRowValues(
+	row: VirtualThermostatConfigEntity,
+	next: ClimateAutomationParticipantDocument,
+): Pick<VirtualThermostatConfigEntity, 'requestedMode' | 'locked' | 'policy' | 'comfort'>;
+function manualRowValues(row: VirtualThermostatConfigEntity, next: ClimateAutomationParticipantDocument): unknown {
+	const comfort = object(next.comfort),
+		points = object(comfort.requestedSetpoints);
 	const requestedMode = comfort.requestedMode;
-	if ((requestedMode !== 'off' && requestedMode !== 'heat' && requestedMode !== 'cool' && requestedMode !== 'auto') || typeof comfort.locked !== 'boolean') return fail();
-	const scalar = (value: unknown): number | null => value === null ? null : finite(value);
-	const policy = { ...row.policy, heatingSetpoint: scalar(points.heatingSetpoint), coolingSetpoint: scalar(points.coolingSetpoint) };
+	if (
+		(requestedMode !== 'off' && requestedMode !== 'heat' && requestedMode !== 'cool' && requestedMode !== 'auto') ||
+		typeof comfort.locked !== 'boolean'
+	)
+		return fail();
+	const scalar = (value: unknown): number | null => (value === null ? null : finite(value));
+	const policy = {
+		...row.policy,
+		heatingSetpoint: scalar(points.heatingSetpoint),
+		coolingSetpoint: scalar(points.coolingSetpoint),
+	};
 	if (row.comfort === null) {
 		if (comfort.configuration !== null || next.legacyBaseline !== null) return fail();
 		return { requestedMode, locked: comfort.locked, policy, comfort: null };
 	}
-	const state = object(comfort.configuration), selected = state.selected_preset;
-	if ((selected !== null && selected !== 'comfort' && selected !== 'eco' && selected !== 'away') || typeof state.user_off !== 'boolean') return fail();
-	if (!equal(without(jsonRecord(state), ['selected_preset', 'user_off']), without(jsonRecord(row.comfort), ['selected_preset', 'user_off']))) return fail();
-	return { requestedMode, locked: comfort.locked, policy, comfort: { ...row.comfort, selected_preset: selected, user_off: state.user_off } };
+	const state = object(comfort.configuration),
+		selected = state.selected_preset;
+	if (
+		(selected !== null && selected !== 'comfort' && selected !== 'eco' && selected !== 'away') ||
+		typeof state.user_off !== 'boolean'
+	)
+		return fail();
+	if (
+		!equal(
+			without(jsonRecord(state), ['selected_preset', 'user_off']),
+			without(jsonRecord(row.comfort), ['selected_preset', 'user_off']),
+		)
+	)
+		return fail();
+	return {
+		requestedMode,
+		locked: comfort.locked,
+		policy,
+		comfort: { ...row.comfort, selected_preset: selected, user_off: state.user_off },
+	};
 }

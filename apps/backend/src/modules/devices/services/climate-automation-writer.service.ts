@@ -18,13 +18,8 @@ import {
 	ClimateAutomationCommittedOutcome,
 	ClimateAutomationConflictReason,
 	ClimateAutomationControllerFacts,
-	ClimateAutomationControllerIntentRequest,
 	ClimateAutomationControllerIntentOutcome,
-	ClimateAutomationManualCapability,
-	ClimateAutomationRetainedRecoveryRow,
-	climateAutomationRetainedRecoveryRows,
-	climateAutomationControllerIntentRequest,
-	climateAutomationReduceManualIntent,
+	ClimateAutomationControllerIntentRequest,
 	ClimateAutomationGraphDelta,
 	ClimateAutomationGraphFacts,
 	ClimateAutomationGraphParticipant,
@@ -32,6 +27,7 @@ import {
 	ClimateAutomationGraphValidation,
 	ClimateAutomationHandle,
 	ClimateAutomationJson,
+	ClimateAutomationManualCapability,
 	ClimateAutomationParticipant,
 	ClimateAutomationParticipantConflict,
 	ClimateAutomationParticipantDocument,
@@ -41,6 +37,7 @@ import {
 	ClimateAutomationProducer,
 	ClimateAutomationProvider,
 	ClimateAutomationReplacement,
+	ClimateAutomationRetainedRecoveryRow,
 	ClimateAutomationScope,
 	ClimateAutomationSelection,
 	ClimateAutomationSlotFacts,
@@ -49,7 +46,10 @@ import {
 	ClimateAutomationValidationTicket,
 	ClimateAutomationWriteError,
 	climateAutomationCanonical,
+	climateAutomationControllerIntentRequest,
 	climateAutomationJson,
+	climateAutomationReduceManualIntent,
+	climateAutomationRetainedRecoveryRows,
 } from '../contracts/climate-automation.contract';
 import {
 	CLIMATE_SLOT_TABLE,
@@ -101,7 +101,9 @@ interface PinnedParticipant {
 	readonly graphValidate: ClimateAutomationGraphParticipant['validateAcknowledgedGraph'];
 	readonly current: () => boolean;
 }
-interface RootManualSnapshot { failure?: { cause: unknown }; }
+interface RootManualSnapshot {
+	failure?: { cause: unknown };
+}
 interface PinnedManual {
 	readonly participant: PinnedParticipant;
 	readonly capability: ClimateAutomationManualCapability;
@@ -137,7 +139,10 @@ function invoke<R, A extends unknown[], V>(method: ReceiverCall<R, A, V>, receiv
 	return method.call(receiver, ...args);
 }
 interface Snapshot {
-	readonly manualHistory?: { readonly pinned: PinnedManual; readonly rows: readonly ClimateAutomationRetainedRecoveryRow[] };
+	readonly manualHistory?: {
+		readonly pinned: PinnedManual;
+		readonly rows: readonly ClimateAutomationRetainedRecoveryRow[];
+	};
 	readonly participant?: {
 		readonly pinned: PinnedParticipant;
 		readonly image: ClimateAutomationParticipantImage;
@@ -835,47 +840,90 @@ export class ClimateAutomationWriterService {
 		);
 	}
 
-
 	/** Closed TOPLEVEL manual operation. No caller work/manager/next document or private-ledger values. */
-	async commitControllerIntentV1(request: ClimateAutomationControllerIntentRequest): Promise<ClimateAutomationControllerIntentOutcome> {
+	async commitControllerIntentV1(
+		request: ClimateAutomationControllerIntentRequest,
+	): Promise<ClimateAutomationControllerIntentOutcome> {
 		this.rejectManualSnapshotReentry();
-		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') throw new ClimateAutomationWriteError('not_started', new Error('CLI writer unavailable'));
+		if (getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on')
+			throw new ClimateAutomationWriteError('not_started', new Error('CLI writer unavailable'));
 		const ambient = this.context.getStore();
 		if (ambient) throw this.refuse(ambient.operation);
-		if (!(this.dataSource instanceof SqliteDataSource) || hasCurrentSqliteConnectionLease(this.dataSource)) throw new ClimateAutomationWriteError('not_started', new Error('An independent coordinated writer lease is required'));
+		if (!(this.dataSource instanceof SqliteDataSource) || hasCurrentSqliteConnectionLease(this.dataSource))
+			throw new ClimateAutomationWriteError(
+				'not_started',
+				new Error('An independent coordinated writer lease is required'),
+			);
 		const snapshot: RootManualSnapshot = {};
 		let owned: { readonly request: ClimateAutomationControllerIntentRequest; readonly manual: PinnedManual };
 		try {
 			owned = this.manualSnapshots.run(snapshot, () => {
 				const input = climateAutomationControllerIntentRequest(this.ownedJson(request));
 				uuid(input.controllerId);
-				if (input.intent.kind === 'manual-settings:v1') for (const update of input.intent.updates) uuid(update.propertyId);
+				if (input.intent.kind === 'manual-settings:v1')
+					for (const update of input.intent.updates) uuid(update.propertyId);
 				const participant = this.pinParticipant(input.providerKey);
 				const capability = participant.cap.manualIntentV1;
 				if (!capability) throw new Conflict('unavailable');
 				const { version, codec, validateInManager: validate, readRetainedHistoryInManager: history } = capability;
-				if (version !== 1 || codec !== 'virtual-thermostat-c0:v1' || typeof validate !== 'function' || typeof history !== 'function') throw new Conflict('unavailable');
-				const manual: PinnedManual = Object.freeze({ participant, capability, validate, history, current: () => !snapshot.failure && participant.current() && participant.cap.manualIntentV1 === capability && capability.version === 1 && capability.codec === 'virtual-thermostat-c0:v1' && capability.validateInManager === validate && capability.readRetainedHistoryInManager === history });
+				if (
+					version !== 1 ||
+					codec !== 'virtual-thermostat-c0:v1' ||
+					typeof validate !== 'function' ||
+					typeof history !== 'function'
+				)
+					throw new Conflict('unavailable');
+				const manual: PinnedManual = Object.freeze({
+					participant,
+					capability,
+					validate,
+					history,
+					current: () =>
+						!snapshot.failure &&
+						participant.current() &&
+						participant.cap.manualIntentV1 === capability &&
+						capability.version === 1 &&
+						capability.codec === 'virtual-thermostat-c0:v1' &&
+						capability.validateInManager === validate &&
+						capability.readRetainedHistoryInManager === history,
+				});
 				return Object.freeze({ request: input, manual });
 			});
 			if (snapshot.failure) throw snapshot.failure.cause;
 		} catch (cause) {
 			if (snapshot.failure) throw new ClimateAutomationWriteError('not_started', snapshot.failure.cause);
-			if (cause instanceof Conflict || cause instanceof ClimateAutomationParticipantConflict) return Object.freeze({ outcome: 'conflict', reason: cause.reason });
+			if (cause instanceof Conflict || cause instanceof ClimateAutomationParticipantConflict)
+				return Object.freeze({ outcome: 'conflict', reason: cause.reason });
 			throw new ClimateAutomationWriteError('not_started', cause);
 		}
-		let completion: { readonly image: ClimateAutomationParticipantImage; readonly graphRevision: number; readonly slot: ClimateAutomationSlotFacts } | undefined;
+		let completion:
+			| {
+					readonly image: ClimateAutomationParticipantImage;
+					readonly graphRevision: number;
+					readonly slot: ClimateAutomationSlotFacts;
+			  }
+			| undefined;
 		const result = await this.runReserved(async (manager, scope) => {
 			const handle = await this.manualIntentCommand(manager, scope, owned.request, owned.manual);
 			const record = this.record(this.admit(manager, scope), handle);
 			if (!record.participant || !record.slot?.value) throw new Conflict('invalid');
-			completion = Object.freeze({ image: record.participant.image, graphRevision: record.participant.graph.revision, slot: record.slot.value });
+			completion = Object.freeze({
+				image: record.participant.image,
+				graphRevision: record.participant.graph.revision,
+				slot: record.slot.value,
+			});
 			return handle;
 		});
 		// A captured image never masks UNKNOWN/REFUSED or a late COMMITTED rejection from runReserved.
 		if (result.outcome === 'conflict') return result;
-		if (!completion) throw new ClimateAutomationWriteError('committed', new Error('Missing committed manual postimage'));
-		return Object.freeze({ outcome: result.outcome, controllerRevision: completion.image.controllerRevision, graphRevision: completion.graphRevision, document: this.documentOf(completion.image) });
+		if (!completion)
+			throw new ClimateAutomationWriteError('committed', new Error('Missing committed manual postimage'));
+		return Object.freeze({
+			outcome: result.outcome,
+			controllerRevision: completion.image.controllerRevision,
+			graphRevision: completion.graphRevision,
+			document: this.documentOf(completion.image),
+		});
 	}
 
 	private rejectManualSnapshotReentry(): void {
@@ -888,57 +936,130 @@ export class ClimateAutomationWriterService {
 	private requireManual(manual: PinnedManual): void {
 		if (!manual.current()) throw new Conflict('unavailable');
 	}
-	private async readManualHistory(manager: EntityManager, turn: ClimateAutomationParticipantTurn, controllerId: string, manual: PinnedManual): Promise<readonly ClimateAutomationRetainedRecoveryRow[]> {
+	private async readManualHistory(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
+		manual: PinnedManual,
+	): Promise<readonly ClimateAutomationRetainedRecoveryRow[]> {
 		this.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 		this.requireManual(manual);
-		const supplied = await invoke<ClimateAutomationManualCapability, Parameters<ClimateAutomationManualCapability['readRetainedHistoryInManager']>, ReturnType<ClimateAutomationManualCapability['readRetainedHistoryInManager']>>(manual.history, manual.capability, manager, turn, controllerId);
+		const supplied = await invoke<
+			ClimateAutomationManualCapability,
+			Parameters<ClimateAutomationManualCapability['readRetainedHistoryInManager']>,
+			ReturnType<ClimateAutomationManualCapability['readRetainedHistoryInManager']>
+		>(manual.history, manual.capability, manager, turn, controllerId);
 		this.requireManual(manual);
 		const rows = climateAutomationRetainedRecoveryRows(this.ownedJson(supplied), controllerId);
 		this.requireManual(manual);
 		return rows;
 	}
-	private manualIntentCommand(manager: EntityManager, scope: ClimateAutomationScope, request: ClimateAutomationControllerIntentRequest, manual: PinnedManual): Promise<ClimateAutomationHandle> {
-		return this.participantCommand(manager, scope, () => ({ pinned: manual.participant }), async (operation) => {
-			operation.guards.push(manual.current);
-			return this.inParticipantTurn(operation, async (turn, turnRecord) => {
-				this.requireManual(manual);
-				const original = await this.participantSnapshot(manager, turn, request.controllerId, request.providerKey, manual.participant);
-				const history = await this.readManualHistory(manager, turn, request.controllerId, manual);
-				const before: Snapshot = Object.freeze({ ...original, manualHistory: Object.freeze({ pinned: manual, rows: history }) });
-				this.requireManual(manual);
-				if (!before.participant || !before.slot?.value) throw new Conflict('uninitialized');
-				const image = before.participant.image, slot = before.slot.value;
-				if (request.fence.kind === 'exact' && (request.fence.controllerRevision !== image.controllerRevision || request.fence.graphRevision !== before.participant.graph.revision)) throw new Conflict('stale');
-				await this.validateSnapshot(manager, before); this.requireManual(manual);
-				const reduction = climateAutomationReduceManualIntent(image, request.intent);
-				turnRecord.phase = 'NORMALIZE';
-				await invoke<ClimateAutomationManualCapability, Parameters<ClimateAutomationManualCapability['validateInManager']>, ReturnType<ClimateAutomationManualCapability['validateInManager']>>(manual.validate, manual.capability, manager, turn, request.intent, image, reduction.document);
-				this.requireManual(manual);
-				const hold = reduction.hold === 'takeover' ? true : reduction.hold === 'clear' ? false : slot.manualHold;
-				const manualChange = reduction.manualCommand && (reduction.manualFieldsChanged || hold !== slot.manualHold);
-				const controllerChange = !same(reduction.document, this.documentOf(image));
-				if (!manualChange && !controllerChange) return this.handle(operation, before, false);
-				// Check every counter we will actually write BEFORE UUID allocation or business SQL. Child counters are facts only.
-				const controllerRevision = increment(image.controllerRevision);
-				const slotRevision = manualChange ? increment(slot.slotRevision) : slot.slotRevision;
-				const manualCounter = manualChange ? increment(slot.manualCounter) : slot.manualCounter;
-				const nextSlot: ClimateAutomationSlotFacts = manualChange ? Object.freeze({ ...slot, slotRevision, manualCounter, manualGeneration: randomUUID(), manualHold: hold, state: slot.state === 'PROVISIONAL' ? 'RETIRED' : slot.state }) : slot;
-				const next = Object.freeze({ ...reduction.document, controllerRevision });
-				await this.validateSnapshot(manager, before); this.requireManual(manual);
-				turnRecord.phase = 'APPLY';
-				await invoke<ClimateAutomationParticipant, Parameters<ClimateAutomationParticipant['applyInManager']>, ReturnType<ClimateAutomationParticipant['applyInManager']>>(manual.participant.apply, manual.participant.cap, manager, turn, image, next);
-				this.requireManual(manual); operation.mutationEpoch++;
-				if (manualChange) { await this.updateSlot(manager, slot, nextSlot, before.participant.referencedSource ?? undefined); this.requireManual(manual); operation.mutationEpoch++; }
-				turnRecord.phase = 'READ_AFTER';
-				const materialized = await this.participantSnapshot(manager, turn, request.controllerId, request.providerKey, manual.participant);
-				const afterHistory = await this.readManualHistory(manager, turn, request.controllerId, manual);
-				if (!same(afterHistory, history)) throw new Conflict('stale');
-				const after: Snapshot = Object.freeze({ ...materialized, manualHistory: before.manualHistory }); this.requireManual(manual);
-				if (!after.participant || !same(after.participant.image, next) || !same(after.slot, { controllerId: request.controllerId, value: nextSlot }) || !same(after.source ?? null, before.source ?? null) || !same(after.participant.referencedSource, before.participant.referencedSource) || !same(after.participant.graph, before.participant.graph)) throw new Conflict('stale');
-				operation.latestGraph = before.participant.graph;
-				return this.handle(operation, after, true);
-			});
-		});
+	private manualIntentCommand(
+		manager: EntityManager,
+		scope: ClimateAutomationScope,
+		request: ClimateAutomationControllerIntentRequest,
+		manual: PinnedManual,
+	): Promise<ClimateAutomationHandle> {
+		return this.participantCommand(
+			manager,
+			scope,
+			() => ({ pinned: manual.participant }),
+			async (operation) => {
+				operation.guards.push(manual.current);
+				return this.inParticipantTurn(operation, async (turn, turnRecord) => {
+					this.requireManual(manual);
+					const original = await this.participantSnapshot(
+						manager,
+						turn,
+						request.controllerId,
+						request.providerKey,
+						manual.participant,
+					);
+					const history = await this.readManualHistory(manager, turn, request.controllerId, manual);
+					const before: Snapshot = Object.freeze({
+						...original,
+						manualHistory: Object.freeze({ pinned: manual, rows: history }),
+					});
+					this.requireManual(manual);
+					if (!before.participant || !before.slot?.value) throw new Conflict('uninitialized');
+					const image = before.participant.image,
+						slot = before.slot.value;
+					if (
+						request.fence.kind === 'exact' &&
+						(request.fence.controllerRevision !== image.controllerRevision ||
+							request.fence.graphRevision !== before.participant.graph.revision)
+					)
+						throw new Conflict('stale');
+					await this.validateSnapshot(manager, before);
+					this.requireManual(manual);
+					const reduction = climateAutomationReduceManualIntent(image, request.intent);
+					turnRecord.phase = 'NORMALIZE';
+					await invoke<
+						ClimateAutomationManualCapability,
+						Parameters<ClimateAutomationManualCapability['validateInManager']>,
+						ReturnType<ClimateAutomationManualCapability['validateInManager']>
+					>(manual.validate, manual.capability, manager, turn, request.intent, image, reduction.document);
+					this.requireManual(manual);
+					const hold = reduction.hold === 'takeover' ? true : reduction.hold === 'clear' ? false : slot.manualHold;
+					const manualChange = reduction.manualCommand && (reduction.manualFieldsChanged || hold !== slot.manualHold);
+					const controllerChange = !same(reduction.document, this.documentOf(image));
+					if (!manualChange && !controllerChange) return this.handle(operation, before, false);
+					// Check every counter we will actually write BEFORE UUID allocation or business SQL. Child counters are facts only.
+					const controllerRevision = increment(image.controllerRevision);
+					const slotRevision = manualChange ? increment(slot.slotRevision) : slot.slotRevision;
+					const manualCounter = manualChange ? increment(slot.manualCounter) : slot.manualCounter;
+					const nextSlot: ClimateAutomationSlotFacts = manualChange
+						? Object.freeze({
+								...slot,
+								slotRevision,
+								manualCounter,
+								manualGeneration: randomUUID(),
+								manualHold: hold,
+								state: slot.state === 'PROVISIONAL' ? 'RETIRED' : slot.state,
+							})
+						: slot;
+					const next = Object.freeze({ ...reduction.document, controllerRevision });
+					await this.validateSnapshot(manager, before);
+					this.requireManual(manual);
+					turnRecord.phase = 'APPLY';
+					await invoke<
+						ClimateAutomationParticipant,
+						Parameters<ClimateAutomationParticipant['applyInManager']>,
+						ReturnType<ClimateAutomationParticipant['applyInManager']>
+					>(manual.participant.apply, manual.participant.cap, manager, turn, image, next);
+					this.requireManual(manual);
+					operation.mutationEpoch++;
+					if (manualChange) {
+						await this.updateSlot(manager, slot, nextSlot, before.participant.referencedSource ?? undefined);
+						this.requireManual(manual);
+						operation.mutationEpoch++;
+					}
+					turnRecord.phase = 'READ_AFTER';
+					const materialized = await this.participantSnapshot(
+						manager,
+						turn,
+						request.controllerId,
+						request.providerKey,
+						manual.participant,
+					);
+					const afterHistory = await this.readManualHistory(manager, turn, request.controllerId, manual);
+					if (!same(afterHistory, history)) throw new Conflict('stale');
+					const after: Snapshot = Object.freeze({ ...materialized, manualHistory: before.manualHistory });
+					this.requireManual(manual);
+					if (
+						!after.participant ||
+						!same(after.participant.image, next) ||
+						!same(after.slot, { controllerId: request.controllerId, value: nextSlot }) ||
+						!same(after.source ?? null, before.source ?? null) ||
+						!same(after.participant.referencedSource, before.participant.referencedSource) ||
+						!same(after.participant.graph, before.participant.graph)
+					)
+						throw new Conflict('stale');
+					operation.latestGraph = before.participant.graph;
+					return this.handle(operation, after, true);
+				});
+			},
+		);
 	}
 
 	replaceController(
@@ -1387,7 +1508,12 @@ export class ClimateAutomationWriterService {
 					expected.pinned,
 				);
 				if (snapshot.manualHistory) {
-					const rows = await this.readManualHistory(manager, turn, expected.image.controllerId, snapshot.manualHistory.pinned);
+					const rows = await this.readManualHistory(
+						manager,
+						turn,
+						expected.image.controllerId,
+						snapshot.manualHistory.pinned,
+					);
 					if (!same(rows, snapshot.manualHistory.rows)) throw new Conflict('stale');
 				}
 				if (
