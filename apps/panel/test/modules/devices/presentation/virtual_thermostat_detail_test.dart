@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat_comfort.dart';
+import 'package:fastybird_smart_panel/plugins/devices-virtual/models/device.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/virtual_thermostat.dart';
@@ -16,6 +20,7 @@ class MockDevicesService extends Mock implements DevicesService {}
 
 void main() {
   cachedSourceDeadlineTests();
+  sameIdMappedViewLifecycleTests();
   testWidgets('shows requested heat separately from suspended physical output', (
     tester,
   ) async {
@@ -1108,4 +1113,486 @@ void cachedSourceDeadlineTests() {
       },
     );
   }
+}
+
+// Exercise the same production mapper that DevicesService uses after repository
+// updates. Only command transport is mocked; no private widget state/clock seam.
+class _MappedDetailFixture {
+  final elapsed = Stopwatch()..start();
+  final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
+  final service = MockDevicesService();
+  final command = Completer<bool>();
+  final held = <MapEntry<RequestOptions, RequestInterceptorHandler>>[];
+  final writes = <Map<String, dynamic>>[];
+  late DateTime sample = DateTime.now().subtract(
+    const Duration(milliseconds: 1),
+  );
+  late final DateTime expiry = sample.add(const Duration(minutes: 2));
+  bool holdDetail = false;
+  int revision = 4, detailGets = 0, comfortGets = 0, commandCalls = 0;
+
+  _MappedDetailFixture() {
+    when(
+      () => service.setMultiplePropertyValues(
+        properties: any(named: 'properties'),
+        context: any(named: 'context'),
+        requireAtomicBatch: any(named: 'requireAtomicBatch'),
+      ),
+    ).thenAnswer((_) {
+      commandCalls++;
+      return command.future;
+    });
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path.contains('/comfort')) {
+            if (options.method == 'GET') comfortGets++;
+            if (options.method == 'POST') {
+              writes.add(Map<String, dynamic>.from(options.data as Map));
+            }
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {'data': comfort(options.path.split('/')[5])},
+              ),
+            );
+            return;
+          }
+          detailGets++;
+          if (holdDetail) {
+            held.add(MapEntry(options, handler));
+          } else {
+            resolve(MapEntry(options, handler));
+          }
+        },
+      ),
+    );
+  }
+
+  Map<String, dynamic> comfort(String id) => {
+    'controller': id,
+    'revision': revision,
+    'graph_revision': 9,
+    'configuration': {
+      'heating_range': {'minimum': 0, 'maximum': 30},
+      'presets': [
+        {
+          'preset': 'eco',
+          'setpoints': {'heating_setpoint': 17, 'cooling_setpoint': null},
+        },
+      ],
+      'selected_preset': null,
+      'user_off': false,
+      'automation_enabled': false,
+      'temporary_override': null,
+    },
+    'effective': {'source': 'manual', 'preset': null},
+    'clock_policy': 'bounded_absolute_recovery_with_uncertainty_inhibit',
+  };
+
+  Map<String, dynamic> snapshot(bool runtime, {double target = 21}) => runtime
+      ? {
+          'configuration_revision': revision,
+          'requested_mode': 'heat',
+          'heating_setpoint': target,
+          'readiness': 'ready',
+          'current_temperature': 19.5,
+          'branches': [],
+          'inputs': [
+            {
+              'binding': 'ambient',
+              'role': 'ambient',
+              'source_property': 'temperature',
+              'source_kind': 'physical',
+              'status': 'fresh',
+              'quality': 'good',
+              'sampled_at': sample.toIso8601String(),
+              'expires_at': expiry.toIso8601String(),
+              'age_seconds': 0,
+              'maximum_age_seconds': 2,
+            },
+          ],
+        }
+      : {
+          'revision': revision,
+          'locked': false,
+          'requested_mode': 'heat',
+          'policy': {'heatingSetpoint': target, 'coolingSetpoint': null},
+          'settings': [
+            {'setting': 'locked', 'property': 'locked'},
+          ],
+          'actuators': [],
+          'sources': [
+            {
+              'id': 'ambient',
+              'role': 'ambient',
+              'source_identity': 'ambient-sensor',
+              'source_property': 'temperature',
+            },
+          ],
+        };
+
+  ThermostatDeviceView mapped({
+    String id = '11111111-1111-4111-8111-111111111111',
+    String name = 'Room',
+  }) =>
+      buildDeviceView(
+            VirtualDeviceModel(
+              id: id,
+              name: name,
+              category: DevicesModuleDeviceCategory.thermostat,
+              mode: VirtualDeviceMode.climateController,
+            ),
+            [
+              ThermostatChannelView(
+                id: 'thermostat',
+                type: 'virtual',
+                device: id,
+                properties: [
+                  LockedChannelPropertyView(
+                    id: 'locked',
+                    type: 'virtual',
+                    channel: 'thermostat',
+                    permission: const [DevicesModulePermissionType.rw],
+                  ),
+                ],
+              ),
+            ],
+          )
+          as ThermostatDeviceView;
+
+  void resolve(
+    MapEntry<RequestOptions, RequestInterceptorHandler> request, {
+    double target = 21,
+    bool nullRuntime = false,
+  }) {
+    final runtime = request.key.path.endsWith('/runtime');
+    request.value.resolve(
+      Response(
+        requestOptions: request.key,
+        statusCode: 200,
+        data: {
+          'data': runtime && nullRuntime
+              ? null
+              : snapshot(runtime, target: target),
+        },
+      ),
+    );
+  }
+
+  void completeHeld({
+    double target = 21,
+    bool nullRuntime = false,
+    bool fail = false,
+  }) {
+    final batch = List.of(held);
+    held.clear();
+    for (final request in batch) {
+      if (fail) {
+        request.value.reject(
+          DioException(
+            requestOptions: request.key,
+            message: 'controlled read failure',
+            type: DioExceptionType.connectionError,
+          ),
+        );
+      } else {
+        resolve(request, target: target, nullRuntime: nullRuntime);
+      }
+    }
+  }
+
+  Future<void> flush(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  Future<void> mount(WidgetTester tester, ThermostatDeviceView view) async {
+    await tester.pumpWidget(
+      MaterialApp(home: VirtualThermostatDeviceDetail(device: view)),
+    );
+    await flush(tester);
+  }
+
+  Future<void> read(WidgetTester tester) async {
+    final work = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await flush(tester);
+    await work;
+  }
+
+  Future<void> tap(WidgetTester tester, String key) async {
+    final finder = find.byKey(ValueKey(key));
+    await tester.ensureVisible(finder);
+    await tester.tap(finder);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> install(WidgetTester tester) async {
+    locator.registerSingleton<Dio>(dio);
+    locator.registerSingleton<DevicesService>(service);
+    await tester.binding.setSurfaceSize(const Size(1200, 4000));
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox());
+      completeHeld();
+      if (!command.isCompleted) command.complete(false);
+      dio.close(force: true);
+      await tester.pumpAndSettle();
+      await locator.unregister<Dio>();
+      await locator.unregister<DevicesService>();
+      await tester.binding.setSurfaceSize(null);
+      elapsed.stop();
+    });
+    await mount(tester, mapped());
+    // Initial readiness only: never settle inside a deliberately held read gap.
+    await tester.pumpAndSettle();
+    expect(detailGets, 2);
+    expect(comfortGets, 2);
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('comfort-create')))
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<TextButton>(find.byKey(const ValueKey('comfort-selection')))
+          .onPressed,
+      isNotNull,
+    );
+    expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+    expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+    expect(find.text('Controller readiness: ready'), findsOneWidget);
+  }
+}
+
+void sameIdMappedViewLifecycleTests() {
+  testWidgets(
+    'same-ID mapped update retains accepted settings and discards older held GET',
+    (tester) async {
+      final h = _MappedDetailFixture();
+      await h.install(tester);
+      final child = tester.state(find.byType(VirtualThermostatComfort));
+      h.holdDetail = true;
+      final oldRead = tester
+          .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+          .onRefresh();
+      await h.flush(tester);
+      final oldBatch = List.of(h.held);
+      h.held.clear();
+      final priorView = tester
+          .widget<VirtualThermostatDeviceDetail>(
+            find.byType(VirtualThermostatDeviceDetail),
+          )
+          .device;
+      final replacement = h.mapped(name: 'Updated room');
+      expect(replacement.id, priorView.id);
+      expect(identical(replacement, priorView), isFalse);
+      await h.mount(tester, replacement);
+      expect(h.detailGets, 6);
+      expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+      expect(tester.state(find.byType(VirtualThermostatComfort)), same(child));
+      expect(find.text('Ambient: 19.5 °C'), findsNothing);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      h.completeHeld();
+      await h.flush(tester);
+      for (final request in oldBatch) {
+        h.resolve(request, target: 29);
+      }
+      await h.flush(tester);
+      await oldRead;
+      expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+      expect(find.text('Heating target: 29.0 °C'), findsNothing);
+      expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+    },
+  );
+
+  for (final failure in ['HTTP failure', 'null runtime']) {
+    testWidgets(
+      'same-ID $failure retains configuration without renewing original sample budget',
+      (tester) async {
+        final h = _MappedDetailFixture();
+        final fakeStart = tester.binding.clock.now();
+        await h.install(tester);
+        h.holdDetail = true;
+        await h.mount(tester, h.mapped(name: 'Updated room'));
+        h.completeHeld(
+          fail: failure == 'HTTP failure',
+          nullRuntime: failure == 'null runtime',
+        );
+        await h.flush(tester);
+        expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+        expect(find.text('Ambient: 19.5 °C'), findsNothing);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        h.holdDetail = false;
+        await h.read(tester);
+        expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+        // Measured past-original-budget check, followed by fresh cached HTTP: not
+        // a literal 2s widget boundary and not merely the five-second display TTL.
+        final fakeElapsed = tester.binding.clock.now().difference(fakeStart);
+        final bound = h.elapsed.elapsed > fakeElapsed
+            ? h.elapsed.elapsed
+            : fakeElapsed;
+        await tester.pump(bound + const Duration(seconds: 3));
+        await h.flush(tester);
+        await h.read(tester);
+        expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+        expect(find.text('Ambient: 19.5 °C'), findsNothing);
+        expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+        h.sample = DateTime.now();
+        await h.read(tester);
+        expect(find.text('Ambient: 19.5 °C'), findsOneWidget);
+      },
+    );
+  }
+
+  for (final accepted in [true, false]) {
+    testWidgets(
+      'same-ID update during held command defers one refresh after accepted=$accepted',
+      (tester) async {
+        final h = _MappedDetailFixture();
+        await h.install(tester);
+        await tester.tap(find.text('Lock thermostat controls'));
+        await h.flush(tester);
+        expect(h.commandCalls, 1);
+        h.holdDetail = true;
+        await h.mount(tester, h.mapped(name: 'Update during command'));
+        expect(h.detailGets, 2);
+        expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+        expect(
+          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+          isNull,
+        );
+        expect(find.text('Ambient: 19.5 °C'), findsNothing);
+        h.holdDetail = false;
+        h.command.complete(accepted);
+        await h.flush(tester);
+        await h.flush(tester);
+        expect(h.detailGets, 4);
+        expect(h.commandCalls, 1);
+        expect(
+          tester.widget<SwitchListTile>(find.byType(SwitchListTile)).onChanged,
+          isNotNull,
+        );
+        await h.flush(tester);
+        expect(h.detailGets, 4);
+        expect(h.commandCalls, 1);
+      },
+    );
+  }
+
+  for (final route in ['dialog', 'menu']) {
+    for (final changedRevision in [false, true]) {
+      testWidgets(
+        'same-ID mapped update retains $route and fences CAS changedRevision=$changedRevision',
+        (tester) async {
+          final h = _MappedDetailFixture();
+          await h.install(tester);
+          final child = tester.state(find.byType(VirtualThermostatComfort));
+          await h.tap(
+            tester,
+            route == 'dialog' ? 'comfort-create' : 'comfort-selection',
+          );
+          if (route == 'dialog') {
+            await tester.enterText(
+              find.byKey(const ValueKey('override-heating')),
+              '23.5',
+            );
+            await tester.enterText(
+              find.byKey(const ValueKey('override-duration')),
+              '10',
+            );
+          }
+          h.holdDetail = true;
+          await h.mount(tester, h.mapped(name: 'Updated while editing'));
+          expect(
+            tester.state(find.byType(VirtualThermostatComfort)),
+            same(child),
+          );
+          expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+          if (route == 'dialog') {
+            expect(
+              tester
+                  .widget<TextField>(
+                    find.byKey(const ValueKey('override-heating')),
+                  )
+                  .controller!
+                  .text,
+              '23.5',
+            );
+            expect(
+              tester
+                  .widget<TextField>(
+                    find.byKey(const ValueKey('override-duration')),
+                  )
+                  .controller!
+                  .text,
+              '10',
+            );
+          } else {
+            expect(
+              find.widgetWithText(PopupMenuItem<String>, 'Eco'),
+              findsOneWidget,
+            );
+          }
+          if (changedRevision) {
+            h.revision = 5;
+            h.completeHeld();
+            await h.flush(tester);
+          }
+          if (route == 'dialog') {
+            await h.tap(tester, 'override-submit');
+          } else {
+            await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Eco'));
+            await tester.pumpAndSettle();
+          }
+          expect(h.writes.length, changedRevision ? 0 : 1);
+          if (!changedRevision) {
+            expect(h.writes.single['expected_revision'], 4);
+            expect(h.writes.single['expected_graph_revision'], 9);
+            if (route == 'dialog') {
+              expect(
+                (h.writes.single['setpoints'] as Map)['heating_setpoint'],
+                23.5,
+              );
+            } else {
+              expect(h.writes.single['preset'], 'eco');
+            }
+          }
+        },
+      );
+    }
+  }
+
+  testWidgets(
+    'different-ID mapped replacement clears settings and retires old popup without side effects',
+    (tester) async {
+      final h = _MappedDetailFixture();
+      await h.install(tester);
+      await h.tap(tester, 'comfort-selection');
+      h.holdDetail = true;
+      await h.mount(
+        tester,
+        h.mapped(
+          id: '22222222-2222-4222-8222-222222222222',
+          name: 'Replacement',
+        ),
+      );
+      expect(find.text('Heating target: 21.0 °C'), findsNothing);
+      expect(find.text('Ambient: 19.5 °C'), findsNothing);
+      expect(find.text('Controller readiness: ready'), findsNothing);
+      final readsBefore = h.detailGets;
+      await tester.tap(find.widgetWithText(PopupMenuItem<String>, 'Eco'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(h.writes, isEmpty);
+      expect(h.detailGets, readsBefore);
+      expect(find.text('Heating target: 21.0 °C'), findsNothing);
+      h.completeHeld();
+      await h.flush(tester);
+      expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+    },
+  );
 }

@@ -111,9 +111,9 @@ class _VirtualThermostatDeviceDetailState
     if (replacedDevice) {
       _evidence = VirtualThermostatEvidenceFence();
       _activityFence = VirtualThermostatActivityFence();
+      _configuration = null;
+      _runtime = null;
     }
-    _configuration = null;
-    _runtime = null;
     _error = null;
     if (replacedDevice) _busy = false;
     unawaited(_refresh(force: true));
@@ -573,6 +573,7 @@ class _VirtualThermostatDeviceDetailState
               unavailableActivityClaims: unavailableActivityClaims,
             ),
             VirtualThermostatComfort(
+              key: const ValueKey('virtual-thermostat-comfort'),
               deviceId: widget.device.id,
               revision: (config?['revision'] as num?)?.toInt(),
               disabled: !canControl,

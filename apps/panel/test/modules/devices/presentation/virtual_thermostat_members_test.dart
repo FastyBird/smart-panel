@@ -698,6 +698,7 @@ void main() {
   testWidgets(
     'same-id loading preserves newer and expired sample fences until qualified recovery',
     (tester) async {
+      final alignmentStopwatch = Stopwatch()..start();
       final fixture = MemberDetailFixture();
       final now = DateTime.now();
       Map<String, dynamic> sample(
@@ -710,6 +711,7 @@ void main() {
         'expires_at': now.add(const Duration(minutes: 2)).toIso8601String(),
       };
       fixture.sample = sample(now, 10);
+      final firstMountFakeTime = tester.binding.clock.now();
       await fixture.mount(tester);
       expect(find.text('Live protection reading: 10.0 °C'), findsOneWidget);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
@@ -718,7 +720,11 @@ void main() {
       fixture.revision++;
       fixture.hold = true;
       await fixture.mount(tester);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Server protection readiness: true'), findsNothing);
       await fixture.flush(tester);
       expect(find.text('Live protection reading: 9.0 °C'), findsNothing);
       expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
@@ -729,7 +735,51 @@ void main() {
       final recovered = DateTime.now();
       expect(recovered.isAfter(now), isTrue);
       fixture.sample = sample(recovered, 11, maximumAge: 2);
+      final modeReadsBeforeRecovery = fixture.modeReads;
+      final runtimeReadsBeforeRecovery = fixture.runtimeReads;
+      expect(fixture.held, isEmpty);
+      fixture.hold = true;
       await fixture.refetch(tester);
+      expect(fixture.held, hasLength(2));
+      expect(fixture.modeReads, modeReadsBeforeRecovery + 1);
+      expect(fixture.runtimeReads, runtimeReadsBeforeRecovery + 1);
+      final originalRecoveryPair = fixture.held.toList();
+      final recoveryRevision = fixture.revision;
+      // Align timer ticks BEFORE admission, retaining the exact post-admission
+      // three-second pump. The public guard fails a slow run rather than retrying.
+      final alignmentElapsed = alignmentStopwatch.elapsed;
+      await tester.pump(alignmentElapsed + const Duration(seconds: 2));
+      final alignedWholeSeconds = tester.binding.clock
+          .now()
+          .difference(firstMountFakeTime)
+          .inSeconds;
+      expect(fixture.held, orderedEquals(originalRecoveryPair));
+      expect(fixture.modeReads, modeReadsBeforeRecovery + 1);
+      expect(fixture.runtimeReads, runtimeReadsBeforeRecovery + 1);
+      expect(fixture.revision, recoveryRevision);
+      expect(
+        fixture.configurationRevision ?? fixture.revision,
+        recoveryRevision,
+      );
+      expect(fixture.sample?['sampled_at'], recovered.toIso8601String());
+      expect(fixture.sample?['maximum_age_seconds'], 2);
+      await fixture.flush(tester);
+      final acceptedExternalElapsed = alignmentStopwatch.elapsed;
+      expect(
+        acceptedExternalElapsed < Duration(seconds: alignedWholeSeconds),
+        isTrue,
+        reason: 'Public external/fake bounds prove tick-dominated acceptance',
+      );
+      expect(fixture.held, isEmpty);
+      expect(fixture.modeReads, modeReadsBeforeRecovery + 1);
+      expect(fixture.runtimeReads, runtimeReadsBeforeRecovery + 1);
+      debugPrint(
+        'EXPIRY_PREACCEPT_ALIGNMENT E=${alignmentElapsed.inMicroseconds}us '
+        'acceptedE=${acceptedExternalElapsed.inMicroseconds}us '
+        'F=${tester.binding.clock.now().difference(firstMountFakeTime).inMicroseconds}us '
+        'T=$alignedWholeSeconds mode=${fixture.modeReads} runtime=${fixture.runtimeReads} '
+        'revision=$recoveryRevision',
+      );
       expect(find.text('Live protection reading: 11.0 °C'), findsOneWidget);
       expect(find.text('Controller readiness: ready'), findsOneWidget);
       expect(find.text('Protection latched: false'), findsOneWidget);
@@ -746,7 +796,11 @@ void main() {
       fixture.revision++;
       fixture.hold = true;
       await fixture.mount(tester);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      expect(find.text('Live protection reading: Unavailable'), findsOneWidget);
+      expect(find.text('Server protection readiness: true'), findsNothing);
       await fixture.flush(tester);
       expect(find.text('Live protection reading: 11.0 °C'), findsNothing);
       expect(find.text('Protection latched: false'), findsNothing);
@@ -1161,7 +1215,14 @@ void main() {
       fixture.revision++;
       fixture.hold = true;
       await fixture.mount(tester);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.text('Heating target: 21.0 °C'), findsOneWidget);
+      expect(find.text('Controller readiness: Unavailable'), findsOneWidget);
+      expect(find.text('Reported observation: Unavailable'), findsOneWidget);
+      expect(
+        find.text('Server guard/target check (snapshot): Unavailable'),
+        findsOneWidget,
+      );
       expect(find.text('Reported observation: off'), findsNothing);
       expect(
         find.text('Server guard/target check (snapshot): true'),

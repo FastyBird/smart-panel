@@ -165,8 +165,9 @@ The three confirmed findings are fixed locally in the same 016 worktree:
   epoch/graph/configuration/claim/qualification checks still fence queued ON; unsafe OFF remains available.
 - Both backend bounds and the generated version-two local script require recovery strictly inside the lower domain
   boundary. Equality is rejected because the admitted sample domain otherwise cannot supply a recovering value.
-  The version-two source hash intentionally changes and requires reviewed restaging/explicit activation for an old
-  version-two artifact. Legacy source, artifact hashes and upgrade behavior remain unchanged.
+  The version-two source hash intentionally changes. Review an old version-two artifact, then restage it and explicitly
+  activate it. This does not automatically upgrade installed artifacts or establish native qualification. Legacy source,
+  artifact hashes and upgrade behavior remain unchanged.
 - Legacy fallback refuses any controller with more than one nonreleased heating claim, counting missing, releasing
   and suspended claims. Stage, inspection, explicit verification and background renewal fail closed before machine
   inspection. True singleton and existing cooling/opposed legacy regression behavior remains intact.
