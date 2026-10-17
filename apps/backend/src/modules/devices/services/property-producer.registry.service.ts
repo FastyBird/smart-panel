@@ -5,13 +5,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
-import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 import { DerivedPropertyPublication, IncorporatedPropertySample } from '../models/property-sample.model';
 import {
 	PropertyProducerState,
 	PropertyValueState,
 	clonePropertyValueState,
 } from '../models/property-value-state.model';
+import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
 export interface PropertyProducerLease {
 	readonly propertyId: string;
@@ -49,37 +49,121 @@ export function ownedProducerMethodCurrent(receiver: object, key: string, origin
 	let current: object | null = receiver;
 	while (current) {
 		const descriptor = Object.getOwnPropertyDescriptor(current, key);
-		if (descriptor) return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
+		if (descriptor)
+			return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
 		const parent: unknown = Object.getPrototypeOf(current);
 		current = typeof parent === 'object' && parent !== null ? parent : null;
 	}
 	return false;
 }
-export type OwnedProducerEngine = Pick<PropertyProducerRegistryService, 'acquireOwnedPublisher' | 'isOwnedPublisherCurrent' | 'disposeOwnedPublisher' | 'readOwnedView' | 'owns' | 'isCurrent' | 'invalidateObservedId' | 'ownedPropertyIds' | 'retiredSameKeyPropertyIds' | 'beginObservedBatch' | 'captureExpectedSlot' | 'isObservedBatchCurrent' | 'prepareOwnedBatch' | 'validatePreparedBatch' | 'installPreparedNoEvents' | 'isInstalledBatchCurrent' | 'ownedNotificationCount' | 'notifyInstalled' | 'readInstalledReport' | 'closeObservedBatch' | 'finishPublication' | 'isOwnedEngineCurrent'>;
-type OwnedProducerMethodReferences = { readonly [K in keyof OwnedProducerEngine]:
-	(...args: Parameters<OwnedProducerEngine[K]>) => ReturnType<OwnedProducerEngine[K]> };
-export class OwnedProducerPublisher { toJSON(): Readonly<Record<string, never>> { return {}; } }
-export class ExpectedProducerSlot { toJSON(): Readonly<Record<string, never>> { return {}; } }
-export class ObservedProducerBatch { toJSON(): Readonly<Record<string, never>> { return {}; } }
-export class PreparedProducerBatch { toJSON(): Readonly<Record<string, never>> { return {}; } }
+type OwnedProducerMethods = Pick<
+	PropertyProducerRegistryService,
+	| 'acquireOwnedPublisher'
+	| 'isOwnedPublisherCurrent'
+	| 'disposeOwnedPublisher'
+	| 'readOwnedView'
+	| 'owns'
+	| 'isCurrent'
+	| 'invalidateObservedId'
+	| 'ownedPropertyIds'
+	| 'retiredSameKeyPropertyIds'
+	| 'beginObservedBatch'
+	| 'captureExpectedSlot'
+	| 'isObservedBatchCurrent'
+	| 'prepareOwnedBatch'
+	| 'validatePreparedBatch'
+	| 'installPreparedNoEvents'
+	| 'isInstalledBatchCurrent'
+	| 'ownedNotificationCount'
+	| 'notifyInstalled'
+	| 'readInstalledReport'
+	| 'closeObservedBatch'
+	| 'finishPublication'
+	| 'isOwnedEngineCurrent'
+>;
+/** Erased view of the SAME callable object and native call property; no wrapper or rebinding. */
+export type OwnedReceiverFunction<Receiver, Args extends unknown[], Result> = {
+	(...args: Args): Result;
+	readonly call: (receiver: Receiver, ...args: Args) => Result;
+};
+export type OwnedProducerEngine = {
+	readonly [K in keyof OwnedProducerMethods]: OwnedReceiverFunction<
+		PropertyProducerRegistryService,
+		Parameters<OwnedProducerMethods[K]>,
+		ReturnType<OwnedProducerMethods[K]>
+	>;
+};
+type OwnedProducerMethodReferences = {
+	readonly [K in keyof OwnedProducerEngine]: (
+		...args: Parameters<OwnedProducerEngine[K]>
+	) => ReturnType<OwnedProducerEngine[K]>;
+};
+export class OwnedProducerPublisher {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export class ExpectedProducerSlot {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export class ObservedProducerBatch {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export class PreparedProducerBatch {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
 export interface OwnedProducerView {
 	readonly revision: number;
 	readonly configurationRevisions: readonly Readonly<{ propertyId: string; revision: number }>[];
 	readonly quarantineLeases: readonly Readonly<{ propertyId: string; lease: PropertyProducerLease }>[];
 }
-export type OwnedProducerOperation = Readonly<{ expected: ExpectedProducerSlot }> & (
-	| Readonly<{ kind: 'retain'; propertyId: string }>
-	| Readonly<{ kind: 'fallback-unavailable'; propertyId: string; property: ChannelPropertyEntity; revision: number; reason: 'runtime_unavailable' }>
-	| Readonly<{ kind: 'replace-retired-unavailable'; propertyId: string; property: ChannelPropertyEntity; revision: number; reason: 'runtime_unavailable' }>
-	| Readonly<{ kind: 'unavailable'; propertyId: string; property: ChannelPropertyEntity; revision: number; reason: 'runtime_unavailable' | 'graph_quarantined' }>
-	| Readonly<{ kind: 'retire-alias-mask'; propertyId: string; property: ChannelPropertyEntity }>
-	| Readonly<{ kind: 'retire-deleted-owned-overlay'; propertyId: string }>);
+export type OwnedProducerOperation = Readonly<{ expected: ExpectedProducerSlot }> &
+	(
+		| Readonly<{ kind: 'retain'; propertyId: string }>
+		| Readonly<{
+				kind: 'fallback-unavailable';
+				propertyId: string;
+				property: ChannelPropertyEntity;
+				revision: number;
+				reason: 'runtime_unavailable';
+		  }>
+		| Readonly<{
+				kind: 'replace-retired-unavailable';
+				propertyId: string;
+				property: ChannelPropertyEntity;
+				revision: number;
+				reason: 'runtime_unavailable';
+		  }>
+		| Readonly<{
+				kind: 'unavailable';
+				propertyId: string;
+				property: ChannelPropertyEntity;
+				revision: number;
+				reason: 'runtime_unavailable' | 'graph_quarantined';
+		  }>
+		| Readonly<{ kind: 'retire-alias-mask'; propertyId: string; property: ChannelPropertyEntity }>
+		| Readonly<{ kind: 'retire-deleted-owned-overlay'; propertyId: string }>
+	);
 export interface OwnedProducerPlan {
 	readonly revision: number;
 	readonly configurationRevisions: readonly Readonly<{ propertyId: string; revision: number }>[];
 	readonly operations: readonly OwnedProducerOperation[];
 }
-export type OwnedPublicationTerminal = 'prepared' | 'installed' | 'complete' | 'superseded' | 'notification_rejected' | 'preinstall_refused' | 'legacy_rejected' | 'activation_rejected';
+export type OwnedPublicationTerminal =
+	| 'prepared'
+	| 'installed'
+	| 'complete'
+	| 'superseded'
+	| 'notification_rejected'
+	| 'preinstall_refused'
+	| 'legacy_rejected'
+	| 'activation_rejected';
 export interface OwnedPublicationReport {
 	readonly installed: boolean;
 	readonly attempted: number;
@@ -95,7 +179,11 @@ interface OwnedPublisherRecord {
 	readonly emptyView: OwnedProducerView;
 	readonly batches: Set<ObservedBatchRecord>;
 }
-interface ProducerObservation { readonly token: ExpectedProducerSlot; readonly entry: ProducerEntry | undefined; readonly lease: PropertyProducerLease | undefined; }
+interface ProducerObservation {
+	readonly token: ExpectedProducerSlot;
+	readonly entry: ProducerEntry | undefined;
+	readonly lease: PropertyProducerLease | undefined;
+}
 interface ObservedBatchRecord {
 	readonly owner: OwnedPublisherRecord;
 	view: OwnedProducerView;
@@ -112,7 +200,13 @@ interface PreparedBatchRecord {
 	readonly fallbackSources: readonly Readonly<{ propertyId: string; observation: ProducerObservation }>[];
 	readonly anchors: ReadonlyMap<string, ProducerObservation>;
 	readonly view: OwnedProducerView;
-	readonly notifications: readonly Readonly<{ batch: ObservedBatchRecord; emitter: EventEmitter2 | undefined; emit: EventEmitter2['emit'] | undefined; kind: EventType; snapshot: ChannelPropertyEntity }>[];
+	readonly notifications: readonly Readonly<{
+		batch: ObservedBatchRecord;
+		emitter: EventEmitter2 | undefined;
+		emit: EventEmitter2['emit'] | undefined;
+		kind: EventType;
+		snapshot: ChannelPropertyEntity;
+	}>[];
 	readonly report: { installed: boolean; attempted: number; completed: number; terminal: OwnedPublicationTerminal };
 	nextNotification: number;
 }
@@ -456,7 +550,30 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		});
 	}
 	isOwnedEngineCurrent(engine: OwnedProducerEngine): boolean {
-		const keys: readonly (keyof OwnedProducerEngine)[] = ['acquireOwnedPublisher', 'isOwnedPublisherCurrent', 'disposeOwnedPublisher', 'readOwnedView', 'owns', 'isCurrent', 'invalidateObservedId', 'ownedPropertyIds', 'retiredSameKeyPropertyIds', 'beginObservedBatch', 'captureExpectedSlot', 'isObservedBatchCurrent', 'prepareOwnedBatch', 'validatePreparedBatch', 'installPreparedNoEvents', 'isInstalledBatchCurrent', 'ownedNotificationCount', 'notifyInstalled', 'readInstalledReport', 'closeObservedBatch', 'finishPublication', 'isOwnedEngineCurrent'];
+		const keys: readonly (keyof OwnedProducerEngine)[] = [
+			'acquireOwnedPublisher',
+			'isOwnedPublisherCurrent',
+			'disposeOwnedPublisher',
+			'readOwnedView',
+			'owns',
+			'isCurrent',
+			'invalidateObservedId',
+			'ownedPropertyIds',
+			'retiredSameKeyPropertyIds',
+			'beginObservedBatch',
+			'captureExpectedSlot',
+			'isObservedBatchCurrent',
+			'prepareOwnedBatch',
+			'validatePreparedBatch',
+			'installPreparedNoEvents',
+			'isInstalledBatchCurrent',
+			'ownedNotificationCount',
+			'notifyInstalled',
+			'readInstalledReport',
+			'closeObservedBatch',
+			'finishPublication',
+			'isOwnedEngineCurrent',
+		];
 		return keys.every((key) => ownedProducerMethodCurrent(this, key, engine[key]));
 	}
 
@@ -464,9 +581,21 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		if (key !== 'virtual-producer-state:v1') throw new Error('Invalid owned producer key');
 		if (this.destroyed || this.ownedPublishers.has(key)) return null;
 		const handle = Object.freeze(new OwnedProducerPublisher());
-		const emptyView: OwnedProducerView = Object.freeze({ revision: -1, configurationRevisions: Object.freeze([]), quarantineLeases: Object.freeze([]) });
+		const emptyView: OwnedProducerView = Object.freeze({
+			revision: -1,
+			configurationRevisions: Object.freeze([]),
+			quarantineLeases: Object.freeze([]),
+		});
+		const eventMethods: Readonly<{
+			emit: OwnedReceiverFunction<EventEmitter2, Parameters<EventEmitter2['emit']>, ReturnType<EventEmitter2['emit']>>;
+		}> = events;
 		const owner: OwnedPublisherRecord = {
-			active: true, key, events, emit: events.emit, view: emptyView, emptyView,
+			active: true,
+			key,
+			events,
+			emit: eventMethods.emit,
+			view: emptyView,
+			emptyView,
 			batches: new Set(),
 		};
 		this.publishers.set(handle, owner);
@@ -490,20 +619,35 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	ownedPropertyIds(handle: OwnedProducerPublisher): readonly string[] {
 		const owner = this.requireOwner(handle);
-		return Object.freeze([...this.entries].filter(([, entry]) => entry.owner === owner).map(([id]) => id).sort());
+		return Object.freeze(
+			[...this.entries]
+				.filter(([, entry]) => entry.owner === owner)
+				.map(([id]) => id)
+				.sort(),
+		);
 	}
 
 	/** Candidate discovery only. Replacement still requires the exact admitted slot and closed operation. */
 	retiredSameKeyPropertyIds(handle: OwnedProducerPublisher): readonly string[] {
 		const owner = this.requireOwner(handle);
-		return Object.freeze([...this.entries].filter(([, entry]) =>
-			entry.owner !== undefined && entry.owner !== owner && !entry.owner.active && entry.owner.key === owner.key,
-		).map(([id]) => id).sort());
+		return Object.freeze(
+			[...this.entries]
+				.filter(
+					([, entry]) =>
+						entry.owner !== undefined && entry.owner !== owner && !entry.owner.active && entry.owner.key === owner.key,
+				)
+				.map(([id]) => id)
+				.sort(),
+		);
 	}
 
-	beginObservedBatch(handle: OwnedProducerPublisher, ids: readonly string[], originalGuard: PropertyProducerGuard): ObservedProducerBatch {
+	beginObservedBatch(
+		handle: OwnedProducerPublisher,
+		ids: readonly string[],
+		originalGuard: PropertyProducerGuard,
+	): ObservedProducerBatch {
 		const owner = this.requireOwner(handle);
-		const guardCurrent = originalGuard.isCurrent;
+		const guardCurrent: OwnedReceiverFunction<PropertyProducerGuard, [], boolean> = originalGuard.isCurrent;
 		const reason = originalGuard.reason;
 		const fixedIds = [...ids];
 		if (new Set(fixedIds).size !== fixedIds.length || fixedIds.some((id) => typeof id !== 'string' || !id))
@@ -514,7 +658,11 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			observations.set(id, { token: Object.freeze(new ExpectedProducerSlot()), entry, lease: entry?.lease });
 		}
 		const batch: ObservedBatchRecord = {
-			owner, view: owner.view, observations, open: true, dirty: false,
+			owner,
+			view: owner.view,
+			observations,
+			open: true,
+			dirty: false,
 			// Captured BEFORE install; pending may open only this original graph generation.
 			guard: Object.freeze({ isCurrent: () => owner.active && guardCurrent.call(originalGuard), reason }),
 		};
@@ -544,98 +692,181 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	prepareOwnedBatch(handle: ObservedProducerBatch, plan: OwnedProducerPlan): PreparedProducerBatch {
 		const batch = this.requireBatch(handle);
 		try {
-		if (batch.prepared) throw new Error('Owned producer batch already prepared');
-		if (Object.keys(plan).some((key) => !['revision', 'operations', 'configurationRevisions'].includes(key))) throw new Error('Unknown owned producer plan field');
-		const { revision, operations, configurationRevisions } = plan;
-		if (!Number.isSafeInteger(revision) || revision < -1) throw new Error('Invalid owned producer revision');
-		const hints = configurationRevisions.map(({ propertyId, revision: value }) => {
-			if (typeof propertyId !== 'string' || !propertyId || !Number.isSafeInteger(value) || value < 0)
-				throw new Error('Invalid owned producer revision hint');
-			return Object.freeze({ propertyId, revision: value });
-		}).sort((a, b) => a.propertyId.localeCompare(b.propertyId));
-		if (new Set(hints.map((hint) => hint.propertyId)).size !== hints.length) throw new Error('Duplicate owned revision hint');
-		const writes: { propertyId: string; entry: ProducerEntry | undefined }[] = [];
-		const retiredSources: { propertyId: string; observation: ProducerObservation }[] = [];
-		const fallbackSources: { propertyId: string; observation: ProducerObservation }[] = [];
-		const notifications: PreparedBatchRecord['notifications'][number][] = [];
-		const anchors = new Map(batch.observations);
-		const masks = new Map(batch.view.quarantineLeases.filter(({ propertyId, lease }) => {
-			const entry = this.entries.get(propertyId);
-			return entry?.owner === batch.owner && entry.lease === lease;
-		}).map(({ propertyId, lease }) => [propertyId, lease]));
-		const seen = new Set<string>();
-		const now = new Date();
-		for (const operation of operations) {
-			const { propertyId, expected, kind } = operation;
-			const allowed = ['kind', 'propertyId', 'expected', ...((kind === 'unavailable' || kind === 'replace-retired-unavailable' || kind === 'fallback-unavailable') ? ['property', 'revision', 'reason'] : kind === 'retire-alias-mask' ? ['property'] : [])];
-			if (Object.keys(operation).some((key) => !allowed.includes(key))) throw new Error('Unknown owned producer operation field');
-			const observation = batch.observations.get(propertyId);
-			if (!observation || observation.token !== expected || seen.has(propertyId)) throw new Error('Invalid owned producer slot');
-			seen.add(propertyId);
-			if (kind === 'retain') continue;
-			if (kind === 'unavailable' || kind === 'replace-retired-unavailable' || kind === 'fallback-unavailable') {
-				if (kind === 'fallback-unavailable') {
-					if (!this.fallbackObservationCurrent(batch, propertyId, observation) || operation.reason !== 'runtime_unavailable')
-						throw new Error('Foreign fallback producer replacement');
-					fallbackSources.push(Object.freeze({ propertyId, observation }));
-				}
-				if (kind === 'replace-retired-unavailable') {
-					if (!this.retiredSameKeyObservationCurrent(batch, propertyId, observation) || operation.reason !== 'runtime_unavailable')
-						throw new Error('Foreign retired producer replacement');
-					retiredSources.push(Object.freeze({ propertyId, observation }));
-				}
-				const { property: originalProperty, revision: value, reason } = operation;
-				const property = instanceToInstance(originalProperty, { ignoreDecorators: true, enableCircularCheck: true });
-				if (property.id !== propertyId || !Number.isSafeInteger(value) || value < 0 || !['runtime_unavailable', 'graph_quarantined'].includes(reason))
-					throw new Error('Invalid owned producer replacement');
-				const lease = Object.freeze({ propertyId, revision: value });
-				const initial = this.unavailable(value, ['initializing'], now);
-				const final = this.unavailable(value, [reason], now);
-				const metadata = this.preparedSnapshot(property, final);
-				const epoch = (observation.entry?.epoch ?? 0) + 2;
-				if (!Number.isSafeInteger(epoch)) throw new Error('Owned producer epoch overflow');
-				const entry: ProducerEntry = {
-					property: metadata, lease, state: final, epoch,
-					generation: 0, publication: 0, guard: batch.guard, owner: batch.owner, mask: reason === 'graph_quarantined',
-				};
-				writes.push({ propertyId, entry });
-				anchors.set(propertyId, { token: observation.token, entry, lease });
-				if (entry.mask) masks.set(propertyId, lease); else masks.delete(propertyId);
-				for (const state of [initial, final]) notifications.push({
-					batch, emitter: this.events, emit: this.events?.emit, kind: EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
-					snapshot: this.preparedSnapshot(property, state),
-				});
-			} else if (kind === 'retire-alias-mask' || kind === 'retire-deleted-owned-overlay') {
-				if (observation.entry?.owner !== batch.owner || (kind === 'retire-alias-mask' && !observation.entry.mask))
-					throw new Error('Foreign owned producer removal');
-				writes.push({ propertyId, entry: undefined });
-				anchors.set(propertyId, { token: observation.token, entry: undefined, lease: undefined });
-				masks.delete(propertyId);
-				if (kind === 'retire-alias-mask') {
-					const snapshot = this.preparedSnapshot(operation.property, this.unavailable(0, ['graph_validation_pending'], now));
-					if (snapshot.id !== propertyId) throw new Error('Foreign owned producer metadata');
-					notifications.push({ batch, emitter: batch.owner.events, emit: batch.owner.emit, kind: EventType.CHANNEL_PROPERTY_UPDATED, snapshot });
-				}
-			} else throw new Error('Unknown owned producer operation');
-		}
-		if (seen.size !== batch.observations.size) throw new Error('Incomplete owned producer batch');
-		const quarantineLeases = Object.freeze([...masks].sort(([a], [b]) => a.localeCompare(b)).map(([propertyId, lease]) => Object.freeze({ propertyId, lease })));
-		// Hints describe CURRENT owned entries, not a history of every catalog ID ever seen.
-		const ownedIds = new Set([...this.entries].filter(([, entry]) => entry.owner === batch.owner).map(([id]) => id));
-		for (const write of writes) { if (write.entry?.owner === batch.owner) ownedIds.add(write.propertyId); else ownedIds.delete(write.propertyId); }
-		const ownedHints = hints.filter((hint) => ownedIds.has(hint.propertyId));
-		const sameView = revision === batch.view.revision && ownedHints.length === batch.view.configurationRevisions.length &&
-			ownedHints.every((hint, i) => hint.propertyId === batch.view.configurationRevisions[i].propertyId && hint.revision === batch.view.configurationRevisions[i].revision) &&
-			quarantineLeases.length === batch.view.quarantineLeases.length && quarantineLeases.every((mask, i) => mask.lease === batch.view.quarantineLeases[i].lease);
-		const view = sameView ? batch.view : Object.freeze({ revision, configurationRevisions: Object.freeze(ownedHints), quarantineLeases });
-		const prepared = Object.freeze(new PreparedProducerBatch());
-		this.prepared.set(prepared, {
-			batch, writes, retiredSources: Object.freeze(retiredSources), fallbackSources: Object.freeze(fallbackSources), anchors, view, notifications,
-			report: { installed: false, attempted: 0, completed: 0, terminal: 'prepared' }, nextNotification: 0,
-		});
-		batch.prepared = prepared;
-		if (!this.batchCurrent(batch)) throw new Error('Stale owned producer batch');
-		return prepared;
+			if (batch.prepared) throw new Error('Owned producer batch already prepared');
+			if (Object.keys(plan).some((key) => !['revision', 'operations', 'configurationRevisions'].includes(key)))
+				throw new Error('Unknown owned producer plan field');
+			const { revision, operations, configurationRevisions } = plan;
+			if (!Number.isSafeInteger(revision) || revision < -1) throw new Error('Invalid owned producer revision');
+			const hints = configurationRevisions
+				.map(({ propertyId, revision: value }) => {
+					if (typeof propertyId !== 'string' || !propertyId || !Number.isSafeInteger(value) || value < 0)
+						throw new Error('Invalid owned producer revision hint');
+					return Object.freeze({ propertyId, revision: value });
+				})
+				.sort((a, b) => a.propertyId.localeCompare(b.propertyId));
+			if (new Set(hints.map((hint) => hint.propertyId)).size !== hints.length)
+				throw new Error('Duplicate owned revision hint');
+			const writes: { propertyId: string; entry: ProducerEntry | undefined }[] = [];
+			const retiredSources: { propertyId: string; observation: ProducerObservation }[] = [];
+			const fallbackSources: { propertyId: string; observation: ProducerObservation }[] = [];
+			const notifications: PreparedBatchRecord['notifications'][number][] = [];
+			const eventMethods:
+				| Readonly<{
+						emit: OwnedReceiverFunction<
+							EventEmitter2,
+							Parameters<EventEmitter2['emit']>,
+							ReturnType<EventEmitter2['emit']>
+						>;
+				  }>
+				| undefined = this.events;
+			const anchors = new Map(batch.observations);
+			const masks = new Map(
+				batch.view.quarantineLeases
+					.filter(({ propertyId, lease }) => {
+						const entry = this.entries.get(propertyId);
+						return entry?.owner === batch.owner && entry.lease === lease;
+					})
+					.map(({ propertyId, lease }) => [propertyId, lease]),
+			);
+			const seen = new Set<string>();
+			const now = new Date();
+			for (const operation of operations) {
+				const { propertyId, expected, kind } = operation;
+				const allowed = [
+					'kind',
+					'propertyId',
+					'expected',
+					...(kind === 'unavailable' || kind === 'replace-retired-unavailable' || kind === 'fallback-unavailable'
+						? ['property', 'revision', 'reason']
+						: kind === 'retire-alias-mask'
+							? ['property']
+							: []),
+				];
+				if (Object.keys(operation).some((key) => !allowed.includes(key)))
+					throw new Error('Unknown owned producer operation field');
+				const observation = batch.observations.get(propertyId);
+				if (!observation || observation.token !== expected || seen.has(propertyId))
+					throw new Error('Invalid owned producer slot');
+				seen.add(propertyId);
+				if (kind === 'retain') continue;
+				if (kind === 'unavailable' || kind === 'replace-retired-unavailable' || kind === 'fallback-unavailable') {
+					if (kind === 'fallback-unavailable') {
+						if (
+							!this.fallbackObservationCurrent(batch, propertyId, observation) ||
+							operation.reason !== 'runtime_unavailable'
+						)
+							throw new Error('Foreign fallback producer replacement');
+						fallbackSources.push(Object.freeze({ propertyId, observation }));
+					}
+					if (kind === 'replace-retired-unavailable') {
+						if (
+							!this.retiredSameKeyObservationCurrent(batch, propertyId, observation) ||
+							operation.reason !== 'runtime_unavailable'
+						)
+							throw new Error('Foreign retired producer replacement');
+						retiredSources.push(Object.freeze({ propertyId, observation }));
+					}
+					const { property: originalProperty, revision: value, reason } = operation;
+					const property = instanceToInstance(originalProperty, { ignoreDecorators: true, enableCircularCheck: true });
+					if (
+						property.id !== propertyId ||
+						!Number.isSafeInteger(value) ||
+						value < 0 ||
+						!['runtime_unavailable', 'graph_quarantined'].includes(reason)
+					)
+						throw new Error('Invalid owned producer replacement');
+					const lease = Object.freeze({ propertyId, revision: value });
+					const initial = this.unavailable(value, ['initializing'], now);
+					const final = this.unavailable(value, [reason], now);
+					const metadata = this.preparedSnapshot(property, final);
+					const epoch = (observation.entry?.epoch ?? 0) + 2;
+					if (!Number.isSafeInteger(epoch)) throw new Error('Owned producer epoch overflow');
+					const entry: ProducerEntry = {
+						property: metadata,
+						lease,
+						state: final,
+						epoch,
+						generation: 0,
+						publication: 0,
+						guard: batch.guard,
+						owner: batch.owner,
+						mask: reason === 'graph_quarantined',
+					};
+					writes.push({ propertyId, entry });
+					anchors.set(propertyId, { token: observation.token, entry, lease });
+					if (entry.mask) masks.set(propertyId, lease);
+					else masks.delete(propertyId);
+					for (const state of [initial, final])
+						notifications.push({
+							batch,
+							emitter: this.events,
+							emit: eventMethods?.emit,
+							kind: EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
+							snapshot: this.preparedSnapshot(property, state),
+						});
+				} else if (kind === 'retire-alias-mask' || kind === 'retire-deleted-owned-overlay') {
+					if (observation.entry?.owner !== batch.owner || (kind === 'retire-alias-mask' && !observation.entry.mask))
+						throw new Error('Foreign owned producer removal');
+					writes.push({ propertyId, entry: undefined });
+					anchors.set(propertyId, { token: observation.token, entry: undefined, lease: undefined });
+					masks.delete(propertyId);
+					if (kind === 'retire-alias-mask') {
+						const snapshot = this.preparedSnapshot(
+							operation.property,
+							this.unavailable(0, ['graph_validation_pending'], now),
+						);
+						if (snapshot.id !== propertyId) throw new Error('Foreign owned producer metadata');
+						notifications.push({
+							batch,
+							emitter: batch.owner.events,
+							emit: batch.owner.emit,
+							kind: EventType.CHANNEL_PROPERTY_UPDATED,
+							snapshot,
+						});
+					}
+				} else throw new Error('Unknown owned producer operation');
+			}
+			if (seen.size !== batch.observations.size) throw new Error('Incomplete owned producer batch');
+			const quarantineLeases = Object.freeze(
+				[...masks]
+					.sort(([a], [b]) => a.localeCompare(b))
+					.map(([propertyId, lease]) => Object.freeze({ propertyId, lease })),
+			);
+			// Hints describe CURRENT owned entries, not a history of every catalog ID ever seen.
+			const ownedIds = new Set([...this.entries].filter(([, entry]) => entry.owner === batch.owner).map(([id]) => id));
+			for (const write of writes) {
+				if (write.entry?.owner === batch.owner) ownedIds.add(write.propertyId);
+				else ownedIds.delete(write.propertyId);
+			}
+			const ownedHints = hints.filter((hint) => ownedIds.has(hint.propertyId));
+			const sameView =
+				revision === batch.view.revision &&
+				ownedHints.length === batch.view.configurationRevisions.length &&
+				ownedHints.every(
+					(hint, i) =>
+						hint.propertyId === batch.view.configurationRevisions[i].propertyId &&
+						hint.revision === batch.view.configurationRevisions[i].revision,
+				) &&
+				quarantineLeases.length === batch.view.quarantineLeases.length &&
+				quarantineLeases.every((mask, i) => mask.lease === batch.view.quarantineLeases[i].lease);
+			const view = sameView
+				? batch.view
+				: Object.freeze({ revision, configurationRevisions: Object.freeze(ownedHints), quarantineLeases });
+			const prepared = Object.freeze(new PreparedProducerBatch());
+			this.prepared.set(prepared, {
+				batch,
+				writes,
+				retiredSources: Object.freeze(retiredSources),
+				fallbackSources: Object.freeze(fallbackSources),
+				anchors,
+				view,
+				notifications,
+				report: { installed: false, attempted: 0, completed: 0, terminal: 'prepared' },
+				nextNotification: 0,
+			});
+			batch.prepared = prepared;
+			if (!this.batchCurrent(batch)) throw new Error('Stale owned producer batch');
+			return prepared;
 		} catch (error) {
 			batch.dirty = true;
 			this.closeBatch(batch);
@@ -645,10 +876,21 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	validatePreparedBatch(handle: PreparedProducerBatch): boolean {
 		const prepared = this.prepared.get(handle);
-		return !!prepared && !prepared.report.installed && prepared.report.terminal === 'prepared' && this.batchCurrent(prepared.batch) &&
-			prepared.fallbackSources.every(({ propertyId, observation }) => this.fallbackObservationCurrent(prepared.batch, propertyId, observation)) &&
-			prepared.retiredSources.every(({ propertyId, observation }) => this.retiredSameKeyObservationCurrent(prepared.batch, propertyId, observation)) &&
-			prepared.notifications.every((event) => !event.emitter || ownedProducerMethodCurrent(event.emitter, 'emit', event.emit));
+		return (
+			!!prepared &&
+			!prepared.report.installed &&
+			prepared.report.terminal === 'prepared' &&
+			this.batchCurrent(prepared.batch) &&
+			prepared.fallbackSources.every(({ propertyId, observation }) =>
+				this.fallbackObservationCurrent(prepared.batch, propertyId, observation),
+			) &&
+			prepared.retiredSources.every(({ propertyId, observation }) =>
+				this.retiredSameKeyObservationCurrent(prepared.batch, propertyId, observation),
+			) &&
+			prepared.notifications.every(
+				(event) => !event.emitter || ownedProducerMethodCurrent(event.emitter, 'emit', event.emit),
+			)
+		);
 	}
 
 	/** Last validation then ONLY private/native bookkeeping and preallocated reference assignments. */
@@ -656,10 +898,12 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		const prepared = this.prepared.get(handle);
 		if (!prepared || !this.validatePreparedBatch(handle)) return false;
 		const batch = prepared.batch;
-		for (const other of batch.owner.batches) if (other !== batch && prepared.view !== batch.owner.view) this.closeBatch(other);
+		for (const other of batch.owner.batches)
+			if (other !== batch && prepared.view !== batch.owner.view) this.closeBatch(other);
 		for (const write of prepared.writes) {
 			this.dirtyObserved(write.propertyId, batch);
-			if (write.entry) this.entries.set(write.propertyId, write.entry); else this.entries.delete(write.propertyId);
+			if (write.entry) this.entries.set(write.propertyId, write.entry);
+			else this.entries.delete(write.propertyId);
 		}
 		batch.owner.view = prepared.view;
 		batch.view = prepared.view;
@@ -681,7 +925,12 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	notifyInstalled(handle: PreparedProducerBatch, index: number): 'completed' | 'superseded' | 'rejected' {
 		const prepared = this.prepared.get(handle);
 		if (prepared && prepared.report.terminal !== 'installed') return 'superseded';
-		if (!prepared || !prepared.report.installed || index !== prepared.nextNotification || !this.batchCurrent(prepared.batch)) {
+		if (
+			!prepared ||
+			!prepared.report.installed ||
+			index !== prepared.nextNotification ||
+			!this.batchCurrent(prepared.batch)
+		) {
 			if (prepared) prepared.report.terminal = 'superseded';
 			return 'superseded';
 		}
@@ -689,13 +938,21 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		if (!event) return 'superseded';
 		prepared.nextNotification++;
 		if (event.emitter && event.emit) {
-			if (!ownedProducerMethodCurrent(event.emitter, 'emit', event.emit)) { prepared.report.terminal = 'superseded'; return 'superseded'; }
+			if (!ownedProducerMethodCurrent(event.emitter, 'emit', event.emit)) {
+				prepared.report.terminal = 'superseded';
+				return 'superseded';
+			}
 			prepared.report.attempted++;
 			const previousNotification = this.notifying;
 			this.notifying = event;
-			try { event.emit.call(event.emitter, event.kind, event.snapshot); }
-			catch { prepared.report.terminal = 'notification_rejected'; return 'rejected'; }
-			finally { this.notifying = previousNotification; }
+			try {
+				event.emit.call(event.emitter, event.kind, event.snapshot);
+			} catch {
+				prepared.report.terminal = 'notification_rejected';
+				return 'rejected';
+			} finally {
+				this.notifying = previousNotification;
+			}
 			prepared.report.completed++;
 		}
 		if (prepared.nextNotification === prepared.notifications.length) prepared.report.terminal = 'complete';
@@ -709,7 +966,9 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	readInstalledReport(handle: PreparedProducerBatch): OwnedPublicationReport {
 		const prepared = this.prepared.get(handle);
-		return Object.freeze(prepared ? { ...prepared.report } : { installed: false, attempted: 0, completed: 0, terminal: 'superseded' });
+		return Object.freeze(
+			prepared ? { ...prepared.report } : { installed: false, attempted: 0, completed: 0, terminal: 'superseded' },
+		);
 	}
 
 	closeObservedBatch(handle: ObservedProducerBatch): void {
@@ -717,7 +976,9 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		if (batch) this.closeBatch(batch);
 	}
 
-	invalidateObservedId(id: string): void { this.dirtyObserved(id); }
+	invalidateObservedId(id: string): void {
+		this.dirtyObserved(id);
+	}
 
 	readOwnedOperationCounts(): Readonly<{ activeBatches: number; observedIds: number }> {
 		let activeBatches = 0;
@@ -735,20 +996,39 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		if (!batch || !this.batchCurrent(batch)) throw new Error('Owned producer batch unavailable');
 		return batch;
 	}
-	private fallbackObservationCurrent(batch: ObservedBatchRecord, propertyId: string, observation: ProducerObservation): boolean {
+	private fallbackObservationCurrent(
+		batch: ObservedBatchRecord,
+		propertyId: string,
+		observation: ProducerObservation,
+	): boolean {
 		const entry = this.entries.get(propertyId);
-		return entry === observation.entry && entry?.lease === observation.lease &&
-			(!entry || (entry.owner === batch.owner && batch.owner.active && entry.state.producer.quality === 'unavailable'));
+		return (
+			entry === observation.entry &&
+			entry?.lease === observation.lease &&
+			(!entry || (entry.owner === batch.owner && batch.owner.active && entry.state.producer.quality === 'unavailable'))
+		);
 	}
 
-	private retiredSameKeyObservationCurrent(batch: ObservedBatchRecord, propertyId: string, observation: ProducerObservation): boolean {
+	private retiredSameKeyObservationCurrent(
+		batch: ObservedBatchRecord,
+		propertyId: string,
+		observation: ProducerObservation,
+	): boolean {
 		const entry = observation.entry;
-		return !!entry && this.entries.get(propertyId) === entry && entry.lease === observation.lease &&
-			entry.owner !== undefined && entry.owner !== batch.owner && !entry.owner.active && entry.owner.key === batch.owner.key;
+		return (
+			!!entry &&
+			this.entries.get(propertyId) === entry &&
+			entry.lease === observation.lease &&
+			entry.owner !== undefined &&
+			entry.owner !== batch.owner &&
+			!entry.owner.active &&
+			entry.owner.key === batch.owner.key
+		);
 	}
 
 	private batchCurrent(batch: ObservedBatchRecord): boolean {
-		if (this.destroyed || !batch.open || batch.dirty || !batch.owner.active || batch.owner.view !== batch.view) return false;
+		if (this.destroyed || !batch.open || batch.dirty || !batch.owner.active || batch.owner.view !== batch.view)
+			return false;
 		for (const [id, observation] of batch.observations) {
 			const entry = this.entries.get(id);
 			if (entry !== observation.entry || entry?.lease !== observation.lease) return false;
@@ -758,7 +1038,11 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	private dirtyObserved(id: string, except?: ObservedBatchRecord): void {
 		const observers = this.observingIds.get(id);
 		if (!observers) return;
-		for (const batch of observers) if (batch !== except) { batch.dirty = true; this.closeBatch(batch); }
+		for (const batch of observers)
+			if (batch !== except) {
+				batch.dirty = true;
+				this.closeBatch(batch);
+			}
 	}
 	private closeBatch(batch: ObservedBatchRecord): void {
 		batch.open = false;
@@ -773,9 +1057,17 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		if (!owner.active) return;
 		const hints = owner.view.configurationRevisions.filter((row) => row.propertyId !== id);
 		const masks = owner.view.quarantineLeases.filter((row) => row.propertyId !== id);
-		if (hints.length === owner.view.configurationRevisions.length && masks.length === owner.view.quarantineLeases.length) return;
+		if (
+			hints.length === owner.view.configurationRevisions.length &&
+			masks.length === owner.view.quarantineLeases.length
+		)
+			return;
 		for (const batch of owner.batches) this.closeBatch(batch);
-		owner.view = Object.freeze({ revision: owner.view.revision, configurationRevisions: Object.freeze(hints), quarantineLeases: Object.freeze(masks) });
+		owner.view = Object.freeze({
+			revision: owner.view.revision,
+			configurationRevisions: Object.freeze(hints),
+			quarantineLeases: Object.freeze(masks),
+		});
 	}
 	private disposeOwner(owner: OwnedPublisherRecord): void {
 		owner.active = false;

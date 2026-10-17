@@ -1187,7 +1187,26 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 						.operator,
 				).toBe(VirtualAggregateOperator.MAX);
 				expect(await graph.revision()).toBe(priorRevision + 1);
-				expect(logged).toHaveBeenCalledTimes(1);
+				const committedErrors = logged.mock.calls.filter(
+					([message]) =>
+						message ===
+						'Virtual structural write committed, but graph validation failed; live authority remains unavailable until validation succeeds.',
+				);
+				expect(committedErrors).toHaveLength(1);
+				expect(committedErrors[0][1]).toBe(failure);
+				const privateReports = logged.mock.calls.filter(
+					([message]) => message === 'Owned graph publication incomplete',
+				);
+				expect(privateReports).toHaveLength(failureStage === 'listener' ? 1 : 0);
+				expect(logged).toHaveBeenCalledTimes(failureStage === 'listener' ? 2 : 1);
+				if (failureStage === 'listener') {
+					expect(privateReports[0][1]).toEqual({
+						installed: true,
+						attempted: 0,
+						completed: 0,
+						terminal: 'legacy_rejected',
+					});
+				}
 				expect(graph.isValidated()).toBe(false);
 				expect(graph.isRevisionCurrent(priorRevision)).toBe(false);
 				expect(graph.isRevisionCurrent(priorRevision + 1)).toBe(false);

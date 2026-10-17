@@ -15,13 +15,34 @@ import {
 	climateAutomationCanonical,
 	climateAutomationJson,
 } from '../../../modules/devices/contracts/climate-automation.contract';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	EventType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
-import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
-import { EventType, ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity, VirtualDeviceMode, VirtualValueOrigin } from '../entities/devices-virtual.entity';
-import { VirtualAggregateConfigEntity, VirtualAggregateOperator, VirtualAggregateProfile, VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
+import {
+	OwnedReceiverFunction,
+	PropertyProducerRegistryService,
+} from '../../../modules/devices/services/property-producer.registry.service';
+import {
+	VirtualChannelEntity,
+	VirtualChannelPropertyEntity,
+	VirtualDeviceEntity,
+	VirtualDeviceMode,
+	VirtualValueOrigin,
+} from '../entities/devices-virtual.entity';
+import {
+	VirtualAggregateConfigEntity,
+	VirtualAggregateOperator,
+	VirtualAggregateProfile,
+	VirtualGraphRevisionEntity,
+} from '../entities/virtual-producer.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
@@ -165,20 +186,43 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 		);
 
 	const seedPublisherOutput = async () => {
-		const device = Object.assign(new VirtualDeviceEntity(), { id: uuid(), name: 'TEST publisher', category: DeviceCategory.SENSOR, mode: VirtualDeviceMode.SENSOR_AGGREGATE });
-		const channel = Object.assign(new VirtualChannelEntity(), { id: uuid(), device, name: 'TEST temperature', category: ChannelCategory.TEMPERATURE });
-		const property = Object.assign(new VirtualChannelPropertyEntity(), { id: uuid(), channel, category: PropertyCategory.TEMPERATURE,
-			dataType: DataTypeType.FLOAT, permissions: [PermissionType.READ_ONLY], valueOrigin: VirtualValueOrigin.DERIVED });
+		const device = Object.assign(new VirtualDeviceEntity(), {
+			id: uuid(),
+			name: 'TEST publisher',
+			category: DeviceCategory.SENSOR,
+			mode: VirtualDeviceMode.SENSOR_AGGREGATE,
+		});
+		const channel = Object.assign(new VirtualChannelEntity(), {
+			id: uuid(),
+			device,
+			name: 'TEST temperature',
+			category: ChannelCategory.TEMPERATURE,
+		});
+		const property = Object.assign(new VirtualChannelPropertyEntity(), {
+			id: uuid(),
+			channel,
+			category: PropertyCategory.TEMPERATURE,
+			dataType: DataTypeType.FLOAT,
+			permissions: [PermissionType.READ_ONLY],
+			valueOrigin: VirtualValueOrigin.DERIVED,
+		});
 		await database.manager.insert(VirtualDeviceEntity, device);
 		await database.manager.insert(VirtualChannelEntity, channel);
 		await database.manager.insert(VirtualChannelPropertyEntity, property);
 		return property;
 	};
 	const corruptProfile = async (property: VirtualChannelPropertyEntity) => {
-		await database.manager.insert(VirtualAggregateConfigEntity, Object.assign(new VirtualAggregateConfigEntity(), {
-			outputPropertyId: property.id, profile: VirtualAggregateProfile.HUMIDITY, operator: VirtualAggregateOperator.MEAN,
-			minimumValidInputs: 1, maximumAgeSeconds: 300, revision: 1,
-		}));
+		await database.manager.insert(
+			VirtualAggregateConfigEntity,
+			Object.assign(new VirtualAggregateConfigEntity(), {
+				outputPropertyId: property.id,
+				profile: VirtualAggregateProfile.HUMIDITY,
+				operator: VirtualAggregateOperator.MEAN,
+				minimumValidInputs: 1,
+				maximumAgeSeconds: 300,
+				revision: 1,
+			}),
+		);
 	};
 
 	it('refuses a forged turn BEFORE graph query, with no missing-singleton ensure', async () => {
@@ -325,43 +369,70 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 
 	describe('real owned producer staging and acknowledged publication', () => {
 		it('converts actual producer state separately from the retained unconverted-legacy refusal', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
 				await state.onModuleInit();
 				expect((await change()).outcome).toBe('applied');
 				expect(graph.isRevisionCurrent(1)).toBe(true);
-				expect(state.readPublicationReport()).toMatchObject({ installed: true, attempted: 0, completed: 0, terminal: 'complete' });
+				expect(state.readPublicationReport()).toMatchObject({
+					installed: true,
+					attempted: 0,
+					completed: 0,
+					terminal: 'complete',
+				});
 				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		// R1 correction: real nonempty no-config catalog, never a fabricated ready guard.
 		// R2 correction: terminal A and fresh B share the SAME live registry and graph.
 		it('held nonempty initialization never invokes a replaced public stager and fresh native lifecycle still publishes', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const batches = jest.spyOn(producers, 'beginObservedBatch');
 			const install = jest.spyOn(producers, 'installPreparedNoEvents');
-			const notified = jest.fn(); events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+			const notified = jest.fn();
+			events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const methods: Readonly<{ stageOwned: (...args: Parameters<VirtualProducerStateService['stageOwned']>) => ReturnType<VirtualProducerStateService['stageOwned']> }> = state;
+			const methods: Readonly<{
+				stageOwned: OwnedReceiverFunction<
+					VirtualProducerStateService,
+					Parameters<VirtualProducerStateService['stageOwned']>,
+					ReturnType<VirtualProducerStateService['stageOwned']>
+				>;
+			}> = state;
 			const originalStage = methods.stageOwned;
-			const entered = gate(), release = gate(); let held = false;
+			const entered = gate(),
+				release = gate();
+			let held = false;
 			let initialization: Promise<void> | undefined, observed: Promise<void> | undefined;
 			let native: VirtualProducerStateService | undefined, restoreStage: (() => void) | undefined;
-			const subscriber: EntitySubscriberInterface<object> = { async beforeQuery(event) {
-				if (!held && /SELECT/i.test(event.query) && event.query.includes('channels_properties')) {
-					held = true; entered.resolve(); await release.promise;
-				}
-			} };
+			const subscriber: EntitySubscriberInterface<object> = {
+				async beforeQuery(event) {
+					if (!held && /SELECT/i.test(event.query) && event.query.includes('channels_properties')) {
+						held = true;
+						entered.resolve();
+						await release.promise;
+					}
+				},
+			};
 			database.subscribers.push(subscriber);
 			try {
-				initialization = state.onModuleInit(); observed = initialization.catch(() => undefined);
+				initialization = state.onModuleInit();
+				observed = initialization.catch((): void => undefined);
 				await entered.promise;
-				const substituted = jest.spyOn(state, 'stageOwned').mockImplementation((view, lifecycle) => originalStage.call(state, view, lifecycle));
+				const substituted = jest
+					.spyOn(state, 'stageOwned')
+					.mockImplementation((view, lifecycle) => originalStage.call(state, view, lifecycle));
 				restoreStage = () => substituted.mockRestore();
-				release.resolve(); await initialization;
+				release.resolve();
+				await initialization;
 				expect(held).toBe(true);
 				expect(substituted).not.toHaveBeenCalled();
 				expect(batches).not.toHaveBeenCalled();
@@ -371,7 +442,8 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(producers.read(row.id)).toBeNull();
 				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
 				expect(graph.isValidated()).toBe(false);
-				restoreStage(); state.onModuleDestroy();
+				restoreStage();
+				state.onModuleDestroy();
 				native = new VirtualProducerStateService(database, producers, graph, events, config);
 				await native.onModuleInit();
 				expect(batches).toHaveBeenCalled();
@@ -384,8 +456,13 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(graph.isValidated()).toBe(true);
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
 			} finally {
-				restoreStage?.(); state.onModuleDestroy(); native?.onModuleDestroy(); release.resolve(); await observed;
-				const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1);
+				restoreStage?.();
+				state.onModuleDestroy();
+				native?.onModuleDestroy();
+				release.resolve();
+				await observed;
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
 				producers.onModuleDestroy();
 			}
 		});
@@ -394,12 +471,16 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 			'only owns substitution after capture cannot overwrite independent runtime B through %s',
 			async (route) => {
 				const row = await seedPublisherOutput();
-				const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+				const events = new EventEmitter2(),
+					producers = new PropertyProducerRegistryService(events);
 				const state = new VirtualProducerStateService(database, producers, graph, events, config);
 				try {
-					await state.onModuleInit(); await graph.onApplicationBootstrap();
+					await state.onModuleInit();
+					await graph.onApplicationBootstrap();
 					const runtime = producers.register(row, 1);
-					const epoch = producers.version(runtime), original = producers.read(row.id), notified = jest.fn();
+					const epoch = producers.version(runtime),
+						original = producers.read(row.id),
+						notified = jest.fn();
 					events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
 					state.initializeOutput(row);
 					expect(producers.isCurrent(runtime)).toBe(true);
@@ -415,24 +496,34 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 					expect(producers.version(runtime)).toBe(epoch);
 					expect(producers.read(row.id)).toEqual(original);
 					expect(notified).not.toHaveBeenCalled();
-				} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+				} finally {
+					state.onModuleDestroy();
+					producers.onModuleDestroy();
+				}
 			},
 		);
 
 		it('mask query replacement after capture cannot publish repair using a substituted isCurrent', async () => {
-			const row = await seedPublisherOutput(); await corruptProfile(row);
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const row = await seedPublisherOutput();
+			await corruptProfile(row);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const observations = jest.spyOn(producers, 'beginObservedBatch');
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
-				await state.onModuleInit(); await graph.onApplicationBootstrap();
+				await state.onModuleInit();
+				await graph.onApplicationBootstrap();
 				const owned = observations.mock.calls.at(-1)?.[0];
 				if (!owned) throw new Error('Missing actual owner');
-				const before = producers.readOwnedView(owned), mask = before.quarantineLeases[0];
+				const before = producers.readOwnedView(owned),
+					mask = before.quarantineLeases[0];
 				if (!mask) throw new Error('Missing actual quarantine mask');
-				const methods: Readonly<{ isCurrent: (...args: Parameters<PropertyProducerRegistryService['isCurrent']>) => boolean }> = producers;
+				const methods: Readonly<{
+					isCurrent: (...args: Parameters<PropertyProducerRegistryService['isCurrent']>) => boolean;
+				}> = producers;
 				const originalCurrent = methods.isCurrent;
-				const notified = jest.fn(); events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
+				const notified = jest.fn();
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
 				const substituted = jest.spyOn(producers, 'isCurrent').mockReturnValue(false);
 				await graph.refreshQuarantine();
 				expect(graph.isValidated()).toBe(false);
@@ -440,17 +531,22 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(originalCurrent.call(producers, mask.lease)).toBe(true);
 				expect(producers.readOwnedView(owned)).toBe(before);
 				expect(notified).not.toHaveBeenCalled();
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('a new state owner replaces only retired same-key fallback with its own bootstrap and refresh generation', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const observations = jest.spyOn(producers, 'beginObservedBatch');
 			const a = new VirtualProducerStateService(database, producers, graph, events, config);
 			let b: VirtualProducerStateService | undefined;
 			try {
-				await a.onModuleInit(); await graph.onApplicationBootstrap();
+				await a.onModuleInit();
+				await graph.onApplicationBootstrap();
 				const aGuard = observations.mock.calls.at(-1)?.[2];
 				if (!aGuard) throw new Error('Missing actual A guard');
 				expect(aGuard.isCurrent()).toBe(true);
@@ -483,39 +579,65 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(bGuard.isCurrent()).toBe(false);
 				expect(refreshedGuard.isCurrent()).toBe(true);
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
-			} finally { a.onModuleDestroy(); b?.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				a.onModuleDestroy();
+				b?.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('successor state initialization never replaces an independent runtime that replaced retired A', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const a = new VirtualProducerStateService(database, producers, graph, events, config);
 			let b: VirtualProducerStateService | undefined;
 			try {
-				await a.onModuleInit(); await graph.onApplicationBootstrap(); a.onModuleDestroy();
+				await a.onModuleInit();
+				await graph.onApplicationBootstrap();
+				a.onModuleDestroy();
 				const runtime = producers.register(row, 1);
-				const epoch = producers.version(runtime), original = producers.read(row.id), notified = jest.fn();
+				const epoch = producers.version(runtime),
+					original = producers.read(row.id),
+					notified = jest.fn();
 				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
 				b = new VirtualProducerStateService(database, producers, graph, events, config);
-				await b.onModuleInit(); await graph.onApplicationBootstrap(); await graph.refreshQuarantine();
+				await b.onModuleInit();
+				await graph.onApplicationBootstrap();
+				await graph.refreshQuarantine();
 				expect(graph.isValidated()).toBe(true);
 				expect(producers.isCurrent(runtime)).toBe(true);
 				expect(producers.isAvailable(runtime)).toBe(true);
 				expect(producers.version(runtime)).toBe(epoch);
 				expect(producers.read(row.id)).toEqual(original);
 				expect(notified).not.toHaveBeenCalled();
-			} finally { a.onModuleDestroy(); b?.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				a.onModuleDestroy();
+				b?.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('actual successor preparation refuses its retired-slot plan when independent runtime intervenes before install', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const a = new VirtualProducerStateService(database, producers, graph, events, config);
-			let b: VirtualProducerStateService | undefined, initialization: Promise<void> | undefined, observed: Promise<void> | undefined;
+			let b: VirtualProducerStateService | undefined,
+				initialization: Promise<void> | undefined,
+				observed: Promise<void> | undefined;
 			try {
-				await a.onModuleInit(); await graph.onApplicationBootstrap(); a.onModuleDestroy();
+				await a.onModuleInit();
+				await graph.onApplicationBootstrap();
+				a.onModuleDestroy();
 				const entered = gate();
-				const methods: Readonly<{ prepareOwnedBatch: (...args: Parameters<PropertyProducerRegistryService['prepareOwnedBatch']>) => ReturnType<PropertyProducerRegistryService['prepareOwnedBatch']> }> = producers;
+				const methods: Readonly<{
+					prepareOwnedBatch: OwnedReceiverFunction<
+						PropertyProducerRegistryService,
+						Parameters<PropertyProducerRegistryService['prepareOwnedBatch']>,
+						ReturnType<PropertyProducerRegistryService['prepareOwnedBatch']>
+					>;
+				}> = producers;
 				const originalPrepare = methods.prepareOwnedBatch;
 				let prepared: ReturnType<PropertyProducerRegistryService['prepareOwnedBatch']> | undefined;
 				const preparation = jest.spyOn(producers, 'prepareOwnedBatch').mockImplementation((...args) => {
@@ -526,15 +648,19 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				});
 				const install = jest.spyOn(producers, 'installPreparedNoEvents');
 				b = new VirtualProducerStateService(database, producers, graph, events, config);
-				initialization = b.onModuleInit(); observed = initialization.catch(() => undefined);
+				initialization = b.onModuleInit();
+				observed = initialization.catch((): void => undefined);
 				await entered.promise;
 				if (!prepared) throw new Error('Missing actual prepared successor plan');
-				expect(preparation.mock.calls[0]?.[1].operations).toEqual(expect.arrayContaining([
-					expect.objectContaining({ kind: 'replace-retired-unavailable', propertyId: row.id }),
-				]));
+				expect(preparation.mock.calls[0]?.[1].operations).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ kind: 'replace-retired-unavailable', propertyId: row.id }),
+					]),
+				);
 				expect(install).not.toHaveBeenCalled();
 				const runtime = producers.register(row, 1);
-				const epoch = producers.version(runtime), original = producers.read(row.id);
+				const epoch = producers.version(runtime),
+					original = producers.read(row.id);
 				await initialization;
 				expect(install).not.toHaveBeenCalled();
 				expect(producers.validatePreparedBatch(prepared)).toBe(false);
@@ -545,12 +671,18 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(producers.isAvailable(runtime)).toBe(true);
 				expect(producers.version(runtime)).toBe(epoch);
 				expect(producers.read(row.id)).toEqual(original);
-			} finally { a.onModuleDestroy(); b?.onModuleDestroy(); await observed; producers.onModuleDestroy(); }
+			} finally {
+				a.onModuleDestroy();
+				b?.onModuleDestroy();
+				await observed;
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('renews an owned unquarantined derived fallback for real bootstrap and each later ready generation', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const observations = jest.spyOn(producers, 'beginObservedBatch');
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
@@ -579,22 +711,33 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(bootstrapGuard.isCurrent()).toBe(false);
 				expect(refreshedGuard.isCurrent()).toBe(true);
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('a held older refresh cannot revive its fallback or clobber the successor ready fallback', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const observations = jest.spyOn(producers, 'beginObservedBatch');
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const entered = gate(), release = gate();
+			const entered = gate(),
+				release = gate();
 			let stop: (() => void) | undefined, pending: Promise<void> | undefined, observed: Promise<void> | undefined;
 			try {
 				await state.onModuleInit();
 				await graph.onApplicationBootstrap();
-				stop = graph.observeValidation(async () => { entered.resolve(); await release.promise; }, { requiresActivation: false });
+				stop = graph.observeValidation(
+					async () => {
+						entered.resolve();
+						await release.promise;
+					},
+					{ requiresActivation: false },
+				);
 				pending = graph.refreshQuarantine();
-				observed = pending.catch(() => undefined);
+				observed = pending.catch((): void => undefined);
 				await entered.promise;
 				const olderGuard = observations.mock.calls.at(-1)?.[2];
 				if (!olderGuard) throw new Error('Missing actual held refresh guard');
@@ -609,22 +752,31 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(successorGuard.isCurrent()).toBe(true);
 				expect(olderGuard.isCurrent()).toBe(false);
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
-				release.resolve(); await pending;
+				release.resolve();
+				await pending;
 				expect(graph.isValidated()).toBe(true);
 				expect(successorGuard.isCurrent()).toBe(true);
 				expect(olderGuard.isCurrent()).toBe(false);
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['runtime_unavailable']);
-			} finally { stop?.(); release.resolve(); await observed; state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				stop?.();
+				release.resolve();
+				await observed;
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('bootstrap and later fallback refresh leave an independently registered runtime B lease unchanged', async () => {
 			const row = await seedPublisherOutput();
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
 				await state.onModuleInit();
 				const b = producers.register(row, 1);
-				const version = producers.version(b), originalState = producers.read(row.id);
+				const version = producers.version(b),
+					originalState = producers.read(row.id);
 				const notified = jest.fn();
 				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, notified);
 				await graph.onApplicationBootstrap();
@@ -640,17 +792,24 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(producers.version(b)).toBe(version);
 				expect(producers.read(row.id)).toEqual(originalState);
 				expect(notified).not.toHaveBeenCalled();
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('prepared guard opens only SAME generation ready, old generation never revives and unload closes it', async () => {
-			const row = await seedPublisherOutput(); await corruptProfile(row);
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const row = await seedPublisherOutput();
+			await corruptProfile(row);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
 				await state.onModuleInit();
 				const observed: string[][] = [];
-				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => observed.push(producers.read(row.id)?.producer?.reasons ?? []));
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () =>
+					observed.push(producers.read(row.id)?.producer?.reasons ?? []),
+				);
 				await change();
 				expect(observed).toEqual([['graph_validation_pending'], ['graph_validation_pending']]);
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_quarantined']);
@@ -662,61 +821,110 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(producers.read(row.id)?.producer?.reasons).toEqual(['graph_quarantined']);
 				state.onModuleDestroy();
 				expect(producers.read(row.id)?.producer?.quality).toBe('unavailable');
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('actual peer revision change during readonly stage refuses before any owned install/applied view', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const install = jest.spyOn(producers, 'installPreparedNoEvents');
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const entered = gate(), release = gate();
+			const entered = gate(),
+				release = gate();
 			try {
-				await state.onModuleInit(); install.mockClear();
-				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
+				await state.onModuleInit();
+				install.mockClear();
+				graph.observeGuardedValidation(async () => {
+					entered.resolve();
+					await release.promise;
+				});
 				const operation = change();
 				const rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
 				await entered.promise;
 				await peer.query('UPDATE devices_virtual_graph_revision SET revision=2 WHERE id=1');
-				release.resolve(); await rejected;
+				release.resolve();
+				await rejected;
 				expect(install).not.toHaveBeenCalled();
 				expect(state.readPublicationReport()).toMatchObject({ installed: false, attempted: 0, completed: 0 });
 				expect(graph.isRevisionCurrent(2)).toBe(false);
-			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				release.resolve();
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('installed maps survive partial Q delivery while actual ACK late P remains exact COMMITTED primary', async () => {
-			const row = await seedPublisherOutput(); await corruptProfile(row);
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const row = await seedPublisherOutput();
+			await corruptProfile(row);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			const primary = new Error('TEST late P');
-			let runner: QueryRunner | undefined, threw = false, delivered = 0;
+			let runner: QueryRunner | undefined,
+				threw = false,
+				delivered = 0;
 			const subscriber: EntitySubscriberInterface<object> = {
-				beforeQuery(event) { if (/UPDATE\s+"?test_graph_participant/i.test(event.query)) runner = event.queryRunner; },
-				afterTransactionCommit(event) { if (!threw && runner && event.queryRunner === runner) { threw = true; throw primary; } },
+				beforeQuery(event) {
+					if (/UPDATE\s+"?test_graph_participant/i.test(event.query)) runner = event.queryRunner;
+				},
+				afterTransactionCommit(event) {
+					if (!threw && runner && event.queryRunner === runner) {
+						threw = true;
+						throw primary;
+					}
+				},
 			};
 			try {
 				await state.onModuleInit();
-				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => { delivered++; });
-				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => { throw new Error('PRIVATE Q'); });
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => {
+					delivered++;
+				});
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => {
+					throw new Error('PRIVATE Q');
+				});
 				database.subscribers.push(subscriber);
 				let failure: unknown;
-				try { await change(); } catch (error) { failure = error; }
+				try {
+					await change();
+				} catch (error) {
+					failure = error;
+				}
 				expect(failure).toMatchObject({ commitOutcome: 'committed', cause: primary });
 				if (!(failure instanceof Error)) throw new Error('Expected real COMMITTED error');
 				expect(failure.cause).toBe(primary);
 				expect(threw).toBe(true);
 				expect(delivered).toBe(1);
-				expect(state.readPublicationReport()).toEqual({ installed: true, attempted: 1, completed: 0, terminal: 'notification_rejected' });
+				expect(state.readPublicationReport()).toEqual({
+					installed: true,
+					attempted: 1,
+					completed: 0,
+					terminal: 'notification_rejected',
+				});
 				expect(graph.isValidated()).toBe(false);
 				expect(await graph.revision()).toBe(1);
-				expect((await database.query<{ revision: number }[]>('SELECT revision FROM test_graph_participant WHERE id=?', [id]))[0].revision).toBe(2);
+				expect(
+					(
+						await database.query<{ revision: number }[]>('SELECT revision FROM test_graph_participant WHERE id=?', [id])
+					)[0].revision,
+				).toBe(2);
 				expect(JSON.stringify(failure)).not.toContain('PRIVATE Q');
-			} finally { const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1); state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('ordinary nonactivation sees pending metadata and a real watched-slot mutation prevents stale ready', async () => {
-			const row = await seedPublisherOutput(); await corruptProfile(row);
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const row = await seedPublisherOutput();
+			await corruptProfile(row);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
 				await state.onModuleInit();
@@ -732,65 +940,121 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(called).toBe(true);
 				expect(graph.isValidated()).toBe(false);
 				expect(state.readPublicationReport()?.installed).toBe(true);
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('held initialization cannot install after original service destruction or register again', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const install = jest.spyOn(producers, 'installPreparedNoEvents');
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const entered = gate(), release = gate(); let held = false;
-			const subscriber: EntitySubscriberInterface<object> = { async beforeQuery(event) {
-				if (!held && /SELECT/i.test(event.query) && event.query.includes('channels_properties')) {
-					held = true; entered.resolve(); await release.promise;
-				}
-			} };
+			const entered = gate(),
+				release = gate();
+			let held = false;
+			const subscriber: EntitySubscriberInterface<object> = {
+				async beforeQuery(event) {
+					if (!held && /SELECT/i.test(event.query) && event.query.includes('channels_properties')) {
+						held = true;
+						entered.resolve();
+						await release.promise;
+					}
+				},
+			};
 			database.subscribers.push(subscriber);
 			try {
 				const initialization = state.onModuleInit();
 				const observed = initialization.catch(() => undefined);
 				await entered.promise;
-				state.onModuleDestroy(); release.resolve(); await observed;
+				state.onModuleDestroy();
+				release.resolve();
+				await observed;
 				expect(install).not.toHaveBeenCalled();
 				await expect(state.onModuleInit()).rejects.toThrow('unavailable');
 				expect(producers.readOwnedOperationCounts()).toEqual({ activeBatches: 0, observedIds: 0 });
-			} finally { release.resolve(); const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1); state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				release.resolve();
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('explicit CLI state lifecycle has zero registry owner/DB work and required missing registry refuses', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const acquire = jest.spyOn(producers, 'acquireOwnedPublisher');
-			const state = new VirtualProducerStateService(database, producers, graph, events, new ConfigService({ FB_CLI: 'on' }));
+			const state = new VirtualProducerStateService(
+				database,
+				producers,
+				graph,
+				events,
+				new ConfigService({ FB_CLI: 'on' }),
+			);
 			const transaction = jest.spyOn(database, 'transaction');
 			try {
 				await state.onModuleInit();
-				expect(acquire).not.toHaveBeenCalled(); expect(transaction).not.toHaveBeenCalled();
+				expect(acquire).not.toHaveBeenCalled();
+				expect(transaction).not.toHaveBeenCalled();
 				const realOwner = producers.acquireOwnedPublisher('virtual-producer-state:v1', events);
 				if (!realOwner) throw new Error('Missing actual registry owner');
-				expect(() => graph.observeOwnedStaging(undefined, realOwner, Object.freeze({ version: 1, stage: state.stageOwned }), state, { requiresActivation: false })).toThrow();
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+				const stateMethods: Readonly<{
+					stageOwned: OwnedReceiverFunction<
+						VirtualProducerStateService,
+						Parameters<VirtualProducerStateService['stageOwned']>,
+						ReturnType<VirtualProducerStateService['stageOwned']>
+					>;
+				}> = state;
+				expect(() =>
+					graph.observeOwnedStaging(
+						undefined,
+						realOwner,
+						Object.freeze({ version: 1, stage: stateMethods.stageOwned }),
+						state,
+						{ requiresActivation: false },
+					),
+				).toThrow();
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 		it('old held owned job never overwrites a newer ordinary ready generation or its last report', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const entered = gate(), release = gate();
+			const entered = gate(),
+				release = gate();
 			try {
 				await state.onModuleInit();
-				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
-				const operation = change(), rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
+				graph.observeGuardedValidation(async () => {
+					entered.resolve();
+					await release.promise;
+				});
+				const operation = change(),
+					rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
 				await entered.promise;
 				await graph.refreshQuarantine();
 				expect(graph.isRevisionCurrent(1)).toBe(true);
 				const newer = state.readPublicationReport();
 				expect(newer?.terminal).toBe('complete');
-				release.resolve(); await rejected;
+				release.resolve();
+				await rejected;
 				expect(graph.isRevisionCurrent(1)).toBe(true);
 				expect(state.readPublicationReport()).toBe(newer);
-			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				release.resolve();
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('replacement of the original actual stage method cannot recapture through the new method', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
 			try {
 				await state.onModuleInit();
@@ -799,49 +1063,81 @@ describe('dormant reserved graph and acknowledged observed-revision validation',
 				expect(replacement).not.toHaveBeenCalled();
 				expect(graph.isValidated()).toBe(false);
 				replacement.mockRestore();
-			} finally { state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('actual published role options are immutable and cannot change category while a readonly callback is held', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
 			const registration = jest.spyOn(graph, 'observeOwnedStaging');
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const entered = gate(), release = gate();
+			const entered = gate(),
+				release = gate();
 			try {
 				await state.onModuleInit();
 				const options = registration.mock.calls[0][4];
 				expect(Object.isFrozen(options)).toBe(true);
-				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
+				graph.observeGuardedValidation(async () => {
+					entered.resolve();
+					await release.promise;
+				});
 				const operation = change();
 				await entered.promise;
 				expect(Reflect.set(options, 'requiresActivation', true)).toBe(false);
-				release.resolve(); expect((await operation).outcome).toBe('applied');
+				release.resolve();
+				expect((await operation).outcome).toBe('applied');
 				expect(options.requiresActivation).toBe(false);
-			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				release.resolve();
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
 
 		it('pins original mutable registration option VALUE rather than accepting a role change during await', async () => {
-			const events = new EventEmitter2(), producers = new PropertyProducerRegistryService(events);
-			const original = graph.observeOwnedStaging;
+			const events = new EventEmitter2(),
+				producers = new PropertyProducerRegistryService(events);
+			const graphMethods: Readonly<{
+				observeOwnedStaging: OwnedReceiverFunction<
+					VirtualDependencyGraphService,
+					Parameters<VirtualDependencyGraphService['observeOwnedStaging']>,
+					ReturnType<VirtualDependencyGraphService['observeOwnedStaging']>
+				>;
+			}> = graph;
+			const original = graphMethods.observeOwnedStaging;
 			const mutableOptions: { requiresActivation: false } = { requiresActivation: false };
 			// A valid mutable caller-options object is allowed by the internal readonly input contract.
 			// The real method/owner/stager still execute; only options storage differs from the production frozen literal.
-			jest.spyOn(graph, 'observeOwnedStaging').mockImplementation((registry, owner, capability, receiver) =>
-				original.call(graph, registry, owner, capability, receiver, mutableOptions));
+			jest
+				.spyOn(graph, 'observeOwnedStaging')
+				.mockImplementation((registry, owner, capability, receiver) =>
+					original.call(graph, registry, owner, capability, receiver, mutableOptions),
+				);
 			const state = new VirtualProducerStateService(database, producers, graph, events, config);
-			const entered = gate(), release = gate();
+			const entered = gate(),
+				release = gate();
 			try {
 				await state.onModuleInit();
-				graph.observeGuardedValidation(async () => { entered.resolve(); await release.promise; });
-				const operation = change(), rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
+				graph.observeGuardedValidation(async () => {
+					entered.resolve();
+					await release.promise;
+				});
+				const operation = change(),
+					rejected = expect(operation).rejects.toMatchObject({ commitOutcome: 'committed' });
 				await entered.promise;
 				expect(Reflect.set(mutableOptions, 'requiresActivation', true)).toBe(true);
-				release.resolve(); await rejected;
+				release.resolve();
+				await rejected;
 				expect(state.readPublicationReport()).toMatchObject({ installed: false, attempted: 0, completed: 0 });
 				expect(graph.isValidated()).toBe(false);
-			} finally { release.resolve(); state.onModuleDestroy(); producers.onModuleDestroy(); }
+			} finally {
+				release.resolve();
+				state.onModuleDestroy();
+				producers.onModuleDestroy();
+			}
 		});
-
 	});
-
 });

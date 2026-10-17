@@ -19,7 +19,17 @@ import {
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
-import { ObservedProducerBatch, OwnedProducerPublisher, OwnedProducerEngine, OwnedPublicationReport, PreparedProducerBatch, PropertyProducerGuard, PropertyProducerRegistryService, ownedProducerMethodCurrent } from '../../../modules/devices/services/property-producer.registry.service';
+import {
+	ObservedProducerBatch,
+	OwnedProducerEngine,
+	OwnedProducerPublisher,
+	OwnedPublicationReport,
+	OwnedReceiverFunction,
+	PreparedProducerBatch,
+	PropertyProducerGuard,
+	PropertyProducerRegistryService,
+	ownedProducerMethodCurrent,
+} from '../../../modules/devices/services/property-producer.registry.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -55,9 +65,13 @@ export interface OwnedGraphStage {
 }
 export interface OwnedGraphStagerV1 {
 	readonly version: 1;
-	readonly stage: (view: OwnedGraphStageView, lifecycle: OwnedGraphLifecycle) => Promise<OwnedGraphStage>;
+	readonly stage: OwnedReceiverFunction<object, [OwnedGraphStageView, OwnedGraphLifecycle], Promise<OwnedGraphStage>>;
 }
-export class OwnedGraphRegistration { toJSON(): Readonly<Record<string, never>> { return {}; } }
+export class OwnedGraphRegistration {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
 interface OwnedGraphRegistrationRecord {
 	active: boolean;
 	readonly registry: PropertyProducerRegistryService;
@@ -69,10 +83,18 @@ interface OwnedGraphRegistrationRecord {
 	readonly options: Readonly<{ requiresActivation: false }>;
 	lastReport?: OwnedPublicationReport;
 }
-interface OwnedGraphWork { readonly generation: number; readonly registration: OwnedGraphRegistrationRecord; readonly stage: OwnedGraphStage; }
+interface OwnedGraphWork {
+	readonly generation: number;
+	readonly registration: OwnedGraphRegistrationRecord;
+	readonly stage: OwnedGraphStage;
+}
 class OwnedGraphPublicationError extends Error {
-	constructor() { super('Owned graph publication incomplete'); }
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	constructor() {
+		super('Owned graph publication incomplete');
+	}
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 
 class GuardedValidationShell {
@@ -321,22 +343,41 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return Object.freeze({
 			isCurrent: () => generation === this.validationGeneration,
 			guard: Object.freeze({
-				isCurrent: () => generation === this.validationGeneration && !this.validationPending && this.quarantineRevision >= 0,
+				isCurrent: () =>
+					generation === this.validationGeneration && !this.validationPending && this.quarantineRevision >= 0,
 				reason: 'graph_validation_pending',
 			}),
 		});
 	}
 
-	observeOwnedStaging(registry: PropertyProducerRegistryService | undefined, owner: OwnedProducerPublisher,
-		capability: OwnedGraphStagerV1, receiver: object, options: Readonly<{ requiresActivation: false }>): OwnedGraphRegistration {
-		if (!(registry instanceof PropertyProducerRegistryService) || !registry.isOwnedPublisherCurrent(owner) ||
-			this.ownedRegistrations.size || Object.getOwnPropertyDescriptor(capability, 'version')?.value !== 1 || !Object.isFrozen(capability) ||
-			Object.getOwnPropertyDescriptor(capability, 'stage')?.get !== undefined || typeof Object.getOwnPropertyDescriptor(capability, 'stage')?.value !== 'function' ||
+	observeOwnedStaging(
+		registry: PropertyProducerRegistryService | undefined,
+		owner: OwnedProducerPublisher,
+		capability: OwnedGraphStagerV1,
+		receiver: object,
+		options: Readonly<{ requiresActivation: false }>,
+	): OwnedGraphRegistration {
+		if (
+			!(registry instanceof PropertyProducerRegistryService) ||
+			!registry.isOwnedPublisherCurrent(owner) ||
+			this.ownedRegistrations.size ||
+			Object.getOwnPropertyDescriptor(capability, 'version')?.value !== 1 ||
+			!Object.isFrozen(capability) ||
+			Object.getOwnPropertyDescriptor(capability, 'stage')?.get !== undefined ||
+			typeof Object.getOwnPropertyDescriptor(capability, 'stage')?.value !== 'function' ||
 			Object.getOwnPropertyDescriptor(options, 'requiresActivation')?.value !== false ||
-			!ownedProducerMethodCurrent(receiver, 'stageOwned', capability.stage)) throw new OwnedGraphPublicationError();
+			!ownedProducerMethodCurrent(receiver, 'stageOwned', capability.stage)
+		)
+			throw new OwnedGraphPublicationError();
 		const record: OwnedGraphRegistrationRecord = {
-			active: true, registry, engine: registry.captureOwnedEngine(), owner, capability,
-			stage: capability.stage, receiver, options,
+			active: true,
+			registry,
+			engine: registry.captureOwnedEngine(),
+			owner,
+			capability,
+			stage: capability.stage,
+			receiver,
+			options,
 		};
 		const handle = Object.freeze(new OwnedGraphRegistration());
 		this.ownedHandles.set(handle, record);
@@ -357,25 +398,48 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 	}
 
 	private ownedCurrent(records: readonly OwnedGraphRegistrationRecord[]): boolean {
-		return records.length === this.ownedRegistrations.size && records.every((record) =>
-			record.active && this.ownedRegistrations.has(record) && record.capability.stage === record.stage &&
-			ownedProducerMethodCurrent(record.receiver, 'stageOwned', record.stage) &&
-			Object.getOwnPropertyDescriptor(record.options, 'requiresActivation')?.value === false &&
-			record.engine.isOwnedEngineCurrent.call(record.registry, record.engine) &&
-			record.engine.isOwnedPublisherCurrent.call(record.registry, record.owner));
+		return (
+			records.length === this.ownedRegistrations.size &&
+			records.every(
+				(record) =>
+					record.active &&
+					this.ownedRegistrations.has(record) &&
+					record.capability.stage === record.stage &&
+					ownedProducerMethodCurrent(record.receiver, 'stageOwned', record.stage) &&
+					Object.getOwnPropertyDescriptor(record.options, 'requiresActivation')?.value === false &&
+					record.engine.isOwnedEngineCurrent.call(record.registry, record.engine) &&
+					record.engine.isOwnedPublisherCurrent.call(record.registry, record.owner),
+			)
+		);
 	}
 
-	private async stageOwned(snapshot: Awaited<ReturnType<VirtualDependencyGraphService['validationSnapshot']>>,
-		quarantined: ReadonlySet<string>, records: readonly OwnedGraphRegistrationRecord[], work: OwnedGraphWork[], lifecycle: OwnedGraphLifecycle, generation: number): Promise<void> {
-		const revisions = snapshot.properties.filter((property) => property.isDerived).map((property) => {
-			const channel = typeof property.channel === 'string' ? property.channel : property.channel?.id;
-			return Object.freeze({ propertyId: property.id, revision:
-				snapshot.transforms.find((row) => row.outputPropertyId === property.id)?.revision ??
-				snapshot.aggregates.find((row) => row.outputPropertyId === property.id)?.revision ??
-				snapshot.groups.find((row) => row.groupChannelId === channel)?.revision ?? 0 });
+	private async stageOwned(
+		snapshot: Awaited<ReturnType<VirtualDependencyGraphService['validationSnapshot']>>,
+		quarantined: ReadonlySet<string>,
+		records: readonly OwnedGraphRegistrationRecord[],
+		work: OwnedGraphWork[],
+		lifecycle: OwnedGraphLifecycle,
+		generation: number,
+	): Promise<void> {
+		const revisions = snapshot.properties
+			.filter((property) => property.isDerived)
+			.map((property) => {
+				const channel = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+				return Object.freeze({
+					propertyId: property.id,
+					revision:
+						snapshot.transforms.find((row) => row.outputPropertyId === property.id)?.revision ??
+						snapshot.aggregates.find((row) => row.outputPropertyId === property.id)?.revision ??
+						snapshot.groups.find((row) => row.groupChannelId === channel)?.revision ??
+						0,
+				});
+			});
+		const view: OwnedGraphStageView = Object.freeze({
+			revision: snapshot.revision,
+			quarantined,
+			properties: Object.freeze(snapshot.properties),
+			configurationRevisions: Object.freeze(revisions),
 		});
-		const view: OwnedGraphStageView = Object.freeze({ revision: snapshot.revision,
-			quarantined, properties: Object.freeze(snapshot.properties), configurationRevisions: Object.freeze(revisions) });
 		for (const registration of records) {
 			const stage = await registration.stage.call(registration.receiver, view, lifecycle);
 			work.push({ registration, stage, generation });
@@ -386,7 +450,9 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return work.every(({ registration: r, stage }) => r.engine.validatePreparedBatch.call(r.registry, stage.prepared));
 	}
 	private installedCurrent(work: readonly OwnedGraphWork[]): boolean {
-		return work.every(({ registration: r, stage }) => r.engine.isInstalledBatchCurrent.call(r.registry, stage.prepared));
+		return work.every(({ registration: r, stage }) =>
+			r.engine.isInstalledBatchCurrent.call(r.registry, stage.prepared),
+		);
 	}
 	/** Called after ALL external/pure checks: concrete engine install and graph assignments only. */
 	private installOwned(work: readonly OwnedGraphWork[]): boolean {
@@ -406,7 +472,10 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		}
 		return current() && this.installedCurrent(work);
 	}
-	private finishOwned(work: readonly OwnedGraphWork[], terminal: import('../../../modules/devices/services/property-producer.registry.service').OwnedPublicationTerminal): void {
+	private finishOwned(
+		work: readonly OwnedGraphWork[],
+		terminal: import('../../../modules/devices/services/property-producer.registry.service').OwnedPublicationTerminal,
+	): void {
 		for (const { registration: r, stage, generation } of work) {
 			r.engine.finishPublication.call(r.registry, stage.prepared, terminal);
 			const report = r.engine.readInstalledReport.call(r.registry, stage.prepared);
@@ -535,13 +604,19 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.dataSource.transaction(async (manager) => {
 			const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
 			return {
-				edges: await this.edges(manager), aggregates: await manager.find(VirtualAggregateConfigEntity),
-				transforms: await manager.find(VirtualTransformConfigEntity), groups: await manager.find(VirtualLightGroupConfigEntity),
+				edges: await this.edges(manager),
+				aggregates: await manager.find(VirtualAggregateConfigEntity),
+				transforms: await manager.find(VirtualTransformConfigEntity),
+				groups: await manager.find(VirtualLightGroupConfigEntity),
 				knownProperties: await this.readProjectionSources(manager),
-				properties: await manager.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
-					.leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device')
-					.callListeners(false).getMany(),
-				row, revision: row?.revision ?? 0, // Existing ordinary bootstrap behavior; reserved jobs still require row.
+				properties: await manager
+					.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+					.leftJoinAndSelect('property.channel', 'channel')
+					.leftJoinAndSelect('channel.device', 'device')
+					.callListeners(false)
+					.getMany(),
+				row,
+				revision: row?.revision ?? 0, // Existing ordinary bootstrap behavior; reserved jobs still require row.
 			};
 		});
 	}
@@ -611,51 +686,92 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		const descriptor = Object.getOwnPropertyDescriptor(options, 'requiresActivation');
 		if (!descriptor) return Object.getPrototypeOf(options) === Object.prototype ? undefined : 'invalid';
 		const value: unknown = descriptor.value;
-		return descriptor.get === undefined && descriptor.set === undefined &&
-			(value === undefined || typeof value === 'boolean') ? value : 'invalid';
+		return descriptor.get === undefined && descriptor.set === undefined
+			? value === undefined
+				? undefined
+				: typeof value === 'boolean'
+					? value
+					: 'invalid'
+			: 'invalid';
 	}
 
-	async validateAcknowledgedGraph(job: ClimateAutomationAcknowledgedJob, ticket: ClimateAutomationValidationTicket,
-		revision: number): Promise<ClimateAutomationGraphValidation> {
-		const writer = this.writer, generation = this.validationTickets.get(ticket);
+	async validateAcknowledgedGraph(
+		job: ClimateAutomationAcknowledgedJob,
+		ticket: ClimateAutomationValidationTicket,
+		revision: number,
+	): Promise<ClimateAutomationGraphValidation> {
+		const writer = this.writer,
+			generation = this.validationTickets.get(ticket);
 		const lifecycle = this.lifecycleForGeneration(generation ?? -1);
-		const ordinary = [...this.validationListeners].map(([listener, options]) => ({ listener, options, activation: this.activationValue(options) }));
-		const readonly = [...this.guardedListeners].map((registration) => ({ registration, activation: this.activationValue(registration.options) }));
+		const ordinary = [...this.validationListeners].map(([listener, options]) => ({
+			listener,
+			options,
+			activation: this.activationValue(options),
+		}));
+		const readonly = [...this.guardedListeners].map((registration) => ({
+			registration,
+			activation: this.activationValue(registration.options),
+		}));
 		const owned = [...this.ownedRegistrations];
 		const work: OwnedGraphWork[] = [];
-		let terminal: import('../../../modules/devices/services/property-producer.registry.service').OwnedPublicationTerminal = 'preinstall_refused';
-		const refused = (reason: ClimateAutomationValidationReason): ClimateAutomationGraphValidation => Object.freeze({ outcome: 'THIS_JOB_NOT_VALIDATED', reason });
+		let terminal: import('../../../modules/devices/services/property-producer.registry.service').OwnedPublicationTerminal =
+			'preinstall_refused';
+		const refused = (reason: ClimateAutomationValidationReason): ClimateAutomationGraphValidation =>
+			Object.freeze({ outcome: 'THIS_JOB_NOT_VALIDATED', reason });
 		const status = (): ClimateAutomationValidationReason | null => {
 			if (!writer?.isAcknowledgedJobCurrent(job, ticket, revision)) return 'original_identity_lost';
 			if (generation === undefined || generation !== this.validationGeneration) return 'validation_superseded';
-			if (ordinary.length !== this.validationListeners.size || ordinary.some(({ listener, options, activation }) =>
-				activation === 'invalid' || this.validationListeners.get(listener) !== options || this.activationValue(options) !== activation) ||
-				readonly.length !== this.guardedListeners.size || readonly.some(({ registration, activation }) =>
-					activation === 'invalid' || !this.guardedListeners.has(registration) || this.activationValue(registration.options) !== activation) ||
-				!this.ownedCurrent(owned)) return 'listener_set_changed';
+			if (
+				ordinary.length !== this.validationListeners.size ||
+				ordinary.some(
+					({ listener, options, activation }) =>
+						activation === 'invalid' ||
+						this.validationListeners.get(listener) !== options ||
+						this.activationValue(options) !== activation,
+				) ||
+				readonly.length !== this.guardedListeners.size ||
+				readonly.some(
+					({ registration, activation }) =>
+						activation === 'invalid' ||
+						!this.guardedListeners.has(registration) ||
+						this.activationValue(registration.options) !== activation,
+				) ||
+				!this.ownedCurrent(owned)
+			)
+				return 'listener_set_changed';
 			return null;
 		};
 		const probe = async (): Promise<ClimateAutomationValidationReason | null> => {
-			const row = await this.dataSource.transaction((manager) => manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }));
+			const row = await this.dataSource.transaction((manager) =>
+				manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }),
+			);
 			return status() ?? (!row ? 'missing_graph' : row.revision !== revision ? 'revision_mismatch' : null);
 		};
 		try {
-			let reason = status(); if (reason) return refused(reason);
+			let reason = status();
+			if (reason) return refused(reason);
 			if (ordinary.some(({ activation }) => !activation)) return refused('unsupported_legacy_listener');
 			const snapshot = await this.validationSnapshot();
-			reason = status(); if (reason) return refused(reason);
+			reason = status();
+			if (reason) return refused(reason);
 			if (!snapshot.row) return refused('missing_graph');
 			if (snapshot.row.revision !== revision || revision < this.quarantineRevision) return refused('revision_mismatch');
 			const staged = this.stageMetadata(snapshot);
 			await this.stageOwned(snapshot, staged.quarantined, owned, work, lifecycle, generation ?? -1);
 			for (const { registration, activation } of readonly) {
 				if (activation) continue;
-				reason = await probe(); if (reason) return refused(reason);
-				await registration.listener(Object.freeze({ revision, quarantinedIds: Object.freeze([...staged.quarantined].sort()) }));
-				reason = status(); if (reason) return refused(reason);
+				reason = await probe();
+				if (reason) return refused(reason);
+				await registration.listener(
+					Object.freeze({ revision, quarantinedIds: Object.freeze([...staged.quarantined].sort()) }),
+				);
+				reason = status();
+				if (reason) return refused(reason);
 			}
-			reason = await probe(); if (reason) return refused(reason);
-			reason = status(); if (reason || !this.preparedCurrent(work)) return refused(reason ?? 'validation_rejected');
+			reason = await probe();
+			if (reason) return refused(reason);
+			reason = status();
+			if (reason || !this.preparedCurrent(work)) return refused(reason ?? 'validation_rejected');
 			// S3: pinned concrete engine then ONLY preallocated graph reference assignments; still pending.
 			if (!this.installOwned(work)) return refused('validation_rejected');
 			this.quarantined = staged.quarantined;
@@ -664,7 +780,8 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			this.liveValueProperties = staged.live;
 			terminal = 'superseded';
 			if (!this.notifyOwned(work, () => status() === null)) return refused('validation_rejected');
-			reason = status(); if (reason || !this.installedCurrent(work)) return refused(reason ?? 'validation_rejected');
+			reason = status();
+			if (reason || !this.installedCurrent(work)) return refused(reason ?? 'validation_rejected');
 			this.quarantineRevision = revision;
 			this.validationPending = false;
 			terminal = 'complete';
@@ -710,12 +827,25 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		const generation = ++this.validationGeneration;
 		const lifecycle = this.lifecycleForGeneration(generation);
 		this.validationPending = true;
-		const ordinary = [...this.validationListeners].map(([listener, options]) => ({ listener, options, activation: this.activationValue(options) }));
-		const owned = [...this.ownedRegistrations], work: OwnedGraphWork[] = [];
-		let terminal: import('../../../modules/devices/services/property-producer.registry.service').OwnedPublicationTerminal = 'preinstall_refused';
-		const current = () => generation === this.validationGeneration && this.ownedCurrent(owned) &&
-			ordinary.length === this.validationListeners.size && ordinary.every(({ listener, options, activation }) =>
-				activation !== 'invalid' && this.validationListeners.get(listener) === options && this.activationValue(options) === activation);
+		const ordinary = [...this.validationListeners].map(([listener, options]) => ({
+			listener,
+			options,
+			activation: this.activationValue(options),
+		}));
+		const owned = [...this.ownedRegistrations],
+			work: OwnedGraphWork[] = [];
+		let terminal: import('../../../modules/devices/services/property-producer.registry.service').OwnedPublicationTerminal =
+			'preinstall_refused';
+		const current = () =>
+			generation === this.validationGeneration &&
+			this.ownedCurrent(owned) &&
+			ordinary.length === this.validationListeners.size &&
+			ordinary.every(
+				({ listener, options, activation }) =>
+					activation !== 'invalid' &&
+					this.validationListeners.get(listener) === options &&
+					this.activationValue(options) === activation,
+			);
 		try {
 			const snapshot = await this.validationSnapshot();
 			if (!current()) return;
@@ -747,11 +877,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			// Notification observations close before legitimate activation replaces fallback leases.
 			this.finishOwned(work, 'complete');
 			terminal = 'activation_rejected';
-			if (activated) for (const { listener, activation } of ordinary) {
-				if (!current()) return;
-				if (activation) await listener(snapshot.revision, staged.quarantined);
-				if (!current()) return;
-			}
+			if (activated)
+				for (const { listener, activation } of ordinary) {
+					if (!current()) return;
+					if (activation) await listener(snapshot.revision, staged.quarantined);
+					if (!current()) return;
+				}
 			terminal = 'complete';
 		} catch (error) {
 			if (generation === this.validationGeneration) this.validationPending = true;
