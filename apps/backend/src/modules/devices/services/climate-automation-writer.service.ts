@@ -304,6 +304,7 @@ export class ClimateAutomationWriterService {
 			const sourceSnapshot = record.source;
 			const previous = sourceSnapshot?.value;
 			if (!sourceSnapshot || !previous || !previous.isCurrent) throw new Conflict('stale');
+			if (previous.state === 'DELETED' && !owned.deleted) throw new Conflict('stale');
 			const rows = await manager.findBy(ClimateAutomationSlotEntity, { ownerId: previous.ownerId, generationId: previous.generationId });
 			const active = rows.filter((row) => row.state === 'LIVE' || row.state === 'PROVISIONAL');
 			const expected = owned.slots.map((handle) => this.record(operation, handle).slot?.value);

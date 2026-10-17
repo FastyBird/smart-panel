@@ -647,4 +647,84 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 	});
 	// END fixed selected-set regressions
 
+	// BEGIN terminal deleted-source regressions (source-only drafts; all prior cases unchanged)
+	it('rejects a deleted-source downgrade without writes and recreates with a fresh owner while retaining the tombstone', async () => {
+		expect((await source()).outcome).toBe('applied');
+		const original = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		expect(original.state).toBe('PENDING'); expect(original.generationIndex).toBe(1);
+		expect((await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], true))).outcome).toBe('applied');
+		const deleted = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: original.generationId });
+		expect(deleted.state).toBe('DELETED'); expect(deleted.isCurrent).toBe(true);
+		expect(deleted.ownerId).toBe(original.ownerId); expect(deleted.generationIndex).toBe(1); expect(deleted.revision).toBe(original.revision + 1);
+		const queries: string[] = [];
+		database.subscribers.push({ beforeQuery: (event) => { queries.push(event.query); } });
+		expect(await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], false))).toEqual({ outcome: 'conflict', reason: 'stale' });
+		expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: original.generationId }) }).toEqual({ ...deleted });
+		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(1);
+		expect(queries.filter((query) => /^(INSERT|UPDATE|DELETE)/.test(query))).toEqual([`UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0`]);
+		expect(queries).toContain('ROLLBACK'); expect(queries).not.toContain('COMMIT');
+		expect((await source()).outcome).toBe('applied');
+		const recreated = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		expect(recreated.state).toBe('PENDING'); expect(recreated.ownerId).not.toBe(original.ownerId);
+		expect(recreated.generationId).not.toBe(original.generationId); expect(recreated.generationIndex).toBe(1); expect(recreated.revision).toBe(1);
+		expect(recreated.evidence).toBe(deleted.evidence); expect(recreated.evidenceDigest).toBe(deleted.evidenceDigest);
+		const retained = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: original.generationId });
+		expect({ ...retained }).toEqual({ ...deleted, isCurrent: false, revision: deleted.revision + 1 });
+		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(2);
+	});
+
+	it('keeps repeated exact deletion unchanged without persisted identity/revision/evidence or business-write churn', async () => {
+		await source();
+		await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], true));
+		const before = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		const queries: string[] = [];
+		database.subscribers.push({ beforeQuery: (event) => { queries.push(event.query); } });
+		expect(await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], true))).toEqual({ outcome: 'unchanged', items: [{ outcome: 'unchanged' }] });
+		expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: before.generationId }) }).toEqual({ ...before });
+		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(1);
+		expect(queries.filter((query) => /^(INSERT|UPDATE|DELETE)/.test(query))).toEqual([`UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0`]);
+	});
+
+	it('preserves nondeleted same-owner renewal and the later REVOKED to DELETED transition', async () => {
+		await source();
+		await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], false));
+		const revoked = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		expect(revoked.state).toBe('REVOKED');
+		expect((await source()).outcome).toBe('applied');
+		const renewed = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		expect(renewed.state).toBe('PENDING'); expect(renewed.ownerId).toBe(revoked.ownerId);
+		expect(renewed.generationId).not.toBe(revoked.generationId); expect(renewed.generationIndex).toBe(revoked.generationIndex + 1);
+		expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: revoked.generationId }) }).toEqual({ ...revoked, isCurrent: false, revision: revoked.revision + 1 });
+		await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], false));
+		const nextRevoked = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: renewed.generationId });
+		expect(nextRevoked.state).toBe('REVOKED');
+		expect((await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], true))).outcome).toBe('applied');
+		expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: renewed.generationId }) }).toEqual({ ...nextRevoked, state: 'DELETED', revision: nextRevoked.revision + 1 });
+	});
+
+	it('rejects an old generation fence within the same operation and rolls back the attempted renewal before a separate successor commits', async () => {
+		await source();
+		await writer.runReserved(async (manager, scope) => writer.revokeSource(manager, scope, await writer.readSource(manager, scope, 'activity:v1', 'space-fixture'), [], false));
+		const before = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		let attemptedRenewals = 0;
+		// The old handle is valid in THIS operation; refusal exercises the changed durable head, not foreign-scope rejection.
+		expect(await writer.runReserved(async (manager, scope) => {
+			const original = await writer.readSource(manager, scope, 'activity:v1', 'space-fixture');
+			const successor = await writer.stageSource(manager, scope, { producerKey: 'activity:v1', subjectId: 'space-fixture', evidence, expected: original });
+			attemptedRenewals++;
+			await writer.revokeSource(manager, scope, original, [], true);
+			return successor;
+		})).toEqual({ outcome: 'conflict', reason: 'stale' });
+		expect(attemptedRenewals).toBe(1);
+		expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: before.generationId }) }).toEqual({ ...before });
+		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(1);
+		expect((await source()).outcome).toBe('applied');
+		const committed = await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ subjectId: 'space-fixture', isCurrent: true });
+		expect(committed.state).toBe('PENDING'); expect(committed.ownerId).toBe(before.ownerId);
+		expect(committed.generationIndex).toBe(before.generationIndex + 1); expect(committed.generationId).not.toBe(before.generationId);
+		expect({ ...await database.getRepository(ClimateAutomationSourceEntity).findOneByOrFail({ generationId: before.generationId }) }).toEqual({ ...before, isCurrent: false, revision: before.revision + 1 });
+		expect(await database.getRepository(ClimateAutomationSourceEntity).count()).toBe(2);
+	});
+	// END terminal deleted-source regressions
+
 });
