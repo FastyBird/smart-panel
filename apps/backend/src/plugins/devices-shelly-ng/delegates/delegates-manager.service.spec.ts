@@ -3530,10 +3530,25 @@ describe('DelegatesManagerService', () => {
 				const actual = jest.requireActual<typeof import('./shelly-device.delegate')>('./shelly-device.delegate');
 				const mocked = jest.requireMock<typeof import('./shelly-device.delegate')>('./shelly-device.delegate');
 				const constructor = jest.spyOn(mocked, 'ShellyDeviceDelegate').mockImplementation((device) => new actual.ShellyDeviceDelegate(device));
+				// Typed auto-mock constructor: does NOT invoke ws's real client/server constructor.
+				const OfflineSocket = jest.createMockFromModule<typeof WebSocket>('ws');
+				const socketCloses: jest.SpiedFunction<WebSocket['close']>[] = [];
 				class OfflineRpc extends GuardedShellyRpcHandler {
 					online = true;
-					protected override createSocket(): WebSocket { return new WebSocket(null); }
+					disconnectCount = 0;
+					protected override createSocket(): WebSocket {
+						const socket = new OfflineSocket('ws://in-memory.invalid');
+						Object.defineProperty(socket, 'readyState', { value: WebSocket.OPEN });
+						socketCloses.push(jest.spyOn(socket, 'close'));
+						return socket;
+					}
 					override get connected(): boolean { return this.online; }
+					protected override disconnect(): Promise<void> {
+						// SDK destroy still clears its timeout/client; never enter ws.close/abortHandshake.
+						this.online = false;
+						this.disconnectCount++;
+						return Promise.resolve();
+					}
 				}
 				const rpc = new OfflineRpc('127.0.0.1', { clientId: 'source-fixture', requestTimeout: 1, pingInterval: 0, reconnectInterval: 0 });
 				const request = jest.spyOn(rpc, 'request');
@@ -3581,7 +3596,17 @@ describe('DelegatesManagerService', () => {
 					}
 					expect(original.isCurrent()).toBe(false);
 					expect(request).not.toHaveBeenCalled(); // Metadata/session continuity only; no inspection/ON/network.
-				} finally { await svc.detach(); await rpc.destroy(); constructor.mockRestore(); }
+				} finally {
+					try { await svc.detach(); } finally {
+						await rpc.destroy();
+						expect(rpc.disconnectCount).toBe(1);
+						expect(rpc.connected).toBe(false);
+						expect(socketCloses).toHaveLength(1);
+						expect(socketCloses[0]).not.toHaveBeenCalled();
+						expect(request).not.toHaveBeenCalled();
+						constructor.mockRestore();
+					}
+				}
 			},
 		);
 	});

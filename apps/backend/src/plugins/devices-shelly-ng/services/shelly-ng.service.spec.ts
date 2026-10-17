@@ -341,18 +341,39 @@ describe('ShellyNgService', () => {
 		it('retires same-service registration ABA without letting an old owner reopen or close the successor gate', async () => {
 			const f = await fixture(), entered = deferred(), hold = deferred();
 			const owners: ReturnType<DelegatesManagerService['beginGuardedSessionAdmission']>[] = [];
+			const runtimes: Parameters<DelegatesManagerService['beginGuardedSessionAdmission']>[0][] = [];
 			const begin = f.delegates.beginGuardedSessionAdmission.bind(f.delegates);
-			jest.spyOn(f.delegates, 'beginGuardedSessionAdmission').mockImplementation((runtime) => { const owner = begin(runtime); owners.push(owner); return owner; });
+			jest.spyOn(f.delegates, 'beginGuardedSessionAdmission').mockImplementation((runtime) => {
+				const owner = begin(runtime); owners.push(owner); runtimes.push(runtime); return owner;
+			});
 			f.db.run.mockImplementationOnce(() => { entered.resolve(); return hold.promise; });
 			const old = f.start();
 			try {
 				await entered.promise;
+				const originalOwner = owners[0], originalRuntime = runtimes[0];
+				if (!originalOwner || !originalRuntime) throw new Error('Expected original A owner/runtime');
+				expect(f.connector.getState()).toBe('starting');
 				f.manager.unregister(f.connector.owner.kind, f.connector.owner.type, f.connector.serviceId);
 				f.manager.register(f.connector);
-				const fresh = f.start(); hold.resolve(); await Promise.all([old, fresh]);
+				expect(originalRuntime.isCurrent()).toBe(false);
+				expect(originalOwner.open()).toBe(false);
+				// Actual public manager contract rejects manual start in starting; no hidden state reset.
+				expect(await f.start()).toBe(false);
+				expect(owners).toHaveLength(1);
+				hold.resolve(); expect(await old).toBe(false);
+				expect(f.connector.getState()).toBe('started'); // Discovery may complete, original guarded authority cannot.
+				expect(f.delegates.captureGuardedSessionAdmission()).toBeNull();
+				expect(f.db.run).toHaveBeenCalledTimes(1);
+				expect(await f.manager.stopServiceManually(f.connector.owner.kind, f.connector.owner.type, f.connector.serviceId)).toBe(true);
+				expect(f.connector.getState()).toBe('stopped');
+				expect(await f.start()).toBe(true);
+				expect(f.connector.getState()).toBe('started');
+				expect(f.db.run).toHaveBeenCalledTimes(2);
 				const current = capture(f.delegates);
 				expect(owners).toHaveLength(2);
-				expect(owners[0].open()).toBe(false); owners[0].revoke();
+				expect(originalRuntime.isCurrent()).toBe(false);
+				expect(originalOwner.open()).toBe(false); originalOwner.revoke();
+				expect(originalRuntime.isCurrent()).toBe(false);
 				expect(current.isCurrent()).toBe(true);
 			} finally { hold.resolve(); await old; }
 		});
