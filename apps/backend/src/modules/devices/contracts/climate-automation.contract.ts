@@ -153,7 +153,6 @@ export class ClimateAutomationWriteError extends Error {
 	}
 }
 
-
 /** Private owned full projection. A concrete provider must audit every persisted field before registration. */
 export interface ClimateAutomationParticipantDocument {
 	readonly controllerId: string;
@@ -174,11 +173,16 @@ export interface ClimateAutomationReplacement {
 	readonly expected: ClimateAutomationHandle;
 	readonly desiredDocument: ClimateAutomationJson;
 }
-export interface ClimateAutomationParticipantTurn extends ClimateAutomationScope {}
-export interface ClimateAutomationValidationTicket extends ClimateAutomationScope {}
-export interface ClimateAutomationAcknowledgedJob extends ClimateAutomationScope {}
+export type ClimateAutomationParticipantTurn = ClimateAutomationScope;
+export type ClimateAutomationValidationTicket = ClimateAutomationScope;
+export type ClimateAutomationAcknowledgedJob = ClimateAutomationScope;
 export type ClimateAutomationParticipantPhase =
-	| 'READ_BEFORE' | 'NORMALIZE' | 'APPLY' | 'READ_AFTER' | 'GRAPH_CAS' | 'FINAL_READ';
+	| 'READ_BEFORE'
+	| 'NORMALIZE'
+	| 'APPLY'
+	| 'READ_AFTER'
+	| 'GRAPH_CAS'
+	| 'FINAL_READ';
 export interface ClimateAutomationGraphFacts {
 	readonly revision: number;
 	readonly edges: readonly { readonly outputPropertyId: string; readonly sourcePropertyId: string }[];
@@ -201,29 +205,75 @@ export interface ClimateAutomationGraphDelta {
 	readonly structuralAfter: ClimateAutomationJson;
 }
 export type ClimateAutomationValidationReason =
-	| 'original_identity_lost' | 'validation_superseded' | 'revision_mismatch' | 'missing_graph'
-	| 'unsupported_legacy_listener' | 'listener_set_changed' | 'validation_rejected';
+	| 'original_identity_lost'
+	| 'validation_superseded'
+	| 'revision_mismatch'
+	| 'missing_graph'
+	| 'unsupported_legacy_listener'
+	| 'listener_set_changed'
+	| 'validation_rejected';
 export type ClimateAutomationGraphValidation =
 	| { readonly outcome: 'VALIDATED_AT_OBSERVED_REVISION'; readonly revision: number }
 	| { readonly outcome: 'THIS_JOB_NOT_VALIDATED'; readonly reason: ClimateAutomationValidationReason };
 export interface ClimateAutomationGraphParticipant {
-	readonly readReservedGraph: (manager: EntityManager, turn: ClimateAutomationParticipantTurn) => Promise<ClimateAutomationGraphFacts>;
-	readonly validateReservedReplacement: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta) => Promise<void>;
-	readonly beginReservedValidation: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta) => ClimateAutomationValidationTicket;
-	readonly advanceReservedGraph: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta) => Promise<ClimateAutomationGraphFacts>;
-	readonly validateAcknowledgedGraph: (job: ClimateAutomationAcknowledgedJob, ticket: ClimateAutomationValidationTicket, revision: number) => Promise<ClimateAutomationGraphValidation>;
+	readonly readReservedGraph: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+	) => Promise<ClimateAutomationGraphFacts>;
+	readonly validateReservedReplacement: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		delta: ClimateAutomationGraphDelta,
+	) => Promise<void>;
+	readonly beginReservedValidation: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		delta: ClimateAutomationGraphDelta,
+	) => ClimateAutomationValidationTicket;
+	readonly advanceReservedGraph: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		delta: ClimateAutomationGraphDelta,
+	) => Promise<ClimateAutomationGraphFacts>;
+	readonly validateAcknowledgedGraph: (
+		job: ClimateAutomationAcknowledgedJob,
+		ticket: ClimateAutomationValidationTicket,
+		revision: number,
+	) => Promise<ClimateAutomationGraphValidation>;
 }
 /** Trusted SAME-manager protocol, NOT an EntityManager sandbox. No public caller-supplied functions. */
 export interface ClimateAutomationParticipant {
 	readonly version: 1;
 	readonly graph: ClimateAutomationGraphParticipant;
-	readonly readInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, controllerId: string) => Promise<ClimateAutomationParticipantImage | null>;
-	readonly normalizeInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, kind: ClimateAutomationReplacementKind, desired: ClimateAutomationJson, before: ClimateAutomationParticipantImage) => Promise<ClimateAutomationParticipantDocument>;
+	readonly readInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
+	) => Promise<ClimateAutomationParticipantImage | null>;
+	readonly normalizeInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		kind: ClimateAutomationReplacementKind,
+		desired: ClimateAutomationJson,
+		before: ClimateAutomationParticipantImage,
+	) => Promise<ClimateAutomationParticipantDocument>;
 	/** Read-only complete ownership projection; no helpers, writes or I/O. Inputs are owned immutable images. */
-	readonly planGraphReplacementInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, before: ClimateAutomationParticipantImage, next: ClimateAutomationParticipantDocument) => Promise<ClimateAutomationGraphReplacementPlan>;
+	readonly planGraphReplacementInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantDocument,
+	) => Promise<ClimateAutomationGraphReplacementPlan>;
 	/** Exact affected-one controller CAS; no private source/slot or graph singleton writes, nested helpers or I/O. */
-	readonly applyInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, before: ClimateAutomationParticipantImage, next: ClimateAutomationParticipantImage) => Promise<void>;
+	readonly applyInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationParticipantImage,
+		next: ClimateAutomationParticipantImage,
+	) => Promise<void>;
 }
 export class ClimateAutomationParticipantConflict extends Error {
-	constructor(readonly reason: ClimateAutomationConflictReason) { super('Private climate participant conflict'); }
+	constructor(readonly reason: ClimateAutomationConflictReason) {
+		super('Private climate participant conflict');
+	}
 }

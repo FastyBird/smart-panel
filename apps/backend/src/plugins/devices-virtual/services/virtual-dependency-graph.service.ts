@@ -6,13 +6,19 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
-	ClimateAutomationAcknowledgedJob, ClimateAutomationGraphDelta, ClimateAutomationGraphFacts,
-	ClimateAutomationGraphValidation, ClimateAutomationParticipantConflict, ClimateAutomationParticipantTurn,
-	ClimateAutomationValidationReason, ClimateAutomationValidationTicket, climateAutomationCanonical,
+	ClimateAutomationAcknowledgedJob,
+	ClimateAutomationGraphDelta,
+	ClimateAutomationGraphFacts,
+	ClimateAutomationGraphValidation,
+	ClimateAutomationParticipantConflict,
+	ClimateAutomationParticipantTurn,
+	ClimateAutomationValidationReason,
+	ClimateAutomationValidationTicket,
+	climateAutomationCanonical,
 } from '../../../modules/devices/contracts/climate-automation.contract';
-import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualDewPointSourceEntity } from '../entities/virtual-dew-point.entity';
@@ -31,7 +37,11 @@ export interface VirtualDependencyEdge {
 	sourcePropertyId: string;
 }
 
-class GuardedValidationShell { toJSON(): Readonly<Record<string, never>> { return {}; } }
+class GuardedValidationShell {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
 
 /** Database writer reservation precedes all graph validation, including across independent processes. */
 @Injectable()
@@ -269,17 +279,27 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return this.writer;
 	}
 
-	async readReservedGraph(manager: EntityManager, turn: ClimateAutomationParticipantTurn): Promise<ClimateAutomationGraphFacts> {
+	async readReservedGraph(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+	): Promise<ClimateAutomationGraphFacts> {
 		this.participantWriter().assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 		const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
 		if (!row) throw new ClimateAutomationParticipantConflict('uninitialized');
-		if (!Number.isSafeInteger(row.revision) || row.revision < 0) throw new ClimateAutomationParticipantConflict('invalid');
-		const edges = (await this.edges(manager)).map((edge) => Object.freeze({ outputPropertyId: edge.outputPropertyId, sourcePropertyId: edge.sourcePropertyId }));
+		if (!Number.isSafeInteger(row.revision) || row.revision < 0)
+			throw new ClimateAutomationParticipantConflict('invalid');
+		const edges = (await this.edges(manager)).map((edge) =>
+			Object.freeze({ outputPropertyId: edge.outputPropertyId, sourcePropertyId: edge.sourcePropertyId }),
+		);
 		edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
 		return Object.freeze({ revision: row.revision, edges: Object.freeze(edges) });
 	}
 
-	async validateReservedReplacement(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): Promise<void> {
+	async validateReservedReplacement(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		delta: ClimateAutomationGraphDelta,
+	): Promise<void> {
 		// Identity/phase must precede descriptor getters and every SQL operation.
 		this.participantWriter().assertParticipantTurn(manager, turn, ['NORMALIZE'], delta);
 		if (!delta) throw new ClimateAutomationParticipantConflict('invalid');
@@ -287,22 +307,41 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		if (!row || row.revision !== delta.before.revision) throw new ClimateAutomationParticipantConflict('stale');
 		const actual = (await this.edges(manager)).map((edge) => Object.freeze({ ...edge }));
 		actual.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
-		if (climateAutomationCanonical(actual) !== climateAutomationCanonical(delta.before.edges)) throw new ClimateAutomationParticipantConflict('stale');
+		if (climateAutomationCanonical(actual) !== climateAutomationCanonical(delta.before.edges))
+			throw new ClimateAutomationParticipantConflict('stale');
 		const outputs = new Set(delta.plan.ownedOutputIds);
-		if (outputs.size !== delta.plan.ownedOutputIds.length || outputs.size > 4096 || delta.plan.beforeEdges.length > 8192 || delta.plan.replacementEdges.length > 8192 ||
-			delta.plan.beforeEdges.some((edge) => !outputs.has(edge.outputPropertyId)) || delta.plan.replacementEdges.some((edge) => !outputs.has(edge.outputPropertyId))) throw new ClimateAutomationParticipantConflict('invalid');
+		if (
+			outputs.size !== delta.plan.ownedOutputIds.length ||
+			outputs.size > 4096 ||
+			delta.plan.beforeEdges.length > 8192 ||
+			delta.plan.replacementEdges.length > 8192 ||
+			delta.plan.beforeEdges.some((edge) => !outputs.has(edge.outputPropertyId)) ||
+			delta.plan.replacementEdges.some((edge) => !outputs.has(edge.outputPropertyId))
+		)
+			throw new ClimateAutomationParticipantConflict('invalid');
 		const ownedBefore = actual.filter((edge) => outputs.has(edge.outputPropertyId));
-		if (climateAutomationCanonical(ownedBefore) !== climateAutomationCanonical(delta.plan.beforeEdges)) throw new ClimateAutomationParticipantConflict('stale');
+		if (climateAutomationCanonical(ownedBefore) !== climateAutomationCanonical(delta.plan.beforeEdges))
+			throw new ClimateAutomationParticipantConflict('stale');
 		const candidate = [...actual.filter((edge) => !outputs.has(edge.outputPropertyId)), ...delta.plan.replacementEdges];
 		candidate.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
-		if (climateAutomationCanonical(candidate) !== climateAutomationCanonical(delta.afterEdges)) throw new ClimateAutomationParticipantConflict('invalid');
-		try { this.validate(candidate); }
-		catch (cause) { if (cause instanceof DevicesValidationException) throw new ClimateAutomationParticipantConflict('invalid'); throw cause; }
+		if (climateAutomationCanonical(candidate) !== climateAutomationCanonical(delta.afterEdges))
+			throw new ClimateAutomationParticipantConflict('invalid');
+		try {
+			this.validate(candidate);
+		} catch (cause) {
+			if (cause instanceof DevicesValidationException) throw new ClimateAutomationParticipantConflict('invalid');
+			throw cause;
+		}
 	}
 
-	beginReservedValidation(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): ClimateAutomationValidationTicket {
+	beginReservedValidation(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		delta: ClimateAutomationGraphDelta,
+	): ClimateAutomationValidationTicket {
 		this.participantWriter().assertParticipantTurn(manager, turn, ['APPLY'], delta);
-		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter)) throw new ClimateAutomationParticipantConflict('invalid');
+		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter))
+			throw new ClimateAutomationParticipantConflict('invalid');
 		this.validationGeneration++;
 		this.validationPending = true;
 		const ticket = Object.freeze(new GuardedValidationShell());
@@ -310,40 +349,76 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		return ticket;
 	}
 
-	async advanceReservedGraph(manager: EntityManager, turn: ClimateAutomationParticipantTurn, delta: ClimateAutomationGraphDelta): Promise<ClimateAutomationGraphFacts> {
+	async advanceReservedGraph(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		delta: ClimateAutomationGraphDelta,
+	): Promise<ClimateAutomationGraphFacts> {
 		this.participantWriter().assertParticipantTurn(manager, turn, ['GRAPH_CAS'], delta);
 		if (!delta) throw new ClimateAutomationParticipantConflict('invalid');
 		const row = await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 });
 		if (!row || row.revision !== delta.before.revision) throw new ClimateAutomationParticipantConflict('stale');
-		if (!Number.isSafeInteger(row.revision) || row.revision < 0 || row.revision === Number.MAX_SAFE_INTEGER) throw new ClimateAutomationParticipantConflict('invalid');
+		if (!Number.isSafeInteger(row.revision) || row.revision < 0 || row.revision === Number.MAX_SAFE_INTEGER)
+			throw new ClimateAutomationParticipantConflict('invalid');
 		const edges = (await this.edges(manager)).map((edge) => Object.freeze({ ...edge }));
 		edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
-		if (climateAutomationCanonical(edges) !== climateAutomationCanonical(delta.afterEdges)) throw new ClimateAutomationParticipantConflict('stale');
+		if (climateAutomationCanonical(edges) !== climateAutomationCanonical(delta.afterEdges))
+			throw new ClimateAutomationParticipantConflict('stale');
 		this.validate(edges);
-		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter)) throw new ClimateAutomationParticipantConflict('invalid');
-		const result = await manager.update(VirtualGraphRevisionEntity, { id: 1, revision: row.revision }, { revision: row.revision + 1 });
+		if (climateAutomationCanonical(delta.structuralBefore) === climateAutomationCanonical(delta.structuralAfter))
+			throw new ClimateAutomationParticipantConflict('invalid');
+		const result = await manager.update(
+			VirtualGraphRevisionEntity,
+			{ id: 1, revision: row.revision },
+			{ revision: row.revision + 1 },
+		);
 		if (result.affected !== 1) throw new ClimateAutomationParticipantConflict('stale');
 		return Object.freeze({ revision: row.revision + 1, edges: Object.freeze(edges) });
 	}
 
 	/** Trusted READ-ONLY checks only. No production consumer is converted by this dormant port. */
-	observeGuardedValidation(listener: (view: Readonly<{ revision: number; quarantinedIds: readonly string[] }>) => Promise<void>, options: { requiresActivation?: boolean } = {}): () => void {
+	observeGuardedValidation(
+		listener: (view: Readonly<{ revision: number; quarantinedIds: readonly string[] }>) => Promise<void>,
+		options: { requiresActivation?: boolean } = {},
+	): () => void {
 		const registration = Object.freeze({ listener, options });
 		this.guardedListeners.add(registration);
-		return () => { this.guardedListeners.delete(registration); };
+		return () => {
+			this.guardedListeners.delete(registration);
+		};
 	}
 
-	async validateAcknowledgedGraph(job: ClimateAutomationAcknowledgedJob, ticket: ClimateAutomationValidationTicket, revision: number): Promise<ClimateAutomationGraphValidation> {
+	async validateAcknowledgedGraph(
+		job: ClimateAutomationAcknowledgedJob,
+		ticket: ClimateAutomationValidationTicket,
+		revision: number,
+	): Promise<ClimateAutomationGraphValidation> {
 		const writer = this.writer;
 		const generation = this.validationTickets.get(ticket);
-		const ordinary = [...this.validationListeners].map(([listener, options]) => Object.freeze({ listener, options, activation: options.requiresActivation }));
-		const readonly = [...this.guardedListeners].map((registration) => Object.freeze({ registration, activation: registration.options.requiresActivation }));
-		const refused = (reason: ClimateAutomationValidationReason): ClimateAutomationGraphValidation => Object.freeze({ outcome: 'THIS_JOB_NOT_VALIDATED', reason });
+		const ordinary = [...this.validationListeners].map(([listener, options]) =>
+			Object.freeze({ listener, options, activation: options.requiresActivation }),
+		);
+		const readonly = [...this.guardedListeners].map((registration) =>
+			Object.freeze({ registration, activation: registration.options.requiresActivation }),
+		);
+		const refused = (reason: ClimateAutomationValidationReason): ClimateAutomationGraphValidation =>
+			Object.freeze({ outcome: 'THIS_JOB_NOT_VALIDATED', reason });
 		const status = (): ClimateAutomationValidationReason | null => {
 			if (!writer?.isAcknowledgedJobCurrent(job, ticket, revision)) return 'original_identity_lost';
 			if (generation === undefined || generation !== this.validationGeneration) return 'validation_superseded';
-			if (ordinary.length !== this.validationListeners.size || ordinary.some(({ listener, options, activation }) => this.validationListeners.get(listener) !== options || options.requiresActivation !== activation) ||
-				readonly.length !== this.guardedListeners.size || readonly.some(({ registration, activation }) => !this.guardedListeners.has(registration) || registration.options.requiresActivation !== activation)) return 'listener_set_changed';
+			if (
+				ordinary.length !== this.validationListeners.size ||
+				ordinary.some(
+					({ listener, options, activation }) =>
+						this.validationListeners.get(listener) !== options || options.requiresActivation !== activation,
+				) ||
+				readonly.length !== this.guardedListeners.size ||
+				readonly.some(
+					({ registration, activation }) =>
+						!this.guardedListeners.has(registration) || registration.options.requiresActivation !== activation,
+				)
+			)
+				return 'listener_set_changed';
 			return null;
 		};
 		const entry = status();
@@ -354,9 +429,12 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 			edges: await this.edges(manager),
 			aggregates: await manager.find(VirtualAggregateConfigEntity),
 			knownProperties: await this.readProjectionSources(manager),
-			properties: await manager.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
-				.leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device')
-				.callListeners(false).getMany(),
+			properties: await manager
+				.createQueryBuilder(VirtualChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.callListeners(false)
+				.getMany(),
 			row: await manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }),
 		}));
 		let reason = status();
@@ -366,46 +444,82 @@ export class VirtualDependencyGraphService implements OnApplicationBootstrap {
 		// Everything stays local until ALL callbacks and the final actual durable observation settle.
 		const quarantined = new Set<string>();
 		const neighbors = new Map<string, Set<string>>();
-		for (const edge of snapshot.edges) for (const [node, neighbor] of [[edge.outputPropertyId, edge.sourcePropertyId], [edge.sourcePropertyId, edge.outputPropertyId]]) {
-			const adjacent = neighbors.get(node) ?? new Set<string>(); adjacent.add(neighbor); neighbors.set(node, adjacent);
-		}
+		for (const edge of snapshot.edges)
+			for (const [node, neighbor] of [
+				[edge.outputPropertyId, edge.sourcePropertyId],
+				[edge.sourcePropertyId, edge.outputPropertyId],
+			]) {
+				const adjacent = neighbors.get(node) ?? new Set<string>();
+				adjacent.add(neighbor);
+				neighbors.set(node, adjacent);
+			}
 		const visited = new Set<string>();
 		for (const root of neighbors.keys()) {
 			if (visited.has(root)) continue;
-			const component = new Set<string>(); const queue = [root];
+			const component = new Set<string>();
+			const queue = [root];
 			for (let index = 0; index < queue.length; index++) {
-				const node = queue[index]; if (component.has(node)) continue;
-				component.add(node); visited.add(node); queue.push(...(neighbors.get(node) ?? []));
+				const node = queue[index];
+				if (component.has(node)) continue;
+				component.add(node);
+				visited.add(node);
+				queue.push(...(neighbors.get(node) ?? []));
 			}
-			try { this.validate(snapshot.edges.filter((edge) => component.has(edge.outputPropertyId))); }
-			catch (error) { if (!(error instanceof DevicesValidationException)) throw error; for (const node of component) quarantined.add(node); }
+			try {
+				this.validate(snapshot.edges.filter((edge) => component.has(edge.outputPropertyId)));
+			} catch (error) {
+				if (!(error instanceof DevicesValidationException)) throw error;
+				for (const node of component) quarantined.add(node);
+			}
 		}
-		if (snapshot.edges.length > 8192 || neighbors.size > 4096) for (const node of neighbors.keys()) quarantined.add(node);
+		if (snapshot.edges.length > 8192 || neighbors.size > 4096)
+			for (const node of neighbors.keys()) quarantined.add(node);
 		for (const config of snapshot.aggregates) {
 			const property = snapshot.properties.find((candidate) => candidate.id === config.outputPropertyId);
 			const channel = property?.channel;
 			const device = channel && typeof channel !== 'string' ? channel.device : null;
-			if (!property || !channel || typeof channel === 'string' || !device || typeof device === 'string' ||
-				!isEligibleAggregateOutput(property, channel, device) || aggregateProfile(property, channel)?.id !== config.profile) quarantined.add(config.outputPropertyId);
+			if (
+				!property ||
+				!channel ||
+				typeof channel === 'string' ||
+				!device ||
+				typeof device === 'string' ||
+				!isEligibleAggregateOutput(property, channel, device) ||
+				aggregateProfile(property, channel)?.id !== config.profile
+			)
+				quarantined.add(config.outputPropertyId);
 		}
 		const staged = {
 			known: new Set(snapshot.knownProperties.map((property) => property.id)),
-			sources: new Map(snapshot.properties.map((property) => [property.id, { valueOrigin: property.valueOrigin, sourcePropertyId: property.sourcePropertyId ?? null }])),
-			live: new Set(snapshot.properties.filter((property) => property.requiresLiveValue).map((property) => property.id)),
+			sources: new Map(
+				snapshot.properties.map((property) => [
+					property.id,
+					{ valueOrigin: property.valueOrigin, sourcePropertyId: property.sourcePropertyId ?? null },
+				]),
+			),
+			live: new Set(
+				snapshot.properties.filter((property) => property.requiresLiveValue).map((property) => property.id),
+			),
 		};
 		const probe = async (): Promise<ClimateAutomationValidationReason | null> => {
-			const row = await this.dataSource.transaction((manager) => manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }));
+			const row = await this.dataSource.transaction((manager) =>
+				manager.findOneBy(VirtualGraphRevisionEntity, { id: 1 }),
+			);
 			return status() ?? (!row ? 'missing_graph' : row.revision !== revision ? 'revision_mismatch' : null);
 		};
 		for (const { registration, activation } of readonly) {
 			if (activation) continue;
-			reason = await probe(); if (reason) return refused(reason);
+			reason = await probe();
+			if (reason) return refused(reason);
 			await registration.listener(Object.freeze({ revision, quarantinedIds: Object.freeze([...quarantined].sort()) }));
-			reason = status(); if (reason) return refused(reason);
+			reason = status();
+			if (reason) return refused(reason);
 		}
-		reason = await probe(); if (reason) return refused(reason);
+		reason = await probe();
+		if (reason) return refused(reason);
 		// No await/callback/getter between original pure checks and these assignments.
-		reason = status(); if (reason) return refused(reason);
+		reason = status();
+		if (reason) return refused(reason);
 		this.quarantined = quarantined;
 		this.knownProperties = staged.known;
 		this.valueSources = staged.sources;
