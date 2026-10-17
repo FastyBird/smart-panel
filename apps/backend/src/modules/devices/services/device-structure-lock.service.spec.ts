@@ -252,7 +252,7 @@ describe('DeviceStructureLockService', () => {
 			});
 
 			expect(result).toBe(value);
-			if (!inherited) throw new Error('Original-context continuation was not registered');
+			if (inherited === undefined) throw new Error('Original-context continuation was not registered');
 			resume.resolve();
 			await expect(inherited).resolves.toBe('fresh top-level owner');
 		});
@@ -283,7 +283,7 @@ describe('DeviceStructureLockService', () => {
 			rejectCallback(reason);
 			await rejected;
 
-			if (!inherited) throw new Error('Original-context continuation was not registered');
+			if (inherited === undefined) throw new Error('Original-context continuation was not registered');
 			resume.resolve();
 			await expect(inherited).resolves.toBe('after original rejection');
 		});
@@ -458,7 +458,7 @@ describe('DeviceStructureLockService', () => {
 				});
 				return Promise.resolve();
 			});
-			if (!inherited) throw new Error('Original-context continuation was not registered');
+			if (inherited === undefined) throw new Error('Original-context continuation was not registered');
 			const successor = lock.runExclusive(async () => {
 				trace.push('successor:start');
 				successorStarted.resolve();
@@ -507,7 +507,7 @@ describe('DeviceStructureLockService', () => {
 			rootGate.resolve();
 			await expect(root).resolves.toBe('original result');
 			await successorStarted.promise;
-			if (!inherited) throw new Error('Original-context continuation was not registered');
+			if (inherited === undefined) throw new Error('Original-context continuation was not registered');
 
 			resumeInherited.resolve();
 			await inheritedAttempted.promise;
@@ -572,7 +572,11 @@ describe('DeviceStructureLockService', () => {
 			firstGate.resolve();
 			await releasedStarted.promise;
 			expect(trace).toEqual([
-				'reader:first', 'reader:first:end', 'released:start', 'ordinary:nested:shared', 'ordinary:nested:exclusive',
+				'reader:first',
+				'reader:first:end',
+				'released:start',
+				'ordinary:nested:shared',
+				'ordinary:nested:exclusive',
 			]);
 			releasedGate.resolve();
 			await sharedStarted.promise;
@@ -580,8 +584,16 @@ describe('DeviceStructureLockService', () => {
 			sharedGate.resolve();
 			await Promise.all([first, released, shared, writer, lateShared]);
 			expect(trace).toEqual([
-				'reader:first', 'reader:first:end', 'released:start', 'ordinary:nested:shared', 'ordinary:nested:exclusive',
-				'released:end', 'reader:after', 'reader:after:end', 'ordinary:writer', 'reader:last',
+				'reader:first',
+				'reader:first:end',
+				'released:start',
+				'ordinary:nested:shared',
+				'ordinary:nested:exclusive',
+				'released:end',
+				'reader:after',
+				'reader:after:end',
+				'ordinary:writer',
+				'reader:last',
 			]);
 		});
 	});
