@@ -216,6 +216,7 @@ interface ExistingRecord {
 	readonly graphReady: () => boolean;
 	readonly baseCurrent: () => boolean;
 	readonly clockOwnerCurrent: () => boolean;
+	readonly admitClockObservation: () => void;
 	readonly closeClockObservation: () => void;
 	readonly wall: ExistingClockOwner['wall'];
 	readonly mono: ExistingClockOwner['mono'];
@@ -2353,22 +2354,28 @@ export class ClimateAutomationWriterService {
 						const recipe = plan.descriptor;
 						if (!recipe || typeof recipe !== 'object' || this.existingRecipes.has(recipe)) throw new Conflict('invalid');
 						const originalLifecycle = lifecycle;
-						let clockActive = true;
+						let clockState: 'UNADMITTED' | 'ADMITTED' | 'CLOSED' = 'UNADMITTED';
 						const clockSource = this.dataSource;
 						const clockObserver: EntitySubscriberInterface = { beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
 							const query = event.query.trim();
 							if (/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(query)) return;
 							if (event.query === `UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0` && !event.parameters?.length) return;
 							// No graph-counter, qualified-release or publication exemption for this distinct owner.
-							clockActive = false;
+							clockState = 'CLOSED';
 						} };
-						clockSource.subscribers.push(clockObserver);
-						const clockOwnerCurrent = (): boolean => {
-							if (!clockActive) return false;
-							if (!ownerLifecycleCurrent() || !clockSource.subscribers.includes(clockObserver)) clockActive = false;
-							return clockActive;
+						// Keep original facts/engine/clock captures, but no long-lived observer during owned mirror locks.
+						// Only the authenticated post-publication terminal prepare seam can admit this original candidate.
+						const admitClockObservation = (): void => {
+							if (clockState !== 'UNADMITTED' || !ownerLifecycleCurrent()) throw new Conflict('unavailable');
+							clockSource.subscribers.push(clockObserver);
+							clockState = 'ADMITTED';
 						};
-						const closeClockObservation = (): void => { clockActive = false; const index = clockSource.subscribers.indexOf(clockObserver);
+						const clockOwnerCurrent = (): boolean => {
+							if (clockState !== 'ADMITTED') return false;
+							if (!ownerLifecycleCurrent() || !clockSource.subscribers.includes(clockObserver)) clockState = 'CLOSED';
+							return clockState === 'ADMITTED';
+						};
+						const closeClockObservation = (): void => { clockState = 'CLOSED'; const index = clockSource.subscribers.indexOf(clockObserver);
 							if (index >= 0) clockSource.subscribers.splice(index,1); };
 
 						let receiptCurrent = true;
@@ -2386,7 +2393,7 @@ export class ClimateAutomationWriterService {
 							plan: Object.freeze({ ...plan, expected: finalExpected, response: this.ownedJson(plan.response),
 								mirrors: Object.freeze(plan.mirrors.map((item) => Object.freeze({ ...item }))),
 								properties: Object.freeze(plan.properties.map((property) => freezeCreationSnapshot(property))) }),
-							environment: owned.environment,baseCurrent: retainedCurrent,clockOwnerCurrent,closeClockObservation,wall: owned.wall,mono: owned.mono,closeVeto,current: () => current() && receiptCurrent };
+							environment: owned.environment,baseCurrent: retainedCurrent,clockOwnerCurrent,admitClockObservation,closeClockObservation,wall: owned.wall,mono: owned.mono,closeVeto,current: () => current() && receiptCurrent };
 						this.dataSource.subscribers.push(observer); operation.guards.push(record.current);
 						this.existingRecipes.set(recipe, record);
 						if (changed) record.publication = originalControllerMutationMethods.fromReserved.call(ControllerMutationPublicationEngine,this, manager, turn, recipe);
@@ -2442,7 +2449,11 @@ export class ClimateAutomationWriterService {
 			throw new Conflict('unavailable');
 		}
 		record.preparation = 'PREPARING';
-		try { await record.prepareHold(); } finally { record.preparation = 'SETTLED'; }
+		try {
+			// Original ACK/release/completion/registration guards above precede one-way admission, before B1/B3.
+			record.admitClockObservation();
+			await record.prepareHold();
+		} finally { record.preparation = 'SETTLED'; }
 		if (!record.current() || record.preparationFailure) throw new Conflict('unavailable');
 	}
 	prepareExistingResponse(descriptor: ClimateAutomationScope,response: ClimateAutomationJson): ClimateAutomationJson {

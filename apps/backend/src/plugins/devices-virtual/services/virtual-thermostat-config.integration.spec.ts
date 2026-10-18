@@ -2523,6 +2523,103 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			expect(claims.isAuthorized(claims.mintAuthority(claim.id,'off'),leaf)).toBe(true);
 			expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ id: claim.id })).revision).toBe(claim.revision + 1);
 		});
+
+		// BEGIN enabled-lock clock-admission regression drafts (UNRUN)
+		const enableRealMirrorLocks = async (): Promise<void> => {
+			// Replace the fixture-owned false-mode DI assembly, not a readonly flag or lock implementation.
+			automation.onModuleDestroy(); comfort.onModuleDestroy(); await pipeline.close();
+			pipeline = await Test.createTestingModule({ providers: [PropertyValueService,PropertyValueLockService,
+				PropertyValueSourceRegistryService,PropertyProducerRegistryService,StorageService,
+				{ provide: DataSource,useValue: database },{ provide: EventEmitter2,useValue: events },
+				{ provide: NestConfigService,useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }) },
+				{ provide: ModuleConfigService,useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),{ primaryStorage: 'enabled-lock-clock-fixture' }) } },
+			] }).compile();
+			const plugin: StoragePlugin = { name: 'enabled-lock-clock-fixture',initialize: () => Promise.resolve(),destroy: () => Promise.resolve(),
+				isAvailable: () => true,writePoints: () => Promise.resolve(),query: <T>() => Promise.resolve<T[]>([]),
+				queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
+			backend = plugin; pipeline.get(StorageService).registerPlugin(plugin.name,plugin);
+			values = pipeline.get(PropertyValueService);
+			configs = new VirtualThermostatConfigService(database,structure,graph,claims,events,values,undefined,writer);
+			comfort = new VirtualThermostatComfortService(database,structure,graph,claims,events,writer);
+			expect(pipeline.get(PropertyValueLockService).isEnabled()).toBe(true);
+			registerOriginal();
+		};
+		it.each([false,true])('seals fixed A after real enabled mirror lock INSERT/DELETE with active override=%s and still closes on a later native write',async (active) => {
+			await enableRealMirrorLocks();
+			const controller = await owner(),sensor = await ambient(),heat = await actuator();
+			const settingId = await setting(controller,ChannelCategory.HEATER,PropertyCategory.TEMPERATURE),input = dto(sensor,heat);
+			input.settings = [{ propertyId: settingId,setting: 'heating_setpoint' }];
+			const captures: NonNullable<ReturnType<ClimateAutomationWriterService['existingOverrideLeaseForPlan']>>[] = [];
+			const originalLease = writer.existingOverrideLeaseForPlan;
+			const capture = jest.spyOn(writer,'existingOverrideLeaseForPlan').mockImplementation((descriptor) => {
+				const lease = originalLease.call(writer,descriptor); if (lease) captures.push(lease); return lease;
+			}); registerOriginal();
+			const writes: { query: string; parameters: readonly unknown[] }[] = [];
+			const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+				if (/^(?:INSERT INTO|DELETE FROM) "devices_module_property_value_locks"/.test(event.query))
+					writes.push({ query: event.query,parameters: Object.freeze([...(event.parameters ?? [])]) });
+			} };
+			database.subscribers.push(observer);
+			const submitted = jest.spyOn(backend,'writePoints');
+			try {
+				const first = await configs.configure(controller,input);
+				if (active) {
+					const definition = await comfort.configure(controller,{ expected_revision: first.revision,expected_graph_revision: first.graph_revision },{
+						heating_range: { minimum: 10,maximum: 30 },cooling_range: null,presets: [{ preset: 'eco',setpoints: { heating_setpoint: 17,cooling_setpoint: null } }] });
+					await comfort.override(controller,{ expected_revision: definition.revision,expected_graph_revision: definition.graph_revision },
+						{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'enabled-lock-clock-owner');
+				}
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+				const originalOwner = captures.at(-1);
+				writes.length = 0; submitted.mockClear();
+				const fixed = await configs.configure(controller,{ ...input,expectedRevision: before.revision,policy: { ...input.policy,heatingSetpoint: 21 } });
+				expect(fixed.controller).toBe(controller); expect(fixed.revision).toBe(before.revision + 1);
+				expect(fixed.policy.heatingSetpoint).toBe(21);
+				if (!active) expect((await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller })).comfort).toBeNull();
+				expect(await configs.command([await target(settingId,22)])).toBe(true);
+				const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+				expect(after.policy.heatingSetpoint).toBe(22); expect(after.revision).toBe(fixed.revision + 1);
+				expect(submitted).toHaveBeenCalled();
+				const inserts = writes.filter((item) => item.query === 'INSERT INTO "devices_module_property_value_locks" ("propertyId", "ownerToken", "expiresAt") VALUES (?, ?, ?) ON CONFLICT("propertyId") DO NOTHING');
+				const deletes = writes.filter((item) => item.query === 'DELETE FROM "devices_module_property_value_locks" WHERE "propertyId" = ? AND "ownerToken" = ?');
+				expect(inserts.length).toBeGreaterThanOrEqual(2); expect(deletes).toHaveLength(inserts.length);
+				expect(writes).toHaveLength(inserts.length + deletes.length);
+				for (const insert of inserts) {
+					expect(insert.parameters).toHaveLength(3); expect(insert.parameters[0]).toBe(settingId);
+					expect(typeof insert.parameters[1]).toBe('string'); expect(typeof insert.parameters[2]).toBe('number');
+					expect(deletes.filter((item) => item.parameters.length === 2 && item.parameters[0] === insert.parameters[0] && item.parameters[1] === insert.parameters[1])).toHaveLength(1);
+				}
+				expect(await database.query('SELECT * FROM "devices_module_property_value_locks"')).toEqual([]);
+				if (active) {
+					const installed = captures.at(-1);
+					if (!originalOwner || !installed || !after.comfort?.temporary_override) throw new Error('Actual original active lifetime and installed owner required');
+					expect(installed.id).toBe(originalOwner.id); expect(installed.deadline).toBe(originalOwner.deadline);
+					expect(after.comfort.temporary_override.status).toBe('active');
+					const joined = await comfort.readIntentInManager(database.manager,after);
+					try {
+						expect(joined.isOverrideCurrent()).toBe(true);
+						// A real affected-one write after admission closes this owner even if persisted A bytes are identical.
+						await database.query('UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?',[controller]);
+						expect(await database.query('SELECT changes() AS count')).toEqual([{ count: 1 }]);
+						expect(joined.isOverrideCurrent()).toBe(false);
+					} finally { joined.close(); }
+					const unchanged = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+					expect(unchanged).toEqual(after);
+					const fresh = await comfort.readIntentInManager(database.manager,unchanged);
+					try { expect(fresh.isOverrideCurrent()).toBe(false); } finally { fresh.close(); }
+					await comfort.settle(controller);
+					const refused = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+					expect(refused.comfort?.temporary_override).toMatchObject({ id: installed.id,status: 'clock_uncertain' });
+					const conservative = captures.at(-1); if (!conservative) throw new Error('Actual conservative retained owner required');
+					expect(conservative.deadline).toBe(installed.deadline);
+				}
+			} finally {
+				capture.mockRestore(); submitted.mockRestore(); database.subscribers.splice(database.subscribers.indexOf(observer),1);
+			}
+		});
+		// END enabled-lock clock-admission regression drafts
+
 		// END original clock-owner correction drafts
 
 	});
