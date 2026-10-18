@@ -2332,7 +2332,7 @@ describe('atomic virtual thermostat authoring', () => {
 			it('does not adopt a metadata method replacement after the original native facts were captured before input', async () => {
 				const input = request(relayId);
 				const transactions = jest.spyOn(database, 'transaction');
-				let replacementCalls = (): number => 0;
+				let replacementTargets = (): readonly unknown[] => [];
 				let restore = (): void => undefined;
 				try {
 					await expect(
@@ -2340,7 +2340,7 @@ describe('atomic virtual thermostat authoring', () => {
 							kind: 'create-virtual-thermostat:v1',
 							get device() {
 								const replacement = jest.spyOn(database, 'getMetadata');
-								replacementCalls = () => replacement.mock.calls.length;
+								replacementTargets = () => replacement.mock.calls.map(([target]) => target);
 								restore = () => {
 									replacement.mockRestore();
 								};
@@ -2349,7 +2349,13 @@ describe('atomic virtual thermostat authoring', () => {
 							configuration: input.configuration,
 						}),
 					).rejects.toBeInstanceOf(Error);
-					expect(replacementCalls()).toBe(0);
+					// Original creation metadata is never borrowed; ordinary claims cleanup remains observable.
+				const targets = replacementTargets();
+				expect(targets).not.toContain(VirtualDeviceEntity);
+				expect(targets).not.toContain(VirtualChannelEntity);
+				expect(targets).not.toContain(VirtualChannelPropertyEntity);
+				expect(targets.length).toBeGreaterThan(0);
+				expect(targets.every((target) => target === VirtualThermostatActuatorClaimEntity)).toBe(true);
 					expect(transactions).not.toHaveBeenCalled();
 					expect(fixture.submittedPoints).toEqual([]);
 				} finally {
