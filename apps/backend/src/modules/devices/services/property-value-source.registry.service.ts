@@ -73,7 +73,7 @@ function sameReadArray(current: unknown, owned: unknown): boolean {
 		return now !== undefined && before !== undefined && now.get === undefined && now.set === undefined && sameReadArray(now.value, before.value);
 	});
 }
-function readSourceMethodCurrent(source: IPropertyValueSource, key: string, original: unknown): boolean {
+function readSourceMethodCurrent(source: object, key: string, original: unknown): boolean {
 	for (let owner: object | null = source; owner;) {
 		const descriptor = Object.getOwnPropertyDescriptor(owner, key);
 		if (descriptor) return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
@@ -183,6 +183,12 @@ export class PropertyValueSourceRegistryService {
 		if (!record) throw new Error('Original value source capture unavailable');
 		return record.key;
 	}
+	/** Original captured policy DATA, not a currentness check or fresh provider dispatch. */
+	readSourceUnavailableReason(token: PropertyReadSourceCapture): string | null {
+		const record = this.readCaptures.get(token);
+		if (!record) throw new Error('Original value source capture unavailable');
+		return record.unavailable;
+	}
 	/** Internal veto only: no provider method or property getter is invoked. */
 	isReadSourceStructurallyCurrent(token: PropertyReadSourceCapture): boolean {
 		const record = this.readCaptures.get(token);
@@ -208,11 +214,11 @@ export class PropertyValueSourceRegistryService {
 	}
 	isReadSourceCurrent(token: PropertyReadSourceCapture): boolean {
 		const record = this.readCaptures.get(token);
-		if (!record || !this.isReadSourceStructurallyCurrent(token)) return false;
+		if (!record || !readSourceMethodCurrent(this, 'isReadSourceStructurallyCurrent', originalReadSourceStructure) || !originalReadSourceStructure.call(this, token)) return false;
 		try {
 			if (record.property.type !== record.type) return false;
 			const result = evaluateReadSource(this.readRegistrations, record.type, record.registration, record.input);
-			return result.key === record.key && result.unavailable === record.unavailable && result.live === record.live && this.isReadSourceStructurallyCurrent(token);
+			return result.key === record.key && result.unavailable === record.unavailable && result.live === record.live && readSourceMethodCurrent(this, 'isReadSourceStructurallyCurrent', originalReadSourceStructure) && originalReadSourceStructure.call(this, token);
 		} catch { return false; }
 	}
 	closeReadSource(token: PropertyReadSourceCapture): void { this.readCaptures.delete(token); }
@@ -244,3 +250,8 @@ export class PropertyValueSourceRegistryService {
 		return Object.keys(this.sources);
 	}
 }
+
+// Exact original self-check function; no substituted public verifier is dispatched during policy evaluation.
+const originalReadSourceStructure: Readonly<{
+	call: (receiver: PropertyValueSourceRegistryService, token: PropertyReadSourceCapture) => boolean;
+}> = PropertyValueSourceRegistryService.prototype.isReadSourceStructurallyCurrent;

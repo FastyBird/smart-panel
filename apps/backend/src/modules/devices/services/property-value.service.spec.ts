@@ -15,6 +15,7 @@ import { StorageConfigModel } from '../../storage/models/config.model';
 import { StoragePlugin } from '../../storage/interfaces/storage-plugin.interface';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { VirtualChannelPropertyEntity } from '../../../plugins/devices-virtual/entities/devices-virtual.entity';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { CreationStorageDestinations } from '../../storage/services/storage.service';
 import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
@@ -26,7 +27,7 @@ import { PropertyValueState } from '../models/property-value-state.model';
 import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, ReadCacheObservation, originalReadCacheApi } from './device-creation-context';
 import { CreationProducerObservation, PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLockService } from './property-value-lock.service';
-import { IPropertyValueSource, PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import { IPropertyValueSource, PropertyReadSourceCapture, PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
@@ -1624,6 +1625,193 @@ describe('PropertyValueService', () => {
 				expect(service['recentValuesMap'].has('bound-a')).toBe(false);
 				expect(storageService.queryActiveStrictBound).toHaveBeenCalledTimes(1);
 			} finally { release(); await pending.catch(() => undefined); producers.unregister(lease); }
+		});
+	});
+
+	describe('R13 original policy data and bounded source identity', () => {
+		const input = (id: string) => Object.assign(new ChannelPropertyEntity(), { id, dataType: DataTypeType.FLOAT, invalid: null, format: [0, 100] });
+
+		it('reads only authentic captured primitive policy data without callbacks or fresh membership, and refuses foreign or closed tokens', () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('policy-data');
+			const originalReason = jest.fn(() => 'original_unavailable');
+			const source: IPropertyValueSource = { getType: () => property.type, resolve: () => 'policy-key', unavailableReason: originalReason };
+			registry.register(source);
+			const captured = registry.captureReadSource(property);
+			const calls = originalReason.mock.calls.length;
+			const bReason = jest.fn(() => { throw new Error('Substituted B policy must not run'); });
+			source.unavailableReason = bReason;
+			const foreignRegistry = new PropertyValueSourceRegistryService();
+			const foreign = foreignRegistry.captureReadSource(property);
+			try {
+				expect(registry.readSourceUnavailableReason(captured)).toBe('original_unavailable');
+				expect(registry.isReadSourceCurrent(captured)).toBe(false);
+				expect(originalReason).toHaveBeenCalledTimes(calls);
+				expect(bReason).not.toHaveBeenCalled();
+				expect(() => registry.readSourceUnavailableReason(foreign)).toThrow('Original value source capture unavailable');
+				expect(() => registry.readSourceUnavailableReason(new PropertyReadSourceCapture())).toThrow('Original value source capture unavailable');
+			} finally { registry.closeReadSource(captured); foreignRegistry.closeReadSource(foreign); }
+			expect(() => registry.readSourceUnavailableReason(captured)).toThrow('Original value source capture unavailable');
+		});
+
+		it.each(['absent', 'benign'])('retains held historical A rows and real A binding without invoking a newly throwing %s policy', async (initial) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const producers = module.get(PropertyProducerRegistryService);
+			const property = input('policy-bound-alias');
+			const source: IPropertyValueSource = { getType: () => property.type, resolve: () => 'policy-bound-a', ...(initial === 'benign' ? { unavailableReason: () => null } : {}) };
+			registry.register(source);
+			const original: Readonly<{ call: (receiver: StorageService, query: string) => Promise<Readonly<{ rows: unknown[]; binding: StorageBackendBinding }>> }> = StorageService.prototype.queryActiveStrictBound;
+			const genuine = await original.call(storageService, 'SELECT * FROM property_value');
+			let enter: () => void = () => {}, release: () => void = () => {};
+			const entered = new Promise<void>((resolve) => { enter = resolve; });
+			storageService.queryActiveStrictBound.mockImplementationOnce(() => new Promise((resolve) => {
+				enter(); release = () => resolve({ rows: [{ numberValue: 10 }, { numberValue: 20 }], binding: genuine.binding });
+			}));
+			const pending = service.readLatestPersistedSnapshot(property);
+			const bReason = jest.fn(() => { throw new Error('B policy must never be dispatched'); });
+			let bLease: ReturnType<PropertyProducerRegistryService['register']> | undefined;
+			try {
+				await entered;
+				source.unavailableReason = bReason;
+				const b = input('policy-bound-a');
+				bLease = producers.register(b, 1);
+				const now = new Date();
+				expect(producers.commit(bLease, new PropertyValueState(88), { quality: 'good', reasons: [], sampledAt: now, evaluatedAt: now, expiresAt: new Date(now.getTime() + 60000) }, producers.version(bLease))).toBe(true);
+				release();
+				const result = await pending;
+				expect(result.state).toMatchObject({ value: 10, trend: 'falling' });
+				expect(result.state?.producer).toBeUndefined();
+				expect(result.storageBinding).toBe(genuine.binding);
+				expect(bReason).not.toHaveBeenCalled();
+				expect(producers.read(b.id)?.value).toBe(88);
+				expect(storageService.queryActiveStrictBound).toHaveBeenCalledTimes(1);
+				expect(storageService.queryStrict).not.toHaveBeenCalled();
+				expect(service['valuesMap'].has('policy-bound-a')).toBe(false);
+				expect(service['recentValuesMap'].has('policy-bound-a')).toBe(false);
+			} finally { release(); await pending.catch(() => undefined); if (bLease) producers.unregister(bLease); }
+		});
+
+		it.each([
+			['strict', 'absent'], ['strict', 'benign'], ['bounded', 'absent'], ['bounded', 'benign'],
+		])('refuses only the affected %s alias after %s policy loss without invoking B', async (kind, initial) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const a = input('policy-batch-a');
+			// Real distinct entity type with no registered source; no fake positive source capability.
+			const b = Object.assign(new VirtualChannelPropertyEntity(), { id: 'policy-batch-b', dataType: DataTypeType.FLOAT });
+			const source: IPropertyValueSource = { getType: () => a.type, resolve: () => 'policy-batch-physical', ...(initial === 'benign' ? { unavailableReason: () => null } : {}) };
+			registry.register(source);
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.queryStrict.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const bReason = jest.fn(() => { throw new Error('No B callback during original batch'); });
+			const pending = kind === 'strict' ? service.readLatestManyStrict([a, b]) : service.readLatestManyBounded([a, b]);
+			try {
+				source.unavailableReason = bReason;
+				release([{ propertyId: 'policy-batch-physical', numberValue: 10 }, { propertyId: b.id, numberValue: 30 }]);
+				const result = await pending;
+				if (result instanceof Map) {
+					expect(result.get(a.id)).toBeNull();
+					expect(result.get(b.id)?.value).toBe(30);
+				} else {
+					expect(result.items[0]).toMatchObject({ sourcePropertyId: null, state: null, source: null, status: 'missing' });
+					expect(result.items[1]).toMatchObject({ sourcePropertyId: b.id, state: { value: 30 }, source: 'storage', status: 'available' });
+					expect(result).toMatchObject({ requestedCount: 2, availableCount: 1, unknownCount: 1, missingCount: 1, unprocessedCount: 0, cacheCount: 0, storageCount: 1 });
+				}
+				expect(bReason).not.toHaveBeenCalled();
+				expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+				expect(service['valuesMap'].has('policy-batch-physical')).toBe(false);
+			} finally { release([]); await pending.catch(() => undefined); }
+		});
+
+		it.each(['resolve', 'input', 'role', 'read-method'])('clears bounded source identity after actual original %s loss without a B query', async (loss) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('identity-alias');
+			const bResolve = jest.fn(() => 'identity-b');
+			const source: IPropertyValueSource = { getType: () => property.type, resolve: (value) => value.format?.[1] === 200 ? 'identity-b' : 'identity-a' };
+			registry.register(source);
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.queryStrict.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const originalRead = storageService.queryStrict;
+			const descriptor = Object.getOwnPropertyDescriptor(storageService, 'queryStrict');
+			if (!descriptor) throw new Error('Original fixture read descriptor required');
+			const bRead = jest.fn().mockResolvedValue([]);
+			let bQueries = 0;
+			const plugin: StoragePlugin = {
+				name: 'read-test-primary', initialize: () => Promise.resolve(), destroy: () => Promise.resolve(), isAvailable: () => true,
+				writePoints: () => Promise.resolve(), query: <T>() => { bQueries++; return Promise.resolve<T[]>([]); },
+				queryRaw: <T>() => Promise.reject<T>(new Error('Raw query outside fixture')), registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(), getMeasurements: () => Promise.resolve([]),
+			};
+			const pending = service.readLatestManyBounded([property]);
+			try {
+				if (loss === 'resolve') source.resolve = bResolve;
+				if (loss === 'input') property.format = [0, 200];
+				if (loss === 'role') storageService.registerPlugin(plugin.name, plugin);
+				if (loss === 'read-method') Object.defineProperty(storageService, 'queryStrict', { ...descriptor, value: bRead });
+				release([{ propertyId: 'identity-a', numberValue: 70 }]);
+				const result = await pending;
+				expect(result.items[0]).toEqual({ propertyId: property.id, sourcePropertyId: null, state: null, source: null, status: 'missing' });
+				expect(result).toMatchObject({ requestedCount: 1, availableCount: 0, unknownCount: 1, missingCount: 1, unprocessedCount: 0, cacheCount: 0, storageCount: 0, storageStatus: 'available' });
+				expect(originalRead).toHaveBeenCalledTimes(1);
+				expect(bResolve).not.toHaveBeenCalled();
+				expect(bRead).not.toHaveBeenCalled();
+				expect(bQueries).toBe(0);
+				expect(service['valuesMap'].has('identity-a')).toBe(false);
+			} finally { release([]); await pending.catch(() => undefined); Object.defineProperty(storageService, 'queryStrict', descriptor); }
+		});
+
+		it.each(['disconnected', 'timed_out'])('retains the intact original unresolved key on the %s path without claiming a backend binding', async (mode) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('valid-unresolved-alias');
+			registry.register({ getType: () => property.type, resolve: () => 'valid-unresolved-physical' });
+			storageService.isConnected.mockReturnValue(mode !== 'disconnected');
+			const result = await service.readLatestManyBounded([property], mode === 'timed_out' ? { deadlineAt: new Date(0) } : {});
+			expect(result.items[0]).toEqual({ propertyId: property.id, sourcePropertyId: 'valid-unresolved-physical', state: null, source: null, status: 'unprocessed' });
+			expect(result).toMatchObject({ storageStatus: mode, availableCount: 0, unknownCount: 1, unprocessedCount: 1, missingCount: 0, cacheCount: 0, storageCount: 0 });
+			expect(storageService.queryStrict).not.toHaveBeenCalled();
+		});
+
+		it('clears a lost unresolved source identity after the original held query fails without changing unprocessed accounting', async () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('failed-unresolved-alias');
+			registry.register({ getType: () => property.type, resolve: () => 'failed-unresolved-original' });
+			let fail: (reason: unknown) => void = () => {};
+			storageService.queryStrict.mockImplementationOnce(() => new Promise<unknown[]>((_resolve, reject) => { fail = reject; }));
+			const pending = service.readLatestManyBounded([property]);
+			const originalFailure = new Error('Original held query failure');
+			property.format = [0, 200];
+			fail(originalFailure);
+			const result = await pending;
+			expect(result.items[0]).toEqual({ propertyId: property.id, sourcePropertyId: null, state: null, source: null, status: 'unprocessed' });
+			expect(result).toMatchObject({ storageStatus: 'failed', availableCount: 0, unknownCount: 1, unprocessedCount: 1, missingCount: 0, cacheCount: 0, storageCount: 0 });
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+		});
+
+		it('never invokes a substituted self verifier during the original policy check', async () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('self-verifier-alias');
+			const originalOwn = Object.getOwnPropertyDescriptor(registry, 'isReadSourceStructurallyCurrent');
+			const bVerifier = jest.fn(() => { throw new Error('Substituted verifier must not run'); });
+			let armed = false;
+			// Observable negative API substitution, not an authority mock or a positive purity claim.
+			registry.register({ getType: () => property.type, resolve: () => {
+				if (armed) Object.defineProperty(registry, 'isReadSourceStructurallyCurrent', { value: bVerifier, configurable: true });
+				return 'self-verifier-physical';
+			} });
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.queryStrict.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const pending = service.readLatestManyBounded([property]);
+			try {
+				armed = true;
+				release([{ propertyId: 'self-verifier-physical', numberValue: 10 }]);
+				const result = await pending;
+				expect(result.items[0]).toMatchObject({ sourcePropertyId: null, state: null, source: null });
+				expect(bVerifier).not.toHaveBeenCalled();
+				expect(service['valuesMap'].has('self-verifier-physical')).toBe(false);
+			} finally {
+				release([]); await pending.catch(() => undefined);
+				if (originalOwn) Object.defineProperty(registry, 'isReadSourceStructurallyCurrent', originalOwn);
+				else Reflect.deleteProperty(registry, 'isReadSourceStructurallyCurrent');
+			}
 		});
 	});
 

@@ -123,12 +123,13 @@ const propertyReadSourceMethods = Object.freeze({
 	input: PropertyValueSourceRegistryService.prototype.readSourceInput,
 	check: PropertyValueSourceRegistryService.prototype.isReadSourceCurrent,
 	structural: PropertyValueSourceRegistryService.prototype.isReadSourceStructurallyCurrent,
-	reason: PropertyValueSourceRegistryService.prototype.unavailableReason,
+	reason: PropertyValueSourceRegistryService.prototype.readSourceUnavailableReason,
 	close: PropertyValueSourceRegistryService.prototype.closeReadSource,
 });
 const propertyReadInvalidate = DeviceCreationPublicationEngine.invalidateIds;
 const propertyStorageReadMethods = Object.freeze({ capture: StorageService.prototype.captureCreationDestinations, check: StorageService.prototype.areCreationDestinationsCurrent });
 interface PropertyReadAlias {
+	readonly registry: PropertyValueSourceRegistryService;
 	readonly id: string;
 	readonly source: PropertyReadSourceCapture;
 	readonly key: string;
@@ -169,6 +170,7 @@ interface PropertyBatchEntry {
 	prepared?: PreparedPropertyRead;
 }
 interface PropertyBatchResult {
+	readonly sourcePropertyId: string | null;
 	readonly state: PropertyValueState | null;
 	readonly source: BoundedPropertyValueSource;
 	readonly processed: boolean;
@@ -205,18 +207,19 @@ export class PropertyValueService {
 	}
 
 	private captureReadAlias(property: ChannelPropertyEntity): PropertyReadAlias {
-		const names = { capture: 'captureReadSource', key: 'readSourceKey', input: 'readSourceInput', check: 'isReadSourceCurrent', structural: 'isReadSourceStructurallyCurrent', reason: 'unavailableReason', close: 'closeReadSource' };
-		const methodsCurrent = () => Object.entries(names).every(([key, name]) => creationMethodCurrent(this.valueSourceRegistry, name, Reflect.get(propertyReadSourceMethods, key)));
+		const registry = this.valueSourceRegistry;
+		const names = { capture: 'captureReadSource', key: 'readSourceKey', input: 'readSourceInput', check: 'isReadSourceCurrent', structural: 'isReadSourceStructurallyCurrent', reason: 'readSourceUnavailableReason', close: 'closeReadSource' };
+		const methodsCurrent = () => this.valueSourceRegistry === registry && Object.entries(names).every(([key, name]) => creationMethodCurrent(registry, name, Reflect.get(propertyReadSourceMethods, key)));
 		if (!methodsCurrent()) throw new Error('Original read source API unavailable');
-		const source = propertyReadSourceMethods.capture.call(this.valueSourceRegistry, property);
+		const source = propertyReadSourceMethods.capture.call(registry, property);
 		try {
-			const input = propertyReadSourceMethods.input.call(this.valueSourceRegistry, source);
-			return { source, id: input.id, key: propertyReadSourceMethods.key.call(this.valueSourceRegistry, source), input,
-				current: () => methodsCurrent() && propertyReadSourceMethods.check.call(this.valueSourceRegistry, source),
-				structuralCurrent: () => methodsCurrent() && propertyReadSourceMethods.structural.call(this.valueSourceRegistry, source) };
-		} catch (cause) { propertyReadSourceMethods.close.call(this.valueSourceRegistry, source); throw cause; }
+			const input = propertyReadSourceMethods.input.call(registry, source);
+			return { registry, source, id: input.id, key: propertyReadSourceMethods.key.call(registry, source), input,
+				current: () => methodsCurrent() && propertyReadSourceMethods.check.call(registry, source),
+				structuralCurrent: () => methodsCurrent() && propertyReadSourceMethods.structural.call(registry, source) };
+		} catch (cause) { propertyReadSourceMethods.close.call(registry, source); throw cause; }
 	}
-	private closeReadAlias(alias: PropertyReadAlias): void { propertyReadSourceMethods.close.call(this.valueSourceRegistry, alias.source); }
+	private closeReadAlias(alias: PropertyReadAlias): void { propertyReadSourceMethods.close.call(alias.registry, alias.source); }
 	private observeReadKey(key: string): PropertyReadKey {
 		if (!['query', 'queryStrict', 'queryActiveStrictBound'].every((name) => creationHasDataMethod(this.storageService, name))) throw new Error('Original backend read methods unavailable');
 		const methods: PropertyReadQueries = { query: this.storageService.query, queryStrict: this.storageService.queryStrict, queryActiveStrictBound: this.storageService.queryActiveStrictBound };
@@ -257,10 +260,10 @@ export class PropertyValueService {
 			if (key.backend) originalReadCacheApi.close.call(originalReadCacheApi.receiver, key.backend.token);
 		}
 	}
-	/** Uses the original key, never a fresh resolver. Policy/producer callbacks precede final checks. */
+	/** Original key/policy DATA; the producer read is prepared before final checks. */
 	private overlayReadAlias(alias: PropertyReadAlias): PropertyValueState | null {
 		const produced = this.producers?.read(alias.key);
-		const reason = propertyReadSourceMethods.reason.call(this.valueSourceRegistry, alias.input);
+		const reason = propertyReadSourceMethods.reason.call(alias.registry, alias.source);
 		if (!reason) return produced ?? null;
 		const blocked = new PropertyValueState();
 		blocked.producer = Object.assign(new PropertyProducerState(), {
@@ -298,7 +301,7 @@ export class PropertyValueService {
 			const replacement = sameReport && provenance !== undefined && (provenance.kind === 'owned' || (provenance.kind === 'reported' && provenance !== key.initialProvenance));
 			const state = !valid ? null : produced ?? (publish ? preferCache ? cached ?? null : entry.prepared?.state ?? null : replacement ? reported : null);
 			const source: BoundedPropertyValueSource = !valid ? null : produced !== null || (!publish && replacement) || (publish && preferCache) ? 'cache' : publish && entry.prepared !== undefined ? 'storage' : null;
-			results.set(entry.index, { state, source, processed: entry.cachedAtEntry || cached !== undefined || entry.prepared !== undefined || produced !== null });
+			results.set(entry.index, { sourcePropertyId: valid ? entry.alias.key : null, state, source, processed: entry.cachedAtEntry || cached !== undefined || entry.prepared !== undefined || produced !== null });
 			if (effectCurrent && valid && publish && entry.prepared && !preferCache && !publications.has(entry.alias.key)) publications.set(entry.alias.key, entry.prepared);
 		}
 		for (const [key, prepared] of publications) this.publishReadState(key, prepared, false, refreshEmptyTrend);
@@ -1234,8 +1237,8 @@ export class PropertyValueService {
 				for (const entry of entries) {
 					const result = results.get(entry.index);
 					if (!result) throw new Error('Original bounded result unavailable');
-					items[entry.index] = result.processed ? this.toBoundedItem(entry.alias.id, entry.alias.key, result.state, result.source) :
-						{ propertyId: entry.alias.id, sourcePropertyId: entry.alias.key, status: 'unprocessed', source: null, state: null };
+					items[entry.index] = result.processed ? this.toBoundedItem(entry.alias.id, result.sourcePropertyId, result.state, result.source) :
+						{ propertyId: entry.alias.id, sourcePropertyId: result.sourcePropertyId, status: 'unprocessed', source: null, state: null };
 				}
 				return this.buildBoundedResult(items, storageStatus);
 			};
