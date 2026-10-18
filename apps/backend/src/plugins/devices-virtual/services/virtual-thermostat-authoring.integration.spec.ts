@@ -567,7 +567,8 @@ describe('atomic virtual thermostat authoring', () => {
 			fallbackStorage: 'creation-test-fallback',
 		});
 		const submittedPoints: StoragePoint[][] = [];
-		const boundary: { available?: () => void; write?: () => Promise<void>; query?: (query: string) => Promise<void> } = {};
+		const boundary: { available?: () => void; write?: () => Promise<void>; query?: (query: string) => Promise<void> } =
+			{};
 		const transport: StoragePlugin = {
 			name: 'creation-test-primary',
 			initialize: () => Promise.resolve(),
@@ -1402,7 +1403,11 @@ describe('atomic virtual thermostat authoring', () => {
 				return writeHeld.pending;
 			};
 			fixture.boundary.query = (query) => {
-				if (!firstColdQuery || !query.includes('FROM device_status') || !query.includes(`WHERE deviceId = '${input.device.id}'`))
+				if (
+					!firstColdQuery ||
+					!query.includes('FROM device_status') ||
+					!query.includes(`WHERE deviceId = '${input.device.id}'`)
+				)
 					return Promise.resolve();
 				firstColdQuery = false;
 				order.push('A-cold-status-query');
@@ -1432,13 +1437,16 @@ describe('atomic virtual thermostat authoring', () => {
 				await reachesCreationBarrier(pending, writeEntered.pending);
 				expect(fixture.submittedPoints.length).toBeGreaterThan(0);
 				rebuildHeld.release();
-				await reachesCreationBarrier(pending, Promise.race([
-					coldEntered.pending,
-					snapshotFinished.pending.then(() => {
-						if (snapshotFailure) throw snapshotFailure.cause;
-						throw new Error('Real index snapshot completed without the required cold A status query');
-					}),
-				]));
+				await reachesCreationBarrier(
+					pending,
+					Promise.race([
+						coldEntered.pending,
+						snapshotFinished.pending.then(() => {
+							if (snapshotFailure) throw snapshotFailure.cause;
+							throw new Error('Real index snapshot completed without the required cold A status query');
+						}),
+					]),
+				);
 				order.push('release-cold-empty');
 				coldHeld.release();
 				// Completion of the real ORM snapshot includes its awaited afterLoad callbacks.
@@ -1464,7 +1472,9 @@ describe('atomic virtual thermostat authoring', () => {
 					expect(
 						fixture.submittedPoints
 							.flat()
-							.filter((point) => point.measurement === 'property_value' && point.tags?.propertyId === setting.propertyId),
+							.filter(
+								(point) => point.measurement === 'property_value' && point.tags?.propertyId === setting.propertyId,
+							),
 					).toHaveLength(1);
 				expect(fixture.index.findProducerMode(input.device.id)).toBe(VirtualDeviceMode.CLIMATE_CONTROLLER);
 			} finally {
