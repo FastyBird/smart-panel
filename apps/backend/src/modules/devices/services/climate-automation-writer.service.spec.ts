@@ -2757,7 +2757,6 @@ describe('closed C1a root admission before caller getters', () => {
 	});
 });
 
-
 /** Source-only boundary drafts for the creation root's caller-local preflight. */
 describe('original caller-local structural creation preflight', () => {
 	it('reports active shared and exclusive callers without changing either parent or invoking new work', async () => {
@@ -2765,16 +2764,24 @@ describe('original caller-local structural creation preflight', () => {
 		expect(lock.hasCurrentStructuralLease()).toBe(false);
 		await lock.runShared(async () => {
 			expect(lock.hasCurrentStructuralLease()).toBe(true);
-			await lock.runShared(async () => {
-				expect(lock.hasCurrentStructuralLease()).toBe(true);
-			});
+			await lock.runShared(
+				() =>
+					new Promise<void>((resolve) => {
+						expect(lock.hasCurrentStructuralLease()).toBe(true);
+						resolve();
+					}),
+			);
 			expect(lock.hasCurrentStructuralLease()).toBe(true);
 		});
 		await lock.runExclusiveReleased(async () => {
 			expect(lock.hasCurrentStructuralLease()).toBe(true);
-			await lock.runExclusive(async () => {
-				expect(lock.hasCurrentStructuralLease()).toBe(true);
-			});
+			await lock.runExclusive(
+				() =>
+					new Promise<void>((resolve) => {
+						expect(lock.hasCurrentStructuralLease()).toBe(true);
+						resolve();
+					}),
+			);
 			expect(lock.hasCurrentStructuralLease()).toBe(true);
 		});
 		expect(lock.hasCurrentStructuralLease()).toBe(false);
@@ -2793,10 +2800,14 @@ describe('original caller-local structural creation preflight', () => {
 			detached = detachedRelease.promise.then(async () => {
 				expect(lock.hasCurrentStructuralLease()).toBe(false);
 				trace.push('detached queued');
-				await lock.runExclusiveReleased(async () => {
-					expect(lock.hasCurrentStructuralLease()).toBe(true);
-					trace.push('detached entered');
-				});
+				await lock.runExclusiveReleased(
+					() =>
+						new Promise<void>((resolve) => {
+							expect(lock.hasCurrentStructuralLease()).toBe(true);
+							trace.push('detached entered');
+							resolve();
+						}),
+				);
 			});
 			originalEntered.resolve();
 			await originalRelease.promise;
@@ -2815,7 +2826,13 @@ describe('original caller-local structural creation preflight', () => {
 		expect(lock.hasCurrentStructuralLease()).toBe(false);
 		detachedRelease.resolve();
 		// The public shared request is a FIFO barrier behind the already held successor.
-		const afterSuccessor = lock.runShared(async () => { trace.push('shared entered'); });
+		const afterSuccessor = lock.runShared(
+			() =>
+				new Promise<void>((resolve) => {
+					trace.push('shared entered');
+					resolve();
+				}),
+		);
 		successorRelease.resolve();
 		await Promise.all([successor, detached, afterSuccessor]);
 		expect(trace.indexOf('detached entered')).toBeGreaterThan(trace.indexOf('successor released'));
@@ -2823,18 +2840,34 @@ describe('original caller-local structural creation preflight', () => {
 	});
 });
 
-
 describe('closed original creation rejects before business getters', () => {
 	it.each(['shared', 'exclusive', 'CLI'] satisfies readonly ('shared' | 'exclusive' | 'CLI')[])(
-		'refuses %s entry without traversing input or acquiring the released writer', async (kind) => {
+		'refuses %s entry without traversing input or acquiring the released writer',
+		async (kind) => {
 			const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:' });
 			const lock = new DeviceStructureLockService();
-			const writer = new ClimateAutomationWriterService(source, lock, new ClimateAutomationRegistryService(),
-				new ConfigService(kind === 'CLI' ? { FB_CLI: 'on' } : {}));
+			const writer = new ClimateAutomationWriterService(
+				source,
+				lock,
+				new ClimateAutomationRegistryService(),
+				new ConfigService(kind === 'CLI' ? { FB_CLI: 'on' } : {}),
+			);
 			let getters = 0;
-			const request = { kind: 'create-virtual-thermostat:v1', get device() { getters++; throw new Error('Unreachable input'); }, get configuration() { getters++; throw new Error('Unreachable input'); } } satisfies import('../contracts/climate-automation.contract').ClimateAutomationCreationRequest;
+			const request = {
+				kind: 'create-virtual-thermostat:v1',
+				get device() {
+					getters++;
+					throw new Error('Unreachable input');
+				},
+				get configuration() {
+					getters++;
+					throw new Error('Unreachable input');
+				},
+			} satisfies import('../contracts/climate-automation.contract').ClimateAutomationCreationRequest;
 			const entry = jest.spyOn(lock, 'runExclusiveReleased');
-			const attempt = async () => { await expect(writer.createVirtualThermostatV1(request)).rejects.toBeInstanceOf(Error); };
+			const attempt = async () => {
+				await expect(writer.createVirtualThermostatV1(request)).rejects.toBeInstanceOf(Error);
+			};
 			if (kind === 'shared') await lock.runShared(attempt);
 			else if (kind === 'exclusive') await lock.runExclusive(attempt);
 			else await attempt();

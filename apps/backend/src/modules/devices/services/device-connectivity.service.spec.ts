@@ -1,4 +1,3 @@
-import { DeviceCreationPublicationLease } from './device-creation-context';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConnectionState } from '../devices.constants';
@@ -8,6 +7,7 @@ import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
 import { DeviceConnectivityService } from './device-connectivity.service';
+import { DeviceCreationPublicationLease } from './device-creation-context';
 import { DevicesService } from './devices.service';
 
 describe('DeviceConnectivityService', () => {
@@ -65,12 +65,15 @@ describe('DeviceConnectivityService', () => {
 		const device = Object.assign(new DeviceEntity(), { id: 'original' });
 		const channel = new ChannelEntity();
 		const property = new ChannelPropertyEntity();
-		await expect(service.setCreatedConnectionState(new DeviceCreationPublicationLease(), device, channel, property, { state: ConnectionState.UNKNOWN })).rejects.toThrow('Original creation publication unavailable');
+		await expect(
+			service.setCreatedConnectionState(new DeviceCreationPublicationLease(), device, channel, property, {
+				state: ConnectionState.UNKNOWN,
+			}),
+		).rejects.toThrow('Original creation publication unavailable');
 		expect(devicesService.findOne).not.toHaveBeenCalled();
 		expect(channelsService.create).not.toHaveBeenCalled();
 		expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		expect(deviceConnectionStateService.write).not.toHaveBeenCalled();
 		expect(eventEmitter.emit).not.toHaveBeenCalled();
 	});
-
 });

@@ -2020,12 +2020,18 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await runner.release();
 	});
 	it('forms the fixed initial creation response without a query, qualification, live value or clock read', async () => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator();
+		const controller = await owner(),
+			sensor = await ambient(),
+			heat = await actuator();
 		const prepared = await configs.prepare(database.manager, controller, dto(sensor, heat));
 		const identities = prepared.actuators.map((row) => ({ id: row.id, generation: row.qualificationGeneration }));
 		const configuredAt = prepared.config.configuredAt.toISOString();
 		const statements: string[] = [];
-		const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => { statements.push(event.query); } };
+		const observer = {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+				statements.push(event.query);
+			},
+		};
 		database.subscribers.push(observer);
 		const qualification = jest.spyOn(claims, 'qualification');
 		try {
@@ -2039,12 +2045,13 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			expect(statements).toEqual([]);
 			expect(qualification).not.toHaveBeenCalled();
 			expect(prepared.config.configuredAt.toISOString()).toBe(configuredAt);
-			expect(prepared.actuators.map((row) => ({ id: row.id, generation: row.qualificationGeneration }))).toEqual(identities);
+			expect(prepared.actuators.map((row) => ({ id: row.id, generation: row.qualificationGeneration }))).toEqual(
+				identities,
+			);
 			expect(JSON.stringify(fixed)).not.toMatch(/manualGeneration|controllerIncarnation|installEvidence|candidateId/);
 		} finally {
 			qualification.mockRestore();
 			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
 		}
 	});
-
 });

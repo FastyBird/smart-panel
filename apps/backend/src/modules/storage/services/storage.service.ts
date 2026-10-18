@@ -2,12 +2,16 @@ import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
+import {
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	creationHasDataMethod,
+	creationMethodCurrent,
+} from '../../devices/services/device-creation-context';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
-
-import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from '../../devices/services/device-creation-context';
 
 import { StorageWriteBuffer } from './storage-write-buffer';
 
@@ -36,7 +40,9 @@ interface CreationStorageRegistration {
 	active: boolean;
 }
 export class CreationStorageDestinations {
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 interface CreationStorageDestinationRecord {
 	readonly primary: CreationStorageRegistration | undefined;
@@ -212,13 +218,16 @@ export class StorageService implements OnApplicationShutdown {
 		delete this.creationRoles[role];
 		if (plugin && !this.creationClosed) {
 			try {
-			// Refuse owned use of accessor/replaced methods without changing ordinary registration.
-			if (!creationHasDataMethod(plugin, 'isAvailable') || !creationHasDataMethod(plugin, 'writePoints')) return;
-			const methods: Readonly<Pick<StoragePlugin, 'isAvailable' | 'writePoints'>> = plugin;
-			const available = methods.isAvailable;
-			const write = methods.writePoints;
-			if (creationMethodCurrent(plugin, 'isAvailable', available) && creationMethodCurrent(plugin, 'writePoints', write))
-				this.creationRoles[role] = { plugin, available, write, active: true };
+				// Refuse owned use of accessor/replaced methods without changing ordinary registration.
+				if (!creationHasDataMethod(plugin, 'isAvailable') || !creationHasDataMethod(plugin, 'writePoints')) return;
+				const methods: Readonly<Pick<StoragePlugin, 'isAvailable' | 'writePoints'>> = plugin;
+				const available = methods.isAvailable;
+				const write = methods.writePoints;
+				if (
+					creationMethodCurrent(plugin, 'isAvailable', available) &&
+					creationMethodCurrent(plugin, 'writePoints', write)
+				)
+					this.creationRoles[role] = { plugin, available, write, active: true };
 			} catch {
 				// Ordinary opaque/plugin registration remains ordinary; owned capture cannot qualify it.
 			}
@@ -228,7 +237,10 @@ export class StorageService implements OnApplicationShutdown {
 	/** Pure capture of original mutation-owned role records; does not probe availability. */
 	captureCreationDestinations(): CreationStorageDestinations {
 		const capture = Object.freeze(new CreationStorageDestinations());
-		this.creationDestinations.set(capture, Object.freeze({ primary: this.creationRoles.primary, fallback: this.creationRoles.fallback }));
+		this.creationDestinations.set(
+			capture,
+			Object.freeze({ primary: this.creationRoles.primary, fallback: this.creationRoles.fallback }),
+		);
 		return capture;
 	}
 
@@ -241,9 +253,13 @@ export class StorageService implements OnApplicationShutdown {
 			if (entry !== this.creationRoles[role]) return false;
 			if (!entry) {
 				if (this[role] !== null) return false;
-			} else if (!entry.active || this[role] !== entry.plugin ||
+			} else if (
+				!entry.active ||
+				this[role] !== entry.plugin ||
 				!creationMethodCurrent(entry.plugin, 'isAvailable', entry.available) ||
-				!creationMethodCurrent(entry.plugin, 'writePoints', entry.write)) return false;
+				!creationMethodCurrent(entry.plugin, 'writePoints', entry.write)
+			)
+				return false;
 		}
 		return true;
 	}
@@ -256,7 +272,8 @@ export class StorageService implements OnApplicationShutdown {
 	): Promise<Readonly<{ submitted: number; completed: number }>> {
 		DeviceCreationPublicationEngine.assert(lease);
 		const original = this.creationDestinations.get(capture);
-		if (!original || !this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+		if (!original || !this.areCreationDestinationsCurrent(capture))
+			throw new Error('Original storage destinations unavailable');
 		let submitted = 0;
 		let completed = 0;
 		const roles: readonly ('fallback' | 'primary')[] = ['fallback', 'primary'];
@@ -270,7 +287,11 @@ export class StorageService implements OnApplicationShutdown {
 			DeviceCreationPublicationEngine.assert(lease);
 			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
 			if (!ready) continue;
-			const write: CreationStorageCall<StoragePlugin, [StoragePoint[]], ReturnType<StoragePlugin['writePoints']>> = entry.write;
+			const write: CreationStorageCall<
+				StoragePlugin,
+				[StoragePoint[]],
+				ReturnType<StoragePlugin['writePoints']>
+			> = entry.write;
 			submitted++;
 			DeviceCreationPublicationEngine.storageSubmitted(lease);
 			await write.call(entry.plugin, points);

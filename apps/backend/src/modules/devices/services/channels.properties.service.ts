@@ -40,7 +40,14 @@ import {
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
-import { DeviceCreationContext, DeviceCreationPublicationEngine, DeviceCreationPublicationLease, freezeCreationSnapshot, creationHasDataMethod, creationMethodCurrent } from './device-creation-context';
+import {
+	DeviceCreationContext,
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	creationHasDataMethod,
+	creationMethodCurrent,
+	freezeCreationSnapshot,
+} from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -737,191 +744,199 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const catalogChild = creation?.isOriginalOwned ? creation.beginCatalogChild('property', createDto) : undefined;
 		let tracked = false;
 		try {
-		creation?.assertOriginalAdmission();
-		const { type } = createDto;
-		creation?.assertType(type);
+			creation?.assertOriginalAdmission();
+			const { type } = createDto;
+			creation?.assertType(type);
 
-		if (!type) {
-			this.logger.error('Validation failed: Missing required "type" attribute in data.');
+			if (!type) {
+				this.logger.error('Validation failed: Missing required "type" attribute in data.');
 
-			throw new DevicesException('Channel property attribute type is required.');
-		}
+				throw new DevicesException('Channel property attribute type is required.');
+			}
 
-		const mapping = this.propertiesMapperService.getMapping<TProperty, TCreateDTO, any>(type);
+			const mapping = this.propertiesMapperService.getMapping<TProperty, TCreateDTO, any>(type);
 
-		creation?.assertMapping('property', mapping);
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
-		creation?.assertOriginalAdmission();
+			creation?.assertMapping('property', mapping);
+			const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
+			creation?.assertOriginalAdmission();
 
-		const errors = await this.validateCreationInstance(dtoInstance, creation, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-			stopAtFirstError: false,
-		});
+			const errors = await this.validateCreationInstance(dtoInstance, creation, {
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				stopAtFirstError: false,
+			});
 
-		if (errors.length > 0) {
-			this.logger.error(
-				`Validation failed:Validation failed for channel property creation error=${JSON.stringify(errors)}`,
-			);
-
-			throw new DevicesValidationException('Provided channel property data are invalid.');
-		}
-
-		const repository: Repository<TProperty> = creation
-			? creation.manager.getRepository(mapping.class)
-			: this.dataSource.getRepository(mapping.class);
-
-		if (creation && createDto.value != null)
-			throw new DevicesValidationException('Atomic creation cannot seed property values.');
-		const property = repository.create(
-			toInstance(mapping.class, {
-				...dtoInstance,
-				channel: channelId,
-			}),
-		);
-		creation?.stampCatalog(property);
-
-		// A property whose value is stored under *another* property's key — a virtual device's linked
-		// property, say — has no series of its own to seed, and creation dispatches no command that the
-		// supplied value could have meant instead (unlike the update path below, whose callers forward
-		// the value to the source device's platform). The only thing it could become is a fabricated
-		// measurement of the source device: a value in the source's history that its hardware never
-		// reported, taking its latest value and trend with it. Refused rather than silently dropped,
-		// because a caller that sent a value has to be told it was not, and could not have been, stored.
-		//
-		// Checked on the built-but-unsaved entity, before `repository.save` below, so a refused create
-		// leaves no row behind — and before the `afterCreate` hook, whose implementations may rewrite the
-		// very fields this decides on. `null` is not refused: it means "no value", which is precisely
-		// what a projection has of its own, and PropertyValueService.write() already treats it as a no-op.
-		//
-		// The registry answers this in core's own terms — "does this property own its series?" — so core
-		// stays unaware of any particular plugin, exactly as it does in PropertyValueService.
-		if (createDto.value !== undefined && createDto.value !== null && this.valueSourceRegistry.isProjected(property)) {
-			this.logger.error('Validation failed: A value cannot be stored on a property that projects another one.');
-
-			throw new DevicesValidationException(
-				'Channel property value cannot be set on a property whose value is stored by its source property.',
-			);
-		}
-
-		// `id` is client-suppliable here as it is on the device and channel creates, and the same two
-		// hazards follow. `save()` treats a row whose primary key exists as an *update*, so a create
-		// carrying an existing id moved that property under this channel instead of inserting — and
-		// `DevicesService.create()`'s rollback then removed it as one of its own, destroying a property
-		// the request had nothing to do with. Asked of the base repository, because a collision with a
-		// property of *another* type is the same collision: ids are unique across the table.
-		if (property.id) {
-			const existing = creation
-				? await creation.manager
-						.createQueryBuilder(ChannelPropertyEntity, 'row')
-						.select('row.id')
-						.where('row.id = :id', { id: property.id })
-						.callListeners(false)
-						.getOne()
-				: await this.repository.findOne({ where: { id: property.id } });
-
-			if (existing) {
+			if (errors.length > 0) {
 				this.logger.error(
-					`[VALIDATION FAILED] Channel property id=${property.id} already exists, refusing to create over it`,
+					`Validation failed:Validation failed for channel property creation error=${JSON.stringify(errors)}`,
 				);
+
+				throw new DevicesValidationException('Provided channel property data are invalid.');
+			}
+
+			const repository: Repository<TProperty> = creation
+				? creation.manager.getRepository(mapping.class)
+				: this.dataSource.getRepository(mapping.class);
+
+			if (creation && createDto.value != null)
+				throw new DevicesValidationException('Atomic creation cannot seed property values.');
+			const property = repository.create(
+				toInstance(mapping.class, {
+					...dtoInstance,
+					channel: channelId,
+				}),
+			);
+			creation?.stampCatalog(property);
+
+			// A property whose value is stored under *another* property's key — a virtual device's linked
+			// property, say — has no series of its own to seed, and creation dispatches no command that the
+			// supplied value could have meant instead (unlike the update path below, whose callers forward
+			// the value to the source device's platform). The only thing it could become is a fabricated
+			// measurement of the source device: a value in the source's history that its hardware never
+			// reported, taking its latest value and trend with it. Refused rather than silently dropped,
+			// because a caller that sent a value has to be told it was not, and could not have been, stored.
+			//
+			// Checked on the built-but-unsaved entity, before `repository.save` below, so a refused create
+			// leaves no row behind — and before the `afterCreate` hook, whose implementations may rewrite the
+			// very fields this decides on. `null` is not refused: it means "no value", which is precisely
+			// what a projection has of its own, and PropertyValueService.write() already treats it as a no-op.
+			//
+			// The registry answers this in core's own terms — "does this property own its series?" — so core
+			// stays unaware of any particular plugin, exactly as it does in PropertyValueService.
+			if (createDto.value !== undefined && createDto.value !== null && this.valueSourceRegistry.isProjected(property)) {
+				this.logger.error('Validation failed: A value cannot be stored on a property that projects another one.');
 
 				throw new DevicesValidationException(
-					`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+					'Channel property value cannot be set on a property whose value is stored by its source property.',
 				);
 			}
-		}
 
-		// Hook and insert together under the structure lock. What the type owner judges below is decided
-		// against the device's *category* — a projection is compared to the spec slot that category
-		// defines — and a device PATCH judges the reverse: the channels and properties the device already
-		// has, against the category it is about to store. Each reads what the other is about to change,
-		// so a property validated against the old category could commit inside the window a
-		// recategorisation had already judged (see DeviceStructureLockService).
-		const result = this.structureLock.runExclusive(async (): Promise<TProperty> => {
-			const persist = async (manager?: EntityManager): Promise<TProperty> => {
-				const writeRepository = manager ? manager.getRepository(mapping.class) : repository;
-				// The type owner's last look at the row before it exists — the only point at which an
-				// invariant spanning the property and the channel it is being attached to is decidable, since
-				// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
-				// nothing.
-				if (mapping.beforeCreate) {
-					if (creation?.isOriginalOwned) creation.assertOriginalAdmission();
-					if (manager) await mapping.beforeCreate(property, channelId, manager);
-					else await mapping.beforeCreate(property, channelId);
+			// `id` is client-suppliable here as it is on the device and channel creates, and the same two
+			// hazards follow. `save()` treats a row whose primary key exists as an *update*, so a create
+			// carrying an existing id moved that property under this channel instead of inserting — and
+			// `DevicesService.create()`'s rollback then removed it as one of its own, destroying a property
+			// the request had nothing to do with. Asked of the base repository, because a collision with a
+			// property of *another* type is the same collision: ids are unique across the table.
+			if (property.id) {
+				const existing = creation
+					? await creation.manager
+							.createQueryBuilder(ChannelPropertyEntity, 'row')
+							.select('row.id')
+							.where('row.id = :id', { id: property.id })
+							.callListeners(false)
+							.getOne()
+					: await this.repository.findOne({ where: { id: property.id } });
+
+				if (existing) {
+					this.logger.error(
+						`[VALIDATION FAILED] Channel property id=${property.id} already exists, refusing to create over it`,
+					);
+
+					throw new DevicesValidationException(
+						`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+					);
 				}
+			}
 
-				if (creation?.isOriginalOwned) creation.materializeProperty(property);
-
-				// Inserted, not saved: the check above closes the collision only for a caller who is alone,
-				// and two requests carrying the same client-generated uuid can both pass it before either
-				// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
-				await (
-					creation
-						? writeRepository
-								.createQueryBuilder()
-								.insert()
-								.values(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
-								.updateEntity(false)
-								.execute()
-						: writeRepository.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
-				).catch((error: unknown) => {
-					if (isPrimaryKeyCollision(error)) {
-						this.logger.error(
-							`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
-						);
-
-						throw new DevicesValidationException(
-							`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
-						);
+			// Hook and insert together under the structure lock. What the type owner judges below is decided
+			// against the device's *category* — a projection is compared to the spec slot that category
+			// defines — and a device PATCH judges the reverse: the channels and properties the device already
+			// has, against the category it is about to store. Each reads what the other is about to change,
+			// so a property validated against the old category could commit inside the window a
+			// recategorisation had already judged (see DeviceStructureLockService).
+			const result = this.structureLock.runExclusive(async (): Promise<TProperty> => {
+				const persist = async (manager?: EntityManager): Promise<TProperty> => {
+					const writeRepository = manager ? manager.getRepository(mapping.class) : repository;
+					// The type owner's last look at the row before it exists — the only point at which an
+					// invariant spanning the property and the channel it is being attached to is decidable, since
+					// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
+					// nothing.
+					if (mapping.beforeCreate) {
+						if (creation?.isOriginalOwned) creation.assertOriginalAdmission();
+						if (manager) await mapping.beforeCreate(property, channelId, manager);
+						else await mapping.beforeCreate(property, channelId);
 					}
 
-					throw error;
-				});
+					if (creation?.isOriginalOwned) creation.materializeProperty(property);
 
-				return property;
-			};
-			const raw = creation
-				? await persist(creation.manager)
-				: mapping.withStructuralWrite
-					? await mapping.withStructuralWrite(persist)
-					: await persist();
+					// Inserted, not saved: the check above closes the collision only for a caller who is alone,
+					// and two requests carrying the same client-generated uuid can both pass it before either
+					// writes. `insert()` always issues an INSERT, so the primary key constraint decides.
+					await (
+						creation
+							? writeRepository
+									.createQueryBuilder()
+									.insert()
+									.values(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+									.updateEntity(false)
+									.execute()
+							: writeRepository.insert(property as unknown as Parameters<Repository<TProperty>['insert']>[0])
+					).catch((error: unknown) => {
+						if (isPrimaryKeyCollision(error)) {
+							this.logger.error(
+								`[VALIDATION FAILED] Channel property id=${property.id} was created concurrently by another request`,
+							);
 
-			if (!creation && typeof createDto.value !== 'undefined') {
-				await this.propertyValueService.write(raw, createDto.value);
+							throw new DevicesValidationException(
+								`Channel property with id=${property.id} already exists. Creating a channel property with an id already in use is not allowed.`,
+							);
+						}
+
+						throw error;
+					});
+
+					return property;
+				};
+				const raw = creation
+					? await persist(creation.manager)
+					: mapping.withStructuralWrite
+						? await mapping.withStructuralWrite(persist)
+						: await persist();
+
+				if (!creation && typeof createDto.value !== 'undefined') {
+					await this.propertyValueService.write(raw, createDto.value);
+				}
+
+				let savedProperty = creation
+					? await creation.manager
+							.createQueryBuilder(mapping.class, 'row')
+							.where('row.id = :id', { id: property.id })
+							.callListeners(false)
+							.getOneOrFail()
+					: ((await this.getOneOrThrow(property.id)) as TProperty);
+
+				if (mapping.afterCreate && !creation) {
+					await mapping.afterCreate(savedProperty);
+
+					savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+				}
+
+				if (creation?.isOriginalOwned) creation.deferCatalog('property', savedProperty, mapping, this.eventEmitter);
+				else if (creation)
+					creation.defer(
+						async () => {
+							if (mapping.afterCreate) await mapping.afterCreate(savedProperty);
+							this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, await this.getOneOrThrow(savedProperty.id));
+						},
+						savedProperty.type === 'virtual' &&
+							'valueOrigin' in savedProperty &&
+							savedProperty.valueOrigin === 'derived',
+					);
+				else this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
+
+				return savedProperty;
+			});
+			if (catalogChild) {
+				tracked = true;
+				return catalogChild.track(result);
 			}
-
-			let savedProperty = creation
-				? await creation.manager
-						.createQueryBuilder(mapping.class, 'row')
-						.where('row.id = :id', { id: property.id })
-						.callListeners(false)
-						.getOneOrFail()
-				: ((await this.getOneOrThrow(property.id)) as TProperty);
-
-			if (mapping.afterCreate && !creation) {
-				await mapping.afterCreate(savedProperty);
-
-				savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
-			}
-
-			if (creation?.isOriginalOwned) creation.deferCatalog('property', savedProperty, mapping, this.eventEmitter);
-			else if (creation)
-				creation.defer(
-					async () => {
-						if (mapping.afterCreate) await mapping.afterCreate(savedProperty);
-						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, await this.getOneOrThrow(savedProperty.id));
-					},
-					savedProperty.type === 'virtual' && 'valueOrigin' in savedProperty && savedProperty.valueOrigin === 'derived',
-				);
-			else this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
-
-			return savedProperty;
-		});
-		if (catalogChild) { tracked = true; return catalogChild.track(result); }
-		return result;
-		} catch (cause) { catalogChild?.finish({ cause }); throw cause; }
-		finally { if (!tracked) catalogChild?.finish(); }
-
+			return result;
+		} catch (cause) {
+			catalogChild?.finish({ cause });
+			throw cause;
+		} finally {
+			if (!tracked) catalogChild?.finish();
+		}
 	}
 
 	captureCreatedMethodGuard(): () => boolean {
@@ -931,27 +946,68 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			{ receiver: this.propertyValueService, keys: ['writeCreatedWithState', 'captureCreatedMethodGuard'] },
 			{ receiver: this.commandLatencyTraceCollector, keys: ['recordSourcePublication'] },
 			{ receiver: this.eventEmitter, keys: ['emit'] },
-		]) for (const key of keys) {
-			if (!creationHasDataMethod(receiver, key)) throw new Error('Original property publication pipeline unavailable');
-			const method: unknown = Reflect.get(receiver, key); pins.push(Object.freeze({ receiver, key, method }));
-		}
+		])
+			for (const key of keys) {
+				if (!creationHasDataMethod(receiver, key))
+					throw new Error('Original property publication pipeline unavailable');
+				const method: unknown = Reflect.get(receiver, key);
+				pins.push(Object.freeze({ receiver, key, method }));
+			}
 		const values = this.propertyValueService.captureCreatedMethodGuard();
 		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method)) && values();
 	}
 
 	/** Fixed LOCAL value-only publication; never a metadata replacement or current-ID hydration. */
-	async updateCreatedValue(lease: DeviceCreationPublicationLease, property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+	async updateCreatedValue(
+		lease: DeviceCreationPublicationLease,
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+	): Promise<boolean> {
 		DeviceCreationPublicationEngine.assertProperty(lease, property);
-		const { writeCreatedWithState } = this.propertyValueService;
-		const { emit } = this.eventEmitter;
-		const { recordSourcePublication } = this.commandLatencyTraceCollector;
-		const write: Readonly<{ call: (receiver: PropertyValueService, ...args: Parameters<PropertyValueService['writeCreatedWithState']>) => ReturnType<PropertyValueService['writeCreatedWithState']> }> = writeCreatedWithState;
-		const notify: Readonly<{ call: (receiver: EventEmitter2, ...args: Parameters<EventEmitter2['emit']>) => ReturnType<EventEmitter2['emit']> }> = emit;
-		const trace: Readonly<{ call: (receiver: CommandLatencyTraceCollectorService, property: ChannelPropertyEntity) => void }> = recordSourcePublication;
-		const result = await write.call(this.propertyValueService, lease, property, value, DeviceCreationPublicationEngine.storage(lease));
+		const writeCreatedWithStateOriginalMethods: Readonly<{
+			writeCreatedWithState: ChannelsPropertiesService['propertyValueService']['writeCreatedWithState'];
+		}> = this.propertyValueService;
+		const { writeCreatedWithState } = writeCreatedWithStateOriginalMethods;
+		const emitOriginalMethods: Readonly<{ emit: ChannelsPropertiesService['eventEmitter']['emit'] }> =
+			this.eventEmitter;
+		const { emit } = emitOriginalMethods;
+		const recordSourcePublicationOriginalMethods: Readonly<{
+			recordSourcePublication: ChannelsPropertiesService['commandLatencyTraceCollector']['recordSourcePublication'];
+		}> = this.commandLatencyTraceCollector;
+		const { recordSourcePublication } = recordSourcePublicationOriginalMethods;
+		const write: Readonly<{
+			call: (
+				receiver: PropertyValueService,
+				...args: Parameters<PropertyValueService['writeCreatedWithState']>
+			) => ReturnType<PropertyValueService['writeCreatedWithState']>;
+		}> = writeCreatedWithState;
+		const notify: Readonly<{
+			call: (receiver: EventEmitter2, ...args: Parameters<EventEmitter2['emit']>) => ReturnType<EventEmitter2['emit']>;
+		}> = emit;
+		const trace: Readonly<{
+			call: (receiver: CommandLatencyTraceCollectorService, property: ChannelPropertyEntity) => void;
+		}> = recordSourcePublication;
+		const result = await write.call(
+			this.propertyValueService,
+			lease,
+			property,
+			value,
+			DeviceCreationPublicationEngine.storage(lease),
+		);
 		DeviceCreationPublicationEngine.assertProperty(lease, property);
 		if (result.changed) {
-			const payload: ChannelPropertyEntity = Object.assign(Object.create(Object.getPrototypeOf(property)), property, { value: result.state ? clonePropertyValueState(result.state) : null });
+			const objects: Readonly<{
+				create: (prototype: object | null) => object;
+				getPrototypeOf: (value: object) => object | null;
+				assign: typeof Object.assign;
+			}> = Object;
+			const payload: ChannelPropertyEntity = objects.assign(
+				objects.create(objects.getPrototypeOf(property)),
+				property,
+				{
+					value: result.state ? clonePropertyValueState(result.state) : null,
+				},
+			);
 			freezeCreationSnapshot(payload);
 			DeviceCreationPublicationEngine.assertProperty(lease, property);
 			trace.call(this.commandLatencyTraceCollector, payload);
@@ -1619,11 +1675,19 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return state === null ? null : clonePropertyValueState(state);
 	}
 
-	private validateCreationInstance(instance: object, creation: DeviceCreationContext | undefined, options: ValidatorOptions) {
+	private validateCreationInstance(
+		instance: object,
+		creation: DeviceCreationContext | undefined,
+		options: ValidatorOptions,
+	) {
 		return creation ? creation.validate(instance, options) : validate(instance, options);
 	}
 
-	private async validateDto<T extends object>(DtoClass: new () => T, dto: any, creation?: DeviceCreationContext): Promise<T> {
+	private async validateDto<T extends object>(
+		DtoClass: new () => T,
+		dto: any,
+		creation?: DeviceCreationContext,
+	): Promise<T> {
 		creation?.assertOriginalAdmission();
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,

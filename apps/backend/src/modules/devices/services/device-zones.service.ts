@@ -271,7 +271,11 @@ export class DeviceZonesService {
 		const validatedZones: SpaceEntity[] = [];
 		for (const zoneId of zoneIds) {
 			const zone = creation
-				? await creation.manager.createQueryBuilder(SpaceEntity, 'space').where('space.id = :zoneId', { zoneId }).callListeners(false).getOne()
+				? await creation.manager
+						.createQueryBuilder(SpaceEntity, 'space')
+						.where('space.id = :zoneId', { zoneId })
+						.callListeners(false)
+						.getOne()
 				: await this.spaceRepository.findOne({ where: { id: zoneId } });
 
 			if (!zone) {
@@ -330,10 +334,18 @@ export class DeviceZonesService {
 					creation.assertOriginalAdmission();
 					const column = this.repository.metadata.findColumnWithPropertyName('createdAt');
 					if (!column) throw new Error('Device zone timestamp metadata unavailable');
-					const createdAt: unknown = manager.connection.driver.preparePersistentValue(new Date(creation.catalogCreatedAt()), column);
-					await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId", "createdAt") VALUES (?, ?, ?)`, [deviceId, zoneId, createdAt]);
+					const createdAt: unknown = manager.connection.driver.preparePersistentValue(
+						new Date(creation.catalogCreatedAt()),
+						column,
+					);
+					await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId", "createdAt") VALUES (?, ?, ?)`, [
+						deviceId,
+						zoneId,
+						createdAt,
+					]);
 					creation.assertOriginalAdmission();
-				} else await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
+				} else
+					await manager.query(`INSERT INTO "${zoneTable}" ("deviceId", "zoneId") VALUES (?, ?)`, [deviceId, zoneId]);
 			}
 		};
 		if (creation) await persist(creation.manager);

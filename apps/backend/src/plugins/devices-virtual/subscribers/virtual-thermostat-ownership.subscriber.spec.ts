@@ -96,5 +96,4 @@ describe('thermostat ownership persistence boundaries (real SQLite)', () => {
 		expect(invalidate).not.toHaveBeenCalled();
 		expect(refresh).not.toHaveBeenCalled();
 	});
-
 });

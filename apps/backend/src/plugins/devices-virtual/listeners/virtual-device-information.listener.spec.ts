@@ -654,5 +654,4 @@ describe('VirtualDeviceInformationListener', () => {
 		expect(channelsService.create).not.toHaveBeenCalled();
 		expect(channelsPropertiesService.create).not.toHaveBeenCalled();
 	});
-
 });

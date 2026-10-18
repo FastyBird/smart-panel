@@ -60,8 +60,8 @@ import {
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
-import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
+import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
@@ -1173,18 +1173,62 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		let creation: ClimateAutomationCreationCapability | undefined;
 		if (originalAuthoring) {
 			const current = originalAuthoring.captureCreationMethodPins();
-			const { captureCreationEnvironment: environment, holdCreationAtEntry: hold, readCreationFacts: readCreation, prepareCreation: prepare, applyCreation: applyCreation } = originalAuthoring;
-			const environmentCall: AutomationReceiverCall<VirtualThermostatAuthoringService, [], ReturnType<VirtualThermostatAuthoringService['captureCreationEnvironment']>> = environment;
-			const holdCall: AutomationReceiverCall<VirtualThermostatAuthoringService, [], ReturnType<VirtualThermostatAuthoringService['holdCreationAtEntry']>> = hold;
-			const readCall: AutomationReceiverCall<VirtualThermostatAuthoringService, Parameters<VirtualThermostatAuthoringService['readCreationFacts']>, ReturnType<VirtualThermostatAuthoringService['readCreationFacts']>> = readCreation;
-			const prepareCall: AutomationReceiverCall<VirtualThermostatAuthoringService, Parameters<VirtualThermostatAuthoringService['prepareCreation']>, ReturnType<VirtualThermostatAuthoringService['prepareCreation']>> = prepare;
-			const applyCall: AutomationReceiverCall<VirtualThermostatAuthoringService, Parameters<VirtualThermostatAuthoringService['applyCreation']>, ReturnType<VirtualThermostatAuthoringService['applyCreation']>> = applyCreation;
-			creation = Object.freeze<ClimateAutomationCreationCapability>({ version: 1, graph: this.graph, isCurrent: current,
-				captureEnvironment: () => { if (!current()) unavailable(); return environmentCall.call(originalAuthoring); },
-				holdAtEntry: () => { if (!current()) unavailable(); return holdCall.call(originalAuthoring); },
+			const environmentOriginalMethods: Readonly<{
+				captureCreationEnvironment: typeof originalAuthoring.captureCreationEnvironment;
+				holdCreationAtEntry: typeof originalAuthoring.holdCreationAtEntry;
+				readCreationFacts: typeof originalAuthoring.readCreationFacts;
+				prepareCreation: typeof originalAuthoring.prepareCreation;
+				applyCreation: typeof originalAuthoring.applyCreation;
+			}> = originalAuthoring;
+			const {
+				captureCreationEnvironment: environment,
+				holdCreationAtEntry: hold,
+				readCreationFacts: readCreation,
+				prepareCreation: prepare,
+				applyCreation,
+			} = environmentOriginalMethods;
+			const environmentCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				[],
+				ReturnType<VirtualThermostatAuthoringService['captureCreationEnvironment']>
+			> = environment;
+			const holdCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				[],
+				ReturnType<VirtualThermostatAuthoringService['holdCreationAtEntry']>
+			> = hold;
+			const readCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['readCreationFacts']>,
+				ReturnType<VirtualThermostatAuthoringService['readCreationFacts']>
+			> = readCreation;
+			const prepareCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['prepareCreation']>,
+				ReturnType<VirtualThermostatAuthoringService['prepareCreation']>
+			> = prepare;
+			const applyCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['applyCreation']>,
+				ReturnType<VirtualThermostatAuthoringService['applyCreation']>
+			> = applyCreation;
+			creation = Object.freeze<ClimateAutomationCreationCapability>({
+				version: 1,
+				graph: this.graph,
+				isCurrent: current,
+				captureEnvironment: () => {
+					if (!current()) unavailable();
+					return environmentCall.call(originalAuthoring);
+				},
+				holdAtEntry: () => {
+					if (!current()) unavailable();
+					return holdCall.call(originalAuthoring);
+				},
 				readFactsInManager: (manager, turn) => readCall.call(originalAuthoring, manager, turn),
-				prepareInManager: (manager, turn, request, before, revision) => prepareCall.call(originalAuthoring, manager, turn, request, before, revision),
-				applyInManager: (manager, turn, plan, context) => applyCall.call(originalAuthoring, manager, turn, plan, context),
+				prepareInManager: (manager, turn, request, before, revision) =>
+					prepareCall.call(originalAuthoring, manager, turn, request, before, revision),
+				applyInManager: (manager, turn, plan, context) =>
+					applyCall.call(originalAuthoring, manager, turn, plan, context),
 			});
 		}
 		this.provider = Object.freeze<ClimateAutomationProvider>({

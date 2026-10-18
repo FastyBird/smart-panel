@@ -317,214 +317,222 @@ export class ChannelsService {
 		creation?.assertOriginalAdmission();
 		const catalogChild = creation?.isOriginalOwned ? creation.beginCatalogChild('channel', createDto) : undefined;
 		try {
-		this.logger.debug('Creating new channel');
+			this.logger.debug('Creating new channel');
 
-		creation?.assertOriginalAdmission();
-		const { type } = createDto;
-		creation?.assertType(type);
+			creation?.assertOriginalAdmission();
+			const { type } = createDto;
+			creation?.assertType(type);
 
-		if (!type) {
-			this.logger.error('Validation failed: Missing required "type" attribute in data.');
+			if (!type) {
+				this.logger.error('Validation failed: Missing required "type" attribute in data.');
 
-			throw new DevicesException('Channel type attribute is required.');
-		}
+				throw new DevicesException('Channel type attribute is required.');
+			}
 
-		const mapping = this.channelsMapperService.getMapping<TChannel, TCreateDTO, any>(type);
+			const mapping = this.channelsMapperService.getMapping<TChannel, TCreateDTO, any>(type);
 
-		creation?.assertMapping('channel', mapping);
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
-		creation?.assertOriginalAdmission();
+			creation?.assertMapping('channel', mapping);
+			const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
+			creation?.assertOriginalAdmission();
 
-		delete dtoInstance.properties;
+			delete dtoInstance.properties;
 
-		const errors = await this.validateCreationInstance(dtoInstance, creation, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-			stopAtFirstError: false,
-		});
-
-		if (errors.length > 0) {
-			this.logger.error(`Validation failed for channel creation error=${JSON.stringify(errors)}`);
-
-			throw new DevicesValidationException('Provided channel data are invalid.');
-		}
-
-		// Validate parent channel belongs to the same device
-		if (dtoInstance.parent) {
-			const parentChannel = await (creation ? creation.manager.getRepository(ChannelEntity) : this.repository).findOne({
-				where: { id: dtoInstance.parent },
-				relations: ['device'],
+			const errors = await this.validateCreationInstance(dtoInstance, creation, {
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				stopAtFirstError: false,
 			});
 
-			if (!parentChannel) {
-				this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
+			if (errors.length > 0) {
+				this.logger.error(`Validation failed for channel creation error=${JSON.stringify(errors)}`);
 
-				throw new DevicesValidationException('The specified parent channel does not exist.');
+				throw new DevicesValidationException('Provided channel data are invalid.');
 			}
 
-			const parentDeviceId = typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+			// Validate parent channel belongs to the same device
+			if (dtoInstance.parent) {
+				const parentChannel = await (
+					creation ? creation.manager.getRepository(ChannelEntity) : this.repository
+				).findOne({
+					where: { id: dtoInstance.parent },
+					relations: ['device'],
+				});
 
-			if (parentDeviceId !== dtoInstance.device) {
-				this.logger.error(
-					`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${dtoInstance.device})`,
-				);
+				if (!parentChannel) {
+					this.logger.error(`Parent channel with id=${dtoInstance.parent} does not exist`);
 
-				throw new DevicesValidationException('Parent channel must belong to the same device.');
+					throw new DevicesValidationException('The specified parent channel does not exist.');
+				}
+
+				const parentDeviceId =
+					typeof parentChannel.device === 'string' ? parentChannel.device : parentChannel.device.id;
+
+				if (parentDeviceId !== dtoInstance.device) {
+					this.logger.error(
+						`Parent channel with id=${dtoInstance.parent} belongs to a different device (${parentDeviceId} !== ${dtoInstance.device})`,
+					);
+
+					throw new DevicesValidationException('Parent channel must belong to the same device.');
+				}
 			}
-		}
 
-		const repository: Repository<TChannel> = creation
-			? creation.manager.getRepository(mapping.class)
-			: this.dataSource.getRepository(mapping.class);
+			const repository: Repository<TChannel> = creation
+				? creation.manager.getRepository(mapping.class)
+				: this.dataSource.getRepository(mapping.class);
 
-		const channel = repository.create(toInstance(mapping.class, dtoInstance));
-		creation?.stampCatalog(channel);
+			const channel = repository.create(toInstance(mapping.class, dtoInstance));
+			creation?.stampCatalog(channel);
 
-		// `id` is client-suppliable here as it is on the device create, and the same two hazards follow.
-		// `save()` treats a row whose primary key exists as an *update*, so a create carrying an existing
-		// id moved that channel under this device instead of inserting — and `DevicesService.create()`'s
-		// rollback then removed it as one of its own, destroying a channel the request had nothing to do
-		// with. Asked of the base repository, because a collision with a channel of *another* type is the
-		// same collision: ids are unique across the table, not per subclass.
-		if (channel.id) {
-			const existing = creation
-				? await creation.manager
-						.createQueryBuilder(ChannelEntity, 'row')
-						.select('row.id')
-						.where('row.id = :id', { id: channel.id })
-						.callListeners(false)
-						.getOne()
-				: await this.repository.findOne({ where: { id: channel.id } });
+			// `id` is client-suppliable here as it is on the device create, and the same two hazards follow.
+			// `save()` treats a row whose primary key exists as an *update*, so a create carrying an existing
+			// id moved that channel under this device instead of inserting — and `DevicesService.create()`'s
+			// rollback then removed it as one of its own, destroying a channel the request had nothing to do
+			// with. Asked of the base repository, because a collision with a channel of *another* type is the
+			// same collision: ids are unique across the table, not per subclass.
+			if (channel.id) {
+				const existing = creation
+					? await creation.manager
+							.createQueryBuilder(ChannelEntity, 'row')
+							.select('row.id')
+							.where('row.id = :id', { id: channel.id })
+							.callListeners(false)
+							.getOne()
+					: await this.repository.findOne({ where: { id: channel.id } });
 
-			if (existing) {
-				this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} already exists, refusing to create over it`);
-
-				throw new DevicesValidationException(
-					`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
-				);
-			}
-		}
-
-		// The channel and the properties created with it go in under the structure lock, so a device
-		// recategorisation cannot judge this device's structure in the window between them: half a
-		// channel is not a structure anything should be validated against. The nested property creates
-		// take the same lock and pass straight through it — it is re-entrant per call chain (see
-		// DeviceStructureLockService).
-		await this.structureLock.runExclusive(async (): Promise<void> => {
-			// Inserted, not saved: the check above closes the collision only for a caller who is alone,
-			// and two requests carrying the same client-generated uuid can both pass it before either
-			// writes. `insert()` always issues an INSERT, so the primary key constraint decides. The check
-			// stays for the message — a caller reusing an id gets a sentence, not a constraint violation.
-			await (
-				creation
-					? repository
-							.createQueryBuilder()
-							.insert()
-							.values(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
-							.updateEntity(false)
-							.execute()
-					: repository.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
-			).catch((error: unknown) => {
-				if (isPrimaryKeyCollision(error)) {
-					this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`);
+				if (existing) {
+					this.logger.error(`[VALIDATION FAILED] Channel id=${channel.id} already exists, refusing to create over it`);
 
 					throw new DevicesValidationException(
 						`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
 					);
 				}
+			}
 
-				throw error;
-			});
-
-			try {
-				for (const propertyDtoInstance of createDto.properties ?? []) {
-					this.logger.debug(`Creating new property for channelId=${channel.id}`);
-
-					if (creation) await this.channelsPropertiesService.create(channel.id, propertyDtoInstance, creation);
-					else await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
-				}
-			} catch (error) {
-				if (creation) throw error;
-				this.logger.error(`Nested creation failed for channelId=${channel.id}, rolling the channel back`);
-
-				// One request, one outcome. A property rejected halfway — the second projection of a
-				// virtual channel found incompatible, say — used to leave the channel and the properties
-				// before it behind, with the caller told the whole thing failed: a retry then walked into
-				// its own leftovers, and a client that had heard the earlier properties announce themselves
-				// held children of a channel it had never been told about, because CHANNEL_CREATED is
-				// emitted only after this returns.
-				//
-				// Properties go through their own removal rather than the row cascade, exactly as the
-				// device-level rollback does: a property's stored values live outside its row, and only the
-				// entity-removal lifecycle clears them. That removal emits each property's deletion too,
-				// which is what answers the creations the client already saw.
-				const orphaned = await this.channelsPropertiesService
-					.findAll(channel.id)
-					.catch((readError: unknown): ChannelPropertyEntity[] => {
+			// The channel and the properties created with it go in under the structure lock, so a device
+			// recategorisation cannot judge this device's structure in the window between them: half a
+			// channel is not a structure anything should be validated against. The nested property creates
+			// take the same lock and pass straight through it — it is re-entrant per call chain (see
+			// DeviceStructureLockService).
+			await this.structureLock.runExclusive(async (): Promise<void> => {
+				// Inserted, not saved: the check above closes the collision only for a caller who is alone,
+				// and two requests carrying the same client-generated uuid can both pass it before either
+				// writes. `insert()` always issues an INSERT, so the primary key constraint decides. The check
+				// stays for the message — a caller reusing an id gets a sentence, not a constraint violation.
+				await (
+					creation
+						? repository
+								.createQueryBuilder()
+								.insert()
+								.values(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+								.updateEntity(false)
+								.execute()
+						: repository.insert(channel as unknown as Parameters<Repository<TChannel>['insert']>[0])
+				).catch((error: unknown) => {
+					if (isPrimaryKeyCollision(error)) {
 						this.logger.error(
-							`Failed to read back properties for rolled-back channelId=${channel.id}`,
-							readError instanceof Error ? readError : undefined,
+							`[VALIDATION FAILED] Channel id=${channel.id} was created concurrently by another request`,
 						);
 
-						return [];
-					});
-
-				for (const property of orphaned) {
-					try {
-						await this.channelsPropertiesService.remove(property.id);
-					} catch (cleanupError) {
-						this.logger.error(
-							`Failed to roll back property id=${property.id} for channelId=${channel.id}`,
-							cleanupError instanceof Error ? cleanupError : undefined,
+						throw new DevicesValidationException(
+							`Channel with id=${channel.id} already exists. Creating a channel with an id already in use is not allowed.`,
 						);
 					}
-				}
 
-				// Removed as an entity rather than deleted as a row, and re-read first — the same reasoning
-				// as the device rollback one level up: `remove()` runs the subscribers a raw delete skips,
-				// and a freshly loaded row carries no relations for TypeORM to cascade across in memory.
-				// Not routed through this service's own `remove()`, which emits CHANNEL_DELETED and
-				// re-parents children: this channel never announced itself, so there is nothing to answer.
-				const rollbackTarget = await repository.findOne({
-					where: { id: channel.id } as FindOptionsWhere<TChannel>,
+					throw error;
 				});
 
-				if (rollbackTarget) {
-					await repository.remove(rollbackTarget);
+				try {
+					for (const propertyDtoInstance of createDto.properties ?? []) {
+						this.logger.debug(`Creating new property for channelId=${channel.id}`);
+
+						if (creation) await this.channelsPropertiesService.create(channel.id, propertyDtoInstance, creation);
+						else await this.channelsPropertiesService.create(channel.id, propertyDtoInstance);
+					}
+				} catch (error) {
+					if (creation) throw error;
+					this.logger.error(`Nested creation failed for channelId=${channel.id}, rolling the channel back`);
+
+					// One request, one outcome. A property rejected halfway — the second projection of a
+					// virtual channel found incompatible, say — used to leave the channel and the properties
+					// before it behind, with the caller told the whole thing failed: a retry then walked into
+					// its own leftovers, and a client that had heard the earlier properties announce themselves
+					// held children of a channel it had never been told about, because CHANNEL_CREATED is
+					// emitted only after this returns.
+					//
+					// Properties go through their own removal rather than the row cascade, exactly as the
+					// device-level rollback does: a property's stored values live outside its row, and only the
+					// entity-removal lifecycle clears them. That removal emits each property's deletion too,
+					// which is what answers the creations the client already saw.
+					const orphaned = await this.channelsPropertiesService
+						.findAll(channel.id)
+						.catch((readError: unknown): ChannelPropertyEntity[] => {
+							this.logger.error(
+								`Failed to read back properties for rolled-back channelId=${channel.id}`,
+								readError instanceof Error ? readError : undefined,
+							);
+
+							return [];
+						});
+
+					for (const property of orphaned) {
+						try {
+							await this.channelsPropertiesService.remove(property.id);
+						} catch (cleanupError) {
+							this.logger.error(
+								`Failed to roll back property id=${property.id} for channelId=${channel.id}`,
+								cleanupError instanceof Error ? cleanupError : undefined,
+							);
+						}
+					}
+
+					// Removed as an entity rather than deleted as a row, and re-read first — the same reasoning
+					// as the device rollback one level up: `remove()` runs the subscribers a raw delete skips,
+					// and a freshly loaded row carries no relations for TypeORM to cascade across in memory.
+					// Not routed through this service's own `remove()`, which emits CHANNEL_DELETED and
+					// re-parents children: this channel never announced itself, so there is nothing to answer.
+					const rollbackTarget = await repository.findOne({
+						where: { id: channel.id } as FindOptionsWhere<TChannel>,
+					});
+
+					if (rollbackTarget) {
+						await repository.remove(rollbackTarget);
+					}
+
+					throw error;
 				}
-
-				throw error;
-			}
-		});
-
-		let savedChannel = creation
-			? await creation.manager
-					.createQueryBuilder(mapping.class, 'row')
-					.where('row.id = :id', { id: channel.id })
-					.callListeners(false)
-					.getOneOrFail()
-			: ((await this.getOneOrThrow(channel.id)) as TChannel);
-
-		if (mapping.afterCreate && !creation) {
-			await mapping.afterCreate(savedChannel);
-
-			savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
-		}
-
-		this.logger.debug(`Successfully created channel with id=${savedChannel.id}`);
-
-		if (creation?.isOriginalOwned) creation.deferCatalog('channel', savedChannel, mapping, this.eventEmitter);
-		else if (creation)
-			creation.defer(async () => {
-				if (mapping.afterCreate) await mapping.afterCreate(savedChannel);
-				this.eventEmitter.emit(EventType.CHANNEL_CREATED, await this.getOneOrThrow(savedChannel.id));
 			});
-		else this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
 
-		return savedChannel;
-		} catch (cause) { catalogChild?.finish({ cause }); throw cause; }
-		finally { catalogChild?.finish(); }
+			let savedChannel = creation
+				? await creation.manager
+						.createQueryBuilder(mapping.class, 'row')
+						.where('row.id = :id', { id: channel.id })
+						.callListeners(false)
+						.getOneOrFail()
+				: ((await this.getOneOrThrow(channel.id)) as TChannel);
 
+			if (mapping.afterCreate && !creation) {
+				await mapping.afterCreate(savedChannel);
+
+				savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+			}
+
+			this.logger.debug(`Successfully created channel with id=${savedChannel.id}`);
+
+			if (creation?.isOriginalOwned) creation.deferCatalog('channel', savedChannel, mapping, this.eventEmitter);
+			else if (creation)
+				creation.defer(async () => {
+					if (mapping.afterCreate) await mapping.afterCreate(savedChannel);
+					this.eventEmitter.emit(EventType.CHANNEL_CREATED, await this.getOneOrThrow(savedChannel.id));
+				});
+			else this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
+
+			return savedChannel;
+		} catch (cause) {
+			catalogChild?.finish({ cause });
+			throw cause;
+		} finally {
+			catalogChild?.finish();
+		}
 	}
 
 	async update<TChannel extends ChannelEntity, TUpdateDTO extends UpdateChannelDto>(
@@ -761,11 +769,19 @@ export class ChannelsService {
 		return channel;
 	}
 
-	private validateCreationInstance(instance: object, creation: DeviceCreationContext | undefined, options: ValidatorOptions) {
+	private validateCreationInstance(
+		instance: object,
+		creation: DeviceCreationContext | undefined,
+		options: ValidatorOptions,
+	) {
 		return creation ? creation.validate(instance, options) : validate(instance, options);
 	}
 
-	private async validateDto<T extends object>(DtoClass: new () => T, dto: any, creation?: DeviceCreationContext): Promise<T> {
+	private async validateDto<T extends object>(
+		DtoClass: new () => T,
+		dto: any,
+		creation?: DeviceCreationContext,
+	): Promise<T> {
 		creation?.assertOriginalAdmission();
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,

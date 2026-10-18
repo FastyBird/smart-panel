@@ -1,11 +1,10 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OnEvent } from '@nestjs/event-emitter';
 
-import { getEnvValue } from '../../../common/utils/config.utils';
-import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -17,6 +16,12 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import {
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	creationHasDataMethod,
+	creationMethodCurrent,
+} from '../../../modules/devices/services/device-creation-context';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import {
 	VirtualChannelPropertyEntity,
@@ -137,14 +142,44 @@ export class VirtualDeviceInformationListener implements OnModuleInit, OnModuleD
 
 	onModuleInit(): void {
 		if (this.destroyed) throw new Error('Owned information handler destroyed');
-		if (this.originalRegistration || getEnvValue<string>(this.configuration, 'FB_CLI', null) === 'on' || !this.events) return;
-		if (!creationHasDataMethod(this, 'handleOriginalCreated') || !creationHasDataMethod(this, 'handleDeviceCreated') || !creationHasDataMethod(this.statusListener, 'captureCreatedMethodGuard')) throw new Error('Original information pipeline unavailable');
-		const { handleDeviceCreated: handler, handleOriginalCreated: body } = this;
-		const { captureCreatedMethodGuard: capture } = this.statusListener;
+		if (this.originalRegistration || getEnvValue<string>(this.configuration, 'FB_CLI', null) === 'on' || !this.events)
+			return;
+		if (
+			!creationHasDataMethod(this, 'handleOriginalCreated') ||
+			!creationHasDataMethod(this, 'handleDeviceCreated') ||
+			!creationHasDataMethod(this.statusListener, 'captureCreatedMethodGuard')
+		)
+			throw new Error('Original information pipeline unavailable');
+		const handlerOriginalProperty: Readonly<{
+			get: (
+				owner: VirtualDeviceInformationListener,
+				key: 'handleDeviceCreated',
+			) => VirtualDeviceInformationListener['handleDeviceCreated'];
+		}> = Reflect;
+		const handler = handlerOriginalProperty.get(this, 'handleDeviceCreated');
+		const bodyOriginalProperty: Readonly<{
+			get: (
+				owner: VirtualDeviceInformationListener,
+				key: 'handleOriginalCreated',
+			) => VirtualDeviceInformationListener['handleOriginalCreated'];
+		}> = Reflect;
+		const body = bodyOriginalProperty.get(this, 'handleOriginalCreated');
+		const captureOriginalMethods: Readonly<{
+			captureCreatedMethodGuard: VirtualDeviceInformationListener['statusListener']['captureCreatedMethodGuard'];
+		}> = this.statusListener;
+		const { captureCreatedMethodGuard: capture } = captureOriginalMethods;
 		const call: Readonly<{ call: (receiver: VirtualStatusListener) => () => boolean }> = capture;
 		const downstream = call.call(this.statusListener);
-		this.originalRegistration = DeviceCreationPublicationEngine.registerInformationHandler(this.events, this, handler,
-			() => !this.destroyed && creationMethodCurrent(this, 'handleOriginalCreated', body) && creationMethodCurrent(this.statusListener, 'captureCreatedMethodGuard', capture) && downstream());
+		this.originalRegistration = DeviceCreationPublicationEngine.registerInformationHandler(
+			this.events,
+			this,
+			handler,
+			() =>
+				!this.destroyed &&
+				creationMethodCurrent(this, 'handleOriginalCreated', body) &&
+				creationMethodCurrent(this.statusListener, 'captureCreatedMethodGuard', capture) &&
+				downstream(),
+		);
 	}
 
 	onModuleDestroy(): void {
@@ -155,13 +190,30 @@ export class VirtualDeviceInformationListener implements OnModuleInit, OnModuleD
 
 	private async handleOriginalCreated(lease: DeviceCreationPublicationLease, device: DeviceEntity): Promise<void> {
 		DeviceCreationPublicationEngine.assert(lease, device.id);
-		if (device !== DeviceCreationPublicationEngine.catalog(lease)) throw new Error('Exact original device payload required');
+		if (device !== DeviceCreationPublicationEngine.catalog(lease))
+			throw new Error('Exact original device payload required');
 		const channels = device.channels.filter((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
 		if (channels.length !== 1) throw new Error('Original information channel required');
 		const channel = channels[0];
-		const { recomputeCreated } = this.statusListener;
-		const recompute: Readonly<{ call: (receiver: VirtualStatusListener, lease: DeviceCreationPublicationLease, device: DeviceEntity, channel: ChannelEntity, property: ChannelPropertyEntity) => Promise<void> }> = recomputeCreated;
-		const required = [PropertyCategory.MANUFACTURER, PropertyCategory.MODEL, PropertyCategory.SERIAL_NUMBER, PropertyCategory.STATUS];
+		const recomputeCreatedOriginalMethods: Readonly<{
+			recomputeCreated: VirtualDeviceInformationListener['statusListener']['recomputeCreated'];
+		}> = this.statusListener;
+		const { recomputeCreated } = recomputeCreatedOriginalMethods;
+		const recompute: Readonly<{
+			call: (
+				receiver: VirtualStatusListener,
+				lease: DeviceCreationPublicationLease,
+				device: DeviceEntity,
+				channel: ChannelEntity,
+				property: ChannelPropertyEntity,
+			) => Promise<void>;
+		}> = recomputeCreated;
+		const required = [
+			PropertyCategory.MANUFACTURER,
+			PropertyCategory.MODEL,
+			PropertyCategory.SERIAL_NUMBER,
+			PropertyCategory.STATUS,
+		];
 		for (const category of required) {
 			const properties = channel.properties.filter((property) => property.category === category);
 			if (properties.length !== 1) throw new Error('Original information property required');
@@ -181,8 +233,20 @@ export class VirtualDeviceInformationListener implements OnModuleInit, OnModuleD
 	async handleDeviceCreated(device: DeviceEntity): Promise<void> {
 		// Synchronous prologue of THIS real async handler; emit never exposes its returned Promise.
 		const owned = DeviceCreationPublicationEngine.enterInformation(device, this);
-		const { handleOriginalCreated } = this;
-		const body: Readonly<{ call: (receiver: VirtualDeviceInformationListener, lease: DeviceCreationPublicationLease, device: DeviceEntity) => Promise<void> }> = handleOriginalCreated;
+		const handleOriginalCreatedOriginalProperty: Readonly<{
+			get: (
+				owner: VirtualDeviceInformationListener,
+				key: 'handleOriginalCreated',
+			) => VirtualDeviceInformationListener['handleOriginalCreated'];
+		}> = Reflect;
+		const handleOriginalCreated = handleOriginalCreatedOriginalProperty.get(this, 'handleOriginalCreated');
+		const body: Readonly<{
+			call: (
+				receiver: VirtualDeviceInformationListener,
+				lease: DeviceCreationPublicationLease,
+				device: DeviceEntity,
+			) => Promise<void>;
+		}> = handleOriginalCreated;
 		if (owned) {
 			let failure: { cause: unknown } | undefined;
 			try {
@@ -192,7 +256,9 @@ export class VirtualDeviceInformationListener implements OnModuleInit, OnModuleD
 			} catch (cause) {
 				failure = { cause };
 				this.logger.warn('Original thermostat information publication incomplete');
-			} finally { owned.finish(failure); }
+			} finally {
+				owned.finish(failure);
+			}
 			return;
 		}
 		if (device.type !== DEVICES_VIRTUAL_TYPE) {

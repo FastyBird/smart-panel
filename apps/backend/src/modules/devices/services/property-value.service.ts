@@ -2,7 +2,11 @@ import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { type CreationStorageDestinations, type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
+import {
+	type CreationStorageDestinations,
+	type StorageBackendBinding,
+	StorageService,
+} from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
@@ -21,11 +25,16 @@ import {
 import { validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
 import {
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	creationHasDataMethod,
+	creationMethodCurrent,
+} from './device-creation-context';
+import {
 	PropertyProducerEvaluation,
 	PropertyProducerLease,
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
-import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from './device-creation-context';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
@@ -140,15 +149,31 @@ export class PropertyValueService {
 
 	captureCreatedMethodGuard(): () => boolean {
 		const holders = [
-			{ receiver: this, keys: ['writeCreatedWithState', 'writeInternal', 'withCreatedValueLock', 'withValueLock', 'flushHistory', 'validateValue', 'isInvalidValue', 'setCachedState', 'computeTrend', 'bumpCacheVersion'] },
+			{
+				receiver: this,
+				keys: [
+					'writeCreatedWithState',
+					'writeInternal',
+					'withCreatedValueLock',
+					'withValueLock',
+					'flushHistory',
+					'validateValue',
+					'isInvalidValue',
+					'setCachedState',
+					'computeTrend',
+					'bumpCacheVersion',
+				],
+			},
 			{ receiver: this.storageService, keys: ['writeCreatedPoints'] },
 			{ receiver: this.valueLock, keys: ['runExclusive'] },
 		];
 		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
-		for (const { receiver, keys } of holders) for (const key of keys) {
-			if (!creationHasDataMethod(receiver, key)) throw new Error('Original value pipeline unavailable');
-			const method: unknown = Reflect.get(receiver, key); pins.push(Object.freeze({ receiver, key, method }));
-		}
+		for (const { receiver, keys } of holders)
+			for (const key of keys) {
+				if (!creationHasDataMethod(receiver, key)) throw new Error('Original value pipeline unavailable');
+				const method: unknown = Reflect.get(receiver, key);
+				pins.push(Object.freeze({ receiver, key, method }));
+			}
 		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
 	}
 
@@ -164,8 +189,16 @@ export class PropertyValueService {
 		DeviceCreationPublicationEngine.assert(lease, key);
 		DeviceCreationPublicationEngine.assertProperty(lease, property);
 		const child = DeviceCreationPublicationEngine.beginChild(lease, 'value', key);
-		const { writeInternal } = this;
-		const write: Readonly<{ call: (receiver: PropertyValueService, ...args: Parameters<PropertyValueService['writeInternal']>) => ReturnType<PropertyValueService['writeInternal']> }> = writeInternal;
+		const writeInternalProperty: Readonly<{
+			get: (owner: PropertyValueService, key: 'writeInternal') => PropertyValueService['writeInternal'];
+		}> = Reflect;
+		const writeInternal = writeInternalProperty.get(this, 'writeInternal');
+		const write: Readonly<{
+			call: (
+				receiver: PropertyValueService,
+				...args: Parameters<PropertyValueService['writeInternal']>
+			) => ReturnType<PropertyValueService['writeInternal']>;
+		}> = writeInternal;
 		let failure: { cause: unknown } | undefined;
 		try {
 			return await this.withCreatedValueLock(key, lease, async (valueLease) => {
@@ -174,10 +207,17 @@ export class PropertyValueService {
 				DeviceCreationPublicationEngine.assertProperty(lease, property);
 				await DeviceCreationPublicationEngine.probe(lease, key);
 				DeviceCreationPublicationEngine.assertProperty(lease, property);
-				return write.call(this, property, key, value, false, undefined, undefined, false, false, { lease, destinations });
+				return write.call(this, property, key, value, false, undefined, undefined, false, false, {
+					lease,
+					destinations,
+				});
 			});
-		} catch (cause) { failure = { cause }; throw cause; }
-		finally { child.finish(failure); }
+		} catch (cause) {
+			failure = { cause };
+			throw cause;
+		} finally {
+			child.finish(failure);
+		}
 	}
 
 	/**
@@ -1315,16 +1355,35 @@ export class PropertyValueService {
 		});
 	}
 
-	private withCreatedValueLock<T>(key: string, creation: DeviceCreationPublicationLease, operation: (lease: PropertyValueLease) => Promise<T>): Promise<T> {
+	private withCreatedValueLock<T>(
+		key: string,
+		creation: DeviceCreationPublicationLease,
+		operation: (lease: PropertyValueLease) => Promise<T>,
+	): Promise<T> {
 		DeviceCreationPublicationEngine.assert(creation, key);
-		const { runExclusive } = this.valueLock;
-		const { flushHistory } = this;
+		const runExclusiveOriginalMethods: Readonly<{ runExclusive: PropertyValueService['valueLock']['runExclusive'] }> =
+			this.valueLock;
+		const { runExclusive } = runExclusiveOriginalMethods;
+		const flushHistoryOriginalMethods = (owner: Readonly<{ flushHistory: PropertyValueService['flushHistory'] }>) =>
+			owner;
+		const { flushHistory } = flushHistoryOriginalMethods(this);
 		const flush: Readonly<{ call: (receiver: PropertyValueService) => Promise<void> }> = flushHistory;
-		const run: Readonly<{ call: (receiver: PropertyValueLockService, key: string, operation: (lease: PropertyValueLease) => Promise<T>) => Promise<T> }> = runExclusive;
+		const run: Readonly<{
+			call: (
+				receiver: PropertyValueLockService,
+				key: string,
+				operation: (lease: PropertyValueLease) => Promise<T>,
+			) => Promise<T>;
+		}> = runExclusive;
 		const previous = this.valueTails.get(key) ?? Promise.resolve();
 		let release: () => void = () => {};
-		const ticket = new Promise<void>((resolve) => { release = resolve; });
-		const tail = previous.then(() => ticket, () => ticket);
+		const ticket = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const tail = previous.then(
+			() => ticket,
+			() => ticket,
+		);
 		this.valueTails.set(key, tail);
 		const enter = (): Promise<T> => {
 			DeviceCreationPublicationEngine.assert(creation, key);
@@ -1335,9 +1394,11 @@ export class PropertyValueService {
 				return operation(lease);
 			});
 		};
-		return previous.then(enter, enter).finally(() => { release(); if (this.valueTails.get(key) === tail) this.valueTails.delete(key); });
+		return previous.then(enter, enter).finally(() => {
+			release();
+			if (this.valueTails.get(key) === tail) this.valueTails.delete(key);
+		});
 	}
-
 
 	private updateRecentValuesFromRows(
 		property: ChannelPropertyEntity,

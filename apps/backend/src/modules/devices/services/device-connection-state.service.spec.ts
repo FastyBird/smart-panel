@@ -1,10 +1,10 @@
-import { DeviceCreationPublicationLease } from './device-creation-context';
 import { CreationStorageDestinations } from '../../storage/services/storage.service';
 import { StorageService } from '../../storage/services/storage.service';
 import { ConnectionState, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
 import { DeviceConnectionStateService } from './device-connection-state.service';
+import { DeviceCreationPublicationLease } from './device-creation-context';
 
 describe('DeviceConnectionStateService', () => {
 	let service: DeviceConnectionStateService;
@@ -125,14 +125,20 @@ describe('DeviceConnectionStateService', () => {
 	it('refuses a forged creation lease before device getters, cache or storage work', async () => {
 		let getters = 0;
 		const device = new DeviceEntity();
-		Object.defineProperty(device, 'id', { get: () => { getters++; throw new Error('Business getter must not run'); } });
+		Object.defineProperty(device, 'id', {
+			get: () => {
+				getters++;
+				throw new Error('Business getter must not run');
+			},
+		});
 		const property = new ChannelPropertyEntity();
 		const lease = Object.freeze(new DeviceCreationPublicationLease());
 		expect(() => service.readCreated(lease, device)).toThrow('Original creation publication unavailable');
-		await expect(service.writeCreated(lease, device, property, ConnectionState.UNKNOWN, new CreationStorageDestinations())).rejects.toThrow('Original creation publication unavailable');
+		await expect(
+			service.writeCreated(lease, device, property, ConnectionState.UNKNOWN, new CreationStorageDestinations()),
+		).rejects.toThrow('Original creation publication unavailable');
 		expect(getters).toBe(0);
 		expect(storageService.query).not.toHaveBeenCalled();
 		expect(storageService.queryStrict).not.toHaveBeenCalled();
 	});
-
 });

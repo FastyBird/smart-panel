@@ -606,7 +606,6 @@ export function climateAutomationReduceManualIntent(
 	});
 }
 
-
 /** CLOSED trusted thermostat authoring only. No caller callback, manager, private slot or arbitrary result. */
 export interface ClimateAutomationCreationRequest {
 	readonly kind: 'create-virtual-thermostat:v1';
@@ -637,9 +636,23 @@ export interface ClimateAutomationCreationCapability {
 	readonly captureEnvironment: () => DeviceCreationEnvironment;
 	readonly isCurrent: () => boolean;
 	readonly holdAtEntry: () => Readonly<{ release: () => Promise<void> }>;
-	readonly readFactsInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn) => Promise<ClimateAutomationCreationFacts>;
-	readonly prepareInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, request: ClimateAutomationCreationRequest, before: ClimateAutomationCreationFacts, graphRevision: number) => Promise<ClimateAutomationCreationPlan>;
-	readonly applyInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, plan: ClimateAutomationCreationPlan, context: DeviceCreationContext) => Promise<void>;
+	readonly readFactsInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+	) => Promise<ClimateAutomationCreationFacts>;
+	readonly prepareInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		request: ClimateAutomationCreationRequest,
+		before: ClimateAutomationCreationFacts,
+		graphRevision: number,
+	) => Promise<ClimateAutomationCreationPlan>;
+	readonly applyInManager: (
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		plan: ClimateAutomationCreationPlan,
+		context: DeviceCreationContext,
+	) => Promise<void>;
 }
 export type ClimateAutomationCreationOutcome =
 	| { readonly outcome: 'applied'; readonly result: ClimateAutomationJson }

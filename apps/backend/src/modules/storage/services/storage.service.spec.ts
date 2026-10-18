@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test } from '@nestjs/testing';
-import { DeviceCreationPublicationLease } from '../../devices/services/device-creation-context';
 
 import { ConfigService } from '../../config/services/config.service';
+import { DeviceCreationPublicationLease } from '../../devices/services/device-creation-context';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageQueryOptions } from '../storage.types';
 
@@ -184,7 +184,7 @@ describe('StorageService', () => {
 		service.registerPlugin(primary.name, primary);
 		const { binding } = await service.queryActiveStrictBound('SELECT * FROM test');
 
-		service.unregisterPlugin(primary.name);
+		void service.unregisterPlugin(primary.name);
 
 		await expect(
 			service.writePointsStrict([{ measurement: 'property_value', fields: { numberValue: 42 } }], binding),
@@ -235,14 +235,27 @@ describe('StorageService', () => {
 /** Pure destination continuity is necessary evidence, never a forged positive publication permit. */
 describe('creation storage mutation-owned destination records', () => {
 	async function fixture() {
-		const module = await Test.createTestingModule({ providers: [StorageService,
-			{ provide: ConfigService, useValue: { getModuleConfig: () => ({ primaryStorage: 'primary', fallbackStorage: 'fallback' }) } },
-		] }).compile();
+		const module = await Test.createTestingModule({
+			providers: [
+				StorageService,
+				{
+					provide: ConfigService,
+					useValue: { getModuleConfig: () => ({ primaryStorage: 'primary', fallbackStorage: 'fallback' }) },
+				},
+			],
+		}).compile();
 		const storage = module.get(StorageService);
-		const plugin = (name: string): StoragePlugin => ({ name, initialize: () => Promise.resolve(), destroy: () => Promise.resolve(),
-			isAvailable: () => true, writePoints: () => Promise.resolve(), query: <T>() => Promise.resolve<T[]>([]),
-			queryRaw: <T>() => Promise.reject<T>(new Error('Not used by this inert IO fixture')), registerSchema: () => undefined,
-			dropMeasurement: () => Promise.resolve(), getMeasurements: () => Promise.resolve([]),
+		const plugin = (name: string): StoragePlugin => ({
+			name,
+			initialize: () => Promise.resolve(),
+			destroy: () => Promise.resolve(),
+			isAvailable: () => true,
+			writePoints: () => Promise.resolve(),
+			query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('Not used by this inert IO fixture')),
+			registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),
+			getMeasurements: () => Promise.resolve([]),
 		});
 		return { storage, module, plugin };
 	}
@@ -265,7 +278,9 @@ describe('creation storage mutation-owned destination records', () => {
 			const third = storage.captureCreationDestinations();
 			storage.registerPlugin('fallback', plugin('fallback'));
 			expect(storage.areCreationDestinationsCurrent(third)).toBe(false);
-		} finally { await module.close(); }
+		} finally {
+			await module.close();
+		}
 	});
 	it('terminal shutdown closes old captures and cannot turn a fresh empty capture into authority', async () => {
 		const { storage, module, plugin } = await fixture();
@@ -283,8 +298,12 @@ describe('creation storage mutation-owned destination records', () => {
 			const backend = plugin('primary');
 			const write = jest.spyOn(backend, 'writePoints');
 			storage.registerPlugin('primary', backend);
-			await expect(storage.writeCreatedPoints(new DeviceCreationPublicationLease(), storage.captureCreationDestinations(), [])).rejects.toThrow('Original creation');
+			await expect(
+				storage.writeCreatedPoints(new DeviceCreationPublicationLease(), storage.captureCreationDestinations(), []),
+			).rejects.toThrow('Original creation');
 			expect(write).not.toHaveBeenCalled();
-		} finally { await module.close(); }
+		} finally {
+			await module.close();
+		}
 	});
 });

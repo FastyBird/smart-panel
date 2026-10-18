@@ -4,10 +4,15 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import {
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	creationHasDataMethod,
+	creationMethodCurrent,
+} from '../../../modules/devices/services/device-creation-context';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualPropertyIndexService } from '../services/virtual-property-index.service';
@@ -53,32 +58,69 @@ export class VirtualStatusListener {
 	) {}
 
 	captureCreatedMethodGuard(): () => boolean {
-		if (!creationHasDataMethod(this, 'recomputeCreated') || !creationHasDataMethod(this.deviceConnectivityService, 'captureCreatedMethodGuard')) throw new Error('Original status pipeline unavailable');
-		const { recomputeCreated } = this;
-		const { captureCreatedMethodGuard } = this.deviceConnectivityService;
+		if (
+			!creationHasDataMethod(this, 'recomputeCreated') ||
+			!creationHasDataMethod(this.deviceConnectivityService, 'captureCreatedMethodGuard')
+		)
+			throw new Error('Original status pipeline unavailable');
+		const recomputeCreatedOriginalMethods = (
+			owner: Readonly<{ recomputeCreated: VirtualStatusListener['recomputeCreated'] }>,
+		) => owner;
+		const { recomputeCreated } = recomputeCreatedOriginalMethods(this);
+		const captureCreatedMethodGuardOriginalMethods: Readonly<{
+			captureCreatedMethodGuard: VirtualStatusListener['deviceConnectivityService']['captureCreatedMethodGuard'];
+		}> = this.deviceConnectivityService;
+		const { captureCreatedMethodGuard } = captureCreatedMethodGuardOriginalMethods;
 		const call: Readonly<{ call: (receiver: DeviceConnectivityService) => () => boolean }> = captureCreatedMethodGuard;
 		const downstream = call.call(this.deviceConnectivityService);
-		return () => creationMethodCurrent(this, 'recomputeCreated', recomputeCreated) && creationMethodCurrent(this.deviceConnectivityService, 'captureCreatedMethodGuard', captureCreatedMethodGuard) && downstream();
+		return () =>
+			creationMethodCurrent(this, 'recomputeCreated', recomputeCreated) &&
+			creationMethodCurrent(this.deviceConnectivityService, 'captureCreatedMethodGuard', captureCreatedMethodGuard) &&
+			downstream();
 	}
 
-	async recomputeCreated(lease: DeviceCreationPublicationLease, device: DeviceEntity, channel: ChannelEntity, property: ChannelPropertyEntity): Promise<void> {
+	async recomputeCreated(
+		lease: DeviceCreationPublicationLease,
+		device: DeviceEntity,
+		channel: ChannelEntity,
+		property: ChannelPropertyEntity,
+	): Promise<void> {
 		DeviceCreationPublicationEngine.assert(lease);
 		const child = DeviceCreationPublicationEngine.beginChild(lease, 'status', device.id);
-		const { setCreatedConnectionState } = this.deviceConnectivityService;
-		const set: Readonly<{ call: (receiver: DeviceConnectivityService, ...args: Parameters<DeviceConnectivityService['setCreatedConnectionState']>) => Promise<void> }> = setCreatedConnectionState;
+		const setCreatedConnectionStateOriginalMethods: Readonly<{
+			setCreatedConnectionState: VirtualStatusListener['deviceConnectivityService']['setCreatedConnectionState'];
+		}> = this.deviceConnectivityService;
+		const { setCreatedConnectionState } = setCreatedConnectionStateOriginalMethods;
+		const set: Readonly<{
+			call: (
+				receiver: DeviceConnectivityService,
+				...args: Parameters<DeviceConnectivityService['setCreatedConnectionState']>
+			) => Promise<void>;
+		}> = setCreatedConnectionState;
 		const previous = this.recomputeQueue;
 		let release: () => void = () => {};
-		this.recomputeQueue = new Promise<void>((resolve) => { release = resolve; });
+		this.recomputeQueue = new Promise<void>((resolve) => {
+			release = resolve;
+		});
 		let failure: { cause: unknown } | undefined;
 		try {
 			await previous;
 			DeviceCreationPublicationEngine.assert(lease, device.id, property.id);
 			// Original climate-controller mode, never vacuous CONNECTED from a not-yet-rebuilt index.
-			if (device.type !== DEVICES_VIRTUAL_TYPE || Reflect.get(device, 'mode') !== VirtualDeviceMode.CLIMATE_CONTROLLER) throw new Error('Original thermostat mode required');
-			await set.call(this.deviceConnectivityService, lease, device, channel, property, { state: ConnectionState.UNKNOWN, reason: 'virtual device created' });
+			if (device.type !== DEVICES_VIRTUAL_TYPE || Reflect.get(device, 'mode') !== VirtualDeviceMode.CLIMATE_CONTROLLER)
+				throw new Error('Original thermostat mode required');
+			await set.call(this.deviceConnectivityService, lease, device, channel, property, {
+				state: ConnectionState.UNKNOWN,
+				reason: 'virtual device created',
+			});
 			DeviceCreationPublicationEngine.assert(lease, device.id);
-		} catch (cause) { failure = { cause }; throw cause; }
-		finally { release(); child.finish(failure); }
+		} catch (cause) {
+			failure = { cause };
+			throw cause;
+		} finally {
+			release();
+			child.finish(failure);
+		}
 	}
 
 	@OnEvent(EventType.DEVICE_CONNECTION_CHANGED)

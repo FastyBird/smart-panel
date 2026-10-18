@@ -72,7 +72,12 @@ describe('ChannelsTypeMapperService', () => {
 	});
 	describe('original owned creation mapping continuity', () => {
 		it('never revives A after same-object overwrite or A B A and keeps reads pure', () => {
-			const a = { type: 'owned-creation', class: MockChannel, createDto: MockCreateChannelDto, updateDto: MockUpdateChannelDto };
+			const a = {
+				type: 'owned-creation',
+				class: MockChannel,
+				createDto: MockCreateChannelDto,
+				updateDto: MockUpdateChannelDto,
+			};
 			const b = { ...a };
 			expect(service.captureMapping('owned-creation')).toBeNull();
 			service.registerMapping(a);
@@ -92,14 +97,23 @@ describe('ChannelsTypeMapperService', () => {
 		});
 
 		it('keeps ordinary accessor mappings usable but refuses owned capture without invoking their accessor', () => {
-			const mapping = { type: 'owned-accessor', class: MockChannel, createDto: MockCreateChannelDto, updateDto: MockUpdateChannelDto };
+			const mapping = {
+				type: 'owned-accessor',
+				class: MockChannel,
+				createDto: MockCreateChannelDto,
+				updateDto: MockUpdateChannelDto,
+			};
 			let reads = 0;
-			Object.defineProperty(mapping, 'class', { get: () => { reads++; return MockChannel; } });
+			Object.defineProperty(mapping, 'class', {
+				get: () => {
+					reads++;
+					return MockChannel;
+				},
+			});
 			service.registerMapping(mapping);
 			expect(service.getMapping('owned-accessor')).toBe(mapping);
 			expect(service.captureMapping('owned-accessor')).toBeNull();
 			expect(reads).toBe(0);
 		});
 	});
-
 });

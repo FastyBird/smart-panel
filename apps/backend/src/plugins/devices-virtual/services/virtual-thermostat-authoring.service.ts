@@ -3,8 +3,21 @@ import { validate } from 'class-validator';
 import { DataSource, EntityManager, EntityTarget } from 'typeorm';
 
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import {
+	ClimateAutomationCreationFacts,
+	ClimateAutomationCreationOutcome,
+	ClimateAutomationCreationPlan,
+	ClimateAutomationCreationRequest,
+	ClimateAutomationCreationRow,
+	ClimateAutomationJson,
+	ClimateAutomationParticipantTurn,
+	ClimateAutomationWriteError,
+	climateAutomationCanonical,
+	climateAutomationJson,
+} from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
 	DeviceCategory,
@@ -12,28 +25,27 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { ClimateAutomationCreationFacts, ClimateAutomationCreationPlan, ClimateAutomationCreationRequest, ClimateAutomationCreationRow, ClimateAutomationWriteError, ClimateAutomationJson, ClimateAutomationParticipantTurn, climateAutomationCanonical, climateAutomationJson } from '../../../modules/devices/contracts/climate-automation.contract';
 import { DeviceZoneEntity } from '../../../modules/devices/entities/device-zone.entity';
-import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
-import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
-import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
-import { DeviceCreationContext, DeviceCreationEnvironment, DeviceCreationPublicationEngine, creationHasDataMethod, creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
-import { StorageService } from '../../../modules/storage/services/storage.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { VirtualThermostatActuatorClaimEntity, VirtualThermostatConfigEntity, VirtualThermostatSettingEntity, VirtualThermostatSourceEntity } from '../entities/virtual-thermostat.entity';
-import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
-import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
-
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
+import {
+	DeviceCreationContext,
+	DeviceCreationEnvironment,
+	DeviceCreationPublicationEngine,
+	creationHasDataMethod,
+	creationMethodCurrent,
+} from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
+import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { buildDeviceGraphQuery } from '../../../modules/devices/utils/device-graph-query.utils';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../../modules/spaces/spaces.constants';
+import { StorageService } from '../../../modules/storage/services/storage.service';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
 import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.dto';
 import {
@@ -43,13 +55,23 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatCoolingDependencyEntity } from '../entities/thermostat-cooling-dependency.entity';
+import { ThermostatMemberProtectionEntity } from '../entities/thermostat-member-protection.entity';
+import {
+	VirtualThermostatActuatorClaimEntity,
+	VirtualThermostatConfigEntity,
+	VirtualThermostatSettingEntity,
+	VirtualThermostatSourceEntity,
+} from '../entities/virtual-thermostat.entity';
 import { VirtualCreatedThermostatModel } from '../models/thermostat-authoring-response.model';
 import { VirtualThermostatConfigurationModel } from '../models/thermostat-response.model';
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
-interface AuthoringCall<R, A extends unknown[], V> { readonly call: (receiver: R, ...args: A) => V; }
+interface AuthoringCall<R, A extends unknown[], V> {
+	readonly call: (receiver: R, ...args: A) => V;
+}
 
 const fail = (message: string): never => {
 	throw new DevicesValidationException(message);
@@ -95,24 +117,59 @@ export class VirtualThermostatAuthoringService {
 
 	async create(dto: CreateVirtualThermostatProducerDto): Promise<VirtualCreatedThermostatModel> {
 		if (!this.writer) fail('The admitted thermostat creation writer is unavailable.');
-		let result;
+		let result: ClimateAutomationCreationOutcome;
 		try {
-			result = await this.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', get device() { return dto.device; }, get configuration() { return dto.configuration; } });
+			result = await this.writer.createVirtualThermostatV1({
+				kind: 'create-virtual-thermostat:v1',
+				get device() {
+					return dto.device;
+				},
+				get configuration() {
+					return dto.configuration;
+				},
+			});
 		} catch (error) {
 			// Preserve original public validation/callback failure only after KNOWN whole rollback.
 			// Core ledger/native/finalizer errors are not this callback; UNKNOWN/REFUSED/ACK errors stay exact.
-			if (error instanceof ClimateAutomationWriteError && error.commitOutcome === 'rolled_back' &&
-				(error.cause instanceof DevicesValidationException || (error.cause instanceof Error && this.creationCallbackFailures.has(error.cause)))) throw error.cause;
+			if (
+				error instanceof ClimateAutomationWriteError &&
+				error.commitOutcome === 'rolled_back' &&
+				(error.cause instanceof DevicesValidationException ||
+					(error.cause instanceof Error && this.creationCallbackFailures.has(error.cause)))
+			)
+				throw error.cause;
 			throw error;
 		}
-		if (result.outcome !== 'applied') fail('Thermostat creation refused; reload and retry.');
+		if (result.outcome !== 'applied') return fail('Thermostat creation refused; reload and retry.');
 		return plainToInstance(VirtualCreatedThermostatModel, result.result);
 	}
 
 	captureCreationMethodPins(): () => boolean {
 		const holders: readonly Readonly<{ receiver: object | undefined; keys: readonly string[] }>[] = [
-			{ receiver: this, keys: ['draft', 'captureCreationEnvironment', 'readCreationFacts', 'prepareCreation', 'applyCreation', 'creationRawRow', 'creationCatalog', 'holdCreationAtEntry'] },
-			{ receiver: this.configurations, keys: ['prepare', 'persistCreated', 'createdPrepared', 'describeCreated', 'publishCreatedConfiguration', 'holdCreationAtEntry'] },
+			{
+				receiver: this,
+				keys: [
+					'draft',
+					'captureCreationEnvironment',
+					'readCreationFacts',
+					'prepareCreation',
+					'applyCreation',
+					'creationRawRow',
+					'creationCatalog',
+					'holdCreationAtEntry',
+				],
+			},
+			{
+				receiver: this.configurations,
+				keys: [
+					'prepare',
+					'persistCreated',
+					'createdPrepared',
+					'describeCreated',
+					'publishCreatedConfiguration',
+					'holdCreationAtEntry',
+				],
+			},
 			{ receiver: this.devices, keys: ['create'] },
 			{ receiver: this.deviceMappings, keys: ['getMapping', 'captureMapping'] },
 			{ receiver: this.channelMappings, keys: ['getMapping', 'captureMapping'] },
@@ -132,7 +189,9 @@ export class VirtualThermostatAuthoringService {
 		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
 	}
 
-	holdCreationAtEntry() { return this.configurations.holdCreationAtEntry(); }
+	holdCreationAtEntry() {
+		return this.configurations.holdCreationAtEntry();
+	}
 
 	captureCreationEnvironment(): DeviceCreationEnvironment {
 		const { writer, deviceMappings, channelMappings, propertyMappings, producers, storage, events } = this;
@@ -145,102 +204,237 @@ export class VirtualThermostatAuthoringService {
 		const information = DeviceCreationPublicationEngine.captureInformation(events);
 		if (!devices || !channels || !properties || !information) fail('Original creation registrations are unavailable.');
 		const engineKeys = ['beginCreationObservation', 'isCreationObservationCurrent', 'closeCreationObservation'];
-		if (engineKeys.some((key) => !creationHasDataMethod(producers, key))) fail('Original producer observer unavailable.');
-		const { beginCreationObservation: begin, isCreationObservationCurrent: observerCurrent, closeCreationObservation: close } = producers;
-		const beginCall: AuthoringCall<PropertyProducerRegistryService, [readonly string[]], ReturnType<PropertyProducerRegistryService['beginCreationObservation']>> = begin;
-		const observerCall: AuthoringCall<PropertyProducerRegistryService, Parameters<PropertyProducerRegistryService['isCreationObservationCurrent']>, boolean> = observerCurrent;
-		const closeCall: AuthoringCall<PropertyProducerRegistryService, Parameters<PropertyProducerRegistryService['closeCreationObservation']>, void> = close;
-		if (!creationHasDataMethod(storage, 'captureCreationDestinations') || !creationHasDataMethod(storage, 'areCreationDestinationsCurrent') || !creationHasDataMethod(storage, 'writeCreatedPoints')) fail('Original storage engine unavailable.');
-		const { captureCreationDestinations: capture, areCreationDestinationsCurrent: destinationsCurrent, writeCreatedPoints: write } = storage;
-		const captureCall: AuthoringCall<StorageService, [], ReturnType<StorageService['captureCreationDestinations']>> = capture;
-		const currentCall: AuthoringCall<StorageService, Parameters<StorageService['areCreationDestinationsCurrent']>, boolean> = destinationsCurrent;
+		if (engineKeys.some((key) => !creationHasDataMethod(producers, key)))
+			fail('Original producer observer unavailable.');
+		const beginOriginalMethods: Readonly<{
+			beginCreationObservation: typeof producers.beginCreationObservation;
+			isCreationObservationCurrent: typeof producers.isCreationObservationCurrent;
+			closeCreationObservation: typeof producers.closeCreationObservation;
+		}> = producers;
+		const {
+			beginCreationObservation: begin,
+			isCreationObservationCurrent: observerCurrent,
+			closeCreationObservation: close,
+		} = beginOriginalMethods;
+		const beginCall: AuthoringCall<
+			PropertyProducerRegistryService,
+			[readonly string[]],
+			ReturnType<PropertyProducerRegistryService['beginCreationObservation']>
+		> = begin;
+		const observerCall: AuthoringCall<
+			PropertyProducerRegistryService,
+			Parameters<PropertyProducerRegistryService['isCreationObservationCurrent']>,
+			boolean
+		> = observerCurrent;
+		const closeCall: AuthoringCall<
+			PropertyProducerRegistryService,
+			Parameters<PropertyProducerRegistryService['closeCreationObservation']>,
+			void
+		> = close;
+		if (
+			!creationHasDataMethod(storage, 'captureCreationDestinations') ||
+			!creationHasDataMethod(storage, 'areCreationDestinationsCurrent') ||
+			!creationHasDataMethod(storage, 'writeCreatedPoints')
+		)
+			fail('Original storage engine unavailable.');
+		const captureOriginalMethods: Readonly<{
+			captureCreationDestinations: typeof storage.captureCreationDestinations;
+			areCreationDestinationsCurrent: typeof storage.areCreationDestinationsCurrent;
+			writeCreatedPoints: typeof storage.writeCreatedPoints;
+		}> = storage;
+		const {
+			captureCreationDestinations: capture,
+			areCreationDestinationsCurrent: destinationsCurrent,
+			writeCreatedPoints: write,
+		} = captureOriginalMethods;
+		const captureCall: AuthoringCall<
+			StorageService,
+			[],
+			ReturnType<StorageService['captureCreationDestinations']>
+		> = capture;
+		const currentCall: AuthoringCall<
+			StorageService,
+			Parameters<StorageService['areCreationDestinationsCurrent']>,
+			boolean
+		> = destinationsCurrent;
 		const destinations = captureCall.call(storage);
 		let observation: ReturnType<PropertyProducerRegistryService['beginCreationObservation']> | undefined;
 		const identities: string[] = [];
-		const { publishCreatedConfiguration: publish } = this.configurations;
-		const graphGuard = this.graph.capturePublishGuard;
+		const publishOriginalMethods: Readonly<{
+			publishCreatedConfiguration: VirtualThermostatAuthoringService['configurations']['publishCreatedConfiguration'];
+		}> = this.configurations;
+		const { publishCreatedConfiguration: publish } = publishOriginalMethods;
+		const graphGuardOriginalMethods: Readonly<{
+			capturePublishGuard: VirtualThermostatAuthoringService['graph']['capturePublishGuard'];
+		}> = this.graph;
+		const graphGuard = graphGuardOriginalMethods.capturePublishGuard;
 		let active = true;
-		const current = (): boolean => active && pipelineCurrent() && devices.isCurrent() && channels.isCurrent() && properties.isCurrent() &&
-			creationMethodCurrent(producers, 'beginCreationObservation', begin) && creationMethodCurrent(producers, 'isCreationObservationCurrent', observerCurrent) && creationMethodCurrent(producers, 'closeCreationObservation', close) && (observation === undefined || observerCall.call(producers, observation)) &&
-			creationMethodCurrent(storage, 'captureCreationDestinations', capture) && creationMethodCurrent(storage, 'areCreationDestinationsCurrent', destinationsCurrent) && creationMethodCurrent(storage, 'writeCreatedPoints', write) && currentCall.call(storage, destinations) &&
-			creationMethodCurrent(this.configurations, 'publishCreatedConfiguration', publish) && creationMethodCurrent(this.graph, 'capturePublishGuard', graphGuard) && DeviceCreationPublicationEngine.informationCurrent(information);
-		return Object.freeze({ source: this.dataSource, events, information, producers, producerObservation: () => { if (!observation) fail('Original fixed observation required.'); return observation; }, identities,
+		const current = (): boolean =>
+			active &&
+			pipelineCurrent() &&
+			devices.isCurrent() &&
+			channels.isCurrent() &&
+			properties.isCurrent() &&
+			creationMethodCurrent(producers, 'beginCreationObservation', begin) &&
+			creationMethodCurrent(producers, 'isCreationObservationCurrent', observerCurrent) &&
+			creationMethodCurrent(producers, 'closeCreationObservation', close) &&
+			(observation === undefined || observerCall.call(producers, observation)) &&
+			creationMethodCurrent(storage, 'captureCreationDestinations', capture) &&
+			creationMethodCurrent(storage, 'areCreationDestinationsCurrent', destinationsCurrent) &&
+			creationMethodCurrent(storage, 'writeCreatedPoints', write) &&
+			currentCall.call(storage, destinations) &&
+			creationMethodCurrent(this.configurations, 'publishCreatedConfiguration', publish) &&
+			creationMethodCurrent(this.graph, 'capturePublishGuard', graphGuard) &&
+			DeviceCreationPublicationEngine.informationCurrent(information);
+		return Object.freeze<DeviceCreationEnvironment>({
+			source: this.dataSource,
+			events,
+			information,
+			producers,
+			producerObservation: () => {
+				if (!observation) fail('Original fixed observation required.');
+				return observation;
+			},
+			identities,
 			admitIdentities: (ids: readonly string[]) => {
 				if (!active || observation || identities.length || !current()) fail('Creation identities already closed.');
 				identities.push(...ids);
 				Object.freeze(identities);
 				observation = beginCall.call(producers, identities);
 			},
-			graphGuardSource: this.graph, destinations,
+			graphGuardSource: this.graph,
+			destinations,
 			isCurrent: current,
-			mappingCurrent: (kind, mapping) => current() && (kind === 'device' ? devices.mapping === mapping : kind === 'channel' ? channels.mapping === mapping : properties.mapping === mapping),
+			mappingCurrent: (kind, mapping) =>
+				current() &&
+				(kind === 'device'
+					? devices.mapping === mapping
+					: kind === 'channel'
+						? channels.mapping === mapping
+						: properties.mapping === mapping),
 			publishConfiguration: async (lease, plan) => {
 				if (!current()) fail('Original creation publication unavailable.');
-				const call: AuthoringCall<VirtualThermostatConfigService, Parameters<VirtualThermostatConfigService['publishCreatedConfiguration']>, Promise<void>> = publish;
+				const call: AuthoringCall<
+					VirtualThermostatConfigService,
+					Parameters<VirtualThermostatConfigService['publishCreatedConfiguration']>,
+					Promise<void>
+				> = publish;
 				await call.call(this.configurations, lease, plan);
 			},
-			close: () => { if (!active) return; active = false; if (observation) closeCall.call(producers, observation); },
+			close: () => {
+				if (!active) return;
+				active = false;
+				if (observation) closeCall.call(producers, observation);
+			},
 		});
 	}
 
 	/** Complete raw domain rows, not C0's absent-config shortcut or a hydrated getter projection. */
-	async readCreationFacts(manager: EntityManager, turn: ClimateAutomationParticipantTurn): Promise<ClimateAutomationCreationFacts> {
+	async readCreationFacts(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+	): Promise<ClimateAutomationCreationFacts> {
 		if (!this.writer) fail('Original creation writer unavailable.');
 		this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 		const tables: Record<string, readonly Readonly<Record<string, ClimateAutomationJson>>[]> = {};
-		const names = [...new Set(this.dataSource.entityMetadatas.map((meta) => meta.tableName))].filter((name) =>
-			(name.startsWith('devices_module_') || name.startsWith('devices_virtual_') || name === 'devices_shelly_ng_sample_sources' || name === 'spaces_module_spaces') &&
-			!name.includes('climate_automation') && name !== 'devices_virtual_graph_revision' && name !== 'devices_module_property_value_locks').sort();
+		const names = [...new Set(this.dataSource.entityMetadatas.map((meta) => meta.tableName))]
+			.filter(
+				(name) =>
+					(name.startsWith('devices_module_') ||
+						name.startsWith('devices_virtual_') ||
+						name === 'devices_shelly_ng_sample_sources' ||
+						name === 'spaces_module_spaces') &&
+					!name.includes('climate_automation') &&
+					name !== 'devices_virtual_graph_revision' &&
+					name !== 'devices_module_property_value_locks',
+			)
+			.sort();
 		for (const name of names) {
 			this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 			if (!/^[a-z][a-z0-9_]+$/.test(name)) fail('Invalid creation metadata.');
 			const rows = await manager.query<Record<string, unknown>[]>(`SELECT * FROM "${name}"`);
 			this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
-			tables[name] = Object.freeze(rows.map((row) => {
-				const owned: Record<string, ClimateAutomationJson> = {};
-				for (const key of Object.keys(row).sort()) owned[key] = climateAutomationJson(row[key]);
-				return Object.freeze(owned);
-			}).sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b))));
+			tables[name] = Object.freeze(
+				rows
+					.map((row) => {
+						const owned: Record<string, ClimateAutomationJson> = {};
+						for (const key of Object.keys(row).sort()) owned[key] = climateAutomationJson(row[key]);
+						return Object.freeze(owned);
+					})
+					.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b))),
+			);
 		}
 		return Object.freeze({ tables: Object.freeze(tables) });
 	}
 
-	async prepareCreation(manager: EntityManager, turn: ClimateAutomationParticipantTurn, request: ClimateAutomationCreationRequest, before: ClimateAutomationCreationFacts, graphRevision: number): Promise<ClimateAutomationCreationPlan> {
+	async prepareCreation(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		request: ClimateAutomationCreationRequest,
+		before: ClimateAutomationCreationFacts,
+		graphRevision: number,
+	): Promise<ClimateAutomationCreationPlan> {
 		if (!this.writer) fail('Original creation writer unavailable.');
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
 		const dto = plainToInstance(CreateVirtualThermostatProducerDto, request);
 		const draft = await this.draft(manager, dto);
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
-		const ids = new Set([draft.device.id, ...draft.device.channels.map((row) => row.id), ...draft.device.channels.flatMap((row) => row.properties.map((property) => property.id))]);
+		const ids = new Set([
+			draft.device.id,
+			...draft.device.channels.map((row) => row.id),
+			...draft.device.channels.flatMap((row) => row.properties.map((property) => property.id)),
+		]);
 		// Retained controller data is NOT a new controller, even if catalog rows were removed.
 		for (const [table, rows] of Object.entries(before.tables)) {
 			if (table === 'devices_virtual_thermostat_recoveries') continue; // retained, mandatory and never rewritten
 			for (const row of rows) {
-				if (row.controllerId === draft.device.id || row.ownerDeviceId === draft.device.id || row.deviceId === draft.device.id || row.outputPropertyId && ids.has(String(row.outputPropertyId)))
+				const stringify: Readonly<{ call: (receiver: undefined, value: unknown) => string }> = String;
+				if (
+					row.controllerId === draft.device.id ||
+					row.ownerDeviceId === draft.device.id ||
+					row.deviceId === draft.device.id ||
+					(row.outputPropertyId && ids.has(stringify.call(undefined, row.outputPropertyId)))
+				)
 					fail('Retained controller state prevents trusted new creation.');
 			}
 		}
-		if (dto.configuration.expectedGraphRevision !== undefined && dto.configuration.expectedGraphRevision !== graphRevision)
+		if (
+			dto.configuration.expectedGraphRevision !== undefined &&
+			dto.configuration.expectedGraphRevision !== graphRevision
+		)
 			fail('Virtual dependency graph revision changed; reload and retry.');
 		// Exactly ONE actual prepare; its allocated UUIDs/time/qualifications are retained below.
 		const prepared = await this.configurations.prepare(manager, draft.dto.id, dto.configuration, draft.device);
 		this.writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
 		const createdAt = prepared.config.configuredAt.toISOString();
-		const stamp = (row: DeviceEntity | ChannelEntity | ChannelPropertyEntity): void => { row.createdAt = new Date(createdAt); Reflect.set(row, 'updatedAt', null); };
+		const stamp = (row: DeviceEntity | ChannelEntity | ChannelPropertyEntity): void => {
+			row.createdAt = new Date(createdAt);
+			Reflect.set(row, 'updatedAt', null);
+		};
 		stamp(draft.device);
-		for (const channel of draft.device.channels) { stamp(channel); for (const property of channel.properties) stamp(property); }
+		for (const channel of draft.device.channels) {
+			stamp(channel);
+			for (const property of channel.properties) stamp(property);
+		}
 		const inserts: ClimateAutomationCreationRow[] = [];
-		const add = <T extends object>(type: EntityTarget<T>, row: T): void => { inserts.push(this.creationRawRow(type, row)); };
+		const add = <T extends object>(type: EntityTarget<T>, row: T): void => {
+			inserts.push(this.creationRawRow(type, row));
+		};
 		add(VirtualDeviceEntity, draft.device);
 		for (const channel of draft.device.channels) {
 			add(VirtualChannelEntity, channel);
 			for (const property of channel.properties) {
-				if (prepared.settings.some((setting) => setting.propertyId === property.id)) property.permissions = [PermissionType.READ_WRITE];
+				if (prepared.settings.some((setting) => setting.propertyId === property.id))
+					property.permissions = [PermissionType.READ_WRITE];
 				add(VirtualChannelPropertyEntity, property);
 				property.permissions = [PermissionType.READ_ONLY];
 			}
 		}
-		for (const zoneId of draft.dto.zone_ids ?? []) add(DeviceZoneEntity, Object.assign(new DeviceZoneEntity(), { deviceId: draft.device.id, zoneId, createdAt: new Date(createdAt) }));
+		for (const zoneId of draft.dto.zone_ids ?? [])
+			add(
+				DeviceZoneEntity,
+				Object.assign(new DeviceZoneEntity(), { deviceId: draft.device.id, zoneId, createdAt: new Date(createdAt) }),
+			);
 		add(VirtualThermostatConfigEntity, prepared.config);
 		for (const row of prepared.sources) add(VirtualThermostatSourceEntity, row);
 		for (const row of prepared.actuators) add(VirtualThermostatActuatorClaimEntity, row);
@@ -249,15 +443,29 @@ export class VirtualThermostatAuthoringService {
 		for (const row of prepared.coolingDependencies) add(ThermostatCoolingDependencyEntity, row);
 		const catalog = this.creationCatalog(inserts, draft.device.id);
 		const configuration = this.configurations.describeCreated(prepared, graphRevision + 1);
-		const response = climateAutomationJson(instanceToPlain(Object.assign(new VirtualCreatedThermostatModel(), { device: catalog, configuration })));
-		return Object.freeze({ version: 1, controllerId: draft.device.id, createdAt, outputIds: Object.freeze(draft.device.channels.flatMap((channel) => channel.properties.map((property) => property.id))),
-			device: climateAutomationJson(instanceToPlain(draft.dto)), prepared: climateAutomationJson({ configuration }), inserts: Object.freeze(inserts), response });
+		const response = climateAutomationJson(
+			instanceToPlain(Object.assign(new VirtualCreatedThermostatModel(), { device: catalog, configuration })),
+		);
+		return Object.freeze({
+			version: 1,
+			controllerId: draft.device.id,
+			createdAt,
+			outputIds: Object.freeze(
+				draft.device.channels.flatMap((channel) => channel.properties.map((property) => property.id)),
+			),
+			device: climateAutomationJson(instanceToPlain(draft.dto)),
+			prepared: climateAutomationJson({ configuration }),
+			inserts: Object.freeze(inserts),
+			response,
+		});
 	}
 
 	private creationRawRow<T extends object>(type: EntityTarget<T>, entity: T): ClimateAutomationCreationRow {
 		const metadata = this.dataSource.getMetadata(type);
 		const columns = new Map<string, import('typeorm/metadata/ColumnMetadata').ColumnMetadata>();
-		for (const item of this.dataSource.entityMetadatas) if (item.tableName === metadata.tableName) for (const column of item.columns) columns.set(column.databaseName, column);
+		for (const item of this.dataSource.entityMetadatas)
+			if (item.tableName === metadata.tableName)
+				for (const column of item.columns) columns.set(column.databaseName, column);
 		const row: Record<string, ClimateAutomationJson> = {};
 		for (const [name, column] of columns) {
 			let value: unknown = column.isDiscriminator ? metadata.discriminatorValue : column.getEntityValue(entity);
@@ -273,7 +481,10 @@ export class VirtualThermostatAuthoringService {
 	}
 
 	private creationCatalog(rows: readonly ClimateAutomationCreationRow[], controllerId: string): VirtualDeviceEntity {
-		const hydrate = <T extends object>(type: EntityTarget<T>, raw: Readonly<Record<string, ClimateAutomationJson>>): T => {
+		const hydrate = <T extends object>(
+			type: EntityTarget<T>,
+			raw: Readonly<Record<string, ClimateAutomationJson>>,
+		): T => {
 			const metadata = this.dataSource.getMetadata(type);
 			const entity = this.dataSource.getRepository(type).create();
 			for (const column of metadata.columns) {
@@ -288,7 +499,10 @@ export class VirtualThermostatAuthoringService {
 				}
 				let owner: object | null = entity;
 				let descriptor: PropertyDescriptor | undefined;
-				while (owner && !descriptor) { descriptor = Object.getOwnPropertyDescriptor(owner, column.propertyName); owner = Reflect.getPrototypeOf(owner); }
+				while (owner && !descriptor) {
+					descriptor = Object.getOwnPropertyDescriptor(owner, column.propertyName);
+					owner = Reflect.getPrototypeOf(owner);
+				}
 				if (descriptor && ('value' in descriptor ? descriptor.writable !== true : descriptor.set === undefined))
 					fail('Original creation column is not writable.');
 				column.setEntityValue(entity, value);
@@ -298,19 +512,37 @@ export class VirtualThermostatAuthoringService {
 		const deviceRows = rows.filter((item) => item.table === this.dataSource.getMetadata(VirtualDeviceEntity).tableName);
 		if (deviceRows.length !== 1 || deviceRows[0].row.id !== controllerId) fail('Original creation catalog required.');
 		const device = hydrate(VirtualDeviceEntity, deviceRows[0].row);
-		device.channels = rows.filter((item) => item.table === this.dataSource.getMetadata(VirtualChannelEntity).tableName).map((item) => hydrate(VirtualChannelEntity, item.row));
+		device.channels = rows
+			.filter((item) => item.table === this.dataSource.getMetadata(VirtualChannelEntity).tableName)
+			.map((item) => hydrate(VirtualChannelEntity, item.row));
 		for (const channel of device.channels) {
 			channel.device = device.id;
 			channel.controls = [];
-			channel.properties = rows.filter((item) => item.table === this.dataSource.getMetadata(VirtualChannelPropertyEntity).tableName && item.row.channelId === channel.id).map((item) => hydrate(VirtualChannelPropertyEntity, item.row));
-			for (const property of channel.properties) { property.channel = channel.id; property.value = null; }
+			channel.properties = rows
+				.filter(
+					(item) =>
+						item.table === this.dataSource.getMetadata(VirtualChannelPropertyEntity).tableName &&
+						item.row.channelId === channel.id,
+				)
+				.map((item) => hydrate(VirtualChannelPropertyEntity, item.row));
+			for (const property of channel.properties) {
+				property.channel = channel.id;
+				property.value = null;
+			}
 		}
 		device.controls = [];
-		device.deviceZones = rows.filter((item) => item.table === this.dataSource.getMetadata(DeviceZoneEntity).tableName).map((item) => hydrate(DeviceZoneEntity, item.row));
+		device.deviceZones = rows
+			.filter((item) => item.table === this.dataSource.getMetadata(DeviceZoneEntity).tableName)
+			.map((item) => hydrate(DeviceZoneEntity, item.row));
 		return device;
 	}
 
-	async applyCreation(manager: EntityManager, turn: ClimateAutomationParticipantTurn, plan: ClimateAutomationCreationPlan, context: DeviceCreationContext): Promise<void> {
+	async applyCreation(
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		plan: ClimateAutomationCreationPlan,
+		context: DeviceCreationContext,
+	): Promise<void> {
 		if (!this.writer) fail('Original creation writer unavailable.');
 		this.writer.assertParticipantTurn(manager, turn, ['APPLY']);
 		context.assertOriginalAdmission();

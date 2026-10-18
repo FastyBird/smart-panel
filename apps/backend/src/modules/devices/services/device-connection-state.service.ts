@@ -5,7 +5,12 @@ import { type CreationStorageDestinations, StorageService } from '../../storage/
 import { ConnectionState, DEVICES_MODULE_NAME, OnlineDeviceState, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
-import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from './device-creation-context';
+import {
+	DeviceCreationPublicationEngine,
+	DeviceCreationPublicationLease,
+	creationHasDataMethod,
+	creationMethodCurrent,
+} from './device-creation-context';
 
 export interface DeviceConnectionStateValue {
 	online: boolean;
@@ -101,17 +106,23 @@ export class DeviceConnectionStateService {
 
 	captureCreatedMethodGuard(): () => boolean {
 		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
-		for (const { receiver, keys } of [ { receiver: this, keys: ['readCreated', 'writeCreated'] }, { receiver: this.storageService, keys: ['writeCreatedPoints'] } ]) for (const key of keys) {
-			if (!creationHasDataMethod(receiver, key)) throw new Error('Original connection state pipeline unavailable');
-			const method: unknown = Reflect.get(receiver, key); pins.push(Object.freeze({ receiver, key, method }));
-		}
+		for (const { receiver, keys } of [
+			{ receiver: this, keys: ['readCreated', 'writeCreated'] },
+			{ receiver: this.storageService, keys: ['writeCreatedPoints'] },
+		])
+			for (const key of keys) {
+				if (!creationHasDataMethod(receiver, key)) throw new Error('Original connection state pipeline unavailable');
+				const method: unknown = Reflect.get(receiver, key);
+				pins.push(Object.freeze({ receiver, key, method }));
+			}
 		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
 	}
 
 	/** No historical lookup can substitute a successor's status for original committed A. */
 	readCreated(lease: DeviceCreationPublicationLease, device: DeviceEntity): DeviceConnectionStateValue {
 		DeviceCreationPublicationEngine.assert(lease);
-		if (device !== DeviceCreationPublicationEngine.catalog(lease)) throw new Error('Exact original device snapshot required');
+		if (device !== DeviceCreationPublicationEngine.catalog(lease))
+			throw new Error('Exact original device snapshot required');
 		const id = device.id;
 		DeviceCreationPublicationEngine.assert(lease, id);
 		// This closed path initializes a NEW incarnation. A cache keyed only by ID may predate it;
@@ -127,7 +138,8 @@ export class DeviceConnectionStateService {
 		destinations: CreationStorageDestinations,
 	): Promise<void> {
 		DeviceCreationPublicationEngine.assert(lease);
-		if (device !== DeviceCreationPublicationEngine.catalog(lease)) throw new Error('Exact original device snapshot required');
+		if (device !== DeviceCreationPublicationEngine.catalog(lease))
+			throw new Error('Exact original device snapshot required');
 		const id = device.id;
 		const propertyId = property.id;
 		DeviceCreationPublicationEngine.assert(lease, id, propertyId);
@@ -135,18 +147,27 @@ export class DeviceConnectionStateService {
 		const child = DeviceCreationPublicationEngine.beginChild(lease, 'state', id);
 		let failure: { cause: unknown } | undefined;
 		try {
-		await DeviceCreationPublicationEngine.probe(lease, propertyId);
-		DeviceCreationPublicationEngine.assertProperty(lease, property);
-		const online = OnlineDeviceState.includes(status);
-		const lastChanged = new Date();
-		const point = { measurement: 'device_status', tags: { deviceId: id, propertyId }, fields: { online, onlineI: online ? 1 : 0, status }, timestamp: lastChanged };
-		DeviceCreationPublicationEngine.assert(lease, id, propertyId);
-		this.statusMap.set(id, { online, status, lastChanged });
-		this.statusPropertyMap.set(id, propertyId);
-		await this.storageService.writeCreatedPoints(lease, destinations, [point]);
-		DeviceCreationPublicationEngine.assert(lease, id, propertyId);
-		} catch (cause) { failure = { cause }; throw cause; }
-		finally { child.finish(failure); }
+			await DeviceCreationPublicationEngine.probe(lease, propertyId);
+			DeviceCreationPublicationEngine.assertProperty(lease, property);
+			const online = OnlineDeviceState.includes(status);
+			const lastChanged = new Date();
+			const point = {
+				measurement: 'device_status',
+				tags: { deviceId: id, propertyId },
+				fields: { online, onlineI: online ? 1 : 0, status },
+				timestamp: lastChanged,
+			};
+			DeviceCreationPublicationEngine.assert(lease, id, propertyId);
+			this.statusMap.set(id, { online, status, lastChanged });
+			this.statusPropertyMap.set(id, propertyId);
+			await this.storageService.writeCreatedPoints(lease, destinations, [point]);
+			DeviceCreationPublicationEngine.assert(lease, id, propertyId);
+		} catch (cause) {
+			failure = { cause };
+			throw cause;
+		} finally {
+			child.finish(failure);
+		}
 	}
 
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {

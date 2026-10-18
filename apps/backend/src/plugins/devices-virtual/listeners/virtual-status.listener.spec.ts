@@ -1,8 +1,8 @@
-import { DeviceCreationPublicationLease } from '../../../modules/devices/services/device-creation-context';
 import { ConnectionState, OnlineDeviceState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceCreationPublicationLease } from '../../../modules/devices/services/device-creation-context';
 import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
 import { VirtualPropertyIndexService, VirtualPropertyLink } from '../services/virtual-property-index.service';
@@ -489,9 +489,15 @@ describe('VirtualStatusListener', () => {
 		});
 	});
 	it('does not enter the real status queue or infer CONNECTED from a forged creation lease', async () => {
-		await expect(listener.recomputeCreated(new DeviceCreationPublicationLease(), new DeviceEntity(), new ChannelEntity(), new ChannelPropertyEntity())).rejects.toThrow('Original creation publication unavailable');
+		await expect(
+			listener.recomputeCreated(
+				new DeviceCreationPublicationLease(),
+				new DeviceEntity(),
+				new ChannelEntity(),
+				new ChannelPropertyEntity(),
+			),
+		).rejects.toThrow('Original creation publication unavailable');
 		expect(connectivity.setConnectionState).not.toHaveBeenCalled();
 		expect(index.findLinksByVirtualDevice).not.toHaveBeenCalled();
 	});
-
 });

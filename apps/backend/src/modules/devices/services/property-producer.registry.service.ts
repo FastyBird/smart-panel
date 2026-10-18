@@ -213,7 +213,9 @@ interface PreparedBatchRecord {
 
 /** Opaque read-only evidence. Never a producer, publisher or write capability. */
 export class CreationProducerObservation {
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 interface CreationProducerObservationRecord {
 	active: boolean;
@@ -337,15 +339,27 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	/** Explicit finite observation admission; no registry authority or epoch is minted by a check. */
 	beginCreationObservation(ids: readonly string[]): CreationProducerObservation {
 		if (this.destroyed) throw new Error('Producer registry destroyed');
-		if (!Array.isArray(ids)) throw new Error('Invalid creation observation');
+		const arrays: Readonly<{ isArray: (value: unknown) => value is readonly unknown[] }> = Array;
+		if (!arrays.isArray(ids)) throw new Error('Invalid creation observation');
 		const fixedIds = [...ids];
-		if (fixedIds.length === 0 || new Set(fixedIds).size !== fixedIds.length || fixedIds.some((id) => typeof id !== 'string' || id.length === 0))
+		if (
+			fixedIds.length === 0 ||
+			new Set(fixedIds).size !== fixedIds.length ||
+			fixedIds.some((id) => typeof id !== 'string' || id.length === 0)
+		)
 			throw new Error('Invalid creation observation');
 		// Read all input before installing any membership; input getters cannot partially admit a token.
-		const slots = new Map<string, Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>>(fixedIds.map((id): [string, Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>] => {
-			const entry = this.entries.get(id);
-			return [id, Object.freeze({ entry, lease: entry?.lease })];
-		}));
+		const slots = new Map<
+			string,
+			Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>
+		>(
+			fixedIds.map(
+				(id): [string, Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>] => {
+					const entry = this.entries.get(id);
+					return [id, Object.freeze({ entry, lease: entry?.lease })];
+				},
+			),
+		);
 		if (this.destroyed) throw new Error('Producer registry destroyed');
 		const token = Object.freeze(new CreationProducerObservation());
 		const record: CreationProducerObservationRecord = { active: true, slots };

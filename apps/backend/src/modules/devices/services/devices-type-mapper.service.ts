@@ -45,23 +45,37 @@ export class DevicesTypeMapperService {
 	private readonly mappings = new Map<string, DeviceTypeMapping<any, any, any>>();
 
 	private registrationSequence = 0n;
-	private readonly creationRegistrations = new Map<string, {
-		readonly mapping: object;
-		readonly revision: bigint;
-		readonly close: () => void;
-		readonly isCurrent: () => boolean;
-	}>();
+	private readonly creationRegistrations = new Map<
+		string,
+		{
+			readonly mapping: object;
+			readonly revision: bigint;
+			readonly close: () => void;
+			readonly isCurrent: () => boolean;
+		}
+	>();
 
 	registerMapping<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto, TUpdateDTO extends UpdateDeviceDto>(
 		mapping: DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO>,
 	): void {
 		const type = mapping.type;
 		let active = true;
-		const fields = ['type', 'class', 'createDto', 'updateDto', 'beforeCreate', 'afterCreate', 'beforeUpdate', 'afterUpdate', 'withStructuralWrite'];
+		const fields = [
+			'type',
+			'class',
+			'createDto',
+			'updateDto',
+			'beforeCreate',
+			'afterCreate',
+			'beforeUpdate',
+			'afterUpdate',
+			'withStructuralWrite',
+		];
 		const descriptors = (() => {
 			try {
 				return fields.map((field) => {
-					const descriptor: Readonly<{ value?: unknown; get?: unknown; set?: unknown }> | undefined = Object.getOwnPropertyDescriptor(mapping, field);
+					const descriptor: Readonly<{ value?: unknown; get?: unknown; set?: unknown }> | undefined =
+						Object.getOwnPropertyDescriptor(mapping, field);
 					return { field, descriptor };
 				});
 			} catch {
@@ -70,16 +84,31 @@ export class DevicesTypeMapperService {
 			}
 		})();
 		const revision = ++this.registrationSequence;
-		const registration: { readonly mapping: object; readonly revision: bigint; readonly close: () => void; readonly isCurrent: () => boolean } = {
+		const registration: {
+			readonly mapping: object;
+			readonly revision: bigint;
+			readonly close: () => void;
+			readonly isCurrent: () => boolean;
+		} = {
 			mapping,
 			revision,
-			close: (): void => { active = false; },
-			isCurrent: (): boolean => active && descriptors !== undefined && this.creationRegistrations.get(type) === registration &&
+			close: (): void => {
+				active = false;
+			},
+			isCurrent: (): boolean =>
+				active &&
+				descriptors !== undefined &&
+				this.creationRegistrations.get(type) === registration &&
 				descriptors.every(({ field, descriptor }) => {
-					const current: Readonly<{ value?: unknown; get?: unknown; set?: unknown }> | undefined = Object.getOwnPropertyDescriptor(mapping, field);
-					return descriptor === undefined ? current === undefined :
-						descriptor.get === undefined && descriptor.set === undefined && current?.get === undefined &&
-						current?.set === undefined && current?.value === descriptor.value;
+					const current: Readonly<{ value?: unknown; get?: unknown; set?: unknown }> | undefined =
+						Object.getOwnPropertyDescriptor(mapping, field);
+					return descriptor === undefined
+						? current === undefined
+						: descriptor.get === undefined &&
+								descriptor.set === undefined &&
+								current?.get === undefined &&
+								current?.set === undefined &&
+								current?.value === descriptor.value;
 				}),
 		};
 		this.creationRegistrations.get(type)?.close();
@@ -110,7 +139,9 @@ export class DevicesTypeMapperService {
 	}
 
 	/** Read-only continuity of the ORIGINAL registration; ordinary lookup never mints an epoch. */
-	captureMapping<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto, TUpdateDTO extends UpdateDeviceDto>(type: string): Readonly<{ mapping: DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO>; isCurrent: () => boolean }> | null {
+	captureMapping<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto, TUpdateDTO extends UpdateDeviceDto>(
+		type: string,
+	): Readonly<{ mapping: DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO>; isCurrent: () => boolean }> | null {
 		const registration = this.creationRegistrations.get(type);
 		if (!registration?.isCurrent()) return null;
 		const mapping = this.getMapping<TDevice, TCreateDTO, TUpdateDTO>(type);
