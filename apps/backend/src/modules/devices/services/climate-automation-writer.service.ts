@@ -1021,6 +1021,7 @@ export class ClimateAutomationWriterService {
 				captureEnvironment;
 			environment = captureCall.call(capability);
 			const env = environment;
+			const nativeCatalog = this.creationNativeCatalog(env);
 			const owned = this.manualSnapshots.run(snapshot, () => {
 				const keys = Reflect.ownKeys(request);
 				if (keys.length !== 3 || keys.some((key) => key !== 'kind' && key !== 'device' && key !== 'configuration'))
@@ -1084,7 +1085,7 @@ export class ClimateAutomationWriterService {
 						const supplied = await prepareCall.call(capability, manager, turn, owned, before, graphBefore.revision);
 						if (!current()) throw new Conflict('unavailable');
 						const plan = this.creationPlan(supplied, owned.ids);
-						this.validateCreationOwnership(plan, owned.device);
+						this.validateCreationOwnership(plan, owned.device, nativeCatalog);
 						const expected = this.creationExpected(before, plan);
 						const delta: ClimateAutomationGraphDelta = Object.freeze({
 							before: graphBefore,
@@ -1334,9 +1335,49 @@ export class ClimateAutomationWriterService {
 		});
 	}
 
+	/** Closed original environment facts, owned before any caller input traversal. */
+	private creationNativeCatalog(environment: DeviceCreationEnvironment): DeviceCreationEnvironment['nativeCatalog'] {
+		if (environment.source !== this.dataSource) throw new Conflict('invalid');
+		const bundleDescriptor = Object.getOwnPropertyDescriptor(environment, 'nativeCatalog');
+		if (!bundleDescriptor || bundleDescriptor.get !== undefined || bundleDescriptor.set !== undefined)
+			throw new Conflict('invalid');
+		const bundle: unknown = bundleDescriptor.value;
+		if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) throw new Conflict('invalid');
+		const roles = Reflect.ownKeys(bundle);
+		if (roles.length !== 3 || roles.some((key) => key !== 'device' && key !== 'channel' && key !== 'property'))
+			throw new Conflict('invalid');
+		const own = (role: 'device' | 'channel' | 'property', table: string) => {
+			const descriptor = Object.getOwnPropertyDescriptor(bundle, role);
+			if (!descriptor || descriptor.get !== undefined || descriptor.set !== undefined) throw new Conflict('invalid');
+			const row: unknown = descriptor.value;
+			if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Conflict('invalid');
+			const keys = Reflect.ownKeys(row);
+			if (keys.length !== 3 || keys.some((key) => key !== 'tableName' && key !== 'discriminatorColumn' && key !== 'discriminatorValue'))
+				throw new Conflict('invalid');
+			const read = (key: string): unknown => {
+				const field = Object.getOwnPropertyDescriptor(row, key);
+				if (!field || field.get !== undefined || field.set !== undefined) throw new Conflict('invalid');
+				return field.value;
+			};
+			const tableName = read('tableName');
+			const discriminatorColumn = read('discriminatorColumn');
+			const discriminatorValue = read('discriminatorValue');
+			if (tableName !== table || discriminatorColumn !== 'type' ||
+				(typeof discriminatorValue !== 'string' && (typeof discriminatorValue !== 'number' || !Number.isFinite(discriminatorValue))))
+				throw new Conflict('invalid');
+			return Object.freeze({ tableName, discriminatorColumn, discriminatorValue });
+		};
+		return Object.freeze({
+			device: own('device', 'devices_module_devices'),
+			channel: own('channel', 'devices_module_channels'),
+			property: own('property', 'devices_module_channels_properties'),
+		});
+	}
+
 	private validateCreationOwnership(
 		plan: ClimateAutomationCreationPlan,
 		device: { readonly [key: string]: ClimateAutomationJson },
+		nativeCatalog: DeviceCreationEnvironment['nativeCatalog'],
 	): void {
 		const channels = new Map<string, readonly string[]>();
 		const properties = new Map<string, string>();
@@ -1382,7 +1423,7 @@ export class ClimateAutomationWriterService {
 			seen.add(key);
 			switch (table) {
 				case 'devices_module_devices':
-					if (row.id !== plan.controllerId || row.type !== 'virtual') throw new Conflict('invalid');
+					if (row.id !== plan.controllerId || row.type !== nativeCatalog.device.discriminatorValue) throw new Conflict('invalid');
 					devices++;
 					break;
 				case 'devices_module_channels':
@@ -1390,7 +1431,7 @@ export class ClimateAutomationWriterService {
 						typeof row.id !== 'string' ||
 						!channels.has(row.id) ||
 						row.deviceId !== plan.controllerId ||
-						row.type !== 'virtual'
+						row.type !== nativeCatalog.channel.discriminatorValue
 					)
 						throw new Conflict('invalid');
 					channelCount++;
@@ -1399,7 +1440,7 @@ export class ClimateAutomationWriterService {
 					if (
 						typeof row.id !== 'string' ||
 						properties.get(row.id) !== row.channelId ||
-						row.type !== 'virtual' ||
+						row.type !== nativeCatalog.property.discriminatorValue ||
 						row.valueOrigin !== 'local' ||
 						row.sourcePropertyId !== null
 					)

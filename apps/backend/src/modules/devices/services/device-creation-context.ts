@@ -932,7 +932,21 @@ export class DeviceCreationPublicationEngine {
 	}
 }
 
+/** Original persisted discriminator facts only; public plugin type remains a separate check. */
+export interface DeviceCreationNativeCatalog {
+	readonly device: DeviceCreationNativeCatalogRole;
+	readonly channel: DeviceCreationNativeCatalogRole;
+	readonly property: DeviceCreationNativeCatalogRole;
+}
+
+interface DeviceCreationNativeCatalogRole {
+	readonly tableName: string;
+	readonly discriminatorColumn: string;
+	readonly discriminatorValue: string | number;
+}
+
 export interface DeviceCreationEnvironment {
+	readonly nativeCatalog: DeviceCreationNativeCatalog;
 	readonly identities: readonly string[];
 	readonly admitIdentities: (ids: readonly string[]) => void;
 	readonly graphGuardSource: Readonly<{ capturePublishGuard: () => () => boolean }>;

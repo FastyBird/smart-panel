@@ -2208,5 +2208,125 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(fixture.submittedPoints).toEqual([]);
 			});
 		});
+		describe('original native catalog ownership facts', () => {
+			it('captures exactly three frozen native roles from the original same-source metadata without catalog SQL', () => {
+				const query = jest.spyOn(database, 'query');
+				const environment = fixture.authoring.captureCreationEnvironment();
+				try {
+					expect(environment.source).toBe(database);
+					expect(Object.keys(environment.nativeCatalog).sort()).toEqual(['channel', 'device', 'property']);
+					expect(Object.isFrozen(environment.nativeCatalog)).toBe(true);
+					const roles: readonly { role: 'device' | 'channel' | 'property'; type: typeof VirtualDeviceEntity | typeof VirtualChannelEntity | typeof VirtualChannelPropertyEntity }[] = [
+						{ role: 'device', type: VirtualDeviceEntity },
+						{ role: 'channel', type: VirtualChannelEntity },
+						{ role: 'property', type: VirtualChannelPropertyEntity },
+					];
+					for (const { role, type } of roles) {
+						const metadata = database.getMetadata(type);
+						const column = metadata.discriminatorColumn;
+						if (!column) throw new Error('Original native discriminator required');
+						expect(environment.nativeCatalog[role]).toEqual({
+							tableName: metadata.tableName,
+							discriminatorColumn: column.databaseName,
+							discriminatorValue: database.driver.preparePersistentValue(metadata.discriminatorValue, column),
+						});
+						expect(Object.isFrozen(environment.nativeCatalog[role])).toBe(true);
+						expect(environment.nativeCatalog[role].discriminatorValue).not.toBe('virtual');
+					}
+					expect(query).not.toHaveBeenCalled();
+				} finally {
+					environment.close();
+					query.mockRestore();
+				}
+			});
+
+			const wrongNativeRows: readonly {
+				role: 'device' | 'channel' | 'property';
+				type: typeof VirtualDeviceEntity | typeof VirtualChannelEntity | typeof VirtualChannelPropertyEntity;
+				wrong: string;
+			}[] = [
+				{ role: 'device', type: VirtualDeviceEntity, wrong: 'virtual' },
+				{ role: 'channel', type: VirtualChannelEntity, wrong: 'virtual' },
+				{ role: 'property', type: VirtualChannelPropertyEntity, wrong: 'virtual' },
+				{ role: 'device', type: VirtualDeviceEntity, wrong: 'foreign-native-label' },
+				{ role: 'channel', type: VirtualChannelEntity, wrong: 'foreign-native-label' },
+				{ role: 'property', type: VirtualChannelPropertyEntity, wrong: 'foreign-native-label' },
+			];
+			it.each(wrongNativeRows)('refuses planned $role native label $wrong before apply or native ACK', async ({ type, wrong }) => {
+				fixture.automation.onModuleDestroy();
+				const originalMethods: Readonly<{ prepareCreation: VirtualThermostatAuthoringService['prepareCreation'] }> = fixture.authoring;
+				const { prepareCreation } = originalMethods;
+				const originalCall: Readonly<{
+					call: (receiver: VirtualThermostatAuthoringService, ...args: Parameters<VirtualThermostatAuthoringService['prepareCreation']>) => ReturnType<VirtualThermostatAuthoringService['prepareCreation']>;
+				}> = prepareCreation;
+				const table = database.getMetadata(type).tableName;
+				let changedRows = 0;
+				const prepare = jest.spyOn(fixture.authoring, 'prepareCreation').mockImplementation(async (...args) => {
+					const plan = await originalCall.call(fixture.authoring, ...args);
+					const inserts = plan.inserts.map((item) => {
+						if (item.table !== table) return item;
+						changedRows++;
+						return Object.freeze({ table: item.table, row: Object.freeze({ ...item.row, type: wrong }) });
+					});
+					return Object.freeze({ ...plan, inserts: Object.freeze(inserts) });
+				});
+				const apply = jest.spyOn(fixture.authoring, 'applyCreation');
+				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				provider.onModuleInit();
+				fixture.extraProviders.push(provider);
+				let nativeAcknowledgments = 0;
+				database.subscribers.push({ afterQuery: (event) => { if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++; } });
+				const input = request(relayId);
+				await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration })).resolves.toEqual({ outcome: 'conflict', reason: 'invalid' });
+				expect(prepare).toHaveBeenCalledTimes(1);
+				expect(changedRows).toBeGreaterThan(0);
+				expect(apply).not.toHaveBeenCalled();
+				expect(nativeAcknowledgments).toBe(0);
+				expect(fixture.submittedPoints).toEqual([]);
+				expect(publications).toEqual([]);
+				expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).toBeNull();
+			});
+
+			it('does not adopt a metadata method replacement after the original native facts were captured before input', async () => {
+				const input = request(relayId);
+				const transactions = jest.spyOn(database, 'transaction');
+				let replacementCalls = (): number => 0;
+				let restore = (): void => undefined;
+				try {
+					await expect(fixture.writer.createVirtualThermostatV1({
+						kind: 'create-virtual-thermostat:v1',
+						get device() {
+							const replacement = jest.spyOn(database, 'getMetadata');
+							replacementCalls = () => replacement.mock.calls.length;
+							restore = () => { replacement.mockRestore(); };
+							return input.device;
+						},
+						configuration: input.configuration,
+					})).rejects.toBeInstanceOf(Error);
+					expect(replacementCalls()).toBe(0);
+					expect(transactions).not.toHaveBeenCalled();
+					expect(fixture.submittedPoints).toEqual([]);
+				} finally { restore(); }
+			});
+
+			it('cannot rescue original native facts with same-object mapper re-registration during input capture', async () => {
+				const original = fixture.deviceMapper.captureMapping('virtual');
+				if (!original) throw new Error('Original device mapping required');
+				const input = request(relayId);
+				const transactions = jest.spyOn(database, 'transaction');
+				await expect(fixture.writer.createVirtualThermostatV1({
+					kind: 'create-virtual-thermostat:v1',
+					get device() {
+						fixture.deviceMapper.registerMapping(original.mapping);
+						return input.device;
+					},
+					configuration: input.configuration,
+				})).rejects.toBeInstanceOf(Error);
+				expect(original.isCurrent()).toBe(false);
+				expect(transactions).not.toHaveBeenCalled();
+				expect(fixture.submittedPoints).toEqual([]);
+			});
+		});
+
 	});
 });
