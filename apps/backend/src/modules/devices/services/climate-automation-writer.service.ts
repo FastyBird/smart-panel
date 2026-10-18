@@ -1101,6 +1101,8 @@ export class ClimateAutomationWriterService {
 						});
 						turnRecord.delta = delta;
 						await invoke(pinned.graphPlan, pinned.graph, manager, turn, delta);
+						if (!current()) throw new Conflict('unavailable');
+						turnRecord.phase = 'APPLY';
 						const ticket = invoke<
 							ClimateAutomationGraphParticipant,
 							Parameters<ClimateAutomationGraphParticipant['beginReservedValidation']>,
@@ -1139,7 +1141,6 @@ export class ClimateAutomationWriterService {
 						};
 						creation = record;
 						this.creations.set(plan, record);
-						turnRecord.phase = 'APPLY';
 						const context = DeviceCreationContext.fromReserved(this, manager, turn, plan);
 						record.context = context;
 						record.publication = DeviceCreationPublicationEngine.fromReserved(this, manager, turn, plan);

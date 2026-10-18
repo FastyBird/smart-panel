@@ -2471,5 +2471,116 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(publications).toEqual([]);
 			});
 		});
+		describe('original creation graph phase ordering', () => {
+			it('validates the real NORMALIZE plan before its APPLY ticket and APPLY catalog with identical original arguments', async () => {
+				fixture.automation.onModuleDestroy();
+				const graphMethods: Readonly<{
+					validateReservedReplacement: VirtualDependencyGraphService['validateReservedReplacement'];
+					beginReservedValidation: VirtualDependencyGraphService['beginReservedValidation'];
+				}> = fixture.graph;
+				const { validateReservedReplacement, beginReservedValidation } = graphMethods;
+				const planCall: Readonly<{ call: (receiver: VirtualDependencyGraphService, ...args: Parameters<VirtualDependencyGraphService['validateReservedReplacement']>) => ReturnType<VirtualDependencyGraphService['validateReservedReplacement']> }> = validateReservedReplacement;
+				const beginCall: Readonly<{ call: (receiver: VirtualDependencyGraphService, ...args: Parameters<VirtualDependencyGraphService['beginReservedValidation']>) => ReturnType<VirtualDependencyGraphService['beginReservedValidation']> }> = beginReservedValidation;
+				const authoringMethods: Readonly<{ applyCreation: VirtualThermostatAuthoringService['applyCreation'] }> = fixture.authoring;
+				const { applyCreation } = authoringMethods;
+				const applyCall: Readonly<{ call: (receiver: VirtualThermostatAuthoringService, ...args: Parameters<VirtualThermostatAuthoringService['applyCreation']>) => ReturnType<VirtualThermostatAuthoringService['applyCreation']> }> = applyCreation;
+				const trace: string[] = [];
+				const observerFailures: unknown[] = [];
+				const plan = jest.spyOn(fixture.graph, 'validateReservedReplacement').mockImplementation((...args) => {
+					fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
+					trace.push('NORMALIZE:plan');
+					const promise = planCall.call(fixture.graph, ...args);
+					void promise.then(() => {
+						fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
+						trace.push('NORMALIZE:validated');
+					}, (error: unknown) => { observerFailures.push(error); }).catch((error: unknown) => { observerFailures.push(error); });
+					return promise;
+				});
+				const begin = jest.spyOn(fixture.graph, 'beginReservedValidation').mockImplementation((...args) => {
+					fixture.writer.assertParticipantTurn(args[0], args[1], ['APPLY'], args[2]);
+					trace.push('APPLY:ticket');
+					return beginCall.call(fixture.graph, ...args);
+				});
+				const apply = jest.spyOn(fixture.authoring, 'applyCreation').mockImplementation((...args) => {
+					fixture.writer.assertParticipantTurn(args[0], args[1], ['APPLY']);
+					trace.push('APPLY:catalog');
+					return applyCall.call(fixture.authoring, ...args);
+				});
+				// Install observers BEFORE this new genuine provider's original capability capture.
+				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				provider.onModuleInit();
+				fixture.extraProviders.push(provider);
+				const input = request(relayId);
+				const result = await fixture.authoring.create(input);
+				expect(trace).toEqual(['NORMALIZE:plan', 'NORMALIZE:validated', 'APPLY:ticket', 'APPLY:catalog']);
+				expect(observerFailures).toEqual([]);
+				expect(plan).toHaveBeenCalledTimes(1);
+				expect(begin).toHaveBeenCalledTimes(1);
+				expect(apply).toHaveBeenCalledTimes(1);
+				for (const index of [0, 1, 2]) expect(begin.mock.calls[0][index]).toBe(plan.mock.calls[0][index]);
+				expect(apply.mock.calls[0][0]).toBe(plan.mock.calls[0][0]);
+				expect(apply.mock.calls[0][1]).toBe(plan.mock.calls[0][1]);
+				expect(result.device.id).toBe(input.device.id);
+				expect(result.configuration.revision).toBe(1);
+				expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).not.toBeNull();
+				expect(fixture.submittedPoints.length).toBeGreaterThan(0);
+			});
+
+			it('refuses a held original graph plan after owner revocation without ticket mutation or fresh-owner rescue', async () => {
+				fixture.automation.onModuleDestroy();
+				const originalMethods: Readonly<{ validateReservedReplacement: VirtualDependencyGraphService['validateReservedReplacement'] }> = fixture.graph;
+				const { validateReservedReplacement } = originalMethods;
+				const originalCall: Readonly<{ call: (receiver: VirtualDependencyGraphService, ...args: Parameters<VirtualDependencyGraphService['validateReservedReplacement']>) => ReturnType<VirtualDependencyGraphService['validateReservedReplacement']> }> = validateReservedReplacement;
+				let reached: () => void = () => {};
+				let release: () => void = () => {};
+				const held = new Promise<void>((resolve) => { reached = resolve; });
+				const resume = new Promise<void>((resolve) => { release = resolve; });
+				const plan = jest.spyOn(fixture.graph, 'validateReservedReplacement').mockImplementation(async (...args) => {
+					fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
+					await originalCall.call(fixture.graph, ...args);
+					reached();
+					await resume;
+				});
+				const begin = jest.spyOn(fixture.graph, 'beginReservedValidation');
+				const apply = jest.spyOn(fixture.authoring, 'applyCreation');
+				const original = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				original.onModuleInit();
+				fixture.extraProviders.push(original);
+				const ownerA = fixture.core.captureProvider('virtual-thermostat:v1');
+				if (!ownerA) throw new Error('Original actual provider required');
+				const input = request(relayId);
+				const revision = await fixture.graph.revision();
+				const pending = fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration });
+				void pending.catch(() => undefined);
+				try {
+					await reachesCreationBarrier(pending, held);
+					expect(plan).toHaveBeenCalledTimes(1);
+					expect(begin).not.toHaveBeenCalled();
+					original.onModuleDestroy();
+					expect(ownerA.isCurrent()).toBe(false);
+					const successor = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+					successor.onModuleInit();
+					fixture.extraProviders.push(successor);
+					const ownerB = fixture.core.captureProvider('virtual-thermostat:v1');
+					if (!ownerB) throw new Error('Fresh actual successor required');
+					expect(ownerB.isCurrent()).toBe(true);
+					release();
+					await expect(pending).resolves.toEqual({ outcome: 'conflict', reason: 'unavailable' });
+					expect(begin).not.toHaveBeenCalled();
+					expect(apply).not.toHaveBeenCalled();
+					expect(await fixture.graph.revision()).toBe(revision);
+					expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).toBeNull();
+					expect(fixture.submittedPoints).toEqual([]);
+					expect(publications).toEqual([]);
+					original.onModuleDestroy();
+					expect(ownerA.isCurrent()).toBe(false);
+					expect(ownerB.isCurrent()).toBe(true);
+				} finally {
+					release();
+					await pending.then(() => undefined, () => undefined);
+				}
+			});
+		});
+
 	});
 });
