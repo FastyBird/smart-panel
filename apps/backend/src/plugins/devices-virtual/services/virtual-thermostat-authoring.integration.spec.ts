@@ -44,6 +44,7 @@ import { ClimateAutomationRegistryService } from '../../../modules/devices/servi
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
+import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
@@ -2325,6 +2326,81 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(original.isCurrent()).toBe(false);
 				expect(transactions).not.toHaveBeenCalled();
 				expect(fixture.submittedPoints).toEqual([]);
+			});
+		});
+
+		describe('original native parent to public validation identity', () => {
+			it('proves the original native parent before exposing public virtual identity through both real validators and preserves raw storage after settlement', async () => {
+				const input = request(relayId);
+				const metadata = database.getMetadata(VirtualDeviceEntity);
+				const column = metadata.discriminatorColumn;
+				if (!column) throw new Error('Original device native discriminator required');
+				const nativeLabel: unknown = database.driver.preparePersistentValue(metadata.discriminatorValue, column);
+				expect(nativeLabel).not.toBe('virtual');
+				const exists = jest.spyOn(fixture.module.get(DeviceExistsConstraintValidator), 'validate');
+				const containment = jest.spyOn(fixture.module.get(DeviceIsVirtualConstraintValidator), 'validate');
+				const originals: Readonly<{ readOriginalDeviceIdentity: typeof DeviceCreationContext.readOriginalDeviceIdentity }> = DeviceCreationContext;
+				const { readOriginalDeviceIdentity } = originals;
+				const originalCall: Readonly<{
+					call: (receiver: typeof DeviceCreationContext, deviceId: string) => ReturnType<typeof DeviceCreationContext.readOriginalDeviceIdentity>;
+				}> = readOriginalDeviceIdentity;
+				const observed: Readonly<{ id: string; type: string }>[] = [];
+				const observerFailures: unknown[] = [];
+				const originalQueryLeases: boolean[] = [];
+				database.subscribers.push({ beforeQuery: (event) => {
+					if (event.query.includes('"device"."type" AS "type"') && event.parameters?.includes(input.device.id))
+						originalQueryLeases.push(event.queryRunner.isTransactionActive && hasCurrentSqliteConnectionLease(database));
+				} });
+				const read = jest.spyOn(DeviceCreationContext, 'readOriginalDeviceIdentity').mockImplementation((id) => {
+					const promise = originalCall.call(DeviceCreationContext, id);
+					if (promise !== undefined) {
+						void promise.then((identity) => {
+							if (identity) observed.push(identity);
+						}, (error: unknown) => { observerFailures.push(error); }).catch((error: unknown) => { observerFailures.push(error); });
+					}
+					return promise;
+				});
+				try {
+					const result = await fixture.authoring.create(input);
+					expect(result.device.id).toBe(input.device.id);
+					expect(result.device.type).toBe('virtual');
+					expect(Object.hasOwn(result.device, 'type')).toBe(false);
+					expect(exists.mock.calls.filter(([id]) => id === input.device.id).length).toBeGreaterThanOrEqual(2);
+					expect(containment.mock.calls.filter(([id]) => id === input.device.id).length).toBeGreaterThanOrEqual(2);
+					expect(originalQueryLeases.length).toBeGreaterThanOrEqual(2);
+					expect(originalQueryLeases.every(Boolean)).toBe(true);
+					expect(observed.length).toBeGreaterThanOrEqual(2);
+					expect(observed.every((identity) => identity.id === input.device.id && identity.type === 'virtual')).toBe(true);
+					expect(observerFailures).toEqual([]);
+					const table = database.driver.escape(metadata.tableName);
+					const discriminator = database.driver.escape(column.databaseName);
+					const raw = await database.manager.query<{ id: string; nativeType: unknown }[]>(`SELECT id, ${discriminator} AS nativeType FROM ${table} WHERE id = ?`, [input.device.id]);
+					expect(raw).toEqual([{ id: input.device.id, nativeType: nativeLabel }]);
+					expect(DeviceCreationContext.readOriginalDeviceIdentity(input.device.id)).toBeUndefined();
+				} finally { read.mockRestore(); }
+			});
+
+			it('rejects wrong-root reentry at the actual parent query before a second query and retains caught operation poison', async () => {
+				const input = request(relayId);
+				const wrongRootId = uuid();
+				let reachedParentQuery = false;
+				let caught: unknown;
+				let wrongRootQueries = 0;
+				database.subscribers.push({ beforeQuery: (event) => {
+					if (event.parameters?.includes(wrongRootId)) wrongRootQueries++;
+					if (!reachedParentQuery && event.query.includes('"device"."type" AS "type"') && event.parameters?.includes(input.device.id)) {
+						reachedParentQuery = true;
+						try { DeviceCreationContext.readOriginalDeviceIdentity(wrongRootId); }
+						catch (error) { caught = error; }
+					}
+				} });
+				await expect(fixture.authoring.create(input)).rejects.toBeInstanceOf(Error);
+				expect(reachedParentQuery).toBe(true);
+				expect(caught).toBeInstanceOf(Error);
+				expect(wrongRootQueries).toBe(0);
+				expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).toBeNull();
+				expect(fixture.submittedPoints).toEqual([]);
+				expect(publications).toEqual([]);
 			});
 		});
 

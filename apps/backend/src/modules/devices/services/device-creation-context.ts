@@ -89,16 +89,21 @@ export class DeviceCreationContext {
 
 	private async readOriginalDeviceIdentity(deviceId: string): Promise<Readonly<{ id: string; type: string }> | null> {
 		this.assertOriginalAdmission();
-		if (deviceId !== ownedContexts.get(this)?.deviceId) this.refuseOwned('Original creation parent required');
+		const owned = ownedContexts.get(this);
+		if (!owned || deviceId !== owned.deviceId) this.refuseOwned('Original creation parent required');
 		const identity = await this.manager
 			.createQueryBuilder(DeviceEntity, 'device')
 			.select('device.id', 'id')
 			.addSelect('device.type', 'type')
 			.where('device.id = :id', { id: deviceId })
 			.callListeners(false)
-			.getRawOne<{ id: string; type: string }>();
+			.getRawOne<{ id: string; type: string | number }>();
 		this.assertOriginalAdmission();
-		return identity ? Object.freeze({ id: identity.id, type: identity.type }) : null;
+		if (!identity) return null;
+		if (identity.id !== owned.deviceId || identity.type !== owned.nativeDeviceDiscriminator)
+			this.refuseOwned('Original native creation parent changed');
+		// Public integration identity is exposed only after proving the original raw native row.
+		return Object.freeze({ id: identity.id, type: this.allowedType });
 	}
 
 	/** Called BEFORE reading any create input. A transactionActive boolean is insufficient. */
@@ -283,6 +288,7 @@ export interface OwnedCreationCatalogJob {
 /** Writer-owned internal record. Never returned by public routes or carried in event JSON. */
 export interface OwnedCreationContextRecord {
 	readonly deviceId: string;
+	readonly nativeDeviceDiscriminator: string | number;
 	readonly properties: ReadonlyMap<
 		string,
 		Readonly<Record<string, import('../contracts/climate-automation.contract').ClimateAutomationJson>>

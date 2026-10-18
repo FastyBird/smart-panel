@@ -207,6 +207,7 @@ interface CreationRecord {
 	readonly plan: ClimateAutomationCreationPlan;
 	readonly expected: ClimateAutomationCreationFacts;
 	readonly environment: DeviceCreationEnvironment;
+	readonly nativeDeviceDiscriminator: string | number;
 	readonly privateSources: ClimateAutomationJson;
 	readonly graphBefore: ClimateAutomationGraphFacts;
 	slot?: ClimateAutomationSlotFacts;
@@ -1120,6 +1121,7 @@ export class ClimateAutomationWriterService {
 							plan,
 							expected,
 							environment: env,
+							nativeDeviceDiscriminator: nativeCatalog.device.discriminatorValue,
 							privateSources,
 							graphBefore,
 							current,
@@ -1524,6 +1526,7 @@ export class ClimateAutomationWriterService {
 				properties.set(entry.row.id, entry.row);
 		return Object.freeze<OwnedCreationContextRecord>({
 			deviceId: record.plan.controllerId,
+			nativeDeviceDiscriminator: record.nativeDeviceDiscriminator,
 			properties,
 			identities: new Set(record.environment.identities),
 			createdAt: record.plan.createdAt,
