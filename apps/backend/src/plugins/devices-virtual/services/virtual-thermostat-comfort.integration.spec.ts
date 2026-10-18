@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
-import { DataSource } from 'typeorm';
+import { BeforeQueryEvent, DataSource } from 'typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '@nestjs/config';
@@ -29,6 +29,8 @@ import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.en
 
 import { VirtualThermostatAutomationService } from './virtual-thermostat-automation.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
+
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
@@ -97,6 +99,10 @@ describe('thermostat durable comfort lifecycle', () => {
 		return { entered, resume };
 	};
 
+	const joinedClockCurrent = async (row: VirtualThermostatConfigEntity): Promise<boolean> => {
+		const intent = await comfort.readIntentInManager(database.manager,row);
+		try { return comfort.isCurrent(row); } finally { intent.close(); }
+	};
 	beforeEach(async () => {
 		wall = Date.UTC(2026, 9, 15);
 		elapsed = 100;
@@ -382,7 +388,7 @@ describe('thermostat durable comfort lifecycle', () => {
 		expect(result.configuration.temporary_override.id).toBe(created.configuration.temporary_override.id);
 		expect(result.effective.source).toBe('override');
 		expect(
-			comfort.isCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
+			await joinedClockCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
 		).toBe(true);
 	});
 
@@ -412,7 +418,7 @@ describe('thermostat durable comfort lifecycle', () => {
 				expires_at: expected.comfort.temporary_override.expires_at,
 			});
 			expect(comfort.isCurrent(stale)).toBe(false);
-			if (action === 'replace') expect(comfort.isCurrent(current)).toBe(true);
+			if (action === 'replace') expect(await joinedClockCurrent(current)).toBe(true);
 		},
 	);
 
@@ -858,7 +864,7 @@ describe('thermostat durable comfort lifecycle', () => {
 			},
 		);
 
-		it('keeps original result and closed admission when the actual final read-only refresh fails', async () => {
+		it('keeps original result and closed admission when the actual terminal read-only preparation fails', async () => {
 			const expected = await fence(),
 				original = actualClaims.capture();
 			const realHoldMethods: {
@@ -876,11 +882,19 @@ describe('thermostat durable comfort lifecycle', () => {
 				});
 				return release;
 			});
+			let terminalRead = false;
+			const originalPrepare = writer.prepareExistingRecoveryForPlan;
+			jest.spyOn(writer,'prepareExistingRecoveryForPlan').mockImplementation((descriptor) => {
+				terminalRead = true;
+				const result = originalPrepare.call(writer,descriptor);
+				void result.then(() => { terminalRead = false; },() => { terminalRead = false; });
+				return result;
+			});
 			registerOriginal();
 			database.subscribers.push({
 				beforeQuery: (event) => {
 					if (
-						released &&
+						terminalRead && !released &&
 						event.query.startsWith('SELECT') &&
 						event.query.includes('devices_virtual_thermostat_actuator_claims')
 					) {
@@ -1004,6 +1018,140 @@ describe('thermostat durable comfort lifecycle', () => {
 				if (b !== undefined) await b.catch(() => undefined);
 			}
 		});
+
+		// BEGIN terminal recovery/native generation correction drafts (UNRUN)
+		it('orders reconciliation before terminal preparation and performs no A read after successful seal',async () => {
+			const trace: string[] = []; let sealed = false,afterSealReads = 0;
+			const reconcile = comfort.reconcileExistingAcknowledged,prepare = writer.prepareExistingRecoveryForPlan,seal = writer.sealExistingResponse;
+			jest.spyOn(comfort,'reconcileExistingAcknowledged').mockImplementation(async (...args) => { await reconcile.call(comfort,...args); trace.push('reconciled'); });
+			jest.spyOn(writer,'prepareExistingRecoveryForPlan').mockImplementation(async (descriptor) => { trace.push('prepare'); await prepare.call(writer,descriptor); trace.push('prepared'); });
+			jest.spyOn(writer,'sealExistingResponse').mockImplementation((...args) => { seal.call(writer,...args); sealed = true; trace.push('sealed'); });
+			registerOriginal();
+			const observer = { beforeQuery: () => { if (sealed) afterSealReads++; } }; database.subscribers.push(observer);
+			try {
+				const result = await comfort.select(id,await fence(),'eco',false);
+				expect(result.configuration.selected_preset).toBe('eco');
+				expect(trace).toEqual(['reconciled','prepare','prepared','sealed']); expect(afterSealReads).toBe(0);
+				expect(actualClaims.capture().isCurrent()).toBe(true);
+			} finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+		});
+		it('poisons a caught duplicate terminal descriptor call without a second terminal preparation',async () => {
+			const originalPrepare = writer.prepareExistingRecoveryForPlan; let attempts = 0;
+			jest.spyOn(writer,'prepareExistingRecoveryForPlan').mockImplementation(async (descriptor) => {
+				await originalPrepare.call(writer,descriptor); attempts++;
+				await originalPrepare.call(writer,descriptor).catch(() => undefined);
+			}); registerOriginal();
+			await expect(comfort.select(id,await fence(),'eco',false)).rejects.toMatchObject({ commitOutcome: 'committed' });
+			expect(attempts).toBe(1);
+			expect((await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: id })).comfort.selected_preset).toBe('eco');
+		});
+		it('binds old no-argument captures to the exact installed membership generation even without an epoch change',async () => {
+			const old = actualClaims.capture(); expect(old.isCurrent()).toBe(true);
+			await actualClaims.refresh();
+			expect(old.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(true);
+		});
+		it('keeps the service membership witness after finite token close and dirties on a nonmatching native claim statement',async () => {
+			const release = actualClaims.holdRecoveryFence(),token = await actualClaims.prepareExistingRecovery();
+			release(); actualClaims.finishExistingRecovery(token);
+			const old = actualClaims.capture(); expect(old.isCurrent()).toBe(true);
+			await database.query('UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" WHERE 0');
+			expect(old.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(false);
+			await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true); expect(old.isCurrent()).toBe(false);
+		});
+		it('retains the same claims proof for ONLY the two supported graph counter effects with actual native bindings',async () => {
+			const old = actualClaims.capture(); expect(old.isCurrent()).toBe(true);
+			const observed: { query: string; parameters: readonly unknown[] }[] = [];
+			const observer = { beforeQuery: (event: BeforeQueryEvent<unknown>) => {
+				if (event.query.includes('devices_virtual_graph_revision') && !event.query.startsWith('SELECT')) observed.push({ query: event.query,parameters: [...(event.parameters ?? [])] });
+			} }; database.subscribers.push(observer);
+			try {
+				await database.transaction(async (manager) => {
+					await manager.query('INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
+					await manager.increment(VirtualGraphRevisionEntity,{ id: 1 },'revision',1);
+				});
+				expect(observed).toEqual([
+					{ query: 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',parameters: [] },
+					{ query: 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1',parameters: [] },
+				]);
+				expect(old.isCurrent()).toBe(true);
+				await database.query('UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 2 WHERE "id" = 1');
+				expect(old.isCurrent()).toBe(false);
+			} finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+		});
+		it('does not call configuration providers during authentic synchronous prepared finish',async () => {
+			const config = new ConfigService({ FB_CLI: 'off' });
+			const originalGet = config.get; let terminal = false,providerCalls = 0;
+			jest.spyOn(config,'get').mockImplementation((...args) => { if (terminal) providerCalls++; return originalGet.call(config,...args); });
+			const real = new VirtualThermostatClaimsService(database,structure,actualGraph,new PropertyCommandAdmissionRegistryService(),events,config);
+			await real.onApplicationBootstrap();
+			try {
+				const release = real.holdRecoveryFence(),token = await real.prepareExistingRecovery();
+				await database.query('UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" WHERE 0');
+				terminal = true; release(); real.finishExistingRecovery(token);
+				expect(providerCalls).toBe(0); expect(real.capture().isCurrent()).toBe(false);
+			} finally { terminal = false; real.onModuleDestroy(); }
+		});
+		it.each(['A-first','B-first'] satisfies readonly ('A-first' | 'B-first')[])(
+			'keeps original membership and held historical responses with %s release',async (order) => {
+				const originalComplete = configs.completeExistingAcknowledged;
+				const aEntered = barrier(),bEntered = barrier(),aResume = barrier(),bResume = barrier(); let ordinal = 0;
+				jest.spyOn(configs,'completeExistingAcknowledged').mockImplementation(async (...args) => {
+					const own = ++ordinal,result = await originalComplete.call(configs,...args);
+					if (own === 1) { aEntered.open(); await aResume.promise; } else if (own === 2) { bEntered.open(); await bResume.promise; }
+					return result;
+				}); registerOriginal();
+				const old = actualClaims.capture(),a = comfort.select(id,await fence(),'eco',false); void a.catch(() => undefined);
+				let b: ReturnType<VirtualThermostatComfortService['select']> | undefined;
+				try {
+					await aEntered.promise; b = comfort.select(id,await fence(),'comfort',false); void b.catch(() => undefined); await bEntered.promise;
+					if (order === 'A-first') { aResume.open(); expect((await a).configuration.selected_preset).toBe('eco'); }
+					else { bResume.open(); expect((await b).configuration.selected_preset).toBe('comfort'); }
+					expect(actualClaims.capture().isCurrent()).toBe(false); expect(old.isCurrent()).toBe(false);
+					aResume.open(); bResume.open(); const [ar,br] = await Promise.all([a,b]);
+					expect(ar.configuration.selected_preset).toBe('eco'); expect(br.configuration.selected_preset).toBe('comfort');
+					expect(actualClaims.capture().isCurrent()).toBe(true); expect(old.isCurrent()).toBe(false);
+				} finally { aResume.open(); bResume.open(); await a.catch(() => undefined); if (b) await b.catch(() => undefined); }
+			});
+
+		it.each(['A-fail-then-B','B-then-A-fail'] satisfies readonly ('A-fail-then-B' | 'B-then-A-fail')[])(
+			'reconciles only actual current native proof with %s and both original release orders',async (sequence) => {
+				for (const reverse of [false,true]) {
+					await actualClaims.refresh(); const old = actualClaims.capture();
+					const releaseA = actualClaims.holdRecoveryFence(),releaseB = actualClaims.holdRecoveryFence();
+					let fault = false,rejected = 0;
+					const observer = { beforeQuery: (event: BeforeQueryEvent<unknown>) => {
+						if (fault && event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_actuator_claims')) { fault = false; rejected++; throw new Error('terminal native proof failure'); }
+					} }; database.subscribers.push(observer);
+					try {
+						const first = sequence === 'A-fail-then-B'; fault = first;
+						const one = await actualClaims.prepareExistingRecovery(); fault = !first;
+						const two = await actualClaims.prepareExistingRecovery();
+						if (reverse) { releaseB(); actualClaims.finishExistingRecovery(two); } else { releaseA(); actualClaims.finishExistingRecovery(one); }
+						expect(actualClaims.capture().isCurrent()).toBe(false);
+						if (reverse) { releaseA(); actualClaims.finishExistingRecovery(one); } else { releaseB(); actualClaims.finishExistingRecovery(two); }
+						expect(rejected).toBe(1); expect(old.isCurrent()).toBe(false);
+						expect(actualClaims.capture().isCurrent()).toBe(first);
+						await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true); expect(old.isCurrent()).toBe(false);
+					} finally { fault = false; releaseA(); releaseB(); database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+				}
+			});
+		it('cannot turn stale coalesced native reload completion into a prepared membership proof',async () => {
+			const entered = barrier(),resume = barrier(); let once = true;
+			const observer = { beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
+				if (!once || !event.query.startsWith('SELECT') || !event.query.includes('devices_virtual_thermostat_actuator_claims')) return;
+				once = false; entered.open(); await resume.promise;
+			} }; database.subscribers.push(observer);
+			const release = actualClaims.holdRecoveryFence(),preparing = actualClaims.prepareExistingRecovery();
+			let coalesced: Promise<void> | undefined;
+			try {
+				await entered.promise; actualClaims.invalidate(); coalesced = actualClaims.refresh(); resume.open();
+				const token = await preparing; await coalesced; release(); actualClaims.finishExistingRecovery(token);
+				expect(actualClaims.capture().isCurrent()).toBe(false);
+				await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true);
+			} finally { resume.open(); release(); await preparing.catch(() => undefined); await coalesced?.catch(() => undefined); database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+		});
+
+		// END terminal recovery/native generation correction drafts
 
 		it.each([null, 'eco'] as const)(
 			'preserves both explicit OFF-clear flags for preset:%s under the real hold',

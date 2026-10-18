@@ -6,7 +6,7 @@ import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ClimateAutomationOverrideLease, ClimateAutomationWriteError, ClimateAutomationParticipantConflict, ClimateAutomationNotificationReceipt, ClimateAutomationExistingKind, ClimateAutomationExistingInput, ClimateAutomationExistingPlan, ClimateAutomationParticipantTurn, ClimateAutomationScope, ClimateAutomationSlotFacts, ClimateAutomationJson, climateAutomationJson, climateAutomationCanonical } from '../../../modules/devices/contracts/climate-automation.contract';
+import { ClimateAutomationOverrideLease,ClimateAutomationIntentView, ClimateAutomationWriteError, ClimateAutomationParticipantConflict, ClimateAutomationNotificationReceipt, ClimateAutomationExistingKind, ClimateAutomationExistingInput, ClimateAutomationExistingPlan, ClimateAutomationParticipantTurn, ClimateAutomationScope, ClimateAutomationSlotFacts, ClimateAutomationJson, climateAutomationJson, climateAutomationCanonical } from '../../../modules/devices/contracts/climate-automation.contract';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { creationHasDataMethod, creationMethodCurrent, freezeCreationSnapshot } from '../../../modules/devices/services/device-creation-context';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
@@ -52,6 +52,13 @@ export class VirtualThermostatComfortService {
 		controller: string; revision: number; graph_revision: number; configuration: ThermostatComfortConfiguration | null;
 		effective: ReturnType<typeof effectiveThermostatComfort>; clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit';
 	}>>();
+	private readonly existingIntents = new WeakMap<object,ClimateAutomationIntentView>();
+	private readonly preparedResponses = new WeakMap<ClimateAutomationScope,Readonly<{
+		controllerId: string;
+		lease: ReturnType<ClimateAutomationWriterService['existingOverrideLeaseForPlan']>;
+		response?: Readonly<{ controller: string; revision: number; graph_revision: number; configuration: ThermostatComfortConfiguration | null;
+			effective: ReturnType<typeof effectiveThermostatComfort>; clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit' }>;
+	}>>();
 	private readonly reconciliationFailed = new WeakMap<ClimateAutomationScope,boolean>();
 	private readonly pendingNotifications = new Map<string,Readonly<{ receipt: ClimateAutomationNotificationReceipt;
 		emit: EventEmitter2['emit']; receiver: EventEmitter2 }>>();
@@ -68,7 +75,7 @@ export class VirtualThermostatComfortService {
 		if (this.destroyed || writer !== this.writer) throw new DevicesValidationException('Original comfort writer unavailable.');
 		const keys = ['isCurrent','readIntentInManager','snapshotExistingInput','prepareExistingInManager','isExistingWatermarkOnly','existingSemanticIntent',
 			'checkExistingMaterializationCounters','materializeExistingInManager','synchronizeExistingClock','materializeExistingClock','completeExistingLocalState',
-			'retainExistingResponse','reconcileExistingAcknowledged','notifyExistingAcknowledged'];
+			'retainExistingResponse','isExistingResponsePrepared','commitExistingResponse','discardExistingResponse','reconcileExistingAcknowledged','notifyExistingAcknowledged'];
 		const methods = keys.map((key) => {
 			if (!creationHasDataMethod(this,key)) throw new DevicesValidationException('Original comfort method unavailable.');
 			return Object.freeze({ key,method: Reflect.get(this,key) });
@@ -268,19 +275,30 @@ export class VirtualThermostatComfortService {
 			candidate.config.comfort.temporary_override.terminated_at = Number.isFinite(record.clock.wallMs) ? new Date(record.clock.wallMs).toISOString() : null;
 	}
 	completeExistingLocalState(input: ClimateAutomationExistingInput,plan: ClimateAutomationExistingPlan,_slot: ClimateAutomationSlotFacts,current: () => boolean): void {
-		if (!this.existingPins?.() || !current()) throw new DevicesValidationException('Original comfort completion lost.');
-		// Core owns the lease budget. This service never recreates it from a stale public snapshot.
-		const lease = this.writer?.existingOverrideLeaseForPlan(plan.descriptor);
-		const previous = this.clockOwners.get(input.controllerId);
-		if (previous && previous !== lease?.token) this.writer?.closeExistingOverrideLease(previous);
-		if (lease) { this.leases.set(input.controllerId,{ ...lease }); this.clockOwners.set(input.controllerId,lease.token); }
-		else { this.leases.delete(input.controllerId); this.clockOwners.delete(input.controllerId); }
+		if (!this.existingPins?.() || !current() || !this.writer) throw new DevicesValidationException('Original comfort completion lost.');
+		const lease = this.writer.existingOverrideLeaseForPlan(plan.descriptor);
+		this.preparedResponses.set(plan.descriptor,Object.freeze({ controllerId: input.controllerId,lease }));
 	}
 	retainExistingResponse(descriptor: ClimateAutomationScope,row: VirtualThermostatConfigEntity,graphRevision: number,slot: ClimateAutomationSlotFacts): void {
-		this.existingResponses.set(descriptor,freezeCreationSnapshot({ controller: row.controllerId,revision: row.revision,
+		const original = this.preparedResponses.get(descriptor);
+		if (!original) throw new DevicesValidationException('Original prepared comfort response required.');
+		const response = freezeCreationSnapshot({ controller: row.controllerId,revision: row.revision,
 			graph_revision: graphRevision,configuration: row.comfort,effective: effectiveThermostatComfort(row.policy,row.comfort,
-				{ available: true,manualHold: slot.manualHold }),clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit' }));
+				{ available: true,manualHold: slot.manualHold }),clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit' });
+		this.preparedResponses.set(descriptor,Object.freeze({ ...original,response }));
 	}
+	isExistingResponsePrepared(descriptor: ClimateAutomationScope): boolean { return this.preparedResponses.get(descriptor)?.response !== undefined; }
+	/** Original closed B5 install. All values were allocated/validated before the final checks. */
+	commitExistingResponse(descriptor: ClimateAutomationScope): void {
+		const prepared = this.preparedResponses.get(descriptor);
+		if (!prepared?.response) throw new DevicesValidationException('Original comfort response candidate required.');
+		if (prepared.lease) { this.leases.set(prepared.controllerId,prepared.lease); this.clockOwners.set(prepared.controllerId,prepared.lease.token); }
+		else { this.leases.delete(prepared.controllerId); this.clockOwners.delete(prepared.controllerId); }
+		this.existingResponses.set(descriptor,prepared.response);
+		this.preparedResponses.delete(descriptor);
+	}
+	discardExistingResponse(descriptor: ClimateAutomationScope): void { this.preparedResponses.delete(descriptor); }
+
 	async reconcileExistingAcknowledged(id: string,descriptor: ClimateAutomationScope,current: () => boolean,changed: boolean): Promise<void> {
 		if (!current()) throw new DevicesValidationException('Original comfort reconciliation lost.');
 		if (!changed && !this.pendingNotifications.has(id)) return;
@@ -344,13 +362,19 @@ export class VirtualThermostatComfortService {
 
 	/** Never registers a lease from a snapshot. Stale snapshots cannot recreate discarded identities. */
 	isCurrent(row: Pick<VirtualThermostatConfigEntity,'controllerId' | 'revision' | 'comfort'>): boolean {
-		return !this.destroyed && this.writer?.isExistingOverrideCurrent(row) === true;
+		const token = this.existingIntents.get(row);
+		return !this.destroyed && !!token && this.writer?.isExistingOverrideCurrent(token) === true;
 	}
 	async readIntentInManager(manager: EntityManager,row: VirtualThermostatConfigEntity) {
 		if (!this.writer) throw new DevicesValidationException('Private thermostat intent unavailable.');
 		const writer = this.writer,token = await writer.captureExistingIntent(manager,row);
+		const clock = writer.isExistingOverrideCurrent,check = writer.isExistingIntentCurrent,close = writer.closeExistingIntent;
+		this.existingIntents.set(row,token);
 		return Object.freeze({ projection: writer.existingIntentProjection(token),
-			isCurrent: () => writer.isExistingIntentCurrent(token),close: () => writer.closeExistingIntent(token) });
+			isCurrent: () => check.call(writer,token),isOverrideCurrent: () => clock.call(writer,token),close: () => {
+				if (this.existingIntents.get(row) === token) this.existingIntents.delete(row);
+				close.call(writer,token);
+			} });
 	}
 
 	/** Only committed settlement makes expiry durable. A sync dispatch refusal cannot promise crash durability. */

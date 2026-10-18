@@ -86,7 +86,7 @@ import {
 	isEligibleVirtualMeasurement,
 	isEligibleVirtualTransformedTemperature,
 } from './virtual-source-eligibility.utils';
-import { DiagnosticQualifications, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { DiagnosticQualifications, PreparedExistingRecovery, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import type { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { thermostatAutomationImage, thermostatExistingOwnedGraphPlan, thermostatExistingRetainedIssues, thermostatOwnedPersistedColumn, type ThermostatAutomationRows, THERMOSTAT_AUTOMATION_COLUMNS } from './virtual-thermostat-automation.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
@@ -369,11 +369,12 @@ function existingCounter(value: number): number {
 @Injectable()
 export class VirtualThermostatConfigService {
 	private existingHold: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => () => void }> | undefined;
-	private existingRefresh: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => Promise<void> }> | undefined;
+	private existingPrepare: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => Promise<PreparedExistingRecovery> }> | undefined;
+	private existingFinish: Readonly<{ call: (receiver: VirtualThermostatClaimsService,token: PreparedExistingRecovery) => void }> | undefined;
 	private existingPins: (() => boolean) | undefined;
 	private readonly existingTurns = new WeakMap<ClimateAutomationParticipantTurn,ExistingConfigurationRecord>();
 	private readonly existingPlans = new WeakMap<ClimateAutomationScope,ExistingCompletionRecord>();
-	private readonly existingResponses = new WeakMap<ClimateAutomationScope,ReturnType<VirtualThermostatConfigService['formatExistingResponse']>>();
+	private readonly existingResponses = new WeakMap<ClimateAutomationScope,Readonly<{ value: ReturnType<VirtualThermostatConfigService['formatExistingResponse']>; wire: ClimateAutomationJson }>>();
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly structureLock: DeviceStructureLockService,
@@ -396,7 +397,7 @@ export class VirtualThermostatConfigService {
 		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
 		for (const receiver of [this,this.claims,this.values,this.graph,this.resolver,this.events,writer,ThermostatCoolingDependencyService.prototype]) {
 			const keys = receiver === this ? names : receiver === this.claims ?
-				['holdRecoveryFence','refresh','invalidate','revokeAllQualifications','captureDiagnosticQualifications',
+				['holdRecoveryFence','prepareExistingRecovery','finishExistingRecovery','refresh','invalidate','revokeAllQualifications','captureDiagnosticQualifications',
 				 'evaluateDiagnosticQualification','diagnosticQualificationsCurrent','closeDiagnosticQualifications'] :
 				receiver === this.values ? ['captureMutationMethodGuard','captureMutationPropertyObservation','captureMutationDestinations','areMutationDestinationsCurrent',
 				 'writeMutationWithState','captureDiagnosticSamples','evaluateDiagnosticSample','diagnosticSampleBarrier','diagnosticSamplesCurrent','finishDiagnosticSamples','closeDiagnosticSamples'] :
@@ -406,7 +407,7 @@ export class VirtualThermostatConfigService {
 				 'captureExistingIntent','existingIntentProjection','isExistingIntentCurrent','closeExistingIntent','captureExistingNotification',
 				 'admitExistingPublication','registerExistingPublication','isExistingPublicationAcknowledged','isExistingPublicationCurrent',
 				 'assertExistingPublicationValue','checkExistingPublication','probeExistingPublication','closeExistingPublication',
-				 'readExistingMirrorRetirement','canReplayExistingNotification','closeExistingNotification','isEmptyExistingSettingBatch','existingOverrideLeaseForPlan','closeExistingOverrideLease','sealExistingResponse'] :
+				 'readExistingMirrorRetirement','canReplayExistingNotification','closeExistingNotification','isEmptyExistingSettingBatch','existingOverrideLeaseForPlan','closeExistingOverrideLease','prepareExistingRecoveryForPlan','prepareExistingResponse','sealExistingResponse'] :
 				receiver === ThermostatCoolingDependencyService.prototype ? ['prepare'] : ['capture','validate'];
 			for (const key of keys) {
 				if (!creationHasDataMethod(receiver,key)) return fail('Original existing-controller method unavailable.');
@@ -415,18 +416,23 @@ export class VirtualThermostatConfigService {
 		}
 		const hold: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => () => void }> = this.claims.holdRecoveryFence;
 		this.existingHold = hold;
-		this.existingRefresh = this.claims.refresh;
+		this.existingPrepare = this.claims.prepareExistingRecovery;
+		this.existingFinish = this.claims.finishExistingRecovery;
 		const current = (): boolean => writer === this.writer && pins.every((pin) => creationMethodCurrent(pin.receiver,pin.key,pin.method));
 		this.existingPins = current;
 		return current;
 	}
-	holdExistingAtEntry(): Readonly<{ release: () => Promise<void> }> {
-		if (!this.existingPins?.() || !this.existingHold || !this.existingRefresh) return fail('Original thermostat entry fence unavailable.');
-		const release = this.existingHold.call(this.claims),refresh = this.existingRefresh,claims = this.claims;
-		let closed = false;
-		return Object.freeze({ release: async () => {
-			if (closed) return; closed = true; release();
-			try { await refresh.call(claims); } catch { /* Original result/native error remains primary and admission stays closed. */ }
+	holdExistingAtEntry(): Readonly<{ prepare: () => Promise<void>; release: () => void }> {
+		if (!this.existingPins?.() || !this.existingHold || !this.existingPrepare || !this.existingFinish) return fail('Original thermostat entry fence unavailable.');
+		const release = this.existingHold.call(this.claims),prepare = this.existingPrepare,finish = this.existingFinish,claims = this.claims,invalid = this.claims.invalidate;
+		let closed = false,attempted = false,token: PreparedExistingRecovery | undefined;
+		return Object.freeze({ prepare: async () => {
+			if (closed || attempted) return fail('Original terminal recovery may be prepared once.');
+			attempted = true; token = await prepare.call(claims);
+		},release: () => {
+			if (closed) return; closed = true;
+			try { release(); if (token) finish.call(claims,token); }
+			catch { invalid.call(claims); /* Original native/response primary survives, admission stays closed. */ }
 		} });
 	}
 
@@ -1076,12 +1082,15 @@ export class VirtualThermostatConfigService {
 		if (!writer || !retained || !existingSame(retained.input,input) || !this.existingPins?.() ||
 			!writer.isExistingPlanAcknowledged(plan.descriptor)) return fail('Original acknowledged controller plan required.');
 		const current = (): boolean => !!this.existingPins?.() && writer.isExistingPlanAcknowledged(plan.descriptor);
-		const publish = this.publishExistingAcknowledged,wall = Date.now,mono = performance.now;
+		const publish = this.publishExistingAcknowledged,wall = Date.now,mono = performance.now,discardComfort = comfort.discardExistingResponse;
 		if (publication) await publish.call(this,publication,plan);
 		if (!current()) return fail('Original mutation publication lost.');
 		// Ordinary notification reconciliation is not an authority source and cannot undo the acknowledged write.
 		await comfort.reconcileExistingAcknowledged(input.controllerId,plan.descriptor,current,publication !== null && !retained.watermarkOnly);
 		if (!current()) return fail('Original mutation notification lost.');
+		const terminalPrepare = writer.prepareExistingRecoveryForPlan;
+		await terminalPrepare.call(writer,plan.descriptor);
+		if (!current()) return fail('Original terminal preparation lost.');
 		await writer.probeExistingPlanResponse(plan.descriptor);
 		if (!current()) return fail('Original response facts lost before capture.');
 		const originalValues = Object.freeze({ capture: this.values.captureDiagnosticSamples,current: this.values.diagnosticSamplesCurrent,
@@ -1119,20 +1128,26 @@ export class VirtualThermostatConfigService {
 			const prepared = retained.prepared;
 			const response = freezeCreationSnapshot(this.formatExistingResponse(prepared.config,prepared.sources,prepared.actuators,
 				prepared.settings,prepared.protections,prepared.coolingDependencies,released,plan.expected.graph.revision,diagnostics,qualifiedIds));
-			const wire = climateAutomationJson(response);
+			const wire = writer.prepareExistingResponse(plan.descriptor,climateAutomationJson(response));
 			comfort.completeExistingLocalState(input,plan,slot,current);
 			comfort.retainExistingResponse(plan.descriptor,prepared.config,plan.expected.graph.revision,slot);
-			this.existingResponses.set(plan.descriptor,response);
+			const responseCache = Object.freeze({ value: response,wire });
+			const installComfort = comfort.commitExistingResponse,preparedComfort = comfort.isExistingResponsePrepared;
+			if (!preparedComfort.call(comfort,plan.descriptor)) return fail('Original comfort response candidate unavailable.');
 			// Ordinary ID-hint listeners may synchronously reenter/reject. They run before, never after, B5's last check.
 			// Their queued independent runtime/index work is not represented as A completion or a drained owned child.
 			comfort.notifyExistingAcknowledged(input.controllerId,plan.descriptor,current,publication !== null && !retained.watermarkOnly);
-			if (!current() || !originalClaims.current.call(this.claims,qualificationCapture) || !originalValues.finish.call(this.values,samples))
+			if (!current() || !originalClaims.current.call(this.claims,qualificationCapture) || !originalValues.finish.call(this.values,samples) || !preparedComfort.call(comfort,plan.descriptor))
 				return fail('Original fixed response lost at final observation.');
 			writer.sealExistingResponse(plan.descriptor,wire);
+			// Original closed assignment-only bodies, no user/provider callback or allocation in this interval.
+			installComfort.call(comfort,plan.descriptor);
+			this.existingResponses.set(plan.descriptor,responseCache);
 			return wire;
 		} finally {
 			originalValues.close.call(this.values,samples);
 			if (qualifications) originalClaims.close.call(this.claims,qualifications);
+			discardComfort.call(comfort,plan.descriptor);
 			this.existingPlans.delete(plan.descriptor);
 		}
 	}
@@ -1142,8 +1157,8 @@ export class VirtualThermostatConfigService {
 			const outcome = await this.writer.commitExistingControllerV1({ providerKey: 'virtual-thermostat:v1',controllerId,kind,input });
 			const response = this.existingResponses.get(outcome.descriptor);
 			this.existingResponses.delete(outcome.descriptor);
-			if (!response || !existingSame(response,outcome.response)) return fail('Original fixed controller response unavailable.');
-			return response;
+			if (!response || response.wire !== outcome.response) return fail('Original fixed controller response unavailable.');
+			return response.value;
 		} catch (error) {
 			if (error instanceof ClimateAutomationWriteError && error.commitOutcome === 'rolled_back' && error.cause instanceof DevicesValidationException) throw error.cause;
 			if (error instanceof ClimateAutomationParticipantConflict) throw new DevicesValidationException('Thermostat revision or private initialization changed.');

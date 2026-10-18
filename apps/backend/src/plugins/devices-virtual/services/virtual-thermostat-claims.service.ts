@@ -1,6 +1,6 @@
 import { AsyncResource } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
-import { DataSource, Not, QueryRunner } from 'typeorm';
+import { BeforeQueryEvent, DataSource, EntitySubscriberInterface, Not, QueryRunner } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -72,16 +72,49 @@ interface DiagnosticQualificationRecord {
 	readonly reservations: readonly VirtualThermostatActuatorClaimEntity[];
 }
 
+/** Authentic native reconciliation evidence; never public readiness or dispatch authority. */
+export class PreparedExistingRecovery {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+interface ClaimsRetryInputs {
+	readonly enabled: boolean;
+	readonly refresh: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => Promise<void> }>;
+	readonly schedule: typeof setTimeout;
+	readonly clear: typeof clearTimeout;
+	readonly run: Readonly<{ call: (receiver: AsyncResource, callback: () => ReturnType<typeof setTimeout>) => ReturnType<typeof setTimeout> }>;
+	readonly current: () => boolean;
+}
+interface ClaimsNativeProof {
+	active: boolean;
+	installed: boolean;
+	rows: readonly VirtualThermostatActuatorClaimEntity[];
+	tree?: DiagnosticTreeObservation;
+	readonly observer: EntitySubscriberInterface;
+	readonly installedReservations: Map<string,VirtualThermostatActuatorClaimEntity>;
+	readonly installedByProperty: Map<string,VirtualThermostatActuatorClaimEntity>;
+	readonly engineCurrent: () => boolean;
+	readonly reservations: Map<string, VirtualThermostatActuatorClaimEntity>;
+	readonly byProperty: Map<string, VirtualThermostatActuatorClaimEntity>;
+}
+
 /** Durable reservations are independent of intent, device enabled state and expiry of command windows. */
 @Injectable()
 export class VirtualThermostatClaimsService implements OnApplicationBootstrap, OnModuleDestroy {
 	private readonly diagnosticQualifications = new WeakMap<DiagnosticQualifications, DiagnosticQualificationRecord>();
 	private readonly authorities = new WeakSet<object>();
 	private readonly authorityEpochs = new WeakMap<object, number>();
+	private readonly authorityMembership = new WeakMap<object, ClaimsNativeProof>();
+	private readonly preparations = new WeakMap<PreparedExistingRecovery, ClaimsRetryInputs>();
+	private readonly nativeProofs = new Set<ClaimsNativeProof>();
+	private membership?: ClaimsNativeProof;
+	private reloadAttempt?: object;
+	private recoveryRetryInputs?: ClaimsRetryInputs;
+	private retryClear?: typeof clearTimeout;
 	private readonly proofs = new WeakMap<
 		object,
 		{
 			authority: ThermostatCommandAuthority;
+			generation: ClaimsNativeProof;
 			qualification: ThermostatInstalledQualification;
 			isCurrent: () => boolean;
 			controllerRevision: number;
@@ -150,29 +183,130 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		])
 			this.events.off(event, this.onStructure);
 		this.invalidate();
+		const index = this.dataSource.subscribers.indexOf(this.membershipObserver);
+		if (index >= 0) this.dataSource.subscribers.splice(index,1);
 	}
+	private invalidateAuthority(): void { this.ready = false; this.epoch++; }
 	invalidate(): void {
-		this.ready = false;
-		this.epoch++;
+		originalClaimsEngine.authority.call(this);
+		for (const proof of [...this.nativeProofs]) originalClaimsEngine.retire.call(this,proof);
 	}
-	/** Keep command admission closed from ownership/installation operation entry through reloaded commit or rollback. */
+	/** Keep command admission closed from ownership/installation entry through original response settlement. */
 	holdRecoveryFence(): () => void {
 		this.recoveryFences++;
-		this.invalidate();
+		originalClaimsEngine.authority.call(this);
 		let released = false;
 		return () => {
 			if (released) return;
 			released = true;
 			this.recoveryFences--;
-			this.invalidate();
+			originalClaimsEngine.authority.call(this);
 		};
+	}
+	private captureRetryInputs(): ClaimsRetryInputs {
+		const enabled = getEnvValue<string>(this.configService,'FB_CLI',null) !== 'on';
+		const refresh = this.refresh, run = this.retryContext.runInAsyncScope;
+		const config = this.configService, get = config.get;
+		return Object.freeze({ enabled,refresh,schedule: setTimeout,clear: clearTimeout,run,
+			current: () => !this.destroyed && this.configService === config &&
+				creationMethodCurrent(config,'get',get) && creationMethodCurrent(this,'refresh',refresh) &&
+				creationMethodCurrent(this.retryContext,'runInAsyncScope',run) });
+	}
+	/** The caller's hold is still active; all SQL/provider inputs settle before terminal B5/F5. */
+	async prepareExistingRecovery(): Promise<PreparedExistingRecovery> {
+		const inputs = this.captureRetryInputs();
+		this.recoveryRetryInputs = inputs;
+		try { await inputs.refresh.call(this); } catch { /* Preserve the original isolated refresh policy. */ }
+		const token = Object.freeze(new PreparedExistingRecovery());
+		this.preparations.set(token,inputs);
+		return token;
+	}
+	/** No SQL/provider callback. Finite token closure does not close the service's current native proof. */
+	finishExistingRecovery(token: PreparedExistingRecovery): void {
+		const inputs = this.preparations.get(token);
+		if (!inputs) return;
+		this.preparations.delete(token);
+		try {
+			const current = inputs.current() && originalClaimsEngine.current.call(this,this.membership);
+			this.ready = current && this.recoveryFences === 0;
+			if (!current) originalClaimsEngine.retry.call(this,inputs);
+		} catch { this.ready = false; /* Cleanup cannot replace an original native/response error. */ }
+	}
+	private retireNativeProof(proof: ClaimsNativeProof): void {
+		proof.active = false;
+		this.nativeProofs.delete(proof);
+		if (proof.tree) closeDiagnosticTree(proof.tree);
+		if (this.membership === proof) { this.membership = undefined; this.ready = false; }
+	}
+	private nativeProofCurrent(proof: ClaimsNativeProof | undefined): proof is ClaimsNativeProof {
+		const current = !!proof && proof === this.membership && proof.active && proof.installed && !this.destroyed &&
+			this.nativeProofs.has(proof) && proof.engineCurrent() && this.dataSource.subscribers.includes(proof.observer) &&
+			!!proof.tree && diagnosticTreeCurrent(proof.tree) &&
+			this.reservations === proof.installedReservations && this.byProperty === proof.installedByProperty && this.reservations.size === proof.reservations.size && this.byProperty.size === proof.byProperty.size &&
+			[...proof.reservations].every(([key,row]) => this.reservations.get(key) === row) &&
+			[...proof.byProperty].every(([key,row]) => this.byProperty.get(key) === row);
+		if (!current && proof === this.membership && proof) originalClaimsEngine.retire.call(this,proof);
+		return current;
+	}
+	private readonly membershipObserver: EntitySubscriberInterface = { beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
+			if (this.destroyed) return;
+			const text = event.query.trim();
+			if (/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|(?:SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT) typeorm_[0-9]+$)/i.test(text)) return;
+			if (event.query === 'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0' && !event.parameters?.length) return;
+			// Supported repository counter schema ONLY: real writes, neutral to claims membership, not graph/clock authority.
+			if (!event.parameters?.length && (event.query === 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)' ||
+				event.query === 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1')) return;
+			// Only the ORIGINAL private guarded statement retains this exact generation until post-UPDATE assertCurrent.
+			const write = this.releaseWrites.get(event.queryRunner);
+			if (write && write.query === event.query && write.parameters.length === (event.parameters?.length ?? 0) &&
+				write.parameters.every((value,index) => Object.is(value,event.parameters?.[index]))) return;
+			originalClaimsEngine.invalidate.call(this);
+			const inputs = this.recoveryRetryInputs;
+			if (inputs) { try { originalClaimsEngine.retry.call(this,inputs); } catch { this.ready = false; } }
+		} };
+
+	private observeNativeReload(): ClaimsNativeProof {
+		const source = this.dataSource,manager = source.manager,driver = source.driver,entities = source.entityMetadatas,subscribers = source.subscribers;
+		const metadata = this.dataSource.getMetadata(VirtualThermostatActuatorClaimEntity),table = metadata.tableName,target = metadata.target;
+		const connection = Object.getOwnPropertyDescriptor(driver,'databaseConnection');
+		const originalColumns = metadata.columns;
+		const columns = originalColumns.map((column) => Object.freeze({ column,name: column.databaseName,
+			read: column.getEntityValue,write: column.setEntityValue,type: column.type,property: column.propertyName,nullable: column.isNullable }));
+		const pins = [
+			{ receiver: this,key: 'refresh',method: this.refresh },
+			{ receiver: this,key: 'requiresGuardedDispatch',method: this.requiresGuardedDispatch },
+			{ receiver: this,key: 'assertAllowed',method: this.assertAllowed },
+			{ receiver: this,key: 'qualification',method: this.qualification },
+			{ receiver: this,key: 'prepareExistingRecovery',method: this.prepareExistingRecovery },
+			{ receiver: this,key: 'finishExistingRecovery',method: this.finishExistingRecovery },
+			{ receiver: manager,key: 'find',method: manager.find },
+			{ receiver: manager,key: 'query',method: manager.query },
+			{ receiver: driver,key: 'prepareHydratedValue',method: driver.prepareHydratedValue },
+		];
+		const observer = this.membershipObserver;
+		if (!this.dataSource.subscribers.includes(observer)) throw new DevicesValidationException('Original native membership observer unavailable.');
+		const proof: ClaimsNativeProof = { active: true,installed: false,rows: [],observer,installedReservations: this.reservations,installedByProperty: this.byProperty,
+			reservations: new Map(),byProperty: new Map(),engineCurrent: () =>
+				creationMethodCurrent(this,'dataSource',source) && creationMethodCurrent(source,'isInitialized',true) &&
+				creationMethodCurrent(source,'manager',manager) && creationMethodCurrent(source,'driver',driver) &&
+				creationMethodCurrent(source,'entityMetadatas',entities) && creationMethodCurrent(source,'subscribers',subscribers) &&
+				!!connection && connection.get === undefined && connection.set === undefined && Object.getOwnPropertyDescriptor(driver,'databaseConnection')?.value === connection.value &&
+				entities.includes(metadata) && creationMethodCurrent(metadata,'tableName',table) && creationMethodCurrent(metadata,'target',target) &&
+				creationMethodCurrent(metadata,'columns',originalColumns) && originalColumns.length === columns.length && pins.every((pin) => creationMethodCurrent(pin.receiver,pin.key,pin.method)) &&
+				columns.every((item,index) => originalColumns[index] === item.column && creationMethodCurrent(item.column,'databaseName',item.name) && creationMethodCurrent(item.column,'type',item.type) &&
+					creationMethodCurrent(item.column,'propertyName',item.property) && creationMethodCurrent(item.column,'isNullable',item.nullable) &&
+					creationMethodCurrent(item.column,'getEntityValue',item.read) && creationMethodCurrent(item.column,'setEntityValue',item.write)) };
+		this.nativeProofs.add(proof);
+		return proof;
 	}
 	async refresh(): Promise<void> {
 		// Acquire before coalescing: a writer's post-commit refresh must never join a reader queued behind it.
 		await this.structureLock.runShared(async () => {
 			if (this.destroyed) return;
 			if (this.refreshInFlight !== undefined) return this.refreshInFlight;
+			if (!this.dataSource.subscribers.includes(this.membershipObserver)) { this.invalidate(); this.dataSource.subscribers.push(this.membershipObserver); }
 			const epoch = this.epoch;
+			this.recoveryRetryInputs = this.captureRetryInputs();
 			const refresh = this.reload(epoch);
 			this.refreshInFlight = refresh;
 			try {
@@ -183,60 +317,63 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		});
 	}
 	private async reload(epoch: number): Promise<void> {
+		const attempt = Object.freeze({}),applicable = this.membership; this.reloadAttempt = attempt;
+		const proof = this.observeNativeReload();
 		try {
-			const rows = await this.dataSource.manager.find(VirtualThermostatActuatorClaimEntity, {
-				where: { state: Not('released') },
-			});
-			if (this.destroyed) return;
-			if (epoch !== this.epoch) {
-				this.scheduleRetry();
+			const rows = await this.dataSource.manager.find(VirtualThermostatActuatorClaimEntity, { where: { state: Not('released') } });
+			if (this.destroyed || epoch !== this.epoch || this.reloadAttempt !== attempt || !proof.active || !proof.engineCurrent()) {
+				originalClaimsEngine.retire.call(this,proof);
+				if (applicable && this.membership === applicable && this.reloadAttempt === attempt) originalClaimsEngine.retire.call(this,applicable);
+				if (!this.destroyed) this.scheduleRetry();
 				return;
 			}
-			this.reservations.clear();
-			this.byProperty.clear();
-			for (const row of rows) {
-				this.reservations.set(row.physicalIdentity, row);
-				this.byProperty.set(row.sourcePropertyIdentity, row);
-			}
-			this.ready = this.recoveryFences === 0;
-			// Retry completion tracks fresh membership, independently of the recovery admission fence.
-			this.cancelRetry();
-			this.retryDelay = 1000;
+			proof.rows = Object.freeze([...rows]); proof.tree = captureDiagnosticTree(proof.rows);
+			if (!diagnosticTreeCurrent(proof.tree)) throw new DevicesValidationException('Original native claim rows unavailable.');
+			for (const row of rows) { proof.reservations.set(row.physicalIdentity,row); proof.byProperty.set(row.sourcePropertyIdentity,row); }
+			const previous = this.membership;
+			if (previous) originalClaimsEngine.retire.call(this,previous);
+			this.reservations.clear(); this.byProperty.clear();
+			for (const [key,row] of proof.reservations) this.reservations.set(key,row);
+			for (const [key,row] of proof.byProperty) this.byProperty.set(key,row);
+			proof.installed = true; this.membership = proof;
+			this.ready = this.recoveryFences === 0 && originalClaimsEngine.current.call(this,proof);
+			this.cancelRetry(); this.retryDelay = 1000;
 		} catch (error) {
-			if (!this.destroyed && epoch === this.epoch) {
-				this.invalidate();
-				this.scheduleRetry();
-			} else if (!this.destroyed) {
-				this.scheduleRetry();
-			}
+			originalClaimsEngine.retire.call(this,proof);
+			if (applicable && this.membership === applicable && this.reloadAttempt === attempt) originalClaimsEngine.retire.call(this,applicable);
+			if (!this.destroyed && epoch === this.epoch && this.reloadAttempt === attempt) this.invalidate();
+			if (!this.destroyed) this.scheduleRetry();
 			throw error;
 		}
 	}
-	private scheduleRetry(): void {
-		if (this.destroyed || this.retryTimer || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
+	private scheduleRetry(): void { if (!this.destroyed && !this.retryTimer) this.schedulePreparedRetry(this.captureRetryInputs()); }
+	private schedulePreparedRetry(inputs: ClaimsRetryInputs): void {
+		if (this.destroyed || this.retryTimer || !inputs.enabled || !inputs.current()) return;
 		const delay = this.retryDelay;
-		this.retryDelay = Math.min(delay * 2, 30000);
-		this.retryTimer = this.retryContext.runInAsyncScope(() =>
-			setTimeout(() => {
-				this.retryTimer = undefined;
-				if (!this.destroyed) void this.refresh().catch(() => undefined);
-			}, delay),
-		);
-		this.retryTimer.unref();
+		this.retryDelay = Math.min(delay * 2,30000);
+		const timer = inputs.run.call(this.retryContext,() => inputs.schedule(() => {
+			if (this.retryTimer !== timer) return;
+			this.retryTimer = undefined;
+			if (inputs.current()) void inputs.refresh.call(this).catch(() => undefined);
+		},delay));
+		this.retryTimer = timer; this.retryClear = inputs.clear; timer.unref();
 	}
 	private cancelRetry(): void {
-		if (this.retryTimer) clearTimeout(this.retryTimer);
-		this.retryTimer = undefined;
+		const timer = this.retryTimer,clear = this.retryClear;
+		this.retryTimer = undefined; this.retryClear = undefined;
+		if (timer && clear) clear(timer);
 	}
 	/** Captures absence and ownership; unrelated leaves do not depend on catalog reconciliation. */
 	capture(): PropertyCommandAdmissionSnapshot {
 		const epoch = this.epoch;
-		const ready = this.ready;
+		const generation = this.membership;
+		const ready = this.ready && originalClaimsEngine.current.call(this,generation);
 		const claimedProperties = new Set(this.byProperty.keys());
+		const requires = this.requiresGuardedDispatch;
 		const isCurrent = (update?: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>) =>
-			!!update && !claimedProperties.has(update.property.id) && !this.requiresGuardedDispatch(update)
+			creationMethodCurrent(this,'requiresGuardedDispatch',requires) && (!!update && !claimedProperties.has(update.property.id) && !requires.call(this,update)
 				? true
-				: ready && this.ready && epoch === this.epoch;
+				: ready && this.ready && epoch === this.epoch && generation === this.membership && originalClaimsEngine.current.call(this,generation));
 		return {
 			isCurrent,
 			isEffectCurrent: isCurrent,
@@ -263,7 +400,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	/** Rejects ordinary commands to reserved leaves and closes claimable outputs during reconciliation. */
 	assertAllowed(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): Promise<void> {
 		if (!this.requiresGuardedDispatch(update)) return Promise.resolve();
-		if (!this.ready) throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
+		if (!this.ready || !originalClaimsEngine.current.call(this,this.membership)) throw new DevicesValidationException('Actuator ownership is reconciling; retry the command.');
 		const identity = thermostatActuatorIdentity(update.property, update.channel, update.device);
 		const claim = (identity && this.reservations.get(identity)) || this.byProperty.get(update.property.id);
 		if (claim)
@@ -496,9 +633,10 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		};
 	}
 	mintAuthority(claimId: string, action: 'on' | 'off'): ThermostatCommandAuthority {
+		const generation = this.membership;
 		const claim = [...this.reservations.values()].find((row) => row.id === claimId);
 		if (
-			!this.ready ||
+			!this.ready || !originalClaimsEngine.current.call(this,this.membership) ||
 			!claim ||
 			(action === 'on' &&
 				(claim.state !== 'reserved' || !this.qualification(claim, false) || !this.runtimeAdmission?.(claim)))
@@ -513,12 +651,14 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		});
 		this.authorities.add(authority);
 		this.authorityEpochs.set(authority, this.epoch);
+		if (!generation || generation !== this.membership || !originalClaimsEngine.current.call(this,generation)) throw new DevicesValidationException('Native claim membership unavailable.');
+		this.authorityMembership.set(authority,generation);
 		return authority;
 	}
 	isAuthorized(authority: ThermostatCommandAuthority, update: IDevicePropertyData): boolean {
 		const claim = this.reservations.get(authority?.physicalIdentity);
 		return (
-			this.ready &&
+			this.ready && originalClaimsEngine.current.call(this,this.membership) && this.authorityMembership.get(authority) === this.membership &&
 			this.authorities.has(authority) &&
 			this.authorityEpochs.get(authority) === this.epoch &&
 			!!claim &&
@@ -534,7 +674,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				(claim.state === 'reserved' &&
 					update.device.enabled &&
 					!!this.qualification(claim, false) &&
-					!!this.runtimeAdmission?.(claim)))
+					!!this.runtimeAdmission?.(claim))) &&
+			this.authorityEpochs.get(authority) === this.epoch && this.authorityMembership.get(authority) === this.membership && originalClaimsEngine.current.call(this,this.membership)
 		);
 	}
 
@@ -550,10 +691,11 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			controllerRevision: number;
 		},
 	): ThermostatReleaseProof {
+		const generation = this.authorityMembership.get(authority);
 		const claim = this.reservations.get(authority?.physicalIdentity);
 		if (
-			!this.ready ||
-			!this.authorities.has(authority) ||
+			!this.ready || !originalClaimsEngine.current.call(this,this.membership) ||
+			!this.authorities.has(authority) || this.authorityMembership.get(authority) !== this.membership ||
 			this.authorityEpochs.get(authority) !== this.epoch ||
 			authority.action !== 'off' ||
 			!claim ||
@@ -571,8 +713,9 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		)
 			throw new DevicesValidationException('Qualified OFF and pending ON drainage proof is required.');
 		const proof = Object.freeze({ claimId: claim.id, revision: claim.revision, evidenceId: evidence.evidenceId });
+		if (!generation || generation !== this.membership || !originalClaimsEngine.current.call(this,generation) || this.authorityEpochs.get(authority) !== this.epoch) throw new DevicesValidationException('Native release membership unavailable.');
 		this.proofs.set(proof, {
-			authority,
+			authority,generation,
 			qualification: evidence.qualification,
 			isCurrent: evidence.isCurrent,
 			controllerRevision: evidence.controllerRevision,
@@ -600,7 +743,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		this.proofs.delete(proof);
 		const assertCurrent = (claim: VirtualThermostatActuatorClaimEntity): void => {
 			if (
-				!this.ready ||
+				!this.ready || !originalClaimsEngine.current.call(this,this.membership) ||
+				binding.generation !== this.membership || this.authorityMembership.get(binding.authority) !== binding.generation ||
 				this.authorityEpochs.get(binding.authority) !== this.epoch ||
 				claim.revision !== proof.revision ||
 				claim.state !== 'releasing' ||
@@ -610,12 +754,13 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				claim.sourceDeviceId !== binding.sourceDeviceId ||
 				claim.contractFingerprint !== binding.contractFingerprint ||
 				this.qualification(claim, false) !== binding.qualification ||
-				!binding.isCurrent()
+				!binding.isCurrent() || binding.generation !== this.membership || !originalClaimsEngine.current.call(this,binding.generation) ||
+				this.authorityEpochs.get(binding.authority) !== this.epoch
 			)
 				throw new DevicesValidationException('Qualified release proof is no longer current.');
 		};
 		await this.structureLock.runExclusive(async () => {
-			await this.graph.withStructuralWrite(async (manager) => {
+			try { await this.graph.withStructuralWrite(async (manager) => {
 				const claim = await manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { id: proof.claimId });
 				const config = await manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: claim.controllerId });
 				if (config?.revision !== binding.controllerRevision)
@@ -642,12 +787,29 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				} finally {
 					this.releaseWrites.delete(runner);
 				}
-			});
+			}); } catch (error) {
+				this.invalidate();
+				try { this.scheduleRetry(); } catch { /* Original release error remains primary. */ }
+				throw error;
+			}
 			this.invalidate();
 			await this.refresh();
 		});
 	}
 }
+
+// Original closed synchronous bodies. These same function objects remain safe for post-B5 cleanup.
+const originalClaimsCurrentRead: Readonly<{ get: (owner: object,key: 'nativeProofCurrent') => Readonly<{ call: (receiver: VirtualThermostatClaimsService,proof: ClaimsNativeProof | undefined) => boolean }> }> = Reflect;
+const originalClaimsRetireRead: Readonly<{ get: (owner: object,key: 'retireNativeProof') => Readonly<{ call: (receiver: VirtualThermostatClaimsService,proof: ClaimsNativeProof) => void }> }> = Reflect;
+const originalClaimsRetryRead: Readonly<{ get: (owner: object,key: 'schedulePreparedRetry') => Readonly<{ call: (receiver: VirtualThermostatClaimsService,inputs: ClaimsRetryInputs) => void }> }> = Reflect;
+const originalClaimsAuthorityRead: Readonly<{ get: (owner: object,key: 'invalidateAuthority') => Readonly<{ call: (receiver: VirtualThermostatClaimsService) => void }> }> = Reflect;
+const originalClaimsEngine = Object.freeze({
+	current: originalClaimsCurrentRead.get(VirtualThermostatClaimsService.prototype,'nativeProofCurrent'),
+	retire: originalClaimsRetireRead.get(VirtualThermostatClaimsService.prototype,'retireNativeProof'),
+	retry: originalClaimsRetryRead.get(VirtualThermostatClaimsService.prototype,'schedulePreparedRetry'),
+	authority: originalClaimsAuthorityRead.get(VirtualThermostatClaimsService.prototype,'invalidateAuthority'),
+	invalidate: VirtualThermostatClaimsService.prototype.invalidate,
+});
 
 const diagnosticClaimsPrototype: Readonly<{
 	captureDiagnosticQualifications: VirtualThermostatClaimsService['captureDiagnosticQualifications'];

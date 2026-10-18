@@ -797,7 +797,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}
 		if (
 			!context.intent?.isCurrent() ||
-			!this.comfort.isCurrent(context.config) ||
+			!context.intent?.isOverrideCurrent() ||
 			(context.config.comfort && validateThermostatComfort(context.config.comfort, context.config.policy).length)
 		) {
 			decision.desiredHeating = false;

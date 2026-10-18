@@ -3458,6 +3458,41 @@ describe('virtual thermostat durable runtime', () => {
 			fixture?.revoke();
 		});
 
+		// BEGIN original native proof/clock integration drafts (UNRUN; existing synthetic installation boundary only)
+		it('keeps graph-counter effects claims-neutral while an original joined override clock closes sticky',async () => {
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+			await comfort.override(controllerId,{ expected_revision: row.revision,expected_graph_revision: await actualGraph.revision() },
+				{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'original-clock-proof');
+			await settleReal(fixture); await actualClaims.refresh();
+			const active = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId }),intent = await comfort.readIntentInManager(database.manager,active);
+			const original = actualClaims.capture();
+			try {
+				expect(intent.isOverrideCurrent()).toBe(true); expect(original.isCurrent()).toBe(true);
+				await database.query('UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1');
+				expect(original.isCurrent()).toBe(true); expect(intent.isOverrideCurrent()).toBe(false);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			} finally { intent.close(); }
+		});
+		it.each(['clean','qualification-loss'] satisfies readonly ('clean' | 'qualification-loss')[])(
+			'uses the real runtime OFF/drain release through graph prelude and awaited claim UPDATE:%s',async (mode) => {
+				let actualQualifiedUpdates = 0;
+				const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+					if (!event.query.startsWith('UPDATE "devices_virtual_thermostat_actuator_claims"') || !event.query.includes('releaseEvidence')) return;
+					actualQualifiedUpdates++;
+					if (mode === 'qualification-loss') actualClaims.revokeAllQualifications();
+				} }; database.subscribers.push(observer);
+				try {
+					const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+					await configs.requestRelease(controllerId,before.revision); await settleReal(fixture);
+					const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ controllerId });
+					expect(actualQualifiedUpdates).toBeGreaterThan(0);
+					expect(claim.state).toBe(mode === 'clean' ? 'released' : 'releasing');
+					if (mode === 'clean') expect(claim.releaseEvidence).toMatchObject({ outputConfirmedOff: true,pendingOnDrained: true });
+					else expect(claim.releaseEvidence).toBeNull();
+				} finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+			});
+		// END original native proof/clock integration drafts
+
 		// New diagnostic-only captures reuse the existing explicitly synthetic installation boundary, not HW authority.
 		it('observes original qualification data without installation or events and refuses a subsequent revoke without recapture',async () => {
 			const rows = await database.manager.findBy(VirtualThermostatActuatorClaimEntity,{ controllerId });

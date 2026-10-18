@@ -723,7 +723,7 @@ export interface ClimateAutomationExistingCapability {
 	readonly codec: 'virtual-thermostat-existing:v1';
 	readonly isCurrent: () => boolean;
 	readonly snapshotInput: (kind: ClimateAutomationExistingKind, input: unknown) => ClimateAutomationJson;
-	readonly holdAtEntry: () => Readonly<{ release: () => Promise<void> }>;
+	readonly holdAtEntry: () => Readonly<{ prepare: () => Promise<void>; release: () => void }>;
 	readonly captureEnvironment: () => Readonly<{
 		destinations: import('../../storage/services/storage.service').CreationStorageDestinations;
 		/** Fixed materialized LOCAL properties only: one finite veto observation, never a callback or write permit. */

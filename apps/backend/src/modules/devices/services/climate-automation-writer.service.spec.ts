@@ -2933,3 +2933,15 @@ describe('closed existing-controller preflight without initialized database',() 
 			expect(getters).toBe(0); expect(entry).not.toHaveBeenCalled(); expect(query).not.toHaveBeenCalled(); expect(source.isInitialized).toBe(false);
 		});
 });
+
+// BEGIN terminal descriptor recovery negative drafts (UNRUN)
+describe('closed terminal recovery descriptor admission',() => {
+	it('refuses a forged descriptor before any SQL or released lock acquisition',async () => {
+		const source = new SqliteDataSource({ type: 'sqlite',database: ':memory:',synchronize: false });
+		const lock = new DeviceStructureLockService(),writer = new ClimateAutomationWriterService(source,lock,new ClimateAutomationRegistryService(),new ConfigService({ FB_CLI: 'off' }));
+		const query = jest.spyOn(source.manager,'query'),entry = jest.spyOn(lock,'runExclusiveReleased');
+		await expect(writer.prepareExistingRecoveryForPlan(Object.freeze({ toJSON: () => Object.freeze({}) }))).rejects.toThrow();
+		expect(query).not.toHaveBeenCalled(); expect(entry).not.toHaveBeenCalled(); expect(source.isInitialized).toBe(false);
+	});
+});
+// END terminal descriptor recovery negative drafts

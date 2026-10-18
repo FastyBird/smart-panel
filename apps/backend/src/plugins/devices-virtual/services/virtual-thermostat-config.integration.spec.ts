@@ -2443,6 +2443,88 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			expect((await configs.configure(controller,input)).revision).toBe(1);
 		});
 
+		// BEGIN original clock-owner correction drafts (UNRUN)
+		const activeClock = async () => {
+			const controller = await owner(),sensor = await ambient(),heat = await actuator();
+			const first = await configs.configure(controller,dto(sensor,heat));
+			const definition = await comfort.configure(controller,{ expected_revision: first.revision,expected_graph_revision: first.graph_revision },{
+				heating_range: { minimum: 10,maximum: 30 },cooling_range: null,presets: [{ preset: 'eco',setpoints: { heating_setpoint: 17,cooling_setpoint: null } }] });
+			const created = await comfort.override(controller,{ expected_revision: definition.revision,expected_graph_revision: definition.graph_revision },
+				{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'original-clock-owner');
+			return { controller,created };
+		};
+		it.each(['expires_at','original_duration_ms','wall_watermark_ms'] satisfies readonly ('expires_at' | 'original_duration_ms' | 'wall_watermark_ms')[])(
+			'rejects a committed independent peer same-ID/revision %s rewrite without giving it a new budget',async (field) => {
+				const { controller,created } = await activeClock();
+				const before = await second.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+				if (!before.comfort?.temporary_override) throw new Error('Actual active override required');
+				const original = before.comfort.temporary_override;
+				if (typeof original.original_duration_ms !== 'number' || typeof original.wall_watermark_ms !== 'number') throw new Error('Actual materialized lifetime required');
+				const replacement = { ...original,[field]: field === 'expires_at' ? new Date(Date.parse(original.expires_at) + 1000).toISOString() :
+					field === 'original_duration_ms' ? original.original_duration_ms + 1000 : original.wall_watermark_ms + 1 };
+				await second.query('UPDATE "devices_virtual_thermostat_configs" SET "comfort" = ? WHERE "controllerId" = ?',
+					[JSON.stringify({ ...before.comfort,temporary_override: replacement }),controller]);
+				const peer = await second.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+				expect(peer.revision).toBe(created.revision); expect(peer.comfort.temporary_override.id).toBe(original.id);
+				const token = await comfort.readIntentInManager(database.manager,peer);
+				try { expect(token.isOverrideCurrent()).toBe(false); } finally { token.close(); }
+				expect(await second.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller })).toEqual(peer);
+				await comfort.settle(controller);
+				const refused = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+				expect(refused.comfort.temporary_override.id).toBe(original.id); expect(refused.comfort.temporary_override.status).toBe('clock_uncertain');
+			});
+		it('refuses a real peer rewrite at B3 and leaves no successful A clock candidate',async () => {
+			const { controller } = await activeClock(),before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+			const entered = barrier(),resume = barrier(),originalProbe = writer.probeExistingPlanResponse; let probes = 0;
+			jest.spyOn(writer,'probeExistingPlanResponse').mockImplementation(async (descriptor) => {
+				if (++probes === 2) { entered.open(); await resume.promise; }
+				return originalProbe.call(writer,descriptor);
+			}); registerOriginal();
+			const result = comfort.select(controller,{ expected_revision: before.revision,expected_graph_revision: await graph.revision() },'eco',false); void result.catch(() => undefined);
+			try {
+				await entered.promise;
+				const a = await second.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+				if (!a.comfort?.temporary_override || typeof a.comfort.temporary_override.wall_watermark_ms !== 'number') throw new Error('Actual committed override required');
+				const changed = { ...a.comfort,temporary_override: { ...a.comfort.temporary_override,wall_watermark_ms: a.comfort.temporary_override.wall_watermark_ms + 1 } };
+				await second.query('UPDATE "devices_virtual_thermostat_configs" SET "comfort" = ? WHERE "controllerId" = ?',[JSON.stringify(changed),controller]);
+				resume.open(); await expect(result).rejects.toMatchObject({ commitOutcome: 'committed' });
+				const b = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller }),intent = await comfort.readIntentInManager(database.manager,b);
+				try { expect(intent.isOverrideCurrent()).toBe(false); } finally { intent.close(); }
+				expect(b.comfort).toEqual(changed);
+			} finally { resume.open(); await result.catch(() => undefined); }
+		});
+		it('keeps observed same-instance restore sticky and an old owner close cannot remove a clean B owner',async () => {
+			const captures: NonNullable<ReturnType<ClimateAutomationWriterService['existingOverrideLeaseForPlan']>>[] = [];
+			const original = writer.existingOverrideLeaseForPlan;
+			jest.spyOn(writer,'existingOverrideLeaseForPlan').mockImplementation((descriptor) => { const value = original.call(writer,descriptor); if (value && captures.length === 0) captures.push(value); return value; }); registerOriginal();
+			const { controller,created } = await activeClock(),a = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+			const captured = captures[0]; if (!captured) throw new Error('Actual original owner token required');
+			await database.query('UPDATE "devices_virtual_thermostat_configs" SET "comfort" = "comfort" WHERE "controllerId" = ?',[controller]);
+			const old = await comfort.readIntentInManager(database.manager,a);
+			try { expect(old.isOverrideCurrent()).toBe(false); } finally { old.close(); }
+			await comfort.cancel(controller,{ expected_revision: a.revision,expected_graph_revision: await graph.revision() },created.configuration.temporary_override.id);
+			const latest = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller });
+			const b = await comfort.override(controller,{ expected_revision: latest.revision,expected_graph_revision: await graph.revision() },
+				{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 20_000).toISOString() },'clean-B-owner');
+			writer.closeExistingOverrideLease(captured.token);
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: controller }),intent = await comfort.readIntentInManager(database.manager,row);
+			try { expect(intent.isOverrideCurrent()).toBe(true); } finally { intent.close(); }
+			expect(row.comfort.temporary_override.id).toBe(b.configuration.temporary_override.id);
+		});
+		it('replaces membership generation after a real file-peer claims write and original refresh, never reviving A captures',async () => {
+			const controller = await owner(),sensor = await ambient(),heat = await actuator();
+			const configured = await configs.configure(controller,dto(sensor,heat));
+			await claims.refresh(); const original = claims.capture(),claim = configured.actuators[0],leaf = await target(heat,false);
+			const authority = claims.mintAuthority(claim.id,'off');
+			expect(original.isCurrent()).toBe(true); expect(original.isCurrent(leaf)).toBe(true); expect(claims.isAuthorized(authority,leaf)).toBe(true);
+			await second.query('UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" + 1 WHERE "id" = ?',[claim.id]);
+			await claims.refresh(); expect(original.isCurrent()).toBe(false); expect(original.isCurrent(leaf)).toBe(false);
+			expect(claims.isAuthorized(authority,leaf)).toBe(false); expect(claims.capture().isCurrent()).toBe(true);
+			expect(claims.isAuthorized(claims.mintAuthority(claim.id,'off'),leaf)).toBe(true);
+			expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ id: claim.id })).revision).toBe(claim.revision + 1);
+		});
+		// END original clock-owner correction drafts
+
 	});
 	// END closed existing-controller route regressions
 

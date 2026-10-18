@@ -193,6 +193,21 @@ interface PinnedExisting {
 	readonly methods: ClimateAutomationExistingCapability;
 	readonly current: () => boolean;
 }
+interface ExistingClockOwner {
+	readonly id: string;
+	readonly incarnation: string;
+	readonly revision: number;
+	readonly nativeConfig: ClimateAutomationJson;
+	readonly slot: ClimateAutomationSlotFacts;
+	readonly deadline: number;
+	readonly watermark: number;
+	readonly terminal: 'expired' | 'clock_uncertain' | null;
+	readonly current: () => boolean;
+	readonly close: () => void;
+	readonly wall: Readonly<{ call: (receiver: DateConstructor) => number }>;
+	readonly mono: Readonly<{ call: (receiver: typeof performance) => number }>;
+	readonly token: ClimateAutomationOverrideLease;
+}
 interface ExistingRecord {
 	readonly operation: Operation;
 	readonly pinned: PinnedExisting;
@@ -201,7 +216,19 @@ interface ExistingRecord {
 	readonly graphReady: () => boolean;
 	readonly baseCurrent: () => boolean;
 	readonly clockOwnerCurrent: () => boolean;
+	readonly closeClockObservation: () => void;
+	readonly wall: ExistingClockOwner['wall'];
+	readonly mono: ExistingClockOwner['mono'];
+	clockCandidate?: ExistingClockOwner | null;
+	previousClock?: ExistingClockOwner;
 	readonly closeVeto: () => void;
+	preparation: 'NOT_ATTEMPTED' | 'PREPARING' | 'SETTLED';
+	preparationFailure?: unknown;
+	completionOpen?: boolean;
+	readonly prepareHold: () => Promise<void>;
+	responseCandidate?: ClimateAutomationJson;
+	readonly resultKind: 'applied' | 'unchanged';
+	outcomeCandidate?: ClimateAutomationExistingOutcome;
 	responseProbed?: boolean;
 	responseSealed?: ClimateAutomationJson;
 	clockCommitted?: boolean;
@@ -321,10 +348,11 @@ export class ClimateAutomationWriterService {
 		current: () => boolean; expected: ClimateAutomationExistingFacts; slot: ClimateAutomationSlotFacts; close: () => void;
 	}>>();
 	private readonly intentViews = new Map<ClimateAutomationIntentView,Readonly<{
-		controllerId: string; slot: ClimateAutomationSlotFacts; current: () => boolean; close: () => void;
+		controllerId: string; slot: ClimateAutomationSlotFacts; nativeConfig: ClimateAutomationJson; current: () => boolean; close: () => void;
 	}>>();
-	private readonly existingClockLeases = new Map<string,Readonly<{ id: string; incarnation: string; revision: number; deadline: number; watermark: number; terminal: 'expired' | 'clock_uncertain' | null; current: () => boolean; token: ClimateAutomationOverrideLease }>>();
+	private readonly existingClockLeases = new Map<string,ExistingClockOwner>();
 	private readonly overrideLeases = new WeakMap<ClimateAutomationOverrideLease,string>();
+	private readonly existingCompletion = new AsyncLocalStorage<ExistingRecord>();
 	private readonly existingRecipes = new WeakMap<object, ExistingRecord>();
 	private readonly existingPublications = new WeakMap<ControllerMutationPublicationLease, ExistingRecord>();
 	private readonly creationPublications = new WeakMap<DeviceCreationPublicationLease, CreationRecord>();
@@ -2153,7 +2181,9 @@ export class ClimateAutomationWriterService {
 		const originalLockMethods: Readonly<Pick<DeviceStructureLockService,'runExclusiveReleased'>> = this.structureLock;
 		const released = originalLockMethods.runExclusiveReleased;
 		const snapshot: RootManualSnapshot = {};
-		let release: Readonly<{ release: () => Promise<void> }> | undefined;
+		let finishHold: (() => void) | undefined;
+		let prepareHold: (() => Promise<void>) | undefined;
+		let preparation: Promise<void> | undefined;
 		let closeEnvironment: (() => void) | undefined;
 		let record: ExistingRecord | undefined;
 		try {
@@ -2178,13 +2208,21 @@ export class ClimateAutomationWriterService {
 					keys.every((key) => creationMethodCurrent(capability, key, Reflect.get(methods, key))) &&
 					methods.isCurrent.call(capability);
 				if (!current()) throw new Conflict('unavailable');
-				release = methods.holdAtEntry.call(capability);
+				const hold = methods.holdAtEntry.call(capability);
+				if (!Object.isFrozen(hold) || !creationHasDataMethod(hold,'prepare') || !creationHasDataMethod(hold,'release')) throw new Conflict('unavailable');
+				const prepare = hold.prepare,release = hold.release;
+				finishHold = () => release.call(hold);
+				const ownedPrepare = (): Promise<void> => {
+					if (preparation === undefined) preparation = prepare.call(hold);
+					return preparation;
+				};
+				prepareHold = ownedPrepare;
 				const environment = methods.captureEnvironment.call(capability);
 				for (const key of ['isCurrent','observeProperties','checkProperties','close']) if (!creationHasDataMethod(environment,key)) throw new Conflict('unavailable');
 				const close = environment.close;
 				closeEnvironment = () => close.call(environment);
-				const wall = Date.now,mono = performance.now;
-				const clockCurrent = (): boolean => creationMethodCurrent(Date,'now',wall) && creationMethodCurrent(performance,'now',mono);
+				const wall = Date.now,mono = performance.now,parse = Date.parse;
+				const clockCurrent = (): boolean => creationMethodCurrent(Date,'now',wall) && creationMethodCurrent(performance,'now',mono) && creationMethodCurrent(Date,'parse',parse);
 				const kind = request.kind;
 				if (!['configure-existing:v1','settings:v1','preset:v1','comfort-definition:v1','override-create:v1',
 					'override-cancel:v1','settle-override:v1','request-release:v1','restore-actuator:v1'].includes(kind))
@@ -2197,7 +2235,9 @@ export class ClimateAutomationWriterService {
 				const controllerId = uuid(id);
 				if (!current() || !environment.isCurrent()) throw new Conflict('unavailable');
 				return Object.freeze({ input: Object.freeze({ providerKey, controllerId, kind, wire }),
-					pinned: Object.freeze({ participant, capability, methods, current }), environment,wall,mono,clockCurrent,graphCapture });
+					pinned: Object.freeze({ participant, capability, methods,current: () => current() &&
+					creationMethodCurrent(hold,'prepare',prepare) && creationMethodCurrent(hold,'release',release) }),
+					prepareHold: ownedPrepare,environment,wall,mono,clockCurrent,graphCapture });
 			});
 			if (snapshot.failure) throw snapshot.failure.cause;
 			const outcome = await this.runReserved(async (manager, scope) => {
@@ -2208,7 +2248,8 @@ export class ClimateAutomationWriterService {
 						let lifecycle = this.existingGraphLifecycle(p.participant.graph,owned.graphCapture);
 						const current = (): boolean => baseCurrent() && lifecycle.current();
 						const retainedCurrent = (): boolean => p.current() && owned.clockCurrent() && lifecycle.current();
-						const clockOwnerCurrent = (): boolean => p.current() && owned.clockCurrent();
+						const nativeClockCurrent = this.captureExistingClockNativeGuard();
+						const ownerLifecycleCurrent = (): boolean => nativeClockCurrent() && p.current() && owned.clockCurrent() && lifecycle.current();
 						operation.guards.push(current);
 						phase.existingCurrent = current;
 						operation.existingQueryFence = this.installExistingQueryFence(operation,current);
@@ -2312,6 +2353,24 @@ export class ClimateAutomationWriterService {
 						const recipe = plan.descriptor;
 						if (!recipe || typeof recipe !== 'object' || this.existingRecipes.has(recipe)) throw new Conflict('invalid');
 						const originalLifecycle = lifecycle;
+						let clockActive = true;
+						const clockSource = this.dataSource;
+						const clockObserver: EntitySubscriberInterface = { beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
+							const query = event.query.trim();
+							if (/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(query)) return;
+							if (event.query === `UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0` && !event.parameters?.length) return;
+							// No graph-counter, qualified-release or publication exemption for this distinct owner.
+							clockActive = false;
+						} };
+						clockSource.subscribers.push(clockObserver);
+						const clockOwnerCurrent = (): boolean => {
+							if (!clockActive) return false;
+							if (!ownerLifecycleCurrent() || !clockSource.subscribers.includes(clockObserver)) clockActive = false;
+							return clockActive;
+						};
+						const closeClockObservation = (): void => { clockActive = false; const index = clockSource.subscribers.indexOf(clockObserver);
+							if (index >= 0) clockSource.subscribers.splice(index,1); };
+
 						let receiptCurrent = true;
 						const originalProbe = originalControllerMutationMethods.isExpectedProbe;
 						const observer: EntitySubscriberInterface = { beforeQuery: (event: BeforeQueryEvent<unknown>) => {
@@ -2323,11 +2382,11 @@ export class ClimateAutomationWriterService {
 							receiptCurrent = false;
 						} };
 						const closeVeto = (): void => { receiptCurrent = false; const index = this.dataSource.subscribers.indexOf(observer); if (index >= 0) this.dataSource.subscribers.splice(index,1); };
-						record = { operation, pinned: p, input, clock: phase.existingClock,graphReady: () => !ticket || originalLifecycle.ready(), expected: finalExpected, slot, reference, source,
+						record = { operation, pinned: p, input,resultKind: changed ? 'applied' : 'unchanged',preparation: 'NOT_ATTEMPTED',prepareHold: owned.prepareHold, clock: phase.existingClock,graphReady: () => !ticket || originalLifecycle.ready(), expected: finalExpected, slot, reference, source,
 							plan: Object.freeze({ ...plan, expected: finalExpected, response: this.ownedJson(plan.response),
 								mirrors: Object.freeze(plan.mirrors.map((item) => Object.freeze({ ...item }))),
 								properties: Object.freeze(plan.properties.map((property) => freezeCreationSnapshot(property))) }),
-							environment: owned.environment,baseCurrent: retainedCurrent,clockOwnerCurrent,closeVeto,current: () => current() && receiptCurrent };
+							environment: owned.environment,baseCurrent: retainedCurrent,clockOwnerCurrent,closeClockObservation,wall: owned.wall,mono: owned.mono,closeVeto,current: () => current() && receiptCurrent };
 						this.dataSource.subscribers.push(observer); operation.guards.push(record.current);
 						this.existingRecipes.set(recipe, record);
 						if (changed) record.publication = originalControllerMutationMethods.fromReserved.call(ControllerMutationPublicationEngine,this, manager, turn, recipe);
@@ -2345,14 +2404,21 @@ export class ClimateAutomationWriterService {
 			if (outcome.outcome === 'conflict') throw new ClimateAutomationParticipantConflict(outcome.reason);
 			if (!record?.expected.image) throw new ClimateAutomationWriteError('committed', new Error('Missing existing-controller postimage'));
 			if (record.publication) originalControllerMutationMethods.acknowledge.call(ControllerMutationPublicationEngine,record.publication);
-			const response = this.ownedJson(await record.pinned.methods.completeAcknowledged.call(record.pinned.capability,
-				record.input, record.plan, record.slot, record.publication ?? null));
-			if (record.responseSealed === undefined || !same(response,record.responseSealed))
+			record.completionOpen = true;
+			const originalRecord = record;
+			const response = await this.existingCompletion.run(originalRecord,() => originalRecord.pinned.methods.completeAcknowledged.call(originalRecord.pinned.capability,
+				originalRecord.input, originalRecord.plan, originalRecord.slot, originalRecord.publication ?? null));
+			record.completionOpen = false;
+			if (record.responseSealed === undefined || response !== record.responseSealed)
 				throw new ClimateAutomationWriteError('committed',new Error('Original sealed controller response required'));
-			return Object.freeze({ descriptor: record.plan.descriptor, outcome: outcome.outcome, controllerRevision: record.expected.image.controllerRevision,
-				graphRevision: record.expected.graph.revision, slot: record.slot, response,
-				publication: null });
+			if (!record.outcomeCandidate || record.outcomeCandidate.outcome !== outcome.outcome) throw new ClimateAutomationWriteError('committed',new Error('Original prepared outcome required'));
+			return record.outcomeCandidate;
 		} catch (cause) {
+			if (record) record.completionOpen = false;
+			// Last genuine cleanup preparation is before F5; never read again after successful B5.
+			if (record?.responseSealed === undefined && prepareHold && preparation === undefined) {
+				try { await prepareHold(); } catch { /* Original native/response cause remains primary. */ }
+			}
 			const report = record?.publicationReport ?? (record?.publication ? controllerMutationPublicationReport(record.publication) : null);
 			const error = record?.operation.settlement.receipt?.outcome === 'committed' &&
 				(!(cause instanceof ClimateAutomationWriteError) || cause.commitOutcome !== 'committed') ?
@@ -2360,13 +2426,60 @@ export class ClimateAutomationWriterService {
 			if (error instanceof ClimateAutomationWriteError && report) this.existingReports.set(error,Object.freeze({ ...report }));
 			throw error;
 		} finally {
-			if (record?.publication) closeControllerMutationPublication(record.publication);
-			if (record) { record.closeVeto(); this.existingRecipes.delete(record.plan.descriptor); }
-			closeEnvironment?.();
-			await release?.release();
+			try { if (record?.publication) closeControllerMutationPublication(record.publication); } catch { /* Closed cleanup cannot replace primary. */ }
+			if (record) { record.closeVeto(); if (!record.clockCommitted) record.closeClockObservation(); this.existingRecipes.delete(record.plan.descriptor); }
+			try { closeEnvironment?.(); } catch { /* Preserve original primary and still release the original hold. */ }
+			try { finishHold?.(); } catch { /* Original outcome remains primary; adapter closes readiness. */ }
 		}
 	}
 
+
+	async prepareExistingRecoveryForPlan(descriptor: ClimateAutomationScope): Promise<void> {
+		const record = this.existingRecipes.get(descriptor),ambient = this.existingCompletion.getStore();
+		if (!record || ambient !== record || !record.completionOpen || record.responseSealed !== undefined ||
+			record.responseProbed || record.preparation !== 'NOT_ATTEMPTED' || !this.isExistingPlanAcknowledged(descriptor)) {
+			if (ambient?.completionOpen && ambient.responseSealed === undefined) ambient.preparationFailure = new Error('Original terminal recovery admission lost');
+			throw new Conflict('unavailable');
+		}
+		record.preparation = 'PREPARING';
+		try { await record.prepareHold(); } finally { record.preparation = 'SETTLED'; }
+		if (!record.current() || record.preparationFailure) throw new Conflict('unavailable');
+	}
+	prepareExistingResponse(descriptor: ClimateAutomationScope,response: ClimateAutomationJson): ClimateAutomationJson {
+		const record = this.existingRecipes.get(descriptor);
+		if (!record || this.existingCompletion.getStore() !== record || record.preparation !== 'SETTLED' ||
+			!record.responseProbed || record.responseCandidate !== undefined || !this.isExistingPlanAcknowledged(descriptor)) throw new Conflict('unavailable');
+		record.responseCandidate = this.ownedJson(response);
+		if (record.publication) record.publicationReport = controllerMutationPublicationReport(record.publication);
+		record.outcomeCandidate = Object.freeze({ descriptor: record.plan.descriptor,outcome: record.resultKind,
+			controllerRevision: record.expected.image?.controllerRevision ?? 0,graphRevision: record.expected.graph.revision,
+			slot: record.slot,response: record.responseCandidate,publication: null });
+		return record.responseCandidate;
+	}
+
+	/** Original global native engine identities only; no operation manager/runner or SQL permission survives. */
+	private captureExistingClockNativeGuard(): () => boolean {
+		const source = this.dataSource,driver = source.driver,manager = source.manager,entities = source.entityMetadatas,subscribers = source.subscribers;
+		const connection = Object.getOwnPropertyDescriptor(driver,'databaseConnection');
+		const metadata = ['devices_virtual_thermostat_configs',CLIMATE_SLOT_TABLE].map((table) => {
+			const row = source.entityMetadatas.find((item) => item.tableName === table);
+			if (!row) throw new Conflict('unavailable');
+			return Object.freeze({ row,table,target: row.target,originalColumns: row.columns,columns: Object.freeze(row.columns.map((column) => Object.freeze({ column,
+				name: column.databaseName,type: column.type,property: column.propertyName,nullable: column.isNullable,
+				read: column.getEntityValue,write: column.setEntityValue }))) });
+		});
+		const pins = [{ receiver: source,key: 'transaction',method: source.transaction },{ receiver: manager,key: 'query',method: manager.query },
+			{ receiver: driver,key: 'prepareHydratedValue',method: driver.prepareHydratedValue }];
+		return () => creationMethodCurrent(source,'isInitialized',true) && creationMethodCurrent(source,'driver',driver) && creationMethodCurrent(source,'manager',manager) &&
+			creationMethodCurrent(source,'entityMetadatas',entities) && creationMethodCurrent(source,'subscribers',subscribers) && !!connection &&
+			connection.get === undefined && connection.set === undefined && Object.getOwnPropertyDescriptor(driver,'databaseConnection')?.value === connection.value &&
+			pins.every((pin) => creationMethodCurrent(pin.receiver,pin.key,pin.method)) && metadata.every((item) =>
+				entities.includes(item.row) && creationMethodCurrent(item.row,'tableName',item.table) && creationMethodCurrent(item.row,'target',item.target) &&
+				creationMethodCurrent(item.row,'columns',item.originalColumns) && item.originalColumns.length === item.columns.length &&
+				item.columns.every((field,index) => item.originalColumns[index] === field.column && creationMethodCurrent(field.column,'databaseName',field.name) &&
+					creationMethodCurrent(field.column,'type',field.type) && creationMethodCurrent(field.column,'propertyName',field.property) && creationMethodCurrent(field.column,'isNullable',field.nullable) &&
+					creationMethodCurrent(field.column,'getEntityValue',field.read) && creationMethodCurrent(field.column,'setEntityValue',field.write)));
+	}
 
 	private existingGraphLifecycle(graph: ClimateAutomationGraphParticipant,capture: NonNullable<ClimateAutomationGraphParticipant['captureOwnedPublicationLifecycle']>) {
 		if (!creationMethodCurrent(graph,'captureOwnedPublicationLifecycle',capture)) throw new Conflict('unavailable');
@@ -2401,7 +2514,11 @@ export class ClimateAutomationWriterService {
 		const old = this.existingClockLeases.get(controllerId);
 		// An authentic persisted incarnation may retain its earlier deadline/M/terminal veto across graph refresh.
 		// This cannot authorize a send: a fresh budget still needs this command's full facts, ACK and original response probe.
-		const original = old?.id === id && old.incarnation === slot?.controllerIncarnation ? old : undefined;
+		const sameLifetime = old?.id === id && old.incarnation === slot?.controllerIncarnation;
+		const matching = sameLifetime && same(old.nativeConfig,before.rows.configurations[0]) && same(old.slot,slot);
+		const original = matching ? old : undefined;
+		if (sameLifetime && (!matching || !creationMethodCurrent(Date,'now',old.wall) || !creationMethodCurrent(performance,'now',old.mono))) return Object.freeze({ wallMs,monoMs,overrideId: id,status: 'clock_uncertain',
+			watermark: old.watermark,deadline: old.deadline,terminatedAt: null });
 		const watermark = Math.max(storedWatermark,original?.watermark ?? storedWatermark);
 		const valid = [wallMs,monoMs,created,expiry,duration,watermark].every(Number.isFinite) && duration > 0 &&
 			duration <= 7 * 86400000 && expiry - created === duration && storedWatermark >= created && storedWatermark < expiry;
@@ -2494,7 +2611,8 @@ export class ClimateAutomationWriterService {
 			for (const column of slotMetadata.columns) column.setEntityValue(entity,this.dataSource.driver.prepareHydratedValue(rows[0][`slot_${column.databaseName}`],column));
 			const slot = this.slotFacts(entity);
 			if (slot.controllerId !== originalId || slot.providerKey !== 'virtual-thermostat:v1') throw new Conflict('stale');
-			this.intentViews.set(token,Object.freeze({ controllerId: originalId,slot,current,close }));
+			const nativeConfig = this.ownedJson(Object.fromEntries(fields.map((field) => [field.name,rows[0][`config_${field.name}`]])));
+			this.intentViews.set(token,Object.freeze({ controllerId: originalId,slot,nativeConfig,current,close }));
 			return token;
 		} catch (error) { close(); throw error; }
 	}
@@ -2508,38 +2626,39 @@ export class ClimateAutomationWriterService {
 	existingOverrideLeaseForPlan(descriptor: ClimateAutomationScope) {
 		const record = this.existingRecipes.get(descriptor);
 		if (!record || !record.responseProbed || !this.isExistingPlanAcknowledged(descriptor)) throw new Conflict('unavailable');
-		if (!record.clockCommitted) { this.commitExistingClock(record); record.clockCommitted = true; }
-		const original = this.existingClockLeases.get(record.input.controllerId);
-		const status: 'expired' | 'clock_uncertain' | null = original?.terminal ?? null;
-		return original ? Object.freeze({ id: original.id,revision: original.revision,deadline: original.deadline,
-			watermark: original.watermark,status,token: original.token }) : null;
+		if (record.clockCandidate === undefined) record.clockCandidate = this.prepareExistingClock(record);
+		const candidate = record.clockCandidate;
+		return candidate ? Object.freeze({ id: candidate.id,revision: candidate.revision,deadline: candidate.deadline,
+			watermark: candidate.watermark,status: candidate.terminal,token: candidate.token }) : null;
 	}
-
 	closeExistingOverrideLease(token: ClimateAutomationOverrideLease): void {
-		const id = this.overrideLeases.get(token);
-		if (id && this.existingClockLeases.get(id)?.token === token) this.existingClockLeases.delete(id);
+		const id = this.overrideLeases.get(token),owner = id ? this.existingClockLeases.get(id) : undefined;
+		if (id && owner?.token === token) { owner.close(); this.existingClockLeases.delete(id); }
 		this.overrideLeases.delete(token);
 	}
-
-	isExistingOverrideCurrent(row: Readonly<{ controllerId: string; revision: number; comfort: unknown }>): boolean {
-		const value = row.comfort;
-		if (!value || typeof value !== 'object') return true;
-		const override: unknown = Reflect.get(value,'temporary_override');
-		if (!override || typeof override !== 'object') return true;
-		const status: unknown = Reflect.get(override,'status');
-		if (status === 'clock_uncertain') return false;
-		if (status !== 'active') return true;
-		const id: unknown = Reflect.get(override,'id'),expiry: unknown = Reflect.get(override,'expires_at');
-		const lease = this.existingClockLeases.get(row.controllerId);
-		if (!lease || !lease.current() || lease.id !== id || lease.revision !== row.revision || typeof expiry !== 'string') return false;
-		const wall = Date.now,monotonic = performance.now;
-		const now = wall.call(Date),mono = monotonic.call(performance);
+	/** Only a genuine same-manager JOIN can select an installed original lifetime; public rows cannot mint one. */
+	isExistingOverrideCurrent(token: ClimateAutomationIntentView): boolean {
+		const intent = this.intentViews.get(token);
+		if (!intent?.current()) return false;
+		const config = this.existingJsonField(intent.nativeConfig,'comfort');
+		let value: ClimateAutomationJson;
+		try { value = typeof config === 'string' ? this.ownedJson(JSON.parse(config)) : config; } catch { return false; }
+		const override = this.existingJsonField(value,'temporary_override');
+		if (!override || this.existingJsonField(override,'status') !== 'active') return this.existingJsonField(override,'status') !== 'clock_uncertain';
+		const lease = this.existingClockLeases.get(intent.controllerId);
+		if (!lease || !lease.current() || !same(lease.nativeConfig,intent.nativeConfig) || !same(lease.slot,intent.slot) ||
+			lease.incarnation !== intent.slot.controllerIncarnation || lease.id !== this.existingJsonField(override,'id')) return false;
+		const expiry = this.existingJsonField(override,'expires_at');
+		if (typeof expiry !== 'string') return false;
+		const now = lease.wall.call(Date),mono = lease.mono.call(performance);
+		// Clock callbacks cannot replace the selected owner or mutate its joined lineage between read and assignment.
+		if (this.existingClockLeases.get(intent.controllerId) !== lease || !intent.current() || !lease.current()) return false;
 		const current = !lease.terminal && Number.isFinite(now) && Number.isFinite(mono) && now >= lease.watermark && now < Date.parse(expiry) && mono < lease.deadline;
 		if (!current && !lease.terminal) {
 			const terminal = Number.isFinite(now) && Number.isFinite(mono) && (now >= Date.parse(expiry) || mono >= lease.deadline) ? 'expired' : 'clock_uncertain';
-			this.existingClockLeases.set(row.controllerId,Object.freeze({ ...lease,terminal }));
+			this.existingClockLeases.set(intent.controllerId,Object.freeze({ ...lease,terminal }));
 		}
-		if (current && now > lease.watermark) this.existingClockLeases.set(row.controllerId,Object.freeze({ ...lease,watermark: now }));
+		if (current && now > lease.watermark) this.existingClockLeases.set(intent.controllerId,Object.freeze({ ...lease,watermark: now }));
 		return current;
 	}
 
@@ -2594,43 +2713,47 @@ export class ClimateAutomationWriterService {
 		if (!oldSemantic || typeof oldSemantic !== 'object' || Array.isArray(oldSemantic) || !same(after,expected) ||
 			!same(normalized.next.comfort,{ ...oldSemantic,configuration: expected })) throw new Conflict('invalid');
 	}
-	private commitExistingClock(record: ExistingRecord): void {
+	private prepareExistingClock(record: ExistingRecord): ExistingClockOwner | null {
+		const previous = this.existingClockLeases.get(record.input.controllerId); record.previousClock = previous;
 		const comfort = this.existingJsonField(record.expected.image?.comfort ?? null,'configuration');
 		const override = this.existingJsonField(comfort,'temporary_override');
 		const id = this.existingJsonField(override,'id');
 		if (typeof id !== 'string' || this.existingJsonField(override,'status') !== 'active') {
-			this.existingClockLeases.delete(record.input.controllerId); return;
+			// Retain bounded conservative lifetime DATA, never restore cancelled/uncertain availability.
+			return previous ? Object.freeze({ ...previous,terminal: previous.terminal ?? (record.clock.status === 'expired' ? 'expired' : 'clock_uncertain'),token: Object.freeze(new ClimateAutomationOverrideLease()) }) : null;
 		}
-		const created = this.existingJsonField(override,'created_at'),expiry = this.existingJsonField(override,'expires_at');
-		const has = (key: string): boolean => !!override && typeof override === 'object' && !Array.isArray(override) && Object.hasOwn(override,key);
-		const duration = has('original_duration_ms') ? this.existingJsonField(override,'original_duration_ms') :
-			typeof expiry === 'string' && typeof created === 'string' ? Date.parse(expiry) - Date.parse(created) : null;
-		const watermark = has('wall_watermark_ms') ? this.existingJsonField(override,'wall_watermark_ms') :
-			typeof created === 'string' ? Date.parse(created) : null;
-		const old = this.existingClockLeases.get(record.input.controllerId);
 		const phaseClock = record.clock;
-		if (!phaseClock || typeof watermark !== 'number' || typeof duration !== 'number' || typeof expiry !== 'string' || typeof created !== 'string')
-			throw new Error('Committed override clock facts unavailable');
-		const deadline = phaseClock.overrideId === id && phaseClock.deadline !== null ? phaseClock.deadline : phaseClock.monoMs + Math.max(0,Math.min(duration,Date.parse(expiry) - phaseClock.wallMs));
-		const sameBudget = old?.id === id && old.incarnation === record.slot.controllerIncarnation;
-		const remembered = sameBudget ? Math.max(watermark,old.watermark) : watermark;
-		const terminal = sameBudget ? old.terminal : null;
-		const revision = record.expected.image?.controllerRevision ?? 0;
-		if (sameBudget && old.revision === revision && old.deadline === deadline && old.watermark === watermark && !old.terminal && old.current()) return;
+		const expiry = this.existingJsonField(override,'expires_at'),created = this.existingJsonField(override,'created_at');
+		const has = (key: string): boolean => !!override && typeof override === 'object' && !Array.isArray(override) && Object.hasOwn(override,key);
+		const watermark = has('wall_watermark_ms') ? this.existingJsonField(override,'wall_watermark_ms') : typeof created === 'string' ? Date.parse(created) : null;
+		const duration = has('original_duration_ms') ? this.existingJsonField(override,'original_duration_ms') : typeof expiry === 'string' && typeof created === 'string' ? Date.parse(expiry) - Date.parse(created) : null;
+		if (!phaseClock || typeof expiry !== 'string' || typeof created !== 'string' || typeof watermark !== 'number' || typeof duration !== 'number' ||
+			!Number.isFinite(duration) || duration <= 0 || duration > 7 * 86400000) throw new Conflict('invalid');
+		const deadline = phaseClock.overrideId === id && phaseClock.deadline !== null ? phaseClock.deadline :
+			phaseClock.monoMs + Math.max(0,Math.min(duration,Date.parse(expiry) - phaseClock.wallMs));
 		const token = Object.freeze(new ClimateAutomationOverrideLease());
-		const current = record.clockOwnerCurrent;
-		this.overrideLeases.set(token,record.input.controllerId);
-		this.existingClockLeases.set(record.input.controllerId,Object.freeze({ id,incarnation: record.slot.controllerIncarnation,revision,deadline,watermark: remembered,terminal,current,token }));
+		return Object.freeze({ id,incarnation: record.slot.controllerIncarnation,revision: record.expected.image?.controllerRevision ?? 0,
+			nativeConfig: record.expected.rows.configurations[0],slot: record.slot,deadline,
+			watermark: Math.max(watermark,phaseClock.watermark ?? watermark),
+			terminal: phaseClock.overrideId === id && (phaseClock.status === 'expired' || phaseClock.status === 'clock_uncertain') ? phaseClock.status : null,
+			current: record.clockOwnerCurrent,close: record.closeClockObservation,wall: record.wall,mono: record.mono,token });
 	}
 
 	/** Terminal fixed result, after all original observations. No subsequent B can rewrite this historical A result. */
 	sealExistingResponse(descriptor: ClimateAutomationScope,response: ClimateAutomationJson): void {
 		const record = this.existingRecipes.get(descriptor);
-		if (!record || record.responseSealed !== undefined || !record.responseProbed || !this.isExistingPlanAcknowledged(descriptor))
+		if (!record || record.responseSealed !== undefined || response !== record.responseCandidate || record.preparation !== 'SETTLED' || !record.responseProbed || !this.isExistingPlanAcknowledged(descriptor))
 			throw new Error('Original finite controller response required');
-		record.responseSealed = this.ownedJson(response);
+		if (record.clockCandidate === undefined || this.existingClockLeases.get(record.input.controllerId) !== record.previousClock ||
+			!record.clockOwnerCurrent()) throw new Conflict('unavailable');
+		const previous = record.previousClock,candidate = record.clockCandidate;
+		if (previous) { previous.close(); this.overrideLeases.delete(previous.token); }
+		if (candidate) { this.overrideLeases.set(candidate.token,record.input.controllerId); this.existingClockLeases.set(record.input.controllerId,candidate); }
+		else { this.existingClockLeases.delete(record.input.controllerId); record.closeClockObservation(); }
+		if (!candidate || candidate.current !== record.clockOwnerCurrent) record.closeClockObservation();
+		record.clockCommitted = true;
+		record.responseSealed = response;
 		if (record.publication) {
-			record.publicationReport = controllerMutationPublicationReport(record.publication);
 			closeControllerMutationPublication(record.publication);
 		}
 		record.closeVeto();
@@ -2643,7 +2766,7 @@ export class ClimateAutomationWriterService {
 		const record = this.existingRecipes.get(descriptor);
 		return !!record && record.operation.settlement.released === true &&
 			record.operation.settlement.receipt?.outcome === 'committed' &&
-			record.operation.settlement.validationComplete === true && record.current() && record.graphReady();
+			record.operation.settlement.validationComplete === true && !record.preparationFailure && record.current() && record.graphReady();
 	}
 
 	admitExistingPublication(manager: EntityManager, turn: ClimateAutomationParticipantTurn, recipe: object): ControllerMutationPublicationEvidence {
@@ -2666,7 +2789,7 @@ export class ClimateAutomationWriterService {
 		const record = this.existingPublications.get(lease);
 		return !!record && record.publication === lease && record.operation.settlement.released === true &&
 			record.operation.settlement.receipt?.outcome === 'committed' &&
-			record.operation.settlement.validationComplete === true && record.current() && record.graphReady();
+			record.operation.settlement.validationComplete === true && !record.preparationFailure && record.current() && record.graphReady();
 	}
 	/** No manager/runner authority: invoked only after an owning probe releases and before an external/cache/event effect. */
 	checkExistingPublication(lease: ControllerMutationPublicationLease): void {
@@ -2696,7 +2819,7 @@ export class ClimateAutomationWriterService {
 	/** A genuine ACK plan permits only a finite readonly response probe, including true no-op. */
 	async probeExistingPlanResponse(descriptor: ClimateAutomationScope): Promise<void> {
 		const record = this.existingRecipes.get(descriptor);
-		if (!record || !this.isExistingPlanAcknowledged(descriptor)) throw new Error('Original response plan unavailable');
+		if (!record || this.existingCompletion.getStore() !== record || record.preparation !== 'SETTLED' || record.preparationFailure || !this.isExistingPlanAcknowledged(descriptor)) throw new Error('Original response plan unavailable');
 		const probe: Operation = { phase: 'OPENING',settlement: { jobs: Object.freeze([]) },scope: shell(),
 			pending: 0,callbacks: [],mandatory: new Map(),jobs: new Map(),issued: new Set(),guards: [record.current],
 			tail: Promise.resolve(),mutationEpoch: 0,frozenEpoch: 0,sequence: 0,existingReadonlyProbe: true };
