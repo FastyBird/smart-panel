@@ -2350,12 +2350,12 @@ describe('atomic virtual thermostat authoring', () => {
 						}),
 					).rejects.toBeInstanceOf(Error);
 					// Original creation metadata is never borrowed; ordinary claims cleanup remains observable.
-				const targets = replacementTargets();
-				expect(targets).not.toContain(VirtualDeviceEntity);
-				expect(targets).not.toContain(VirtualChannelEntity);
-				expect(targets).not.toContain(VirtualChannelPropertyEntity);
-				expect(targets.length).toBeGreaterThan(0);
-				expect(targets.every((target) => target === VirtualThermostatActuatorClaimEntity)).toBe(true);
+					const targets = replacementTargets();
+					expect(targets).not.toContain(VirtualDeviceEntity);
+					expect(targets).not.toContain(VirtualChannelEntity);
+					expect(targets).not.toContain(VirtualChannelPropertyEntity);
+					expect(targets.length).toBeGreaterThan(0);
+					expect(targets.every((target) => target === VirtualThermostatActuatorClaimEntity)).toBe(true);
 					expect(transactions).not.toHaveBeenCalled();
 					expect(fixture.submittedPoints).toEqual([]);
 				} finally {
