@@ -1174,6 +1174,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		if (originalAuthoring) {
 			const current = originalAuthoring.captureCreationMethodPins();
 			const environmentOriginalMethods: Readonly<{
+				snapshotCreationInput: typeof originalAuthoring.snapshotCreationInput;
 				captureCreationEnvironment: typeof originalAuthoring.captureCreationEnvironment;
 				holdCreationAtEntry: typeof originalAuthoring.holdCreationAtEntry;
 				readCreationFacts: typeof originalAuthoring.readCreationFacts;
@@ -1181,12 +1182,18 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 				applyCreation: typeof originalAuthoring.applyCreation;
 			}> = originalAuthoring;
 			const {
+				snapshotCreationInput: snapshotInput,
 				captureCreationEnvironment: environment,
 				holdCreationAtEntry: hold,
 				readCreationFacts: readCreation,
 				prepareCreation: prepare,
 				applyCreation,
 			} = environmentOriginalMethods;
+			const snapshotCall: AutomationReceiverCall<
+				VirtualThermostatAuthoringService,
+				Parameters<VirtualThermostatAuthoringService['snapshotCreationInput']>,
+				ReturnType<VirtualThermostatAuthoringService['snapshotCreationInput']>
+			> = snapshotInput;
 			const environmentCall: AutomationReceiverCall<
 				VirtualThermostatAuthoringService,
 				[],
@@ -1216,6 +1223,10 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 				version: 1,
 				graph: this.graph,
 				isCurrent: current,
+				snapshotInput: (device, configuration) => {
+					if (!current()) unavailable();
+					return snapshotCall.call(originalAuthoring, device, configuration);
+				},
 				captureEnvironment: () => {
 					if (!current()) unavailable();
 					return environmentCall.call(originalAuthoring);

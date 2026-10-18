@@ -196,7 +196,7 @@ interface CreationRecord {
 	readonly capability: ClimateAutomationCreationCapability;
 	readonly methods: Pick<
 		ClimateAutomationCreationCapability,
-		'captureEnvironment' | 'holdAtEntry' | 'readFactsInManager' | 'prepareInManager' | 'applyInManager' | 'isCurrent'
+		'snapshotInput' | 'captureEnvironment' | 'holdAtEntry' | 'readFactsInManager' | 'prepareInManager' | 'applyInManager' | 'isCurrent'
 	>;
 	readonly plan: ClimateAutomationCreationPlan;
 	readonly expected: ClimateAutomationCreationFacts;
@@ -955,6 +955,7 @@ export class ClimateAutomationWriterService {
 		if (!capability || capability.version !== 1 || capability.graph !== pinned.graph)
 			throw new ClimateAutomationWriteError('not_started', new Error('Original creation capability unavailable'));
 		const keys: readonly (
+			| 'snapshotInput'
 			| 'captureEnvironment'
 			| 'holdAtEntry'
 			| 'readFactsInManager'
@@ -962,6 +963,7 @@ export class ClimateAutomationWriterService {
 			| 'applyInManager'
 			| 'isCurrent'
 		)[] = [
+			'snapshotInput',
 			'captureEnvironment',
 			'holdAtEntry',
 			'readFactsInManager',
@@ -971,9 +973,10 @@ export class ClimateAutomationWriterService {
 		];
 		if (keys.some((key) => !creationHasDataMethod(capability, key)))
 			throw new ClimateAutomationWriteError('not_started', new Error('Original creation methods unavailable'));
-		const { captureEnvironment, holdAtEntry, readFactsInManager, prepareInManager, applyInManager, isCurrent } =
+		const { snapshotInput, captureEnvironment, holdAtEntry, readFactsInManager, prepareInManager, applyInManager, isCurrent } =
 			capability;
 		const methods = {
+			snapshotInput,
 			captureEnvironment,
 			holdAtEntry,
 			readFactsInManager,
@@ -1010,8 +1013,17 @@ export class ClimateAutomationWriterService {
 				if (keys.length !== 3 || keys.some((key) => key !== 'kind' && key !== 'device' && key !== 'configuration'))
 					throw new Conflict('invalid');
 				const kind = request.kind;
-				const device = this.ownedJson(request.device);
-				const configuration = this.ownedJson(request.configuration);
+				const rawDevice = request.device;
+				const rawConfiguration = request.configuration;
+				const snapshotCall: ReceiverCall<
+					ClimateAutomationCreationCapability,
+					[unknown, unknown],
+					ReturnType<ClimateAutomationCreationCapability['snapshotInput']>
+				> = snapshotInput;
+				if (!original()) throw new Conflict('unavailable');
+				const wire = snapshotCall.call(capability, rawDevice, rawConfiguration);
+				const device = this.ownedJson(wire.device);
+				const configuration = this.ownedJson(wire.configuration);
 				const arrays: Readonly<{ isArray: (value: unknown) => value is readonly ClimateAutomationJson[] }> = Array;
 				if (kind !== 'create-virtual-thermostat:v1' || !device || arrays.isArray(device) || typeof device !== 'object')
 					throw new Conflict('invalid');

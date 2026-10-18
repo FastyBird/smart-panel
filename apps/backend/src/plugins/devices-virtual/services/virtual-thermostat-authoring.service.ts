@@ -77,6 +77,316 @@ const fail = (message: string): never => {
 	throw new DevicesValidationException(message);
 };
 
+// Creation input wire v1 only. No DTO constructors/prototypes or caller toJSON are consulted.
+// Each entry is [instance field, wire field, optional, nested schema, array].
+type CreationWireField = readonly [string, string, boolean, string | null, boolean];
+const CREATION_WIRE_V1: Readonly<Record<string, readonly CreationWireField[]>> = Object.freeze({
+	CreatedConfigurationV1: Object.freeze<CreationWireField[]>([
+		['display_floor_claim', 'display_floor_claim', false, null, false],
+		['control_strategy', 'control_strategy', false, null, false],
+		['controller', 'controller', false, null, false],
+		['schema_version', 'schema_version', false, null, false],
+		['revision', 'revision', false, null, false],
+		['graph_revision', 'graph_revision', false, null, false],
+		['requested_mode', 'requested_mode', false, null, false],
+		['locked', 'locked', false, null, false],
+		['contact_opening_ms', 'contact_opening_ms', false, null, false],
+		['contact_closing_ms', 'contact_closing_ms', false, null, false],
+		['readiness', 'readiness', false, null, false],
+		['reasons', 'reasons', false, null, false],
+		['policy', 'policy', false, 'CreatedPolicyV1', false],
+		['heuristic', 'heuristic', false, 'VirtualWindowTrendPolicyDto', false],
+		['sources', 'sources', false, 'CreatedSourceV1', true],
+		['actuators', 'actuators', false, 'CreatedClaimV1', true],
+		['released_actuators', 'released_actuators', false, 'CreatedClaimV1', true],
+		['settings', 'settings', false, 'CreatedSettingV1', true],
+	]),
+	CreatedPolicyV1: Object.freeze<CreationWireField[]>([
+		['heatingSetpoint', 'heatingSetpoint', false, null, false],
+		['coolingSetpoint', 'coolingSetpoint', false, null, false],
+		['coldTolerance', 'coldTolerance', false, null, false],
+		['hotTolerance', 'hotTolerance', false, null, false],
+		['neutralMargin', 'neutralMargin', false, null, false],
+		['minimumOffMs', 'minimumOffMs', false, null, false],
+		['changeoverMs', 'changeoverMs', false, null, false],
+		['floor', 'floor', false, 'VirtualThermostatFloorGuardDto', false],
+		['cooling', 'cooling', true, 'VirtualCoolingPolicyDto', false],
+	]),
+	CreatedSourceV1: Object.freeze<CreationWireField[]>([
+		['id', 'id', false, null, false],
+		['role', 'role', false, null, false],
+		['source_property', 'source_property', false, null, false],
+		['source_identity', 'source_identity', false, null, false],
+		['physical_identity', 'physical_identity', false, null, false],
+		['contract_fingerprint', 'contract_fingerprint', false, null, false],
+		['maximum_age_seconds', 'maximum_age_seconds', false, null, false],
+		['open_value', 'open_value', false, null, false],
+		['closed_value', 'closed_value', false, null, false],
+	]),
+	CreatedClaimV1: Object.freeze<CreationWireField[]>([
+		['release_requested_at', 'release_requested_at', false, null, false],
+		['released_at', 'released_at', false, null, false],
+		['release_evidence', 'release_evidence', false, null, false],
+		['group_identity', 'group_identity', false, null, false],
+		['provider_profile', 'provider_profile', false, null, false],
+		['provider_profile_version', 'provider_profile_version', false, null, false],
+		['id', 'id', false, null, false],
+		['role', 'role', false, null, false],
+		['source_property', 'source_property', false, null, false],
+		['source_identity', 'source_identity', false, null, false],
+		['physical_identity', 'physical_identity', false, null, false],
+		['revision', 'revision', false, null, false],
+		['qualification_generation', 'qualification_generation', false, null, false],
+		['state', 'state', false, null, false],
+		['lease_seconds', 'lease_seconds', false, null, false],
+		['reason', 'reason', false, null, false],
+		['protection', 'protection', false, 'CreatedProtectionV1', false],
+		['cooling_protection', 'cooling_protection', false, 'CreatedCoolingDependencyV1', false],
+		['cooling_diagnostics', 'cooling_diagnostics', false, 'CreatedCoolingDiagnosticsV1', false],
+	]),
+	CreatedProtectionV1: Object.freeze<CreationWireField[]>([
+		['schema_version', 'schema_version', false, null, false],
+		['kind', 'kind', false, null, false],
+		['revision', 'revision', false, null, false],
+		['source_property', 'source_property', false, null, false],
+		['source_identity', 'source_identity', false, null, false],
+		['physical_property', 'physical_property', false, null, false],
+		['maximum_age_seconds', 'maximum_age_seconds', false, null, false],
+	]),
+	CreatedCoolingDependencyV1: Object.freeze<CreationWireField[]>([
+		['schema_version', 'schema_version', false, null, false],
+		['revision', 'revision', false, null, false],
+		['purpose', 'purpose', false, null, false],
+		['dew_point_property', 'dew_point_property', false, null, false],
+		['dew_point_identity', 'dew_point_identity', false, null, false],
+		['surface_property', 'surface_property', false, null, false],
+		['surface_identity', 'surface_identity', false, null, false],
+		['maximum_age_seconds', 'maximum_age_seconds', false, null, false],
+	]),
+	CreatedCoolingDiagnosticsV1: Object.freeze<CreationWireField[]>([
+		['claim', 'claim', false, null, false],
+		['dew_point_identity', 'dew_point_identity', false, null, false],
+		['surface_identity', 'surface_identity', false, null, false],
+		['dew_point', 'dew_point', false, null, false],
+		['surface', 'surface', false, null, false],
+		['threshold', 'threshold', false, null, false],
+		['expires_at', 'expires_at', false, null, false],
+		['latched', 'latched', false, null, false],
+		['ready', 'ready', false, null, false],
+		['reasons', 'reasons', false, null, false],
+	]),
+	CreatedSettingV1: Object.freeze<CreationWireField[]>([
+		['property', 'property', false, null, false],
+		['setting', 'setting', false, null, false],
+	]),
+	CreateVirtualDeviceDto: Object.freeze<CreationWireField[]>([
+		['id', 'id', true, null, false],
+		['type', 'type', false, null, false],
+		['category', 'category', false, null, false],
+		['identifier', 'identifier', true, null, false],
+		['name', 'name', false, null, false],
+		['description', 'description', true, null, false],
+		['enabled', 'enabled', true, null, false],
+		['hidden', 'hidden', true, null, false],
+		['hidden_by', 'hidden_by', true, null, false],
+		['controls', 'controls', true, 'CreateDeviceControlDto', true],
+		['channels', 'channels', true, 'CreateVirtualDeviceChannelDto', true],
+		['room_id', 'room_id', true, null, false],
+		['zone_ids', 'zone_ids', true, null, true],
+		['mode', 'mode', true, null, false],
+	]),
+	CreateDeviceControlDto: Object.freeze<CreationWireField[]>([
+		['id', 'id', true, null, false],
+		['name', 'name', false, null, false],
+	]),
+	CreateVirtualDeviceChannelDto: Object.freeze<CreationWireField[]>([
+		['id', 'id', true, null, false],
+		['type', 'type', false, null, false],
+		['category', 'category', false, null, false],
+		['identifier', 'identifier', true, null, false],
+		['name', 'name', false, null, false],
+		['description', 'description', true, null, false],
+		['parent', 'parent', true, null, false],
+		['controls', 'controls', true, 'CreateDeviceChannelControlDto', true],
+		['properties', 'properties', true, 'CreateVirtualChannelPropertyDto', true],
+	]),
+	CreateDeviceChannelControlDto: Object.freeze<CreationWireField[]>([
+		['id', 'id', true, null, false],
+		['name', 'name', false, null, false],
+	]),
+	CreateVirtualChannelPropertyDto: Object.freeze<CreationWireField[]>([
+		['id', 'id', true, null, false],
+		['type', 'type', false, null, false],
+		['category', 'category', false, null, false],
+		['identifier', 'identifier', true, null, false],
+		['name', 'name', true, null, false],
+		['permissions', 'permissions', false, null, true],
+		['data_type', 'data_type', false, null, false],
+		['format', 'format', true, null, true],
+		['invalid', 'invalid', true, null, false],
+		['step', 'step', true, null, false],
+		['value', 'value', true, null, false],
+		['value_origin', 'value_origin', true, null, false],
+		['source_property', 'source_property', true, null, false],
+	]),
+
+	ConfigureVirtualThermostatDto: Object.freeze<CreationWireField[]>([
+		['displayFloorClaimId', 'display_floor_claim', true, null, false],
+		['controlStrategy', 'control_strategy', true, null, false],
+		['comfort', 'comfort', true, 'ThermostatComfortDefinitionDto', false],
+		['schemaVersion', 'schema_version', false, null, false],
+		['expectedRevision', 'expected_revision', false, null, false],
+		['expectedGraphRevision', 'expected_graph_revision', true, null, false],
+		['requestedMode', 'requested_mode', false, null, false],
+		['policy', 'policy', false, 'VirtualThermostatPolicyDto', false],
+		['heuristic', 'heuristic', true, 'VirtualWindowTrendPolicyDto', false],
+		['contactOpeningMs', 'contact_opening_ms', false, null, false],
+		['contactClosingMs', 'contact_closing_ms', false, null, false],
+		['sources', 'sources', false, 'VirtualThermostatSourceDto', true],
+		['actuators', 'actuators', false, 'VirtualThermostatActuatorDto', true],
+		['settings', 'settings', false, 'VirtualThermostatSettingDto', true],
+	]),
+	ThermostatComfortDefinitionDto: Object.freeze<CreationWireField[]>([
+		['automation_enabled', 'automation_enabled', true, null, false],
+		['heating_range', 'heating_range', false, 'ThermostatComfortRangeDto', false],
+		['cooling_range', 'cooling_range', false, 'ThermostatComfortRangeDto', false],
+		['presets', 'presets', false, 'ThermostatComfortPresetDto', true],
+	]),
+	ThermostatComfortRangeDto: Object.freeze<CreationWireField[]>([
+		['minimum', 'minimum', false, null, false],
+		['maximum', 'maximum', false, null, false],
+	]),
+	ThermostatComfortPresetDto: Object.freeze<CreationWireField[]>([
+		['preset', 'preset', false, null, false],
+		['setpoints', 'setpoints', false, 'ThermostatComfortSetpointsDto', false],
+	]),
+	ThermostatComfortSetpointsDto: Object.freeze<CreationWireField[]>([
+		['heating_setpoint', 'heating_setpoint', false, null, false],
+		['cooling_setpoint', 'cooling_setpoint', false, null, false],
+	]),
+	VirtualThermostatPolicyDto: Object.freeze<CreationWireField[]>([
+		['cooling', 'cooling', true, 'VirtualCoolingPolicyDto', false],
+		['heatingSetpoint', 'heatingSetpoint', true, null, false],
+		['coolingSetpoint', 'coolingSetpoint', true, null, false],
+		['coldTolerance', 'coldTolerance', false, null, false],
+		['hotTolerance', 'hotTolerance', false, null, false],
+		['neutralMargin', 'neutralMargin', false, null, false],
+		['minimumOffMs', 'minimumOffMs', false, null, false],
+		['changeoverMs', 'changeoverMs', false, null, false],
+		['floor', 'floor', true, 'VirtualThermostatFloorGuardDto', false],
+	]),
+	VirtualCoolingPolicyDto: Object.freeze<CreationWireField[]>([
+		['schemaVersion', 'schemaVersion', false, null, false],
+		['marginC', 'marginC', false, null, false],
+		['recoveryHysteresisC', 'recoveryHysteresisC', false, null, false],
+		['absoluteMinimumC', 'absoluteMinimumC', true, null, false],
+	]),
+	VirtualThermostatFloorGuardDto: Object.freeze<CreationWireField[]>([
+		['limit', 'limit', false, null, false],
+		['recoveryHysteresis', 'recoveryHysteresis', false, null, false],
+	]),
+	VirtualWindowTrendPolicyDto: Object.freeze<CreationWireField[]>([
+		['sampleWindowMs', 'sampleWindowMs', false, null, false],
+		['minimumSamples', 'minimumSamples', false, null, false],
+		['minimumSpanMs', 'minimumSpanMs', false, null, false],
+		['maximumSampleAgeMs', 'maximumSampleAgeMs', false, null, false],
+		['slopeThresholdCPerMinute', 'slopeThresholdCPerMinute', false, null, false],
+		['confirmationMs', 'confirmationMs', false, null, false],
+		['recoveryMs', 'recoveryMs', false, null, false],
+		['maximumPauseMs', 'maximumPauseMs', false, null, false],
+		['cooldownMs', 'cooldownMs', false, null, false],
+	]),
+	VirtualThermostatSourceDto: Object.freeze<CreationWireField[]>([
+		['id', 'id', true, null, false],
+		['role', 'role', false, null, false],
+		['sourcePropertyId', 'source_property', true, null, false],
+		['maximumAgeSeconds', 'maximum_age_seconds', false, null, false],
+		['openValue', 'open_value', true, null, false],
+		['closedValue', 'closed_value', true, null, false],
+	]),
+	VirtualThermostatActuatorDto: Object.freeze<CreationWireField[]>([
+		['coolingProtection', 'cooling_protection', true, 'ThermostatCoolingDependencyDto', false],
+		['protection', 'protection', true, 'ThermostatMemberProtectionDto', false],
+		['role', 'role', false, null, false],
+		['sourcePropertyId', 'source_property', false, null, false],
+		['leaseSeconds', 'lease_seconds', false, null, false],
+	]),
+	ThermostatCoolingDependencyDto: Object.freeze<CreationWireField[]>([
+		['schemaVersion', 'schemaVersion', false, null, false],
+		['dewPointPropertyId', 'dew_point_property', true, null, false],
+		['surfacePropertyId', 'surface_property', true, null, false],
+		['purpose', 'purpose', false, null, false],
+		['maximumAgeSeconds', 'maximum_age_seconds', false, null, false],
+	]),
+	ThermostatMemberProtectionDto: Object.freeze<CreationWireField[]>([
+		['schemaVersion', 'schema_version', false, null, false],
+		['kind', 'kind', false, null, false],
+		['sourcePropertyId', 'source_property', true, null, false],
+		['maximumAgeSeconds', 'maximum_age_seconds', false, null, false],
+	]),
+	VirtualThermostatSettingDto: Object.freeze<CreationWireField[]>([
+		['propertyId', 'property', false, null, false],
+		['setting', 'setting', false, null, false],
+	]),
+});
+
+// Also used only on already-owned retained plan/model projections after materialization.
+function creationWire(value: unknown, schema: string): ClimateAutomationJson {
+	const active = new Set<object>();
+	const read = (value: unknown, schema: string | null, array: boolean): ClimateAutomationJson => {
+		if (value === null) return null; // Existing DTO transforms/validators retain null semantics.
+		if (typeof value !== 'object') {
+			if (schema !== null || array) fail('Invalid creation wire shape.');
+			return climateAutomationJson(value);
+		}
+		if (active.has(value)) fail('Cyclic creation wire input.');
+		active.add(value);
+		try {
+			const keys = Reflect.ownKeys(value);
+			if (Array.isArray(value)) {
+				if (schema !== null && !array) fail('Invalid creation wire object.');
+				const length = value.length;
+				if (keys.length !== length + 1 || keys.some((key) =>
+					key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length)))
+					fail('Sparse or extended creation wire array.');
+				const result: ClimateAutomationJson[] = [];
+				for (let index = 0; index < length; index++) result.push(read(Reflect.get(value, String(index)), schema, false));
+				return Object.freeze(result);
+			}
+			if (array) fail('Invalid creation wire array.');
+			const result: Record<string, ClimateAutomationJson> = {};
+			if (schema === null) {
+				// Opaque JSON is strict and never alias-normalized or omission-filtered.
+				const prototype: unknown = Reflect.getPrototypeOf(value);
+				if (prototype !== Object.prototype && prototype !== null) fail('Unsupported creation JSON object.');
+				for (const key of keys) {
+					if (typeof key !== 'string') fail('Unsupported creation JSON key.');
+					Object.defineProperty(result, key, { value: read(Reflect.get(value, key), null, false), enumerable: true });
+				}
+			} else {
+				const fields = CREATION_WIRE_V1[schema];
+				if (!fields) fail('Unsupported creation wire version.');
+				const seen = new Set<string>();
+				for (const key of keys) {
+					const field = fields.find(([name, wire]) => key === name || key === wire);
+					if (!field) fail('Unknown creation wire member.');
+					const [, wire, optional, child, nestedArray] = field;
+					if (seen.has(wire)) fail('Ambiguous creation wire alias.');
+					seen.add(wire);
+					const member: unknown = Reflect.get(value, key);
+					if (member === undefined && optional) continue;
+					Object.defineProperty(result, wire, { value: read(member, child, nestedArray), enumerable: true });
+				}
+				if (fields.some(([, wire, optional]) => !optional && !seen.has(wire))) fail('Missing creation wire member.');
+			}
+			return Object.freeze(result);
+		} finally {
+			active.delete(value);
+		}
+	};
+	return read(value, schema, false);
+}
+
 @Injectable()
 export class VirtualThermostatAuthoringService {
 	private readonly logger = new Logger(VirtualThermostatAuthoringService.name);
@@ -144,18 +454,31 @@ export class VirtualThermostatAuthoringService {
 		return plainToInstance(VirtualCreatedThermostatModel, result.result);
 	}
 
+	/** Closed synchronous public DTO-to-wire adapter. Root owns admission/reentry poisoning. */
+	snapshotCreationInput(device: unknown, configuration: unknown): Readonly<{
+		device: ClimateAutomationJson;
+		configuration: ClimateAutomationJson;
+	}> {
+		return Object.freeze({
+			device: creationWire(device, 'CreateVirtualDeviceDto'),
+			configuration: creationWire(configuration, 'ConfigureVirtualThermostatDto'),
+		});
+	}
+
 	captureCreationMethodPins(): () => boolean {
 		const holders: readonly Readonly<{ receiver: object | undefined; keys: readonly string[] }>[] = [
 			{
 				receiver: this,
 				keys: [
 					'draft',
+					'snapshotCreationInput',
 					'captureCreationEnvironment',
 					'readCreationFacts',
 					'prepareCreation',
 					'applyCreation',
 					'creationRawRow',
 					'creationCatalog',
+					'assertCreationCatalogProjection',
 					'holdCreationAtEntry',
 				],
 			},
@@ -441,11 +764,19 @@ export class VirtualThermostatAuthoringService {
 		for (const row of prepared.settings) add(VirtualThermostatSettingEntity, row);
 		for (const row of prepared.protections) add(ThermostatMemberProtectionEntity, row);
 		for (const row of prepared.coolingDependencies) add(ThermostatCoolingDependencyEntity, row);
+		creationWire(draft.dto, 'CreateVirtualDeviceDto');
 		const catalog = this.creationCatalog(inserts, draft.device.id);
-		const configuration = this.configurations.describeCreated(prepared, graphRevision + 1);
-		const response = climateAutomationJson(
-			instanceToPlain(Object.assign(new VirtualCreatedThermostatModel(), { device: catalog, configuration })),
+		const configuration = creationWire(this.configurations.describeCreated(prepared, graphRevision + 1), 'CreatedConfigurationV1');
+		// Only trusted retained models reach class-transformer here. Required model facts are
+		// checked on the result too; exposeUnsetFields:false is not permission to drop them.
+		const responsePlain: unknown = instanceToPlain(
+			Object.assign(new VirtualCreatedThermostatModel(), { device: catalog, configuration }),
+			{ exposeUnsetFields: false },
 		);
+		if (!responsePlain || typeof responsePlain !== 'object') fail('Missing retained creation response.');
+		creationWire(Reflect.get(responsePlain, 'configuration'), 'CreatedConfigurationV1');
+		this.assertCreationCatalogProjection(catalog, Reflect.get(responsePlain, 'device'));
+		const response = climateAutomationJson(responsePlain);
 		return Object.freeze({
 			version: 1,
 			controllerId: draft.device.id,
@@ -453,11 +784,48 @@ export class VirtualThermostatAuthoringService {
 			outputIds: Object.freeze(
 				draft.device.channels.flatMap((channel) => channel.properties.map((property) => property.id)),
 			),
-			device: climateAutomationJson(instanceToPlain(draft.dto)),
+			device: creationWire(instanceToPlain(draft.dto, { exposeUnsetFields: false }), 'CreateVirtualDeviceDto'),
 			prepared: climateAutomationJson({ configuration }),
 			inserts: Object.freeze(inserts),
 			response,
 		});
+	}
+
+	/** Required public catalog facts must survive the trusted entity serializer, including null. */
+	private assertCreationCatalogProjection(device: VirtualDeviceEntity, plain: unknown): void {
+		const row = (source: object, target: unknown, fields: readonly (readonly [string, string])[]): void => {
+			if (!target || typeof target !== 'object' || Array.isArray(target)) fail('Missing retained catalog row.');
+			for (const [name, wire] of fields) {
+				const original: unknown = Reflect.get(source, name);
+				const expected = original instanceof Date ? original.toISOString() : original;
+				if (expected === undefined || climateAutomationCanonical(expected) !== climateAutomationCanonical(Reflect.get(target, wire)))
+					fail('Missing or changed retained catalog fact.');
+			}
+		};
+		const common: readonly (readonly [string, string])[] = [
+			['id', 'id'], ['type', 'type'], ['createdAt', 'created_at'], ['updatedAt', 'updated_at'],
+			['category', 'category'], ['identifier', 'identifier'], ['name', 'name'],
+		];
+		row(device, plain, [...common, ['description', 'description'], ['enabled', 'enabled'],
+			['hidden', 'hidden'], ['hiddenBy', 'hidden_by'], ['roomId', 'room_id'], ['mode', 'mode'],
+			['zoneIds', 'zone_ids'], ['controls', 'controls']]);
+		if (!plain || typeof plain !== 'object') fail('Missing retained catalog.');
+		row(device.status, Reflect.get(plain, 'status'), [['online', 'online'], ['status', 'status'], ['lastChanged', 'last_changed']]);
+		const channels: unknown = Reflect.get(plain, 'channels');
+		if (!Array.isArray(channels) || channels.length !== device.channels.length) fail('Changed retained channels.');
+		for (let index = 0; index < device.channels.length; index++) {
+			const channel = device.channels[index];
+			const output: unknown = channels[index];
+			row(channel, output, [...common, ['description', 'description'], ['device', 'device'], ['parentId', 'parent'], ['controls', 'controls']]);
+			if (!output || typeof output !== 'object') fail('Missing retained channel.');
+			const properties: unknown = Reflect.get(output, 'properties');
+			if (!Array.isArray(properties) || properties.length !== channel.properties.length) fail('Changed retained properties.');
+			for (let propertyIndex = 0; propertyIndex < channel.properties.length; propertyIndex++)
+				row(channel.properties[propertyIndex], properties[propertyIndex], [...common,
+					['permissions', 'permissions'], ['dataType', 'data_type'], ['unit', 'unit'], ['format', 'format'],
+					['invalid', 'invalid'], ['step', 'step'], ['value', 'value'], ['channel', 'channel'],
+					['valueOrigin', 'value_origin'], ['sourcePropertyId', 'source_property']]);
+		}
 	}
 
 	private creationRawRow<T extends object>(type: EntityTarget<T>, entity: T): ClimateAutomationCreationRow {
@@ -517,6 +885,7 @@ export class VirtualThermostatAuthoringService {
 			.map((item) => hydrate(VirtualChannelEntity, item.row));
 		for (const channel of device.channels) {
 			channel.device = device.id;
+			Reflect.set(channel, 'parent', channel.parentId);
 			channel.controls = [];
 			channel.properties = rows
 				.filter(

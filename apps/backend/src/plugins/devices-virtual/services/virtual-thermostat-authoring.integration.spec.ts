@@ -13,6 +13,7 @@ import { Test } from '@nestjs/testing';
 
 import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { climateAutomationCanonical, climateAutomationJson } from '../../../modules/devices/contracts/climate-automation.contract';
 import { PluginsTypeMapperService } from '../../../modules/config/services/plugins-type-mapper.service';
 import {
 	ChannelCategory,
@@ -1672,5 +1673,258 @@ describe('atomic virtual thermostat authoring', () => {
 				provider.onModuleDestroy();
 			}
 		});
+
+		describe('closed creation DTO wire v1 snapshots', () => {
+			it('owns actual decorated DTO optional exposures and round-trips the real source, setting and configuration aliases', () => {
+				const input = request(relayId);
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				const restored = plainToInstance(CreateVirtualThermostatProducerDto, wire);
+				expect(restored.configuration.schemaVersion).toBe(1);
+				expect(restored.configuration.expectedRevision).toBe(0);
+				expect(restored.configuration.requestedMode).toBe('off');
+				expect(restored.configuration.sources[0].sourcePropertyId).toBe(ambientId);
+				expect(restored.configuration.sources[0].maximumAgeSeconds).toBe(300);
+				expect(restored.configuration.actuators[0].sourcePropertyId).toBe(relayId);
+				expect(restored.configuration.actuators[0].leaseSeconds).toBe(30);
+				expect(restored.configuration.settings.map((row) => row.propertyId)).toEqual(input.configuration.settings.map((row) => row.propertyId));
+				expect(fixture.authoring.snapshotCreationInput(restored.device, restored.configuration)).toEqual(wire);
+				expect(fixture.authoring.snapshotCreationInput(wire.device, wire.configuration)).toEqual(wire);
+				expect(Object.isFrozen(input.device)).toBe(false);
+				expect(Object.isFrozen(wire.device)).toBe(true);
+				expect(Object.isFrozen(wire.configuration)).toBe(true);
+			});
+
+			it('retains the full comfort definition schema and nested array order across actual DTO and wire forms', () => {
+				const input = request(relayId);
+				input.configuration.comfort = {
+					heating_range: { minimum: 5, maximum: 25 }, cooling_range: null, automation_enabled: false,
+					presets: [
+						{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } },
+						{ preset: 'comfort', setpoints: { heating_setpoint: 21, cooling_setpoint: null } },
+					],
+				};
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				const restored = plainToInstance(CreateVirtualThermostatProducerDto, wire);
+				expect(restored.configuration.comfort).toEqual(input.configuration.comfort);
+				expect(restored.configuration.comfort?.presets.map((row) => row.preset)).toEqual(['eco', 'comfort']);
+			});
+
+			it('maps complete cooling and member protection aliases without invoking business validation or qualification', () => {
+				const input = request(relayId);
+				input.configuration.actuators[0].protection = {
+					schemaVersion: 1, kind: 'local_floor', sourcePropertyId: ambientId, maximumAgeSeconds: 30,
+				};
+				input.configuration.actuators[0].coolingProtection = {
+					schemaVersion: 1, dewPointPropertyId: ambientId, surfacePropertyId: relayId,
+					purpose: 'cooled_surface', maximumAgeSeconds: 15,
+				};
+				input.configuration.policy.cooling = { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1, absoluteMinimumC: null };
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				const restored = plainToInstance(CreateVirtualThermostatProducerDto, wire);
+				expect(restored.configuration.actuators[0].protection).toEqual(input.configuration.actuators[0].protection);
+				expect(restored.configuration.actuators[0].coolingProtection).toEqual(input.configuration.actuators[0].coolingProtection);
+				expect(restored.configuration.policy.cooling).toEqual(input.configuration.policy.cooling);
+			});
+
+			it('preserves null, false, zero, empty arrays and the distinction from supported optional undefined', () => {
+				const input = request(relayId);
+				input.device.description = null;
+				input.device.enabled = false;
+				input.device.controls = [];
+				input.device.zone_ids = [];
+				input.device.identifier = undefined;
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				expect(wire.device).toMatchObject({ description: null, enabled: false, controls: [], zone_ids: [] });
+				expect(wire.device).not.toHaveProperty('identifier');
+				expect(wire.configuration).toMatchObject({ expected_revision: 0, contact_opening_ms: 0, contact_closing_ms: 0 });
+				Reflect.deleteProperty(input.device, 'identifier');
+				expect(fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toEqual(wire);
+			});
+
+			it('reads nested caller getters once and owns their values without freezing caller objects', () => {
+				const input = request(relayId);
+				let reads = 0;
+				Object.defineProperty(input.device, 'description', { enumerable: true, configurable: true, get: () => {
+					reads++;
+					return 'owned first description';
+				} });
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				Object.defineProperty(input.device, 'description', { value: 'later', configurable: true });
+				expect(reads).toBe(1);
+				expect(wire.device).toHaveProperty('description', 'owned first description');
+				expect(Object.isFrozen(input.device)).toBe(false);
+			});
+
+			it.each([
+				['unknown undefined', (device: object) => Reflect.set(device, 'unknown', undefined)],
+				['unknown defined', (device: object) => Reflect.set(device, 'unknown', 1)],
+				['required undefined', (device: object) => Reflect.set(device, 'name', undefined)],
+				['required absent', (device: object) => Reflect.deleteProperty(device, 'name')],
+				['undefined array entry', (device: object) => Reflect.set(device, 'zone_ids', [undefined])],
+				['sparse array', (device: object) => Reflect.set(device, 'zone_ids', new Array<unknown>(1))],
+				['extended array', (device: object) => {
+					const entries: string[] = [];
+					Reflect.set(entries, 'extra', 1);
+					return Reflect.set(device, 'zone_ids', entries);
+				}],
+				['function', (device: object) => Reflect.set(device, 'description', () => 'not data')],
+				['symbol', (device: object) => Reflect.set(device, 'description', Symbol('not data'))],
+				['bigint', (device: object) => Reflect.set(device, 'description', BigInt(1))],
+				['nonfinite', (device: object) => Reflect.set(device, 'description', Infinity)],
+				['custom value', (device: object) => Reflect.set(device, 'description', new Date(0))],
+				['cycle', (device: object) => Reflect.set(device, 'description', device)],
+			] satisfies readonly (readonly [string, (device: object) => unknown])[])('refuses %s without silently dropping caller data', (_name, mutate) => {
+				const input = request(relayId);
+				mutate(input.device);
+				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow();
+			});
+
+			it('rejects ambiguous aliases even when one value is optional undefined', () => {
+				const input = request(relayId);
+				Reflect.set(input.configuration, 'schema_version', 1);
+				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow('Ambiguous');
+				Reflect.deleteProperty(input.configuration, 'schema_version');
+				input.configuration.displayFloorClaimId = undefined;
+				Reflect.set(input.configuration, 'display_floor_claim', null);
+				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow('Ambiguous');
+			});
+
+			it('preserves semantic keys in opaque strict JSON for the real downstream validator rather than recursively renaming them', () => {
+				const input = request(relayId);
+				const property = input.device.channels?.[0].properties?.[0];
+				if (!property) throw new Error('Original property missing');
+				// Representation only: this is NOT a claim that object-valued format passes the existing DTO validator.
+				Reflect.set(property, 'format', [{ revision: 2, sourcePropertyId: 'opaque', schema_version: 7 }]);
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				expect(JSON.stringify(wire.device)).toContain('"sourcePropertyId":"opaque"');
+				expect(JSON.stringify(wire.device)).toContain('"revision":2');
+				Reflect.set(property, 'format', [{ revision: undefined }]);
+				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow();
+			});
+
+			it('preserves a nested original getter error and does not traverse a fallback after failure', () => {
+				const input = request(relayId);
+				const failure = new Error('TEST original wire getter');
+				let later = 0;
+				Object.defineProperty(input.device, 'name', { configurable: true, get: () => { throw failure; } });
+				Object.defineProperty(input.configuration, 'policy', { configurable: true, get: () => { later++; return {}; } });
+				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow(failure);
+				expect(later).toBe(0);
+			});
+
+			it('retains nested snapshot getter reentry poison even if its child rejection is observed', async () => {
+				const input = request(relayId);
+				let child: Promise<unknown> | undefined;
+				let reads = 0;
+				const transactions = jest.spyOn(database, 'transaction');
+				Object.defineProperty(input.device, 'description', { enumerable: true, configurable: true, get: () => {
+					reads++;
+					child = fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration });
+					void child.catch(() => undefined);
+					return null;
+				} });
+				await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration })).rejects.toBeInstanceOf(Error);
+				if (child !== undefined) await expect(child).rejects.toBeInstanceOf(Error);
+				expect(reads).toBe(1);
+				expect(transactions).not.toHaveBeenCalled();
+				expect(fixture.submittedPoints).toEqual([]);
+			});
+
+			it('invokes the originally registered snapshot function with its original authoring receiver', async () => {
+				fixture.automation.onModuleDestroy();
+				const snapshot = jest.spyOn(fixture.authoring, 'snapshotCreationInput');
+				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				provider.onModuleInit();
+				try {
+					const input = request(relayId);
+					Reflect.set(input.device, 'unknown', undefined);
+					await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration })).rejects.toBeInstanceOf(Error);
+					expect(snapshot).toHaveBeenCalledTimes(1);
+					expect(snapshot.mock.contexts[0]).toBe(fixture.authoring);
+					expect(snapshot.mock.calls[0]).toEqual([input.device, input.configuration]);
+				} finally {
+					provider.onModuleDestroy();
+					snapshot.mockRestore();
+				}
+			});
+
+			it('refuses replaced original snapshot methods before top-level caller getters instead of invoking a fresh receiver', async () => {
+				const substituted = jest.spyOn(fixture.authoring, 'snapshotCreationInput');
+				let reads = 0;
+				try {
+					await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', get device() { reads++; return {}; }, get configuration() { reads++; return {}; } })).rejects.toBeInstanceOf(Error);
+					expect(reads).toBe(0);
+					expect(substituted).not.toHaveBeenCalled();
+				} finally { substituted.mockRestore(); }
+			});
+
+			it('reads each root DTO getter once before a nested representation refusal without entering a transaction', async () => {
+				const input = request(relayId);
+				Reflect.set(input.device, 'unknown', undefined);
+				let deviceReads = 0;
+				let configurationReads = 0;
+				const transaction = jest.spyOn(database, 'transaction');
+				await expect(fixture.writer.createVirtualThermostatV1({
+					kind: 'create-virtual-thermostat:v1',
+					get device() { deviceReads++; return input.device; },
+					get configuration() { configurationReads++; return input.configuration; },
+				})).rejects.toBeInstanceOf(Error);
+				expect(deviceReads).toBe(1);
+				expect(configurationReads).toBe(1);
+				expect(transaction).not.toHaveBeenCalled();
+			});
+
+			it('ignores mutable constructor and toJSON prototype hints and never invokes caller serialization', () => {
+				const input = request(relayId);
+				const invoked = jest.fn(() => { throw new Error('Caller serialization is forbidden'); });
+				Reflect.setPrototypeOf(input.device, { get constructor() { invoked(); return null; }, toJSON: invoked });
+				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
+				expect(wire.device).toHaveProperty('id', input.device.id);
+				expect(invoked).not.toHaveBeenCalled();
+			});
+
+			it('preserves required nullable catalog and configuration facts in the real fixed response without optional undefined', async () => {
+				const input = request(relayId);
+				const result = await fixture.writer.createVirtualThermostatV1({
+					kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration,
+				});
+				expect(result).toMatchObject({ outcome: 'applied', result: {
+					device: { id: input.device.id, updated_at: null, room_id: null,
+						channels: expect.arrayContaining((input.device.channels ?? []).map((channel) => expect.objectContaining({
+							id: channel.id, parent: null,
+							properties: expect.arrayContaining((channel.properties ?? []).map((property) => expect.objectContaining({ id: property.id, value: null, updated_at: null }))),
+						}))),
+					},
+					configuration: { policy: { coolingSetpoint: null, floor: null }, heuristic: null,
+						sources: expect.arrayContaining([expect.objectContaining({ open_value: null, closed_value: null })]),
+						actuators: expect.arrayContaining([expect.objectContaining({ qualification_generation: null, release_evidence: null })]),
+					},
+				} });
+			});
+
+			it.each([
+				undefined, { revision: undefined }, [undefined], NaN, Infinity,
+			])('keeps noncreation private JSON strict for invalid value %#', (value) => {
+				expect(() => climateAutomationCanonical(value)).toThrow();
+				expect(() => climateAutomationJson(value)).toThrow();
+			});
+
+			it('refuses CLI, foreign SQLite lease and active structural callers before inspecting DTO input', async () => {
+				let reads = 0;
+				const input = { kind: 'create-virtual-thermostat:v1', get device() { reads++; throw new Error('Unexpected getter'); }, get configuration() { reads++; throw new Error('Unexpected getter'); } } satisfies import('../../../modules/devices/contracts/climate-automation.contract').ClimateAutomationCreationRequest;
+				const lock = new DeviceStructureLockService();
+				const cli = new ClimateAutomationWriterService(database, lock, fixture.core, new NestConfigService({ FB_CLI: 'on' }));
+				await expect(cli.createVirtualThermostatV1(input)).rejects.toBeInstanceOf(Error);
+				await database.transaction(async () => {
+					await expect(fixture.writer.createVirtualThermostatV1(input)).rejects.toBeInstanceOf(Error);
+				});
+				const structural = new ClimateAutomationWriterService(database, lock, fixture.core);
+				await lock.runExclusive(async () => {
+					await expect(structural.createVirtualThermostatV1(input)).rejects.toBeInstanceOf(Error);
+				});
+				expect(reads).toBe(0);
+			});
+		});
+
 	});
 });

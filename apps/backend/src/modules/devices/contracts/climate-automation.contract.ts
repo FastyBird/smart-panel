@@ -631,6 +631,11 @@ export interface ClimateAutomationCreationPlan {
 	readonly response: ClimateAutomationJson;
 }
 export interface ClimateAutomationCreationCapability {
+	/** Closed public creation DTO wire v1; no business validation or materialization. */
+	readonly snapshotInput: (device: unknown, configuration: unknown) => Readonly<{
+		device: ClimateAutomationJson;
+		configuration: ClimateAutomationJson;
+	}>;
 	readonly version: 1;
 	readonly graph: ClimateAutomationGraphParticipant;
 	readonly captureEnvironment: () => DeviceCreationEnvironment;
