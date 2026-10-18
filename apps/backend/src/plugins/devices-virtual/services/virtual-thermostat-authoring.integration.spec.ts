@@ -656,10 +656,16 @@ describe('atomic virtual thermostat authoring', () => {
 			graph,
 		);
 		const projection = new VirtualProjectionListener(index, events);
-		// Call-through observer installed BEFORE the real Nest loader binds this original handler.
-		const projectionEvents = includeIndexAndProjection
-			? jest.spyOn(projection, 'handlePropertyValueStateChanged')
-			: undefined;
+		// Preserve the original decorated handler while the real Nest loader discovers it.
+		const projectionHandler: unknown = Object.getOwnPropertyDescriptor(
+			VirtualProjectionListener.prototype,
+			'handlePropertyValueStateChanged',
+		)?.value;
+		if (includeIndexAndProjection) {
+			expect(typeof projectionHandler).toBe('function');
+			expect(Object.getOwnPropertyDescriptor(projection, 'handlePropertyValueStateChanged')).toBeUndefined();
+			expect(projection.handlePropertyValueStateChanged).toBe(projectionHandler);
+		}
 		const indexJobs: Promise<unknown>[] = [];
 		if (includeIndexAndProjection) {
 			// Observation only: retain the actual worker Promise discarded by the production
@@ -773,6 +779,17 @@ describe('atomic virtual thermostat authoring', () => {
 			}
 			throw cause;
 		}
+		const projectionListenerCount = events.listenerCount(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED);
+		if (includeIndexAndProjection) {
+			expect(projection.handlePropertyValueStateChanged).toBe(projectionHandler);
+			expect(projectionListenerCount).toBeGreaterThan(0);
+		}
+		// Nest dispatches through the instance method; observe only after genuine registration.
+		const projectionEvents = includeIndexAndProjection
+			? jest.spyOn(projection, 'handlePropertyValueStateChanged')
+			: undefined;
+		if (includeIndexAndProjection)
+			expect(events.listenerCount(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED)).toBe(projectionListenerCount);
 		return {
 			module,
 			writer,
