@@ -2544,4 +2544,17 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		expect(coreOnly.captureProvider(key)).toBeNull();
 		coreOnly.onModuleDestroy();
 	});
+	it('does not fabricate creation capability from an otherwise current manual-only provider', async () => {
+		const original = currentProvider();
+		expect(original.implementation.creationV1).toBeUndefined();
+		expect(original.isCurrent()).toBe(true);
+		let traversed = 0;
+		await expect(writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1',
+			get device() { traversed++; throw new Error('No creation admission'); },
+			get configuration() { traversed++; throw new Error('No creation admission'); },
+		})).rejects.toBeInstanceOf(Error);
+		expect(traversed).toBe(0);
+		expect(original.isCurrent()).toBe(true);
+	});
+
 });

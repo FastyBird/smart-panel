@@ -7,6 +7,8 @@ import { StorageConfigModel } from '../models/config.model';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
 
+import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from '../../devices/services/device-creation-context';
+
 import { StorageWriteBuffer } from './storage-write-buffer';
 
 declare const storageBackendBindingBrand: unique symbol;
@@ -26,6 +28,24 @@ interface StorageBackendBindingState {
 	readonly mirror?: StorageBackendBindingState;
 }
 
+/** Original role records are allocated only by actual register/unregister mutations. */
+interface CreationStorageRegistration {
+	readonly plugin: StoragePlugin;
+	readonly available: StoragePlugin['isAvailable'];
+	readonly write: StoragePlugin['writePoints'];
+	active: boolean;
+}
+export class CreationStorageDestinations {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+interface CreationStorageDestinationRecord {
+	readonly primary: CreationStorageRegistration | undefined;
+	readonly fallback: CreationStorageRegistration | undefined;
+}
+interface CreationStorageCall<R, A extends unknown[], V> {
+	readonly call: (receiver: R, ...args: A) => V;
+}
+
 interface BufferedStoragePoint {
 	readonly point: StoragePoint;
 	readonly primary: StoragePlugin | null;
@@ -38,6 +58,9 @@ export class StorageService implements OnApplicationShutdown {
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
+	private creationClosed = false;
+	private readonly creationRoles: Partial<Record<'primary' | 'fallback', CreationStorageRegistration>> = {};
+	private readonly creationDestinations = new WeakMap<CreationStorageDestinations, CreationStorageDestinationRecord>();
 	private readonly pendingAdmissions = new Set<Promise<void>>();
 	private readonly backendBindings = new WeakMap<StorageBackendBinding, StorageBackendBindingState>();
 	private readonly writes = new StorageWriteBuffer<BufferedStoragePoint>(
@@ -75,12 +98,14 @@ export class StorageService implements OnApplicationShutdown {
 		const config = this.getConfig();
 
 		if (name === config.primaryStorage) {
+			this.replaceCreationRole('primary', plugin);
 			this.primary = plugin;
 
 			this.logger.log(`Primary storage registered: ${name}`);
 		}
 
 		if (name === config.fallbackStorage) {
+			this.replaceCreationRole('fallback', plugin);
 			this.fallback = plugin;
 
 			this.logger.log(`Fallback storage registered: ${name}`);
@@ -101,12 +126,14 @@ export class StorageService implements OnApplicationShutdown {
 	 */
 	async unregisterPlugin(name: string): Promise<void> {
 		if (this.primary?.name === name) {
+			this.replaceCreationRole('primary', null);
 			this.primary = null;
 
 			this.logger.log(`Primary storage unregistered: ${name}`);
 		}
 
 		if (this.fallback?.name === name) {
+			this.replaceCreationRole('fallback', null);
 			this.fallback = null;
 
 			this.logger.log(`Fallback storage unregistered: ${name}`);
@@ -119,6 +146,9 @@ export class StorageService implements OnApplicationShutdown {
 	}
 
 	onApplicationShutdown(): Promise<void> {
+		this.creationClosed = true;
+		this.replaceCreationRole('primary', null);
+		this.replaceCreationRole('fallback', null);
 		// Managed producers emit final reports during onModuleDestroy. Keep admission
 		// open until the manager stops them and unregisterPlugin drains their backends.
 		return this.writes.close();
@@ -174,6 +204,81 @@ export class StorageService implements OnApplicationShutdown {
 			if (!primary && !fallback) this.logger.warn('Buffered history has no available storage backend');
 			start = end;
 		}
+	}
+
+	private replaceCreationRole(role: 'primary' | 'fallback', plugin: StoragePlugin | null): void {
+		const previous = this.creationRoles[role];
+		if (previous) previous.active = false;
+		delete this.creationRoles[role];
+		if (plugin && !this.creationClosed) {
+			try {
+			// Refuse owned use of accessor/replaced methods without changing ordinary registration.
+			if (!creationHasDataMethod(plugin, 'isAvailable') || !creationHasDataMethod(plugin, 'writePoints')) return;
+			const methods: Readonly<Pick<StoragePlugin, 'isAvailable' | 'writePoints'>> = plugin;
+			const available = methods.isAvailable;
+			const write = methods.writePoints;
+			if (creationMethodCurrent(plugin, 'isAvailable', available) && creationMethodCurrent(plugin, 'writePoints', write))
+				this.creationRoles[role] = { plugin, available, write, active: true };
+			} catch {
+				// Ordinary opaque/plugin registration remains ordinary; owned capture cannot qualify it.
+			}
+		}
+	}
+
+	/** Pure capture of original mutation-owned role records; does not probe availability. */
+	captureCreationDestinations(): CreationStorageDestinations {
+		const capture = Object.freeze(new CreationStorageDestinations());
+		this.creationDestinations.set(capture, Object.freeze({ primary: this.creationRoles.primary, fallback: this.creationRoles.fallback }));
+		return capture;
+	}
+
+	areCreationDestinationsCurrent(capture: CreationStorageDestinations): boolean {
+		const original = this.creationDestinations.get(capture);
+		if (!original || this.creationClosed) return false;
+		const roles: readonly ('fallback' | 'primary')[] = ['fallback', 'primary'];
+		for (const role of roles) {
+			const entry = original[role];
+			if (entry !== this.creationRoles[role]) return false;
+			if (!entry) {
+				if (this[role] !== null) return false;
+			} else if (!entry.active || this[role] !== entry.plugin ||
+				!creationMethodCurrent(entry.plugin, 'isAvailable', entry.available) ||
+				!creationMethodCurrent(entry.plugin, 'writePoints', entry.write)) return false;
+		}
+		return true;
+	}
+
+	/** No buffering, rerouting or replay. Already-submitted calls may complete after ownership loss. */
+	async writeCreatedPoints(
+		lease: DeviceCreationPublicationLease,
+		capture: CreationStorageDestinations,
+		points: StoragePoint[],
+	): Promise<Readonly<{ submitted: number; completed: number }>> {
+		DeviceCreationPublicationEngine.assert(lease);
+		const original = this.creationDestinations.get(capture);
+		if (!original || !this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+		let submitted = 0;
+		let completed = 0;
+		const roles: readonly ('fallback' | 'primary')[] = ['fallback', 'primary'];
+		for (const role of roles) {
+			DeviceCreationPublicationEngine.assert(lease);
+			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+			const entry = original[role];
+			if (!entry) continue;
+			const available: CreationStorageCall<StoragePlugin, [], boolean> = entry.available;
+			const ready = available.call(entry.plugin);
+			DeviceCreationPublicationEngine.assert(lease);
+			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+			if (!ready) continue;
+			const write: CreationStorageCall<StoragePlugin, [StoragePoint[]], ReturnType<StoragePlugin['writePoints']>> = entry.write;
+			submitted++;
+			DeviceCreationPublicationEngine.storageSubmitted(lease);
+			await write.call(entry.plugin, points);
+			completed++;
+			DeviceCreationPublicationEngine.storageCompleted(lease);
+			DeviceCreationPublicationEngine.assert(lease);
+		}
+		return Object.freeze({ submitted, completed });
 	}
 
 	// ─── Status ───────────────────────────────────────────────────────

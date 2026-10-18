@@ -2756,3 +2756,91 @@ describe('closed C1a root admission before caller getters', () => {
 		expect(await database.manager.count(ClimateAutomationSlotEntity)).toBe(0);
 	});
 });
+
+
+/** Source-only boundary drafts for the creation root's caller-local preflight. */
+describe('original caller-local structural creation preflight', () => {
+	it('reports active shared and exclusive callers without changing either parent or invoking new work', async () => {
+		const lock = new DeviceStructureLockService();
+		expect(lock.hasCurrentStructuralLease()).toBe(false);
+		await lock.runShared(async () => {
+			expect(lock.hasCurrentStructuralLease()).toBe(true);
+			await lock.runShared(async () => {
+				expect(lock.hasCurrentStructuralLease()).toBe(true);
+			});
+			expect(lock.hasCurrentStructuralLease()).toBe(true);
+		});
+		await lock.runExclusiveReleased(async () => {
+			expect(lock.hasCurrentStructuralLease()).toBe(true);
+			await lock.runExclusive(async () => {
+				expect(lock.hasCurrentStructuralLease()).toBe(true);
+			});
+			expect(lock.hasCurrentStructuralLease()).toBe(true);
+		});
+		expect(lock.hasCurrentStructuralLease()).toBe(false);
+	});
+
+	it('does not confuse an unrelated active owner or inherited inactive context with caller authority', async () => {
+		const lock = new DeviceStructureLockService();
+		const originalEntered = deferred();
+		const originalRelease = deferred();
+		const detachedRelease = deferred();
+		const successorEntered = deferred();
+		const successorRelease = deferred();
+		const trace: string[] = [];
+		let detached: Promise<void> = Promise.resolve();
+		const original = lock.runExclusiveReleased(async () => {
+			detached = detachedRelease.promise.then(async () => {
+				expect(lock.hasCurrentStructuralLease()).toBe(false);
+				trace.push('detached queued');
+				await lock.runExclusiveReleased(async () => {
+					expect(lock.hasCurrentStructuralLease()).toBe(true);
+					trace.push('detached entered');
+				});
+			});
+			originalEntered.resolve();
+			await originalRelease.promise;
+		});
+		await originalEntered.promise;
+		expect(lock.hasCurrentStructuralLease()).toBe(false);
+		const successor = lock.runExclusiveReleased(async () => {
+			trace.push('successor entered');
+			successorEntered.resolve();
+			await successorRelease.promise;
+			trace.push('successor released');
+		});
+		originalRelease.resolve();
+		await original;
+		await successorEntered.promise;
+		expect(lock.hasCurrentStructuralLease()).toBe(false);
+		detachedRelease.resolve();
+		// The public shared request is a FIFO barrier behind the already held successor.
+		const afterSuccessor = lock.runShared(async () => { trace.push('shared entered'); });
+		successorRelease.resolve();
+		await Promise.all([successor, detached, afterSuccessor]);
+		expect(trace.indexOf('detached entered')).toBeGreaterThan(trace.indexOf('successor released'));
+		expect(trace.filter((entry) => entry === 'detached entered')).toHaveLength(1);
+	});
+});
+
+
+describe('closed original creation rejects before business getters', () => {
+	it.each(['shared', 'exclusive', 'CLI'] satisfies readonly ('shared' | 'exclusive' | 'CLI')[])(
+		'refuses %s entry without traversing input or acquiring the released writer', async (kind) => {
+			const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:' });
+			const lock = new DeviceStructureLockService();
+			const writer = new ClimateAutomationWriterService(source, lock, new ClimateAutomationRegistryService(),
+				new ConfigService(kind === 'CLI' ? { FB_CLI: 'on' } : {}));
+			let getters = 0;
+			const request = { kind: 'create-virtual-thermostat:v1', get device() { getters++; throw new Error('Unreachable input'); }, get configuration() { getters++; throw new Error('Unreachable input'); } } satisfies import('../contracts/climate-automation.contract').ClimateAutomationCreationRequest;
+			const entry = jest.spyOn(lock, 'runExclusiveReleased');
+			const attempt = async () => { await expect(writer.createVirtualThermostatV1(request)).rejects.toBeInstanceOf(Error); };
+			if (kind === 'shared') await lock.runShared(attempt);
+			else if (kind === 'exclusive') await lock.runExclusive(attempt);
+			else await attempt();
+			expect(getters).toBe(0);
+			expect(entry).not.toHaveBeenCalled();
+			expect(source.isInitialized).toBe(false);
+		},
+	);
+});

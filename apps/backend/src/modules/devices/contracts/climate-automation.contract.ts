@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { EntityManager } from 'typeorm';
 
+import type { DeviceCreationContext, DeviceCreationEnvironment } from '../services/device-creation-context';
+
 /** PRIVATE core protocol. No HTTP/Swagger schema, runtime frame or physical authority. */
 export type ClimateAutomationJson =
 	| null
@@ -95,6 +97,7 @@ export interface ClimateAutomationProducer {
 }
 
 export interface ClimateAutomationProvider {
+	readonly creationV1?: ClimateAutomationCreationCapability;
 	/** Optional dormant edit port; never inferred from ordinary validation/creation methods. */
 	readonly participantV1?: ClimateAutomationParticipant;
 	readonly readControllerInManager: (
@@ -602,3 +605,42 @@ export function climateAutomationReduceManualIntent(
 		manualFieldsChanged: climateAutomationCanonical(oldManual) !== climateAutomationCanonical(nextManual),
 	});
 }
+
+
+/** CLOSED trusted thermostat authoring only. No caller callback, manager, private slot or arbitrary result. */
+export interface ClimateAutomationCreationRequest {
+	readonly kind: 'create-virtual-thermostat:v1';
+	readonly device: unknown;
+	readonly configuration: unknown;
+}
+export interface ClimateAutomationCreationRow {
+	readonly table: string;
+	readonly row: Readonly<Record<string, ClimateAutomationJson>>;
+}
+export interface ClimateAutomationCreationFacts {
+	readonly tables: Readonly<Record<string, readonly Readonly<Record<string, ClimateAutomationJson>>[]>>;
+}
+export interface ClimateAutomationCreationPlan {
+	readonly version: 1;
+	readonly controllerId: string;
+	readonly createdAt: string;
+	readonly outputIds: readonly string[];
+	readonly device: ClimateAutomationJson;
+	readonly prepared: ClimateAutomationJson;
+	/** Independently materialized before APPLY, not copied from observed post-apply rows. */
+	readonly inserts: readonly ClimateAutomationCreationRow[];
+	readonly response: ClimateAutomationJson;
+}
+export interface ClimateAutomationCreationCapability {
+	readonly version: 1;
+	readonly graph: ClimateAutomationGraphParticipant;
+	readonly captureEnvironment: () => DeviceCreationEnvironment;
+	readonly isCurrent: () => boolean;
+	readonly holdAtEntry: () => Readonly<{ release: () => Promise<void> }>;
+	readonly readFactsInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn) => Promise<ClimateAutomationCreationFacts>;
+	readonly prepareInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, request: ClimateAutomationCreationRequest, before: ClimateAutomationCreationFacts, graphRevision: number) => Promise<ClimateAutomationCreationPlan>;
+	readonly applyInManager: (manager: EntityManager, turn: ClimateAutomationParticipantTurn, plan: ClimateAutomationCreationPlan, context: DeviceCreationContext) => Promise<void>;
+}
+export type ClimateAutomationCreationOutcome =
+	| { readonly outcome: 'applied'; readonly result: ClimateAutomationJson }
+	| { readonly outcome: 'conflict'; readonly reason: ClimateAutomationConflictReason };

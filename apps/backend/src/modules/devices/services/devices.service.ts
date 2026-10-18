@@ -1,7 +1,8 @@
 import { validate } from 'class-validator';
+import type { ValidatorOptions } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
@@ -35,7 +36,7 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
-import { DeviceCreationContext } from './device-creation-context';
+import { DeviceCreationContext, DeviceCreationPublicationEngine } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
@@ -478,6 +479,8 @@ export class DevicesService {
 
 	/** Checks identity without loading the device graph or running value/status subscribers. */
 	async exists(id: string): Promise<boolean> {
+		const original = DeviceCreationContext.readOriginalDeviceIdentity(id);
+		if (original !== undefined) return (await original) !== null;
 		return this.repository.createQueryBuilder('device').where('device.id = :id', { id }).getExists();
 	}
 
@@ -545,8 +548,12 @@ export class DevicesService {
 		createDto: TCreateDTO,
 		creation?: DeviceCreationContext,
 	): Promise<TDevice> {
+		creation?.assertOriginalAdmission();
+		const catalogChild = creation?.isOriginalOwned ? creation.beginCatalogChild('device', createDto) : undefined;
+		try {
 		this.logger.debug('Creating new device');
 
+		creation?.assertOriginalAdmission();
 		const { type } = createDto;
 		creation?.assertType(type);
 
@@ -558,7 +565,9 @@ export class DevicesService {
 
 		const mapping = this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
 
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
+		creation?.assertMapping('device', mapping);
+		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
+		creation?.assertOriginalAdmission();
 		// The climate-controller virtual category has writable local settings and
 		// exclusive physical claims. Its only creation ingress is the admitted
 		// producer writer that installs all three atomically.
@@ -571,7 +580,7 @@ export class DevicesService {
 
 		// Validate room assignment if provided
 		if (dtoInstance.room_id) {
-			await this.validateRoomAssignment(dtoInstance.room_id);
+			await this.validateRoomAssignment(dtoInstance.room_id, creation?.manager);
 		}
 
 		// Extract zone IDs before processing
@@ -590,7 +599,7 @@ export class DevicesService {
 
 		delete dtoInstance.channels;
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
@@ -607,6 +616,7 @@ export class DevicesService {
 			: this.dataSource.getRepository(mapping.class);
 
 		const device = repository.create(toInstance(mapping.class, dtoInstance));
+		creation?.stampCatalog(device);
 
 		// Provenance only means something while the device is hidden. A create that names a reason
 		// without hiding anything would leave a `system` claim sitting on a visible row, and the first
@@ -813,7 +823,8 @@ export class DevicesService {
 
 		this.logger.debug(`Successfully created device with id=${savedDevice.id}`);
 
-		if (creation)
+		if (creation?.isOriginalOwned) creation.deferCatalog('device', savedDevice, mapping, this.eventEmitter, dtoInstance);
+		else if (creation)
 			creation.defer(async () => {
 				if (mapping.afterCreate) await mapping.afterCreate(savedDevice, dtoInstance);
 				this.eventEmitter.emit(EventType.DEVICE_CREATED, await this.getOneOrThrow(savedDevice.id));
@@ -821,12 +832,16 @@ export class DevicesService {
 		else this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
 
 		return savedDevice;
+		} catch (cause) { catalogChild?.finish({ cause }); throw cause; }
+		finally { catalogChild?.finish(); }
+
 	}
 
 	async update<TDevice extends DeviceEntity, TUpdateDTO extends UpdateDeviceDto>(
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TDevice> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		this.logger.debug(`Updating device with id=${id}`);
 
 		const device = await this.getOneOrThrow(id);
@@ -1139,6 +1154,7 @@ export class DevicesService {
 	}
 
 	async remove(id: string): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		return this.structureLock.runExclusive(async (): Promise<void> => {
 			this.logger.debug(`Removing device with id=${id}`);
 
@@ -1186,12 +1202,17 @@ export class DevicesService {
 		return buildDeviceGraphQuery(repository);
 	}
 
-	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
+	private validateCreationInstance(instance: object, creation: DeviceCreationContext | undefined, options: ValidatorOptions) {
+		return creation ? creation.validate(instance, options) : validate(instance, options);
+	}
+
+	private async validateDto<T extends object>(DtoClass: new () => T, dto: any, creation?: DeviceCreationContext): Promise<T> {
+		creation?.assertOriginalAdmission();
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
@@ -1254,10 +1275,12 @@ export class DevicesService {
 	 * @throws DevicesNotFoundException if room does not exist
 	 * @throws DevicesValidationException if space is not a room
 	 */
-	private async validateRoomAssignment(roomId: string): Promise<void> {
+	private async validateRoomAssignment(roomId: string, manager?: EntityManager): Promise<void> {
 		this.logger.debug(`Validating room assignment for roomId=${roomId}`);
 
-		const space = await this.spaceRepository.findOne({ where: { id: roomId } });
+		const space = manager
+			? await manager.createQueryBuilder(SpaceEntity, 'space').where('space.id = :roomId', { roomId }).callListeners(false).getOne()
+			: await this.spaceRepository.findOne({ where: { id: roomId } });
 
 		if (!space) {
 			this.logger.error(`Space with id=${roomId} not found`);

@@ -211,6 +211,15 @@ interface PreparedBatchRecord {
 	nextNotification: number;
 }
 
+/** Opaque read-only evidence. Never a producer, publisher or write capability. */
+export class CreationProducerObservation {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+interface CreationProducerObservationRecord {
+	active: boolean;
+	readonly slots: Map<string, Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>>;
+}
+
 /** Owns process-local live authority. Persisted history is never restart evidence. */
 @Injectable()
 export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDestroy {
@@ -221,6 +230,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	private readonly observations = new WeakMap<ObservedProducerBatch, ObservedBatchRecord>();
 	private readonly prepared = new WeakMap<PreparedProducerBatch, PreparedBatchRecord>();
 	private readonly observingIds = new Map<string, Set<ObservedBatchRecord>>();
+	private readonly creationObservations = new WeakMap<CreationProducerObservation, CreationProducerObservationRecord>();
+	private readonly creationObservingIds = new Map<string, Set<CreationProducerObservationRecord>>();
 	private readonly entries = new Map<string, ProducerEntry>();
 	private timer: NodeJS.Timeout | null = null;
 	private publicationSequence = 0;
@@ -228,6 +239,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	setEvidenceValidator(validator: (sources: readonly IncorporatedPropertySample[]) => boolean): void {
 		if (this.evidenceValidator !== validator) {
+			for (const records of this.creationObservingIds.values())
+				for (const record of records) this.closeCreationRecord(record);
 			for (const [id, batches] of this.observingIds) {
 				if (batches.size) this.dirtyObserved(id);
 			}
@@ -287,8 +300,14 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 			if (!this.batchCurrent(notification.batch)) return;
 			if (notification.kind === EventType.CHANNEL_PROPERTY_UPDATED && !entry) return;
 		}
-		this.dirtyObserved(property.id);
-		if (entry) entry.property = property;
+		if (entry) {
+			this.dirtyObserved(property.id);
+			entry.property = property;
+		} else {
+			// A no-entry hint changes no producer/lease/metadata. Preserve publisher invalidation,
+			// while the separate read-only absence observation remains exactly its original absence.
+			this.dirtyPublisherObserved(property.id);
+		}
 	};
 
 	constructor(@Optional() private readonly events?: EventEmitter2) {}
@@ -303,6 +322,9 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	onModuleDestroy(): void {
 		this.destroyed = true;
+		for (const records of this.creationObservingIds.values())
+			for (const record of records) this.closeCreationRecord(record);
+		this.creationObservingIds.clear();
 		for (const owner of this.ownedPublishers.values()) this.disposeOwner(owner);
 		this.ownedPublishers.clear();
 		this.observingIds.clear();
@@ -310,6 +332,62 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		this.events?.off(EventType.CHANNEL_PROPERTY_UPDATED, this.refreshPropertyMetadata);
 		this.timer = null;
 		this.entries.clear();
+	}
+
+	/** Explicit finite observation admission; no registry authority or epoch is minted by a check. */
+	beginCreationObservation(ids: readonly string[]): CreationProducerObservation {
+		if (this.destroyed) throw new Error('Producer registry destroyed');
+		if (!Array.isArray(ids)) throw new Error('Invalid creation observation');
+		const fixedIds = [...ids];
+		if (fixedIds.length === 0 || new Set(fixedIds).size !== fixedIds.length || fixedIds.some((id) => typeof id !== 'string' || id.length === 0))
+			throw new Error('Invalid creation observation');
+		// Read all input before installing any membership; input getters cannot partially admit a token.
+		const slots = new Map<string, Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>>(fixedIds.map((id): [string, Readonly<{ entry: ProducerEntry | undefined; lease: PropertyProducerLease | undefined }>] => {
+			const entry = this.entries.get(id);
+			return [id, Object.freeze({ entry, lease: entry?.lease })];
+		}));
+		if (this.destroyed) throw new Error('Producer registry destroyed');
+		const token = Object.freeze(new CreationProducerObservation());
+		const record: CreationProducerObservationRecord = { active: true, slots };
+		this.creationObservations.set(token, record);
+		for (const id of fixedIds) {
+			const records = this.creationObservingIds.get(id) ?? new Set<CreationProducerObservationRecord>();
+			records.add(record);
+			this.creationObservingIds.set(id, records);
+		}
+		return token;
+	}
+
+	isCreationObservationCurrent(token: CreationProducerObservation): boolean {
+		const record = this.creationObservations.get(token);
+		if (this.destroyed || !record?.active) return false;
+		for (const [id, slot] of record.slots) {
+			const entry = this.entries.get(id);
+			if (entry !== slot.entry || entry?.lease !== slot.lease) return false;
+		}
+		return true;
+	}
+
+	closeCreationObservation(token: CreationProducerObservation): void {
+		const record = this.creationObservations.get(token);
+		if (record) this.closeCreationRecord(record);
+		this.creationObservations.delete(token);
+	}
+
+	private closeCreationRecord(record: CreationProducerObservationRecord): void {
+		record.active = false;
+		for (const id of record.slots.keys()) {
+			const records = this.creationObservingIds.get(id);
+			records?.delete(record);
+			if (!records?.size) this.creationObservingIds.delete(id);
+		}
+		record.slots.clear();
+	}
+
+	readCreationObservationCounts(): Readonly<{ active: number; observedIds: number }> {
+		const active = new Set<CreationProducerObservationRecord>();
+		for (const records of this.creationObservingIds.values()) for (const record of records) active.add(record);
+		return Object.freeze({ active: active.size, observedIds: this.creationObservingIds.size });
 	}
 
 	/** Installs a live lease, optionally bounded by its owner's captured validation lifecycle. */
@@ -1036,6 +1114,11 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		return true;
 	}
 	private dirtyObserved(id: string, except?: ObservedBatchRecord): void {
+		// A publisher's self-exemption NEVER exempts independent creation observations.
+		this.dirtyCreationObserved(id);
+		this.dirtyPublisherObserved(id, except);
+	}
+	private dirtyPublisherObserved(id: string, except?: ObservedBatchRecord): void {
 		const observers = this.observingIds.get(id);
 		if (!observers) return;
 		for (const batch of observers)
@@ -1043,6 +1126,10 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 				batch.dirty = true;
 				this.closeBatch(batch);
 			}
+	}
+	private dirtyCreationObserved(id: string): void {
+		const records = this.creationObservingIds.get(id);
+		if (records) for (const record of records) this.closeCreationRecord(record);
 	}
 	private closeBatch(batch: ObservedBatchRecord): void {
 		batch.open = false;
@@ -1070,6 +1157,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 		});
 	}
 	private disposeOwner(owner: OwnedPublisherRecord): void {
+		for (const [id, entry] of this.entries) if (entry.owner === owner) this.dirtyCreationObserved(id);
 		owner.active = false;
 		for (const batch of owner.batches) this.closeBatch(batch);
 		owner.view = owner.emptyView;

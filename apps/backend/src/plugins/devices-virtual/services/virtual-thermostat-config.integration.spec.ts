@@ -2019,4 +2019,32 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		await cleanupRunner.release();
 		await runner.release();
 	});
+	it('forms the fixed initial creation response without a query, qualification, live value or clock read', async () => {
+		const controller = await owner(), sensor = await ambient(), heat = await actuator();
+		const prepared = await configs.prepare(database.manager, controller, dto(sensor, heat));
+		const identities = prepared.actuators.map((row) => ({ id: row.id, generation: row.qualificationGeneration }));
+		const configuredAt = prepared.config.configuredAt.toISOString();
+		const statements: string[] = [];
+		const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => { statements.push(event.query); } };
+		database.subscribers.push(observer);
+		const qualification = jest.spyOn(claims, 'qualification');
+		try {
+			const fixed = configs.describeCreated(prepared, 7);
+			expect(fixed.controller).toBe(controller);
+			expect(fixed.graph_revision).toBe(7);
+			expect(fixed.readiness).toBe('draft');
+			expect(fixed.reasons).toEqual(['controller_runtime_unavailable', 'heating_hardware_qualification_missing']);
+			expect(fixed.actuators[0].cooling_diagnostics).toBeNull();
+			expect(fixed.released_actuators).toEqual([]);
+			expect(statements).toEqual([]);
+			expect(qualification).not.toHaveBeenCalled();
+			expect(prepared.config.configuredAt.toISOString()).toBe(configuredAt);
+			expect(prepared.actuators.map((row) => ({ id: row.id, generation: row.qualificationGeneration }))).toEqual(identities);
+			expect(JSON.stringify(fixed)).not.toMatch(/manualGeneration|controllerIncarnation|installEvidence|candidateId/);
+		} finally {
+			qualification.mockRestore();
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+	});
+
 });

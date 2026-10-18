@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { Test } from '@nestjs/testing';
+import { DeviceCreationPublicationLease } from '../../devices/services/device-creation-context';
+
 import { ConfigService } from '../../config/services/config.service';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageQueryOptions } from '../storage.types';
@@ -226,5 +229,62 @@ describe('StorageService', () => {
 		} as unknown as ConfigService);
 
 		await expect(service.queryStrict('SELECT * FROM test')).rejects.toThrow('No storage backend is available');
+	});
+});
+
+/** Pure destination continuity is necessary evidence, never a forged positive publication permit. */
+describe('creation storage mutation-owned destination records', () => {
+	async function fixture() {
+		const module = await Test.createTestingModule({ providers: [StorageService,
+			{ provide: ConfigService, useValue: { getModuleConfig: () => ({ primaryStorage: 'primary', fallbackStorage: 'fallback' }) } },
+		] }).compile();
+		const storage = module.get(StorageService);
+		const plugin = (name: string): StoragePlugin => ({ name, initialize: () => Promise.resolve(), destroy: () => Promise.resolve(),
+			isAvailable: () => true, writePoints: () => Promise.resolve(), query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('Not used by this inert IO fixture')), registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(), getMeasurements: () => Promise.resolve([]),
+		});
+		return { storage, module, plugin };
+	}
+	it('captures without availability IO and permanently fences same-object primary ABA and fallback replacement', async () => {
+		const { storage, module, plugin } = await fixture();
+		try {
+			const a = plugin('primary');
+			const availability = jest.spyOn(a, 'isAvailable');
+			storage.registerPlugin('primary', a);
+			const first = storage.captureCreationDestinations();
+			expect(storage.areCreationDestinationsCurrent(first)).toBe(true);
+			expect(availability).not.toHaveBeenCalled();
+			storage.registerPlugin('primary', a);
+			expect(storage.areCreationDestinationsCurrent(first)).toBe(false);
+			const second = storage.captureCreationDestinations();
+			storage.registerPlugin('primary', plugin('primary'));
+			storage.registerPlugin('primary', a);
+			expect(storage.areCreationDestinationsCurrent(first)).toBe(false);
+			expect(storage.areCreationDestinationsCurrent(second)).toBe(false);
+			const third = storage.captureCreationDestinations();
+			storage.registerPlugin('fallback', plugin('fallback'));
+			expect(storage.areCreationDestinationsCurrent(third)).toBe(false);
+		} finally { await module.close(); }
+	});
+	it('terminal shutdown closes old captures and cannot turn a fresh empty capture into authority', async () => {
+		const { storage, module, plugin } = await fixture();
+		storage.registerPlugin('primary', plugin('primary'));
+		const original = storage.captureCreationDestinations();
+		await storage.onApplicationShutdown();
+		expect(storage.areCreationDestinationsCurrent(original)).toBe(false);
+		storage.registerPlugin('primary', plugin('primary'));
+		expect(storage.areCreationDestinationsCurrent(storage.captureCreationDestinations())).toBe(false);
+		await module.close();
+	});
+	it('refuses a public lease shell before touching a caller point list or submitting to a backend', async () => {
+		const { storage, module, plugin } = await fixture();
+		try {
+			const backend = plugin('primary');
+			const write = jest.spyOn(backend, 'writePoints');
+			storage.registerPlugin('primary', backend);
+			await expect(storage.writeCreatedPoints(new DeviceCreationPublicationLease(), storage.captureCreationDestinations(), [])).rejects.toThrow('Original creation');
+			expect(write).not.toHaveBeenCalled();
+		} finally { await module.close(); }
 	});
 });

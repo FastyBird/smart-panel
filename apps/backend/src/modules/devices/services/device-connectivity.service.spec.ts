@@ -1,3 +1,4 @@
+import { DeviceCreationPublicationLease } from './device-creation-context';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConnectionState } from '../devices.constants';
@@ -60,4 +61,16 @@ describe('DeviceConnectivityService', () => {
 		expect(deviceConnectionStateService.write).not.toHaveBeenCalled();
 		expect(eventEmitter.emit).not.toHaveBeenCalled();
 	});
+	it('refuses a forged owned path before lazy repair, lookup or notification', async () => {
+		const device = Object.assign(new DeviceEntity(), { id: 'original' });
+		const channel = new ChannelEntity();
+		const property = new ChannelPropertyEntity();
+		await expect(service.setCreatedConnectionState(new DeviceCreationPublicationLease(), device, channel, property, { state: ConnectionState.UNKNOWN })).rejects.toThrow('Original creation publication unavailable');
+		expect(devicesService.findOne).not.toHaveBeenCalled();
+		expect(channelsService.create).not.toHaveBeenCalled();
+		expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+		expect(deviceConnectionStateService.write).not.toHaveBeenCalled();
+		expect(eventEmitter.emit).not.toHaveBeenCalled();
+	});
+
 });

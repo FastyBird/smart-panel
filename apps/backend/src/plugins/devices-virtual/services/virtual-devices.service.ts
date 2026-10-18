@@ -13,6 +13,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceValidationService, ValidationIssue } from '../../../modules/devices/services/device-validation.service';
+import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { matchesInvalidValue, matchesStep } from '../../../modules/devices/utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
@@ -443,7 +444,8 @@ export class VirtualDevicesService {
 	 * distinguishing it here.
 	 */
 	async assertDeviceIsVirtual(deviceId: string): Promise<void> {
-		const device = this.dataSource
+		const original = DeviceCreationContext.readOriginalDeviceIdentity(deviceId);
+		const device = original !== undefined ? await original : this.dataSource
 			? await this.dataSource.manager
 					.createQueryBuilder(DeviceEntity, 'device')
 					.where('device.id = :id', { id: deviceId })

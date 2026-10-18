@@ -14,8 +14,11 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { clonePropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { ClimateAutomationCreationPlan } from '../../../modules/devices/contracts/climate-automation.contract';
+import { DeviceCreationContext, DeviceCreationPublicationEngine, DeviceCreationPublicationLease, freezeCreationSnapshot, creationHasDataMethod } from '../../../modules/devices/services/device-creation-context';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { permissionSatisfied } from '../../../modules/devices/utils/property-permissions.utils';
 import {
@@ -112,6 +115,137 @@ export class VirtualThermostatConfigService {
 			await this.claims.refresh().catch(() => undefined);
 		}
 	}
+	/** The original claims hold is owned by this creation; no qualification or source adoption. */
+	holdCreationAtEntry(): Readonly<{ release: () => Promise<void> }> {
+		if (!creationHasDataMethod(this.claims, 'holdRecoveryFence') || !creationHasDataMethod(this.claims, 'refresh'))
+			fail('Original creation claims fence unavailable.');
+		const { holdRecoveryFence, refresh } = this.claims;
+		const hold: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => () => void }> = holdRecoveryFence;
+		const reload: Readonly<{ call: (receiver: VirtualThermostatClaimsService) => Promise<void> }> = refresh;
+		const release = hold.call(this.claims);
+		let closed = false;
+		return Object.freeze({ release: async () => {
+			if (closed) return;
+			closed = true;
+			release();
+			try { await reload.call(this.claims); } catch { /* Closed refresh failure never replaces the original outcome. */ }
+		} });
+	}
+
+	/** Retained plan only: no prepare/save/delete-old/adoption path or private-ledger writes. */
+	async persistCreated(
+		context: DeviceCreationContext,
+		prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>,
+	): Promise<void> {
+		context.assertOriginalAdmission();
+		const manager = context.manager;
+		await manager.insert(VirtualThermostatConfigEntity, prepared.config);
+		context.assertOriginalAdmission();
+		if (prepared.sources.length) await manager.insert(VirtualThermostatSourceEntity, prepared.sources);
+		for (const setting of prepared.settings) {
+			context.assertOriginalAdmission();
+			const expected = context.expectedCatalogProperty(setting.propertyId);
+			const predicate = Object.keys(expected).map((column) => `"${column}" IS :before_${column}`).join(' AND ');
+			const parameters: Record<string, unknown> = {};
+			for (const column of Object.keys(expected)) parameters[`before_${column}`] = expected[column];
+			const count = await manager.createQueryBuilder(ChannelPropertyEntity, 'property').where(predicate, parameters).callListeners(false).getCount();
+			context.assertOriginalAdmission();
+			if (count !== 1) fail('Original creation setting changed before registration.');
+		}
+		context.assertOriginalAdmission();
+		if (prepared.settings.length) await manager.insert(VirtualThermostatSettingEntity, prepared.settings);
+		context.assertOriginalAdmission();
+		if (prepared.actuators.length) await manager.insert(VirtualThermostatActuatorClaimEntity, prepared.actuators);
+		context.assertOriginalAdmission();
+		if (prepared.protections.length) await manager.insert(ThermostatMemberProtectionEntity, prepared.protections);
+		context.assertOriginalAdmission();
+		if (prepared.coolingDependencies.length) await manager.insert(ThermostatCoolingDependencyEntity, prepared.coolingDependencies);
+		context.assertOriginalAdmission();
+	}
+
+	/** Fixed initial A projection, not a live load, cooling evaluation, clock/sample or qualification read. */
+	describeCreated(prepared: Awaited<ReturnType<VirtualThermostatConfigService['prepare']>>, graphRevision: number) {
+		const { config, sources, actuators, settings, protections, coolingDependencies } = prepared;
+		const reasons = ['controller_runtime_unavailable'];
+		if (config.policy.cooling && coolingDependencies.length) reasons.push('cooling_remote_profile_installation_unqualified');
+		for (const claim of actuators) reasons.push(claim.role + '_hardware_qualification_missing');
+		return {
+			display_floor_claim: config.displayFloorClaimId ?? null, controller: config.controllerId, schema_version: 1,
+			control_strategy: config.controlStrategy ?? 'guarded_branches', revision: config.revision, graph_revision: graphRevision,
+			requested_mode: config.requestedMode, locked: config.locked, policy: config.policy, heuristic: config.heuristic,
+			contact_opening_ms: config.contactOpeningMs, contact_closing_ms: config.contactClosingMs, readiness: 'draft', reasons,
+			sources: sources.map((source) => ({ id: source.id, role: source.role, source_property: source.sourcePropertyId,
+				source_identity: source.sourcePropertyIdentity, physical_identity: source.physicalIdentity, contract_fingerprint: source.contractFingerprint,
+				maximum_age_seconds: source.maximumAgeSeconds, open_value: source.openValue, closed_value: source.closedValue })),
+			actuators: actuators.map((claim) => {
+				const cooling = coolingDependencies.find((row) => row.claimId === claim.id);
+				const protection = protections.find((row) => row.claimId === claim.id);
+				return {
+					cooling_diagnostics: cooling ? { claim: claim.id, dew_point_identity: cooling.dewPointIdentity, surface_identity: cooling.surfaceIdentity,
+						dew_point: null, surface: null, threshold: null, expires_at: null, latched: true, ready: false,
+						reasons: ['cooling_lineage_quality_or_age', 'cooling_remote_profile_installation_unqualified', 'cooling_fresh_report_required', 'cooling_pending_release', 'cooling_evidence_unavailable'] } : null,
+					cooling_protection: cooling ? { schema_version: cooling.schemaVersion, revision: cooling.revision, purpose: cooling.purpose,
+						dew_point_property: cooling.dewPointPropertyId, dew_point_identity: cooling.dewPointIdentity,
+						surface_property: cooling.surfacePropertyId, surface_identity: cooling.surfaceIdentity, maximum_age_seconds: cooling.maximumAgeSeconds } : null,
+					protection: protection ? { schema_version: protection.schemaVersion, kind: protection.kind, revision: protection.revision,
+						source_property: protection.sourcePropertyId, source_identity: protection.sourcePropertyIdentity,
+						physical_property: protection.physicalPropertyIdentity, maximum_age_seconds: protection.maximumAgeSeconds } : null,
+					id: claim.id, group_identity: thermostatBranchGroupIdentity(config.controllerId, claim.role),
+					provider_profile: claim.providerProfile ?? SHELLY_GUARDED_PROFILE, provider_profile_version: claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION,
+					role: claim.role, source_property: claim.sourcePropertyId, source_identity: claim.sourcePropertyIdentity,
+					physical_identity: claim.physicalIdentity, revision: claim.revision, qualification_generation: claim.qualificationGeneration,
+					state: claim.state, lease_seconds: claim.leaseSeconds, reason: claim.reason,
+					release_requested_at: claim.releaseRequestedAt?.toISOString() ?? null, released_at: claim.releasedAt?.toISOString() ?? null, release_evidence: claim.releaseEvidence,
+				};
+			}),
+			released_actuators: [], settings: settings.map((setting) => ({ property: setting.propertyId, setting: setting.setting })),
+		};
+	}
+
+	async publishCreatedConfiguration(lease: DeviceCreationPublicationLease, plan: ClimateAutomationCreationPlan): Promise<void> {
+		DeviceCreationPublicationEngine.assert(lease, plan.controllerId);
+		for (const setting of this.createdSettings(lease, plan)) {
+			const result = await this.values.writeCreatedWithState(lease, setting.property, setting.value, DeviceCreationPublicationEngine.storage(lease));
+			DeviceCreationPublicationEngine.assertProperty(lease, setting.property);
+			const payload: ChannelPropertyEntity = Object.assign(Object.create(Object.getPrototypeOf(setting.property)), setting.property, { value: result.state ? clonePropertyValueState(result.state) : null });
+			freezeCreationSnapshot(payload);
+			DeviceCreationPublicationEngine.assertProperty(lease, setting.property);
+			this.events.emit(EventType.CHANNEL_PROPERTY_UPDATED, payload);
+			DeviceCreationPublicationEngine.assertProperty(lease, setting.property);
+		}
+		DeviceCreationPublicationEngine.assert(lease, plan.controllerId);
+		this.events.emit(THERMOSTAT_CONFIG_CHANGED, plan.controllerId);
+	}
+
+	private createdSettings(lease: DeviceCreationPublicationLease, plan: ClimateAutomationCreationPlan) {
+		// The immutable configuration projection supplies values, never a latest GET or owner/slot command.
+		const prepared = this.createdPrepared(plan);
+		return prepared.settings.map((setting) => ({
+			property: DeviceCreationPublicationEngine.catalogProperty(lease, setting.propertyId),
+			value: setting.setting === 'heating_setpoint' ? prepared.config.policy.heatingSetpoint
+				: setting.setting === 'cooling_setpoint' ? prepared.config.policy.coolingSetpoint
+				: setting.setting === 'locked' ? prepared.config.locked
+				: setting.setting === 'heating_enabled' ? ['heat', 'auto'].includes(prepared.config.requestedMode)
+				: ['cool', 'auto'].includes(prepared.config.requestedMode),
+		}));
+	}
+
+	/** Closed materialization of the already retained native-row plan, no policy evaluation/allocation. */
+	createdPrepared(plan: ClimateAutomationCreationPlan): Awaited<ReturnType<VirtualThermostatConfigService['prepare']>> {
+		const rows = <T extends object>(type: import('typeorm').EntityTarget<T>): T[] => {
+			const metadata = this.dataSource.getMetadata(type);
+			return plan.inserts.filter((item) => item.table === metadata.tableName).map((item) => {
+				const entity = this.dataSource.getRepository(type).create();
+				for (const column of metadata.columns) column.setEntityValue(entity, this.dataSource.driver.prepareHydratedValue(item.row[column.databaseName], column));
+				return entity;
+			});
+		};
+		const configs = rows(VirtualThermostatConfigEntity);
+		if (configs.length !== 1 || configs[0].controllerId !== plan.controllerId) fail('Original retained creation configuration required.');
+		return { config: configs[0], sources: rows(VirtualThermostatSourceEntity), actuators: rows(VirtualThermostatActuatorClaimEntity),
+			settings: rows(VirtualThermostatSettingEntity), protections: rows(ThermostatMemberProtectionEntity), coolingDependencies: rows(ThermostatCoolingDependencyEntity) };
+	}
+
 	/** Shared by existing configuration and an admitted atomic creation transaction. */
 	prepare(
 		manager: EntityManager,

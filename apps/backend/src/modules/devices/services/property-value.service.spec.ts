@@ -1,3 +1,7 @@
+import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
+import { DeviceCreationPublicationLease } from './device-creation-context';
+import { CreationStorageDestinations } from '../../storage/services/storage.service';
 /*
 eslint-disable @typescript-eslint/unbound-method,
 @typescript-eslint/no-unsafe-assignment
@@ -7,15 +11,16 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
 import { StorageQueryOptions } from '../../storage/storage.types';
-import { DataTypeType } from '../devices.constants';
+import { EventType, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
-import { PropertyProducerRegistryService } from './property-producer.registry.service';
+import { CreationProducerObservation, PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
@@ -1301,4 +1306,197 @@ describe('PropertyValueService', () => {
 			},
 		);
 	});
+	it('rejects a forged creation value lease before property traversal, queues or backend work', async () => {
+		let getters = 0;
+		const property = new ChannelPropertyEntity();
+		Object.defineProperty(property, 'id', { get: () => { getters++; throw new Error('Business getter must not run'); } });
+		await expect(service.writeCreatedWithState(new DeviceCreationPublicationLease(), property, 1, new CreationStorageDestinations())).rejects.toThrow('Original creation publication unavailable');
+		expect(getters).toBe(0);
+		expect(storageService.writePoints).not.toHaveBeenCalled();
+		expect(storageService.query).not.toHaveBeenCalled();
+	});
+
+});
+
+/** Real registry observation only; this does not manufacture a creation/publication lease. */
+describe('finite read-only creation producer observations', () => {
+	const property = (id: string): ChannelPropertyEntity => Object.assign(new ChannelPropertyEntity(), { id, dataType: DataTypeType.FLOAT });
+
+	it('remembers absent B absent during a held continuation without owning or restoring B', async () => {
+		const registry = new PropertyProducerRegistryService();
+		const original = registry.beginCreationObservation(['p']);
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => { release = resolve; });
+		const resumed = held.then(() => registry.isCreationObservationCurrent(original));
+		const b = registry.register(property('p'), 1);
+		expect(registry.isCurrent(b)).toBe(true);
+		registry.remove('p');
+		expect(registry.owns('p')).toBe(false);
+		release();
+		expect(await resumed).toBe(false);
+		expect(registry.readCreationObservationCounts()).toEqual({ active: 0, observedIds: 0 });
+		registry.closeCreationObservation(original);
+		registry.closeCreationObservation(original);
+		registry.onModuleDestroy();
+	});
+
+	it('refuses forged foreign closed and destroyed tokens and preserves unrelated identities', () => {
+		const registry = new PropertyProducerRegistryService();
+		const foreign = new PropertyProducerRegistryService();
+		const original = registry.beginCreationObservation(['p']);
+		expect(registry.isCreationObservationCurrent(new CreationProducerObservation())).toBe(false);
+		expect(foreign.isCreationObservationCurrent(original)).toBe(false);
+		registry.register(property('unrelated'), 1);
+		expect(registry.isCreationObservationCurrent(original)).toBe(true);
+		registry.closeCreationObservation(original);
+		expect(registry.isCreationObservationCurrent(original)).toBe(false);
+		const next = registry.beginCreationObservation(['p']);
+		registry.onModuleDestroy();
+		expect(registry.isCreationObservationCurrent(next)).toBe(false);
+		expect(registry.readCreationObservationCounts()).toEqual({ active: 0, observedIds: 0 });
+		foreign.onModuleDestroy();
+	});
+
+	it('keeps original occupied identity false after same-object registration and leaves B untouched on close', () => {
+		const registry = new PropertyProducerRegistryService();
+		const row = property('p');
+		const a = registry.register(row, 1);
+		const original = registry.beginCreationObservation(['p']);
+		const b = registry.register(row, 1);
+		expect(registry.isCurrent(a)).toBe(false);
+		expect(registry.isCreationObservationCurrent(original)).toBe(false);
+		const state = registry.readDiagnosticState('p');
+		registry.closeCreationObservation(original);
+		expect(registry.isCurrent(b)).toBe(true);
+		expect(registry.readDiagnosticState('p')).toEqual(state);
+		registry.onModuleDestroy();
+	});
+
+	it('closes every fixed-ID membership on evaluation and validator replacement without publishing', () => {
+		const registry = new PropertyProducerRegistryService();
+		const lease = registry.register(property('p'), 1);
+		const original = registry.beginCreationObservation(['p', 'absent']);
+		registry.beginEvaluation(lease);
+		expect(registry.isCreationObservationCurrent(original)).toBe(false);
+		expect(registry.readCreationObservationCounts()).toEqual({ active: 0, observedIds: 0 });
+		const next = registry.beginCreationObservation(['absent']);
+		registry.setEvidenceValidator(() => false);
+		expect(registry.isCreationObservationCurrent(next)).toBe(false);
+		expect(registry.isCurrent(lease)).toBe(true);
+		registry.onModuleDestroy();
+	});
+	it('preserves original absence on a real no-entry metadata hint without creating a producer', () => {
+		const events = new EventEmitter2();
+		const registry = new PropertyProducerRegistryService(events);
+		registry.onModuleInit();
+		try {
+			const original = registry.beginCreationObservation(['p']);
+			expect(registry.owns('p')).toBe(false);
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, property('p'));
+			expect(registry.isCreationObservationCurrent(original)).toBe(true);
+			expect(registry.owns('p')).toBe(false);
+			expect(registry.readCreationObservationCounts()).toEqual({ active: 1, observedIds: 1 });
+			registry.closeCreationObservation(original);
+			expect(registry.readCreationObservationCounts()).toEqual({ active: 0, observedIds: 0 });
+		} finally { registry.onModuleDestroy(); }
+	});
+
+	it('still dirties an occupied observation before same-object metadata assignment and never revives it after removal or hints', () => {
+		const events = new EventEmitter2();
+		const registry = new PropertyProducerRegistryService(events);
+		registry.onModuleInit();
+		try {
+			const row = property('p');
+			const originalLease = registry.register(row, 1);
+			const original = registry.beginCreationObservation(['p']);
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, row);
+			expect(registry.isCreationObservationCurrent(original)).toBe(false);
+			expect(registry.isCurrent(originalLease)).toBe(true);
+			registry.remove('p');
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, row);
+			expect(registry.isCreationObservationCurrent(original)).toBe(false);
+			expect(registry.owns('p')).toBe(false);
+			const absent = registry.beginCreationObservation(['p']);
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, property('unrelated'));
+			expect(registry.isCreationObservationCurrent(absent)).toBe(true);
+			const successor = registry.register(row, 1);
+			registry.remove('p');
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, row);
+			expect(registry.isCreationObservationCurrent(absent)).toBe(false);
+			expect(registry.isCurrent(successor)).toBe(false);
+			expect(registry.readCreationObservationCounts()).toEqual({ active: 0, observedIds: 0 });
+		} finally { registry.onModuleDestroy(); }
+	});
+
+	it('keeps accepted publisher batch invalidation on absent hints while creation absence remains independent', () => {
+		const events = new EventEmitter2();
+		const registry = new PropertyProducerRegistryService(events);
+		const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:' });
+		const graph = new VirtualDependencyGraphService(source);
+		registry.onModuleInit();
+		try {
+			const publisher = registry.acquireOwnedPublisher('virtual-producer-state:v1', events);
+			if (!publisher) throw new Error('Missing actual publisher owner');
+			const lifecycle = graph.captureOwnedPublicationLifecycle();
+			const batch = registry.beginObservedBatch(publisher, ['p'], lifecycle.guard);
+			const original = registry.beginCreationObservation(['p']);
+			expect(registry.isObservedBatchCurrent(batch)).toBe(true);
+			expect(lifecycle.guard.isCurrent()).toBe(false); // Staging identity is not runtime readiness.
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, property('unrelated'));
+			expect(registry.isObservedBatchCurrent(batch)).toBe(true);
+			events.emit(EventType.CHANNEL_PROPERTY_UPDATED, property('p'));
+			expect(registry.isObservedBatchCurrent(batch)).toBe(false);
+			expect(registry.isCreationObservationCurrent(original)).toBe(true);
+			expect(registry.owns('p')).toBe(false);
+			expect(source.isInitialized).toBe(false);
+			registry.closeCreationObservation(original);
+			registry.disposeOwnedPublisher(publisher);
+		} finally { registry.onModuleDestroy(); }
+	});
+
+	it('forwards real ordinary commit and invalidation mutations without borrowing their synthetic unit-test quality as creation authority', () => {
+		const registry = new PropertyProducerRegistryService();
+		try {
+			const lease = registry.register(property('p'), 1);
+			const evaluation = registry.beginEvaluation(lease);
+			if (!evaluation) throw new Error('Missing actual evaluation');
+			const original = registry.beginCreationObservation(['p']);
+			const now = new Date();
+			expect(registry.commit(lease, new PropertyValueState(1, now.toISOString()), {
+				quality: 'good', reasons: [], sampledAt: now, evaluatedAt: now, expiresAt: new Date(now.getTime() + 60000),
+			}, evaluation.epoch, evaluation.generation)).toBe(true);
+			expect(registry.isCreationObservationCurrent(original)).toBe(false);
+			const next = registry.beginCreationObservation(['p']);
+			expect(registry.invalidate(lease, ['unit-negative'])).toBe(true);
+			expect(registry.isCreationObservationCurrent(next)).toBe(false);
+			expect(registry.isCurrent(lease)).toBe(true);
+		} finally { registry.onModuleDestroy(); }
+	});
+
+	it('never gives creation the accepted publisher self-exemption during a real event-free owned install', () => {
+		const events = new EventEmitter2();
+		const registry = new PropertyProducerRegistryService(events);
+		const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:' });
+		const graph = new VirtualDependencyGraphService(source);
+		registry.onModuleInit();
+		try {
+			const publisher = registry.acquireOwnedPublisher('virtual-producer-state:v1', events);
+			if (!publisher) throw new Error('Missing actual publisher owner');
+			const lifecycle = graph.captureOwnedPublicationLifecycle();
+			const batch = registry.beginObservedBatch(publisher, ['p'], lifecycle.guard);
+			const expected = registry.captureExpectedSlot(batch, 'p');
+			const original = registry.beginCreationObservation(['p']);
+			const prepared = registry.prepareOwnedBatch(batch, { revision: 0, configurationRevisions: [], operations: [
+				{ kind: 'unavailable', propertyId: 'p', property: property('p'), expected, revision: 1, reason: 'runtime_unavailable' },
+			] });
+			expect(registry.installPreparedNoEvents(prepared)).toBe(true);
+			expect(registry.isObservedBatchCurrent(batch)).toBe(true);
+			expect(registry.isCreationObservationCurrent(original)).toBe(false);
+			const state = registry.readDiagnosticState('p');
+			registry.closeCreationObservation(original);
+			expect(registry.readDiagnosticState('p')).toEqual(state);
+			expect(lifecycle.guard.isCurrent()).toBe(false); // No ready/installed/physical authority is claimed.
+		} finally { registry.onModuleDestroy(); }
+	});
+
 });

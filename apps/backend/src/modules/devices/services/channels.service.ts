@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import type { ValidatorOptions } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, EntityManager, FindOptionsWhere, Repository } from 'typeorm';
@@ -19,7 +20,7 @@ import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
-import { DeviceCreationContext } from './device-creation-context';
+import { DeviceCreationContext, DeviceCreationPublicationEngine } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
 export interface ChannelSummaryPage {
@@ -313,8 +314,12 @@ export class ChannelsService {
 		createDto: TCreateDTO,
 		creation?: DeviceCreationContext,
 	): Promise<TChannel> {
+		creation?.assertOriginalAdmission();
+		const catalogChild = creation?.isOriginalOwned ? creation.beginCatalogChild('channel', createDto) : undefined;
+		try {
 		this.logger.debug('Creating new channel');
 
+		creation?.assertOriginalAdmission();
 		const { type } = createDto;
 		creation?.assertType(type);
 
@@ -326,11 +331,13 @@ export class ChannelsService {
 
 		const mapping = this.channelsMapperService.getMapping<TChannel, TCreateDTO, any>(type);
 
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
+		creation?.assertMapping('channel', mapping);
+		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
+		creation?.assertOriginalAdmission();
 
 		delete dtoInstance.properties;
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
@@ -371,6 +378,7 @@ export class ChannelsService {
 			: this.dataSource.getRepository(mapping.class);
 
 		const channel = repository.create(toInstance(mapping.class, dtoInstance));
+		creation?.stampCatalog(channel);
 
 		// `id` is client-suppliable here as it is on the device create, and the same two hazards follow.
 		// `save()` treats a row whose primary key exists as an *update*, so a create carrying an existing
@@ -505,7 +513,8 @@ export class ChannelsService {
 
 		this.logger.debug(`Successfully created channel with id=${savedChannel.id}`);
 
-		if (creation)
+		if (creation?.isOriginalOwned) creation.deferCatalog('channel', savedChannel, mapping, this.eventEmitter);
+		else if (creation)
 			creation.defer(async () => {
 				if (mapping.afterCreate) await mapping.afterCreate(savedChannel);
 				this.eventEmitter.emit(EventType.CHANNEL_CREATED, await this.getOneOrThrow(savedChannel.id));
@@ -513,12 +522,16 @@ export class ChannelsService {
 		else this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
 
 		return savedChannel;
+		} catch (cause) { catalogChild?.finish({ cause }); throw cause; }
+		finally { catalogChild?.finish(); }
+
 	}
 
 	async update<TChannel extends ChannelEntity, TUpdateDTO extends UpdateChannelDto>(
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TChannel> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		this.logger.debug(`Updating data source with id=${id}`);
 
 		const channel = await this.getOneOrThrow(id);
@@ -641,6 +654,7 @@ export class ChannelsService {
 	}
 
 	async remove(id: string, manager?: EntityManager): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		return this.structureLock.runExclusive(async (): Promise<void> => {
 			this.logger.debug(`Removing channel with id=${id}`);
 
@@ -747,12 +761,17 @@ export class ChannelsService {
 		return channel;
 	}
 
-	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
+	private validateCreationInstance(instance: object, creation: DeviceCreationContext | undefined, options: ValidatorOptions) {
+		return creation ? creation.validate(instance, options) : validate(instance, options);
+	}
+
+	private async validateDto<T extends object>(DtoClass: new () => T, dto: any, creation?: DeviceCreationContext): Promise<T> {
+		creation?.assertOriginalAdmission();
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,

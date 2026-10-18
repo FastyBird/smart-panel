@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import type { ValidatorOptions } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -39,7 +40,7 @@ import {
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
-import { DeviceCreationContext } from './device-creation-context';
+import { DeviceCreationContext, DeviceCreationPublicationEngine, DeviceCreationPublicationLease, freezeCreationSnapshot, creationHasDataMethod, creationMethodCurrent } from './device-creation-context';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyMetadataService } from './property-metadata.service';
@@ -732,6 +733,11 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		createDto: TCreateDTO,
 		creation?: DeviceCreationContext,
 	): Promise<TProperty> {
+		creation?.assertOriginalAdmission();
+		const catalogChild = creation?.isOriginalOwned ? creation.beginCatalogChild('property', createDto) : undefined;
+		let tracked = false;
+		try {
+		creation?.assertOriginalAdmission();
 		const { type } = createDto;
 		creation?.assertType(type);
 
@@ -743,9 +749,11 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		const mapping = this.propertiesMapperService.getMapping<TProperty, TCreateDTO, any>(type);
 
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
+		creation?.assertMapping('property', mapping);
+		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto, creation);
+		creation?.assertOriginalAdmission();
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,
@@ -771,6 +779,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				channel: channelId,
 			}),
 		);
+		creation?.stampCatalog(property);
 
 		// A property whose value is stored under *another* property's key — a virtual device's linked
 		// property, say — has no series of its own to seed, and creation dispatches no command that the
@@ -828,7 +837,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		// has, against the category it is about to store. Each reads what the other is about to change,
 		// so a property validated against the old category could commit inside the window a
 		// recategorisation had already judged (see DeviceStructureLockService).
-		return this.structureLock.runExclusive(async (): Promise<TProperty> => {
+		const result = this.structureLock.runExclusive(async (): Promise<TProperty> => {
 			const persist = async (manager?: EntityManager): Promise<TProperty> => {
 				const writeRepository = manager ? manager.getRepository(mapping.class) : repository;
 				// The type owner's last look at the row before it exists — the only point at which an
@@ -836,9 +845,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				// `channelId` is a route parameter and never reaches the create DTO. Throwing here persists
 				// nothing.
 				if (mapping.beforeCreate) {
+					if (creation?.isOriginalOwned) creation.assertOriginalAdmission();
 					if (manager) await mapping.beforeCreate(property, channelId, manager);
 					else await mapping.beforeCreate(property, channelId);
 				}
+
+				if (creation?.isOriginalOwned) creation.materializeProperty(property);
 
 				// Inserted, not saved: the check above closes the collision only for a caller who is alone,
 				// and two requests carrying the same client-generated uuid can both pass it before either
@@ -892,7 +904,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
 			}
 
-			if (creation)
+			if (creation?.isOriginalOwned) creation.deferCatalog('property', savedProperty, mapping, this.eventEmitter);
+			else if (creation)
 				creation.defer(
 					async () => {
 						if (mapping.afterCreate) await mapping.afterCreate(savedProperty);
@@ -904,6 +917,49 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 			return savedProperty;
 		});
+		if (catalogChild) { tracked = true; return catalogChild.track(result); }
+		return result;
+		} catch (cause) { catalogChild?.finish({ cause }); throw cause; }
+		finally { if (!tracked) catalogChild?.finish(); }
+
+	}
+
+	captureCreatedMethodGuard(): () => boolean {
+		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
+		for (const { receiver, keys } of [
+			{ receiver: this, keys: ['updateCreatedValue'] },
+			{ receiver: this.propertyValueService, keys: ['writeCreatedWithState', 'captureCreatedMethodGuard'] },
+			{ receiver: this.commandLatencyTraceCollector, keys: ['recordSourcePublication'] },
+			{ receiver: this.eventEmitter, keys: ['emit'] },
+		]) for (const key of keys) {
+			if (!creationHasDataMethod(receiver, key)) throw new Error('Original property publication pipeline unavailable');
+			const method: unknown = Reflect.get(receiver, key); pins.push(Object.freeze({ receiver, key, method }));
+		}
+		const values = this.propertyValueService.captureCreatedMethodGuard();
+		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method)) && values();
+	}
+
+	/** Fixed LOCAL value-only publication; never a metadata replacement or current-ID hydration. */
+	async updateCreatedValue(lease: DeviceCreationPublicationLease, property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		DeviceCreationPublicationEngine.assertProperty(lease, property);
+		const { writeCreatedWithState } = this.propertyValueService;
+		const { emit } = this.eventEmitter;
+		const { recordSourcePublication } = this.commandLatencyTraceCollector;
+		const write: Readonly<{ call: (receiver: PropertyValueService, ...args: Parameters<PropertyValueService['writeCreatedWithState']>) => ReturnType<PropertyValueService['writeCreatedWithState']> }> = writeCreatedWithState;
+		const notify: Readonly<{ call: (receiver: EventEmitter2, ...args: Parameters<EventEmitter2['emit']>) => ReturnType<EventEmitter2['emit']> }> = emit;
+		const trace: Readonly<{ call: (receiver: CommandLatencyTraceCollectorService, property: ChannelPropertyEntity) => void }> = recordSourcePublication;
+		const result = await write.call(this.propertyValueService, lease, property, value, DeviceCreationPublicationEngine.storage(lease));
+		DeviceCreationPublicationEngine.assertProperty(lease, property);
+		if (result.changed) {
+			const payload: ChannelPropertyEntity = Object.assign(Object.create(Object.getPrototypeOf(property)), property, { value: result.state ? clonePropertyValueState(result.state) : null });
+			freezeCreationSnapshot(payload);
+			DeviceCreationPublicationEngine.assertProperty(lease, property);
+			trace.call(this.commandLatencyTraceCollector, payload);
+			DeviceCreationPublicationEngine.assertProperty(lease, property);
+			notify.call(this.eventEmitter, EventType.CHANNEL_PROPERTY_VALUE_SET, payload);
+			DeviceCreationPublicationEngine.assertProperty(lease, property);
+		}
+		return result.changed;
 	}
 
 	/** Uses exactly the ordinary update/window admission path; evidence is not a public DTO field. */
@@ -934,6 +990,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		updateDto: TUpdateDTO,
 		options: ChannelPropertyUpdateOptions = {},
 	): Promise<TProperty> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		const windowGeneration =
 			options.commandOrigin?.handle.generation ??
 			(this.commandLatencyTraceCollector.isEnabled()
@@ -1437,6 +1494,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([id]);
 		return this.structureLock.runExclusive(async (): Promise<void> => {
 			const property = await manager.findOne<ChannelPropertyEntity>(ChannelPropertyEntity, {
 				where: { id },
@@ -1561,12 +1619,17 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return state === null ? null : clonePropertyValueState(state);
 	}
 
-	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
+	private validateCreationInstance(instance: object, creation: DeviceCreationContext | undefined, options: ValidatorOptions) {
+		return creation ? creation.validate(instance, options) : validate(instance, options);
+	}
+
+	private async validateDto<T extends object>(DtoClass: new () => T, dto: any, creation?: DeviceCreationContext): Promise<T> {
+		creation?.assertOriginalAdmission();
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,
 		});
 
-		const errors = await validate(dtoInstance, {
+		const errors = await this.validateCreationInstance(dtoInstance, creation, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			stopAtFirstError: false,

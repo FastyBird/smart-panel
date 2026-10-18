@@ -2,7 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
+import { type CreationStorageDestinations, type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
@@ -25,6 +25,7 @@ import {
 	PropertyProducerLease,
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
+import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, creationHasDataMethod, creationMethodCurrent } from './device-creation-context';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
@@ -137,6 +138,48 @@ export class PropertyValueService {
 		this.producers?.setEvidenceValidator((sources) => this.incorporatedEvidenceCurrent(sources));
 	}
 
+	captureCreatedMethodGuard(): () => boolean {
+		const holders = [
+			{ receiver: this, keys: ['writeCreatedWithState', 'writeInternal', 'withCreatedValueLock', 'withValueLock', 'flushHistory', 'validateValue', 'isInvalidValue', 'setCachedState', 'computeTrend', 'bumpCacheVersion'] },
+			{ receiver: this.storageService, keys: ['writeCreatedPoints'] },
+			{ receiver: this.valueLock, keys: ['runExclusive'] },
+		];
+		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
+		for (const { receiver, keys } of holders) for (const key of keys) {
+			if (!creationHasDataMethod(receiver, key)) throw new Error('Original value pipeline unavailable');
+			const method: unknown = Reflect.get(receiver, key); pins.push(Object.freeze({ receiver, key, method }));
+		}
+		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
+	}
+
+	/** Exact LOCAL creation snapshot; no alias resolution, replay, late hydration or history buffering. */
+	async writeCreatedWithState(
+		lease: DeviceCreationPublicationLease,
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		destinations: CreationStorageDestinations,
+	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.assert(lease);
+		const key = property.id;
+		DeviceCreationPublicationEngine.assert(lease, key);
+		DeviceCreationPublicationEngine.assertProperty(lease, property);
+		const child = DeviceCreationPublicationEngine.beginChild(lease, 'value', key);
+		const { writeInternal } = this;
+		const write: Readonly<{ call: (receiver: PropertyValueService, ...args: Parameters<PropertyValueService['writeInternal']>) => ReturnType<PropertyValueService['writeInternal']> }> = writeInternal;
+		let failure: { cause: unknown } | undefined;
+		try {
+			return await this.withCreatedValueLock(key, lease, async (valueLease) => {
+				DeviceCreationPublicationEngine.assertProperty(lease, property);
+				await valueLease.assertOwned();
+				DeviceCreationPublicationEngine.assertProperty(lease, property);
+				await DeviceCreationPublicationEngine.probe(lease, key);
+				DeviceCreationPublicationEngine.assertProperty(lease, property);
+				return write.call(this, property, key, value, false, undefined, undefined, false, false, { lease, destinations });
+			});
+		} catch (cause) { failure = { cause }; throw cause; }
+		finally { child.finish(failure); }
+	}
+
 	/**
 	 * Write property value to storage
 	 * @returns true if value changed, false if value was the same or invalid
@@ -146,6 +189,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<boolean> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return false;
 
@@ -165,6 +209,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return { changed: false, state: null };
 
@@ -181,6 +226,7 @@ export class PropertyValueService {
 		if (this.valueLock.isEnabled()) {
 			return this.writeWithState(property, value, valueTimestamp);
 		}
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'write');
 		if (key === null) return { changed: false, state: null };
 		return this.withValueLock(
@@ -196,6 +242,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		evidence: PropertySampleEvidence,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'sample');
 		if (key === null || key !== property.id || this.producers?.owns(key)) return { changed: false, state: null };
 		return this.withValueLock(
@@ -627,6 +674,7 @@ export class PropertyValueService {
 		storageBinding?: StorageBackendBinding,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.valueSourceRegistry.resolve(property);
 
 		return this.withValueLock(key, () =>
@@ -641,6 +689,7 @@ export class PropertyValueService {
 		beforeWrite?: () => Promise<void>,
 		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.valueSourceRegistry.resolve(property);
 
 		return this.withValueLock(key, async (valueLease) => {
@@ -671,7 +720,9 @@ export class PropertyValueService {
 		valueTimestamp?: Date,
 		deferHistory = false,
 		producerWrite = false,
+		creation?: Readonly<{ lease: DeviceCreationPublicationLease; destinations: CreationStorageDestinations }>,
 	): Promise<PropertyValueWriteResult> {
+		if (creation) DeviceCreationPublicationEngine.assert(creation.lease, key);
 		// A projected property owns no series — the value belongs to its source, and only the source's
 		// own reports may write it. This is the exact mirror of delete()'s guard below, and exists for
 		// the same reason: dereferencing here would persist the supplied value as a real measurement of
@@ -713,9 +764,10 @@ export class PropertyValueService {
 			return { changed: false, state: null };
 		}
 
-		const cached = this.valuesMap.get(key);
+		const cached = creation ? undefined : this.valuesMap.get(key);
 		if (!strict && cached && cached.value === value) {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
+			if (creation) DeviceCreationPublicationEngine.assert(creation.lease, key);
 			cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
 			this.bumpCacheVersion(key);
 			return { changed: false, state: cached };
@@ -783,7 +835,8 @@ export class PropertyValueService {
 			(typeof value === 'string' && !isNaN(Number(value)) && this.isNumericDataType(property.dataType))
 		) {
 			const numValue = Number(value);
-			const recent = this.recentValuesMap.get(key) ?? [];
+			if (creation) DeviceCreationPublicationEngine.assert(creation.lease, key);
+			const recent = creation ? [] : (this.recentValuesMap.get(key) ?? []);
 			recent.push(numValue);
 			if (recent.length > TREND_POINTS_COUNT) {
 				recent.shift();
@@ -795,9 +848,17 @@ export class PropertyValueService {
 		const state = new PropertyValueState(value, now, trend);
 
 		// Update local cache regardless of storage availability
+		if (creation) DeviceCreationPublicationEngine.assert(creation.lease, key);
 		this.setCachedState(key, state);
 
 		if (strict) {
+			return { changed: true, state };
+		}
+
+		if (creation) {
+			DeviceCreationPublicationEngine.assert(creation.lease, key);
+			await this.storageService.writeCreatedPoints(creation.lease, creation.destinations, [point]);
+			DeviceCreationPublicationEngine.assert(creation.lease, key);
 			return { changed: true, state };
 		}
 
@@ -922,6 +983,7 @@ export class PropertyValueService {
 				const propertyRows = rowsByKey.get(key) ?? [];
 
 				if (this.isNumericDataType(property.dataType)) {
+					DeviceCreationPublicationEngine.invalidateIds([key]);
 					this.recentValuesMap.set(
 						key,
 						propertyRows
@@ -934,6 +996,7 @@ export class PropertyValueService {
 				const state = propertyRows[0] ? this.toState(property, key, propertyRows[0]) : null;
 
 				if (state) {
+					DeviceCreationPublicationEngine.invalidateIds([key]);
 					this.setCachedState(key, state);
 				}
 			}
@@ -1163,6 +1226,7 @@ export class PropertyValueService {
 			const source: BoundedPropertyValueSource = useCache ? 'cache' : 'storage';
 
 			if (!useCache && storedState) {
+				DeviceCreationPublicationEngine.invalidateIds([sourcePropertyId]);
 				this.setCachedState(sourcePropertyId, storedState);
 			}
 
@@ -1251,6 +1315,30 @@ export class PropertyValueService {
 		});
 	}
 
+	private withCreatedValueLock<T>(key: string, creation: DeviceCreationPublicationLease, operation: (lease: PropertyValueLease) => Promise<T>): Promise<T> {
+		DeviceCreationPublicationEngine.assert(creation, key);
+		const { runExclusive } = this.valueLock;
+		const { flushHistory } = this;
+		const flush: Readonly<{ call: (receiver: PropertyValueService) => Promise<void> }> = flushHistory;
+		const run: Readonly<{ call: (receiver: PropertyValueLockService, key: string, operation: (lease: PropertyValueLease) => Promise<T>) => Promise<T> }> = runExclusive;
+		const previous = this.valueTails.get(key) ?? Promise.resolve();
+		let release: () => void = () => {};
+		const ticket = new Promise<void>((resolve) => { release = resolve; });
+		const tail = previous.then(() => ticket, () => ticket);
+		this.valueTails.set(key, tail);
+		const enter = (): Promise<T> => {
+			DeviceCreationPublicationEngine.assert(creation, key);
+			return run.call(this.valueLock, key, async (lease) => {
+				DeviceCreationPublicationEngine.assert(creation, key);
+				await flush.call(this);
+				DeviceCreationPublicationEngine.assert(creation, key);
+				return operation(lease);
+			});
+		};
+		return previous.then(enter, enter).finally(() => { release(); if (this.valueTails.get(key) === tail) this.valueTails.delete(key); });
+	}
+
+
 	private updateRecentValuesFromRows(
 		property: ChannelPropertyEntity,
 		sourcePropertyId: ChannelPropertyEntity['id'],
@@ -1260,6 +1348,7 @@ export class PropertyValueService {
 			return;
 		}
 
+		DeviceCreationPublicationEngine.invalidateIds([sourcePropertyId]);
 		this.recentValuesMap.set(
 			sourcePropertyId,
 			rows
@@ -1455,6 +1544,7 @@ export class PropertyValueService {
 							recentValues.push(val);
 						}
 					}
+					DeviceCreationPublicationEngine.invalidateIds([key]);
 					this.recentValuesMap.set(key, recentValues);
 				}
 			}
@@ -1464,6 +1554,7 @@ export class PropertyValueService {
 			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${state.value}`);
 
 			if (cacheUnchanged) {
+				DeviceCreationPublicationEngine.invalidateIds([key]);
 				this.setCachedState(key, state);
 			}
 
@@ -1520,6 +1611,7 @@ export class PropertyValueService {
 	}
 
 	async delete(property: ChannelPropertyEntity): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.resolveBestEffort(property, 'delete');
 		if (key === null) return;
 
@@ -1563,6 +1655,7 @@ export class PropertyValueService {
 	}
 
 	async deleteSinceStrict(property: ChannelPropertyEntity, since: Date): Promise<void> {
+		DeviceCreationPublicationEngine.invalidateIds([property.id]);
 		const key = this.valueSourceRegistry.resolve(property);
 
 		return this.withValueLock(key, () => this.deleteSinceStrictInternal(property, since, key));

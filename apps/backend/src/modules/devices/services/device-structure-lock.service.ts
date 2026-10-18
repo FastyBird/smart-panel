@@ -32,6 +32,11 @@ export class DeviceStructureLockService {
 	private activeReaders = 0;
 	private writerActive = false;
 
+	/** Reports only whether this caller still holds its original structural context. */
+	hasCurrentStructuralLease(): boolean {
+		return this.context.getStore()?.active === true;
+	}
+
 	async runShared<T>(fn: () => Promise<T>): Promise<T> {
 		const context = this.context.getStore();
 
