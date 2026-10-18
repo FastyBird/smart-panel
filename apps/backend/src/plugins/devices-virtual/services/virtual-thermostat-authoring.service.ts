@@ -406,20 +406,29 @@ export class VirtualThermostatAuthoringService {
 		[VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity].map((type) => {
 			const prototype = type.prototype;
 			const parentPrototype = Reflect.getPrototypeOf(prototype);
-			const descriptor: Readonly<{
-				get?: () => unknown;
-				set?: unknown;
-				enumerable?: boolean;
-				configurable?: boolean;
-			}> | undefined = Object.getOwnPropertyDescriptor(prototype, 'type');
+			const descriptor:
+				| Readonly<{
+						get?: () => unknown;
+						set?: unknown;
+						enumerable?: boolean;
+						configurable?: boolean;
+				  }>
+				| undefined = Object.getOwnPropertyDescriptor(prototype, 'type');
 			if (descriptor) Object.freeze(descriptor); // Freeze only our fresh descriptor copy.
 			const current = (): boolean => {
-				const latest: Readonly<{ get?: unknown; set?: unknown; enumerable?: boolean; configurable?: boolean }> | undefined =
-					Object.getOwnPropertyDescriptor(prototype, 'type');
-				return type.prototype === prototype && Reflect.getPrototypeOf(prototype) === parentPrototype &&
-					typeof descriptor?.get === 'function' && descriptor.set === undefined &&
-					latest?.get === descriptor.get && latest.set === undefined &&
-					latest.enumerable === descriptor.enumerable && latest.configurable === descriptor.configurable;
+				const latest:
+					| Readonly<{ get?: unknown; set?: unknown; enumerable?: boolean; configurable?: boolean }>
+					| undefined = Object.getOwnPropertyDescriptor(prototype, 'type');
+				return (
+					type.prototype === prototype &&
+					Reflect.getPrototypeOf(prototype) === parentPrototype &&
+					typeof descriptor?.get === 'function' &&
+					descriptor.set === undefined &&
+					latest?.get === descriptor.get &&
+					latest.set === undefined &&
+					latest.enumerable === descriptor.enumerable &&
+					latest.configurable === descriptor.configurable
+				);
 			};
 			return Object.freeze({ type, prototype, publicType: DEVICES_VIRTUAL_TYPE, descriptor, current });
 		}),
@@ -501,7 +510,8 @@ export class VirtualThermostatAuthoringService {
 	}
 
 	captureCreationMethodPins(): () => boolean {
-		if (!this.creationCatalogTypes.every((original) => original.current())) fail('Original creation classes unavailable.');
+		if (!this.creationCatalogTypes.every((original) => original.current()))
+			fail('Original creation classes unavailable.');
 		const holders: readonly Readonly<{ receiver: object | undefined; keys: readonly string[] }>[] = [
 			{
 				receiver: this,
@@ -545,7 +555,8 @@ export class VirtualThermostatAuthoringService {
 				pins.push(Object.freeze({ receiver, key, method }));
 			}
 		}
-		return () => this.creationCatalogTypes.every((original) => original.current()) &&
+		return () =>
+			this.creationCatalogTypes.every((original) => original.current()) &&
 			pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
 	}
 
@@ -563,9 +574,14 @@ export class VirtualThermostatAuthoringService {
 		const properties = propertyMappings.captureMapping('virtual');
 		const information = DeviceCreationPublicationEngine.captureInformation(events);
 		if (!devices || !channels || !properties || !information) fail('Original creation registrations are unavailable.');
-		if (devices.mapping.class !== VirtualDeviceEntity || channels.mapping.class !== VirtualChannelEntity ||
-			properties.mapping.class !== VirtualChannelPropertyEntity || devices.mapping.type !== DEVICES_VIRTUAL_TYPE ||
-			channels.mapping.type !== DEVICES_VIRTUAL_TYPE || properties.mapping.type !== DEVICES_VIRTUAL_TYPE)
+		if (
+			devices.mapping.class !== VirtualDeviceEntity ||
+			channels.mapping.class !== VirtualChannelEntity ||
+			properties.mapping.class !== VirtualChannelPropertyEntity ||
+			devices.mapping.type !== DEVICES_VIRTUAL_TYPE ||
+			channels.mapping.type !== DEVICES_VIRTUAL_TYPE ||
+			properties.mapping.type !== DEVICES_VIRTUAL_TYPE
+		)
 			fail('Original declared creation mappings required.');
 		const engineKeys = ['beginCreationObservation', 'isCreationObservationCurrent', 'closeCreationObservation'];
 		if (engineKeys.some((key) => !creationHasDataMethod(producers, key)))
@@ -944,9 +960,15 @@ export class VirtualThermostatAuthoringService {
 					if (raw[column.databaseName] !== nativeLabel || value !== hydratedNativeLabel)
 						fail('Original creation discriminator changed.');
 					const original = this.creationCatalogTypes.find((item) => Object.is(item.type, type));
-					if (!original || !original.current() || metadata.target !== original.type ||
-						Reflect.getPrototypeOf(entity) !== original.prototype || column.propertyName !== 'type' ||
-						metadata.discriminatorColumn !== column || Object.hasOwn(entity, 'type'))
+					if (
+						!original ||
+						!original.current() ||
+						metadata.target !== original.type ||
+						Reflect.getPrototypeOf(entity) !== original.prototype ||
+						column.propertyName !== 'type' ||
+						metadata.discriminatorColumn !== column ||
+						Object.hasOwn(entity, 'type')
+					)
 						fail('Original creation class changed.');
 					const getter = original.descriptor?.get;
 					if (!getter) fail('Original creation public getter unavailable.');

@@ -2117,18 +2117,28 @@ describe('atomic virtual thermostat authoring', () => {
 					const table = database.driver.escape(metadata.tableName);
 					const column = database.driver.escape(discriminator.databaseName);
 					const rows = await database.manager.query<{ nativeType: unknown }[]>(
-						`SELECT ${column} AS nativeType FROM ${table} WHERE id = ?`, [entity.id],
+						`SELECT ${column} AS nativeType FROM ${table} WHERE id = ?`,
+						[entity.id],
 					);
 					expect(rows).toHaveLength(1);
 					expect(rows[0].nativeType).toBe(originals.get(type));
 					expect(metadata.discriminatorValue).toBe(originals.get(type));
 					expect(rows[0].nativeType).not.toBe(entity.type);
 				};
-				await assertOriginal(await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: input.device.id }), VirtualDeviceEntity);
+				await assertOriginal(
+					await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: input.device.id }),
+					VirtualDeviceEntity,
+				);
 				for (const channel of input.device.channels ?? []) {
-					await assertOriginal(await database.manager.findOneByOrFail(VirtualChannelEntity, { id: channel.id }), VirtualChannelEntity);
+					await assertOriginal(
+						await database.manager.findOneByOrFail(VirtualChannelEntity, { id: channel.id }),
+						VirtualChannelEntity,
+					);
 					for (const property of channel.properties ?? [])
-						await assertOriginal(await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: property.id }), VirtualChannelPropertyEntity);
+						await assertOriginal(
+							await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: property.id }),
+							VirtualChannelPropertyEntity,
+						);
 				}
 			});
 
@@ -2140,11 +2150,19 @@ describe('atomic virtual thermostat authoring', () => {
 					let inspected = 0;
 					const transactions = jest.spyOn(database, 'transaction');
 					try {
-						await expect(fixture.writer.createVirtualThermostatV1({
-							kind: 'create-virtual-thermostat:v1',
-							get device() { inspected++; return input.device; },
-							get configuration() { inspected++; return input.configuration; },
-						})).rejects.toBeInstanceOf(Error);
+						await expect(
+							fixture.writer.createVirtualThermostatV1({
+								kind: 'create-virtual-thermostat:v1',
+								get device() {
+									inspected++;
+									return input.device;
+								},
+								get configuration() {
+									inspected++;
+									return input.configuration;
+								},
+							}),
+						).rejects.toBeInstanceOf(Error);
 						expect(inspected).toBe(0);
 						expect(replacement).not.toHaveBeenCalled();
 						expect(transactions).not.toHaveBeenCalled();
@@ -2161,21 +2179,34 @@ describe('atomic virtual thermostat authoring', () => {
 				fixture.automation.onModuleDestroy();
 				fixture.deviceMapper.registerMapping({ ...original.mapping, class: DeviceEntity });
 				expect(original.isCurrent()).toBe(false);
-				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				const provider = new VirtualThermostatAutomationService(
+					fixture.writer,
+					fixture.core,
+					fixture.graph,
+					new NestConfigService(),
+					fixture.authoring,
+				);
 				provider.onModuleInit();
 				fixture.extraProviders.push(provider);
 				const transactions = jest.spyOn(database, 'transaction');
 				let inspected = 0;
-				await expect(fixture.writer.createVirtualThermostatV1({
-					kind: 'create-virtual-thermostat:v1',
-					get device() { inspected++; return {}; },
-					get configuration() { inspected++; return {}; },
-				})).rejects.toBeInstanceOf(Error);
+				await expect(
+					fixture.writer.createVirtualThermostatV1({
+						kind: 'create-virtual-thermostat:v1',
+						get device() {
+							inspected++;
+							return {};
+						},
+						get configuration() {
+							inspected++;
+							return {};
+						},
+					}),
+				).rejects.toBeInstanceOf(Error);
 				expect(inspected).toBe(0);
 				expect(transactions).not.toHaveBeenCalled();
 				expect(fixture.submittedPoints).toEqual([]);
 			});
 		});
-
 	});
 });
