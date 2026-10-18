@@ -822,7 +822,7 @@ export class VirtualThermostatAuthoringService {
 			if (!Array.isArray(properties) || properties.length !== channel.properties.length) fail('Changed retained properties.');
 			for (let propertyIndex = 0; propertyIndex < channel.properties.length; propertyIndex++)
 				row(channel.properties[propertyIndex], properties[propertyIndex], [...common,
-					['permissions', 'permissions'], ['dataType', 'data_type'], ['unit', 'unit'], ['format', 'format'],
+					['permissions', 'permissions'], ['dataType', 'data_type'], ['format', 'format'],
 					['invalid', 'invalid'], ['step', 'step'], ['value', 'value'], ['channel', 'channel'],
 					['valueOrigin', 'value_origin'], ['sourcePropertyId', 'source_property']]);
 		}

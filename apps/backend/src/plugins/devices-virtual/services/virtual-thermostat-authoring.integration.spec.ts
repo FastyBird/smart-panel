@@ -1900,6 +1900,28 @@ describe('atomic virtual thermostat authoring', () => {
 						actuators: expect.arrayContaining([expect.objectContaining({ qualification_generation: null, release_evidence: null })]),
 					},
 				} });
+				// unit is optional, non-column metadata: a retained catalog with no unit must not invent one.
+				if (result.outcome !== 'applied') throw new Error('Expected original fixed creation response');
+				const frame = result.result;
+				if (!frame || typeof frame !== 'object') throw new Error('Missing original fixed response frame');
+				const device: unknown = Reflect.get(frame, 'device');
+				if (!device || typeof device !== 'object') throw new Error('Missing original fixed device');
+				const channels: unknown = Reflect.get(device, 'channels');
+				const arrays: Readonly<{ isArray: (value: unknown) => value is readonly unknown[] }> = Array;
+				if (!arrays.isArray(channels)) throw new Error('Missing original fixed channels');
+				let checkedProperties = 0;
+				for (const channel of channels) {
+					if (!channel || typeof channel !== 'object') throw new Error('Missing original fixed channel');
+					const properties: unknown = Reflect.get(channel, 'properties');
+					if (!arrays.isArray(properties)) throw new Error('Missing original fixed properties');
+					for (const property of properties) {
+						if (!property || typeof property !== 'object') throw new Error('Missing original fixed property');
+						expect(Object.hasOwn(property, 'unit')).toBe(false);
+						checkedProperties++;
+					}
+				}
+				expect(checkedProperties).toBe((input.device.channels ?? []).reduce((total, channel) => total + (channel.properties?.length ?? 0), 0));
+
 			});
 
 			it.each([
