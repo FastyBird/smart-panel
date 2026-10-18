@@ -10,6 +10,10 @@ import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ConfigService } from '../../config/services/config.service';
+import { StorageConfigModel } from '../../storage/models/config.model';
+import { StoragePlugin } from '../../storage/interfaces/storage-plugin.interface';
+
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import { CreationStorageDestinations } from '../../storage/services/storage.service';
@@ -19,10 +23,10 @@ import { DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
-import { DeviceCreationPublicationLease } from './device-creation-context';
+import { DeviceCreationPublicationEngine, DeviceCreationPublicationLease, ReadCacheObservation, originalReadCacheApi } from './device-creation-context';
 import { CreationProducerObservation, PropertyProducerRegistryService } from './property-producer.registry.service';
 import { PropertyValueLockService } from './property-value-lock.service';
-import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import { IPropertyValueSource, PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
 describe('PropertyValueService', () => {
@@ -57,14 +61,21 @@ describe('PropertyValueService', () => {
 						),
 					},
 				},
-				{
-					provide: StorageService,
-					useValue: mockStorageService,
-				},
+				StorageService,
+				{ provide: ConfigService, useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(), { primaryStorage: 'read-test-primary' }) } },
 				PropertyValueSourceRegistryService,
 			],
 		}).compile();
 
+		const actualStorage = module.get(StorageService);
+		const plugin: StoragePlugin = {
+			name: 'read-test-primary', initialize: () => Promise.resolve(), destroy: () => Promise.resolve(),
+			isAvailable: () => true, writePoints: () => Promise.resolve(), query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('Raw query outside fixture')), registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(), getMeasurements: () => Promise.resolve([]),
+		};
+		actualStorage.registerPlugin(plugin.name, plugin);
+		Object.assign(actualStorage, mockStorageService);
 		service = module.get<PropertyValueService>(PropertyValueService);
 		storageService = module.get<StorageService>(StorageService) as jest.Mocked<StorageService>;
 
@@ -1327,6 +1338,180 @@ describe('PropertyValueService', () => {
 		expect(storageService.writePoints).not.toHaveBeenCalled();
 		expect(storageService.query).not.toHaveBeenCalled();
 	});
+	describe('original read source and finite hydration decisions', () => {
+		const property = (id = 'read-source') => Object.assign(new ChannelPropertyEntity(), { id, dataType: DataTypeType.FLOAT, invalid: null, format: [0, 100] });
+		it('retains successful registration identity across duplicate false and refuses an original method replacement', () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const input = property();
+			const source: IPropertyValueSource = { getType: () => input.type, resolve: () => input.id };
+			expect(registry.register(source)).toBe(true);
+			const capture = registry.captureReadSource(input);
+			try {
+				expect(registry.register({ getType: () => input.type, resolve: () => 'foreign' })).toBe(false);
+				expect(registry.isReadSourceCurrent(capture)).toBe(true);
+				source.resolve = () => input.id;
+				expect(registry.isReadSourceCurrent(capture)).toBe(false);
+			} finally { registry.closeReadSource(capture); }
+			expect(registry.isReadSourceCurrent(capture)).toBe(false);
+		});
+		it('records exact source absence without recapturing a newly registered equal-key source', () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const input = property();
+			const capture = registry.captureReadSource(input);
+			try {
+				expect(registry.register({ getType: () => input.type, resolve: () => input.id })).toBe(true);
+				expect(registry.isReadSourceCurrent(capture)).toBe(false);
+			} finally { registry.closeReadSource(capture); }
+		});
+		it('owns primitive format input and detects actual queued input mutation without freezing the caller', () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const input = property();
+			const capture = registry.captureReadSource(input);
+			try {
+				input.format = [0, 200];
+				expect(registry.isReadSourceCurrent(capture)).toBe(false);
+				expect(registry.readSourceInput(capture).format).toEqual([0, 100]);
+				expect(Object.isFrozen(input)).toBe(false);
+			} finally { registry.closeReadSource(capture); }
+		});
+		it('returns null for a held latest row when the originally absent source appears', async () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const input = property();
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.query.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const pending = service.readLatest(input);
+			try {
+				registry.register({ getType: () => input.type, resolve: () => input.id });
+				release([{ numberValue: 70, time: '2026-10-17T00:00:00.000Z' }]);
+				await expect(pending).resolves.toBeNull();
+			} finally { release([]); await pending.catch(() => undefined); }
+		});
+		it('uses a genuine concurrent report and never reinstalls history after its actual deletion', async () => {
+			const input = property();
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.query.mockResolvedValue([]).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const pending = service.readLatest(input);
+			try {
+				await service.write(input, 80);
+				await service.delete(input);
+				release([{ numberValue: 10, time: '2026-10-17T00:00:00.000Z' }]);
+				await expect(pending).resolves.toBeNull();
+			} finally { release([]); await pending.catch(() => undefined); }
+		});
+		it('refuses a held row after a real same-role registration overwrite even for the same plugin object', async () => {
+			const input = property();
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.query.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const plugin: StoragePlugin = {
+				name: 'read-test-primary', initialize: () => Promise.resolve(), destroy: () => Promise.resolve(),
+				isAvailable: () => true, writePoints: () => Promise.resolve(), query: <T>() => Promise.resolve<T[]>([]),
+				queryRaw: <T>() => Promise.reject<T>(new Error('Raw query outside fixture')), registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(), getMeasurements: () => Promise.resolve([]),
+			};
+			storageService.registerPlugin(plugin.name, plugin);
+			const pending = service.readLatest(input);
+			try {
+				storageService.registerPlugin(plugin.name, plugin);
+				release([{ numberValue: 70 }]);
+				await expect(pending).resolves.toBeNull();
+			} finally { release([]); await pending.catch(() => undefined); }
+		});
+		it('publishes only once for a shared physical strict-batch query while keeping each alias policy original', async () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const a = property('alias-a');
+			const b = property('alias-b');
+			const source: IPropertyValueSource = { getType: () => a.type, resolve: () => 'physical' };
+			registry.register(source);
+			storageService.queryStrict.mockResolvedValue([{ propertyId: 'physical', numberValue: 20 }, { propertyId: 'physical', numberValue: 10 }]);
+			const values = await service.readLatestManyStrict([a, b]);
+			expect(values.get(a.id)?.value).toBe(20);
+			expect(values.get(b.id)?.value).toBe(20);
+			expect(values.get(a.id)?.trend).toBe('rising');
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+		});
+		it.each(['strict', 'bounded'])('does not borrow another alias policy in a shared %s physical query', async (kind) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const a = property('policy-a');
+			const b = property('policy-b');
+			const blocked = new Set<string>();
+			registry.register({ getType: () => a.type, resolve: () => 'physical', unavailableReason: (input) => blocked.has(input.id) ? 'graph_source_changed' : null });
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.queryStrict.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			if (kind === 'strict') {
+				const pending = service.readLatestManyStrict([a, b]);
+				try {
+					blocked.add(a.id);
+					release([{ propertyId: 'physical', numberValue: 20 }]);
+					const result = await pending;
+					expect(result.get(a.id)).toBeNull();
+					expect(result.get(b.id)?.value).toBe(20);
+				} finally { release([]); await pending.catch(() => undefined); }
+			} else {
+				const pending = service.readLatestManyBounded([a, b]);
+				try {
+					blocked.add(a.id);
+					release([{ propertyId: 'physical', numberValue: 20 }]);
+					const result = await pending;
+					expect(result.items.find((item) => item.propertyId === a.id)?.state).toBeNull();
+					expect(result.items.find((item) => item.propertyId === a.id)?.source).toBeNull();
+					expect(result.items.find((item) => item.propertyId === b.id)?.state?.value).toBe(20);
+				} finally { release([]); await pending.catch(() => undefined); }
+			}
+			expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+		});
+		it('calls pinned original cleanup after finish API substitution and can perform a fresh ordinary read', async () => {
+			const input = property();
+			let release: (rows: unknown[]) => void = () => {};
+			storageService.query.mockResolvedValue([{ numberValue: 30 }]).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+			const pending = service.readLatest(input);
+			const replacement = jest.spyOn(DeviceCreationPublicationEngine, 'finishReadCache');
+			const cleanup = jest.spyOn(DeviceCreationPublicationEngine, 'closeReadCache');
+			try {
+				release([{ numberValue: 10 }]);
+				await expect(pending).resolves.toBeNull();
+				expect(replacement).not.toHaveBeenCalled();
+				expect(cleanup).not.toHaveBeenCalled();
+			} finally { release([]); await pending.catch(() => undefined); replacement.mockRestore(); cleanup.mockRestore(); }
+			await expect(service.readLatest(input)).resolves.toEqual(expect.objectContaining({ value: 30 }));
+		});
+		it('keeps a real bound persisted snapshot historical after a same-value report without republishing its trend', async () => {
+			const input = property();
+			await service.write(input, 80);
+			const original: Readonly<{ call: (receiver: StorageService, query: string) => Promise<Readonly<{ rows: unknown[]; binding: StorageBackendBinding }>> }> = StorageService.prototype.queryActiveStrictBound;
+			const genuine = await original.call(storageService, 'SELECT * FROM property_value');
+			let release: () => void = () => {};
+			let enter: () => void = () => {};
+			const entered = new Promise<void>((resolve) => { enter = resolve; });
+			storageService.queryActiveStrictBound.mockImplementationOnce(() => new Promise((resolve) => {
+				enter();
+				release = () => resolve({ rows: [{ numberValue: 10 }, { numberValue: 20 }], binding: genuine.binding });
+			}));
+			const pending = service.readLatestPersistedSnapshot(input);
+			try {
+				await entered;
+				await service.write(input, 80);
+				release();
+				const historical = await pending;
+				expect(historical.storageBinding).toBe(genuine.binding);
+				expect(historical.state?.value).toBe(10);
+				expect(historical.state?.trend).toBe('falling');
+				await expect(service.readLatest(input)).resolves.toEqual(expect.objectContaining({ value: 80 }));
+			} finally { release(); await pending.catch(() => undefined); }
+		});
+
+		it('keeps changed sticky, consumes once, and leaves unrelated read keys independent', () => {
+			const a = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, 'read-a');
+			const b = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, 'read-b');
+			try {
+				DeviceCreationPublicationEngine.invalidateIds(['read-a']);
+				expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, a)).toBe('changed');
+				expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, b)).toBe('publish');
+				expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, b)).toBe('changed');
+				expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, new ReadCacheObservation())).toBe('changed');
+			} finally { originalReadCacheApi.close.call(originalReadCacheApi.receiver, a); originalReadCacheApi.close.call(originalReadCacheApi.receiver, b); }
+		});
+	});
+
 });
 
 /** Real registry observation only; this does not manufacture a creation/publication lease. */

@@ -51,7 +51,7 @@ import { CommandLatencyTraceCollectorService } from '../../../modules/devices/se
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
-import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
+import { DeviceCreationContext, originalReadCacheApi } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
@@ -1494,6 +1494,46 @@ describe('atomic virtual thermostat authoring', () => {
 			}
 		});
 
+		describe('genuine original creation hydration observations', () => {
+			it('keeps empty climate links out of real index repair while original publication completes', async () => {
+				await fixture.close();
+				owner = undefined;
+				owner = await originalOwnedFixture(true);
+				fixture = owner;
+				const input = request(relayId);
+				const { rebuild } = fixture.index;
+				const original: Readonly<{ call: (receiver: VirtualPropertyIndexService) => ReturnType<VirtualPropertyIndexService['rebuild']> }> = rebuild;
+				const rewired: string[][] = [];
+				const rebuilding = jest.spyOn(fixture.index, 'rebuild').mockImplementation(() => original.call(fixture.index).then((result) => {
+					rewired.push([...result.rewiredVirtualDeviceIds]);
+					return result;
+				}));
+				const configEvents: string[] = [];
+				events.on(THERMOSTAT_CONFIG_CHANGED, (id: string) => configEvents.push(id));
+				try {
+					const result = await fixture.authoring.create(input);
+					await Promise.all(fixture.indexJobs);
+					expect(result.device.id).toBe(input.device.id);
+					expect(rewired.length).toBeGreaterThan(0);
+					expect(rewired.flat()).not.toContain(input.device.id);
+					expect(configEvents).toEqual([input.device.id]);
+					expect(fixture.projectionEvents).toHaveBeenCalled();
+					for (const setting of input.configuration.settings)
+						expect(fixture.submittedPoints.flat().filter((point) => point.measurement === 'property_value' && point.tags?.propertyId === setting.propertyId)).toHaveLength(1);
+				} finally { rebuilding.mockRestore(); }
+			});
+			it('never reopens a pre-existing read after genuine absent creation and original terminal close', async () => {
+				const input = request(relayId);
+				const observation = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, input.device.id, true);
+				try {
+					const result = await fixture.authoring.create(input);
+					expect(result.device.id).toBe(input.device.id);
+					expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation)).toBe('changed');
+					expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation)).toBe('changed');
+				} finally { originalReadCacheApi.close.call(originalReadCacheApi.receiver, observation); }
+			});
+		});
+
 		it('does not count a held real detached index rebuild as A completion or let its later B snapshot reopen A publication', async () => {
 			await fixture.close();
 			owner = undefined;
@@ -1834,6 +1874,42 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(fixture.submittedPoints).toEqual([]);
 				expect(publications).toEqual([]);
 			} finally {
+				all.mockRestore();
+				await runner.release();
+			}
+		});
+
+		it('drops original read-cache publication after actual submitted native UNKNOWN without replay', async () => {
+			const input = request(relayId);
+			const observation = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, input.device.id, true);
+			const runner = database.createQueryRunner();
+			const native: unknown = await runner.connect();
+			if (!creationNative(native)) throw new Error('Missing actual own SQLite connection');
+			const original: Readonly<{
+				call: (receiver: CreationNativeConnection, ...args: Parameters<CreationNativeConnection['all']>) => unknown;
+			}> = native.all;
+			let lost = false;
+			const all = jest.spyOn(native, 'all').mockImplementation(function (
+				this: CreationNativeConnection,
+				query,
+				parameters,
+				callback,
+			) {
+				return original.call(this, query, parameters, function (this: unknown, error, rows) {
+					if (query === 'COMMIT' && !error && !lost) {
+						lost = true;
+						callback.call(this, new Error('TEST lost original ACK'), rows);
+					} else callback.call(this, error, rows);
+				});
+			});
+			try {
+				await expect(fixture.authoring.create(input)).rejects.toMatchObject({ commitOutcome: 'unknown' });
+				expect(lost).toBe(true);
+				expect(fixture.submittedPoints).toEqual([]);
+				expect(publications).toEqual([]);
+			} finally {
+				expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation)).not.toBe('publish');
+				originalReadCacheApi.close.call(originalReadCacheApi.receiver, observation);
 				all.mockRestore();
 				await runner.release();
 			}

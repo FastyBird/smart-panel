@@ -379,6 +379,38 @@ const leafQueries = new WeakMap<
 		parameters: readonly unknown[];
 	}>
 >();
+export type ReadCacheDecision = 'publish' | 'overlap' | 'changed';
+export class ReadCacheObservation {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+export type StatusReadBinding = Readonly<{ deviceId?: unknown; propertyId?: unknown; empty: boolean }>;
+interface ReadCacheRecord {
+	readonly id: string;
+	readonly status: boolean;
+	readonly deletions: Set<string>;
+	invalidDeletion: boolean;
+	overlap: boolean;
+	changed: boolean;
+}
+const readCacheRecords = new WeakMap<ReadCacheObservation, ReadCacheRecord>();
+const readCacheIds = new Map<string, Set<ReadCacheObservation>>();
+const statusReadObservations = new Set<ReadCacheObservation>();
+function unlinkReadCache(observation: ReadCacheObservation): ReadCacheRecord | undefined {
+	const record = readCacheRecords.get(observation);
+	if (!record) return undefined;
+	readCacheRecords.delete(observation);
+	const set = readCacheIds.get(record.id);
+	set?.delete(observation);
+	if (set?.size === 0) readCacheIds.delete(record.id);
+	statusReadObservations.delete(observation);
+	return record;
+}
+function overlapReadCaches(ids: Iterable<string>): void {
+	for (const id of ids) for (const token of readCacheIds.get(id) ?? []) {
+		const record = readCacheRecords.get(token);
+		if (record) record.overlap = true;
+	}
+}
 const closedRequiredInvocation = Symbol('closed-original-information');
 const requiredInvocations = new WeakMap<DeviceEntity, RequiredInvocation | typeof closedRequiredInvocation>();
 
@@ -395,6 +427,50 @@ export function creationMethodCurrent(receiver: object, key: string, original: u
 
 /** Finite original-owned publication evidence. An ordinary caller cannot forge a current token. */
 export class DeviceCreationPublicationEngine {
+	/** A finite historical-read veto, never creation or command authority. */
+	static observeReadCache(id: string, status = false): ReadCacheObservation {
+		if (this !== DeviceCreationPublicationEngine) return Object.freeze(new ReadCacheObservation());
+		const token = Object.freeze(new ReadCacheObservation());
+		const record: ReadCacheRecord = {
+			id, status, deletions: new Set<string>(), invalidDeletion: false,
+			overlap: (publicationIds.get(id)?.size ?? 0) > 0, changed: typeof id !== 'string' || id.length === 0,
+		};
+		readCacheRecords.set(token, record);
+		const entries = readCacheIds.get(id) ?? new Set<ReadCacheObservation>();
+		entries.add(token);
+		readCacheIds.set(id, entries);
+		if (status) statusReadObservations.add(token);
+		return token;
+	}
+	static dirtyReadCache(ids: readonly string[]): void {
+		for (const id of ids) for (const token of readCacheIds.get(id) ?? []) {
+			const record = readCacheRecords.get(token);
+			if (record) record.changed = true;
+		}
+	}
+	static noteStatusPropertyDeletion(id: string): void {
+		for (const token of statusReadObservations) {
+			const record = readCacheRecords.get(token);
+			if (!record) continue;
+			if (typeof id !== 'string' || id.length === 0) record.invalidDeletion = true;
+			else record.deletions.add(id);
+		}
+	}
+	static finishReadCache(token: ReadCacheObservation, binding?: StatusReadBinding): ReadCacheDecision {
+		const record = unlinkReadCache(token);
+		if (this !== DeviceCreationPublicationEngine) return 'changed';
+		if (!record || !originalReadCacheApi.current()) return 'changed';
+		if (record.invalidDeletion) record.changed = true;
+		if (record.status && record.deletions.size > 0) {
+			const property = binding?.propertyId;
+			const device = binding?.deviceId;
+			if (!binding || binding.empty || typeof property !== 'string' || property.length === 0 ||
+				(device !== undefined && (typeof device !== 'string' || device !== record.id)) ||
+				record.deletions.has(property)) record.changed = true;
+		}
+		return record.changed ? 'changed' : record.overlap ? 'overlap' : 'publish';
+	}
+	static closeReadCache(token: ReadCacheObservation): void { unlinkReadCache(token); }
 	static assert(lease: DeviceCreationPublicationLease, ...ids: readonly string[]): void {
 		const record = publicationRecords.get(lease);
 		if (
@@ -449,6 +525,7 @@ export class DeviceCreationPublicationEngine {
 			submitted: 0,
 			storageCompleted: 0,
 		};
+		overlapReadCaches(record.identities);
 		publicationRecords.set(lease, record);
 		for (const id of record.identities) {
 			const records = publicationIds.get(id) ?? new Set<PublicationRecord>();
@@ -474,6 +551,7 @@ export class DeviceCreationPublicationEngine {
 	}
 
 	static invalidateIds(ids: readonly string[]): void {
+		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, ids);
 		for (const id of ids) {
 			for (const record of publicationIds.get(id) ?? []) record.active = false;
 		}
@@ -662,6 +740,10 @@ export class DeviceCreationPublicationEngine {
 	}
 
 	static invalidateAll(): void {
+		for (const entries of readCacheIds.values()) for (const token of entries) {
+			const record = readCacheRecords.get(token);
+			if (record) record.changed = true;
+		}
 		for (const records of publicationIds.values()) for (const record of records) record.active = false;
 	}
 
@@ -929,6 +1011,7 @@ export class DeviceCreationPublicationEngine {
 		// Keep only a terminal anti-redelivery marker, not handler/service/Promise/manager retention.
 		if (record.catalog && requiredInvocations.has(record.catalog))
 			requiredInvocations.set(record.catalog, closedRequiredInvocation);
+		overlapReadCaches(record.identities);
 		for (const id of record.identities) {
 			const records = publicationIds.get(id);
 			records?.delete(record);
@@ -937,6 +1020,26 @@ export class DeviceCreationPublicationEngine {
 		publicationRecords.delete(lease);
 	}
 }
+
+/** Original module-evaluation function objects; replacements can only veto, never rescue. */
+const readCacheFunctions = Object.freeze({
+	observe: DeviceCreationPublicationEngine.observeReadCache,
+	finish: DeviceCreationPublicationEngine.finishReadCache,
+	close: DeviceCreationPublicationEngine.closeReadCache,
+	dirty: DeviceCreationPublicationEngine.dirtyReadCache,
+	deleted: DeviceCreationPublicationEngine.noteStatusPropertyDeletion,
+	createdCurrent: DeviceCreationPublicationEngine.stagingCurrent,
+});
+const readCacheNames = Object.freeze({ observe: 'observeReadCache', finish: 'finishReadCache', close: 'closeReadCache', dirty: 'dirtyReadCache', deleted: 'noteStatusPropertyDeletion', createdCurrent: 'stagingCurrent' });
+export const originalReadCacheApi = Object.freeze({
+	receiver: DeviceCreationPublicationEngine,
+	...readCacheFunctions,
+	current: (): boolean => Object.entries(readCacheNames).every(([key, name]) => {
+		const expected: unknown = Reflect.get(readCacheFunctions, key);
+		const descriptor = Object.getOwnPropertyDescriptor(DeviceCreationPublicationEngine, name);
+		return descriptor?.get === undefined && descriptor?.set === undefined && descriptor?.value === expected;
+	}),
+});
 
 /** Original persisted discriminator facts only; public plugin type remains a separate check. */
 export interface DeviceCreationNativeCatalog {

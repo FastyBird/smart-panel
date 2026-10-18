@@ -8,6 +8,8 @@ import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity'
 import {
 	DeviceCreationPublicationEngine,
 	DeviceCreationPublicationLease,
+	originalReadCacheApi,
+	ReadCacheObservation,
 	creationHasDataMethod,
 	creationMethodCurrent,
 } from './device-creation-context';
@@ -27,12 +29,17 @@ interface DeviceStatusRow {
 	propertyId?: ChannelPropertyEntity['id'];
 }
 
+const stateStorageReadMethods = Object.freeze({
+	capture: StorageService.prototype.captureCreationDestinations,
+	check: StorageService.prototype.areCreationDestinationsCurrent,
+});
 @Injectable()
 export class DeviceConnectionStateService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DeviceConnectionStateService');
 
-	private statusMap: Map<DeviceEntity['id'], { online: boolean; status: ConnectionState; lastChanged: Date }> =
-		new Map();
+	private statusMap: Map<DeviceEntity['id'], DeviceConnectionStateValue> = new Map();
+	private readonly statusProvenance = new Map<string, Readonly<{ entry: DeviceConnectionStateValue; kind: 'reported' | 'owned' | 'historical'; lease?: DeviceCreationPublicationLease }>>();
+
 	private statusPropertyMap: Map<DeviceEntity['id'], ChannelPropertyEntity['id']> = new Map();
 
 	constructor(private readonly storageService: StorageService) {}
@@ -104,10 +111,37 @@ export class DeviceConnectionStateService {
 		return count;
 	}
 
+	private observeStatusRead(id: string): Readonly<{ token: ReadCacheObservation; queries: Readonly<{ query: (query: string) => Promise<DeviceStatusRow[]>; queryStrict: (query: string) => Promise<DeviceStatusRow[]> }>; current: () => boolean }> {
+		if (!creationHasDataMethod(this.storageService, 'query') || !creationHasDataMethod(this.storageService, 'queryStrict')) throw new Error('Original backend read methods unavailable');
+		const methods: Readonly<{ query: (query: string) => Promise<DeviceStatusRow[]>; queryStrict: (query: string) => Promise<DeviceStatusRow[]> }> = { query: this.storageService.query, queryStrict: this.storageService.queryStrict };
+		let destinations: CreationStorageDestinations | undefined;
+		if (creationMethodCurrent(this.storageService, 'captureCreationDestinations', stateStorageReadMethods.capture) && creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', stateStorageReadMethods.check))
+			destinations = stateStorageReadMethods.capture.call(this.storageService);
+		const token = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, id, true);
+		return { token, queries: methods, current: () => originalReadCacheApi.current() && destinations !== undefined &&
+			creationMethodCurrent(this.storageService, 'captureCreationDestinations', stateStorageReadMethods.capture) &&
+			creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', stateStorageReadMethods.check) &&
+			creationMethodCurrent(this.storageService, 'query', methods.query) && creationMethodCurrent(this.storageService, 'queryStrict', methods.queryStrict) &&
+			stateStorageReadMethods.check.call(this.storageService, destinations) };
+	}
+	private currentReportedStatus(id: string): DeviceConnectionStateValue {
+		const entry = this.statusMap.get(id);
+		const provenance = this.statusProvenance.get(id);
+		if (!entry || provenance?.entry !== entry || provenance.kind === 'historical') return this.unknownStatus();
+		if (provenance.kind === 'owned') {
+			try { if (!provenance.lease || !originalReadCacheApi.createdCurrent.call(originalReadCacheApi.receiver, provenance.lease)) return this.unknownStatus(); } catch { return this.unknownStatus(); }
+		}
+		return entry;
+	}
+	private setStatusCache(id: string, entry: DeviceConnectionStateValue, kind: 'reported' | 'owned' | 'historical', lease?: DeviceCreationPublicationLease): void {
+		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [id]);
+		this.statusMap.set(id, entry);
+		this.statusProvenance.set(id, { entry, kind, lease });
+	}
 	captureCreatedMethodGuard(): () => boolean {
 		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
 		for (const { receiver, keys } of [
-			{ receiver: this, keys: ['readCreated', 'writeCreated'] },
+			{ receiver: this, keys: ['readCreated', 'writeCreated', 'setStatusCache'] },
 			{ receiver: this.storageService, keys: ['writeCreatedPoints'] },
 		])
 			for (const key of keys) {
@@ -158,7 +192,7 @@ export class DeviceConnectionStateService {
 				timestamp: lastChanged,
 			};
 			DeviceCreationPublicationEngine.assert(lease, id, propertyId);
-			this.statusMap.set(id, { online, status, lastChanged });
+			this.setStatusCache(id, { online, status, lastChanged }, 'owned', lease);
 			this.statusPropertyMap.set(id, propertyId);
 			await this.storageService.writeCreatedPoints(lease, destinations, [point]);
 			DeviceCreationPublicationEngine.assert(lease, id, propertyId);
@@ -181,6 +215,8 @@ export class DeviceConnectionStateService {
 		}
 
 		if (this.statusMap.has(device.id) && this.statusMap.get(device.id).status === status) {
+			const entry = this.statusMap.get(device.id);
+			if (entry) this.statusProvenance.set(device.id, { entry, kind: 'reported' });
 			// no change → skip storage write
 			return;
 		}
@@ -190,7 +226,7 @@ export class DeviceConnectionStateService {
 
 		// Update local cache regardless of storage availability
 		DeviceCreationPublicationEngine.invalidateIds([device.id]);
-		this.statusMap.set(device.id, { online: isOnline, status, lastChanged });
+		this.setStatusCache(device.id, { online: isOnline, status, lastChanged }, 'reported');
 		DeviceCreationPublicationEngine.invalidateIds([device.id]);
 		this.statusPropertyMap.set(device.id, property.id);
 
@@ -256,12 +292,20 @@ export class DeviceConnectionStateService {
 		const missingIds: DeviceEntity['id'][] = [];
 
 		for (const device of devices) {
-			const cached = this.statusMap.get(device.id);
+			const id = device.id;
+			const cached = this.statusMap.get(id);
 
 			if (cached) {
-				statuses.set(device.id, cached);
+				const token = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, id, true);
+				try {
+					const current = originalReadCacheApi.current();
+					const reported = this.currentReportedStatus(id);
+					const owned = this.statusProvenance.get(id)?.kind === 'owned';
+					const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, token);
+					statuses.set(id, current && decision === 'publish' ? cached : current && owned ? reported : this.unknownStatus());
+				} finally { originalReadCacheApi.close.call(originalReadCacheApi.receiver, token); }
 			} else {
-				missingIds.push(device.id);
+				missingIds.push(id);
 			}
 		}
 
@@ -290,40 +334,37 @@ export class DeviceConnectionStateService {
 		LIMIT 1
       `;
 
+		const observations = new Map<string, ReturnType<DeviceConnectionStateService['observeStatusRead']>>();
 		try {
-			const rows = await this.storageService.queryStrict<DeviceStatusRow>(query);
+			for (const id of missingIds) observations.set(id, this.observeStatusRead(id));
+			const first = observations.values().next().value;
+			if (!first) throw new Error('Original status query unavailable');
+			const rows = await first.queries.queryStrict.call(this.storageService, query);
 			const rowByDevice = new Map(rows.map((row) => [row.deviceId, row]));
-
 			for (const id of missingIds) {
-				const reportedWhileReading = this.statusMap.get(id);
-				if (reportedWhileReading) {
-					statuses.set(id, reportedWhileReading);
-					continue;
-				}
-
+				const observation = observations.get(id);
+				if (!observation) throw new Error('Original status read unavailable');
 				const row = rowByDevice.get(id);
 				const status = row ? this.toStatus(row) : this.unknownStatus();
+				const binding = { empty: row === undefined, deviceId: row?.deviceId, propertyId: row?.propertyId };
+				const current = observation.current();
+				const reported = this.currentReportedStatus(id);
+				const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token, binding);
+				if (!current) { statuses.set(id, this.unknownStatus()); continue; }
+				if (decision !== 'publish') { statuses.set(id, reported); continue; }
 				DeviceCreationPublicationEngine.invalidateIds([id]);
-				this.statusMap.set(id, status);
+				this.setStatusCache(id, status, 'historical');
 				statuses.set(id, status);
 			}
-
 			return statuses;
 		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, {
-				stack: err.stack,
-			});
-
-			if (strict) {
-				throw error;
-			}
-
-			for (const id of missingIds) {
-				statuses.set(id, this.statusMap.get(id) ?? this.unknownStatus());
-			}
-
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(`Failed to batch read device statuses from storage error=${err.message}`, { stack: err.stack });
+			if (strict) throw error;
+			for (const id of missingIds) statuses.set(id, this.currentReportedStatus(id));
 			return statuses;
+		} finally {
+			for (const observation of observations.values()) originalReadCacheApi.close.call(originalReadCacheApi.receiver, observation.token);
 		}
 	}
 
@@ -331,14 +372,23 @@ export class DeviceConnectionStateService {
 		device: Pick<DeviceEntity, 'id'>,
 		strict: boolean,
 	): Promise<DeviceConnectionStateValue> {
+		const id = device.id;
 		// Check local cache first
-		if (this.statusMap.has(device.id)) {
+		if (this.statusMap.has(id)) {
 			this.logger.debug(
-				`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
-				{ resource: device.id },
+				`Loaded cached status for device id=${id}, status=${this.statusMap.get(id)?.status}`,
+				{ resource: id },
 			);
 
-			return this.statusMap.get(device.id);
+			const token = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, id, true);
+			try {
+				const current = originalReadCacheApi.current();
+				const reported = this.currentReportedStatus(id);
+				const cached = this.statusMap.get(id);
+				const owned = this.statusProvenance.get(id)?.kind === 'owned';
+				const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, token);
+				return current && decision === 'publish' ? cached : current && owned ? reported : this.unknownStatus();
+			} finally { originalReadCacheApi.close.call(originalReadCacheApi.receiver, token); }
 		}
 
 		// Return default if storage not connected
@@ -350,67 +400,40 @@ export class DeviceConnectionStateService {
 			return this.unknownStatus();
 		}
 
+		let observation: ReturnType<DeviceConnectionStateService['observeStatusRead']> | undefined;
 		try {
+			observation = this.observeStatusRead(id);
 			const query = `
         SELECT * FROM device_status
-        WHERE deviceId = '${device.id}'
+        WHERE deviceId = '${id}'
         ORDER BY time DESC
         LIMIT 1
       `;
-
-			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
-
-			const result = await (strict
-				? this.storageService.queryStrict<DeviceStatusRow>(query)
-				: this.storageService.query<DeviceStatusRow>(query));
-
-			if (!result.length) {
-				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
-				const reportedWhileReading = this.statusMap.get(device.id);
-				if (reportedWhileReading) {
-					return reportedWhileReading;
-				}
-
-				const unknown = this.unknownStatus();
-				DeviceCreationPublicationEngine.invalidateIds([device.id]);
-				this.statusMap.set(device.id, unknown);
-
-				return unknown;
-			}
-
+			this.logger.debug(`Fetching latest status id=${id}`, { resource: id });
+			const queryMethod = strict ? observation.queries.queryStrict : observation.queries.query;
+			const result = await queryMethod.call(this.storageService, query);
 			const latest = result[0];
-			const connectionState = this.toStatus(latest);
-
-			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
-
-			const reportedWhileReading = this.statusMap.get(device.id);
-			if (reportedWhileReading) {
-				return reportedWhileReading;
+			const status = latest ? this.toStatus(latest) : this.unknownStatus();
+			const propertyId = latest?.propertyId;
+			const binding = { empty: latest === undefined, deviceId: latest?.deviceId, propertyId };
+			const current = observation.current();
+			const reported = this.currentReportedStatus(id);
+			const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token, binding);
+			if (!current) return this.unknownStatus();
+			if (decision !== 'publish') return reported;
+			DeviceCreationPublicationEngine.invalidateIds([id]);
+			this.setStatusCache(id, status, 'historical');
+			if (propertyId) {
+				DeviceCreationPublicationEngine.invalidateIds([id]);
+				this.statusPropertyMap.set(id, propertyId);
 			}
-
-			DeviceCreationPublicationEngine.invalidateIds([device.id]);
-
-			this.statusMap.set(device.id, connectionState);
-			if (latest.propertyId) {
-				DeviceCreationPublicationEngine.invalidateIds([device.id]);
-				this.statusPropertyMap.set(device.id, latest.propertyId);
-			}
-
-			return connectionState;
+			return status;
 		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to read latest status from storage id=${device.id} error=${err.message}`, {
-				resource: device.id,
-				stack: err.stack,
-			});
-
-			if (strict) {
-				throw error;
-			}
-
-			return this.statusMap.get(device.id) ?? this.unknownStatus();
-		}
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error(`Failed to read latest status from storage id=${id} error=${err.message}`, { resource: id, stack: err.stack });
+			if (strict) throw error;
+			return this.currentReportedStatus(id);
+		} finally { if (observation) originalReadCacheApi.close.call(originalReadCacheApi.receiver, observation.token); }
 	}
 
 	private toStatus(row: DeviceStatusRow): DeviceConnectionStateValue {
@@ -433,6 +456,7 @@ export class DeviceConnectionStateService {
 		DeviceCreationPublicationEngine.invalidateIds([device.id]);
 		// Always clear local cache
 		this.statusMap.delete(device.id);
+		this.statusProvenance.delete(device.id);
 		this.statusPropertyMap.delete(device.id);
 
 		if (!this.storageService.isConnected()) {
@@ -456,11 +480,16 @@ export class DeviceConnectionStateService {
 	}
 
 	async deleteByProperty(property: ChannelPropertyEntity): Promise<void> {
+		const propertyId = property.id;
+		originalReadCacheApi.deleted.call(originalReadCacheApi.receiver, propertyId);
+		DeviceCreationPublicationEngine.invalidateIds([propertyId]);
 		// Always clear local cache
-		const deviceId = [...this.statusPropertyMap.entries()].find(([_, val]) => val === property.id)?.[0];
+		const deviceId = [...this.statusPropertyMap.entries()].find(([_, val]) => val === propertyId)?.[0];
 
 		if (typeof deviceId !== 'undefined') {
+			DeviceCreationPublicationEngine.invalidateIds([deviceId]);
 			this.statusMap.delete(deviceId);
+			this.statusProvenance.delete(deviceId);
 			this.statusPropertyMap.delete(deviceId);
 		}
 
@@ -469,18 +498,18 @@ export class DeviceConnectionStateService {
 		}
 
 		try {
-			const query = `DELETE FROM device_status WHERE propertyId = '${property.id}'`;
+			const query = `DELETE FROM device_status WHERE propertyId = '${propertyId}'`;
 
 			await this.storageService.query(query);
 
 			this.logger.log(
-				`Deleted device status for propertyId=${property.id}${deviceId ? ` deviceId=${deviceId}` : ''}`,
+				`Deleted device status for propertyId=${propertyId}${deviceId ? ` deviceId=${deviceId}` : ''}`,
 				deviceId ? { resource: deviceId } : {},
 			);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to delete device status from storage propertyId=${property.id} error=${err.message}`, {
+			this.logger.error(`Failed to delete device status from storage propertyId=${propertyId} error=${err.message}`, {
 				...(deviceId ? { resource: deviceId } : {}),
 				stack: err.stack,
 			});
