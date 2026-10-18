@@ -1,7 +1,7 @@
 import { EntityManager } from 'typeorm';
 
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import {
 	hasQualifiedFloorSourceIdentity,
 	hasQualifiedRawVoltageIdentity,
@@ -25,33 +25,54 @@ const reject = (): never => {
 		'Protection requires a qualified Celsius sensor or reviewed single physical voltage converter on the actuator Shelly, with finite domain.',
 	);
 };
-export async function resolveThermostatProtectionSource(
-	manager: EntityManager,
-	sourceId: string,
+export interface ThermostatProtectionLineageRows {
+	readonly property: ChannelPropertyEntity | null;
+	readonly leaf: ChannelPropertyEntity | null;
+	readonly transform: VirtualTransformConfigEntity | null;
+	readonly transformSource: VirtualTransformSourceEntity | null;
+	readonly metadata: ShellySampleSourceEntity | null;
+}
+
+function protectionRoot(property: ChannelPropertyEntity | null) {
+	if (!property) return reject();
+	const channel = property.channel;
+	if (!channel || typeof channel === 'string') return reject();
+	const device = channel.device;
+	if (!device || typeof device === 'string') return reject();
+	if (!isThermostatTemperature(property, channel)) return reject();
+	return { property, channel, device };
+}
+
+function protectionSourceId(
+	root: ReturnType<typeof protectionRoot>,
+	transform: VirtualTransformConfigEntity | null,
+	transformSource: VirtualTransformSourceEntity | null,
+): string | null {
+	if (root.device.type === 'virtual') {
+		if (!transform || !transformSource?.sourcePropertyId) return reject();
+		return transformSource.sourcePropertyId;
+	}
+	if (transform || transformSource) return reject();
+	return null;
+}
+
+function protectionLeaf(
+	root: ReturnType<typeof protectionRoot>,
+	leaf: ChannelPropertyEntity | null,
+	transform: VirtualTransformConfigEntity | null,
+	transformSource: VirtualTransformSourceEntity | null,
+	sourceId: string | null,
 	actuatorIdentity: string,
 ) {
-	const property = await manager.findOne(ChannelPropertyEntity, {
-		where: { id: sourceId },
-		relations: ['channel', 'channel.device'],
-	});
-	if (!property) return reject();
-	const channel = property.channel as ChannelEntity;
-	const device = channel.device as DeviceEntity;
-	if (!isThermostatTemperature(property, channel)) return reject();
-	let leaf = property;
-	const transform = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: property.id });
-	const transformSource = await manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId: property.id });
-	if (device.type === 'virtual') {
+	const { property } = root;
+	if (sourceId !== null) {
 		if (!transform || !transformSource?.sourcePropertyId) return reject();
-		leaf = await manager.findOne(ChannelPropertyEntity, {
-			where: { id: transformSource.sourcePropertyId },
-			relations: ['channel', 'channel.device'],
-		});
 		const contractErrors = leaf
 			? transformContractErrors(transform, property, leaf, transformSource)
 			: ['missing_leaf'];
 		if (contractErrors.length)
 			throw new DevicesValidationException(`Protection converter contract: ${contractErrors.join(', ')}`);
+		if (leaf && leaf.id !== transformSource.sourcePropertyId) return reject();
 		if (
 			!leaf ||
 			transform.quantity !== 'temperature' ||
@@ -60,9 +81,11 @@ export async function resolveThermostatProtectionSource(
 			contractErrors.length
 		)
 			return reject();
-	} else if (transform || transformSource) return reject();
-	const leafChannel = leaf.channel as ChannelEntity;
-	const leafDevice = leafChannel.device as DeviceEntity;
+	}
+	if (!leaf) return reject();
+	const leafChannel = leaf.channel;
+	if (!leafChannel || typeof leafChannel === 'string') return reject();
+	const leafDevice = leafChannel.device;
 	if (
 		!(leafDevice instanceof ShellyNgDeviceEntity) ||
 		!leafDevice.canonicalMac ||
@@ -75,8 +98,15 @@ export async function resolveThermostatProtectionSource(
 			: !hasQualifiedFloorSourceIdentity(leafChannel.identifier)
 	)
 		return reject();
-	const metadata = await manager.findOneBy(ShellySampleSourceEntity, { propertyId: leaf.id, active: true });
-	if (!metadata || metadata.deviceId !== leafDevice.id || !leafChannel.identifier.endsWith(`:${metadata.fingerprint}`))
+	return { ...root, leaf, leafChannel, leafDevice, transform, transformSource };
+}
+
+function completeProtection(
+	checked: ReturnType<typeof protectionLeaf>,
+	metadata: ShellySampleSourceEntity | null,
+) {
+	const { property, device, channel, leaf, leafChannel, leafDevice, transform, transformSource } = checked;
+	if (!metadata || metadata.propertyId !== leaf.id || !metadata.active || metadata.deviceId !== leafDevice.id || !leafChannel.identifier.endsWith(`:${metadata.fingerprint}`))
 		return reject();
 	if (metadata.installationSnapshot) {
 		const snapshot = metadata.installationSnapshot;
@@ -131,6 +161,38 @@ export async function resolveThermostatProtectionSource(
 		fingerprint,
 		enabled: device.enabled && leafDevice.enabled,
 	};
+}
+
+/** Closed row-only checker. No SQL, listeners, history, sample reads, leases or allocations of authority. */
+export function validateThermostatProtectionRows(rows: ThermostatProtectionLineageRows, actuatorIdentity: string) {
+	const root = protectionRoot(rows.property);
+	const sourceId = protectionSourceId(root, rows.transform, rows.transformSource);
+	const checked = protectionLeaf(root, rows.leaf, rows.transform, rows.transformSource, sourceId, actuatorIdentity);
+	if (checked.leaf.id !== (sourceId ?? root.property.id)) return reject();
+	return completeProtection(checked, rows.metadata);
+}
+
+/** Ordinary loader retains its original manager queries and validation ordering. */
+export async function resolveThermostatProtectionSource(
+	manager: EntityManager,
+	sourceId: string,
+	actuatorIdentity: string,
+) {
+	const property = await manager.findOne(ChannelPropertyEntity, {
+		where: { id: sourceId },
+		relations: ['channel', 'channel.device'],
+	});
+	const root = protectionRoot(property);
+	const transform = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: root.property.id });
+	const transformSource = await manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId: root.property.id });
+	const leafId = protectionSourceId(root, transform, transformSource);
+	const leaf = leafId === null ? root.property : await manager.findOne(ChannelPropertyEntity, {
+		where: { id: leafId },
+		relations: ['channel', 'channel.device'],
+	});
+	const checked = protectionLeaf(root, leaf, transform, transformSource, leafId, actuatorIdentity);
+	const metadata = await manager.findOneBy(ShellySampleSourceEntity, { propertyId: checked.leaf.id, active: true });
+	return completeProtection(checked, metadata);
 }
 export type ThermostatProtectionSource = Awaited<ReturnType<typeof resolveThermostatProtectionSource>>;
 export function protectionBoundsValid(

@@ -39,6 +39,7 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
 import { SceneExecutorService } from '../../../modules/scenes/services/scene-executor.service';
+import { ShellySampleSourceEntity } from '../../devices-shelly-ng/entities/shelly-sample-source.entity';
 import { nativeVoltmeterVoltageIdentity } from '../../devices-shelly-ng/contracts/native-temperature.contract';
 import {
 	ShellyNgChannelEntity,
@@ -71,6 +72,7 @@ import { VirtualThermostatConfigurationModel } from '../models/thermostat-respon
 import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { resolveThermostatProtectionSource, validateThermostatProtectionRows } from './thermostat-protection-source.utils';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualNumericOperatorRegistry } from './virtual-numeric-operator.registry';
 import { VirtualNumericTransformOperator } from './virtual-numeric-transform.utils';
@@ -2054,4 +2056,48 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
 		}
 	});
+	describe('closed persisted protection row validation', () => {
+		it.each([false, true])('matches the original loader for actual persisted converted=%s lineage without I/O in the checker', async (converted) => {
+			const relay = await actuator();
+			const probe = await createProtectionProbe(database, relay, converted);
+			const readProperty = (id: string) => database.manager
+				.createQueryBuilder(ChannelPropertyEntity, 'property')
+				.leftJoinAndSelect('property.channel', 'channel')
+				.leftJoinAndSelect('channel.device', 'device')
+				.where('property.id = :id', { id })
+				.callListeners(false)
+				.getOneOrFail();
+			const property = await readProperty(probe.sourceId);
+			const leaf = converted ? await readProperty(probe.physicalId) : property;
+			const transform = await database.manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: property.id });
+			const transformSource = await database.manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId: property.id });
+			const metadata = await database.manager.findOneByOrFail(ShellySampleSourceEntity, { propertyId: leaf.id, active: true });
+			const physicalIdentity = 'shelly-ng:' + probe.device.canonicalMac.toUpperCase() + ':switch:0:output';
+			const ordinary = await resolveThermostatProtectionSource(database.manager, property.id, physicalIdentity);
+			const rows = { property, leaf, transform, transformSource, metadata };
+			let queries = 0;
+			const observer = { beforeQuery: () => { queries++; } };
+			const emitted = jest.spyOn(events, 'emit');
+			database.subscribers.push(observer);
+			try {
+				const checked = validateThermostatProtectionRows(rows, physicalIdentity);
+				expect(checked).toEqual(ordinary);
+				expect(checked.property).toBe(property);
+				expect(checked.leaf).toBe(leaf);
+				expect(checked.metadata).toBe(metadata);
+				expect(() => validateThermostatProtectionRows({ ...rows, metadata: { ...metadata, propertyId: uuid() } }, physicalIdentity))
+					.toThrow(DevicesValidationException);
+				expect(() => validateThermostatProtectionRows({ ...rows, metadata: { ...metadata, active: false } }, physicalIdentity))
+					.toThrow(DevicesValidationException);
+				expect(() => validateThermostatProtectionRows(rows, 'shelly-ng:A8032ABEFFFF:switch:0:output'))
+					.toThrow(DevicesValidationException);
+				expect(queries).toBe(0);
+				expect(emitted).not.toHaveBeenCalled();
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				emitted.mockRestore();
+			}
+		});
+	});
+
 });

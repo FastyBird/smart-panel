@@ -194,20 +194,12 @@ export class VirtualThermostatComfortService {
 
 	/** Trusted bridge port only: no public DTO or route accepts an automation source/actor. */
 	async applyAutomationBaseline(
-		id: string,
-		fence: ThermostatComfortFence,
-		selection: { preset: ThermostatPreset | null; setpoints: ThermostatSetpoints | null } | null,
-		actorId: string,
+		_id: string,
+		_fence: ThermostatComfortFence,
+		_selection: { preset: ThermostatPreset | null; setpoints: ThermostatSetpoints | null } | null,
+		_actorId: string,
 	) {
-		return this.mutate(id, fence, (row) => {
-			if (!row.comfort?.automation_enabled || !actorId)
-				throw new DevicesValidationException(
-					'Thermostat automation is not explicitly enabled or its actor is missing.',
-				);
-			row.comfort.automation_baseline = selection
-				? { ...selection, actor_id: actorId, revision: row.revision + 1 }
-				: null;
-		});
+		throw new DevicesValidationException('Original automation source capability required.');
 	}
 
 	async override(

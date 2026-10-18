@@ -536,37 +536,36 @@ describe('thermostat durable comfort lifecycle', () => {
 		).toContain('invalid_branch_range');
 	});
 
-	it('requires explicit automation opt-in and keeps overrides/OFF stronger than the current trusted baseline', async () => {
+	it('refuses actor-only baselines and preserves manual, override and OFF intent', async () => {
 		await configured();
-		await expect(
-			comfort.applyAutomationBaseline(id, await fence(), { preset: 'eco', setpoints: null }, 'space-bridge'),
-		).rejects.toThrow('not explicitly enabled');
+		const refuseBaseline = async (selection: Parameters<VirtualThermostatComfortService['applyAutomationBaseline']>[2]) => {
+			const expected = await fence();
+			const tables = await database.query<{ name: string }[]>(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+			);
+			const before: unknown[] = [];
+			for (const table of tables) before.push(await database.query('SELECT * FROM "' + table.name.replace(/"/g, '""') + '" ORDER BY rowid'));
+			await expect(comfort.applyAutomationBaseline(id, expected, selection, 'space-bridge')).rejects.toThrow(
+				'Original automation source capability required',
+			);
+			const after: unknown[] = [];
+			for (const table of tables) after.push(await database.query('SELECT * FROM "' + table.name.replace(/"/g, '""') + '" ORDER BY rowid'));
+			expect(after).toEqual(before);
+		};
+		await refuseBaseline({ preset: 'eco', setpoints: null });
 		await comfort.configure(id, await fence(), { ...input(), automation_enabled: true });
-		await comfort.applyAutomationBaseline(id, await fence(), { preset: 'eco', setpoints: null }, 'space-bridge');
-		expect((await comfort.get(id)).effective).toMatchObject({
-			source: 'automation',
-			preset: 'eco',
-			heating_setpoint: 17,
-		});
+		await refuseBaseline({ preset: 'eco', setpoints: null });
+		expect((await comfort.get(id)).effective).toMatchObject({ source: 'manual', preset: null, heating_setpoint: 20 });
 		await overridden();
-		await comfort.applyAutomationBaseline(
-			id,
-			await fence(),
-			{ preset: null, setpoints: { heating_setpoint: 18, cooling_setpoint: null } },
-			'space-bridge',
-		);
+		await refuseBaseline({ preset: null, setpoints: { heating_setpoint: 18, cooling_setpoint: null } });
 		expect((await comfort.get(id)).effective.heating_setpoint).toBe(23);
 		elapsed += 1000;
-		expect((await comfort.get(id)).effective).toMatchObject({
-			source: 'automation',
-			preset: null,
-			heating_setpoint: 18,
-		});
+		expect((await comfort.get(id)).effective).toMatchObject({ source: 'manual', preset: null, heating_setpoint: 20 });
 		await database.manager.update(VirtualThermostatConfigEntity, { controllerId: id }, { requestedMode: 'off' });
 		const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id });
 		row.comfort.user_off = true;
 		await database.manager.save(row);
-		await comfort.applyAutomationBaseline(id, await fence(), { preset: 'comfort', setpoints: null }, 'space-bridge');
+		await refuseBaseline({ preset: 'comfort', setpoints: null });
 		expect((await comfort.get(id)).effective.source).toBe('user_off');
 		await comfort.configure(id, await fence(), { ...input(), automation_enabled: false });
 		expect((await comfort.get(id)).configuration.automation_baseline).toBeNull();
@@ -637,7 +636,7 @@ describe('thermostat durable comfort lifecycle', () => {
 			actualClaims?.onModuleDestroy();
 		});
 
-		it.each(['configure', 'select', 'override', 'cancel', 'baseline'] as const)(
+		it.each(['configure', 'select', 'override', 'cancel'] as const)(
 			'closes a previously current original no-argument capture before %s first settlement read',
 			async (operation) => {
 				await comfort.configure(id, await fence(), { ...input(), automation_enabled: true });
@@ -676,17 +675,10 @@ describe('thermostat durable comfort lifecycle', () => {
 							{ preset: 'eco', setpoints: null, expires_at: new Date(wall + 1000).toISOString() },
 							'operator',
 						);
-				else if (operation === 'cancel') {
+				else {
 					if (!overrideId) throw new Error('Missing real override identity');
 					action = () => comfort.cancel(id, expected, overrideId);
-				} else
-					action = () =>
-						comfort.applyAutomationBaseline(
-							id,
-							expected,
-							{ preset: 'eco', setpoints: null },
-							'test-only-explicit-actor',
-						);
+				}
 				const result = action();
 				void result.catch(() => undefined);
 				try {
@@ -706,6 +698,38 @@ describe('thermostat durable comfort lifecycle', () => {
 				}
 			},
 		);
+
+		it.each(['valid', 'null', 'getters'])('refuses actor-only %s input before authority I/O without closing the original capture', async (kind) => {
+			const expected = await fence();
+			const original = actualClaims.capture();
+			expect(original.isCurrent()).toBe(true);
+			const owned = observeOwnedHolds();
+			const graphWrite = jest.spyOn(actualGraph, 'withStructuralWrite');
+			const emitted = jest.spyOn(events, 'emit');
+			let queries = 0;
+			const observer = { beforeQuery: () => { queries++; } };
+			const selection: Parameters<VirtualThermostatComfortService['applyAutomationBaseline']>[2] = kind === 'null'
+				? null : kind === 'getters' ? {
+					get preset(): never { throw new Error('Actor selection getter must not run'); },
+					get setpoints(): never { throw new Error('Actor selection getter must not run'); },
+				} : { preset: 'eco', setpoints: null };
+			database.subscribers.push(observer);
+			try {
+				await expect(comfort.applyAutomationBaseline(id, expected, selection, 'space-bridge')).rejects.toThrow(
+					'Original automation source capability required',
+				);
+				expect(queries).toBe(0);
+				expect(owned.hold).not.toHaveBeenCalled();
+				expect(owned.releases).toEqual([]);
+				expect(graphWrite).not.toHaveBeenCalled();
+				expect(emitted).not.toHaveBeenCalled();
+				expect(original.isCurrent()).toBe(true);
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				emitted.mockRestore();
+				graphWrite.mockRestore();
+			}
+		});
 
 		it.each(['missing', 'locked', 'stale', 'invalid'] as const)(
 			'releases exactly its own hold after actual %s rejection without changing the old row',
