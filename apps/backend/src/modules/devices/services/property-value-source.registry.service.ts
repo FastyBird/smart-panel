@@ -41,6 +41,7 @@ interface SourceReadRecord {
 	readonly input: ChannelPropertyEntity;
 	readonly descriptors: ReadonlyMap<PropertyKey, PropertyDescriptor>;
 	readonly prototype: object | null;
+	readonly prototypeChain: readonly object[];
 	readonly prototypeFields: readonly Readonly<{ owner: object; key: string; descriptor: PropertyDescriptor }>[];
 	readonly key: string;
 	readonly unavailable: string | null;
@@ -147,6 +148,8 @@ export class PropertyValueSourceRegistryService {
 		if (registration && !registration.methods) throw new Error('Original value source methods unavailable');
 		const prototypeReader: Readonly<{ getPrototypeOf: (value: object) => object | null }> = Object;
 		const prototype = prototypeReader.getPrototypeOf(property);
+		const prototypeChain: object[] = [];
+		for (let owner = prototype; owner; owner = prototypeReader.getPrototypeOf(owner)) prototypeChain.push(owner);
 		const descriptors = new Map<PropertyKey, PropertyDescriptor>();
 		const input = new ChannelPropertyEntity();
 		Object.setPrototypeOf(input, prototype);
@@ -166,7 +169,7 @@ export class PropertyValueSourceRegistryService {
 		Object.freeze(input);
 		const result = evaluateReadSource(this.readRegistrations, type, registration, input);
 		const token = Object.freeze(new PropertyReadSourceCapture());
-		this.readCaptures.set(token, { type, registration, property, input, descriptors, prototype, prototypeFields, ...result });
+		this.readCaptures.set(token, { type, registration, property, input, descriptors, prototype, prototypeChain, prototypeFields, ...result });
 		if (!this.isReadSourceCurrent(token)) throw new Error('Original value source changed during capture');
 		return token;
 	}
@@ -180,22 +183,36 @@ export class PropertyValueSourceRegistryService {
 		if (!record) throw new Error('Original value source capture unavailable');
 		return record.key;
 	}
-	isReadSourceCurrent(token: PropertyReadSourceCapture): boolean {
+	/** Internal veto only: no provider method or property getter is invoked. */
+	isReadSourceStructurallyCurrent(token: PropertyReadSourceCapture): boolean {
 		const record = this.readCaptures.get(token);
 		if (!record || this.readRegistrations.get(record.type) !== record.registration || this.sources[record.type] !== record.registration?.source) return false;
 		try {
 			const prototypeReader: Readonly<{ getPrototypeOf: (value: object) => object | null }> = Object;
-			if (prototypeReader.getPrototypeOf(record.property) !== record.prototype || record.property.type !== record.type || Reflect.ownKeys(record.property).length !== record.descriptors.size) return false;
+			if (prototypeReader.getPrototypeOf(record.property) !== record.prototype || Reflect.ownKeys(record.property).length !== record.descriptors.size) return false;
+			for (const [index, owner] of record.prototypeChain.entries()) {
+				if (prototypeReader.getPrototypeOf(owner) !== (record.prototypeChain[index + 1] ?? null)) return false;
+			}
+			if (record.registration && (!record.registration.methods || !Object.entries(record.registration.methods).every(([name, method]) => readSourceMethodCurrent(record.registration.source, name, method)))) return false;
 			for (const [key, original] of record.descriptors) {
 				const current = Object.getOwnPropertyDescriptor(record.property, key);
-				if (!current || current.get !== original.get || current.set !== original.set || current.value !== original.value || !sameReadArray(current.value, Reflect.get(record.input, key))) return false;
+				const owned = Object.getOwnPropertyDescriptor(record.input, key);
+				if (!current || !owned || current.get !== original.get || current.set !== original.set || current.value !== original.value || !sameReadArray(current.value, owned.value)) return false;
 			}
 			for (const field of record.prototypeFields) {
 				const current = Object.getOwnPropertyDescriptor(field.owner, field.key);
 				if (!current || current.get !== field.descriptor.get || current.set !== field.descriptor.set || current.value !== field.descriptor.value) return false;
 			}
+			return true;
+		} catch { return false; }
+	}
+	isReadSourceCurrent(token: PropertyReadSourceCapture): boolean {
+		const record = this.readCaptures.get(token);
+		if (!record || !this.isReadSourceStructurallyCurrent(token)) return false;
+		try {
+			if (record.property.type !== record.type) return false;
 			const result = evaluateReadSource(this.readRegistrations, record.type, record.registration, record.input);
-			return result.key === record.key && result.unavailable === record.unavailable && result.live === record.live;
+			return result.key === record.key && result.unavailable === record.unavailable && result.live === record.live && this.isReadSourceStructurallyCurrent(token);
 		} catch { return false; }
 	}
 	closeReadSource(token: PropertyReadSourceCapture): void { this.readCaptures.delete(token); }

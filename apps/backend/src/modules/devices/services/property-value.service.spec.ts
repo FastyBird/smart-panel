@@ -1512,6 +1512,121 @@ describe('PropertyValueService', () => {
 		});
 	});
 
+	describe('R12 original hydration result and callback-free effect boundaries', () => {
+		const input = (id: string) => Object.assign(new ChannelPropertyEntity(), { id, dataType: DataTypeType.FLOAT, invalid: null, format: [0, 100] });
+
+		it.each(['strict', 'bounded'])('prepares a real row getter before any %s original input check or shared cache effect', async (kind) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('row-getter-alias');
+			registry.register({ getType: () => property.type, resolve: () => 'row-getter-physical' });
+			const version = service['cacheVersions'].get('row-getter-physical');
+			const observer = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, 'row-getter-physical');
+			const row = {
+				propertyId: 'row-getter-physical',
+				get numberValue() { property.format = [0, 200]; return 70; },
+			};
+			storageService.queryStrict.mockResolvedValue([row]);
+			try {
+				if (kind === 'strict') expect((await service.readLatestManyStrict([property])).get(property.id)).toBeNull();
+				else expect((await service.readLatestManyBounded([property])).items[0]).toMatchObject({ state: null, source: null });
+				expect(service['valuesMap'].has('row-getter-physical')).toBe(false);
+				expect(service['recentValuesMap'].has('row-getter-physical')).toBe(false);
+				expect(service['cacheVersions'].get('row-getter-physical')).toBe(version);
+				expect(originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observer)).toBe('publish');
+				expect(storageService.queryStrict).toHaveBeenCalledTimes(1);
+			} finally { originalReadCacheApi.close.call(originalReadCacheApi.receiver, observer); }
+		});
+
+		it.each(['strict', 'bounded'])('finishes all %s alias callbacks before structural checks without trusting an earlier true bit', async (kind) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const a = input('callback-a'), b = input('callback-b');
+			let armed = false;
+			// Deliberately violates the trusted pure-callback contract to test the supported,
+			// observable descriptor/input veto; this is not a plugin-private-state sandbox.
+			registry.register({ getType: () => a.type, resolve: (property) => {
+				if (armed && property.id === b.id) { a.format = [0, 200]; b.format = [0, 200]; }
+				return 'callback-physical';
+			} });
+			storageService.queryStrict.mockResolvedValue([{ propertyId: 'callback-physical', get numberValue() { armed = true; return 20; } }]);
+			if (kind === 'strict') expect([...(await service.readLatestManyStrict([a, b])).values()]).toEqual([null, null]);
+			else expect((await service.readLatestManyBounded([a, b])).items.map((item) => item.state)).toEqual([null, null]);
+			expect(service['valuesMap'].has('callback-physical')).toBe(false);
+			expect(service['recentValuesMap'].has('callback-physical')).toBe(false);
+			expect(service['cacheVersions'].has('callback-physical')).toBe(false);
+		});
+
+		it('has a callback-free authentic structural veto and closes it without recapture after method replacement', () => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const property = input('structural-only');
+			const resolve = jest.fn(() => 'structural-physical');
+			const source: IPropertyValueSource = { getType: () => property.type, resolve };
+			registry.register(source);
+			const captured = registry.captureReadSource(property);
+			const calls = resolve.mock.calls.length;
+			try {
+				expect(registry.isReadSourceStructurallyCurrent(captured)).toBe(true);
+				expect(resolve).toHaveBeenCalledTimes(calls);
+				source.resolve = () => 'structural-physical';
+				expect(registry.isReadSourceStructurallyCurrent(captured)).toBe(false);
+				expect(resolve).toHaveBeenCalledTimes(calls);
+			} finally { registry.closeReadSource(captured); }
+			expect(registry.isReadSourceStructurallyCurrent(captured)).toBe(false);
+		});
+
+		it.each(['disconnected', 'timed_out', 'failed', 'available'])('does not raw-refresh an original vetoed mixed cache hit on the %s return', async (mode) => {
+			const k = input('protected-k'), l = input('unresolved-l');
+			storageService.query.mockResolvedValueOnce([{ numberValue: 17 }]);
+			expect((await service.readLatest(k))?.value).toBe(17);
+			const replacement = jest.spyOn(DeviceCreationPublicationEngine, 'finishReadCache');
+			storageService.isConnected.mockReturnValue(mode !== 'disconnected');
+			if (mode === 'failed') storageService.queryStrict.mockRejectedValueOnce(new Error('Original query failure'));
+			else storageService.queryStrict.mockResolvedValueOnce([]);
+			try {
+				const result = await service.readLatestManyBounded([k, l], mode === 'timed_out' ? { deadlineAt: new Date(0) } : {});
+				expect(result.storageStatus).toBe(mode);
+				expect(result.items[0]).toMatchObject({ state: null, source: null, status: 'missing' });
+				expect(result.cacheCount).toBe(0);
+				expect(result.availableCount).toBe(0);
+				expect(replacement).not.toHaveBeenCalled();
+			} finally { replacement.mockRestore(); }
+		});
+
+		it.each(['method', 'input'])('keeps a held persisted A binding away from genuine current B producer data after original %s loss', async (loss) => {
+			const registry = module.get(PropertyValueSourceRegistryService);
+			const producers = module.get(PropertyProducerRegistryService);
+			const property = input('bound-alias');
+			const source: IPropertyValueSource = { getType: () => property.type, resolve: (value) => value.format?.[1] === 200 ? 'bound-b' : 'bound-a' };
+			registry.register(source);
+			const b = input('bound-b');
+			const lease = producers.register(b, 1);
+			const now = new Date();
+			expect(producers.commit(lease, new PropertyValueState(88), { quality: 'good', reasons: [], sampledAt: now, evaluatedAt: now, expiresAt: new Date(now.getTime() + 60000) }, producers.version(lease))).toBe(true);
+			const original: Readonly<{ call: (receiver: StorageService, query: string) => Promise<Readonly<{ rows: unknown[]; binding: StorageBackendBinding }>> }> = StorageService.prototype.queryActiveStrictBound;
+			const genuine = await original.call(storageService, 'SELECT * FROM property_value');
+			let enter: () => void = () => {};
+			const entered = new Promise<void>((resolve) => { enter = resolve; });
+			let release: () => void = () => {};
+			storageService.queryActiveStrictBound.mockImplementationOnce(() => new Promise((resolve) => {
+				enter(); release = () => resolve({ rows: [{ numberValue: 10 }, { numberValue: 20 }], binding: genuine.binding });
+			}));
+			const pending = service.readLatestPersistedSnapshot(property);
+			try {
+				await entered;
+				if (loss === 'method') source.resolve = () => 'bound-b';
+				else property.format = [0, 200];
+				release();
+				const snapshot = await pending;
+				expect(snapshot.state).toMatchObject({ value: 10, trend: 'falling' });
+				expect(snapshot.storageBinding).toBe(genuine.binding);
+				expect(snapshot.state?.producer).toBeUndefined();
+				expect(producers.read(b.id)?.value).toBe(88);
+				expect(service['valuesMap'].has('bound-a')).toBe(false);
+				expect(service['recentValuesMap'].has('bound-a')).toBe(false);
+				expect(storageService.queryActiveStrictBound).toHaveBeenCalledTimes(1);
+			} finally { release(); await pending.catch(() => undefined); producers.unregister(lease); }
+		});
+	});
+
 });
 
 /** Real registry observation only; this does not manufacture a creation/publication lease. */

@@ -1494,6 +1494,152 @@ describe('atomic virtual thermostat authoring', () => {
 			}
 		});
 
+		describe('R12 genuine creation mixed-key hydration result boundaries', () => {
+			const gate = () => {
+				let release: () => void = () => {};
+				const pending = new Promise<void>((resolve) => { release = resolve; });
+				return { pending, release };
+			};
+			const keyFor = (input: CreateVirtualThermostatProducerDto) => {
+				const setting = input.configuration.settings.find((row) => row.setting === 'heating_setpoint');
+				if (!setting) throw new Error('Original setpoint required');
+				// Ordinary historical data input at the exact future catalog key, not a creation
+				// token, producer or fabricated persisted virtual row.
+				return Object.assign(new ChannelPropertyEntity(), { id: setting.propertyId, dataType: DataTypeType.FLOAT, invalid: null, format: [0, 100] });
+			};
+			it.each(['not_needed', 'available', 'disconnected', 'timed_out', 'failed', 'partial'])('keeps pre-existing historical K vetoed under real A through the %s result path', async (mode) => {
+				const input = request(relayId), k = keyFor(input);
+				const warm = jest.spyOn(fixture.storage, 'query').mockResolvedValueOnce([{ numberValue: 17 }]);
+				try { expect((await fixture.values.readLatest(k))?.value).toBe(17); } finally { warm.mockRestore(); }
+				const writeEntered = gate(), writeHeld = gate();
+				let firstWrite = true;
+				fixture.boundary.write = () => {
+					if (!firstWrite) return Promise.resolve();
+					firstWrite = false; writeEntered.release(); return writeHeld.pending;
+				};
+				const pending = fixture.authoring.create(input);
+				void pending.catch(() => undefined);
+				let disconnected: Readonly<{ mockRestore: () => void }> | undefined;
+				try {
+					await reachesCreationBarrier(pending, writeEntered.pending);
+					expect(fixture.submittedPoints.flat().some((point) => point.tags?.propertyId === k.id)).toBe(false);
+					let queries = 0;
+					fixture.boundary.query = (query) => {
+						if (!query.includes('FROM property_value')) return Promise.resolve();
+						queries++;
+						if (mode === 'failed' || (mode === 'partial' && queries === 2)) return Promise.reject(new Error('Original fixture read failure'));
+						return Promise.resolve();
+					};
+					if (mode === 'disconnected') disconnected = jest.spyOn(fixture.storage, 'isConnected').mockReturnValue(false);
+					const unresolved = Array.from({ length: mode === 'not_needed' ? 0 : mode === 'partial' ? 51 : 1 }, () => Object.assign(new ChannelPropertyEntity(), { id: uuid(), dataType: DataTypeType.FLOAT }));
+					const result = await fixture.values.readLatestManyBounded([k, ...unresolved], mode === 'timed_out' ? { deadlineAt: new Date(0) } : {});
+					expect(result.storageStatus).toBe(mode === 'partial' ? 'failed' : mode);
+					expect(result.items[0]).toMatchObject({ propertyId: k.id, sourcePropertyId: k.id, state: null, status: 'missing', source: null });
+					expect(result.cacheCount).toBe(0);
+					expect(result.availableCount).toBe(0);
+					expect(result.storageCount).toBe(mode === 'partial' ? 50 : mode === 'available' ? 1 : 0);
+					expect(result.unprocessedCount).toBe(mode === 'available' || mode === 'not_needed' ? 0 : 1);
+					expect(result.requestedCount).toBe(unresolved.length + 1);
+					expect(result.unknownCount).toBe(unresolved.length + 1);
+					expect(result.missingCount).toBe(mode === 'partial' ? 51 : mode === 'available' ? 2 : 1);
+					expect(queries).toBe(mode === 'partial' ? 2 : mode === 'disconnected' || mode === 'timed_out' || mode === 'not_needed' ? 0 : 1);
+					disconnected?.mockRestore(); disconnected = undefined;
+					fixture.boundary.query = undefined;
+					writeHeld.release();
+					expect((await pending).device.id).toBe(input.device.id);
+				} finally {
+					disconnected?.mockRestore(); fixture.boundary.query = undefined; writeHeld.release();
+					await pending.catch(() => undefined);
+				}
+			});
+			it.each(['historical', 'reported'])('sees genuine A starting during other-key I/O and never rescues the same old %s entry', async (kind) => {
+				const input = request(relayId), k = keyFor(input);
+				if (kind === 'historical') {
+					const warm = jest.spyOn(fixture.storage, 'query').mockResolvedValueOnce([{ numberValue: 17 }]);
+					try { expect((await fixture.values.readLatest(k))?.value).toBe(17); } finally { warm.mockRestore(); }
+				} else await fixture.values.write(k, 17);
+				const l = Object.assign(new ChannelPropertyEntity(), { id: uuid(), dataType: DataTypeType.FLOAT });
+				const readEntered = gate(), readHeld = gate(), writeEntered = gate(), writeHeld = gate();
+				fixture.boundary.query = (query) => {
+					if (!query.includes(l.id)) return Promise.resolve();
+					readEntered.release(); return readHeld.pending;
+				};
+				let firstWrite = true;
+				fixture.boundary.write = () => {
+					if (!firstWrite) return Promise.resolve();
+					firstWrite = false; writeEntered.release(); return writeHeld.pending;
+				};
+				const read = fixture.values.readLatestManyBounded([k, l]);
+				let pending: ReturnType<VirtualThermostatAuthoringService['create']> | undefined;
+				try {
+					await reachesCreationBarrier(read, readEntered.pending);
+					pending = fixture.authoring.create(input);
+					void pending.catch(() => undefined);
+					await reachesCreationBarrier(pending, writeEntered.pending);
+					expect(fixture.submittedPoints.flat().some((point) => point.tags?.propertyId === k.id && point.fields.numberValue !== 17)).toBe(false);
+					readHeld.release();
+					const result = await read;
+					expect(result.items[0]).toMatchObject({ state: null, source: null });
+					expect(result).toMatchObject({ cacheCount: 0, availableCount: 0, storageCount: 1, unknownCount: 2 });
+					fixture.boundary.query = undefined; writeHeld.release();
+					expect((await pending).device.id).toBe(input.device.id);
+				} finally { fixture.boundary.query = undefined; readHeld.release(); writeHeld.release(); await read.catch(() => undefined); await pending?.catch(() => undefined); }
+			});
+			it('retains genuinely current original owned cache data while the original submission is held', async () => {
+				const input = request(relayId), writeEntered = gate(), writeHeld = gate();
+				let firstWrite = true;
+				fixture.boundary.write = () => {
+					if (!firstWrite) return Promise.resolve();
+					firstWrite = false; writeEntered.release(); return writeHeld.pending;
+				};
+				const pending = fixture.authoring.create(input);
+				void pending.catch(() => undefined);
+				try {
+					await reachesCreationBarrier(pending, writeEntered.pending);
+					const submitted = fixture.submittedPoints.flat().find((point) => point.measurement === 'property_value');
+					const propertyId = submitted?.tags?.propertyId;
+					if (typeof propertyId !== 'string') throw new Error('Actual owned submitted property required');
+					const property = await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: propertyId });
+					const result = await fixture.values.readLatestManyBounded([property]);
+					expect(result).toMatchObject({ storageStatus: 'not_needed', cacheCount: 1, storageCount: 0, availableCount: 1 });
+					expect(result.items[0]?.state?.value).toBe(submitted.fields.stringValue ?? submitted.fields.numberValue);
+					writeHeld.release();
+					expect((await pending).device.id).toBe(input.device.id);
+				} finally { writeHeld.release(); await pending.catch(() => undefined); }
+			});
+			it('allows a genuine equal-value concurrent report under real A without relabeling the same old historical entry', async () => {
+				const input = request(relayId), k = keyFor(input);
+				const warm = jest.spyOn(fixture.storage, 'query').mockResolvedValueOnce([{ numberValue: 17 }]);
+				try { expect((await fixture.values.readLatest(k))?.value).toBe(17); } finally { warm.mockRestore(); }
+				const l = Object.assign(new ChannelPropertyEntity(), { id: uuid(), dataType: DataTypeType.FLOAT });
+				const writeEntered = gate(), writeHeld = gate(), readEntered = gate(), readHeld = gate();
+				let firstWrite = true;
+				fixture.boundary.write = () => {
+					if (!firstWrite) return Promise.resolve();
+					firstWrite = false; writeEntered.release(); return writeHeld.pending;
+				};
+				const pending = fixture.authoring.create(input);
+				void pending.catch(() => undefined);
+				let read: ReturnType<PropertyValueService['readLatestManyBounded']> | undefined;
+				try {
+					await reachesCreationBarrier(pending, writeEntered.pending);
+					fixture.boundary.query = (query) => {
+						if (!query.includes(l.id)) return Promise.resolve();
+						readEntered.release(); return readHeld.pending;
+					};
+					read = fixture.values.readLatestManyBounded([k, l]);
+					await reachesCreationBarrier(read, readEntered.pending);
+					await expect(fixture.values.write(k, 17)).resolves.toBe(false);
+					readHeld.release();
+					const result = await read;
+					expect(result.items[0]).toMatchObject({ state: { value: 17 }, source: 'cache' });
+					expect(result).toMatchObject({ cacheCount: 1, storageCount: 1, availableCount: 1, unknownCount: 1 });
+					// A real report remains a protective mutation: A may close after an already
+					// submitted effect. This test claims read recovery, not successful A completion.
+				} finally { fixture.boundary.query = undefined; readHeld.release(); writeHeld.release(); await read?.catch(() => undefined); await pending.catch(() => undefined); }
+			});
+		});
+
 		describe('genuine original creation hydration observations', () => {
 			it('keeps empty climate links out of real index repair while original publication completes', async () => {
 				await fixture.close();
