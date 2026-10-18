@@ -4,7 +4,6 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
-
 /**
  * Answers "where does this property's value live?".
  *
@@ -26,14 +25,33 @@ export interface IPropertyValueSource {
 	requiresLiveValue?(property: ChannelPropertyEntity): boolean | null;
 }
 
-export class PropertyReadSourceCapture { toJSON(): Readonly<Record<string, never>> { return {}; } }
-interface SourceMethods {
-	readonly getType: IPropertyValueSource['getType'];
-	readonly resolve: IPropertyValueSource['resolve'];
-	readonly unavailableReason: IPropertyValueSource['unavailableReason'];
-	readonly requiresLiveValue: IPropertyValueSource['requiresLiveValue'];
+export class PropertyReadSourceCapture {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
-interface SourceRegistration { readonly source: IPropertyValueSource; readonly methods?: SourceMethods; }
+interface SourceFunctionView {
+	readonly getType: () => string;
+	readonly resolve: (property: ChannelPropertyEntity) => string | null;
+	readonly unavailableReason?: (property: ChannelPropertyEntity) => string | null;
+	readonly requiresLiveValue?: (property: ChannelPropertyEntity) => boolean | null;
+}
+interface SourceMethods {
+	readonly getType: Readonly<{ call: (receiver: IPropertyValueSource) => string }>;
+	readonly resolve: Readonly<{
+		call: (receiver: IPropertyValueSource, property: ChannelPropertyEntity) => string | null;
+	}>;
+	readonly unavailableReason?: Readonly<{
+		call: (receiver: IPropertyValueSource, property: ChannelPropertyEntity) => string | null;
+	}>;
+	readonly requiresLiveValue?: Readonly<{
+		call: (receiver: IPropertyValueSource, property: ChannelPropertyEntity) => boolean | null;
+	}>;
+}
+interface SourceRegistration {
+	readonly source: IPropertyValueSource;
+	readonly methods?: SourceMethods;
+}
 interface SourceReadRecord {
 	readonly type: string;
 	readonly registration: SourceRegistration | undefined;
@@ -70,13 +88,20 @@ function sameReadArray(current: unknown, owned: unknown): boolean {
 	return keys.every((key) => {
 		const now = Object.getOwnPropertyDescriptor(current, key);
 		const before = Object.getOwnPropertyDescriptor(owned, key);
-		return now !== undefined && before !== undefined && now.get === undefined && now.set === undefined && sameReadArray(now.value, before.value);
+		return (
+			now !== undefined &&
+			before !== undefined &&
+			now.get === undefined &&
+			now.set === undefined &&
+			sameReadArray(now.value, before.value)
+		);
 	});
 }
 function readSourceMethodCurrent(source: object, key: string, original: unknown): boolean {
-	for (let owner: object | null = source; owner;) {
+	for (let owner: object | null = source; owner; ) {
 		const descriptor = Object.getOwnPropertyDescriptor(owner, key);
-		if (descriptor) return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
+		if (descriptor)
+			return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
 		const reader: Readonly<{ getPrototypeOf: (value: object) => object | null }> = Object;
 		owner = reader.getPrototypeOf(owner);
 	}
@@ -87,30 +112,54 @@ function sourceMethods(source: IPropertyValueSource): SourceMethods | undefined 
 		let owner: object | null = source;
 		while (owner) {
 			const descriptor = Object.getOwnPropertyDescriptor(owner, key);
-			if (descriptor) { if (descriptor.get || descriptor.set) return undefined; break; }
+			if (descriptor) {
+				if (descriptor.get || descriptor.set) return undefined;
+				break;
+			}
 			const reader: Readonly<{ getPrototypeOf: (value: object) => object | null }> = Object;
 			owner = reader.getPrototypeOf(owner);
 		}
 	}
-	const methods = { getType: source.getType, resolve: source.resolve, unavailableReason: source.unavailableReason, requiresLiveValue: source.requiresLiveValue };
-	return Object.entries(methods).every(([key, value]) => readSourceMethodCurrent(source, key, value)) ? Object.freeze(methods) : undefined;
+	const view: SourceFunctionView = source;
+	const methods = {
+		getType: view.getType,
+		resolve: view.resolve,
+		unavailableReason: view.unavailableReason,
+		requiresLiveValue: view.requiresLiveValue,
+	};
+	return Object.entries(methods).every(([key, value]) => readSourceMethodCurrent(source, key, value))
+		? Object.freeze(methods)
+		: undefined;
 }
-function evaluateReadSource(registrations: ReadonlyMap<string, SourceRegistration>, type: string, registration: SourceRegistration | undefined, input: ChannelPropertyEntity): Readonly<{ key: string; unavailable: string | null; live: boolean }> {
-		if (registrations.get(type) !== registration) throw new Error('Original source membership lost');
-		let key: unknown = input.id;
-		let unavailable: unknown = null;
-		let live: unknown = input.requiresLiveValue === true;
-		if (registration) {
-			const { source, methods } = registration;
-			if (!methods || !Object.entries(methods).every(([name, method]) => readSourceMethodCurrent(source, name, method))) throw new Error('Original source method lost');
-			if (methods.getType.call(source) !== type) throw new Error('Original source type lost');
-			key = methods.resolve.call(source, input) ?? input.id;
-			unavailable = methods.unavailableReason?.call(source, input) ?? null;
-			live = methods.requiresLiveValue?.call(source, input) ?? input.requiresLiveValue === true;
-			if (!Object.entries(methods).every(([name, method]) => readSourceMethodCurrent(source, name, method))) throw new Error('Original source changed during read');
-		}
-		if (typeof key !== 'string' || key.length === 0 || (unavailable !== null && typeof unavailable !== 'string') || typeof live !== 'boolean') throw new Error('Malformed source read contract');
-		return { key, unavailable, live };
+function evaluateReadSource(
+	registrations: ReadonlyMap<string, SourceRegistration>,
+	type: string,
+	registration: SourceRegistration | undefined,
+	input: ChannelPropertyEntity,
+): Readonly<{ key: string; unavailable: string | null; live: boolean }> {
+	if (registrations.get(type) !== registration) throw new Error('Original source membership lost');
+	let key: unknown = input.id;
+	let unavailable: string | null = null;
+	let live: unknown = input.requiresLiveValue === true;
+	if (registration) {
+		const { source, methods } = registration;
+		if (!methods || !Object.entries(methods).every(([name, method]) => readSourceMethodCurrent(source, name, method)))
+			throw new Error('Original source method lost');
+		if (methods.getType.call(source) !== type) throw new Error('Original source type lost');
+		key = methods.resolve.call(source, input) ?? input.id;
+		unavailable = methods.unavailableReason?.call(source, input) ?? null;
+		live = methods.requiresLiveValue?.call(source, input) ?? input.requiresLiveValue === true;
+		if (!Object.entries(methods).every(([name, method]) => readSourceMethodCurrent(source, name, method)))
+			throw new Error('Original source changed during read');
+	}
+	if (
+		typeof key !== 'string' ||
+		key.length === 0 ||
+		(unavailable !== null && typeof unavailable !== 'string') ||
+		typeof live !== 'boolean'
+	)
+		throw new Error('Malformed source read contract');
+	return { key, unavailable, live };
 }
 @Injectable()
 export class PropertyValueSourceRegistryService {
@@ -121,7 +170,8 @@ export class PropertyValueSourceRegistryService {
 	private readonly readCaptures = new WeakMap<PropertyReadSourceCapture, SourceReadRecord>();
 
 	register(source: IPropertyValueSource): boolean {
-		const getType = source.getType;
+		const view: SourceFunctionView = source;
+		const getType: Readonly<{ call: (receiver: IPropertyValueSource) => string }> = view.getType;
 		const type = getType.call(source);
 
 		if (type in this.sources) {
@@ -132,7 +182,12 @@ export class PropertyValueSourceRegistryService {
 
 		this.sources[type] = source;
 		let methods: SourceMethods | undefined;
-		try { methods = sourceMethods(source); if (methods?.getType !== getType) methods = undefined; } catch { /* Ordinary opaque sources remain ordinary, never read-qualified. */ }
+		try {
+			methods = sourceMethods(source);
+			if (methods?.getType !== getType) methods = undefined;
+		} catch {
+			/* Ordinary opaque sources remain ordinary, never read-qualified. */
+		}
 		this.readRegistrations.set(type, Object.freeze({ source, methods }));
 
 		this.logger.log(`Registered new value source type=${type}`);
@@ -163,13 +218,26 @@ export class PropertyValueSourceRegistryService {
 		for (const key of ['type', 'requiresLiveValue', 'isProjecting']) {
 			for (let owner: object | null = property; owner; owner = prototypeReader.getPrototypeOf(owner)) {
 				const descriptor = Object.getOwnPropertyDescriptor(owner, key);
-				if (descriptor) { prototypeFields.push({ owner, key, descriptor }); break; }
+				if (descriptor) {
+					prototypeFields.push({ owner, key, descriptor });
+					break;
+				}
 			}
 		}
 		Object.freeze(input);
 		const result = evaluateReadSource(this.readRegistrations, type, registration, input);
 		const token = Object.freeze(new PropertyReadSourceCapture());
-		this.readCaptures.set(token, { type, registration, property, input, descriptors, prototype, prototypeChain, prototypeFields, ...result });
+		this.readCaptures.set(token, {
+			type,
+			registration,
+			property,
+			input,
+			descriptors,
+			prototype,
+			prototypeChain,
+			prototypeFields,
+			...result,
+		});
 		if (!this.isReadSourceCurrent(token)) throw new Error('Original value source changed during capture');
 		return token;
 	}
@@ -192,36 +260,83 @@ export class PropertyValueSourceRegistryService {
 	/** Internal veto only: no provider method or property getter is invoked. */
 	isReadSourceStructurallyCurrent(token: PropertyReadSourceCapture): boolean {
 		const record = this.readCaptures.get(token);
-		if (!record || this.readRegistrations.get(record.type) !== record.registration || this.sources[record.type] !== record.registration?.source) return false;
+		if (
+			!record ||
+			this.readRegistrations.get(record.type) !== record.registration ||
+			this.sources[record.type] !== record.registration?.source
+		)
+			return false;
 		try {
 			const prototypeReader: Readonly<{ getPrototypeOf: (value: object) => object | null }> = Object;
-			if (prototypeReader.getPrototypeOf(record.property) !== record.prototype || Reflect.ownKeys(record.property).length !== record.descriptors.size) return false;
+			if (
+				prototypeReader.getPrototypeOf(record.property) !== record.prototype ||
+				Reflect.ownKeys(record.property).length !== record.descriptors.size
+			)
+				return false;
 			for (const [index, owner] of record.prototypeChain.entries()) {
 				if (prototypeReader.getPrototypeOf(owner) !== (record.prototypeChain[index + 1] ?? null)) return false;
 			}
-			if (record.registration && (!record.registration.methods || !Object.entries(record.registration.methods).every(([name, method]) => readSourceMethodCurrent(record.registration.source, name, method)))) return false;
+			if (
+				record.registration &&
+				(!record.registration.methods ||
+					!Object.entries(record.registration.methods).every(([name, method]) =>
+						readSourceMethodCurrent(record.registration.source, name, method),
+					))
+			)
+				return false;
 			for (const [key, original] of record.descriptors) {
 				const current = Object.getOwnPropertyDescriptor(record.property, key);
 				const owned = Object.getOwnPropertyDescriptor(record.input, key);
-				if (!current || !owned || current.get !== original.get || current.set !== original.set || current.value !== original.value || !sameReadArray(current.value, owned.value)) return false;
+				if (
+					!current ||
+					!owned ||
+					current.get !== original.get ||
+					current.set !== original.set ||
+					current.value !== original.value ||
+					!sameReadArray(current.value, owned.value)
+				)
+					return false;
 			}
 			for (const field of record.prototypeFields) {
 				const current = Object.getOwnPropertyDescriptor(field.owner, field.key);
-				if (!current || current.get !== field.descriptor.get || current.set !== field.descriptor.set || current.value !== field.descriptor.value) return false;
+				if (
+					!current ||
+					current.get !== field.descriptor.get ||
+					current.set !== field.descriptor.set ||
+					current.value !== field.descriptor.value
+				)
+					return false;
 			}
 			return true;
-		} catch { return false; }
+		} catch {
+			return false;
+		}
 	}
 	isReadSourceCurrent(token: PropertyReadSourceCapture): boolean {
 		const record = this.readCaptures.get(token);
-		if (!record || !readSourceMethodCurrent(this, 'isReadSourceStructurallyCurrent', originalReadSourceStructure) || !originalReadSourceStructure.call(this, token)) return false;
+		if (
+			!record ||
+			!readSourceMethodCurrent(this, 'isReadSourceStructurallyCurrent', originalReadSourceStructure) ||
+			!originalReadSourceStructure.call(this, token)
+		)
+			return false;
 		try {
 			if (record.property.type !== record.type) return false;
 			const result = evaluateReadSource(this.readRegistrations, record.type, record.registration, record.input);
-			return result.key === record.key && result.unavailable === record.unavailable && result.live === record.live && readSourceMethodCurrent(this, 'isReadSourceStructurallyCurrent', originalReadSourceStructure) && originalReadSourceStructure.call(this, token);
-		} catch { return false; }
+			return (
+				result.key === record.key &&
+				result.unavailable === record.unavailable &&
+				result.live === record.live &&
+				readSourceMethodCurrent(this, 'isReadSourceStructurallyCurrent', originalReadSourceStructure) &&
+				originalReadSourceStructure.call(this, token)
+			);
+		} catch {
+			return false;
+		}
 	}
-	closeReadSource(token: PropertyReadSourceCapture): void { this.readCaptures.delete(token); }
+	closeReadSource(token: PropertyReadSourceCapture): void {
+		this.readCaptures.delete(token);
+	}
 
 	/**
 	 * Storage key for the property. Falls back to the property's own id when no plugin claims it,
@@ -251,7 +366,10 @@ export class PropertyValueSourceRegistryService {
 	}
 }
 
+const readSourcePrototype: Readonly<{
+	isReadSourceStructurallyCurrent: (token: PropertyReadSourceCapture) => boolean;
+}> = PropertyValueSourceRegistryService.prototype;
 // Exact original self-check function; no substituted public verifier is dispatched during policy evaluation.
 const originalReadSourceStructure: Readonly<{
 	call: (receiver: PropertyValueSourceRegistryService, token: PropertyReadSourceCapture) => boolean;
-}> = PropertyValueSourceRegistryService.prototype.isReadSourceStructurallyCurrent;
+}> = readSourcePrototype.isReadSourceStructurallyCurrent;

@@ -7,6 +7,7 @@ import {
 	type StorageBackendBinding,
 	StorageService,
 } from '../../storage/services/storage.service';
+import { StorageQueryOptions } from '../../storage/storage.types';
 import { DEVICES_MODULE_NAME, DataTypeType, EventType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import {
@@ -27,10 +28,10 @@ import { validatePropertyCommandValue } from '../utils/property-command-value.ut
 import {
 	DeviceCreationPublicationEngine,
 	DeviceCreationPublicationLease,
-	originalReadCacheApi,
 	ReadCacheObservation,
 	creationHasDataMethod,
 	creationMethodCurrent,
+	originalReadCacheApi,
 } from './device-creation-context';
 import {
 	PropertyProducerEvaluation,
@@ -38,9 +39,10 @@ import {
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
 import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
-import { StorageQueryOptions } from '../../storage/storage.types';
-
-import { PropertyReadSourceCapture, PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import {
+	PropertyReadSourceCapture,
+	PropertyValueSourceRegistryService,
+} from './property-value-source.registry.service';
 
 /**
  * Number of recent data points used for trend computation.
@@ -117,17 +119,58 @@ interface InternalPropertyValueReadResult {
 	readonly storageBinding?: StorageBackendBinding;
 }
 
-const propertyReadSourceMethods = Object.freeze({
-	capture: PropertyValueSourceRegistryService.prototype.captureReadSource,
-	key: PropertyValueSourceRegistryService.prototype.readSourceKey,
-	input: PropertyValueSourceRegistryService.prototype.readSourceInput,
-	check: PropertyValueSourceRegistryService.prototype.isReadSourceCurrent,
-	structural: PropertyValueSourceRegistryService.prototype.isReadSourceStructurallyCurrent,
-	reason: PropertyValueSourceRegistryService.prototype.readSourceUnavailableReason,
-	close: PropertyValueSourceRegistryService.prototype.closeReadSource,
+type ReadReceiverCall<Receiver, Args extends unknown[], Result> = Readonly<{
+	call: (receiver: Receiver, ...args: Args) => Result;
+}>;
+const propertyReadSourcePrototype: Readonly<{
+	captureReadSource: (property: ChannelPropertyEntity) => PropertyReadSourceCapture;
+	readSourceKey: (token: PropertyReadSourceCapture) => string;
+	readSourceInput: (token: PropertyReadSourceCapture) => Readonly<ChannelPropertyEntity>;
+	isReadSourceCurrent: (token: PropertyReadSourceCapture) => boolean;
+	isReadSourceStructurallyCurrent: (token: PropertyReadSourceCapture) => boolean;
+	readSourceUnavailableReason: (token: PropertyReadSourceCapture) => string | null;
+	closeReadSource: (token: PropertyReadSourceCapture) => void;
+}> = PropertyValueSourceRegistryService.prototype;
+const propertyReadSourceMethods: Readonly<{
+	capture: ReadReceiverCall<
+		PropertyValueSourceRegistryService,
+		[property: ChannelPropertyEntity],
+		PropertyReadSourceCapture
+	>;
+	key: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], string>;
+	input: ReadReceiverCall<
+		PropertyValueSourceRegistryService,
+		[token: PropertyReadSourceCapture],
+		Readonly<ChannelPropertyEntity>
+	>;
+	check: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], boolean>;
+	structural: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], boolean>;
+	reason: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], string | null>;
+	close: ReadReceiverCall<PropertyValueSourceRegistryService, [token: PropertyReadSourceCapture], void>;
+}> = Object.freeze({
+	capture: propertyReadSourcePrototype.captureReadSource,
+	key: propertyReadSourcePrototype.readSourceKey,
+	input: propertyReadSourcePrototype.readSourceInput,
+	check: propertyReadSourcePrototype.isReadSourceCurrent,
+	structural: propertyReadSourcePrototype.isReadSourceStructurallyCurrent,
+	reason: propertyReadSourcePrototype.readSourceUnavailableReason,
+	close: propertyReadSourcePrototype.closeReadSource,
 });
-const propertyReadInvalidate = DeviceCreationPublicationEngine.invalidateIds;
-const propertyStorageReadMethods = Object.freeze({ capture: StorageService.prototype.captureCreationDestinations, check: StorageService.prototype.areCreationDestinationsCurrent });
+const propertyReadEngine: Readonly<{ invalidateIds: (ids: readonly string[]) => void }> =
+	DeviceCreationPublicationEngine;
+const propertyReadInvalidate: ReadReceiverCall<typeof DeviceCreationPublicationEngine, [ids: readonly string[]], void> =
+	propertyReadEngine.invalidateIds;
+const propertyStoragePrototype: Readonly<{
+	captureCreationDestinations: () => CreationStorageDestinations;
+	areCreationDestinationsCurrent: (capture: CreationStorageDestinations) => boolean;
+}> = StorageService.prototype;
+const propertyStorageReadMethods: Readonly<{
+	capture: ReadReceiverCall<StorageService, [], CreationStorageDestinations>;
+	check: ReadReceiverCall<StorageService, [capture: CreationStorageDestinations], boolean>;
+}> = Object.freeze({
+	capture: propertyStoragePrototype.captureCreationDestinations,
+	check: propertyStoragePrototype.areCreationDestinationsCurrent,
+});
 interface PropertyReadAlias {
 	readonly registry: PropertyValueSourceRegistryService;
 	readonly id: string;
@@ -138,9 +181,21 @@ interface PropertyReadAlias {
 	readonly structuralCurrent: () => boolean;
 }
 interface PropertyReadQueries {
-	readonly query: (query: string, options?: StorageQueryOptions) => Promise<PropertyValueRow[]>;
-	readonly queryStrict: (query: string, options?: StorageQueryOptions) => Promise<PropertyValueRow[]>;
-	readonly queryActiveStrictBound: (query: string) => Promise<Readonly<{ rows: PropertyValueRow[]; binding: StorageBackendBinding }>>;
+	readonly query: ReadReceiverCall<
+		StorageService,
+		[query: string, options?: StorageQueryOptions],
+		Promise<PropertyValueRow[]>
+	>;
+	readonly queryStrict: ReadReceiverCall<
+		StorageService,
+		[query: string, options?: StorageQueryOptions],
+		Promise<PropertyValueRow[]>
+	>;
+	readonly queryActiveStrictBound: ReadReceiverCall<
+		StorageService,
+		[query: string],
+		Promise<Readonly<{ rows: PropertyValueRow[]; binding: StorageBackendBinding }>>
+	>;
 }
 interface PropertyReadKey {
 	readonly queries: PropertyReadQueries;
@@ -208,27 +263,82 @@ export class PropertyValueService {
 
 	private captureReadAlias(property: ChannelPropertyEntity): PropertyReadAlias {
 		const registry = this.valueSourceRegistry;
-		const names = { capture: 'captureReadSource', key: 'readSourceKey', input: 'readSourceInput', check: 'isReadSourceCurrent', structural: 'isReadSourceStructurallyCurrent', reason: 'readSourceUnavailableReason', close: 'closeReadSource' };
-		const methodsCurrent = () => this.valueSourceRegistry === registry && Object.entries(names).every(([key, name]) => creationMethodCurrent(registry, name, Reflect.get(propertyReadSourceMethods, key)));
+		const names = {
+			capture: 'captureReadSource',
+			key: 'readSourceKey',
+			input: 'readSourceInput',
+			check: 'isReadSourceCurrent',
+			structural: 'isReadSourceStructurallyCurrent',
+			reason: 'readSourceUnavailableReason',
+			close: 'closeReadSource',
+		};
+		const methodsCurrent = () =>
+			this.valueSourceRegistry === registry &&
+			Object.entries(names).every(([key, name]) =>
+				creationMethodCurrent(registry, name, Reflect.get(propertyReadSourceMethods, key)),
+			);
 		if (!methodsCurrent()) throw new Error('Original read source API unavailable');
 		const source = propertyReadSourceMethods.capture.call(registry, property);
 		try {
 			const input = propertyReadSourceMethods.input.call(registry, source);
-			return { registry, source, id: input.id, key: propertyReadSourceMethods.key.call(registry, source), input,
+			return {
+				registry,
+				source,
+				id: input.id,
+				key: propertyReadSourceMethods.key.call(registry, source),
+				input,
 				current: () => methodsCurrent() && propertyReadSourceMethods.check.call(registry, source),
-				structuralCurrent: () => methodsCurrent() && propertyReadSourceMethods.structural.call(registry, source) };
-		} catch (cause) { propertyReadSourceMethods.close.call(registry, source); throw cause; }
+				structuralCurrent: () => methodsCurrent() && propertyReadSourceMethods.structural.call(registry, source),
+			};
+		} catch (cause) {
+			propertyReadSourceMethods.close.call(registry, source);
+			throw cause;
+		}
 	}
-	private closeReadAlias(alias: PropertyReadAlias): void { propertyReadSourceMethods.close.call(alias.registry, alias.source); }
+	private closeReadAlias(alias: PropertyReadAlias): void {
+		propertyReadSourceMethods.close.call(alias.registry, alias.source);
+	}
 	private observeReadKey(key: string): PropertyReadKey {
-		if (!['query', 'queryStrict', 'queryActiveStrictBound'].every((name) => creationHasDataMethod(this.storageService, name))) throw new Error('Original backend read methods unavailable');
-		const methods: PropertyReadQueries = { query: this.storageService.query, queryStrict: this.storageService.queryStrict, queryActiveStrictBound: this.storageService.queryActiveStrictBound };
+		if (
+			!['query', 'queryStrict', 'queryActiveStrictBound'].every((name) =>
+				creationHasDataMethod(this.storageService, name),
+			)
+		)
+			throw new Error('Original backend read methods unavailable');
+		const view: Readonly<{
+			query: (query: string, options?: StorageQueryOptions) => Promise<PropertyValueRow[]>;
+			queryStrict: (query: string, options?: StorageQueryOptions) => Promise<PropertyValueRow[]>;
+			queryActiveStrictBound: (
+				query: string,
+			) => Promise<Readonly<{ rows: PropertyValueRow[]; binding: StorageBackendBinding }>>;
+		}> = this.storageService;
+		const methods: PropertyReadQueries = {
+			query: view.query,
+			queryStrict: view.queryStrict,
+			queryActiveStrictBound: view.queryActiveStrictBound,
+		};
 		let destinations: CreationStorageDestinations | undefined;
-		if (creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture) && creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check)) destinations = propertyStorageReadMethods.capture.call(this.storageService);
+		if (
+			creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture) &&
+			creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check)
+		)
+			destinations = propertyStorageReadMethods.capture.call(this.storageService);
 		const token = originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key);
-		return { token, queries: methods, current: () => originalReadCacheApi.current() && destinations !== undefined &&
-			creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture) && creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check) &&
-			Object.entries(methods).every(([name, method]) => creationMethodCurrent(this.storageService, name, method)) && propertyStorageReadMethods.check.call(this.storageService, destinations) };
+		return {
+			token,
+			queries: methods,
+			current: () =>
+				originalReadCacheApi.current() &&
+				destinations !== undefined &&
+				creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture) &&
+				creationMethodCurrent(
+					this.storageService,
+					'areCreationDestinationsCurrent',
+					propertyStorageReadMethods.check,
+				) &&
+				Object.entries(methods).every(([name, method]) => creationMethodCurrent(this.storageService, name, method)) &&
+				propertyStorageReadMethods.check.call(this.storageService, destinations),
+		};
 	}
 	private readCachedData(alias: PropertyReadAlias, cached: PropertyValueState): PropertyValueState | null {
 		// No backend query/await occurs on this data-only hit; no storage binding is claimed.
@@ -239,7 +349,9 @@ export class PropertyValueService {
 			const reported = this.reportedReadState(alias.key);
 			const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, token);
 			return !current || !alias.structuralCurrent() ? null : decision === 'publish' ? cached : owned ? reported : null;
-		} finally { originalReadCacheApi.close.call(originalReadCacheApi.receiver, token); }
+		} finally {
+			originalReadCacheApi.close.call(originalReadCacheApi.receiver, token);
+		}
 	}
 
 	private reportedReadState(key: string): PropertyValueState | null {
@@ -247,12 +359,24 @@ export class PropertyValueService {
 		const provenance = this.cacheProvenance.get(key);
 		if (!state || provenance?.state !== state || provenance.kind === 'historical') return null;
 		if (provenance.kind === 'owned') {
-			try { if (!provenance.lease || !originalReadCacheApi.createdCurrent.call(originalReadCacheApi.receiver, provenance.lease)) return null; } catch { return null; }
+			try {
+				if (
+					!provenance.lease ||
+					!originalReadCacheApi.createdCurrent.call(originalReadCacheApi.receiver, provenance.lease)
+				)
+					return null;
+			} catch {
+				return null;
+			}
 		}
 		return state;
 	}
 	private beginBatchReadKey(key: string): PropertyBatchKey {
-		return { token: originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key), initialState: this.valuesMap.get(key), initialProvenance: this.cacheProvenance.get(key) };
+		return {
+			token: originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key),
+			initialState: this.valuesMap.get(key),
+			initialProvenance: this.cacheProvenance.get(key),
+		};
 	}
 	private closeBatchReadKeys(keys: ReadonlyMap<string, PropertyBatchKey>): void {
 		for (const key of keys.values()) {
@@ -267,25 +391,48 @@ export class PropertyValueService {
 		if (!reason) return produced ?? null;
 		const blocked = new PropertyValueState();
 		blocked.producer = Object.assign(new PropertyProducerState(), {
-			quality: 'unavailable', reasons: [reason], sampledAt: null, evaluatedAt: new Date().toISOString(), expiresAt: null,
+			quality: 'unavailable',
+			reasons: [reason],
+			sampledAt: null,
+			evaluatedAt: new Date().toISOString(),
+			expiresAt: null,
 			revision: produced?.producer?.revision ?? 0,
 		});
 		return blocked;
 	}
 	/** All row/trend preparation is complete before this finite callback/check/effect boundary. */
-	private finishBatchRead(entries: readonly PropertyBatchEntry[], keys: ReadonlyMap<string, PropertyBatchKey>, preferNewerCache: boolean, refreshEmptyTrend: boolean): Map<number, PropertyBatchResult> {
+	private finishBatchRead(
+		entries: readonly PropertyBatchEntry[],
+		keys: ReadonlyMap<string, PropertyBatchKey>,
+		preferNewerCache: boolean,
+		refreshEmptyTrend: boolean,
+	): Map<number, PropertyBatchResult> {
 		const proposals = entries.map((entry) => {
 			const cached = this.valuesMap.get(entry.alias.key);
-			const preferCache = cached !== undefined && (entry.prepared === undefined || (preferNewerCache && this.isStateNewerOrEqual(cached, entry.prepared.state)));
+			const preferCache =
+				cached !== undefined &&
+				(entry.prepared === undefined || (preferNewerCache && this.isStateNewerOrEqual(cached, entry.prepared.state)));
 			return { entry, cached, preferCache, produced: this.overlayReadAlias(entry.alias) };
 		});
 		// Pure provider callbacks may run only here, before every final structural check.
 		const policies = proposals.map(({ entry }) => entry.alias.current());
-		const reports = proposals.map(({ entry }) => ({ state: this.reportedReadState(entry.alias.key), provenance: this.cacheProvenance.get(entry.alias.key) }));
+		const reports = proposals.map(({ entry }) => ({
+			state: this.reportedReadState(entry.alias.key),
+			provenance: this.cacheProvenance.get(entry.alias.key),
+		}));
 		const structures = proposals.map(({ entry }) => entry.alias.structuralCurrent());
 		const backends = new Map([...keys].map(([key, observation]) => [key, observation.backend?.current() !== false]));
-		const effectCurrent = creationMethodCurrent(DeviceCreationPublicationEngine, 'invalidateIds', propertyReadInvalidate);
-		const decisions = new Map([...keys].map(([key, observation]) => [key, originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token)]));
+		const effectCurrent = creationMethodCurrent(
+			DeviceCreationPublicationEngine,
+			'invalidateIds',
+			propertyReadInvalidate,
+		);
+		const decisions = new Map(
+			[...keys].map(([key, observation]) => [
+				key,
+				originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token),
+			]),
+		);
 		const results = new Map<number, PropertyBatchResult>();
 		const publications = new Map<string, PreparedPropertyRead>();
 		// No row/provider getter/callback, await or event from here through all cache effects.
@@ -297,22 +444,65 @@ export class PropertyValueService {
 			if (!key) throw new Error('Original batch read observation unavailable');
 			const valid = policies[index] === true && structures[index] === true && backends.get(entry.alias.key) === true;
 			const publish = decisions.get(entry.alias.key) === 'publish';
-			const sameReport = reported !== null && this.valuesMap.get(entry.alias.key) === reported && this.cacheProvenance.get(entry.alias.key) === provenance;
-			const replacement = sameReport && provenance !== undefined && (provenance.kind === 'owned' || (provenance.kind === 'reported' && provenance !== key.initialProvenance));
-			const state = !valid ? null : produced ?? (publish ? preferCache ? cached ?? null : entry.prepared?.state ?? null : replacement ? reported : null);
-			const source: BoundedPropertyValueSource = !valid ? null : produced !== null || (!publish && replacement) || (publish && preferCache) ? 'cache' : publish && entry.prepared !== undefined ? 'storage' : null;
-			results.set(entry.index, { sourcePropertyId: valid ? entry.alias.key : null, state, source, processed: entry.cachedAtEntry || cached !== undefined || entry.prepared !== undefined || produced !== null });
-			if (effectCurrent && valid && publish && entry.prepared && !preferCache && !publications.has(entry.alias.key)) publications.set(entry.alias.key, entry.prepared);
+			const sameReport =
+				reported !== null &&
+				this.valuesMap.get(entry.alias.key) === reported &&
+				this.cacheProvenance.get(entry.alias.key) === provenance;
+			const replacement =
+				sameReport &&
+				provenance !== undefined &&
+				(provenance.kind === 'owned' || (provenance.kind === 'reported' && provenance !== key.initialProvenance));
+			const state = !valid
+				? null
+				: (produced ??
+					(publish
+						? preferCache
+							? (cached ?? null)
+							: (entry.prepared?.state ?? null)
+						: replacement
+							? reported
+							: null));
+			const source: BoundedPropertyValueSource = !valid
+				? null
+				: produced !== null || (!publish && replacement) || (publish && preferCache)
+					? 'cache'
+					: publish && entry.prepared !== undefined
+						? 'storage'
+						: null;
+			results.set(entry.index, {
+				sourcePropertyId: valid ? entry.alias.key : null,
+				state,
+				source,
+				processed: entry.cachedAtEntry || cached !== undefined || entry.prepared !== undefined || produced !== null,
+			});
+			if (effectCurrent && valid && publish && entry.prepared && !preferCache && !publications.has(entry.alias.key))
+				publications.set(entry.alias.key, entry.prepared);
 		}
 		for (const [key, prepared] of publications) this.publishReadState(key, prepared, false, refreshEmptyTrend);
 		return results;
 	}
-	private readRowsState(property: ChannelPropertyEntity, key: string, rows: PropertyValueRow[]): Readonly<{ state: PropertyValueState | null; recent: number[]; numeric: boolean }> {
-		const recent = rows.map((row) => row.numberValue).filter((value): value is number => value !== undefined).reverse();
+	private readRowsState(
+		property: ChannelPropertyEntity,
+		key: string,
+		rows: PropertyValueRow[],
+	): Readonly<{ state: PropertyValueState | null; recent: number[]; numeric: boolean }> {
+		const recent = rows
+			.map((row) => row.numberValue)
+			.filter((value): value is number => value !== undefined)
+			.reverse();
 		const trend = this.computeTrendFrom(property, recent);
-		return { state: rows[0] ? this.toState(property, key, rows[0], trend) : null, recent, numeric: this.isNumericDataType(property.dataType) };
+		return {
+			state: rows[0] ? this.toState(property, key, rows[0], trend) : null,
+			recent,
+			numeric: this.isNumericDataType(property.dataType),
+		};
 	}
-	private publishReadState(key: string, prepared: Readonly<{ state: PropertyValueState | null; recent: number[]; numeric: boolean }>, authoritativeMiss = false, refreshEmptyTrend = false): void {
+	private publishReadState(
+		key: string,
+		prepared: Readonly<{ state: PropertyValueState | null; recent: number[]; numeric: boolean }>,
+		authoritativeMiss = false,
+		refreshEmptyTrend = false,
+	): void {
 		if ((prepared.state !== null || refreshEmptyTrend) && prepared.numeric) {
 			propertyReadInvalidate.call(DeviceCreationPublicationEngine, [key]);
 			this.recentValuesMap.set(key, prepared.recent);
@@ -1151,7 +1341,9 @@ export class PropertyValueService {
 		return { state: result.state, storageBinding: result.storageBinding };
 	}
 
-	async readLatestManyStrict(properties: ChannelPropertyEntity[]): Promise<Map<ChannelPropertyEntity['id'], PropertyValueState | null>> {
+	async readLatestManyStrict(
+		properties: ChannelPropertyEntity[],
+	): Promise<Map<ChannelPropertyEntity['id'], PropertyValueState | null>> {
 		const entries: PropertyBatchEntry[] = [];
 		const keys = new Map<string, PropertyBatchKey>();
 		try {
@@ -1163,7 +1355,8 @@ export class PropertyValueService {
 				if (!keys.has(alias.key)) keys.set(alias.key, this.beginBatchReadKey(alias.key));
 				if (this.overlayReadAlias(alias) || entry.cachedAtEntry) continue;
 				const group = missing.get(alias.key) ?? [];
-				group.push(entry); missing.set(alias.key, group);
+				group.push(entry);
+				missing.set(alias.key, group);
 			}
 			if (missing.size) {
 				if (!this.storageService.isConnected()) throw new Error('Property value storage is unavailable');
@@ -1210,19 +1403,29 @@ export class PropertyValueService {
 		const entries: PropertyBatchEntry[] = [];
 		const keys = new Map<string, PropertyBatchKey>();
 		try {
-			if (properties.length > BOUNDED_READ_MAX_PROPERTIES) throw new RangeError(`At most ${BOUNDED_READ_MAX_PROPERTIES} property values may be read at once`);
+			if (properties.length > BOUNDED_READ_MAX_PROPERTIES)
+				throw new RangeError(`At most ${BOUNDED_READ_MAX_PROPERTIES} property values may be read at once`);
 			const startedAt = Date.now();
 			const requestedDeadlineAt = options.deadlineAt?.getTime() ?? startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS;
-			if (!Number.isFinite(requestedDeadlineAt)) throw new RangeError('Property value read deadline must be a valid date');
+			if (!Number.isFinite(requestedDeadlineAt))
+				throw new RangeError('Property value read deadline must be a valid date');
 			const deadlineAt = Math.min(requestedDeadlineAt, startedAt + BOUNDED_READ_DEFAULT_DEADLINE_MS);
 			const items = new Array<BoundedPropertyValueItem | undefined>(properties.length);
 			const unresolved = new Map<string, PropertyBatchEntry[]>();
 			let sourceResolutionFailed = false;
 			for (const [index, property] of properties.entries()) {
 				let alias: PropertyReadAlias;
-				try { alias = this.captureReadAlias(property); } catch {
+				try {
+					alias = this.captureReadAlias(property);
+				} catch {
 					sourceResolutionFailed = true;
-					items[index] = { propertyId: property.id, sourcePropertyId: null, status: 'unprocessed', source: null, state: null };
+					items[index] = {
+						propertyId: property.id,
+						sourcePropertyId: null,
+						status: 'unprocessed',
+						source: null,
+						state: null,
+					};
 					continue;
 				}
 				const entry = { index, alias, cachedAtEntry: this.valuesMap.has(alias.key) };
@@ -1230,15 +1433,23 @@ export class PropertyValueService {
 				if (!keys.has(alias.key)) keys.set(alias.key, this.beginBatchReadKey(alias.key));
 				if (this.overlayReadAlias(alias) || entry.cachedAtEntry) continue;
 				const group = unresolved.get(alias.key) ?? [];
-				group.push(entry); unresolved.set(alias.key, group);
+				group.push(entry);
+				unresolved.set(alias.key, group);
 			}
 			const finish = (storageStatus: BoundedPropertyValueStorageStatus): BoundedPropertyValueReadResult => {
 				const results = this.finishBatchRead(entries, keys, true, false);
 				for (const entry of entries) {
 					const result = results.get(entry.index);
 					if (!result) throw new Error('Original bounded result unavailable');
-					items[entry.index] = result.processed ? this.toBoundedItem(entry.alias.id, result.sourcePropertyId, result.state, result.source) :
-						{ propertyId: entry.alias.id, sourcePropertyId: result.sourcePropertyId, status: 'unprocessed', source: null, state: null };
+					items[entry.index] = result.processed
+						? this.toBoundedItem(entry.alias.id, result.sourcePropertyId, result.state, result.source)
+						: {
+								propertyId: entry.alias.id,
+								sourcePropertyId: result.sourcePropertyId,
+								status: 'unprocessed',
+								source: null,
+								state: null,
+							};
 				}
 				return this.buildBoundedResult(items, storageStatus);
 			};
@@ -1248,7 +1459,10 @@ export class PropertyValueService {
 			const sourceEntries = [...unresolved.entries()];
 			let storageStatus: BoundedPropertyValueStorageStatus = sourceResolutionFailed ? 'failed' : 'available';
 			for (let offset = 0; offset < sourceEntries.length; offset += BOUNDED_READ_SOURCE_CHUNK_SIZE) {
-				if (Date.now() >= deadlineAt) { storageStatus = 'timed_out'; break; }
+				if (Date.now() >= deadlineAt) {
+					storageStatus = 'timed_out';
+					break;
+				}
 				const chunk = sourceEntries.slice(offset, offset + BOUNDED_READ_SOURCE_CHUNK_SIZE);
 				const query = this.buildBoundedPropertyValueQuery(chunk.map(([key]) => key));
 				try {
@@ -1260,7 +1474,10 @@ export class PropertyValueService {
 						originalQuery ??= observation.backend;
 					}
 					const rows = await this.queryPropertyValuesBeforeDeadline(query, deadlineAt, originalQuery);
-					if (rows === null) { storageStatus = 'timed_out'; break; }
+					if (rows === null) {
+						storageStatus = 'timed_out';
+						break;
+					}
 					const prepared = chunk.flatMap(([key, group]) => {
 						const sourceRows = rows.filter((row) => row.propertyId === key);
 						return group.map((entry) => ({ entry, value: this.readRowsState(entry.alias.input, key, sourceRows) }));
@@ -1269,7 +1486,8 @@ export class PropertyValueService {
 				} catch (error) {
 					const err = error as Error;
 					this.logger.error(`Failed to bounded-batch read latest property values error=${err.message}`, err.stack);
-					storageStatus = 'failed'; break;
+					storageStatus = 'failed';
+					break;
 				}
 			}
 			return finish(storageStatus);
@@ -1352,7 +1570,12 @@ export class PropertyValueService {
 		this.cacheVersions.set(key, this.cacheVersion(key) + 1);
 	}
 
-	private setCachedState(key: ChannelPropertyEntity['id'], state: PropertyValueState, kind: 'reported' | 'historical' | 'owned' = 'reported', lease?: DeviceCreationPublicationLease): void {
+	private setCachedState(
+		key: ChannelPropertyEntity['id'],
+		state: PropertyValueState,
+		kind: 'reported' | 'historical' | 'owned' = 'reported',
+		lease?: DeviceCreationPublicationLease,
+	): void {
 		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, [key]);
 		this.cacheProvenance.set(key, { state, kind, lease });
 		this.valuesMap.set(key, state);
@@ -1452,7 +1675,6 @@ export class PropertyValueService {
 		});
 	}
 
-
 	private toBoundedItem(
 		propertyId: ChannelPropertyEntity['id'],
 		sourcePropertyId: ChannelPropertyEntity['id'] | null,
@@ -1511,15 +1733,28 @@ export class PropertyValueService {
 		};
 	}
 
-	private async readLatestInternal(property: ChannelPropertyEntity, strict: boolean, bypassCache = false, activeBackendOnly = false): Promise<InternalPropertyValueReadResult> {
+	private async readLatestInternal(
+		property: ChannelPropertyEntity,
+		strict: boolean,
+		bypassCache = false,
+		activeBackendOnly = false,
+	): Promise<InternalPropertyValueReadResult> {
 		let alias: PropertyReadAlias;
-		try { alias = this.captureReadAlias(property); } catch (error) { if (strict) throw error; return { state: null }; }
+		try {
+			alias = this.captureReadAlias(property);
+		} catch (error) {
+			if (strict) throw error;
+			return { state: null };
+		}
 		const key = alias.key;
 		let observation: PropertyReadKey | undefined;
 		try {
 			const cached = this.valuesMap.get(key);
 			if (!bypassCache && cached) return { state: this.readCachedData(alias, cached) };
-			if (!this.storageService.isConnected()) { if (strict) throw new Error('Property value storage is unavailable'); return { state: null }; }
+			if (!this.storageService.isConnected()) {
+				if (strict) throw new Error('Property value storage is unavailable');
+				return { state: null };
+			}
 			const version = this.cacheVersion(key);
 			observation = this.observeReadKey(key);
 			const query = `
@@ -1528,8 +1763,14 @@ export class PropertyValueService {
         ORDER BY time DESC
         LIMIT ${TREND_POINTS_COUNT}
       `;
-			const boundResult = activeBackendOnly ? await observation.queries.queryActiveStrictBound.call(this.storageService, query) : null;
-			const rows = boundResult ? boundResult.rows : strict ? await observation.queries.queryStrict.call(this.storageService, query) : await observation.queries.query.call(this.storageService, query);
+			const boundResult = activeBackendOnly
+				? await observation.queries.queryActiveStrictBound.call(this.storageService, query)
+				: null;
+			const rows = boundResult
+				? boundResult.rows
+				: strict
+					? await observation.queries.queryStrict.call(this.storageService, query)
+					: await observation.queries.query.call(this.storageService, query);
 			const prepared = this.readRowsState(alias.input, key, rows);
 			const produced = activeBackendOnly ? this.overlayReadAlias(alias) : null;
 			const reported = this.reportedReadState(key);
@@ -1538,9 +1779,21 @@ export class PropertyValueService {
 			const backendCurrent = observation.current();
 			const unchanged = this.cacheVersion(key) === version;
 			const decision = originalReadCacheApi.finish.call(originalReadCacheApi.receiver, observation.token);
-			if (sourceCurrent && structuralCurrent && backendCurrent && unchanged && decision === 'publish' && creationMethodCurrent(DeviceCreationPublicationEngine, 'invalidateIds', propertyReadInvalidate)) this.publishReadState(key, prepared, bypassCache && !rows.length);
+			if (
+				sourceCurrent &&
+				structuralCurrent &&
+				backendCurrent &&
+				unchanged &&
+				decision === 'publish' &&
+				creationMethodCurrent(DeviceCreationPublicationEngine, 'invalidateIds', propertyReadInvalidate)
+			)
+				this.publishReadState(key, prepared, bypassCache && !rows.length);
 			// An explicit bound persisted read is historical data, never refreshed live authority on veto.
-			if (activeBackendOnly) return { state: sourceCurrent && structuralCurrent && backendCurrent ? produced ?? prepared.state : prepared.state, storageBinding: boundResult?.binding };
+			if (activeBackendOnly)
+				return {
+					state: sourceCurrent && structuralCurrent && backendCurrent ? (produced ?? prepared.state) : prepared.state,
+					storageBinding: boundResult?.binding,
+				};
 			if (!sourceCurrent || !structuralCurrent || !backendCurrent) return { state: null };
 			return { state: unchanged && decision === 'publish' ? prepared.state : reported };
 		} catch (error) {
@@ -1554,7 +1807,12 @@ export class PropertyValueService {
 		}
 	}
 
-	private toState(property: ChannelPropertyEntity, key: string, latest: PropertyValueRow, trend: PropertyValueTrend | null = this.computeTrend(property, key)): PropertyValueState {
+	private toState(
+		property: ChannelPropertyEntity,
+		key: string,
+		latest: PropertyValueRow,
+		trend: PropertyValueTrend | null = this.computeTrend(property, key),
+	): PropertyValueState {
 		let parsedValue: string | number | boolean | null;
 
 		switch (property.dataType) {

@@ -443,11 +443,7 @@ describe('aggregate runtime with real SQLite bindings and value boundary', () =>
 			new PropertyValueLockService({} as never),
 			coldProducers,
 		);
-		new ChannelPropertyEntitySubscriber(
-			coldValues,
-			new DeviceConnectionStateService(history),
-			database,
-		);
+		new ChannelPropertyEntitySubscriber(coldValues, new DeviceConnectionStateService(history), database);
 		const hydrated = await database.manager.findOneOrFail(VirtualChannelPropertyEntity, {
 			where: { id: alias.id },
 			relations: ['channel', 'channel.device'],

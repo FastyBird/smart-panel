@@ -39,6 +39,7 @@ import {
 import { VirtualThermostatConfigEntity, VirtualThermostatSourceEntity } from '../entities/virtual-thermostat.entity';
 import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../entities/virtual-transform.entity';
 
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualMeasurementContributionService } from './virtual-measurement-contribution.service';
 import { VirtualValueSourceService } from './virtual-value-source.service';
 
@@ -55,6 +56,7 @@ describe('durable virtual measurement coverage and room planner integration', ()
 	let values: PropertyValueService;
 	let storageModule: TestingModule | undefined;
 	let actualStorage: StorageService;
+	let valueSourceGraph: VirtualDependencyGraphService;
 	let storage: { query: jest.Mock; isConnected: jest.Mock; writePoints: jest.Mock; enqueueWritePoint: jest.Mock };
 
 	beforeEach(async () => {
@@ -70,13 +72,8 @@ describe('durable virtual measurement coverage and room planner integration', ()
 		publications = new Map();
 		const registry = new DeviceContributionRegistryService();
 		const valueSources = new PropertyValueSourceRegistryService();
-		valueSources.register(
-			new VirtualValueSourceService({
-				isValidated: () => graphCurrent,
-				isQuarantined: () => false,
-				matchesValueSource: () => graphCurrent,
-			} as never),
-		);
+		valueSourceGraph = new VirtualDependencyGraphService(database);
+		valueSources.register(new VirtualValueSourceService(valueSourceGraph));
 		storage = {
 			query: jest.fn().mockResolvedValue([]),
 			isConnected: jest.fn().mockReturnValue(true),
@@ -89,8 +86,7 @@ describe('durable virtual measurement coverage and room planner integration', ()
 				{
 					provide: ConfigService,
 					useValue: {
-						getModuleConfig: () =>
-							Object.assign(new StorageConfigModel(), { primaryStorage: 'measurement-history' }),
+						getModuleConfig: () => Object.assign(new StorageConfigModel(), { primaryStorage: 'measurement-history' }),
 					},
 				},
 			],
@@ -110,11 +106,7 @@ describe('durable virtual measurement coverage and room planner integration', ()
 		};
 		actualStorage.registerPlugin(plugin.name, plugin);
 		Object.assign(actualStorage, storage);
-		values = new PropertyValueService(
-			actualStorage,
-			valueSources,
-			new PropertyValueLockService({} as never),
-		);
+		values = new PropertyValueService(actualStorage, valueSources, new PropertyValueLockService({} as never));
 		provider = new VirtualMeasurementContributionService(
 			registry,
 			database,
@@ -229,6 +221,9 @@ describe('durable virtual measurement coverage and room planner integration', ()
 			valueOrigin: VirtualValueOrigin.SOURCE,
 			sourcePropertyId: raw.id,
 		});
+		await valueSourceGraph.refreshQuarantine();
+		expect(valueSourceGraph.isValidated()).toBe(true);
+		expect(valueSourceGraph.propertyRequiresLiveValue(raw.id)).toBe(false);
 		const now = Date.now();
 		storage.query.mockResolvedValue([{ propertyId: raw.id, time: new Date(now - 86400000), numberValue: 99 }]);
 		// Mirror the normal afterLoad value hydration: a persisted historical scalar remains displayable,
