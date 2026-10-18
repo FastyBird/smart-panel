@@ -167,6 +167,7 @@ export interface ThermostatRuntimeDiagnostic {
 	branches: ThermostatBranchDiagnostic[];
 }
 interface ControllerContext {
+	intent?: Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>>;
 	config: VirtualThermostatConfigEntity;
 	owner: DeviceEntity | null;
 	bindings: ThermostatInputBinding[];
@@ -369,6 +370,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		for (const output of this.outputs.values()) this.producers.unregister(output.lease);
 		this.outputs.clear();
 		this.diagnosticGuards.clear();
+		for (const context of this.contexts.values()) context.intent?.close();
 		this.contexts.clear();
 		this.contacts.clear();
 		this.trends.clear();
@@ -499,6 +501,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const publishGuard = this.graph.capturePublishGuard();
 			const config = await this.dataSource.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			if (!config) return null;
+			const intent = await this.comfort.readIntentInManager(this.dataSource.manager,config);
+			try {
 			const owner = config.ownerDeviceId
 				? await this.dataSource.manager.findOneBy(DeviceEntity, { id: config.ownerDeviceId })
 				: null;
@@ -549,8 +553,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					targets.set(claim.id, { property, channel, device: channel.device as DeviceEntity, value: false });
 				}
 			}
+			if (!intent.isCurrent()) { intent.close(); return null; }
+			const originalAdmission = admission;
 			return {
-				admission,
+				intent,
+				admission: { isCurrent: () => originalAdmission.isCurrent() && intent.isCurrent() },
 				publishGuard,
 				config,
 				owner,
@@ -573,6 +580,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					reasons: [],
 				},
 			};
+			} catch (error) { intent.close(); throw error; }
 		});
 	}
 	/**
@@ -728,7 +736,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			thermostatBranchEvidence(
 				context.claims.filter((claim) => claim.role === role).map((claim) => this.evidence(context, claim, now)),
 			);
-		const effective = effectiveThermostatComfort(context.config.policy, context.config.comfort);
+		const effective = effectiveThermostatComfort(context.config.policy, context.config.comfort,context.intent?.projection);
 		const decision = evaluateVirtualThermostatPolicy(
 			{
 				...context.config.policy,
@@ -788,6 +796,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				else decision.desiredCooling = false;
 			}
 		if (
+			!context.intent?.isCurrent() ||
 			!this.comfort.isCurrent(context.config) ||
 			(context.config.comfort && validateThermostatComfort(context.config.comfort, context.config.policy).length)
 		) {
@@ -837,7 +846,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private async evaluate(controllerId: string): Promise<void> {
 		if (!this.active) return;
 		const context = await this.load(controllerId);
-		if (!context || !this.active) return;
+		if (!context || !this.active) {
+			context?.intent?.close(); this.contexts.get(controllerId)?.intent?.close(); this.contexts.delete(controllerId); return;
+		}
+		this.contexts.get(controllerId)?.intent?.close();
 		this.contexts.set(controllerId, context);
 		const now = Date.now(),
 			frame = this.inputs.read(context.bindings, now);
@@ -1484,7 +1496,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				: 'ready',
 			inputs: frame.inputs,
 			requested_mode: context.config.requestedMode,
-			effective_comfort: effectiveThermostatComfort(context.config.policy, context.config.comfort),
+			effective_comfort: effectiveThermostatComfort(context.config.policy, context.config.comfort,context.intent?.projection),
 			heating_setpoint: context.config.policy.heatingSetpoint,
 			cooling_setpoint: context.config.policy.coolingSetpoint,
 			current_temperature: frame.ambient,

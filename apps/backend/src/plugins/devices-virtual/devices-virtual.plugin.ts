@@ -2,10 +2,13 @@ import { EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Module } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { ClimateAutomationWriterService } from '../../modules/devices/services/climate-automation-writer.service';
+import { ClimateAutomationRegistryService } from '../../modules/devices/services/climate-automation.registry.service';
 import { DeviceCategory } from '../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../modules/devices/devices.exceptions';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -186,7 +189,14 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		ThermostatInstallationLoaderService,
 		VirtualThermostatClaimsService,
 		VirtualThermostatConfigService,
-		VirtualThermostatAutomationService,
+		{
+			provide: VirtualThermostatAutomationService,
+			inject: [ClimateAutomationWriterService,ClimateAutomationRegistryService,VirtualDependencyGraphService,NestConfigService,
+				VirtualThermostatAuthoringService,VirtualThermostatConfigService,VirtualThermostatComfortService],
+			useFactory: (writer: ClimateAutomationWriterService,registry: ClimateAutomationRegistryService,graph: VirtualDependencyGraphService,
+				config: NestConfigService,authoring: VirtualThermostatAuthoringService,configurations: VirtualThermostatConfigService,
+				comfort: VirtualThermostatComfortService) => new VirtualThermostatAutomationService(writer,registry,graph,config,authoring,configurations,comfort),
+		},
 		VirtualThermostatComfortService,
 		VirtualThermostatAuthoringService,
 		VirtualThermostatInputsService,

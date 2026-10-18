@@ -98,6 +98,7 @@ export interface ClimateAutomationProducer {
 
 export interface ClimateAutomationProvider {
 	readonly creationV1?: ClimateAutomationCreationCapability;
+	readonly existingControllerV1?: ClimateAutomationExistingCapability;
 	/** Optional dormant edit port; never inferred from ordinary validation/creation methods. */
 	readonly participantV1?: ClimateAutomationParticipant;
 	readonly readControllerInManager: (
@@ -219,6 +220,10 @@ export type ClimateAutomationGraphValidation =
 	| { readonly outcome: 'VALIDATED_AT_OBSERVED_REVISION'; readonly revision: number }
 	| { readonly outcome: 'THIS_JOB_NOT_VALIDATED'; readonly reason: ClimateAutomationValidationReason };
 export interface ClimateAutomationGraphParticipant {
+	/** Existing concrete graph's pure capture. Required only by the new route family; no generation is minted by capture. */
+	readonly captureOwnedPublicationLifecycle?: () => Readonly<{ isCurrent: () => boolean;
+		guard: Readonly<{ isCurrent: () => boolean; reason: string }> }>;
+
 	readonly readReservedGraph: (
 		manager: EntityManager,
 		turn: ClimateAutomationParticipantTurn,
@@ -665,3 +670,137 @@ export interface ClimateAutomationCreationCapability {
 export type ClimateAutomationCreationOutcome =
 	| { readonly outcome: 'applied'; readonly result: ClimateAutomationJson }
 	| { readonly outcome: 'conflict'; readonly reason: ClimateAutomationConflictReason };
+
+/** Closed existing-catalog operation. Wire payloads are decoded by the original concrete codec,
+ * never interpreted as a desired private document, SQL, callback or caller-owned ledger plan. */
+export type ClimateAutomationExistingKind =
+	| 'configure-existing:v1' | 'settings:v1' | 'preset:v1' | 'comfort-definition:v1'
+	| 'override-create:v1' | 'override-cancel:v1' | 'settle-override:v1'
+	| 'request-release:v1' | 'restore-actuator:v1';
+export type ClimateAutomationExistingRequest =
+	| Readonly<{ providerKey: string; kind: 'settings:v1'; input: unknown }>
+	| Readonly<{ providerKey: string; controllerId: string; kind: Exclude<ClimateAutomationExistingKind,'settings:v1'>; input: unknown }>;
+export interface ClimateAutomationExistingInput {
+	readonly providerKey: string;
+	readonly controllerId: string;
+	readonly kind: ClimateAutomationExistingKind;
+	readonly wire: ClimateAutomationJson;
+}
+/** Full listener-free raw evidence, including NULL/JSON/native STI columns and memberships.
+ * The plugin can only materialize the enumerated catalog family; the ledger is exclusively core-owned. */
+export type ClimateAutomationExistingTable =
+	| 'configurations' | 'sources' | 'actuators' | 'settings' | 'protections' | 'cooling'
+	| 'devices' | 'channels' | 'properties' | 'runtime' | 'commands' | 'recovery'
+	| 'installations' | 'referenceCatalog';
+export interface ClimateAutomationExistingFacts {
+	readonly controllerId: string;
+	readonly image: ClimateAutomationParticipantImage | null;
+	readonly graph: ClimateAutomationGraphFacts;
+	readonly rows: Readonly<Record<ClimateAutomationExistingTable, readonly ClimateAutomationJson[]>>;
+}
+export interface ClimateAutomationExistingSemantic {
+	readonly configuration: ClimateAutomationJson;
+	readonly comfort: ClimateAutomationJson;
+	readonly structural: ClimateAutomationJson;
+	readonly presentation: ClimateAutomationJson;
+}
+export interface ClimateAutomationExistingNormalized {
+	readonly before: ClimateAutomationExistingSemantic;
+	readonly next: ClimateAutomationExistingSemantic;
+	readonly graphPlan: ClimateAutomationGraphReplacementPlan;
+	/** A genuine original clock observation is private to the concrete codec, not supplied by HTTP. */
+	readonly watermarkOnly: boolean;
+}
+export interface ClimateAutomationExistingPlan {
+	readonly descriptor: ClimateAutomationScope;
+	readonly properties: readonly import('../entities/devices.entity').ChannelPropertyEntity[];
+	readonly expected: ClimateAutomationExistingFacts;
+	readonly response: ClimateAutomationJson;
+	readonly mirrors: readonly { readonly propertyId: string; readonly value: number | boolean | string | null }[];
+}
+export interface ClimateAutomationExistingCapability {
+	readonly version: 1;
+	readonly codec: 'virtual-thermostat-existing:v1';
+	readonly isCurrent: () => boolean;
+	readonly snapshotInput: (kind: ClimateAutomationExistingKind, input: unknown) => ClimateAutomationJson;
+	readonly holdAtEntry: () => Readonly<{ release: () => Promise<void> }>;
+	readonly captureEnvironment: () => Readonly<{
+		destinations: import('../../storage/services/storage.service').CreationStorageDestinations;
+		/** Fixed materialized LOCAL properties only: one finite veto observation, never a callback or write permit. */
+		observeProperties: (properties: readonly import('../entities/devices.entity').ChannelPropertyEntity[]) => void;
+		/** Original readonly policy callbacks at an unlocked effect boundary, never inside native COMMIT. */
+		checkProperties: () => void;
+		isCurrent: () => boolean;
+		close: () => void;
+	}>;
+	readonly readFactsInManager: (
+		manager: EntityManager, turn: ClimateAutomationParticipantTurn, controllerId: string,
+	) => Promise<ClimateAutomationExistingFacts>;
+	readonly normalizeInManager: (
+		manager: EntityManager, turn: ClimateAutomationParticipantTurn,
+		input: ClimateAutomationExistingInput, before: ClimateAutomationExistingFacts,
+	) => Promise<ClimateAutomationExistingNormalized>;
+	readonly materializeInManager: (
+		manager: EntityManager, turn: ClimateAutomationParticipantTurn, input: ClimateAutomationExistingInput,
+		before: ClimateAutomationExistingFacts, normalized: ClimateAutomationExistingNormalized, revision: number,
+	) => Promise<ClimateAutomationExistingPlan>;
+	readonly applyInManager: (
+		manager: EntityManager, turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationExistingFacts, plan: ClimateAutomationExistingPlan,
+	) => Promise<void>;
+	readonly completeAcknowledged: (
+		input: ClimateAutomationExistingInput, plan: ClimateAutomationExistingPlan,
+		slot: ClimateAutomationSlotFacts,
+		publication: import('../services/device-creation-context').ControllerMutationPublicationLease | null,
+	) => Promise<ClimateAutomationJson>;
+}
+export interface ClimateAutomationExistingOutcome {
+	readonly descriptor: ClimateAutomationScope;
+	readonly outcome: 'applied' | 'unchanged';
+	readonly controllerRevision: number;
+	readonly graphRevision: number;
+	readonly slot: ClimateAutomationSlotFacts;
+	readonly response: ClimateAutomationJson;
+	readonly publication: import('../services/device-creation-context').ControllerMutationPublicationLease | null;
+}
+
+/** Readonly core-derived clock facts, exposed ONLY through an authenticated existing command turn. */
+export interface ClimateAutomationExistingClock {
+	readonly wallMs: number;
+	readonly monoMs: number;
+	readonly overrideId: string | null;
+	readonly status: 'active' | 'expired' | 'clock_uncertain' | null;
+	readonly watermark: number | null;
+	readonly deadline: number | null;
+	readonly terminatedAt: string | null;
+}
+export interface ClimateAutomationOverrideFacts {
+	readonly id: string;
+	readonly source: 'user' | 'panel';
+	readonly actor_id: string;
+	readonly revision: number;
+	readonly created_at: string;
+	readonly original_duration_ms: number;
+	readonly wall_watermark_ms: number;
+	readonly expires_at: string;
+	readonly preset: 'comfort' | 'eco' | 'away' | null;
+	readonly setpoints: { heating_setpoint: number | null; cooling_setpoint: number | null } | null;
+	readonly resolved_setpoints: { heating_setpoint: number | null; cooling_setpoint: number | null };
+	readonly status: 'active';
+	readonly terminated_at: null;
+}
+
+/** Finite readonly veto observation, never source/command/publication authority. */
+export class ClimateAutomationIntentView {
+	toJSON(): Readonly<Record<string,never>> { return {}; }
+}
+
+/** Event-only original receipt. It can never authorize values, SQL or a manager. */
+export class ClimateAutomationNotificationReceipt {
+	toJSON(): Readonly<Record<string,never>> { return {}; }
+}
+
+/** Original process-local override budget. Closing it is a veto, not a durable intent mutation. */
+export class ClimateAutomationOverrideLease {
+	toJSON(): Readonly<Record<string,never>> { return {}; }
+}

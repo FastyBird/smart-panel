@@ -1,22 +1,37 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import { DataSource } from 'typeorm';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
+import { AddClimateAutomationOwnership1000000000047 } from '../../../migrations/1000000000047-AddClimateAutomationOwnership';
+import { ConfigService as ModuleConfigService } from '../../../modules/config/services/config.service';
+import { StorageConfigModel } from '../../../modules/storage/models/config.model';
+import { StorageService } from '../../../modules/storage/services/storage.service';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
 import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
 
+import { VirtualThermostatAutomationService } from './virtual-thermostat-automation.service';
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
-import { THERMOSTAT_CONFIG_CHANGED } from './virtual-thermostat-config.service';
+import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 
 jest.setTimeout(30_000);
 
@@ -27,6 +42,14 @@ describe('thermostat durable comfort lifecycle', () => {
 	let id: string;
 	let events: EventEmitter2;
 	let structure: DeviceStructureLockService;
+	let graph: VirtualDependencyGraphService,selectedClaims: VirtualThermostatClaimsService;
+	let pipeline: TestingModule,values: PropertyValueService,configs: VirtualThermostatConfigService;
+	let writer: ClimateAutomationWriterService,ownership: ClimateAutomationRegistryService,automation: VirtualThermostatAutomationService;
+	const registerOriginal = () => {
+		automation?.onModuleDestroy();
+		automation = new VirtualThermostatAutomationService(writer,ownership,graph,new ConfigService({ FB_CLI: 'off' }),undefined,configs,comfort);
+		automation.onModuleInit();
+	};
 	let wall: number;
 	let elapsed: number;
 	const input = () => ({
@@ -85,15 +108,33 @@ describe('thermostat durable comfort lifecycle', () => {
 			synchronize: true,
 		}).initialize();
 		structure = new DeviceStructureLockService();
-		const graph = new VirtualDependencyGraphService(database);
+		ownership = new ClimateAutomationRegistryService();
+		writer = new ClimateAutomationWriterService(database,structure,ownership,new ConfigService({ FB_CLI: 'off' }));
+		graph = new VirtualDependencyGraphService(database,new ConfigService({ FB_CLI: 'off' }),writer);
 		events = new EventEmitter2();
-		const claims = {
-			holdRecoveryFence: jest.fn(() => () => undefined),
-			invalidate: jest.fn(),
-			refresh: jest.fn().mockResolvedValue(undefined),
-		} as unknown as VirtualThermostatClaimsService;
-		makeService = () => new VirtualThermostatComfortService(database, structure, graph, claims, events);
+		selectedClaims = new VirtualThermostatClaimsService(database,structure,graph,new PropertyCommandAdmissionRegistryService(),events);
+		pipeline = await Test.createTestingModule({ providers: [PropertyValueService,PropertyValueLockService,
+			PropertyValueSourceRegistryService,PropertyProducerRegistryService,StorageService,
+			{ provide: DataSource,useValue: database },{ provide: EventEmitter2,useValue: events },
+			{ provide: ConfigService,useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
+			{ provide: ModuleConfigService,useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),{ primaryStorage: 'existing-comfort-fixture' }) } },
+		] }).compile();
+		const storage = pipeline.get(StorageService);
+		const plugin: StoragePlugin = { name: 'existing-comfort-fixture',initialize: () => Promise.resolve(),destroy: () => Promise.resolve(),
+			isAvailable: () => true,writePoints: () => Promise.resolve(),query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
+		storage.registerPlugin(plugin.name,plugin); values = pipeline.get(PropertyValueService);
+		makeService = () => {
+			comfort?.onModuleDestroy(); automation?.onModuleDestroy();
+			configs = new VirtualThermostatConfigService(database,structure,graph,selectedClaims,events,values,undefined,writer);
+			comfort = new VirtualThermostatComfortService(database,structure,graph,selectedClaims,events,writer);
+			registerOriginal(); return comfort;
+		};
 		comfort = makeService();
+		await graph.onApplicationBootstrap();
+		await selectedClaims.onApplicationBootstrap();
+		await new VirtualThermostatOwnershipSubscriber(database,selectedClaims).onApplicationBootstrap();
 		id = randomUUID();
 		await database.manager.insert(VirtualDeviceEntity, {
 			id,
@@ -123,8 +164,13 @@ describe('thermostat durable comfort lifecycle', () => {
 			contactClosingMs: 0,
 			configuredAt: new Date(wall),
 		});
+		await database.query('DROP TABLE "devices_module_climate_automation_slots"');
+		await database.query('DROP TABLE "devices_module_climate_automation_sources"');
+		await new AddClimateAutomationOwnership1000000000047().up(database.createQueryRunner());
 	});
 	afterEach(async () => {
+		automation?.onModuleDestroy(); comfort?.onModuleDestroy(); selectedClaims?.onModuleDestroy();
+		await pipeline?.close(); ownership?.onModuleDestroy();
 		jest.restoreAllMocks();
 		if (database?.isInitialized) await database.destroy();
 	});
@@ -316,7 +362,7 @@ describe('thermostat durable comfort lifecycle', () => {
 
 	it('keeps no-override reads shared and does not open watermark transactions', async () => {
 		await configured();
-		const exclusive = jest.spyOn(structure, 'runExclusive');
+		const exclusive = jest.spyOn(structure, 'runExclusiveReleased');
 		const transaction = jest.spyOn(database, 'transaction');
 		await Promise.all([comfort.settle(id), comfort.settle(id), comfort.get(id)]);
 		expect(exclusive).not.toHaveBeenCalled();
@@ -615,11 +661,12 @@ describe('thermostat durable comfort lifecycle', () => {
 				releases.push(release);
 				return release;
 			});
+			registerOriginal();
 			return { hold, releases };
 		};
 		beforeEach(async () => {
 			await configured(); // existing ordinary config setup, not an admission-positive stand-in
-			actualGraph = new VirtualDependencyGraphService(database);
+			actualGraph = new VirtualDependencyGraphService(database,new ConfigService({ FB_CLI: 'off' }),writer);
 			actualClaims = new VirtualThermostatClaimsService(
 				database,
 				structure,
@@ -629,7 +676,8 @@ describe('thermostat durable comfort lifecycle', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 			);
 			await actualClaims.onApplicationBootstrap();
-			comfort = new VirtualThermostatComfortService(database, structure, actualGraph, actualClaims, events);
+			selectedClaims = actualClaims; graph = actualGraph;
+			comfort = makeService();
 			expect(actualClaims.capture().isCurrent()).toBe(true);
 		});
 		afterEach(() => {
@@ -769,22 +817,16 @@ describe('thermostat durable comfort lifecycle', () => {
 				const entered = barrier(),
 					resume = barrier(),
 					failure = new Error('response read rejected');
-				const realGetMethods: {
-					readonly get: {
-						call: (
-							receiver: VirtualThermostatComfortService,
-							controllerId: string,
-						) => ReturnType<VirtualThermostatComfortService['get']>;
-					};
-				} = comfort;
-				const realGet = realGetMethods.get;
-				jest.spyOn(comfort, 'get').mockImplementationOnce(async (controllerId) => {
-					const response = await realGet.call(comfort, controllerId);
+				const realResponseMethods: Readonly<Pick<VirtualThermostatConfigService,'completeExistingAcknowledged'>> = configs;
+				const realResponse = realResponseMethods.completeExistingAcknowledged;
+				jest.spyOn(configs,'completeExistingAcknowledged').mockImplementationOnce(async (...args) => {
+					const response = await realResponse.call(configs,...args);
 					entered.open();
 					await resume.promise;
 					if (rejectResponse) throw failure;
 					return response;
 				});
+				registerOriginal();
 				const result = comfort.select(id, expected, 'eco', false);
 				void result.catch(() => undefined);
 				try {
@@ -825,6 +867,7 @@ describe('thermostat durable comfort lifecycle', () => {
 				});
 				return release;
 			});
+			registerOriginal();
 			database.subscribers.push({
 				beforeQuery: (event) => {
 					if (
@@ -855,12 +898,16 @@ describe('thermostat durable comfort lifecycle', () => {
 				const expected = await fence(),
 					original = actualClaims.capture(),
 					owned = observeOwnedHolds();
-				let fail = true;
+				let fail = true,inChanged = false;
+				const realReconcileMethods: Readonly<Pick<VirtualThermostatComfortService,'reconcileExistingAcknowledged'>> = comfort;
+				const realReconcile = realReconcileMethods.reconcileExistingAcknowledged;
+				jest.spyOn(comfort,'reconcileExistingAcknowledged').mockImplementation((...args) => { inChanged = true; return realReconcile.call(comfort,...args); });
+				registerOriginal();
 				if (boundary === 'refresh')
 					database.subscribers.push({
 						beforeQuery: (event) => {
 							if (
-								fail &&
+								inChanged && fail &&
 								event.query.startsWith('SELECT') &&
 								event.query.includes('devices_virtual_thermostat_actuator_claims')
 							) {
@@ -899,19 +946,12 @@ describe('thermostat durable comfort lifecycle', () => {
 				bEntered = barrier(),
 				aResume = barrier(),
 				bResume = barrier();
-			const realGetMethods: {
-				readonly get: {
-					call: (
-						receiver: VirtualThermostatComfortService,
-						controllerId: string,
-					) => ReturnType<VirtualThermostatComfortService['get']>;
-				};
-			} = comfort;
-			const realGet = realGetMethods.get;
+			const realResponseMethods: Readonly<Pick<VirtualThermostatConfigService,'completeExistingAcknowledged'>> = configs;
+			const realResponse = realResponseMethods.completeExistingAcknowledged;
 			let responses = 0;
-			jest.spyOn(comfort, 'get').mockImplementation(async (controllerId) => {
+			jest.spyOn(configs,'completeExistingAcknowledged').mockImplementation(async (...args) => {
 				const ordinal = ++responses,
-					response = await realGet.call(comfort, controllerId);
+					response = await realResponse.call(configs,...args);
 				if (ordinal === 1) {
 					aEntered.open();
 					await aResume.promise;
@@ -922,6 +962,7 @@ describe('thermostat durable comfort lifecycle', () => {
 				}
 				return response;
 			});
+			registerOriginal();
 			const a = comfort.select(id, expectedA, 'eco', false);
 			void a.catch(() => undefined);
 			let b: ReturnType<VirtualThermostatComfortService['get']> | undefined;

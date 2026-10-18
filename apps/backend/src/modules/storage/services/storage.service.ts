@@ -3,6 +3,9 @@ import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import {
+	ControllerMutationPublicationEngine,
+	originalControllerMutationMethods,
+	ControllerMutationPublicationLease,
 	DeviceCreationPublicationEngine,
 	DeviceCreationPublicationLease,
 	creationHasDataMethod,
@@ -298,6 +301,47 @@ export class StorageService implements OnApplicationShutdown {
 			completed++;
 			DeviceCreationPublicationEngine.storageCompleted(lease);
 			DeviceCreationPublicationEngine.assert(lease);
+		}
+		return Object.freeze({ submitted, completed });
+	}
+
+	/** Existing mutation only: original destinations, no buffering or lease held across backend I/O. */
+	async writeMutationPoints(
+		lease: ControllerMutationPublicationLease,
+		capture: CreationStorageDestinations,
+		points: StoragePoint[],
+	): Promise<Readonly<{ submitted: number; completed: number }>> {
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+		const original = this.creationDestinations.get(capture);
+		if (!original || !this.areCreationDestinationsCurrent(capture))
+			throw new Error('Original storage destinations unavailable');
+		let submitted = 0;
+		let completed = 0;
+		const roles: readonly ('fallback' | 'primary')[] = ['fallback', 'primary'];
+		for (const role of roles) {
+			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+			const entry = original[role];
+			if (!entry) continue;
+			const available: CreationStorageCall<StoragePlugin, [], boolean> = entry.available;
+			const ready = available.call(entry.plugin);
+			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+			if (!ready) continue;
+			await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine,lease);
+			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
+			const write: CreationStorageCall<
+				StoragePlugin,
+				[StoragePoint[]],
+				ReturnType<StoragePlugin['writePoints']>
+			> = entry.write;
+			submitted++;
+			originalControllerMutationMethods.noteSubmission.call(ControllerMutationPublicationEngine,lease);
+			await write.call(entry.plugin, points);
+			completed++;
+			originalControllerMutationMethods.noteCompletion.call(ControllerMutationPublicationEngine,lease);
+			await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine,lease);
+			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
 		}
 		return Object.freeze({ submitted, completed });
 	}

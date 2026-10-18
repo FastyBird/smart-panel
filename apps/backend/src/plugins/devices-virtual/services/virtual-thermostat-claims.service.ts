@@ -10,6 +10,7 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
+import { captureDiagnosticTree, diagnosticTreeCurrent, closeDiagnosticTree, DiagnosticTreeObservation, creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import {
 	PropertyCommandAdmissionRegistryService,
@@ -18,7 +19,7 @@ import {
 import { guardScriptReadiness } from '../../devices-shelly-ng/contracts/guard-script.contract';
 import { ShellyProtectiveQualification } from '../../devices-shelly-ng/contracts/protective-switch.contract';
 import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
-import { qualifiedRemoteDewPointBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
+import { qualifiedRemoteDewPointBlockers, remoteDewPointInstallationBlockers } from '../../devices-shelly-ng/services/remote-dew-point-qualification';
 import {
 	SHELLY_GUARDED_PROFILE,
 	SHELLY_GUARDED_PROFILE_VERSION,
@@ -48,9 +49,33 @@ export interface ThermostatReleaseProof {
 	readonly evidenceId: string;
 }
 
+/** Finite original installed evidence observation, never dispatch/install authority. */
+export class DiagnosticQualifications {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+export interface ThermostatQualificationDiagnostic {
+	readonly providerProfile: string;
+	readonly protectionFingerprint: string | null;
+	readonly remoteLineageFingerprint: string | null;
+	readonly localSurfaceFingerprint: string | null;
+}
+interface DiagnosticQualificationRecord {
+	readonly epoch: number;
+	readonly entries: readonly Readonly<{
+		claim: VirtualThermostatActuatorClaimEntity;
+		evidence: ThermostatInstalledQualification | undefined;
+		deadline: number | undefined;
+		machineCurrent: boolean;
+		machine: Readonly<{ call: (receiver: ThermostatInstalledQualification) => boolean }> | undefined;
+		tree: DiagnosticTreeObservation;
+	}>[];
+	readonly reservations: readonly VirtualThermostatActuatorClaimEntity[];
+}
+
 /** Durable reservations are independent of intent, device enabled state and expiry of command windows. */
 @Injectable()
 export class VirtualThermostatClaimsService implements OnApplicationBootstrap, OnModuleDestroy {
+	private readonly diagnosticQualifications = new WeakMap<DiagnosticQualifications, DiagnosticQualificationRecord>();
 	private readonly authorities = new WeakSet<object>();
 	private readonly authorityEpochs = new WeakMap<object, number>();
 	private readonly proofs = new WeakMap<
@@ -395,6 +420,71 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			return null;
 		return evidence;
 	}
+	captureDiagnosticQualifications(claims: readonly VirtualThermostatActuatorClaimEntity[]): DiagnosticQualifications {
+		if (this.destroyed || !diagnosticClaimMethodsCurrent(this)) throw new Error('Original qualification reader unavailable');
+		const epoch = this.epoch;
+		const ids = new Set(claims.map((claim) => claim.id));
+		if (ids.size !== claims.length) throw new Error('Duplicate diagnostic claim');
+		const entries: DiagnosticQualificationRecord['entries'][number][] = [];
+		try {
+			for (const claim of claims) {
+				const evidence = this.qualifications.get(claim.physicalIdentity);
+				const tree = captureDiagnosticTree({ claim, evidence });
+				const machine: Readonly<{ call: (receiver: ThermostatInstalledQualification) => boolean }> | undefined = evidence?.machineLeaseIsCurrent;
+				const machineCurrent = !evidence || machine === undefined || machine.call(evidence);
+				entries.push(Object.freeze({ claim, evidence, tree, machineCurrent,machine, deadline: evidence ? this.remoteDeadlines.get(evidence) : undefined }));
+			}
+			const controllers = new Set(claims.map((claim) => claim.controllerId));
+			const reservations = Object.freeze([...this.reservations.values()].filter((row) => controllers.has(row.controllerId)));
+			const token = Object.freeze(new DiagnosticQualifications());
+			this.diagnosticQualifications.set(token, Object.freeze({ epoch, entries: Object.freeze(entries), reservations }));
+			if (!diagnosticClaimMethods.current.call(this, token)) throw new Error('Qualification changed during capture');
+			return token;
+		} catch (error) {
+			for (const entry of entries) closeDiagnosticTree(entry.tree);
+			throw error;
+		}
+	}
+	diagnosticQualificationsCurrent(token: DiagnosticQualifications): boolean {
+		const record = this.diagnosticQualifications.get(token);
+		if (!record || this.destroyed || record.epoch !== this.epoch || !diagnosticClaimMethodsCurrent(this)) return false;
+		for (const entry of record.entries) {
+			if (this.qualifications.get(entry.claim.physicalIdentity) !== entry.evidence || !diagnosticTreeCurrent(entry.tree) || (entry.evidence && this.remoteDeadlines.get(entry.evidence) !== entry.deadline)) return false;
+		}
+		const controllers = new Set(record.entries.map((entry) => entry.claim.controllerId));
+		const reservations = [...this.reservations.values()].filter((row) => controllers.has(row.controllerId));
+		return reservations.length === record.reservations.length && reservations.every((row) => record.reservations.includes(row));
+	}
+	evaluateDiagnosticQualification(token: DiagnosticQualifications, claimId: string, opposed: boolean, clock: Readonly<{ wallMs: number; monoMs: number }>): ThermostatQualificationDiagnostic | null {
+		if (!Number.isFinite(clock.wallMs) || !Number.isFinite(clock.monoMs) || !diagnosticClaimMethods.current.call(this, token)) throw new Error('Original diagnostic qualification lost');
+		const record = this.diagnosticQualifications.get(token);
+		if (!record) throw new Error('Original diagnostic qualification lost');
+		const entry = record.entries.find((entry) => entry.claim.id === claimId);
+		if (!entry) throw new Error('Claim not observed');
+		const { claim, evidence } = entry;
+		if (!evidence || !entry.machineCurrent) return null;
+		const machine = entry.machine;
+		if (machine && !machine.call(evidence)) throw new Error('Original installed machine lease lost');
+		opposed ||= thermostatHasOpposedBranches(record.reservations.filter((row) => row.controllerId === claim.controllerId));
+		const remote = evidence.profile.remoteDewPoint;
+		if ((claim.providerProfile ?? SHELLY_GUARDED_PROFILE) !== (evidence.providerProfile?.id ?? SHELLY_GUARDED_PROFILE) ||
+			(claim.providerProfileVersion ?? SHELLY_GUARDED_PROFILE_VERSION) !== (evidence.providerProfile?.version ?? SHELLY_GUARDED_PROFILE_VERSION) ||
+			(evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE && (claim.role !== 'cooling' || (entry.deadline ?? -Infinity) <= clock.monoMs || !remote || remoteDewPointInstallationBlockers(remote.artifact, remote.authenticatedStatus, remote.installation, clock.wallMs).length > 0)) ||
+			(!!claim.qualificationGeneration && evidence.qualificationGeneration !== claim.qualificationGeneration) ||
+			(opposed && (!evidence.opposedOutputsInterlocked || (evidence.providerProfile?.id === REMOTE_DEW_POINT_PROFILE && !remote?.installation.opposedOutputInterlockAuditId))) ||
+			claim.leaseSeconds < evidence.profile.testedLeaseSeconds.min || claim.leaseSeconds > evidence.profile.testedLeaseSeconds.max) return null;
+		if (!diagnosticClaimMethods.current.call(this, token)) throw new Error('Qualification changed during original callbacks');
+		return Object.freeze({ providerProfile: evidence.providerProfile?.id ?? SHELLY_GUARDED_PROFILE,
+			protectionFingerprint: remote?.artifact.binding.protectionFingerprint ?? null,
+			remoteLineageFingerprint: remote?.artifact.binding.remoteLineageFingerprint ?? null,
+			localSurfaceFingerprint: remote?.artifact.binding.localSurface.calibrationFingerprint ?? null });
+	}
+	closeDiagnosticQualifications(token: DiagnosticQualifications): void {
+		const record = this.diagnosticQualifications.get(token); if (!record) return;
+		this.diagnosticQualifications.delete(token);
+		for (const entry of record.entries) closeDiagnosticTree(entry.tree);
+	}
+
 	/** VD2-8 supplies durable startup/interlock admission. Until then energizing remains closed. */
 	registerRuntimeAdmission(admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean): () => void {
 		if (this.runtimeAdmission) throw new Error('Thermostat runtime admission already registered');
@@ -557,4 +647,21 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			await this.refresh();
 		});
 	}
+}
+
+const diagnosticClaimsPrototype: Readonly<{
+	captureDiagnosticQualifications: VirtualThermostatClaimsService['captureDiagnosticQualifications'];
+	diagnosticQualificationsCurrent: VirtualThermostatClaimsService['diagnosticQualificationsCurrent'];
+	evaluateDiagnosticQualification: VirtualThermostatClaimsService['evaluateDiagnosticQualification'];
+	closeDiagnosticQualifications: VirtualThermostatClaimsService['closeDiagnosticQualifications'];
+}> = VirtualThermostatClaimsService.prototype;
+const diagnosticClaimMethods = Object.freeze({ capture: diagnosticClaimsPrototype.captureDiagnosticQualifications,
+	current: diagnosticClaimsPrototype.diagnosticQualificationsCurrent,
+	evaluate: diagnosticClaimsPrototype.evaluateDiagnosticQualification,
+	close: diagnosticClaimsPrototype.closeDiagnosticQualifications });
+function diagnosticClaimMethodsCurrent(receiver: VirtualThermostatClaimsService): boolean {
+	return creationMethodCurrent(receiver, 'captureDiagnosticQualifications', diagnosticClaimMethods.capture) &&
+		creationMethodCurrent(receiver, 'diagnosticQualificationsCurrent', diagnosticClaimMethods.current) &&
+		creationMethodCurrent(receiver, 'evaluateDiagnosticQualification', diagnosticClaimMethods.evaluate) &&
+		creationMethodCurrent(receiver, 'closeDiagnosticQualifications', diagnosticClaimMethods.close);
 }

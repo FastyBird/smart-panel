@@ -118,6 +118,7 @@ export function validateThermostatComfort(
 export function effectiveThermostatComfort(
 	policy: VirtualThermostatPolicy,
 	comfort: ThermostatComfortConfiguration | null | undefined,
+	intent?: Readonly<{ available: boolean; manualHold: boolean }>,
 ): ThermostatEffectiveComfort {
 	const result: ThermostatEffectiveComfort = {
 		heating_setpoint: policy.heatingSetpoint,
@@ -131,20 +132,18 @@ export function effectiveThermostatComfort(
 	const override = ['active', 'clock_uncertain'].includes(comfort.temporary_override?.status)
 		? comfort.temporary_override
 		: null;
-	const automation = comfort.automation_enabled ? comfort.automation_baseline : null;
-	const preset = override ? override.preset : automation ? automation.preset : comfort.selected_preset;
+	// Legacy JSON is retained diagnostic data; actor bytes never authorize an executable source.
+	const manualPreset = intent?.available === true && !intent.manualHold ? comfort.selected_preset : null;
+	const preset = override ? override.preset : manualPreset;
 	const setpoints =
 		override?.resolved_setpoints ??
-		automation?.setpoints ??
 		comfort.presets.find((entry) => entry.preset === preset)?.setpoints;
 	if (setpoints) Object.assign(result, setpoints);
 	result.source = comfort.user_off
 		? 'user_off'
 		: override
 			? 'override'
-			: automation
-				? 'automation'
-				: preset
+			: preset
 					? 'preset'
 					: 'manual';
 	result.preset = preset;

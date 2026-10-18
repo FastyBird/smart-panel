@@ -1,8 +1,10 @@
+import { performance } from 'node:perf_hooks';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { TransactionCommitEvent } from 'typeorm';
+import { DataSource, TransactionCommitEvent } from 'typeorm';
+import { Test, TestingModule } from '@nestjs/testing';
 import { v4 as uuid } from 'uuid';
 
 import { ConfigService } from '@nestjs/config';
@@ -14,6 +16,12 @@ import {
 	useThermostatPacketClock,
 } from '../../../../test/support/thermostat-real-guard-fixture';
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
+import { AddClimateAutomationOwnership1000000000047 } from '../../../migrations/1000000000047-AddClimateAutomationOwnership';
+import { ConfigService as ModuleConfigService } from '../../../modules/config/services/config.service';
+import { StorageConfigModel } from '../../../modules/storage/models/config.model';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { IndexVirtualThermostatCommands1000000000035 } from '../../../migrations/1000000000035-IndexVirtualThermostatCommands';
 import {
 	ChannelCategory,
@@ -74,6 +82,7 @@ import { VirtualDependencyGraphService } from './virtual-dependency-graph.servic
 import { VirtualProducerConfigService } from './virtual-producer-config.service';
 import { VirtualProducerStateService } from './virtual-producer-state.service';
 import { ThermostatInstalledQualification, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
+import { VirtualThermostatAutomationService } from './virtual-thermostat-automation.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
@@ -107,6 +116,11 @@ describe('virtual thermostat durable runtime', () => {
 	let events: EventEmitter2;
 	let producers: PropertyProducerRegistryService;
 	let values: PropertyValueService;
+	let mutationPipeline: TestingModule,mutationValues: PropertyValueService,mutationClaims: VirtualThermostatClaimsService;
+	let mutationRegistry: ClimateAutomationRegistryService,mutationWriter: ClimateAutomationWriterService;
+	let mutationProvider: VirtualThermostatAutomationService;
+	let mutationGraph: VirtualDependencyGraphService;
+	let mutationStructure: DeviceStructureLockService;
 	let graphValidated: boolean;
 	let graphGeneration: number;
 	let publicationGate: Promise<void> | null;
@@ -430,21 +444,33 @@ describe('virtual thermostat durable runtime', () => {
 				return () => graphValidated && generation === graphGeneration;
 			},
 		} as unknown as VirtualDependencyGraphService;
-		configs = new VirtualThermostatConfigService(
-			database,
-			new DeviceStructureLockService(),
-			new VirtualDependencyGraphService(database),
-			claims,
-			events,
-			values,
-		);
-		comfort = new VirtualThermostatComfortService(
-			database,
-			new DeviceStructureLockService(),
-			new VirtualDependencyGraphService(database),
-			claims,
-			events,
-		);
+		// The old isolated runtime sample/delegate fixture above remains synthetic and is not route authority evidence.
+		// Mutation routes use a separate real core/registry/claims/value pipeline and the SAME actual owned SQLite database.
+		mutationStructure = new DeviceStructureLockService();
+		mutationRegistry = new ClimateAutomationRegistryService();
+		mutationWriter = new ClimateAutomationWriterService(database,mutationStructure,mutationRegistry,new ConfigService({ FB_CLI: 'off' }));
+		mutationGraph = new VirtualDependencyGraphService(database,new ConfigService({ FB_CLI: 'off' }),mutationWriter);
+		mutationClaims = new VirtualThermostatClaimsService(database,mutationStructure,mutationGraph,new PropertyCommandAdmissionRegistryService(),events);
+		mutationPipeline = await Test.createTestingModule({ providers: [PropertyValueService,PropertyValueLockService,
+			PropertyValueSourceRegistryService,PropertyProducerRegistryService,StorageService,
+			{ provide: DataSource,useValue: database },{ provide: EventEmitter2,useValue: events },
+			{ provide: ConfigService,useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
+			{ provide: ModuleConfigService,useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),{ primaryStorage: 'runtime-mutation-fixture' }) } },
+		] }).compile();
+		const storage = mutationPipeline.get(StorageService);
+		const plugin: StoragePlugin = { name: 'runtime-mutation-fixture',initialize: () => Promise.resolve(),destroy: () => Promise.resolve(),
+			isAvailable: () => true,writePoints: () => Promise.resolve(),query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('No raw mutation fixture history')),registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
+		storage.registerPlugin(plugin.name,plugin); mutationValues = mutationPipeline.get(PropertyValueService);
+		configs = new VirtualThermostatConfigService(database,mutationStructure,mutationGraph,mutationClaims,events,mutationValues,undefined,mutationWriter);
+		comfort = new VirtualThermostatComfortService(database,mutationStructure,mutationGraph,mutationClaims,events,mutationWriter);
+		mutationProvider = new VirtualThermostatAutomationService(mutationWriter,mutationRegistry,mutationGraph,new ConfigService({ FB_CLI: 'off' }),undefined,configs,comfort);
+		mutationProvider.onModuleInit();
+		await mutationGraph.onApplicationBootstrap(); await mutationClaims.onApplicationBootstrap();
+		await database.query('DROP TABLE "devices_module_climate_automation_slots"');
+		await database.query('DROP TABLE "devices_module_climate_automation_sources"');
+		await new AddClimateAutomationOwnership1000000000047().up(database.createQueryRunner());
 		makeRuntime = (runtimeGraph = graph, aggregate, runtimeTransport = transport) =>
 			new VirtualThermostatRuntimeService(
 				database,
@@ -465,10 +491,12 @@ describe('virtual thermostat durable runtime', () => {
 	afterEach(async () => {
 		// Close runtime and original managed authority before awaiting resources or restoring protocol mocks.
 		runtime?.onModuleDestroy();
+		mutationProvider?.onModuleDestroy(); comfort?.onModuleDestroy(); mutationClaims?.onModuleDestroy(); mutationRegistry?.onModuleDestroy();
 		for (const fixture of realGuardFixtures) fixture.revoke();
 		try {
 			await Promise.all(realGuardFixtures.map((fixture) => fixture.close()));
 		} finally {
+			await mutationPipeline?.close();
 			jest.restoreAllMocks();
 			jest.useRealTimers();
 			if (database?.isInitialized) await database.destroy();
@@ -3365,7 +3393,10 @@ describe('virtual thermostat durable runtime', () => {
 		beforeEach(async () => {
 			runtime.onModuleDestroy(); // close the legacy stand-in runtime; it is NOT the admission proof
 			actualStructure = new DeviceStructureLockService();
-			actualGraph = new VirtualDependencyGraphService(database);
+			mutationProvider.onModuleDestroy(); comfort.onModuleDestroy(); mutationClaims.onModuleDestroy(); mutationRegistry.onModuleDestroy();
+			mutationRegistry = new ClimateAutomationRegistryService();
+			mutationWriter = new ClimateAutomationWriterService(database,actualStructure,mutationRegistry,new ConfigService({ FB_CLI: 'off' }));
+			actualGraph = new VirtualDependencyGraphService(database,new ConfigService({ FB_CLI: 'off' }),mutationWriter);
 			await actualGraph.onApplicationBootstrap();
 			actualClaims = new VirtualThermostatClaimsService(
 				database,
@@ -3381,7 +3412,10 @@ describe('virtual thermostat durable runtime', () => {
 			// Reuse ONLY the helper's existing explicitly synthetic qualification boundary. No new fields or private map forcing.
 			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
 			values = fixture.values;
-			comfort = new VirtualThermostatComfortService(database, actualStructure, actualGraph, actualClaims, events);
+			comfort = new VirtualThermostatComfortService(database,actualStructure,actualGraph,actualClaims,events,mutationWriter);
+			configs = new VirtualThermostatConfigService(database,actualStructure,actualGraph,actualClaims,events,values,undefined,mutationWriter);
+			mutationProvider = new VirtualThermostatAutomationService(mutationWriter,mutationRegistry,actualGraph,new ConfigService({ FB_CLI: 'off' }),undefined,configs,comfort);
+			mutationProvider.onModuleInit();
 			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 			await comfort.configure(
 				controllerId,
@@ -3424,6 +3458,31 @@ describe('virtual thermostat durable runtime', () => {
 			fixture?.revoke();
 		});
 
+		// New diagnostic-only captures reuse the existing explicitly synthetic installation boundary, not HW authority.
+		it('observes original qualification data without installation or events and refuses a subsequent revoke without recapture',async () => {
+			const rows = await database.manager.findBy(VirtualThermostatActuatorClaimEntity,{ controllerId });
+			const capture = actualClaims.captureDiagnosticQualifications(rows),emit = jest.spyOn(events,'emit');
+			try {
+				const clock = Object.freeze({ wallMs: Date.now(),monoMs: performance.now() });
+				for (const row of rows) expect(actualClaims.evaluateDiagnosticQualification(capture,row.id,false,clock)).not.toBeNull();
+				expect(actualClaims.diagnosticQualificationsCurrent(capture)).toBe(true); expect(emit).not.toHaveBeenCalled();
+				actualClaims.revokeAllQualifications();
+				expect(actualClaims.diagnosticQualificationsCurrent(capture)).toBe(false);
+				for (const row of rows) expect(() => actualClaims.evaluateDiagnosticQualification(capture,row.id,false,clock)).toThrow('lost');
+			} finally { actualClaims.closeDiagnosticQualifications(capture); emit.mockRestore(); }
+		});
+		it('keeps missing qualification unavailable and remembers actual absence ABA across an admitted finite capture',async () => {
+			const rows = await database.manager.findBy(VirtualThermostatActuatorClaimEntity,{ controllerId });
+			actualClaims.revokeAllQualifications();
+			const capture = actualClaims.captureDiagnosticQualifications(rows);
+			try {
+				const clock = Object.freeze({ wallMs: Date.now(),monoMs: performance.now() });
+				for (const row of rows) expect(actualClaims.evaluateDiagnosticQualification(capture,row.id,false,clock)).toBeNull();
+				for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+				actualClaims.revokeAllQualifications();
+				expect(actualClaims.diagnosticQualificationsCurrent(capture)).toBe(false);
+			} finally { actualClaims.closeDiagnosticQualifications(capture); }
+		});
 		it.each(['before-send', 'after-send'] as const)(
 			'keeps original actual SDK %s outcome truthful when comfort entry waits on its first real read',
 			async (boundary) => {

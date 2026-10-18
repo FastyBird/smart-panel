@@ -439,7 +439,7 @@ export class DeviceCreationPublicationEngine {
 			status,
 			deletions: new Set<string>(),
 			invalidDeletion: false,
-			overlap: (publicationIds.get(id)?.size ?? 0) > 0,
+			overlap: (publicationIds.get(id)?.size ?? 0) > 0 || (mutationPublicationIds.get(id)?.size ?? 0) > 0,
 			changed: typeof id !== 'string' || id.length === 0,
 		};
 		readCacheRecords.set(token, record);
@@ -567,6 +567,7 @@ export class DeviceCreationPublicationEngine {
 	}
 
 	static invalidateIds(ids: readonly string[]): void {
+		originalControllerMutationMethods.invalidateIds.call(ControllerMutationPublicationEngine,ids);
 		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, ids);
 		for (const id of ids) {
 			for (const record of publicationIds.get(id) ?? []) record.active = false;
@@ -728,6 +729,7 @@ export class DeviceCreationPublicationEngine {
 		query: string,
 		parameters: readonly unknown[] = [],
 	): void {
+		originalControllerMutationMethods.observeQuery.call(ControllerMutationPublicationEngine,source, runner, query, parameters);
 		const text = query.trim();
 		if (
 			/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(
@@ -756,6 +758,7 @@ export class DeviceCreationPublicationEngine {
 	}
 
 	static invalidateAll(): void {
+		originalControllerMutationMethods.invalidateAll.call(ControllerMutationPublicationEngine);
 		for (const entries of readCacheIds.values())
 			for (const token of entries) {
 				const record = readCacheRecords.get(token);
@@ -1141,10 +1144,12 @@ export function creationHasDataMethod(receiver: object, key: string): boolean {
 	return false;
 }
 
+const immutableCreationDates = new WeakMap<Date, Date>();
+
 /** Owned payload only. Date setters cannot mutate the original instant through a frozen Date's internal slot. */
 export function freezeCreationSnapshot<T extends object>(value: T, visited = new WeakSet<object>()): T {
-	if (value instanceof Date)
-		return new Proxy(value, {
+	if (value instanceof Date) {
+		const immutable = new Proxy(value, {
 			get(target, key) {
 				const member: unknown = Reflect.get(target, key);
 				if (typeof member !== 'function') return member;
@@ -1164,6 +1169,9 @@ export function freezeCreationSnapshot<T extends object>(value: T, visited = new
 				return false;
 			},
 		});
+		immutableCreationDates.set(immutable,immutableCreationDates.get(value) ?? value);
+		return immutable;
+	}
 	if (Object.isFrozen(value) || visited.has(value)) return value;
 	visited.add(value);
 	for (const key of Reflect.ownKeys(value)) {
@@ -1184,4 +1192,232 @@ export function creationDataMemberCurrent(receiver: object, key: string): boolea
 		current = parent && typeof parent === 'object' ? parent : null;
 	}
 	return false;
+}
+
+
+/** Read-only finite descriptor observation. It is never a command, manager or publication capability. */
+export class DiagnosticTreeObservation {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+interface DiagnosticTreeEntry {
+	readonly object: object;
+	readonly prototype: object | null;
+	readonly fields: readonly Readonly<{ key: PropertyKey; value: unknown; enumerable: boolean; configurable: boolean; writable: boolean }>[];
+	readonly dateValue: number | undefined;
+}
+const diagnosticTrees = new WeakMap<DiagnosticTreeObservation, readonly DiagnosticTreeEntry[]>();
+const originalDateValue: Readonly<{ call: (receiver: Date) => number }> = Date.prototype.getTime;
+
+/** Owned persisted-data copy; constructors/getters/functions are never invoked or made into authority. */
+export function ownDiagnosticData<T extends object>(value: T): T {
+	if (Array.isArray(value) || value instanceof Date) throw new Error('Diagnostic record root required');
+	const seen = new WeakMap<object,object>();
+	const objects: Readonly<{ create: <RecordType extends object>(prototype: object | null) => RecordType;
+		getPrototypeOf: (value: object) => object | null }> = Object;
+	const top: T = objects.create(objects.getPrototypeOf(value));
+	seen.set(value,top);
+	const copy = (source: unknown): unknown => {
+		if (typeof source === 'function') throw new Error('Persisted diagnostic data cannot contain functions');
+		if (!source || typeof source !== 'object') return source;
+		const previous = seen.get(source); if (previous) return previous;
+		if (source instanceof Date) {
+			const result = new Date(originalDateValue.call(immutableCreationDates.get(source) ?? source)); seen.set(source,result); return result;
+		}
+		if (Array.isArray(source)) {
+			const result: unknown[] = []; seen.set(source,result);
+			for (let index = 0; index < source.length; index++) {
+				const field = Object.getOwnPropertyDescriptor(source,String(index));
+				if (!field || field.get || field.set) throw new Error('Dense original diagnostic arrays required');
+				result.push(copy(field.value));
+			}
+			if (Object.keys(source).length !== source.length) throw new Error('Plain original diagnostic arrays required');
+			return result;
+		}
+		const target = objects.create(objects.getPrototypeOf(source)); seen.set(source,target); populate(source,target); return target;
+	};
+	const populate = (source: object,target: object): void => {
+		for (const key of Reflect.ownKeys(source)) {
+			const field = Object.getOwnPropertyDescriptor(source,key);
+			if (!field || field.get || field.set) throw new Error('Original persisted data descriptors required');
+			Object.defineProperty(target,key,{ value: copy(field.value),enumerable: field.enumerable === true,writable: true,configurable: true });
+		}
+	};
+	populate(value,top); return top;
+}
+
+export function captureDiagnosticTree(value: unknown): DiagnosticTreeObservation {
+	const entries: DiagnosticTreeEntry[] = [];
+	const visited = new Set<object>();
+	const visit = (item: unknown): void => {
+		if ((typeof item !== 'object' || item === null) && typeof item !== 'function') return;
+		if (visited.has(item)) return;
+		visited.add(item);
+		const fields: DiagnosticTreeEntry['fields'][number][] = [];
+		for (const key of Reflect.ownKeys(item)) {
+			const descriptor = Object.getOwnPropertyDescriptor(item, key);
+			if (!descriptor || descriptor.get || descriptor.set) throw new Error('Diagnostic data fields required');
+			const child: unknown = descriptor.value;
+			fields.push(Object.freeze({ key, value: child, enumerable: descriptor.enumerable === true, configurable: descriptor.configurable === true, writable: descriptor.writable === true }));
+			// Functions are original opaque references, not object graphs or new authority.
+			if (typeof child !== 'function') visit(child);
+		}
+		const prototype: unknown = Object.getPrototypeOf(item);
+		if (prototype !== null && typeof prototype !== 'object' && typeof prototype !== 'function') throw new Error('Diagnostic prototype unavailable');
+		entries.push(Object.freeze({ object: item, prototype, fields: Object.freeze(fields), dateValue: item instanceof Date ? originalDateValue.call(immutableCreationDates.get(item) ?? item) : undefined }));
+	};
+	visit(value);
+	const token = Object.freeze(new DiagnosticTreeObservation());
+	diagnosticTrees.set(token, Object.freeze(entries));
+	return token;
+}
+export function diagnosticTreeCurrent(token: DiagnosticTreeObservation): boolean {
+	const entries = diagnosticTrees.get(token);
+	if (!entries || !creationMethodCurrent(Date.prototype, 'getTime', originalDateValue)) return false;
+	for (const entry of entries) {
+		if (Object.getPrototypeOf(entry.object) !== entry.prototype || Reflect.ownKeys(entry.object).length !== entry.fields.length) return false;
+		if (entry.dateValue !== undefined && (!(entry.object instanceof Date) || originalDateValue.call(immutableCreationDates.get(entry.object) ?? entry.object) !== entry.dateValue)) return false;
+		for (const field of entry.fields) {
+			const now = Object.getOwnPropertyDescriptor(entry.object, field.key);
+			if (!now || now.get || now.set || now.value !== field.value || (now.enumerable === true) !== field.enumerable || (now.configurable === true) !== field.configurable || (now.writable === true) !== field.writable) return false;
+		}
+	}
+	return true;
+}
+export function closeDiagnosticTree(token: DiagnosticTreeObservation): void { diagnosticTrees.delete(token); }
+
+/** Existing-controller receipt capability; creation and observational tokens cannot authorize it. */
+export class ControllerMutationPublicationLease {
+	toJSON(): Readonly<Record<string, never>> { return {}; }
+}
+export interface ControllerMutationPublicationEvidence {
+	readonly source: DataSource;
+	readonly controllerId: string;
+	readonly identities: readonly string[];
+	readonly properties: readonly ChannelPropertyEntity[];
+	readonly destinations: CreationStorageDestinations;
+}
+interface MutationPublicationRecord {
+	readonly writer: ClimateAutomationWriterService;
+	readonly methods: Readonly<Pick<ClimateAutomationWriterService,'admitExistingPublication' | 'registerExistingPublication' |
+		'isExistingPublicationAcknowledged' | 'isExistingPublicationCurrent' | 'assertExistingPublicationValue' | 'checkExistingPublication' | 'probeExistingPublication' | 'closeExistingPublication'>>;
+	readonly evidence: ControllerMutationPublicationEvidence;
+	active: boolean;
+	eligible: boolean;
+	submitted: number;
+	completed: number;
+}
+const mutationPublications = new WeakMap<ControllerMutationPublicationLease, MutationPublicationRecord>();
+const mutationPublicationIds = new Map<string, Set<MutationPublicationRecord>>();
+const mutationLeafQueries = new WeakMap<QueryRunner, Readonly<{ lease: ControllerMutationPublicationLease; query: string; parameters: readonly unknown[] }>>();
+
+export class ControllerMutationPublicationEngine {
+	static fromReserved(writer: ClimateAutomationWriterService, manager: EntityManager, turn: ClimateAutomationParticipantTurn, original: object): ControllerMutationPublicationLease {
+		if (!controllerMutationMethodsCurrent()) throw new Error('Original mutation engine required');
+		const methods = Object.freeze({ admitExistingPublication: writer.admitExistingPublication,registerExistingPublication: writer.registerExistingPublication,
+			isExistingPublicationAcknowledged: writer.isExistingPublicationAcknowledged,isExistingPublicationCurrent: writer.isExistingPublicationCurrent,
+			assertExistingPublicationValue: writer.assertExistingPublicationValue,checkExistingPublication: writer.checkExistingPublication,probeExistingPublication: writer.probeExistingPublication,
+			closeExistingPublication: writer.closeExistingPublication });
+		const evidence = methods.admitExistingPublication.call(writer,manager, turn, original);
+		const lease = Object.freeze(new ControllerMutationPublicationLease());
+		const record: MutationPublicationRecord = { writer,methods,evidence,active: true,eligible: false,submitted: 0,completed: 0 };
+		mutationPublications.set(lease, record);
+		for (const id of evidence.identities) {
+			const records = mutationPublicationIds.get(id) ?? new Set<MutationPublicationRecord>();
+			records.add(record); mutationPublicationIds.set(id, records);
+		}
+		methods.registerExistingPublication.call(writer,lease,original);
+		overlapReadCaches(evidence.identities);
+		return lease;
+	}
+	static acknowledge(lease: ControllerMutationPublicationLease): void {
+		const record = mutationPublications.get(lease);
+		if (!record || !record.active || record.eligible || !record.methods.isExistingPublicationAcknowledged.call(record.writer,lease)) throw new Error('Original mutation acknowledgement required');
+		record.eligible = true;
+	}
+	static assert(lease: ControllerMutationPublicationLease, propertyId?: string): void {
+		const record = mutationPublications.get(lease);
+		if (!record || !record.active || !record.eligible || (propertyId !== undefined && !record.evidence.identities.includes(propertyId)) || !record.methods.isExistingPublicationCurrent.call(record.writer,lease)) throw new Error('Original mutation publication unavailable');
+	}
+	/** Effect boundary only. The pure assert above remains the native COMMIT guard. */
+	static check(lease: ControllerMutationPublicationLease,propertyId?: string): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease,propertyId);
+		const record = mutationPublications.get(lease); if (!record) throw new Error('Original publication unavailable');
+		record.methods.checkExistingPublication.call(record.writer,lease);
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease,propertyId);
+	}
+	static assertProperty(lease: ControllerMutationPublicationLease, property: ChannelPropertyEntity): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease, property.id);
+		if (!mutationPublications.get(lease)?.evidence.properties.includes(property)) throw new Error('Original mutation property snapshot required');
+	}
+	static assertValue(lease: ControllerMutationPublicationLease, id: string, value: unknown): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease,id);
+		const record = mutationPublications.get(lease);
+		if (!record) throw new Error('Original mutation mirror unavailable');
+		record.methods.assertExistingPublicationValue.call(record.writer,lease,id,value);
+	}
+	static destinations(lease: ControllerMutationPublicationLease): CreationStorageDestinations {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); const record = mutationPublications.get(lease);
+		if (!record) throw new Error('Original mutation destinations unavailable');
+		return record.evidence.destinations;
+	}
+	static async probe(lease: ControllerMutationPublicationLease, propertyId?: string): Promise<void> {
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease, propertyId); const record = mutationPublications.get(lease);
+		if (!record) throw new Error('Original mutation probe unavailable');
+		await record.methods.probeExistingPublication.call(record.writer,lease,propertyId);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease, propertyId);
+	}
+	static noteSubmission(lease: ControllerMutationPublicationLease): void { originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); const record = mutationPublications.get(lease); if (record) record.submitted++; }
+	static noteCompletion(lease: ControllerMutationPublicationLease): void { const record = mutationPublications.get(lease); if (record) record.completed++; }
+	static report(lease: ControllerMutationPublicationLease): Readonly<{ submitted: number; completed: number }> { const record = mutationPublications.get(lease); return Object.freeze({ submitted: record?.submitted ?? 0, completed: record?.completed ?? 0 }); }
+	static expectQuery(lease: ControllerMutationPublicationLease, runner: QueryRunner, query: string, parameters: readonly unknown[]): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); if (mutationLeafQueries.has(runner)) throw new Error('Mutation probe already active');
+		mutationLeafQueries.set(runner, Object.freeze({ lease, query, parameters: Object.freeze([...parameters]) }));
+	}
+	/** Exact original owned native probe only. A read/forged token can never create an exemption. */
+	static isExpectedProbe(lease: ControllerMutationPublicationLease,runner: QueryRunner,query: string,parameters: readonly unknown[]): boolean {
+		const own = mutationLeafQueries.get(runner);
+		return !!own && own.lease === lease && mutationPublications.has(lease) && own.query === query &&
+			own.parameters.length === parameters.length && own.parameters.every((value,index) => Object.is(value,parameters[index]));
+	}
+
+	static endQuery(lease: ControllerMutationPublicationLease, runner: QueryRunner): void { if (mutationLeafQueries.get(runner)?.lease === lease) mutationLeafQueries.delete(runner); }
+	static invalidateIds(ids: readonly string[]): void { for (const id of ids) for (const record of mutationPublicationIds.get(id) ?? []) record.active = false; }
+	static invalidateAll(): void { for (const records of mutationPublicationIds.values()) for (const record of records) record.active = false; }
+	static observeQuery(source: DataSource, runner: QueryRunner, query: string, parameters: readonly unknown[]): void {
+		if (/^\s*(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(query)) return;
+		if (/^(?:INSERT INTO|UPDATE|DELETE FROM) "devices_module_property_value_locks"(?:\s|$)/i.test(query.trim())) return;
+		const own = mutationLeafQueries.get(runner);
+		for (const records of mutationPublicationIds.values()) for (const record of records) {
+			if (record.evidence.source !== source) continue;
+			if (own && mutationPublications.get(own.lease) === record && own.query === query && own.parameters.length === parameters.length && own.parameters.every((value, index) => Object.is(value, parameters[index]))) continue;
+			record.active = false;
+		}
+	}
+	static close(lease: ControllerMutationPublicationLease): void {
+		const record = mutationPublications.get(lease); if (!record) return;
+		record.active = false;
+		for (const id of record.evidence.identities) { const records = mutationPublicationIds.get(id); records?.delete(record); if (!records?.size) mutationPublicationIds.delete(id); }
+		mutationPublications.delete(lease);
+		record.methods.closeExistingPublication.call(record.writer,lease);
+	}
+}
+
+// Original module-evaluation functions. Capture is veto-only and cleanup cannot dispatch to a replacement engine.
+export const originalControllerMutationMethods = Object.freeze({ fromReserved: ControllerMutationPublicationEngine.fromReserved,
+	acknowledge: ControllerMutationPublicationEngine.acknowledge,assert: ControllerMutationPublicationEngine.assert,check: ControllerMutationPublicationEngine.check,
+	assertProperty: ControllerMutationPublicationEngine.assertProperty,assertValue: ControllerMutationPublicationEngine.assertValue,
+	destinations: ControllerMutationPublicationEngine.destinations,probe: ControllerMutationPublicationEngine.probe,
+	noteSubmission: ControllerMutationPublicationEngine.noteSubmission,noteCompletion: ControllerMutationPublicationEngine.noteCompletion,
+	report: ControllerMutationPublicationEngine.report,expectQuery: ControllerMutationPublicationEngine.expectQuery,
+	isExpectedProbe: ControllerMutationPublicationEngine.isExpectedProbe,endQuery: ControllerMutationPublicationEngine.endQuery,
+	invalidateIds: ControllerMutationPublicationEngine.invalidateIds,invalidateAll: ControllerMutationPublicationEngine.invalidateAll,
+	observeQuery: ControllerMutationPublicationEngine.observeQuery,close: ControllerMutationPublicationEngine.close });
+export function controllerMutationMethodsCurrent(): boolean {
+	return Object.entries(originalControllerMutationMethods).every(([key,method]) => creationMethodCurrent(ControllerMutationPublicationEngine,key,method));
+}
+export function closeControllerMutationPublication(lease: ControllerMutationPublicationLease): void {
+	originalControllerMutationMethods.close.call(ControllerMutationPublicationEngine,lease);
+}
+export function controllerMutationPublicationReport(lease: ControllerMutationPublicationLease): Readonly<{ submitted: number; completed: number }> {
+	return originalControllerMutationMethods.report.call(ControllerMutationPublicationEngine,lease);
 }

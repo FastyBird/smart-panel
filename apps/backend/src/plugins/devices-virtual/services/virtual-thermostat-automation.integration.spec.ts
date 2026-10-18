@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { EntityManager, EntityTarget, ObjectLiteral } from 'typeorm';
+import { DataSource, EntityManager, EntityTarget, ObjectLiteral } from 'typeorm';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 
@@ -29,6 +30,15 @@ import {
 	ClimateAutomationSourceEntity,
 } from '../../../modules/devices/entities/climate-automation.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ConfigService as ModuleConfigService } from '../../../modules/config/services/config.service';
+import { StorageConfigModel } from '../../../modules/storage/models/config.model';
+import { StorageService } from '../../../modules/storage/services/storage.service';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
+import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
@@ -2543,6 +2553,39 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		const coreOnly = new ClimateAutomationRegistryService();
 		expect(coreOnly.captureProvider(key)).toBeNull();
 		coreOnly.onModuleDestroy();
+	});
+
+	it('resolves actual closed configuration and comfort engines and routes a real admitted setting through their original provider',async () => {
+		service.onModuleDestroy();
+		const events = new EventEmitter2();
+		const module = await Test.createTestingModule({ providers: [VirtualThermostatAutomationService,
+			VirtualThermostatConfigService,VirtualThermostatComfortService,VirtualThermostatClaimsService,
+			PropertyValueService,PropertyValueLockService,PropertyProducerRegistryService,PropertyValueSourceRegistryService,
+			PropertyCommandAdmissionRegistryService,StorageService,
+			{ provide: DataSource,useValue: database },{ provide: EventEmitter2,useValue: events },
+			{ provide: ClimateAutomationWriterService,useValue: writer },{ provide: ClimateAutomationRegistryService,useValue: registry },
+			{ provide: DeviceStructureLockService,useValue: new DeviceStructureLockService() },
+			{ provide: VirtualDependencyGraphService,useValue: graph },{ provide: ConfigService,useValue: new ConfigService({ FB_CLI: 'off' }) },
+			{ provide: ModuleConfigService,useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),{ primaryStorage: 'closed-route-nest' }) } },
+		] }).compile();
+		const plugin: StoragePlugin = { name: 'closed-route-nest',initialize: () => Promise.resolve(),destroy: () => Promise.resolve(),isAvailable: () => true,
+			writePoints: () => Promise.resolve(),query: <T>() => Promise.resolve<T[]>([]),queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),
+			registerSchema: () => undefined,dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
+		module.get(StorageService).registerPlugin(plugin.name,plugin);
+		try {
+			await module.init();
+			const capture = currentProvider(),capability = capture.implementation.existingControllerV1;
+			expect(capability?.codec).toBe('virtual-thermostat-existing:v1'); expect(capture.isCurrent()).toBe(true);
+			const property = await database.manager.createQueryBuilder(ChannelPropertyEntity,'property').leftJoinAndSelect('property.channel','channel')
+				.leftJoinAndSelect('channel.device','device').where('property.id = :id',{ id: properties.heating_setpoint }).callListeners(false).getOneOrFail();
+			const channel = property.channel;
+			if (!channel || typeof channel === 'string' || !channel.device || typeof channel.device === 'string') throw new Error('Missing actual setting lineage');
+			const before = await whole(),configs = module.get(VirtualThermostatConfigService);
+			expect(await configs.command([{ property,channel,device: channel.device,value: 21 }])).toBe(true);
+			expect((await config()).policy.heatingSetpoint).toBe(21); expect((await slot()).manualHold).toBe(true);
+			expect((await whole()).graph).toEqual(before.graph);
+			expect(JSON.stringify(await configs.get(ids.controller))).not.toMatch(/manualGeneration|controllerIncarnation|installEvidence|candidateId/);
+		} finally { await module.close(); }
 	});
 	it('does not fabricate creation capability from an otherwise current manual-only provider', async () => {
 		const original = currentProvider();

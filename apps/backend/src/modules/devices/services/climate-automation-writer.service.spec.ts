@@ -291,6 +291,42 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 		).toEqual({ outcome: 'unchanged', items: [{ outcome: 'unchanged' }] });
 	});
 
+
+	// BEGIN closed existing-controller admission source drafts (UNRUN)
+	it('poisons a caught ambient existing-controller root before any request getter or second lock',async () => {
+		const locks = jest.spyOn(lock,'runExclusiveReleased'); let getters = 0;
+		const before = await database.manager.find(ClimateAutomationSlotEntity);
+		const request = { get providerKey(): never { getters++; throw new Error('Unreachable provider getter'); },
+			get controllerId(): never { getters++; throw new Error('Unreachable controller getter'); },
+			kind: 'preset:v1',get input(): never { getters++; throw new Error('Unreachable input getter'); }
+		} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
+		const result = writer.runReserved(async (manager,scope) => {
+			await writer.commitExistingControllerV1(request).catch(() => undefined);
+			return writer.readSlot(manager,scope,controllerId);
+		});
+		await expect(result).rejects.toMatchObject({ commitOutcome: 'rolled_back' });
+		expect(getters).toBe(0); expect(locks).toHaveBeenCalledTimes(1);
+		expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(before);
+		expect((await writer.runReserved((manager,scope) => writer.readSlot(manager,scope,controllerId))).outcome).toBe('unchanged');
+	});
+	it('refuses an ordinary SELECT caller lease before request getters or structural wait',async () => {
+		let getters = 0,observed = false;
+		const request = { get providerKey(): never { getters++; throw new Error('Unreachable provider'); },
+			kind: 'settings:v1',
+			get input(): never { getters++; throw new Error('Unreachable business inputs'); }
+		} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
+		const locks = jest.spyOn(lock,'runExclusiveReleased');
+		const observer = { afterQuery: async (event: import('typeorm').AfterQueryEvent<unknown>) => {
+			if (event.query !== 'SELECT 1 AS ordinary_existing_read') return;
+			observed = true; expect(event.queryRunner.isTransactionActive).toBe(false);
+			await expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({ commitOutcome: 'not_started' });
+		} };
+		database.subscribers.push(observer);
+		try { await database.query('SELECT 1 AS ordinary_existing_read'); }
+		finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+		expect(observed).toBe(true); expect(getters).toBe(0); expect(locks).not.toHaveBeenCalled();
+	});
+	// END closed existing-controller admission source drafts
 	it('joins only explicit original manager/scope without a second lock/transaction and retains caught settled child failures', async () => {
 		const locks = jest.spyOn(lock, 'runExclusiveReleased');
 		let starts = 0;
@@ -2876,4 +2912,24 @@ describe('closed original creation rejects before business getters', () => {
 			expect(source.isInitialized).toBe(false);
 		},
 	);
+});
+
+
+describe('closed existing-controller preflight without initialized database',() => {
+	it.each(['shared','exclusive','CLI'] satisfies readonly ('shared' | 'exclusive' | 'CLI')[])(
+		'refuses %s before getters, connection work or released entry',async (mode) => {
+			const source = new SqliteDataSource({ type: 'sqlite',database: ':memory:',synchronize: false });
+			const lock = new DeviceStructureLockService(),registry = new ClimateAutomationRegistryService();
+			const writer = new ClimateAutomationWriterService(source,lock,registry,new ConfigService({ FB_CLI: mode === 'CLI' ? 'on' : 'off' }));
+			let getters = 0;
+			const request = { get providerKey(): never { getters++; throw new Error('Unreachable provider'); },
+				get controllerId(): never { getters++; throw new Error('Unreachable controller'); },kind: 'configure-existing:v1',
+				get input(): never { getters++; throw new Error('Unreachable inputs'); }
+			} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
+			const entry = jest.spyOn(lock,'runExclusiveReleased'),query = jest.spyOn(source.manager,'query');
+			const attempt = () => expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({ commitOutcome: 'not_started' });
+			if (mode === 'shared') await lock.runShared(attempt);
+			else if (mode === 'exclusive') await lock.runExclusive(attempt); else await attempt();
+			expect(getters).toBe(0); expect(entry).not.toHaveBeenCalled(); expect(query).not.toHaveBeenCalled(); expect(source.isInitialized).toBe(false);
+		});
 });
