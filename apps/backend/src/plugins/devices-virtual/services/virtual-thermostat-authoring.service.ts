@@ -73,7 +73,7 @@ interface AuthoringCall<R, A extends unknown[], V> {
 	readonly call: (receiver: R, ...args: A) => V;
 }
 
-const fail = (message: string): never => {
+const fail: (message: string) => never = (message: string): never => {
 	throw new DevicesValidationException(message);
 };
 
@@ -346,11 +346,17 @@ function creationWire(value: unknown, schema: string): ClimateAutomationJson {
 			if (Array.isArray(value)) {
 				if (schema !== null && !array) fail('Invalid creation wire object.');
 				const length = value.length;
-				if (keys.length !== length + 1 || keys.some((key) =>
-					key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length)))
+				if (
+					keys.length !== length + 1 ||
+					keys.some(
+						(key) =>
+							key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= length),
+					)
+				)
 					fail('Sparse or extended creation wire array.');
 				const result: ClimateAutomationJson[] = [];
-				for (let index = 0; index < length; index++) result.push(read(Reflect.get(value, String(index)), schema, false));
+				for (let index = 0; index < length; index++)
+					result.push(read(Reflect.get(value, String(index)), schema, false));
 				return Object.freeze(result);
 			}
 			if (array) fail('Invalid creation wire array.');
@@ -455,7 +461,10 @@ export class VirtualThermostatAuthoringService {
 	}
 
 	/** Closed synchronous public DTO-to-wire adapter. Root owns admission/reentry poisoning. */
-	snapshotCreationInput(device: unknown, configuration: unknown): Readonly<{
+	snapshotCreationInput(
+		device: unknown,
+		configuration: unknown,
+	): Readonly<{
 		device: ClimateAutomationJson;
 		configuration: ClimateAutomationJson;
 	}> {
@@ -766,7 +775,10 @@ export class VirtualThermostatAuthoringService {
 		for (const row of prepared.coolingDependencies) add(ThermostatCoolingDependencyEntity, row);
 		creationWire(draft.dto, 'CreateVirtualDeviceDto');
 		const catalog = this.creationCatalog(inserts, draft.device.id);
-		const configuration = creationWire(this.configurations.describeCreated(prepared, graphRevision + 1), 'CreatedConfigurationV1');
+		const configuration = creationWire(
+			this.configurations.describeCreated(prepared, graphRevision + 1),
+			'CreatedConfigurationV1',
+		);
 		// Only trusted retained models reach class-transformer here. Required model facts are
 		// checked on the result too; exposeUnsetFields:false is not permission to drop them.
 		const responsePlain: unknown = instanceToPlain(
@@ -798,33 +810,68 @@ export class VirtualThermostatAuthoringService {
 			for (const [name, wire] of fields) {
 				const original: unknown = Reflect.get(source, name);
 				const expected = original instanceof Date ? original.toISOString() : original;
-				if (expected === undefined || climateAutomationCanonical(expected) !== climateAutomationCanonical(Reflect.get(target, wire)))
+				if (
+					expected === undefined ||
+					climateAutomationCanonical(expected) !== climateAutomationCanonical(Reflect.get(target, wire))
+				)
 					fail('Missing or changed retained catalog fact.');
 			}
 		};
 		const common: readonly (readonly [string, string])[] = [
-			['id', 'id'], ['type', 'type'], ['createdAt', 'created_at'], ['updatedAt', 'updated_at'],
-			['category', 'category'], ['identifier', 'identifier'], ['name', 'name'],
+			['id', 'id'],
+			['type', 'type'],
+			['createdAt', 'created_at'],
+			['updatedAt', 'updated_at'],
+			['category', 'category'],
+			['identifier', 'identifier'],
+			['name', 'name'],
 		];
-		row(device, plain, [...common, ['description', 'description'], ['enabled', 'enabled'],
-			['hidden', 'hidden'], ['hiddenBy', 'hidden_by'], ['roomId', 'room_id'], ['mode', 'mode'],
-			['zoneIds', 'zone_ids'], ['controls', 'controls']]);
+		row(device, plain, [
+			...common,
+			['description', 'description'],
+			['enabled', 'enabled'],
+			['hidden', 'hidden'],
+			['hiddenBy', 'hidden_by'],
+			['roomId', 'room_id'],
+			['mode', 'mode'],
+			['zoneIds', 'zone_ids'],
+			['controls', 'controls'],
+		]);
 		if (!plain || typeof plain !== 'object') fail('Missing retained catalog.');
-		row(device.status, Reflect.get(plain, 'status'), [['online', 'online'], ['status', 'status'], ['lastChanged', 'last_changed']]);
+		row(device.status, Reflect.get(plain, 'status'), [
+			['online', 'online'],
+			['status', 'status'],
+			['lastChanged', 'last_changed'],
+		]);
 		const channels: unknown = Reflect.get(plain, 'channels');
 		if (!Array.isArray(channels) || channels.length !== device.channels.length) fail('Changed retained channels.');
 		for (let index = 0; index < device.channels.length; index++) {
 			const channel = device.channels[index];
 			const output: unknown = channels[index];
-			row(channel, output, [...common, ['description', 'description'], ['device', 'device'], ['parentId', 'parent'], ['controls', 'controls']]);
+			row(channel, output, [
+				...common,
+				['description', 'description'],
+				['device', 'device'],
+				['parentId', 'parent'],
+				['controls', 'controls'],
+			]);
 			if (!output || typeof output !== 'object') fail('Missing retained channel.');
 			const properties: unknown = Reflect.get(output, 'properties');
-			if (!Array.isArray(properties) || properties.length !== channel.properties.length) fail('Changed retained properties.');
+			if (!Array.isArray(properties) || properties.length !== channel.properties.length)
+				fail('Changed retained properties.');
 			for (let propertyIndex = 0; propertyIndex < channel.properties.length; propertyIndex++)
-				row(channel.properties[propertyIndex], properties[propertyIndex], [...common,
-					['permissions', 'permissions'], ['dataType', 'data_type'], ['format', 'format'],
-					['invalid', 'invalid'], ['step', 'step'], ['value', 'value'], ['channel', 'channel'],
-					['valueOrigin', 'value_origin'], ['sourcePropertyId', 'source_property']]);
+				row(channel.properties[propertyIndex], properties[propertyIndex], [
+					...common,
+					['permissions', 'permissions'],
+					['dataType', 'data_type'],
+					['format', 'format'],
+					['invalid', 'invalid'],
+					['step', 'step'],
+					['value', 'value'],
+					['channel', 'channel'],
+					['valueOrigin', 'value_origin'],
+					['sourcePropertyId', 'source_property'],
+				]);
 		}
 	}
 

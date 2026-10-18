@@ -13,8 +13,11 @@ import { Test } from '@nestjs/testing';
 
 import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { climateAutomationCanonical, climateAutomationJson } from '../../../modules/devices/contracts/climate-automation.contract';
 import { PluginsTypeMapperService } from '../../../modules/config/services/plugins-type-mapper.service';
+import {
+	climateAutomationCanonical,
+	climateAutomationJson,
+} from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -1686,7 +1689,9 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(restored.configuration.sources[0].maximumAgeSeconds).toBe(300);
 				expect(restored.configuration.actuators[0].sourcePropertyId).toBe(relayId);
 				expect(restored.configuration.actuators[0].leaseSeconds).toBe(30);
-				expect(restored.configuration.settings.map((row) => row.propertyId)).toEqual(input.configuration.settings.map((row) => row.propertyId));
+				expect(restored.configuration.settings.map((row) => row.propertyId)).toEqual(
+					input.configuration.settings.map((row) => row.propertyId),
+				);
 				expect(fixture.authoring.snapshotCreationInput(restored.device, restored.configuration)).toEqual(wire);
 				expect(fixture.authoring.snapshotCreationInput(wire.device, wire.configuration)).toEqual(wire);
 				expect(Object.isFrozen(input.device)).toBe(false);
@@ -1697,7 +1702,9 @@ describe('atomic virtual thermostat authoring', () => {
 			it('retains the full comfort definition schema and nested array order across actual DTO and wire forms', () => {
 				const input = request(relayId);
 				input.configuration.comfort = {
-					heating_range: { minimum: 5, maximum: 25 }, cooling_range: null, automation_enabled: false,
+					heating_range: { minimum: 5, maximum: 25 },
+					cooling_range: null,
+					automation_enabled: false,
 					presets: [
 						{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } },
 						{ preset: 'comfort', setpoints: { heating_setpoint: 21, cooling_setpoint: null } },
@@ -1712,17 +1719,30 @@ describe('atomic virtual thermostat authoring', () => {
 			it('maps complete cooling and member protection aliases without invoking business validation or qualification', () => {
 				const input = request(relayId);
 				input.configuration.actuators[0].protection = {
-					schemaVersion: 1, kind: 'local_floor', sourcePropertyId: ambientId, maximumAgeSeconds: 30,
+					schemaVersion: 1,
+					kind: 'local_floor',
+					sourcePropertyId: ambientId,
+					maximumAgeSeconds: 30,
 				};
 				input.configuration.actuators[0].coolingProtection = {
-					schemaVersion: 1, dewPointPropertyId: ambientId, surfacePropertyId: relayId,
-					purpose: 'cooled_surface', maximumAgeSeconds: 15,
+					schemaVersion: 1,
+					dewPointPropertyId: ambientId,
+					surfacePropertyId: relayId,
+					purpose: 'cooled_surface',
+					maximumAgeSeconds: 15,
 				};
-				input.configuration.policy.cooling = { schemaVersion: 1, marginC: 2, recoveryHysteresisC: 1, absoluteMinimumC: null };
+				input.configuration.policy.cooling = {
+					schemaVersion: 1,
+					marginC: 2,
+					recoveryHysteresisC: 1,
+					absoluteMinimumC: null,
+				};
 				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
 				const restored = plainToInstance(CreateVirtualThermostatProducerDto, wire);
 				expect(restored.configuration.actuators[0].protection).toEqual(input.configuration.actuators[0].protection);
-				expect(restored.configuration.actuators[0].coolingProtection).toEqual(input.configuration.actuators[0].coolingProtection);
+				expect(restored.configuration.actuators[0].coolingProtection).toEqual(
+					input.configuration.actuators[0].coolingProtection,
+				);
 				expect(restored.configuration.policy.cooling).toEqual(input.configuration.policy.cooling);
 			});
 
@@ -1736,7 +1756,11 @@ describe('atomic virtual thermostat authoring', () => {
 				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
 				expect(wire.device).toMatchObject({ description: null, enabled: false, controls: [], zone_ids: [] });
 				expect(wire.device).not.toHaveProperty('identifier');
-				expect(wire.configuration).toMatchObject({ expected_revision: 0, contact_opening_ms: 0, contact_closing_ms: 0 });
+				expect(wire.configuration).toMatchObject({
+					expected_revision: 0,
+					contact_opening_ms: 0,
+					contact_closing_ms: 0,
+				});
 				Reflect.deleteProperty(input.device, 'identifier');
 				expect(fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toEqual(wire);
 			});
@@ -1744,10 +1768,14 @@ describe('atomic virtual thermostat authoring', () => {
 			it('reads nested caller getters once and owns their values without freezing caller objects', () => {
 				const input = request(relayId);
 				let reads = 0;
-				Object.defineProperty(input.device, 'description', { enumerable: true, configurable: true, get: () => {
-					reads++;
-					return 'owned first description';
-				} });
+				Object.defineProperty(input.device, 'description', {
+					enumerable: true,
+					configurable: true,
+					get: () => {
+						reads++;
+						return 'owned first description';
+					},
+				});
 				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
 				Object.defineProperty(input.device, 'description', { value: 'later', configurable: true });
 				expect(reads).toBe(1);
@@ -1762,22 +1790,28 @@ describe('atomic virtual thermostat authoring', () => {
 				['required absent', (device: object) => Reflect.deleteProperty(device, 'name')],
 				['undefined array entry', (device: object) => Reflect.set(device, 'zone_ids', [undefined])],
 				['sparse array', (device: object) => Reflect.set(device, 'zone_ids', new Array<unknown>(1))],
-				['extended array', (device: object) => {
-					const entries: string[] = [];
-					Reflect.set(entries, 'extra', 1);
-					return Reflect.set(device, 'zone_ids', entries);
-				}],
+				[
+					'extended array',
+					(device: object) => {
+						const entries: string[] = [];
+						Reflect.set(entries, 'extra', 1);
+						return Reflect.set(device, 'zone_ids', entries);
+					},
+				],
 				['function', (device: object) => Reflect.set(device, 'description', () => 'not data')],
 				['symbol', (device: object) => Reflect.set(device, 'description', Symbol('not data'))],
 				['bigint', (device: object) => Reflect.set(device, 'description', BigInt(1))],
 				['nonfinite', (device: object) => Reflect.set(device, 'description', Infinity)],
 				['custom value', (device: object) => Reflect.set(device, 'description', new Date(0))],
 				['cycle', (device: object) => Reflect.set(device, 'description', device)],
-			] satisfies readonly (readonly [string, (device: object) => unknown])[])('refuses %s without silently dropping caller data', (_name, mutate) => {
-				const input = request(relayId);
-				mutate(input.device);
-				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow();
-			});
+			] satisfies readonly (readonly [string, (device: object) => unknown])[])(
+				'refuses %s without silently dropping caller data',
+				(_name, mutate) => {
+					const input = request(relayId);
+					mutate(input.device);
+					expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow();
+				},
+			);
 
 			it('rejects ambiguous aliases even when one value is optional undefined', () => {
 				const input = request(relayId);
@@ -1806,8 +1840,19 @@ describe('atomic virtual thermostat authoring', () => {
 				const input = request(relayId);
 				const failure = new Error('TEST original wire getter');
 				let later = 0;
-				Object.defineProperty(input.device, 'name', { configurable: true, get: () => { throw failure; } });
-				Object.defineProperty(input.configuration, 'policy', { configurable: true, get: () => { later++; return {}; } });
+				Object.defineProperty(input.device, 'name', {
+					configurable: true,
+					get: () => {
+						throw failure;
+					},
+				});
+				Object.defineProperty(input.configuration, 'policy', {
+					configurable: true,
+					get: () => {
+						later++;
+						return {};
+					},
+				});
 				expect(() => fixture.authoring.snapshotCreationInput(input.device, input.configuration)).toThrow(failure);
 				expect(later).toBe(0);
 			});
@@ -1817,13 +1862,27 @@ describe('atomic virtual thermostat authoring', () => {
 				let child: Promise<unknown> | undefined;
 				let reads = 0;
 				const transactions = jest.spyOn(database, 'transaction');
-				Object.defineProperty(input.device, 'description', { enumerable: true, configurable: true, get: () => {
-					reads++;
-					child = fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration });
-					void child.catch(() => undefined);
-					return null;
-				} });
-				await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration })).rejects.toBeInstanceOf(Error);
+				Object.defineProperty(input.device, 'description', {
+					enumerable: true,
+					configurable: true,
+					get: () => {
+						reads++;
+						child = fixture.writer.createVirtualThermostatV1({
+							kind: 'create-virtual-thermostat:v1',
+							device: input.device,
+							configuration: input.configuration,
+						});
+						void child.catch(() => undefined);
+						return null;
+					},
+				});
+				await expect(
+					fixture.writer.createVirtualThermostatV1({
+						kind: 'create-virtual-thermostat:v1',
+						device: input.device,
+						configuration: input.configuration,
+					}),
+				).rejects.toBeInstanceOf(Error);
 				if (child !== undefined) await expect(child).rejects.toBeInstanceOf(Error);
 				expect(reads).toBe(1);
 				expect(transactions).not.toHaveBeenCalled();
@@ -1833,12 +1892,24 @@ describe('atomic virtual thermostat authoring', () => {
 			it('invokes the originally registered snapshot function with its original authoring receiver', async () => {
 				fixture.automation.onModuleDestroy();
 				const snapshot = jest.spyOn(fixture.authoring, 'snapshotCreationInput');
-				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				const provider = new VirtualThermostatAutomationService(
+					fixture.writer,
+					fixture.core,
+					fixture.graph,
+					new NestConfigService(),
+					fixture.authoring,
+				);
 				provider.onModuleInit();
 				try {
 					const input = request(relayId);
 					Reflect.set(input.device, 'unknown', undefined);
-					await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration })).rejects.toBeInstanceOf(Error);
+					await expect(
+						fixture.writer.createVirtualThermostatV1({
+							kind: 'create-virtual-thermostat:v1',
+							device: input.device,
+							configuration: input.configuration,
+						}),
+					).rejects.toBeInstanceOf(Error);
 					expect(snapshot).toHaveBeenCalledTimes(1);
 					expect(snapshot.mock.contexts[0]).toBe(fixture.authoring);
 					expect(snapshot.mock.calls[0]).toEqual([input.device, input.configuration]);
@@ -1852,10 +1923,24 @@ describe('atomic virtual thermostat authoring', () => {
 				const substituted = jest.spyOn(fixture.authoring, 'snapshotCreationInput');
 				let reads = 0;
 				try {
-					await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', get device() { reads++; return {}; }, get configuration() { reads++; return {}; } })).rejects.toBeInstanceOf(Error);
+					await expect(
+						fixture.writer.createVirtualThermostatV1({
+							kind: 'create-virtual-thermostat:v1',
+							get device() {
+								reads++;
+								return {};
+							},
+							get configuration() {
+								reads++;
+								return {};
+							},
+						}),
+					).rejects.toBeInstanceOf(Error);
 					expect(reads).toBe(0);
 					expect(substituted).not.toHaveBeenCalled();
-				} finally { substituted.mockRestore(); }
+				} finally {
+					substituted.mockRestore();
+				}
 			});
 
 			it('reads each root DTO getter once before a nested representation refusal without entering a transaction', async () => {
@@ -1864,11 +1949,19 @@ describe('atomic virtual thermostat authoring', () => {
 				let deviceReads = 0;
 				let configurationReads = 0;
 				const transaction = jest.spyOn(database, 'transaction');
-				await expect(fixture.writer.createVirtualThermostatV1({
-					kind: 'create-virtual-thermostat:v1',
-					get device() { deviceReads++; return input.device; },
-					get configuration() { configurationReads++; return input.configuration; },
-				})).rejects.toBeInstanceOf(Error);
+				await expect(
+					fixture.writer.createVirtualThermostatV1({
+						kind: 'create-virtual-thermostat:v1',
+						get device() {
+							deviceReads++;
+							return input.device;
+						},
+						get configuration() {
+							configurationReads++;
+							return input.configuration;
+						},
+					}),
+				).rejects.toBeInstanceOf(Error);
 				expect(deviceReads).toBe(1);
 				expect(configurationReads).toBe(1);
 				expect(transaction).not.toHaveBeenCalled();
@@ -1876,8 +1969,16 @@ describe('atomic virtual thermostat authoring', () => {
 
 			it('ignores mutable constructor and toJSON prototype hints and never invokes caller serialization', () => {
 				const input = request(relayId);
-				const invoked = jest.fn(() => { throw new Error('Caller serialization is forbidden'); });
-				Reflect.setPrototypeOf(input.device, { get constructor() { invoked(); return null; }, toJSON: invoked });
+				const invoked = jest.fn(() => {
+					throw new Error('Caller serialization is forbidden');
+				});
+				Reflect.setPrototypeOf(input.device, {
+					get constructor() {
+						invoked();
+						return null;
+					},
+					toJSON: invoked,
+				});
 				const wire = fixture.authoring.snapshotCreationInput(input.device, input.configuration);
 				expect(wire.device).toHaveProperty('id', input.device.id);
 				expect(invoked).not.toHaveBeenCalled();
@@ -1886,20 +1987,41 @@ describe('atomic virtual thermostat authoring', () => {
 			it('preserves required nullable catalog and configuration facts in the real fixed response without optional undefined', async () => {
 				const input = request(relayId);
 				const result = await fixture.writer.createVirtualThermostatV1({
-					kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration,
+					kind: 'create-virtual-thermostat:v1',
+					device: input.device,
+					configuration: input.configuration,
 				});
-				expect(result).toMatchObject({ outcome: 'applied', result: {
-					device: { id: input.device.id, updated_at: null, room_id: null,
-						channels: expect.arrayContaining((input.device.channels ?? []).map((channel) => expect.objectContaining({
-							id: channel.id, parent: null,
-							properties: expect.arrayContaining((channel.properties ?? []).map((property) => expect.objectContaining({ id: property.id, value: null, updated_at: null }))),
-						}))),
+				expect(result).toMatchObject({
+					outcome: 'applied',
+					result: {
+						device: {
+							id: input.device.id,
+							updated_at: null,
+							room_id: null,
+							channels: expect.arrayContaining(
+								(input.device.channels ?? []).map((channel): unknown =>
+									expect.objectContaining({
+										id: channel.id,
+										parent: null,
+										properties: expect.arrayContaining(
+											(channel.properties ?? []).map((property): unknown =>
+												expect.objectContaining({ id: property.id, value: null, updated_at: null }),
+											),
+										),
+									}),
+								),
+							),
+						},
+						configuration: {
+							policy: { coolingSetpoint: null, floor: null },
+							heuristic: null,
+							sources: expect.arrayContaining([expect.objectContaining({ open_value: null, closed_value: null })]),
+							actuators: expect.arrayContaining([
+								expect.objectContaining({ qualification_generation: null, release_evidence: null }),
+							]),
+						},
 					},
-					configuration: { policy: { coolingSetpoint: null, floor: null }, heuristic: null,
-						sources: expect.arrayContaining([expect.objectContaining({ open_value: null, closed_value: null })]),
-						actuators: expect.arrayContaining([expect.objectContaining({ qualification_generation: null, release_evidence: null })]),
-					},
-				} });
+				});
 				// unit is optional, non-column metadata: a retained catalog with no unit must not invent one.
 				if (result.outcome !== 'applied') throw new Error('Expected original fixed creation response');
 				const frame = result.result;
@@ -1920,22 +2042,39 @@ describe('atomic virtual thermostat authoring', () => {
 						checkedProperties++;
 					}
 				}
-				expect(checkedProperties).toBe((input.device.channels ?? []).reduce((total, channel) => total + (channel.properties?.length ?? 0), 0));
-
+				expect(checkedProperties).toBe(
+					(input.device.channels ?? []).reduce((total, channel) => total + (channel.properties?.length ?? 0), 0),
+				);
 			});
 
-			it.each([
-				undefined, { revision: undefined }, [undefined], NaN, Infinity,
-			])('keeps noncreation private JSON strict for invalid value %#', (value) => {
-				expect(() => climateAutomationCanonical(value)).toThrow();
-				expect(() => climateAutomationJson(value)).toThrow();
-			});
+			it.each([undefined, { revision: undefined }, [undefined], NaN, Infinity])(
+				'keeps noncreation private JSON strict for invalid value %#',
+				(value) => {
+					expect(() => climateAutomationCanonical(value)).toThrow();
+					expect(() => climateAutomationJson(value)).toThrow();
+				},
+			);
 
 			it('refuses CLI, foreign SQLite lease and active structural callers before inspecting DTO input', async () => {
 				let reads = 0;
-				const input = { kind: 'create-virtual-thermostat:v1', get device() { reads++; throw new Error('Unexpected getter'); }, get configuration() { reads++; throw new Error('Unexpected getter'); } } satisfies import('../../../modules/devices/contracts/climate-automation.contract').ClimateAutomationCreationRequest;
+				const input = {
+					kind: 'create-virtual-thermostat:v1',
+					get device() {
+						reads++;
+						throw new Error('Unexpected getter');
+					},
+					get configuration() {
+						reads++;
+						throw new Error('Unexpected getter');
+					},
+				} satisfies import('../../../modules/devices/contracts/climate-automation.contract').ClimateAutomationCreationRequest;
 				const lock = new DeviceStructureLockService();
-				const cli = new ClimateAutomationWriterService(database, lock, fixture.core, new NestConfigService({ FB_CLI: 'on' }));
+				const cli = new ClimateAutomationWriterService(
+					database,
+					lock,
+					fixture.core,
+					new NestConfigService({ FB_CLI: 'on' }),
+				);
 				await expect(cli.createVirtualThermostatV1(input)).rejects.toBeInstanceOf(Error);
 				await database.transaction(async () => {
 					await expect(fixture.writer.createVirtualThermostatV1(input)).rejects.toBeInstanceOf(Error);
@@ -1947,6 +2086,5 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(reads).toBe(0);
 			});
 		});
-
 	});
 });

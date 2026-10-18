@@ -196,7 +196,13 @@ interface CreationRecord {
 	readonly capability: ClimateAutomationCreationCapability;
 	readonly methods: Pick<
 		ClimateAutomationCreationCapability,
-		'snapshotInput' | 'captureEnvironment' | 'holdAtEntry' | 'readFactsInManager' | 'prepareInManager' | 'applyInManager' | 'isCurrent'
+		| 'snapshotInput'
+		| 'captureEnvironment'
+		| 'holdAtEntry'
+		| 'readFactsInManager'
+		| 'prepareInManager'
+		| 'applyInManager'
+		| 'isCurrent'
 	>;
 	readonly plan: ClimateAutomationCreationPlan;
 	readonly expected: ClimateAutomationCreationFacts;
@@ -973,8 +979,15 @@ export class ClimateAutomationWriterService {
 		];
 		if (keys.some((key) => !creationHasDataMethod(capability, key)))
 			throw new ClimateAutomationWriteError('not_started', new Error('Original creation methods unavailable'));
-		const { snapshotInput, captureEnvironment, holdAtEntry, readFactsInManager, prepareInManager, applyInManager, isCurrent } =
-			capability;
+		const {
+			snapshotInput,
+			captureEnvironment,
+			holdAtEntry,
+			readFactsInManager,
+			prepareInManager,
+			applyInManager,
+			isCurrent,
+		} = capability;
 		const methods = {
 			snapshotInput,
 			captureEnvironment,
