@@ -276,7 +276,23 @@ export class VirtualThermostatAuthoringService {
 		const hydrate = <T extends object>(type: EntityTarget<T>, raw: Readonly<Record<string, ClimateAutomationJson>>): T => {
 			const metadata = this.dataSource.getMetadata(type);
 			const entity = this.dataSource.getRepository(type).create();
-			for (const column of metadata.columns) column.setEntityValue(entity, this.dataSource.driver.prepareHydratedValue(raw[column.databaseName], column));
+			for (const column of metadata.columns) {
+				if (!Object.prototype.hasOwnProperty.call(raw, column.databaseName)) fail('Missing original creation column.');
+				const value: unknown = this.dataSource.driver.prepareHydratedValue(raw[column.databaseName], column);
+				if (column.isDiscriminator) {
+					// STI children expose type through a getter. Validate the planned and actual class
+					// discriminator; assigning it would shadow/reject that fixed class identity.
+					if (raw[column.databaseName] !== metadata.discriminatorValue || value !== column.getEntityValue(entity))
+						fail('Original creation discriminator changed.');
+					continue;
+				}
+				let owner: object | null = entity;
+				let descriptor: PropertyDescriptor | undefined;
+				while (owner && !descriptor) { descriptor = Object.getOwnPropertyDescriptor(owner, column.propertyName); owner = Reflect.getPrototypeOf(owner); }
+				if (descriptor && ('value' in descriptor ? descriptor.writable !== true : descriptor.set === undefined))
+					fail('Original creation column is not writable.');
+				column.setEntityValue(entity, value);
+			}
 			return entity;
 		};
 		const deviceRows = rows.filter((item) => item.table === this.dataSource.getMetadata(VirtualDeviceEntity).tableName);

@@ -1316,6 +1316,78 @@ export class ClimateAutomationWriterService {
 		return !!remove && parameters.length === 1 && parameters[0] === record.plan.controllerId;
 	}
 
+	/** Original controller/catalog dependency closure, built only from immutable committed A facts.
+	 * Each set has exact cardinality AND full-row predicates, including empty binding sets.
+	 * A peer's same-revision or retargeted/extra binding cannot pass by retaining an expected id.
+	 */
+	private creationLeafDependencies(record: CreationRecord, parameters: unknown[]): string {
+		const predicates: string[] = [];
+		const propertyTable = 'devices_module_channels_properties';
+		const channelTable = 'devices_module_channels';
+		const deviceTable = 'devices_module_devices';
+		const planned = (table: string) => record.plan.inserts.filter((item) => item.table === table).map((item) => item.row);
+		const member = (column: string, values: readonly ClimateAutomationJson[]): string => {
+			if (!values.length) return '0';
+			parameters.push(...values);
+			return `d."${column}" IN (${values.map(() => '?').join(', ')})`;
+		};
+		const exactSet = (table: string, scope: string, rows: readonly Readonly<Record<string, ClimateAutomationJson>>[]): void => {
+			predicates.push(`(SELECT COUNT(*) FROM "${table}" d WHERE ${scope}) = ${rows.length}`);
+			for (const row of rows) {
+				const match = Object.keys(row).sort().map((column) => {
+					if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(column)) throw new Error('Invalid original creation column');
+					parameters.push(row[column]); return `d."${column}" IS ?`;
+				});
+				predicates.push(`EXISTS (SELECT 1 FROM "${table}" d WHERE ${match.join(' AND ')})`);
+			}
+		};
+		const channels = planned(channelTable), properties = planned(propertyTable);
+		const channelIds = channels.map((row) => row.id), propertyIds = properties.map((row) => row.id);
+		exactSet(deviceTable, member('id', [record.plan.controllerId]), planned(deviceTable));
+		exactSet(channelTable, `${member('deviceId', [record.plan.controllerId])} OR ${member('id', channelIds)}`, channels);
+		exactSet(propertyTable, `${member('channelId', channelIds)} OR ${member('id', propertyIds)}`, properties);
+		exactSet('devices_virtual_thermostat_configs', `${member('controllerId', [record.plan.controllerId])} OR ${member('ownerDeviceId', [record.plan.controllerId])}`, planned('devices_virtual_thermostat_configs'));
+		exactSet('devices_virtual_thermostat_settings', `${member('controllerId', [record.plan.controllerId])} OR ${member('propertyId', propertyIds)}`, planned('devices_virtual_thermostat_settings'));
+		for (const table of ['devices_virtual_thermostat_sources', 'devices_virtual_thermostat_actuator_claims'])
+			exactSet(table, member('controllerId', [record.plan.controllerId]), planned(table));
+		const claimIds = planned('devices_virtual_thermostat_actuator_claims').map((row) => row.id);
+		for (const table of ['devices_virtual_thermostat_member_protection', 'devices_virtual_thermostat_cooling_dependencies'])
+			exactSet(table, member('claimId', claimIds), planned(table));
+		exactSet('devices_module_devices_zones', member('deviceId', [record.plan.controllerId]), planned('devices_module_devices_zones'));
+		exactSet('devices_module_devices_controls', member('deviceId', [record.plan.controllerId]), []);
+		exactSet('devices_module_channels_controls', member('channelId', channelIds), []);
+
+		// The original prepared source/actuator/floor/dew/surface contracts also depend on
+		// referenced property lineage. Follow original projection source links, never a fresh GET.
+		const referenced = new Set<string>();
+		for (const { row } of record.plan.inserts) for (const column of ['sourcePropertyId', 'dewPointPropertyId', 'surfacePropertyId']) {
+			const id = row[column]; if (typeof id === 'string' && !propertyIds.includes(id)) referenced.add(id);
+		}
+		const referenceRows: Readonly<Record<string, ClimateAutomationJson>>[] = [];
+		for (const id of referenced) {
+			const row = record.expected.tables[propertyTable]?.find((item) => item.id === id);
+			if (!row) throw new Error('Original creation reference unavailable');
+			referenceRows.push(row);
+			if (typeof row.sourcePropertyId === 'string' && !propertyIds.includes(row.sourcePropertyId)) referenced.add(row.sourcePropertyId);
+		}
+		exactSet(propertyTable, member('id', [...referenced]), referenceRows);
+		const referenceChannelIds = [...new Set(referenceRows.map((row) => row.channelId))];
+		const referenceChannels = referenceChannelIds.map((id) => {
+			const row = record.expected.tables[channelTable]?.find((item) => item.id === id);
+			if (!row) throw new Error('Original creation reference channel unavailable'); return row;
+		});
+		exactSet(channelTable, member('id', referenceChannelIds), referenceChannels);
+		const referenceDeviceIds = [...new Set(referenceChannels.map((row) => row.deviceId))];
+		const referenceDevices = referenceDeviceIds.map((id) => {
+			const row = record.expected.tables[deviceTable]?.find((item) => item.id === id);
+			if (!row) throw new Error('Original creation reference device unavailable'); return row;
+		});
+		exactSet(deviceTable, member('id', referenceDeviceIds), referenceDevices);
+		exactSet('devices_shelly_ng_sample_sources', member('propertyId', [...referenced]),
+			(record.expected.tables.devices_shelly_ng_sample_sources ?? []).filter((row) => typeof row.propertyId === 'string' && referenced.has(row.propertyId)));
+		return predicates.join(' AND ');
+	}
+
 	/** Short affected-one unit; no SQLite/structure lease survives a storage/listener await. */
 	async probeCreationPublication(lease: DeviceCreationPublicationLease, id: string): Promise<void> {
 		DeviceCreationPublicationEngine.assert(lease, id);
@@ -1335,8 +1407,8 @@ export class ClimateAutomationWriterService {
 				const slot = record.slot;
 				if (!slot) throw new Error('Original creation slot unavailable');
 				const slotPredicates = Object.keys(slot).sort().map((column) => { const value: unknown = Reflect.get(slot, column); parameters.push(value === false ? 0 : value); return `s."${column}" IS ?`; });
-				const query = `UPDATE "${row.table}" SET "id" = "id" WHERE ${predicates.join(' AND ')} AND EXISTS (SELECT 1 FROM "${CLIMATE_SLOT_TABLE}" s WHERE ${slotPredicates.join(' AND ')}) AND EXISTS (SELECT 1 FROM "devices_virtual_thermostat_configs" c WHERE c."controllerId" = ? AND c."revision" = 1)`;
-				parameters.push(record.plan.controllerId);
+				const dependencies = this.creationLeafDependencies(record, parameters);
+				const query = `UPDATE "${row.table}" SET "id" = "id" WHERE ${predicates.join(' AND ')} AND EXISTS (SELECT 1 FROM "${CLIMATE_SLOT_TABLE}" s WHERE ${slotPredicates.join(' AND ')}) AND ${dependencies}`;
 				const runner = manager.queryRunner;
 				if (!runner) throw new Error('Original creation leaf runner unavailable');
 				DeviceCreationPublicationEngine.expectLeafQuery(this, lease, runner, query, parameters);

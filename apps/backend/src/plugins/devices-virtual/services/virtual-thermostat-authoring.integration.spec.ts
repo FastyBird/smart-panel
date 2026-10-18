@@ -1,3 +1,8 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { VirtualIndexMaintenanceListener } from '../listeners/virtual-index-maintenance.listener';
+import { VirtualProjectionListener } from '../listeners/virtual-projection.listener';
 import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
 import { VirtualThermostatRuntimeEntity } from '../entities/virtual-thermostat-runtime.entity';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
@@ -498,8 +503,9 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(publications).toEqual([]);
 		expect(values.write).not.toHaveBeenCalled();
 	});
-	/** Real singleton plugin/validator/listener chain; only the storage transport and metadata sink are inert. */
-	async function originalOwnedFixture() {
+	/** Selected required singleton chain; index/projection are real additional listeners only when explicitly included.
+	 * This fixture is not a full application/bootstrap proof. Storage transport and metadata sink are inert. */
+	async function originalOwnedFixture(includeIndexAndProjection = false) {
 		const lock = new DeviceStructureLockService();
 		const core = new ClimateAutomationRegistryService();
 		const writer = new ClimateAutomationWriterService(database, lock, core);
@@ -542,6 +548,25 @@ describe('atomic virtual thermostat authoring', () => {
 		const connectivity = new DeviceConnectivityService(devices, channels, properties, state, events);
 		const status = new VirtualStatusListener(index, connectivity, state);
 		const info = new VirtualDeviceInformationListener(channels, properties, status, events);
+		const indexMaintenance = new VirtualIndexMaintenanceListener(index, status, devices, virtual, properties, lock, events, database, database.getRepository(DeviceEntity), graph);
+		const projection = new VirtualProjectionListener(index, events);
+		// Call-through observer installed BEFORE the real Nest loader binds this original handler.
+		const projectionEvents = includeIndexAndProjection ? jest.spyOn(projection, 'handlePropertyValueStateChanged') : undefined;
+		const indexJobs: Promise<unknown>[] = [];
+		if (includeIndexAndProjection) {
+			// Observation only: retain the actual worker Promise discarded by the production
+			// fire-and-forget dispatcher. No phase/map/readiness field or worker result is forged.
+			const descriptor = Object.getOwnPropertyDescriptor(VirtualIndexMaintenanceListener.prototype, 'runRebuildLoop');
+			const original: unknown = descriptor?.value;
+			if (!descriptor || descriptor.get || descriptor.set || typeof original !== 'function') throw new Error('Actual index worker descriptor required');
+			Object.defineProperty(indexMaintenance, 'runRebuildLoop', { ...descriptor, value: function (this: VirtualIndexMaintenanceListener) {
+				const returned: unknown = Reflect.apply(original, this, []);
+				if (!(returned instanceof Promise)) throw new Error('Actual asynchronous index worker required');
+				const work: Promise<unknown> = returned;
+				indexJobs.push(work); void work.catch(() => undefined);
+				return work;
+			} });
+		}
 		const commandAdmission = new PropertyCommandAdmissionRegistryService();
 		const claims = new VirtualThermostatClaimsService(database, lock, graph, commandAdmission, events);
 		const configs = new VirtualThermostatConfigService(database, lock, graph, claims, events, values);
@@ -568,6 +593,7 @@ describe('atomic virtual thermostat authoring', () => {
 			{ provide: PlatformRegistryService, useValue: platformRegistry },
 			{ provide: VirtualDeviceInformationListener, useValue: info },
 			{ provide: VirtualStatusListener, useValue: status },
+			...(includeIndexAndProjection ? [{ provide: VirtualIndexMaintenanceListener, useValue: indexMaintenance }, { provide: VirtualProjectionListener, useValue: projection }] : []),
 			{ provide: VirtualDevicesService, useValue: virtual },
 			{ provide: VirtualDependencyGraphService, useValue: graph },
 			{ provide: VirtualProducerStateService, useValue: producerState },
@@ -592,12 +618,13 @@ describe('atomic virtual thermostat authoring', () => {
 			try { await module.close(); } finally { await storageModule.close(); }
 			throw cause;
 		}
-		return { module, writer, core, graph, producers, values, storage, transport, submittedPoints, boundary, info, status, state, devices, channels, properties,
+		return { module, writer, core, graph, producers, values, storage, transport, submittedPoints, boundary, info, status, state, devices, channels, properties, index, indexMaintenance, projection, projectionEvents, indexJobs,
 			claims, commandAdmission, configs, authoring, automation, extraProviders, deviceMapper, channelMapper, propertyMapper, lock,
 			close: async () => {
 				// Close original authority synchronously before any await or restoration of test spies.
 				for (const provider of extraProviders) provider.onModuleDestroy();
 				automation.onModuleDestroy(); info.onModuleDestroy(); producerState.onModuleDestroy(); claims.onModuleDestroy();
+				await Promise.all(indexJobs);
 				await module.close(); await storageModule.close();
 			},
 		};
@@ -657,6 +684,226 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(result.configuration).not.toHaveProperty('manualGeneration');
 				expect(JSON.stringify(result)).not.toMatch(/manualGeneration|slotIncarnation|ownerToken|publicationLease|creationTurn/);
 			} finally { provider.onModuleDestroy(); }
+		});
+
+
+		it('hydrates all three real getter-only STI classes from the retained plan and acknowledges their native creation before publication', async () => {
+			for (const type of [VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity]) {
+				const metadata = database.getMetadata(type);
+				const discriminator = metadata.discriminatorColumn;
+				if (!discriminator) throw new Error('Actual child discriminator required');
+				expect(metadata.columns).toContain(discriminator);
+				const descriptor = Object.getOwnPropertyDescriptor(type.prototype, discriminator.propertyName);
+				expect(descriptor?.get).toEqual(expect.any(Function));
+				expect(descriptor?.set).toBeUndefined();
+			}
+			const prepare = jest.spyOn(fixture.configs, 'prepare');
+			fixture.automation.onModuleDestroy();
+			const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+			provider.onModuleInit(); fixture.extraProviders.push(provider);
+			let nativeAcknowledgments = 0;
+			const commitsAtPublication: number[] = [];
+			database.subscribers.push({ afterQuery: (event) => { if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++; } });
+			events.on(EventType.DEVICE_CREATED, () => commitsAtPublication.push(nativeAcknowledgments));
+			const input = request(relayId);
+			const result = await fixture.authoring.create(input);
+			expect(prepare).toHaveBeenCalledTimes(1);
+			expect(commitsAtPublication).toHaveLength(1);
+			expect(commitsAtPublication[0]).toBeGreaterThan(0);
+			expect(result.device).toBeInstanceOf(VirtualDeviceEntity);
+			expect(result.device.type).toBe('virtual');
+			const device = await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: input.device.id });
+			expect(device.type).toBe('virtual');
+			expect(Object.hasOwn(device, 'type')).toBe(false);
+			for (const channel of input.device.channels ?? []) {
+				const actualChannel = await database.manager.findOneByOrFail(VirtualChannelEntity, { id: channel.id });
+				expect(actualChannel.type).toBe('virtual');
+				expect(Object.hasOwn(actualChannel, 'type')).toBe(false);
+				for (const property of channel.properties ?? []) {
+					const actualProperty = await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: property.id });
+					expect(actualProperty.type).toBe('virtual');
+					expect(Object.hasOwn(actualProperty, 'type')).toBe(false);
+				}
+			}
+			expect(fixture.submittedPoints.length).toBeGreaterThan(0);
+			for (const setting of input.configuration.settings)
+				expect(fixture.submittedPoints.flat().filter((point) => point.measurement === 'property_value' && point.tags?.propertyId === setting.propertyId)).toHaveLength(1);
+		});
+
+		it.each([
+			{ mutation: 'channel lineage', afterSubmission: false },
+			{ mutation: 'channel type', afterSubmission: false },
+			{ mutation: 'device type', afterSubmission: false },
+			{ mutation: 'setting role', afterSubmission: false },
+			{ mutation: 'setting deletion', afterSubmission: false },
+			{ mutation: 'setting retarget', afterSubmission: false },
+			{ mutation: 'extra setting binding', afterSubmission: false },
+			{ mutation: 'full config same revision', afterSubmission: false },
+			{ mutation: 'full config same revision', afterSubmission: true },
+		])('refuses a peer-committed $mutation before a native leaf (prior submission: $afterSubmission)', async ({ mutation, afterSubmission }) => {
+			// Own file, actual independent native connections. Old cases retain their original memory DB.
+			const directory = await mkdtemp(join(tmpdir(), 'thermostat-creation-peer-'));
+			const filename = join(directory, 'creation.sqlite');
+			let peer: SqliteDataSource | undefined;
+			let pending: Promise<Awaited<ReturnType<VirtualThermostatAuthoringService['create']>>> | undefined;
+			let release: () => void = () => {};
+			try {
+				await fixture.close(); owner = undefined;
+				await database.query('VACUUM INTO ?', [filename]);
+				await database.destroy();
+				database = await new SqliteDataSource({ type: 'sqlite', database: filename, entities: [__dirname + '/../../../**/*.entity.ts'], synchronize: false, migrationsRun: false }).initialize();
+				owner = await originalOwnedFixture(); fixture = owner;
+				peer = await new SqliteDataSource({ type: 'sqlite', database: filename, entities: [__dirname + '/../../../**/*.entity.ts'], synchronize: false, migrationsRun: false }).initialize();
+				expect(peer).not.toBe(database);
+				expect(peer.driver).not.toBe(database.driver);
+				const input = request(relayId);
+				const information = input.device.channels?.find((channel) => channel.category === ChannelCategory.DEVICE_INFORMATION);
+				const setting = input.configuration.settings.find((row) => row.setting === 'heating_setpoint');
+				const unbound = information?.properties?.find((property) => property.category === PropertyCategory.MANUFACTURER);
+				if (!information || !setting || !unbound) throw new Error('Real original leaf fixture required');
+				const propertyIds = input.device.channels?.flatMap((channel) => channel.properties?.map((property) => property.id) ?? []) ?? [];
+				let enter: () => void = () => {};
+				const entered = new Promise<void>((resolve) => { enter = resolve; });
+				const held = new Promise<void>((resolve) => { release = resolve; });
+				let selected = false;
+				const changes: unknown[] = [];
+				let valueEvents = 0, configEvents = 0;
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => { valueEvents++; });
+				events.on(THERMOSTAT_CONFIG_CHANGED, () => { configEvents++; });
+				database.subscribers.push({
+					beforeQuery: async (event) => {
+						if (!selected && event.query.startsWith('UPDATE "devices_module_channels_properties" SET "id" = "id"') && (!afterSubmission || fixture.submittedPoints.length > 0)) {
+							selected = true; enter(); await held;
+						}
+					},
+					afterQuery: (event) => { if (selected && event.query === 'SELECT changes() AS changes') { const raw: unknown = event.rawResults; changes.push(raw); } },
+				});
+				pending = fixture.authoring.create(input);
+				void pending.catch(() => undefined);
+				await reachesCreationBarrier(pending, entered);
+				const submitted = fixture.submittedPoints.slice();
+				const priorValueEvents = valueEvents;
+				if (afterSubmission) expect(submitted.length).toBeGreaterThan(0);
+				else expect(submitted).toEqual([]);
+				const properties = await peer.query<unknown[]>('SELECT * FROM devices_module_channels_properties WHERE id IN (' + propertyIds.map(() => '?').join(',') + ') ORDER BY id', propertyIds);
+				const slots = await peer.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?', [input.device.id]);
+				// Every mutation commits on B while A is suspended BEFORE its actual affected-one SQL.
+				await peer.transaction(async (manager) => {
+					if (mutation === 'channel lineage') await manager.query('UPDATE devices_module_channels SET deviceId = ? WHERE id = ?', [relayDeviceId, information.id]);
+					else if (mutation === 'channel type') await manager.query('UPDATE devices_module_channels SET type = ? WHERE id = ?', ['peer-channel', information.id]);
+					else if (mutation === 'device type') await manager.query('UPDATE devices_module_devices SET type = ? WHERE id = ?', ['peer-device', input.device.id]);
+					else if (mutation === 'setting role') await manager.query('UPDATE devices_virtual_thermostat_settings SET setting = ? WHERE propertyId = ?', ['peer-setting', setting.propertyId]);
+					else if (mutation === 'setting deletion') await manager.query('DELETE FROM devices_virtual_thermostat_settings WHERE propertyId = ?', [setting.propertyId]);
+					else if (mutation === 'setting retarget') await manager.query('UPDATE devices_virtual_thermostat_settings SET propertyId = ? WHERE propertyId = ?', [unbound.id, setting.propertyId]);
+					else if (mutation === 'extra setting binding') await manager.query('INSERT INTO devices_virtual_thermostat_settings(propertyId, controllerId, setting, contractFingerprint) VALUES (?, ?, ?, ?)', [unbound.id, input.device.id, 'peer-extra', 'peer-fingerprint']);
+					else await manager.query('UPDATE devices_virtual_thermostat_configs SET locked = 1 - locked WHERE controllerId = ?', [input.device.id]);
+				});
+				expect((await peer.query<{ revision: number }[]>('SELECT revision FROM devices_virtual_thermostat_configs WHERE controllerId = ?', [input.device.id]))[0].revision).toBe(1);
+				expect(await peer.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?', [input.device.id])).toEqual(slots);
+				expect(await peer.query<unknown[]>('SELECT * FROM devices_module_channels_properties WHERE id IN (' + propertyIds.map(() => '?').join(',') + ') ORDER BY id', propertyIds)).toEqual(properties);
+				release();
+				const result = await pending;
+				expect(result.device.id).toBe(input.device.id); // ACKed A result, not hydration of peer B.
+				expect(changes[0]).toEqual([{ changes: 0 }]);
+				expect(fixture.submittedPoints).toEqual(submitted); // Prior submitted effects are retained, never cancelled.
+				expect(valueEvents).toBe(priorValueEvents);
+				expect(configEvents).toBe(0);
+				for (const row of input.configuration.settings) {
+					const property = await database.manager.findOneByOrFail(ChannelPropertyEntity, { id: row.propertyId });
+					expect(await fixture.values.readLatest(property)).toBeNull(); // No later setting cache/trend/freshness becomes visible.
+				}
+			} finally {
+				// Revoke before releasing a failed test's hold or awaiting any teardown work.
+				const closing = owner?.close(); owner = undefined;
+				if (closing) void closing.catch(() => undefined);
+				release();
+				try { if (pending) await pending.catch(() => undefined); }
+				finally {
+					try { if (closing) await closing; }
+					finally {
+						try { if (peer?.isInitialized) await peer.destroy(); }
+						finally {
+							try { if (database.isInitialized) await database.destroy(); }
+							finally { await rm(directory, { recursive: true, force: true }); }
+						}
+					}
+				}
+			}
+		});
+
+
+		it('publishes the complete required chain with the real additional Nest index-maintenance and projection listeners selected', async () => {
+			await fixture.close(); owner = undefined;
+			owner = await originalOwnedFixture(true); fixture = owner;
+			const input = request(relayId);
+			const configEvents: string[] = [];
+			events.on(THERMOSTAT_CONFIG_CHANGED, (id: string) => configEvents.push(id));
+			const result = await fixture.authoring.create(input);
+			await Promise.all(fixture.indexJobs);
+			expect(fixture.module.get(VirtualIndexMaintenanceListener)).toBe(fixture.indexMaintenance);
+			expect(fixture.module.get(VirtualProjectionListener)).toBe(fixture.projection);
+			expect(result.device.id).toBe(input.device.id);
+			expect(configEvents).toEqual([input.device.id]);
+			expect(fixture.projectionEvents).toHaveBeenCalled();
+			for (const setting of input.configuration.settings)
+				expect(fixture.submittedPoints.flat().filter((point) => point.measurement === 'property_value' && point.tags?.propertyId === setting.propertyId)).toHaveLength(1);
+			expect(fixture.index.findProducerMode(input.device.id)).toBe(VirtualDeviceMode.CLIMATE_CONTROLLER);
+		});
+
+		it('does not count a held real detached index rebuild as A completion or let its later B snapshot reopen A publication', async () => {
+			await fixture.close(); owner = undefined;
+			owner = await originalOwnedFixture(true); fixture = owner;
+			const { rebuild } = fixture.index;
+			const original: Readonly<{ call: (receiver: VirtualPropertyIndexService) => ReturnType<VirtualPropertyIndexService['rebuild']> }> = rebuild;
+			let enter: () => void = () => {};
+			let release: () => void = () => {};
+			const entered = new Promise<void>((resolve) => { enter = resolve; });
+			const held = new Promise<void>((resolve) => { release = resolve; });
+			const order: string[] = [];
+			let snapshotFinished = false;
+			// Actual ORM rebuild retained; only its first await is held. Subsequent coalesced
+			// passes execute the same original function without a fake index/ready answer.
+			const rebuilding = jest.spyOn(fixture.index, 'rebuild').mockImplementationOnce(async () => {
+				order.push('index-enter'); enter(); await held;
+				const result = await original.call(fixture.index);
+				snapshotFinished = true; order.push('index-original-snapshot'); return result;
+			});
+			const input = request(relayId);
+			let payload: DeviceEntity | undefined;
+			events.on(EventType.DEVICE_CREATED, (device: DeviceEntity) => { if (device.id === input.device.id) payload = device; });
+			const pending = fixture.authoring.create(input);
+			void pending.catch(() => undefined);
+			try {
+				await reachesCreationBarrier(pending, entered);
+				const result = await pending;
+				order.push('A-complete');
+				expect(snapshotFinished).toBe(false);
+				expect(fixture.submittedPoints.length).toBeGreaterThan(0);
+				for (const setting of input.configuration.settings)
+					expect(fixture.submittedPoints.flat().filter((point) => point.measurement === 'property_value' && point.tags?.propertyId === setting.propertyId)).toHaveLength(1);
+				if (!payload) throw new Error('Immutable original A event required');
+				const submittedA = fixture.submittedPoints.slice();
+				// An independently persisted successor catalog fact. This is not A's result or
+				// a required original-owned child; the rebuild may only read its current DB truth.
+				await database.query('UPDATE devices_module_devices SET name = ? WHERE id = ?', ['B after A settlement', input.device.id]);
+				release();
+				await Promise.all(fixture.indexJobs); // The actual worker body, not emit's return.
+				expect(snapshotFinished).toBe(true);
+				expect(order.indexOf('A-complete')).toBeLessThan(order.indexOf('index-original-snapshot'));
+				expect(result.device.name).toBe('Draft thermostat');
+				expect((await database.manager.findOneByOrFail(DeviceEntity, { id: input.device.id })).name).toBe('B after A settlement');
+				expect(fixture.index.findProducerMode(input.device.id)).toBe(VirtualDeviceMode.CLIMATE_CONTROLLER);
+				expect(fixture.submittedPoints).toEqual(submittedA);
+				await expect(fixture.info.handleDeviceCreated(payload)).rejects.toThrow('Original creation publication closed');
+				expect(fixture.submittedPoints).toEqual(submittedA);
+				expect(fixture.projectionEvents).toHaveBeenCalled();
+			} finally {
+				const closing = owner?.close(); owner = undefined;
+				if (closing) void closing.catch(() => undefined);
+				release();
+				try { await pending.catch(() => undefined); if (closing) await closing; }
+				finally { rebuilding.mockRestore(); }
+			}
 		});
 
 
