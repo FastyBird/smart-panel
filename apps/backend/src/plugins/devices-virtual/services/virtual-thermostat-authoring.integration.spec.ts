@@ -1103,8 +1103,7 @@ describe('atomic virtual thermostat authoring', () => {
 								'Peer committed controller name',
 								input.device.id,
 							]);
-						}
-						else if (mutation === 'setting role')
+						} else if (mutation === 'setting role')
 							await manager.query('UPDATE devices_virtual_thermostat_settings SET setting = ? WHERE propertyId = ?', [
 								'peer-setting',
 								setting.propertyId,
@@ -1130,9 +1129,13 @@ describe('atomic virtual thermostat authoring', () => {
 							);
 					});
 					if (mutation === 'device name')
-						expect((await peer.query<{ name: string }[]>(
-							'SELECT name FROM devices_module_devices WHERE id = ?', [input.device.id],
-						))[0].name).toBe('Peer committed controller name');
+						expect(
+							(
+								await peer.query<{ name: string }[]>('SELECT name FROM devices_module_devices WHERE id = ?', [
+									input.device.id,
+								])
+							)[0].name,
+						).toBe('Peer committed controller name');
 					expect(
 						(
 							await peer.query<{ revision: number }[]>(
@@ -1222,14 +1225,20 @@ describe('atomic virtual thermostat authoring', () => {
 				}).initialize();
 				expect(peer).not.toBe(database);
 				expect(peer.driver).not.toBe(database.driver);
-				let nativeAcknowledgments = 0, valueEvents = 0, configEvents = 0;
+				let nativeAcknowledgments = 0,
+					valueEvents = 0,
+					configEvents = 0;
 				database.subscribers.push({
 					afterQuery: (event) => {
 						if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++;
 					},
 				});
-				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => { valueEvents++; });
-				events.on(THERMOSTAT_CONFIG_CHANGED, () => { configEvents++; });
+				events.on(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, () => {
+					valueEvents++;
+				});
+				events.on(THERMOSTAT_CONFIG_CHANGED, () => {
+					configEvents++;
+				});
 				const input = request(relayId);
 				const created = await fixture.authoring.create(input);
 				expect(created.device.id).toBe(input.device.id);
@@ -1241,19 +1250,24 @@ describe('atomic virtual thermostat authoring', () => {
 					if (!peer) throw new Error('Actual independent peer required');
 					return {
 						controller: await peer.query<Record<string, unknown>[]>(
-							'SELECT * FROM devices_module_devices WHERE id = ? ORDER BY id', [input.device.id],
+							'SELECT * FROM devices_module_devices WHERE id = ? ORDER BY id',
+							[input.device.id],
 						),
 						configuration: await peer.query<Record<string, unknown>[]>(
-							'SELECT * FROM devices_virtual_thermostat_configs WHERE controllerId = ? ORDER BY controllerId', [input.device.id],
+							'SELECT * FROM devices_virtual_thermostat_configs WHERE controllerId = ? ORDER BY controllerId',
+							[input.device.id],
 						),
 						claims: await peer.query<Record<string, unknown>[]>(
-							'SELECT * FROM devices_virtual_thermostat_actuator_claims WHERE controllerId = ? ORDER BY id', [input.device.id],
+							'SELECT * FROM devices_virtual_thermostat_actuator_claims WHERE controllerId = ? ORDER BY id',
+							[input.device.id],
 						),
 						slots: await peer.query<Record<string, unknown>[]>(
-							'SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ? ORDER BY controllerId', [input.device.id],
+							'SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ? ORDER BY controllerId',
+							[input.device.id],
 						),
 						properties: await peer.query<Record<string, unknown>[]>(
-							'SELECT * FROM devices_module_channels_properties WHERE channelId IN (SELECT id FROM devices_module_channels WHERE deviceId = ?) ORDER BY id', [input.device.id],
+							'SELECT * FROM devices_module_channels_properties WHERE channelId IN (SELECT id FROM devices_module_channels WHERE deviceId = ?) ORDER BY id',
+							[input.device.id],
 						),
 					};
 				};
@@ -1267,17 +1281,24 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(before.claims.some((row) => row.state !== 'released')).toBe(true);
 				const submitted = fixture.submittedPoints.slice();
 				const published = publications.slice();
-				const priorValueEvents = valueEvents, priorConfigEvents = configEvents;
+				const priorValueEvents = valueEvents,
+					priorConfigEvents = configEvents;
 				let failure: unknown;
 				try {
 					await peer.transaction(async (manager) => {
-						await manager.query('UPDATE devices_module_devices SET type = ? WHERE id = ?', ['peer-device', input.device.id]);
+						await manager.query('UPDATE devices_module_devices SET type = ? WHERE id = ?', [
+							'peer-device',
+							input.device.id,
+						]);
 					});
 				} catch (cause) {
 					failure = cause;
 				}
 				expect(failure).toBeInstanceOf(QueryFailedError);
-				expect(failure).toHaveProperty('message', 'SQLITE_CONSTRAINT: Thermostat hardware identity is reserved; qualified release and repair required');
+				expect(failure).toHaveProperty(
+					'message',
+					'SQLITE_CONSTRAINT: Thermostat hardware identity is reserved; qualified release and repair required',
+				);
 				expect(await readFacts()).toEqual(before);
 				expect(fixture.submittedPoints).toEqual(submitted);
 				expect(publications).toEqual(published);
@@ -1303,7 +1324,6 @@ describe('atomic virtual thermostat authoring', () => {
 				}
 			}
 		});
-
 
 		it('publishes the complete required chain with the real additional Nest index-maintenance and projection listeners selected', async () => {
 			await fixture.close();
