@@ -39,6 +39,7 @@ import {
 	originalReadCacheApi,
 } from './device-creation-context';
 import {
+	type CreationProducerObservation,
 	DiagnosticPublications,
 	PropertyProducerEvaluation,
 	PropertyProducerLease,
