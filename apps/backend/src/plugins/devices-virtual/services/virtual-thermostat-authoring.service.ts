@@ -589,10 +589,18 @@ export class VirtualThermostatAuthoringService {
 			fail('Original native catalog metadata unavailable.');
 		const metadataMethods: Readonly<{ getMetadata: DataSource['getMetadata'] }> = source;
 		const { getMetadata } = metadataMethods;
-		const metadataCall: AuthoringCall<DataSource, [EntityTarget<object>], ReturnType<DataSource['getMetadata']>> = getMetadata;
+		const metadataCall: AuthoringCall<
+			DataSource,
+			[EntityTarget<object>],
+			ReturnType<DataSource['getMetadata']>
+		> = getMetadata;
 		const driverMethods: Readonly<{ preparePersistentValue: typeof driver.preparePersistentValue }> = driver;
 		const { preparePersistentValue } = driverMethods;
-		const persistentCall: AuthoringCall<typeof driver, Parameters<typeof preparePersistentValue>, unknown> = preparePersistentValue;
+		const persistentCall: AuthoringCall<
+			typeof driver,
+			Parameters<typeof preparePersistentValue>,
+			unknown
+		> = preparePersistentValue;
 		const captureNative = (type: EntityTarget<object>) => {
 			const metadata = metadataCall.call(source, type);
 			const column = metadata.discriminatorColumn;
@@ -603,24 +611,37 @@ export class VirtualThermostatAuthoringService {
 			const metadataValue: unknown = metadata.discriminatorValue;
 			const columnType = column.type;
 			const discriminatorValue: unknown = persistentCall.call(driver, metadataValue, column);
-			if (typeof discriminatorValue !== 'string' && (typeof discriminatorValue !== 'number' || !Number.isFinite(discriminatorValue)))
+			if (
+				typeof discriminatorValue !== 'string' &&
+				(typeof discriminatorValue !== 'number' || !Number.isFinite(discriminatorValue))
+			)
 				fail('Unsupported original native discriminator scalar.');
 			return Object.freeze({
 				facts: Object.freeze({ tableName, discriminatorColumn, discriminatorValue }),
 				isCurrent: (): boolean =>
-					this.dataSource === source && source.driver === driver &&
+					this.dataSource === source &&
+					source.driver === driver &&
 					creationMethodCurrent(source, 'getMetadata', getMetadata) &&
 					creationMethodCurrent(driver, 'preparePersistentValue', preparePersistentValue) &&
-					source.entityMetadatas.includes(metadata) && metadataCall.call(source, type) === metadata && metadata.target === type &&
-					metadata.tableName === tableName && metadata.discriminatorColumn === column &&
-					metadata.discriminatorValue === metadataValue && column.databaseName === discriminatorColumn &&
-					column.isDiscriminator && column.type === columnType,
+					source.entityMetadatas.includes(metadata) &&
+					metadataCall.call(source, type) === metadata &&
+					metadata.target === type &&
+					metadata.tableName === tableName &&
+					metadata.discriminatorColumn === column &&
+					metadata.discriminatorValue === metadataValue &&
+					column.databaseName === discriminatorColumn &&
+					column.isDiscriminator &&
+					column.type === columnType,
 			});
 		};
 		const nativeDevice = captureNative(devices.mapping.class);
 		const nativeChannel = captureNative(channels.mapping.class);
 		const nativeProperty = captureNative(properties.mapping.class);
-		const nativeCatalog = Object.freeze({ device: nativeDevice.facts, channel: nativeChannel.facts, property: nativeProperty.facts });
+		const nativeCatalog = Object.freeze({
+			device: nativeDevice.facts,
+			channel: nativeChannel.facts,
+			property: nativeProperty.facts,
+		});
 		const engineKeys = ['beginCreationObservation', 'isCreationObservationCurrent', 'closeCreationObservation'];
 		if (engineKeys.some((key) => !creationHasDataMethod(producers, key)))
 			fail('Original producer observer unavailable.');
@@ -693,11 +714,15 @@ export class VirtualThermostatAuthoringService {
 			devices.isCurrent() &&
 			channels.isCurrent() &&
 			properties.isCurrent() &&
-			devices.mapping.class === VirtualDeviceEntity && channels.mapping.class === VirtualChannelEntity &&
+			devices.mapping.class === VirtualDeviceEntity &&
+			channels.mapping.class === VirtualChannelEntity &&
 			properties.mapping.class === VirtualChannelPropertyEntity &&
-			devices.mapping.type === DEVICES_VIRTUAL_TYPE && channels.mapping.type === DEVICES_VIRTUAL_TYPE &&
+			devices.mapping.type === DEVICES_VIRTUAL_TYPE &&
+			channels.mapping.type === DEVICES_VIRTUAL_TYPE &&
 			properties.mapping.type === DEVICES_VIRTUAL_TYPE &&
-			nativeDevice.isCurrent() && nativeChannel.isCurrent() && nativeProperty.isCurrent() &&
+			nativeDevice.isCurrent() &&
+			nativeChannel.isCurrent() &&
+			nativeProperty.isCurrent() &&
 			creationMethodCurrent(producers, 'beginCreationObservation', begin) &&
 			creationMethodCurrent(producers, 'isCreationObservationCurrent', observerCurrent) &&
 			creationMethodCurrent(producers, 'closeCreationObservation', close) &&

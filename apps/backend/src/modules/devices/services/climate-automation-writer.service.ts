@@ -1354,7 +1354,10 @@ export class ClimateAutomationWriterService {
 			const row: unknown = descriptor.value;
 			if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Conflict('invalid');
 			const keys = Reflect.ownKeys(row);
-			if (keys.length !== 3 || keys.some((key) => key !== 'tableName' && key !== 'discriminatorColumn' && key !== 'discriminatorValue'))
+			if (
+				keys.length !== 3 ||
+				keys.some((key) => key !== 'tableName' && key !== 'discriminatorColumn' && key !== 'discriminatorValue')
+			)
 				throw new Conflict('invalid');
 			const read = (key: string): unknown => {
 				const field = Object.getOwnPropertyDescriptor(row, key);
@@ -1364,8 +1367,12 @@ export class ClimateAutomationWriterService {
 			const tableName = read('tableName');
 			const discriminatorColumn = read('discriminatorColumn');
 			const discriminatorValue = read('discriminatorValue');
-			if (tableName !== table || discriminatorColumn !== 'type' ||
-				(typeof discriminatorValue !== 'string' && (typeof discriminatorValue !== 'number' || !Number.isFinite(discriminatorValue))))
+			if (
+				tableName !== table ||
+				discriminatorColumn !== 'type' ||
+				(typeof discriminatorValue !== 'string' &&
+					(typeof discriminatorValue !== 'number' || !Number.isFinite(discriminatorValue)))
+			)
 				throw new Conflict('invalid');
 			return Object.freeze({ tableName, discriminatorColumn, discriminatorValue });
 		};
@@ -1425,7 +1432,8 @@ export class ClimateAutomationWriterService {
 			seen.add(key);
 			switch (table) {
 				case 'devices_module_devices':
-					if (row.id !== plan.controllerId || row.type !== nativeCatalog.device.discriminatorValue) throw new Conflict('invalid');
+					if (row.id !== plan.controllerId || row.type !== nativeCatalog.device.discriminatorValue)
+						throw new Conflict('invalid');
 					devices++;
 					break;
 				case 'devices_module_channels':

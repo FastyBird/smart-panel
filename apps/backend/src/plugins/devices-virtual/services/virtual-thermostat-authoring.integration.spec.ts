@@ -44,8 +44,8 @@ import { ClimateAutomationRegistryService } from '../../../modules/devices/servi
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
-import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DeviceCreationContext } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DeviceValidationService } from '../../../modules/devices/services/device-validation.service';
 import { DeviceZonesService } from '../../../modules/devices/services/device-zones.service';
@@ -2217,7 +2217,10 @@ describe('atomic virtual thermostat authoring', () => {
 					expect(environment.source).toBe(database);
 					expect(Object.keys(environment.nativeCatalog).sort()).toEqual(['channel', 'device', 'property']);
 					expect(Object.isFrozen(environment.nativeCatalog)).toBe(true);
-					const roles: readonly { role: 'device' | 'channel' | 'property'; type: typeof VirtualDeviceEntity | typeof VirtualChannelEntity | typeof VirtualChannelPropertyEntity }[] = [
+					const roles: readonly {
+						role: 'device' | 'channel' | 'property';
+						type: typeof VirtualDeviceEntity | typeof VirtualChannelEntity | typeof VirtualChannelPropertyEntity;
+					}[] = [
 						{ role: 'device', type: VirtualDeviceEntity },
 						{ role: 'channel', type: VirtualChannelEntity },
 						{ role: 'property', type: VirtualChannelPropertyEntity },
@@ -2253,40 +2256,63 @@ describe('atomic virtual thermostat authoring', () => {
 				{ role: 'channel', type: VirtualChannelEntity, wrong: 'foreign-native-label' },
 				{ role: 'property', type: VirtualChannelPropertyEntity, wrong: 'foreign-native-label' },
 			];
-			it.each(wrongNativeRows)('refuses planned $role native label $wrong before apply or native ACK', async ({ type, wrong }) => {
-				fixture.automation.onModuleDestroy();
-				const originalMethods: Readonly<{ prepareCreation: VirtualThermostatAuthoringService['prepareCreation'] }> = fixture.authoring;
-				const { prepareCreation } = originalMethods;
-				const originalCall: Readonly<{
-					call: (receiver: VirtualThermostatAuthoringService, ...args: Parameters<VirtualThermostatAuthoringService['prepareCreation']>) => ReturnType<VirtualThermostatAuthoringService['prepareCreation']>;
-				}> = prepareCreation;
-				const table = database.getMetadata(type).tableName;
-				let changedRows = 0;
-				const prepare = jest.spyOn(fixture.authoring, 'prepareCreation').mockImplementation(async (...args) => {
-					const plan = await originalCall.call(fixture.authoring, ...args);
-					const inserts = plan.inserts.map((item) => {
-						if (item.table !== table) return item;
-						changedRows++;
-						return Object.freeze({ table: item.table, row: Object.freeze({ ...item.row, type: wrong }) });
+			it.each(wrongNativeRows)(
+				'refuses planned $role native label $wrong before apply or native ACK',
+				async ({ type, wrong }) => {
+					fixture.automation.onModuleDestroy();
+					const originalMethods: Readonly<{ prepareCreation: VirtualThermostatAuthoringService['prepareCreation'] }> =
+						fixture.authoring;
+					const { prepareCreation } = originalMethods;
+					const originalCall: Readonly<{
+						call: (
+							receiver: VirtualThermostatAuthoringService,
+							...args: Parameters<VirtualThermostatAuthoringService['prepareCreation']>
+						) => ReturnType<VirtualThermostatAuthoringService['prepareCreation']>;
+					}> = prepareCreation;
+					const table = database.getMetadata(type).tableName;
+					let changedRows = 0;
+					const prepare = jest.spyOn(fixture.authoring, 'prepareCreation').mockImplementation(async (...args) => {
+						const plan = await originalCall.call(fixture.authoring, ...args);
+						const inserts = plan.inserts.map((item) => {
+							if (item.table !== table) return item;
+							changedRows++;
+							return Object.freeze({ table: item.table, row: Object.freeze({ ...item.row, type: wrong }) });
+						});
+						return Object.freeze({ ...plan, inserts: Object.freeze(inserts) });
 					});
-					return Object.freeze({ ...plan, inserts: Object.freeze(inserts) });
-				});
-				const apply = jest.spyOn(fixture.authoring, 'applyCreation');
-				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
-				provider.onModuleInit();
-				fixture.extraProviders.push(provider);
-				let nativeAcknowledgments = 0;
-				database.subscribers.push({ afterQuery: (event) => { if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++; } });
-				const input = request(relayId);
-				await expect(fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration })).resolves.toEqual({ outcome: 'conflict', reason: 'invalid' });
-				expect(prepare).toHaveBeenCalledTimes(1);
-				expect(changedRows).toBeGreaterThan(0);
-				expect(apply).not.toHaveBeenCalled();
-				expect(nativeAcknowledgments).toBe(0);
-				expect(fixture.submittedPoints).toEqual([]);
-				expect(publications).toEqual([]);
-				expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).toBeNull();
-			});
+					const apply = jest.spyOn(fixture.authoring, 'applyCreation');
+					const provider = new VirtualThermostatAutomationService(
+						fixture.writer,
+						fixture.core,
+						fixture.graph,
+						new NestConfigService(),
+						fixture.authoring,
+					);
+					provider.onModuleInit();
+					fixture.extraProviders.push(provider);
+					let nativeAcknowledgments = 0;
+					database.subscribers.push({
+						afterQuery: (event) => {
+							if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++;
+						},
+					});
+					const input = request(relayId);
+					await expect(
+						fixture.writer.createVirtualThermostatV1({
+							kind: 'create-virtual-thermostat:v1',
+							device: input.device,
+							configuration: input.configuration,
+						}),
+					).resolves.toEqual({ outcome: 'conflict', reason: 'invalid' });
+					expect(prepare).toHaveBeenCalledTimes(1);
+					expect(changedRows).toBeGreaterThan(0);
+					expect(apply).not.toHaveBeenCalled();
+					expect(nativeAcknowledgments).toBe(0);
+					expect(fixture.submittedPoints).toEqual([]);
+					expect(publications).toEqual([]);
+					expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).toBeNull();
+				},
+			);
 
 			it('does not adopt a metadata method replacement after the original native facts were captured before input', async () => {
 				const input = request(relayId);
@@ -2294,20 +2320,26 @@ describe('atomic virtual thermostat authoring', () => {
 				let replacementCalls = (): number => 0;
 				let restore = (): void => undefined;
 				try {
-					await expect(fixture.writer.createVirtualThermostatV1({
-						kind: 'create-virtual-thermostat:v1',
-						get device() {
-							const replacement = jest.spyOn(database, 'getMetadata');
-							replacementCalls = () => replacement.mock.calls.length;
-							restore = () => { replacement.mockRestore(); };
-							return input.device;
-						},
-						configuration: input.configuration,
-					})).rejects.toBeInstanceOf(Error);
+					await expect(
+						fixture.writer.createVirtualThermostatV1({
+							kind: 'create-virtual-thermostat:v1',
+							get device() {
+								const replacement = jest.spyOn(database, 'getMetadata');
+								replacementCalls = () => replacement.mock.calls.length;
+								restore = () => {
+									replacement.mockRestore();
+								};
+								return input.device;
+							},
+							configuration: input.configuration,
+						}),
+					).rejects.toBeInstanceOf(Error);
 					expect(replacementCalls()).toBe(0);
 					expect(transactions).not.toHaveBeenCalled();
 					expect(fixture.submittedPoints).toEqual([]);
-				} finally { restore(); }
+				} finally {
+					restore();
+				}
 			});
 
 			it('cannot rescue original native facts with same-object mapper re-registration during input capture', async () => {
@@ -2315,14 +2347,16 @@ describe('atomic virtual thermostat authoring', () => {
 				if (!original) throw new Error('Original device mapping required');
 				const input = request(relayId);
 				const transactions = jest.spyOn(database, 'transaction');
-				await expect(fixture.writer.createVirtualThermostatV1({
-					kind: 'create-virtual-thermostat:v1',
-					get device() {
-						fixture.deviceMapper.registerMapping(original.mapping);
-						return input.device;
-					},
-					configuration: input.configuration,
-				})).rejects.toBeInstanceOf(Error);
+				await expect(
+					fixture.writer.createVirtualThermostatV1({
+						kind: 'create-virtual-thermostat:v1',
+						get device() {
+							fixture.deviceMapper.registerMapping(original.mapping);
+							return input.device;
+						},
+						configuration: input.configuration,
+					}),
+				).rejects.toBeInstanceOf(Error);
 				expect(original.isCurrent()).toBe(false);
 				expect(transactions).not.toHaveBeenCalled();
 				expect(fixture.submittedPoints).toEqual([]);
@@ -2339,24 +2373,42 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(nativeLabel).not.toBe('virtual');
 				const exists = jest.spyOn(fixture.module.get(DeviceExistsConstraintValidator), 'validate');
 				const containment = jest.spyOn(fixture.module.get(DeviceIsVirtualConstraintValidator), 'validate');
-				const originals: Readonly<{ readOriginalDeviceIdentity: typeof DeviceCreationContext.readOriginalDeviceIdentity }> = DeviceCreationContext;
+				const originals: Readonly<{
+					readOriginalDeviceIdentity: typeof DeviceCreationContext.readOriginalDeviceIdentity;
+				}> = DeviceCreationContext;
 				const { readOriginalDeviceIdentity } = originals;
 				const originalCall: Readonly<{
-					call: (receiver: typeof DeviceCreationContext, deviceId: string) => ReturnType<typeof DeviceCreationContext.readOriginalDeviceIdentity>;
+					call: (
+						receiver: typeof DeviceCreationContext,
+						deviceId: string,
+					) => ReturnType<typeof DeviceCreationContext.readOriginalDeviceIdentity>;
 				}> = readOriginalDeviceIdentity;
 				const observed: Readonly<{ id: string; type: string }>[] = [];
 				const observerFailures: unknown[] = [];
 				const originalQueryLeases: boolean[] = [];
-				database.subscribers.push({ beforeQuery: (event) => {
-					if (event.query.includes('"device"."type" AS "type"') && event.parameters?.includes(input.device.id))
-						originalQueryLeases.push(event.queryRunner.isTransactionActive && hasCurrentSqliteConnectionLease(database));
-				} });
+				database.subscribers.push({
+					beforeQuery: (event) => {
+						if (event.query.includes('"device"."type" AS "type"') && event.parameters?.includes(input.device.id))
+							originalQueryLeases.push(
+								event.queryRunner.isTransactionActive && hasCurrentSqliteConnectionLease(database),
+							);
+					},
+				});
 				const read = jest.spyOn(DeviceCreationContext, 'readOriginalDeviceIdentity').mockImplementation((id) => {
 					const promise = originalCall.call(DeviceCreationContext, id);
 					if (promise !== undefined) {
-						void promise.then((identity) => {
-							if (identity) observed.push(identity);
-						}, (error: unknown) => { observerFailures.push(error); }).catch((error: unknown) => { observerFailures.push(error); });
+						void promise
+							.then(
+								(identity) => {
+									if (identity) observed.push(identity);
+								},
+								(error: unknown) => {
+									observerFailures.push(error);
+								},
+							)
+							.catch((error: unknown) => {
+								observerFailures.push(error);
+							});
 					}
 					return promise;
 				});
@@ -2370,14 +2422,21 @@ describe('atomic virtual thermostat authoring', () => {
 					expect(originalQueryLeases.length).toBeGreaterThanOrEqual(2);
 					expect(originalQueryLeases.every(Boolean)).toBe(true);
 					expect(observed.length).toBeGreaterThanOrEqual(2);
-					expect(observed.every((identity) => identity.id === input.device.id && identity.type === 'virtual')).toBe(true);
+					expect(observed.every((identity) => identity.id === input.device.id && identity.type === 'virtual')).toBe(
+						true,
+					);
 					expect(observerFailures).toEqual([]);
 					const table = database.driver.escape(metadata.tableName);
 					const discriminator = database.driver.escape(column.databaseName);
-					const raw = await database.manager.query<{ id: string; nativeType: unknown }[]>(`SELECT id, ${discriminator} AS nativeType FROM ${table} WHERE id = ?`, [input.device.id]);
+					const raw = await database.manager.query<{ id: string; nativeType: unknown }[]>(
+						`SELECT id, ${discriminator} AS nativeType FROM ${table} WHERE id = ?`,
+						[input.device.id],
+					);
 					expect(raw).toEqual([{ id: input.device.id, nativeType: nativeLabel }]);
 					expect(DeviceCreationContext.readOriginalDeviceIdentity(input.device.id)).toBeUndefined();
-				} finally { read.mockRestore(); }
+				} finally {
+					read.mockRestore();
+				}
 			});
 
 			it('rejects wrong-root reentry at the actual parent query before a second query and retains caught operation poison', async () => {
@@ -2386,14 +2445,23 @@ describe('atomic virtual thermostat authoring', () => {
 				let reachedParentQuery = false;
 				let caught: unknown;
 				let wrongRootQueries = 0;
-				database.subscribers.push({ beforeQuery: (event) => {
-					if (event.parameters?.includes(wrongRootId)) wrongRootQueries++;
-					if (!reachedParentQuery && event.query.includes('"device"."type" AS "type"') && event.parameters?.includes(input.device.id)) {
-						reachedParentQuery = true;
-						try { DeviceCreationContext.readOriginalDeviceIdentity(wrongRootId); }
-						catch (error) { caught = error; }
-					}
-				} });
+				database.subscribers.push({
+					beforeQuery: (event) => {
+						if (event.parameters?.includes(wrongRootId)) wrongRootQueries++;
+						if (
+							!reachedParentQuery &&
+							event.query.includes('"device"."type" AS "type"') &&
+							event.parameters?.includes(input.device.id)
+						) {
+							reachedParentQuery = true;
+							try {
+								void DeviceCreationContext.readOriginalDeviceIdentity(wrongRootId);
+							} catch (error) {
+								caught = error;
+							}
+						}
+					},
+				});
 				await expect(fixture.authoring.create(input)).rejects.toBeInstanceOf(Error);
 				expect(reachedParentQuery).toBe(true);
 				expect(caught).toBeInstanceOf(Error);
@@ -2403,6 +2471,5 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(publications).toEqual([]);
 			});
 		});
-
 	});
 });
