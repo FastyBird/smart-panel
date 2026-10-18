@@ -13,6 +13,7 @@ import { ConfigService as ModuleConfigService } from '../../../modules/config/se
 import { StorageConfigModel } from '../../../modules/storage/models/config.model';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { ClimateAutomationWriteError } from '../../../modules/devices/contracts/climate-automation.contract';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
@@ -837,7 +838,15 @@ describe('thermostat durable comfort lifecycle', () => {
 					expect(committed.comfort.selected_preset).toBe('eco');
 					expect(committed.revision).toBe(expected.expected_revision + 1);
 					resume.open();
-					if (rejectResponse) await expect(result).rejects.toBe(failure);
+					if (rejectResponse) await result.then(
+						() => { throw new Error('Expected the committed response failure.'); },
+						(error: unknown) => {
+							expect(error).toBeInstanceOf(ClimateAutomationWriteError);
+							if (!(error instanceof ClimateAutomationWriteError)) throw error;
+							expect(error.commitOutcome).toBe('committed');
+							expect(error.cause).toBe(failure);
+						},
+					);
 					else expect((await result).configuration.selected_preset).toBe('eco');
 					expect(owned.releases[0]).toHaveBeenCalledTimes(1);
 					expect(original.isCurrent()).toBe(false);
