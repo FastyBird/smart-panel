@@ -22,14 +22,21 @@ import {
 	ChannelCategory,
 	ConnectionState,
 	DataTypeType,
-	DeviceHiddenBy,
 	DeviceCategory,
+	DeviceHiddenBy,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { DeviceZoneEntity } from '../../../modules/devices/entities/device-zone.entity';
-import { ChannelControlEntity, ChannelEntity, ChannelPropertyEntity, DeviceConnectionStatus, DeviceControlEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	ChannelControlEntity,
+	ChannelEntity,
+	ChannelPropertyEntity,
+	DeviceConnectionStatus,
+	DeviceControlEntity,
+	DeviceEntity,
+} from '../../../modules/devices/entities/devices.entity';
 import { PropertyProducerState, PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsTypeMapperService } from '../../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
@@ -514,15 +521,25 @@ export class VirtualThermostatAuthoringService {
 			if (!arrays.isArray(input)) fail('Missing fixed response array.');
 			return input;
 		};
-		const closed = (row: Readonly<Record<string, ClimateAutomationJson>>, required: readonly string[], optional: readonly string[] = []): void => {
-			if (required.some((key) => !Object.hasOwn(row, key)) || Reflect.ownKeys(row).some((key) => typeof key !== 'string' || (!required.includes(key) && !optional.includes(key))))
+		const closed = (
+			row: Readonly<Record<string, ClimateAutomationJson>>,
+			required: readonly string[],
+			optional: readonly string[] = [],
+		): void => {
+			if (
+				required.some((key) => !Object.hasOwn(row, key)) ||
+				Reflect.ownKeys(row).some(
+					(key) => typeof key !== 'string' || (!required.includes(key) && !optional.includes(key)),
+				)
+			)
 				fail('Unexpected fixed response fields.');
 		};
 		const text = (input: ClimateAutomationJson | undefined): string => {
 			if (typeof input !== 'string') fail('Missing fixed response string.');
 			return input;
 		};
-		const nullableText = (input: ClimateAutomationJson | undefined): string | null => input === null ? null : text(input);
+		const nullableText = (input: ClimateAutomationJson | undefined): string | null =>
+			input === null ? null : text(input);
 		const boolean = (input: ClimateAutomationJson | undefined): boolean => {
 			if (typeof input !== 'boolean') fail('Missing fixed response boolean.');
 			return input;
@@ -532,7 +549,8 @@ export class VirtualThermostatAuthoringService {
 			return input;
 		};
 		const scalar = (input: ClimateAutomationJson | undefined): string | number | boolean | null => {
-			if (input === null || typeof input === 'string' || typeof input === 'boolean') return input;
+			if (input === null) return null;
+			if (typeof input === 'string' || typeof input === 'boolean') return input;
 			return number(input);
 		};
 		const choose = <T extends string>(input: ClimateAutomationJson | undefined, options: readonly T[]): T => {
@@ -546,16 +564,23 @@ export class VirtualThermostatAuthoringService {
 			if (!Number.isFinite(result.getTime()) || result.toISOString() !== instant) fail('Invalid fixed response date.');
 			return result;
 		};
-		const nullableDate = (input: ClimateAutomationJson | undefined): Date | null => input === null ? null : date(input);
+		const nullableDate = (input: ClimateAutomationJson | undefined): Date | null =>
+			input === null ? null : date(input);
 		const baseFields = ['id', 'created_at', 'updated_at'];
 		const commonFields = [...baseFields, 'type', 'category', 'identifier', 'name'];
-		const base = (entity: DeviceEntity | ChannelEntity | ChannelPropertyEntity | DeviceControlEntity | ChannelControlEntity, row: Readonly<Record<string, ClimateAutomationJson>>): void => {
+		const base = (
+			entity: DeviceEntity | ChannelEntity | ChannelPropertyEntity | DeviceControlEntity | ChannelControlEntity,
+			row: Readonly<Record<string, ClimateAutomationJson>>,
+		): void => {
 			entity.id = text(row.id);
 			entity.createdAt = date(row.created_at);
 			// The actual nullable column has a narrower historical TS annotation; retain its explicit null.
 			if (!Reflect.set(entity, 'updatedAt', nullableDate(row.updated_at))) fail('Fixed updatedAt is not writable.');
 		};
-		const publicFields = (row: Readonly<Record<string, ClimateAutomationJson>>, fields: readonly string[]): Record<string, ClimateAutomationJson> => {
+		const publicFields = (
+			row: Readonly<Record<string, ClimateAutomationJson>>,
+			fields: readonly string[],
+		): Record<string, ClimateAutomationJson> => {
 			const result: Record<string, ClimateAutomationJson> = {};
 			for (const key of fields) if (Object.hasOwn(row, key)) result[key] = row[key];
 			return result;
@@ -563,18 +588,32 @@ export class VirtualThermostatAuthoringService {
 		const frame = object(value);
 		closed(frame, ['device', 'configuration']);
 		const wireDevice = object(frame.device);
-		const deviceFields = [...commonFields, 'description', 'enabled', 'hidden', 'hidden_by', 'room_id', 'mode', 'zone_ids', 'status', 'controls', 'channels'];
+		const deviceFields = [
+			...commonFields,
+			'description',
+			'enabled',
+			'hidden',
+			'hidden_by',
+			'room_id',
+			'mode',
+			'zone_ids',
+			'status',
+			'controls',
+			'channels',
+		];
 		closed(wireDevice, deviceFields, ['deviceZones']);
 		const device = new VirtualDeviceEntity();
 		base(device, wireDevice);
-		if (wireDevice.type !== device.type || device.type !== DEVICES_VIRTUAL_TYPE) fail('Fixed public device type changed.');
+		if (wireDevice.type !== device.type || device.type !== DEVICES_VIRTUAL_TYPE)
+			fail('Fixed public device type changed.');
 		device.category = choose(wireDevice.category, Object.values(DeviceCategory));
 		device.identifier = nullableText(wireDevice.identifier);
 		device.name = text(wireDevice.name);
 		device.description = nullableText(wireDevice.description);
 		device.enabled = boolean(wireDevice.enabled);
 		device.hidden = boolean(wireDevice.hidden);
-		device.hiddenBy = wireDevice.hidden_by === null ? null : choose(wireDevice.hidden_by, Object.values(DeviceHiddenBy));
+		device.hiddenBy =
+			wireDevice.hidden_by === null ? null : choose(wireDevice.hidden_by, Object.values(DeviceHiddenBy));
 		device.roomId = nullableText(wireDevice.room_id);
 		device.mode = choose(wireDevice.mode, Object.values(VirtualDeviceMode));
 		const status = object(wireDevice.status);
@@ -598,9 +637,12 @@ export class VirtualThermostatAuthoringService {
 			});
 		} else {
 			// Nonpersisted getter backing only: no invented timestamp/id or lookup.
-			device.deviceZones = zoneIds.map((zoneId) => Object.assign(new DeviceZoneEntity(), { deviceId: device.id, zoneId }));
+			device.deviceZones = zoneIds.map((zoneId) =>
+				Object.assign(new DeviceZoneEntity(), { deviceId: device.id, zoneId }),
+			);
 		}
-		if (climateAutomationCanonical(device.zoneIds) !== climateAutomationCanonical(zoneIds)) fail('Fixed zone membership changed.');
+		if (climateAutomationCanonical(device.zoneIds) !== climateAutomationCanonical(zoneIds))
+			fail('Fixed zone membership changed.');
 		device.controls = list(wireDevice.controls).map((input) => {
 			const row = object(input);
 			closed(row, [...baseFields, 'name', 'device']);
@@ -618,7 +660,8 @@ export class VirtualThermostatAuthoringService {
 			closed(row, channelFields);
 			const channel = new VirtualChannelEntity();
 			base(channel, row);
-			if (row.type !== channel.type || channel.type !== DEVICES_VIRTUAL_TYPE) fail('Fixed public channel type changed.');
+			if (row.type !== channel.type || channel.type !== DEVICES_VIRTUAL_TYPE)
+				fail('Fixed public channel type changed.');
 			channel.category = choose(row.category, Object.values(ChannelCategory));
 			channel.identifier = nullableText(row.identifier);
 			channel.name = text(row.name);
@@ -639,22 +682,40 @@ export class VirtualThermostatAuthoringService {
 			const publicProperties: ClimateAutomationJson[] = [];
 			channel.properties = list(row.properties).map((input) => {
 				const propertyRow = object(input);
-				const propertyFields = [...commonFields, 'permissions', 'data_type', 'format', 'invalid', 'step', 'value', 'channel', 'value_origin', 'source_property'];
+				const propertyFields = [
+					...commonFields,
+					'permissions',
+					'data_type',
+					'format',
+					'invalid',
+					'step',
+					'value',
+					'channel',
+					'value_origin',
+					'source_property',
+				];
 				closed(propertyRow, propertyFields, ['unit', 'measurement_quantity', 'energyClaimPropertyId']);
 				const property = new VirtualChannelPropertyEntity();
 				base(property, propertyRow);
-				if (propertyRow.type !== property.type || property.type !== DEVICES_VIRTUAL_TYPE) fail('Fixed public property type changed.');
+				if (propertyRow.type !== property.type || property.type !== DEVICES_VIRTUAL_TYPE)
+					fail('Fixed public property type changed.');
 				property.category = choose(propertyRow.category, Object.values(PropertyCategory));
 				property.identifier = nullableText(propertyRow.identifier);
 				property.name = nullableText(propertyRow.name);
-				property.permissions = list(propertyRow.permissions).map((permission) => choose(permission, Object.values(PermissionType)));
+				property.permissions = list(propertyRow.permissions).map((permission) =>
+					choose(permission, Object.values(PermissionType)),
+				);
 				property.dataType = choose(propertyRow.data_type, Object.values(DataTypeType));
 				if (Object.hasOwn(propertyRow, 'unit')) property.unit = nullableText(propertyRow.unit);
-				if (Object.hasOwn(propertyRow, 'measurement_quantity')) property.measurementQuantity = text(propertyRow.measurement_quantity);
-				const format = propertyRow.format === null ? null : list(propertyRow.format).map((item) => {
-					if (item === null || typeof item === 'string') return item;
-					return number(item);
-				});
+				if (Object.hasOwn(propertyRow, 'measurement_quantity'))
+					property.measurementQuantity = text(propertyRow.measurement_quantity);
+				const format =
+					propertyRow.format === null
+						? null
+						: list(propertyRow.format).map((item) => {
+								if (item === null || typeof item === 'string') return item;
+								return number(item);
+							});
 				if (!Reflect.set(property, 'format', format)) fail('Fixed format is not writable.');
 				property.invalid = scalar(propertyRow.invalid);
 				property.step = propertyRow.step === null ? null : number(propertyRow.step);
@@ -662,17 +723,28 @@ export class VirtualThermostatAuthoringService {
 				property.valueOrigin = choose(propertyRow.value_origin, Object.values(VirtualValueOrigin));
 				property.sourcePropertyId = nullableText(propertyRow.source_property);
 				if (property.channel !== channel.id) fail('Fixed property owner changed.');
-				if (Object.hasOwn(propertyRow, 'energyClaimPropertyId')) property.energyClaimPropertyId = nullableText(propertyRow.energyClaimPropertyId);
+				if (Object.hasOwn(propertyRow, 'energyClaimPropertyId'))
+					property.energyClaimPropertyId = nullableText(propertyRow.energyClaimPropertyId);
 				if (propertyRow.value === null) property.value = null;
 				else {
 					const state = object(propertyRow.value);
 					closed(state, ['value', 'last_updated', 'trend'], ['producer']);
-					const valueState = new PropertyValueState(scalar(state.value), nullableText(state.last_updated), state.trend === null ? null : choose<'rising' | 'falling' | 'stable'>(state.trend, ['rising', 'falling', 'stable']));
+					const valueState = new PropertyValueState(
+						scalar(state.value),
+						nullableText(state.last_updated),
+						state.trend === null
+							? null
+							: choose<'rising' | 'falling' | 'stable'>(state.trend, ['rising', 'falling', 'stable']),
+					);
 					if (Object.hasOwn(state, 'producer')) {
 						const producer = object(state.producer);
 						closed(producer, ['quality', 'reasons', 'sampled_at', 'evaluated_at', 'expires_at', 'revision']);
 						const ownedProducer = new PropertyProducerState();
-						ownedProducer.quality = choose<'good' | 'degraded' | 'unavailable'>(producer.quality, ['good', 'degraded', 'unavailable']);
+						ownedProducer.quality = choose<'good' | 'degraded' | 'unavailable'>(producer.quality, [
+							'good',
+							'degraded',
+							'unavailable',
+						]);
 						ownedProducer.reasons = list(producer.reasons).map(text);
 						ownedProducer.sampledAt = nullableText(producer.sampled_at);
 						ownedProducer.evaluatedAt = text(producer.evaluated_at);
@@ -693,13 +765,20 @@ export class VirtualThermostatAuthoringService {
 		const result = new VirtualCreatedThermostatModel();
 		result.device = device;
 		// These closed configuration model classes have only writable exposed data fields, no aliases/transforms/getters.
-		result.configuration = plainToInstance(VirtualThermostatConfigurationModel, configuration, { exposeUnsetFields: false });
+		result.configuration = plainToInstance(VirtualThermostatConfigurationModel, configuration, {
+			exposeUnsetFields: false,
+		});
 		const expected = { device: { ...publicFields(wireDevice, deviceFields), channels: publicChannels }, configuration };
 		const projected: unknown = instanceToPlain(result, {
-			excludeExtraneousValues: true, exposeUnsetFields: false, ignoreDecorators: false, groups: ['api'], enableCircularCheck: true,
+			excludeExtraneousValues: true,
+			exposeUnsetFields: false,
+			ignoreDecorators: false,
+			groups: ['api'],
+			enableCircularCheck: true,
 		});
 		// Standard JSON transport normalizes only trusted projected Dates, never caller serializers.
-		const json: Readonly<{ stringify: (input: unknown) => string | undefined; parse: (input: string) => unknown }> = JSON;
+		const json: Readonly<{ stringify: (input: unknown) => string | undefined; parse: (input: string) => unknown }> =
+			JSON;
 		const encoded = json.stringify(projected);
 		if (encoded === undefined) fail('Missing fixed public projection.');
 		if (climateAutomationCanonical(json.parse(encoded)) !== climateAutomationCanonical(expected))

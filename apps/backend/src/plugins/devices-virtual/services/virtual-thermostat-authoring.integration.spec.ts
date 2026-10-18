@@ -14,8 +14,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
 import { Test } from '@nestjs/testing';
 
-import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
+import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../../modules/config/services/plugins-type-mapper.service';
 import {
@@ -87,9 +87,6 @@ import {
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { ZoneSpaceEntity } from '../../spaces-home-control/entities/zone-space.entity';
-import { VirtualCreatedThermostatResponseModel } from '../models/thermostat-authoring-response.model';
-import { VirtualThermostatClaimModel, VirtualThermostatConfigurationModel, VirtualThermostatPolicyModel, VirtualThermostatSettingModel, VirtualThermostatSourceModel } from '../models/thermostat-response.model';
-
 import { DevicesVirtualPlugin } from '../devices-virtual.plugin';
 import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.dto';
 import {
@@ -110,6 +107,14 @@ import { VirtualDeviceInformationListener } from '../listeners/virtual-device-in
 import { VirtualIndexMaintenanceListener } from '../listeners/virtual-index-maintenance.listener';
 import { VirtualProjectionListener } from '../listeners/virtual-projection.listener';
 import { VirtualStatusListener } from '../listeners/virtual-status.listener';
+import { VirtualCreatedThermostatResponseModel } from '../models/thermostat-authoring-response.model';
+import {
+	VirtualThermostatClaimModel,
+	VirtualThermostatConfigurationModel,
+	VirtualThermostatPolicyModel,
+	VirtualThermostatSettingModel,
+	VirtualThermostatSourceModel,
+} from '../models/thermostat-response.model';
 import { VirtualDevicePlatform } from '../platforms/virtual-device.platform';
 import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 import { CategoryAllowedConstraintValidator } from '../validators/category-allowed-constraint.validator';
@@ -2654,7 +2659,8 @@ describe('atomic virtual thermostat authoring', () => {
 		});
 		describe('fixed original creation response materialization', () => {
 			it('returns authentic catalog classes with retained ordered zones and exact nullable API facts through the actual interceptor', async () => {
-				const first = uuid(), second = uuid();
+				const first = uuid(),
+					second = uuid();
 				await database.manager.insert(ZoneSpaceEntity, [
 					{ id: first, name: 'First retained zone', category: SpaceZoneCategory.UTILITY },
 					{ id: second, name: 'Second retained zone', category: SpaceZoneCategory.UTILITY },
@@ -2662,13 +2668,27 @@ describe('atomic virtual thermostat authoring', () => {
 				const input = request(relayId);
 				input.device.zone_ids = [second, first];
 				input.device.enabled = false;
-				const originalMethods: Readonly<{ createVirtualThermostatV1: ClimateAutomationWriterService['createVirtualThermostatV1'] }> = fixture.writer;
+				const originalMethods: Readonly<{
+					createVirtualThermostatV1: ClimateAutomationWriterService['createVirtualThermostatV1'];
+				}> = fixture.writer;
 				const { createVirtualThermostatV1 } = originalMethods;
-				const originalCall: Readonly<{ call: (receiver: ClimateAutomationWriterService, ...args: Parameters<ClimateAutomationWriterService['createVirtualThermostatV1']>) => ReturnType<ClimateAutomationWriterService['createVirtualThermostatV1']> }> = createVirtualThermostatV1;
+				const originalCall: Readonly<{
+					call: (
+						receiver: ClimateAutomationWriterService,
+						...args: Parameters<ClimateAutomationWriterService['createVirtualThermostatV1']>
+					) => ReturnType<ClimateAutomationWriterService['createVirtualThermostatV1']>;
+				}> = createVirtualThermostatV1;
 				let fixedFrame: unknown;
 				const root = jest.spyOn(fixture.writer, 'createVirtualThermostatV1').mockImplementation((...args) => {
 					const promise = originalCall.call(fixture.writer, ...args);
-					void promise.then((outcome) => { if (outcome.outcome === 'applied') fixedFrame = outcome.result; }, () => undefined).catch(() => undefined);
+					void promise
+						.then(
+							(outcome) => {
+								if (outcome.outcome === 'applied') fixedFrame = outcome.result;
+							},
+							() => undefined,
+						)
+						.catch(() => undefined);
 					return promise;
 				});
 				const result = await fixture.authoring.create(input);
@@ -2676,20 +2696,33 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(result.device).toBeInstanceOf(VirtualDeviceEntity);
 				expect(result.configuration).toBeInstanceOf(VirtualThermostatConfigurationModel);
 				expect(result.configuration.policy).toBeInstanceOf(VirtualThermostatPolicyModel);
-				expect(result.configuration.sources.every((source) => source instanceof VirtualThermostatSourceModel)).toBe(true);
-				expect(result.configuration.actuators.every((claim) => claim instanceof VirtualThermostatClaimModel)).toBe(true);
-				expect(result.configuration.settings.every((setting) => setting instanceof VirtualThermostatSettingModel)).toBe(true);
+				expect(result.configuration.sources.every((source) => source instanceof VirtualThermostatSourceModel)).toBe(
+					true,
+				);
+				expect(result.configuration.actuators.every((claim) => claim instanceof VirtualThermostatClaimModel)).toBe(
+					true,
+				);
+				expect(result.configuration.settings.every((setting) => setting instanceof VirtualThermostatSettingModel)).toBe(
+					true,
+				);
 				expect(Object.hasOwn(result.device, 'type')).toBe(false);
 				expect(Object.hasOwn(result.device, 'zoneIds')).toBe(false);
 				expect(result.device.zoneIds).toEqual([second, first]);
-				expect(result.device.deviceZones.every((zone) => zone instanceof DeviceZoneEntity && zone.deviceId === input.device.id && zone.createdAt instanceof Date)).toBe(true);
+				expect(
+					result.device.deviceZones.every(
+						(zone) =>
+							zone instanceof DeviceZoneEntity && zone.deviceId === input.device.id && zone.createdAt instanceof Date,
+					),
+				).toBe(true);
 				expect(result.device.updatedAt).toBeNull();
 				expect(result.device.roomId).toBeNull();
 				expect(result.device.hiddenBy).toBeNull();
 				expect(result.device.enabled).toBe(false);
 				expect(result.device.hidden).toBe(false);
 				expect(result.device.controls).toEqual([]);
-				expect(result.device.channels.map((channel) => channel.id)).toEqual(input.device.channels?.map((channel) => channel.id));
+				expect(result.device.channels.map((channel) => channel.id)).toEqual(
+					input.device.channels?.map((channel) => channel.id),
+				);
 				for (const channel of result.device.channels) {
 					expect(channel).toBeInstanceOf(VirtualChannelEntity);
 					expect(Object.hasOwn(channel, 'type')).toBe(false);
@@ -2706,14 +2739,25 @@ describe('atomic virtual thermostat authoring', () => {
 				response.data = result;
 				const context = new ExecutionContextHost([{}, { sent: false }], null, () => undefined);
 				context.setType('http');
-				const actual: unknown = await firstValueFrom<unknown>(new TransformResponseInterceptor(new Reflector()).intercept(context, { handle: () => of(response) }));
-				if (!actual || typeof actual !== 'object' || !fixedFrame || typeof fixedFrame !== 'object') throw new Error('Actual fixed API response required');
+				const actual: unknown = await firstValueFrom<unknown>(
+					new TransformResponseInterceptor(new Reflector()).intercept(context, { handle: () => of(response) }),
+				);
+				if (!actual || typeof actual !== 'object' || !fixedFrame || typeof fixedFrame !== 'object')
+					throw new Error('Actual fixed API response required');
 				const data: unknown = Reflect.get(actual, 'data');
 				if (!data || typeof data !== 'object') throw new Error('Actual response envelope required');
 				expect(Reflect.get(data, 'configuration')).toEqual(Reflect.get(fixedFrame, 'configuration'));
 				expect(Reflect.get(data, 'device')).toMatchObject({
-					id: input.device.id, type: 'virtual', zone_ids: [second, first], room_id: null, hidden_by: null, updated_at: null,
-					enabled: false, hidden: false, controls: [], status: { online: false, status: 'unknown', last_changed: null },
+					id: input.device.id,
+					type: 'virtual',
+					zone_ids: [second, first],
+					room_id: null,
+					hidden_by: null,
+					updated_at: null,
+					enabled: false,
+					hidden: false,
+					controls: [],
+					status: { online: false, status: 'unknown', last_changed: null },
 				});
 				const publicDevice: unknown = Reflect.get(data, 'device');
 				if (!publicDevice || typeof publicDevice !== 'object') throw new Error('Public device required');
@@ -2724,15 +2768,30 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(result.configuration.policy.coolingSetpoint).toBeNull();
 				expect(result.configuration.heuristic).toBeNull();
 				expect(result.configuration.released_actuators).toEqual([]);
-				expect(instanceToPlain(result.device, { excludeExtraneousValues: true, exposeUnsetFields: false, ignoreDecorators: false, groups: ['api'], enableCircularCheck: true })).toEqual(publicDevice);
+				expect(
+					instanceToPlain(result.device, {
+						excludeExtraneousValues: true,
+						exposeUnsetFields: false,
+						ignoreDecorators: false,
+						groups: ['api'],
+						enableCircularCheck: true,
+					}),
+				).toEqual(publicDevice);
 			});
 
 			it('materializes retained A after a real post-settlement B catalog update without latest lookup or reprepare', async () => {
 				const input = request(relayId);
 				const originalName = input.device.name;
-				const originalMethods: Readonly<{ createVirtualThermostatV1: ClimateAutomationWriterService['createVirtualThermostatV1'] }> = fixture.writer;
+				const originalMethods: Readonly<{
+					createVirtualThermostatV1: ClimateAutomationWriterService['createVirtualThermostatV1'];
+				}> = fixture.writer;
 				const { createVirtualThermostatV1 } = originalMethods;
-				const originalCall: Readonly<{ call: (receiver: ClimateAutomationWriterService, ...args: Parameters<ClimateAutomationWriterService['createVirtualThermostatV1']>) => ReturnType<ClimateAutomationWriterService['createVirtualThermostatV1']> }> = createVirtualThermostatV1;
+				const originalCall: Readonly<{
+					call: (
+						receiver: ClimateAutomationWriterService,
+						...args: Parameters<ClimateAutomationWriterService['createVirtualThermostatV1']>
+					) => ReturnType<ClimateAutomationWriterService['createVirtualThermostatV1']>;
+				}> = createVirtualThermostatV1;
 				const prepare = jest.spyOn(fixture.configs, 'prepare');
 				let lookups = (): number => 0;
 				let restore = (): void => undefined;
@@ -2740,48 +2799,86 @@ describe('atomic virtual thermostat authoring', () => {
 					const outcome = await originalCall.call(fixture.writer, ...args);
 					if (outcome.outcome !== 'applied') throw new Error('Actual original creation must commit first');
 					// Independent ordinary test mutation only AFTER A's root has settled/released; never an A business callback.
-					const changed = await database.manager.update(VirtualDeviceEntity, { id: input.device.id }, { name: 'Persisted successor B' });
+					const changed = await database.manager.update(
+						VirtualDeviceEntity,
+						{ id: input.device.id },
+						{ name: 'Persisted successor B' },
+					);
 					expect(changed.affected).toBe(1);
-					const latest = jest.spyOn(fixture.devices, 'findOne').mockRejectedValue(new Error('Latest lookup forbidden for fixed A'));
+					const latest = jest
+						.spyOn(fixture.devices, 'findOne')
+						.mockRejectedValue(new Error('Latest lookup forbidden for fixed A'));
 					lookups = () => latest.mock.calls.length;
-					restore = () => { latest.mockRestore(); };
+					restore = () => {
+						latest.mockRestore();
+					};
 					return outcome;
 				});
 				// Capture the prepare observer only through a fresh legitimate production provider.
 				fixture.automation.onModuleDestroy();
-				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				const provider = new VirtualThermostatAutomationService(
+					fixture.writer,
+					fixture.core,
+					fixture.graph,
+					new NestConfigService(),
+					fixture.authoring,
+				);
 				provider.onModuleInit();
 				fixture.extraProviders.push(provider);
 				try {
 					const result = await fixture.authoring.create(input);
 					expect(result.device.name).toBe(originalName);
-					expect((await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: input.device.id })).name).toBe('Persisted successor B');
+					expect((await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: input.device.id })).name).toBe(
+						'Persisted successor B',
+					);
 					expect(root).toHaveBeenCalledTimes(1);
 					expect(prepare).toHaveBeenCalledTimes(1);
 					expect(lookups()).toBe(0);
-				} finally { restore(); }
+				} finally {
+					restore();
+				}
 			});
 
 			it('classifies malformed returned fixed A as COMMITTED after real native ACK without replay or losing durable creation', async () => {
 				const input = request(relayId);
-				const originalMethods: Readonly<{ createVirtualThermostatV1: ClimateAutomationWriterService['createVirtualThermostatV1'] }> = fixture.writer;
+				const originalMethods: Readonly<{
+					createVirtualThermostatV1: ClimateAutomationWriterService['createVirtualThermostatV1'];
+				}> = fixture.writer;
 				const { createVirtualThermostatV1 } = originalMethods;
-				const originalCall: Readonly<{ call: (receiver: ClimateAutomationWriterService, ...args: Parameters<ClimateAutomationWriterService['createVirtualThermostatV1']>) => ReturnType<ClimateAutomationWriterService['createVirtualThermostatV1']> }> = createVirtualThermostatV1;
+				const originalCall: Readonly<{
+					call: (
+						receiver: ClimateAutomationWriterService,
+						...args: Parameters<ClimateAutomationWriterService['createVirtualThermostatV1']>
+					) => ReturnType<ClimateAutomationWriterService['createVirtualThermostatV1']>;
+				}> = createVirtualThermostatV1;
 				let nativeAcknowledgments = 0;
-				database.subscribers.push({ afterQuery: (event) => { if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++; } });
+				database.subscribers.push({
+					afterQuery: (event) => {
+						if (event.query === 'COMMIT' && event.success) nativeAcknowledgments++;
+					},
+				});
 				const root = jest.spyOn(fixture.writer, 'createVirtualThermostatV1').mockImplementation(async (...args) => {
 					const outcome = await originalCall.call(fixture.writer, ...args);
 					if (outcome.outcome !== 'applied') throw new Error('Real native creation required before malformed frame');
 					const frame: unknown = outcome.result;
 					if (!frame || typeof frame !== 'object' || Array.isArray(frame)) throw new Error('Real fixed frame required');
 					const device: unknown = Reflect.get(frame, 'device');
-					if (!device || typeof device !== 'object' || Array.isArray(device)) throw new Error('Real fixed device required');
-					return Object.freeze({ ...outcome, result: climateAutomationJson({ ...frame, device: { ...device, zone_ids: null } }) });
+					if (!device || typeof device !== 'object' || Array.isArray(device))
+						throw new Error('Real fixed device required');
+					return Object.freeze({
+						...outcome,
+						result: climateAutomationJson({ ...frame, device: { ...device, zone_ids: null } }),
+					});
 				});
 				let received: unknown;
-				try { await fixture.authoring.create(input); } catch (error) { received = error; }
+				try {
+					await fixture.authoring.create(input);
+				} catch (error) {
+					received = error;
+				}
 				expect(received).toBeInstanceOf(ClimateAutomationWriteError);
-				if (!(received instanceof ClimateAutomationWriteError)) throw new Error('Committed materialization error required');
+				if (!(received instanceof ClimateAutomationWriteError))
+					throw new Error('Committed materialization error required');
 				expect(received.commitOutcome).toBe('committed');
 				expect(received.cause).toBeInstanceOf(Error);
 				expect(received.cause).toHaveProperty('message', 'Missing fixed response array.');
@@ -2790,6 +2887,5 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(await database.manager.findOneBy(DeviceEntity, { id: input.device.id })).not.toBeNull();
 			});
 		});
-
 	});
 });
