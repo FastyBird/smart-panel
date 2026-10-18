@@ -2479,21 +2479,46 @@ describe('atomic virtual thermostat authoring', () => {
 					beginReservedValidation: VirtualDependencyGraphService['beginReservedValidation'];
 				}> = fixture.graph;
 				const { validateReservedReplacement, beginReservedValidation } = graphMethods;
-				const planCall: Readonly<{ call: (receiver: VirtualDependencyGraphService, ...args: Parameters<VirtualDependencyGraphService['validateReservedReplacement']>) => ReturnType<VirtualDependencyGraphService['validateReservedReplacement']> }> = validateReservedReplacement;
-				const beginCall: Readonly<{ call: (receiver: VirtualDependencyGraphService, ...args: Parameters<VirtualDependencyGraphService['beginReservedValidation']>) => ReturnType<VirtualDependencyGraphService['beginReservedValidation']> }> = beginReservedValidation;
-				const authoringMethods: Readonly<{ applyCreation: VirtualThermostatAuthoringService['applyCreation'] }> = fixture.authoring;
+				const planCall: Readonly<{
+					call: (
+						receiver: VirtualDependencyGraphService,
+						...args: Parameters<VirtualDependencyGraphService['validateReservedReplacement']>
+					) => ReturnType<VirtualDependencyGraphService['validateReservedReplacement']>;
+				}> = validateReservedReplacement;
+				const beginCall: Readonly<{
+					call: (
+						receiver: VirtualDependencyGraphService,
+						...args: Parameters<VirtualDependencyGraphService['beginReservedValidation']>
+					) => ReturnType<VirtualDependencyGraphService['beginReservedValidation']>;
+				}> = beginReservedValidation;
+				const authoringMethods: Readonly<{ applyCreation: VirtualThermostatAuthoringService['applyCreation'] }> =
+					fixture.authoring;
 				const { applyCreation } = authoringMethods;
-				const applyCall: Readonly<{ call: (receiver: VirtualThermostatAuthoringService, ...args: Parameters<VirtualThermostatAuthoringService['applyCreation']>) => ReturnType<VirtualThermostatAuthoringService['applyCreation']> }> = applyCreation;
+				const applyCall: Readonly<{
+					call: (
+						receiver: VirtualThermostatAuthoringService,
+						...args: Parameters<VirtualThermostatAuthoringService['applyCreation']>
+					) => ReturnType<VirtualThermostatAuthoringService['applyCreation']>;
+				}> = applyCreation;
 				const trace: string[] = [];
 				const observerFailures: unknown[] = [];
 				const plan = jest.spyOn(fixture.graph, 'validateReservedReplacement').mockImplementation((...args) => {
 					fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
 					trace.push('NORMALIZE:plan');
 					const promise = planCall.call(fixture.graph, ...args);
-					void promise.then(() => {
-						fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
-						trace.push('NORMALIZE:validated');
-					}, (error: unknown) => { observerFailures.push(error); }).catch((error: unknown) => { observerFailures.push(error); });
+					void promise
+						.then(
+							() => {
+								fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
+								trace.push('NORMALIZE:validated');
+							},
+							(error: unknown) => {
+								observerFailures.push(error);
+							},
+						)
+						.catch((error: unknown) => {
+							observerFailures.push(error);
+						});
 					return promise;
 				});
 				const begin = jest.spyOn(fixture.graph, 'beginReservedValidation').mockImplementation((...args) => {
@@ -2507,7 +2532,13 @@ describe('atomic virtual thermostat authoring', () => {
 					return applyCall.call(fixture.authoring, ...args);
 				});
 				// Install observers BEFORE this new genuine provider's original capability capture.
-				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				const provider = new VirtualThermostatAutomationService(
+					fixture.writer,
+					fixture.core,
+					fixture.graph,
+					new NestConfigService(),
+					fixture.authoring,
+				);
 				provider.onModuleInit();
 				fixture.extraProviders.push(provider);
 				const input = request(relayId);
@@ -2528,13 +2559,24 @@ describe('atomic virtual thermostat authoring', () => {
 
 			it('refuses a held original graph plan after owner revocation without ticket mutation or fresh-owner rescue', async () => {
 				fixture.automation.onModuleDestroy();
-				const originalMethods: Readonly<{ validateReservedReplacement: VirtualDependencyGraphService['validateReservedReplacement'] }> = fixture.graph;
+				const originalMethods: Readonly<{
+					validateReservedReplacement: VirtualDependencyGraphService['validateReservedReplacement'];
+				}> = fixture.graph;
 				const { validateReservedReplacement } = originalMethods;
-				const originalCall: Readonly<{ call: (receiver: VirtualDependencyGraphService, ...args: Parameters<VirtualDependencyGraphService['validateReservedReplacement']>) => ReturnType<VirtualDependencyGraphService['validateReservedReplacement']> }> = validateReservedReplacement;
+				const originalCall: Readonly<{
+					call: (
+						receiver: VirtualDependencyGraphService,
+						...args: Parameters<VirtualDependencyGraphService['validateReservedReplacement']>
+					) => ReturnType<VirtualDependencyGraphService['validateReservedReplacement']>;
+				}> = validateReservedReplacement;
 				let reached: () => void = () => {};
 				let release: () => void = () => {};
-				const held = new Promise<void>((resolve) => { reached = resolve; });
-				const resume = new Promise<void>((resolve) => { release = resolve; });
+				const held = new Promise<void>((resolve) => {
+					reached = resolve;
+				});
+				const resume = new Promise<void>((resolve) => {
+					release = resolve;
+				});
 				const plan = jest.spyOn(fixture.graph, 'validateReservedReplacement').mockImplementation(async (...args) => {
 					fixture.writer.assertParticipantTurn(args[0], args[1], ['NORMALIZE'], args[2]);
 					await originalCall.call(fixture.graph, ...args);
@@ -2543,14 +2585,24 @@ describe('atomic virtual thermostat authoring', () => {
 				});
 				const begin = jest.spyOn(fixture.graph, 'beginReservedValidation');
 				const apply = jest.spyOn(fixture.authoring, 'applyCreation');
-				const original = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				const original = new VirtualThermostatAutomationService(
+					fixture.writer,
+					fixture.core,
+					fixture.graph,
+					new NestConfigService(),
+					fixture.authoring,
+				);
 				original.onModuleInit();
 				fixture.extraProviders.push(original);
 				const ownerA = fixture.core.captureProvider('virtual-thermostat:v1');
 				if (!ownerA) throw new Error('Original actual provider required');
 				const input = request(relayId);
 				const revision = await fixture.graph.revision();
-				const pending = fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', device: input.device, configuration: input.configuration });
+				const pending = fixture.writer.createVirtualThermostatV1({
+					kind: 'create-virtual-thermostat:v1',
+					device: input.device,
+					configuration: input.configuration,
+				});
 				void pending.catch(() => undefined);
 				try {
 					await reachesCreationBarrier(pending, held);
@@ -2558,7 +2610,13 @@ describe('atomic virtual thermostat authoring', () => {
 					expect(begin).not.toHaveBeenCalled();
 					original.onModuleDestroy();
 					expect(ownerA.isCurrent()).toBe(false);
-					const successor = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+					const successor = new VirtualThermostatAutomationService(
+						fixture.writer,
+						fixture.core,
+						fixture.graph,
+						new NestConfigService(),
+						fixture.authoring,
+					);
 					successor.onModuleInit();
 					fixture.extraProviders.push(successor);
 					const ownerB = fixture.core.captureProvider('virtual-thermostat:v1');
@@ -2577,10 +2635,12 @@ describe('atomic virtual thermostat authoring', () => {
 					expect(ownerB.isCurrent()).toBe(true);
 				} finally {
 					release();
-					await pending.then(() => undefined, () => undefined);
+					await pending.then(
+						() => undefined,
+						() => undefined,
+					);
 				}
 			});
 		});
-
 	});
 });
