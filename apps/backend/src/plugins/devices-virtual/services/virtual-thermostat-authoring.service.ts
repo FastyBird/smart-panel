@@ -46,6 +46,7 @@ import { getPropertyMetadata, getRequiredProperties } from '../../../modules/dev
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpaceType, isFloorZoneCategory } from '../../../modules/spaces/spaces.constants';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { CreateVirtualDeviceDto } from '../dto/create-device.dto';
 import { CreateVirtualThermostatProducerDto } from '../dto/thermostat-authoring.dto';
 import {
@@ -399,6 +400,31 @@ export class VirtualThermostatAuthoringService {
 	// Weak provenance only for restoring this concrete route's original KNOWN-rollback callback errors.
 	private readonly creationCallbackFailures = new WeakSet<Error>();
 
+	// Pure instance-local provenance for the three declared creation classes. Capture descriptors,
+	// never invoke a getter or allocate a native row here; existing creation pins enforce currentness.
+	private readonly creationCatalogTypes = Object.freeze(
+		[VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity].map((type) => {
+			const prototype = type.prototype;
+			const parentPrototype = Reflect.getPrototypeOf(prototype);
+			const descriptor: Readonly<{
+				get?: () => unknown;
+				set?: unknown;
+				enumerable?: boolean;
+				configurable?: boolean;
+			}> | undefined = Object.getOwnPropertyDescriptor(prototype, 'type');
+			if (descriptor) Object.freeze(descriptor); // Freeze only our fresh descriptor copy.
+			const current = (): boolean => {
+				const latest: Readonly<{ get?: unknown; set?: unknown; enumerable?: boolean; configurable?: boolean }> | undefined =
+					Object.getOwnPropertyDescriptor(prototype, 'type');
+				return type.prototype === prototype && Reflect.getPrototypeOf(prototype) === parentPrototype &&
+					typeof descriptor?.get === 'function' && descriptor.set === undefined &&
+					latest?.get === descriptor.get && latest.set === undefined &&
+					latest.enumerable === descriptor.enumerable && latest.configurable === descriptor.configurable;
+			};
+			return Object.freeze({ type, prototype, publicType: DEVICES_VIRTUAL_TYPE, descriptor, current });
+		}),
+	);
+
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly lock: DeviceStructureLockService,
@@ -475,6 +501,7 @@ export class VirtualThermostatAuthoringService {
 	}
 
 	captureCreationMethodPins(): () => boolean {
+		if (!this.creationCatalogTypes.every((original) => original.current())) fail('Original creation classes unavailable.');
 		const holders: readonly Readonly<{ receiver: object | undefined; keys: readonly string[] }>[] = [
 			{
 				receiver: this,
@@ -518,7 +545,8 @@ export class VirtualThermostatAuthoringService {
 				pins.push(Object.freeze({ receiver, key, method }));
 			}
 		}
-		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
+		return () => this.creationCatalogTypes.every((original) => original.current()) &&
+			pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
 	}
 
 	holdCreationAtEntry() {
@@ -535,6 +563,10 @@ export class VirtualThermostatAuthoringService {
 		const properties = propertyMappings.captureMapping('virtual');
 		const information = DeviceCreationPublicationEngine.captureInformation(events);
 		if (!devices || !channels || !properties || !information) fail('Original creation registrations are unavailable.');
+		if (devices.mapping.class !== VirtualDeviceEntity || channels.mapping.class !== VirtualChannelEntity ||
+			properties.mapping.class !== VirtualChannelPropertyEntity || devices.mapping.type !== DEVICES_VIRTUAL_TYPE ||
+			channels.mapping.type !== DEVICES_VIRTUAL_TYPE || properties.mapping.type !== DEVICES_VIRTUAL_TYPE)
+			fail('Original declared creation mappings required.');
 		const engineKeys = ['beginCreationObservation', 'isCreationObservationCurrent', 'closeCreationObservation'];
 		if (engineKeys.some((key) => !creationHasDataMethod(producers, key)))
 			fail('Original producer observer unavailable.');
@@ -906,10 +938,21 @@ export class VirtualThermostatAuthoringService {
 				if (!Object.prototype.hasOwnProperty.call(raw, column.databaseName)) fail('Missing original creation column.');
 				const value: unknown = this.dataSource.driver.prepareHydratedValue(raw[column.databaseName], column);
 				if (column.isDiscriminator) {
-					// STI children expose type through a getter. Validate the planned and actual class
-					// discriminator; assigning it would shadow/reject that fixed class identity.
-					if (raw[column.databaseName] !== metadata.discriminatorValue || value !== column.getEntityValue(entity))
+					// Native STI storage lineage and the public wire getter are distinct original facts.
+					const nativeLabel: unknown = metadata.discriminatorValue;
+					const hydratedNativeLabel: unknown = this.dataSource.driver.prepareHydratedValue(nativeLabel, column);
+					if (raw[column.databaseName] !== nativeLabel || value !== hydratedNativeLabel)
 						fail('Original creation discriminator changed.');
+					const original = this.creationCatalogTypes.find((item) => Object.is(item.type, type));
+					if (!original || !original.current() || metadata.target !== original.type ||
+						Reflect.getPrototypeOf(entity) !== original.prototype || column.propertyName !== 'type' ||
+						metadata.discriminatorColumn !== column || Object.hasOwn(entity, 'type'))
+						fail('Original creation class changed.');
+					const getter = original.descriptor?.get;
+					if (!getter) fail('Original creation public getter unavailable.');
+					const getPublicType: AuthoringCall<object, [], unknown> = getter;
+					if (getPublicType.call(entity) !== original.publicType) fail('Original creation public type changed.');
+					// Never assign or shadow the getter-only public type with its native storage label.
 					continue;
 				}
 				let owner: object | null = entity;

@@ -2086,5 +2086,96 @@ describe('atomic virtual thermostat authoring', () => {
 				expect(reads).toBe(0);
 			});
 		});
+
+		describe('original native STI lineage and public virtual identity', () => {
+			it('retains authentic native labels independently of all three real public getters through actual creation', async () => {
+				const originals = new Map<object, unknown>();
+				for (const type of [VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity]) {
+					const native = database.getMetadata(type).discriminatorValue;
+					expect(typeof native).toBe('string');
+					expect(native).not.toBe('virtual');
+					originals.set(type, native);
+				}
+				const input = request(relayId);
+				const result = await fixture.authoring.create(input);
+				expect(result.device.id).toBe(input.device.id);
+				const assertOriginal = async (
+					entity: DeviceEntity | ChannelEntity | ChannelPropertyEntity,
+					type: typeof VirtualDeviceEntity | typeof VirtualChannelEntity | typeof VirtualChannelPropertyEntity,
+				): Promise<void> => {
+					const metadata = database.getMetadata(type);
+					const discriminator = metadata.discriminatorColumn;
+					if (!discriminator) throw new Error('Original native discriminator missing');
+					expect(metadata.target).toBe(type);
+					expect(Reflect.getPrototypeOf(entity)).toBe(type.prototype);
+					expect(entity).toBeInstanceOf(type);
+					expect(entity.type).toBe('virtual');
+					expect(Object.hasOwn(entity, 'type')).toBe(false);
+					const descriptor = Object.getOwnPropertyDescriptor(type.prototype, 'type');
+					expect(descriptor?.get).toEqual(expect.any(Function));
+					expect(descriptor?.set).toBeUndefined();
+					const table = database.driver.escape(metadata.tableName);
+					const column = database.driver.escape(discriminator.databaseName);
+					const rows = await database.manager.query<{ nativeType: unknown }[]>(
+						`SELECT ${column} AS nativeType FROM ${table} WHERE id = ?`, [entity.id],
+					);
+					expect(rows).toHaveLength(1);
+					expect(rows[0].nativeType).toBe(originals.get(type));
+					expect(metadata.discriminatorValue).toBe(originals.get(type));
+					expect(rows[0].nativeType).not.toBe(entity.type);
+				};
+				await assertOriginal(await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: input.device.id }), VirtualDeviceEntity);
+				for (const channel of input.device.channels ?? []) {
+					await assertOriginal(await database.manager.findOneByOrFail(VirtualChannelEntity, { id: channel.id }), VirtualChannelEntity);
+					for (const property of channel.properties ?? [])
+						await assertOriginal(await database.manager.findOneByOrFail(VirtualChannelPropertyEntity, { id: property.id }), VirtualChannelPropertyEntity);
+				}
+			});
+
+			it.each([VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity])(
+				'refuses original public getter replacement for %p before request inspection without invoking the substitute',
+				async (type) => {
+					const input = request(relayId);
+					const replacement = jest.spyOn(type.prototype, 'type', 'get').mockReturnValue('foreign-public-type');
+					let inspected = 0;
+					const transactions = jest.spyOn(database, 'transaction');
+					try {
+						await expect(fixture.writer.createVirtualThermostatV1({
+							kind: 'create-virtual-thermostat:v1',
+							get device() { inspected++; return input.device; },
+							get configuration() { inspected++; return input.configuration; },
+						})).rejects.toBeInstanceOf(Error);
+						expect(inspected).toBe(0);
+						expect(replacement).not.toHaveBeenCalled();
+						expect(transactions).not.toHaveBeenCalled();
+						expect(fixture.submittedPoints).toEqual([]);
+					} finally {
+						replacement.mockRestore();
+					}
+				},
+			);
+
+			it('refuses a newly registered public virtual mapping with the wrong actual child class before input or catalog work', async () => {
+				const original = fixture.deviceMapper.captureMapping('virtual');
+				if (!original) throw new Error('Original registered device mapper missing');
+				fixture.automation.onModuleDestroy();
+				fixture.deviceMapper.registerMapping({ ...original.mapping, class: DeviceEntity });
+				expect(original.isCurrent()).toBe(false);
+				const provider = new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring);
+				provider.onModuleInit();
+				fixture.extraProviders.push(provider);
+				const transactions = jest.spyOn(database, 'transaction');
+				let inspected = 0;
+				await expect(fixture.writer.createVirtualThermostatV1({
+					kind: 'create-virtual-thermostat:v1',
+					get device() { inspected++; return {}; },
+					get configuration() { inspected++; return {}; },
+				})).rejects.toBeInstanceOf(Error);
+				expect(inspected).toBe(0);
+				expect(transactions).not.toHaveBeenCalled();
+				expect(fixture.submittedPoints).toEqual([]);
+			});
+		});
+
 	});
 });
