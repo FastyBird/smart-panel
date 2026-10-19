@@ -604,9 +604,12 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			{ receiver: this.claims,key: 'refresh',value: this.claims.refresh },{ receiver: this.structure,key: 'runExclusiveReleased',value: this.structure.runExclusiveReleased },
 			{ receiver: driver,key: 'preparePersistentValue',value: driver.preparePersistentValue },
 			{ receiver: JSON,key: 'stringify',value: JSON.stringify },{ receiver: Date.prototype,key: 'toISOString',value: Date.prototype.toISOString },
+			{ receiver: Object.prototype,key: 'toJSON',value: undefined },{ receiver: Array.prototype,key: 'toJSON',value: undefined },
 			{ receiver: Date.prototype,key: 'getTime',value: Date.prototype.getTime },
 			{ receiver: this,key: 'openBookkeeping',value: this.openBookkeeping },{ receiver: this,key: 'observeBookkeepingRunner',value: this.observeBookkeepingRunner },
 		];
+		for (const key of ['getUTCFullYear','getUTCMonth','getUTCDate','getUTCHours','getUTCMinutes','getUTCSeconds','getUTCMilliseconds'])
+			pins.push({ receiver: Date.prototype,key,value: Reflect.get(Date.prototype,key) });
 		const memberships: (() => boolean)[] = [];
 		for (const target of [VirtualThermostatRuntimeEntity,VirtualThermostatBranchRuntimeEntity,VirtualThermostatCommandEntity]) {
 			const metadata = metadatas.find((row) => row.target === target);
@@ -674,9 +677,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					closes.push(() => closeDiagnosticTree(tree));
 					fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName); return !!now && now.get === undefined && now.set === undefined && now.value === originalValue && diagnosticTreeCurrent(tree); });
 				} else if (value instanceof Date) {
-					const milliseconds = Date.prototype.getTime.call(value);
-					fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName); const current: unknown = now?.value;
-						return !!now && now.get === undefined && now.set === undefined && current instanceof Date && Date.prototype.getTime.call(current) === milliseconds; });
+					const date = value, tree = captureDiagnosticTree(date);
+					closes.push(() => closeDiagnosticTree(tree));
+					fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName);
+						return !!now && now.get === undefined && now.set === undefined && now.value === date && diagnosticTreeCurrent(tree); });
 				} else fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName); return !now?.get && !now?.set &&
 					(now?.value === originalValue || (column.isNullable && originalValue === undefined && now?.value === null)); });
 				if (settlement && target === VirtualThermostatCommandEntity) {
