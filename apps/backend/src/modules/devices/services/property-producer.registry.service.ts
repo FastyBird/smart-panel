@@ -11,8 +11,28 @@ import {
 	PropertyValueState,
 	clonePropertyValueState,
 } from '../models/property-value-state.model';
-import { captureDiagnosticTree, diagnosticTreeCurrent, closeDiagnosticTree, DiagnosticTreeObservation } from './device-creation-context';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
+
+import {
+	DiagnosticTreeObservation,
+	captureDiagnosticTree,
+	closeDiagnosticTree,
+	diagnosticTreeCurrent,
+} from './device-creation-context';
+
+const nativeObjectEvidence: Readonly<{
+	getOwnPropertyDescriptor: (
+		receiver: object,
+		key: PropertyKey,
+	) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+}> = Object;
+const nativePrototypeEvidence: Readonly<{ getPrototypeOf: (receiver: object) => object | null }> = Object;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
 export interface PropertyProducerLease {
 	readonly propertyId: string;
@@ -49,10 +69,10 @@ interface ProducerEntry {
 export function ownedProducerMethodCurrent(receiver: object, key: string, original: unknown): boolean {
 	let current: object | null = receiver;
 	while (current) {
-		const descriptor = Object.getOwnPropertyDescriptor(current, key);
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(current, key);
 		if (descriptor)
 			return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
-		const parent: unknown = Object.getPrototypeOf(current);
+		const parent: unknown = nativePrototypeEvidence.getPrototypeOf(current);
 		current = typeof parent === 'object' && parent !== null ? parent : null;
 	}
 	return false;
@@ -225,7 +245,9 @@ interface CreationProducerObservationRecord {
 
 /** Original finite data observation only; it cannot publish, register or authorize a command. */
 export class DiagnosticPublications {
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 export interface DiagnosticPublicationData {
 	readonly state: PropertyValueState;
@@ -364,22 +386,47 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	/** Snapshot original entries/evidence without live read(), expiry correction or notification. */
 	captureDiagnosticPublications(ids: readonly string[]): DiagnosticPublications {
-		if (!diagnosticProducerMethodsCurrent(this) || this.destroyed) throw new Error('Original diagnostic producer unavailable');
+		if (!diagnosticProducerMethodsCurrent(this) || this.destroyed)
+			throw new Error('Original diagnostic producer unavailable');
 		const fixed = [...ids];
-		if (new Set(fixed).size !== fixed.length || fixed.some((id) => typeof id !== 'string' || !id)) throw new Error('Invalid diagnostic producer IDs');
+		if (new Set(fixed).size !== fixed.length || fixed.some((id) => typeof id !== 'string' || !id))
+			throw new Error('Invalid diagnostic producer IDs');
 		const observation = fixed.length ? diagnosticProducerMethods.begin.call(this, fixed) : undefined;
 		const entries = new Map<string, DiagnosticPublicationEntry>();
 		try {
 			for (const id of fixed) {
 				const entry = this.entries.get(id);
-				const tree = captureDiagnosticTree({ property: entry?.property, lease: entry?.lease, state: entry?.state, guard: entry?.guard, sourceSample: entry?.sourceSample, sourceSamples: entry?.sourceSamples });
-				const originalGuard: Readonly<{ call: (receiver: PropertyProducerGuard) => boolean }> | undefined = entry?.guard?.isCurrent;
+				const tree = captureDiagnosticTree({
+					property: entry?.property,
+					lease: entry?.lease,
+					state: entry?.state,
+					guard: entry?.guard,
+					sourceSample: entry?.sourceSample,
+					sourceSamples: entry?.sourceSamples,
+				});
+				const originalGuard: Readonly<{ call: (receiver: PropertyProducerGuard) => boolean }> | undefined =
+					entry?.guard?.isCurrent;
 				const guardWasCurrent = !entry?.guard || (originalGuard !== undefined && originalGuard.call(entry.guard));
-				entries.set(id, Object.freeze({ entry, tree, originalState: entry?.state, guardWasCurrent,guardReceiver: entry?.guard,guardMethod: originalGuard, state: entry ? clonePropertyValueState(entry.state) : null }));
+				entries.set(
+					id,
+					Object.freeze({
+						entry,
+						tree,
+						originalState: entry?.state,
+						guardWasCurrent,
+						guardReceiver: entry?.guard,
+						guardMethod: originalGuard,
+						state: entry ? clonePropertyValueState(entry.state) : null,
+					}),
+				);
 			}
 			const token = Object.freeze(new DiagnosticPublications());
-			this.diagnosticPublications.set(token, Object.freeze({ observation, entries, validator: this.evidenceValidator }));
-			if (!diagnosticProducerMethods.current.call(this, token)) throw new Error('Diagnostic producer changed during capture');
+			this.diagnosticPublications.set(
+				token,
+				Object.freeze({ observation, entries, validator: this.evidenceValidator }),
+			);
+			if (!diagnosticProducerMethods.current.call(this, token))
+				throw new Error('Diagnostic producer changed during capture');
 			return token;
 		} catch (error) {
 			for (const entry of entries.values()) closeDiagnosticTree(entry.tree);
@@ -389,33 +436,70 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 	diagnosticPublicationsCurrent(token: DiagnosticPublications): boolean {
 		const record = this.diagnosticPublications.get(token);
-		if (!record || this.destroyed || !diagnosticProducerMethodsCurrent(this) || record.validator !== this.evidenceValidator || (record.observation && !diagnosticProducerMethods.observationCurrent.call(this, record.observation))) return false;
-		for (const [id, original] of record.entries) if (this.entries.get(id) !== original.entry || original.entry?.state !== original.originalState || !diagnosticTreeCurrent(original.tree)) return false;
+		if (
+			!record ||
+			this.destroyed ||
+			!diagnosticProducerMethodsCurrent(this) ||
+			record.validator !== this.evidenceValidator ||
+			(record.observation && !diagnosticProducerMethods.observationCurrent.call(this, record.observation))
+		)
+			return false;
+		for (const [id, original] of record.entries)
+			if (
+				this.entries.get(id) !== original.entry ||
+				original.entry?.state !== original.originalState ||
+				!diagnosticTreeCurrent(original.tree)
+			)
+				return false;
 		return true;
 	}
-	evaluateDiagnosticPublication(token: DiagnosticPublications, id: string, now: number): DiagnosticPublicationData | null {
-		if (!Number.isFinite(now) || !diagnosticProducerMethods.current.call(this, token)) throw new Error('Original diagnostic producer lost');
+	evaluateDiagnosticPublication(
+		token: DiagnosticPublications,
+		id: string,
+		now: number,
+	): DiagnosticPublicationData | null {
+		if (!Number.isFinite(now) || !diagnosticProducerMethods.current.call(this, token))
+			throw new Error('Original diagnostic producer lost');
 		const original = this.diagnosticPublications.get(token)?.entries.get(id);
 		if (!original) throw new Error('Original diagnostic property not observed');
 		const entry = original.entry;
 		if (!entry || !original.state) return null;
-		const guard = original.guardReceiver,originalGuard = original.guardMethod;
+		const guard = original.guardReceiver,
+			originalGuard = original.guardMethod;
 		const active = original.guardWasCurrent && (!guard || (originalGuard !== undefined && originalGuard.call(guard)));
 		if (original.guardWasCurrent && !active) throw new Error('Original producer lifecycle lost');
-		if (!diagnosticProducerMethods.current.call(this, token)) throw new Error('Diagnostic producer changed during guard');
+		if (!diagnosticProducerMethods.current.call(this, token))
+			throw new Error('Diagnostic producer changed during guard');
 		const state = clonePropertyValueState(original.state);
 		const producer = state.producer;
 		if (!producer) return null;
 		const sampled = producer.sampledAt === null ? NaN : Date.parse(producer.sampledAt);
 		const evaluated = Date.parse(producer.evaluatedAt);
 		const expiry = producer.expiresAt === null ? Infinity : Date.parse(producer.expiresAt);
-		const available = active && producer.quality !== 'unavailable' && Number.isFinite(sampled) && Number.isFinite(evaluated) && sampled <= evaluated && evaluated <= now && expiry > now;
+		const available =
+			active &&
+			producer.quality !== 'unavailable' &&
+			Number.isFinite(sampled) &&
+			Number.isFinite(evaluated) &&
+			sampled <= evaluated &&
+			evaluated <= now &&
+			expiry > now;
 		const sources = entry.sourceSamples ?? (entry.sourceSample ? [entry.sourceSample] : []);
-		const evidence: IncorporatedPropertySample | null = available && sources.length ? Object.freeze({
-			propertyId: id, acceptanceGeneration: 0,
-			producer: Object.freeze({ lease: entry.lease, publication: entry.publication, revision: entry.lease.revision, expiresAt: expiry, quality: producer.quality }),
-			sources: Object.freeze([...sources]),
-		}) : null;
+		const evidence: IncorporatedPropertySample | null =
+			available && sources.length
+				? Object.freeze({
+						propertyId: id,
+						acceptanceGeneration: 0,
+						producer: Object.freeze({
+							lease: entry.lease,
+							publication: entry.publication,
+							revision: entry.lease.revision,
+							expiresAt: expiry,
+							quality: producer.quality,
+						}),
+						sources: Object.freeze([...sources]),
+					})
+				: null;
 		if (!available) return null;
 		return Object.freeze({ state, evidence, sources: Object.freeze([...sources]) });
 	}
@@ -427,7 +511,8 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 
 	closeDiagnosticPublications(token: DiagnosticPublications): void {
-		const record = this.diagnosticPublications.get(token); if (!record) return;
+		const record = this.diagnosticPublications.get(token);
+		if (!record) return;
 		this.diagnosticPublications.delete(token);
 		for (const entry of record.entries.values()) closeDiagnosticTree(entry.tree);
 		if (record.observation) diagnosticProducerMethods.closeObservation.call(this, record.observation);
@@ -1301,7 +1386,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 
 	private emit(property: ChannelPropertyEntity, state: PropertyValueState): void {
 		const snapshot = Object.assign(
-			Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
+			Object.create(nativePrototypeEvidence.getPrototypeOf(property)) as ChannelPropertyEntity,
 			property,
 		);
 		snapshot.value = clonePropertyValueState(state);
@@ -1313,7 +1398,7 @@ export class PropertyProducerRegistryService implements OnModuleInit, OnModuleDe
 	}
 }
 
-const diagnosticProducerPrototype: Readonly<{
+const diagnosticProducerPrototype: OriginalFunctions<{
 	beginCreationObservation: PropertyProducerRegistryService['beginCreationObservation'];
 	isCreationObservationCurrent: PropertyProducerRegistryService['isCreationObservationCurrent'];
 	closeCreationObservation: PropertyProducerRegistryService['closeCreationObservation'];
@@ -1334,12 +1419,18 @@ const diagnosticProducerMethods = Object.freeze({
 	close: diagnosticProducerPrototype.closeDiagnosticPublications,
 });
 function diagnosticProducerMethodsCurrent(receiver: PropertyProducerRegistryService): boolean {
-	return ownedProducerMethodCurrent(receiver, 'beginCreationObservation', diagnosticProducerMethods.begin) &&
-		ownedProducerMethodCurrent(receiver, 'isCreationObservationCurrent', diagnosticProducerMethods.observationCurrent) &&
+	return (
+		ownedProducerMethodCurrent(receiver, 'beginCreationObservation', diagnosticProducerMethods.begin) &&
+		ownedProducerMethodCurrent(
+			receiver,
+			'isCreationObservationCurrent',
+			diagnosticProducerMethods.observationCurrent,
+		) &&
 		ownedProducerMethodCurrent(receiver, 'closeCreationObservation', diagnosticProducerMethods.closeObservation) &&
 		ownedProducerMethodCurrent(receiver, 'captureDiagnosticPublications', diagnosticProducerMethods.capture) &&
 		ownedProducerMethodCurrent(receiver, 'diagnosticPublicationsCurrent', diagnosticProducerMethods.current) &&
 		ownedProducerMethodCurrent(receiver, 'evaluateDiagnosticPublication', diagnosticProducerMethods.evaluate) &&
 		ownedProducerMethodCurrent(receiver, 'diagnosticPublicationObserved', diagnosticProducerMethods.has) &&
-		ownedProducerMethodCurrent(receiver, 'closeDiagnosticPublications', diagnosticProducerMethods.close);
+		ownedProducerMethodCurrent(receiver, 'closeDiagnosticPublications', diagnosticProducerMethods.close)
+	);
 }

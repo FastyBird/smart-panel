@@ -1,9 +1,9 @@
 import { EntityManager, EntityTarget, FindOptionsWhere, ObjectLiteral } from 'typeorm';
 
 import { ClimateAutomationParticipantTurn } from '../../../modules/devices/contracts/climate-automation.contract';
-import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import {
 	hasQualifiedFloorSourceIdentity,
 	hasQualifiedRawVoltageIdentity,
@@ -103,12 +103,15 @@ function protectionLeaf(
 	return { ...root, leaf, leafChannel, leafDevice, transform, transformSource };
 }
 
-function completeProtection(
-	checked: ReturnType<typeof protectionLeaf>,
-	metadata: ShellySampleSourceEntity | null,
-) {
+function completeProtection(checked: ReturnType<typeof protectionLeaf>, metadata: ShellySampleSourceEntity | null) {
 	const { property, device, channel, leaf, leafChannel, leafDevice, transform, transformSource } = checked;
-	if (!metadata || metadata.propertyId !== leaf.id || !metadata.active || metadata.deviceId !== leafDevice.id || !leafChannel.identifier.endsWith(`:${metadata.fingerprint}`))
+	if (
+		!metadata ||
+		metadata.propertyId !== leaf.id ||
+		!metadata.active ||
+		metadata.deviceId !== leafDevice.id ||
+		!leafChannel.identifier.endsWith(`:${metadata.fingerprint}`)
+	)
 		return reject();
 	if (metadata.installationSnapshot) {
 		const snapshot = metadata.installationSnapshot;
@@ -188,10 +191,13 @@ export async function resolveThermostatProtectionSource(
 	const transform = await manager.findOneBy(VirtualTransformConfigEntity, { outputPropertyId: root.property.id });
 	const transformSource = await manager.findOneBy(VirtualTransformSourceEntity, { outputPropertyId: root.property.id });
 	const leafId = protectionSourceId(root, transform, transformSource);
-	const leaf = leafId === null ? root.property : await manager.findOne(ChannelPropertyEntity, {
-		where: { id: leafId },
-		relations: ['channel', 'channel.device'],
-	});
+	const leaf =
+		leafId === null
+			? root.property
+			: await manager.findOne(ChannelPropertyEntity, {
+					where: { id: leafId },
+					relations: ['channel', 'channel.device'],
+				});
 	const checked = protectionLeaf(root, leaf, transform, transformSource, leafId, actuatorIdentity);
 	const metadata = await manager.findOneBy(ShellySampleSourceEntity, { propertyId: checked.leaf.id, active: true });
 	return completeProtection(checked, metadata);
@@ -231,29 +237,45 @@ export function validateProtectionConsumerIndex(
 }
 
 /** Closed reserved loader. Original pure lineage rules are shared; all reads are listener-free and turn checked. */
-export async function resolveReservedThermostatProtectionSource(manager: EntityManager,
-	writer: ClimateAutomationWriterService,turn: ClimateAutomationParticipantTurn,sourceId: string,actuatorIdentity: string) {
-	const check = (): void => writer.assertParticipantTurn(manager,turn,['NORMALIZE','READ_BEFORE','READ_AFTER','FINAL_READ']);
+export async function resolveReservedThermostatProtectionSource(
+	manager: EntityManager,
+	writer: ClimateAutomationWriterService,
+	turn: ClimateAutomationParticipantTurn,
+	sourceId: string,
+	actuatorIdentity: string,
+) {
+	const check = (): void =>
+		writer.assertParticipantTurn(manager, turn, ['NORMALIZE', 'READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 	check();
 	const property = async (id: string) => {
 		check();
-		const row = await manager.createQueryBuilder(ChannelPropertyEntity,'property')
-			.leftJoinAndSelect('property.channel','channel').leftJoinAndSelect('channel.device','device')
-			.where('property.id = :id',{ id }).callListeners(false).getOne();
-		check(); return row;
+		const row = await manager
+			.createQueryBuilder(ChannelPropertyEntity, 'property')
+			.leftJoinAndSelect('property.channel', 'channel')
+			.leftJoinAndSelect('channel.device', 'device')
+			.where('property.id = :id', { id })
+			.callListeners(false)
+			.getOne();
+		check();
+		return row;
 	};
-	const one = async <T extends ObjectLiteral>(entity: EntityTarget<T>,where: FindOptionsWhere<T>) => {
-		check(); const row = await manager.createQueryBuilder(entity,'row').setFindOptions({ where }).callListeners(false).getOne();
-		check(); return row;
+	const one = async <T extends ObjectLiteral>(entity: EntityTarget<T>, where: FindOptionsWhere<T>) => {
+		check();
+		const row = await manager.createQueryBuilder(entity, 'row').setFindOptions({ where }).callListeners(false).getOne();
+		check();
+		return row;
 	};
 	const root = await property(sourceId);
 	if (!root) return reject();
-	const transform = await one(VirtualTransformConfigEntity,{ outputPropertyId: root.id });
-	const transformSource = await one(VirtualTransformSourceEntity,{ outputPropertyId: root.id });
+	const transform = await one(VirtualTransformConfigEntity, { outputPropertyId: root.id });
+	const transformSource = await one(VirtualTransformSourceEntity, { outputPropertyId: root.id });
 	const checked = protectionRoot(root);
-	const leafId = protectionSourceId(checked,transform,transformSource);
+	const leafId = protectionSourceId(checked, transform, transformSource);
 	const leaf = leafId === null ? root : await property(leafId);
-	const metadata = leaf ? await one(ShellySampleSourceEntity,{ propertyId: leaf.id }) : null;
+	const metadata = leaf ? await one(ShellySampleSourceEntity, { propertyId: leaf.id }) : null;
 	check();
-	return validateThermostatProtectionRows({ property: root,leaf,transform,transformSource,metadata },actuatorIdentity);
+	return validateThermostatProtectionRows(
+		{ property: root, leaf, transform, transformSource, metadata },
+		actuatorIdentity,
+	);
 }

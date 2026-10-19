@@ -4,12 +4,12 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import {
 	ControllerMutationPublicationEngine,
-	originalControllerMutationMethods,
 	ControllerMutationPublicationLease,
 	DeviceCreationPublicationEngine,
 	DeviceCreationPublicationLease,
 	creationHasDataMethod,
 	creationMethodCurrent,
+	originalControllerMutationMethods,
 } from '../../devices/services/device-creation-context';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
@@ -17,6 +17,12 @@ import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
 
 import { StorageWriteBuffer } from './storage-write-buffer';
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
 declare const storageBackendBindingBrand: unique symbol;
 
@@ -223,7 +229,7 @@ export class StorageService implements OnApplicationShutdown {
 			try {
 				// Refuse owned use of accessor/replaced methods without changing ordinary registration.
 				if (!creationHasDataMethod(plugin, 'isAvailable') || !creationHasDataMethod(plugin, 'writePoints')) return;
-				const methods: Readonly<Pick<StoragePlugin, 'isAvailable' | 'writePoints'>> = plugin;
+				const methods: OriginalFunctions<Pick<StoragePlugin, 'isAvailable' | 'writePoints'>> = plugin;
 				const available = methods.isAvailable;
 				const write = methods.writePoints;
 				if (
@@ -311,7 +317,7 @@ export class StorageService implements OnApplicationShutdown {
 		capture: CreationStorageDestinations,
 		points: StoragePoint[],
 	): Promise<Readonly<{ submitted: number; completed: number }>> {
-		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease);
 		const original = this.creationDestinations.get(capture);
 		if (!original || !this.areCreationDestinationsCurrent(capture))
 			throw new Error('Original storage destinations unavailable');
@@ -319,16 +325,16 @@ export class StorageService implements OnApplicationShutdown {
 		let completed = 0;
 		const roles: readonly ('fallback' | 'primary')[] = ['fallback', 'primary'];
 		for (const role of roles) {
-			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease);
 			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
 			const entry = original[role];
 			if (!entry) continue;
 			const available: CreationStorageCall<StoragePlugin, [], boolean> = entry.available;
 			const ready = available.call(entry.plugin);
-			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease);
 			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
 			if (!ready) continue;
-			await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine,lease);
+			await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine, lease);
 			if (!this.areCreationDestinationsCurrent(capture)) throw new Error('Original storage destinations unavailable');
 			const write: CreationStorageCall<
 				StoragePlugin,
@@ -336,12 +342,12 @@ export class StorageService implements OnApplicationShutdown {
 				ReturnType<StoragePlugin['writePoints']>
 			> = entry.write;
 			submitted++;
-			originalControllerMutationMethods.noteSubmission.call(ControllerMutationPublicationEngine,lease);
+			originalControllerMutationMethods.noteSubmission.call(ControllerMutationPublicationEngine, lease);
 			await write.call(entry.plugin, points);
 			completed++;
-			originalControllerMutationMethods.noteCompletion.call(ControllerMutationPublicationEngine,lease);
-			await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine,lease);
-			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+			originalControllerMutationMethods.noteCompletion.call(ControllerMutationPublicationEngine, lease);
+			await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine, lease);
+			originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease);
 		}
 		return Object.freeze({ submitted, completed });
 	}

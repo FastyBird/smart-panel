@@ -41,6 +41,13 @@ import {
 } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
+const nativeObjectEvidence: Readonly<{
+	getOwnPropertyDescriptor: (
+		receiver: object,
+		key: PropertyKey,
+	) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+}> = Object;
+
 describe('PropertyValueService', () => {
 	let module: TestingModule | undefined;
 	let service: PropertyValueService;
@@ -2019,7 +2026,7 @@ describe('PropertyValueService', () => {
 						}),
 				);
 				const originalRead = storageService.queryStrict;
-				const descriptor = Object.getOwnPropertyDescriptor(storageService, 'queryStrict');
+				const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(storageService, 'queryStrict');
 				if (!descriptor) throw new Error('Original fixture read descriptor required');
 				const bRead = jest.fn().mockResolvedValue([]);
 				let bQueries = 0;
@@ -2146,7 +2153,7 @@ describe('PropertyValueService', () => {
 		it('never invokes a substituted self verifier during the original policy check', async () => {
 			const registry = module.get(PropertyValueSourceRegistryService);
 			const property = input('self-verifier-alias');
-			const originalOwn = Object.getOwnPropertyDescriptor(registry, 'isReadSourceStructurallyCurrent');
+			const originalOwn = nativeObjectEvidence.getOwnPropertyDescriptor(registry, 'isReadSourceStructurallyCurrent');
 			const bVerifier = jest.fn(() => {
 				throw new Error('Substituted verifier must not run');
 			});
@@ -2406,136 +2413,263 @@ describe('finite read-only creation producer observations', () => {
 	});
 });
 
-
 describe('finite readonly existing-controller diagnostic observations', () => {
 	const fixture = async () => {
 		const database = new SqliteDataSource({ type: 'sqlite', database: ':memory:', entities: [], synchronize: false });
 		const events = new EventEmitter2();
-		const module = await Test.createTestingModule({ providers: [PropertyValueService,PropertyValueLockService,
-			PropertyValueSourceRegistryService,PropertyProducerRegistryService,StorageService,
-			{ provide: DataSource, useValue: database }, { provide: EventEmitter2, useValue: events },
-			{ provide: NestConfigService, useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
-			{ provide: ConfigService, useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),
-				{ primaryStorage: 'finite-diagnostic-storage' }) } },
-		] }).compile();
+		const module = await Test.createTestingModule({
+			providers: [
+				PropertyValueService,
+				PropertyValueLockService,
+				PropertyValueSourceRegistryService,
+				PropertyProducerRegistryService,
+				StorageService,
+				{ provide: DataSource, useValue: database },
+				{ provide: EventEmitter2, useValue: events },
+				{ provide: NestConfigService, useValue: new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
+				{
+					provide: ConfigService,
+					useValue: {
+						getModuleConfig: () =>
+							Object.assign(new StorageConfigModel(), { primaryStorage: 'finite-diagnostic-storage' }),
+					},
+				},
+			],
+		}).compile();
 		const storage = module.get(StorageService);
-		let queries = 0, writes = 0;
-		const plugin: StoragePlugin = { name: 'finite-diagnostic-storage',initialize: () => Promise.resolve(),
-			destroy: () => Promise.resolve(),isAvailable: () => true,
-			writePoints: () => { writes++; return Promise.resolve(); },
-			query: <T>() => { queries++; return Promise.resolve<T[]>([]); },
-			queryRaw: <T>() => { queries++; return Promise.reject<T>(new Error('No raw diagnostic history')); },
-			registerSchema: () => undefined,dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
-		storage.registerPlugin(plugin.name,plugin);
-		const property = Object.assign(new ChannelPropertyEntity(), { id: 'finite-diagnostic-input',
-			dataType: DataTypeType.FLOAT,invalid: null,format: null,step: null });
-		return { module,property,events,values: module.get(PropertyValueService),producers: module.get(PropertyProducerRegistryService),
-			counts: () => ({ queries,writes }) };
+		let queries = 0,
+			writes = 0;
+		const plugin: StoragePlugin = {
+			name: 'finite-diagnostic-storage',
+			initialize: () => Promise.resolve(),
+			destroy: () => Promise.resolve(),
+			isAvailable: () => true,
+			writePoints: () => {
+				writes++;
+				return Promise.resolve();
+			},
+			query: <T>() => {
+				queries++;
+				return Promise.resolve<T[]>([]);
+			},
+			queryRaw: <T>() => {
+				queries++;
+				return Promise.reject<T>(new Error('No raw diagnostic history'));
+			},
+			registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),
+			getMeasurements: () => Promise.resolve([]),
+		};
+		storage.registerPlugin(plugin.name, plugin);
+		const property = Object.assign(new ChannelPropertyEntity(), {
+			id: 'finite-diagnostic-input',
+			dataType: DataTypeType.FLOAT,
+			invalid: null,
+			format: null,
+			step: null,
+		});
+		return {
+			module,
+			property,
+			events,
+			values: module.get(PropertyValueService),
+			producers: module.get(PropertyProducerRegistryService),
+			counts: () => ({ queries, writes }),
+		};
 	};
 	it('keeps an initially absent original sample unavailable without history, writes or producer correction', async () => {
 		const f = await fixture();
 		const capture = f.values.captureDiagnosticSamples([f.property]);
-		const event = jest.spyOn(f.events,'emit');
+		const event = jest.spyOn(f.events, 'emit');
 		try {
-			expect(f.values.evaluateDiagnosticSample(capture,f.property.id,1000,1000)).toEqual({ sample: null,evidence: null });
+			expect(f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, 1000)).toEqual({
+				sample: null,
+				evidence: null,
+			});
 			expect(f.values.finishDiagnosticSamples(capture)).toBe(true);
-			expect(f.counts()).toEqual({ queries: 0,writes: 0 });
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
 			expect(event).not.toHaveBeenCalled();
-		} finally { f.values.closeDiagnosticSamples(capture); event.mockRestore(); await f.module.close(); }
+		} finally {
+			f.values.closeDiagnosticSamples(capture);
+			event.mockRestore();
+			await f.module.close();
+		}
 	});
 	it('retains absent producer ABA loss while a finite observation lives, then drops only its own observation', async () => {
 		const f = await fixture();
 		const capture = f.values.captureDiagnosticSamples([f.property]);
 		try {
-			const lease = f.producers.register(f.property,1);
+			const lease = f.producers.register(f.property, 1);
 			expect(f.producers.unregister(lease)).toBe(true);
 			expect(f.values.diagnosticSamplesCurrent(capture)).toBe(false);
-			expect(() => f.values.evaluateDiagnosticSample(capture,f.property.id,1000,1000)).toThrow();
+			expect(() => f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, 1000)).toThrow();
 			f.values.closeDiagnosticSamples(capture);
 			const next = f.values.captureDiagnosticSamples([f.property]);
-			try { expect(f.values.finishDiagnosticSamples(next)).toBe(true); }
-			finally { f.values.closeDiagnosticSamples(next); }
-			expect(f.counts()).toEqual({ queries: 0,writes: 0 });
-		} finally { f.values.closeDiagnosticSamples(capture); await f.module.close(); }
+			try {
+				expect(f.values.finishDiagnosticSamples(next)).toBe(true);
+			} finally {
+				f.values.closeDiagnosticSamples(next);
+			}
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+		} finally {
+			f.values.closeDiagnosticSamples(capture);
+			await f.module.close();
+		}
 	});
 	it('does not turn a retained unavailable producer into a cached physical report or emit an expiry correction', async () => {
 		const f = await fixture();
-		const lease = f.producers.register(f.property,1);
+		const lease = f.producers.register(f.property, 1);
 		const capture = f.values.captureDiagnosticSamples([f.property]);
-		const emit = jest.spyOn(f.events,'emit');
+		const emit = jest.spyOn(f.events, 'emit');
 		try {
 			const version = f.producers.version(lease);
-			expect(f.values.evaluateDiagnosticSample(capture,f.property.id,1000,1000)).toEqual({ sample: null,evidence: null });
+			expect(f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, 1000)).toEqual({
+				sample: null,
+				evidence: null,
+			});
 			expect(f.producers.version(lease)).toBe(version);
 			expect(emit).not.toHaveBeenCalled();
 			expect(f.values.finishDiagnosticSamples(capture)).toBe(true);
-		} finally { f.values.closeDiagnosticSamples(capture); emit.mockRestore(); await f.module.close(); }
+		} finally {
+			f.values.closeDiagnosticSamples(capture);
+			emit.mockRestore();
+			await f.module.close();
+		}
 	});
-	it('observes an actual accepted provider report without further backend work and refuses a later accepted report as original A',async () => {
-		const f = await fixture(),now = Date.now();
+	it('observes an actual accepted provider report without further backend work and refuses a later accepted report as original A', async () => {
+		const f = await fixture(),
+			now = Date.now();
 		// Synthetic provider packets are data for this real value service; this is not installed/send authority.
-		await f.values.writeSampleWithState(f.property,21,{ sampledAt: new Date(now - 2),receivedAt: new Date(now - 1),provenance: 'live' });
-		const capture = f.values.captureDiagnosticSamples([f.property]),before = f.counts();
+		await f.values.writeSampleWithState(f.property, 21, {
+			sampledAt: new Date(now - 2),
+			receivedAt: new Date(now - 1),
+			provenance: 'live',
+		});
+		const capture = f.values.captureDiagnosticSamples([f.property]),
+			before = f.counts();
 		try {
-			const observed = f.values.evaluateDiagnosticSample(capture,f.property.id,1000,now);
-			expect(observed.sample).toMatchObject({ propertyId: f.property.id,value: 21,provenance: 'live',quality: 'good' });
-			expect(observed.evidence?.acceptanceGeneration).toBeGreaterThan(0); expect(f.counts()).toEqual(before);
-			await f.values.writeSampleWithState(f.property,22,{ sampledAt: new Date(now - 1),receivedAt: new Date(now),provenance: 'live' });
+			const observed = f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, now);
+			expect(observed.sample).toMatchObject({
+				propertyId: f.property.id,
+				value: 21,
+				provenance: 'live',
+				quality: 'good',
+			});
+			expect(observed.evidence?.acceptanceGeneration).toBeGreaterThan(0);
+			expect(f.counts()).toEqual(before);
+			await f.values.writeSampleWithState(f.property, 22, {
+				sampledAt: new Date(now - 1),
+				receivedAt: new Date(now),
+				provenance: 'live',
+			});
 			expect(f.values.diagnosticSamplesCurrent(capture)).toBe(false);
-			expect(() => f.values.evaluateDiagnosticSample(capture,f.property.id,1000,now)).toThrow('lost');
-			expect(f.values.finishDiagnosticSamples(capture)).toBe(false); expect(f.counts().queries).toBe(0);
-		} finally { f.values.closeDiagnosticSamples(capture); await f.module.close(); }
+			expect(() => f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, now)).toThrow('lost');
+			expect(f.values.finishDiagnosticSamples(capture)).toBe(false);
+			expect(f.counts().queries).toBe(0);
+		} finally {
+			f.values.closeDiagnosticSamples(capture);
+			await f.module.close();
+		}
 	});
-	it('refuses an original absent source after genuine registration without invoking the successor policy',async () => {
-		const f = await fixture(),registry = f.module.get(PropertyValueSourceRegistryService);
-		const capture = f.values.captureDiagnosticSamples([f.property]); let successorCalls = 0;
-		const source: IPropertyValueSource = { getType: () => f.property.type,resolve: (row) => row.id,
-			unavailableReason: () => { successorCalls++; return null; } };
+	it('refuses an original absent source after genuine registration without invoking the successor policy', async () => {
+		const f = await fixture(),
+			registry = f.module.get(PropertyValueSourceRegistryService);
+		const capture = f.values.captureDiagnosticSamples([f.property]);
+		let successorCalls = 0;
+		const source: IPropertyValueSource = {
+			getType: () => f.property.type,
+			resolve: (row) => row.id,
+			unavailableReason: () => {
+				successorCalls++;
+				return null;
+			},
+		};
 		try {
 			expect(registry.register(source)).toBe(true);
 			expect(f.values.diagnosticSamplesCurrent(capture)).toBe(false);
-			expect(() => f.values.evaluateDiagnosticSample(capture,f.property.id,1000,Date.now())).toThrow('lost');
-			expect(successorCalls).toBe(0); expect(f.counts()).toEqual({ queries: 0,writes: 0 });
-		} finally { f.values.closeDiagnosticSamples(capture); await f.module.close(); }
+			expect(() => f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, Date.now())).toThrow('lost');
+			expect(successorCalls).toBe(0);
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+		} finally {
+			f.values.closeDiagnosticSamples(capture);
+			await f.module.close();
+		}
 	});
-	it('pins the original source policy method and never dispatches a held A observation to a same-object replacement',async () => {
-		const f = await fixture(),registry = f.module.get(PropertyValueSourceRegistryService);
-		const source: IPropertyValueSource = { getType: () => f.property.type,resolve: (row) => row.id,unavailableReason: () => null };
+	it('pins the original source policy method and never dispatches a held A observation to a same-object replacement', async () => {
+		const f = await fixture(),
+			registry = f.module.get(PropertyValueSourceRegistryService);
+		const source: IPropertyValueSource = {
+			getType: () => f.property.type,
+			resolve: (row) => row.id,
+			unavailableReason: () => null,
+		};
 		expect(registry.register(source)).toBe(true);
-		const capture = f.values.captureDiagnosticSamples([f.property]); let replacementCalls = 0;
+		const capture = f.values.captureDiagnosticSamples([f.property]);
+		let replacementCalls = 0;
 		try {
-			source.unavailableReason = () => { replacementCalls++; return null; };
-			expect(() => f.values.evaluateDiagnosticSample(capture,f.property.id,1000,Date.now())).toThrow('lost');
-			expect(replacementCalls).toBe(0); expect(f.values.finishDiagnosticSamples(capture)).toBe(false);
-			expect(f.counts()).toEqual({ queries: 0,writes: 0 });
-		} finally { f.values.closeDiagnosticSamples(capture); await f.module.close(); }
+			source.unavailableReason = () => {
+				replacementCalls++;
+				return null;
+			};
+			expect(() => f.values.evaluateDiagnosticSample(capture, f.property.id, 1000, Date.now())).toThrow('lost');
+			expect(replacementCalls).toBe(0);
+			expect(f.values.finishDiagnosticSamples(capture)).toBe(false);
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+		} finally {
+			f.values.closeDiagnosticSamples(capture);
+			await f.module.close();
+		}
 	});
 
-	it('bounds a LOCAL publication observation to its original absent producer slot and remembers register/remove ABA without touching B',async () => {
-		const f = await fixture(),before = f.producers.readCreationObservationCounts();
+	it('bounds a LOCAL publication observation to its original absent producer slot and remembers register/remove ABA without touching B', async () => {
+		const f = await fixture(),
+			before = f.producers.readCreationObservationCounts();
 		const observation = f.values.captureMutationPropertyObservation([f.property]);
 		try {
-			expect(observation.isCurrent()).toBe(true); expect(() => observation.check()).not.toThrow();
-			const successor = f.producers.register(f.property,1);
+			expect(observation.isCurrent()).toBe(true);
+			expect(() => observation.check()).not.toThrow();
+			const successor = f.producers.register(f.property, 1);
 			expect(f.producers.unregister(successor)).toBe(true);
-			expect(observation.isCurrent()).toBe(false); expect(() => observation.check()).toThrow('lost');
-			observation.close(); expect(f.producers.readCreationObservationCounts()).toEqual(before);
-			expect(f.counts()).toEqual({ queries: 0,writes: 0 });
-		} finally { observation.close(); await f.module.close(); }
+			expect(observation.isCurrent()).toBe(false);
+			expect(() => observation.check()).toThrow('lost');
+			observation.close();
+			expect(f.producers.readCreationObservationCounts()).toEqual(before);
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+		} finally {
+			observation.close();
+			await f.module.close();
+		}
 	});
-	it('checks only the original source policy before effects and permanently closes on a changed key without a replacement callback',async () => {
-		const f = await fixture(),registry = f.module.get(PropertyValueSourceRegistryService); let key = f.property.id,replacementCalls = 0;
-		const source: IPropertyValueSource = { getType: () => f.property.type,resolve: () => key,unavailableReason: () => null };
+	it('checks only the original source policy before effects and permanently closes on a changed key without a replacement callback', async () => {
+		const f = await fixture(),
+			registry = f.module.get(PropertyValueSourceRegistryService);
+		let key = f.property.id,
+			replacementCalls = 0;
+		const source: IPropertyValueSource = {
+			getType: () => f.property.type,
+			resolve: () => key,
+			unavailableReason: () => null,
+		};
 		expect(registry.register(source)).toBe(true);
-		const before = f.producers.readCreationObservationCounts(),observation = f.values.captureMutationPropertyObservation([f.property]);
+		const before = f.producers.readCreationObservationCounts(),
+			observation = f.values.captureMutationPropertyObservation([f.property]);
 		try {
-			key = 'changed canonical series'; expect(() => observation.check()).toThrow('lost');
-			key = f.property.id; expect(observation.isCurrent()).toBe(false);
-			source.resolve = () => { replacementCalls++; return key; };
-			expect(() => observation.check()).toThrow('lost'); expect(replacementCalls).toBe(0);
-			observation.close(); expect(f.producers.readCreationObservationCounts()).toEqual(before);
-			expect(f.counts()).toEqual({ queries: 0,writes: 0 });
-		} finally { observation.close(); await f.module.close(); }
+			key = 'changed canonical series';
+			expect(() => observation.check()).toThrow('lost');
+			key = f.property.id;
+			expect(observation.isCurrent()).toBe(false);
+			source.resolve = () => {
+				replacementCalls++;
+				return key;
+			};
+			expect(() => observation.check()).toThrow('lost');
+			expect(replacementCalls).toBe(0);
+			observation.close();
+			expect(f.producers.readCreationObservationCounts()).toEqual(before);
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+		} finally {
+			observation.close();
+			await f.module.close();
+		}
 	});
-
 });

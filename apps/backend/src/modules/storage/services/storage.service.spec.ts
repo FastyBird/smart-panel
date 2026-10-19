@@ -2,7 +2,10 @@
 import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../config/services/config.service';
-import { ControllerMutationPublicationLease, DeviceCreationPublicationLease } from '../../devices/services/device-creation-context';
+import {
+	ControllerMutationPublicationLease,
+	DeviceCreationPublicationLease,
+} from '../../devices/services/device-creation-context';
 import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageQueryOptions } from '../storage.types';
 
@@ -308,24 +311,42 @@ describe('creation storage mutation-owned destination records', () => {
 	});
 });
 
-
 describe('distinct existing-controller storage publication provenance', () => {
 	it('rejects an unissued mutation shell before any destination or backend call', async () => {
-		const module = await Test.createTestingModule({ providers: [StorageService,
-			{ provide: ConfigService, useValue: { getModuleConfig: () => ({ primaryStorage: 'mutation-boundary' }) } },
-		] }).compile();
+		const module = await Test.createTestingModule({
+			providers: [
+				StorageService,
+				{ provide: ConfigService, useValue: { getModuleConfig: () => ({ primaryStorage: 'mutation-boundary' }) } },
+			],
+		}).compile();
 		const storage = module.get(StorageService);
 		let submitted = 0;
-		const plugin: StoragePlugin = { name: 'mutation-boundary',initialize: () => Promise.resolve(),
-			destroy: () => Promise.resolve(),isAvailable: () => true,writePoints: () => { submitted++; return Promise.resolve(); },
-			query: <T>() => Promise.resolve<T[]>([]),queryRaw: <T>() => Promise.reject<T>(new Error('No raw query')),
-			registerSchema: () => undefined,dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
-		storage.registerPlugin(plugin.name,plugin);
+		const plugin: StoragePlugin = {
+			name: 'mutation-boundary',
+			initialize: () => Promise.resolve(),
+			destroy: () => Promise.resolve(),
+			isAvailable: () => true,
+			writePoints: () => {
+				submitted++;
+				return Promise.resolve();
+			},
+			query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('No raw query')),
+			registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),
+			getMeasurements: () => Promise.resolve([]),
+		};
+		storage.registerPlugin(plugin.name, plugin);
 		const destinations = storage.captureCreationDestinations();
 		try {
-			await expect(storage.writeMutationPoints(new ControllerMutationPublicationLease(),destinations,
-				[{ measurement: 'property_value',fields: { numberValue: 21 } }])).rejects.toThrow('Original mutation');
+			await expect(
+				storage.writeMutationPoints(new ControllerMutationPublicationLease(), destinations, [
+					{ measurement: 'property_value', fields: { numberValue: 21 } },
+				]),
+			).rejects.toThrow('Original mutation');
 			expect(submitted).toBe(0);
-		} finally { await module.close(); }
+		} finally {
+			await module.close();
+		}
 	});
 });

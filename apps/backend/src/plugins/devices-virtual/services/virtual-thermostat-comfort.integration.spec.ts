@@ -1,40 +1,45 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { BeforeQueryEvent, DataSource } from 'typeorm';
-import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { SqliteDataSource } from '../../../common/database/sqlite-data-source';
 import { AddVirtualThermostatComfort1000000000039 } from '../../../migrations/1000000000039-AddVirtualThermostatComfort';
 import { AddClimateAutomationOwnership1000000000047 } from '../../../migrations/1000000000047-AddClimateAutomationOwnership';
 import { ConfigService as ModuleConfigService } from '../../../modules/config/services/config.service';
-import { StorageConfigModel } from '../../../modules/storage/models/config.model';
-import { StorageService } from '../../../modules/storage/services/storage.service';
-import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
 import { ClimateAutomationWriteError } from '../../../modules/devices/contracts/climate-automation.contract';
-import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
-import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
-import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
-import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
-import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
-import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
+import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
+import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
+import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
+import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
+import { StorageConfigModel } from '../../../modules/storage/models/config.model';
+import { StorageService } from '../../../modules/storage/services/storage.service';
 import { VirtualDeviceEntity, VirtualDeviceMode } from '../entities/devices-virtual.entity';
-import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
-
-import { VirtualThermostatAutomationService } from './virtual-thermostat-automation.service';
-import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { VirtualGraphRevisionEntity } from '../entities/virtual-producer.entity';
+import { VirtualThermostatConfigEntity } from '../entities/virtual-thermostat.entity';
+import { VirtualThermostatOwnershipSubscriber } from '../subscribers/virtual-thermostat-ownership.subscriber';
 
+import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
+import { VirtualThermostatAutomationService } from './virtual-thermostat-automation.service';
 import { VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
 jest.setTimeout(30_000);
 
@@ -45,12 +50,22 @@ describe('thermostat durable comfort lifecycle', () => {
 	let id: string;
 	let events: EventEmitter2;
 	let structure: DeviceStructureLockService;
-	let graph: VirtualDependencyGraphService,selectedClaims: VirtualThermostatClaimsService;
-	let pipeline: TestingModule,values: PropertyValueService,configs: VirtualThermostatConfigService;
-	let writer: ClimateAutomationWriterService,ownership: ClimateAutomationRegistryService,automation: VirtualThermostatAutomationService;
+	let graph: VirtualDependencyGraphService, selectedClaims: VirtualThermostatClaimsService;
+	let pipeline: TestingModule, values: PropertyValueService, configs: VirtualThermostatConfigService;
+	let writer: ClimateAutomationWriterService,
+		ownership: ClimateAutomationRegistryService,
+		automation: VirtualThermostatAutomationService;
 	const registerOriginal = () => {
 		automation?.onModuleDestroy();
-		automation = new VirtualThermostatAutomationService(writer,ownership,graph,new ConfigService({ FB_CLI: 'off' }),undefined,configs,comfort);
+		automation = new VirtualThermostatAutomationService(
+			writer,
+			ownership,
+			graph,
+			new ConfigService({ FB_CLI: 'off' }),
+			undefined,
+			configs,
+			comfort,
+		);
 		automation.onModuleInit();
 	};
 	let wall: number;
@@ -100,8 +115,12 @@ describe('thermostat durable comfort lifecycle', () => {
 	};
 
 	const joinedClockCurrent = async (row: VirtualThermostatConfigEntity): Promise<boolean> => {
-		const intent = await comfort.readIntentInManager(database.manager,row);
-		try { return comfort.isCurrent(row); } finally { intent.close(); }
+		const intent = await comfort.readIntentInManager(database.manager, row);
+		try {
+			return comfort.isCurrent(row);
+		} finally {
+			intent.close();
+		}
 	};
 	beforeEach(async () => {
 		wall = Date.UTC(2026, 9, 15);
@@ -116,32 +135,71 @@ describe('thermostat durable comfort lifecycle', () => {
 		}).initialize();
 		structure = new DeviceStructureLockService();
 		ownership = new ClimateAutomationRegistryService();
-		writer = new ClimateAutomationWriterService(database,structure,ownership,new ConfigService({ FB_CLI: 'off' }));
-		graph = new VirtualDependencyGraphService(database,new ConfigService({ FB_CLI: 'off' }),writer);
+		writer = new ClimateAutomationWriterService(database, structure, ownership, new ConfigService({ FB_CLI: 'off' }));
+		graph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), writer);
 		events = new EventEmitter2();
-		selectedClaims = new VirtualThermostatClaimsService(database,structure,graph,new PropertyCommandAdmissionRegistryService(),events);
-		pipeline = await Test.createTestingModule({ providers: [PropertyValueService,PropertyValueLockService,
-			PropertyValueSourceRegistryService,PropertyProducerRegistryService,StorageService,
-			{ provide: DataSource,useValue: database },{ provide: EventEmitter2,useValue: events },
-			{ provide: ConfigService,useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
-			{ provide: ModuleConfigService,useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),{ primaryStorage: 'existing-comfort-fixture' }) } },
-		] }).compile();
+		selectedClaims = new VirtualThermostatClaimsService(
+			database,
+			structure,
+			graph,
+			new PropertyCommandAdmissionRegistryService(),
+			events,
+		);
+		pipeline = await Test.createTestingModule({
+			providers: [
+				PropertyValueService,
+				PropertyValueLockService,
+				PropertyValueSourceRegistryService,
+				PropertyProducerRegistryService,
+				StorageService,
+				{ provide: DataSource, useValue: database },
+				{ provide: EventEmitter2, useValue: events },
+				{ provide: ConfigService, useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
+				{
+					provide: ModuleConfigService,
+					useValue: {
+						getModuleConfig: () =>
+							Object.assign(new StorageConfigModel(), { primaryStorage: 'existing-comfort-fixture' }),
+					},
+				},
+			],
+		}).compile();
 		const storage = pipeline.get(StorageService);
-		const plugin: StoragePlugin = { name: 'existing-comfort-fixture',initialize: () => Promise.resolve(),destroy: () => Promise.resolve(),
-			isAvailable: () => true,writePoints: () => Promise.resolve(),query: <T>() => Promise.resolve<T[]>([]),
-			queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),registerSchema: () => undefined,
-			dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
-		storage.registerPlugin(plugin.name,plugin); values = pipeline.get(PropertyValueService);
+		const plugin: StoragePlugin = {
+			name: 'existing-comfort-fixture',
+			initialize: () => Promise.resolve(),
+			destroy: () => Promise.resolve(),
+			isAvailable: () => true,
+			writePoints: () => Promise.resolve(),
+			query: <T>() => Promise.resolve<T[]>([]),
+			queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),
+			registerSchema: () => undefined,
+			dropMeasurement: () => Promise.resolve(),
+			getMeasurements: () => Promise.resolve([]),
+		};
+		storage.registerPlugin(plugin.name, plugin);
+		values = pipeline.get(PropertyValueService);
 		makeService = () => {
-			comfort?.onModuleDestroy(); automation?.onModuleDestroy();
-			configs = new VirtualThermostatConfigService(database,structure,graph,selectedClaims,events,values,undefined,writer);
-			comfort = new VirtualThermostatComfortService(database,structure,graph,selectedClaims,events,writer);
-			registerOriginal(); return comfort;
+			comfort?.onModuleDestroy();
+			automation?.onModuleDestroy();
+			configs = new VirtualThermostatConfigService(
+				database,
+				structure,
+				graph,
+				selectedClaims,
+				events,
+				values,
+				undefined,
+				writer,
+			);
+			comfort = new VirtualThermostatComfortService(database, structure, graph, selectedClaims, events, writer);
+			registerOriginal();
+			return comfort;
 		};
 		comfort = makeService();
 		await graph.onApplicationBootstrap();
 		await selectedClaims.onApplicationBootstrap();
-		await new VirtualThermostatOwnershipSubscriber(database,selectedClaims).onApplicationBootstrap();
+		await new VirtualThermostatOwnershipSubscriber(database, selectedClaims).onApplicationBootstrap();
 		id = randomUUID();
 		await database.manager.insert(VirtualDeviceEntity, {
 			id,
@@ -176,8 +234,11 @@ describe('thermostat durable comfort lifecycle', () => {
 		await new AddClimateAutomationOwnership1000000000047().up(database.createQueryRunner());
 	});
 	afterEach(async () => {
-		automation?.onModuleDestroy(); comfort?.onModuleDestroy(); selectedClaims?.onModuleDestroy();
-		await pipeline?.close(); ownership?.onModuleDestroy();
+		automation?.onModuleDestroy();
+		comfort?.onModuleDestroy();
+		selectedClaims?.onModuleDestroy();
+		await pipeline?.close();
+		ownership?.onModuleDestroy();
 		jest.restoreAllMocks();
 		if (database?.isInitialized) await database.destroy();
 	});
@@ -388,7 +449,9 @@ describe('thermostat durable comfort lifecycle', () => {
 		expect(result.configuration.temporary_override.id).toBe(created.configuration.temporary_override.id);
 		expect(result.effective.source).toBe('override');
 		expect(
-			await joinedClockCurrent(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })),
+			await joinedClockCurrent(
+				await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id }),
+			),
 		).toBe(true);
 	});
 
@@ -591,18 +654,22 @@ describe('thermostat durable comfort lifecycle', () => {
 
 	it('refuses actor-only baselines and preserves manual, override and OFF intent', async () => {
 		await configured();
-		const refuseBaseline = async (selection: Parameters<VirtualThermostatComfortService['applyAutomationBaseline']>[2]) => {
+		const refuseBaseline = async (
+			selection: Parameters<VirtualThermostatComfortService['applyAutomationBaseline']>[2],
+		) => {
 			const expected = await fence();
 			const tables = await database.query<{ name: string }[]>(
 				"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
 			);
 			const before: unknown[] = [];
-			for (const table of tables) before.push(await database.query('SELECT * FROM "' + table.name.replace(/"/g, '""') + '" ORDER BY rowid'));
+			for (const table of tables)
+				before.push(await database.query('SELECT * FROM "' + table.name.replace(/"/g, '""') + '" ORDER BY rowid'));
 			await expect(comfort.applyAutomationBaseline(id, expected, selection, 'space-bridge')).rejects.toThrow(
 				'Original automation source capability required',
 			);
 			const after: unknown[] = [];
-			for (const table of tables) after.push(await database.query('SELECT * FROM "' + table.name.replace(/"/g, '""') + '" ORDER BY rowid'));
+			for (const table of tables)
+				after.push(await database.query('SELECT * FROM "' + table.name.replace(/"/g, '""') + '" ORDER BY rowid'));
 			expect(after).toEqual(before);
 		};
 		await refuseBaseline({ preset: 'eco', setpoints: null });
@@ -673,7 +740,7 @@ describe('thermostat durable comfort lifecycle', () => {
 		};
 		beforeEach(async () => {
 			await configured(); // existing ordinary config setup, not an admission-positive stand-in
-			actualGraph = new VirtualDependencyGraphService(database,new ConfigService({ FB_CLI: 'off' }),writer);
+			actualGraph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), writer);
 			actualClaims = new VirtualThermostatClaimsService(
 				database,
 				structure,
@@ -683,7 +750,8 @@ describe('thermostat durable comfort lifecycle', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 			);
 			await actualClaims.onApplicationBootstrap();
-			selectedClaims = actualClaims; graph = actualGraph;
+			selectedClaims = actualClaims;
+			graph = actualGraph;
 			comfort = makeService();
 			expect(actualClaims.capture().isCurrent()).toBe(true);
 		});
@@ -754,37 +822,52 @@ describe('thermostat durable comfort lifecycle', () => {
 			},
 		);
 
-		it.each(['valid', 'null', 'getters'])('refuses actor-only %s input before authority I/O without closing the original capture', async (kind) => {
-			const expected = await fence();
-			const original = actualClaims.capture();
-			expect(original.isCurrent()).toBe(true);
-			const owned = observeOwnedHolds();
-			const graphWrite = jest.spyOn(actualGraph, 'withStructuralWrite');
-			const emitted = jest.spyOn(events, 'emit');
-			let queries = 0;
-			const observer = { beforeQuery: () => { queries++; } };
-			const selection: Parameters<VirtualThermostatComfortService['applyAutomationBaseline']>[2] = kind === 'null'
-				? null : kind === 'getters' ? {
-					get preset(): never { throw new Error('Actor selection getter must not run'); },
-					get setpoints(): never { throw new Error('Actor selection getter must not run'); },
-				} : { preset: 'eco', setpoints: null };
-			database.subscribers.push(observer);
-			try {
-				await expect(comfort.applyAutomationBaseline(id, expected, selection, 'space-bridge')).rejects.toThrow(
-					'Original automation source capability required',
-				);
-				expect(queries).toBe(0);
-				expect(owned.hold).not.toHaveBeenCalled();
-				expect(owned.releases).toEqual([]);
-				expect(graphWrite).not.toHaveBeenCalled();
-				expect(emitted).not.toHaveBeenCalled();
+		it.each(['valid', 'null', 'getters'])(
+			'refuses actor-only %s input before authority I/O without closing the original capture',
+			async (kind) => {
+				const expected = await fence();
+				const original = actualClaims.capture();
 				expect(original.isCurrent()).toBe(true);
-			} finally {
-				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
-				emitted.mockRestore();
-				graphWrite.mockRestore();
-			}
-		});
+				const owned = observeOwnedHolds();
+				const graphWrite = jest.spyOn(actualGraph, 'withStructuralWrite');
+				const emitted = jest.spyOn(events, 'emit');
+				let queries = 0;
+				const observer = {
+					beforeQuery: () => {
+						queries++;
+					},
+				};
+				const selection: Parameters<VirtualThermostatComfortService['applyAutomationBaseline']>[2] =
+					kind === 'null'
+						? null
+						: kind === 'getters'
+							? {
+									get preset(): never {
+										throw new Error('Actor selection getter must not run');
+									},
+									get setpoints(): never {
+										throw new Error('Actor selection getter must not run');
+									},
+								}
+							: { preset: 'eco', setpoints: null };
+				database.subscribers.push(observer);
+				try {
+					await expect(comfort.applyAutomationBaseline(id, expected, selection, 'space-bridge')).rejects.toThrow(
+						'Original automation source capability required',
+					);
+					expect(queries).toBe(0);
+					expect(owned.hold).not.toHaveBeenCalled();
+					expect(owned.releases).toEqual([]);
+					expect(graphWrite).not.toHaveBeenCalled();
+					expect(emitted).not.toHaveBeenCalled();
+					expect(original.isCurrent()).toBe(true);
+				} finally {
+					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+					emitted.mockRestore();
+					graphWrite.mockRestore();
+				}
+			},
+		);
 
 		it.each(['missing', 'locked', 'stale', 'invalid'] as const)(
 			'releases exactly its own hold after actual %s rejection without changing the old row',
@@ -824,10 +907,12 @@ describe('thermostat durable comfort lifecycle', () => {
 				const entered = barrier(),
 					resume = barrier(),
 					failure = new Error('response read rejected');
-				const realResponseMethods: Readonly<Pick<VirtualThermostatConfigService,'completeExistingAcknowledged'>> = configs;
+				const realResponseMethods: OriginalFunctions<
+					Pick<VirtualThermostatConfigService, 'completeExistingAcknowledged'>
+				> = configs;
 				const realResponse = realResponseMethods.completeExistingAcknowledged;
-				jest.spyOn(configs,'completeExistingAcknowledged').mockImplementationOnce(async (...args) => {
-					const response = await realResponse.call(configs,...args);
+				jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementationOnce(async (...args) => {
+					const response = await realResponse.call(configs, ...args);
 					entered.open();
 					await resume.promise;
 					if (rejectResponse) throw failure;
@@ -844,15 +929,18 @@ describe('thermostat durable comfort lifecycle', () => {
 					expect(committed.comfort.selected_preset).toBe('eco');
 					expect(committed.revision).toBe(expected.expected_revision + 1);
 					resume.open();
-					if (rejectResponse) await result.then(
-						() => { throw new Error('Expected the committed response failure.'); },
-						(error: unknown) => {
-							expect(error).toBeInstanceOf(ClimateAutomationWriteError);
-							if (!(error instanceof ClimateAutomationWriteError)) throw error;
-							expect(error.commitOutcome).toBe('committed');
-							expect(error.cause).toBe(failure);
-						},
-					);
+					if (rejectResponse)
+						await result.then(
+							() => {
+								throw new Error('Expected the committed response failure.');
+							},
+							(error: unknown) => {
+								expect(error).toBeInstanceOf(ClimateAutomationWriteError);
+								if (!(error instanceof ClimateAutomationWriteError)) throw error;
+								expect(error.commitOutcome).toBe('committed');
+								expect(error.cause).toBe(failure);
+							},
+						);
 					else expect((await result).configuration.selected_preset).toBe('eco');
 					expect(owned.releases[0]).toHaveBeenCalledTimes(1);
 					expect(original.isCurrent()).toBe(false);
@@ -883,18 +971,28 @@ describe('thermostat durable comfort lifecycle', () => {
 				return release;
 			});
 			let terminalRead = false;
-			const originalPrepare = writer.prepareExistingRecoveryForPlan;
-			jest.spyOn(writer,'prepareExistingRecoveryForPlan').mockImplementation((descriptor) => {
+
+			let originalMemberView1: OriginalFunctions<typeof writer>;
+			const originalPrepare = ((originalMemberView1 = writer), originalMemberView1.prepareExistingRecoveryForPlan);
+			jest.spyOn(writer, 'prepareExistingRecoveryForPlan').mockImplementation((descriptor) => {
 				terminalRead = true;
-				const result = originalPrepare.call(writer,descriptor);
-				void result.then(() => { terminalRead = false; },() => { terminalRead = false; });
+				const result = originalPrepare.call(writer, descriptor);
+				void result.then(
+					() => {
+						terminalRead = false;
+					},
+					() => {
+						terminalRead = false;
+					},
+				);
 				return result;
 			});
 			registerOriginal();
 			database.subscribers.push({
 				beforeQuery: (event) => {
 					if (
-						terminalRead && !released &&
+						terminalRead &&
+						!released &&
 						event.query.startsWith('SELECT') &&
 						event.query.includes('devices_virtual_thermostat_actuator_claims')
 					) {
@@ -921,16 +1019,23 @@ describe('thermostat durable comfort lifecycle', () => {
 				const expected = await fence(),
 					original = actualClaims.capture(),
 					owned = observeOwnedHolds();
-				let fail = true,inChanged = false;
-				const realReconcileMethods: Readonly<Pick<VirtualThermostatComfortService,'reconcileExistingAcknowledged'>> = comfort;
+				let fail = true,
+					inChanged = false;
+				const realReconcileMethods: OriginalFunctions<
+					Pick<VirtualThermostatComfortService, 'reconcileExistingAcknowledged'>
+				> = comfort;
 				const realReconcile = realReconcileMethods.reconcileExistingAcknowledged;
-				jest.spyOn(comfort,'reconcileExistingAcknowledged').mockImplementation((...args) => { inChanged = true; return realReconcile.call(comfort,...args); });
+				jest.spyOn(comfort, 'reconcileExistingAcknowledged').mockImplementation((...args) => {
+					inChanged = true;
+					return realReconcile.call(comfort, ...args);
+				});
 				registerOriginal();
 				if (boundary === 'refresh')
 					database.subscribers.push({
 						beforeQuery: (event) => {
 							if (
-								inChanged && fail &&
+								inChanged &&
+								fail &&
 								event.query.startsWith('SELECT') &&
 								event.query.includes('devices_virtual_thermostat_actuator_claims')
 							) {
@@ -969,12 +1074,14 @@ describe('thermostat durable comfort lifecycle', () => {
 				bEntered = barrier(),
 				aResume = barrier(),
 				bResume = barrier();
-			const realResponseMethods: Readonly<Pick<VirtualThermostatConfigService,'completeExistingAcknowledged'>> = configs;
+			const realResponseMethods: OriginalFunctions<
+				Pick<VirtualThermostatConfigService, 'completeExistingAcknowledged'>
+			> = configs;
 			const realResponse = realResponseMethods.completeExistingAcknowledged;
 			let responses = 0;
-			jest.spyOn(configs,'completeExistingAcknowledged').mockImplementation(async (...args) => {
+			jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementation(async (...args) => {
 				const ordinal = ++responses,
-					response = await realResponse.call(configs,...args);
+					response = await realResponse.call(configs, ...args);
 				if (ordinal === 1) {
 					aEntered.open();
 					await aResume.promise;
@@ -1020,135 +1127,316 @@ describe('thermostat durable comfort lifecycle', () => {
 		});
 
 		// BEGIN terminal recovery/native generation correction drafts (UNRUN)
-		it('orders reconciliation before terminal preparation and performs no A read after successful seal',async () => {
-			const trace: string[] = []; let sealed = false,afterSealReads = 0;
-			const reconcile = comfort.reconcileExistingAcknowledged,prepare = writer.prepareExistingRecoveryForPlan,seal = writer.sealExistingResponse;
-			jest.spyOn(comfort,'reconcileExistingAcknowledged').mockImplementation(async (...args) => { await reconcile.call(comfort,...args); trace.push('reconciled'); });
-			jest.spyOn(writer,'prepareExistingRecoveryForPlan').mockImplementation(async (descriptor) => { trace.push('prepare'); await prepare.call(writer,descriptor); trace.push('prepared'); });
-			jest.spyOn(writer,'sealExistingResponse').mockImplementation((...args) => { seal.call(writer,...args); sealed = true; trace.push('sealed'); });
+		it('orders reconciliation before terminal preparation and performs no A read after successful seal', async () => {
+			const trace: string[] = [];
+			let sealed = false,
+				afterSealReads = 0;
+
+			let originalMemberView2: OriginalFunctions<typeof comfort>;
+			let originalMemberView3: OriginalFunctions<typeof writer>;
+			let originalMemberView4: OriginalFunctions<typeof writer>;
+			const reconcile = ((originalMemberView2 = comfort), originalMemberView2.reconcileExistingAcknowledged),
+				prepare = ((originalMemberView3 = writer), originalMemberView3.prepareExistingRecoveryForPlan),
+				seal = ((originalMemberView4 = writer), originalMemberView4.sealExistingResponse);
+			jest.spyOn(comfort, 'reconcileExistingAcknowledged').mockImplementation(async (...args) => {
+				await reconcile.call(comfort, ...args);
+				trace.push('reconciled');
+			});
+			jest.spyOn(writer, 'prepareExistingRecoveryForPlan').mockImplementation(async (descriptor) => {
+				trace.push('prepare');
+				await prepare.call(writer, descriptor);
+				trace.push('prepared');
+			});
+			jest.spyOn(writer, 'sealExistingResponse').mockImplementation((...args) => {
+				seal.call(writer, ...args);
+				sealed = true;
+				trace.push('sealed');
+			});
 			registerOriginal();
-			const observer = { beforeQuery: () => { if (sealed) afterSealReads++; } }; database.subscribers.push(observer);
+			const observer = {
+				beforeQuery: () => {
+					if (sealed) afterSealReads++;
+				},
+			};
+			database.subscribers.push(observer);
 			try {
-				const result = await comfort.select(id,await fence(),'eco',false);
+				const result = await comfort.select(id, await fence(), 'eco', false);
 				expect(result.configuration.selected_preset).toBe('eco');
-				expect(trace).toEqual(['reconciled','prepare','prepared','sealed']); expect(afterSealReads).toBe(0);
+				expect(trace).toEqual(['reconciled', 'prepare', 'prepared', 'sealed']);
+				expect(afterSealReads).toBe(0);
 				expect(actualClaims.capture().isCurrent()).toBe(true);
-			} finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
 		});
-		it('poisons a caught duplicate terminal descriptor call without a second terminal preparation',async () => {
-			const originalPrepare = writer.prepareExistingRecoveryForPlan; let attempts = 0;
-			jest.spyOn(writer,'prepareExistingRecoveryForPlan').mockImplementation(async (descriptor) => {
-				await originalPrepare.call(writer,descriptor); attempts++;
-				await originalPrepare.call(writer,descriptor).catch(() => undefined);
-			}); registerOriginal();
-			await expect(comfort.select(id,await fence(),'eco',false)).rejects.toMatchObject({ commitOutcome: 'committed' });
+		it('poisons a caught duplicate terminal descriptor call without a second terminal preparation', async () => {
+			let originalMemberView5: OriginalFunctions<typeof writer>;
+			const originalPrepare = ((originalMemberView5 = writer), originalMemberView5.prepareExistingRecoveryForPlan);
+			let attempts = 0;
+			jest.spyOn(writer, 'prepareExistingRecoveryForPlan').mockImplementation(async (descriptor) => {
+				await originalPrepare.call(writer, descriptor);
+				attempts++;
+				await originalPrepare.call(writer, descriptor).catch(() => undefined);
+			});
+			registerOriginal();
+			await expect(comfort.select(id, await fence(), 'eco', false)).rejects.toMatchObject({
+				commitOutcome: 'committed',
+			});
 			expect(attempts).toBe(1);
-			expect((await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: id })).comfort.selected_preset).toBe('eco');
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: id })).comfort
+					.selected_preset,
+			).toBe('eco');
 		});
-		it('binds old no-argument captures to the exact installed membership generation even without an epoch change',async () => {
-			const old = actualClaims.capture(); expect(old.isCurrent()).toBe(true);
+		it('binds old no-argument captures to the exact installed membership generation even without an epoch change', async () => {
+			const old = actualClaims.capture();
+			expect(old.isCurrent()).toBe(true);
 			await actualClaims.refresh();
-			expect(old.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(true);
+			expect(old.isCurrent()).toBe(false);
+			expect(actualClaims.capture().isCurrent()).toBe(true);
 		});
-		it('keeps the service membership witness after finite token close and dirties on a nonmatching native claim statement',async () => {
-			const release = actualClaims.holdRecoveryFence(),token = await actualClaims.prepareExistingRecovery();
-			release(); actualClaims.finishExistingRecovery(token);
-			const old = actualClaims.capture(); expect(old.isCurrent()).toBe(true);
+		it('keeps the service membership witness after finite token close and dirties on a nonmatching native claim statement', async () => {
+			const release = actualClaims.holdRecoveryFence(),
+				token = await actualClaims.prepareExistingRecovery();
+			release();
+			actualClaims.finishExistingRecovery(token);
+			const old = actualClaims.capture();
+			expect(old.isCurrent()).toBe(true);
 			await database.query('UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" WHERE 0');
-			expect(old.isCurrent()).toBe(false); expect(actualClaims.capture().isCurrent()).toBe(false);
-			await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true); expect(old.isCurrent()).toBe(false);
+			expect(old.isCurrent()).toBe(false);
+			expect(actualClaims.capture().isCurrent()).toBe(false);
+			await actualClaims.refresh();
+			expect(actualClaims.capture().isCurrent()).toBe(true);
+			expect(old.isCurrent()).toBe(false);
 		});
-		it('retains the same claims proof for ONLY the two supported graph counter effects with actual native bindings',async () => {
-			const old = actualClaims.capture(); expect(old.isCurrent()).toBe(true);
+		it('retains the same claims proof for ONLY the two supported graph counter effects with actual native bindings', async () => {
+			const old = actualClaims.capture();
+			expect(old.isCurrent()).toBe(true);
 			const observed: { query: string; parameters: readonly unknown[] }[] = [];
-			const observer = { beforeQuery: (event: BeforeQueryEvent<unknown>) => {
-				if (event.query.includes('devices_virtual_graph_revision') && !event.query.startsWith('SELECT')) observed.push({ query: event.query,parameters: [...(event.parameters ?? [])] });
-			} }; database.subscribers.push(observer);
+			const observer = {
+				beforeQuery: (event: BeforeQueryEvent<unknown>) => {
+					if (event.query.includes('devices_virtual_graph_revision') && !event.query.startsWith('SELECT')) {
+						const preciseEventView1: Readonly<{ parameters?: readonly unknown[] }> = event;
+						observed.push({ query: event.query, parameters: [...(preciseEventView1.parameters ?? [])] });
+					}
+				},
+			};
+			database.subscribers.push(observer);
 			try {
 				await database.transaction(async (manager) => {
-					await manager.query('INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
-					await manager.increment(VirtualGraphRevisionEntity,{ id: 1 },'revision',1);
+					await manager.query(
+						'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
+					);
+					await manager.increment(VirtualGraphRevisionEntity, { id: 1 }, 'revision', 1);
 				});
 				expect(observed).toEqual([
-					{ query: 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',parameters: [] },
-					{ query: 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1',parameters: [] },
+					{
+						query: 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)',
+						parameters: [],
+					},
+					{
+						query: 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1',
+						parameters: [],
+					},
 				]);
 				expect(old.isCurrent()).toBe(true);
 				await database.query('UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 2 WHERE "id" = 1');
 				expect(old.isCurrent()).toBe(false);
-			} finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
 		});
-		it('does not call configuration providers during authentic synchronous prepared finish',async () => {
+		it('does not call configuration providers during authentic synchronous prepared finish', async () => {
 			const config = new ConfigService({ FB_CLI: 'off' });
-			const originalGet = config.get; let terminal = false,providerCalls = 0;
-			jest.spyOn(config,'get').mockImplementation((...args) => { if (terminal) providerCalls++; return originalGet.call(config,...args); });
-			const real = new VirtualThermostatClaimsService(database,structure,actualGraph,new PropertyCommandAdmissionRegistryService(),events,config);
+
+			let originalMemberView6: OriginalFunctions<typeof config>;
+			const originalGet = ((originalMemberView6 = config), originalMemberView6.get);
+			let terminal = false,
+				providerCalls = 0;
+			jest.spyOn(config, 'get').mockImplementation((...args) => {
+				if (terminal) providerCalls++;
+				return originalGet.call(config, ...args);
+			});
+			const real = new VirtualThermostatClaimsService(
+				database,
+				structure,
+				actualGraph,
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+				config,
+			);
 			await real.onApplicationBootstrap();
 			try {
-				const release = real.holdRecoveryFence(),token = await real.prepareExistingRecovery();
+				const release = real.holdRecoveryFence(),
+					token = await real.prepareExistingRecovery();
 				await database.query('UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" WHERE 0');
-				terminal = true; release(); real.finishExistingRecovery(token);
-				expect(providerCalls).toBe(0); expect(real.capture().isCurrent()).toBe(false);
-			} finally { terminal = false; real.onModuleDestroy(); }
+				terminal = true;
+				release();
+				real.finishExistingRecovery(token);
+				expect(providerCalls).toBe(0);
+				expect(real.capture().isCurrent()).toBe(false);
+			} finally {
+				terminal = false;
+				real.onModuleDestroy();
+			}
 		});
-		it.each(['A-first','B-first'] satisfies readonly ('A-first' | 'B-first')[])(
-			'keeps original membership and held historical responses with %s release',async (order) => {
-				const originalComplete = configs.completeExistingAcknowledged;
-				const aEntered = barrier(),bEntered = barrier(),aResume = barrier(),bResume = barrier(); let ordinal = 0;
-				jest.spyOn(configs,'completeExistingAcknowledged').mockImplementation(async (...args) => {
-					const own = ++ordinal,result = await originalComplete.call(configs,...args);
-					if (own === 1) { aEntered.open(); await aResume.promise; } else if (own === 2) { bEntered.open(); await bResume.promise; }
+		it.each(['A-first', 'B-first'] satisfies readonly ('A-first' | 'B-first')[])(
+			'keeps original membership and held historical responses with %s release',
+			async (order) => {
+				let originalMemberView7: OriginalFunctions<typeof configs>;
+				const originalComplete = ((originalMemberView7 = configs), originalMemberView7.completeExistingAcknowledged);
+				const aEntered = barrier(),
+					bEntered = barrier(),
+					aResume = barrier(),
+					bResume = barrier();
+				let ordinal = 0;
+				jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementation(async (...args) => {
+					const own = ++ordinal,
+						result = await originalComplete.call(configs, ...args);
+					if (own === 1) {
+						aEntered.open();
+						await aResume.promise;
+					} else if (own === 2) {
+						bEntered.open();
+						await bResume.promise;
+					}
 					return result;
-				}); registerOriginal();
-				const old = actualClaims.capture(),a = comfort.select(id,await fence(),'eco',false); void a.catch(() => undefined);
+				});
+				registerOriginal();
+				const old = actualClaims.capture(),
+					a = comfort.select(id, await fence(), 'eco', false);
+				void a.catch(() => undefined);
 				let b: ReturnType<VirtualThermostatComfortService['select']> | undefined;
 				try {
-					await aEntered.promise; b = comfort.select(id,await fence(),'comfort',false); void b.catch(() => undefined); await bEntered.promise;
-					if (order === 'A-first') { aResume.open(); expect((await a).configuration.selected_preset).toBe('eco'); }
-					else { bResume.open(); expect((await b).configuration.selected_preset).toBe('comfort'); }
-					expect(actualClaims.capture().isCurrent()).toBe(false); expect(old.isCurrent()).toBe(false);
-					aResume.open(); bResume.open(); const [ar,br] = await Promise.all([a,b]);
-					expect(ar.configuration.selected_preset).toBe('eco'); expect(br.configuration.selected_preset).toBe('comfort');
-					expect(actualClaims.capture().isCurrent()).toBe(true); expect(old.isCurrent()).toBe(false);
-				} finally { aResume.open(); bResume.open(); await a.catch(() => undefined); if (b) await b.catch(() => undefined); }
-			});
-
-		it.each(['A-fail-then-B','B-then-A-fail'] satisfies readonly ('A-fail-then-B' | 'B-then-A-fail')[])(
-			'reconciles only actual current native proof with %s and both original release orders',async (sequence) => {
-				for (const reverse of [false,true]) {
-					await actualClaims.refresh(); const old = actualClaims.capture();
-					const releaseA = actualClaims.holdRecoveryFence(),releaseB = actualClaims.holdRecoveryFence();
-					let fault = false,rejected = 0;
-					const observer = { beforeQuery: (event: BeforeQueryEvent<unknown>) => {
-						if (fault && event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_actuator_claims')) { fault = false; rejected++; throw new Error('terminal native proof failure'); }
-					} }; database.subscribers.push(observer);
-					try {
-						const first = sequence === 'A-fail-then-B'; fault = first;
-						const one = await actualClaims.prepareExistingRecovery(); fault = !first;
-						const two = await actualClaims.prepareExistingRecovery();
-						if (reverse) { releaseB(); actualClaims.finishExistingRecovery(two); } else { releaseA(); actualClaims.finishExistingRecovery(one); }
-						expect(actualClaims.capture().isCurrent()).toBe(false);
-						if (reverse) { releaseA(); actualClaims.finishExistingRecovery(one); } else { releaseB(); actualClaims.finishExistingRecovery(two); }
-						expect(rejected).toBe(1); expect(old.isCurrent()).toBe(false);
-						expect(actualClaims.capture().isCurrent()).toBe(first);
-						await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true); expect(old.isCurrent()).toBe(false);
-					} finally { fault = false; releaseA(); releaseB(); database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+					await aEntered.promise;
+					b = comfort.select(id, await fence(), 'comfort', false);
+					void b.catch(() => undefined);
+					await bEntered.promise;
+					if (order === 'A-first') {
+						aResume.open();
+						expect((await a).configuration.selected_preset).toBe('eco');
+					} else {
+						bResume.open();
+						expect((await b).configuration.selected_preset).toBe('comfort');
+					}
+					expect(actualClaims.capture().isCurrent()).toBe(false);
+					expect(old.isCurrent()).toBe(false);
+					aResume.open();
+					bResume.open();
+					const [ar, br] = await Promise.all([a, b]);
+					expect(ar.configuration.selected_preset).toBe('eco');
+					expect(br.configuration.selected_preset).toBe('comfort');
+					expect(actualClaims.capture().isCurrent()).toBe(true);
+					expect(old.isCurrent()).toBe(false);
+				} finally {
+					aResume.open();
+					bResume.open();
+					await a.catch(() => undefined);
+					if (b !== undefined) await b.catch(() => undefined);
 				}
-			});
-		it('cannot turn stale coalesced native reload completion into a prepared membership proof',async () => {
-			const entered = barrier(),resume = barrier(); let once = true;
-			const observer = { beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
-				if (!once || !event.query.startsWith('SELECT') || !event.query.includes('devices_virtual_thermostat_actuator_claims')) return;
-				once = false; entered.open(); await resume.promise;
-			} }; database.subscribers.push(observer);
-			const release = actualClaims.holdRecoveryFence(),preparing = actualClaims.prepareExistingRecovery();
+			},
+		);
+
+		it.each(['A-fail-then-B', 'B-then-A-fail'] satisfies readonly ('A-fail-then-B' | 'B-then-A-fail')[])(
+			'reconciles only actual current native proof with %s and both original release orders',
+			async (sequence) => {
+				for (const reverse of [false, true]) {
+					await actualClaims.refresh();
+					const old = actualClaims.capture();
+					const releaseA = actualClaims.holdRecoveryFence(),
+						releaseB = actualClaims.holdRecoveryFence();
+					let fault = false,
+						rejected = 0;
+					const observer = {
+						beforeQuery: (event: BeforeQueryEvent<unknown>) => {
+							if (
+								fault &&
+								event.query.startsWith('SELECT') &&
+								event.query.includes('devices_virtual_thermostat_actuator_claims')
+							) {
+								fault = false;
+								rejected++;
+								throw new Error('terminal native proof failure');
+							}
+						},
+					};
+					database.subscribers.push(observer);
+					try {
+						const first = sequence === 'A-fail-then-B';
+						fault = first;
+						const one = await actualClaims.prepareExistingRecovery();
+						fault = !first;
+						const two = await actualClaims.prepareExistingRecovery();
+						if (reverse) {
+							releaseB();
+							actualClaims.finishExistingRecovery(two);
+						} else {
+							releaseA();
+							actualClaims.finishExistingRecovery(one);
+						}
+						expect(actualClaims.capture().isCurrent()).toBe(false);
+						if (reverse) {
+							releaseA();
+							actualClaims.finishExistingRecovery(one);
+						} else {
+							releaseB();
+							actualClaims.finishExistingRecovery(two);
+						}
+						expect(rejected).toBe(1);
+						expect(old.isCurrent()).toBe(false);
+						expect(actualClaims.capture().isCurrent()).toBe(first);
+						await actualClaims.refresh();
+						expect(actualClaims.capture().isCurrent()).toBe(true);
+						expect(old.isCurrent()).toBe(false);
+					} finally {
+						fault = false;
+						releaseA();
+						releaseB();
+						database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+					}
+				}
+			},
+		);
+		it('cannot turn stale coalesced native reload completion into a prepared membership proof', async () => {
+			const entered = barrier(),
+				resume = barrier();
+			let once = true;
+			const observer = {
+				beforeQuery: async (event: BeforeQueryEvent<unknown>) => {
+					if (
+						!once ||
+						!event.query.startsWith('SELECT') ||
+						!event.query.includes('devices_virtual_thermostat_actuator_claims')
+					)
+						return;
+					once = false;
+					entered.open();
+					await resume.promise;
+				},
+			};
+			database.subscribers.push(observer);
+			const release = actualClaims.holdRecoveryFence(),
+				preparing = actualClaims.prepareExistingRecovery();
 			let coalesced: Promise<void> | undefined;
 			try {
-				await entered.promise; actualClaims.invalidate(); coalesced = actualClaims.refresh(); resume.open();
-				const token = await preparing; await coalesced; release(); actualClaims.finishExistingRecovery(token);
+				await entered.promise;
+				actualClaims.invalidate();
+				coalesced = actualClaims.refresh();
+				resume.open();
+				const token = await preparing;
+				await coalesced;
+				release();
+				actualClaims.finishExistingRecovery(token);
 				expect(actualClaims.capture().isCurrent()).toBe(false);
-				await actualClaims.refresh(); expect(actualClaims.capture().isCurrent()).toBe(true);
-			} finally { resume.open(); release(); await preparing.catch(() => undefined); await coalesced?.catch(() => undefined); database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+				await actualClaims.refresh();
+				expect(actualClaims.capture().isCurrent()).toBe(true);
+			} finally {
+				resume.open();
+				release();
+				await preparing.catch(() => undefined);
+				await coalesced?.catch(() => undefined);
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
 		});
 
 		// END terminal recovery/native generation correction drafts

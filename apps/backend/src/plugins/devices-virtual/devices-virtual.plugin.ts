@@ -7,8 +7,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
-import { ClimateAutomationWriterService } from '../../modules/devices/services/climate-automation-writer.service';
-import { ClimateAutomationRegistryService } from '../../modules/devices/services/climate-automation.registry.service';
 import { DeviceCategory } from '../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../modules/devices/devices.exceptions';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -21,6 +19,8 @@ import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
+import { ClimateAutomationWriterService } from '../../modules/devices/services/climate-automation-writer.service';
+import { ClimateAutomationRegistryService } from '../../modules/devices/services/climate-automation.registry.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { PropertyValueSourceRegistryService } from '../../modules/devices/services/property-value-source.registry.service';
@@ -191,11 +191,24 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		VirtualThermostatConfigService,
 		{
 			provide: VirtualThermostatAutomationService,
-			inject: [ClimateAutomationWriterService,ClimateAutomationRegistryService,VirtualDependencyGraphService,NestConfigService,
-				VirtualThermostatAuthoringService,VirtualThermostatConfigService,VirtualThermostatComfortService],
-			useFactory: (writer: ClimateAutomationWriterService,registry: ClimateAutomationRegistryService,graph: VirtualDependencyGraphService,
-				config: NestConfigService,authoring: VirtualThermostatAuthoringService,configurations: VirtualThermostatConfigService,
-				comfort: VirtualThermostatComfortService) => new VirtualThermostatAutomationService(writer,registry,graph,config,authoring,configurations,comfort),
+			inject: [
+				ClimateAutomationWriterService,
+				ClimateAutomationRegistryService,
+				VirtualDependencyGraphService,
+				NestConfigService,
+				VirtualThermostatAuthoringService,
+				VirtualThermostatConfigService,
+				VirtualThermostatComfortService,
+			],
+			useFactory: (
+				writer: ClimateAutomationWriterService,
+				registry: ClimateAutomationRegistryService,
+				graph: VirtualDependencyGraphService,
+				config: NestConfigService,
+				authoring: VirtualThermostatAuthoringService,
+				configurations: VirtualThermostatConfigService,
+				comfort: VirtualThermostatComfortService,
+			) => new VirtualThermostatAutomationService(writer, registry, graph, config, authoring, configurations, comfort),
 		},
 		VirtualThermostatComfortService,
 		VirtualThermostatAuthoringService,

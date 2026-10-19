@@ -3,9 +3,9 @@ import { DataSource, EntityManager } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 
 import { ClimateAutomationParticipantTurn } from '../../../modules/devices/contracts/climate-automation.contract';
-import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { DiagnosticSampleData, PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { REMOTE_DEW_POINT_PROFILE } from '../../devices-shelly-ng/services/remote-dew-point-lease.contract';
 import { ThermostatCoolingDependencyDto } from '../dto/thermostat-config.dto';
@@ -16,7 +16,13 @@ import {
 	VirtualThermostatConfigEntity,
 } from '../entities/virtual-thermostat.entity';
 
-import { ThermostatProtectionSource, ThermostatProtectionLineageRows, validateThermostatProtectionRows, resolveReservedThermostatProtectionSource, resolveThermostatProtectionSource } from './thermostat-protection-source.utils';
+import {
+	ThermostatProtectionLineageRows,
+	ThermostatProtectionSource,
+	resolveReservedThermostatProtectionSource,
+	resolveThermostatProtectionSource,
+	validateThermostatProtectionRows,
+} from './thermostat-protection-source.utils';
 import { VirtualCoolingPolicy, evaluateCoolingProtection } from './virtual-cooling-policy.utils';
 import { ThermostatQualificationDiagnostic, VirtualThermostatClaimsService } from './virtual-thermostat-claims.service';
 import { thermostatFingerprint } from './virtual-thermostat-contract.utils';
@@ -68,7 +74,9 @@ export class ThermostatCoolingDependencyService {
 		dto: ThermostatCoolingDependencyDto,
 		versionFree?: Readonly<{ writer: ClimateAutomationWriterService; turn: ClimateAutomationParticipantTurn }>,
 	): Promise<ThermostatCoolingDependencyEntity> {
-		const check = (): void => { if (versionFree) versionFree.writer.assertParticipantTurn(manager,versionFree.turn,['NORMALIZE']); };
+		const check = (): void => {
+			if (versionFree) versionFree.writer.assertParticipantTurn(manager, versionFree.turn, ['NORMALIZE']);
+		};
 		check();
 		const fail = (): never => {
 			throw new DevicesValidationException(
@@ -85,9 +93,16 @@ export class ThermostatCoolingDependencyService {
 			claim.role !== 'cooling'
 		)
 			return fail();
-		const old = versionFree && typeof claim.id !== 'string' ? null : versionFree
-			? await manager.createQueryBuilder(ThermostatCoolingDependencyEntity,'row').where('row.claimId = :id',{ id: claim.id }).callListeners(false).getOne()
-			: await manager.findOneBy(ThermostatCoolingDependencyEntity,{ claimId: claim.id });
+		const old =
+			versionFree && typeof claim.id !== 'string'
+				? null
+				: versionFree
+					? await manager
+							.createQueryBuilder(ThermostatCoolingDependencyEntity, 'row')
+							.where('row.claimId = :id', { id: claim.id })
+							.callListeners(false)
+							.getOne()
+					: await manager.findOneBy(ThermostatCoolingDependencyEntity, { claimId: claim.id });
 		check();
 		if (dto.dewPointPropertyId === undefined || dto.surfacePropertyId === undefined) return fail();
 		const row = manager.create(ThermostatCoolingDependencyEntity, {
@@ -101,13 +116,22 @@ export class ThermostatCoolingDependencyService {
 		if (dto.dewPointPropertyId === null) {
 			if (!old || old.dewPointPropertyId !== null) return fail();
 		} else {
-			const dew = versionFree ? await manager.createQueryBuilder(VirtualDewPointConfigEntity,'row')
-				.where('row.outputPropertyId = :id',{ id: dto.dewPointPropertyId }).callListeners(false).getOne() :
-				await manager.findOneBy(VirtualDewPointConfigEntity,{ outputPropertyId: dto.dewPointPropertyId });
-			check(); if (!dew) return fail();
-			const sources = versionFree ? await manager.createQueryBuilder(VirtualDewPointSourceEntity,'row')
-				.where('row.outputPropertyId = :id',{ id: dew.outputPropertyId }).callListeners(false).getMany() :
-				await manager.findBy(VirtualDewPointSourceEntity,{ outputPropertyId: dew.outputPropertyId });
+			const dew = versionFree
+				? await manager
+						.createQueryBuilder(VirtualDewPointConfigEntity, 'row')
+						.where('row.outputPropertyId = :id', { id: dto.dewPointPropertyId })
+						.callListeners(false)
+						.getOne()
+				: await manager.findOneBy(VirtualDewPointConfigEntity, { outputPropertyId: dto.dewPointPropertyId });
+			check();
+			if (!dew) return fail();
+			const sources = versionFree
+				? await manager
+						.createQueryBuilder(VirtualDewPointSourceEntity, 'row')
+						.where('row.outputPropertyId = :id', { id: dew.outputPropertyId })
+						.callListeners(false)
+						.getMany()
+				: await manager.findBy(VirtualDewPointSourceEntity, { outputPropertyId: dew.outputPropertyId });
 			check();
 			row.dewPointPropertyId = dew.outputPropertyId;
 			row.dewPointIdentity = dew.outputPropertyId;
@@ -119,8 +143,15 @@ export class ThermostatCoolingDependencyService {
 		if (dto.surfacePropertyId === null) {
 			if (!old || old.surfacePropertyId !== null) return fail();
 		} else {
-			const surface = versionFree ? await resolveReservedThermostatProtectionSource(manager,versionFree.writer,versionFree.turn,
-				dto.surfacePropertyId,claim.physicalIdentity) : await resolveThermostatProtectionSource(manager,dto.surfacePropertyId,claim.physicalIdentity);
+			const surface = versionFree
+				? await resolveReservedThermostatProtectionSource(
+						manager,
+						versionFree.writer,
+						versionFree.turn,
+						dto.surfacePropertyId,
+						claim.physicalIdentity,
+					)
+				: await resolveThermostatProtectionSource(manager, dto.surfacePropertyId, claim.physicalIdentity);
 			check();
 			row.surfacePropertyId = surface.property.id;
 			row.surfaceIdentity = surface.property.id;
@@ -269,15 +300,31 @@ export class ThermostatCoolingDependencyService {
 			const surfaceEvidence = surface && this.values.captureIncorporatedSample(entry.surface.property);
 			const fresh = (e: typeof dewEvidence): boolean =>
 				!!e && (e.producer ? !!e.sources?.length && e.sources.every(fresh) : e.acceptanceGeneration > state.barrier);
-			const evidenceCurrent = !!dew && !!surface && dew.quality === 'good' && surface.quality === 'good' &&
-				!!dewEvidence && !!surfaceEvidence && this.values.incorporatedEvidenceCurrent([dewEvidence,surfaceEvidence]);
-			const qualification = this.claims?.qualification(entry.claim,entry.opposed);
-			const remote = qualification?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE ? qualification.profile.remoteDewPoint : null;
-			const reasons = coolingObservationReasons(entry,dew || null,surface || null,evidenceCurrent,
-				remote ? { providerProfile: REMOTE_DEW_POINT_PROFILE,
-					protectionFingerprint: remote.artifact.binding.protectionFingerprint,
-					remoteLineageFingerprint: remote.artifact.binding.remoteLineageFingerprint,
-					localSurfaceFingerprint: remote.artifact.binding.localSurface.calibrationFingerprint } : null);
+			const evidenceCurrent =
+				!!dew &&
+				!!surface &&
+				dew.quality === 'good' &&
+				surface.quality === 'good' &&
+				!!dewEvidence &&
+				!!surfaceEvidence &&
+				this.values.incorporatedEvidenceCurrent([dewEvidence, surfaceEvidence]);
+			const qualification = this.claims?.qualification(entry.claim, entry.opposed);
+			const remote =
+				qualification?.providerProfile?.id === REMOTE_DEW_POINT_PROFILE ? qualification.profile.remoteDewPoint : null;
+			const reasons = coolingObservationReasons(
+				entry,
+				dew || null,
+				surface || null,
+				evidenceCurrent,
+				remote
+					? {
+							providerProfile: REMOTE_DEW_POINT_PROFILE,
+							protectionFingerprint: remote.artifact.binding.protectionFingerprint,
+							remoteLineageFingerprint: remote.artifact.binding.remoteLineageFingerprint,
+							localSurfaceFingerprint: remote.artifact.binding.localSurface.calibrationFingerprint,
+						}
+					: null,
+			);
 			const sourceGap = reasons.length > 0;
 			if (sourceGap && !state.gap) {
 				state.barrier = this.values.currentSampleGeneration();
@@ -342,46 +389,77 @@ export function evaluateThermostatCoolingResponse(
 ): CoolingDiagnostic {
 	if (!Number.isFinite(now) || !Number.isSafeInteger(barrier) || barrier < 0)
 		throw new Error('Finite original cooling response observation required');
-	const reasons = coolingObservationReasons(entry,dew.sample,surface.sample,
-		dew.evidence !== null && surface.evidence !== null,qualification);
-	const fresh = (evidence: DiagnosticSampleData['evidence']): boolean => !!evidence &&
-		(evidence.producer ? !!evidence.sources?.length && evidence.sources.every(fresh) :
-			typeof evidence.acceptanceGeneration === 'number' && evidence.acceptanceGeneration > barrier);
+	const reasons = coolingObservationReasons(
+		entry,
+		dew.sample,
+		surface.sample,
+		dew.evidence !== null && surface.evidence !== null,
+		qualification,
+	);
+	const fresh = (evidence: DiagnosticSampleData['evidence']): boolean =>
+		!!evidence &&
+		(evidence.producer
+			? !!evidence.sources?.length && evidence.sources.every(fresh)
+			: typeof evidence.acceptanceGeneration === 'number' && evidence.acceptanceGeneration > barrier);
 	if (!fresh(dew.evidence) || !fresh(surface.evidence)) reasons.push('cooling_fresh_report_required');
-	const result = evaluateCoolingProtection(entry.policy,
+	const result = evaluateCoolingProtection(
+		entry.policy,
 		reasons.length || typeof dew.sample?.value !== 'number' ? null : dew.sample.value,
-		reasons.length || typeof surface.sample?.value !== 'number' ? null : surface.sample.value,true);
-	if (entry.surface && result.threshold !== null &&
-		result.threshold + entry.policy.recoveryHysteresisC >= entry.surface.domain.maximum)
+		reasons.length || typeof surface.sample?.value !== 'number' ? null : surface.sample.value,
+		true,
+	);
+	if (
+		entry.surface &&
+		result.threshold !== null &&
+		result.threshold + entry.policy.recoveryHysteresisC >= entry.surface.domain.maximum
+	)
 		reasons.push('cooling_recovery_outside_surface_domain');
 	// A fresh response has never acknowledged a physical release; it cannot inherit a runtime clear latch.
 	reasons.push('cooling_pending_release');
 	const maxAge = (entry.dependency?.maximumAgeSeconds ?? 0) * 1000;
 	return {
-		claim: entry.claimId, dew_point_identity: entry.dependency?.dewPointIdentity ?? null,
+		claim: entry.claimId,
+		dew_point_identity: entry.dependency?.dewPointIdentity ?? null,
 		surface_identity: entry.dependency?.surfaceIdentity ?? null,
 		dew_point: typeof dew.sample?.value === 'number' ? dew.sample.value : null,
 		surface: typeof surface.sample?.value === 'number' ? surface.sample.value : null,
 		threshold: result.threshold,
-		expires_at: dew.sample && surface.sample ? new Date(Math.min(dew.sample.sampledAt.getTime() + maxAge,
-			surface.sample.sampledAt.getTime() + maxAge,dew.evidence?.producer?.expiresAt ?? Infinity,
-			surface.evidence?.producer?.expiresAt ?? Infinity)).toISOString() : null,
-		latched: true, ready: false, reasons: [...reasons,...result.reasons],
+		expires_at:
+			dew.sample && surface.sample
+				? new Date(
+						Math.min(
+							dew.sample.sampledAt.getTime() + maxAge,
+							surface.sample.sampledAt.getTime() + maxAge,
+							dew.evidence?.producer?.expiresAt ?? Infinity,
+							surface.evidence?.producer?.expiresAt ?? Infinity,
+						),
+					).toISOString()
+				: null,
+		latched: true,
+		ready: false,
+		reasons: [...reasons, ...result.reasons],
 	};
 }
-function coolingObservationReasons(entry: CoolingBinding,
-	dew: DiagnosticSampleData['sample'],surface: DiagnosticSampleData['sample'],evidenceCurrent: boolean,
-	qualification: ThermostatQualificationDiagnostic | null): string[] {
+function coolingObservationReasons(
+	entry: CoolingBinding,
+	dew: DiagnosticSampleData['sample'],
+	surface: DiagnosticSampleData['sample'],
+	evidenceCurrent: boolean,
+	qualification: ThermostatQualificationDiagnostic | null,
+): string[] {
 	const reasons: string[] = [];
 	if (!entry.dependency || !entry.dewPoint) reasons.push('cooling_dew_point_missing_or_changed');
-	if (!entry.surface || entry.dependency?.purpose !== 'cooled_surface') reasons.push('cooling_local_surface_missing_or_changed');
+	if (!entry.surface || entry.dependency?.purpose !== 'cooled_surface')
+		reasons.push('cooling_local_surface_missing_or_changed');
 	if (!dew || !surface || dew.quality !== 'good' || surface.quality !== 'good' || !evidenceCurrent)
 		reasons.push('cooling_lineage_quality_or_age');
 	if (!qualification || qualification.providerProfile !== REMOTE_DEW_POINT_PROFILE)
 		reasons.push('cooling_remote_profile_installation_unqualified');
-	else if (qualification.protectionFingerprint !== entry.basis ||
+	else if (
+		qualification.protectionFingerprint !== entry.basis ||
 		qualification.remoteLineageFingerprint !== entry.dependency?.dewPointFingerprint ||
-		qualification.localSurfaceFingerprint !== entry.surface?.fingerprint)
+		qualification.localSurfaceFingerprint !== entry.surface?.fingerprint
+	)
 		reasons.push('cooling_artifact_or_protection_mismatch');
 	return reasons;
 }
@@ -401,26 +479,51 @@ export function thermostatCoolingResponseBindings(rows: ThermostatCoolingRespons
 	for (const claim of rows.claims.filter((candidate) => candidate.role === 'cooling')) {
 		const dependency = rows.dependencies.find((candidate) => candidate.claimId === claim.id) ?? null;
 		if (!rows.config.policy.cooling && !dependency) continue;
-		let dewPoint: ChannelPropertyEntity | null = null, surface: ThermostatProtectionSource | null = null;
+		let dewPoint: ChannelPropertyEntity | null = null,
+			surface: ThermostatProtectionSource | null = null;
 		try {
 			if (dependency?.dewPointPropertyId) {
-				const dew = rows.dewConfigurations.find((candidate) => candidate.outputPropertyId === dependency.dewPointPropertyId);
-				const sources = rows.dewSources.filter((candidate) => candidate.outputPropertyId === dependency.dewPointPropertyId);
-				if (dew && dependency.dewPointFingerprint === thermostatFingerprint({ dew,
-					sources: [...sources].sort((a,b) => a.role.localeCompare(b.role)) }))
+				const dew = rows.dewConfigurations.find(
+					(candidate) => candidate.outputPropertyId === dependency.dewPointPropertyId,
+				);
+				const sources = rows.dewSources.filter(
+					(candidate) => candidate.outputPropertyId === dependency.dewPointPropertyId,
+				);
+				if (
+					dew &&
+					dependency.dewPointFingerprint ===
+						thermostatFingerprint({ dew, sources: [...sources].sort((a, b) => a.role.localeCompare(b.role)) })
+				)
 					dewPoint = rows.properties.find((candidate) => candidate.id === dew.outputPropertyId) ?? null;
 			}
 			if (dependency?.surfacePropertyId) {
-				const lineage = rows.protectionLineages.find((candidate) => candidate.property?.id === dependency.surfacePropertyId);
-				if (lineage) surface = validateThermostatProtectionRows(lineage,claim.physicalIdentity);
+				const lineage = rows.protectionLineages.find(
+					(candidate) => candidate.property?.id === dependency.surfacePropertyId,
+				);
+				if (lineage) surface = validateThermostatProtectionRows(lineage, claim.physicalIdentity);
 			}
 			if (surface?.fingerprint !== dependency?.surfaceFingerprint) surface = null;
-		} catch { surface = null; }
-		result.push({ claimId: claim.id, controllerRevision: rows.config.revision,claim,
-			opposed: rows.claims.some((candidate) => candidate.role === 'heating'), dependency,dewPoint,surface,
+		} catch {
+			surface = null;
+		}
+		result.push({
+			claimId: claim.id,
+			controllerRevision: rows.config.revision,
+			claim,
+			opposed: rows.claims.some((candidate) => candidate.role === 'heating'),
+			dependency,
+			dewPoint,
+			surface,
 			policy: rows.config.policy.cooling,
-			basis: thermostatFingerprint({ dependency,policy: rows.config.policy.cooling,revision: rows.config.revision,
-				claim: claim.revision,generation: claim.qualificationGeneration,dew: !!dewPoint,surface: surface?.fingerprint }),
+			basis: thermostatFingerprint({
+				dependency,
+				policy: rows.config.policy.cooling,
+				revision: rows.config.revision,
+				claim: claim.revision,
+				generation: claim.qualificationGeneration,
+				dew: !!dewPoint,
+				surface: surface?.fingerprint,
+			}),
 		});
 	}
 	return Object.freeze(result);

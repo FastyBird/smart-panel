@@ -54,6 +54,9 @@ import { ClimateAutomationWriterService } from './climate-automation-writer.serv
 import { ClimateAutomationRegistryService } from './climate-automation.registry.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+const nativeJsonEvidence: Readonly<{ parse: (text: string) => unknown }> = JSON;
+
 const deferred = () => {
 	let complete: () => void = () => {
 		throw new Error('Deferred not initialized');
@@ -81,7 +84,7 @@ interface NativeConnection {
 	) => unknown;
 }
 function isNative(value: unknown): value is NativeConnection {
-	return value !== null && typeof value === 'object' && typeof Reflect.get(value, 'all') === 'function';
+	return value !== null && typeof value === 'object' && typeof nativeFieldEvidence.get(value, 'all') === 'function';
 }
 
 describe('dormant climate reserved writer (actual coordinated SQLite, no physical authority)', () => {
@@ -98,8 +101,8 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 			>('SELECT revision, graphRevision, evidence, baseline FROM test_climate_controllers WHERE id = ?', [id]);
 			const row = rows[0];
 			if (!row) return null;
-			const parsed: unknown = JSON.parse(row.evidence);
-			const baseline: unknown = row.baseline === null ? null : JSON.parse(row.baseline);
+			const parsed: unknown = nativeJsonEvidence.parse(row.evidence);
+			const baseline: unknown = row.baseline === null ? null : nativeJsonEvidence.parse(row.baseline);
 			return {
 				controllerRevision: row.revision,
 				graphRevision: row.graphRevision,
@@ -150,7 +153,7 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 					[source.subjectId],
 				);
 				if (!rows[0]) return null;
-				const parsed: unknown = JSON.parse(rows[0].evidence);
+				const parsed: unknown = nativeJsonEvidence.parse(rows[0].evidence);
 				return climateAutomationJson(parsed);
 			},
 		});
@@ -291,40 +294,72 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 		).toEqual({ outcome: 'unchanged', items: [{ outcome: 'unchanged' }] });
 	});
 
-
 	// BEGIN closed existing-controller admission source drafts (UNRUN)
-	it('poisons a caught ambient existing-controller root before any request getter or second lock',async () => {
-		const locks = jest.spyOn(lock,'runExclusiveReleased'); let getters = 0;
+	it('poisons a caught ambient existing-controller root before any request getter or second lock', async () => {
+		const locks = jest.spyOn(lock, 'runExclusiveReleased');
+		let getters = 0;
 		const before = await database.manager.find(ClimateAutomationSlotEntity);
-		const request = { get providerKey(): never { getters++; throw new Error('Unreachable provider getter'); },
-			get controllerId(): never { getters++; throw new Error('Unreachable controller getter'); },
-			kind: 'preset:v1',get input(): never { getters++; throw new Error('Unreachable input getter'); }
+		const request = {
+			get providerKey(): never {
+				getters++;
+				throw new Error('Unreachable provider getter');
+			},
+			get controllerId(): never {
+				getters++;
+				throw new Error('Unreachable controller getter');
+			},
+			kind: 'preset:v1',
+			get input(): never {
+				getters++;
+				throw new Error('Unreachable input getter');
+			},
 		} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
-		const result = writer.runReserved(async (manager,scope) => {
+		const result = writer.runReserved(async (manager, scope) => {
 			await writer.commitExistingControllerV1(request).catch(() => undefined);
-			return writer.readSlot(manager,scope,controllerId);
+			return writer.readSlot(manager, scope, controllerId);
 		});
 		await expect(result).rejects.toMatchObject({ commitOutcome: 'rolled_back' });
-		expect(getters).toBe(0); expect(locks).toHaveBeenCalledTimes(1);
+		expect(getters).toBe(0);
+		expect(locks).toHaveBeenCalledTimes(1);
 		expect(await database.manager.find(ClimateAutomationSlotEntity)).toEqual(before);
-		expect((await writer.runReserved((manager,scope) => writer.readSlot(manager,scope,controllerId))).outcome).toBe('unchanged');
+		expect((await writer.runReserved((manager, scope) => writer.readSlot(manager, scope, controllerId))).outcome).toBe(
+			'unchanged',
+		);
 	});
-	it('refuses an ordinary SELECT caller lease before request getters or structural wait',async () => {
-		let getters = 0,observed = false;
-		const request = { get providerKey(): never { getters++; throw new Error('Unreachable provider'); },
+	it('refuses an ordinary SELECT caller lease before request getters or structural wait', async () => {
+		let getters = 0,
+			observed = false;
+		const request = {
+			get providerKey(): never {
+				getters++;
+				throw new Error('Unreachable provider');
+			},
 			kind: 'settings:v1',
-			get input(): never { getters++; throw new Error('Unreachable business inputs'); }
+			get input(): never {
+				getters++;
+				throw new Error('Unreachable business inputs');
+			},
 		} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
-		const locks = jest.spyOn(lock,'runExclusiveReleased');
-		const observer = { afterQuery: async (event: import('typeorm').AfterQueryEvent<unknown>) => {
-			if (event.query !== 'SELECT 1 AS ordinary_existing_read') return;
-			observed = true; expect(event.queryRunner.isTransactionActive).toBe(false);
-			await expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({ commitOutcome: 'not_started' });
-		} };
+		const locks = jest.spyOn(lock, 'runExclusiveReleased');
+		const observer = {
+			afterQuery: async (event: import('typeorm').AfterQueryEvent<unknown>) => {
+				if (event.query !== 'SELECT 1 AS ordinary_existing_read') return;
+				observed = true;
+				expect(event.queryRunner.isTransactionActive).toBe(false);
+				await expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({
+					commitOutcome: 'not_started',
+				});
+			},
+		};
 		database.subscribers.push(observer);
-		try { await database.query('SELECT 1 AS ordinary_existing_read'); }
-		finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
-		expect(observed).toBe(true); expect(getters).toBe(0); expect(locks).not.toHaveBeenCalled();
+		try {
+			await database.query('SELECT 1 AS ordinary_existing_read');
+		} finally {
+			database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+		}
+		expect(observed).toBe(true);
+		expect(getters).toBe(0);
+		expect(locks).not.toHaveBeenCalled();
 	});
 	// END closed existing-controller admission source drafts
 	it('joins only explicit original manager/scope without a second lock/transaction and retains caught settled child failures', async () => {
@@ -933,7 +968,7 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 			expect(checked).not.toBe(raw);
 			expect(Object.isFrozen(checked)).toBe(true);
 			if (checked === null || typeof checked !== 'object') throw new Error('Missing owned selection object');
-			const nested: unknown = Reflect.get(checked, 'nested');
+			const nested: unknown = nativeFieldEvidence.get(checked, 'nested');
 			expect(Object.isFrozen(nested)).toBe(true);
 			expect(Object.isFrozen(raw)).toBe(false);
 			expect(Object.isFrozen(raw.nested)).toBe(false);
@@ -1675,7 +1710,7 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 		let owner: { dispose: () => void };
 		let providerPort: ClimateAutomationProvider;
 		const parse = (text: string) => {
-			const raw: unknown = JSON.parse(text);
+			const raw: unknown = nativeJsonEvidence.parse(text);
 			return climateAutomationJson(raw);
 		};
 		const readImage = async (manager: EntityManager, id: string): Promise<ClimateAutomationParticipantImage | null> => {
@@ -2165,8 +2200,8 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 				value: unknown,
 			): { ids: string[]; edges: { outputPropertyId: string; sourcePropertyId: string }[] } => {
 				if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid TEST projection');
-				const rawIds: unknown = Reflect.get(value, 'ownedOutputIds'),
-					rawEdges: unknown = Reflect.get(value, 'edges');
+				const rawIds: unknown = nativeFieldEvidence.get(value, 'ownedOutputIds'),
+					rawEdges: unknown = nativeFieldEvidence.get(value, 'edges');
 				if (rawIds === undefined && rawEdges === undefined) return { ids: [], edges: [] };
 				if (!Array.isArray(rawIds) || !Array.isArray(rawEdges)) throw new Error('Incomplete TEST projection');
 				const ids = rawIds.map((id: unknown) => {
@@ -2175,8 +2210,8 @@ describe('dormant climate reserved writer (actual coordinated SQLite, no physica
 				});
 				const edges = rawEdges.map((edge: unknown) => {
 					if (!edge || typeof edge !== 'object') throw new Error('Invalid TEST edge');
-					const outputPropertyId: unknown = Reflect.get(edge, 'outputPropertyId'),
-						sourcePropertyId: unknown = Reflect.get(edge, 'sourcePropertyId');
+					const outputPropertyId: unknown = nativeFieldEvidence.get(edge, 'outputPropertyId'),
+						sourcePropertyId: unknown = nativeFieldEvidence.get(edge, 'sourcePropertyId');
 					if (typeof outputPropertyId !== 'string' || typeof sourcePropertyId !== 'string')
 						throw new Error('Invalid TEST edge IDs');
 					return { outputPropertyId, sourcePropertyId };
@@ -2914,34 +2949,69 @@ describe('closed original creation rejects before business getters', () => {
 	);
 });
 
-
-describe('closed existing-controller preflight without initialized database',() => {
-	it.each(['shared','exclusive','CLI'] satisfies readonly ('shared' | 'exclusive' | 'CLI')[])(
-		'refuses %s before getters, connection work or released entry',async (mode) => {
-			const source = new SqliteDataSource({ type: 'sqlite',database: ':memory:',synchronize: false });
-			const lock = new DeviceStructureLockService(),registry = new ClimateAutomationRegistryService();
-			const writer = new ClimateAutomationWriterService(source,lock,registry,new ConfigService({ FB_CLI: mode === 'CLI' ? 'on' : 'off' }));
+describe('closed existing-controller preflight without initialized database', () => {
+	it.each(['shared', 'exclusive', 'CLI'] satisfies readonly ('shared' | 'exclusive' | 'CLI')[])(
+		'refuses %s before getters, connection work or released entry',
+		async (mode) => {
+			const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false });
+			const lock = new DeviceStructureLockService(),
+				registry = new ClimateAutomationRegistryService();
+			const writer = new ClimateAutomationWriterService(
+				source,
+				lock,
+				registry,
+				new ConfigService({ FB_CLI: mode === 'CLI' ? 'on' : 'off' }),
+			);
 			let getters = 0;
-			const request = { get providerKey(): never { getters++; throw new Error('Unreachable provider'); },
-				get controllerId(): never { getters++; throw new Error('Unreachable controller'); },kind: 'configure-existing:v1',
-				get input(): never { getters++; throw new Error('Unreachable inputs'); }
+			const request = {
+				get providerKey(): never {
+					getters++;
+					throw new Error('Unreachable provider');
+				},
+				get controllerId(): never {
+					getters++;
+					throw new Error('Unreachable controller');
+				},
+				kind: 'configure-existing:v1',
+				get input(): never {
+					getters++;
+					throw new Error('Unreachable inputs');
+				},
 			} satisfies import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest;
-			const entry = jest.spyOn(lock,'runExclusiveReleased'),query = jest.spyOn(source.manager,'query');
-			const attempt = () => expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({ commitOutcome: 'not_started' });
+			const entry = jest.spyOn(lock, 'runExclusiveReleased'),
+				query = jest.spyOn(source.manager, 'query');
+			const attempt = () =>
+				expect(writer.commitExistingControllerV1(request)).rejects.toMatchObject({ commitOutcome: 'not_started' });
 			if (mode === 'shared') await lock.runShared(attempt);
-			else if (mode === 'exclusive') await lock.runExclusive(attempt); else await attempt();
-			expect(getters).toBe(0); expect(entry).not.toHaveBeenCalled(); expect(query).not.toHaveBeenCalled(); expect(source.isInitialized).toBe(false);
-		});
+			else if (mode === 'exclusive') await lock.runExclusive(attempt);
+			else await attempt();
+			expect(getters).toBe(0);
+			expect(entry).not.toHaveBeenCalled();
+			expect(query).not.toHaveBeenCalled();
+			expect(source.isInitialized).toBe(false);
+		},
+	);
 });
 
 // BEGIN terminal descriptor recovery negative drafts (UNRUN)
-describe('closed terminal recovery descriptor admission',() => {
-	it('refuses a forged descriptor before any SQL or released lock acquisition',async () => {
-		const source = new SqliteDataSource({ type: 'sqlite',database: ':memory:',synchronize: false });
-		const lock = new DeviceStructureLockService(),writer = new ClimateAutomationWriterService(source,lock,new ClimateAutomationRegistryService(),new ConfigService({ FB_CLI: 'off' }));
-		const query = jest.spyOn(source.manager,'query'),entry = jest.spyOn(lock,'runExclusiveReleased');
-		await expect(writer.prepareExistingRecoveryForPlan(Object.freeze({ toJSON: () => Object.freeze({}) }))).rejects.toThrow();
-		expect(query).not.toHaveBeenCalled(); expect(entry).not.toHaveBeenCalled(); expect(source.isInitialized).toBe(false);
+describe('closed terminal recovery descriptor admission', () => {
+	it('refuses a forged descriptor before any SQL or released lock acquisition', async () => {
+		const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false });
+		const lock = new DeviceStructureLockService(),
+			writer = new ClimateAutomationWriterService(
+				source,
+				lock,
+				new ClimateAutomationRegistryService(),
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+		const query = jest.spyOn(source.manager, 'query'),
+			entry = jest.spyOn(lock, 'runExclusiveReleased');
+		await expect(
+			writer.prepareExistingRecoveryForPlan(Object.freeze({ toJSON: () => Object.freeze({}) })),
+		).rejects.toThrow();
+		expect(query).not.toHaveBeenCalled();
+		expect(entry).not.toHaveBeenCalled();
+		expect(source.isInitialized).toBe(false);
 	});
 });
 // END terminal descriptor recovery negative drafts

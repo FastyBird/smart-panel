@@ -17,6 +17,21 @@ import type {
 	PropertyProducerRegistryService,
 } from './property-producer.registry.service';
 
+const nativeObjectEvidence: Readonly<{
+	getOwnPropertyDescriptor: (
+		receiver: object,
+		key: PropertyKey,
+	) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+}> = Object;
+const nativePrototypeEvidence: Readonly<{ getPrototypeOf: (receiver: object) => object | null }> = Object;
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
+
 const admitted = new WeakSet<DeviceCreationContext>();
 const admission = Symbol('internal-device-creation');
 const originalValidation = new AsyncLocalStorage<DeviceCreationContext>();
@@ -167,10 +182,10 @@ export class DeviceCreationContext {
 		const expectedKind = row.id === owned.deviceId ? 'device' : owned.properties.has(row.id) ? 'property' : 'channel';
 		if (!owned.identities.has(row.id) || kind !== expectedKind || owned.jobs.some((job) => job.row.id === row.id))
 			this.refuseOwned('Unexpected or duplicate creation publication');
-		const hook: unknown = Reflect.get(mapping, 'afterCreate');
+		const hook: unknown = nativeFieldEvidence.get(mapping, 'afterCreate');
 		if (!owned.mappingCurrent(kind, mapping) || (hook !== undefined && typeof hook !== 'function'))
 			this.refuseOwned('Original creation mapping lost');
-		const methods: Readonly<{
+		const methods: OriginalFunctions<{
 			emit: ReceiverFunction<EventEmitter2, Parameters<EventEmitter2['emit']>, ReturnType<EventEmitter2['emit']>>;
 		}> = events;
 		owned.jobs.push(Object.freeze({ kind, row, mapping, hook, input, events, emit: methods.emit }));
@@ -419,10 +434,10 @@ const requiredInvocations = new WeakMap<DeviceEntity, RequiredInvocation | typeo
 
 export function creationMethodCurrent(receiver: object, key: string, original: unknown): boolean {
 	for (let object: object | null = receiver; object; ) {
-		const descriptor = Object.getOwnPropertyDescriptor(object, key);
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(object, key);
 		if (descriptor)
 			return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
-		const parent: unknown = Object.getPrototypeOf(object);
+		const parent: unknown = nativePrototypeEvidence.getPrototypeOf(object);
 		object = typeof parent === 'object' && parent !== null ? parent : null;
 	}
 	return false;
@@ -567,7 +582,7 @@ export class DeviceCreationPublicationEngine {
 	}
 
 	static invalidateIds(ids: readonly string[]): void {
-		originalControllerMutationMethods.invalidateIds.call(ControllerMutationPublicationEngine,ids);
+		originalControllerMutationMethods.invalidateIds.call(ControllerMutationPublicationEngine, ids);
 		originalReadCacheApi.dirty.call(originalReadCacheApi.receiver, ids);
 		for (const id of ids) {
 			for (const record of publicationIds.get(id) ?? []) record.active = false;
@@ -729,7 +744,13 @@ export class DeviceCreationPublicationEngine {
 		query: string,
 		parameters: readonly unknown[] = [],
 	): void {
-		originalControllerMutationMethods.observeQuery.call(ControllerMutationPublicationEngine,source, runner, query, parameters);
+		originalControllerMutationMethods.observeQuery.call(
+			ControllerMutationPublicationEngine,
+			source,
+			runner,
+			query,
+			parameters,
+		);
 		const text = query.trim();
 		if (
 			/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(
@@ -845,8 +866,8 @@ export class DeviceCreationPublicationEngine {
 		if (!Array.isArray(supplied) || supplied.length !== 1) return null;
 		const item: unknown = supplied[0];
 		if (!item || typeof item !== 'object') return null;
-		const eventDescriptor = Object.getOwnPropertyDescriptor(item, 'event');
-		const optionsDescriptor = Object.getOwnPropertyDescriptor(item, 'options');
+		const eventDescriptor = nativeObjectEvidence.getOwnPropertyDescriptor(item, 'event');
+		const optionsDescriptor = nativeObjectEvidence.getOwnPropertyDescriptor(item, 'options');
 		if (
 			!eventDescriptor ||
 			eventDescriptor.get ||
@@ -862,10 +883,10 @@ export class DeviceCreationPublicationEngine {
 			Reflect.getMetadata('EVENT_LISTENER_METADATA', original.method) === supplied &&
 			supplied.length === 1 &&
 			supplied[0] === item &&
-			Object.getOwnPropertyDescriptor(item, 'event')?.value === EventType.DEVICE_CREATED &&
-			Object.getOwnPropertyDescriptor(item, 'event')?.get === undefined &&
-			Object.getOwnPropertyDescriptor(item, 'options')?.value === undefined &&
-			Object.getOwnPropertyDescriptor(item, 'options')?.get === undefined;
+			nativeObjectEvidence.getOwnPropertyDescriptor(item, 'event')?.value === EventType.DEVICE_CREATED &&
+			nativeObjectEvidence.getOwnPropertyDescriptor(item, 'event')?.get === undefined &&
+			nativeObjectEvidence.getOwnPropertyDescriptor(item, 'options')?.value === undefined &&
+			nativeObjectEvidence.getOwnPropertyDescriptor(item, 'options')?.get === undefined;
 		const capture = Object.freeze(new CreationInformationHandlerCapture());
 		informationCaptures.set(
 			capture,
@@ -1093,8 +1114,8 @@ export const originalReadCacheApi = Object.freeze({
 	...readCacheFunctions,
 	current: (): boolean =>
 		Object.entries(readCacheNames).every(([key, name]) => {
-			const expected: unknown = Reflect.get(readCacheFunctions, key);
-			const descriptor = Object.getOwnPropertyDescriptor(DeviceCreationPublicationEngine, name);
+			const expected: unknown = nativeFieldEvidence.get(readCacheFunctions, key);
+			const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(DeviceCreationPublicationEngine, name);
 			return descriptor?.get === undefined && descriptor?.set === undefined && descriptor?.value === expected;
 		}),
 });
@@ -1135,10 +1156,10 @@ export interface DeviceCreationEnvironment {
 /** Descriptor inspection never invokes a method getter while deciding owned eligibility. */
 export function creationHasDataMethod(receiver: object, key: string): boolean {
 	for (let current: object | null = receiver; current; ) {
-		const descriptor = Object.getOwnPropertyDescriptor(current, key);
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(current, key);
 		if (descriptor)
 			return descriptor.get === undefined && descriptor.set === undefined && typeof descriptor.value === 'function';
-		const parent: unknown = Object.getPrototypeOf(current);
+		const parent: unknown = nativePrototypeEvidence.getPrototypeOf(current);
 		current = typeof parent === 'object' && parent !== null ? parent : null;
 	}
 	return false;
@@ -1151,7 +1172,7 @@ export function freezeCreationSnapshot<T extends object>(value: T, visited = new
 	if (value instanceof Date) {
 		const immutable = new Proxy(value, {
 			get(target, key) {
-				const member: unknown = Reflect.get(target, key);
+				const member: unknown = nativeFieldEvidence.get(target, key);
 				if (typeof member !== 'function') return member;
 				if (typeof key === 'string' && key.startsWith('set'))
 					return () => {
@@ -1169,13 +1190,13 @@ export function freezeCreationSnapshot<T extends object>(value: T, visited = new
 				return false;
 			},
 		});
-		immutableCreationDates.set(immutable,immutableCreationDates.get(value) ?? value);
+		immutableCreationDates.set(immutable, immutableCreationDates.get(value) ?? value);
 		return immutable;
 	}
 	if (Object.isFrozen(value) || visited.has(value)) return value;
 	visited.add(value);
 	for (const key of Reflect.ownKeys(value)) {
-		const descriptor = Object.getOwnPropertyDescriptor(value, key);
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(value, key);
 		if (!descriptor || descriptor.get || descriptor.set) continue;
 		const child: unknown = descriptor.value;
 		if (child && typeof child === 'object')
@@ -1186,63 +1207,88 @@ export function freezeCreationSnapshot<T extends object>(value: T, visited = new
 
 export function creationDataMemberCurrent(receiver: object, key: string): boolean {
 	for (let current: object | null = receiver; current; ) {
-		const descriptor = Object.getOwnPropertyDescriptor(current, key);
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(current, key);
 		if (descriptor) return descriptor.get === undefined && descriptor.set === undefined;
-		const parent: unknown = Object.getPrototypeOf(current);
+		const parent: unknown = nativePrototypeEvidence.getPrototypeOf(current);
 		current = parent && typeof parent === 'object' ? parent : null;
 	}
 	return false;
 }
 
-
 /** Read-only finite descriptor observation. It is never a command, manager or publication capability. */
 export class DiagnosticTreeObservation {
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 interface DiagnosticTreeEntry {
 	readonly object: object;
-	readonly prototype: object | null;
-	readonly fields: readonly Readonly<{ key: PropertyKey; value: unknown; enumerable: boolean; configurable: boolean; writable: boolean }>[];
+	readonly prototype: unknown;
+	readonly fields: readonly Readonly<{
+		key: PropertyKey;
+		value: unknown;
+		enumerable: boolean;
+		configurable: boolean;
+		writable: boolean;
+	}>[];
 	readonly dateValue: number | undefined;
 }
 const diagnosticTrees = new WeakMap<DiagnosticTreeObservation, readonly DiagnosticTreeEntry[]>();
-const originalDateValue: Readonly<{ call: (receiver: Date) => number }> = Date.prototype.getTime;
+
+let originalMemberView1: OriginalFunctions<typeof Date.prototype>;
+const originalDateValue: Readonly<{ call: (receiver: Date) => number }> =
+	((originalMemberView1 = Date.prototype), originalMemberView1.getTime);
 
 /** Owned persisted-data copy; constructors/getters/functions are never invoked or made into authority. */
 export function ownDiagnosticData<T extends object>(value: T): T {
 	if (Array.isArray(value) || value instanceof Date) throw new Error('Diagnostic record root required');
-	const seen = new WeakMap<object,object>();
-	const objects: Readonly<{ create: <RecordType extends object>(prototype: object | null) => RecordType;
-		getPrototypeOf: (value: object) => object | null }> = Object;
+	const seen = new WeakMap<object, object>();
+	const objects: Readonly<{
+		create: <RecordType extends object>(prototype: object | null) => RecordType;
+		getPrototypeOf: (value: object) => object | null;
+	}> = Object;
 	const top: T = objects.create(objects.getPrototypeOf(value));
-	seen.set(value,top);
+	seen.set(value, top);
 	const copy = (source: unknown): unknown => {
 		if (typeof source === 'function') throw new Error('Persisted diagnostic data cannot contain functions');
 		if (!source || typeof source !== 'object') return source;
-		const previous = seen.get(source); if (previous) return previous;
+		const previous = seen.get(source);
+		if (previous) return previous;
 		if (source instanceof Date) {
-			const result = new Date(originalDateValue.call(immutableCreationDates.get(source) ?? source)); seen.set(source,result); return result;
+			const result = new Date(originalDateValue.call(immutableCreationDates.get(source) ?? source));
+			seen.set(source, result);
+			return result;
 		}
 		if (Array.isArray(source)) {
-			const result: unknown[] = []; seen.set(source,result);
+			const result: unknown[] = [];
+			seen.set(source, result);
 			for (let index = 0; index < source.length; index++) {
-				const field = Object.getOwnPropertyDescriptor(source,String(index));
+				const field = nativeObjectEvidence.getOwnPropertyDescriptor(source, String(index));
 				if (!field || field.get || field.set) throw new Error('Dense original diagnostic arrays required');
 				result.push(copy(field.value));
 			}
 			if (Object.keys(source).length !== source.length) throw new Error('Plain original diagnostic arrays required');
 			return result;
 		}
-		const target = objects.create(objects.getPrototypeOf(source)); seen.set(source,target); populate(source,target); return target;
+		const target = objects.create(objects.getPrototypeOf(source));
+		seen.set(source, target);
+		populate(source, target);
+		return target;
 	};
-	const populate = (source: object,target: object): void => {
+	const populate = (source: object, target: object): void => {
 		for (const key of Reflect.ownKeys(source)) {
-			const field = Object.getOwnPropertyDescriptor(source,key);
+			const field = nativeObjectEvidence.getOwnPropertyDescriptor(source, key);
 			if (!field || field.get || field.set) throw new Error('Original persisted data descriptors required');
-			Object.defineProperty(target,key,{ value: copy(field.value),enumerable: field.enumerable === true,writable: true,configurable: true });
+			Object.defineProperty(target, key, {
+				value: copy(field.value),
+				enumerable: field.enumerable === true,
+				writable: true,
+				configurable: true,
+			});
 		}
 	};
-	populate(value,top); return top;
+	populate(value, top);
+	return top;
 }
 
 export function captureDiagnosticTree(value: unknown): DiagnosticTreeObservation {
@@ -1254,16 +1300,32 @@ export function captureDiagnosticTree(value: unknown): DiagnosticTreeObservation
 		visited.add(item);
 		const fields: DiagnosticTreeEntry['fields'][number][] = [];
 		for (const key of Reflect.ownKeys(item)) {
-			const descriptor = Object.getOwnPropertyDescriptor(item, key);
+			const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(item, key);
 			if (!descriptor || descriptor.get || descriptor.set) throw new Error('Diagnostic data fields required');
 			const child: unknown = descriptor.value;
-			fields.push(Object.freeze({ key, value: child, enumerable: descriptor.enumerable === true, configurable: descriptor.configurable === true, writable: descriptor.writable === true }));
+			fields.push(
+				Object.freeze({
+					key,
+					value: child,
+					enumerable: descriptor.enumerable === true,
+					configurable: descriptor.configurable === true,
+					writable: descriptor.writable === true,
+				}),
+			);
 			// Functions are original opaque references, not object graphs or new authority.
 			if (typeof child !== 'function') visit(child);
 		}
-		const prototype: unknown = Object.getPrototypeOf(item);
-		if (prototype !== null && typeof prototype !== 'object' && typeof prototype !== 'function') throw new Error('Diagnostic prototype unavailable');
-		entries.push(Object.freeze({ object: item, prototype, fields: Object.freeze(fields), dateValue: item instanceof Date ? originalDateValue.call(immutableCreationDates.get(item) ?? item) : undefined }));
+		const prototype: unknown = nativePrototypeEvidence.getPrototypeOf(item);
+		if (prototype !== null && typeof prototype !== 'object' && typeof prototype !== 'function')
+			throw new Error('Diagnostic prototype unavailable');
+		entries.push(
+			Object.freeze({
+				object: item,
+				prototype,
+				fields: Object.freeze(fields),
+				dateValue: item instanceof Date ? originalDateValue.call(immutableCreationDates.get(item) ?? item) : undefined,
+			}),
+		);
 	};
 	visit(value);
 	const token = Object.freeze(new DiagnosticTreeObservation());
@@ -1272,22 +1334,45 @@ export function captureDiagnosticTree(value: unknown): DiagnosticTreeObservation
 }
 export function diagnosticTreeCurrent(token: DiagnosticTreeObservation): boolean {
 	const entries = diagnosticTrees.get(token);
+
 	if (!entries || !creationMethodCurrent(Date.prototype, 'getTime', originalDateValue)) return false;
 	for (const entry of entries) {
-		if (Object.getPrototypeOf(entry.object) !== entry.prototype || Reflect.ownKeys(entry.object).length !== entry.fields.length) return false;
-		if (entry.dateValue !== undefined && (!(entry.object instanceof Date) || originalDateValue.call(immutableCreationDates.get(entry.object) ?? entry.object) !== entry.dateValue)) return false;
+		if (
+			nativePrototypeEvidence.getPrototypeOf(entry.object) !== entry.prototype ||
+			Reflect.ownKeys(entry.object).length !== entry.fields.length
+		)
+			return false;
+		if (
+			entry.dateValue !== undefined &&
+			(!(entry.object instanceof Date) ||
+				originalDateValue.call(immutableCreationDates.get(entry.object) ?? entry.object) !== entry.dateValue)
+		)
+			return false;
 		for (const field of entry.fields) {
-			const now = Object.getOwnPropertyDescriptor(entry.object, field.key);
-			if (!now || now.get || now.set || now.value !== field.value || (now.enumerable === true) !== field.enumerable || (now.configurable === true) !== field.configurable || (now.writable === true) !== field.writable) return false;
+			const now = nativeObjectEvidence.getOwnPropertyDescriptor(entry.object, field.key);
+			if (
+				!now ||
+				now.get ||
+				now.set ||
+				now.value !== field.value ||
+				(now.enumerable === true) !== field.enumerable ||
+				(now.configurable === true) !== field.configurable ||
+				(now.writable === true) !== field.writable
+			)
+				return false;
 		}
 	}
 	return true;
 }
-export function closeDiagnosticTree(token: DiagnosticTreeObservation): void { diagnosticTrees.delete(token); }
+export function closeDiagnosticTree(token: DiagnosticTreeObservation): void {
+	diagnosticTrees.delete(token);
+}
 
 /** Existing-controller receipt capability; creation and observational tokens cannot authorize it. */
 export class ControllerMutationPublicationLease {
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 export interface ControllerMutationPublicationEvidence {
 	readonly source: DataSource;
@@ -1298,8 +1383,19 @@ export interface ControllerMutationPublicationEvidence {
 }
 interface MutationPublicationRecord {
 	readonly writer: ClimateAutomationWriterService;
-	readonly methods: Readonly<Pick<ClimateAutomationWriterService,'admitExistingPublication' | 'registerExistingPublication' |
-		'isExistingPublicationAcknowledged' | 'isExistingPublicationCurrent' | 'assertExistingPublicationValue' | 'checkExistingPublication' | 'probeExistingPublication' | 'closeExistingPublication'>>;
+	readonly methods: OriginalFunctions<
+		Pick<
+			ClimateAutomationWriterService,
+			| 'admitExistingPublication'
+			| 'registerExistingPublication'
+			| 'isExistingPublicationAcknowledged'
+			| 'isExistingPublicationCurrent'
+			| 'assertExistingPublicationValue'
+			| 'checkExistingPublication'
+			| 'probeExistingPublication'
+			| 'closeExistingPublication'
+		>
+	>;
 	readonly evidence: ControllerMutationPublicationEvidence;
 	active: boolean;
 	eligible: boolean;
@@ -1308,116 +1404,274 @@ interface MutationPublicationRecord {
 }
 const mutationPublications = new WeakMap<ControllerMutationPublicationLease, MutationPublicationRecord>();
 const mutationPublicationIds = new Map<string, Set<MutationPublicationRecord>>();
-const mutationLeafQueries = new WeakMap<QueryRunner, Readonly<{ lease: ControllerMutationPublicationLease; query: string; parameters: readonly unknown[] }>>();
+const mutationLeafQueries = new WeakMap<
+	QueryRunner,
+	Readonly<{ lease: ControllerMutationPublicationLease; query: string; parameters: readonly unknown[] }>
+>();
 
 export class ControllerMutationPublicationEngine {
-	static fromReserved(writer: ClimateAutomationWriterService, manager: EntityManager, turn: ClimateAutomationParticipantTurn, original: object): ControllerMutationPublicationLease {
+	static fromReserved(
+		writer: ClimateAutomationWriterService,
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		original: object,
+	): ControllerMutationPublicationLease {
 		if (!controllerMutationMethodsCurrent()) throw new Error('Original mutation engine required');
-		const methods = Object.freeze({ admitExistingPublication: writer.admitExistingPublication,registerExistingPublication: writer.registerExistingPublication,
-			isExistingPublicationAcknowledged: writer.isExistingPublicationAcknowledged,isExistingPublicationCurrent: writer.isExistingPublicationCurrent,
-			assertExistingPublicationValue: writer.assertExistingPublicationValue,checkExistingPublication: writer.checkExistingPublication,probeExistingPublication: writer.probeExistingPublication,
-			closeExistingPublication: writer.closeExistingPublication });
-		const evidence = methods.admitExistingPublication.call(writer,manager, turn, original);
+
+		let originalMemberView2: OriginalFunctions<typeof writer>;
+		let originalMemberView3: OriginalFunctions<typeof writer>;
+		let originalMemberView4: OriginalFunctions<typeof writer>;
+		let originalMemberView5: OriginalFunctions<typeof writer>;
+		let originalMemberView6: OriginalFunctions<typeof writer>;
+		let originalMemberView7: OriginalFunctions<typeof writer>;
+		let originalMemberView8: OriginalFunctions<typeof writer>;
+		let originalMemberView9: OriginalFunctions<typeof writer>;
+		const methods: MutationPublicationRecord['methods'] = Object.freeze({
+			admitExistingPublication: ((originalMemberView2 = writer), originalMemberView2.admitExistingPublication),
+			registerExistingPublication: ((originalMemberView3 = writer), originalMemberView3.registerExistingPublication),
+			isExistingPublicationAcknowledged:
+				((originalMemberView4 = writer), originalMemberView4.isExistingPublicationAcknowledged),
+			isExistingPublicationCurrent: ((originalMemberView5 = writer), originalMemberView5.isExistingPublicationCurrent),
+			assertExistingPublicationValue:
+				((originalMemberView6 = writer), originalMemberView6.assertExistingPublicationValue),
+			checkExistingPublication: ((originalMemberView7 = writer), originalMemberView7.checkExistingPublication),
+			probeExistingPublication: ((originalMemberView8 = writer), originalMemberView8.probeExistingPublication),
+			closeExistingPublication: ((originalMemberView9 = writer), originalMemberView9.closeExistingPublication),
+		});
+		const evidence = methods.admitExistingPublication.call(writer, manager, turn, original);
 		const lease = Object.freeze(new ControllerMutationPublicationLease());
-		const record: MutationPublicationRecord = { writer,methods,evidence,active: true,eligible: false,submitted: 0,completed: 0 };
+		const record: MutationPublicationRecord = {
+			writer,
+			methods,
+			evidence,
+			active: true,
+			eligible: false,
+			submitted: 0,
+			completed: 0,
+		};
 		mutationPublications.set(lease, record);
 		for (const id of evidence.identities) {
 			const records = mutationPublicationIds.get(id) ?? new Set<MutationPublicationRecord>();
-			records.add(record); mutationPublicationIds.set(id, records);
+			records.add(record);
+			mutationPublicationIds.set(id, records);
 		}
-		methods.registerExistingPublication.call(writer,lease,original);
+		methods.registerExistingPublication.call(writer, lease, original);
 		overlapReadCaches(evidence.identities);
 		return lease;
 	}
 	static acknowledge(lease: ControllerMutationPublicationLease): void {
 		const record = mutationPublications.get(lease);
-		if (!record || !record.active || record.eligible || !record.methods.isExistingPublicationAcknowledged.call(record.writer,lease)) throw new Error('Original mutation acknowledgement required');
+		if (
+			!record ||
+			!record.active ||
+			record.eligible ||
+			!record.methods.isExistingPublicationAcknowledged.call(record.writer, lease)
+		)
+			throw new Error('Original mutation acknowledgement required');
 		record.eligible = true;
 	}
 	static assert(lease: ControllerMutationPublicationLease, propertyId?: string): void {
 		const record = mutationPublications.get(lease);
-		if (!record || !record.active || !record.eligible || (propertyId !== undefined && !record.evidence.identities.includes(propertyId)) || !record.methods.isExistingPublicationCurrent.call(record.writer,lease)) throw new Error('Original mutation publication unavailable');
+		if (
+			!record ||
+			!record.active ||
+			!record.eligible ||
+			(propertyId !== undefined && !record.evidence.identities.includes(propertyId)) ||
+			!record.methods.isExistingPublicationCurrent.call(record.writer, lease)
+		)
+			throw new Error('Original mutation publication unavailable');
 	}
 	/** Effect boundary only. The pure assert above remains the native COMMIT guard. */
-	static check(lease: ControllerMutationPublicationLease,propertyId?: string): void {
-		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease,propertyId);
-		const record = mutationPublications.get(lease); if (!record) throw new Error('Original publication unavailable');
-		record.methods.checkExistingPublication.call(record.writer,lease);
-		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease,propertyId);
+	static check(lease: ControllerMutationPublicationLease, propertyId?: string): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease, propertyId);
+		const record = mutationPublications.get(lease);
+		if (!record) throw new Error('Original publication unavailable');
+		record.methods.checkExistingPublication.call(record.writer, lease);
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease, propertyId);
 	}
 	static assertProperty(lease: ControllerMutationPublicationLease, property: ChannelPropertyEntity): void {
-		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease, property.id);
-		if (!mutationPublications.get(lease)?.evidence.properties.includes(property)) throw new Error('Original mutation property snapshot required');
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease, property.id);
+		if (!mutationPublications.get(lease)?.evidence.properties.includes(property))
+			throw new Error('Original mutation property snapshot required');
 	}
 	static assertValue(lease: ControllerMutationPublicationLease, id: string, value: unknown): void {
-		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease,id);
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease, id);
 		const record = mutationPublications.get(lease);
 		if (!record) throw new Error('Original mutation mirror unavailable');
-		record.methods.assertExistingPublicationValue.call(record.writer,lease,id,value);
+		record.methods.assertExistingPublicationValue.call(record.writer, lease, id, value);
 	}
 	static destinations(lease: ControllerMutationPublicationLease): CreationStorageDestinations {
-		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); const record = mutationPublications.get(lease);
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
+		const record = mutationPublications.get(lease);
 		if (!record) throw new Error('Original mutation destinations unavailable');
 		return record.evidence.destinations;
 	}
 	static async probe(lease: ControllerMutationPublicationLease, propertyId?: string): Promise<void> {
-		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease, propertyId); const record = mutationPublications.get(lease);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease, propertyId);
+		const record = mutationPublications.get(lease);
 		if (!record) throw new Error('Original mutation probe unavailable');
-		await record.methods.probeExistingPublication.call(record.writer,lease,propertyId);
-		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease, propertyId);
+		await record.methods.probeExistingPublication.call(record.writer, lease, propertyId);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease, propertyId);
 	}
-	static noteSubmission(lease: ControllerMutationPublicationLease): void { originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); const record = mutationPublications.get(lease); if (record) record.submitted++; }
-	static noteCompletion(lease: ControllerMutationPublicationLease): void { const record = mutationPublications.get(lease); if (record) record.completed++; }
-	static report(lease: ControllerMutationPublicationLease): Readonly<{ submitted: number; completed: number }> { const record = mutationPublications.get(lease); return Object.freeze({ submitted: record?.submitted ?? 0, completed: record?.completed ?? 0 }); }
-	static expectQuery(lease: ControllerMutationPublicationLease, runner: QueryRunner, query: string, parameters: readonly unknown[]): void {
-		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); if (mutationLeafQueries.has(runner)) throw new Error('Mutation probe already active');
+	static noteSubmission(lease: ControllerMutationPublicationLease): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
+		const record = mutationPublications.get(lease);
+		if (record) record.submitted++;
+	}
+	static noteCompletion(lease: ControllerMutationPublicationLease): void {
+		const record = mutationPublications.get(lease);
+		if (record) record.completed++;
+	}
+	static report(lease: ControllerMutationPublicationLease): Readonly<{ submitted: number; completed: number }> {
+		const record = mutationPublications.get(lease);
+		return Object.freeze({ submitted: record?.submitted ?? 0, completed: record?.completed ?? 0 });
+	}
+	static expectQuery(
+		lease: ControllerMutationPublicationLease,
+		runner: QueryRunner,
+		query: string,
+		parameters: readonly unknown[],
+	): void {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
+		if (mutationLeafQueries.has(runner)) throw new Error('Mutation probe already active');
 		mutationLeafQueries.set(runner, Object.freeze({ lease, query, parameters: Object.freeze([...parameters]) }));
 	}
 	/** Exact original owned native probe only. A read/forged token can never create an exemption. */
-	static isExpectedProbe(lease: ControllerMutationPublicationLease,runner: QueryRunner,query: string,parameters: readonly unknown[]): boolean {
+	static isExpectedProbe(
+		lease: ControllerMutationPublicationLease,
+		runner: QueryRunner,
+		query: string,
+		parameters: readonly unknown[],
+	): boolean {
 		const own = mutationLeafQueries.get(runner);
-		return !!own && own.lease === lease && mutationPublications.has(lease) && own.query === query &&
-			own.parameters.length === parameters.length && own.parameters.every((value,index) => Object.is(value,parameters[index]));
+		return (
+			!!own &&
+			own.lease === lease &&
+			mutationPublications.has(lease) &&
+			own.query === query &&
+			own.parameters.length === parameters.length &&
+			own.parameters.every((value, index) => Object.is(value, parameters[index]))
+		);
 	}
 
-	static endQuery(lease: ControllerMutationPublicationLease, runner: QueryRunner): void { if (mutationLeafQueries.get(runner)?.lease === lease) mutationLeafQueries.delete(runner); }
-	static invalidateIds(ids: readonly string[]): void { for (const id of ids) for (const record of mutationPublicationIds.get(id) ?? []) record.active = false; }
-	static invalidateAll(): void { for (const records of mutationPublicationIds.values()) for (const record of records) record.active = false; }
+	static endQuery(lease: ControllerMutationPublicationLease, runner: QueryRunner): void {
+		if (mutationLeafQueries.get(runner)?.lease === lease) mutationLeafQueries.delete(runner);
+	}
+	static invalidateIds(ids: readonly string[]): void {
+		for (const id of ids) for (const record of mutationPublicationIds.get(id) ?? []) record.active = false;
+	}
+	static invalidateAll(): void {
+		for (const records of mutationPublicationIds.values()) for (const record of records) record.active = false;
+	}
 	static observeQuery(source: DataSource, runner: QueryRunner, query: string, parameters: readonly unknown[]): void {
-		if (/^\s*(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(query)) return;
+		if (
+			/^\s*(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(
+				query,
+			)
+		)
+			return;
 		if (/^(?:INSERT INTO|UPDATE|DELETE FROM) "devices_module_property_value_locks"(?:\s|$)/i.test(query.trim())) return;
 		const own = mutationLeafQueries.get(runner);
-		for (const records of mutationPublicationIds.values()) for (const record of records) {
-			if (record.evidence.source !== source) continue;
-			if (own && mutationPublications.get(own.lease) === record && own.query === query && own.parameters.length === parameters.length && own.parameters.every((value, index) => Object.is(value, parameters[index]))) continue;
-			record.active = false;
-		}
+		for (const records of mutationPublicationIds.values())
+			for (const record of records) {
+				if (record.evidence.source !== source) continue;
+				if (
+					own &&
+					mutationPublications.get(own.lease) === record &&
+					own.query === query &&
+					own.parameters.length === parameters.length &&
+					own.parameters.every((value, index) => Object.is(value, parameters[index]))
+				)
+					continue;
+				record.active = false;
+			}
 	}
 	static close(lease: ControllerMutationPublicationLease): void {
-		const record = mutationPublications.get(lease); if (!record) return;
+		const record = mutationPublications.get(lease);
+		if (!record) return;
 		record.active = false;
-		for (const id of record.evidence.identities) { const records = mutationPublicationIds.get(id); records?.delete(record); if (!records?.size) mutationPublicationIds.delete(id); }
+		for (const id of record.evidence.identities) {
+			const records = mutationPublicationIds.get(id);
+			records?.delete(record);
+			if (!records?.size) mutationPublicationIds.delete(id);
+		}
 		mutationPublications.delete(lease);
-		record.methods.closeExistingPublication.call(record.writer,lease);
+		record.methods.closeExistingPublication.call(record.writer, lease);
 	}
 }
 
 // Original module-evaluation functions. Capture is veto-only and cleanup cannot dispatch to a replacement engine.
-export const originalControllerMutationMethods = Object.freeze({ fromReserved: ControllerMutationPublicationEngine.fromReserved,
-	acknowledge: ControllerMutationPublicationEngine.acknowledge,assert: ControllerMutationPublicationEngine.assert,check: ControllerMutationPublicationEngine.check,
-	assertProperty: ControllerMutationPublicationEngine.assertProperty,assertValue: ControllerMutationPublicationEngine.assertValue,
-	destinations: ControllerMutationPublicationEngine.destinations,probe: ControllerMutationPublicationEngine.probe,
-	noteSubmission: ControllerMutationPublicationEngine.noteSubmission,noteCompletion: ControllerMutationPublicationEngine.noteCompletion,
-	report: ControllerMutationPublicationEngine.report,expectQuery: ControllerMutationPublicationEngine.expectQuery,
-	isExpectedProbe: ControllerMutationPublicationEngine.isExpectedProbe,endQuery: ControllerMutationPublicationEngine.endQuery,
-	invalidateIds: ControllerMutationPublicationEngine.invalidateIds,invalidateAll: ControllerMutationPublicationEngine.invalidateAll,
-	observeQuery: ControllerMutationPublicationEngine.observeQuery,close: ControllerMutationPublicationEngine.close });
+
+let originalMemberView10: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView11: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView12: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView13: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView14: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView15: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView16: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView17: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView18: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView19: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView20: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView21: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView22: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView23: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView24: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView25: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView26: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+let originalMemberView27: OriginalFunctions<typeof ControllerMutationPublicationEngine>;
+export const originalControllerMutationMethods: OriginalFunctions<
+	Pick<
+		typeof ControllerMutationPublicationEngine,
+		| 'fromReserved'
+		| 'acknowledge'
+		| 'assert'
+		| 'check'
+		| 'assertProperty'
+		| 'assertValue'
+		| 'destinations'
+		| 'probe'
+		| 'noteSubmission'
+		| 'noteCompletion'
+		| 'report'
+		| 'expectQuery'
+		| 'isExpectedProbe'
+		| 'endQuery'
+		| 'invalidateIds'
+		| 'invalidateAll'
+		| 'observeQuery'
+		| 'close'
+	>
+> = Object.freeze({
+	fromReserved: ((originalMemberView10 = ControllerMutationPublicationEngine), originalMemberView10.fromReserved),
+	acknowledge: ((originalMemberView11 = ControllerMutationPublicationEngine), originalMemberView11.acknowledge),
+	assert: ((originalMemberView12 = ControllerMutationPublicationEngine), originalMemberView12.assert),
+	check: ((originalMemberView13 = ControllerMutationPublicationEngine), originalMemberView13.check),
+	assertProperty: ((originalMemberView14 = ControllerMutationPublicationEngine), originalMemberView14.assertProperty),
+	assertValue: ((originalMemberView15 = ControllerMutationPublicationEngine), originalMemberView15.assertValue),
+	destinations: ((originalMemberView16 = ControllerMutationPublicationEngine), originalMemberView16.destinations),
+	probe: ((originalMemberView17 = ControllerMutationPublicationEngine), originalMemberView17.probe),
+	noteSubmission: ((originalMemberView18 = ControllerMutationPublicationEngine), originalMemberView18.noteSubmission),
+	noteCompletion: ((originalMemberView19 = ControllerMutationPublicationEngine), originalMemberView19.noteCompletion),
+	report: ((originalMemberView20 = ControllerMutationPublicationEngine), originalMemberView20.report),
+	expectQuery: ((originalMemberView21 = ControllerMutationPublicationEngine), originalMemberView21.expectQuery),
+	isExpectedProbe: ((originalMemberView22 = ControllerMutationPublicationEngine), originalMemberView22.isExpectedProbe),
+	endQuery: ((originalMemberView23 = ControllerMutationPublicationEngine), originalMemberView23.endQuery),
+	invalidateIds: ((originalMemberView24 = ControllerMutationPublicationEngine), originalMemberView24.invalidateIds),
+	invalidateAll: ((originalMemberView25 = ControllerMutationPublicationEngine), originalMemberView25.invalidateAll),
+	observeQuery: ((originalMemberView26 = ControllerMutationPublicationEngine), originalMemberView26.observeQuery),
+	close: ((originalMemberView27 = ControllerMutationPublicationEngine), originalMemberView27.close),
+});
 export function controllerMutationMethodsCurrent(): boolean {
-	return Object.entries(originalControllerMutationMethods).every(([key,method]) => creationMethodCurrent(ControllerMutationPublicationEngine,key,method));
+	return Object.entries(originalControllerMutationMethods).every(([key, method]) =>
+		creationMethodCurrent(ControllerMutationPublicationEngine, key, method),
+	);
 }
 export function closeControllerMutationPublication(lease: ControllerMutationPublicationLease): void {
-	originalControllerMutationMethods.close.call(ControllerMutationPublicationEngine,lease);
+	originalControllerMutationMethods.close.call(ControllerMutationPublicationEngine, lease);
 }
-export function controllerMutationPublicationReport(lease: ControllerMutationPublicationLease): Readonly<{ submitted: number; completed: number }> {
-	return originalControllerMutationMethods.report.call(ControllerMutationPublicationEngine,lease);
+export function controllerMutationPublicationReport(
+	lease: ControllerMutationPublicationLease,
+): Readonly<{ submitted: number; completed: number }> {
+	return originalControllerMutationMethods.report.call(ControllerMutationPublicationEngine, lease);
 }

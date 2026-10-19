@@ -48,6 +48,8 @@ import { VirtualThermostatActuatorClaimEntity } from '../../src/plugins/devices-
 import { ThermostatInstalledQualification } from '../../src/plugins/devices-virtual/services/virtual-thermostat-claims.service';
 import { VirtualThermostatTransportService } from '../../src/plugins/devices-virtual/services/virtual-thermostat-transport.service';
 
+const nativeJsonEvidence: Readonly<{ parse: (text: string) => unknown }> = JSON;
+
 const isWebSocketSendCallback = (value: unknown): value is NonNullable<Parameters<WebSocket['send']>[2]> =>
 	typeof value === 'function';
 
@@ -86,17 +88,19 @@ export async function realThermostatGuardFixture(
 ) {
 	const tick = useThermostatPacketClock();
 	const sources = pipeline?.sources ?? new PropertyValueSourceRegistryService();
-	const values = pipeline?.values ?? new PropertyValueService(
-		{
-			isConnected: () => true,
-			enqueueWritePoint: () => Promise.resolve(undefined),
-			queryStrict: () => Promise.resolve([]),
-		} as unknown as StorageService,
-		sources,
-		new PropertyValueLockService({} as never),
-		producers,
-		events,
-	);
+	const values =
+		pipeline?.values ??
+		new PropertyValueService(
+			{
+				isConnected: () => true,
+				enqueueWritePoint: () => Promise.resolve(undefined),
+				queryStrict: () => Promise.resolve([]),
+			} as unknown as StorageService,
+			sources,
+			new PropertyValueLockService({} as never),
+			producers,
+			events,
+		);
 	const properties = new Map(
 		(await db.manager.find(ChannelPropertyEntity, { relations: ['channel', 'channel.device'] })).map((property) => [
 			property.id,
@@ -318,7 +322,7 @@ export async function realThermostatGuardFixture(
 					Object.defineProperty(socket, 'readyState', { value: WebSocket.OPEN });
 					jest.spyOn(socket, 'send').mockImplementation((data, options, callback) => {
 						if (typeof data !== 'string') throw new Error('Expected SDK JSON frame');
-						const frame: unknown = JSON.parse(data);
+						const frame: unknown = nativeJsonEvidence.parse(data);
 						if (
 							!frame ||
 							typeof frame !== 'object' ||

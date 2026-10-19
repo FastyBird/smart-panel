@@ -27,15 +27,18 @@ import { validatePropertyCommandValue } from '../utils/property-command-value.ut
 
 import {
 	ControllerMutationPublicationEngine,
-	originalControllerMutationMethods,
-	controllerMutationMethodsCurrent,
 	ControllerMutationPublicationLease,
-	captureDiagnosticTree, diagnosticTreeCurrent, closeDiagnosticTree, DiagnosticTreeObservation,
 	DeviceCreationPublicationEngine,
 	DeviceCreationPublicationLease,
+	DiagnosticTreeObservation,
 	ReadCacheObservation,
+	captureDiagnosticTree,
+	closeDiagnosticTree,
+	controllerMutationMethodsCurrent,
 	creationHasDataMethod,
 	creationMethodCurrent,
+	diagnosticTreeCurrent,
+	originalControllerMutationMethods,
 	originalReadCacheApi,
 } from './device-creation-context';
 import {
@@ -50,6 +53,15 @@ import {
 	PropertyReadSourceCapture,
 	PropertyValueSourceRegistryService,
 } from './property-value-source.registry.service';
+
+const nativePrototypeEvidence: Readonly<{ getPrototypeOf: (receiver: object) => object | null }> = Object;
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
 /**
  * Number of recent data points used for trend computation.
@@ -129,7 +141,7 @@ interface InternalPropertyValueReadResult {
 type ReadReceiverCall<Receiver, Args extends unknown[], Result> = Readonly<{
 	call: (receiver: Receiver, ...args: Args) => Result;
 }>;
-const propertyReadSourcePrototype: Readonly<{
+const propertyReadSourcePrototype: OriginalFunctions<{
 	captureReadSource: (property: ChannelPropertyEntity) => PropertyReadSourceCapture;
 	readSourceKey: (token: PropertyReadSourceCapture) => string;
 	readSourceInput: (token: PropertyReadSourceCapture) => Readonly<ChannelPropertyEntity>;
@@ -167,7 +179,7 @@ const propertyReadEngine: Readonly<{ invalidateIds: (ids: readonly string[]) => 
 	DeviceCreationPublicationEngine;
 const propertyReadInvalidate: ReadReceiverCall<typeof DeviceCreationPublicationEngine, [ids: readonly string[]], void> =
 	propertyReadEngine.invalidateIds;
-const propertyStoragePrototype: Readonly<{
+const propertyStoragePrototype: OriginalFunctions<{
 	captureCreationDestinations: () => CreationStorageDestinations;
 	areCreationDestinationsCurrent: (capture: CreationStorageDestinations) => boolean;
 }> = StorageService.prototype;
@@ -238,7 +250,9 @@ interface PropertyBatchResult {
 	readonly processed: boolean;
 }
 export class DiagnosticSamples {
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 export interface DiagnosticSampleData {
 	readonly sample: QualifiedPropertySample | null;
@@ -246,8 +260,18 @@ export interface DiagnosticSampleData {
 }
 interface DiagnosticSampleRecord {
 	readonly aliases: ReadonlyMap<string, PropertyReadAlias>;
-	readonly closeAlias: Readonly<{ call: (receiver: PropertyValueService,alias: PropertyReadAlias) => void }>;
-	readonly samples: ReadonlyMap<string, Readonly<{ sample: (QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) | undefined; tree: DiagnosticTreeObservation; sourceCurrent: boolean; guard: Readonly<{ call: (receiver: QualifiedPropertySample & Pick<PropertySampleEvidence,'isCurrent'>) => boolean }> | undefined }>>;
+	readonly closeAlias: Readonly<{ call: (receiver: PropertyValueService, alias: PropertyReadAlias) => void }>;
+	readonly samples: ReadonlyMap<
+		string,
+		Readonly<{
+			sample: (QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) | undefined;
+			tree: DiagnosticTreeObservation;
+			sourceCurrent: boolean;
+			guard:
+				| Readonly<{ call: (receiver: QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) => boolean }>
+				| undefined;
+		}>
+	>;
 	readonly producer: PropertyProducerRegistryService;
 	readonly publications: DiagnosticPublications;
 	readonly watchers: readonly ReadCacheObservation[];
@@ -301,7 +325,7 @@ export class PropertyValueService {
 		const methodsCurrent = () =>
 			this.valueSourceRegistry === registry &&
 			Object.entries(names).every(([key, name]) =>
-				creationMethodCurrent(registry, name, Reflect.get(propertyReadSourceMethods, key)),
+				creationMethodCurrent(registry, name, nativeFieldEvidence.get(propertyReadSourceMethods, key)),
 			);
 		if (!methodsCurrent()) throw new Error('Original read source API unavailable');
 		const source = propertyReadSourceMethods.capture.call(registry, property);
@@ -386,11 +410,7 @@ export class PropertyValueService {
 		if (!state || provenance?.state !== state || provenance.kind === 'historical') return null;
 		if (provenance.kind === 'owned') {
 			try {
-				if (
-					!provenance.lease ||
-					!ownedValuePublicationCurrent(provenance.lease)
-				)
-					return null;
+				if (!provenance.lease || !ownedValuePublicationCurrent(provenance.lease)) return null;
 			} catch {
 				return null;
 			}
@@ -569,7 +589,7 @@ export class PropertyValueService {
 		for (const { receiver, keys } of holders)
 			for (const key of keys) {
 				if (!creationHasDataMethod(receiver, key)) throw new Error('Original value pipeline unavailable');
-				const method: unknown = Reflect.get(receiver, key);
+				const method: unknown = nativeFieldEvidence.get(receiver, key);
 				pins.push(Object.freeze({ receiver, key, method }));
 			}
 		return () => pins.every(({ receiver, key, method }) => creationMethodCurrent(receiver, key, method));
@@ -619,58 +639,140 @@ export class PropertyValueService {
 	}
 
 	captureMutationMethodGuard(): () => boolean {
-		const registry = this.valueSourceRegistry,producer = this.producers,storage = this.storageService,lock = this.valueLock;
+		const registry = this.valueSourceRegistry,
+			producer = this.producers,
+			storage = this.storageService,
+			lock = this.valueLock;
 		const common = this.captureCreatedMethodGuard();
 		if (!controllerMutationMethodsCurrent()) throw new Error('Original mutation engine unavailable');
-		const groups = [{ receiver: this, names: ['writeMutationWithState','captureMutationPropertyObservation','captureCreatedMethodGuard','captureReadAlias','closeReadAlias','writeInternal','withCreatedValueLock','flushHistory'] },
-			{ receiver: this.storageService, names: ['writeMutationPoints', 'captureCreationDestinations', 'areCreationDestinationsCurrent'] },
-			{ receiver: ControllerMutationPublicationEngine, names: ['fromReserved','acknowledge','assert','check','assertValue','assertProperty','probe','destinations','noteSubmission','noteCompletion','report','expectQuery','isExpectedProbe','endQuery','invalidateIds','invalidateAll','observeQuery','close'] }];
+		const groups = [
+			{
+				receiver: this,
+				names: [
+					'writeMutationWithState',
+					'captureMutationPropertyObservation',
+					'captureCreatedMethodGuard',
+					'captureReadAlias',
+					'closeReadAlias',
+					'writeInternal',
+					'withCreatedValueLock',
+					'flushHistory',
+				],
+			},
+			{
+				receiver: this.storageService,
+				names: ['writeMutationPoints', 'captureCreationDestinations', 'areCreationDestinationsCurrent'],
+			},
+			{
+				receiver: ControllerMutationPublicationEngine,
+				names: [
+					'fromReserved',
+					'acknowledge',
+					'assert',
+					'check',
+					'assertValue',
+					'assertProperty',
+					'probe',
+					'destinations',
+					'noteSubmission',
+					'noteCompletion',
+					'report',
+					'expectQuery',
+					'isExpectedProbe',
+					'endQuery',
+					'invalidateIds',
+					'invalidateAll',
+					'observeQuery',
+					'close',
+				],
+			},
+		];
 		const pins: Readonly<{ receiver: object; name: string; method: unknown }>[] = [];
-		for (const group of groups) for (const name of group.names) {
-			if (!creationHasDataMethod(group.receiver, name)) throw new Error('Original mutation value method unavailable');
-			const method: unknown = Reflect.get(group.receiver, name);
-			pins.push(Object.freeze({ receiver: group.receiver, name, method }));
-		}
-		return () => this.valueSourceRegistry === registry && this.producers === producer && this.storageService === storage && this.valueLock === lock &&
-			common() && controllerMutationMethodsCurrent() && pins.every((pin) => creationMethodCurrent(pin.receiver, pin.name, pin.method));
+		for (const group of groups)
+			for (const name of group.names) {
+				if (!creationHasDataMethod(group.receiver, name)) throw new Error('Original mutation value method unavailable');
+				const method: unknown = nativeFieldEvidence.get(group.receiver, name);
+				pins.push(Object.freeze({ receiver: group.receiver, name, method }));
+			}
+		return () =>
+			this.valueSourceRegistry === registry &&
+			this.producers === producer &&
+			this.storageService === storage &&
+			this.valueLock === lock &&
+			common() &&
+			controllerMutationMethodsCurrent() &&
+			pins.every((pin) => creationMethodCurrent(pin.receiver, pin.name, pin.method));
 	}
 	/** Veto-only fixed LOCAL publication slots; no live read, sample, producer guard, backend or authority mint. */
-	captureMutationPropertyObservation(properties: readonly ChannelPropertyEntity[]): Readonly<{ isCurrent: () => boolean; check: () => void; close: () => void }> {
-		if (!this.producers || !diagnosticValueProducerMethodsCurrent(this.producers)) throw new Error('Original publication producer observation unavailable');
-		const producer = this.producers,aliases: PropertyReadAlias[] = [];
-		const closeAlias: Readonly<{ call: (receiver: PropertyValueService,alias: PropertyReadAlias) => void }> = this.closeReadAlias;
-		let observation: CreationProducerObservation | undefined,active = true,closed = false;
+	captureMutationPropertyObservation(
+		properties: readonly ChannelPropertyEntity[],
+	): Readonly<{ isCurrent: () => boolean; check: () => void; close: () => void }> {
+		if (!this.producers || !diagnosticValueProducerMethodsCurrent(this.producers))
+			throw new Error('Original publication producer observation unavailable');
+		const producer = this.producers,
+			aliases: PropertyReadAlias[] = [];
+
+		const originalMemberView1: Readonly<{
+			get: (
+				receiver: PropertyValueService,
+				key: 'closeReadAlias',
+			) => OriginalFunction<PropertyValueService, PropertyValueService['closeReadAlias']>;
+		}> = Reflect;
+		const closeAlias: Readonly<{ call: (receiver: PropertyValueService, alias: PropertyReadAlias) => void }> =
+			originalMemberView1.get(this, 'closeReadAlias');
+		let observation: CreationProducerObservation | undefined,
+			active = true,
+			closed = false;
 		const close = (): void => {
-			if (closed) return; closed = true; active = false;
-			for (const alias of aliases) closeAlias.call(this,alias);
-			if (observation) diagnosticValueProducerMethods.closeObservation.call(producer,observation);
+			if (closed) return;
+			closed = true;
+			active = false;
+			for (const alias of aliases) closeAlias.call(this, alias);
+			if (observation) diagnosticValueProducerMethods.closeObservation.call(producer, observation);
 		};
 		try {
 			const ids = properties.map((property) => property.id);
 			if (new Set(ids).size !== ids.length) throw new Error('Unique original publication properties required');
-			if (ids.length) observation = diagnosticValueProducerMethods.begin.call(producer,ids);
+			if (ids.length) observation = diagnosticValueProducerMethods.begin.call(producer, ids);
 			for (const property of properties) {
-				const alias = this.captureReadAlias(property); aliases.push(alias);
-				if (alias.key !== property.id || propertyReadSourceMethods.reason.call(alias.registry,alias.source) !== null ||
-					diagnosticValueProducerMethods.owns.call(producer,property.id)) throw new Error('Original unowned LOCAL publication slot required');
+				const alias = this.captureReadAlias(property);
+				aliases.push(alias);
+				if (
+					alias.key !== property.id ||
+					propertyReadSourceMethods.reason.call(alias.registry, alias.source) !== null ||
+					diagnosticValueProducerMethods.owns.call(producer, property.id)
+				)
+					throw new Error('Original unowned LOCAL publication slot required');
 			}
-			const isCurrent = (): boolean => active && this.producers === producer && diagnosticValueProducerMethodsCurrent(producer) &&
-				(!observation || diagnosticValueProducerMethods.observationCurrent.call(producer,observation)) && aliases.every((alias) => alias.structuralCurrent());
+			const isCurrent = (): boolean =>
+				active &&
+				this.producers === producer &&
+				diagnosticValueProducerMethodsCurrent(producer) &&
+				(!observation || diagnosticValueProducerMethods.observationCurrent.call(producer, observation)) &&
+				aliases.every((alias) => alias.structuralCurrent());
 			if (!isCurrent()) throw new Error('Original LOCAL publication slot changed during capture');
 			const check = (): void => {
 				if (!isCurrent() || !aliases.every((alias) => alias.current()) || !isCurrent()) {
-					active = false; throw new Error('Original publication source policy lost');
+					active = false;
+					throw new Error('Original publication source policy lost');
 				}
 			};
-			return Object.freeze({ isCurrent,check,close });
-		} catch (error) { close(); throw error; }
+			return Object.freeze({ isCurrent, check, close });
+		} catch (error) {
+			close();
+			throw error;
+		}
 	}
 	captureMutationDestinations(): CreationStorageDestinations {
-		if (!creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture)) throw new Error('Original mutation destinations unavailable');
+		if (!creationMethodCurrent(this.storageService, 'captureCreationDestinations', propertyStorageReadMethods.capture))
+			throw new Error('Original mutation destinations unavailable');
 		return propertyStorageReadMethods.capture.call(this.storageService);
 	}
 	areMutationDestinationsCurrent(capture: CreationStorageDestinations): boolean {
-		return creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check) && propertyStorageReadMethods.check.call(this.storageService, capture);
+		return (
+			creationMethodCurrent(this.storageService, 'areCreationDestinationsCurrent', propertyStorageReadMethods.check) &&
+			propertyStorageReadMethods.check.call(this.storageService, capture)
+		);
 	}
 	/** Distinct original-owned mutation entry; no ordinary write/alias/history fallback. */
 	async writeMutationWithState(
@@ -679,11 +781,11 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		destinations: CreationStorageDestinations,
 	): Promise<PropertyValueWriteResult> {
-		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease);
 		const key = property.id;
-		originalControllerMutationMethods.assertValue.call(ControllerMutationPublicationEngine,lease,key,value);
-		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease, key);
-		originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine,lease, property);
+		originalControllerMutationMethods.assertValue.call(ControllerMutationPublicationEngine, lease, key, value);
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease, key);
+		originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
 		const writeInternalProperty: Readonly<{
 			get: (owner: PropertyValueService, key: 'writeInternal') => PropertyValueService['writeInternal'];
 		}> = Reflect;
@@ -696,11 +798,11 @@ export class PropertyValueService {
 		}> = writeInternal;
 		{
 			return await this.withCreatedValueLock(key, lease, async (valueLease) => {
-				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine,lease, property);
+				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
 				await valueLease.assertOwned();
-				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine,lease, property);
-				await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine,lease, key);
-				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine,lease, property);
+				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
+				await originalControllerMutationMethods.probe.call(ControllerMutationPublicationEngine, lease, key);
+				originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine, lease, property);
 				return write.call(this, property, key, value, false, undefined, undefined, false, false, {
 					lease,
 					destinations,
@@ -845,7 +947,7 @@ export class PropertyValueService {
 						});
 					}
 					const snapshot = Object.assign(
-						Object.create(Object.getPrototypeOf(property) as object) as ChannelPropertyEntity,
+						Object.create(nativePrototypeEvidence.getPrototypeOf(property)) as ChannelPropertyEntity,
 						property,
 					);
 					snapshot.value = clonePropertyValueState(result.state);
@@ -914,11 +1016,27 @@ export class PropertyValueService {
 
 	/** Full owned property closure is supplied by the original same-manager response lineage. */
 	captureDiagnosticSamples(properties: readonly ChannelPropertyEntity[]): DiagnosticSamples {
-		if (!this.producers || !diagnosticValueMethodsCurrent(this) || !diagnosticValueProducerMethodsCurrent(this.producers)) throw new Error('Original diagnostic sample APIs required');
+		if (
+			!this.producers ||
+			!diagnosticValueMethodsCurrent(this) ||
+			!diagnosticValueProducerMethodsCurrent(this.producers)
+		)
+			throw new Error('Original diagnostic sample APIs required');
 		const producer = this.producers;
-		const closeAlias: Readonly<{ call: (receiver: PropertyValueService,alias: PropertyReadAlias) => void }> = this.closeReadAlias;
+
+		const originalMemberView2: Readonly<{
+			get: (
+				receiver: PropertyValueService,
+				key: 'closeReadAlias',
+			) => OriginalFunction<PropertyValueService, PropertyValueService['closeReadAlias']>;
+		}> = Reflect;
+		const closeAlias: Readonly<{ call: (receiver: PropertyValueService, alias: PropertyReadAlias) => void }> =
+			originalMemberView2.get(this, 'closeReadAlias');
 		const aliases = new Map<string, PropertyReadAlias>();
-		const samples = new Map<string, DiagnosticSampleRecord['samples'] extends ReadonlyMap<string, infer V> ? V : never>();
+		const samples = new Map<
+			string,
+			DiagnosticSampleRecord['samples'] extends ReadonlyMap<string, infer V> ? V : never
+		>();
 		const watchers: ReadCacheObservation[] = [];
 		let publications: DiagnosticPublications | undefined;
 		try {
@@ -933,17 +1051,30 @@ export class PropertyValueService {
 				watchers.push(originalReadCacheApi.observe.call(originalReadCacheApi.receiver, key));
 				const sample = this.samples.get(key);
 				const tree = captureDiagnosticTree(sample);
-				const guard: Readonly<{ call: (receiver: QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) => boolean }> | undefined = sample?.isCurrent;
+				const guard:
+					| Readonly<{
+							call: (receiver: QualifiedPropertySample & Pick<PropertySampleEvidence, 'isCurrent'>) => boolean;
+					  }>
+					| undefined = sample?.isCurrent;
 				const sourceCurrent = !sample || guard === undefined || guard.call(sample);
-				samples.set(key, Object.freeze({ sample, tree, sourceCurrent,guard }));
+				samples.set(key, Object.freeze({ sample, tree, sourceCurrent, guard }));
 			}
 			publications = diagnosticValueProducerMethods.capture.call(producer, keys);
 			const token = Object.freeze(new DiagnosticSamples());
-			this.diagnosticSamples.set(token, { aliases,closeAlias,samples,producer, publications, watchers: Object.freeze(watchers), barrier, finished: false });
+			this.diagnosticSamples.set(token, {
+				aliases,
+				closeAlias,
+				samples,
+				producer,
+				publications,
+				watchers: Object.freeze(watchers),
+				barrier,
+				finished: false,
+			});
 			if (!diagnosticValueMethods.current.call(this, token)) throw new Error('Sample changed during original capture');
 			return token;
 		} catch (error) {
-			for (const alias of aliases.values()) closeAlias.call(this,alias);
+			for (const alias of aliases.values()) closeAlias.call(this, alias);
 			for (const sample of samples.values()) closeDiagnosticTree(sample.tree);
 			for (const watcher of watchers) originalReadCacheApi.finish.call(originalReadCacheApi.receiver, watcher);
 			if (publications) diagnosticValueProducerMethods.close.call(producer, publications);
@@ -952,24 +1083,46 @@ export class PropertyValueService {
 	}
 	diagnosticSampleBarrier(token: DiagnosticSamples): number {
 		const record = this.diagnosticSamples.get(token);
-		if (!record || !diagnosticValueMethods.current.call(this, token)) throw new Error('Original sample barrier unavailable');
+		if (!record || !diagnosticValueMethods.current.call(this, token))
+			throw new Error('Original sample barrier unavailable');
 		return record.barrier;
 	}
 	diagnosticSamplesCurrent(token: DiagnosticSamples): boolean {
 		const record = this.diagnosticSamples.get(token);
-		if (!record || record.finished || !diagnosticValueMethodsCurrent(this) || this.producers !== record.producer || !diagnosticValueProducerMethodsCurrent(record.producer) || !diagnosticValueProducerMethods.current.call(record.producer, record.publications)) return false;
+		if (
+			!record ||
+			record.finished ||
+			!diagnosticValueMethodsCurrent(this) ||
+			this.producers !== record.producer ||
+			!diagnosticValueProducerMethodsCurrent(record.producer) ||
+			!diagnosticValueProducerMethods.current.call(record.producer, record.publications)
+		)
+			return false;
 		for (const alias of record.aliases.values()) if (!alias.structuralCurrent()) return false;
-		for (const [key, entry] of record.samples) if (this.samples.get(key) !== entry.sample || !diagnosticTreeCurrent(entry.tree)) return false;
+		for (const [key, entry] of record.samples)
+			if (this.samples.get(key) !== entry.sample || !diagnosticTreeCurrent(entry.tree)) return false;
 		return originalReadCacheApi.current();
 	}
-	evaluateDiagnosticSample(token: DiagnosticSamples, propertyId: string, maxAgeMs: number, now: number): DiagnosticSampleData {
-		if (!Number.isFinite(now) || !Number.isFinite(maxAgeMs) || maxAgeMs < 0 || !diagnosticValueMethods.current.call(this, token)) throw new Error('Original sample observation lost');
+	evaluateDiagnosticSample(
+		token: DiagnosticSamples,
+		propertyId: string,
+		maxAgeMs: number,
+		now: number,
+	): DiagnosticSampleData {
+		if (
+			!Number.isFinite(now) ||
+			!Number.isFinite(maxAgeMs) ||
+			maxAgeMs < 0 ||
+			!diagnosticValueMethods.current.call(this, token)
+		)
+			throw new Error('Original sample observation lost');
 		const record = this.diagnosticSamples.get(token);
 		if (!record) throw new Error('Original samples unavailable');
 		const alias = record.aliases.get(propertyId);
 		if (!alias) throw new Error('Original diagnostic property unavailable');
 		if (!alias.current()) throw new Error('Original diagnostic source lost');
-		if (propertyReadSourceMethods.reason.call(alias.registry, alias.source) !== null) return Object.freeze({ sample: null, evidence: null });
+		if (propertyReadSourceMethods.reason.call(alias.registry, alias.source) !== null)
+			return Object.freeze({ sample: null, evidence: null });
 		const seen = new Set<string>();
 		const visit = (key: string, depth: number): DiagnosticSampleData => {
 			if (depth > 16 || seen.size >= 256 || seen.has(key)) return { sample: null, evidence: null };
@@ -978,21 +1131,51 @@ export class PropertyValueService {
 			const sourceAlias = record.aliases.get(key);
 			if (!sourceAlias || sourceAlias.key !== key) return { sample: null, evidence: null };
 			if (!sourceAlias.current()) throw new Error('Original diagnostic lineage source lost');
-			if (propertyReadSourceMethods.reason.call(sourceAlias.registry,sourceAlias.source) !== null)
+			if (propertyReadSourceMethods.reason.call(sourceAlias.registry, sourceAlias.source) !== null)
 				return { sample: null, evidence: null };
 			const derived = diagnosticValueProducerMethods.evaluate.call(record.producer, record.publications, key, now);
 			if (derived) {
 				const meta = derived.state.producer;
-				if (!meta || !derived.evidence || !derived.sources.length || derived.sources.length > 32 || derived.sources.some((source) => {
-					const current = visit(source.propertyId, depth + 1).evidence;
-					return !current || !sameDiagnosticEvidence(current, source);
-				})) return { sample: null, evidence: null };
-				const sampled = meta.sampledAt === null ? NaN : Date.parse(meta.sampledAt), received = Date.parse(meta.evaluatedAt);
-				if (!Number.isFinite(sampled) || !Number.isFinite(received) || sampled > received || received > now || now - sampled > maxAgeMs || derived.state.value === null || meta.quality === 'unavailable') return { sample: null, evidence: null };
-				return { sample: Object.freeze({ propertyId: key, value: derived.state.value, sampledAt: new Date(sampled), receivedAt: new Date(received), provenance: 'live', quality: meta.quality, reasons: Object.freeze([...meta.reasons]), revision: meta.revision }), evidence: derived.evidence };
+				if (
+					!meta ||
+					!derived.evidence ||
+					!derived.sources.length ||
+					derived.sources.length > 32 ||
+					derived.sources.some((source) => {
+						const current = visit(source.propertyId, depth + 1).evidence;
+						return !current || !sameDiagnosticEvidence(current, source);
+					})
+				)
+					return { sample: null, evidence: null };
+				const sampled = meta.sampledAt === null ? NaN : Date.parse(meta.sampledAt),
+					received = Date.parse(meta.evaluatedAt);
+				if (
+					!Number.isFinite(sampled) ||
+					!Number.isFinite(received) ||
+					sampled > received ||
+					received > now ||
+					now - sampled > maxAgeMs ||
+					derived.state.value === null ||
+					meta.quality === 'unavailable'
+				)
+					return { sample: null, evidence: null };
+				return {
+					sample: Object.freeze({
+						propertyId: key,
+						value: derived.state.value,
+						sampledAt: new Date(sampled),
+						receivedAt: new Date(received),
+						provenance: 'live',
+						quality: meta.quality,
+						reasons: Object.freeze([...meta.reasons]),
+						revision: meta.revision,
+					}),
+					evidence: derived.evidence,
+				};
 			}
 			// A producer-owned but unavailable output never falls through to a cached physical report.
-			if (diagnosticValueProducerMethods.has.call(record.producer, record.publications, key)) return { sample: null, evidence: null };
+			if (diagnosticValueProducerMethods.has.call(record.producer, record.publications, key))
+				return { sample: null, evidence: null };
 			const entry = record.samples.get(key);
 			if (!entry?.sample || !entry.sourceCurrent) return { sample: null, evidence: null };
 			const sample = entry.sample;
@@ -1000,8 +1183,22 @@ export class PropertyValueService {
 			if (!diagnosticTreeCurrent(entry.tree)) throw new Error('Original physical sample changed');
 			if (guard && !guard.call(sample)) throw new Error('Original physical sample source lost');
 			if (!diagnosticValueMethods.current.call(this, token)) throw new Error('Sample changed during original callback');
-			if (sample.quality !== 'good' || sample.sampledAt.getTime() > now || sample.receivedAt.getTime() > now || now - sample.sampledAt.getTime() > maxAgeMs) return { sample: null, evidence: null };
-			return { sample: Object.freeze({ ...sample, sampledAt: new Date(sample.sampledAt.getTime()), receivedAt: new Date(sample.receivedAt.getTime()), reasons: Object.freeze([...sample.reasons]) }), evidence: Object.freeze({ propertyId: key, acceptanceGeneration: sample.acceptanceGeneration ?? 0 }) };
+			if (
+				sample.quality !== 'good' ||
+				sample.sampledAt.getTime() > now ||
+				sample.receivedAt.getTime() > now ||
+				now - sample.sampledAt.getTime() > maxAgeMs
+			)
+				return { sample: null, evidence: null };
+			return {
+				sample: Object.freeze({
+					...sample,
+					sampledAt: new Date(sample.sampledAt.getTime()),
+					receivedAt: new Date(sample.receivedAt.getTime()),
+					reasons: Object.freeze([...sample.reasons]),
+				}),
+				evidence: Object.freeze({ propertyId: key, acceptanceGeneration: sample.acceptanceGeneration ?? 0 }),
+			};
 		};
 		const result = visit(alias.key, 0);
 		if (!diagnosticValueMethods.current.call(this, token)) throw new Error('Original sample changed during evaluation');
@@ -1009,17 +1206,20 @@ export class PropertyValueService {
 	}
 	/** Consuming pure terminal check; overlap is readonly data, never cache publication permission. */
 	finishDiagnosticSamples(token: DiagnosticSamples): boolean {
-		const record = this.diagnosticSamples.get(token); if (!record || record.finished) return false;
+		const record = this.diagnosticSamples.get(token);
+		if (!record || record.finished) return false;
 		let current = diagnosticValueMethods.current.call(this, token);
 		record.finished = true;
-		for (const watcher of record.watchers) if (originalReadCacheApi.finish.call(originalReadCacheApi.receiver, watcher) === 'changed') current = false;
+		for (const watcher of record.watchers)
+			if (originalReadCacheApi.finish.call(originalReadCacheApi.receiver, watcher) === 'changed') current = false;
 		return current;
 	}
 	closeDiagnosticSamples(token: DiagnosticSamples): void {
-		const record = this.diagnosticSamples.get(token); if (!record) return;
+		const record = this.diagnosticSamples.get(token);
+		if (!record) return;
 		if (!record.finished) diagnosticValueMethods.finish.call(this, token);
 		this.diagnosticSamples.delete(token);
-		for (const alias of record.aliases.values()) record.closeAlias.call(this,alias);
+		for (const alias of record.aliases.values()) record.closeAlias.call(this, alias);
 		for (const entry of record.samples.values()) closeDiagnosticTree(entry.tree);
 		diagnosticValueProducerMethods.close.call(record.producer, record.publications);
 	}
@@ -1361,7 +1561,10 @@ export class PropertyValueService {
 		valueTimestamp?: Date,
 		deferHistory = false,
 		producerWrite = false,
-		creation?: Readonly<{ lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease; destinations: CreationStorageDestinations }>,
+		creation?: Readonly<{
+			lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease;
+			destinations: CreationStorageDestinations;
+		}>,
 	): Promise<PropertyValueWriteResult> {
 		if (creation) assertOwnedValuePublication(creation.lease, key);
 		// A projected property owns no series — the value belongs to its source, and only the source's
@@ -1501,7 +1704,8 @@ export class PropertyValueService {
 
 		if (creation) {
 			assertOwnedValuePublication(creation.lease, key);
-			if (creation.lease instanceof ControllerMutationPublicationLease) await this.storageService.writeMutationPoints(creation.lease, creation.destinations, [point]);
+			if (creation.lease instanceof ControllerMutationPublicationLease)
+				await this.storageService.writeMutationPoints(creation.lease, creation.destinations, [point]);
 			else await this.storageService.writeCreatedPoints(creation.lease, creation.destinations, [point]);
 			assertOwnedValuePublication(creation.lease, key);
 			return { changed: true, state };
@@ -2304,12 +2508,17 @@ export class PropertyValueService {
 }
 
 function sameDiagnosticEvidence(a: IncorporatedPropertySample, b: IncorporatedPropertySample): boolean {
-	return a.propertyId === b.propertyId && a.acceptanceGeneration === b.acceptanceGeneration &&
-		a.producer?.lease === b.producer?.lease && a.producer?.publication === b.producer?.publication &&
-		a.producer?.revision === b.producer?.revision && a.producer?.expiresAt === b.producer?.expiresAt &&
-		a.producer?.quality === b.producer?.quality;
+	return (
+		a.propertyId === b.propertyId &&
+		a.acceptanceGeneration === b.acceptanceGeneration &&
+		a.producer?.lease === b.producer?.lease &&
+		a.producer?.publication === b.producer?.publication &&
+		a.producer?.revision === b.producer?.revision &&
+		a.producer?.expiresAt === b.producer?.expiresAt &&
+		a.producer?.quality === b.producer?.quality
+	);
 }
-const diagnosticValuePrototype: Readonly<{
+const diagnosticValuePrototype: OriginalFunctions<{
 	captureDiagnosticSamples: PropertyValueService['captureDiagnosticSamples'];
 	diagnosticSamplesCurrent: PropertyValueService['diagnosticSamplesCurrent'];
 	diagnosticSampleBarrier: PropertyValueService['diagnosticSampleBarrier'];
@@ -2317,22 +2526,32 @@ const diagnosticValuePrototype: Readonly<{
 	finishDiagnosticSamples: PropertyValueService['finishDiagnosticSamples'];
 	closeDiagnosticSamples: PropertyValueService['closeDiagnosticSamples'];
 }> = PropertyValueService.prototype;
-const diagnosticValueMethods = Object.freeze({ capture: diagnosticValuePrototype.captureDiagnosticSamples,
-	current: diagnosticValuePrototype.diagnosticSamplesCurrent, barrier: diagnosticValuePrototype.diagnosticSampleBarrier,
-	evaluate: diagnosticValuePrototype.evaluateDiagnosticSample, finish: diagnosticValuePrototype.finishDiagnosticSamples,
-	close: diagnosticValuePrototype.closeDiagnosticSamples });
-const originalDiagnosticAliasCapture: unknown = Reflect.get(PropertyValueService.prototype,'captureReadAlias');
-const originalDiagnosticAliasClose: unknown = Reflect.get(PropertyValueService.prototype,'closeReadAlias');
+const diagnosticValueMethods = Object.freeze({
+	capture: diagnosticValuePrototype.captureDiagnosticSamples,
+	current: diagnosticValuePrototype.diagnosticSamplesCurrent,
+	barrier: diagnosticValuePrototype.diagnosticSampleBarrier,
+	evaluate: diagnosticValuePrototype.evaluateDiagnosticSample,
+	finish: diagnosticValuePrototype.finishDiagnosticSamples,
+	close: diagnosticValuePrototype.closeDiagnosticSamples,
+});
+const originalDiagnosticAliasCapture: unknown = nativeFieldEvidence.get(
+	PropertyValueService.prototype,
+	'captureReadAlias',
+);
+const originalDiagnosticAliasClose: unknown = nativeFieldEvidence.get(PropertyValueService.prototype, 'closeReadAlias');
 function diagnosticValueMethodsCurrent(receiver: PropertyValueService): boolean {
-	return creationMethodCurrent(receiver,'captureReadAlias',originalDiagnosticAliasCapture) &&
-		creationMethodCurrent(receiver,'closeReadAlias',originalDiagnosticAliasClose) && creationMethodCurrent(receiver, 'captureDiagnosticSamples', diagnosticValueMethods.capture) &&
+	return (
+		creationMethodCurrent(receiver, 'captureReadAlias', originalDiagnosticAliasCapture) &&
+		creationMethodCurrent(receiver, 'closeReadAlias', originalDiagnosticAliasClose) &&
+		creationMethodCurrent(receiver, 'captureDiagnosticSamples', diagnosticValueMethods.capture) &&
 		creationMethodCurrent(receiver, 'diagnosticSamplesCurrent', diagnosticValueMethods.current) &&
 		creationMethodCurrent(receiver, 'diagnosticSampleBarrier', diagnosticValueMethods.barrier) &&
 		creationMethodCurrent(receiver, 'evaluateDiagnosticSample', diagnosticValueMethods.evaluate) &&
 		creationMethodCurrent(receiver, 'finishDiagnosticSamples', diagnosticValueMethods.finish) &&
-		creationMethodCurrent(receiver, 'closeDiagnosticSamples', diagnosticValueMethods.close);
+		creationMethodCurrent(receiver, 'closeDiagnosticSamples', diagnosticValueMethods.close)
+	);
 }
-const diagnosticValueProducerPrototype: Readonly<{
+const diagnosticValueProducerPrototype: OriginalFunctions<{
 	captureDiagnosticPublications: PropertyProducerRegistryService['captureDiagnosticPublications'];
 	diagnosticPublicationsCurrent: PropertyProducerRegistryService['diagnosticPublicationsCurrent'];
 	evaluateDiagnosticPublication: PropertyProducerRegistryService['evaluateDiagnosticPublication'];
@@ -2343,33 +2562,53 @@ const diagnosticValueProducerPrototype: Readonly<{
 	isCreationObservationCurrent: PropertyProducerRegistryService['isCreationObservationCurrent'];
 	closeCreationObservation: PropertyProducerRegistryService['closeCreationObservation'];
 }> = PropertyProducerRegistryService.prototype;
-const diagnosticValueProducerMethods = Object.freeze({ capture: diagnosticValueProducerPrototype.captureDiagnosticPublications,
+const diagnosticValueProducerMethods = Object.freeze({
+	capture: diagnosticValueProducerPrototype.captureDiagnosticPublications,
 	current: diagnosticValueProducerPrototype.diagnosticPublicationsCurrent,
 	evaluate: diagnosticValueProducerPrototype.evaluateDiagnosticPublication,
 	has: diagnosticValueProducerPrototype.diagnosticPublicationObserved,
-	close: diagnosticValueProducerPrototype.closeDiagnosticPublications,owns: diagnosticValueProducerPrototype.owns,
-	begin: diagnosticValueProducerPrototype.beginCreationObservation,observationCurrent: diagnosticValueProducerPrototype.isCreationObservationCurrent,
-	closeObservation: diagnosticValueProducerPrototype.closeCreationObservation });
+	close: diagnosticValueProducerPrototype.closeDiagnosticPublications,
+	owns: diagnosticValueProducerPrototype.owns,
+	begin: diagnosticValueProducerPrototype.beginCreationObservation,
+	observationCurrent: diagnosticValueProducerPrototype.isCreationObservationCurrent,
+	closeObservation: diagnosticValueProducerPrototype.closeCreationObservation,
+});
 function diagnosticValueProducerMethodsCurrent(receiver: PropertyProducerRegistryService): boolean {
-	return creationMethodCurrent(receiver,'beginCreationObservation',diagnosticValueProducerMethods.begin) &&
-		creationMethodCurrent(receiver,'isCreationObservationCurrent',diagnosticValueProducerMethods.observationCurrent) &&
-		creationMethodCurrent(receiver,'closeCreationObservation',diagnosticValueProducerMethods.closeObservation) &&
-		creationMethodCurrent(receiver,'owns',diagnosticValueProducerMethods.owns) && creationMethodCurrent(receiver, 'captureDiagnosticPublications', diagnosticValueProducerMethods.capture) &&
+	return (
+		creationMethodCurrent(receiver, 'beginCreationObservation', diagnosticValueProducerMethods.begin) &&
+		creationMethodCurrent(
+			receiver,
+			'isCreationObservationCurrent',
+			diagnosticValueProducerMethods.observationCurrent,
+		) &&
+		creationMethodCurrent(receiver, 'closeCreationObservation', diagnosticValueProducerMethods.closeObservation) &&
+		creationMethodCurrent(receiver, 'owns', diagnosticValueProducerMethods.owns) &&
+		creationMethodCurrent(receiver, 'captureDiagnosticPublications', diagnosticValueProducerMethods.capture) &&
 		creationMethodCurrent(receiver, 'diagnosticPublicationsCurrent', diagnosticValueProducerMethods.current) &&
 		creationMethodCurrent(receiver, 'evaluateDiagnosticPublication', diagnosticValueProducerMethods.evaluate) &&
 		creationMethodCurrent(receiver, 'diagnosticPublicationObserved', diagnosticValueProducerMethods.has) &&
-		creationMethodCurrent(receiver, 'closeDiagnosticPublications', diagnosticValueProducerMethods.close);
+		creationMethodCurrent(receiver, 'closeDiagnosticPublications', diagnosticValueProducerMethods.close)
+	);
 }
 
-function assertOwnedValuePublication(lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease, key: string): void {
-	if (lease instanceof ControllerMutationPublicationLease) originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine,lease,key);
+function assertOwnedValuePublication(
+	lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease,
+	key: string,
+): void {
+	if (lease instanceof ControllerMutationPublicationLease)
+		originalControllerMutationMethods.check.call(ControllerMutationPublicationEngine, lease, key);
 	else DeviceCreationPublicationEngine.assert(lease, key);
 }
-function assertOwnedValueProperty(lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease, property: ChannelPropertyEntity): void {
-	if (lease instanceof ControllerMutationPublicationLease) originalControllerMutationMethods.assertProperty.call(ControllerMutationPublicationEngine,lease, property);
-	else DeviceCreationPublicationEngine.assertProperty(lease, property);
-}
-function ownedValuePublicationCurrent(lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease): boolean {
-	if (!(lease instanceof ControllerMutationPublicationLease)) return originalReadCacheApi.createdCurrent.call(originalReadCacheApi.receiver, lease);
-	try { originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine,lease); return true; } catch { return false; }
+
+function ownedValuePublicationCurrent(
+	lease: DeviceCreationPublicationLease | ControllerMutationPublicationLease,
+): boolean {
+	if (!(lease instanceof ControllerMutationPublicationLease))
+		return originalReadCacheApi.createdCurrent.call(originalReadCacheApi.receiver, lease);
+	try {
+		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
+		return true;
+	} catch {
+		return false;
+	}
 }

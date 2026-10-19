@@ -3,6 +3,8 @@ import { EntityManager } from 'typeorm';
 
 import type { DeviceCreationContext, DeviceCreationEnvironment } from '../services/device-creation-context';
 
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+
 /** PRIVATE core protocol. No HTTP/Swagger schema, runtime frame or physical authority. */
 export type ClimateAutomationJson =
 	| null
@@ -22,7 +24,7 @@ export function climateAutomationCanonical(value: unknown): string {
 	if (typeof value !== 'object') throw new Error('Invalid private climate JSON');
 	return `{${Object.keys(value)
 		.sort()
-		.map((key) => `${JSON.stringify(key)}:${climateAutomationCanonical(Reflect.get(value, key))}`)
+		.map((key) => `${JSON.stringify(key)}:${climateAutomationCanonical(nativeFieldEvidence.get(value, key))}`)
 		.join(',')}}`;
 }
 
@@ -35,7 +37,7 @@ export function climateAutomationJson(value: unknown): ClimateAutomationJson {
 	if (typeof value !== 'object' || value === null) throw new Error('Invalid private climate JSON');
 	const result: Record<string, ClimateAutomationJson> = {};
 	for (const key of Object.keys(value)) {
-		const item: unknown = Reflect.get(value, key);
+		const item: unknown = nativeFieldEvidence.get(value, key);
 		Object.defineProperty(result, key, { value: climateAutomationJson(item), enumerable: true });
 	}
 	return Object.freeze(result);
@@ -221,8 +223,10 @@ export type ClimateAutomationGraphValidation =
 	| { readonly outcome: 'THIS_JOB_NOT_VALIDATED'; readonly reason: ClimateAutomationValidationReason };
 export interface ClimateAutomationGraphParticipant {
 	/** Existing concrete graph's pure capture. Required only by the new route family; no generation is minted by capture. */
-	readonly captureOwnedPublicationLifecycle?: () => Readonly<{ isCurrent: () => boolean;
-		guard: Readonly<{ isCurrent: () => boolean; reason: string }> }>;
+	readonly captureOwnedPublicationLifecycle?: () => Readonly<{
+		isCurrent: () => boolean;
+		guard: Readonly<{ isCurrent: () => boolean; reason: string }>;
+	}>;
 
 	readonly readReservedGraph: (
 		manager: EntityManager,
@@ -356,7 +360,10 @@ function manualRecord(value: unknown): Readonly<Record<string, ClimateAutomation
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return manualInvalid();
 	const result: Record<string, ClimateAutomationJson> = {};
 	for (const key of Object.keys(value))
-		Object.defineProperty(result, key, { value: climateAutomationJson(Reflect.get(value, key)), enumerable: true });
+		Object.defineProperty(result, key, {
+			value: climateAutomationJson(nativeFieldEvidence.get(value, key)),
+			enumerable: true,
+		});
 	return Object.freeze(result);
 }
 function manualRows(value: unknown): readonly Readonly<Record<string, ClimateAutomationJson>>[] {
@@ -674,12 +681,23 @@ export type ClimateAutomationCreationOutcome =
 /** Closed existing-catalog operation. Wire payloads are decoded by the original concrete codec,
  * never interpreted as a desired private document, SQL, callback or caller-owned ledger plan. */
 export type ClimateAutomationExistingKind =
-	| 'configure-existing:v1' | 'settings:v1' | 'preset:v1' | 'comfort-definition:v1'
-	| 'override-create:v1' | 'override-cancel:v1' | 'settle-override:v1'
-	| 'request-release:v1' | 'restore-actuator:v1';
+	| 'configure-existing:v1'
+	| 'settings:v1'
+	| 'preset:v1'
+	| 'comfort-definition:v1'
+	| 'override-create:v1'
+	| 'override-cancel:v1'
+	| 'settle-override:v1'
+	| 'request-release:v1'
+	| 'restore-actuator:v1';
 export type ClimateAutomationExistingRequest =
 	| Readonly<{ providerKey: string; kind: 'settings:v1'; input: unknown }>
-	| Readonly<{ providerKey: string; controllerId: string; kind: Exclude<ClimateAutomationExistingKind,'settings:v1'>; input: unknown }>;
+	| Readonly<{
+			providerKey: string;
+			controllerId: string;
+			kind: Exclude<ClimateAutomationExistingKind, 'settings:v1'>;
+			input: unknown;
+	  }>;
 export interface ClimateAutomationExistingInput {
 	readonly providerKey: string;
 	readonly controllerId: string;
@@ -689,9 +707,20 @@ export interface ClimateAutomationExistingInput {
 /** Full listener-free raw evidence, including NULL/JSON/native STI columns and memberships.
  * The plugin can only materialize the enumerated catalog family; the ledger is exclusively core-owned. */
 export type ClimateAutomationExistingTable =
-	| 'configurations' | 'sources' | 'actuators' | 'settings' | 'protections' | 'cooling'
-	| 'devices' | 'channels' | 'properties' | 'runtime' | 'commands' | 'recovery'
-	| 'installations' | 'referenceCatalog';
+	| 'configurations'
+	| 'sources'
+	| 'actuators'
+	| 'settings'
+	| 'protections'
+	| 'cooling'
+	| 'devices'
+	| 'channels'
+	| 'properties'
+	| 'runtime'
+	| 'commands'
+	| 'recovery'
+	| 'installations'
+	| 'referenceCatalog';
 export interface ClimateAutomationExistingFacts {
 	readonly controllerId: string;
 	readonly image: ClimateAutomationParticipantImage | null;
@@ -734,22 +763,33 @@ export interface ClimateAutomationExistingCapability {
 		close: () => void;
 	}>;
 	readonly readFactsInManager: (
-		manager: EntityManager, turn: ClimateAutomationParticipantTurn, controllerId: string,
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		controllerId: string,
 	) => Promise<ClimateAutomationExistingFacts>;
 	readonly normalizeInManager: (
-		manager: EntityManager, turn: ClimateAutomationParticipantTurn,
-		input: ClimateAutomationExistingInput, before: ClimateAutomationExistingFacts,
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		input: ClimateAutomationExistingInput,
+		before: ClimateAutomationExistingFacts,
 	) => Promise<ClimateAutomationExistingNormalized>;
 	readonly materializeInManager: (
-		manager: EntityManager, turn: ClimateAutomationParticipantTurn, input: ClimateAutomationExistingInput,
-		before: ClimateAutomationExistingFacts, normalized: ClimateAutomationExistingNormalized, revision: number,
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		input: ClimateAutomationExistingInput,
+		before: ClimateAutomationExistingFacts,
+		normalized: ClimateAutomationExistingNormalized,
+		revision: number,
 	) => Promise<ClimateAutomationExistingPlan>;
 	readonly applyInManager: (
-		manager: EntityManager, turn: ClimateAutomationParticipantTurn,
-		before: ClimateAutomationExistingFacts, plan: ClimateAutomationExistingPlan,
+		manager: EntityManager,
+		turn: ClimateAutomationParticipantTurn,
+		before: ClimateAutomationExistingFacts,
+		plan: ClimateAutomationExistingPlan,
 	) => Promise<void>;
 	readonly completeAcknowledged: (
-		input: ClimateAutomationExistingInput, plan: ClimateAutomationExistingPlan,
+		input: ClimateAutomationExistingInput,
+		plan: ClimateAutomationExistingPlan,
 		slot: ClimateAutomationSlotFacts,
 		publication: import('../services/device-creation-context').ControllerMutationPublicationLease | null,
 	) => Promise<ClimateAutomationJson>;
@@ -792,15 +832,21 @@ export interface ClimateAutomationOverrideFacts {
 
 /** Finite readonly veto observation, never source/command/publication authority. */
 export class ClimateAutomationIntentView {
-	toJSON(): Readonly<Record<string,never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 
 /** Event-only original receipt. It can never authorize values, SQL or a manager. */
 export class ClimateAutomationNotificationReceipt {
-	toJSON(): Readonly<Record<string,never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 
 /** Original process-local override budget. Closing it is a veto, not a durable intent mutation. */
 export class ClimateAutomationOverrideLease {
-	toJSON(): Readonly<Record<string,never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }

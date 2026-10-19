@@ -5,9 +5,9 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
-	ClimateAutomationExistingCapability,
 	ClimateAutomationControllerFacts,
 	ClimateAutomationCreationCapability,
+	ClimateAutomationExistingCapability,
 	ClimateAutomationGraphReplacementPlan,
 	ClimateAutomationJson,
 	ClimateAutomationManualCapability,
@@ -64,11 +64,20 @@ import { VirtualTransformConfigEntity, VirtualTransformSourceEntity } from '../e
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { DEW_POINT_FORMULA } from './virtual-dew-point.utils';
 import { VirtualThermostatAuthoringService } from './virtual-thermostat-authoring.service';
-import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
 import { validateThermostatComfort } from './virtual-thermostat-comfort.utils';
+import { VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
+
+const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
+const nativeJsonEvidence: Readonly<{ parse: (text: string) => unknown }> = JSON;
+
+/** Erased original-function view: same function object, explicit original receiver and result. */
+type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => infer Result
+	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
+	: Method;
+type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
 
 interface AutomationReceiverCall<R, A extends unknown[], V> {
 	readonly call: (receiver: R, ...args: A) => V;
@@ -249,7 +258,7 @@ function object(value: unknown): Record<string, unknown> {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return fail();
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value))
-		Object.defineProperty(result, key, { value: Reflect.get(value, key), enumerable: true });
+		Object.defineProperty(result, key, { value: nativeFieldEvidence.get(value, key), enumerable: true });
 	return result;
 }
 function list(value: unknown): readonly unknown[] {
@@ -266,7 +275,7 @@ function id(value: unknown): string {
 	return result;
 }
 function own(value: unknown): ClimateAutomationJson {
-	const parsed: unknown = JSON.parse(climateAutomationCanonical(value));
+	const parsed: unknown = nativeJsonEvidence.parse(climateAutomationCanonical(value));
 	return climateAutomationJson(parsed);
 }
 function integer(value: unknown, minimum: number): number {
@@ -277,7 +286,7 @@ function relation(value: unknown): string | null {
 	if (value === null || value === undefined) return null;
 	if (typeof value === 'string') return id(value);
 	if (typeof value !== 'object' || Array.isArray(value)) return fail();
-	return id(Reflect.get(value, 'id'));
+	return id(nativeFieldEvidence.get(value, 'id'));
 }
 function persistedJson(value: unknown, column: string, path: readonly string[] = []): ClimateAutomationJson {
 	if (Array.isArray(value))
@@ -286,7 +295,7 @@ function persistedJson(value: unknown, column: string, path: readonly string[] =
 	if (value instanceof Date) return fail();
 	const result: Record<string, ClimateAutomationJson> = {};
 	for (const key of Object.keys(value)) {
-		const entry: unknown = Reflect.get(value, key);
+		const entry: unknown = nativeFieldEvidence.get(value, key);
 		const optional =
 			(column === 'comfort' &&
 				((path.length === 0 && key === 'automation_baseline') ||
@@ -333,7 +342,7 @@ function field(name: string, value: unknown): ClimateAutomationJson {
 function project(row: object, columns: readonly string[], optional: readonly string[] = []): JsonObject {
 	const result: Record<string, ClimateAutomationJson> = {};
 	for (const name of columns) {
-		const value: unknown = Reflect.get(row, name);
+		const value: unknown = nativeFieldEvidence.get(row, name);
 		if (value === undefined && optional.includes(name)) continue;
 		result[name] = field(name, value);
 	}
@@ -717,24 +726,35 @@ function document(value: unknown): ClimateAutomationParticipantDocument {
 }
 /** Unknown persisted JSON is fenced, not dropped. This is representation checking, NOT C1 apply permission. */
 export function thermostatAutomationMutationIssues(value: unknown): readonly string[] {
-	return thermostatMutationIssues(value,false);
+	return thermostatMutationIssues(value, false);
 }
 /** Only the genuine existing NORMALIZE turn may retain malformed lifetime DATA for protective settlement/cancellation.
  * C0/B planning remains strict. No clock field is rewritten, defaulted or turned into activation authority. */
-export function thermostatExistingRetainedIssues(manager: EntityManager,turn: ClimateAutomationParticipantTurn,
-	writer: ClimateAutomationWriterService,value: ClimateAutomationParticipantImage): readonly string[] {
-	writer.assertParticipantTurn(manager,turn,['NORMALIZE']);
-	const clock = writer.readExistingClock(manager,turn),state = object(value.comfort).configuration;
+export function thermostatExistingRetainedIssues(
+	manager: EntityManager,
+	turn: ClimateAutomationParticipantTurn,
+	writer: ClimateAutomationWriterService,
+	value: ClimateAutomationParticipantImage,
+): readonly string[] {
+	writer.assertParticipantTurn(manager, turn, ['NORMALIZE']);
+	const clock = writer.readExistingClock(manager, turn),
+		state = object(value.comfort).configuration;
 	const override = state === null ? null : object(state).temporary_override;
 	let retained = false;
 	if (override !== null && override !== undefined) {
-		const row = object(override),status = row.status;
-		retained = status === 'expired' || status === 'clock_uncertain' || status === 'cancelled' ||
-			(status === 'active' && row.id === clock.overrideId && (clock.status === 'expired' || clock.status === 'clock_uncertain'));
+		const row = object(override),
+			status = row.status;
+		retained =
+			status === 'expired' ||
+			status === 'clock_uncertain' ||
+			status === 'cancelled' ||
+			(status === 'active' &&
+				row.id === clock.overrideId &&
+				(clock.status === 'expired' || clock.status === 'clock_uncertain'));
 	}
-	return thermostatMutationIssues(value,retained);
+	return thermostatMutationIssues(value, retained);
 }
-function thermostatMutationIssues(value: unknown,retainedLifetime: boolean): readonly string[] {
+function thermostatMutationIssues(value: unknown, retainedLifetime: boolean): readonly string[] {
 	const captured = own(value),
 		doc = document(captured),
 		configuration = object(doc.configuration),
@@ -879,14 +899,19 @@ function thermostatMutationIssues(value: unknown,retainedLifetime: boolean): rea
 				!['user', 'panel'].includes(text(override.source))
 			)
 				issues.push('override_shape');
-			if (!retainedLifetime) for (const key of ['created_at', 'expires_at'])
-				if (
-					typeof override[key] !== 'string' ||
-					!/T.*(?:Z|[+-]\d\d:\d\d)$/.test(text(override[key])) ||
-					!Number.isFinite(Date.parse(text(override[key])))
-				)
-					issues.push('override_clock_shape');
-			if (!retainedLifetime && override.original_duration_ms !== undefined && integer(override.original_duration_ms, 1) > 7 * 86400000)
+			if (!retainedLifetime)
+				for (const key of ['created_at', 'expires_at'])
+					if (
+						typeof override[key] !== 'string' ||
+						!/T.*(?:Z|[+-]\d\d:\d\d)$/.test(text(override[key])) ||
+						!Number.isFinite(Date.parse(text(override[key])))
+					)
+						issues.push('override_clock_shape');
+			if (
+				!retainedLifetime &&
+				override.original_duration_ms !== undefined &&
+				integer(override.original_duration_ms, 1) > 7 * 86400000
+			)
 				issues.push('override_clock_shape');
 			check(override.setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints');
 			check(override.resolved_setpoints, ['heating_setpoint', 'cooling_setpoint'], 'unknown_setpoints');
@@ -1144,8 +1169,12 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		private readonly graph: VirtualDependencyGraphService,
 		@Optional() private readonly configService: NestConfigService = new NestConfigService(),
 		@Optional() private readonly authoring?: VirtualThermostatAuthoringService,
-		@Optional() @Inject(forwardRef(() => VirtualThermostatConfigService)) private readonly configurations?: VirtualThermostatConfigService,
-		@Optional() @Inject(forwardRef(() => VirtualThermostatComfortService)) private readonly comfort?: VirtualThermostatComfortService,
+		@Optional()
+		@Inject(forwardRef(() => VirtualThermostatConfigService))
+		private readonly configurations?: VirtualThermostatConfigService,
+		@Optional()
+		@Inject(forwardRef(() => VirtualThermostatComfortService))
+		private readonly comfort?: VirtualThermostatComfortService,
 	) {
 		// Published closures retain these exact original functions and receiver; never look up a newer alias.
 		const methods: AutomationMethodReferences = this satisfies AutomationMethodReferences;
@@ -1270,33 +1299,79 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		if (configurations && comfort) {
 			const configurationCurrent = configurations.captureExistingMethodPins(this.writer);
 			const comfortCurrent = comfort.captureExistingMethodPins(this.writer);
-			const originalRows = this.readRowsInManager,ownRows = ownDiagnosticData;
-			const current = (): boolean => !this.destroyed && configurationCurrent() && comfortCurrent() &&
-				creationMethodCurrent(this,'readRowsInManager',originalRows);
-			const methods: Readonly<Pick<VirtualThermostatConfigService,
-				'snapshotExistingInput' | 'captureExistingEnvironment' | 'holdExistingAtEntry' | 'readExistingFactsInManager' |
-				'normalizeExistingInManager' | 'materializeExistingInManager' | 'applyExistingInManager' | 'completeExistingAcknowledged'>> = configurations;
-			const { snapshotExistingInput, captureExistingEnvironment,holdExistingAtEntry,readExistingFactsInManager,
-				normalizeExistingInManager,materializeExistingInManager,applyExistingInManager,completeExistingAcknowledged } = methods;
-			existing = Object.freeze<ClimateAutomationExistingCapability>({ version: 1,codec: 'virtual-thermostat-existing:v1',
+
+			const originalMemberView1: Readonly<{
+				get: (
+					receiver: VirtualThermostatAutomationService,
+					key: 'readRowsInManager',
+				) => OriginalFunction<
+					VirtualThermostatAutomationService,
+					VirtualThermostatAutomationService['readRowsInManager']
+				>;
+			}> = Reflect;
+			const originalRows = originalMemberView1.get(this, 'readRowsInManager'),
+				ownRows = ownDiagnosticData;
+			const current = (): boolean =>
+				!this.destroyed &&
+				configurationCurrent() &&
+				comfortCurrent() &&
+				creationMethodCurrent(this, 'readRowsInManager', originalRows);
+			const methods: OriginalFunctions<
+				Pick<
+					VirtualThermostatConfigService,
+					| 'snapshotExistingInput'
+					| 'captureExistingEnvironment'
+					| 'holdExistingAtEntry'
+					| 'readExistingFactsInManager'
+					| 'normalizeExistingInManager'
+					| 'materializeExistingInManager'
+					| 'applyExistingInManager'
+					| 'completeExistingAcknowledged'
+				>
+			> = configurations;
+			const {
+				snapshotExistingInput,
+				captureExistingEnvironment,
+				holdExistingAtEntry,
+				readExistingFactsInManager,
+				normalizeExistingInManager,
+				materializeExistingInManager,
+				applyExistingInManager,
+				completeExistingAcknowledged,
+			} = methods;
+			existing = Object.freeze<ClimateAutomationExistingCapability>({
+				version: 1,
+				codec: 'virtual-thermostat-existing:v1',
 				isCurrent: current,
-				snapshotInput: (kind,input) => snapshotExistingInput.call(configurations,kind,input,comfort),
+				snapshotInput: (kind, input) => snapshotExistingInput.call(configurations, kind, input, comfort),
 				captureEnvironment: () => captureExistingEnvironment.call(configurations),
 				holdAtEntry: () => holdExistingAtEntry.call(configurations),
-				readFactsInManager: async (manager,turn,controllerId) => {
-					this.writer.assertParticipantTurn(manager,turn,['READ_BEFORE','READ_AFTER','FINAL_READ']);
+				readFactsInManager: async (manager, turn, controllerId) => {
+					this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 					if (!current()) unavailable();
-					const rows = await originalRows.call(this,manager,controllerId,true,turn);
-					this.writer.assertParticipantTurn(manager,turn,['READ_BEFORE','READ_AFTER','FINAL_READ']);
+					const rows = await originalRows.call(this, manager, controllerId, true, turn);
+					this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
 					if (!current() || !rows) return unavailable();
 					const ownedRows = ownRows(rows);
-					return readExistingFactsInManager.call(configurations,manager,turn,controllerId,ownedRows);
+					return readExistingFactsInManager.call(configurations, manager, turn, controllerId, ownedRows);
 				},
-				normalizeInManager: (manager,turn,input,before) => normalizeExistingInManager.call(configurations,manager,turn,input,before,comfort),
-				materializeInManager: (manager,turn,input,before,normalized,revision) =>
-					materializeExistingInManager.call(configurations,manager,turn,input,before,normalized,revision,comfort),
-				applyInManager: (manager,turn,before,plan) => applyExistingInManager.call(configurations,manager,turn,before,plan),
-				completeAcknowledged: (input,plan,slot,publication) => completeExistingAcknowledged.call(configurations,input,plan,slot,publication,comfort),
+				normalizeInManager: (manager, turn, input, before) =>
+					normalizeExistingInManager.call(configurations, manager, turn, input, before, comfort),
+				materializeInManager: (manager, turn, input, before, normalized, revision) =>
+					materializeExistingInManager.call(
+						configurations,
+						manager,
+						turn,
+						input,
+						before,
+						normalized,
+						revision,
+						comfort,
+					),
+				applyInManager: (manager, turn, before, plan) =>
+					applyExistingInManager.call(configurations, manager, turn, before, plan),
+				completeAcknowledged: (input, plan, slot, publication) =>
+					completeExistingAcknowledged.call(configurations, input, plan, slot, publication, comfort),
 			});
 		}
 		this.provider = Object.freeze<ClimateAutomationProvider>({
@@ -1367,15 +1442,26 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		allowAbsent = false,
 		turn?: ClimateAutomationParticipantTurn,
 	): Promise<ThermostatAutomationRows | null> {
-		const check = (): void => { if (turn) this.writer.assertParticipantTurn(manager,turn,['READ_BEFORE','READ_AFTER','FINAL_READ']); };
+		const check = (): void => {
+			if (turn) this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+		};
 		const read = <T extends ObjectLiteral>(
 			entity: EntityTarget<T>,
 			condition = '1=1',
 			parameters: ObjectLiteral = {},
 		): Promise<T[]> => {
 			check();
-			return manager.createQueryBuilder(entity,'row').where(condition,parameters).callListeners(false)
-				.take(MAX_ROWS + 1).getMany().then((rows) => { check(); if (rows.length > MAX_ROWS) return fail(); return rows; });
+			return manager
+				.createQueryBuilder(entity, 'row')
+				.where(condition, parameters)
+				.callListeners(false)
+				.take(MAX_ROWS + 1)
+				.getMany()
+				.then((rows) => {
+					check();
+					if (rows.length > MAX_ROWS) return fail();
+					return rows;
+				});
 		};
 		const configurations = await read(VirtualThermostatConfigEntity, 'row.controllerId = :controllerId', {
 			controllerId,
@@ -1720,7 +1806,10 @@ function manualRowValues(row: VirtualThermostatConfigEntity, next: ClimateAutoma
 
 /** Existing configuration edits retain catalog lineage. Permissions/consumer membership can be structural
  * without inventing a thermostat measurement edge. Both sides are independently derived from this full catalog. */
-export function thermostatExistingOwnedGraphPlan(rows: ThermostatAutomationRows,controllerId: string): ClimateAutomationGraphReplacementPlan {
+export function thermostatExistingOwnedGraphPlan(
+	rows: ThermostatAutomationRows,
+	controllerId: string,
+): ClimateAutomationGraphReplacementPlan {
 	id(controllerId);
 	const channels = rows.channels.filter((row) => relation(row.device) === controllerId);
 	const channelIds = new Set(channels.map((row) => id(row.id)));
@@ -1729,23 +1818,29 @@ export function thermostatExistingOwnedGraphPlan(rows: ThermostatAutomationRows,
 	if (ids.size !== outputs.length || ids.size > 4096) return fail();
 	const edges: ClimateAutomationGraphReplacementPlan['beforeEdges'][number][] = [];
 	for (const property of outputs) {
-		const origin: unknown = Reflect.get(property,'valueOrigin'), source: unknown = Reflect.get(property,'sourcePropertyId');
+		const origin: unknown = nativeFieldEvidence.get(property, 'valueOrigin'),
+			source: unknown = nativeFieldEvidence.get(property, 'sourcePropertyId');
 		if ((origin === undefined || origin === 'source') && source !== null && source !== undefined)
-			edges.push(Object.freeze({ outputPropertyId: id(property.id),sourcePropertyId: id(source) }));
+			edges.push(Object.freeze({ outputPropertyId: id(property.id), sourcePropertyId: id(source) }));
 	}
-	const names: readonly TableName[] = ['dewSources','transformSources','aggregateInputs','groupBindings'];
+	const names: readonly TableName[] = ['dewSources', 'transformSources', 'aggregateInputs', 'groupBindings'];
 	for (const name of names)
 		for (const row of rows.tables[name]) {
-			const output: unknown = Reflect.get(row,'outputPropertyId'), source: unknown = Reflect.get(row,'sourcePropertyId');
+			const output: unknown = nativeFieldEvidence.get(row, 'outputPropertyId'),
+				source: unknown = nativeFieldEvidence.get(row, 'sourcePropertyId');
 			if (typeof output === 'string' && ids.has(output) && source !== null)
-				edges.push(Object.freeze({ outputPropertyId: id(output),sourcePropertyId: id(source) }));
+				edges.push(Object.freeze({ outputPropertyId: id(output), sourcePropertyId: id(source) }));
 		}
-	edges.sort((a,b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
+	edges.sort((a, b) => climateAutomationCanonical(a).localeCompare(climateAutomationCanonical(b)));
 	if (edges.length > 8192) return fail();
-	return Object.freeze({ ownedOutputIds: Object.freeze([...ids].sort()),beforeEdges: Object.freeze(edges),replacementEdges: Object.freeze([...edges]) });
+	return Object.freeze({
+		ownedOutputIds: Object.freeze([...ids].sort()),
+		beforeEdges: Object.freeze(edges),
+		replacementEdges: Object.freeze([...edges]),
+	});
 }
 
 /** Same closed persisted-column codec used by the C0 fence; optional mapped fields are omitted, opaque JSON stays strict. */
-export function thermostatOwnedPersistedColumn(value: unknown,column: 'policy' | 'comfort'): ClimateAutomationJson {
-	return persistedJson(value,column);
+export function thermostatOwnedPersistedColumn(value: unknown, column: 'policy' | 'comfort'): ClimateAutomationJson {
+	return persistedJson(value, column);
 }
