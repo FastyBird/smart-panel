@@ -242,6 +242,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly bookkeepingRunners = new Map<QueryRunner,RuntimeRunnerObservation>();
 	private readonly bookkeepingScopes = new Set<RuntimeBookkeepingScope>();
 	private lifecycle?: object;
+	private bootstrapAttempt?: Readonly<{ lifecycle: object; promise: Promise<void> }>;
+	private readonly contextLifecycles = new WeakMap<ControllerContext, object>();
 	private bookkeepingEngineCurrent?: () => boolean;
 	private readonly bookkeepingCapability: ThermostatRuntimeBookkeeping = Object.freeze({ version: 1,
 		inspect: (runner: QueryRunner,query: string,parameters: readonly unknown[]) => {
@@ -363,10 +365,23 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		),
 	) {}
 
-	async onApplicationBootstrap(): Promise<void> {
-		if (this.active || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
-		this.active = true;
-		const lifecycle = Object.freeze({}); this.lifecycle = lifecycle;
+	onApplicationBootstrap(): Promise<void> {
+		const attempt = this.bootstrapAttempt;
+		if (attempt && this.active && this.lifecycle === attempt.lifecycle) return attempt.promise;
+		if (this.active || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return Promise.resolve();
+		const lifecycle = Object.freeze({});
+		this.active = true; this.lifecycle = lifecycle;
+		// Install the original completion record before invoking any registration or native work.
+		const completion: { resolve?: () => void; reject?: (error: unknown) => void } = {};
+		const promise = new Promise<void>((resolve, reject) => { completion.resolve = resolve; completion.reject = reject; });
+		const owned = { lifecycle, promise }; this.bootstrapAttempt = owned;
+		void this.bootstrapLifecycle(lifecycle).then(
+			() => { if (this.bootstrapAttempt === owned) this.bootstrapAttempt = undefined; completion.resolve?.(); },
+			(error: unknown) => { if (this.bootstrapAttempt === owned) this.bootstrapAttempt = undefined; completion.reject?.(error); },
+		);
+		return promise;
+	}
+	private async bootstrapLifecycle(lifecycle: object): Promise<void> {
 		try {
 		const originalClaims: Readonly<{ refresh: { call: (receiver: VirtualThermostatClaimsService) => Promise<void> } }> = this.claims;
 		const refresh = originalClaims.refresh;
@@ -426,21 +441,24 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.events.on(THERMOSTAT_CONFIG_CHANGED, configured);
 		this.stops.push(() => this.events.off(THERMOSTAT_CONFIG_CHANGED, configured));
 		if (!creationMethodCurrent(this.structure,'runExclusiveReleased',released)) throw new Error('Original runtime startup structure entry unavailable');
-		await released.call(this.structure,() =>
-			this.dataSource.transaction(async (manager) => {
+		await released.call(this.structure,() => {
+			this.assertLifecycle(lifecycle);
+			return this.dataSource.transaction(async (manager) => {
+				this.assertLifecycle(lifecycle);
 				await manager
 					.createQueryBuilder()
 					.update(VirtualThermostatCommandEntity)
 					.set({ status: 'unknown', fault: 'restart_requires_release_reconciliation' })
 					.where('status IN (:...statuses)', { statuses: ['prepared', 'dispatching'] })
 					.execute();
+				this.assertLifecycle(lifecycle);
 				await manager
 					.createQueryBuilder()
 					.update(VirtualThermostatBranchRuntimeEntity)
 					.set({ activity: 'unknown', releaseAttempts: 0, nextReleaseAt: null })
 					.execute();
-			}),
-		);
+			});
+		});
 		if (this.lifecycle !== lifecycle || !this.active) return;
 		if (!creationMethodCurrent(this.claims,'refresh',refresh)) throw new Error('Original runtime startup refresh unavailable');
 		await refresh.call(this.claims);
@@ -462,7 +480,9 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 	onModuleDestroy(): void {
 		let failure: { cause: unknown } | undefined;
-		this.active = false; this.lifecycle = undefined; this.bookkeepingEngineCurrent = undefined;
+		this.active = false; this.lifecycle = undefined; this.bootstrapAttempt = undefined; this.bookkeepingEngineCurrent = undefined;
+		// Old queue finalizers check exact promise identity; B must not wait for detached A loads.
+		this.queues.clear();
 		for (const scope of this.bookkeepingScopes) this.closeBookkeeping(scope);
 		this.bookkeepingScopes.clear();
 		for (const observation of this.bookkeepingRunners.values()) { try { observation.close(); } catch (cause) { failure ??= { cause }; } }
@@ -536,13 +556,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		return this.readDiagnostics(controllerId);
 	}
 	request(controllerId: string, revoke = true): void {
-		if (!this.active) return;
+		if (!this.active || !this.lifecycle) return;
 		if (revoke) this.epochs.set(controllerId, (this.epochs.get(controllerId) ?? 0) + 1);
 		const lifecycle = this.lifecycle;
 		const previous = this.queues.get(controllerId) ?? Promise.resolve();
 		const next = previous
 			.catch(() => undefined)
-			.then(() => this.lifecycle === lifecycle && this.active ? this.evaluate(controllerId) : undefined)
+			.then(() => this.lifecycle === lifecycle && this.active ? this.evaluate(controllerId,lifecycle) : undefined)
 			.catch(() => {
 				if (!this.active || this.lifecycle !== lifecycle) return;
 				this.diagnostics.set(controllerId, {
@@ -587,6 +607,18 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		while (this.queues.size) await Promise.all([...this.queues.values()]);
 	}
 
+	private lifecycleCurrent(lifecycle: object): boolean { return this.active && this.lifecycle === lifecycle; }
+	private assertLifecycle(lifecycle: object): void {
+		if (!this.lifecycleCurrent(lifecycle)) throw new Error('Original runtime lifecycle ended');
+	}
+	private contextLifecycleCurrent(context: ControllerContext): boolean {
+		const lifecycle = this.contextLifecycles.get(context);
+		return lifecycle !== undefined && this.lifecycleCurrent(lifecycle);
+	}
+	private assertContextLifecycle(context: ControllerContext): void {
+		if (!this.contextLifecycleCurrent(context)) throw new Error('Original runtime context lifecycle ended');
+	}
+
 	private closeBookkeepingContext(context: ControllerContext | undefined): void {
 		if (!context) return;
 		const health = this.bookkeepingHealth.get(context);
@@ -627,7 +659,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	/** Each call owns a finite row budget. Metadata grants no business write or dispatch authority. */
 	private openBookkeeping(manager: EntityManager,context: ControllerContext,purpose: RuntimeBookkeepingPurpose,entities: readonly BookkeepingRow[],settlement?: Readonly<{ proofId: string; settledAt: Date }>): RuntimeBookkeepingScope {
 		const source = this.dataSource, runner = manager.queryRunner, snapshot = this.bookkeepingCaptures.get(context);
-		const health = this.bookkeepingHealth.get(context), lifecycle = this.lifecycle, decision = context.state.decisionRevision;
+		const health = this.bookkeepingHealth.get(context), lifecycle = this.contextLifecycles.get(context), decision = context.state.decisionRevision;
 		const { save,insert } = manager;
 		const driver = source.driver, metadatas = source.entityMetadatas;
 		const connection = Object.getOwnPropertyDescriptor(driver,'databaseConnection');
@@ -896,44 +928,57 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 
 	private async write(context: ControllerContext, entity: VirtualThermostatCommandEntity | VirtualThermostatBranchRuntimeEntity,purpose: 'dispatch-command' | 'command-outcome' | 'member-fault'): Promise<void> {
+		if (purpose !== 'command-outcome' && !this.contextLifecycleCurrent(context)) return;
 		// Publish before and after SQL: another context may load while this writer waits for its lock.
 		const publishOutcome = () => {
+			if (!this.contextLifecycleCurrent(context)) return;
 			if (entity instanceof VirtualThermostatCommandEntity) {
 				const current = this.contexts.get(entity.controllerId)?.commands.find((command) => command.id === entity.id);
 				if (current) Object.assign(current, entity);
 			}
 		};
 		publishOutcome();
-		await this.structure.runExclusive(() =>
-			this.dataSource.transaction(async (manager) => {
+		await this.structure.runExclusive(() => {
+			if (purpose !== 'command-outcome') this.assertContextLifecycle(context);
+			return this.dataSource.transaction(async (manager) => {
+				if (purpose !== 'command-outcome') this.assertContextLifecycle(context);
 				await this.saveBookkeeping(manager,context,purpose,entity);
-			}),
-		);
+			});
+		});
 		publishOutcome();
 	}
-	private async load(controllerId: string): Promise<ControllerContext | null> {
-		const lifecycle = this.lifecycle;
+	private async load(controllerId: string, lifecycle: object): Promise<ControllerContext | null> {
+		if (!this.lifecycleCurrent(lifecycle)) return null;
 		await this.comfort.settle(controllerId);
 		if (!this.active || this.lifecycle !== lifecycle) return null;
 		return this.structure.runShared(async () => {
+			if (!this.lifecycleCurrent(lifecycle)) return null;
 			const admission = this.claims.capture();
 			const publishGuard = this.graph.capturePublishGuard();
 			const config = await this.dataSource.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
-			if (!config) return null;
+			if (!config || !this.lifecycleCurrent(lifecycle)) return null;
 			const intent = await this.comfort.readIntentInManager(this.dataSource.manager,config);
 			try {
+			this.assertLifecycle(lifecycle);
 			const owner = config.ownerDeviceId
 				? await this.dataSource.manager.findOneBy(DeviceEntity, { id: config.ownerDeviceId })
 				: null;
+			this.assertLifecycle(lifecycle);
 			const claims = await this.dataSource.manager.findBy(VirtualThermostatActuatorClaimEntity, {
 				controllerId,
 				state: Not('released'),
 			});
+			this.assertLifecycle(lifecycle);
 			const rows = await this.dataSource.manager.findBy(VirtualThermostatSourceEntity, { controllerId });
+			this.assertLifecycle(lifecycle);
 			const bindings = await this.inputs.load(rows);
+			this.assertLifecycle(lifecycle);
 			const memberBindings = await this.memberProtection.load(config, claims);
+			this.assertLifecycle(lifecycle);
 			const coolingBindings = await this.coolingDependencies.load(config, claims);
-			const commands = await this.loadDecisionCommands(controllerId, claims);
+			this.assertLifecycle(lifecycle);
+			const commands = await this.loadDecisionCommands(controllerId, claims,lifecycle);
+			this.assertLifecycle(lifecycle);
 			const state =
 				(await this.dataSource.manager.findOneBy(VirtualThermostatRuntimeEntity, { controllerId })) ??
 				this.dataSource.manager.create(VirtualThermostatRuntimeEntity, {
@@ -949,6 +994,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const branches = new Map<string, VirtualThermostatBranchRuntimeEntity>(),
 				targets = new Map<string, IDevicePropertyData>();
 			for (const claim of claims) {
+				this.assertLifecycle(lifecycle);
 				const branch =
 					(await this.dataSource.manager.findOneBy(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id })) ??
 					this.dataSource.manager.create(VirtualThermostatBranchRuntimeEntity, {
@@ -961,6 +1007,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						fault: null,
 					});
 				branches.set(claim.id, branch);
+				this.assertLifecycle(lifecycle);
 				const property = claim.sourcePropertyId
 					? await this.dataSource.manager.findOne(ChannelPropertyEntity, {
 							where: { id: claim.sourcePropertyId },
@@ -972,7 +1019,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					targets.set(claim.id, { property, channel, device: channel.device as DeviceEntity, value: false });
 				}
 			}
-			if (!intent.isCurrent()) { intent.close(); return null; }
+			if (!this.lifecycleCurrent(lifecycle) || !intent.isCurrent()) { intent.close(); return null; }
 			const originalAdmission = admission;
 			const claimFacts = captureDiagnosticTree(claims), configFacts = captureDiagnosticTree(config), originalEpoch = this.epochs.get(controllerId) ?? 0;
 			const health = { current: true,factsCurrent: (): boolean => diagnosticTreeCurrent(claimFacts) && diagnosticTreeCurrent(configFacts) &&
@@ -1003,6 +1050,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					reasons: [],
 				},
 			};
+			this.contextLifecycles.set(context,lifecycle);
 			this.bookkeepingCaptures.set(context,originalAdmission); this.bookkeepingHealth.set(context,health);
 			return context;
 			} catch (error) { intent.close(); throw error; }
@@ -1015,9 +1063,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private async loadDecisionCommands(
 		controllerId: string,
 		claims: VirtualThermostatActuatorClaimEntity[],
+		lifecycle: object,
 	): Promise<VirtualThermostatCommandEntity[]> {
 		const byId = new Map<string, VirtualThermostatCommandEntity>();
 		for (const claim of claims) {
+			this.assertLifecycle(lifecycle);
 			const scoped = () =>
 				this.dataSource.manager
 					.createQueryBuilder(VirtualThermostatCommandEntity, 'command')
@@ -1043,6 +1093,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					.getOne(),
 				pending().andWhere("command.fault IS NOT NULL AND command.fault <> ''").limit(1).getOne(),
 			]);
+			this.assertLifecycle(lifecycle);
 			for (const command of witnesses) if (command && !byId.has(command.id)) byId.set(command.id, command);
 		}
 		return [...byId.values()];
@@ -1268,12 +1319,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const fresh = this.decide(current, this.inputs.read(current.bindings), Date.now(), false);
 		return claim.role === 'heating' ? fresh.desiredHeating : fresh.desiredCooling;
 	}
-	private async evaluate(controllerId: string): Promise<void> {
-		if (!this.active) return;
-		const context = await this.load(controllerId);
-		if (!context || !this.active) {
-			this.closeBookkeepingContext(context ?? undefined); this.closeBookkeepingContext(this.contexts.get(controllerId));
-			context?.intent?.close(); this.contexts.get(controllerId)?.intent?.close(); this.contexts.delete(controllerId); return;
+	private async evaluate(controllerId: string, lifecycle: object): Promise<void> {
+		if (!this.lifecycleCurrent(lifecycle)) return;
+		const context = await this.load(controllerId,lifecycle);
+		if (!this.lifecycleCurrent(lifecycle)) { this.closeBookkeepingContext(context ?? undefined); context?.intent?.close(); return; }
+		if (!context) {
+			this.closeBookkeepingContext(this.contexts.get(controllerId));
+			this.contexts.get(controllerId)?.intent?.close(); this.contexts.delete(controllerId); return;
 		}
 		this.closeBookkeepingContext(this.contexts.get(controllerId));
 		this.contexts.get(controllerId)?.intent?.close();
@@ -1296,14 +1348,20 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			trend?.pausedAt !== null && trend?.pausedUntil !== null && trend
 				? { pausedAt: trend.pausedAt, pausedUntil: trend.pausedUntil, cooldownUntil: trend.cooldownUntil }
 				: null;
-		await this.structure.runExclusive(() =>
-			this.dataSource.transaction(async (manager) => {
+		await this.structure.runExclusive(() => {
+			this.assertContextLifecycle(context);
+			return this.dataSource.transaction(async (manager) => {
+				this.assertContextLifecycle(context);
 				await this.saveBookkeeping(manager,context,'decision-state',context.state);
+				this.assertContextLifecycle(context);
 				await this.saveBookkeeping(manager,context,'decision-branches',[...context.branches.values()]);
-			}),
-		);
+				this.assertContextLifecycle(context);
+			});
+		});
+		if (!this.contextLifecycleCurrent(context)) return;
 		// Every unwanted/unknown/pending branch gets release before any new energizing is considered.
 		for (const claim of context.claims) {
+			if (!this.contextLifecycleCurrent(context)) return;
 			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
 			const branch = context.branches.get(claim.id);
 			const pending = context.commands.some(
@@ -1312,10 +1370,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			if (!desired && (branch.activity !== 'off' || pending || !this.isReconciled(claim) || claim.state !== 'reserved'))
 				await this.prepare(context, claim, 'off');
 		}
-		for (const claim of context.claims) await this.reconcile(context, claim);
+		for (const claim of context.claims) {
+			if (!this.contextLifecycleCurrent(context)) return;
+			await this.reconcile(context, claim);
+		}
+		if (!this.contextLifecycleCurrent(context)) return;
 		this.acknowledgeMemberRelease(context);
 		this.acknowledgeCoolingRelease(context);
 		for (const claim of context.claims) {
+			if (!this.contextLifecycleCurrent(context)) return;
 			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
 			const latest = context.commands
 				.filter((command) => command.claimId === claim.id && command.action === 'on' && command.status !== 'cancelled')
@@ -1420,6 +1483,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		claim: VirtualThermostatActuatorClaimEntity,
 		action: 'on' | 'off',
 	): Promise<void> {
+		if (!this.contextLifecycleCurrent(context)) return;
 		const branch = context.branches.get(claim.id),
 			now = Date.now();
 		if (
@@ -1456,15 +1520,20 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				now + retryDelaysMs[Math.min(branch.releaseAttempts - 1, retryDelaysMs.length - 1)],
 			);
 		}
-		await this.structure.runExclusive(() =>
-			this.dataSource.transaction(async (manager) => {
+		await this.structure.runExclusive(() => {
+			this.assertContextLifecycle(context);
+			return this.dataSource.transaction(async (manager) => {
+				this.assertContextLifecycle(context);
 				const scope = this.openBookkeeping(manager,context,'prepare-command',[command]);
 				try { await this.bookkeepingOrigin.run({ role: 'ORM',scope },() => scope.insert.call(manager,VirtualThermostatCommandEntity, command)); }
 				catch (error) { const health = this.bookkeepingHealth.get(context); if (health) health.current = false; throw error; }
 				finally { this.closeBookkeeping(scope); }
+				this.assertContextLifecycle(context);
 				await this.saveBookkeeping(manager,context,'prepare-branch',branch);
-			}),
-		);
+				this.assertContextLifecycle(context);
+			});
+		});
+		if (!this.contextLifecycleCurrent(context)) return;
 		context.commands.push(command);
 		this.inFlightCommands.set(command.id, command);
 		const operation = this.dispatch(context, claim, target, command).finally(() => {
@@ -1480,6 +1549,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		claim: VirtualThermostatActuatorClaimEntity,
 		reason: string,
 	): VirtualThermostatBranchRuntimeEntity | null {
+		if (!this.contextLifecycleCurrent(context)) return null;
 		if (context.claims.filter((member) => member.role === claim.role).length < 2) return null;
 		this.memberFaults.set(`${claim.id}:${claim.revision}`, reason);
 		const current = this.contexts.get(claim.controllerId);
@@ -1545,7 +1615,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			if (!enteredTransport) await this.retryOffImmediately(context, command);
 		} finally {
 			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
-			if (this.active && !refusedOn)
+			if (this.contextLifecycleCurrent(context) && !refusedOn)
 				// Settlement is feedback, not a new setting request. Do not revoke sibling sends from this decision.
 				// Their final guards still re-read every member, fault, input, mapping and configuration fence.
 				this.request(
@@ -1558,31 +1628,38 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		context: ControllerContext,
 		command: VirtualThermostatCommandEntity,
 	): Promise<void> {
+		if (!this.contextLifecycleCurrent(context)) return;
 		if (command.action !== 'off') return;
-		await this.structure.runExclusive(() =>
-			this.dataSource.transaction(async (manager) => {
+		await this.structure.runExclusive(() => {
+			this.assertContextLifecycle(context);
+			return this.dataSource.transaction(async (manager) => {
+				this.assertContextLifecycle(context);
 				const branch = await manager.findOneBy(VirtualThermostatBranchRuntimeEntity, { claimId: command.claimId });
+				this.assertContextLifecycle(context);
 				if (!branch) return;
 				branch.releaseAttempts = Math.max(0, branch.releaseAttempts - 1);
 				branch.nextReleaseAt = null;
 				await this.saveBookkeeping(manager,context,'retry-off',branch);
+				this.assertContextLifecycle(context);
 				const current = context.branches.get(command.claimId);
 				if (current) {
 					current.releaseAttempts = branch.releaseAttempts;
 					current.nextReleaseAt = null;
 				}
-			}),
-		);
+			});
+		});
 	}
 	/** Settle the full current journal only under an exclusive recheck of scoped proof, qualification, source lease and OFF sample. */
 	private async reconcile(context: ControllerContext, claim: VirtualThermostatActuatorClaimEntity): Promise<void> {
+		if (!this.contextLifecycleCurrent(context)) return;
 		const target = context.targets.get(claim.id),
 			qualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
 		if (!target || !qualification || !this.transport.get(target, claim)?.canReconcile(target, qualification)) return;
 		const off = this.values.readQualifiedSample(target.property, 30_000);
 		if (off?.value !== false) return;
 		if ([...this.inFlightCommands.values()].some((command) => command.claimId === claim.id)) return;
-		const pending = await this.structure.runShared(() => this.loadUnresolvedCommands(claim.controllerId, claim.id));
+		const pending = await this.structure.runShared(() => { this.assertContextLifecycle(context); return this.loadUnresolvedCommands(claim.controllerId, claim.id); });
+		if (!this.contextLifecycleCurrent(context)) return;
 		if (pending.some((command) => this.inFlight.has(command.id))) return;
 		// A new fence itself publishes OFF feedback. Repeating an already settled current fence
 		// would enqueue another evaluation forever. Never reuse it across a new barrier or journal.
@@ -1605,6 +1682,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				qualification,
 			},
 		);
+		if (!this.contextLifecycleCurrent(context)) return;
 		const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
 		const endedAt = new Date();
 		const covered = new Set(proof?.coveredCommandIds ?? []);
@@ -1646,7 +1724,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const isProofCurrent = (): boolean => {
 			const currentOff = this.values.readQualifiedSample(target.property, 30_000);
 			return (
-				this.canSend(context, claim, 'off') &&
+				this.contextLifecycleCurrent(context) && this.canSend(context, claim, 'off') &&
 				proof.isCurrent() &&
 				proof.sourceIsCurrent() &&
 				this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) === qualification &&
@@ -1668,19 +1746,23 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			currentIds: Set<string>;
 			settledAt: Date;
 		};
-		const settled = await this.structure.runExclusive(() =>
-			this.dataSource
+		const settled = await this.structure.runExclusive(() => {
+			this.assertContextLifecycle(context);
+			return this.dataSource
 				.transaction<JournalSettlement | null>(async (manager) => {
+					this.assertContextLifecycle(context);
 					// Re-read under the write lock: a proof cannot settle an unseen command added during I/O.
 					const current = await this.loadUnresolvedCommands(claim.controllerId, claim.id, manager);
+					this.assertContextLifecycle(context);
 					const currentConfig = await manager.findOneBy(VirtualThermostatConfigEntity, {
 						controllerId: claim.controllerId,
 					});
+					this.assertContextLifecycle(context);
 					const currentClaim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claim.id });
 					const currentQualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
 					const currentOff = this.values.readQualifiedSample(target.property, 30_000);
 					if (
-						!this.canSend(context, claim, 'off') ||
+						!this.contextLifecycleCurrent(context) || !this.canSend(context, claim, 'off') ||
 						!proof.isCurrent?.() ||
 						!proof.sourceIsCurrent?.() ||
 						currentConfig?.revision !== proof.scope.controllerRevision ||
@@ -1716,6 +1798,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					});
 					const settledAt = new Date();
 					for (let offset = 0; offset < current.length; offset += 500) {
+						this.assertContextLifecycle(context);
 						const scope = this.openBookkeeping(manager,context,'settle-drain',current.slice(offset,offset + 500),{ proofId: proof.proofId,settledAt });
 						try { await this.bookkeepingOrigin.run({ role: 'ORM',scope },() => manager
 							.createQueryBuilder()
@@ -1724,6 +1807,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 							.where('id IN (:...ids)', { ids: current.slice(offset, offset + 500).map((command) => command.id) })
 							.execute()); } catch (error) { const health = this.bookkeepingHealth.get(context); if (health) health.current = false; throw error; } finally { this.closeBookkeeping(scope); }
 					}
+					this.assertContextLifecycle(context);
 					await this.saveBookkeeping(manager,context,'settle-branch',settledBranch);
 					if (!isProofCurrent()) throw staleProof;
 					return { branch: settledBranch, currentIds: new Set(current.map((command) => command.id)), settledAt };
@@ -1731,8 +1815,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				.catch((error: unknown): JournalSettlement | null => {
 					if (error === staleProof) return null;
 					throw error;
-				}),
-		);
+				});
+		});
 		if (!settled) return;
 		// The transaction has acknowledged these exact IDs as confirmed. Later authority or
 		// reservation-release failure must not retain already committed provider metadata.
@@ -1763,6 +1847,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				}),
 			);
 		}
+		if (!this.contextLifecycleCurrent(context)) return;
 		this.reconciled.set(`${claim.id}:${claim.revision}`, {
 			qualification,
 			sourceIsCurrent: proof.sourceIsCurrent,
@@ -1851,7 +1936,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		};
 	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {
-		if (!context.publishGuard()) return;
+		if (!this.contextLifecycleCurrent(context) || !context.publishGuard()) return;
 		const observedAt = new Date();
 		const branches = context.claims.map((claim) => {
 			const branch = context.branches.get(claim.id),
@@ -1953,12 +2038,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			sequence: runtime.sequence,
 			runtime,
 		});
+		if (!this.contextLifecycleCurrent(context)) return;
 		const properties = await this.dataSource.manager.find(VirtualChannelPropertyEntity, {
 			where: { channel: { device: { id: context.config.controllerId } } },
 			relations: ['channel'],
 		});
-		if (!context.publishGuard()) return;
+		if (!this.contextLifecycleCurrent(context) || !context.publishGuard()) return;
 		for (const property of properties) {
+			if (!this.contextLifecycleCurrent(context) || !context.publishGuard()) return;
 			if (
 				property.valueOrigin !== VirtualValueOrigin.LOCAL ||
 				property.permissions.some(
@@ -2004,6 +2091,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						reason: 'graph_validation_pending',
 					}),
 				};
+				if (!this.contextLifecycleCurrent(context)) { this.producers.unregister(output.lease); return; }
 				this.outputs.set(property.id, output);
 			}
 			if (value === null) {

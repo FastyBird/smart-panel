@@ -2503,6 +2503,14 @@ export class ClimateAutomationWriterService {
 	 */
 	private existingClockNeutralEffect(controllerId: string,query: string,parameters: readonly unknown[],runner: QueryRunner): boolean {
 		if (bookkeepingLockEffect(query,parameters)) return true;
+		// ONLY the original two startup recovery effects. These remain claims-DIRTY: their
+		// constants cannot change C's config/slot/time facts, regardless of callback origin.
+		if (query === 'UPDATE "devices_virtual_thermostat_command_journal" SET "status" = ?, "fault" = ? WHERE "status" IN (?, ?)' &&
+			parameters.length === 4 && parameters[0] === 'unknown' && parameters[1] === 'restart_requires_release_reconciliation' &&
+			parameters[2] === 'prepared' && parameters[3] === 'dispatching') return true;
+		if (query === 'UPDATE "devices_virtual_thermostat_branch_runtime" SET "activity" = ?, "releaseAttempts" = 0, "nextReleaseAt" = ?' &&
+			parameters.length === 2 && parameters[0] === 'unknown' && parameters[1] === null) return true;
+
 		if (!parameters.length && (query === 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)' ||
 			query === 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1')) return true;
 		const originalProbe = originalControllerMutationMethods.isExpectedProbe;
