@@ -10,7 +10,7 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
-import { captureDiagnosticTree, diagnosticTreeCurrent, closeDiagnosticTree, DiagnosticTreeObservation, creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
+import { captureDiagnosticTree, diagnosticTreeCurrent, closeDiagnosticTree, DiagnosticTreeObservation, creationHasDataMethod, creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import {
 	PropertyCommandAdmissionRegistryService,
@@ -33,6 +33,21 @@ import {
 
 import { VirtualDependencyGraphService } from './virtual-dependency-graph.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+
+/** Private builtin runtime observation; SQL shape alone never authenticates an owned effect. */
+export interface ThermostatRuntimeBookkeeping {
+	readonly version: 1;
+	readonly inspect: (runner: QueryRunner, query: string, parameters: readonly unknown[]) => Readonly<{
+		snapshot: PropertyCommandAdmissionSnapshot;
+		invocation: object;
+	}> | null;
+}
+interface RuntimeBookkeepingRegistration {
+	readonly admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean;
+	readonly capability: ThermostatRuntimeBookkeeping | undefined;
+	readonly inspect: ThermostatRuntimeBookkeeping['inspect'] | undefined;
+	readonly consumed: WeakSet<object>;
+}
 
 /** Never accepted in a public request. The registry validates object identity, not a supplied JSON shape. */
 export interface ThermostatCommandAuthority {
@@ -144,6 +159,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 		void this.refresh().catch(() => undefined);
 	};
 	private runtimeAdmission?: (claim: VirtualThermostatActuatorClaimEntity) => boolean;
+	private runtimeRegistration?: RuntimeBookkeepingRegistration;
+	private readonly capturedMembership = new WeakMap<PropertyCommandAdmissionSnapshot, Readonly<{ epoch: number; generation: ClaimsNativeProof | undefined; ready: boolean }>>();
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -256,6 +273,18 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			// Supported repository counter schema ONLY: real writes, neutral to claims membership, not graph/clock authority.
 			if (!event.parameters?.length && (event.query === 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)' ||
 				event.query === 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1')) return;
+			// The lock has no supported write-through to claims. This grants no value/socket authority.
+			if (bookkeepingLockEffect(event.query,event.parameters ?? [])) return;
+			const registration = this.runtimeRegistration;
+			if (registration?.capability && registration.inspect && this.runtimeAdmission === registration.admission &&
+				creationMethodCurrent(registration.capability,'version',1) && creationMethodCurrent(registration.capability,'inspect',registration.inspect)) {
+				const observation = registration.inspect.call(registration.capability,event.queryRunner,event.query,event.parameters ?? []);
+				const captured = observation && this.capturedMembership.get(observation.snapshot);
+				if (observation && captured?.ready && captured.epoch === this.epoch && captured.generation === this.membership &&
+					!registration.consumed.has(observation.invocation) && originalClaimsEngine.current.call(this,captured.generation)) {
+					registration.consumed.add(observation.invocation); return;
+				}
+			}
 			// Only the ORIGINAL private guarded statement retains this exact generation until post-UPDATE assertCurrent.
 			const write = this.releaseWrites.get(event.queryRunner);
 			if (write && write.query === event.query && write.parameters.length === (event.parameters?.length ?? 0) &&
@@ -374,7 +403,7 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 			creationMethodCurrent(this,'requiresGuardedDispatch',requires) && (!!update && !claimedProperties.has(update.property.id) && !requires.call(this,update)
 				? true
 				: ready && this.ready && epoch === this.epoch && generation === this.membership && originalClaimsEngine.current.call(this,generation));
-		return {
+		const snapshot: PropertyCommandAdmissionSnapshot = {
 			isCurrent,
 			isEffectCurrent: isCurrent,
 			assertEffectAllowed: async (effect): Promise<void> => {
@@ -389,6 +418,8 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 				await this.assertAllowed(update);
 			},
 		};
+		this.capturedMembership.set(snapshot,Object.freeze({ epoch,generation,ready }));
+		return snapshot;
 	}
 	/** Claimable hardware and reserved property aliases require transport-time admission guards. */
 	requiresGuardedDispatch(update: Pick<IDevicePropertyData, 'device' | 'channel' | 'property'>): boolean {
@@ -623,13 +654,17 @@ export class VirtualThermostatClaimsService implements OnApplicationBootstrap, O
 	}
 
 	/** VD2-8 supplies durable startup/interlock admission. Until then energizing remains closed. */
-	registerRuntimeAdmission(admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean): () => void {
+	registerRuntimeAdmission(admission: (claim: VirtualThermostatActuatorClaimEntity) => boolean, capability?: ThermostatRuntimeBookkeeping): () => void {
 		if (this.runtimeAdmission) throw new Error('Thermostat runtime admission already registered');
-		this.runtimeAdmission = admission;
-		this.epoch++;
+		if (capability && (!creationMethodCurrent(capability,'version',1) || !creationHasDataMethod(capability,'inspect')))
+			throw new DevicesValidationException('Original runtime observation required.');
+		const record: RuntimeBookkeepingRegistration = Object.freeze({ admission,capability,inspect: capability?.inspect,consumed: new WeakSet<object>() });
+		this.runtimeRegistration = record; this.runtimeAdmission = admission; this.epoch++;
+		let disposed = false;
 		return () => {
-			this.runtimeAdmission = undefined;
-			this.epoch++;
+			if (disposed) return; disposed = true;
+			if (this.runtimeRegistration !== record) return;
+			this.runtimeRegistration = undefined; this.runtimeAdmission = undefined; this.epoch++;
 		};
 	}
 	mintAuthority(claimId: string, action: 'on' | 'off'): ThermostatCommandAuthority {
@@ -826,4 +861,14 @@ function diagnosticClaimMethodsCurrent(receiver: VirtualThermostatClaimsService)
 		creationMethodCurrent(receiver, 'diagnosticQualificationsCurrent', diagnosticClaimMethods.current) &&
 		creationMethodCurrent(receiver, 'evaluateDiagnosticQualification', diagnosticClaimMethods.evaluate) &&
 		creationMethodCurrent(receiver, 'closeDiagnosticQualifications', diagnosticClaimMethods.close);
+}
+
+function bookkeepingLockEffect(query: string, parameters: readonly unknown[]): boolean {
+	const string = (index: number): boolean => typeof parameters[index] === 'string';
+	const integer = (index: number): boolean => typeof parameters[index] === 'number' && Number.isSafeInteger(parameters[index]);
+	return query === 'INSERT INTO "devices_module_property_value_locks" ("propertyId", "ownerToken", "expiresAt") VALUES (?, ?, ?) ON CONFLICT("propertyId") DO NOTHING' ?
+		parameters.length === 3 && string(0) && string(1) && integer(2) :
+		query === 'UPDATE "devices_module_property_value_locks" SET "ownerToken" = ?, "expiresAt" = ? WHERE "propertyId" = ? AND "ownerToken" = ?' ?
+		parameters.length === 4 && string(0) && integer(1) && string(2) && string(3) :
+		query === 'DELETE FROM "devices_module_property_value_locks" WHERE "propertyId" = ? AND "ownerToken" = ?' && parameters.length === 2 && string(0) && string(1);
 }

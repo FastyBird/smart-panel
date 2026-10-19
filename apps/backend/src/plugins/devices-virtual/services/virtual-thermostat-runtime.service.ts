@@ -1,10 +1,16 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
-import { DataSource, Not } from 'typeorm';
+import { DataSource, EntityManager, Not, QueryRunner } from 'typeorm';
+import { Broadcaster } from 'typeorm/subscriber/Broadcaster';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
+import { creationMethodCurrent, captureDiagnosticTree, diagnosticTreeCurrent, closeDiagnosticTree } from '../../../modules/devices/services/device-creation-context';
+import { PropertyCommandAdmissionSnapshot } from '../../../modules/devices/services/property-command-admission.registry.service';
+import type { ThermostatRuntimeBookkeeping } from './virtual-thermostat-claims.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	ChannelCategory,
@@ -186,6 +192,41 @@ interface ControllerContext {
 	epoch: number;
 }
 
+
+type RuntimeBookkeepingPurpose = 'decision-state' | 'decision-branches' | 'prepare-command' | 'prepare-branch' | 'dispatch-command' | 'command-outcome' | 'member-fault' | 'retry-off' | 'settle-drain' | 'settle-branch';
+type BookkeepingRow = VirtualThermostatRuntimeEntity | VirtualThermostatBranchRuntimeEntity | VirtualThermostatCommandEntity;
+interface RuntimeBookkeepingScope {
+	active: boolean;
+	closed: boolean;
+	readonly runner: QueryRunner | undefined;
+	readonly observation: RuntimeRunnerObservation | undefined;
+	readonly purpose: RuntimeBookkeepingPurpose;
+	readonly snapshot: PropertyCommandAdmissionSnapshot | undefined;
+	readonly context: ControllerContext;
+	readonly current: () => boolean;
+	readonly closeData: () => void;
+	readonly save: Readonly<{ call: (receiver: EntityManager,entity: BookkeepingRow | BookkeepingRow[]) => ReturnType<EntityManager['save']> }>;
+	readonly insert: Readonly<{ call: (receiver: EntityManager,target: typeof VirtualThermostatCommandEntity,entity: VirtualThermostatCommandEntity) => ReturnType<EntityManager['insert']> }>;
+	readonly rows: readonly { table: string; key: string; values: Readonly<Record<string, unknown>>; used: boolean }[];
+}
+interface RuntimeNativeInvocation {
+	readonly scope: RuntimeBookkeepingScope | undefined;
+	readonly runner: QueryRunner;
+	readonly query: string;
+	readonly parameters: readonly unknown[];
+	consumed: boolean;
+}
+interface RuntimeBookkeepingOrigin {
+	readonly role: 'ORM' | 'QUERY' | 'CALLBACK';
+	readonly scope?: RuntimeBookkeepingScope;
+	readonly invocation?: RuntimeNativeInvocation;
+}
+interface RuntimeRunnerObservation {
+	readonly current: () => boolean;
+	readonly close: () => void;
+	users: number;
+}
+
 /** One serialized decision stream per controller; I/O is detached so urgent release can fence queued ON immediately. */
 @Injectable()
 export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -195,6 +236,44 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		return (this.coolingService ??= new ThermostatCoolingDependencyService(this.dataSource, this.values, this.claims));
 	}
 
+	private readonly bookkeepingOrigin = new AsyncLocalStorage<RuntimeBookkeepingOrigin>();
+	private readonly bookkeepingCaptures = new WeakMap<ControllerContext, PropertyCommandAdmissionSnapshot>();
+	private readonly bookkeepingHealth = new WeakMap<ControllerContext,{ current: boolean; factsCurrent: () => boolean; close: () => void }>();
+	private readonly bookkeepingRunners = new Map<QueryRunner,RuntimeRunnerObservation>();
+	private readonly bookkeepingScopes = new Set<RuntimeBookkeepingScope>();
+	private lifecycle?: object;
+	private bookkeepingEngineCurrent?: () => boolean;
+	private readonly bookkeepingCapability: ThermostatRuntimeBookkeeping = Object.freeze({ version: 1,
+		inspect: (runner: QueryRunner,query: string,parameters: readonly unknown[]) => {
+			const origin = this.bookkeepingOrigin.getStore(), invocation = origin?.invocation, scope = invocation?.scope;
+			if (origin?.role !== 'CALLBACK' || !invocation || invocation.consumed || !scope?.active || !scope.snapshot ||
+				!this.bookkeepingScopes.has(scope) || !scope.current() || invocation.runner !== runner || invocation.query !== query ||
+				parameters.length !== invocation.parameters.length || !parameters.every((value,index) => Object.is(value,invocation.parameters[index])) ||
+				!this.bookkeepingRunners.get(runner)?.current()) return null;
+			invocation.consumed = true;
+			const effects = bookkeepingNativeEffects(query,parameters);
+			if (!effects || !effects.length) return null;
+			const matched = new Set<(typeof scope.rows)[number]>();
+			for (const effect of effects) {
+				if ((scope.purpose === 'prepare-command' && effect.kind !== 'insert') ||
+					(['dispatch-command','command-outcome','settle-drain'].includes(scope.purpose) && effect.kind !== 'update')) return null;
+				const candidates = scope.rows.filter((row) => !row.used && !matched.has(row) && row.table === effect.table &&
+					(effect.kind === 'insert' ? Object.keys(effect.predicates).length === 0 && effect.assignments[row.key] === row.values[row.key] :
+						Object.keys(effect.predicates).length === 1 && effect.predicates[row.key]?.includes(row.values[row.key])) &&
+					Object.entries(effect.assignments).every(([key,value]) => (effect.kind === 'insert' || effect.table !== 'devices_virtual_thermostat_command_journal' || ['status','dispatchedAt','settledAt','proofId','fault'].includes(key)) && (effect.kind === 'insert' || key !== row.key) &&
+						Object.hasOwn(row.values,key) && Object.is(value,row.values[key])));
+				if (effect.kind === 'insert') {
+					if (candidates.length !== 1) return null;
+					matched.add(candidates[0]);
+				} else {
+					const key = candidates[0]?.key, ids = key === undefined ? undefined : effect.predicates[key];
+					if (!ids || new Set(ids).size !== ids.length || candidates.length !== ids.length) return null;
+					for (const row of candidates) matched.add(row);
+				}
+			}
+			for (const row of matched) row.used = true;
+			return Object.freeze({ snapshot: scope.snapshot,invocation });
+		} });
 	private active = false;
 	private readonly epoch = randomUUID();
 	private sequence = 0;
@@ -287,7 +366,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	async onApplicationBootstrap(): Promise<void> {
 		if (this.active || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
 		this.active = true;
+		const lifecycle = Object.freeze({}); this.lifecycle = lifecycle;
+		try {
+		const originalClaims: Readonly<{ refresh: { call: (receiver: VirtualThermostatClaimsService) => Promise<void> } }> = this.claims;
+		const refresh = originalClaims.refresh;
+		const originalStructure: Readonly<{ runExclusiveReleased: { call: (receiver: DeviceStructureLockService,fn: () => Promise<void>) => Promise<void> } }> = this.structure;
+		const released = originalStructure.runExclusiveReleased;
+		this.bookkeepingEngineCurrent = this.captureBookkeepingEngine();
 		this.stopCoolingReader = this.transport.registerCoolingFrameReader?.((claim) => {
+			if (!this.active || this.lifecycle !== lifecycle) return null;
 			const context = this.contexts.get(claim.controllerId),
 				binding = context?.coolingBindings.find((b) => b.claimId === claim.id);
 			if (!context || !binding || !context.publishGuard()) return null;
@@ -305,9 +392,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				: null;
 		});
 		this.stopAdmission = this.claims.registerRuntimeAdmission((claim) => {
+			if (!this.active || this.lifecycle !== lifecycle) return false;
 			const context = this.contexts.get(claim.controllerId);
 			return !!context && this.canSend(context, claim, 'on');
-		});
+		},this.bookkeepingCapability);
 		const invalidated = (payload: { propertyId: string }) => {
 			this.memberProtection.invalidateSource(payload.propertyId);
 			this.listener(payload);
@@ -337,7 +425,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		};
 		this.events.on(THERMOSTAT_CONFIG_CHANGED, configured);
 		this.stops.push(() => this.events.off(THERMOSTAT_CONFIG_CHANGED, configured));
-		await this.structure.runExclusive(() =>
+		if (!creationMethodCurrent(this.structure,'runExclusiveReleased',released)) throw new Error('Original runtime startup structure entry unavailable');
+		await released.call(this.structure,() =>
 			this.dataSource.transaction(async (manager) => {
 				await manager
 					.createQueryBuilder()
@@ -352,33 +441,51 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					.execute();
 			}),
 		);
-		for (const config of await this.dataSource.manager.find(VirtualThermostatConfigEntity))
-			this.request(config.controllerId);
+		if (this.lifecycle !== lifecycle || !this.active) return;
+		if (!creationMethodCurrent(this.claims,'refresh',refresh)) throw new Error('Original runtime startup refresh unavailable');
+		await refresh.call(this.claims);
+		if (this.lifecycle !== lifecycle || !this.active) return;
+		const configurations = await this.dataSource.manager.find(VirtualThermostatConfigEntity);
+		if (this.lifecycle !== lifecycle || !this.active) return;
+		for (const config of configurations) this.request(config.controllerId);
 		await this.flush();
+		if (this.lifecycle !== lifecycle || !this.active) return;
 		this.timer = setInterval(() => {
+			if (!this.active || this.lifecycle !== lifecycle) return;
 			for (const id of this.contexts.keys()) this.request(id, false);
 		}, 1000);
 		this.timer.unref();
+		} catch (error) {
+			if (this.lifecycle === lifecycle) { try { this.onModuleDestroy(); } catch { /* Original native startup rejection stays primary. */ } }
+			throw error;
+		}
 	}
 	onModuleDestroy(): void {
-		this.active = false;
-		this.stopAdmission?.();
-		this.stopCoolingReader?.();
-		this.stopCoolingReader = undefined;
-		if (this.timer) clearInterval(this.timer);
-		for (const stop of this.stops.splice(0)) stop();
-		for (const output of this.outputs.values()) this.producers.unregister(output.lease);
+		let failure: { cause: unknown } | undefined;
+		this.active = false; this.lifecycle = undefined; this.bookkeepingEngineCurrent = undefined;
+		for (const scope of this.bookkeepingScopes) this.closeBookkeeping(scope);
+		this.bookkeepingScopes.clear();
+		for (const observation of this.bookkeepingRunners.values()) { try { observation.close(); } catch (cause) { failure ??= { cause }; } }
+		this.bookkeepingRunners.clear();
+		const admission = this.stopAdmission, reader = this.stopCoolingReader;
+		this.stopAdmission = undefined; this.stopCoolingReader = undefined;
+		try { admission?.call(this); } catch (cause) { failure ??= { cause }; }
+		try { reader?.call(this); } catch (cause) { failure ??= { cause }; }
+		if (this.timer) clearInterval(this.timer); this.timer = undefined;
+		for (const stop of this.stops.splice(0)) { try { stop(); } catch (cause) { failure ??= { cause }; } }
+		for (const output of this.outputs.values()) { try { this.producers.unregister(output.lease); } catch (cause) { failure ??= { cause }; } }
 		this.outputs.clear();
 		this.diagnosticGuards.clear();
-		for (const context of this.contexts.values()) context.intent?.close();
+		for (const context of this.contexts.values()) { this.closeBookkeepingContext(context); try { context.intent?.close(); } catch (cause) { failure ??= { cause }; } }
 		this.contexts.clear();
 		this.contacts.clear();
 		this.trends.clear();
 		this.reconciled.clear();
 		this.memberFaults.clear();
-		this.memberProtection.reset();
-		this.coolingService?.reset();
+		try { this.memberProtection.reset(); } catch (cause) { failure ??= { cause }; }
+		try { this.coolingService?.reset(); } catch (cause) { failure ??= { cause }; }
 		for (const id of this.epochs.keys()) this.epochs.set(id, (this.epochs.get(id) ?? 0) + 1);
+		if (failure) throw failure.cause;
 	}
 	readDiagnostics(controllerId: string): ThermostatRuntimeDiagnostic | null {
 		const result = this.diagnostics.get(controllerId);
@@ -431,11 +538,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	request(controllerId: string, revoke = true): void {
 		if (!this.active) return;
 		if (revoke) this.epochs.set(controllerId, (this.epochs.get(controllerId) ?? 0) + 1);
+		const lifecycle = this.lifecycle;
 		const previous = this.queues.get(controllerId) ?? Promise.resolve();
 		const next = previous
 			.catch(() => undefined)
-			.then(() => this.evaluate(controllerId))
+			.then(() => this.lifecycle === lifecycle && this.active ? this.evaluate(controllerId) : undefined)
 			.catch(() => {
+				if (!this.active || this.lifecycle !== lifecycle) return;
 				this.diagnostics.set(controllerId, {
 					epoch: this.epoch,
 					sequence: ++this.sequence,
@@ -478,7 +587,311 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		while (this.queues.size) await Promise.all([...this.queues.values()]);
 	}
 
-	private async write(entity: VirtualThermostatCommandEntity | VirtualThermostatBranchRuntimeEntity): Promise<void> {
+	private closeBookkeepingContext(context: ControllerContext | undefined): void {
+		if (!context) return;
+		const health = this.bookkeepingHealth.get(context);
+		if (health) { health.current = false; health.close(); }
+		this.bookkeepingCaptures.delete(context);
+	}
+	private captureBookkeepingEngine(): () => boolean {
+		const source = this.dataSource,driver = source.driver,metadatas = source.entityMetadatas;
+		const pins: { receiver: object; key: string; value: unknown }[] = [
+			{ receiver: this,key: 'dataSource',value: source },{ receiver: this,key: 'claims',value: this.claims },
+			{ receiver: this,key: 'structure',value: this.structure },{ receiver: this,key: 'bookkeepingCapability',value: this.bookkeepingCapability },
+			{ receiver: source,key: 'driver',value: driver },{ receiver: source,key: 'entityMetadatas',value: metadatas },
+			{ receiver: source,key: 'transaction',value: source.transaction },{ receiver: this.claims,key: 'capture',value: this.claims.capture },
+			{ receiver: this.claims,key: 'registerRuntimeAdmission',value: this.claims.registerRuntimeAdmission },
+			{ receiver: this.claims,key: 'refresh',value: this.claims.refresh },{ receiver: this.structure,key: 'runExclusiveReleased',value: this.structure.runExclusiveReleased },
+			{ receiver: driver,key: 'preparePersistentValue',value: driver.preparePersistentValue },
+			{ receiver: JSON,key: 'stringify',value: JSON.stringify },{ receiver: Date.prototype,key: 'toISOString',value: Date.prototype.toISOString },
+			{ receiver: Date.prototype,key: 'getTime',value: Date.prototype.getTime },
+			{ receiver: this,key: 'openBookkeeping',value: this.openBookkeeping },{ receiver: this,key: 'observeBookkeepingRunner',value: this.observeBookkeepingRunner },
+		];
+		const memberships: (() => boolean)[] = [];
+		for (const target of [VirtualThermostatRuntimeEntity,VirtualThermostatBranchRuntimeEntity,VirtualThermostatCommandEntity]) {
+			const metadata = metadatas.find((row) => row.target === target);
+			if (!metadata) return () => false;
+			const columns = metadata.columns, originalColumns = [...columns];
+			memberships.push(() => metadatas.includes(metadata) && columns.length === originalColumns.length && originalColumns.every((column,index) => columns[index] === column));
+			pins.push({ receiver: metadata,key: 'target',value: target },{ receiver: metadata,key: 'tableName',value: metadata.tableName },
+				{ receiver: metadata,key: 'columns',value: metadata.columns });
+			for (const column of metadata.columns) for (const key of ['databaseName','propertyName','type','isNullable','transformer','getEntityValue','setEntityValue'])
+				pins.push({ receiver: column,key,value: Reflect.get(column,key) });
+		}
+		return () => memberships.every((current) => current()) && pins.every((pin) => bookkeepingDataCurrent(pin.receiver,pin.key,pin.value));
+	}
+
+	/** Each call owns a finite row budget. Metadata grants no business write or dispatch authority. */
+	private openBookkeeping(manager: EntityManager,context: ControllerContext,purpose: RuntimeBookkeepingPurpose,entities: readonly BookkeepingRow[],settlement?: Readonly<{ proofId: string; settledAt: Date }>): RuntimeBookkeepingScope {
+		const source = this.dataSource, runner = manager.queryRunner, snapshot = this.bookkeepingCaptures.get(context);
+		const health = this.bookkeepingHealth.get(context), lifecycle = this.lifecycle, decision = context.state.decisionRevision;
+		const { save,insert } = manager;
+		const driver = source.driver, metadatas = source.entityMetadatas;
+		const connection = Object.getOwnPropertyDescriptor(driver,'databaseConnection');
+		const pins: { receiver: object; key: string; value: unknown }[] = [
+			{ receiver: manager,key: 'save',value: save },{ receiver: manager,key: 'insert',value: insert },
+			{ receiver: source,key: 'driver',value: driver },{ receiver: source,key: 'entityMetadatas',value: metadatas },
+			{ receiver: driver,key: 'preparePersistentValue',value: driver.preparePersistentValue },
+			{ receiver: Date.prototype,key: 'getTime',value: Date.prototype.getTime },
+			{ receiver: Date.prototype,key: 'toISOString',value: Date.prototype.toISOString },
+			{ receiver: JSON,key: 'stringify',value: JSON.stringify },
+		];
+		const rows: { table: string; key: string; values: Readonly<Record<string,unknown>>; used: boolean }[] = [];
+		const fields: (() => boolean)[] = [], closes: (() => void)[] = [];
+		const engine = this.bookkeepingEngineCurrent;
+		let supported = !!runner && !!snapshot && !!health && !!lifecycle && !!engine?.();
+		for (const entity of entities) {
+			const target = entity instanceof VirtualThermostatRuntimeEntity ? VirtualThermostatRuntimeEntity :
+				entity instanceof VirtualThermostatBranchRuntimeEntity ? VirtualThermostatBranchRuntimeEntity : VirtualThermostatCommandEntity;
+			const metadata = metadatas.find((item) => item.target === target);
+			if (!metadata || ![VirtualThermostatRuntimeEntity,VirtualThermostatBranchRuntimeEntity,VirtualThermostatCommandEntity].some((type) => entity instanceof type)) { supported = false; continue; }
+			const table = metadata.tableName, columns = metadata.columns, values: Record<string,unknown> = {};
+			const ownValue = (key: string): unknown => { const field = Object.getOwnPropertyDescriptor(entity,key); return field && field.get === undefined && field.set === undefined ? field.value : undefined; };
+			if (target === VirtualThermostatRuntimeEntity) {
+				if (purpose !== 'decision-state' || entity !== context.state || ownValue('controllerId') !== context.config.controllerId ||
+					ownValue('configurationRevision') !== context.config.revision || ownValue('decisionRevision') !== decision) supported = false;
+			} else if (target === VirtualThermostatBranchRuntimeEntity) {
+				if (!['decision-branches','prepare-branch','member-fault','retry-off','settle-branch'].includes(purpose) ||
+					!context.claims.some((claim) => claim.id === ownValue('claimId') && claim.controllerId === context.config.controllerId)) supported = false;
+			} else {
+				const claim = context.claims.find((item) => item.id === ownValue('claimId'));
+				if (!['prepare-command','dispatch-command','command-outcome','settle-drain'].includes(purpose) || !claim || ownValue('controllerId') !== context.config.controllerId) supported = false;
+				if (purpose !== 'settle-drain' && (ownValue('claimRevision') !== claim?.revision || ownValue('configurationRevision') !== context.config.revision || ownValue('decisionRevision') !== decision)) supported = false;
+				if (purpose === 'settle-drain' && !settlement) supported = false;
+			}
+			const key = target === VirtualThermostatRuntimeEntity ? 'controllerId' : target === VirtualThermostatBranchRuntimeEntity ? 'claimId' : 'id';
+			pins.push({ receiver: metadata,key: 'target',value: target },{ receiver: metadata,key: 'tableName',value: table },{ receiver: metadata,key: 'columns',value: columns });
+			for (const column of columns) {
+				const descriptor = Object.getOwnPropertyDescriptor(entity,column.propertyName);
+				for (const name of ['databaseName','propertyName','type','isNullable','transformer','getEntityValue','setEntityValue'])
+					pins.push({ receiver: column,key: name,value: Reflect.get(column,name) });
+				if (column.transformer || descriptor?.get || descriptor?.set) { supported = false; continue; }
+				let value: unknown = descriptor?.value;
+				const originalValue = value;
+				// BEFORE/AFTER effect evidence compares the original data, never a newly accepted postimage.
+				if (column.type === 'simple-json' && value !== undefined && value !== null) {
+					const tree = captureDiagnosticTree(value);
+					closes.push(() => closeDiagnosticTree(tree));
+					fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName); return !!now && now.get === undefined && now.set === undefined && now.value === originalValue && diagnosticTreeCurrent(tree); });
+				} else if (value instanceof Date) {
+					const milliseconds = Date.prototype.getTime.call(value);
+					fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName); const current: unknown = now?.value;
+						return !!now && now.get === undefined && now.set === undefined && current instanceof Date && Date.prototype.getTime.call(current) === milliseconds; });
+				} else fields.push(() => { const now = Object.getOwnPropertyDescriptor(entity,column.propertyName); return !now?.get && !now?.set &&
+					(now?.value === originalValue || (column.isNullable && originalValue === undefined && now?.value === null)); });
+				if (settlement && target === VirtualThermostatCommandEntity) {
+					if (column.propertyName === 'status') value = 'confirmed';
+					if (column.propertyName === 'proofId') value = settlement.proofId;
+					if (column.propertyName === 'settledAt') value = settlement.settledAt;
+				}
+				if (value === undefined && column.isNullable) value = null;
+				if (value === null && column.isNullable) { values[column.databaseName] = null; continue; }
+				if (column.type === 'boolean' && typeof value === 'boolean') value = value ? 1 : 0;
+				else if (column.type === 'datetime' && value instanceof Date && Number.isFinite(Date.prototype.getTime.call(value))) value = Date.prototype.toISOString.call(value).replace('T',' ').replace(/Z$/,'');
+				else if (column.type === 'simple-json') {
+					const data = bookkeepingJson(value);
+					if (!data) { supported = false; continue; }
+					value = JSON.stringify(data.value);
+				}
+				if (typeof value !== 'string' && !(typeof value === 'number' && Number.isFinite(value))) supported = false;
+				values[column.databaseName] = value;
+			}
+			rows.push({ table,key,values: Object.freeze(values),used: false });
+		}
+		if (runner && !this.bookkeepingRunners.has(runner)) this.bookkeepingRunners.set(runner,this.observeBookkeepingRunner(runner));
+		const observation = runner && this.bookkeepingRunners.get(runner);
+		if (observation) observation.users++;
+		const scope: RuntimeBookkeepingScope = { active: supported,closed: false,runner,observation,snapshot,context,purpose,rows,save,insert,closeData: () => { for (const close of closes) close(); },
+			current: () => supported && this.bookkeepingEngineCurrent === engine && !!engine?.() && !!health?.current && health.factsCurrent() && this.active && this.lifecycle === lifecycle && this.contexts.get(context.config.controllerId) === context &&
+				context.state.decisionRevision === decision && manager.connection === source && manager.queryRunner === runner && hasCurrentSqliteConnectionLease(source) &&
+				!!connection && connection.get === undefined && connection.set === undefined && Object.getOwnPropertyDescriptor(driver,'databaseConnection')?.value === connection.value &&
+				pins.every((pin) => bookkeepingDataCurrent(pin.receiver,pin.key,pin.value)) && fields.every((current) => current()) && !!observation?.current() };
+		if (!supported && health) health.current = false;
+		this.bookkeepingScopes.add(scope);
+		return scope;
+	}
+	private closeBookkeeping(scope: RuntimeBookkeepingScope): void {
+		if (scope.closed) return;
+		scope.closed = true;
+		const lose = (): void => { const health = this.bookkeepingHealth.get(scope.context); if (health) health.current = false; };
+		try { if (!scope.current()) lose(); } catch { lose(); }
+		scope.active = false; this.bookkeepingScopes.delete(scope);
+		try { scope.closeData(); } catch { lose(); }
+		// Never discover a successor via a now-mutated manager or retire another observation.
+		const { runner,observation } = scope;
+		if (runner && observation && --observation.users === 0) {
+			try { observation.close(); } catch { lose(); }
+			if (this.bookkeepingRunners.get(runner) === observation) this.bookkeepingRunners.delete(runner);
+		}
+	}
+	private saveBookkeeping(manager: EntityManager,context: ControllerContext,purpose: RuntimeBookkeepingPurpose,entity: BookkeepingRow | BookkeepingRow[]): ReturnType<EntityManager['save']> {
+		const scope = this.openBookkeeping(manager,context,purpose,Array.isArray(entity) ? entity : [entity]);
+		const promise = this.bookkeepingOrigin.run({ role: 'ORM',scope },() => scope.save.call(manager,entity));
+		const close = (): void => { try { this.closeBookkeeping(scope); } catch { const health = this.bookkeepingHealth.get(context); if (health) health.current = false; } };
+		void promise.then(close,() => { const health = this.bookkeepingHealth.get(context); if (health) health.current = false; close(); });
+		return promise;
+	}
+	private observeBookkeepingRunner(runner: QueryRunner): RuntimeRunnerObservation {
+		const origin = this.bookkeepingOrigin, broadcaster = runner.broadcaster;
+		const originalQuery: Readonly<{ call: (receiver: QueryRunner,query: string,parameters?: unknown[],structured?: boolean) => ReturnType<QueryRunner['query']> }> = runner.query;
+		const originalDescriptor = Object.getOwnPropertyDescriptor(runner,'query');
+		const query = (...args: [text: string,parameters?: unknown[],structured?: boolean]): ReturnType<QueryRunner['query']> => {
+			const [text,parameters] = args;
+			const parent = origin.getStore(), scope = parent?.role === 'ORM' ? parent.scope : undefined;
+			// Close reentry BEFORE traversing even the original driver's parameter array.
+			return origin.run({ role: 'QUERY',scope },() => {
+				const invocation: RuntimeNativeInvocation = { runner,query: text,parameters: Object.freeze([...(parameters ?? [])]),scope,consumed: false };
+				return origin.run({ role: 'QUERY',scope,invocation },() => originalQuery.call(runner,...args));
+			});
+		};
+		// All direct TypeORM callback dispatch sites used by save/insert/query/transaction/load.
+		// No handler is invoked twice; descendants inherit CALLBACK rather than the ORM allowance.
+		const restores: (() => void)[] = [], checks: (() => boolean)[] = [];
+		const descriptor0 = Object.getOwnPropertyDescriptor(broadcaster,'broadcast');
+		const original0: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcast']>) => ReturnType<Broadcaster['broadcast']> }> = broadcaster.broadcast;
+		const callback0 = (...args: Parameters<Broadcaster['broadcast']>): ReturnType<Broadcaster['broadcast']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original0.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcast',{ configurable: true,writable: true,value: callback0 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcast',callback0));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcast',callback0)) { if (descriptor0) Object.defineProperty(broadcaster,'broadcast',descriptor0); else Reflect.deleteProperty(broadcaster,'broadcast'); } });
+		const descriptor1 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastBeforeInsertEvent');
+		const original1: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastBeforeInsertEvent']>) => ReturnType<Broadcaster['broadcastBeforeInsertEvent']> }> = broadcaster.broadcastBeforeInsertEvent;
+		const callback1 = (...args: Parameters<Broadcaster['broadcastBeforeInsertEvent']>): ReturnType<Broadcaster['broadcastBeforeInsertEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original1.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastBeforeInsertEvent',{ configurable: true,writable: true,value: callback1 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastBeforeInsertEvent',callback1));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastBeforeInsertEvent',callback1)) { if (descriptor1) Object.defineProperty(broadcaster,'broadcastBeforeInsertEvent',descriptor1); else Reflect.deleteProperty(broadcaster,'broadcastBeforeInsertEvent'); } });
+		const descriptor2 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastBeforeUpdateEvent');
+		const original2: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastBeforeUpdateEvent']>) => ReturnType<Broadcaster['broadcastBeforeUpdateEvent']> }> = broadcaster.broadcastBeforeUpdateEvent;
+		const callback2 = (...args: Parameters<Broadcaster['broadcastBeforeUpdateEvent']>): ReturnType<Broadcaster['broadcastBeforeUpdateEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original2.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastBeforeUpdateEvent',{ configurable: true,writable: true,value: callback2 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastBeforeUpdateEvent',callback2));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastBeforeUpdateEvent',callback2)) { if (descriptor2) Object.defineProperty(broadcaster,'broadcastBeforeUpdateEvent',descriptor2); else Reflect.deleteProperty(broadcaster,'broadcastBeforeUpdateEvent'); } });
+		const descriptor3 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastAfterInsertEvent');
+		const original3: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastAfterInsertEvent']>) => ReturnType<Broadcaster['broadcastAfterInsertEvent']> }> = broadcaster.broadcastAfterInsertEvent;
+		const callback3 = (...args: Parameters<Broadcaster['broadcastAfterInsertEvent']>): ReturnType<Broadcaster['broadcastAfterInsertEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original3.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastAfterInsertEvent',{ configurable: true,writable: true,value: callback3 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastAfterInsertEvent',callback3));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastAfterInsertEvent',callback3)) { if (descriptor3) Object.defineProperty(broadcaster,'broadcastAfterInsertEvent',descriptor3); else Reflect.deleteProperty(broadcaster,'broadcastAfterInsertEvent'); } });
+		const descriptor4 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastAfterUpdateEvent');
+		const original4: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastAfterUpdateEvent']>) => ReturnType<Broadcaster['broadcastAfterUpdateEvent']> }> = broadcaster.broadcastAfterUpdateEvent;
+		const callback4 = (...args: Parameters<Broadcaster['broadcastAfterUpdateEvent']>): ReturnType<Broadcaster['broadcastAfterUpdateEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original4.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastAfterUpdateEvent',{ configurable: true,writable: true,value: callback4 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastAfterUpdateEvent',callback4));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastAfterUpdateEvent',callback4)) { if (descriptor4) Object.defineProperty(broadcaster,'broadcastAfterUpdateEvent',descriptor4); else Reflect.deleteProperty(broadcaster,'broadcastAfterUpdateEvent'); } });
+		const descriptor5 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastBeforeQueryEvent');
+		const original5: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastBeforeQueryEvent']>) => ReturnType<Broadcaster['broadcastBeforeQueryEvent']> }> = broadcaster.broadcastBeforeQueryEvent;
+		const callback5 = (...args: Parameters<Broadcaster['broadcastBeforeQueryEvent']>): ReturnType<Broadcaster['broadcastBeforeQueryEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original5.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastBeforeQueryEvent',{ configurable: true,writable: true,value: callback5 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastBeforeQueryEvent',callback5));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastBeforeQueryEvent',callback5)) { if (descriptor5) Object.defineProperty(broadcaster,'broadcastBeforeQueryEvent',descriptor5); else Reflect.deleteProperty(broadcaster,'broadcastBeforeQueryEvent'); } });
+		const descriptor6 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastAfterQueryEvent');
+		const original6: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastAfterQueryEvent']>) => ReturnType<Broadcaster['broadcastAfterQueryEvent']> }> = broadcaster.broadcastAfterQueryEvent;
+		const callback6 = (...args: Parameters<Broadcaster['broadcastAfterQueryEvent']>): ReturnType<Broadcaster['broadcastAfterQueryEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original6.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastAfterQueryEvent',{ configurable: true,writable: true,value: callback6 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastAfterQueryEvent',callback6));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastAfterQueryEvent',callback6)) { if (descriptor6) Object.defineProperty(broadcaster,'broadcastAfterQueryEvent',descriptor6); else Reflect.deleteProperty(broadcaster,'broadcastAfterQueryEvent'); } });
+		const descriptor7 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastBeforeTransactionStartEvent');
+		const original7: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastBeforeTransactionStartEvent']>) => ReturnType<Broadcaster['broadcastBeforeTransactionStartEvent']> }> = broadcaster.broadcastBeforeTransactionStartEvent;
+		const callback7 = (...args: Parameters<Broadcaster['broadcastBeforeTransactionStartEvent']>): ReturnType<Broadcaster['broadcastBeforeTransactionStartEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original7.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastBeforeTransactionStartEvent',{ configurable: true,writable: true,value: callback7 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastBeforeTransactionStartEvent',callback7));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastBeforeTransactionStartEvent',callback7)) { if (descriptor7) Object.defineProperty(broadcaster,'broadcastBeforeTransactionStartEvent',descriptor7); else Reflect.deleteProperty(broadcaster,'broadcastBeforeTransactionStartEvent'); } });
+		const descriptor8 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastAfterTransactionStartEvent');
+		const original8: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastAfterTransactionStartEvent']>) => ReturnType<Broadcaster['broadcastAfterTransactionStartEvent']> }> = broadcaster.broadcastAfterTransactionStartEvent;
+		const callback8 = (...args: Parameters<Broadcaster['broadcastAfterTransactionStartEvent']>): ReturnType<Broadcaster['broadcastAfterTransactionStartEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original8.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastAfterTransactionStartEvent',{ configurable: true,writable: true,value: callback8 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastAfterTransactionStartEvent',callback8));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastAfterTransactionStartEvent',callback8)) { if (descriptor8) Object.defineProperty(broadcaster,'broadcastAfterTransactionStartEvent',descriptor8); else Reflect.deleteProperty(broadcaster,'broadcastAfterTransactionStartEvent'); } });
+		const descriptor9 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastBeforeTransactionCommitEvent');
+		const original9: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastBeforeTransactionCommitEvent']>) => ReturnType<Broadcaster['broadcastBeforeTransactionCommitEvent']> }> = broadcaster.broadcastBeforeTransactionCommitEvent;
+		const callback9 = (...args: Parameters<Broadcaster['broadcastBeforeTransactionCommitEvent']>): ReturnType<Broadcaster['broadcastBeforeTransactionCommitEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original9.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastBeforeTransactionCommitEvent',{ configurable: true,writable: true,value: callback9 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastBeforeTransactionCommitEvent',callback9));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastBeforeTransactionCommitEvent',callback9)) { if (descriptor9) Object.defineProperty(broadcaster,'broadcastBeforeTransactionCommitEvent',descriptor9); else Reflect.deleteProperty(broadcaster,'broadcastBeforeTransactionCommitEvent'); } });
+		const descriptor10 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastAfterTransactionCommitEvent');
+		const original10: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastAfterTransactionCommitEvent']>) => ReturnType<Broadcaster['broadcastAfterTransactionCommitEvent']> }> = broadcaster.broadcastAfterTransactionCommitEvent;
+		const callback10 = (...args: Parameters<Broadcaster['broadcastAfterTransactionCommitEvent']>): ReturnType<Broadcaster['broadcastAfterTransactionCommitEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original10.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastAfterTransactionCommitEvent',{ configurable: true,writable: true,value: callback10 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastAfterTransactionCommitEvent',callback10));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastAfterTransactionCommitEvent',callback10)) { if (descriptor10) Object.defineProperty(broadcaster,'broadcastAfterTransactionCommitEvent',descriptor10); else Reflect.deleteProperty(broadcaster,'broadcastAfterTransactionCommitEvent'); } });
+		const descriptor11 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastBeforeTransactionRollbackEvent');
+		const original11: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastBeforeTransactionRollbackEvent']>) => ReturnType<Broadcaster['broadcastBeforeTransactionRollbackEvent']> }> = broadcaster.broadcastBeforeTransactionRollbackEvent;
+		const callback11 = (...args: Parameters<Broadcaster['broadcastBeforeTransactionRollbackEvent']>): ReturnType<Broadcaster['broadcastBeforeTransactionRollbackEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original11.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastBeforeTransactionRollbackEvent',{ configurable: true,writable: true,value: callback11 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastBeforeTransactionRollbackEvent',callback11));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastBeforeTransactionRollbackEvent',callback11)) { if (descriptor11) Object.defineProperty(broadcaster,'broadcastBeforeTransactionRollbackEvent',descriptor11); else Reflect.deleteProperty(broadcaster,'broadcastBeforeTransactionRollbackEvent'); } });
+		const descriptor12 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastAfterTransactionRollbackEvent');
+		const original12: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastAfterTransactionRollbackEvent']>) => ReturnType<Broadcaster['broadcastAfterTransactionRollbackEvent']> }> = broadcaster.broadcastAfterTransactionRollbackEvent;
+		const callback12 = (...args: Parameters<Broadcaster['broadcastAfterTransactionRollbackEvent']>): ReturnType<Broadcaster['broadcastAfterTransactionRollbackEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original12.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastAfterTransactionRollbackEvent',{ configurable: true,writable: true,value: callback12 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastAfterTransactionRollbackEvent',callback12));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastAfterTransactionRollbackEvent',callback12)) { if (descriptor12) Object.defineProperty(broadcaster,'broadcastAfterTransactionRollbackEvent',descriptor12); else Reflect.deleteProperty(broadcaster,'broadcastAfterTransactionRollbackEvent'); } });
+		const descriptor13 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastLoadEventsForAll');
+		const original13: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastLoadEventsForAll']>) => ReturnType<Broadcaster['broadcastLoadEventsForAll']> }> = broadcaster.broadcastLoadEventsForAll;
+		const callback13 = (...args: Parameters<Broadcaster['broadcastLoadEventsForAll']>): ReturnType<Broadcaster['broadcastLoadEventsForAll']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original13.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastLoadEventsForAll',{ configurable: true,writable: true,value: callback13 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastLoadEventsForAll',callback13));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastLoadEventsForAll',callback13)) { if (descriptor13) Object.defineProperty(broadcaster,'broadcastLoadEventsForAll',descriptor13); else Reflect.deleteProperty(broadcaster,'broadcastLoadEventsForAll'); } });
+		const descriptor14 = Object.getOwnPropertyDescriptor(broadcaster,'broadcastLoadEvent');
+		const original14: Readonly<{ call: (receiver: Broadcaster,...args: Parameters<Broadcaster['broadcastLoadEvent']>) => ReturnType<Broadcaster['broadcastLoadEvent']> }> = broadcaster.broadcastLoadEvent;
+		const callback14 = (...args: Parameters<Broadcaster['broadcastLoadEvent']>): ReturnType<Broadcaster['broadcastLoadEvent']> => {
+			const parent = origin.getStore();
+			return origin.run({ role: 'CALLBACK',scope: parent?.scope,invocation: parent?.invocation },() => original14.call(broadcaster,...args));
+		};
+		Object.defineProperty(broadcaster,'broadcastLoadEvent',{ configurable: true,writable: true,value: callback14 });
+		checks.push(() => creationMethodCurrent(broadcaster,'broadcastLoadEvent',callback14));
+		restores.push(() => { if (creationMethodCurrent(broadcaster,'broadcastLoadEvent',callback14)) { if (descriptor14) Object.defineProperty(broadcaster,'broadcastLoadEvent',descriptor14); else Reflect.deleteProperty(broadcaster,'broadcastLoadEvent'); } });
+		Object.defineProperty(runner,'query',{ configurable: true,writable: true,value: query });
+		let active = true;
+		return { users: 0,current: () => active && creationMethodCurrent(runner,'query',query) && creationMethodCurrent(runner,'broadcaster',broadcaster) && checks.every((check) => check()),
+			close: () => { if (!active) return; active = false;
+				if (creationMethodCurrent(runner,'query',query)) { if (originalDescriptor) Object.defineProperty(runner,'query',originalDescriptor); else Reflect.deleteProperty(runner,'query'); }
+				for (const restore of restores) restore();
+			} };
+	}
+
+	private async write(context: ControllerContext, entity: VirtualThermostatCommandEntity | VirtualThermostatBranchRuntimeEntity,purpose: 'dispatch-command' | 'command-outcome' | 'member-fault'): Promise<void> {
 		// Publish before and after SQL: another context may load while this writer waits for its lock.
 		const publishOutcome = () => {
 			if (entity instanceof VirtualThermostatCommandEntity) {
@@ -489,13 +902,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		publishOutcome();
 		await this.structure.runExclusive(() =>
 			this.dataSource.transaction(async (manager) => {
-				await manager.save(entity);
+				await this.saveBookkeeping(manager,context,purpose,entity);
 			}),
 		);
 		publishOutcome();
 	}
 	private async load(controllerId: string): Promise<ControllerContext | null> {
+		const lifecycle = this.lifecycle;
 		await this.comfort.settle(controllerId);
+		if (!this.active || this.lifecycle !== lifecycle) return null;
 		return this.structure.runShared(async () => {
 			const admission = this.claims.capture();
 			const publishGuard = this.graph.capturePublishGuard();
@@ -555,9 +970,13 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			}
 			if (!intent.isCurrent()) { intent.close(); return null; }
 			const originalAdmission = admission;
-			return {
+			const claimFacts = captureDiagnosticTree(claims), configFacts = captureDiagnosticTree(config), originalEpoch = this.epochs.get(controllerId) ?? 0;
+			const health = { current: true,factsCurrent: (): boolean => diagnosticTreeCurrent(claimFacts) && diagnosticTreeCurrent(configFacts) &&
+				context.config === config && context.claims === claims && context.state === state && context.epoch === originalEpoch,
+				close: (): void => { closeDiagnosticTree(claimFacts); closeDiagnosticTree(configFacts); } };
+			const context: ControllerContext = {
 				intent,
-				admission: { isCurrent: () => originalAdmission.isCurrent() && intent.isCurrent() },
+				admission: { isCurrent: () => health.current && health.factsCurrent() && this.active && this.lifecycle === lifecycle && originalAdmission.isCurrent() && intent.isCurrent() },
 				publishGuard,
 				config,
 				owner,
@@ -580,6 +999,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					reasons: [],
 				},
 			};
+			this.bookkeepingCaptures.set(context,originalAdmission); this.bookkeepingHealth.set(context,health);
+			return context;
 			} catch (error) { intent.close(); throw error; }
 		});
 	}
@@ -847,8 +1268,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (!this.active) return;
 		const context = await this.load(controllerId);
 		if (!context || !this.active) {
+			this.closeBookkeepingContext(context ?? undefined); this.closeBookkeepingContext(this.contexts.get(controllerId));
 			context?.intent?.close(); this.contexts.get(controllerId)?.intent?.close(); this.contexts.delete(controllerId); return;
 		}
+		this.closeBookkeepingContext(this.contexts.get(controllerId));
 		this.contexts.get(controllerId)?.intent?.close();
 		this.contexts.set(controllerId, context);
 		const now = Date.now(),
@@ -871,8 +1294,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				: null;
 		await this.structure.runExclusive(() =>
 			this.dataSource.transaction(async (manager) => {
-				await manager.save(context.state);
-				await manager.save([...context.branches.values()]);
+				await this.saveBookkeeping(manager,context,'decision-state',context.state);
+				await this.saveBookkeeping(manager,context,'decision-branches',[...context.branches.values()]);
 			}),
 		);
 		// Every unwanted/unknown/pending branch gets release before any new energizing is considered.
@@ -1005,7 +1428,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			adapter = target && this.transport.get(target, claim);
 		if (!target || !adapter) {
 			branch.fault = 'actuator_missing_or_unsupported';
-			await this.write(branch);
+			await this.write(context,branch,'member-fault');
 			return;
 		}
 		const command = this.dataSource.manager.create(VirtualThermostatCommandEntity, {
@@ -1031,8 +1454,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		}
 		await this.structure.runExclusive(() =>
 			this.dataSource.transaction(async (manager) => {
-				await manager.insert(VirtualThermostatCommandEntity, command);
-				await manager.save(branch);
+				const scope = this.openBookkeeping(manager,context,'prepare-command',[command]);
+				try { await this.bookkeepingOrigin.run({ role: 'ORM',scope },() => scope.insert.call(manager,VirtualThermostatCommandEntity, command)); }
+				catch (error) { const health = this.bookkeepingHealth.get(context); if (health) health.current = false; throw error; }
+				finally { this.closeBookkeeping(scope); }
+				await this.saveBookkeeping(manager,context,'prepare-branch',branch);
 			}),
 		);
 		context.commands.push(command);
@@ -1071,7 +1497,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		try {
 			if (!this.canSend(context, claim, command.action)) {
 				command.status = 'cancelled';
-				await this.write(command);
+				await this.write(context,command,'command-outcome');
 				await this.retryOffImmediately(context, command);
 				return;
 			}
@@ -1080,10 +1506,10 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const guard = () => this.canSend(context, claim, command.action) && this.claims.isAuthorized(authority, update);
 			command.status = 'dispatching';
 			command.dispatchedAt = new Date();
-			await this.write(command);
+			await this.write(context,command,'dispatch-command');
 			if (!guard()) {
 				command.status = 'cancelled';
-				await this.write(command);
+				await this.write(context,command,'command-outcome');
 				await this.retryOffImmediately(context, command);
 				return;
 			}
@@ -1104,14 +1530,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						: null;
 			if (command.action === 'on' && result.outcome !== 'accepted') {
 				const branch = this.recordMemberFault(context, claim, command.fault ?? 'mandatory_member_refused');
-				if (branch) await this.write(branch);
+				if (branch) await this.write(context,branch,'member-fault');
 			}
-			await this.write(command);
+			await this.write(context,command,'command-outcome');
 		} catch (error) {
 			command.status = enteredTransport && !refusedOn ? 'unknown' : 'cancelled';
 			command.fault = error instanceof Error ? error.message : 'dispatch_error';
 			if (command.action === 'on') this.recordMemberFault(context, claim, command.fault);
-			await this.write(command);
+			await this.write(context,command,'command-outcome');
 			if (!enteredTransport) await this.retryOffImmediately(context, command);
 		} finally {
 			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
@@ -1135,7 +1561,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				if (!branch) return;
 				branch.releaseAttempts = Math.max(0, branch.releaseAttempts - 1);
 				branch.nextReleaseAt = null;
-				await manager.save(branch);
+				await this.saveBookkeeping(manager,context,'retry-off',branch);
 				const current = context.branches.get(command.claimId);
 				if (current) {
 					current.releaseAttempts = branch.releaseAttempts;
@@ -1286,14 +1712,15 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					});
 					const settledAt = new Date();
 					for (let offset = 0; offset < current.length; offset += 500) {
-						await manager
+						const scope = this.openBookkeeping(manager,context,'settle-drain',current.slice(offset,offset + 500),{ proofId: proof.proofId,settledAt });
+						try { await this.bookkeepingOrigin.run({ role: 'ORM',scope },() => manager
 							.createQueryBuilder()
 							.update(VirtualThermostatCommandEntity)
 							.set({ status: 'confirmed', proofId: proof.proofId, settledAt })
 							.where('id IN (:...ids)', { ids: current.slice(offset, offset + 500).map((command) => command.id) })
-							.execute();
+							.execute()); } catch (error) { const health = this.bookkeepingHealth.get(context); if (health) health.current = false; throw error; } finally { this.closeBookkeeping(scope); }
 					}
-					await manager.save(settledBranch);
+					await this.saveBookkeeping(manager,context,'settle-branch',settledBranch);
 					if (!isProofCurrent()) throw staleProof;
 					return { branch: settledBranch, currentIds: new Set(current.map((command) => command.id)), settledAt };
 				})
@@ -1589,4 +2016,92 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			});
 		}
 	}
+}
+
+/** Source-bounded SQLite INSERT/UPDATE effects. No expression evaluation or table-prefix permission. */
+interface BookkeepingNativeEffect {
+	readonly table: string;
+	readonly kind: 'insert' | 'update';
+	readonly assignments: Readonly<Record<string, unknown>>;
+	readonly predicates: Readonly<Record<string, readonly unknown[]>>;
+}
+function bookkeepingNativeEffects(query: string, parameters: readonly unknown[]): readonly BookkeepingNativeEffect[] | null {
+	if (/;|--|\/\*|\*\//.test(query)) return null;
+	// Commas/parentheses in bound text are never scanned as SQL.
+	const tokens = query.match(/"[A-Za-z][A-Za-z0-9_]*"|'(?:[^']|'')*'|\?|[(),=]|-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*/g);
+	if (!tokens || tokens.join('').replace(/\s/g,'') !== query.replace(/\s/g,'')) return null;
+	let cursor = 0, binding = 0;
+	const take = (expected: string): boolean => tokens[cursor]?.toUpperCase() === expected && (++cursor > 0);
+	const name = (): string | null => { const text = tokens[cursor++]; return text && /^"[A-Za-z][A-Za-z0-9_]*"$/.test(text) ? text.slice(1,-1) : null; };
+	const scalar = (): { value: unknown } | null => {
+		const text = tokens[cursor++];
+		if (text === '?') {
+			if (binding >= parameters.length) return null;
+			const value = parameters[binding++];
+			return value === null || typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) ? { value } : null;
+		}
+		if (text === 'NULL') return { value: null };
+		if (/^-?\d+(?:\.\d+)?$/.test(text ?? '')) { const value = Number(text); return Number.isFinite(value) && String(value) === text ? { value } : null; }
+		if (/^'(?:[^']|'')*'$/.test(text ?? '')) return { value: text.slice(1,-1).replace(/''/g,"'") };
+		return null;
+	};
+	const effects: BookkeepingNativeEffect[] = [];
+	if (take('INSERT')) {
+		if (!take('INTO')) return null;
+		const table = name(), columns: string[] = [];
+		if (!table || !take('(')) return null;
+		do { const column = name(); if (!column || columns.includes(column)) return null; columns.push(column); } while (take(','));
+		if (!take(')') || !take('VALUES')) return null;
+		do {
+			if (!take('(')) return null;
+			const assignments: Record<string,unknown> = {};
+			for (let index = 0; index < columns.length; index++) { if (index && !take(',')) return null; const value = scalar(); if (!value) return null; assignments[columns[index]] = value.value; }
+			if (!take(')')) return null;
+			effects.push({ table,kind: 'insert',assignments,predicates: {} });
+		} while (take(','));
+	} else if (take('UPDATE')) {
+		const table = name(), assignments: Record<string,unknown> = {}, predicates: Record<string,readonly unknown[]> = {};
+		if (!table || !take('SET')) return null;
+		do { const column = name(); if (!column || Object.hasOwn(assignments,column) || !take('=')) return null; const value = scalar(); if (!value) return null; assignments[column] = value.value; } while (take(','));
+		if (!take('WHERE')) return null;
+		// TypeORM's finite conjunction/equality/IN forms; parentheses only group conjunctions.
+		let parentheses = 0;
+		do {
+			while (take('(')) parentheses++;
+			const column = name(); if (!column || Object.hasOwn(predicates,column)) return null;
+			const values: unknown[] = [];
+			if (take('=') || take('IS')) { const value = scalar(); if (!value) return null; values.push(value.value); }
+			else if (take('IN') && take('(')) { do { const value = scalar(); if (!value) return null; values.push(value.value); } while (take(',')); if (!take(')')) return null; }
+			else return null;
+			predicates[column] = values;
+			while (parentheses && take(')')) parentheses--;
+		} while (take('AND'));
+		if (parentheses) return null;
+		effects.push({ table,kind: 'update',assignments,predicates });
+	} else return null;
+	return cursor === tokens.length && binding === parameters.length ? effects : null;
+}
+
+/** Getter-free finite data snapshot for the builtin simple-json columns only. */
+function bookkeepingJson(value: unknown,seen = new Set<object>()): { value: unknown } | null {
+	if (value === null || typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) return { value };
+	if (!value || typeof value !== 'object' || seen.has(value) || (Object.getPrototypeOf(value) !== Object.prototype && !Array.isArray(value))) return null;
+	seen.add(value);
+	const result: Record<string,unknown> = {}, array: unknown[] = [];
+	for (const key of Object.keys(value)) {
+		const descriptor = Object.getOwnPropertyDescriptor(value,key);
+		if (!descriptor || descriptor.get || descriptor.set) return null;
+		const child = bookkeepingJson(descriptor.value,seen); if (!child) return null;
+		if (Array.isArray(value)) { if (String(array.length) !== key) return null; array.push(child.value); } else result[key] = child.value;
+	}
+	seen.delete(value); return { value: Array.isArray(value) ? array : result };
+}
+
+/** Original data property, including genuine absence; an accessor is never a matching absence. */
+function bookkeepingDataCurrent(receiver: object,key: string,value: unknown): boolean {
+	for (let item: object | null = receiver; item; item = Object.getPrototypeOf(item)) {
+		const descriptor = Object.getOwnPropertyDescriptor(item,key);
+		if (descriptor) return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === value;
+	}
+	return value === undefined;
 }

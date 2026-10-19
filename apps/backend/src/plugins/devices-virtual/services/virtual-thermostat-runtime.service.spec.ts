@@ -48,6 +48,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ConfigureVirtualThermostatDto } from '../dto/thermostat-config.dto';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
 import {
 	VirtualChannelEntity,
@@ -3459,7 +3460,7 @@ describe('virtual thermostat durable runtime', () => {
 		});
 
 		// BEGIN original native proof/clock integration drafts (UNRUN; existing synthetic installation boundary only)
-		it('keeps graph-counter effects claims-neutral while an original joined override clock closes sticky',async () => {
+		it('keeps counter-only effects claims-neutral and the original joined override time current without minting send authority',async () => {
 			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
 			await comfort.override(controllerId,{ expected_revision: row.revision,expected_graph_revision: await actualGraph.revision() },
 				{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'original-clock-proof');
@@ -3469,7 +3470,7 @@ describe('virtual thermostat durable runtime', () => {
 			try {
 				expect(intent.isOverrideCurrent()).toBe(true); expect(original.isCurrent()).toBe(true);
 				await database.query('UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1');
-				expect(original.isCurrent()).toBe(true); expect(intent.isOverrideCurrent()).toBe(false);
+				expect(original.isCurrent()).toBe(true); expect(intent.isOverrideCurrent()).toBe(true);
 				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
 			} finally { intent.close(); }
 		});
@@ -3492,6 +3493,319 @@ describe('virtual thermostat durable runtime', () => {
 				} finally { database.subscribers.splice(database.subscribers.indexOf(observer),1); }
 			});
 		// END original native proof/clock integration drafts
+
+		// BEGIN closed runtime bookkeeping and persistent TIME drafts (UNRUN; real native DB, synthetic installation boundary)
+		const makeActualRuntime = (transport = fixture.transport) => new VirtualThermostatRuntimeService(database,actualStructure,actualClaims,
+			new VirtualThermostatInputsService(database,values),transport,values,producers,events,actualGraph,comfort,new ConfigService({ FB_CLI: 'off' }));
+		const useSharedNativePipeline = async (): Promise<TestingModule> => {
+			runtime.onModuleDestroy(); fixture.revoke(); await fixture.close();
+			const pipeline = await Test.createTestingModule({ providers: [PropertyValueService,PropertyValueLockService,PropertyValueSourceRegistryService,StorageService,
+				{ provide: PropertyProducerRegistryService,useValue: producers },{ provide: DataSource,useValue: database },{ provide: EventEmitter2,useValue: events },
+				{ provide: ConfigService,useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }) },
+				{ provide: ModuleConfigService,useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(),{ primaryStorage: 'owned-bookkeeping-native' }) } },
+			] }).compile();
+			const storage = pipeline.get(StorageService);
+			const backend: StoragePlugin = { name: 'owned-bookkeeping-native',initialize: () => Promise.resolve(),destroy: () => Promise.resolve(),
+				isAvailable: () => true,writePoints: () => Promise.resolve(),query: <T>() => Promise.resolve<T[]>([]),
+				queryRaw: <T>() => Promise.reject<T>(new Error('No raw fixture history')),registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(),getMeasurements: () => Promise.resolve([]) };
+			storage.registerPlugin(backend.name,backend);
+			values = pipeline.get(PropertyValueService);
+			fixture = await realThermostatGuardFixture(database,events,producers,installedQualifications,'managed',
+				{ values,sources: pipeline.get(PropertyValueSourceRegistryService) });
+			realGuardFixtures.push(fixture);
+			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+			mutationProvider.onModuleDestroy(); comfort.onModuleDestroy();
+			comfort = new VirtualThermostatComfortService(database,actualStructure,actualGraph,actualClaims,events,mutationWriter);
+			configs = new VirtualThermostatConfigService(database,actualStructure,actualGraph,actualClaims,events,values,undefined,mutationWriter);
+			mutationProvider = new VirtualThermostatAutomationService(mutationWriter,mutationRegistry,actualGraph,new ConfigService({ FB_CLI: 'off' }),undefined,configs,comfort);
+			mutationProvider.onModuleInit();
+			for (const [id,sample] of samples) if (typeof sample.value === 'number' || typeof sample.value === 'boolean') await fixture.report(id,sample.value);
+			return pipeline;
+		};
+		it('keeps actual state, branch/noop, command journal and enabled derived lock writes command-current through managed ON',async () => {
+			await createTemperatureOutput(); await actualGraph.refreshValidation(false);
+			const pipeline = await useSharedNativePipeline();
+			const writes: string[] = [];
+			const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => {
+				if (/^(INSERT|UPDATE|DELETE) /.test(event.query)) writes.push(event.query);
+			} }; database.subscribers.push(observer);
+			try {
+				runtime = makeActualRuntime(); await runtime.onApplicationBootstrap(); await settleReal(fixture);
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+				await comfort.override(controllerId,{ expected_revision: before.revision,expected_graph_revision: await actualGraph.revision() },
+					{ preset: null,setpoints: { heating_setpoint: 23,cooling_setpoint: null },expires_at: new Date(Date.now() + 30_000).toISOString() },'bookkeeping');
+				await settleReal(fixture);
+				expect(fixture.values).toBe(values);
+				expect(fixture.controls.sends.some((send) => send.property === relayId && send.on)).toBe(true);
+				expect(actualClaims.capture().isCurrent()).toBe(true);
+				expect(writes.some((query) => query.startsWith('INSERT INTO "devices_virtual_thermostat_command_journal"'))).toBe(true);
+				expect(writes.some((query) => query.startsWith('UPDATE "devices_virtual_thermostat_runtime"'))).toBe(true);
+				expect(writes.some((query) => query.startsWith('INSERT INTO "devices_module_property_value_locks"'))).toBe(true);
+				expect(writes.some((query) => query.startsWith('DELETE FROM "devices_module_property_value_locks"'))).toBe(true);
+				runtime.request(controllerId,false); await settleReal(fixture);
+				expect(actualClaims.capture().isCurrent()).toBe(true);
+			} finally { runtime.onModuleDestroy(); fixture.revoke(); await fixture.close(); database.subscribers.splice(database.subscribers.indexOf(observer),1); await pipeline.close(); }
+		});
+		it('rejects identical native journal SQL and ALL bindings from an actual same-runner subscriber without borrowing its enclosing ORM effect',async () => {
+			const entered = barrier(), resume = barrier();
+			let armed = true, nested: Promise<unknown> | undefined, originalCapture: ReturnType<VirtualThermostatClaimsService['capture']> | undefined;
+			const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+				if (!armed || !event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') || !event.query.includes('dispatchedAt')) return;
+				armed = false; originalCapture = actualClaims.capture();
+				nested = event.queryRunner.query(event.query,[...(event.parameters ?? [])]);
+				void nested.catch(() => undefined); entered.open();
+			} }; database.subscribers.push(observer);
+			fixture.controls.beforeOn = async () => { await resume.promise; };
+			try {
+				await fixture.report(sensorId,18); await entered.promise; await nested;
+				expect(originalCapture?.isCurrent()).toBe(false);
+				resume.open(); await settleReal(fixture);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				const journal = await database.manager.findBy(VirtualThermostatCommandEntity,{ controllerId,action: 'on' });
+				expect(journal.length).toBeGreaterThan(0); expect(journal.every((row) => row.status === 'cancelled')).toBe(true);
+			} finally { runtime.onModuleDestroy(); fixture.revoke(); resume.open(); database.subscribers.splice(database.subscribers.indexOf(observer),1); await nested?.catch(() => undefined); }
+		});
+		it.each(['same-value','restore','slot'] satisfies readonly ('same-value' | 'restore' | 'slot')[])(
+			'keeps an original time owner closed after relevant native %s and same-lifetime rejoin',async (mode) => {
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+				await comfort.override(controllerId,{ expected_revision: before.revision,expected_graph_revision: await actualGraph.revision() },
+					{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'no-clock-revival');
+				await settleReal(fixture);
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+				const original = await comfort.readIntentInManager(database.manager,row);
+				try {
+					expect(original.isOverrideCurrent()).toBe(true);
+					if (mode === 'slot') await database.query('UPDATE "devices_module_climate_automation_slots" SET "manualCounter" = "manualCounter" WHERE "controllerId" = ?',[controllerId]);
+					else {
+						await database.query('UPDATE "devices_virtual_thermostat_configs" SET "locked" = ? WHERE "controllerId" = ?',[mode === 'restore' ? 1 : Number(row.locked),controllerId]);
+						if (mode === 'restore') await database.query('UPDATE "devices_virtual_thermostat_configs" SET "locked" = ? WHERE "controllerId" = ?',[Number(row.locked),controllerId]);
+					}
+					expect(original.isOverrideCurrent()).toBe(false);
+					const fresh = await comfort.readIntentInManager(database.manager,await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId }));
+					try { expect(fresh.isOverrideCurrent()).toBe(false); } finally { fresh.close(); }
+				} finally { original.close(); }
+			});
+		it('refreshes genuine claims after recovery TX AND original structure release, and cleans a failed original bootstrap before same-instance restart',async () => {
+			runtime.onModuleDestroy();
+			const original: Readonly<{ refresh: { call: (receiver: VirtualThermostatClaimsService) => Promise<void> } }> = actualClaims;
+			const refresh = original.refresh, trace: string[] = [], failure = new Error('original recovery subscriber');
+			let fail = true;
+			const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+				if (!/^UPDATE "devices_virtual_thermostat_branch_runtime" SET "activity" = \?, "releaseAttempts" = 0, "nextReleaseAt" = \?$/.test(event.query) ||
+					event.parameters?.length !== 2 || event.parameters[0] !== 'unknown' || event.parameters[1] !== null) return;
+				trace.push('recovery'); if (fail) { fail = false; throw failure; }
+			} }; database.subscribers.push(observer);
+			const spy = jest.spyOn(actualClaims,'refresh').mockImplementation(() => {
+				expect(actualStructure.hasCurrentStructuralLease()).toBe(false); trace.push('released-refresh'); return refresh.call(actualClaims);
+			});
+			runtime = makeActualRuntime();
+			try {
+				await expect(runtime.onApplicationBootstrap()).rejects.toBe(failure);
+				expect(trace).toEqual(['recovery']);
+				await runtime.onApplicationBootstrap(); await settleReal(fixture);
+				expect(trace.indexOf('released-refresh')).toBeGreaterThan(trace.lastIndexOf('recovery'));
+				expect(actualClaims.capture().isCurrent()).toBe(true);
+				const a = runtime; a.onModuleDestroy(); runtime = makeActualRuntime(); await runtime.onApplicationBootstrap(); await settleReal(fixture);
+				const b = actualClaims.capture(); expect(b.isCurrent()).toBe(true); a.onModuleDestroy(); expect(b.isCurrent()).toBe(true);
+			} finally { runtime.onModuleDestroy(); database.subscribers.splice(database.subscribers.indexOf(observer),1); spy.mockRestore(); }
+		});
+		it('preserves only C original remaining TIME across D complete requestRelease, native slot/config effects, qualified drain and new graph generation',async () => {
+			runtime.onModuleDestroy();
+			const d = uuid(), relayDevice = database.manager.create(ShellyNgDeviceEntity,{ id: uuid(),name: 'D physical',identifier: 'shellyplus1pm-a8032abe5085',canonicalMac: 'A8032ABE5085',category: DeviceCategory.SWITCHER,enabled: true });
+			const device = database.manager.create(VirtualDeviceEntity,{ id: d,name: 'D controller',mode: VirtualDeviceMode.CLIMATE_CONTROLLER,category: DeviceCategory.THERMOSTAT,enabled: true });
+			const channel = database.manager.create(ShellyNgChannelEntity,{ id: uuid(),device: relayDevice,name: 'D switch',identifier: 'switch:0',category: ChannelCategory.SWITCHER });
+			const property = database.manager.create(ShellyNgChannelPropertyEntity,{ id: uuid(),channel,identifier: 'output',category: PropertyCategory.ON,dataType: DataTypeType.BOOL,permissions: [PermissionType.READ_WRITE] });
+			await database.manager.insert(VirtualDeviceEntity,device); await database.manager.insert(ShellyNgDeviceEntity,relayDevice);
+			await database.manager.insert(ShellyNgChannelEntity,channel); await database.manager.insert(ShellyNgChannelPropertyEntity,property);
+			const c = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+			// Actual configure bootstrap for an existing catalog controller, not a fabricated releasing claim/slot.
+			await configs.configure(d,Object.assign(new ConfigureVirtualThermostatDto(),{
+				schemaVersion: 1,expectedRevision: 0,expectedGraphRevision: await actualGraph.revision(),requestedMode: 'heat',policy: structuredClone(c.policy),
+				heuristic: null,contactOpeningMs: 0,contactClosingMs: 0,
+				sources: [{ role: 'ambient',sourcePropertyId: sensorId,maximumAgeSeconds: 300 }],
+				actuators: [{ role: 'heating',sourcePropertyId: property.id,leaseSeconds: 30 }],settings: [],
+			}));
+			const pipeline = await useSharedNativePipeline();
+			let mono = performance.now(); const initialMono = mono;
+			const monotonic = jest.spyOn(performance,'now').mockImplementation(() => mono);
+			const onEntered = barrier(), onResume = barrier();
+			const effects: string[] = [];
+			const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+				if (/^(UPDATE|INSERT|DELETE) /.test(event.query)) effects.push(event.query);
+			} }; database.subscribers.push(observer);
+			try {
+				runtime = makeActualRuntime(); await runtime.onApplicationBootstrap(); await settleReal(fixture);
+				fixture.controls.beforeOn = async (id) => { if (id === relayId) { onEntered.open(); await onResume.promise; } };
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+				await comfort.override(controllerId,{ expected_revision: before.revision,expected_graph_revision: await actualGraph.revision() },
+					{ preset: null,setpoints: { heating_setpoint: 23,cooling_setpoint: null },expires_at: new Date(Date.now() + 30_000).toISOString() },'C-original-budget');
+				await onEntered.promise;
+				const originalClaims = actualClaims.capture(), originalGraph = actualGraph.capturePublishGuard();
+				const originalConfig = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+				const originalIntent = await comfort.readIntentInManager(database.manager,originalConfig);
+				const slot = await database.query<Record<string,unknown>[]>('SELECT * FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?',[controllerId]);
+				const dBefore = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: d });
+				const dSlot = await database.query<{ slotRevision: number }[]>('SELECT "slotRevision" FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?',[d]);
+				try {
+					expect(originalIntent.isOverrideCurrent()).toBe(true); expect(originalClaims.isCurrent()).toBe(true);
+					mono = initialMono + 500; effects.length = 0;
+					const release = configs.requestRelease(d,dBefore.revision); void release.catch(() => undefined);
+					expect(originalClaims.isCurrent()).toBe(false);
+					onResume.open(); fixture.controls.beforeOn = null;
+					await release; await fixture.flushTelemetry(); await settle();
+					expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ controllerId: d })).state).toBe('released');
+					expect((await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId: d })).revision).toBe(dBefore.revision + 1);
+					expect((await database.query<{ slotRevision: number }[]>('SELECT "slotRevision" FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?',[d]))[0].slotRevision).toBe(dSlot[0].slotRevision + 1);
+					expect(effects.some((query) => query.startsWith('UPDATE "devices_virtual_thermostat_configs"'))).toBe(true);
+					expect(effects.some((query) => query.startsWith('UPDATE "devices_module_climate_automation_slots"'))).toBe(true);
+					expect(effects.some((query) => query.includes('releaseEvidence'))).toBe(true);
+					expect(effects.some((query) => query === 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1')).toBe(true);
+					// Source/head facts are reread fences on this route; actual requestRelease does not rewrite them.
+					expect(effects.filter((query) => /^(UPDATE|INSERT INTO|DELETE FROM) "devices_module_climate_automation_sources"/.test(query))).toEqual([]);
+					expect(originalClaims.isCurrent()).toBe(false); expect(originalGraph()).toBe(false); expect(originalIntent.isCurrent()).toBe(false);
+					const afterC = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+					// A genuine intervening C settlement may advance ONLY its original watermark, not the lifetime/budget.
+					expect(afterC.comfort?.temporary_override?.wall_watermark_ms).toBeGreaterThanOrEqual(originalConfig.comfort?.temporary_override?.wall_watermark_ms ?? 0);
+					expect(afterC).toEqual({ ...originalConfig,comfort: originalConfig.comfort && { ...originalConfig.comfort,
+						temporary_override: originalConfig.comfort.temporary_override && { ...originalConfig.comfort.temporary_override,
+							wall_watermark_ms: afterC.comfort?.temporary_override?.wall_watermark_ms } } });
+					expect(await database.query('SELECT * FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?',[controllerId])).toEqual(slot);
+					const fresh = await comfort.readIntentInManager(database.manager,afterC);
+					try {
+						expect(fresh.isOverrideCurrent()).toBe(true);
+						runtime.request(controllerId); await settleReal(fixture);
+						expect(fixture.controls.sends.some((send) => send.property === relayId && send.on)).toBe(true);
+						mono = initialMono + 30_100; // would still fit a new D-time budget; cannot fit C's ORIGINAL deadline
+						expect(fresh.isOverrideCurrent()).toBe(false);
+					} finally { fresh.close(); }
+				} finally { originalIntent.close(); }
+			} finally { runtime.onModuleDestroy(); fixture.revoke(); onResume.open(); await fixture.close(); database.subscribers.splice(database.subscribers.indexOf(observer),1); monotonic.mockRestore(); await pipeline.close(); }
+		});
+		it.each(['before-send','after-send'] satisfies readonly ('before-send' | 'after-send')[])(
+			'keeps real enabled publication locks neutral while managed ON is pending %s, then preserves actual refusal/UNKNOWN on original claims loss',async (boundary) => {
+				runtime.onModuleDestroy(); await createTemperatureOutput(); await actualGraph.refreshValidation(false);
+				const pipeline = await useSharedNativePipeline();
+				const entered = barrier(), resume = barrier(), locks: string[] = [];
+				const observer = { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+					if (/^(INSERT INTO|DELETE FROM) "devices_module_property_value_locks"/.test(event.query)) locks.push(event.query);
+				} }; database.subscribers.push(observer);
+				try {
+					runtime = makeActualRuntime(); await runtime.onApplicationBootstrap(); await settleReal(fixture); locks.length = 0;
+					fixture.controls[boundary === 'before-send' ? 'beforeOn' : 'afterOn'] = async (id) => { if (id === relayId) { entered.open(); await resume.promise; } };
+					await fixture.report(sensorId,18); await entered.promise; await runtime.flush();
+					const original = actualClaims.capture(); expect(original.isCurrent()).toBe(true);
+					expect(locks.some((query) => query.startsWith('INSERT INTO'))).toBe(true); expect(locks.some((query) => query.startsWith('DELETE FROM'))).toBe(true);
+					expect(fixture.controls.sends.filter((send) => send.property === relayId && send.on)).toHaveLength(boundary === 'before-send' ? 0 : 1);
+					actualClaims.invalidate(); expect(original.isCurrent()).toBe(false); resume.open(); await settleReal(fixture);
+					const journal = await database.manager.findBy(VirtualThermostatCommandEntity,{ controllerId,action: 'on' });
+					expect(journal).toHaveLength(1); expect(journal[0].status).toBe(boundary === 'before-send' ? 'cancelled' : 'unknown');
+					expect(fixture.controls.sends.filter((send) => send.property === relayId && send.on)).toHaveLength(boundary === 'before-send' ? 0 : 1);
+					expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ controllerId })).releaseEvidence).toBeNull();
+				} finally { runtime.onModuleDestroy(); fixture.revoke(); resume.open(); await fixture.close(); database.subscribers.splice(database.subscribers.indexOf(observer),1); await pipeline.close(); }
+			});
+		it.each(['before-commit','after-ack'] satisfies readonly ('before-commit' | 'after-ack')[])(
+			'preserves an original native bootstrap %s error and exact persisted outcome without first context/admission leakage',async (stage) => {
+				runtime.onModuleDestroy();
+				const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ controllerId });
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+				const command = database.manager.create(VirtualThermostatCommandEntity,{ id: uuid(),controllerId,claimId: claim.id,claimRevision: claim.revision,
+					configurationRevision: row.revision,decisionRevision: 1,action: 'on',status: 'prepared',preparedAt: new Date(),dispatchedAt: null,settledAt: null,proofId: null,fault: null });
+				await database.manager.insert(VirtualThermostatCommandEntity,command);
+				const failure = new Error('original bootstrap settlement'), observer = {
+					beforeTransactionCommit: (): void => { if (stage === 'before-commit') throw failure; },
+					afterTransactionCommit: (): void => { if (stage === 'after-ack') throw failure; },
+				}; database.subscribers.push(observer);
+				runtime = makeActualRuntime();
+				try {
+					await expect(runtime.onApplicationBootstrap()).rejects.toBe(failure);
+					expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity,{ id: command.id })).status).toBe(stage === 'before-commit' ? 'prepared' : 'unknown');
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally { runtime.onModuleDestroy(); database.subscribers.splice(database.subscribers.indexOf(observer),1); }
+			});
+		it('treats a foreign same-row journal write as claims-DIRTY even when its finite native effect preserves original TIME',async () => {
+			const entered = barrier(), resume = barrier();
+			fixture.controls.beforeOn = async (id) => { if (id === relayId) { entered.open(); await resume.promise; } };
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+			await comfort.override(controllerId,{ expected_revision: row.revision,expected_graph_revision: await actualGraph.revision() },
+				{ preset: null,setpoints: { heating_setpoint: 23,cooling_setpoint: null },expires_at: new Date(Date.now() + 30_000).toISOString() },'foreign-effect');
+			await entered.promise; await runtime.flush();
+			const active = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId }),intent = await comfort.readIntentInManager(database.manager,active),original = actualClaims.capture();
+			try {
+				const command = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity,{ controllerId,action: 'on',status: 'dispatching' });
+				expect(intent.isOverrideCurrent()).toBe(true); expect(original.isCurrent()).toBe(true);
+				await database.query('UPDATE "devices_virtual_thermostat_command_journal" SET "fault" = ? WHERE "id" = ?',[null,command.id]);
+				expect(original.isCurrent()).toBe(false); expect(intent.isOverrideCurrent()).toBe(true);
+				resume.open(); await settleReal(fixture);
+				expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity,{ id: command.id })).status).toBe('cancelled');
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			} finally { runtime.onModuleDestroy(); fixture.revoke(); resume.open(); intent.close(); }
+		});
+		it('keeps an original clock closed after a rolled-back same-value C write without resetting the restored lifetime',async () => {
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+			await comfort.override(controllerId,{ expected_revision: before.revision,expected_graph_revision: await actualGraph.revision() },
+				{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'rollback-clock');
+			await settleReal(fixture);
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId }),intent = await comfort.readIntentInManager(database.manager,row);
+			const failure = new Error('known rollback');
+			try {
+				expect(intent.isOverrideCurrent()).toBe(true);
+				await expect(database.transaction(async (manager) => {
+					await manager.query('UPDATE "devices_virtual_thermostat_configs" SET "locked" = ? WHERE "controllerId" = ?',[Number(row.locked),controllerId]);
+					throw failure;
+				})).rejects.toBe(failure);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId })).toEqual(row);
+				expect(intent.isOverrideCurrent()).toBe(false);
+				const restored = await comfort.readIntentInManager(database.manager,row);
+				try { expect(restored.isOverrideCurrent()).toBe(false); } finally { restored.close(); }
+			} finally { intent.close(); }
+		});
+		it('pins the original native hydration method and never revives a clock after its observed replacement restores',async () => {
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId });
+			await comfort.override(controllerId,{ expected_revision: before.revision,expected_graph_revision: await actualGraph.revision() },
+				{ preset: 'eco',setpoints: null,expires_at: new Date(Date.now() + 30_000).toISOString() },'native-method-clock');
+			await settleReal(fixture);
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity,{ controllerId }),intent = await comfort.readIntentInManager(database.manager,row);
+			const methods: Readonly<{ prepareHydratedValue: { call: (receiver: DataSource['driver'],...args: Parameters<DataSource['driver']['prepareHydratedValue']>) => ReturnType<DataSource['driver']['prepareHydratedValue']> } }> = database.driver;
+			const hydrate = methods.prepareHydratedValue;
+			const spy = jest.spyOn(database.driver,'prepareHydratedValue').mockImplementation((...args) => hydrate.call(database.driver,...args));
+			try { expect(intent.isOverrideCurrent()).toBe(false); expect(spy).not.toHaveBeenCalled(); }
+			finally { spy.mockRestore(); intent.close(); }
+			const fresh = await comfort.readIntentInManager(database.manager,row);
+			try { expect(fresh.isOverrideCurrent()).toBe(false); } finally { fresh.close(); }
+		});
+		it('denies original command claims after a foreign actual claim revision mutation even with matching source and unchanged journal',async () => {
+			const entered = barrier(), resume = barrier();
+			fixture.controls.beforeOn = async (id) => { if (id === relayId) { entered.open(); await resume.promise; } };
+			await fixture.report(sensorId,18); await entered.promise;
+			const original = actualClaims.capture(),claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ controllerId });
+			try {
+				expect(original.isCurrent()).toBe(true);
+				await database.query('UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = ? WHERE "id" = ? AND "revision" = ?',[claim.revision + 1,claim.id,claim.revision]);
+				expect(original.isCurrent()).toBe(false); resume.open(); await settleReal(fixture);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity,{ id: claim.id })).revision).toBe(claim.revision + 1);
+			} finally { runtime.onModuleDestroy(); fixture.revoke(); resume.open(); }
+		});
+		it('never lends a closed ORM effect to a held AfterQuery descendant issuing the identical native write later',async () => {
+			const queryEntered = barrier(), queryResume = barrier(), onEntered = barrier(), onResume = barrier();
+			let armed = true, descendant: Promise<void> | undefined;
+			const observer = { afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): Promise<void> | undefined => {
+				if (!armed || !event.query.startsWith('UPDATE "devices_virtual_thermostat_runtime"')) return;
+				armed = false; queryEntered.open();
+				descendant = queryResume.promise.then(async () => { await event.queryRunner.query(event.query,[...(event.parameters ?? [])]); });
+				return descendant;
+			} }; database.subscribers.push(observer);
+			fixture.controls.beforeOn = async (id) => { if (id === relayId) { onEntered.open(); await onResume.promise; } };
+			try {
+				await fixture.report(sensorId,18); await queryEntered.promise; await onEntered.promise;
+				const original = actualClaims.capture(); expect(original.isCurrent()).toBe(true);
+				queryResume.open(); await descendant; expect(original.isCurrent()).toBe(false);
+				onResume.open(); await settleReal(fixture);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			} finally { runtime.onModuleDestroy(); fixture.revoke(); queryResume.open(); onResume.open(); database.subscribers.splice(database.subscribers.indexOf(observer),1); await descendant?.catch(() => undefined); }
+		});
+		// END closed runtime bookkeeping and persistent TIME drafts
 
 		// New diagnostic-only captures reuse the existing explicitly synthetic installation boundary, not HW authority.
 		it('observes original qualification data without installation or events and refuses a subsequent revoke without recapture',async () => {

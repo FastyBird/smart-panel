@@ -2250,7 +2250,7 @@ export class ClimateAutomationWriterService {
 						const current = (): boolean => baseCurrent() && lifecycle.current();
 						const retainedCurrent = (): boolean => p.current() && owned.clockCurrent() && lifecycle.current();
 						const nativeClockCurrent = this.captureExistingClockNativeGuard();
-						const ownerLifecycleCurrent = (): boolean => nativeClockCurrent() && p.current() && owned.clockCurrent() && lifecycle.current();
+						const ownerLifecycleCurrent = (): boolean => nativeClockCurrent() && p.current() && owned.clockCurrent();
 						operation.guards.push(current);
 						phase.existingCurrent = current;
 						operation.existingQueryFence = this.installExistingQueryFence(operation,current);
@@ -2360,7 +2360,7 @@ export class ClimateAutomationWriterService {
 							const query = event.query.trim();
 							if (/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(query)) return;
 							if (event.query === `UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0` && !event.parameters?.length) return;
-							// No graph-counter, qualified-release or publication exemption for this distinct owner.
+							if (ownerLifecycleCurrent() && this.existingClockNeutralEffect(input.controllerId,event.query,event.parameters ?? [],event.queryRunner)) return;
 							clockState = 'CLOSED';
 						} };
 						// Keep original facts/engine/clock captures, but no long-lived observer during owned mirror locks.
@@ -2472,15 +2472,20 @@ export class ClimateAutomationWriterService {
 	private captureExistingClockNativeGuard(): () => boolean {
 		const source = this.dataSource,driver = source.driver,manager = source.manager,entities = source.entityMetadatas,subscribers = source.subscribers;
 		const connection = Object.getOwnPropertyDescriptor(driver,'databaseConnection');
-		const metadata = ['devices_virtual_thermostat_configs',CLIMATE_SLOT_TABLE].map((table) => {
+		const metadata = ['devices_virtual_thermostat_configs',CLIMATE_SLOT_TABLE,
+			'devices_virtual_thermostat_runtime','devices_virtual_thermostat_branch_runtime','devices_virtual_thermostat_command_journal',
+			'devices_virtual_thermostat_actuator_claims','devices_module_climate_automation_sources','devices_module_property_value_locks','devices_virtual_graph_revision'].map((table) => {
 			const row = source.entityMetadatas.find((item) => item.tableName === table);
 			if (!row) throw new Conflict('unavailable');
 			return Object.freeze({ row,table,target: row.target,originalColumns: row.columns,columns: Object.freeze(row.columns.map((column) => Object.freeze({ column,
-				name: column.databaseName,type: column.type,property: column.propertyName,nullable: column.isNullable,
+				name: column.databaseName,type: column.type,property: column.propertyName,nullable: column.isNullable,transformer: column.transformer,
 				read: column.getEntityValue,write: column.setEntityValue }))) });
 		});
 		const pins = [{ receiver: source,key: 'transaction',method: source.transaction },{ receiver: manager,key: 'query',method: manager.query },
-			{ receiver: driver,key: 'prepareHydratedValue',method: driver.prepareHydratedValue }];
+			{ receiver: driver,key: 'prepareHydratedValue',method: driver.prepareHydratedValue },
+			{ receiver: driver,key: 'preparePersistentValue',method: driver.preparePersistentValue },
+			{ receiver: this,key: 'existingClockNeutralEffect',method: this.existingClockNeutralEffect },
+			{ receiver: JSON,key: 'parse',method: JSON.parse }];
 		return () => creationMethodCurrent(source,'isInitialized',true) && creationMethodCurrent(source,'driver',driver) && creationMethodCurrent(source,'manager',manager) &&
 			creationMethodCurrent(source,'entityMetadatas',entities) && creationMethodCurrent(source,'subscribers',subscribers) && !!connection &&
 			connection.get === undefined && connection.set === undefined && Object.getOwnPropertyDescriptor(driver,'databaseConnection')?.value === connection.value &&
@@ -2488,8 +2493,106 @@ export class ClimateAutomationWriterService {
 				entities.includes(item.row) && creationMethodCurrent(item.row,'tableName',item.table) && creationMethodCurrent(item.row,'target',item.target) &&
 				creationMethodCurrent(item.row,'columns',item.originalColumns) && item.originalColumns.length === item.columns.length &&
 				item.columns.every((field,index) => item.originalColumns[index] === field.column && creationMethodCurrent(field.column,'databaseName',field.name) &&
-					creationMethodCurrent(field.column,'type',field.type) && creationMethodCurrent(field.column,'propertyName',field.property) && creationMethodCurrent(field.column,'isNullable',field.nullable) &&
+					creationMethodCurrent(field.column,'type',field.type) && bookkeepingDataCurrent(field.column,'transformer',field.transformer) && creationMethodCurrent(field.column,'propertyName',field.property) && creationMethodCurrent(field.column,'isNullable',field.nullable) &&
 					creationMethodCurrent(field.column,'getEntityValue',field.read) && creationMethodCurrent(field.column,'setEntityValue',field.write)));
+	}
+
+	/** Finite builtin native effects which cannot change this ORIGINAL controller's retained time facts.
+	 * Runtime/journal/lock/counter/claim-release tables have no supported write-through to config or slot.
+	 * Foreign config/slot updates require an exact, unchanged, different controller PK. Unknown is dirty.
+	 */
+	private existingClockNeutralEffect(controllerId: string,query: string,parameters: readonly unknown[],runner: QueryRunner): boolean {
+		if (bookkeepingLockEffect(query,parameters)) return true;
+		if (!parameters.length && (query === 'INSERT OR IGNORE INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)' ||
+			query === 'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1')) return true;
+		const originalProbe = originalControllerMutationMethods.isExpectedProbe;
+		const completion = this.existingCompletion.getStore();
+		// The actual publication probe is id=id, with only SELECT dependency predicates. Its
+		// supported ownership trigger's NEW/OLD comparison is false; no catalog/time mutation.
+		if (completion?.publication && query.startsWith('UPDATE "devices_module_channels_properties" SET "id" = "id" WHERE "id" IS ? AND ') &&
+			!/[;]|--|\/\*/.test(query) && creationMethodCurrent(ControllerMutationPublicationEngine,'isExpectedProbe',originalProbe)) {
+			if (originalProbe.call(ControllerMutationPublicationEngine,completion.publication,runner,query,parameters)) return true;
+		}
+		let native = query, values = parameters;
+		// The source clause on the ORIGINAL slot CAS is read-only, fixed-vocabulary equality.
+		const source = / AND EXISTS \(SELECT 1 FROM "devices_module_climate_automation_sources" s WHERE (.+)\)$/.exec(native);
+		if (source) {
+			if (!native.startsWith(`UPDATE "${CLIMATE_SLOT_TABLE}" SET `)) return false;
+			const before = native.slice(0,source.index), count = (before.match(/\?/g) ?? []).length;
+			const columns = new Set(['generationId','ownerId','producerKey','subjectId','generationIndex','revision','isCurrent','state','evidence','evidenceDigest']);
+			const clauses = source[1].split(' AND '), observed = new Set<string>();
+			let consumed = count;
+			for (const clause of clauses) {
+				const match = /^s\."([A-Za-z][A-Za-z0-9_]*)" IS (\?|NULL|-?\d+)$/.exec(clause);
+				if (!match || !columns.has(match[1]) || observed.has(match[1])) return false;
+				observed.add(match[1]);
+				if (match[2] === '?') {
+					if (consumed >= parameters.length) return false;
+					const value = parameters[consumed++];
+					if (value !== null && typeof value !== 'string' && typeof value !== 'boolean' && !(typeof value === 'number' && Number.isSafeInteger(value))) return false;
+				}
+			}
+			if (observed.size !== columns.size || consumed !== parameters.length) return false;
+			native = before; values = parameters.slice(0,count);
+		}
+		const effects = bookkeepingNativeEffects(native,values);
+		if (!effects?.length) return false;
+		for (const effect of effects) {
+			const table = effect.table;
+			const runtime = table === 'devices_virtual_thermostat_runtime', branch = table === 'devices_virtual_thermostat_branch_runtime',
+				journal = table === 'devices_virtual_thermostat_command_journal', config = table === 'devices_virtual_thermostat_configs',
+				slot = table === CLIMATE_SLOT_TABLE, claim = table === 'devices_virtual_thermostat_actuator_claims';
+			if (!runtime && !branch && !journal && !config && !slot && !claim) return false;
+			const metadata = this.dataSource.entityMetadatas.find((item) => item.tableName === table);
+			if (!metadata) return false;
+			const key = runtime || config || slot ? 'controllerId' : branch ? 'claimId' : 'id';
+			const ids = effect.kind === 'insert' ? [effect.assignments[key]] : effect.predicates[key];
+			if (!ids?.length || ids.some((id) => typeof id !== 'string') || new Set(ids).size !== ids.length) return false;
+			if ((config || slot) && (ids.length !== 1 || ids[0] === controllerId)) return false;
+			if ((config || slot) && Object.hasOwn(effect.assignments,key) && effect.assignments[key] !== ids[0]) return false;
+			if (effect.kind === 'update' && !config && !slot && Object.hasOwn(effect.assignments,key)) return false;
+			if (effect.kind === 'update' && journal && Object.keys(effect.assignments).some((column) => !['status','dispatchedAt','settledAt','proofId','fault'].includes(column))) return false;
+			if (claim) {
+				if (effect.kind !== 'update' || ids.length !== 1 || Object.keys(effect.assignments).some((column) => !['state','revision','releaseRequestedAt','reason','releasedAt','releaseEvidence'].includes(column))) return false;
+				if (Object.hasOwn(effect.assignments,'state') && !['releasing','missing','released','suspended'].includes(String(effect.assignments.state))) return false;
+				if (Object.hasOwn(effect.assignments,'revision')) {
+					if (!Number.isSafeInteger(effect.assignments.revision) || effect.predicates.revision?.length !== 1 ||
+						typeof effect.predicates.revision[0] !== 'number' || effect.assignments.revision !== effect.predicates.revision[0] + 1) return false;
+				} else if (Object.keys(effect.assignments).some((column) => column !== 'releaseRequestedAt') ||
+					metadata.columns.length !== Object.keys(effect.predicates).length) return false;
+				if (Object.hasOwn(effect.assignments,'reason') && effect.assignments.reason !== 'explicit_release_requested') return false;
+			}
+			if (effect.kind === 'update' && (runtime || branch || journal) && Object.keys(effect.predicates).some((column) => column !== key)) return false;
+			for (const [column,entries] of Object.entries(effect.predicates)) if (!metadata.columns.some((item) => item.databaseName === column) || !entries.length) return false;
+			for (const [column,value] of Object.entries(effect.assignments)) {
+				const definition = metadata.columns.find((item) => item.databaseName === column);
+				if (!definition || definition.transformer || (value === null ? !definition.isNullable :
+					definition.type === 'boolean' ? value !== 0 && value !== 1 :
+					definition.type === 'integer' ? typeof value !== 'number' || !Number.isSafeInteger(value) :
+					definition.type === 'double precision' ? typeof value !== 'number' || !Number.isFinite(value) :
+					!['varchar','text','simple-json','datetime'].includes(String(definition.type)) || typeof value !== 'string')) return false;
+				if ((column.endsWith('Revision') || column === 'revision' || column === 'slotRevision' || column === 'manualCounter' || column === 'releaseAttempts') &&
+					(typeof value !== 'number' || !Number.isSafeInteger(value) || value < (column === 'releaseAttempts' || column === 'decisionRevision' ? 0 : 1))) return false;
+				if (runtime && column === 'previousDemand' && !['off','heat','cool'].includes(String(value))) return false;
+				if (branch && column === 'activity' && !['on','off','unknown'].includes(String(value))) return false;
+				if (journal && column === 'action' && value !== 'on' && value !== 'off') return false;
+				if (journal && column === 'status' && !['prepared','dispatching','accepted','unknown','cancelled','confirmed'].includes(String(value))) return false;
+				if (definition.type === 'datetime' && value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/.test(value))) return false;
+				if (definition.type === 'simple-json' && value !== null) { if (typeof value !== 'string') return false;
+					try {
+						const json: unknown = JSON.parse(value);
+						if (runtime && column === 'reasons' && (!Array.isArray(json) || json.some((reason: unknown) => typeof reason !== 'string'))) return false;
+						if (runtime && column === 'heuristicHold') {
+							if (!json || typeof json !== 'object' || Array.isArray(json) || Object.keys(json).sort().join(',') !== 'cooldownUntil,pausedAt,pausedUntil') return false;
+							for (const key of ['pausedAt','pausedUntil','cooldownUntil']) { const part: unknown = Reflect.get(json,key); if (!(key === 'cooldownUntil' && part === null) && !(typeof part === 'number' && Number.isFinite(part))) return false; }
+						}
+						if (claim && column === 'releaseEvidence' && (!json || typeof json !== 'object' || Array.isArray(json) ||
+							Object.keys(json).sort().join(',') !== 'evidenceId,outputConfirmedOff,pendingOnDrained' || typeof Reflect.get(json,'evidenceId') !== 'string' ||
+							Reflect.get(json,'outputConfirmedOff') !== true || Reflect.get(json,'pendingOnDrained') !== true)) return false;
+					} catch { return false; } }
+			}
+		}
+		return true;
 	}
 
 	private existingGraphLifecycle(graph: ClimateAutomationGraphParticipant,capture: NonNullable<ClimateAutomationGraphParticipant['captureOwnedPublicationLifecycle']>) {
@@ -2528,7 +2631,7 @@ export class ClimateAutomationWriterService {
 		const sameLifetime = old?.id === id && old.incarnation === slot?.controllerIncarnation;
 		const matching = sameLifetime && same(old.nativeConfig,before.rows.configurations[0]) && same(old.slot,slot);
 		const original = matching ? old : undefined;
-		if (sameLifetime && (!matching || !creationMethodCurrent(Date,'now',old.wall) || !creationMethodCurrent(performance,'now',old.mono))) return Object.freeze({ wallMs,monoMs,overrideId: id,status: 'clock_uncertain',
+		if (sameLifetime && (!matching || !old.current() || !creationMethodCurrent(Date,'now',old.wall) || !creationMethodCurrent(performance,'now',old.mono))) return Object.freeze({ wallMs,monoMs,overrideId: id,status: old.terminal ?? 'clock_uncertain',
 			watermark: old.watermark,deadline: old.deadline,terminatedAt: null });
 		const watermark = Math.max(storedWatermark,original?.watermark ?? storedWatermark);
 		const valid = [wallMs,monoMs,created,expiry,duration,watermark].every(Number.isFinite) && duration > 0 &&
@@ -4097,4 +4200,86 @@ export class ClimateAutomationWriterService {
 		}
 		if ((await query.execute()).affected !== 1) throw new Conflict('stale');
 	}
+}
+
+/** Source-bounded SQLite INSERT/UPDATE effects. No expression evaluation or table-prefix permission. */
+interface BookkeepingNativeEffect {
+	readonly table: string;
+	readonly kind: 'insert' | 'update';
+	readonly assignments: Readonly<Record<string, unknown>>;
+	readonly predicates: Readonly<Record<string, readonly unknown[]>>;
+}
+function bookkeepingNativeEffects(query: string, parameters: readonly unknown[]): readonly BookkeepingNativeEffect[] | null {
+	if (/;|--|\/\*|\*\//.test(query)) return null;
+	// Commas/parentheses in bound text are never scanned as SQL.
+	const tokens = query.match(/"[A-Za-z][A-Za-z0-9_]*"|'(?:[^']|'')*'|\?|[(),=]|-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*/g);
+	if (!tokens || tokens.join('').replace(/\s/g,'') !== query.replace(/\s/g,'')) return null;
+	let cursor = 0, binding = 0;
+	const take = (expected: string): boolean => tokens[cursor]?.toUpperCase() === expected && (++cursor > 0);
+	const name = (): string | null => { const text = tokens[cursor++]; return text && /^"[A-Za-z][A-Za-z0-9_]*"$/.test(text) ? text.slice(1,-1) : null; };
+	const scalar = (): { value: unknown } | null => {
+		const text = tokens[cursor++];
+		if (text === '?') {
+			if (binding >= parameters.length) return null;
+			const value = parameters[binding++];
+			return value === null || typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) ? { value } : null;
+		}
+		if (text === 'NULL') return { value: null };
+		if (/^-?\d+(?:\.\d+)?$/.test(text ?? '')) { const value = Number(text); return Number.isFinite(value) && String(value) === text ? { value } : null; }
+		if (/^'(?:[^']|'')*'$/.test(text ?? '')) return { value: text.slice(1,-1).replace(/''/g,"'") };
+		return null;
+	};
+	const effects: BookkeepingNativeEffect[] = [];
+	if (take('INSERT')) {
+		if (!take('INTO')) return null;
+		const table = name(), columns: string[] = [];
+		if (!table || !take('(')) return null;
+		do { const column = name(); if (!column || columns.includes(column)) return null; columns.push(column); } while (take(','));
+		if (!take(')') || !take('VALUES')) return null;
+		do {
+			if (!take('(')) return null;
+			const assignments: Record<string,unknown> = {};
+			for (let index = 0; index < columns.length; index++) { if (index && !take(',')) return null; const value = scalar(); if (!value) return null; assignments[columns[index]] = value.value; }
+			if (!take(')')) return null;
+			effects.push({ table,kind: 'insert',assignments,predicates: {} });
+		} while (take(','));
+	} else if (take('UPDATE')) {
+		const table = name(), assignments: Record<string,unknown> = {}, predicates: Record<string,readonly unknown[]> = {};
+		if (!table || !take('SET')) return null;
+		do { const column = name(); if (!column || Object.hasOwn(assignments,column) || !take('=')) return null; const value = scalar(); if (!value) return null; assignments[column] = value.value; } while (take(','));
+		if (!take('WHERE')) return null;
+		// TypeORM's finite conjunction/equality/IN forms; parentheses only group conjunctions.
+		let parentheses = 0;
+		do {
+			while (take('(')) parentheses++;
+			const column = name(); if (!column || Object.hasOwn(predicates,column)) return null;
+			const values: unknown[] = [];
+			if (take('=') || take('IS')) { const value = scalar(); if (!value) return null; values.push(value.value); }
+			else if (take('IN') && take('(')) { do { const value = scalar(); if (!value) return null; values.push(value.value); } while (take(',')); if (!take(')')) return null; }
+			else return null;
+			predicates[column] = values;
+			while (parentheses && take(')')) parentheses--;
+		} while (take('AND'));
+		if (parentheses) return null;
+		effects.push({ table,kind: 'update',assignments,predicates });
+	} else return null;
+	return cursor === tokens.length && binding === parameters.length ? effects : null;
+}
+function bookkeepingLockEffect(query: string, parameters: readonly unknown[]): boolean {
+	const string = (index: number): boolean => typeof parameters[index] === 'string';
+	const integer = (index: number): boolean => typeof parameters[index] === 'number' && Number.isSafeInteger(parameters[index]);
+	return query === 'INSERT INTO "devices_module_property_value_locks" ("propertyId", "ownerToken", "expiresAt") VALUES (?, ?, ?) ON CONFLICT("propertyId") DO NOTHING' ?
+		parameters.length === 3 && string(0) && string(1) && integer(2) :
+		query === 'UPDATE "devices_module_property_value_locks" SET "ownerToken" = ?, "expiresAt" = ? WHERE "propertyId" = ? AND "ownerToken" = ?' ?
+		parameters.length === 4 && string(0) && integer(1) && string(2) && string(3) :
+		query === 'DELETE FROM "devices_module_property_value_locks" WHERE "propertyId" = ? AND "ownerToken" = ?' && parameters.length === 2 && string(0) && string(1);
+}
+
+/** Original data property, including genuine absence; an accessor is never a matching absence. */
+function bookkeepingDataCurrent(receiver: object,key: string,value: unknown): boolean {
+	for (let item: object | null = receiver; item; item = Object.getPrototypeOf(item)) {
+		const descriptor = Object.getOwnPropertyDescriptor(item,key);
+		if (descriptor) return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === value;
+	}
+	return value === undefined;
 }

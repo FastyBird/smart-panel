@@ -82,10 +82,11 @@ export async function realThermostatGuardFixture(
 	producers: PropertyProducerRegistryService,
 	qualifications: Map<string, ThermostatInstalledQualification>,
 	mode: 'managed' | 'closed' | 'unmanaged' = 'managed',
+	pipeline?: Readonly<{ values: PropertyValueService; sources: PropertyValueSourceRegistryService }>,
 ) {
 	const tick = useThermostatPacketClock();
-	const sources = new PropertyValueSourceRegistryService();
-	const values = new PropertyValueService(
+	const sources = pipeline?.sources ?? new PropertyValueSourceRegistryService();
+	const values = pipeline?.values ?? new PropertyValueService(
 		{
 			isConnected: () => true,
 			enqueueWritePoint: () => Promise.resolve(undefined),
