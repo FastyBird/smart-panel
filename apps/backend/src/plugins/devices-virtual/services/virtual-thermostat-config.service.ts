@@ -1704,7 +1704,7 @@ export class VirtualThermostatConfigService {
 					bindings: this.existingCoolingBindings(manager, candidate, record.rows, record.references),
 				});
 				record.plan = plan;
-				return plan;
+				return resolve(plan);
 			}
 			if (!['configure-existing:v1', 'request-release:v1', 'restore-actuator:v1'].includes(input.kind))
 				comfort.materializeExistingInManager(manager, turn, candidate, revision);
