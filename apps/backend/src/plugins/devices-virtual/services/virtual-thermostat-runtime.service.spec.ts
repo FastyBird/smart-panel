@@ -10160,6 +10160,35 @@ describe('virtual thermostat durable runtime', () => {
 		const entry = observeOriginalReconciliation(runtime);
 		await settle();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+		// BEGIN R63 explicit original OFF journal baseline; no case callback is installed yet.
+		{
+			const baseline = Object.freeze(
+				(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).map((row) =>
+					Object.freeze({ id: row.id, claimId: row.claimId, action: row.action, status: row.status }),
+				),
+			);
+			expect(
+				baseline.every(
+					(row) =>
+						row.claimId === claim.id &&
+						row.action === 'off' &&
+						['prepared', 'dispatching', 'accepted', 'unknown', 'confirmed'].includes(row.status),
+				),
+			).toBe(true);
+			await entry.start(claim);
+			const settledBaseline = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(
+				settledBaseline
+					.map((row) => ({ id: row.id, claimId: row.claimId, action: row.action, status: row.status }))
+					.sort((left, right) => left.id.localeCompare(right.id)),
+			).toEqual(
+				baseline
+					.map((row) => ({ ...row, status: 'confirmed' }))
+					.sort((left, right) => left.id.localeCompare(right.id)),
+			);
+			expect(settledBaseline.filter((row) => row.status !== 'confirmed' && row.status !== 'cancelled')).toEqual([]);
+		}
+		// END R63 explicit original OFF journal baseline.
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
 			controllerId,
