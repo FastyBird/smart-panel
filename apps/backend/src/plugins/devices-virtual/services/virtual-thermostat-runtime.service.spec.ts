@@ -34,7 +34,9 @@ import { PropertyValueState } from '../../../modules/devices/models/property-val
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
+import { creationMethodCurrent } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
@@ -43,11 +45,13 @@ import { PropertyValueService } from '../../../modules/devices/services/property
 import { StoragePlugin } from '../../../modules/storage/interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../../../modules/storage/models/config.model';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { DEVICES_SHELLY_NG_TYPE } from '../../devices-shelly-ng/devices-shelly-ng.constants';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../../devices-shelly-ng/entities/devices-shelly-ng.entity';
+import { ShellyNgDevicePlatform } from '../../devices-shelly-ng/platforms/shelly-ng.device.platform';
 import { ConfigureVirtualAggregateDto } from '../dto/producer-config.dto';
 import { ConfigureVirtualThermostatDto } from '../dto/thermostat-config.dto';
 import {
@@ -88,8 +92,10 @@ import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.se
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
-import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
+import { ThermostatRuntimeDiagnostic, VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
 import {
+	RuntimeOffDispatchWork,
+	RuntimeReconciliationWork,
 	ThermostatActuationAdapter,
 	ThermostatReleaseOrderingEvidence,
 	VirtualThermostatTransportService,
@@ -107,6 +113,13 @@ describe('virtual thermostat durable runtime', () => {
 	let directory: string;
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
+	let ordinaryTransportOwner:
+		| Readonly<{
+				platforms: PlatformRegistryService;
+				transport: VirtualThermostatTransportService;
+				dispose: () => void;
+		  }>
+		| undefined;
 	let realGuardFixtures: Awaited<ReturnType<typeof realThermostatGuardFixture>>[];
 	let comfort: VirtualThermostatComfortService;
 	let configs: VirtualThermostatConfigService;
@@ -169,6 +182,7 @@ describe('virtual thermostat durable runtime', () => {
 		});
 	};
 	beforeEach(async () => {
+		ordinaryTransportOwner = undefined;
 		realGuardFixtures = [];
 		directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-runtime-'));
 		database = await new SqliteDataSource({
@@ -177,6 +191,11 @@ describe('virtual thermostat durable runtime', () => {
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 			synchronize: true,
 		}).initialize();
+		// Synchronized test schemas omit migration27's installed graph singleton seed.
+		await database.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
+		expect(await database.query('SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"')).toEqual(
+			[{ id: 1, revision: 0 }],
+		);
 		samples.clear();
 		protectionProbes.clear();
 		packetTick = null;
@@ -445,7 +464,10 @@ describe('virtual thermostat durable runtime', () => {
 					: null;
 			},
 		};
-		const transport = { get: () => adapter } as unknown as VirtualThermostatTransportService;
+		const platforms = new PlatformRegistryService();
+		const transport = new VirtualThermostatTransportService(platforms, values);
+		const dispose = transport.register(DEVICES_SHELLY_NG_TYPE, adapter);
+		ordinaryTransportOwner = Object.freeze({ platforms, transport, dispose });
 		const graph = {
 			isValidated: () => graphValidated,
 			capturePublishGuard: () => {
@@ -476,7 +498,7 @@ describe('virtual thermostat durable runtime', () => {
 				PropertyValueService,
 				PropertyValueLockService,
 				PropertyValueSourceRegistryService,
-				PropertyProducerRegistryService,
+				{ provide: PropertyProducerRegistryService, useValue: producers },
 				StorageService,
 				{ provide: DataSource, useValue: database },
 				{ provide: EventEmitter2, useValue: events },
@@ -557,7 +579,32 @@ describe('virtual thermostat durable runtime', () => {
 	});
 	afterEach(async () => {
 		// Close runtime and original managed authority before awaiting resources or restoring protocol mocks.
-		runtime?.onModuleDestroy();
+		const ordinaryOwner = ordinaryTransportOwner;
+		ordinaryTransportOwner = undefined;
+		let originalTeardownFailure: { cause: unknown } | undefined;
+		try {
+			runtime?.onModuleDestroy();
+		} catch (cause) {
+			originalTeardownFailure = { cause };
+		}
+		let ordinaryCleanupFailure: { cause: unknown } | undefined;
+		try {
+			ordinaryOwner?.dispose();
+		} catch (cause) {
+			ordinaryCleanupFailure = { cause };
+		}
+		try {
+			ordinaryOwner?.transport.onModuleDestroy();
+		} catch (cause) {
+			ordinaryCleanupFailure ??= { cause };
+		}
+		try {
+			ordinaryOwner?.platforms.onModuleDestroy();
+		} catch (cause) {
+			ordinaryCleanupFailure ??= { cause };
+		}
+		if (originalTeardownFailure) throw originalTeardownFailure.cause;
+		if (ordinaryCleanupFailure) throw ordinaryCleanupFailure.cause;
 		mutationProvider?.onModuleDestroy();
 		comfort?.onModuleDestroy();
 		mutationClaims?.onModuleDestroy();
@@ -3445,6 +3492,2462 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
 		expect(samples.get(relayId)?.value).toBe(false);
 	});
+	// BEGIN R14 drain-certificate lifetime drafts (UNRUN; real SQLite/managed SDK, offline qualification only)
+	describe('original settled drain facts across disposable command decisions', () => {
+		let actualClaims: VirtualThermostatClaimsService;
+		let actualStructure: DeviceStructureLockService;
+		let actualGraph: VirtualDependencyGraphService;
+		let fixture: Awaited<ReturnType<typeof realThermostatGuardFixture>> | undefined;
+		const gate = () => {
+			let open: () => void = () => {
+				throw new Error('Owned gate not initialized');
+			};
+			const promise = new Promise<void>((resolve) => {
+				open = resolve;
+			});
+			return { promise, open: (): void => open() };
+		};
+		const prepare = async (): Promise<void> => {
+			runtime.onModuleDestroy(); // close the legacy stand-in runtime; it is NOT the admission proof
+			actualStructure = new DeviceStructureLockService();
+			mutationProvider.onModuleDestroy();
+			comfort.onModuleDestroy();
+			mutationClaims.onModuleDestroy();
+			mutationRegistry.onModuleDestroy();
+			mutationRegistry = new ClimateAutomationRegistryService();
+			mutationWriter = new ClimateAutomationWriterService(
+				database,
+				actualStructure,
+				mutationRegistry,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+			actualGraph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), mutationWriter);
+			await actualGraph.onApplicationBootstrap();
+			actualClaims = new VirtualThermostatClaimsService(
+				database,
+				actualStructure,
+				actualGraph,
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+			await actualClaims.onApplicationBootstrap();
+			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'managed', {
+				values: mutationValues,
+				sources: mutationPipeline.get(PropertyValueSourceRegistryService),
+			});
+			realGuardFixtures.push(fixture);
+			// Reuse ONLY the helper's existing explicitly synthetic qualification boundary. No new fields or private map forcing.
+			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+			values = fixture.values;
+			comfort = new VirtualThermostatComfortService(
+				database,
+				actualStructure,
+				actualGraph,
+				actualClaims,
+				events,
+				mutationWriter,
+			);
+			configs = new VirtualThermostatConfigService(
+				database,
+				actualStructure,
+				actualGraph,
+				actualClaims,
+				events,
+				values,
+				undefined,
+				mutationWriter,
+			);
+			mutationProvider = new VirtualThermostatAutomationService(
+				mutationWriter,
+				mutationRegistry,
+				actualGraph,
+				new ConfigService({ FB_CLI: 'off' }),
+				undefined,
+				configs,
+				comfort,
+			);
+			mutationProvider.onModuleInit();
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			await comfort.configure(
+				controllerId,
+				{ expected_revision: row.revision, expected_graph_revision: await actualGraph.revision() },
+				{
+					heating_range: { minimum: 10, maximum: 30 },
+					cooling_range: null,
+					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+				},
+			);
+			for (const [id, sample] of samples) {
+				if (typeof sample.value !== 'number' && typeof sample.value !== 'boolean')
+					throw new Error('Unexpected synthetic sample');
+				await fixture.report(id, sample.value);
+			}
+			await actualClaims.refresh();
+			runtime = new VirtualThermostatRuntimeService(
+				database,
+				actualStructure,
+				actualClaims,
+				new VirtualThermostatInputsService(database, values),
+				fixture.transport,
+				values,
+				producers,
+				events,
+				actualGraph,
+				comfort,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+		};
+
+		const startBounded = async (): Promise<void> => {
+			if (!fixture) throw new Error('Actual managed fixture required');
+			const owned = fixture;
+			const thirdEntered = gate(),
+				thirdResume = gate();
+			let entered = 0;
+			owned.controls.beforeFence = () => {
+				entered++;
+				if (entered >= 3) {
+					thirdEntered.open();
+					return thirdResume.promise;
+				}
+				return Promise.resolve();
+			};
+			const starting = runtime.onApplicationBootstrap();
+			const ready: Promise<'ready'> = starting.then((): 'ready' => 'ready');
+			const extra: Promise<'third-fence'> = thirdEntered.promise.then((): 'third-fence' => 'third-fence');
+			let primary: { cause: unknown } | undefined;
+			let cleanup: { cause: unknown } | undefined;
+			try {
+				expect(await Promise.race([ready, extra])).toBe('ready');
+				expect(owned.controls.fences).toHaveLength(2); // original mandatory OFF plus first qualified reconciliation
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				if (primary || entered >= 3) {
+					try {
+						runtime.onModuleDestroy();
+					} catch (cause) {
+						cleanup = { cause };
+					}
+					try {
+						owned.revoke();
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+				}
+				thirdResume.open();
+				owned.controls.beforeFence = null;
+				try {
+					await starting;
+				} catch (cause) {
+					cleanup ??= { cause };
+				}
+			}
+			if (primary) throw primary.cause;
+			if (cleanup) throw cleanup.cause;
+		};
+		afterEach(() => {
+			runtime.onModuleDestroy();
+			actualClaims?.onModuleDestroy();
+			fixture?.revoke();
+		});
+		it('finishes genuine OFF bootstrap within two fences and retains settled facts through natural decision rotations', async () => {
+			await prepare();
+			if (!fixture) throw new Error('Actual managed fixture required');
+			const before = database.subscribers.length;
+			await startBounded();
+			const fences = fixture.controls.fences.length;
+			for (let rotation = 0; rotation < 3; rotation++) {
+				runtime.request(controllerId, false);
+				await runtime.flush();
+				expect(fixture.controls.fences).toHaveLength(fences);
+				expect(database.subscribers.length).toBeLessThanOrEqual(before + 2);
+			}
+			expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			const commands = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+			expect(commands.some((command) => command.action === 'off' && command.status === 'confirmed')).toBe(true);
+			runtime.onModuleDestroy();
+			expect(database.subscribers).toHaveLength(before);
+		});
+		it.each(['config', 'slot'] satisfies readonly ('config' | 'slot')[])(
+			'refuses retained original drain facts after an actual same-value protected native %s write',
+			async (target) => {
+				await prepare();
+				if (!fixture) throw new Error('Actual managed fixture required');
+				await startBounded();
+				const fences = fixture.controls.fences.length;
+				if (target === 'config')
+					await database.query(
+						'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?',
+						[controllerId],
+					);
+				else
+					await database.query(
+						'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE "controllerId" = ?',
+						[controllerId],
+					);
+				expect(await database.query('SELECT changes() AS affected')).toEqual([{ affected: 1 }]);
+				await actualClaims.refresh(); // genuine new work may obtain its own generation; the old certificate is never refreshed
+				runtime.request(controllerId, false);
+				await runtime.flush();
+				expect(fixture.controls.fences.length).toBeGreaterThan(fences);
+				expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+			},
+		);
+		it('keeps saved evidence closed across actual installed qualification loss and permits only a fresh qualified drain', async () => {
+			await prepare();
+			if (!fixture) throw new Error('Actual managed fixture required');
+			await startBounded();
+			const fences = fixture.controls.fences.length;
+			actualClaims.revokeAllQualifications();
+			runtime.request(controllerId, false);
+			await runtime.flush();
+			expect(fixture.controls.fences).toHaveLength(fences);
+			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+			await actualClaims.refresh();
+			runtime.request(controllerId, false);
+			await runtime.flush();
+			expect(fixture.controls.fences.length).toBeGreaterThan(fences);
+		});
+		it('never lends an old held managed ON guard the retained drain owner after normal rotation', async () => {
+			await prepare();
+			if (!fixture) throw new Error('Actual managed fixture required');
+			const owned = fixture;
+			const entered = gate(),
+				resume = gate();
+			const originalGetView: OriginalFunctions<VirtualThermostatTransportService> = owned.transport;
+			const originalGet = originalGetView.get;
+			const observed: { guard?: () => boolean } = {};
+			jest.spyOn(owned.transport, 'get').mockImplementation((...args) => {
+				const adapter = originalGet.call(owned.transport, ...args);
+				if (!adapter) return null;
+				const originalSendView: OriginalFunctions<ThermostatActuationAdapter> = adapter;
+				const send = originalSendView.send;
+				return {
+					...adapter,
+					send: (
+						...sendArgs: Parameters<ThermostatActuationAdapter['send']>
+					): ReturnType<ThermostatActuationAdapter['send']> => {
+						if (sendArgs[0].value === true && observed.guard === undefined) observed.guard = sendArgs[3];
+						return send.call(adapter, ...sendArgs); // SAME genuine method/receiver/args/original Promise
+					},
+				};
+			});
+			owned.controls.beforeOn = () => {
+				entered.open();
+				return resume.promise;
+			};
+			try {
+				await startBounded();
+				await owned.report(sensorId, 18);
+				await entered.promise;
+				if (!observed.guard) throw new Error('Original managed ON guard was not reached');
+				runtime.request(controllerId, false);
+				await runtime.flush();
+				expect(observed.guard()).toBe(false);
+			} finally {
+				try {
+					runtime.onModuleDestroy(); // close original owner before releasing any native descendant
+				} finally {
+					try {
+						owned.revoke();
+					} finally {
+						resume.open();
+						owned.controls.beforeOn = null;
+					}
+				}
+				await owned.flushTelemetry();
+			}
+		});
+
+		// BEGIN R21 additive managed native feedback/debt drafts (UNRUN)
+		describe('R21 finite authenticated OFF descendants and new native safety debt', () => {
+			const active = async (): Promise<void> => {
+				await prepare();
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				await comfort.override(
+					controllerId,
+					{ expected_revision: row.revision, expected_graph_revision: await actualGraph.revision() },
+					{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 60_000).toISOString() },
+					'R21-original',
+				);
+			};
+			const startWithCeiling = async (maximum: number): Promise<void> => {
+				if (!fixture) throw new Error('Actual managed native fixture missing');
+				const owned = fixture,
+					excess = gate(),
+					resume = gate();
+				let calls = 0;
+				owned.controls.beforeFence = () => {
+					calls++;
+					if (calls > maximum) {
+						excess.open();
+						return resume.promise;
+					}
+					return Promise.resolve();
+				};
+				const starting = runtime.onApplicationBootstrap();
+				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+				try {
+					expect(await Promise.race([starting.then(() => 'complete'), excess.promise.then(() => 'excess')])).toBe(
+						'complete',
+					);
+					expect(calls).toBeLessThanOrEqual(maximum);
+				} catch (cause) {
+					primary = { cause };
+				} finally {
+					if (primary) {
+						try {
+							runtime.onModuleDestroy();
+							owned.revoke();
+						} catch (cause) {
+							cleanup = { cause };
+						}
+					}
+					resume.open();
+					owned.controls.beforeFence = null;
+					try {
+						await starting;
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+				}
+				if (primary) throw primary.cause;
+				if (cleanup) throw cleanup.cause;
+			};
+			it('shares an actual active-C settlement across its native OFF report and closes event provenance after emit', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed fixture missing');
+				const originalDelivery: OriginalFunctions<
+					Pick<VirtualThermostatTransportService, 'captureRuntimeFeedbackDelivery'>
+				> = fixture.transport;
+				const delivery = originalDelivery.captureRuntimeFeedbackDelivery;
+				const works: (RuntimeOffDispatchWork | RuntimeReconciliationWork)[] = [];
+				const deliverySpy = jest
+					.spyOn(fixture.transport, 'captureRuntimeFeedbackDelivery')
+					.mockImplementation((event) => {
+						const work = delivery.call(fixture.transport, event);
+						if (work) works.push(work);
+						return work;
+					});
+				let tagged = 0;
+				const delivered: object[] = [];
+				const observe = (event: object): void => {
+					if (values.captureOwnedFeedbackDelivery(event)) {
+						tagged++;
+						delivered.push(event);
+					}
+				};
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+				try {
+					await startWithCeiling(2);
+					expect(fixture.controls.fences).toHaveLength(2);
+					expect(tagged).toBe(2);
+					expect(works).toHaveLength(2);
+					expect(works[0]).toBeInstanceOf(RuntimeOffDispatchWork);
+					expect(works[1]).toBeInstanceOf(RuntimeReconciliationWork);
+					expect(works[0]).not.toBe(works[1]);
+					for (const event of delivered) expect(values.captureOwnedFeedbackDelivery(event)).toBeNull();
+					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+					deliverySpy.mockRestore();
+				}
+			});
+			it('a genuine later poll retains ordinary entry fencing instead of being labeled an owned report', async () => {
+				await active();
+				await startWithCeiling(2);
+				const before = actualClaims.capture();
+				runtime.request(controllerId, false);
+				await runtime.flush();
+				expect(before.isCurrent()).toBe(false);
+				expect(runtime.readDiagnostics(controllerId)?.configuration_revision).toBeGreaterThan(0);
+			});
+			it.each(['proof-query', 'probe-query', 'post-ACK'] satisfies readonly (
+				| 'proof-query'
+				| 'probe-query'
+				| 'post-ACK'
+			)[])(
+				'finite failed OFF service retains native debt through actual %s failure without rearming its own unknown permit',
+				async (mode) => {
+					await active();
+					if (!fixture) throw new Error('Managed fixture missing');
+					const owned = fixture,
+						primary = new Error('R21-original-native-primary'),
+						secondary = new Error('R21-negative-read-secondary');
+					let reported = false,
+						primaryHit = false,
+						secondaryHits = 0;
+					const sample = (): void => {
+						if (owned.controls.fences.length >= 2) reported = true;
+					};
+					const observer = {
+						beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+							if (
+								!reported ||
+								!event.query.startsWith('SELECT') ||
+								!event.query.includes('devices_virtual_thermostat_command_journal')
+							)
+								return;
+							if (mode !== 'post-ACK' && !primaryHit) {
+								primaryHit = true;
+								throw primary;
+							}
+							if (mode === 'proof-query' || (mode === 'probe-query' && event.query.includes('AND NOT ('))) {
+								secondaryHits++;
+								throw secondary;
+							}
+						},
+						afterTransactionCommit: (): void => {
+							if (reported && mode === 'post-ACK' && !primaryHit) {
+								primaryHit = true;
+								throw primary;
+							}
+						},
+					};
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					database.subscribers.push(observer);
+					try {
+						// Two initial fences plus at most one genuine unknown-origin safety attempt; no timer bounds the proof.
+						await startWithCeiling(3);
+						expect(reported).toBe(true);
+						expect(primaryHit).toBe(true);
+						if (mode === 'probe-query') expect(secondaryHits).toBeGreaterThan(0);
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+						expect(owned.controls.fences.length).toBeLessThanOrEqual(3);
+					} finally {
+						runtime.onModuleDestroy();
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+					}
+				},
+			);
+			it.each(['new-id', 'same-id-risk'] satisfies readonly ('new-id' | 'same-id-risk')[])(
+				'detects independently committed %s native ON debt despite the first consumed dirty frontier',
+				async (kind) => {
+					await active();
+					if (!fixture) throw new Error('Managed fixture missing');
+					const owned = fixture,
+						secondEntered = gate(),
+						secondResume = gate(),
+						thirdEntered = gate(),
+						thirdResume = gate(),
+						fifthEntered = gate(),
+						fifthResume = gate();
+					const peer = await new SqliteDataSource({
+						type: 'sqlite',
+						database: join(directory, 'runtime.sqlite'),
+						entities: [__dirname + '/../../../**/*.entity.ts'],
+						synchronize: false,
+						migrationsRun: false,
+					}).initialize();
+					const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+					const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+					const firstId = uuid(),
+						secondId = uuid();
+					let count = 0;
+					owned.controls.beforeFence = () => {
+						count++;
+						if (count === 2) {
+							secondEntered.open();
+							return secondResume.promise;
+						}
+						if (count === 3) {
+							thirdEntered.open();
+							return thirdResume.promise;
+						}
+						if (count >= 5) {
+							fifthEntered.open();
+							return fifthResume.promise;
+						}
+						return Promise.resolve();
+					};
+					const nativeON = (id: string) =>
+						peer.manager.insert(VirtualThermostatCommandEntity, {
+							id,
+							controllerId,
+							claimId: claim.id,
+							claimRevision: claim.revision,
+							configurationRevision: row.revision,
+							decisionRevision: 1,
+							action: 'on',
+							status: 'unknown',
+							preparedAt: new Date(),
+							dispatchedAt: new Date(),
+							settledAt: null,
+							proofId: null,
+							fault: 'peer-obligation',
+						});
+					const starting = runtime.onApplicationBootstrap();
+					try {
+						await secondEntered.promise;
+						await nativeON(firstId);
+						secondResume.open();
+						expect(await Promise.race([thirdEntered.promise.then(() => 'third'), starting.then(() => 'early')])).toBe(
+							'third',
+						);
+						if (kind === 'new-id') await nativeON(secondId);
+						else
+							await peer.manager.update(
+								VirtualThermostatCommandEntity,
+								{ id: firstId },
+								{ decisionRevision: 2, status: 'unknown', dispatchedAt: new Date() },
+							);
+						thirdResume.open();
+						expect(
+							await Promise.race([starting.then(() => 'complete'), fifthEntered.promise.then(() => 'fifth')]),
+						).toBe('complete');
+						const rows = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+						expect(rows.find((command) => command.id === firstId)?.status).toBe('confirmed');
+						if (kind === 'new-id') expect(rows.find((command) => command.id === secondId)?.status).toBe('confirmed');
+						else expect(rows.find((command) => command.id === firstId)?.decisionRevision).toBe(2);
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						runtime.onModuleDestroy();
+						owned.revoke();
+						secondResume.open();
+						thirdResume.open();
+						fifthResume.open();
+						owned.controls.beforeFence = null;
+						await starting;
+						await peer.destroy();
+					}
+				},
+			);
+			it.each(['member', 'source'] satisfies readonly ('member' | 'source')[])(
+				'a real same-revision %s change while the original fence is held remains ordinary safety work',
+				async (kind) => {
+					await active();
+					if (!fixture) throw new Error('Managed fixture missing');
+					const owned = fixture,
+						entered = gate(),
+						resume = gate();
+					let calls = 0;
+					const peer = await new SqliteDataSource({
+						type: 'sqlite',
+						database: join(directory, 'runtime.sqlite'),
+						entities: [__dirname + '/../../../**/*.entity.ts'],
+						synchronize: false,
+						migrationsRun: false,
+					}).initialize();
+					owned.controls.beforeFence = () => {
+						calls++;
+						if (calls === 2) {
+							entered.open();
+							return resume.promise;
+						}
+						return Promise.resolve();
+					};
+					const starting = runtime.onApplicationBootstrap();
+					try {
+						await entered.promise;
+						const before = await peer.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+						if (kind === 'member')
+							await peer.query(
+								'UPDATE "devices_virtual_thermostat_member_protection" SET "revision" = "revision" + 1 WHERE "claimId" IN (SELECT "id" FROM "devices_virtual_thermostat_actuator_claims" WHERE "controllerId" = ?)',
+								[controllerId],
+							);
+						else
+							await peer.query(
+								'UPDATE "devices_virtual_thermostat_sources" SET "maximumAgeSeconds" = "maximumAgeSeconds" + 1 WHERE "controllerId" = ?',
+								[controllerId],
+							);
+						expect((await peer.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).revision).toBe(
+							before.revision,
+						);
+						resume.open();
+						await starting;
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						runtime.onModuleDestroy();
+						owned.revoke();
+						resume.open();
+						owned.controls.beforeFence = null;
+						await starting;
+						await peer.destroy();
+					}
+				},
+			);
+			it('a genuine new local ON job still takes ordinary hold fencing before its native send', async () => {
+				await active();
+				await startWithCeiling(2);
+				if (!fixture) throw new Error('Managed fixture missing');
+				const owned = fixture,
+					entered = gate(),
+					resume = gate();
+				owned.controls.beforeOn = () => {
+					entered.open();
+					return resume.promise;
+				};
+				let settlement: Promise<void> | undefined;
+				try {
+					await owned.report(sensorId, 10);
+					await entered.promise;
+					const before = actualClaims.capture();
+					settlement = comfort.settle(controllerId);
+					expect(before.isCurrent()).toBe(false); // public entry hold is still synchronous, before the pending native ON resumes
+					resume.open();
+					await settlement;
+					await runtime.flush();
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					const pending = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
+					expect(pending.length).toBeGreaterThan(0);
+					expect(pending.every((command) => command.status === 'cancelled' || command.status === 'confirmed')).toBe(
+						true,
+					);
+				} finally {
+					runtime.onModuleDestroy();
+					owned.revoke();
+					resume.open();
+					owned.controls.beforeOn = null;
+					if (settlement !== undefined) await settlement;
+					await runtime.flush();
+				}
+			});
+
+			// BEGIN R21 continuation additive finite-failure drafts (UNRUN)
+			it.each(['returned-safety', 'rejected-safety'] satisfies readonly ('returned-safety' | 'rejected-safety')[])(
+				'a persistent negative-read Q cannot rearm its own %s episode, while a real poll can retry',
+				async (kind) => {
+					await active();
+					if (!fixture) throw new Error('Actual managed fixture missing');
+					const owned = fixture,
+						primary = new Error('native safety P'),
+						secondary = new Error('native negative projection Q');
+					let probes = 0,
+						roots = 0,
+						rootsAtReport: number | undefined,
+						primaryReached = false;
+					const original: OriginalFunctions<
+						Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>
+					> = mutationWriter;
+					const commit = original.commitExistingControllerForRuntime;
+					const root = jest
+						.spyOn(mutationWriter, 'commitExistingControllerForRuntime')
+						.mockImplementation((...args) => {
+							roots++;
+							return commit.call(mutationWriter, ...args); // SAME original Promise, exact function/receiver/args once
+						});
+					const sample = (): void => {
+						if (owned.controls.fences.length < 2) return;
+						rootsAtReport ??= roots;
+						// A real negative authority transition, not a mocked currentness result.
+						if (owned.controls.fences.length === 2 || kind === 'returned-safety') actualClaims.invalidate();
+					};
+					const observer = {
+						beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+							if (
+								!rootsAtReport ||
+								!event.query.startsWith('SELECT') ||
+								!event.query.includes('devices_virtual_thermostat_command_journal')
+							)
+								return;
+							if (event.query.includes('AND NOT (')) {
+								probes++;
+								throw secondary;
+							}
+							if (kind === 'rejected-safety' && owned.controls.fences.length >= 3 && !primaryReached) {
+								primaryReached = true;
+								throw primary;
+							}
+						},
+					};
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					database.subscribers.push(observer);
+					try {
+						await startWithCeiling(3);
+						expect(rootsAtReport).toBeDefined();
+						expect(probes).toBeGreaterThanOrEqual(2);
+						expect(roots).toBe((rootsAtReport ?? 0) + 1);
+						expect(owned.controls.fences).toHaveLength(3);
+						if (kind === 'rejected-safety') expect(primaryReached).toBe(true);
+						expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+						// A distinct ordinary poll, with actual native facts now readable, is not dropped by the consumed frontier.
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+						const prior = roots,
+							extra = gate(),
+							resume = gate();
+						let fences = 0;
+						owned.controls.beforeFence = () => {
+							fences++;
+							if (fences > 2) {
+								extra.open();
+								return resume.promise;
+							}
+							return Promise.resolve();
+						};
+						runtime.request(controllerId, false);
+						const flushing = runtime.flush();
+						try {
+							expect(await Promise.race([flushing.then(() => 'complete'), extra.promise.then(() => 'extra')])).toBe(
+								'complete',
+							);
+							expect(roots).toBeGreaterThan(prior);
+							expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+						} finally {
+							runtime.onModuleDestroy();
+							owned.revoke();
+							resume.open();
+							owned.controls.beforeFence = null;
+							await flushing;
+						}
+					} finally {
+						runtime.onModuleDestroy();
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						const index = database.subscribers.indexOf(observer);
+						if (index >= 0) database.subscribers.splice(index, 1);
+						root.mockRestore();
+					}
+				},
+			);
+			// END R21 continuation additive finite-failure drafts
+
+			// BEGIN R21 continuation additive lower-member native draft (UNRUN)
+			it('observes a lower second-member barrier even while the original whole-branch maximum stays unchanged', async () => {
+				// The existing catalog fixture creates real rows/installations; its offline qualification remains explicitly synthetic.
+				await addMandatoryMember();
+				await active();
+				if (!fixture) throw new Error('Actual two-member fixture missing');
+				const owned = fixture;
+				const protection = new ThermostatMemberProtectionService(database, values);
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const claims = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, {
+					controllerId,
+					role: 'heating',
+				});
+				const bindings = await protection.load(config, claims);
+				expect(bindings).toHaveLength(2);
+				const first = bindings[0],
+					second = bindings[1],
+					sourceId = second.binding?.sourcePropertyId;
+				if (!sourceId) throw new Error('Actual second-member floor source missing');
+				for (const probe of protectionProbes) await owned.report(probe, 20);
+				// A conservative, future-dated observation creates unavailable A debt; it grants no authority and changes no clock/timeout.
+				protection.read([first], Date.now() + 10_000);
+				protection.read([second], Date.now());
+				runtime.onModuleDestroy();
+				runtime = new VirtualThermostatRuntimeService(
+					database,
+					actualStructure,
+					actualClaims,
+					new VirtualThermostatInputsService(database, values),
+					owned.transport,
+					values,
+					producers,
+					events,
+					actualGraph,
+					comfort,
+					new ConfigService({ FB_CLI: 'off' }),
+					protection,
+				);
+				const original: OriginalFunctions<Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>> =
+					mutationWriter;
+				const commit = original.commitExistingControllerForRuntime;
+				let roots = 0,
+					negativeReads = 0,
+					rootAfterNegative = false;
+				const root = jest.spyOn(mutationWriter, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+					roots++;
+					if (negativeReads > 0) rootAfterNegative = true;
+					return commit.call(mutationWriter, ...args);
+				});
+				const originalRuntime: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = runtime;
+				const request = originalRuntime.request;
+				let ordinaryRequests = 0,
+					requestsAtTrip = 0;
+				const requests = jest.spyOn(runtime, 'request').mockImplementation((...args) => {
+					ordinaryRequests++;
+					return request.call(runtime, ...args);
+				});
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (witness && event.query.startsWith('SELECT') && event.query.includes('AND NOT (')) negativeReads++;
+					},
+				};
+				database.subscribers.push(observer);
+				let count = 0,
+					rootsAtTrip = 0;
+				let witness:
+					| { before: number | null; after: number | null; wholeBefore: number | null; wholeAfter: number | null }
+					| undefined;
+				const excess = gate(),
+					resume = gate();
+				owned.controls.beforeFence = () => {
+					count++;
+					if (count === 3) {
+						rootsAtTrip = roots;
+						requestsAtTrip = ordinaryRequests;
+						const before = protection.requiredReleaseAfter([second]),
+							wholeBefore = protection.requiredReleaseAfter(bindings);
+						protection.invalidateSource(sourceId); // actual public negative transition, no notification/request to mask the native probe
+						witness = {
+							before,
+							after: protection.requiredReleaseAfter([second]),
+							wholeBefore,
+							wholeAfter: protection.requiredReleaseAfter(bindings),
+						};
+					}
+					if (count > 6) {
+						excess.open();
+						return resume.promise;
+					}
+					return Promise.resolve();
+				};
+				const starting = runtime.onApplicationBootstrap();
+				let failure: { cause: unknown } | undefined;
+				try {
+					expect(await Promise.race([starting.then(() => 'complete'), excess.promise.then(() => 'excess')])).toBe(
+						'complete',
+					);
+					expect(witness).toBeDefined();
+					if (!witness || witness.after === null || witness.wholeAfter === null)
+						throw new Error('Actual trip not reached');
+					expect(witness.after).not.toBe(witness.before);
+					expect(witness.after).toBeLessThan(witness.wholeAfter);
+					expect(witness.wholeAfter).toBe(witness.wholeBefore);
+					expect(negativeReads).toBeGreaterThan(0);
+					expect(rootAfterNegative).toBe(true);
+					expect(ordinaryRequests).toBe(requestsAtTrip); // no new ordinary request explains the post-probe safety root
+					expect(roots).toBeGreaterThan(rootsAtTrip);
+					expect(count).toBeLessThanOrEqual(6);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) {
+					failure = { cause };
+				} finally {
+					runtime.onModuleDestroy();
+					owned.revoke();
+					resume.open();
+					owned.controls.beforeFence = null;
+					try {
+						await starting;
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					root.mockRestore();
+					requests.mockRestore();
+				}
+				if (failure) throw failure.cause;
+			});
+			// END R21 continuation additive lower-member native draft
+
+			// BEGIN R22 completion-owned negative evidence drafts (UNRUN)
+			it('does not consume native N2 when completion Q follows its inverse SELECT on a consumed unknown frontier', async () => {
+				await addMandatoryMember();
+				await active();
+				if (!fixture) throw new Error('Actual managed fixture missing');
+				const owned = fixture,
+					q = new Error('R22 completion Q'),
+					firstQ = new Error('R22 original unknown observation');
+				const peer = await new SqliteDataSource({
+					type: 'sqlite',
+					database: join(directory, 'runtime.sqlite'),
+					entities: [__dirname + '/../../../**/*.entity.ts'],
+					synchronize: false,
+					migrationsRun: false,
+				}).initialize();
+				const claim = await peer.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+				const config = await peer.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const id = uuid();
+				let roots = 0,
+					unknownConsumed = false,
+					insertAfterCommit = false,
+					inserted = false;
+				let selected = 0,
+					completionFailed = false,
+					rootsAtFailure = 0,
+					requests = 0,
+					requestsAtFailure = 0;
+				const original: OriginalFunctions<Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>> =
+					mutationWriter;
+				const commit = original.commitExistingControllerForRuntime;
+				const root = jest.spyOn(mutationWriter, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+					roots++;
+					return commit.call(mutationWriter, ...args);
+				});
+				const originalRuntime: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = runtime;
+				const request = originalRuntime.request;
+				const requested = jest.spyOn(runtime, 'request').mockImplementation((...args) => {
+					requests++;
+					return request.call(runtime, ...args);
+				});
+				const sample = (): void => {
+					if (owned.controls.fences.length < 2) return;
+					if (!unknownConsumed) actualClaims.invalidate();
+					else actualGraph.invalidateValidation(); // Real graph withholding keeps later OFF history truthful but its certificate unusable.
+				};
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (!unknownConsumed && event.query.startsWith('SELECT') && event.query.includes('AND NOT (')) {
+							unknownConsumed = true;
+							throw firstQ;
+						}
+					},
+					afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+						if (
+							unknownConsumed &&
+							roots >= 2 &&
+							event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+							event.parameters?.includes('confirmed') &&
+							!inserted
+						)
+							insertAfterCommit = true;
+						if (
+							inserted &&
+							event.query.startsWith('SELECT') &&
+							event.query.includes('AND NOT (') &&
+							Array.isArray(event.rawResults) &&
+							event.rawResults.some(
+								(row: unknown) =>
+									!!row && typeof row === 'object' && Object.getOwnPropertyDescriptor(row, 'id')?.value === id,
+							)
+						)
+							selected++;
+					},
+					afterTransactionCommit: async (): Promise<void> => {
+						if (insertAfterCommit && !inserted) {
+							inserted = true;
+							await peer.manager.insert(VirtualThermostatCommandEntity, {
+								id,
+								controllerId,
+								claimId: claim.id,
+								claimRevision: claim.revision,
+								configurationRevision: config.revision,
+								decisionRevision: 1,
+								action: 'on',
+								status: 'unknown',
+								preparedAt: new Date(),
+								dispatchedAt: new Date(),
+								settledAt: null,
+								proofId: null,
+								fault: 'R22 independent obligation',
+							});
+						}
+						if (selected === 1 && !completionFailed) {
+							completionFailed = true;
+							rootsAtFailure = roots;
+							requestsAtFailure = requests;
+							throw q;
+						}
+					},
+				};
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+				database.subscribers.push(observer);
+				try {
+					await startWithCeiling(12); // At most three original two-member/two-fence evaluations.
+					expect(unknownConsumed).toBe(true);
+					expect(inserted).toBe(true);
+					expect(completionFailed).toBe(true);
+					expect(selected).toBeGreaterThanOrEqual(2); // Failed completion did not add N2 to the next inverse exclusion.
+					expect(roots).toBeGreaterThan(rootsAtFailure);
+					expect(requests).toBe(requestsAtFailure);
+					// A real ordinary admission is required; graph withholding may still refuse its original native gates.
+					expect((await peer.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id })).status).toBe('unknown');
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					runtime.onModuleDestroy();
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					root.mockRestore();
+					requested.mockRestore();
+					await peer.destroy();
+				}
+			});
+			it('admits the negative observer only after a genuinely queued native graph writer releases', async () => {
+				await active();
+				if (!fixture) throw new Error('Actual managed fixture missing');
+				const owned = fixture,
+					loadEntered = gate(),
+					loadResume = gate(),
+					writerEntered = gate(),
+					writerResume = gate();
+				let rootReturned = false,
+					heldLoad = false,
+					wrote = false,
+					baselineAfterWriter = false;
+				let atLoad: readonly object[] = [];
+				const original: OriginalFunctions<Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>> =
+					mutationWriter;
+				const commit = original.commitExistingControllerForRuntime;
+				const root = jest.spyOn(mutationWriter, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+					const result = commit.call(mutationWriter, ...args);
+					void result.then(
+						() => {
+							rootReturned = true;
+						},
+						() => undefined,
+					);
+					return result;
+				});
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+						if (
+							rootReturned &&
+							!heldLoad &&
+							event.query.includes('FROM "devices_virtual_thermostat_command_journal" "VirtualThermostatCommandEntity"')
+						) {
+							heldLoad = true;
+							atLoad = [...database.subscribers];
+							loadEntered.open();
+							return loadResume.promise;
+						}
+						if (
+							wrote &&
+							event.query.startsWith('SELECT "') &&
+							event.query.includes(' FROM "devices_virtual_thermostat_configs" WHERE ')
+						)
+							baselineAfterWriter = true;
+					},
+				};
+				database.subscribers.push(observer);
+				const starting = startWithCeiling(3);
+				let writing: Promise<void> | undefined;
+				try {
+					expect(await Promise.race([loadEntered.promise.then(() => 'load'), starting.then(() => 'early')])).toBe(
+						'load',
+					);
+					writing = actualStructure.runExclusive(async () => {
+						writerEntered.open();
+						await writerResume.promise;
+						await database.query(
+							'UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1',
+						);
+						wrote = true;
+					});
+					loadResume.open();
+					await writerEntered.promise;
+					// The writer is real and graph-invalidating, but no waiting negative reader has installed an observer yet.
+					expect(database.subscribers.filter((item) => Object.isFrozen(item) && !atLoad.includes(item))).toEqual([]);
+					writerResume.open();
+					await writing;
+					await starting;
+					expect(wrote).toBe(true);
+					expect(baselineAfterWriter).toBe(true);
+					expect(owned.controls.fences.length).toBeGreaterThan(0);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					runtime.onModuleDestroy();
+					owned.revoke();
+					loadResume.open();
+					writerResume.open();
+					if (writing !== undefined) await writing;
+					await starting;
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					root.mockRestore();
+				}
+			});
+			it.each([
+				{ kind: 'Error', primary: new Error('R22 original ordinary native P'), fail: true },
+				{ kind: 'undefined', primary: undefined, fail: true },
+				{ kind: 'null', primary: null, fail: true },
+				{ kind: 'returned-safety', primary: undefined, fail: false },
+			])(
+				'an unavailable baseline Q permits guarded OFF and preserves subsequent native $kind outcome at its real root boundary',
+				async ({ primary, fail }) => {
+					await active();
+					if (!fixture) throw new Error('Actual managed fixture missing');
+					const owned = fixture,
+						q = new Error('R22 optional baseline Q');
+					let baselineFaults = 0,
+						roots = 0,
+						nativeFaults = 0,
+						firstRootCompleted = false;
+					const failures: unknown[] = [];
+					const original: OriginalFunctions<
+						Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>
+					> = mutationWriter;
+					const commit = original.commitExistingControllerForRuntime;
+					const root = jest
+						.spyOn(mutationWriter, 'commitExistingControllerForRuntime')
+						.mockImplementation((...args) => {
+							roots++;
+							const result = commit.call(mutationWriter, ...args);
+							void result.then(
+								() => {
+									if (roots === 1) firstRootCompleted = true;
+								},
+								(cause: unknown) => {
+									failures.push(cause);
+								},
+							);
+							return result;
+						});
+					const sample = (): void => {
+						if (owned.controls.fences.length >= 2) actualClaims.invalidate();
+					};
+					const observer = {
+						beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+							// This full, unaliased read is the optional baseline, not the ordinary ORM load or root protocol.
+							if (
+								firstRootCompleted &&
+								roots === 1 &&
+								event.query.startsWith('SELECT "') &&
+								event.query.includes(' FROM "devices_virtual_thermostat_configs" WHERE ')
+							) {
+								baselineFaults++;
+								throw q;
+							}
+							if (
+								fail &&
+								roots === 2 &&
+								event.query.startsWith('SELECT') &&
+								event.query.includes('devices_virtual_thermostat_configs')
+							) {
+								nativeFaults++;
+								throw primary;
+							}
+						},
+					};
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					database.subscribers.push(observer);
+					try {
+						await startWithCeiling(3);
+						expect(baselineFaults).toBeGreaterThan(0);
+						expect(owned.controls.fences.length).toBeGreaterThan(0);
+						expect(roots).toBe(2);
+						if (fail) {
+							expect(nativeFaults).toBeGreaterThan(0);
+							expect(failures).toHaveLength(1);
+							const failure = failures[0];
+							expect(failure).toBeInstanceOf(Error);
+							if (!(failure instanceof Error)) throw new Error('Original native boundary did not expose its genuine P');
+							expect(failure.cause).toBe(primary);
+							expect(failure.cause).not.toBe(q);
+						} else {
+							expect(nativeFaults).toBe(0);
+							expect(failures).toEqual([]);
+						}
+						expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						runtime.onModuleDestroy();
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						const index = database.subscribers.indexOf(observer);
+						if (index >= 0) database.subscribers.splice(index, 1);
+						root.mockRestore();
+					}
+				},
+			);
+			it('does not consume a lower member barrier when the completed native probe throws Q before scheduling', async () => {
+				// The existing catalog fixture creates real rows/installations; its offline qualification remains explicitly synthetic.
+				await addMandatoryMember();
+				await active();
+				if (!fixture) throw new Error('Actual two-member fixture missing');
+				const owned = fixture;
+				const protection = new ThermostatMemberProtectionService(database, values);
+				const q = new Error('R22 lower barrier completion Q'),
+					firstQ = new Error('R22 consumed unknown observation');
+				let barrierObserved = false,
+					failed = false,
+					rootsAtFailure = 0,
+					unknownConsumed = false;
+				let witness:
+					| { before: number | null; after: number | null; wholeBefore: number | null; wholeAfter: number | null }
+					| undefined;
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const claims = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, {
+					controllerId,
+					role: 'heating',
+				});
+				const bindings = await protection.load(config, claims);
+				expect(bindings).toHaveLength(2);
+				const first = bindings[0],
+					second = bindings[1],
+					sourceId = second.binding?.sourcePropertyId;
+				if (!sourceId) throw new Error('Actual second-member floor source missing');
+				for (const probe of protectionProbes) await owned.report(probe, 20);
+				// A conservative, future-dated observation creates unavailable A debt; it grants no authority and changes no clock/timeout.
+				protection.read([first], Date.now() + 10_000);
+				protection.read([second], Date.now());
+				const protectionMethods: OriginalFunctions<Pick<ThermostatMemberProtectionService, 'requiredReleaseAfter'>> =
+					protection;
+				const requiredReleaseAfter = protectionMethods.requiredReleaseAfter;
+				const observedBarrier = jest.spyOn(protection, 'requiredReleaseAfter').mockImplementation((...args) => {
+					const result = requiredReleaseAfter.call(protection, ...args);
+					if (witness && args[0].length === 1 && args[0][0].claimId === second.claimId && result === witness.after)
+						barrierObserved = true;
+					return result;
+				});
+				runtime.onModuleDestroy();
+				runtime = new VirtualThermostatRuntimeService(
+					database,
+					actualStructure,
+					actualClaims,
+					new VirtualThermostatInputsService(database, values),
+					owned.transport,
+					values,
+					producers,
+					events,
+					actualGraph,
+					comfort,
+					new ConfigService({ FB_CLI: 'off' }),
+					protection,
+				);
+				const original: OriginalFunctions<Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>> =
+					mutationWriter;
+				const commit = original.commitExistingControllerForRuntime;
+				let roots = 0,
+					negativeReads = 0,
+					rootAfterNegative = false;
+				const root = jest.spyOn(mutationWriter, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+					roots++;
+					if (negativeReads > 0) rootAfterNegative = true;
+					return commit.call(mutationWriter, ...args);
+				});
+				const originalRuntime: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = runtime;
+				const request = originalRuntime.request;
+				let ordinaryRequests = 0,
+					requestsAtTrip = 0;
+				const requests = jest.spyOn(runtime, 'request').mockImplementation((...args) => {
+					ordinaryRequests++;
+					return request.call(runtime, ...args);
+				});
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (event.query.startsWith('SELECT') && event.query.includes('AND NOT (')) {
+							if (!unknownConsumed) {
+								unknownConsumed = true;
+								throw firstQ;
+							}
+							if (witness) {
+								negativeReads++;
+								barrierObserved = false;
+							}
+						}
+					},
+					afterTransactionCommit: (): void => {
+						if (barrierObserved && negativeReads > 0 && !failed) {
+							failed = true;
+							rootsAtFailure = roots;
+							throw q;
+						}
+					},
+				};
+				const sample = (): void => {
+					if ((fixture?.controls.fences.length ?? 0) < 2) return;
+					if (!unknownConsumed) actualClaims.invalidate();
+					else actualGraph.invalidateValidation();
+				};
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+				database.subscribers.push(observer);
+				let count = 0,
+					rootsAtTrip = 0;
+				const excess = gate(),
+					resume = gate();
+				owned.controls.beforeFence = () => {
+					count++;
+					if (count === 3) {
+						rootsAtTrip = roots;
+						requestsAtTrip = ordinaryRequests;
+						const before = protection.requiredReleaseAfter([second]),
+							wholeBefore = protection.requiredReleaseAfter(bindings);
+						protection.invalidateSource(sourceId); // actual public negative transition, no notification/request to mask the native probe
+						witness = {
+							before,
+							after: protection.requiredReleaseAfter([second]),
+							wholeBefore,
+							wholeAfter: protection.requiredReleaseAfter(bindings),
+						};
+					}
+					if (count > 6) {
+						excess.open();
+						return resume.promise;
+					}
+					return Promise.resolve();
+				};
+				const starting = runtime.onApplicationBootstrap();
+				let failure: { cause: unknown } | undefined;
+				try {
+					expect(await Promise.race([starting.then(() => 'complete'), excess.promise.then(() => 'excess')])).toBe(
+						'complete',
+					);
+					expect(witness).toBeDefined();
+					if (!witness || witness.after === null || witness.wholeAfter === null)
+						throw new Error('Actual trip not reached');
+					expect(witness.after).not.toBe(witness.before);
+					expect(witness.after).toBeLessThan(witness.wholeAfter);
+					expect(witness.wholeAfter).toBe(witness.wholeBefore);
+					expect(negativeReads).toBeGreaterThan(0);
+					expect(rootAfterNegative).toBe(true);
+					expect(ordinaryRequests).toBe(requestsAtTrip); // no new ordinary request explains the post-probe safety root
+					expect(roots).toBeGreaterThan(rootsAtTrip);
+					expect(unknownConsumed).toBe(true);
+					expect(barrierObserved).toBe(true);
+					expect(failed).toBe(true);
+					expect(roots).toBeGreaterThan(rootsAtFailure);
+					expect(negativeReads).toBeGreaterThanOrEqual(2);
+					expect(count).toBeLessThanOrEqual(6);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) {
+					failure = { cause };
+				} finally {
+					runtime.onModuleDestroy();
+					owned.revoke();
+					resume.open();
+					owned.controls.beforeFence = null;
+					try {
+						await starting;
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					root.mockRestore();
+					requests.mockRestore();
+					observedBarrier.mockRestore();
+				}
+				if (failure) throw failure.cause;
+			});
+			// END R22 completion-owned negative evidence drafts
+
+			// BEGIN R23 original initial publication P observation drafts (UNRUN)
+			it.each<Readonly<{ kind: string; primary: unknown }>>([
+				{ kind: 'Error', primary: new Error('R23 original initial publication P') },
+				{ kind: 'string', primary: 'R23 original initial publication P' },
+				{ kind: 'undefined', primary: undefined },
+				{ kind: 'null', primary: null },
+			])('retains initial post-OFF publication $kind P through actual failed-child probe Q', async ({ primary }) => {
+				await active();
+				if (!fixture) throw new Error('Actual managed fixture missing');
+				const owned = fixture,
+					owner = runtime,
+					writerOwner = mutationWriter,
+					q = new Error('R23 private negative observation Q');
+				// Observers are installed BEFORE genuine bootstrap/consumer/helper-method pinning.
+				// No private cell is read or forced; only original application calls enter these methods.
+				const originals: Readonly<{
+					evaluate: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['evaluate']>;
+					publish: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['publish']>;
+					serviceFeedback: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['serviceFeedback']>;
+				}> = { evaluate: owner['evaluate'], publish: owner['publish'], serviceFeedback: owner['serviceFeedback'] };
+				const descriptors = {
+					evaluate: Object.getOwnPropertyDescriptor(owner, 'evaluate'),
+					publish: Object.getOwnPropertyDescriptor(owner, 'publish'),
+					serviceFeedback: Object.getOwnPropertyDescriptor(owner, 'serviceFeedback'),
+				};
+				const evaluated: { cause: unknown }[] = [],
+					serviced: { cause: unknown }[] = [];
+				let publicationActive = false,
+					publicationFaulted = false,
+					ownedReports = 0,
+					probes = 0;
+				let roots = 0,
+					rootsAtPublication = 0;
+				Object.defineProperty(owner, 'evaluate', {
+					configurable: true,
+					writable: true,
+					value: (...args: Parameters<typeof originals.evaluate>): ReturnType<typeof originals.evaluate> => {
+						const pending = originals.evaluate.call(owner, ...args);
+						void pending.then(
+							() => undefined,
+							(cause: unknown) => {
+								evaluated.push({ cause });
+							},
+						);
+						return pending;
+					},
+				});
+				Object.defineProperty(owner, 'publish', {
+					configurable: true,
+					writable: true,
+					value: (...args: Parameters<typeof originals.publish>): ReturnType<typeof originals.publish> => {
+						publicationActive = true;
+						const pending = originals.publish.call(owner, ...args);
+						void pending.then(
+							() => {
+								publicationActive = false;
+							},
+							() => {
+								publicationActive = false;
+							},
+						);
+						return pending;
+					},
+				});
+				Object.defineProperty(owner, 'serviceFeedback', {
+					configurable: true,
+					writable: true,
+					value: (
+						...args: Parameters<typeof originals.serviceFeedback>
+					): ReturnType<typeof originals.serviceFeedback> => {
+						const pending = originals.serviceFeedback.call(owner, ...args);
+						void pending.then(
+							() => undefined,
+							(cause: unknown) => {
+								serviced.push({ cause });
+							},
+						);
+						return pending;
+					},
+				});
+				const originalWriter: OriginalFunctions<
+					Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>
+				> = writerOwner;
+				const commit = originalWriter.commitExistingControllerForRuntime;
+				const root = jest.spyOn(writerOwner, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+					roots++;
+					return commit.call(writerOwner, ...args);
+				});
+				const sample = (event: object): void => {
+					if (!values.captureOwnedFeedbackDelivery(event)) return;
+					ownedReports++;
+				};
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (
+							publicationActive &&
+							ownedReports > 0 &&
+							!publicationFaulted &&
+							event.query.includes('FROM "devices_module_channels_properties"')
+						) {
+							publicationFaulted = true;
+							rootsAtPublication = roots;
+							actualGraph.invalidateValidation();
+							throw primary;
+						}
+						if (publicationFaulted && event.query.startsWith('SELECT') && event.query.includes('AND NOT (')) {
+							probes++;
+							throw q;
+						}
+					},
+				};
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+				database.subscribers.push(observer);
+				try {
+					await startWithCeiling(3);
+					expect(ownedReports).toBeGreaterThan(0);
+					expect(publicationFaulted).toBe(true);
+					expect(evaluated.length).toBeGreaterThan(0);
+					expect(evaluated[0].cause).toBe(primary);
+					expect(probes).toBeGreaterThan(0);
+					expect(serviced.length).toBeGreaterThan(0);
+					for (const failure of serviced) {
+						expect(failure.cause).toBe(primary);
+						expect(failure.cause).not.toBe(q);
+					}
+					// The one inherited unknown-origin attempt may remain, but it cannot create a root feedback loop.
+					expect(roots).toBeLessThanOrEqual(rootsAtPublication + 1);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+				} finally {
+					owner.onModuleDestroy();
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					root.mockRestore();
+					for (const key of [
+						'evaluate',
+						'publish',
+						'serviceFeedback',
+					] satisfies readonly (keyof typeof descriptors)[]) {
+						const descriptor = descriptors[key];
+						if (descriptor) Object.defineProperty(owner, key, descriptor);
+						else Reflect.deleteProperty(owner, key);
+					}
+				}
+			});
+
+			// BEGIN R31 same-evaluation post-certificate publication drafts (UNRUN)
+			it.each<Readonly<{ kind: string; primary: unknown }>>([
+				{ kind: 'Error', primary: new Error('R31 post-certificate publication P') },
+				{ kind: 'string', primary: 'R31 post-certificate publication P' },
+				{ kind: 'undefined', primary: undefined },
+				{ kind: 'null', primary: null },
+			])(
+				'R31 correlates genuine native certificate SUCCESS then same-evaluation publication $kind P and probe Q',
+				async ({ primary }) => {
+					await active();
+					if (!fixture) throw new Error('Actual managed fixture missing');
+					const owned = fixture,
+						owner = runtime,
+						writerOwner = mutationWriter,
+						q = new Error('R31 post-certificate Q');
+					// Observers are installed BEFORE genuine bootstrap/consumer/helper-method pinning.
+					// No private cell is read or forced; only original application calls enter these methods.
+					const originals: Readonly<{
+						reconcile: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['reconcile']>;
+						evaluate: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['evaluate']>;
+						publish: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['publish']>;
+						serviceFeedback: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['serviceFeedback']>;
+					}> = {
+						reconcile: owner['reconcile'],
+						evaluate: owner['evaluate'],
+						publish: owner['publish'],
+						serviceFeedback: owner['serviceFeedback'],
+					};
+					const descriptors = {
+						reconcile: Object.getOwnPropertyDescriptor(owner, 'reconcile'),
+						evaluate: Object.getOwnPropertyDescriptor(owner, 'evaluate'),
+						publish: Object.getOwnPropertyDescriptor(owner, 'publish'),
+						serviceFeedback: Object.getOwnPropertyDescriptor(owner, 'serviceFeedback'),
+					};
+					const evaluated: { cause: unknown }[] = [],
+						serviced: { cause: unknown }[] = [];
+					type Publication = {
+						context: Parameters<typeof originals.publish>[0];
+						witness?: { epoch: string; sequence: number };
+					};
+					const publications = new AsyncLocalStorage<Publication>();
+					let acknowledged = 0;
+					let pendingAck: Parameters<typeof originals.reconcile>[0] | undefined;
+					const nativeScopes = new AsyncLocalStorage<Parameters<typeof originals.reconcile>[0]>();
+					const nativeAcks = new WeakMap<object, number>(),
+						completedReconciles = new WeakSet<object>();
+					Object.defineProperty(owner, 'reconcile', {
+						configurable: true,
+						writable: true,
+						value: (...args: Parameters<typeof originals.reconcile>): ReturnType<typeof originals.reconcile> => {
+							const pending = nativeScopes.run(args[0], () => originals.reconcile.call(owner, ...args));
+							void pending.then(
+								() => {
+									completedReconciles.add(args[0]);
+								},
+								() => undefined,
+							);
+							return pending;
+						},
+					});
+					let selectedPublication: Publication | undefined;
+					const changed = (
+						event: Readonly<{
+							controller: string;
+							configuration_revision: number;
+							decision_revision: number;
+							epoch: string;
+							sequence: number;
+							runtime: ThermostatRuntimeDiagnostic;
+						}>,
+					): void => {
+						const current = publications.getStore();
+						if (
+							current &&
+							(nativeAcks.get(current.context) ?? 0) > 0 &&
+							completedReconciles.has(current.context) &&
+							event.controller === current.context.config.controllerId &&
+							event.configuration_revision === current.context.config.revision &&
+							event.decision_revision === current.context.state.decisionRevision &&
+							event.runtime.epoch === event.epoch &&
+							event.runtime.sequence === event.sequence &&
+							event.runtime.branches.some((branch) => branch.release_proven)
+						)
+							current.witness = { epoch: event.epoch, sequence: event.sequence };
+					};
+					let publicationActive = false,
+						publicationFaulted = false,
+						ownedReports = 0,
+						probes = 0;
+					let roots = 0,
+						rootsAtPublication = 0;
+					Object.defineProperty(owner, 'evaluate', {
+						configurable: true,
+						writable: true,
+						value: (...args: Parameters<typeof originals.evaluate>): ReturnType<typeof originals.evaluate> => {
+							const pending = originals.evaluate.call(owner, ...args);
+							void pending.then(
+								() => undefined,
+								(cause: unknown) => {
+									evaluated.push({ cause });
+								},
+							);
+							return pending;
+						},
+					});
+					Object.defineProperty(owner, 'publish', {
+						configurable: true,
+						writable: true,
+						value: (...args: Parameters<typeof originals.publish>): ReturnType<typeof originals.publish> => {
+							publicationActive = true;
+							const publication: Publication = { context: args[0] };
+							const pending = publications.run(publication, () => originals.publish.call(owner, ...args));
+							void pending.then(
+								() => {
+									publicationActive = false;
+								},
+								() => {
+									publicationActive = false;
+								},
+							);
+							return pending;
+						},
+					});
+					Object.defineProperty(owner, 'serviceFeedback', {
+						configurable: true,
+						writable: true,
+						value: (
+							...args: Parameters<typeof originals.serviceFeedback>
+						): ReturnType<typeof originals.serviceFeedback> => {
+							const pending = originals.serviceFeedback.call(owner, ...args);
+							void pending.then(
+								() => undefined,
+								(cause: unknown) => {
+									serviced.push({ cause });
+								},
+							);
+							return pending;
+						},
+					});
+					const originalWriter: OriginalFunctions<
+						Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>
+					> = writerOwner;
+					const commit = originalWriter.commitExistingControllerForRuntime;
+					const root = jest.spyOn(writerOwner, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+						roots++;
+						return commit.call(writerOwner, ...args);
+					});
+					const sample = (event: object): void => {
+						if (!values.captureOwnedFeedbackDelivery(event)) return;
+						ownedReports++;
+					};
+					const observer = {
+						afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+							if (
+								event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+								event.parameters?.includes('confirmed')
+							)
+								pendingAck = nativeScopes.getStore();
+						},
+						afterTransactionCommit: (): void => {
+							if (pendingAck) {
+								acknowledged++;
+								nativeAcks.set(pendingAck, (nativeAcks.get(pendingAck) ?? 0) + 1);
+								pendingAck = undefined;
+							}
+						},
+						afterTransactionRollback: (): void => {
+							pendingAck = undefined;
+						},
+						beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+							if (
+								publicationActive &&
+								publications.getStore()?.witness !== undefined &&
+								ownedReports > 0 &&
+								!publicationFaulted &&
+								event.query.includes('FROM "devices_module_channels_properties"')
+							) {
+								selectedPublication = publications.getStore();
+								publicationFaulted = true;
+								rootsAtPublication = roots;
+								actualGraph.invalidateValidation();
+								throw primary;
+							}
+							if (publicationFaulted && event.query.startsWith('SELECT') && event.query.includes('AND NOT (')) {
+								probes++;
+								throw q;
+							}
+						},
+					};
+					events.on('DevicesVirtualPlugin.Thermostat.RuntimeChanged', changed);
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					database.subscribers.push(observer);
+					try {
+						await startWithCeiling(3);
+						expect(ownedReports).toBeGreaterThan(0);
+						expect(publicationFaulted).toBe(true);
+						expect(acknowledged).toBeGreaterThan(0);
+						expect(selectedPublication?.witness).toBeDefined();
+						expect(selectedPublication?.context.state.decisionRevision).toBeGreaterThan(0);
+						expect(evaluated.length).toBeGreaterThan(0);
+						expect(evaluated[0].cause).toBe(primary);
+						expect(probes).toBeGreaterThan(0);
+						expect(serviced.length).toBeGreaterThan(0);
+						for (const failure of serviced) {
+							expect(failure.cause).toBe(primary);
+							expect(failure.cause).not.toBe(q);
+						}
+						// The one inherited unknown-origin attempt may remain, but it cannot create a root feedback loop.
+						expect(roots).toBeLessThanOrEqual(rootsAtPublication + 1);
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+						expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+					} finally {
+						owner.onModuleDestroy();
+						events.off('DevicesVirtualPlugin.Thermostat.RuntimeChanged', changed);
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						const index = database.subscribers.indexOf(observer);
+						if (index >= 0) database.subscribers.splice(index, 1);
+						root.mockRestore();
+						for (const key of [
+							'reconcile',
+							'evaluate',
+							'publish',
+							'serviceFeedback',
+						] satisfies readonly (keyof typeof descriptors)[]) {
+							const descriptor = descriptors[key];
+							if (descriptor) Object.defineProperty(owner, key, descriptor);
+							else Reflect.deleteProperty(owner, key);
+						}
+					}
+				},
+			);
+
+			// BEGIN R31 inherited-primary recovery drafts (UNRUN)
+			it.each<Readonly<{ kind: string; primary: unknown }>>([
+				{ kind: 'Error', primary: new Error('R31 post-certificate publication P') },
+				{ kind: 'string', primary: 'R31 post-certificate publication P' },
+				{ kind: 'undefined', primary: undefined },
+				{ kind: 'null', primary: null },
+			])(
+				'R31 admits a later genuine successful inherited evaluation despite its original $kind publication P',
+				async ({ primary }) => {
+					await active();
+					if (!fixture) throw new Error('Actual managed fixture missing');
+					const owned = fixture,
+						owner = runtime,
+						writerOwner = mutationWriter,
+						q = new Error('R31 post-certificate Q');
+					// Observers are installed BEFORE genuine bootstrap/consumer/helper-method pinning.
+					// Original invocation arguments are observed without changing any private cell.
+					const originals: Readonly<{
+						reconcile: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['reconcile']>;
+						probeOriginalFeedbackDebt: OriginalFunction<
+							VirtualThermostatRuntimeService,
+							(typeof owner)['probeOriginalFeedbackDebt']
+						>;
+						evaluate: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['evaluate']>;
+						publish: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['publish']>;
+						serviceFeedback: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['serviceFeedback']>;
+					}> = {
+						reconcile: owner['reconcile'],
+						probeOriginalFeedbackDebt: owner['probeOriginalFeedbackDebt'],
+						evaluate: owner['evaluate'],
+						publish: owner['publish'],
+						serviceFeedback: owner['serviceFeedback'],
+					};
+					const descriptors = {
+						reconcile: Object.getOwnPropertyDescriptor(owner, 'reconcile'),
+						probeOriginalFeedbackDebt: Object.getOwnPropertyDescriptor(owner, 'probeOriginalFeedbackDebt'),
+						evaluate: Object.getOwnPropertyDescriptor(owner, 'evaluate'),
+						publish: Object.getOwnPropertyDescriptor(owner, 'publish'),
+						serviceFeedback: Object.getOwnPropertyDescriptor(owner, 'serviceFeedback'),
+					};
+					const evaluated: { cause: unknown }[] = [],
+						serviced: { cause: unknown }[] = [];
+					type Publication = {
+						context: Parameters<typeof originals.publish>[0];
+						witness?: { epoch: string; sequence: number };
+					};
+					const publications = new AsyncLocalStorage<Publication>();
+					let recovery: Promise<void> | undefined, recoveryError: { cause: unknown } | undefined;
+					const inherited: { context?: object; complete: boolean; nativeSelected: boolean }[] = [];
+					const evaluations = new AsyncLocalStorage<(typeof inherited)[number]>();
+					Object.defineProperty(owner, 'probeOriginalFeedbackDebt', {
+						configurable: true,
+						writable: true,
+						value: (
+							...args: Parameters<typeof originals.probeOriginalFeedbackDebt>
+						): ReturnType<typeof originals.probeOriginalFeedbackDebt> => {
+							const pending = originals.probeOriginalFeedbackDebt.call(owner, ...args);
+							void pending.then(
+								(result) => {
+									// Original readonly TX/shared admission have finished. Real public validation starts before
+									// the original caller's continuation, without replacing its Promise or returning fake evidence.
+									if (result.kind === 'UNPROVABLE' && probes === 1 && recovery === undefined) {
+										recovery = actualGraph.refreshQuarantine();
+										void recovery.catch((cause: unknown) => {
+											recoveryError = { cause };
+										});
+									}
+								},
+								() => undefined,
+							);
+							return pending;
+						},
+					});
+					let acknowledged = 0;
+					let pendingAck: Parameters<typeof originals.reconcile>[0] | undefined;
+					const nativeScopes = new AsyncLocalStorage<Parameters<typeof originals.reconcile>[0]>();
+					const nativeAcks = new WeakMap<object, number>(),
+						completedReconciles = new WeakSet<object>();
+					Object.defineProperty(owner, 'reconcile', {
+						configurable: true,
+						writable: true,
+						value: (...args: Parameters<typeof originals.reconcile>): ReturnType<typeof originals.reconcile> => {
+							const pending = nativeScopes.run(args[0], () => originals.reconcile.call(owner, ...args));
+							void pending.then(
+								() => {
+									completedReconciles.add(args[0]);
+								},
+								() => undefined,
+							);
+							return pending;
+						},
+					});
+					let selectedPublication: Publication | undefined;
+					const changed = (
+						event: Readonly<{
+							controller: string;
+							configuration_revision: number;
+							decision_revision: number;
+							epoch: string;
+							sequence: number;
+							runtime: ThermostatRuntimeDiagnostic;
+						}>,
+					): void => {
+						const current = publications.getStore();
+						if (
+							current &&
+							(nativeAcks.get(current.context) ?? 0) > 0 &&
+							completedReconciles.has(current.context) &&
+							event.controller === current.context.config.controllerId &&
+							event.configuration_revision === current.context.config.revision &&
+							event.decision_revision === current.context.state.decisionRevision &&
+							event.runtime.epoch === event.epoch &&
+							event.runtime.sequence === event.sequence &&
+							event.runtime.branches.some((branch) => branch.release_proven)
+						)
+							current.witness = { epoch: event.epoch, sequence: event.sequence };
+					};
+					let publicationActive = false,
+						publicationFaulted = false,
+						ownedReports = 0,
+						probes = 0;
+					let roots = 0,
+						rootsAtPublication = 0;
+					Object.defineProperty(owner, 'evaluate', {
+						configurable: true,
+						writable: true,
+						value: (...args: Parameters<typeof originals.evaluate>): ReturnType<typeof originals.evaluate> => {
+							const entry = {
+								context: undefined,
+								complete: false,
+								nativeSelected: false,
+							} satisfies (typeof inherited)[number];
+							const record: (typeof inherited)[number] = entry;
+							if (args[2]?.failure.primary && Object.is(args[2].failure.primary.cause, primary)) inherited.push(record);
+							const pending = evaluations.run(record, () => originals.evaluate.call(owner, ...args));
+							void pending.then(
+								() => {
+									record.complete = true;
+								},
+								(cause: unknown) => {
+									evaluated.push({ cause });
+								},
+							);
+							return pending;
+						},
+					});
+					Object.defineProperty(owner, 'publish', {
+						configurable: true,
+						writable: true,
+						value: (...args: Parameters<typeof originals.publish>): ReturnType<typeof originals.publish> => {
+							publicationActive = true;
+							const evaluation = evaluations.getStore();
+							if (evaluation) evaluation.context = args[0];
+							const publication: Publication = { context: args[0] };
+							const pending = publications.run(publication, () => originals.publish.call(owner, ...args));
+							void pending.then(
+								() => {
+									publicationActive = false;
+								},
+								() => {
+									publicationActive = false;
+								},
+							);
+							return pending;
+						},
+					});
+					Object.defineProperty(owner, 'serviceFeedback', {
+						configurable: true,
+						writable: true,
+						value: (
+							...args: Parameters<typeof originals.serviceFeedback>
+						): ReturnType<typeof originals.serviceFeedback> => {
+							const pending = originals.serviceFeedback.call(owner, ...args);
+							void pending.then(
+								() => undefined,
+								(cause: unknown) => {
+									serviced.push({ cause });
+								},
+							);
+							return pending;
+						},
+					});
+					const originalWriter: OriginalFunctions<
+						Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime'>
+					> = writerOwner;
+					const commit = originalWriter.commitExistingControllerForRuntime;
+					const root = jest.spyOn(writerOwner, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+						roots++;
+						return commit.call(writerOwner, ...args);
+					});
+					const sample = (event: object): void => {
+						if (!values.captureOwnedFeedbackDelivery(event)) return;
+						ownedReports++;
+					};
+					const observer = {
+						afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+							const evaluation = evaluations.getStore(),
+								publication = publications.getStore();
+							if (
+								publicationFaulted &&
+								evaluation &&
+								publication?.witness &&
+								publication.context === evaluation.context &&
+								event.query.includes('FROM "devices_module_channels_properties"')
+							)
+								evaluation.nativeSelected = true;
+							if (
+								event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+								event.parameters?.includes('confirmed')
+							)
+								pendingAck = nativeScopes.getStore();
+						},
+						afterTransactionCommit: (): void => {
+							if (pendingAck) {
+								acknowledged++;
+								nativeAcks.set(pendingAck, (nativeAcks.get(pendingAck) ?? 0) + 1);
+								pendingAck = undefined;
+							}
+						},
+						afterTransactionRollback: (): void => {
+							pendingAck = undefined;
+						},
+						beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+							if (
+								publicationActive &&
+								publications.getStore()?.witness !== undefined &&
+								ownedReports > 0 &&
+								!publicationFaulted &&
+								event.query.includes('FROM "devices_module_channels_properties"')
+							) {
+								selectedPublication = publications.getStore();
+								publicationFaulted = true;
+								rootsAtPublication = roots;
+								actualGraph.invalidateValidation();
+								throw primary;
+							}
+							if (
+								publicationFaulted &&
+								recovery === undefined &&
+								event.query.startsWith('SELECT') &&
+								event.query.includes('AND NOT (')
+							) {
+								probes++;
+								throw q;
+							}
+						},
+					};
+					events.on('DevicesVirtualPlugin.Thermostat.RuntimeChanged', changed);
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					database.subscribers.push(observer);
+					try {
+						await startWithCeiling(3);
+						if (recovery !== undefined) await recovery;
+						await owner.flush();
+						expect(recovery).toBeDefined();
+						expect(recoveryError).toBeUndefined();
+						expect(inherited.some((entry) => entry.complete && entry.nativeSelected)).toBe(true);
+						expect(ownedReports).toBeGreaterThan(0);
+						expect(publicationFaulted).toBe(true);
+						expect(acknowledged).toBeGreaterThan(0);
+						expect(selectedPublication?.witness).toBeDefined();
+						expect(selectedPublication?.context.state.decisionRevision).toBeGreaterThan(0);
+						expect(evaluated.length).toBeGreaterThan(0);
+						expect(evaluated[0].cause).toBe(primary);
+						expect(probes).toBeGreaterThan(0);
+						expect(probes).toBe(1); // Q may be consumed by the one genuine recovery attempt that actually succeeds.
+						for (const failure of serviced) {
+							expect(failure.cause).toBe(primary);
+							expect(failure.cause).not.toBe(q);
+						}
+						// The one inherited unknown-origin attempt may remain, but it cannot create a root feedback loop.
+						expect(roots).toBeLessThanOrEqual(rootsAtPublication + 1);
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+						expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+					} finally {
+						owner.onModuleDestroy();
+						events.off('DevicesVirtualPlugin.Thermostat.RuntimeChanged', changed);
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						const index = database.subscribers.indexOf(observer);
+						if (index >= 0) database.subscribers.splice(index, 1);
+						root.mockRestore();
+						for (const key of [
+							'probeOriginalFeedbackDebt',
+							'reconcile',
+							'evaluate',
+							'publish',
+							'serviceFeedback',
+						] satisfies readonly (keyof typeof descriptors)[]) {
+							const descriptor = descriptors[key];
+							if (descriptor) Object.defineProperty(owner, key, descriptor);
+							else Reflect.deleteProperty(owner, key);
+						}
+					}
+				},
+			);
+			// END R31 inherited-primary recovery drafts
+			// END R31 same-evaluation post-certificate publication drafts
+
+			// BEGIN R32 held-after-native-admission B-progress draft (UNRUN)
+			it('R32 allows public ordinary B progress while original A is held after real sample admission and retires only A at completion', async () => {
+				const entered = gate(),
+					release = gate();
+				let armed = false,
+					held = false,
+					samplesSeen = 0,
+					nativeAdmissionsReturned = 0;
+				const originalPlatform: Readonly<{
+					admitGuardFenceSample: OriginalFunction<
+						ShellyNgDevicePlatform,
+						ShellyNgDevicePlatform['admitGuardFenceSample']
+					>;
+				}> = ShellyNgDevicePlatform.prototype;
+				const original: OriginalFunction<ShellyNgDevicePlatform, ShellyNgDevicePlatform['admitGuardFenceSample']> =
+					originalPlatform.admitGuardFenceSample;
+				// Installed before active() creates/registers the real platform and the transport pins its method.
+				// This test-only async wrapper delays return; it does not preserve the original Promise identity.
+				const admission = jest
+					.spyOn(ShellyNgDevicePlatform.prototype, 'admitGuardFenceSample')
+					.mockImplementation(async function (
+						this: ShellyNgDevicePlatform,
+						...args: Parameters<typeof original>
+					): Promise<void> {
+						await original.call(this, ...args);
+						if (armed && !held) {
+							nativeAdmissionsReturned++;
+							held = true;
+							entered.open();
+							await release.promise;
+						}
+					});
+				const sample = (event: object): void => {
+					if (armed && values.captureOwnedFeedbackDelivery(event)) samplesSeen++;
+				};
+				let starting: Promise<void> | undefined;
+				try {
+					await active();
+					if (!fixture) throw new Error('Managed native fixture missing');
+					const owned = fixture,
+						owner = runtime;
+					const request = jest.spyOn(owner, 'request');
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					try {
+						armed = true;
+						starting = owner.onApplicationBootstrap();
+						await entered.promise;
+						expect(nativeAdmissionsReturned).toBe(1);
+						expect(samplesSeen).toBe(1);
+						expect(owned.controls.fences).toHaveLength(1);
+						// The real admission has returned: no held native query/transaction/value commit is this gate.
+						const originalA = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+							controllerId,
+							action: 'off',
+							status: 'dispatching',
+						});
+						await starting;
+						const sequenceBeforeB = owner.readDiagnostics(controllerId)?.sequence ?? 0;
+						// Public inspect creates a genuine ordinary request and waits for its actual evaluation, not A's send.
+						const b = await owner.inspect(controllerId);
+						expect(b?.configuration_revision).toBeGreaterThan(0);
+						expect(b?.sequence).toBeGreaterThan(sequenceBeforeB);
+						expect(b?.branches[0].release_proven).toBe(false);
+						expect(held).toBe(true);
+						expect(nativeAdmissionsReturned).toBe(1);
+						expect(
+							(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: originalA.id })).status,
+						).toBe('dispatching');
+						const requestsAtB = request.mock.calls.length;
+						release.open();
+						await starting;
+						await owned.flushTelemetry();
+						await owner.flush();
+						expect(request.mock.calls.length).toBe(requestsAtB);
+						expect(owner.readDiagnostics(controllerId)?.sequence).toBe(b?.sequence);
+						expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBe(b?.configuration_revision);
+						expect(owner.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+						const lateA = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: originalA.id });
+						expect(['accepted', 'unknown']).toContain(lateA.status);
+						expect(lateA.settledAt).not.toBeNull();
+						expect(lateA.proofId).toBeNull();
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						try {
+							owner.onModuleDestroy();
+						} finally {
+							release.open();
+							try {
+								if (starting !== undefined) await starting;
+							} finally {
+								events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+								request.mockRestore();
+							}
+						}
+					}
+				} finally {
+					release.open();
+					admission.mockRestore();
+				}
+			}, 30000);
+			// END R32 held-after-native-admission B-progress draft
+
+			// BEGIN R31 actual managed OFF-work/completion drafts (UNRUN)
+			it('R31 joins only the original detached OFF operation while its actual outcome SAVE is held and schedules one ticket', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed native fixture missing');
+				const owned = fixture,
+					entered = gate(),
+					release = gate();
+				let holds = 0,
+					samplesSeen = 0;
+				const served: object[] = [];
+				const originalService: OriginalFunction<VirtualThermostatRuntimeService, (typeof runtime)['serviceFeedback']> =
+					runtime['serviceFeedback'];
+				const owner = runtime,
+					serviceDescriptor = Object.getOwnPropertyDescriptor(owner, 'serviceFeedback');
+				Object.defineProperty(owner, 'serviceFeedback', {
+					configurable: true,
+					writable: true,
+					value: (child: Parameters<typeof originalService>[0]): ReturnType<typeof originalService> => {
+						if (child.purpose === 'GUARDED_OFF_DISPATCH') served.push(child);
+						return originalService.call(owner, child);
+					},
+				});
+				const sample = (event: object): void => {
+					if (values.captureOwnedFeedbackDelivery(event)) samplesSeen++;
+				};
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+						if (
+							!holds &&
+							event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+							event.parameters?.includes('accepted')
+						) {
+							holds++;
+							entered.open();
+							return release.promise;
+						}
+					},
+				};
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+				database.subscribers.push(observer);
+				const starting = startWithCeiling(2);
+				try {
+					await entered.promise;
+					expect(samplesSeen).toBe(1);
+					expect(owned.controls.fences).toHaveLength(1);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					release.open();
+					await starting;
+					expect(holds).toBe(1);
+					expect(served).toHaveLength(1);
+					expect(owned.controls.fences).toHaveLength(2);
+					expect(
+						(
+							await database.manager.find(VirtualThermostatCommandEntity, { where: { controllerId, action: 'off' } })
+						).every((row) => row.status === 'confirmed'),
+					).toBe(true);
+					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+				} finally {
+					release.open();
+					await starting;
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					if (serviceDescriptor) Object.defineProperty(owner, 'serviceFeedback', serviceDescriptor);
+					else Reflect.deleteProperty(owner, 'serviceFeedback');
+				}
+			});
+
+			it('R31 routes the original accepted A payload ordinarily after genuine same-controller B replacement and after-emit closure', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed fixture missing');
+				const owner = runtime;
+				const payloads: object[] = [];
+				const observed = (event: object): void => {
+					if (values.captureOwnedFeedbackDelivery(event)) payloads.push(event);
+				};
+				const request = jest.spyOn(owner, 'request');
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observed);
+				try {
+					await startWithCeiling(2);
+					expect(payloads).toHaveLength(2);
+					const originalA = payloads[0];
+					expect(values.captureOwnedFeedbackDelivery(originalA)).toBeNull();
+					owner.request(controllerId, false); // genuine ordinary B, not an adopted A context
+					await owner.flush();
+					const before = request.mock.calls.length;
+					// Delayed/replayed original native A payload, not a new accepted sample or manufactured origin.
+					events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, originalA);
+					expect(request.mock.calls.length).toBe(before + 1);
+					expect(request.mock.calls[before][0]).toBe(controllerId);
+					await owner.flush();
+					expect(values.captureOwnedFeedbackDelivery(originalA)).toBeNull();
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observed);
+					request.mockRestore();
+				}
+			});
+
+			it('R31 keeps a retired original held OFF completion from requesting or closing the installed B decision', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed fixture missing');
+				const owned = fixture,
+					owner = runtime,
+					entered = gate(),
+					release = gate();
+				let calls = 0;
+				owned.controls.beforeFence = () => {
+					if (++calls === 1) {
+						entered.open();
+						return release.promise;
+					}
+					return Promise.resolve();
+				};
+				const request = jest.spyOn(owner, 'request');
+				const starting = owner.onApplicationBootstrap();
+				try {
+					await entered.promise;
+					owner.request(controllerId, false);
+					await owner.flush();
+					const b = owner.readDiagnostics(controllerId),
+						before = request.mock.calls.length;
+					expect(b?.configuration_revision).toBeGreaterThan(0);
+					expect(b?.branches[0].release_proven).toBe(false);
+					release.open();
+					await starting;
+					await owned.flushTelemetry();
+					await owner.flush();
+					expect(request.mock.calls.length).toBe(before);
+					expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBe(b?.configuration_revision);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					const late = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+						controllerId,
+						action: 'off',
+					});
+					expect(['accepted', 'unknown', 'cancelled']).toContain(late.status);
+					expect(late.proofId).toBeNull();
+				} finally {
+					owner.onModuleDestroy();
+					release.open();
+					owned.controls.beforeFence = null;
+					await starting;
+					request.mockRestore();
+				}
+			});
+
+			it.each(['packet-clone', 'send-replaced', 'claim-replaced', 'guard-replaced'] satisfies readonly string[])(
+				'R31 leaves actual native false delivery unowned for %s without minting a replacement work',
+				async (kind) => {
+					await active();
+					if (!fixture) throw new Error('Managed fixture missing');
+					const owned = fixture,
+						reported = gate();
+					const originals: OriginalFunctions<Pick<VirtualThermostatTransportService, 'openRuntimeOffDispatchWork'>> =
+						owned.transport;
+					const open = originals.openRuntimeOffDispatchWork;
+					let admitted = 0,
+						tagged = 0,
+						observed = 0;
+					const restores: (() => void)[] = [];
+					const opening = jest.spyOn(owned.transport, 'openRuntimeOffDispatchWork').mockImplementation((...args) => {
+						const work = open.call(
+							owned.transport,
+							args[0],
+							args[1],
+							args[2],
+							kind === 'claim-replaced' ? { ...args[3] } : args[3],
+							args[4],
+							kind === 'guard-replaced' ? () => args[5]() : args[5],
+							kind === 'packet-clone' ? Object.freeze({ ...args[6] }) : args[6],
+						);
+						if (work && admitted++ === 0 && kind === 'send-replaced') {
+							const adapter = args[1],
+								original: OriginalFunctions<ThermostatActuationAdapter> = adapter,
+								send = original.send;
+							adapter.send = (...sendArgs) => send.call(adapter, ...sendArgs);
+							restores.push(() => {
+								adapter.send = send;
+							});
+						}
+						return work;
+					});
+					const sample = (event: object): void => {
+						observed++;
+						if (values.captureOwnedFeedbackDelivery(event)) tagged++;
+						reported.open();
+					};
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+					const starting = runtime.onApplicationBootstrap();
+					try {
+						await reported.promise;
+						expect(admitted).toBeGreaterThan(0);
+						expect(observed).toBeGreaterThan(0);
+						expect(tagged).toBe(0);
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						runtime.onModuleDestroy();
+						owned.revoke();
+						await starting;
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						for (const restore of restores) restore();
+						opening.mockRestore();
+					}
+				},
+			);
+			it('R31 keeps a real failed outcome SAVE out of OFF_REPORTED without discarding native history', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed fixture missing');
+				const primary = new Error('R31 native accepted-outcome SAVE P'),
+					owned = fixture;
+				let faults = 0;
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (
+							!faults &&
+							event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+							event.parameters?.includes('accepted')
+						) {
+							faults++;
+							throw primary;
+						}
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					await startWithCeiling(3);
+					expect(faults).toBe(1);
+					const commands = await database.manager.find(VirtualThermostatCommandEntity, {
+						where: { controllerId, action: 'off' },
+					});
+					expect(commands.length).toBeGreaterThan(0);
+					for (const command of commands) {
+						expect(['unknown', 'confirmed']).toContain(command.status);
+						if (command.status === 'confirmed') expect(command.proofId).not.toBeNull();
+					}
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+				}
+			});
+
+			it('R31 never tags actual ON telemetry as OFF work and keeps manual producer-state notification ordinary', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed fixture missing');
+				const owned = fixture,
+					owner = runtime,
+					entered = gate();
+				const dispatch: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['dispatch']> =
+					owner['dispatch'];
+				const descriptor = Object.getOwnPropertyDescriptor(owner, 'dispatch');
+				const operations: { action: string; pending: ReturnType<typeof dispatch> }[] = [];
+				Object.defineProperty(owner, 'dispatch', {
+					configurable: true,
+					writable: true,
+					value: (...args: Parameters<typeof dispatch>): ReturnType<typeof dispatch> => {
+						const pending = dispatch.call(owner, ...args);
+						operations.push({ action: args[3].action, pending });
+						return pending;
+					},
+				});
+				const request = jest.spyOn(owner, 'request');
+				await startWithCeiling(2);
+				owned.controls.beforeOn = () => {
+					entered.open();
+					return Promise.resolve();
+				};
+				let actualOnReports = 0;
+				const wrong: object[] = [];
+				const observe = (event: Readonly<{ sample: QualifiedPropertySample }>): void => {
+					if (event.sample.value === true) {
+						actualOnReports++;
+						if (values.captureOwnedFeedbackDelivery(event)) wrong.push(event);
+					}
+				};
+				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+				try {
+					await owned.report(sensorId, 10);
+					await entered.promise;
+					const on = operations.find((entry) => entry.action === 'on');
+					expect(on).toBeDefined();
+					if (!on) throw new Error('Genuine original ON operation not entered');
+					await on.pending;
+					await owned.flushTelemetry();
+					await runtime.flush();
+					expect(owned.controls.sends.filter((send) => send.on).length).toBeGreaterThan(0);
+					expect(actualOnReports).toBeGreaterThan(0);
+					expect(wrong).toEqual([]);
+					const before = request.mock.calls.length;
+					events.emit(EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED, { id: sensorId });
+					expect(request.mock.calls.length).toBe(before + 1);
+					const original = actualClaims.capture();
+					runtime.request(controllerId, false);
+					await runtime.flush();
+					expect(original.isCurrent()).toBe(false);
+				} finally {
+					owner.onModuleDestroy();
+					owned.controls.beforeOn = null;
+					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+					request.mockRestore();
+					if (descriptor) Object.defineProperty(owner, 'dispatch', descriptor);
+					else Reflect.deleteProperty(owner, 'dispatch');
+				}
+			});
+			it.each(['claims', 'native-registration', 'destroy'] satisfies readonly string[])(
+				'R31 closes the genuine original dispatch origin on actual %s loss before its native readback',
+				async (kind) => {
+					await active();
+					if (!fixture) throw new Error('Actual managed fixture missing');
+					const owned = fixture;
+					let losses = 0;
+					const opened: RuntimeOffDispatchWork[] = [],
+						delivered: (RuntimeOffDispatchWork | RuntimeReconciliationWork)[] = [];
+					const original: OriginalFunctions<
+						Pick<VirtualThermostatTransportService, 'openRuntimeOffDispatchWork' | 'captureRuntimeFeedbackDelivery'>
+					> = owned.transport;
+					const open = original.openRuntimeOffDispatchWork,
+						capture = original.captureRuntimeFeedbackDelivery;
+					const opening = jest.spyOn(owned.transport, 'openRuntimeOffDispatchWork').mockImplementation((...args) => {
+						const work = open.call(owned.transport, ...args);
+						if (work) opened.push(work);
+						return work;
+					});
+					const delivery = jest.spyOn(owned.transport, 'captureRuntimeFeedbackDelivery').mockImplementation((event) => {
+						const work = capture.call(owned.transport, event);
+						if (work) delivered.push(work);
+						return work;
+					});
+					owned.controls.beforeFence = () => {
+						if (losses++ === 0) {
+							if (kind === 'claims') actualClaims.invalidate();
+							else if (kind === 'native-registration') owned.revoke();
+							else runtime.onModuleDestroy();
+						}
+						return Promise.resolve();
+					};
+					try {
+						await runtime.onApplicationBootstrap();
+						await owned.flushTelemetry();
+						await runtime.flush();
+						expect(losses).toBeGreaterThan(0);
+						expect(opened.length).toBeGreaterThan(0);
+						expect(delivered).not.toContain(opened[0]);
+						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						runtime.onModuleDestroy();
+						owned.controls.beforeFence = null;
+						opening.mockRestore();
+						delivery.mockRestore();
+					}
+				},
+			);
+			// END R31 actual managed OFF-work/completion drafts
+			// END R23 original initial publication P observation drafts
+		});
+		// END R21 additive managed native feedback/debt drafts
+	});
+	// END R14 drain-certificate lifetime drafts
 	// BEGIN real claims comfort pending-ON regressions (SOURCE-ONLY drafts; synthetic qualification, no installed authority)
 	describe('comfort entry with actual claims/runtime and original managed SDK send guards', () => {
 		let actualClaims: VirtualThermostatClaimsService;
@@ -3485,7 +5988,10 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 			);
 			await actualClaims.onApplicationBootstrap();
-			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications);
+			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'managed', {
+				values: mutationValues,
+				sources: mutationPipeline.get(PropertyValueSourceRegistryService),
+			});
 			realGuardFixtures.push(fixture);
 			// Reuse ONLY the helper's existing explicitly synthetic qualification boundary. No new fields or private map forcing.
 			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
@@ -4413,6 +6919,218 @@ describe('virtual thermostat durable runtime', () => {
 				await descendant?.catch(() => undefined);
 			}
 		});
+		// BEGIN R17 mapped UUID and callback reporting drafts (UNRUN; genuine managed fixture)
+		it.each(['uuid', 'malformed', 'protected'] satisfies readonly ('uuid' | 'malformed' | 'protected')[])(
+			'keeps mapped UUID native journal work distinct from %s scalar/protected rejection',
+			async (mode) => {
+				runtime.onModuleDestroy();
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				await comfort.override(
+					controllerId,
+					{ expected_revision: before.revision, expected_graph_revision: await actualGraph.revision() },
+					{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+					'mapped-uuid-native-domain',
+				);
+				const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+				const intent = await comfort.readIntentInManager(database.manager, config);
+				const claims = actualClaims.capture();
+				const slot: unknown = await database.query(
+					'SELECT * FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?',
+					[controllerId],
+				);
+				const id = uuid();
+				const inserts: string[] = [];
+				const observer = {
+					afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+						if (event.query.startsWith('INSERT INTO "devices_virtual_thermostat_command_journal"'))
+							inserts.push(event.query);
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					expect(
+						database
+							.getMetadata(VirtualThermostatCommandEntity)
+							.columns.find((column) => column.propertyName === 'claimId')?.type,
+					).toBe('uuid');
+					expect(intent.isOverrideCurrent()).toBe(true);
+					expect(claims.isCurrent()).toBe(true);
+					if (mode === 'protected') {
+						await database.query(
+							'UPDATE "devices_virtual_thermostat_configs" SET "locked" = ? WHERE "controllerId" = ?',
+							[Number(config.locked), controllerId],
+						);
+					} else {
+						const insertion = database.manager.insert(VirtualThermostatCommandEntity, {
+							id,
+							controllerId,
+							claimId: mode === 'uuid' ? claim.id : 'not-a-uuid',
+							claimRevision: claim.revision,
+							configurationRevision: config.revision,
+							decisionRevision: 0,
+							action: 'on',
+							status: 'prepared',
+							preparedAt: new Date(),
+							dispatchedAt: null,
+							settledAt: null,
+							proofId: null,
+							fault: null,
+						});
+						if (mode === 'uuid') {
+							await insertion;
+							expect(inserts).toHaveLength(1);
+							expect(inserts[0]).toMatch(/^INSERT INTO "devices_virtual_thermostat_command_journal"\(/);
+							expect(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id })).toMatchObject({
+								claimId: claim.id,
+								status: 'prepared',
+							});
+						} else {
+							// This is a refused native FK attempt, never a committed malformed claim or positive control.
+							await expect(insertion).rejects.toThrow('FOREIGN KEY constraint failed');
+							expect(await database.manager.countBy(VirtualThermostatCommandEntity, { id })).toBe(0);
+						}
+					}
+					expect(intent.isOverrideCurrent()).toBe(mode === 'uuid');
+					expect(claims.isCurrent()).toBe(false); // Foreign journal work is not claims authority.
+					expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+						config,
+					);
+					expect(
+						await database.query('SELECT * FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?', [
+							controllerId,
+						]),
+					).toEqual(slot);
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					runtime.onModuleDestroy();
+					intent.close();
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+				}
+				expect(database.subscribers.includes(observer)).toBe(false);
+				expect(intent.isOverrideCurrent()).toBe(false);
+			},
+		);
+		it.each(['Q-only', 'P+Q'] satisfies readonly ('Q-only' | 'P+Q')[])(
+			'reports a genuine recovery callback %s without changing bootstrap primary identity',
+			async (mode) => {
+				runtime.onModuleDestroy();
+				const journalSql =
+					'UPDATE "devices_virtual_thermostat_command_journal" SET "status" = ?, "fault" = ? WHERE "status" IN (?, ?)';
+				const branchSql =
+					'UPDATE "devices_virtual_thermostat_branch_runtime" SET "activity" = ?, "releaseAttempts" = 0, "nextReleaseAt" = ?';
+				const secondaryLine = '[virtual-thermostat-test] secondary recovery callback assertion recorded\n';
+				const primary = new Error('second real recovery query refused');
+				let callbackFailure: { cause: unknown } | undefined;
+				let callbackFailureReplayed = false;
+				let intent: Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>> | undefined;
+				let captured: ReturnType<VirtualThermostatClaimsService['capture']> | undefined;
+				let rejected: { cause: unknown } | undefined;
+				let armed = false;
+				let callbackEntries = 0,
+					refreshCompleted = 0;
+				const originalRefresh: Readonly<{
+					refresh: { call: (receiver: VirtualThermostatClaimsService) => Promise<void> };
+				}> = actualClaims;
+				const refresh = originalRefresh.refresh;
+				const refreshSpy = jest.spyOn(actualClaims, 'refresh').mockImplementation(async () => {
+					await refresh.call(actualClaims);
+					if (!armed) return;
+					expect(actualStructure.hasCurrentStructuralLease()).toBe(false);
+					refreshCompleted++;
+					if (callbackFailure !== undefined) {
+						callbackFailureReplayed = true;
+						throw callbackFailure.cause;
+					}
+				});
+				// Default spy preserves the original stderr callthrough, including its receiver/result.
+				const stderr = jest.spyOn(process.stderr, 'write');
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (armed && mode === 'P+Q' && event.query === branchSql) throw primary;
+					},
+					afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+						if (!armed || (event.query !== journalSql && event.query !== branchSql)) return;
+						callbackEntries++;
+						try {
+							expect(intent?.isOverrideCurrent()).toBe(true);
+							expect(captured?.isCurrent()).toBe(false);
+						} catch (cause) {
+							callbackFailure ??= { cause };
+						}
+					},
+				};
+				try {
+					mutationProvider.onModuleDestroy();
+					mutationProvider = new VirtualThermostatAutomationService(
+						mutationWriter,
+						mutationRegistry,
+						actualGraph,
+						new ConfigService({ FB_CLI: 'off' }),
+						undefined,
+						configs,
+						comfort,
+					);
+					mutationProvider.onModuleInit();
+					const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+					await comfort.override(
+						controllerId,
+						{ expected_revision: before.revision, expected_graph_revision: await actualGraph.revision() },
+						{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+						'recovery-report-identity',
+					);
+					const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+					intent = await comfort.readIntentInManager(database.manager, config);
+					captured = actualClaims.capture();
+					expect(intent.isOverrideCurrent()).toBe(true);
+					// A genuine protected same-value native write closes A; no currentness function is substituted.
+					await database.query(
+						'UPDATE "devices_virtual_thermostat_configs" SET "locked" = ? WHERE "controllerId" = ?',
+						[Number(config.locked), controllerId],
+					);
+					expect(intent.isOverrideCurrent()).toBe(false);
+					database.subscribers.push(observer);
+					armed = true;
+					try {
+						await runtime.onApplicationBootstrap();
+					} catch (error) {
+						if (callbackFailure !== undefined && !callbackFailureReplayed) {
+							try {
+								process.stderr.write(secondaryLine);
+							} catch {
+								// Keep the exact genuine bootstrap primary, including falsy causes.
+							}
+						}
+						rejected = { cause: error };
+					}
+					expect(callbackFailure).toBeDefined();
+					expect(rejected).toBeDefined();
+					expect(callbackEntries).toBe(mode === 'Q-only' ? 2 : 1);
+					expect(refreshCompleted).toBe(mode === 'Q-only' ? 1 : 0);
+					expect(callbackFailureReplayed).toBe(mode === 'Q-only');
+					expect(rejected?.cause).toBe(mode === 'Q-only' ? callbackFailure?.cause : primary);
+					expect(stderr.mock.calls.filter((call) => call[0] === secondaryLine)).toHaveLength(mode === 'Q-only' ? 0 : 1);
+					expect(actualStructure.hasCurrentStructuralLease()).toBe(false);
+					expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId })).toEqual(
+						config,
+					);
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					runtime.onModuleDestroy();
+					intent?.close();
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+					mutationProvider.onModuleDestroy();
+					refreshSpy.mockRestore();
+					stderr.mockRestore();
+				}
+				expect(database.subscribers.includes(observer)).toBe(false);
+				expect(originalRefresh.refresh).toBe(refresh);
+				expect(intent?.isOverrideCurrent()).toBe(false);
+			},
+		);
+		// END R17 mapped UUID and callback reporting drafts
 		// BEGIN R4 original startup/TIME/lifecycle drafts (UNRUN)
 		it('retains only the original C deadline through BOTH actual recovery effects and a fresh post-release claims generation', async () => {
 			runtime.onModuleDestroy();
@@ -4426,6 +7144,8 @@ describe('virtual thermostat durable runtime', () => {
 			const native: { query: string; parameters: readonly unknown[] }[] = [];
 			let original: Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>> | undefined;
 			let captured: ReturnType<VirtualThermostatClaimsService['capture']> | undefined;
+			let callbackFailure: { cause: unknown } | undefined;
+			let callbackFailureReplayed = false;
 			let recoveryId: string | undefined,
 				releasedRefresh = false;
 			const originalRefresh: Readonly<{
@@ -4436,6 +7156,10 @@ describe('virtual thermostat durable runtime', () => {
 				if (releasedRefresh || !native.length) return refresh.call(actualClaims);
 				expect(actualStructure.hasCurrentStructuralLease()).toBe(false);
 				await refresh.call(actualClaims);
+				if (callbackFailure !== undefined) {
+					callbackFailureReplayed = true;
+					throw callbackFailure.cause;
+				}
 				expect(original?.isOverrideCurrent()).toBe(true);
 				expect(actualClaims.capture().isCurrent()).toBe(true);
 				const recovered = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: recoveryId });
@@ -4453,11 +7177,30 @@ describe('virtual thermostat durable runtime', () => {
 					if (event.query !== journalSql && event.query !== branchSql) return;
 					const preciseEventView3: Readonly<{ parameters?: readonly unknown[] }> = event;
 					native.push({ query: event.query, parameters: [...(preciseEventView3.parameters ?? [])] });
-					expect(original?.isOverrideCurrent()).toBe(true);
-					expect(captured?.isCurrent()).toBe(false); // CLOCK-neutral is not command membership authority.
+					try {
+						expect(original?.isOverrideCurrent()).toBe(true);
+						expect(captured?.isCurrent()).toBe(false); // CLOCK-neutral is not command membership authority.
+					} catch (cause) {
+						callbackFailure ??= { cause };
+					}
 				},
 			};
 			try {
+				const previousProvider = mutationRegistry.captureProvider('virtual-thermostat:v1');
+				expect(previousProvider?.isCurrent()).toBe(true);
+				mutationProvider.onModuleDestroy();
+				expect(previousProvider?.isCurrent()).toBe(false);
+				mutationProvider = new VirtualThermostatAutomationService(
+					mutationWriter,
+					mutationRegistry,
+					actualGraph,
+					new ConfigService({ FB_CLI: 'off' }),
+					undefined,
+					configs,
+					comfort,
+				);
+				mutationProvider.onModuleInit();
+				expect(mutationRegistry.captureProvider('virtual-thermostat:v1')?.isCurrent()).toBe(true);
 				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 				await comfort.override(
 					controllerId,
@@ -4497,7 +7240,22 @@ describe('virtual thermostat durable runtime', () => {
 				database.subscribers.push(observer);
 				mono = initialMono + 500;
 				// Same instance, its original lifecycle was synchronously closed above.
-				await runtime.onApplicationBootstrap();
+				try {
+					await runtime.onApplicationBootstrap();
+				} catch (primary) {
+					if (callbackFailure !== undefined && !callbackFailureReplayed) {
+						try {
+							process.stderr.write('[virtual-thermostat-test] secondary recovery callback assertion recorded\n');
+						} catch {
+							// The original bootstrap rejection stays primary.
+						}
+					}
+					throw primary;
+				}
+				if (callbackFailure !== undefined) {
+					callbackFailureReplayed = true;
+					throw callbackFailure.cause;
+				}
 				await settleReal(fixture);
 				expect(native).toEqual([
 					{
@@ -4536,6 +7294,7 @@ describe('virtual thermostat durable runtime', () => {
 				const index = database.subscribers.indexOf(observer);
 				if (index >= 0) database.subscribers.splice(index, 1);
 				monotonic.mockRestore();
+				mutationProvider.onModuleDestroy();
 				refreshSpy.mockRestore();
 			}
 		});
@@ -5203,3 +7962,99 @@ describe('virtual thermostat durable runtime', () => {
 		},
 	);
 });
+
+// BEGIN inherited static method descriptor regressions (SOURCE-ONLY; UNEXECUTED)
+describe('original method currentness through function-valued prototypes', () => {
+	it('accepts the original inherited Date.parse on a local Date subclass', () => {
+		class LocalDate extends Date {}
+		const original = Date.parse;
+
+		expect(creationMethodCurrent(LocalDate, 'parse', original)).toBe(true);
+	});
+
+	it('preserves original identity through multiple function-valued parents', () => {
+		class Original {
+			static read = (value: number): number => value;
+		}
+		class Middle extends Original {}
+		class Leaf extends Middle {}
+		const original = Original.read;
+
+		expect(creationMethodCurrent(Leaf, 'read', original)).toBe(true);
+	});
+
+	it('refuses an own static replacement without recapturing the original', () => {
+		class Original {
+			static read = (): string => 'original';
+		}
+		class Leaf extends Original {}
+		const original = Original.read;
+		Leaf.read = (): string => 'replacement';
+
+		expect(creationMethodCurrent(Leaf, 'read', original)).toBe(false);
+	});
+
+	it('refuses a nearer inherited static replacement', () => {
+		class Original {
+			static read = (): string => 'original';
+		}
+		class Middle extends Original {}
+		class Leaf extends Middle {}
+		const original = Original.read;
+		Middle.read = (): string => 'replacement';
+
+		expect(creationMethodCurrent(Leaf, 'read', original)).toBe(false);
+	});
+
+	it('refuses an own accessor returning the original without invoking its getter', () => {
+		class Original {
+			static read = (): string => 'original';
+		}
+		class Leaf extends Original {}
+		const original = Original.read;
+		let getterCalls = 0;
+		Object.defineProperty(Leaf, 'read', {
+			get: () => {
+				getterCalls++;
+				return original;
+			},
+		});
+
+		expect(creationMethodCurrent(Leaf, 'read', original)).toBe(false);
+		expect(getterCalls).toBe(0);
+	});
+
+	it('refuses a nearer inherited accessor without invoking it or falling through', () => {
+		class Original {
+			static read = (): string => 'original';
+		}
+		class Middle extends Original {}
+		class Leaf extends Middle {}
+		const original = Original.read;
+		let getterCalls = 0;
+		Object.defineProperty(Middle, 'read', {
+			get: () => {
+				getterCalls++;
+				return original;
+			},
+		});
+
+		expect(creationMethodCurrent(Leaf, 'read', original)).toBe(false);
+		expect(getterCalls).toBe(0);
+	});
+
+	it('preserves ordinary prototype identity checks and refuses changed or missing methods', () => {
+		const original = (): string => 'original';
+		const prototype: { read?: () => string } = { read: original };
+		const receiver = {};
+		Object.setPrototypeOf(receiver, prototype);
+
+		expect(creationMethodCurrent(receiver, 'read', original)).toBe(true);
+		prototype.read = (): string => 'replacement';
+		expect(creationMethodCurrent(receiver, 'read', original)).toBe(false);
+		delete prototype.read;
+		expect(creationMethodCurrent(receiver, 'read', original)).toBe(false);
+		expect(creationMethodCurrent({}, 'missing', undefined)).toBe(false);
+	});
+});
+// END inherited static method descriptor regressions

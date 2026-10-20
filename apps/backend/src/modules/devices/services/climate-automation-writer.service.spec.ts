@@ -27,6 +27,12 @@ import {
 } from '../../../plugins/devices-virtual/entities/virtual-producer.entity';
 import { VirtualDependencyGraphService } from '../../../plugins/devices-virtual/services/virtual-dependency-graph.service';
 import {
+	ClimateAutomationRuntimeCapture,
+	ClimateAutomationRuntimeCheckpoint,
+	ClimateAutomationRuntimeConsumer,
+	ClimateAutomationRuntimeDebt,
+} from '../contracts/climate-automation.contract';
+import {
 	ClimateAutomationControllerIntentRequest,
 	ClimateAutomationHandle,
 	ClimateAutomationProvider,
@@ -3015,3 +3021,58 @@ describe('closed terminal recovery descriptor admission', () => {
 	});
 });
 // END terminal descriptor recovery negative drafts
+
+// BEGIN R21 additive source-only drafts (UNRUN)
+describe('R21 closed pre-root runtime capture admission without authority IO', () => {
+	it('refuses a forged capture before request getters, native reads or released lock admission', async () => {
+		const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false });
+		const lock = new DeviceStructureLockService(),
+			writer = new ClimateAutomationWriterService(
+				source,
+				lock,
+				new ClimateAutomationRegistryService(),
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+		let getters = 0;
+		const request: import('../contracts/climate-automation.contract').ClimateAutomationExistingRequest = {
+			get providerKey() {
+				getters++;
+				return 'virtual-thermostat:v1';
+			},
+			controllerId,
+			kind: 'settle-override:v1',
+			input: {},
+		};
+		const query = jest.spyOn(source.manager, 'query'),
+			released = jest.spyOn(lock, 'runExclusiveReleased');
+		await expect(
+			writer.commitExistingControllerForRuntime(request, new ClimateAutomationRuntimeCapture()),
+		).rejects.toThrow();
+		expect(getters).toBe(0);
+		expect(query).not.toHaveBeenCalled();
+		expect(released).not.toHaveBeenCalled();
+		expect(source.isInitialized).toBe(false);
+	});
+	it('cannot capture or revive a forged checkpoint and closes unknown handles idempotently', () => {
+		const source = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false });
+		const writer = new ClimateAutomationWriterService(
+			source,
+			new DeviceStructureLockService(),
+			new ClimateAutomationRegistryService(),
+			new ConfigService({ FB_CLI: 'off' }),
+		);
+		const checkpoint = new ClimateAutomationRuntimeCheckpoint(),
+			capture = new ClimateAutomationRuntimeCapture(),
+			consumer = new ClimateAutomationRuntimeConsumer();
+		expect(writer.assessRuntimeSettlement(checkpoint)).toEqual({ kind: 'closed' });
+		writer.closeRuntimeSettlement(checkpoint);
+		writer.closeRuntimeSettlementCapture(capture);
+		writer.closeRuntimeSettlementConsumer(consumer);
+		expect(writer.assessRuntimeSettlement(checkpoint)).toEqual({ kind: 'closed' });
+		expect(JSON.stringify({ checkpoint, capture, consumer, debt: new ClimateAutomationRuntimeDebt() })).toBe(
+			'{"checkpoint":{},"capture":{},"consumer":{},"debt":{}}',
+		);
+		expect(source.isInitialized).toBe(false);
+	});
+});
+// END R21 additive source-only drafts

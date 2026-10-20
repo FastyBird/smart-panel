@@ -133,6 +133,11 @@ describe('thermostat durable comfort lifecycle', () => {
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 			synchronize: true,
 		}).initialize();
+		// Synchronized test schemas omit migration27's installed graph singleton seed.
+		await database.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
+		expect(await database.query('SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"')).toEqual(
+			[{ id: 1, revision: 0 }],
+		);
 		structure = new DeviceStructureLockService();
 		ownership = new ClimateAutomationRegistryService();
 		writer = new ClimateAutomationWriterService(database, structure, ownership, new ConfigService({ FB_CLI: 'off' }));

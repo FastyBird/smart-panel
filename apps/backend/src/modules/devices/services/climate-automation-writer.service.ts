@@ -56,8 +56,15 @@ import {
 	ClimateAutomationProvider,
 	ClimateAutomationReplacement,
 	ClimateAutomationRetainedRecoveryRow,
+	ClimateAutomationRuntimeAssessment,
+	ClimateAutomationRuntimeCapture,
+	ClimateAutomationRuntimeCheckpoint,
+	ClimateAutomationRuntimeConsumer,
+	ClimateAutomationRuntimeConsumerBinding,
+	ClimateAutomationRuntimeDebt,
 	ClimateAutomationScope,
 	ClimateAutomationSelection,
+	ClimateAutomationSettlementContinuity,
 	ClimateAutomationSlotFacts,
 	ClimateAutomationSourceFacts,
 	ClimateAutomationValidationReason,
@@ -117,6 +124,29 @@ type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => i
 	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
 	: Method;
 type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
+
+// Unasserted native Reflect views; initializer lookups return the SAME original function objects.
+let originalPublicationProbeLookup: Readonly<{
+	get: (
+		receiver: object,
+		key: 'probeExistingResponse',
+	) => Readonly<{
+		call: (receiver: ClimateAutomationWriterService, lease: ControllerMutationPublicationLease) => Promise<void>;
+	}>;
+}>;
+let originalExistingFactsLookup: Readonly<{
+	get: (
+		receiver: object,
+		key: 'readOriginalExistingProbeFacts',
+	) => Readonly<{
+		call: (
+			receiver: ClimateAutomationWriterService,
+			record: ExistingRecord,
+			stage: 'PUBLICATION' | 'RESPONSE',
+			lease?: ControllerMutationPublicationLease,
+		) => Promise<void>;
+	}>;
+}>;
 
 let originalMemberView1: OriginalFunctions<typeof DeviceStructureLockService.prototype>;
 const originalStructuralLeaseRead: Readonly<{ call: (receiver: DeviceStructureLockService) => boolean }> =
@@ -235,7 +265,70 @@ interface ExistingClockOwner {
 	readonly mono: Readonly<{ call: (receiver: typeof performance) => number }>;
 	readonly token: ClimateAutomationOverrideLease;
 }
+interface RuntimeConsumerRecord {
+	readonly token: ClimateAutomationRuntimeConsumer;
+	readonly binding: ClimateAutomationRuntimeConsumerBinding;
+	readonly participant: PinnedParticipant;
+	readonly pins: readonly Readonly<{ receiver: object; key: string; method: unknown }>[];
+	readonly captures: Set<RuntimeCaptureRecord>;
+	readonly checkpoints: Set<RuntimeCheckpointRecord>;
+	closed: boolean;
+}
+interface RuntimeContinuityOwner {
+	readonly continuity: ClimateAutomationSettlementContinuity;
+	readonly current: OriginalFunction<
+		ClimateAutomationSettlementContinuity,
+		ClimateAutomationSettlementContinuity['isCurrent']
+	>;
+	readonly close: OriginalFunction<
+		ClimateAutomationSettlementContinuity,
+		ClimateAutomationSettlementContinuity['close']
+	>;
+	closed: boolean;
+}
+interface RuntimeGap {
+	readonly observer: EntitySubscriberInterface;
+	readonly continuity: ClimateAutomationSettlementContinuity;
+	readonly continuityCurrent: OriginalFunction<
+		ClimateAutomationSettlementContinuity,
+		ClimateAutomationSettlementContinuity['isCurrent']
+	>;
+	readonly continuityClose: OriginalFunction<
+		ClimateAutomationSettlementContinuity,
+		ClimateAutomationSettlementContinuity['close']
+	>;
+	readonly continuityOwner: RuntimeContinuityOwner;
+	readonly beforeQuery: EntitySubscriberInterface['beforeQuery'];
+	readonly observerPrototype: object | null;
+	readonly tables: ReadonlySet<string>;
+	admitted: boolean;
+	dirty: boolean;
+	closed: boolean;
+	mode: 'GAP' | 'IMMUTABLE';
+}
+interface RuntimeCaptureRecord {
+	readonly token: ClimateAutomationRuntimeCapture;
+	readonly consumer: RuntimeConsumerRecord;
+	readonly controllerId: string;
+	state: 'ARMED' | 'BOUND' | 'PREPARED' | 'TRANSFER_READY' | 'PENDING_CAPTURE' | 'CONSUMED' | 'CLOSED';
+	continuityOwner?: RuntimeContinuityOwner;
+	record?: ExistingRecord;
+	outcome?: ClimateAutomationExistingOutcome;
+}
+interface RuntimeCheckpointRecord {
+	readonly token: ClimateAutomationRuntimeCheckpoint;
+	readonly consumer: RuntimeConsumerRecord;
+	readonly controllerId: string;
+	readonly owner: ExistingClockOwner;
+	readonly gap: RuntimeGap;
+	readonly debt: ClimateAutomationRuntimeDebt;
+	readonly parse: Readonly<{ call: (receiver: DateConstructor, value: string) => number }>;
+	closed: boolean;
+}
 interface ExistingRecord {
+	readonly runtimeCapture?: RuntimeCaptureRecord;
+	runtimeGap?: RuntimeGap;
+
 	readonly operation: Operation;
 	readonly pinned: PinnedExisting;
 	readonly input: ClimateAutomationExistingInput;
@@ -247,6 +340,7 @@ interface ExistingRecord {
 	readonly closeClockObservation: () => void;
 	readonly wall: ExistingClockOwner['wall'];
 	readonly mono: ExistingClockOwner['mono'];
+	readonly parse: Readonly<{ call: (receiver: DateConstructor, value: string) => number }>;
 	clockCandidate?: ExistingClockOwner | null;
 	previousClock?: ExistingClockOwner;
 	readonly closeVeto: () => void;
@@ -394,6 +488,9 @@ export class ClimateAutomationWriterService {
 			close: () => void;
 		}>
 	>();
+	private readonly runtimeConsumers = new Map<ClimateAutomationRuntimeConsumer, RuntimeConsumerRecord>();
+	private readonly runtimeCaptures = new Map<ClimateAutomationRuntimeCapture, RuntimeCaptureRecord>();
+	private readonly runtimeCheckpoints = new Map<ClimateAutomationRuntimeCheckpoint, RuntimeCheckpointRecord>();
 	private readonly existingClockLeases = new Map<string, ExistingClockOwner>();
 	private readonly overrideLeases = new WeakMap<ClimateAutomationOverrideLease, string>();
 	private readonly existingCompletion = new AsyncLocalStorage<ExistingRecord>();
@@ -2231,8 +2328,463 @@ export class ClimateAutomationWriterService {
 	}
 
 	/** One closed existing-controller root. No ambient join, manager, callback or desired private document. */
-	async commitExistingControllerV1(
+	registerRuntimeSettlementConsumer(
+		binding: ClimateAutomationRuntimeConsumerBinding,
+	): ClimateAutomationRuntimeConsumer {
+		if (!Object.isFrozen(binding) || Object.keys(binding).length !== 4) throw new Conflict('invalid');
+		for (const key of ['owner', 'lifecycle', 'comfort', 'providerKey']) {
+			const field = nativeObjectEvidence.getOwnPropertyDescriptor(binding, key);
+			if (!field || field.get || field.set) throw new Conflict('invalid');
+		}
+		if (!binding.owner || !binding.lifecycle || !binding.comfort || typeof binding.providerKey !== 'string')
+			throw new Conflict('invalid');
+		for (const previous of this.runtimeConsumers.values()) {
+			if (previous.closed || previous.binding.providerKey !== binding.providerKey) continue;
+			if (
+				previous.binding.owner === binding.owner &&
+				previous.binding.lifecycle === binding.lifecycle &&
+				previous.binding.comfort === binding.comfort &&
+				this.runtimeConsumerCurrent(previous)
+			)
+				return previous.token;
+			throw new Conflict('unavailable');
+		}
+		const pins: { receiver: object; key: string; method: unknown }[] = [];
+		for (const entry of [
+			{ receiver: binding.owner, names: ['onModuleDestroy', 'request', 'evaluate', 'reconcile'] },
+			{ receiver: binding.comfort, names: ['onModuleDestroy', 'settleForRuntime'] },
+		]) {
+			const { receiver, names } = entry;
+			for (const key of names) {
+				if (!creationHasDataMethod(receiver, key)) throw new Conflict('unavailable');
+				pins.push({ receiver, key, method: nativeFieldEvidence.get(receiver, key) });
+			}
+		}
+		const token = Object.freeze(new ClimateAutomationRuntimeConsumer());
+		const record: RuntimeConsumerRecord = {
+			token,
+			binding,
+			participant: this.pinParticipant(binding.providerKey),
+			pins: Object.freeze(pins),
+			captures: new Set(),
+			checkpoints: new Set(),
+			closed: false,
+		};
+		this.runtimeConsumers.set(token, record);
+		if (!this.runtimeConsumerCurrent(record)) {
+			this.closeRuntimeSettlementConsumer(token);
+			throw new Conflict('unavailable');
+		}
+		return token;
+	}
+	private runtimeConsumerCurrent(record: RuntimeConsumerRecord): boolean {
+		try {
+			return (
+				!record.closed &&
+				this.runtimeConsumers.get(record.token) === record &&
+				creationMethodCurrent(record.binding.owner, 'active', true) &&
+				creationMethodCurrent(record.binding.owner, 'lifecycle', record.binding.lifecycle) &&
+				creationMethodCurrent(record.binding.comfort, 'destroyed', false) &&
+				record.participant.current() &&
+				record.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method))
+			);
+		} catch {
+			return false;
+		}
+	}
+	closeRuntimeSettlementConsumer(token: ClimateAutomationRuntimeConsumer): void {
+		const record = this.runtimeConsumers.get(token);
+		if (!record) return;
+		record.closed = true;
+		for (const capture of [...record.captures]) this.closeRuntimeCaptureRecord(capture);
+		for (const checkpoint of [...record.checkpoints]) this.closeRuntimeCheckpointRecord(checkpoint);
+		if (this.runtimeConsumers.get(token) === record) this.runtimeConsumers.delete(token);
+	}
+	armRuntimeSettlementCapture(
+		token: ClimateAutomationRuntimeConsumer,
+		controllerId: string,
+	): ClimateAutomationRuntimeCapture {
+		const consumer = this.runtimeConsumers.get(token);
+		if (!consumer || !this.runtimeConsumerCurrent(consumer)) throw new Conflict('unavailable');
+		const id = uuid(controllerId);
+		for (const old of [...consumer.captures]) if (old.controllerId === id) this.closeRuntimeCaptureRecord(old);
+		for (const old of [...consumer.checkpoints]) if (old.controllerId === id) this.closeRuntimeCheckpointRecord(old);
+		const capture = Object.freeze(new ClimateAutomationRuntimeCapture());
+		const record: RuntimeCaptureRecord = { token: capture, consumer, controllerId: id, state: 'ARMED' };
+		consumer.captures.add(record);
+		this.runtimeCaptures.set(capture, record);
+		return capture;
+	}
+	closeRuntimeSettlementCapture(token: ClimateAutomationRuntimeCapture): void {
+		const record = this.runtimeCaptures.get(token);
+		if (record) this.closeRuntimeCaptureRecord(record);
+	}
+	private closeRuntimeCaptureRecord(record: RuntimeCaptureRecord): void {
+		if (record.state === 'CLOSED' || record.state === 'CONSUMED') return;
+		record.state = 'CLOSED';
+		if (record.record?.runtimeGap) this.closeRuntimeGap(record.record.runtimeGap);
+		else if (record.continuityOwner) this.closeRuntimeContinuity(record.continuityOwner);
+		record.consumer.captures.delete(record);
+		if (this.runtimeCaptures.get(record.token) === record) this.runtimeCaptures.delete(record.token);
+	}
+	private closeRuntimeContinuity(owner: RuntimeContinuityOwner): void {
+		if (owner.closed) return;
+		owner.closed = true;
+		try {
+			owner.close.call(owner.continuity);
+		} catch {
+			/* Private cleanup never replaces original P. */
+		}
+	}
+	private closeRuntimeGap(gap: RuntimeGap): void {
+		if (gap.closed) return;
+		gap.closed = true;
+		const index = this.dataSource.subscribers.indexOf(gap.observer);
+		if (index >= 0) this.dataSource.subscribers.splice(index, 1);
+		this.closeRuntimeContinuity(gap.continuityOwner);
+	}
+	private runtimeGapCurrent(gap: RuntimeGap): boolean {
+		return (
+			!gap.closed &&
+			!gap.continuityOwner.closed &&
+			!gap.dirty &&
+			gap.admitted &&
+			this.dataSource.subscribers.includes(gap.observer) &&
+			nativePrototypeEvidence.getPrototypeOf(gap.observer) === gap.observerPrototype &&
+			creationMethodCurrent(gap.observer, 'beforeQuery', gap.beforeQuery) &&
+			creationMethodCurrent(gap.continuity, 'isCurrent', gap.continuityCurrent) &&
+			creationMethodCurrent(gap.continuity, 'close', gap.continuityClose) &&
+			gap.continuityCurrent.call(gap.continuity)
+		);
+	}
+	private prepareRuntimeGap(record: ExistingRecord, continuityOwner: RuntimeContinuityOwner): RuntimeGap {
+		const { continuity } = continuityOwner;
+		if (
+			continuityOwner.closed ||
+			!creationMethodCurrent(continuity, 'isCurrent', continuityOwner.current) ||
+			!creationMethodCurrent(continuity, 'close', continuityOwner.close)
+		)
+			throw new Conflict('unavailable');
+		const tables = new Set<string>([
+			'devices_virtual_thermostat_configs',
+			'devices_virtual_thermostat_sources',
+			'devices_virtual_thermostat_actuator_claims',
+			'devices_virtual_thermostat_settings',
+			'devices_virtual_thermostat_member_protection',
+			'devices_virtual_thermostat_cooling_dependencies',
+			'devices_virtual_thermostat_recoveries',
+			'devices_module_devices',
+			'devices_module_channels',
+			'devices_module_channels_properties',
+			CLIMATE_SLOT_TABLE,
+			'devices_module_climate_automation_sources',
+			'devices_virtual_graph_revision',
+		]);
+		for (const key of ['runtime', 'commands', 'installations', 'referenceCatalog']) {
+			const rows = this.existingJsonField(record.expected.rows, key);
+			if (!Array.isArray(rows)) throw new Conflict('invalid');
+			for (const row of rows) {
+				const table = this.existingJsonField(row, 'table');
+				if (typeof table !== 'string' || !this.dataSource.entityMetadatas.some((item) => item.tableName === table))
+					throw new Conflict('unavailable');
+				tables.add(table);
+			}
+		}
+		for (const table of tables)
+			if (!this.dataSource.entityMetadatas.some((item) => item.tableName === table)) throw new Conflict('unavailable');
+		// Parent deletes/key changes can reach an observed child via supported FK effects.
+		let expanded = true;
+		while (expanded) {
+			expanded = false;
+			for (const metadata of this.dataSource.entityMetadatas)
+				if (tables.has(metadata.tableName))
+					for (const foreignKey of metadata.foreignKeys) {
+						const parent = foreignKey.referencedEntityMetadata.tableName;
+						if (!tables.has(parent)) {
+							tables.add(parent);
+							expanded = true;
+						}
+					}
+		}
+		const known = new Set(this.dataSource.entityMetadatas.map((item) => item.tableName));
+		const continuityCurrent = continuityOwner.current,
+			continuityClose = continuityOwner.close;
+		const observer: OriginalFunctions<EntitySubscriberInterface> = Object.freeze({
+			beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
+				if (gap.closed || gap.dirty) return;
+				const sql = event.query.trim();
+				if (sql.includes(';')) {
+					gap.dirty = true;
+					return;
+				}
+				if (
+					/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|(?:SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT) [a-zA-Z][a-zA-Z0-9_]*$)/i.test(
+						sql,
+					)
+				)
+					return;
+				if (gap.mode === 'IMMUTABLE') {
+					const write =
+						/^(?:INSERT INTO|UPDATE|DELETE FROM) "([a-zA-Z][a-zA-Z0-9_]*)"(?:\s|$)/i.exec(sql) ??
+						/^INSERT INTO "([a-zA-Z][a-zA-Z0-9_]*)"(?=\()/i.exec(sql);
+					if (write && !/;\s*\S/.test(sql) && known.has(write[1])) {
+						if (!tables.has(write[1])) return;
+						if (
+							[
+								'devices_virtual_thermostat_runtime',
+								'devices_virtual_thermostat_branch_runtime',
+								'devices_virtual_thermostat_command_journal',
+							].includes(write[1]) &&
+							this.existingClockNeutralEffect(
+								record.input.controllerId,
+								event.query,
+								event.parameters ?? [],
+								event.queryRunner,
+							)
+						)
+							return;
+					}
+				}
+				gap.dirty = true;
+			},
+		});
+		const beforeQuery = observer.beforeQuery,
+			observerPrototype: object | null = nativePrototypeEvidence.getPrototypeOf(observer);
+		const gap: RuntimeGap = {
+			observer,
+			beforeQuery,
+			observerPrototype,
+			continuity,
+			continuityCurrent,
+			continuityClose,
+			continuityOwner,
+			tables,
+			admitted: false,
+			dirty: false,
+			closed: false,
+			mode: 'GAP',
+		};
+		return gap;
+	}
+	captureRuntimeSettlement(
+		token: ClimateAutomationRuntimeCapture,
+		outcome: ClimateAutomationExistingOutcome,
+	): ClimateAutomationRuntimeCheckpoint | null {
+		const capture = this.runtimeCaptures.get(token);
+		if (
+			!capture ||
+			capture.state !== 'PENDING_CAPTURE' ||
+			capture.outcome !== outcome ||
+			!this.runtimeConsumerCurrent(capture.consumer)
+		) {
+			if (capture) this.closeRuntimeCaptureRecord(capture);
+			return null;
+		}
+		const record = capture.record,
+			gap = record?.runtimeGap,
+			owner = record?.clockCandidate;
+		try {
+			if (
+				!record ||
+				!gap ||
+				!owner ||
+				!record.clockCommitted ||
+				!this.runtimeGapCurrent(gap) ||
+				!this.sameRuntimeClockOwner(owner, this.existingClockLeases.get(capture.controllerId)) ||
+				!owner.current()
+			) {
+				this.closeRuntimeCaptureRecord(capture);
+				return null;
+			}
+			const checkpoint = Object.freeze(new ClimateAutomationRuntimeCheckpoint());
+			const retained: RuntimeCheckpointRecord = {
+				token: checkpoint,
+				consumer: capture.consumer,
+				controllerId: capture.controllerId,
+				owner,
+				gap,
+				debt: Object.freeze(new ClimateAutomationRuntimeDebt()),
+				parse: record.parse,
+				closed: false,
+			};
+			if (
+				capture.state !== 'PENDING_CAPTURE' ||
+				gap.closed ||
+				gap.dirty ||
+				!this.sameRuntimeClockOwner(owner, this.existingClockLeases.get(capture.controllerId))
+			) {
+				this.closeRuntimeCaptureRecord(capture);
+				return null;
+			}
+			gap.mode = 'IMMUTABLE';
+			capture.state = 'CONSUMED';
+			capture.consumer.captures.delete(capture);
+			this.runtimeCaptures.delete(token);
+			capture.consumer.checkpoints.add(retained);
+			this.runtimeCheckpoints.set(checkpoint, retained);
+			return checkpoint;
+		} catch {
+			this.closeRuntimeCaptureRecord(capture);
+			return null;
+		}
+	}
+	private sameRuntimeClockOwner(original: ExistingClockOwner, current: ExistingClockOwner | undefined): boolean {
+		return (
+			!!current &&
+			current.token === original.token &&
+			current.id === original.id &&
+			current.incarnation === original.incarnation &&
+			current.revision === original.revision &&
+			current.nativeConfig === original.nativeConfig &&
+			current.slot === original.slot &&
+			current.deadline === original.deadline &&
+			current.current === original.current &&
+			current.close === original.close &&
+			current.wall === original.wall &&
+			current.mono === original.mono &&
+			current.watermark >= original.watermark &&
+			(!original.terminal || current.terminal === original.terminal)
+		);
+	}
+	private closeRuntimeCheckpointRecord(record: RuntimeCheckpointRecord): void {
+		if (record.closed) return;
+		record.closed = true;
+		this.closeRuntimeGap(record.gap);
+		record.consumer.checkpoints.delete(record);
+		if (this.runtimeCheckpoints.get(record.token) === record) this.runtimeCheckpoints.delete(record.token);
+	}
+	closeRuntimeSettlement(token: ClimateAutomationRuntimeCheckpoint): void {
+		const record = this.runtimeCheckpoints.get(token);
+		if (record) this.closeRuntimeCheckpointRecord(record);
+	}
+	assessRuntimeSettlement(token: ClimateAutomationRuntimeCheckpoint): ClimateAutomationRuntimeAssessment {
+		const record = this.runtimeCheckpoints.get(token);
+		if (!record || record.closed || !this.runtimeConsumerCurrent(record.consumer))
+			return Object.freeze({ kind: 'closed' });
+		const original = record.owner;
+		const sameOwner = (owner: ExistingClockOwner | undefined): owner is ExistingClockOwner =>
+			!!owner &&
+			owner.token === original.token &&
+			owner.current === original.current &&
+			owner.close === original.close &&
+			owner.wall === original.wall &&
+			owner.mono === original.mono &&
+			owner.deadline === original.deadline &&
+			owner.nativeConfig === original.nativeConfig &&
+			owner.slot === original.slot &&
+			owner.id === original.id &&
+			owner.incarnation === original.incarnation &&
+			owner.revision === original.revision &&
+			owner.watermark >= original.watermark;
+		const veto = (terminal: 'expired' | 'clock_uncertain'): void => {
+			const current = this.existingClockLeases.get(record.controllerId);
+			if (sameOwner(current) && !current.terminal)
+				this.existingClockLeases.set(record.controllerId, Object.freeze({ ...current, terminal }));
+		};
+		try {
+			const selected = this.existingClockLeases.get(record.controllerId);
+			if (!sameOwner(selected)) return Object.freeze({ kind: 'closed' });
+			if (
+				!creationMethodCurrent(Date, 'now', original.wall) ||
+				!creationMethodCurrent(performance, 'now', original.mono) ||
+				!creationMethodCurrent(Date, 'parse', record.parse) ||
+				!selected.current()
+			) {
+				veto('clock_uncertain');
+				return Object.freeze({ kind: 'settle', debt: record.debt });
+			}
+			const now = original.wall.call(Date),
+				mono = original.mono.call(performance);
+			const current = this.existingClockLeases.get(record.controllerId);
+			if (!sameOwner(current)) return Object.freeze({ kind: 'closed' });
+			const comfort = this.existingJsonField(original.nativeConfig, 'comfort');
+			const parsed = typeof comfort === 'string' ? this.ownedJson(nativeJsonEvidence.parse(comfort)) : comfort;
+			const expiry = this.existingJsonField(this.existingJsonField(parsed, 'temporary_override'), 'expires_at');
+			const expires = typeof expiry === 'string' ? record.parse.call(Date, expiry) : NaN;
+			if (
+				current.terminal ||
+				!Number.isFinite(now) ||
+				!Number.isFinite(mono) ||
+				!Number.isFinite(expires) ||
+				now < current.watermark ||
+				now >= expires ||
+				mono >= original.deadline
+			) {
+				veto(
+					Number.isFinite(now) && Number.isFinite(mono) && (now >= expires || mono >= original.deadline)
+						? 'expired'
+						: 'clock_uncertain',
+				);
+				return Object.freeze({ kind: 'settle', debt: record.debt });
+			}
+			if (
+				!this.runtimeGapCurrent(record.gap) ||
+				!current.current() ||
+				!sameOwner(this.existingClockLeases.get(record.controllerId)) ||
+				record.closed ||
+				record.gap.closed
+			)
+				return Object.freeze({ kind: 'settle', debt: record.debt });
+			return Object.freeze({ kind: 'reuse' });
+		} catch {
+			veto('clock_uncertain');
+			return Object.freeze({ kind: 'settle', debt: record.debt });
+		}
+	}
+	commitExistingControllerForRuntime(
 		request: ClimateAutomationExistingRequest,
+		token: ClimateAutomationRuntimeCapture,
+	): Promise<ClimateAutomationExistingOutcome> {
+		const capture = this.runtimeCaptures.get(token);
+		if (!capture || capture.state !== 'ARMED' || !this.runtimeConsumerCurrent(capture.consumer))
+			return Promise.reject(new Conflict('unavailable'));
+		capture.state = 'BOUND';
+		try {
+			// Negative-only private envelope admission. No request getter/input/provider/hold is read here.
+			const provider = nativeObjectEvidence.getOwnPropertyDescriptor(request, 'providerKey'),
+				controller = nativeObjectEvidence.getOwnPropertyDescriptor(request, 'controllerId'),
+				kind = nativeObjectEvidence.getOwnPropertyDescriptor(request, 'kind');
+			if (
+				!provider ||
+				provider.get !== undefined ||
+				provider.set !== undefined ||
+				provider.value !== capture.consumer.binding.providerKey ||
+				!controller ||
+				controller.get !== undefined ||
+				controller.set !== undefined ||
+				controller.value !== capture.controllerId ||
+				!kind ||
+				kind.get !== undefined ||
+				kind.set !== undefined ||
+				kind.value !== 'settle-override:v1'
+			) {
+				// Preserve original CLI/nested-root refusal for a negative envelope without taking a hold.
+				this.assertExistingRootEntry();
+				throw new Conflict('invalid');
+			}
+			// A descriptor trap may retire A and register B; only this original burned record can enter.
+			if (
+				!this.runtimeConsumerCurrent(capture.consumer) ||
+				capture.state !== 'BOUND' ||
+				this.runtimeCaptures.get(token) !== capture
+			) {
+				this.assertExistingRootEntry();
+				throw new Conflict('unavailable');
+			}
+		} catch (cause) {
+			this.closeRuntimeCaptureRecord(capture);
+			return new Promise<never>(() => {
+				throw cause;
+			});
+		}
+		return this.commitExistingControllerRoot(request, capture);
+	}
+	commitExistingControllerV1(request: ClimateAutomationExistingRequest): Promise<ClimateAutomationExistingOutcome> {
+		return this.commitExistingControllerRoot(request);
+	}
+	private async commitExistingControllerRoot(
+		request: ClimateAutomationExistingRequest,
+		runtimeCapture?: RuntimeCaptureRecord,
 	): Promise<ClimateAutomationExistingOutcome> {
 		this.assertExistingRootEntry();
 		if (!creationHasDataMethod(this.structureLock, 'runExclusiveReleased'))
@@ -2245,6 +2797,9 @@ export class ClimateAutomationWriterService {
 		let prepareHold: (() => Promise<void>) | undefined;
 		let preparation: Promise<void> | undefined;
 		let closeEnvironment: (() => void) | undefined;
+		let settlementContinuity: ClimateAutomationSettlementContinuity | undefined;
+		let closeSettlementContinuity: ClimateAutomationSettlementContinuity['close'] | undefined;
+		let continuityOwner: RuntimeContinuityOwner | undefined;
 		let record: ExistingRecord | undefined;
 		try {
 			const owned = this.manualSnapshots.run(snapshot, () => {
@@ -2310,6 +2865,29 @@ export class ClimateAutomationWriterService {
 					if (!creationHasDataMethod(environment, key)) throw new Conflict('unavailable');
 				const close = environment.close;
 				closeEnvironment = () => close.call(environment);
+				settlementContinuity = environment.settlementContinuity;
+				closeSettlementContinuity = settlementContinuity?.close;
+				if (runtimeCapture) {
+					if (
+						!settlementContinuity ||
+						!creationHasDataMethod(settlementContinuity, 'isCurrent') ||
+						!creationHasDataMethod(settlementContinuity, 'close')
+					)
+						throw new Conflict('unavailable');
+					continuityOwner = {
+						continuity: settlementContinuity,
+						current: settlementContinuity.isCurrent,
+						close: settlementContinuity.close,
+						closed: false,
+					};
+					// PREINPUT ownership starts before any root await, including reentrant retirement.
+					const consumerCurrent = this.runtimeConsumerCurrent(runtimeCapture.consumer);
+					if (consumerCurrent && runtimeCapture.state === 'BOUND') runtimeCapture.continuityOwner = continuityOwner;
+					else {
+						this.closeRuntimeContinuity(continuityOwner);
+						this.closeRuntimeCaptureRecord(runtimeCapture);
+					}
+				}
 
 				let originalMemberView2: OriginalFunctions<typeof performance>;
 				const wall: Readonly<{ call: (receiver: DateConstructor) => number }> = Date.now,
@@ -2360,11 +2938,25 @@ export class ClimateAutomationWriterService {
 					environment,
 					wall,
 					mono,
+					parse,
 					clockCurrent,
 					graphCapture,
 				});
 			});
 			if (snapshot.failure) throw snapshot.failure.cause;
+			if (
+				runtimeCapture &&
+				(runtimeCapture.state !== 'BOUND' ||
+					!this.runtimeConsumerCurrent(runtimeCapture.consumer) ||
+					owned.input.providerKey !== runtimeCapture.consumer.binding.providerKey ||
+					owned.input.controllerId !== runtimeCapture.controllerId ||
+					owned.input.kind !== 'settle-override:v1' ||
+					!owned.input.wire ||
+					typeof owned.input.wire !== 'object' ||
+					Array.isArray(owned.input.wire) ||
+					Object.keys(owned.input.wire).length !== 0)
+			)
+				throw new Conflict('invalid');
 			const outcome = await this.runReserved(async (manager, scope) => {
 				const handle = await this.participantCommand(
 					manager,
@@ -2685,6 +3277,7 @@ export class ClimateAutomationWriterService {
 								if (index >= 0) this.dataSource.subscribers.splice(index, 1);
 							};
 							record = {
+								runtimeCapture,
 								operation,
 								pinned: p,
 								input,
@@ -2711,9 +3304,30 @@ export class ClimateAutomationWriterService {
 								closeClockObservation,
 								wall: owned.wall,
 								mono: owned.mono,
+								parse: owned.parse,
 								closeVeto,
 								current: () => current() && receiptCurrent,
 							};
+							if (
+								runtimeCapture &&
+								runtimeCapture.state === 'BOUND' &&
+								this.runtimeConsumerCurrent(runtimeCapture.consumer) &&
+								runtimeCapture.continuityOwner
+							) {
+								// Preparation may throw; the capture retains the exact handle until GAP exists.
+								const originalContinuity = runtimeCapture.continuityOwner;
+								const gap = this.prepareRuntimeGap(record, originalContinuity);
+								if (
+									runtimeCapture.state === 'BOUND' &&
+									runtimeCapture.continuityOwner === originalContinuity &&
+									!originalContinuity.closed
+								) {
+									runtimeCapture.record = record;
+									record.runtimeGap = gap;
+									runtimeCapture.continuityOwner = undefined;
+									runtimeCapture.state = 'PREPARED';
+								} else this.closeRuntimeGap(gap);
+							}
 							this.dataSource.subscribers.push(observer);
 							operation.guards.push(record.current);
 							this.existingRecipes.set(recipe, record);
@@ -2772,6 +3386,10 @@ export class ClimateAutomationWriterService {
 				throw new ClimateAutomationWriteError('committed', new Error('Original sealed controller response required'));
 			if (!record.outcomeCandidate || record.outcomeCandidate.outcome !== outcome.outcome)
 				throw new ClimateAutomationWriteError('committed', new Error('Original prepared outcome required'));
+			if (runtimeCapture?.state === 'PREPARED' && runtimeCapture.record === record) {
+				runtimeCapture.outcome = record.outcomeCandidate;
+				runtimeCapture.state = 'TRANSFER_READY';
+			}
 			return record.outcomeCandidate;
 		} catch (cause) {
 			if (record) record.completionOpen = false;
@@ -2809,11 +3427,36 @@ export class ClimateAutomationWriterService {
 				closeEnvironment?.();
 			} catch {
 				/* Preserve original primary and still release the original hold. */
+				if (runtimeCapture) this.closeRuntimeCaptureRecord(runtimeCapture);
 			}
 			try {
 				finishHold?.();
 			} catch {
 				/* Original outcome remains primary; adapter closes readiness. */
+				if (runtimeCapture) this.closeRuntimeCaptureRecord(runtimeCapture);
+			}
+			try {
+				if (
+					runtimeCapture?.state === 'TRANSFER_READY' &&
+					runtimeCapture.record === record &&
+					record?.runtimeGap &&
+					record.clockCommitted &&
+					this.runtimeConsumerCurrent(runtimeCapture.consumer) &&
+					this.runtimeGapCurrent(record.runtimeGap)
+				)
+					runtimeCapture.state = 'PENDING_CAPTURE';
+				else if (runtimeCapture) this.closeRuntimeCaptureRecord(runtimeCapture);
+			} catch {
+				if (runtimeCapture) this.closeRuntimeCaptureRecord(runtimeCapture);
+			}
+			if (runtimeCapture?.state !== 'PENDING_CAPTURE' && settlementContinuity) {
+				if (continuityOwner) this.closeRuntimeContinuity(continuityOwner);
+				else
+					try {
+						closeSettlementContinuity?.call(settlementContinuity);
+					} catch {
+						/* Read handle cannot replace P or fixed A. */
+					}
 			}
 		}
 	}
@@ -3153,14 +3796,17 @@ export class ClimateAutomationWriterService {
 					definition.transformer ||
 					(value === null
 						? !definition.isNullable
-						: definition.type === 'boolean'
-							? value !== 0 && value !== 1
-							: definition.type === 'integer'
-								? typeof value !== 'number' || !Number.isSafeInteger(value)
-								: definition.type === 'double precision'
-									? typeof value !== 'number' || !Number.isFinite(value)
-									: !['varchar', 'text', 'simple-json', 'datetime'].includes(String(definition.type)) ||
-										typeof value !== 'string')
+						: definition.type === 'uuid'
+							? typeof value !== 'string' ||
+								!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+							: definition.type === 'boolean'
+								? value !== 0 && value !== 1
+								: definition.type === 'integer'
+									? typeof value !== 'number' || !Number.isSafeInteger(value)
+									: definition.type === 'double precision'
+										? typeof value !== 'number' || !Number.isFinite(value)
+										: !['varchar', 'text', 'simple-json', 'datetime'].includes(String(definition.type)) ||
+											typeof value !== 'string')
 				)
 					return false;
 				if (
@@ -3474,7 +4120,9 @@ export class ClimateAutomationWriterService {
 					)
 				)
 					return;
-				const write = /^(?:INSERT INTO|UPDATE|DELETE FROM) "([a-zA-Z][a-zA-Z0-9_]*)"(?:\s|$)/i.exec(text);
+				const write =
+					/^(?:INSERT INTO|UPDATE|DELETE FROM) "([a-zA-Z][a-zA-Z0-9_]*)"(?:\s|$)/i.exec(text) ??
+					/^INSERT INTO "([a-zA-Z][a-zA-Z0-9_]*)"(?=\()/i.exec(text);
 				if (write && unrelated.has(write[1]) && !/;\s*\S/.test(text)) return;
 				active = false;
 			},
@@ -3850,6 +4498,17 @@ export class ClimateAutomationWriterService {
 			record.closeClockObservation();
 		}
 		if (!candidate || candidate.current !== record.clockOwnerCurrent) record.closeClockObservation();
+		for (const old of [...this.runtimeCheckpoints.values()])
+			if (old.controllerId === record.input.controllerId && old.owner.token !== candidate?.token)
+				this.closeRuntimeCheckpointRecord(old);
+		for (const old of [...this.runtimeCaptures.values()])
+			if (
+				old.controllerId === record.input.controllerId &&
+				old.record !== record &&
+				old.record?.clockCommitted &&
+				old.record.clockCandidate?.token === previous?.token
+			)
+				this.closeRuntimeCaptureRecord(old);
 		record.clockCommitted = true;
 		record.responseSealed = response;
 		if (record.publication) {
@@ -3943,14 +4602,32 @@ export class ClimateAutomationWriterService {
 		this.existingPublications.delete(lease);
 	}
 
-	/** READONLY A probe. Its genuine internal turn has no admitted business scope and can never join a writer. */
+	// Original function identities only; these private carriers grant no operation/manager authority.
+	private static readonly originalPublicationFactsEntry: Readonly<{
+		call: (receiver: ClimateAutomationWriterService, lease: ControllerMutationPublicationLease) => Promise<void>;
+	}> =
+		((originalPublicationProbeLookup = Reflect),
+		originalPublicationProbeLookup.get(ClimateAutomationWriterService.prototype, 'probeExistingResponse'));
+	private static readonly originalExistingFactsRead: Readonly<{
+		call: (
+			receiver: ClimateAutomationWriterService,
+			record: ExistingRecord,
+			stage: 'PUBLICATION' | 'RESPONSE',
+			lease?: ControllerMutationPublicationLease,
+		) => Promise<void>;
+	}> =
+		((originalExistingFactsLookup = Reflect),
+		originalExistingFactsLookup.get(ClimateAutomationWriterService.prototype, 'readOriginalExistingProbeFacts'));
+
+	/** Preterminal publication A: genuine original ACK lease, never a terminal response/clock admission. */
 	async probeExistingResponse(lease: ControllerMutationPublicationLease): Promise<void> {
 		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
 		const record = this.existingPublications.get(lease);
-		if (!record) throw new Error('Original controller response unavailable');
-		return this.probeExistingPlanResponse(record.plan.descriptor);
+		if (!record || record.publication !== lease || this.existingRecipes.get(record.plan.descriptor) !== record)
+			throw new Error('Original controller response unavailable');
+		return ClimateAutomationWriterService.originalExistingFactsRead.call(this, record, 'PUBLICATION', lease);
 	}
-	/** A genuine ACK plan permits only a finite readonly response probe, including true no-op. */
+	/** Terminal B1/B3 retains settlement/failure admission and alone advances responseProbed. */
 	async probeExistingPlanResponse(descriptor: ClimateAutomationScope): Promise<void> {
 		const record = this.existingRecipes.get(descriptor);
 		if (
@@ -3961,6 +4638,66 @@ export class ClimateAutomationWriterService {
 			!this.isExistingPlanAcknowledged(descriptor)
 		)
 			throw new Error('Original response plan unavailable');
+		return ClimateAutomationWriterService.originalExistingFactsRead.call(this, record, 'RESPONSE');
+	}
+	/** Fixed-stage internal reads only. Neither caller supplies a callback, manager, query or expected postimage. */
+	private async readOriginalExistingProbeFacts(
+		record: ExistingRecord,
+		stage: 'PUBLICATION' | 'RESPONSE',
+		lease?: ControllerMutationPublicationLease,
+	): Promise<void> {
+		const descriptor = record.plan.descriptor;
+		const admitted = (): boolean => {
+			if (
+				!creationMethodCurrent(
+					this,
+					'readOriginalExistingProbeFacts',
+					ClimateAutomationWriterService.originalExistingFactsRead,
+				) ||
+				this.existingRecipes.get(descriptor) !== record ||
+				this.existingCompletion.getStore() !== record ||
+				!record.completionOpen ||
+				record.responseSealed !== undefined ||
+				record.preparationFailure ||
+				!this.isExistingPlanAcknowledged(descriptor)
+			)
+				return false;
+			if (stage === 'PUBLICATION') {
+				if (
+					!lease ||
+					this.existingPublications.get(lease) !== record ||
+					record.publication !== lease ||
+					record.preparation !== 'NOT_ATTEMPTED' ||
+					record.responseProbed ||
+					!creationMethodCurrent(
+						this,
+						'probeExistingResponse',
+						ClimateAutomationWriterService.originalPublicationFactsEntry,
+					)
+				)
+					return false;
+				try {
+					originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease);
+				} catch {
+					return false;
+				}
+				return true;
+			}
+			return stage === 'RESPONSE' && lease === undefined && record.preparation === 'SETTLED';
+		};
+		// Authenticate before even allocating the read operation, and before transaction/SQL admission.
+		if (!admitted()) throw new Error('Original response plan unavailable');
+		if (
+			stage === 'RESPONSE' &&
+			record.runtimeCapture?.state === 'PREPARED' &&
+			record.runtimeGap &&
+			!record.runtimeGap.admitted
+		) {
+			if (this.runtimeConsumerCurrent(record.runtimeCapture.consumer) && !record.runtimeGap.closed) {
+				this.dataSource.subscribers.push(record.runtimeGap.observer);
+				record.runtimeGap.admitted = true;
+			} else this.closeRuntimeCaptureRecord(record.runtimeCapture);
+		}
 		const probe: Operation = {
 			phase: 'OPENING',
 			settlement: { jobs: Object.freeze<ValidationJob[]>([]) },
@@ -3970,7 +4707,7 @@ export class ClimateAutomationWriterService {
 			mandatory: new Map(),
 			jobs: new Map(),
 			issued: new Set(),
-			guards: [record.current],
+			guards: [admitted],
 			tail: Promise.resolve(),
 			mutationEpoch: 0,
 			frozenEpoch: 0,
@@ -3979,7 +4716,7 @@ export class ClimateAutomationWriterService {
 		};
 		const assert = (): void => {
 			this.assertHealthy(probe);
-			if (!this.isExistingPlanAcknowledged(descriptor)) throw new Error('Original response plan unavailable');
+			if (!admitted()) throw new Error('Original response plan unavailable');
 		};
 		try {
 			await this.context.run({ operation: probe, internal: true }, () =>
@@ -3988,19 +4725,15 @@ export class ClimateAutomationWriterService {
 					probe.runner = manager.queryRunner;
 					probe.phase = 'FINALIZING';
 					assert();
-					probe.existingQueryFence = this.installExistingQueryFence(probe, record.current);
+					probe.existingQueryFence = this.installExistingQueryFence(probe, admitted);
 					registerSqliteCommitGuard(
 						manager,
-						() =>
-							!probe.failure &&
-							probe.phase === 'READY_TO_COMMIT' &&
-							probe.pending === 0 &&
-							this.isExistingPlanAcknowledged(descriptor),
+						() => !probe.failure && probe.phase === 'READY_TO_COMMIT' && probe.pending === 0 && admitted(),
 					);
 					await this.inParticipantTurn(
 						probe,
 						async (turn, phase) => {
-							phase.existingCurrent = record.current;
+							phase.existingCurrent = admitted;
 							assert();
 							const actual = this.existingFacts(
 								await record.pinned.methods.readFactsInManager.call(
@@ -4010,24 +4743,21 @@ export class ClimateAutomationWriterService {
 									record.input.controllerId,
 								),
 							);
-							if (
-								!same(actual, record.expected) ||
-								!same(await this.slot(manager, record.input.controllerId), record.slot)
-							)
-								throw new Error('Original controller response facts changed');
+							assert();
+							if (!same(actual, record.expected)) throw new Error('Original controller response facts changed');
+							const slot = await this.slot(manager, record.input.controllerId);
+							assert();
+							if (!same(slot, record.slot)) throw new Error('Original controller response facts changed');
 							if (record.reference) {
 								const reference = await manager.findOneBy(ClimateAutomationSourceEntity, {
 									generationId: record.reference.generationId,
 								});
-								if (
-									!reference ||
-									!same(this.sourceFacts(reference), record.reference) ||
-									!same(
-										await this.source(manager, record.reference.producerKey, record.reference.subjectId),
-										record.source?.value,
-									)
-								)
+								assert();
+								if (!reference || !same(this.sourceFacts(reference), record.reference))
 									throw new Error('Original controller source facts changed');
+								const source = await this.source(manager, record.reference.producerKey, record.reference.subjectId);
+								assert();
+								if (!same(source, record.source?.value)) throw new Error('Original controller source facts changed');
 							}
 							assert();
 						},
@@ -4038,7 +4768,7 @@ export class ClimateAutomationWriterService {
 				}),
 			);
 			assert();
-			record.responseProbed = true;
+			if (stage === 'RESPONSE') record.responseProbed = true;
 		} finally {
 			probe.existingQueryFence?.();
 			probe.existingQueryFence = undefined;
@@ -4155,7 +4885,17 @@ export class ClimateAutomationWriterService {
 		return predicates.join(' AND ');
 	}
 	async probeExistingPublication(lease: ControllerMutationPublicationLease, propertyId?: string): Promise<void> {
-		if (propertyId === undefined) return this.probeExistingResponse(lease);
+		if (propertyId === undefined) {
+			if (
+				!creationMethodCurrent(
+					this,
+					'probeExistingResponse',
+					ClimateAutomationWriterService.originalPublicationFactsEntry,
+				)
+			)
+				throw new Error('Original publication probe method unavailable');
+			return ClimateAutomationWriterService.originalPublicationFactsEntry.call(this, lease);
+		}
 		originalControllerMutationMethods.assert.call(ControllerMutationPublicationEngine, lease, propertyId);
 		const record = this.existingPublications.get(lease);
 		if (!record || !record.plan.properties.some((property) => property.id === propertyId))

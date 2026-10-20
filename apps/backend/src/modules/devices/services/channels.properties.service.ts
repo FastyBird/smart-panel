@@ -1025,6 +1025,13 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		evidence: PropertySampleEvidence,
 		options: Pick<ChannelPropertyUpdateOptions, 'skipUnchangedMetadata'> = {},
 	): Promise<TProperty> {
+		const originalValues = this.propertyValueService;
+		const originalValueMethods: Readonly<{
+			forwardOwnedReportEvidence: (
+				...args: Parameters<PropertyValueService['forwardOwnedReportEvidence']>
+			) => ReturnType<PropertyValueService['forwardOwnedReportEvidence']>;
+		}> = originalValues;
+		const forward = originalValueMethods.forwardOwnedReportEvidence;
 		const captured = Object.freeze({
 			sampledAt: new Date(evidence.sampledAt),
 			receivedAt: new Date(evidence.receivedAt),
@@ -1038,6 +1045,13 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			...(evidence.sourceIsCurrent ? { sourceIsCurrent: evidence.sourceIsCurrent } : {}),
 			...(evidence.observedAt ? { observedAt: new Date(evidence.observedAt) } : {}),
 		});
+		// Optional only for ordinary legacy fixtures. Absence/substitution cannot create owned provenance.
+		if (
+			typeof forward === 'function' &&
+			this.propertyValueService === originalValues &&
+			creationMethodCurrent(originalValues, 'forwardOwnedReportEvidence', forward)
+		)
+			forward.call(originalValues, evidence, captured);
 		return this.update<TProperty, TUpdateDTO>(id, updateDto, { ...options, sampleEvidence: captured });
 	}
 

@@ -778,10 +778,64 @@ export class VirtualThermostatConfigService {
 
 		let originalMemberView10: OriginalFunctions<typeof operatorRegistry>;
 		let originalMemberView11: OriginalFunctions<typeof operatorRegistry>;
-		const generation = ((originalMemberView10 = operatorRegistry), originalMemberView10.generation),
-			capture = ((originalMemberView11 = operatorRegistry), originalMemberView11.capture);
+		const generation = ((originalMemberView10 = operatorRegistry), originalMemberView10?.generation),
+			capture = ((originalMemberView11 = operatorRegistry), originalMemberView11?.capture);
 		const epoch = generation?.call(operatorRegistry);
+		// Separate read-continuity ownership: ordinary publication cleanup cannot reopen or close it.
+		const settlementForeignKeys = metadata.map((item) => ({
+			row: item.row,
+			original: item.row.foreignKeys,
+			keys: item.row.foreignKeys.map((key) => ({
+				key,
+				columns: key.columns,
+				references: key.referencedColumns,
+				parent: key.referencedEntityMetadata,
+				onDelete: key.onDelete,
+				onUpdate: key.onUpdate,
+				names: key.columns.map((column) => column.databaseName),
+				parentNames: key.referencedColumns.map((column) => column.databaseName),
+			})),
+		}));
+		const settlementSchemaCurrent = (): boolean =>
+			settlementForeignKeys.every(
+				(item) =>
+					item.row.foreignKeys === item.original &&
+					item.original.length === item.keys.length &&
+					item.keys.every(
+						(saved, index) =>
+							item.original[index] === saved.key &&
+							saved.key.columns === saved.columns &&
+							saved.key.referencedColumns === saved.references &&
+							saved.key.referencedEntityMetadata === saved.parent &&
+							saved.key.onDelete === saved.onDelete &&
+							saved.key.onUpdate === saved.onUpdate &&
+							saved.columns.length === saved.names.length &&
+							saved.columns.every((column, i) => column.databaseName === saved.names[i]) &&
+							saved.references.length === saved.parentNames.length &&
+							saved.references.every((column, i) => column.databaseName === saved.parentNames[i]),
+					),
+			);
+		let settlementClosed = false;
+		const settlementContinuity = Object.freeze({
+			isCurrent: (): boolean =>
+				!settlementClosed &&
+				current() &&
+				valuesCurrent() &&
+				metadataCurrent() &&
+				settlementSchemaCurrent() &&
+				prototypesCurrent() &&
+				this.values.areMutationDestinationsCurrent(destinations) &&
+				this.resolver.registry === operatorRegistry &&
+				(!operatorRegistry ||
+					(creationMethodCurrent(operatorRegistry, 'generation', generation) &&
+						creationMethodCurrent(operatorRegistry, 'capture', capture) &&
+						generation?.call(operatorRegistry) === epoch)),
+			close: (): void => {
+				settlementClosed = true;
+			},
+		});
 		return Object.freeze({
+			settlementContinuity,
 			destinations,
 			observeProperties,
 			checkProperties,
@@ -1104,14 +1158,8 @@ export class VirtualThermostatConfigService {
 					}
 					const actual: unknown = column.getEntityValue(row),
 						expected: unknown = manager.connection.driver.prepareHydratedValue(raw[column.databaseName], column);
-					// STI sibling columns can be physically NULL without being fields of this authentic subclass.
-					if (
-						actual === undefined &&
-						expected === null &&
-						typeof column.target === 'function' &&
-						!(row instanceof column.target)
-					)
-						continue;
+					// Inapplicable STI sibling fields can have non-NULL physical defaults; full raw facts still retain them.
+					if (actual === undefined && typeof column.target === 'function' && !(row instanceof column.target)) continue;
 					if (!equalValue(actual, expected)) return fail('Native and hydrated thermostat column disagrees.');
 				}
 			}
@@ -1589,7 +1637,7 @@ export class VirtualThermostatConfigService {
 		return candidate;
 	}
 
-	materializeExistingInManager(
+	async materializeExistingInManager(
 		manager: EntityManager,
 		turn: ClimateAutomationParticipantTurn,
 		input: ClimateAutomationExistingInput,
@@ -1598,329 +1646,404 @@ export class VirtualThermostatConfigService {
 		revision: number,
 		comfort: VirtualThermostatComfortService,
 	): Promise<ClimateAutomationExistingPlan> {
-		return new Promise<ClimateAutomationExistingPlan>((resolve) => {
-			this.assertExistingTurn(manager, turn, ['NORMALIZE']);
-			const record = this.existingTurns.get(turn),
-				candidate = record?.candidate;
-			if (
-				!record ||
-				!candidate ||
-				!record.normalized ||
-				!existingSame(record.normalized, normalized) ||
-				!existingSame(record.input, input) ||
-				!existingSame(record.facts, before) ||
-				record.plan ||
-				!record.references
-			)
-				return fail('Original normalized thermostat plan required.');
-			const old = this.existingPrepared(record.rows);
-			const semanticChanged = !existingSame(normalized.before, normalized.next);
-			const versionChanged = revision !== (old?.config.revision ?? 0);
-			const columnRow = (row: object, keys: readonly string[]) => {
-				const result: Record<string, ClimateAutomationJson> = {};
-				for (const key of keys) result[key] = climateAutomationJson(nativeFieldEvidence.get(row, key));
-				return Object.freeze(result);
-			};
-			const different = (a: object | undefined, b: object, keys: readonly string[]) =>
-				!a || !existingSame(columnRow(a, keys), columnRow(b, keys));
-			const sourceKeys = THERMOSTAT_AUTOMATION_COLUMNS.sources.filter((key) => !['id', 'controllerId'].includes(key));
-			const claimKeys = THERMOSTAT_AUTOMATION_COLUMNS.actuators.filter(
-				(key) =>
-					!['id', 'controllerId', 'revision', 'qualificationGeneration', 'releaseRequestedAt', 'releasedAt'].includes(
-						key,
-					),
-			);
-			const protectionKeys = THERMOSTAT_AUTOMATION_COLUMNS.protections.filter(
-				(key) => !['claimId', 'revision'].includes(key),
-			);
-			const coolingKeys = THERMOSTAT_AUTOMATION_COLUMNS.cooling.filter((key) => !['claimId', 'revision'].includes(key));
-			const owner = (dependency: object, claimId: string): VirtualThermostatActuatorClaimEntity =>
-				candidate.dependencyOwners?.get(dependency) ??
-				candidate.actuators.find((claim) => claim.id === claimId) ??
-				fail('Missing original thermostat dependency owner.');
-			const changedClaims = new Set<VirtualThermostatActuatorClaimEntity>();
-			const changedProtections = new Set<ThermostatMemberProtectionEntity>();
-			const changedCooling = new Set<ThermostatCoolingDependencyEntity>();
-			const changedDependencyOwners = new Set<VirtualThermostatActuatorClaimEntity>();
-			for (const row of candidate.protections) {
-				const claim = owner(row, row.claimId),
-					previous = old?.protections.find((item) => item.claimId === claim.id);
-				if (different(previous, row, protectionKeys)) {
-					existingCounter(previous?.revision ?? 0);
-					changedProtections.add(row);
-					changedClaims.add(claim);
-					changedDependencyOwners.add(claim);
-				}
-			}
-			for (const row of candidate.coolingDependencies) {
-				const claim = owner(row, row.claimId),
-					previous = old?.coolingDependencies.find((item) => item.claimId === claim.id);
-				if (different(previous, row, coolingKeys)) {
-					existingCounter(previous?.revision ?? 0);
-					changedCooling.add(row);
-					changedClaims.add(claim);
-					changedDependencyOwners.add(claim);
-				}
-			}
-			// Removing a dependency also changes its retained owner's proof generation, even when no replacement row remains.
-			for (const claim of candidate.actuators) {
-				if (
-					(old?.protections.some((row) => row.claimId === claim.id) &&
-						!candidate.protections.some((row) => owner(row, row.claimId) === claim)) ||
-					(old?.coolingDependencies.some((row) => row.claimId === claim.id) &&
-						!candidate.coolingDependencies.some((row) => owner(row, row.claimId) === claim))
-				) {
-					changedClaims.add(claim);
-					changedDependencyOwners.add(claim);
-				}
-			}
-			for (const row of candidate.actuators) {
-				if (input.kind === 'restore-actuator:v1' && semanticChanged && row.id === existingObject(input.wire).claimId)
-					changedClaims.add(row);
-				const previous = old?.actuators.find((item) => item.id === row.id);
-				if (different(previous, row, claimKeys)) changedClaims.add(row);
-			}
-			// Every actual child counter is checked before the FIRST UUID/date allocation.
-			for (const row of changedClaims)
-				existingCounter(old?.actuators.find((item) => item.id === row.id)?.revision ?? 0);
-			if (!['configure-existing:v1', 'request-release:v1', 'restore-actuator:v1'].includes(input.kind))
-				comfort.checkExistingMaterializationCounters(turn, candidate);
-			if (!semanticChanged && !versionChanged) {
-				const descriptor = Object.freeze({ toJSON: () => Object.freeze({}) });
-				const plan = Object.freeze({
-					descriptor,
-					expected: before,
-					response: null,
-					mirrors: Object.freeze([]),
-					properties: Object.freeze<ChannelPropertyEntity[]>([]),
-				});
-				this.existingPlans.set(descriptor, {
-					input,
-					rows: record.rows,
-					prepared: candidate,
-					facts: before,
-					properties: Object.freeze<ChannelPropertyEntity[]>([]),
-					watermarkOnly: false,
-					bindings: this.existingCoolingBindings(manager, candidate, record.rows, record.references),
-				});
-				record.plan = plan;
-				return resolve(plan);
-			}
-			if (!['configure-existing:v1', 'request-release:v1', 'restore-actuator:v1'].includes(input.kind))
-				comfort.materializeExistingInManager(manager, turn, candidate, revision);
-			comfort.materializeExistingClock(manager, turn, input, candidate);
-			if (input.kind === 'request-release:v1') {
-				const now = new Date();
-				candidate.config.releaseRequestedAt = now;
-				for (const claim of candidate.actuators) claim.releaseRequestedAt = now;
-			}
-			if (input.kind === 'restore-actuator:v1') {
-				const request = existingObject(input.wire),
-					dto = existingObject(request.dto);
-				const claim = candidate.actuators.find((row) => row.id === request.claimId);
-				const previous = old?.actuators.find((row) => row.id === request.claimId);
-				if (!claim || !previous || typeof request.actorId !== 'string' || typeof dto.reason !== 'string')
-					return fail('Original recovery plan lost.');
-				record.recovery = manager.create(VirtualThermostatRecoveryEntity, {
-					id: uuid(),
-					controllerId: input.controllerId,
-					claimId: claim.id,
-					physicalIdentity: claim.physicalIdentity,
-					previousPropertyIdentity: previous.sourcePropertyIdentity,
-					restoredPropertyId: claim.sourcePropertyIdentity,
-					actorId: request.actorId,
-					reason: dto.reason.trim(),
-					disconnectionAcknowledged: true,
-					configurationRevision: revision,
-					claimRevision: existingCounter(previous.revision),
-					createdAt: new Date(),
-				});
-			}
-			for (const source of candidate.sources) {
-				if (!source.id) source.id = uuid();
-				const previous = old?.sources.find((row) => row.id === source.id);
-				if (previous && !different(previous, source, sourceKeys)) Object.assign(source, previous);
-			}
-			for (const claim of candidate.actuators) {
-				const previous = old?.actuators.find((row) => row.id === claim.id);
-				if (!claim.id) claim.id = uuid();
-				claim.revision = changedClaims.has(claim)
-					? existingCounter(previous?.revision ?? 0)
-					: (previous?.revision ?? 1);
-				if (
-					changedClaims.has(claim) &&
-					(changedDependencyOwners.has(claim) ||
-						(input.kind === 'restore-actuator:v1' && claim.id === existingObject(input.wire).claimId) ||
-						candidate.protections.some((row) => owner(row, row.claimId) === claim) ||
-						candidate.coolingDependencies.some((row) => owner(row, row.claimId) === claim))
-				)
-					claim.qualificationGeneration = uuid();
-			}
-			for (const protection of candidate.protections) {
-				const claim = owner(protection, protection.claimId);
-				const previous = old?.protections.find((row) => row.claimId === claim.id);
-				protection.claimId = claim.id;
-				protection.revision = changedProtections.has(protection)
-					? existingCounter(previous?.revision ?? 0)
-					: (previous?.revision ?? 1);
-			}
-			for (const dependency of candidate.coolingDependencies) {
-				const claim = owner(dependency, dependency.claimId);
-				const previous = old?.coolingDependencies.find((row) => row.claimId === claim.id);
-				dependency.claimId = claim.id;
-				dependency.revision = changedCooling.has(dependency)
-					? existingCounter(previous?.revision ?? 0)
-					: (previous?.revision ?? 1);
-			}
-			candidate.config.revision = revision;
-			candidate.config.controlStrategy = candidate.config.controlStrategy ?? 'guarded_branches';
-			if (input.kind === 'configure-existing:v1') candidate.config.configuredAt = new Date();
-			const nativeRows = <T extends ObjectLiteral>(
-				entity: EntityTarget<T>,
-				rows: readonly T[],
-			): readonly ExistingNativeRow[] =>
-				existingSorted(rows.map((row) => this.existingNativeRow(manager, entity, row)));
-			const configuration = this.existingNativeRow(manager, VirtualThermostatConfigEntity, candidate.config);
-			// The persisted JSON round-trip is owned and schema-specific, not a second traversal of caller input.
-			candidate.config = this.existingHydrated(manager, VirtualThermostatConfigEntity, configuration);
-			const activeIds = new Set<unknown>(candidate.actuators.map((row) => row.id));
-			const retained = (key: 'actuators' | 'protections' | 'cooling', column: string): readonly ExistingNativeRow[] =>
-				before.rows[key]
-					.map(existingObject)
-					.filter((row) => typeof row[column] === 'string' && !activeIds.has(row[column]));
-			const properties = record.rows.properties.filter(
-				(property) =>
-					candidate.settings.some((setting) => setting.propertyId === property.id) ||
-					(input.kind === 'configure-existing:v1' &&
-						old?.settings.some((setting) => setting.propertyId === property.id)),
-			);
-			const materialProperties = properties.map((property) => {
-				if (!(property instanceof VirtualChannelPropertyEntity))
-					return fail('Original local virtual property class required.');
-				return Object.assign(
-					manager.create(VirtualChannelPropertyEntity),
-					property,
-					input.kind === 'configure-existing:v1'
-						? {
-								permissions: [
-									candidate.settings.some((setting) => setting.propertyId === property.id)
-										? PermissionType.READ_WRITE
-										: PermissionType.READ_ONLY,
-								],
-							}
-						: {},
-				);
-			});
-			const permissions = manager.connection
-				.getMetadata(ChannelPropertyEntity)
-				.columns.find((column) => column.propertyName === 'permissions');
-			if (!permissions) return fail('Original property permissions column missing.');
-			const permissionValue: unknown = manager.connection.driver.preparePersistentValue(
-				[PermissionType.READ_WRITE],
-				permissions,
-			);
-			const removedPermissionValue: unknown = manager.connection.driver.preparePersistentValue(
-				[PermissionType.READ_ONLY],
-				permissions,
-			);
-			if (typeof permissionValue !== 'string' || typeof removedPermissionValue !== 'string')
-				return fail('Original property permissions codec changed.');
-			const nextProperties = existingSorted(
-				before.rows.properties.map(existingObject).map((row) =>
-					input.kind === 'configure-existing:v1' && materialProperties.some((property) => property.id === row.id)
-						? Object.freeze({
-								...row,
-								[permissions.databaseName]: candidate.settings.some((setting) => setting.propertyId === row.id)
-									? permissionValue
-									: removedPermissionValue,
-							})
-						: row,
+		this.assertExistingTurn(manager, turn, ['NORMALIZE']);
+		const record = this.existingTurns.get(turn),
+			candidate = record?.candidate;
+		if (
+			!record ||
+			!candidate ||
+			!record.normalized ||
+			!existingSame(record.normalized, normalized) ||
+			!existingSame(record.input, input) ||
+			!existingSame(record.facts, before) ||
+			record.plan ||
+			!record.references
+		)
+			return fail('Original normalized thermostat plan required.');
+		const old = this.existingPrepared(record.rows);
+		const semanticChanged = !existingSame(normalized.before, normalized.next);
+		const versionChanged = revision !== (old?.config.revision ?? 0);
+		const columnRow = (row: object, keys: readonly string[]) => {
+			const result: Record<string, ClimateAutomationJson> = {};
+			for (const key of keys) result[key] = climateAutomationJson(nativeFieldEvidence.get(row, key));
+			return Object.freeze(result);
+		};
+		const different = (a: object | undefined, b: object, keys: readonly string[]) =>
+			!a || !existingSame(columnRow(a, keys), columnRow(b, keys));
+		const sourceKeys = THERMOSTAT_AUTOMATION_COLUMNS.sources.filter((key) => !['id', 'controllerId'].includes(key));
+		const claimKeys = THERMOSTAT_AUTOMATION_COLUMNS.actuators.filter(
+			(key) =>
+				!['id', 'controllerId', 'revision', 'qualificationGeneration', 'releaseRequestedAt', 'releasedAt'].includes(
+					key,
 				),
-			);
-			const sources = nativeRows(VirtualThermostatSourceEntity, candidate.sources);
-			const actuators = existingSorted([
-				...retained('actuators', 'id'),
-				...nativeRows(VirtualThermostatActuatorClaimEntity, candidate.actuators),
-			]);
-			const protections = existingSorted([
-				...retained('protections', 'claimId'),
-				...nativeRows(ThermostatMemberProtectionEntity, candidate.protections),
-			]);
-			const cooling = existingSorted([
-				...retained('cooling', 'claimId'),
-				...nativeRows(ThermostatCoolingDependencyEntity, candidate.coolingDependencies),
-			]);
-			const settings = nativeRows(VirtualThermostatSettingEntity, candidate.settings);
-			const projectedProperties = record.rows.properties.map(
-				(property) => materialProperties.find((row) => row.id === property.id) ?? property,
-			);
-			const nextRows: ThermostatAutomationRows = {
-				...record.rows,
-				properties: projectedProperties,
-				tables: {
-					...record.rows.tables,
-					configurations: [candidate.config],
-					sources: candidate.sources,
-					actuators: [
-						...record.rows.tables.actuators.filter((row) => !activeIds.has(nativeFieldEvidence.get(row, 'id'))),
-						...candidate.actuators,
-					],
-					settings: candidate.settings,
-					protections: [
-						...record.rows.tables.protections.filter((row) => !activeIds.has(nativeFieldEvidence.get(row, 'claimId'))),
-						...candidate.protections,
-					],
-					cooling: [
-						...record.rows.tables.cooling.filter((row) => !activeIds.has(nativeFieldEvidence.get(row, 'claimId'))),
-						...candidate.coolingDependencies,
-					],
-				},
-			};
-			const image = thermostatAutomationImage(nextRows);
-			if (!image) return fail('Missing independently materialized thermostat image.');
-			const expected: ClimateAutomationExistingFacts = Object.freeze({
-				controllerId: input.controllerId,
-				image,
-				graph: before.graph,
-				rows: Object.freeze({
-					...before.rows,
-					configurations: Object.freeze([configuration]),
-					sources,
-					actuators,
-					settings,
-					protections,
-					cooling,
-					properties: nextProperties,
-					referenceCatalog: record.references,
-					recovery: record.recovery
-						? existingSorted([
-								...before.rows.recovery.map(existingObject),
-								this.existingNativeRow(manager, VirtualThermostatRecoveryEntity, record.recovery),
-							])
-						: before.rows.recovery,
-				}),
-			});
-			const mirrors = this.existingMirrors(input, candidate);
+		);
+		const protectionKeys = THERMOSTAT_AUTOMATION_COLUMNS.protections.filter(
+			(key) => !['claimId', 'revision'].includes(key),
+		);
+		const coolingKeys = THERMOSTAT_AUTOMATION_COLUMNS.cooling.filter((key) => !['claimId', 'revision'].includes(key));
+		const owner = (dependency: object, claimId: string): VirtualThermostatActuatorClaimEntity =>
+			candidate.dependencyOwners?.get(dependency) ??
+			candidate.actuators.find((claim) => claim.id === claimId) ??
+			fail('Missing original thermostat dependency owner.');
+		const changedClaims = new Set<VirtualThermostatActuatorClaimEntity>();
+		const changedProtections = new Set<ThermostatMemberProtectionEntity>();
+		const changedCooling = new Set<ThermostatCoolingDependencyEntity>();
+		const changedDependencyOwners = new Set<VirtualThermostatActuatorClaimEntity>();
+		for (const row of candidate.protections) {
+			const claim = owner(row, row.claimId),
+				previous = old?.protections.find((item) => item.claimId === claim.id);
+			if (different(previous, row, protectionKeys)) {
+				existingCounter(previous?.revision ?? 0);
+				changedProtections.add(row);
+				changedClaims.add(claim);
+				changedDependencyOwners.add(claim);
+			}
+		}
+		for (const row of candidate.coolingDependencies) {
+			const claim = owner(row, row.claimId),
+				previous = old?.coolingDependencies.find((item) => item.claimId === claim.id);
+			if (different(previous, row, coolingKeys)) {
+				existingCounter(previous?.revision ?? 0);
+				changedCooling.add(row);
+				changedClaims.add(claim);
+				changedDependencyOwners.add(claim);
+			}
+		}
+		// Removing a dependency also changes its retained owner's proof generation, even when no replacement row remains.
+		for (const claim of candidate.actuators) {
+			if (
+				(old?.protections.some((row) => row.claimId === claim.id) &&
+					!candidate.protections.some((row) => owner(row, row.claimId) === claim)) ||
+				(old?.coolingDependencies.some((row) => row.claimId === claim.id) &&
+					!candidate.coolingDependencies.some((row) => owner(row, row.claimId) === claim))
+			) {
+				changedClaims.add(claim);
+				changedDependencyOwners.add(claim);
+			}
+		}
+		for (const row of candidate.actuators) {
+			if (input.kind === 'restore-actuator:v1' && semanticChanged && row.id === existingObject(input.wire).claimId)
+				changedClaims.add(row);
+			const previous = old?.actuators.find((item) => item.id === row.id);
+			if (different(previous, row, claimKeys)) changedClaims.add(row);
+		}
+		// Every actual child counter is checked before the FIRST UUID/date allocation.
+		for (const row of changedClaims) existingCounter(old?.actuators.find((item) => item.id === row.id)?.revision ?? 0);
+		if (!['configure-existing:v1', 'request-release:v1', 'restore-actuator:v1'].includes(input.kind))
+			comfort.checkExistingMaterializationCounters(turn, candidate);
+		if (!semanticChanged && !versionChanged) {
 			const descriptor = Object.freeze({ toJSON: () => Object.freeze({}) });
-			const plan: ClimateAutomationExistingPlan = Object.freeze({
+			const plan = Object.freeze({
 				descriptor,
-				expected,
+				expected: before,
 				response: null,
-				properties: Object.freeze(materialProperties),
-				mirrors,
+				mirrors: Object.freeze([]),
+				properties: Object.freeze<ChannelPropertyEntity[]>([]),
 			});
 			this.existingPlans.set(descriptor, {
 				input,
-				rows: nextRows,
+				rows: record.rows,
 				prepared: candidate,
-				facts: expected,
-				properties: materialProperties,
-				watermarkOnly: normalized.watermarkOnly,
-				bindings: this.existingCoolingBindings(manager, candidate, nextRows, record.references),
+				facts: before,
+				properties: Object.freeze<ChannelPropertyEntity[]>([]),
+				watermarkOnly: false,
+				bindings: this.existingCoolingBindings(manager, candidate, record.rows, record.references),
 			});
 			record.plan = plan;
-			return resolve(plan);
+			return plan;
+		}
+		if (!['configure-existing:v1', 'request-release:v1', 'restore-actuator:v1'].includes(input.kind))
+			comfort.materializeExistingInManager(manager, turn, candidate, revision);
+		comfort.materializeExistingClock(manager, turn, input, candidate);
+		if (input.kind === 'request-release:v1') {
+			const now = new Date();
+			candidate.config.releaseRequestedAt = now;
+			for (const claim of candidate.actuators) claim.releaseRequestedAt = now;
+		}
+		if (input.kind === 'restore-actuator:v1') {
+			const request = existingObject(input.wire),
+				dto = existingObject(request.dto);
+			const claim = candidate.actuators.find((row) => row.id === request.claimId);
+			const previous = old?.actuators.find((row) => row.id === request.claimId);
+			if (!claim || !previous || typeof request.actorId !== 'string' || typeof dto.reason !== 'string')
+				return fail('Original recovery plan lost.');
+			record.recovery = manager.create(VirtualThermostatRecoveryEntity, {
+				id: uuid(),
+				controllerId: input.controllerId,
+				claimId: claim.id,
+				physicalIdentity: claim.physicalIdentity,
+				previousPropertyIdentity: previous.sourcePropertyIdentity,
+				restoredPropertyId: claim.sourcePropertyIdentity,
+				actorId: request.actorId,
+				reason: dto.reason.trim(),
+				disconnectionAcknowledged: true,
+				configurationRevision: revision,
+				claimRevision: existingCounter(previous.revision),
+				createdAt: new Date(),
+			});
+		}
+		for (const source of candidate.sources) {
+			if (!source.id) source.id = uuid();
+			const previous = old?.sources.find((row) => row.id === source.id);
+			if (previous && !different(previous, source, sourceKeys)) Object.assign(source, previous);
+		}
+		for (const claim of candidate.actuators) {
+			const previous = old?.actuators.find((row) => row.id === claim.id);
+			if (!claim.id) claim.id = uuid();
+			claim.revision = changedClaims.has(claim) ? existingCounter(previous?.revision ?? 0) : (previous?.revision ?? 1);
+			if (
+				changedClaims.has(claim) &&
+				(changedDependencyOwners.has(claim) ||
+					(input.kind === 'restore-actuator:v1' && claim.id === existingObject(input.wire).claimId) ||
+					candidate.protections.some((row) => owner(row, row.claimId) === claim) ||
+					candidate.coolingDependencies.some((row) => owner(row, row.claimId) === claim))
+			)
+				claim.qualificationGeneration = uuid();
+		}
+		for (const protection of candidate.protections) {
+			const claim = owner(protection, protection.claimId);
+			const previous = old?.protections.find((row) => row.claimId === claim.id);
+			protection.claimId = claim.id;
+			protection.revision = changedProtections.has(protection)
+				? existingCounter(previous?.revision ?? 0)
+				: (previous?.revision ?? 1);
+		}
+		for (const dependency of candidate.coolingDependencies) {
+			const claim = owner(dependency, dependency.claimId);
+			const previous = old?.coolingDependencies.find((row) => row.claimId === claim.id);
+			dependency.claimId = claim.id;
+			dependency.revision = changedCooling.has(dependency)
+				? existingCounter(previous?.revision ?? 0)
+				: (previous?.revision ?? 1);
+		}
+		candidate.config.revision = revision;
+		candidate.config.controlStrategy = candidate.config.controlStrategy ?? 'guarded_branches';
+		if (input.kind === 'configure-existing:v1') candidate.config.configuredAt = new Date();
+		const nativeRows = <T extends ObjectLiteral>(
+			entity: EntityTarget<T>,
+			rows: readonly T[],
+		): readonly ExistingNativeRow[] => existingSorted(rows.map((row) => this.existingNativeRow(manager, entity, row)));
+		const configuration = this.existingNativeRow(manager, VirtualThermostatConfigEntity, candidate.config);
+		// The persisted JSON round-trip is owned and schema-specific, not a second traversal of caller input.
+		candidate.config = this.existingHydrated(manager, VirtualThermostatConfigEntity, configuration);
+		const activeIds = new Set<unknown>(candidate.actuators.map((row) => row.id));
+		const retained = (key: 'actuators' | 'protections' | 'cooling', column: string): readonly ExistingNativeRow[] =>
+			before.rows[key]
+				.map(existingObject)
+				.filter((row) => typeof row[column] === 'string' && !activeIds.has(row[column]));
+		const properties = record.rows.properties.filter(
+			(property) =>
+				candidate.settings.some((setting) => setting.propertyId === property.id) ||
+				(input.kind === 'configure-existing:v1' && old?.settings.some((setting) => setting.propertyId === property.id)),
+		);
+		const materialProperties = properties.map((property) => {
+			if (!(property instanceof VirtualChannelPropertyEntity))
+				return fail('Original local virtual property class required.');
+			return Object.assign(
+				manager.create(VirtualChannelPropertyEntity),
+				property,
+				input.kind === 'configure-existing:v1'
+					? {
+							permissions: [
+								candidate.settings.some((setting) => setting.propertyId === property.id)
+									? PermissionType.READ_WRITE
+									: PermissionType.READ_ONLY,
+							],
+						}
+					: {},
+			);
 		});
+		const permissions = manager.connection
+			.getMetadata(ChannelPropertyEntity)
+			.columns.find((column) => column.propertyName === 'permissions');
+		if (!permissions) return fail('Original property permissions column missing.');
+		const permissionValue: unknown = manager.connection.driver.preparePersistentValue(
+			[PermissionType.READ_WRITE],
+			permissions,
+		);
+		const removedPermissionValue: unknown = manager.connection.driver.preparePersistentValue(
+			[PermissionType.READ_ONLY],
+			permissions,
+		);
+		if (typeof permissionValue !== 'string' || typeof removedPermissionValue !== 'string')
+			return fail('Original property permissions codec changed.');
+		const nextProperties = existingSorted(
+			before.rows.properties.map(existingObject).map((row) =>
+				input.kind === 'configure-existing:v1' && materialProperties.some((property) => property.id === row.id)
+					? Object.freeze({
+							...row,
+							[permissions.databaseName]: candidate.settings.some((setting) => setting.propertyId === row.id)
+								? permissionValue
+								: removedPermissionValue,
+						})
+					: row,
+			),
+		);
+		const sources = nativeRows(VirtualThermostatSourceEntity, candidate.sources);
+		const actuators = existingSorted([
+			...retained('actuators', 'id'),
+			...nativeRows(VirtualThermostatActuatorClaimEntity, candidate.actuators),
+		]);
+		const protections = existingSorted([
+			...retained('protections', 'claimId'),
+			...nativeRows(ThermostatMemberProtectionEntity, candidate.protections),
+		]);
+		const cooling = existingSorted([
+			...retained('cooling', 'claimId'),
+			...nativeRows(ThermostatCoolingDependencyEntity, candidate.coolingDependencies),
+		]);
+		const settings = nativeRows(VirtualThermostatSettingEntity, candidate.settings);
+		const projectedProperties = record.rows.properties.map(
+			(property) => materialProperties.find((row) => row.id === property.id) ?? property,
+		);
+		const nextRows: ThermostatAutomationRows = {
+			...record.rows,
+			properties: projectedProperties,
+			tables: {
+				...record.rows.tables,
+				configurations: [candidate.config],
+				sources: candidate.sources,
+				actuators: [
+					...record.rows.tables.actuators.filter((row) => !activeIds.has(nativeFieldEvidence.get(row, 'id'))),
+					...candidate.actuators,
+				],
+				settings: candidate.settings,
+				protections: [
+					...record.rows.tables.protections.filter((row) => !activeIds.has(nativeFieldEvidence.get(row, 'claimId'))),
+					...candidate.protections,
+				],
+				cooling: [
+					...record.rows.tables.cooling.filter((row) => !activeIds.has(nativeFieldEvidence.get(row, 'claimId'))),
+					...candidate.coolingDependencies,
+				],
+			},
+		};
+		const image = thermostatAutomationImage(nextRows);
+		if (!image) return fail('Missing independently materialized thermostat image.');
+		// BEGIN independently planned final claim-scoped history selectors
+		const claimIds = (rows: readonly ClimateAutomationJson[]): readonly string[] => {
+			const ids = rows.map((value) => {
+				const row = existingObject(value);
+				if (
+					row.controllerId !== input.controllerId ||
+					typeof row.id !== 'string' ||
+					!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)
+				)
+					return fail('Invalid original native claim membership.');
+				return row.id;
+			});
+			if (new Set(ids).size !== ids.length) return fail('Duplicate original native claim identity.');
+			return Object.freeze(ids);
+		};
+		// Native actuator rows are already canonically sorted; this is the reader's order, not an ID sort.
+		const finalClaimIds = claimIds(actuators),
+			originalClaimIds = claimIds(before.rows.actuators);
+		let runtime = before.rows.runtime,
+			installations = before.rows.installations;
+		if (!existingSame(finalClaimIds, originalClaimIds)) {
+			if (originalClaimIds.some((id) => !finalClaimIds.includes(id)))
+				return fail('Retained original claim membership cannot be discarded.');
+			const runtimeController = runtime[0],
+				auditController = installations[0],
+				branchOriginal = runtime[1],
+				auditOriginal = installations[1];
+			if (
+				runtime.length !== 2 ||
+				installations.length !== 2 ||
+				!runtimeController ||
+				!auditController ||
+				!branchOriginal ||
+				!auditOriginal
+			)
+				return fail('Complete original claim-scoped history descriptors required.');
+			const nativeReaderView: Readonly<{
+				get: (
+					receiver: VirtualThermostatConfigService,
+					key: 'readExistingNativeRows',
+				) => OriginalFunction<VirtualThermostatConfigService, VirtualThermostatConfigService['readExistingNativeRows']>;
+			}> = Reflect;
+			const readNative = nativeReaderView.get(this, 'readExistingNativeRows');
+			const current = (): void => {
+				this.assertExistingTurn(manager, turn, ['NORMALIZE']);
+				if (
+					!this.existingPins?.() ||
+					!creationMethodCurrent(this, 'readExistingNativeRows', readNative) ||
+					this.existingTurns.get(turn) !== record ||
+					record.plan
+				)
+					return fail('Original final claim-selector reader lost.');
+			};
+			const finalSelector = async (table: string, original: ClimateAutomationJson): Promise<ClimateAutomationJson> => {
+				current();
+				const descriptor = existingObject(original);
+				if (
+					Object.keys(descriptor).length !== 4 ||
+					descriptor.table !== table ||
+					descriptor.column !== 'claimId' ||
+					!existingSame(descriptor.ids, originalClaimIds) ||
+					!Array.isArray(descriptor.rows)
+				)
+					return fail('Original claim-scoped history selector changed.');
+				const rows = await readNative.call(this, manager, turn, table, 'claimId', finalClaimIds);
+				current();
+				// No FK assumption: even an audit row for a newly allocated claim must be proved absent.
+				if (rows.some((row) => typeof row.claimId !== 'string' || !originalClaimIds.includes(row.claimId)))
+					return fail('Unexpected history for a newly materialized claim.');
+				if (!existingSame(rows, descriptor.rows))
+					return fail('Retained claim-scoped history changed during materialization.');
+				return Object.freeze({ table, column: 'claimId', ids: finalClaimIds, rows });
+			};
+			const branch = await finalSelector('devices_virtual_thermostat_branch_runtime', branchOriginal);
+			const audit = await finalSelector('devices_virtual_thermostat_installation_audit', auditOriginal);
+			current();
+			runtime = Object.freeze([runtimeController, branch]);
+			installations = Object.freeze([auditController, audit]);
+		}
+		// END independently planned final claim-scoped history selectors
+		const expected: ClimateAutomationExistingFacts = Object.freeze({
+			controllerId: input.controllerId,
+			image,
+			graph: before.graph,
+			rows: Object.freeze({
+				...before.rows,
+				runtime,
+				installations,
+				configurations: Object.freeze([configuration]),
+				sources,
+				actuators,
+				settings,
+				protections,
+				cooling,
+				properties: nextProperties,
+				referenceCatalog: record.references,
+				recovery: record.recovery
+					? existingSorted([
+							...before.rows.recovery.map(existingObject),
+							this.existingNativeRow(manager, VirtualThermostatRecoveryEntity, record.recovery),
+						])
+					: before.rows.recovery,
+			}),
+		});
+		const mirrors = this.existingMirrors(input, candidate);
+		const descriptor = Object.freeze({ toJSON: () => Object.freeze({}) });
+		const plan: ClimateAutomationExistingPlan = Object.freeze({
+			descriptor,
+			expected,
+			response: null,
+			properties: Object.freeze(materialProperties),
+			mirrors,
+		});
+		this.existingPlans.set(descriptor, {
+			input,
+			rows: nextRows,
+			prepared: candidate,
+			facts: expected,
+			properties: materialProperties,
+			watermarkOnly: normalized.watermarkOnly,
+			bindings: this.existingCoolingBindings(manager, candidate, nextRows, record.references),
+		});
+		record.plan = plan;
+		return plan;
 	}
 	private existingCoolingBindings(
 		manager: EntityManager,

@@ -13,6 +13,10 @@ import {
 	ClimateAutomationOverrideLease,
 	ClimateAutomationParticipantConflict,
 	ClimateAutomationParticipantTurn,
+	ClimateAutomationRuntimeAssessment,
+	ClimateAutomationRuntimeCapture,
+	ClimateAutomationRuntimeCheckpoint,
+	ClimateAutomationRuntimeConsumer,
 	ClimateAutomationScope,
 	ClimateAutomationSlotFacts,
 	ClimateAutomationWriteError,
@@ -25,6 +29,7 @@ import {
 	creationHasDataMethod,
 	creationMethodCurrent,
 	freezeCreationSnapshot,
+	ownDiagnosticData,
 } from '../../../modules/devices/services/device-creation-context';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { VirtualDeviceEntity } from '../entities/devices-virtual.entity';
@@ -65,6 +70,30 @@ export interface ThermostatComfortFence {
 }
 
 /** Absolute persisted lifetime plus a bounded process-local budget; uncertain recovery inhibits demand. */
+type RuntimeWriterMethods = OriginalFunctions<
+	Pick<
+		ClimateAutomationWriterService,
+		| 'armRuntimeSettlementCapture'
+		| 'commitExistingControllerForRuntime'
+		| 'captureRuntimeSettlement'
+		| 'closeRuntimeSettlementCapture'
+		| 'closeRuntimeSettlementConsumer'
+		| 'assessRuntimeSettlement'
+		| 'closeRuntimeSettlement'
+	>
+>;
+interface RuntimeWriterPorts {
+	readonly writer: ClimateAutomationWriterService;
+	readonly methods: RuntimeWriterMethods;
+}
+interface ExistingComfortResponse {
+	readonly controller: string;
+	readonly revision: number;
+	readonly graph_revision: number;
+	readonly configuration: ThermostatComfortConfiguration | null;
+	readonly effective: ReturnType<typeof effectiveThermostatComfort>;
+	readonly clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit';
+}
 @Injectable()
 export class VirtualThermostatComfortService {
 	private readonly logger = new Logger(VirtualThermostatComfortService.name);
@@ -73,6 +102,18 @@ export class VirtualThermostatComfortService {
 		{ id: string; revision: number; deadline: number; watermark: number; status: 'expired' | 'clock_uncertain' | null }
 	>();
 	private destroyed = false;
+	private readonly runtimeConsumers = new Set<ClimateAutomationRuntimeConsumer>();
+	private readonly runtimeWriterPorts = new Map<ClimateAutomationRuntimeConsumer, RuntimeWriterPorts>();
+	private readonly runtimeCapturePorts = new WeakMap<ClimateAutomationRuntimeCapture, RuntimeWriterPorts>();
+	private readonly runtimeCheckpointPorts = new WeakMap<ClimateAutomationRuntimeCheckpoint, RuntimeWriterPorts>();
+	private runtimePortsCurrent(ports: RuntimeWriterPorts): boolean {
+		return (
+			!this.destroyed &&
+			this.writer === ports.writer &&
+			this.existingPins?.() === true &&
+			Object.entries(ports.methods).every(([key, method]) => creationMethodCurrent(ports.writer, key, method))
+		);
+	}
 	private readonly clockOwners = new Map<string, ClimateAutomationOverrideLease>();
 	private existingPins: (() => boolean) | undefined;
 	private readonly existingOperations = new WeakMap<
@@ -668,6 +709,16 @@ export class VirtualThermostatComfortService {
 
 	onModuleDestroy(): void {
 		this.destroyed = true;
+		for (const consumer of this.runtimeConsumers) {
+			const ports = this.runtimeWriterPorts.get(consumer);
+			try {
+				ports?.methods.closeRuntimeSettlementConsumer.call(ports.writer, consumer);
+			} catch {
+				/* Preserve original public teardown and TIME cleanup. */
+			}
+		}
+		this.runtimeConsumers.clear();
+		this.runtimeWriterPorts.clear();
 		for (const token of this.clockOwners.values()) this.writer?.closeExistingOverrideLease(token);
 		this.clockOwners.clear();
 		for (const pending of this.pendingNotifications.values()) this.writer?.closeExistingNotification(pending.receipt);
@@ -675,22 +726,44 @@ export class VirtualThermostatComfortService {
 		this.leases.clear();
 	}
 
+	private executeExisting(
+		kind: Exclude<ClimateAutomationExistingKind, 'settings:v1'>,
+		id: string,
+		input: unknown,
+	): Promise<ExistingComfortResponse>;
+	private executeExisting(
+		kind: Exclude<ClimateAutomationExistingKind, 'settings:v1'>,
+		id: string,
+		input: unknown,
+		capture: ClimateAutomationRuntimeCapture,
+	): Promise<{ response: ExistingComfortResponse; checkpoint: ClimateAutomationRuntimeCheckpoint | null }>;
 	private async executeExisting(
 		kind: Exclude<ClimateAutomationExistingKind, 'settings:v1'>,
 		id: string,
 		input: unknown,
+		capture?: ClimateAutomationRuntimeCapture,
 	) {
 		if (!this.writer) throw new DevicesValidationException('Reserved comfort writer unavailable.');
 		try {
-			const outcome = await this.writer.commitExistingControllerV1({
-				providerKey: 'virtual-thermostat:v1',
-				controllerId: id,
-				kind,
-				input,
-			});
+			const ports = capture ? this.runtimeCapturePorts.get(capture) : undefined;
+			if (capture && (!ports || !this.runtimePortsCurrent(ports)))
+				throw new DevicesValidationException('Original runtime capture methods unavailable');
+			const request = { providerKey: 'virtual-thermostat:v1', controllerId: id, kind, input };
+			const outcome =
+				capture && ports
+					? await ports.methods.commitExistingControllerForRuntime.call(ports.writer, request, capture)
+					: await this.writer.commitExistingControllerV1(request);
 			const response = this.existingResponses.get(outcome.descriptor);
 			this.existingResponses.delete(outcome.descriptor);
 			if (!response) throw new DevicesValidationException('Original fixed comfort response unavailable.');
+			if (capture) {
+				const checkpoint =
+					ports && this.runtimePortsCurrent(ports)
+						? ports.methods.captureRuntimeSettlement.call(ports.writer, capture, outcome)
+						: null;
+				if (checkpoint && ports) this.runtimeCheckpointPorts.set(checkpoint, ports);
+				return { response, checkpoint };
+			}
 			return response;
 		} catch (error) {
 			if (
@@ -733,6 +806,77 @@ export class VirtualThermostatComfortService {
 		});
 	}
 
+	openRuntimeSettlementConsumer(owner: object, lifecycle: object): ClimateAutomationRuntimeConsumer {
+		if (!this.writer || !this.existingPins?.() || this.destroyed)
+			throw new DevicesValidationException('Original runtime settlement owner unavailable.');
+		const token = this.writer.registerRuntimeSettlementConsumer(
+			Object.freeze({ owner, lifecycle, comfort: this, providerKey: 'virtual-thermostat:v1' }),
+		);
+		const writer = this.writer;
+		const original: RuntimeWriterMethods = writer;
+		const methods = Object.freeze({
+			armRuntimeSettlementCapture: original.armRuntimeSettlementCapture,
+			commitExistingControllerForRuntime: original.commitExistingControllerForRuntime,
+			captureRuntimeSettlement: original.captureRuntimeSettlement,
+			closeRuntimeSettlementCapture: original.closeRuntimeSettlementCapture,
+			closeRuntimeSettlementConsumer: original.closeRuntimeSettlementConsumer,
+			assessRuntimeSettlement: original.assessRuntimeSettlement,
+			closeRuntimeSettlement: original.closeRuntimeSettlement,
+		});
+		this.runtimeWriterPorts.set(token, { writer, methods });
+		this.runtimeConsumers.add(token);
+		return token;
+	}
+	closeRuntimeSettlementConsumer(token: ClimateAutomationRuntimeConsumer): void {
+		if (!this.runtimeConsumers.delete(token)) return;
+		const ports = this.runtimeWriterPorts.get(token);
+		this.runtimeWriterPorts.delete(token);
+		ports?.methods.closeRuntimeSettlementConsumer.call(ports.writer, token);
+	}
+	async settleForRuntime(
+		controllerId: string,
+		consumer: ClimateAutomationRuntimeConsumer,
+	): Promise<ClimateAutomationRuntimeCheckpoint | null> {
+		const writer = this.writer;
+		if (!writer || !this.runtimeConsumers.has(consumer) || !this.existingPins?.() || this.destroyed)
+			throw new DevicesValidationException('Original runtime settlement owner unavailable.');
+		const ports = this.runtimeWriterPorts.get(consumer);
+		if (!ports || !this.runtimePortsCurrent(ports))
+			throw new DevicesValidationException('Original runtime settlement methods unavailable');
+		const capture = ports.methods.armRuntimeSettlementCapture.call(writer, consumer, controllerId);
+		this.runtimeCapturePorts.set(capture, ports);
+		try {
+			writer.assertExistingReadEntry();
+			const needed = await this.structure.runShared(async () => {
+				const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+				return row?.comfort?.temporary_override?.status === 'active' || this.pendingNotifications.has(controllerId);
+			});
+			if (!needed) return null;
+			const response = await this.executeExisting('settle-override:v1', controllerId, {}, capture);
+			return 'checkpoint' in response ? response.checkpoint : null;
+		} finally {
+			ports.methods.closeRuntimeSettlementCapture.call(writer, capture);
+			this.runtimeCapturePorts.delete(capture);
+		}
+	}
+	assessRuntimeFeedback(
+		controllerId: string,
+		checkpoint: ClimateAutomationRuntimeCheckpoint,
+	): ClimateAutomationRuntimeAssessment {
+		if (this.destroyed || !this.existingPins?.() || !this.writer) return Object.freeze({ kind: 'closed' });
+		const ports = this.runtimeCheckpointPorts.get(checkpoint);
+		if (!ports || !this.runtimePortsCurrent(ports)) return Object.freeze({ kind: 'closed' });
+		const result = ports.methods.assessRuntimeSettlement.call(ports.writer, checkpoint);
+		// A pending ordinary notification can never hide behind a valid private checkpoint.
+		const pending = this.pendingNotifications.get(controllerId);
+		if (pending && result.kind !== 'closed') return Object.freeze({ kind: 'settle', debt: pending.receipt });
+		return result;
+	}
+	closeRuntimeSettlement(checkpoint: ClimateAutomationRuntimeCheckpoint): void {
+		const ports = this.runtimeCheckpointPorts.get(checkpoint);
+		this.runtimeCheckpointPorts.delete(checkpoint);
+		ports?.methods.closeRuntimeSettlement.call(ports.writer, checkpoint);
+	}
 	/** Only committed settlement makes expiry durable. A sync dispatch refusal cannot promise crash durability. */
 	async settle(controllerId: string): Promise<void> {
 		if (!this.writer) throw new DevicesValidationException('Reserved comfort writer unavailable.');
@@ -753,14 +897,16 @@ export class VirtualThermostatComfortService {
 			const intent = await this.readIntentInManager(manager, row);
 			try {
 				const graphRevision = await this.graph.revision(manager);
-				const result = freezeCreationSnapshot({
-					controller: controllerId,
-					revision: row.revision,
-					graph_revision: graphRevision,
-					configuration: row.comfort,
-					effective: effectiveThermostatComfort(row.policy, row.comfort, intent.projection),
-					clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
-				});
+				const result = freezeCreationSnapshot(
+					ownDiagnosticData({
+						controller: controllerId,
+						revision: row.revision,
+						graph_revision: graphRevision,
+						configuration: row.comfort,
+						effective: effectiveThermostatComfort(row.policy, row.comfort, intent.projection),
+						clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+					}),
+				);
 				if (!intent.isCurrent()) throw new DevicesValidationException('Original thermostat intent changed.');
 				return result;
 			} finally {

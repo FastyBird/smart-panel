@@ -12,7 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { createProtectionProbe } from '../../../../test/support/thermostat-protection-fixture';
+import { createProtectionProbe, memberInstallationSetup } from '../../../../test/support/thermostat-protection-fixture';
 import { SqliteDataSource, hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { AddVirtualThermostatClaims1000000000031 } from '../../../migrations/1000000000031-AddVirtualThermostatClaims';
@@ -25,6 +25,10 @@ import { AddClimateAutomationOwnership1000000000047 } from '../../../migrations/
 import { OpenApiResponseInterceptor } from '../../../modules/api/interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from '../../../modules/api/interceptors/transform-response.interceptor';
 import { ConfigService as ModuleConfigService } from '../../../modules/config/services/config.service';
+import {
+	ClimateAutomationRuntimeCheckpoint,
+	ClimateAutomationRuntimeConsumer,
+} from '../../../modules/devices/contracts/climate-automation.contract';
 import { ClimateAutomationWriteError } from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
@@ -36,12 +40,16 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { ClimateAutomationSlotEntity } from '../../../modules/devices/entities/climate-automation.entity';
+import {
+	ClimateAutomationSlotEntity,
+	ClimateAutomationSourceEntity,
+} from '../../../modules/devices/entities/climate-automation.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { PropertyCommandAdmissionRegistryService } from '../../../modules/devices/services/property-command-admission.registry.service';
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyProducerRegistryService } from '../../../modules/devices/services/property-producer.registry.service';
@@ -75,6 +83,12 @@ import {
 	VirtualDeviceMode,
 	VirtualValueOrigin,
 } from '../entities/devices-virtual.entity';
+import { ThermostatInstallationAuditEntity } from '../entities/thermostat-installation.entity';
+import {
+	VirtualThermostatBranchRuntimeEntity,
+	VirtualThermostatCommandEntity,
+	VirtualThermostatRuntimeEntity,
+} from '../entities/virtual-thermostat-runtime.entity';
 import {
 	VirtualThermostatActuatorClaimEntity,
 	VirtualThermostatConfigEntity,
@@ -101,8 +115,11 @@ import {
 	VirtualThermostatClaimsService,
 } from './virtual-thermostat-claims.service';
 import { VirtualThermostatComfortService } from './virtual-thermostat-comfort.service';
+import { effectiveThermostatComfort } from './virtual-thermostat-comfort.utils';
 import { THERMOSTAT_CONFIG_CHANGED, VirtualThermostatConfigService } from './virtual-thermostat-config.service';
+import { VirtualThermostatInputsService } from './virtual-thermostat-inputs.service';
 import { VirtualThermostatRuntimeService } from './virtual-thermostat-runtime.service';
+import { VirtualThermostatTransportService } from './virtual-thermostat-transport.service';
 import { VirtualTransformResolver } from './virtual-transform-resolver';
 
 /** Erased original-function view: same function object, explicit original receiver and result. */
@@ -166,6 +183,11 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			entities: [__dirname + '/../../../**/*.entity.ts'],
 		};
 		database = await new SqliteDataSource({ ...options, synchronize: true }).initialize();
+		// Synchronized test schemas omit migration27's installed graph singleton seed.
+		await database.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
+		expect(await database.query('SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"')).toEqual(
+			[{ id: 1, revision: 0 }],
+		);
 		second = await new SqliteDataSource(options).initialize();
 		await database.query('PRAGMA busy_timeout = 5000');
 		await second.query('PRAGMA busy_timeout = 5000');
@@ -3348,4 +3370,2075 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		// END original clock-owner correction drafts
 	});
 	// END closed existing-controller route regressions
+	// BEGIN genuine STI sibling native projection regressions (SOURCE-ONLY; UNEXECUTED)
+	describe('authentic STI sibling columns remain full native facts', () => {
+		const fullRows = async (): Promise<Record<string, unknown[]>> => {
+			const rows: Record<string, unknown[]> = {};
+			for (const table of [
+				'devices_virtual_thermostat_configs',
+				'devices_virtual_thermostat_sources',
+				'devices_virtual_thermostat_actuator_claims',
+				'devices_virtual_thermostat_settings',
+				'devices_virtual_thermostat_member_protection',
+				'devices_virtual_thermostat_cooling_dependencies',
+				'devices_virtual_thermostat_recoveries',
+				'devices_virtual_thermostat_command_journal',
+				'devices_virtual_thermostat_runtime',
+				'devices_virtual_thermostat_branch_runtime',
+				'devices_virtual_thermostat_installations',
+				'devices_virtual_thermostat_installation_audit',
+				'devices_module_devices',
+				'devices_module_channels',
+				'devices_module_channels_properties',
+				'devices_shelly_ng_sample_sources',
+				'devices_virtual_dew_point_configs',
+				'devices_virtual_dew_point_sources',
+				'devices_virtual_transform_configs',
+				'devices_virtual_transform_sources',
+				'devices_virtual_aggregate_configs',
+				'devices_virtual_aggregate_inputs',
+				'devices_virtual_light_group_configs',
+				'devices_virtual_light_group_members',
+				'devices_virtual_light_group_bindings',
+				'devices_module_climate_automation_slots',
+				'devices_module_climate_automation_sources',
+				'devices_virtual_graph_revision',
+			])
+				rows[table] = await database.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+			return rows;
+		};
+		it('configures a genuine virtual controller while retaining its non-NULL physical sibling cell', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const entity = await database.manager.findOneByOrFail(VirtualDeviceEntity, { id: controller });
+			const column = database.getMetadata(DeviceEntity).columns.find((item) => item.propertyName === 'hasEthernet');
+			if (!column) throw new Error('Actual STI sibling column required');
+			expect(column.target).toBe(ShellyNgDeviceEntity);
+			expect(column.isNullable).toBe(true);
+			expect(entity).not.toBeInstanceOf(ShellyNgDeviceEntity);
+			const hydrated: unknown = column.getEntityValue(entity);
+			expect(hydrated).toBeUndefined();
+			const before = await database.query<Record<string, unknown>[]>(
+				'SELECT * FROM "devices_module_devices" WHERE "id" = ?',
+				[controller],
+			);
+			expect(before).toHaveLength(1);
+			const row = before[0];
+			if (!row) throw new Error('Actual controller raw row required');
+			expect(row.hasEthernet).not.toBeNull();
+			expect(row.hasEthernet).not.toBeUndefined();
+			const configured = await configs.configure(controller, dto(sensor, heat));
+			expect(configured.revision).toBe(1);
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).revision,
+			).toBe(1);
+			expect(
+				(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).manualHold,
+			).toBe(true);
+			expect(await database.query('SELECT * FROM "devices_module_devices" WHERE "id" = ?', [controller])).toEqual(
+				before,
+			);
+		});
+
+		it('refuses an applicable ORM projection mismatch and rolls back without altering persisted rows', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const before = await fullRows();
+			let patched = 0,
+				rollbacks = 0;
+			let faultRunner: import('typeorm').QueryRunner | undefined;
+			// readRowsInManager deliberately disables afterLoad; the real driver emits this event BEFORE hydration.
+			const observer = {
+				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+					if (patched || !event.success || !event.query.includes('FROM "devices_module_devices" "row"')) return;
+					const result: unknown = event.rawResults;
+					if (!Array.isArray(result)) return;
+					const rows: readonly unknown[] = result;
+					for (const row of rows) {
+						if (!row || typeof row !== 'object') continue;
+						const id: unknown = nativeObjectEvidence.getOwnPropertyDescriptor(row, 'row_id')?.value;
+						if (id !== controller) continue;
+						const name = nativeObjectEvidence.getOwnPropertyDescriptor(row, 'row_name');
+						if (!name || name.get !== undefined || name.set !== undefined || typeof name.value !== 'string') return;
+						faultRunner = event.queryRunner;
+						Object.defineProperty(row, 'row_name', { ...name, value: 'applicable hydrated projection fault' });
+						patched++;
+						return;
+					}
+				},
+				afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => {
+					if (event.queryRunner === faultRunner) rollbacks++;
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				await expect(configs.configure(controller, dto(sensor, heat))).rejects.toThrow(
+					'Native and hydrated thermostat column disagrees.',
+				);
+				expect(patched).toBe(1);
+				expect(rollbacks).toBe(1);
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
+			expect(await fullRows()).toEqual(before);
+		});
+
+		it('detects a same-revision sibling mutation in the admitted manager and rolls back the whole unit', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator(),
+				input = dto(sensor, heat);
+			const configured = await configs.configure(controller, input);
+			const before = await fullRows();
+			const cells = await database.query<{ hasEthernet: unknown }[]>(
+				'SELECT "hasEthernet" FROM "devices_module_devices" WHERE "id" = ?',
+				[controller],
+			);
+			const initial = cells[0];
+			if (cells.length !== 1 || !initial || (initial.hasEthernet !== 0 && initial.hasEthernet !== 1))
+				throw new Error('Actual native boolean sibling cell required');
+			const replacement = initial.hasEthernet === 0 ? 1 : 0;
+			let entered = false,
+				rollbacks = 0,
+				appliedConfigUpdates = 0,
+				postApplyRawReads = 0;
+			let admittedRunner: import('typeorm').QueryRunner | undefined;
+			let postReadRunner: import('typeorm').QueryRunner | undefined;
+			let observedDuring: readonly { hasEthernet: unknown }[] | undefined;
+			let revisionDuring: readonly { revision: number }[] | undefined;
+			let postApplySibling: unknown;
+			const updatePrefix = 'UPDATE "devices_virtual_thermostat_configs" SET ';
+			const observer = {
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> => {
+					if (entered || !event.query.startsWith(updatePrefix)) return;
+					entered = true;
+					admittedRunner = event.queryRunner;
+					expect(event.manager.queryRunner).toBe(admittedRunner);
+					expect(admittedRunner.isTransactionActive).toBe(true);
+					// The actual broadcaster awaits BeforeQuery; THIS manager joins the existing native lease, never the peer.
+					await event.manager.query('UPDATE "devices_module_devices" SET "hasEthernet" = ? WHERE "id" = ?', [
+						replacement,
+						controller,
+					]);
+					observedDuring = await event.manager.query<{ hasEthernet: unknown }[]>(
+						'SELECT "hasEthernet" FROM "devices_module_devices" WHERE "id" = ?',
+						[controller],
+					);
+					revisionDuring = await event.manager.query<{ revision: number }[]>(
+						'SELECT "revision" FROM "devices_virtual_thermostat_configs" WHERE "controllerId" = ?',
+						[controller],
+					);
+				},
+				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+					if (!event.success || event.queryRunner !== admittedRunner) return;
+					if (event.query.startsWith(updatePrefix)) appliedConfigUpdates++;
+					if (
+						!appliedConfigUpdates ||
+						!event.query.startsWith('SELECT * FROM "devices_module_devices" WHERE "id" IN (')
+					)
+						return;
+					const result: unknown = event.rawResults;
+					if (!Array.isArray(result)) return;
+					const rows: readonly unknown[] = result;
+					for (const row of rows) {
+						if (!row || typeof row !== 'object') continue;
+						const id: unknown = nativeObjectEvidence.getOwnPropertyDescriptor(row, 'id')?.value;
+						if (id !== controller) continue;
+						postApplySibling = nativeObjectEvidence.getOwnPropertyDescriptor(row, 'hasEthernet')?.value;
+						postReadRunner = event.queryRunner;
+						postApplyRawReads++;
+					}
+				},
+				afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => {
+					if (event.queryRunner === admittedRunner) rollbacks++;
+				},
+			};
+			const changed = jest.fn();
+			events.on(THERMOSTAT_CONFIG_CHANGED, changed);
+			database.subscribers.push(observer);
+			try {
+				await expect(
+					configs.configure(controller, {
+						...input,
+						expectedRevision: configured.revision,
+						policy: { ...input.policy, heatingSetpoint: 21 },
+					}),
+				).rejects.toThrow('Thermostat revision or private initialization changed.');
+				expect(entered).toBe(true);
+				expect(observedDuring).toEqual([{ hasEthernet: replacement }]);
+				expect(revisionDuring).toEqual([{ revision: configured.revision }]);
+				expect(appliedConfigUpdates).toBe(1);
+				expect(postApplyRawReads).toBe(1);
+				expect(postApplySibling).toBe(replacement);
+				expect(postReadRunner).toBe(admittedRunner);
+				expect(rollbacks).toBe(1);
+				expect(changed).not.toHaveBeenCalled();
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				events.off(THERMOSTAT_CONFIG_CHANGED, changed);
+			}
+			expect(await fullRows()).toEqual(before);
+		});
+	});
+	// END genuine STI sibling native projection regressions
+	// BEGIN independently planned final claim-selector regression drafts (UNEXECUTED)
+	describe('independently planned final claim selectors', () => {
+		const whole = async (): Promise<Record<string, unknown[]>> => {
+			const rows: Record<string, unknown[]> = {};
+			for (const table of [
+				'devices_module_devices',
+				'devices_module_channels',
+				'devices_module_channels_properties',
+				'devices_virtual_thermostat_configs',
+				'devices_virtual_thermostat_sources',
+				'devices_virtual_thermostat_actuator_claims',
+				'devices_virtual_thermostat_settings',
+				'devices_virtual_thermostat_member_protection',
+				'devices_virtual_thermostat_cooling_dependencies',
+				'devices_virtual_thermostat_recoveries',
+				'devices_virtual_thermostat_command_journal',
+				'devices_virtual_thermostat_runtime',
+				'devices_virtual_thermostat_branch_runtime',
+				'devices_virtual_thermostat_installations',
+				'devices_virtual_thermostat_installation_audit',
+				'devices_module_climate_automation_slots',
+				'devices_module_climate_automation_sources',
+				'devices_virtual_graph_revision',
+			])
+				rows[table] = await database.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+			return rows;
+		};
+		// Typed retained offline installation history only; never an installed qualification or physical proof.
+		const auditSnapshot = (fingerprint: string): ThermostatInstallationAuditEntity['snapshot'] => ({
+			setup: {
+				...memberInstallationSetup(),
+				effectiveFloorCutoffC: 30,
+				floorDomainC: { minimum: -40, maximum: 100 },
+				floorMaximumAgeMs: 5000,
+				floorComponentType: 'temperature',
+				floorComponentId: 0,
+				floorAttribute: 'tC',
+				floorConfigurationJson: JSON.stringify({ id: 0, type: 'DS18B20' }),
+				peripheralsJson: JSON.stringify({ temperature: { 'temperature:0': { addr: 'offline-fixture' } } }),
+			},
+			attestations: [],
+			bindingFingerprint: fingerprint,
+		});
+		const branchHistory = (claimId: string): Omit<VirtualThermostatBranchRuntimeEntity, 'claim'> => ({
+			claimId,
+			activity: 'unknown',
+			lastVerifiedOffAt: null,
+			releaseProofId: null,
+			releaseAttempts: 3,
+			nextReleaseAt: null,
+			fault: 'retained_offline_history',
+			floorLatched: null,
+		});
+
+		it('reads complete final native claim selectors before first controller persistence and completes first configuration', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const trace: string[] = [];
+			const selected: { table: string; claimId: string; rows: number; runner: import('typeorm').QueryRunner }[] = [];
+			let persistenceStarted = false;
+			const observer = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+					if (event.query.startsWith('INSERT INTO "devices_virtual_thermostat_configs"')) {
+						persistenceStarted = true;
+						trace.push('controller_insert');
+					}
+				},
+				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+					if (persistenceStarted || !event.success) return;
+					for (const table of [
+						'devices_virtual_thermostat_branch_runtime',
+						'devices_virtual_thermostat_installation_audit',
+					]) {
+						if (!event.query.startsWith(`SELECT * FROM "${table}" WHERE "claimId" IN (`)) continue;
+						const parameters: readonly unknown[] = event.parameters ?? [];
+						const raw: unknown = event.rawResults;
+						if (parameters.length !== 1 || typeof parameters[0] !== 'string' || !Array.isArray(raw))
+							throw new Error('Actual final claim selector evidence required');
+						expect(event.queryRunner.isTransactionActive).toBe(true);
+						selected.push({ table, claimId: parameters[0], rows: raw.length, runner: event.queryRunner });
+						trace.push(table);
+					}
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				const configured = await configs.configure(controller, dto(sensor, heat));
+				const claims = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, {
+					controllerId: controller,
+				});
+				expect(claims).toHaveLength(1);
+				const claim = claims[0];
+				if (!claim) throw new Error('Actual newly persisted claim required');
+				expect(configured.revision).toBe(1);
+				expect(selected.map(({ table, claimId, rows }) => ({ table, claimId, rows }))).toEqual([
+					{ table: 'devices_virtual_thermostat_branch_runtime', claimId: claim.id, rows: 0 },
+					{ table: 'devices_virtual_thermostat_installation_audit', claimId: claim.id, rows: 0 },
+				]);
+				expect(selected[0]?.runner).toBe(selected[1]?.runner);
+				expect(trace.slice(0, 3)).toEqual([
+					'devices_virtual_thermostat_branch_runtime',
+					'devices_virtual_thermostat_installation_audit',
+					'controller_insert',
+				]);
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
+		});
+
+		it('extends complete membership without changing retained native history and refuses unresolved removal without churn', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				first = await actuator(),
+				second = await actuator('A8032ABE5099');
+			const input = dto(sensor, first);
+			const configured = await configs.configure(controller, input);
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				controllerId: controller,
+			});
+			await database.manager.insert(VirtualThermostatBranchRuntimeEntity, branchHistory(claim.id));
+			await database.manager.insert(ThermostatInstallationAuditEntity, {
+				id: uuid(),
+				claimId: claim.id,
+				revision: 1,
+				action: 'staged',
+				actorId: null,
+				occurredAt: new Date('2026-10-01T00:00:00.000Z'),
+				snapshot: auditSnapshot(claim.contractFingerprint),
+			});
+			const branch = await database.query(
+				'SELECT * FROM "devices_virtual_thermostat_branch_runtime" ORDER BY "claimId"',
+			);
+			const audit = await database.query('SELECT * FROM "devices_virtual_thermostat_installation_audit" ORDER BY "id"');
+			input.actuators.push({ role: 'heating', sourcePropertyId: second, leaseSeconds: 30 });
+			await protectMembers(input);
+			const extended = await configs.configure(controller, { ...input, expectedRevision: configured.revision });
+			expect(extended.revision).toBe(configured.revision + 1);
+			const claims = await database.manager.findBy(VirtualThermostatActuatorClaimEntity, { controllerId: controller });
+			expect(claims).toHaveLength(2);
+			expect(claims.some((row) => row.id === claim.id)).toBe(true);
+			expect(
+				await database.query('SELECT * FROM "devices_virtual_thermostat_branch_runtime" ORDER BY "claimId"'),
+			).toEqual(branch);
+			expect(
+				await database.query('SELECT * FROM "devices_virtual_thermostat_installation_audit" ORDER BY "id"'),
+			).toEqual(audit);
+			const beforeRemoval = await whole();
+			await expect(
+				configs.configure(controller, {
+					...input,
+					expectedRevision: extended.revision,
+					actuators: [input.actuators[0]],
+				}),
+			).rejects.toThrow('cannot be detached');
+			expect(await whole()).toEqual(beforeRemoval);
+		});
+
+		it('rolls back an actual no-FK audit insert after the final-selector read and before the original controller INSERT', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const before = await whole();
+			let selectedClaim: string | undefined, selectedRunner: import('typeorm').QueryRunner | undefined;
+			let expectedRead = 0,
+				inserted = 0,
+				controllerWrites = 0,
+				rollbacks = 0;
+			const observer = {
+				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+					if (!event.success) return;
+					if (
+						!selectedClaim &&
+						event.query.startsWith('SELECT * FROM "devices_virtual_thermostat_installation_audit" WHERE "claimId" IN (')
+					) {
+						const parameters: readonly unknown[] = event.parameters ?? [];
+						if (parameters.length !== 1 || typeof parameters[0] !== 'string')
+							throw new Error('Original planned claim required');
+						selectedClaim = parameters[0];
+						selectedRunner = event.queryRunner;
+						expectedRead++;
+						expect(event.rawResults).toEqual([]);
+					}
+					if (event.query.startsWith('INSERT INTO "devices_virtual_thermostat_configs"')) controllerWrites++;
+				},
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> => {
+					if (inserted || !event.query.startsWith('INSERT INTO "devices_virtual_thermostat_configs"')) return;
+					if (!selectedClaim || !selectedRunner) throw new Error('Expected read must precede mutation');
+					inserted++;
+					expect(event.queryRunner).toBe(selectedRunner);
+					expect(event.manager.queryRunner).toBe(selectedRunner);
+					await event.manager.insert(ThermostatInstallationAuditEntity, {
+						id: uuid(),
+						claimId: selectedClaim,
+						revision: 1,
+						action: 'staged',
+						actorId: null,
+						occurredAt: new Date('2026-10-01T00:00:00.000Z'),
+						snapshot: auditSnapshot('unexpected_preapply_history'),
+					});
+					expect(await event.manager.countBy(ThermostatInstallationAuditEntity, { claimId: selectedClaim })).toBe(1);
+				},
+				afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => {
+					if (event.queryRunner === selectedRunner) rollbacks++;
+				},
+			};
+			const changed = jest.fn();
+			events.on(THERMOSTAT_CONFIG_CHANGED, changed);
+			database.subscribers.push(observer);
+			try {
+				await expect(configs.configure(controller, dto(sensor, heat))).rejects.toThrow(
+					'Thermostat revision or private initialization changed.',
+				);
+				expect(expectedRead).toBe(1);
+				expect(inserted).toBe(1);
+				expect(controllerWrites).toBe(1);
+				expect(rollbacks).toBe(1);
+				expect(changed).not.toHaveBeenCalled();
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				events.off(THERMOSTAT_CONFIG_CHANGED, changed);
+			}
+			expect(await whole()).toEqual(before);
+		});
+
+		it('rolls back a same-revision retained branch history mutation after the independent plan read', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator(),
+				input = dto(sensor, heat);
+			const configured = await configs.configure(controller, input);
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				controllerId: controller,
+			});
+			await database.manager.insert(VirtualThermostatBranchRuntimeEntity, branchHistory(claim.id));
+			const before = await whole();
+			let mutated = false,
+				updates = 0,
+				rollbacks = 0;
+			let runner: import('typeorm').QueryRunner | undefined;
+			const observer = {
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> => {
+					if (mutated || !event.query.startsWith('UPDATE "devices_virtual_thermostat_configs" SET ')) return;
+					mutated = true;
+					runner = event.queryRunner;
+					expect(event.manager.queryRunner).toBe(runner);
+					await event.manager.update(
+						VirtualThermostatBranchRuntimeEntity,
+						{ claimId: claim.id },
+						{ releaseAttempts: 4 },
+					);
+					expect(
+						(await event.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id }))
+							.releaseAttempts,
+					).toBe(4);
+				},
+				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+					if (event.success && event.query.startsWith('UPDATE "devices_virtual_thermostat_configs" SET ')) updates++;
+				},
+				afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => {
+					if (event.queryRunner === runner) rollbacks++;
+				},
+			};
+			database.subscribers.push(observer);
+			try {
+				await expect(
+					configs.configure(controller, {
+						...input,
+						expectedRevision: configured.revision,
+						policy: { ...input.policy, heatingSetpoint: 21 },
+					}),
+				).rejects.toThrow('Thermostat revision or private initialization changed.');
+				expect(mutated).toBe(true);
+				expect(updates).toBe(1);
+				expect(rollbacks).toBe(1);
+			} finally {
+				database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+			}
+			expect(await whole()).toEqual(before);
+		});
+	});
+	// END independently planned final claim-selector regression drafts
+	// BEGIN original publication A versus terminal B probe regression drafts (UNEXECUTED)
+	describe('original preterminal publication and terminal response probes', () => {
+		type PublicationArguments = Parameters<VirtualThermostatConfigService['publishExistingAcknowledged']>;
+		it('completes real publication and reconciliation before one terminal prepare and both terminal probes', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const trace: string[] = [];
+			const publisherView: OriginalFunctions<Pick<VirtualThermostatConfigService, 'publishExistingAcknowledged'>> =
+				configs;
+			const comfortView: OriginalFunctions<Pick<VirtualThermostatComfortService, 'reconcileExistingAcknowledged'>> =
+				comfort;
+			const writerView: OriginalFunctions<
+				Pick<ClimateAutomationWriterService, 'prepareExistingRecoveryForPlan' | 'probeExistingPlanResponse'>
+			> = writer;
+			const publish = publisherView.publishExistingAcknowledged,
+				reconcile = comfortView.reconcileExistingAcknowledged;
+			const prepare = writerView.prepareExistingRecoveryForPlan,
+				terminal = writerView.probeExistingPlanResponse;
+			const publication = jest.spyOn(configs, 'publishExistingAcknowledged').mockImplementation((...args) => {
+				expect(writer.isExistingPlanAcknowledged(args[1].descriptor)).toBe(true);
+				expect(structure.hasCurrentStructuralLease()).toBe(false);
+				expect(hasCurrentSqliteConnectionLease(database)).toBe(false);
+				trace.push('publication');
+				return publish.call(configs, ...args);
+			});
+			const reconciliation = jest.spyOn(comfort, 'reconcileExistingAcknowledged').mockImplementation((...args) => {
+				trace.push('reconcile');
+				return reconcile.call(comfort, ...args);
+			});
+			const preparation = jest.spyOn(writer, 'prepareExistingRecoveryForPlan').mockImplementation((...args) => {
+				trace.push('prepare');
+				return prepare.call(writer, ...args);
+			});
+			const probes = jest.spyOn(writer, 'probeExistingPlanResponse').mockImplementation((...args) => {
+				trace.push('terminal');
+				return terminal.call(writer, ...args);
+			});
+			const changed = jest.fn();
+			events.on(THERMOSTAT_CONFIG_CHANGED, changed);
+			registerOriginal();
+			try {
+				const result = await configs.configure(controller, dto(sensor, heat));
+				expect(result.revision).toBe(1);
+				expect(trace).toEqual(['publication', 'reconcile', 'prepare', 'terminal', 'terminal']);
+				expect(publication).toHaveBeenCalledTimes(1);
+				expect(reconciliation).toHaveBeenCalledTimes(1);
+				expect(preparation).toHaveBeenCalledTimes(1);
+				expect(probes).toHaveBeenCalledTimes(2);
+				expect(changed).toHaveBeenCalledTimes(1);
+				expect(
+					(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }))
+						.revision,
+				).toBe(1);
+				expect(
+					(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller }))
+						.manualHold,
+				).toBe(true);
+			} finally {
+				events.off(THERMOSTAT_CONFIG_CHANGED, changed);
+				publication.mockRestore();
+				reconciliation.mockRestore();
+				preparation.mockRestore();
+				probes.mockRestore();
+			}
+		});
+
+		it('refuses a genuine early terminal descriptor probe before SQL then still completes the original publication and terminal response', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const view: OriginalFunctions<Pick<VirtualThermostatConfigService, 'publishExistingAcknowledged'>> = configs;
+			const original = view.publishExistingAcknowledged;
+			let attempted = 0,
+				earlyQueries = 0;
+			const publication = jest.spyOn(configs, 'publishExistingAcknowledged').mockImplementation(async (...args) => {
+				attempted++;
+				const descriptor = args[1].descriptor;
+				expect(writer.isExistingPlanAcknowledged(descriptor)).toBe(true);
+				const observer = {
+					beforeQuery: (): void => {
+						earlyQueries++;
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					await expect(writer.probeExistingPlanResponse(descriptor)).rejects.toThrow(
+						'Original response plan unavailable',
+					);
+				} finally {
+					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				}
+				expect(earlyQueries).toBe(0);
+				expect(writer.isExistingPlanAcknowledged(descriptor)).toBe(true);
+				return original.call(configs, ...args);
+			});
+			registerOriginal();
+			try {
+				const result = await configs.configure(controller, dto(sensor, heat));
+				expect(result.revision).toBe(1);
+				expect(attempted).toBe(1);
+				expect(earlyQueries).toBe(0);
+				expect(
+					(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }))
+						.revision,
+				).toBe(1);
+			} finally {
+				publication.mockRestore();
+			}
+		});
+
+		it('keeps a committed peer same-revision native fact after original release and refuses A before its first publication submission', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const propertyId = await setting(controller, ChannelCategory.HEATER, PropertyCategory.TEMPERATURE);
+			const input = dto(sensor, heat);
+			input.settings = [{ propertyId, setting: 'heating_setpoint' }];
+			const view: OriginalFunctions<Pick<VirtualThermostatConfigService, 'publishExistingAcknowledged'>> = configs;
+			const original = view.publishExistingAcknowledged;
+			let entered = 0,
+				committedRevision: number | undefined;
+			const writes = jest.spyOn(values, 'writeMutationWithState');
+			const publication = jest.spyOn(configs, 'publishExistingAcknowledged').mockImplementation(async (...args) => {
+				entered++;
+				expect(writer.isExistingPlanAcknowledged(args[1].descriptor)).toBe(true);
+				expect(structure.hasCurrentStructuralLease()).toBe(false);
+				expect(hasCurrentSqliteConnectionLease(database)).toBe(false);
+				committedRevision = (
+					await second.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })
+				).revision;
+				await second.query('UPDATE "devices_module_devices" SET "name" = ? WHERE "id" = ?', [
+					'Committed peer B name',
+					controller,
+				]);
+				expect((await second.manager.findOneByOrFail(DeviceEntity, { id: controller })).name).toBe(
+					'Committed peer B name',
+				);
+				return original.call(configs, ...args);
+			});
+			const changed = jest.fn();
+			events.on(THERMOSTAT_CONFIG_CHANGED, changed);
+			registerOriginal();
+			try {
+				await expect(configs.configure(controller, input)).rejects.toMatchObject({ commitOutcome: 'committed' });
+				expect(entered).toBe(1);
+				expect(committedRevision).toBe(1);
+				expect(writes).not.toHaveBeenCalled();
+				expect(changed).not.toHaveBeenCalled();
+				const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: controller,
+				});
+				expect(after.revision).toBe(1);
+				expect((await database.manager.findOneByOrFail(DeviceEntity, { id: controller })).name).toBe(
+					'Committed peer B name',
+				);
+				expect(
+					(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller }))
+						.slotRevision,
+				).toBe(1);
+			} finally {
+				events.off(THERMOSTAT_CONFIG_CHANGED, changed);
+				publication.mockRestore();
+				writes.mockRestore();
+			}
+		});
+
+		it('refuses a foreign writer and later closed original publication lease without SQL or changes to the successful fixed result', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const foreignRegistry = new ClimateAutomationRegistryService();
+			const foreign = new ClimateAutomationWriterService(
+				database,
+				structure,
+				foreignRegistry,
+				new NestConfigService({ FB_CLI: 'off' }),
+			);
+			const view: OriginalFunctions<Pick<VirtualThermostatConfigService, 'publishExistingAcknowledged'>> = configs;
+			const original = view.publishExistingAcknowledged;
+			let captured: PublicationArguments[0] | undefined,
+				foreignQueries = 0,
+				closedQueries = 0;
+			const publication = jest.spyOn(configs, 'publishExistingAcknowledged').mockImplementation(async (...args) => {
+				captured = args[0];
+				const observer = {
+					beforeQuery: (): void => {
+						foreignQueries++;
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					await expect(foreign.probeExistingResponse(args[0])).rejects.toThrow(
+						'Original controller response unavailable',
+					);
+				} finally {
+					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				}
+				expect(foreignQueries).toBe(0);
+				return original.call(configs, ...args);
+			});
+			registerOriginal();
+			try {
+				const result = await configs.configure(controller, dto(sensor, heat));
+				if (!captured) throw new Error('Actual original publication lease required');
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: controller,
+				});
+				const observer = {
+					beforeQuery: (): void => {
+						closedQueries++;
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					await expect(writer.probeExistingResponse(captured)).rejects.toThrow();
+				} finally {
+					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				}
+				expect(closedQueries).toBe(0);
+				expect(foreignQueries).toBe(0);
+				expect(result.revision).toBe(1);
+				expect(
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }),
+				).toEqual(before);
+			} finally {
+				publication.mockRestore();
+				foreignRegistry.onModuleDestroy();
+			}
+		});
+	});
+	// END original publication A versus terminal B probe regression drafts
+	// BEGIN original native intent INSERT delimiter regression drafts (SOURCE-ONLY; UNEXECUTED)
+	describe('original native intent and actual ORM INSERT delimiters', () => {
+		const protectedRows = async () => ({
+			configurations: await database.query<unknown[]>(
+				'SELECT * FROM "devices_virtual_thermostat_configs" ORDER BY "controllerId"',
+			),
+			slots: await database.query<unknown[]>(
+				'SELECT * FROM "devices_module_climate_automation_slots" ORDER BY "controllerId"',
+			),
+			sources: await database.query<unknown[]>(
+				'SELECT * FROM "devices_module_climate_automation_sources" ORDER BY "generationId"',
+			),
+		});
+
+		it('keeps the genuine original intent current across actual adjacent-column journal, runtime and branch INSERTs', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const configured = await configs.configure(controller, dto(sensor, heat));
+			const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
+				controllerId: controller,
+			});
+			const commandTable = database.getMetadata(VirtualThermostatCommandEntity).tableName,
+				runtimeTable = database.getMetadata(VirtualThermostatRuntimeEntity).tableName,
+				branchTable = database.getMetadata(VirtualThermostatBranchRuntimeEntity).tableName;
+			const tables = [commandTable, runtimeTable, branchTable],
+				inserts: string[] = [];
+			const before = await protectedRows();
+			expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId: controller })).toBe(0);
+			expect(await database.manager.countBy(VirtualThermostatRuntimeEntity, { controllerId: controller })).toBe(0);
+			expect(await database.manager.countBy(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id })).toBe(0);
+			const intent = await comfort.readIntentInManager(database.manager, row);
+			const observer = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+					const table = tables.find((name) => event.query.startsWith(`INSERT INTO "${name}"`));
+					if (table === undefined) return;
+					expect(event.query.startsWith(`INSERT INTO "${table}"(`)).toBe(true);
+					inserts.push(table);
+				},
+			};
+			database.subscribers.push(observer);
+			const command = {
+				id: uuid(),
+				controllerId: controller,
+				claimId: claim.id,
+				claimRevision: claim.revision,
+				configurationRevision: configured.revision,
+				decisionRevision: 1,
+				action: 'off',
+				status: 'prepared',
+				preparedAt: new Date(),
+				dispatchedAt: null,
+				settledAt: null,
+				proofId: null,
+				fault: null,
+			} satisfies Omit<VirtualThermostatCommandEntity, 'config' | 'claim'>;
+			try {
+				expect(intent.isCurrent()).toBe(true);
+				await database.manager.insert(VirtualThermostatCommandEntity, command);
+				expect(inserts).toEqual([commandTable]);
+				expect(intent.isCurrent()).toBe(true);
+				await database.manager.insert(VirtualThermostatRuntimeEntity, {
+					controllerId: controller,
+					decisionRevision: 1,
+					configurationRevision: configured.revision,
+					floorLatched: false,
+					heuristicHold: null,
+					previousDemand: 'off',
+					reasons: [],
+					evaluatedAt: command.preparedAt,
+				});
+				expect(inserts).toEqual([commandTable, runtimeTable]);
+				expect(intent.isCurrent()).toBe(true);
+				await database.manager.insert(VirtualThermostatBranchRuntimeEntity, {
+					claimId: claim.id,
+					activity: 'unknown',
+					lastVerifiedOffAt: null,
+					releaseProofId: null,
+					releaseAttempts: 0,
+					nextReleaseAt: null,
+					fault: null,
+					floorLatched: null,
+				});
+				expect(inserts).toEqual(tables);
+				expect(intent.isCurrent()).toBe(true);
+				expect(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).toEqual(
+					expect.objectContaining(command),
+				);
+				expect(await database.manager.countBy(VirtualThermostatRuntimeEntity, { controllerId: controller })).toBe(1);
+				expect(await database.manager.countBy(VirtualThermostatBranchRuntimeEntity, { claimId: claim.id })).toBe(1);
+				expect(await protectedRows()).toEqual(before);
+			} finally {
+				intent.close();
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+			}
+		});
+
+		it.each(['configuration', 'slot', 'empty-source-attempt'])(
+			'closes the original intent on a protected %s same-value write even after native rollback',
+			async (kind) => {
+				const controller = await owner(),
+					sensor = await ambient(),
+					heat = await actuator();
+				await configs.configure(controller, dto(sensor, heat));
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+				const before = await protectedRows();
+				// There is no producer/adoption permission: exercise an empty source-table write attempt, not a fabricated owner.
+				expect(before.sources).toEqual([]);
+				const table = database.getMetadata(
+					kind === 'configuration'
+						? VirtualThermostatConfigEntity
+						: kind === 'slot'
+							? ClimateAutomationSlotEntity
+							: ClimateAutomationSourceEntity,
+				).tableName;
+				const column = kind === 'slot' ? 'slotRevision' : 'revision';
+				const predicate = kind === 'empty-source-attempt' ? '0' : '"controllerId" = ?';
+				const parameters = kind === 'empty-source-attempt' ? [] : [controller];
+				const intent = await comfort.readIntentInManager(database.manager, row);
+				const rollback = new Error('Original protected write test rollback');
+				try {
+					expect(intent.isCurrent()).toBe(true);
+					await expect(
+						database.transaction(async (manager) => {
+							await manager.query(`UPDATE "${table}" SET "${column}" = "${column}" WHERE ${predicate}`, parameters);
+							expect(intent.isCurrent()).toBe(false);
+							throw rollback;
+						}),
+					).rejects.toBe(rollback);
+					expect(await protectedRows()).toEqual(before);
+					expect(intent.isCurrent()).toBe(false);
+				} finally {
+					intent.close();
+				}
+			},
+		);
+
+		it.each(['configuration', 'slot'])(
+			'closes the original intent before a real adjacent-column duplicate %s INSERT is rejected',
+			async (kind) => {
+				const controller = await owner(),
+					sensor = await ambient(),
+					heat = await actuator();
+				await configs.configure(controller, dto(sensor, heat));
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+				const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
+				const table = database.getMetadata(
+					kind === 'configuration' ? VirtualThermostatConfigEntity : ClimateAutomationSlotEntity,
+				).tableName;
+				const before = await protectedRows();
+				const intent = await comfort.readIntentInManager(database.manager, row);
+				let insertAttempts = 0;
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (!event.query.startsWith(`INSERT INTO "${table}"`)) return;
+						expect(event.query.startsWith(`INSERT INTO "${table}"(`)).toBe(true);
+						insertAttempts++;
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					expect(intent.isCurrent()).toBe(true);
+					const insert =
+						kind === 'configuration'
+							? database.manager.createQueryBuilder().insert().into(VirtualThermostatConfigEntity).values(row).execute()
+							: database.manager.createQueryBuilder().insert().into(ClimateAutomationSlotEntity).values(slot).execute();
+					await expect(insert).rejects.toThrow(`UNIQUE constraint failed: ${table}.controllerId`);
+					expect(insertAttempts).toBe(1);
+					expect(intent.isCurrent()).toBe(false);
+					expect(await protectedRows()).toEqual(before);
+					expect(intent.isCurrent()).toBe(false);
+				} finally {
+					intent.close();
+					const index = database.subscribers.indexOf(observer);
+					if (index >= 0) database.subscribers.splice(index, 1);
+				}
+			},
+		);
+
+		it.each(['unknown-table-lookalike', 'adjacent-UPDATE', 'adjacent-DELETE', 'compound-INSERT'])(
+			'keeps %s attempts outside original intent membership even when no protected row changes',
+			async (kind) => {
+				const controller = await owner(),
+					sensor = await ambient(),
+					heat = await actuator();
+				await configs.configure(controller, dto(sensor, heat));
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+				const table = database.getMetadata(VirtualThermostatCommandEntity).tableName;
+				const unknown = `${table}_unregistered_probe`;
+				expect(database.entityMetadatas.some((metadata) => metadata.tableName === unknown)).toBe(false);
+				const before = await protectedRows();
+				const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId: controller });
+				expect(journal).toEqual([]);
+				const query =
+					kind === 'unknown-table-lookalike'
+						? `INSERT INTO "${unknown}"("id") VALUES (?)`
+						: kind === 'adjacent-UPDATE'
+							? `UPDATE "${table}"("id") VALUES (?)`
+							: kind === 'adjacent-DELETE'
+								? `DELETE FROM "${table}"("id")`
+								: `INSERT INTO "${table}"("id") SELECT "id" FROM "${table}" WHERE 0; SELECT 1`;
+				const parameters = kind === 'unknown-table-lookalike' || kind === 'adjacent-UPDATE' ? [uuid()] : [];
+				const intent = await comfort.readIntentInManager(database.manager, row);
+				try {
+					expect(intent.isCurrent()).toBe(true);
+					const attempt = database.query(query, parameters);
+					if (kind === 'compound-INSERT') await attempt;
+					else await expect(attempt).rejects.toThrow();
+					expect(intent.isCurrent()).toBe(false);
+					expect(await protectedRows()).toEqual(before);
+					expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId: controller })).toEqual(
+						journal,
+					);
+					expect(intent.isCurrent()).toBe(false);
+				} finally {
+					intent.close();
+				}
+			},
+		);
+	});
+	// END original native intent INSERT delimiter regression drafts
+
+	// BEGIN R21 additive actual core capture and original-clock drafts (UNRUN)
+	describe('R21 exact private capture ownership on the real closed settle root', () => {
+		const prepareCapture = async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const input = dto(sensor, heat);
+			await protectMembers(input);
+			await configs.configure(controller, input);
+			let row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+			await comfort.configure(
+				controller,
+				{ expected_revision: row.revision, expected_graph_revision: await graph.revision() },
+				{
+					heating_range: { minimum: 10, maximum: 30 },
+					cooling_range: null,
+					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+				},
+			);
+			row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+			await comfort.override(
+				controller,
+				{ expected_revision: row.revision, expected_graph_revision: await graph.revision() },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 60_000).toISOString() },
+				'R21-ordinary-owner',
+			);
+			const original: OriginalFunctions<
+				Pick<ClimateAutomationWriterService, 'registerRuntimeSettlementConsumer' | 'captureRuntimeSettlement'>
+			> = writer;
+			const register = original.registerRuntimeSettlementConsumer,
+				capture = original.captureRuntimeSettlement;
+			let consumer: ClimateAutomationRuntimeConsumer | undefined;
+			const checkpoints: ClimateAutomationRuntimeCheckpoint[] = [];
+			const transfers: { before: readonly object[]; after: readonly object[] }[] = [];
+			const registration = jest.spyOn(writer, 'registerRuntimeSettlementConsumer').mockImplementation((binding) => {
+				const token = register.call(writer, binding);
+				consumer = token;
+				return token;
+			});
+			const consumption = jest.spyOn(writer, 'captureRuntimeSettlement').mockImplementation((intent, outcome) => {
+				const before = [...database.subscribers];
+				const token = capture.call(writer, intent, outcome);
+				if (token) {
+					checkpoints.push(token);
+					transfers.push({ before, after: [...database.subscribers] });
+				}
+				return token;
+			});
+			// A real runtime owns the consumer. An empty real platform registry provides NO physical admission.
+			// These cases prove core capture/clock/lifecycle, not installed qualification or successful native OFF.
+			const transport = new VirtualThermostatTransportService(new PlatformRegistryService(), values);
+			const runtime = new VirtualThermostatRuntimeService(
+				database,
+				structure,
+				claims,
+				new VirtualThermostatInputsService(database, values),
+				transport,
+				values,
+				pipeline.get(PropertyProducerRegistryService),
+				events,
+				graph,
+				comfort,
+				new NestConfigService({ FB_CLI: 'off' }),
+			);
+			const close = (): void => {
+				runtime.onModuleDestroy();
+				transport.onModuleDestroy();
+				consumption.mockRestore();
+				registration.mockRestore();
+			};
+			return { controller, runtime, checkpoints, transfers, consumer: () => consumer, close };
+		};
+		it('public settle and GET never transfer new observer resources when their fixed outcomes are discarded', async () => {
+			const f = await prepareCapture();
+			try {
+				const before = database.subscribers.length;
+				await comfort.settle(f.controller);
+				await comfort.get(f.controller);
+				await comfort.settle(f.controller);
+				expect(f.checkpoints).toEqual([]);
+				expect(f.consumer()).toBeUndefined();
+				expect(database.subscribers).toHaveLength(before);
+				expect(JSON.stringify(await comfort.get(f.controller))).not.toMatch(/checkpoint|consumer|captureIntent/);
+			} finally {
+				f.close();
+			}
+		});
+		// BEGIN R25 detached actual GET and negative private-envelope drafts (UNRUN)
+		it('GET freezes only detached response descendants and preserves the original loaded row and intent checks', async () => {
+			const original: OriginalFunctions<Pick<VirtualThermostatComfortService, 'readIntentInManager'>> = comfort;
+			const read = original.readIntentInManager;
+			const originalWriter: OriginalFunctions<
+				Pick<ClimateAutomationWriterService, 'isExistingIntentCurrent' | 'closeExistingIntent'>
+			> = writer;
+			const check = originalWriter.isExistingIntentCurrent,
+				close = originalWriter.closeExistingIntent;
+			let observing = false;
+			const rows: VirtualThermostatConfigEntity[] = [];
+			const descriptors: { object: object; fields: PropertyDescriptorMap }[] = [];
+			const checks: boolean[] = [];
+			let closes = 0;
+			let projection:
+				| Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>>['projection']
+				| undefined;
+			const recordTree = (value: unknown): void => {
+				if (!value || typeof value !== 'object') return;
+				const fields = Object.getOwnPropertyDescriptors(value);
+				descriptors.push({ object: value, fields });
+				for (const field of Object.values(fields)) if (Object.hasOwn(field, 'value')) recordTree(field.value);
+			};
+			const reading = jest.spyOn(comfort, 'readIntentInManager').mockImplementation((...args) => {
+				const pending = read.call(comfort, ...args);
+				if (observing) {
+					rows.push(args[1]);
+					recordTree(args[1].comfort);
+					void pending.then(
+						(view) => {
+							projection = view.projection;
+						},
+						() => {
+							/* Original Promise retains rejection. */
+						},
+					);
+				}
+				return pending;
+			});
+			const checking = jest.spyOn(writer, 'isExistingIntentCurrent').mockImplementation((...args) => {
+				const result = check.call(writer, ...args);
+				if (observing) checks.push(result);
+				return result;
+			});
+			const closing = jest.spyOn(writer, 'closeExistingIntent').mockImplementation((...args) => {
+				if (observing) closes++;
+				return close.call(writer, ...args);
+			});
+			registerOriginal();
+			const f = await prepareCapture();
+			try {
+				observing = true;
+				const result = await comfort.get(f.controller);
+				observing = false;
+				expect(rows).toHaveLength(1);
+				expect(checks).toEqual([true]); // SAME original final GET invocation, never a second guard probe.
+				expect(closes).toBe(1);
+				expect(projection).toBeDefined();
+				const row = rows[0];
+				expect(result).toEqual({
+					controller: f.controller,
+					revision: row.revision,
+					graph_revision: await graph.revision(),
+					configuration: row.comfort,
+					effective: effectiveThermostatComfort(row.policy, row.comfort, projection),
+					clock_policy: 'bounded_absolute_recovery_with_uncertainty_inhibit',
+				});
+				expect(Object.keys(result).sort()).toEqual([
+					'clock_policy',
+					'configuration',
+					'controller',
+					'effective',
+					'graph_revision',
+					'revision',
+				]);
+				expect(result.configuration).not.toBe(row.comfort);
+				expect(result.configuration?.presets).not.toBe(row.comfort?.presets);
+				expect(result.configuration?.temporary_override?.resolved_setpoints).not.toBe(
+					row.comfort?.temporary_override?.resolved_setpoints,
+				);
+				const checkFrozen = (value: unknown): void => {
+					if (!value || typeof value !== 'object') return;
+					expect(Object.isFrozen(value)).toBe(true);
+					for (const field of Object.values(Object.getOwnPropertyDescriptors(value)))
+						if (Object.hasOwn(field, 'value')) checkFrozen(field.value);
+				};
+				checkFrozen(result);
+				expect(descriptors.length).toBeGreaterThan(2);
+				for (const retained of descriptors)
+					expect(Object.getOwnPropertyDescriptors(retained.object)).toEqual(retained.fields);
+				expect(JSON.stringify(result)).not.toMatch(/checkpoint|consumer|captureIntent/);
+			} finally {
+				observing = false;
+				f.close();
+				closing.mockRestore();
+				checking.mockRestore();
+				reading.mockRestore();
+			}
+		});
+
+		it('GET refuses its original intent after a real same-revision native write before the final guard', async () => {
+			const original: OriginalFunctions<Pick<VirtualDependencyGraphService, 'revision'>> = graph;
+			const revision = original.revision;
+			let armed = false,
+				intentRead = false,
+				changed = 0;
+			const originalComfort: OriginalFunctions<Pick<VirtualThermostatComfortService, 'readIntentInManager'>> = comfort;
+			const readIntent = originalComfort.readIntentInManager;
+			const intentReading = jest.spyOn(comfort, 'readIntentInManager').mockImplementation((...args) => {
+				const result = readIntent.call(comfort, ...args);
+				if (armed) intentRead = true;
+				return result;
+			});
+			let controller = '';
+			const reading = jest.spyOn(graph, 'revision').mockImplementation(async (...args) => {
+				const result = await revision.call(graph, ...args);
+				if (armed && intentRead) {
+					armed = false;
+					await database.query(
+						'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?',
+						[controller],
+					);
+					changed++;
+				}
+				return result;
+			});
+			registerOriginal();
+			const f = await prepareCapture();
+			controller = f.controller;
+			try {
+				// Settle first so the armed graph read belongs to GET's post-intent read, not its preceding root.
+				await comfort.settle(controller);
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: controller,
+				});
+				armed = true;
+				await expect(comfort.get(controller)).rejects.toThrow('Original thermostat intent changed.');
+				expect(changed).toBe(1);
+				const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: controller,
+				});
+				expect(after.revision).toBe(before.revision);
+				expect(f.checkpoints).toEqual([]);
+			} finally {
+				armed = false;
+				f.close();
+				reading.mockRestore();
+				intentReading.mockRestore();
+			}
+		});
+
+		it.each(['controller', 'provider', 'kind', 'accessor', 'inherited'])(
+			'private %s envelope burns its genuine capture without getters, provider hold, environment or SQL',
+			async (invalid) => {
+				const original: OriginalFunctions<
+					Pick<VirtualThermostatConfigService, 'holdExistingAtEntry' | 'captureExistingEnvironment'>
+				> = configs;
+				const hold = original.holdExistingAtEntry,
+					environment = original.captureExistingEnvironment;
+				const holds = jest
+					.spyOn(configs, 'holdExistingAtEntry')
+					.mockImplementation((...args) => hold.call(configs, ...args));
+				const captures = jest
+					.spyOn(configs, 'captureExistingEnvironment')
+					.mockImplementation((...args) => environment.call(configs, ...args));
+				registerOriginal();
+				const f = await prepareCapture();
+				try {
+					await f.runtime.onApplicationBootstrap();
+					const consumer = f.consumer();
+					if (!consumer) throw new Error('Actual runtime consumer missing');
+					const token = writer.armRuntimeSettlementCapture(consumer, f.controller);
+					let getters = 0,
+						queries = 0;
+					const request: {
+						providerKey: string;
+						controllerId: string;
+						kind: 'settle-override:v1' | 'configure-existing:v1';
+						input: unknown;
+					} = {
+						providerKey: 'virtual-thermostat:v1',
+						controllerId: f.controller,
+						kind: 'settle-override:v1',
+						input: {},
+					};
+					Object.defineProperty(request, 'input', {
+						get: () => {
+							getters++;
+							throw new Error('Invalid private input getter executed');
+						},
+					});
+					if (invalid === 'controller') request.controllerId = uuid();
+					if (invalid === 'provider') request.providerKey = 'wrong-provider';
+					if (invalid === 'kind') request.kind = 'configure-existing:v1';
+					if (invalid === 'accessor')
+						Object.defineProperty(request, 'controllerId', {
+							get: () => {
+								getters++;
+								return f.controller;
+							},
+						});
+					if (invalid === 'inherited') {
+						Reflect.deleteProperty(request, 'controllerId');
+						Object.setPrototypeOf(request, { controllerId: f.controller });
+					}
+					const observer = {
+						beforeQuery: (): void => {
+							queries++;
+						},
+					};
+					database.subscribers.push(observer);
+					holds.mockClear();
+					captures.mockClear();
+					try {
+						await expect(writer.commitExistingControllerForRuntime(request, token)).rejects.toThrow();
+						expect(getters).toBe(0);
+						expect(queries).toBe(0);
+						expect(holds).not.toHaveBeenCalled();
+						expect(captures).not.toHaveBeenCalled();
+						await expect(
+							writer.commitExistingControllerForRuntime(
+								{
+									providerKey: 'virtual-thermostat:v1',
+									controllerId: f.controller,
+									kind: 'settle-override:v1',
+									input: {},
+								},
+								token,
+							),
+						).rejects.toThrow();
+						expect(queries).toBe(0);
+						expect(holds).not.toHaveBeenCalled();
+						expect(captures).not.toHaveBeenCalled();
+					} finally {
+						writer.closeRuntimeSettlementCapture(token);
+						database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+					}
+				} finally {
+					f.close();
+					captures.mockRestore();
+					holds.mockRestore();
+				}
+			},
+		);
+		// BEGIN R27 original unknown negative rejection drafts (UNRUN)
+		it.each<{ label: string; cause: unknown }>([
+			{ label: 'Error', cause: new Error('Original descriptor failure') },
+			{ label: 'string', cause: 'Original descriptor string' },
+			{ label: 'undefined', cause: undefined },
+			{ label: 'null', cause: null },
+		])(
+			'private descriptor failure $label returns a genuine Promise with the exact original rejection and burns only its capture',
+			async ({ cause }) => {
+				const original: OriginalFunctions<
+					Pick<VirtualThermostatConfigService, 'holdExistingAtEntry' | 'captureExistingEnvironment'>
+				> = configs;
+				const hold = original.holdExistingAtEntry,
+					environment = original.captureExistingEnvironment;
+				const holds = jest
+					.spyOn(configs, 'holdExistingAtEntry')
+					.mockImplementation((...args) => hold.call(configs, ...args));
+				const captures = jest
+					.spyOn(configs, 'captureExistingEnvironment')
+					.mockImplementation((...args) => environment.call(configs, ...args));
+				registerOriginal();
+				const f = await prepareCapture();
+				try {
+					await f.runtime.onApplicationBootstrap();
+					const consumer = f.consumer();
+					if (!consumer) throw new Error('Actual runtime consumer missing');
+					expect(f.checkpoints).toHaveLength(1);
+					expect(f.transfers).toHaveLength(1);
+					const token = writer.armRuntimeSettlementCapture(consumer, f.controller);
+					let inputGetters = 0,
+						requestGets = 0,
+						queries = 0;
+					const descriptors: PropertyKey[] = [];
+					const target: Parameters<ClimateAutomationWriterService['commitExistingControllerForRuntime']>[0] = {
+						providerKey: 'virtual-thermostat:v1',
+						controllerId: f.controller,
+						kind: 'settle-override:v1',
+						input: {},
+					};
+					Object.defineProperty(target, 'input', {
+						get: () => {
+							inputGetters++;
+							throw new Error('Private input getter must not execute');
+						},
+					});
+					const request = new Proxy(target, {
+						getOwnPropertyDescriptor: (_target, key) => {
+							descriptors.push(key);
+							throw cause;
+						},
+						get: (receiver, key, proxy) => {
+							requestGets++;
+							const reflection: Readonly<{
+								get: (target: object, key: PropertyKey, receiver: unknown) => unknown;
+							}> = Reflect;
+							return reflection.get(receiver, key, proxy);
+						},
+					});
+					const observer = {
+						beforeQuery: (): void => {
+							queries++;
+						},
+					};
+					database.subscribers.push(observer);
+					holds.mockClear();
+					captures.mockClear();
+					try {
+						let pending: ReturnType<ClimateAutomationWriterService['commitExistingControllerForRuntime']> | undefined;
+						expect(() => {
+							pending = writer.commitExistingControllerForRuntime(request, token);
+						}).not.toThrow();
+						expect(pending).toBeInstanceOf(Promise);
+						if (pending === undefined) throw new Error('Original rejection Promise missing');
+						await expect(pending).rejects.toBe(cause);
+						const rejection: { reason: unknown }[] = [];
+						await pending.then(
+							() => {
+								throw new Error('Private descriptor failure unexpectedly resolved');
+							},
+							(reason: unknown) => {
+								rejection.push({ reason });
+							},
+						);
+						expect(rejection).toHaveLength(1);
+						expect(Object.hasOwn(rejection[0], 'reason')).toBe(true);
+						expect(rejection[0].reason).toBe(cause); // undefined/null are present original reasons, never a falsy sentinel
+						expect(descriptors).toEqual(['providerKey']);
+						expect(requestGets).toBe(0);
+						expect(inputGetters).toBe(0);
+						expect(queries).toBe(0);
+						expect(holds).not.toHaveBeenCalled();
+						expect(captures).not.toHaveBeenCalled();
+						await expect(
+							writer.commitExistingControllerForRuntime(
+								{
+									providerKey: 'virtual-thermostat:v1',
+									controllerId: f.controller,
+									kind: 'settle-override:v1',
+									input: {},
+								},
+								token,
+							),
+						).rejects.toThrow();
+						expect(queries).toBe(0);
+						expect(holds).not.toHaveBeenCalled();
+						expect(captures).not.toHaveBeenCalled();
+						expect(f.consumer()).toBe(consumer);
+						expect(f.checkpoints).toHaveLength(1);
+						expect(f.transfers).toHaveLength(1); // no new positive checkpoint or successor consumer
+					} finally {
+						writer.closeRuntimeSettlementCapture(token);
+						const index = database.subscribers.indexOf(observer);
+						if (index >= 0) database.subscribers.splice(index, 1);
+					}
+				} finally {
+					f.close();
+					captures.mockRestore();
+					holds.mockRestore();
+				}
+			},
+		);
+		// END R27 original unknown negative rejection drafts
+		// END R25 detached actual GET and negative private-envelope drafts
+
+		it('real runtime root consumes one armed outcome and destroy closes its new read resources synchronously', async () => {
+			const f = await prepareCapture();
+			try {
+				await f.runtime.onApplicationBootstrap();
+				expect(f.consumer()).toBeDefined();
+				expect(f.checkpoints).toHaveLength(1);
+				const checkpoint = f.checkpoints[0];
+				expect(f.transfers).toHaveLength(1);
+				expect(f.transfers[0].after).toEqual(f.transfers[0].before); // same admitted observer through the mode switch, no remove/re-add
+				expect(writer.assessRuntimeSettlement(checkpoint)).toEqual({ kind: 'reuse' });
+				f.runtime.onModuleDestroy();
+				expect(writer.assessRuntimeSettlement(checkpoint)).toEqual({ kind: 'closed' });
+				expect(
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: f.controller }),
+				).toBeDefined();
+			} finally {
+				f.close();
+			}
+		});
+		it('accepts a genuine same-token watermark cell, then sticky-vetoes original ON across rollback and rebound', async () => {
+			let wall = Date.now();
+			const clock = jest.spyOn(Date, 'now').mockImplementation(() => wall);
+			const f = await prepareCapture();
+			let intent: Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>> | undefined;
+			try {
+				await f.runtime.onApplicationBootstrap();
+				expect(f.checkpoints).toHaveLength(1);
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: f.controller,
+				});
+				intent = await comfort.readIntentInManager(database.manager, row);
+				wall += 100;
+				expect(intent.isOverrideCurrent()).toBe(true);
+				expect(writer.assessRuntimeSettlement(f.checkpoints[0])).toEqual({ kind: 'reuse' });
+				wall -= 1000;
+				expect(writer.assessRuntimeSettlement(f.checkpoints[0]).kind).toBe('settle');
+				wall += 1001;
+				expect(intent.isOverrideCurrent()).toBe(false);
+				expect(writer.assessRuntimeSettlement(f.checkpoints[0]).kind).toBe('settle');
+			} finally {
+				intent?.close();
+				f.close();
+				clock.mockRestore();
+			}
+		});
+		it('a same-revision native write and restore closes the old checkpoint rather than adopting equal rows', async () => {
+			const f = await prepareCapture();
+			try {
+				await f.runtime.onApplicationBootstrap();
+				expect(f.checkpoints).toHaveLength(1);
+				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: f.controller,
+				});
+				await database.query(
+					'UPDATE "devices_virtual_thermostat_configs" SET "requestedMode" = "requestedMode" WHERE "controllerId" = ?',
+					[f.controller],
+				);
+				expect(writer.assessRuntimeSettlement(f.checkpoints[0]).kind).not.toBe('reuse');
+				expect(
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: f.controller }),
+				).toEqual(before);
+				const consumer = f.consumer();
+				if (!consumer) throw new Error('Actual runtime consumer missing');
+				const next = await comfort.settleForRuntime(f.controller, consumer);
+				expect(writer.assessRuntimeSettlement(f.checkpoints[0]).kind).toBe('closed');
+				if (next) {
+					expect(next).not.toBe(f.checkpoints[0]);
+					comfort.closeRuntimeSettlement(next);
+				}
+			} finally {
+				f.close();
+			}
+		});
+		it('wrong private capture refuses before native admission and cannot consume a different operation', async () => {
+			const f = await prepareCapture();
+			try {
+				await f.runtime.onApplicationBootstrap();
+				const consumer = f.consumer();
+				if (!consumer) throw new Error('Actual runtime consumer missing');
+				const capture = writer.armRuntimeSettlementCapture(consumer, f.controller);
+				let queries = 0;
+				const observer = {
+					beforeQuery: (): void => {
+						queries++;
+					},
+				};
+				database.subscribers.push(observer);
+				try {
+					await expect(
+						writer.commitExistingControllerForRuntime(
+							{ providerKey: 'virtual-thermostat:v1', controllerId: uuid(), kind: 'settle-override:v1', input: {} },
+							capture,
+						),
+					).rejects.toThrow();
+					expect(queries).toBe(0);
+					await expect(
+						writer.commitExistingControllerForRuntime(
+							{
+								providerKey: 'virtual-thermostat:v1',
+								controllerId: f.controller,
+								kind: 'settle-override:v1',
+								input: {},
+							},
+							capture,
+						),
+					).rejects.toThrow();
+					expect(queries).toBe(0);
+				} finally {
+					writer.closeRuntimeSettlementCapture(capture);
+					database.subscribers.splice(database.subscribers.indexOf(observer), 1);
+				}
+			} finally {
+				f.close();
+			}
+		});
+		it('destroy retires exact prepared ownership while a real B5 completion Promise remains held', async () => {
+			let entered: () => void = () => {
+					throw new Error('Gate not initialized');
+				},
+				resume: () => void = () => {
+					throw new Error('Gate not initialized');
+				};
+			const held = new Promise<void>((resolve) => {
+					entered = resolve;
+				}),
+				release = new Promise<void>((resolve) => {
+					resume = resolve;
+				});
+			const original: OriginalFunctions<Pick<VirtualThermostatConfigService, 'completeExistingAcknowledged'>> = configs;
+			const complete = original.completeExistingAcknowledged;
+			let armed = false;
+			const completion = jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementation(async (...args) => {
+				const wire = await complete.call(configs, ...args);
+				if (armed) {
+					armed = false;
+					entered();
+					await release;
+				}
+				return wire;
+			});
+			registerOriginal(); // legitimate original provider capture happens AFTER the exact callthrough is installed
+			const f = await prepareCapture();
+			armed = true;
+			const starting = f.runtime.onApplicationBootstrap();
+			try {
+				await held;
+				const before = database.subscribers.length;
+				f.runtime.onModuleDestroy();
+				expect(database.subscribers.length).toBeLessThan(before);
+				resume();
+				await starting;
+				expect(f.checkpoints).toEqual([]);
+			} finally {
+				f.runtime.onModuleDestroy();
+				resume();
+				await starting;
+				f.close();
+				completion.mockRestore();
+			}
+		});
+		it('rootless inactive runtime settlement closes its one-shot arm without a public outcome fallback', async () => {
+			const f = await prepareCapture();
+			try {
+				const row = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: f.controller,
+				});
+				const override = row.comfort?.temporary_override;
+				if (!override) throw new Error('Actual override missing');
+				await comfort.cancel(
+					f.controller,
+					{ expected_revision: row.revision, expected_graph_revision: await graph.revision() },
+					override.id,
+				);
+				await f.runtime.onApplicationBootstrap();
+				expect(f.consumer()).toBeDefined();
+				expect(f.checkpoints).toEqual([]);
+				expect(f.transfers).toEqual([]);
+			} finally {
+				f.close();
+			}
+		});
+		it('old runtime A cleanup cannot close the genuine fresh B consumer and checkpoint', async () => {
+			const f = await prepareCapture();
+			const transport = new VirtualThermostatTransportService(new PlatformRegistryService(), values);
+			const next = new VirtualThermostatRuntimeService(
+				database,
+				structure,
+				claims,
+				new VirtualThermostatInputsService(database, values),
+				transport,
+				values,
+				pipeline.get(PropertyProducerRegistryService),
+				events,
+				graph,
+				comfort,
+				new NestConfigService({ FB_CLI: 'off' }),
+			);
+			try {
+				await f.runtime.onApplicationBootstrap();
+				expect(f.checkpoints).toHaveLength(1);
+				const old = f.checkpoints[0];
+				f.runtime.onModuleDestroy();
+				await next.onApplicationBootstrap();
+				expect(f.checkpoints).toHaveLength(2);
+				const current = f.checkpoints[1];
+				expect(current).not.toBe(old);
+				f.runtime.onModuleDestroy();
+				comfort.closeRuntimeSettlement(old);
+				expect(writer.assessRuntimeSettlement(old)).toEqual({ kind: 'closed' });
+				expect(writer.assessRuntimeSettlement(current)).toEqual({ kind: 'reuse' });
+			} finally {
+				next.onModuleDestroy();
+				transport.onModuleDestroy();
+				f.close();
+			}
+		});
+
+		// BEGIN R21 continuation additive original-outcome and GAP drafts (UNRUN)
+		it.each<Readonly<{ kind: string; primary: unknown }>>([
+			{ kind: 'Error', primary: new Error('original native ACK P') },
+			{ kind: 'string', primary: 'original native ACK P' },
+			{ kind: 'undefined', primary: undefined },
+			{ kind: 'null', primary: null },
+		])('preserves native bootstrap $kind P when exact original consumer cleanup also throws Q', async ({ primary }) => {
+			const f = await prepareCapture(),
+				secondary = new Error('private read cleanup Q');
+			const original: OriginalFunctions<Pick<VirtualThermostatComfortService, 'closeRuntimeSettlementConsumer'>> =
+				comfort;
+			const close = original.closeRuntimeSettlementConsumer;
+			// Installed before genuine runtime registration captures its ORIGINAL function and receiver.
+			const cleanup = jest.spyOn(comfort, 'closeRuntimeSettlementConsumer').mockImplementation((consumer) => {
+				close.call(comfort, consumer);
+				throw secondary;
+			});
+			let fired = false;
+			const observer = {
+				afterTransactionCommit: (): void => {
+					if (!fired) {
+						fired = true;
+						throw primary;
+					}
+				},
+			};
+			database.subscribers.push(observer);
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+				controllerId: f.controller,
+			});
+			try {
+				await expect(f.runtime.onApplicationBootstrap()).rejects.toBe(primary);
+				expect(fired).toBe(true);
+				expect(cleanup).toHaveBeenCalledTimes(1);
+				expect(f.checkpoints).toEqual([]);
+				expect(
+					await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: f.controller }),
+				).toEqual(before);
+				expect(() => f.runtime.onModuleDestroy()).not.toThrow();
+			} finally {
+				f.runtime.onModuleDestroy();
+				cleanup.mockRestore();
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				f.close();
+			}
+		});
+		it.each(['native-write', 'method-loss'] satisfies readonly ('native-write' | 'method-loss')[])(
+			'a real B5-to-caller %s refuses private capture without recapturing its observer',
+			async (kind) => {
+				let entered: () => void = () => {
+						throw new Error('Gate not initialized');
+					},
+					release: () => void = () => {
+						throw new Error('Gate not initialized');
+					};
+				const held = new Promise<void>((resolve) => {
+						entered = resolve;
+					}),
+					resume = new Promise<void>((resolve) => {
+						release = resolve;
+					});
+				const original: OriginalFunctions<
+					Pick<VirtualThermostatConfigService, 'completeExistingAcknowledged' | 'captureExistingEnvironment'>
+				> = configs;
+				const complete = original.completeExistingAcknowledged,
+					environment = original.captureExistingEnvironment;
+				let armed = false;
+				const completion = jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementation(async (...args) => {
+					const fixed = await complete.call(configs, ...args);
+					if (armed) {
+						armed = false;
+						entered();
+						await resume;
+					}
+					return fixed;
+				});
+				registerOriginal();
+				const f = await prepareCapture();
+				armed = true;
+				const starting = f.runtime.onApplicationBootstrap();
+				let substituted:
+					| jest.SpyInstance<
+							ReturnType<VirtualThermostatConfigService['captureExistingEnvironment']>,
+							Parameters<VirtualThermostatConfigService['captureExistingEnvironment']>
+					  >
+					| undefined;
+				try {
+					await held;
+					if (kind === 'native-write')
+						await database.query(
+							'UPDATE "devices_virtual_thermostat_configs" SET "requestedMode" = "requestedMode" WHERE "controllerId" = ?',
+							[f.controller],
+						);
+					else
+						substituted = jest
+							.spyOn(configs, 'captureExistingEnvironment')
+							.mockImplementation((...args) => environment.call(configs, ...args));
+					release();
+					await starting;
+					expect(f.checkpoints).toEqual([]);
+					expect(f.transfers).toEqual([]);
+					if (substituted) expect(substituted).not.toHaveBeenCalled();
+					expect(
+						(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: f.controller }))
+							.comfort?.temporary_override,
+					).toBeDefined();
+				} finally {
+					f.runtime.onModuleDestroy();
+					release();
+					await starting;
+					substituted?.mockRestore();
+					f.close();
+					completion.mockRestore();
+				}
+			},
+		);
+		// END R21 continuation additive original-outcome and GAP drafts
+
+		// BEGIN R22 PREINPUT and immutable GAP native drafts (UNRUN)
+		it.each([
+			{
+				label: 'known rollback before the held first read preserves B original checkpoint and old A cannot close B',
+				failure: 'rollback',
+			},
+			{
+				label: 'committed A watermark with failed completion leaves B uncertain without a renewed checkpoint or budget',
+				failure: 'completion',
+			},
+		])('$label', async ({ failure }) => {
+			let entered: () => void = () => {
+					throw new Error('Uninitialized gate');
+				},
+				release: () => void = () => {
+					throw new Error('Uninitialized gate');
+				};
+			const held = new Promise<void>((resolve) => {
+					entered = resolve;
+				}),
+				resume = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+			const primary = new Error('Explicit original A ' + failure + ' premise');
+			const original: OriginalFunctions<
+				Pick<
+					VirtualThermostatConfigService,
+					| 'captureExistingEnvironment'
+					| 'completeExistingAcknowledged'
+					| 'normalizeExistingInManager'
+					| 'applyExistingInManager'
+				>
+			> = configs;
+			const capture = original.captureExistingEnvironment,
+				complete = original.completeExistingAcknowledged,
+				normalize = original.normalizeExistingInManager,
+				apply = original.applyExistingInManager;
+			const originalWriter: OriginalFunctions<
+				Pick<ClimateAutomationWriterService, 'commitExistingControllerForRuntime' | 'existingOverrideLeaseForPlan'>
+			> = writer;
+			const commit = originalWriter.commitExistingControllerForRuntime,
+				lease = originalWriter.existingOverrideLeaseForPlan;
+			let armed = false,
+				observeRoots = false,
+				gateTaken = false,
+				faultReached = 0;
+			let continuity: ReturnType<VirtualThermostatConfigService['captureExistingEnvironment']>['settlementContinuity'];
+			let faultRunner: import('typeorm').QueryRunner | undefined;
+			let rollbacks = 0,
+				commits = 0;
+			const writes: { runner: import('typeorm').QueryRunner; query: string }[] = [];
+			const errors: { cause: unknown }[] = [];
+			const leases: NonNullable<ReturnType<ClimateAutomationWriterService['existingOverrideLeaseForPlan']>>[] = [];
+			let normalizedA: Awaited<ReturnType<VirtualThermostatConfigService['normalizeExistingInManager']>> | undefined;
+			let appliedA: Parameters<VirtualThermostatConfigService['applyExistingInManager']> | undefined;
+			let appliedReturned = false;
+			const environment = jest.spyOn(configs, 'captureExistingEnvironment').mockImplementation((...args) => {
+				const result = capture.call(configs, ...args);
+				if (armed) continuity = result.settlementContinuity;
+				return result;
+			});
+			const completion = jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementation((...args) => {
+				if (
+					observeRoots &&
+					failure === 'completion' &&
+					faultReached === 0 &&
+					appliedA !== undefined &&
+					args[1].descriptor === appliedA[3].descriptor
+				) {
+					faultReached++;
+					return Promise.reject(primary); // genuine post-ACK callback; only A is faulted
+				}
+				return complete.call(configs, ...args);
+			});
+			const normalization = jest.spyOn(configs, 'normalizeExistingInManager').mockImplementation((...args) => {
+				const pending = normalize.call(configs, ...args);
+				if (observeRoots && !normalizedA)
+					void pending.then(
+						(result) => {
+							normalizedA ??= result;
+						},
+						() => {
+							/* SAME original rejection remains on pending. */
+						},
+					);
+				return pending;
+			});
+			const application = jest.spyOn(configs, 'applyExistingInManager').mockImplementation((...args) => {
+				const pending = apply.call(configs, ...args);
+				if (observeRoots && !appliedA) {
+					appliedA = args;
+					void pending.then(
+						() => {
+							appliedReturned = true;
+						},
+						() => {
+							/* SAME original rejection remains on pending. */
+						},
+					);
+				}
+				return pending;
+			});
+			const committing = jest.spyOn(writer, 'commitExistingControllerForRuntime').mockImplementation((...args) => {
+				const pending = commit.call(writer, ...args);
+				if (observeRoots)
+					void pending.then(undefined, (cause: unknown) => {
+						errors.push({ cause });
+					});
+				return pending; // EXACT original Promise, not the rejection-side observation Promise
+			});
+			const leasing = jest.spyOn(writer, 'existingOverrideLeaseForPlan').mockImplementation((...args) => {
+				const result = lease.call(writer, ...args);
+				if (result) leases.push(result);
+				return result;
+			});
+			registerOriginal();
+			const f = await prepareCapture();
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+				controllerId: f.controller,
+			});
+			const beforeSlot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, {
+				controllerId: f.controller,
+			});
+			const originalLease = leases[leases.length - 1];
+			expect(originalLease).toBeDefined();
+			armed = true;
+			observeRoots = true;
+			const observer = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+					if (/^(?:INSERT|UPDATE|DELETE)\b/.test(event.query))
+						writes.push({ runner: event.queryRunner, query: event.query });
+					if (armed && continuity && !gateTaken && event.query.startsWith('SELECT')) {
+						gateTaken = true;
+						faultRunner = event.queryRunner;
+						entered();
+						return resume.then(() => {
+							if (failure === 'rollback') {
+								faultReached++;
+								throw primary;
+							}
+						});
+					}
+				},
+				afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => {
+					if (event.queryRunner === faultRunner) rollbacks++;
+				},
+				afterTransactionCommit: (event: import('typeorm').TransactionCommitEvent): void => {
+					if (event.queryRunner === faultRunner) commits++;
+				},
+			};
+			database.subscribers.push(observer);
+			const starting = f.runtime.onApplicationBootstrap();
+			const transport = new VirtualThermostatTransportService(new PlatformRegistryService(), values);
+			const next = new VirtualThermostatRuntimeService(
+				database,
+				structure,
+				claims,
+				new VirtualThermostatInputsService(database, values),
+				transport,
+				values,
+				pipeline.get(PropertyProducerRegistryService),
+				events,
+				graph,
+				comfort,
+				new NestConfigService({ FB_CLI: 'off' }),
+			);
+			let nextStarting: Promise<void> | undefined;
+			try {
+				expect(await Promise.race([held.then(() => 'held'), starting.then(() => 'early')])).toBe('held');
+				const originalContinuity = continuity;
+				if (!originalContinuity) throw new Error('Original PREINPUT continuity missing');
+				expect(originalContinuity.isCurrent()).toBe(true);
+				expect(f.checkpoints).toEqual([]);
+				f.runtime.onModuleDestroy();
+				expect(originalContinuity.isCurrent()).toBe(false); // BEFORE original held native SELECT resumes
+				armed = false;
+				nextStarting = next.onApplicationBootstrap();
+				release();
+				await starting;
+				await nextStarting;
+				expect(faultReached).toBe(1);
+				expect(errors).toHaveLength(1);
+				const error = errors[0].cause;
+				expect(error).toBeInstanceOf(ClimateAutomationWriteError);
+				if (!(error instanceof ClimateAutomationWriteError))
+					throw new Error('Actual original native receipt error missing');
+				expect(error.cause).toBe(primary);
+				const after = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: f.controller,
+				});
+				expect(
+					await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: f.controller }),
+				).toEqual(beforeSlot);
+				expect(after.comfort?.temporary_override).toMatchObject({
+					id: before.comfort?.temporary_override?.id,
+					created_at: before.comfort?.temporary_override?.created_at,
+					expires_at: before.comfort?.temporary_override?.expires_at,
+					original_duration_ms: before.comfort?.temporary_override?.original_duration_ms,
+				});
+				if (failure === 'rollback') {
+					expect(after.revision).toBe(before.revision);
+					expect(error.commitOutcome).toBe('rolled_back');
+					expect(rollbacks).toBe(1);
+					expect(commits).toBe(0);
+					expect(writes.filter((entry) => entry.runner === faultRunner)).toEqual([
+						{
+							runner: faultRunner,
+							query: 'UPDATE "devices_module_climate_automation_slots" SET "slotRevision" = "slotRevision" WHERE 0',
+						},
+					]); // Mandatory no-op reservation ONLY; no protected/business A DML before rollback.
+					expect(f.checkpoints).toHaveLength(1);
+					const current = f.checkpoints[0];
+					f.runtime.onModuleDestroy();
+					expect(originalContinuity.isCurrent()).toBe(false);
+					expect(writer.assessRuntimeSettlement(current)).toEqual({ kind: 'reuse' });
+					const currentLease = leases[leases.length - 1];
+					expect(currentLease.deadline).toBe(originalLease.deadline);
+					expect(currentLease.id).toBe(originalLease.id);
+				} else {
+					expect(after.revision).toBe(before.revision + 1); // B's actual active->uncertain transition, never a renewed lifetime
+					expect(error.commitOutcome).toBe('committed');
+					expect(commits).toBe(1);
+					expect(rollbacks).toBe(0);
+					expect(appliedReturned).toBe(true);
+					expect(normalizedA?.watermarkOnly).toBe(true);
+					expect(normalizedA?.next).not.toEqual(normalizedA?.before);
+					if (!appliedA) throw new Error('Actual original A application missing');
+					expect(appliedA[3].expected.rows.configurations).not.toEqual(appliedA[2].rows.configurations);
+					expect(after.comfort?.temporary_override?.status).toBe('clock_uncertain');
+					expect(f.checkpoints).toEqual([]);
+					expect(f.transfers).toEqual([]);
+					const conservative = leases[leases.length - 1];
+					expect(conservative.status).toBe('clock_uncertain');
+					expect(conservative.deadline).toBe(originalLease.deadline);
+					expect(conservative.id).toBe(originalLease.id);
+					expect(
+						(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId: f.controller })).filter(
+							(command) => command.action === 'on',
+						),
+					).toEqual([]);
+					f.runtime.onModuleDestroy();
+					expect(originalContinuity.isCurrent()).toBe(false);
+				}
+			} finally {
+				f.runtime.onModuleDestroy();
+				next.onModuleDestroy();
+				release();
+				await starting;
+				if (nextStarting !== undefined) await nextStarting;
+				const index = database.subscribers.indexOf(observer);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				transport.onModuleDestroy();
+				f.close();
+				observeRoots = false;
+				leasing.mockRestore();
+				committing.mockRestore();
+				application.mockRestore();
+				normalization.mockRestore();
+				completion.mockRestore();
+				environment.mockRestore();
+			}
+		});
+		it('the original new GAP callback is immutable and a TIME-neutral graph write still refuses held capture', async () => {
+			let entered: () => void = () => {
+					throw new Error('Uninitialized gate');
+				},
+				release: () => void = () => {
+					throw new Error('Uninitialized gate');
+				};
+			const held = new Promise<void>((resolve) => {
+					entered = resolve;
+				}),
+				resume = new Promise<void>((resolve) => {
+					release = resolve;
+				});
+			const original: OriginalFunctions<Pick<VirtualThermostatConfigService, 'completeExistingAcknowledged'>> = configs;
+			const complete = original.completeExistingAcknowledged;
+			let armed = false;
+			const completion = jest.spyOn(configs, 'completeExistingAcknowledged').mockImplementation(async (...args) => {
+				const fixed = await complete.call(configs, ...args);
+				if (armed) {
+					armed = false;
+					entered();
+					await resume;
+				}
+				return fixed;
+			});
+			registerOriginal();
+			const f = await prepareCapture(),
+				before = [...database.subscribers];
+			armed = true;
+			const starting = f.runtime.onApplicationBootstrap();
+			try {
+				await held;
+				const introduced = database.subscribers.filter(
+					(item) =>
+						!before.includes(item) &&
+						Object.isFrozen(item) &&
+						Object.getOwnPropertyDescriptor(item, 'beforeQuery')?.value !== undefined,
+				);
+				expect(introduced).toHaveLength(1);
+				const observer = introduced[0];
+				const descriptor = Object.getOwnPropertyDescriptor(observer, 'beforeQuery');
+				expect(descriptor?.writable).toBe(false);
+				expect(descriptor?.configurable).toBe(false);
+				let replacementCalls = 0;
+				expect(
+					Reflect.set(observer, 'beforeQuery', () => {
+						replacementCalls++;
+					}),
+				).toBe(false);
+				expect(Object.getOwnPropertyDescriptor(observer, 'beforeQuery')).toEqual(descriptor);
+				await database.query('UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1');
+				release();
+				await starting;
+				expect(replacementCalls).toBe(0);
+				expect(f.checkpoints).toEqual([]);
+				expect(f.transfers).toEqual([]);
+			} finally {
+				f.runtime.onModuleDestroy();
+				release();
+				await starting;
+				f.close();
+				completion.mockRestore();
+			}
+		});
+		// END R22 PREINPUT and immutable GAP native drafts
+	});
+	// END R21 additive actual core capture and original-clock drafts
 });

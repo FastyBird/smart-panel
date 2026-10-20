@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
-import { DataSource, EntityManager, Not, QueryRunner } from 'typeorm';
+import { BeforeQueryEvent, DataSource, EntityManager, EntitySubscriberInterface, Not, QueryRunner } from 'typeorm';
 import { Broadcaster } from 'typeorm/subscriber/Broadcaster';
 
 import { Injectable, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
@@ -9,6 +9,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { hasCurrentSqliteConnectionLease } from '../../../common/database/sqlite-data-source';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import {
+	ClimateAutomationNotificationReceipt,
+	ClimateAutomationRuntimeAssessment,
+	ClimateAutomationRuntimeCheckpoint,
+	ClimateAutomationRuntimeConsumer,
+	ClimateAutomationRuntimeDebt,
+} from '../../../modules/devices/contracts/climate-automation.contract';
 import {
 	ChannelCategory,
 	EventType,
@@ -79,7 +86,13 @@ import {
 	VirtualThermostatDecision,
 	evaluateVirtualThermostatPolicy,
 } from './virtual-thermostat-policy.utils';
-import { VirtualThermostatTransportService } from './virtual-thermostat-transport.service';
+import {
+	RuntimeFeedbackConsumer,
+	RuntimeOffDispatchWork,
+	RuntimeReconciliationWork,
+	ThermostatReleaseOrderingEvidence,
+	VirtualThermostatTransportService,
+} from './virtual-thermostat-transport.service';
 import {
 	VirtualWindowContactState,
 	createVirtualWindowContactState,
@@ -105,6 +118,95 @@ type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => i
 	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
 	: Method;
 type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
+
+type FeedbackNativeScalar = string | number | boolean | null;
+type FeedbackNativeRow = Readonly<Record<string, unknown>>;
+interface FeedbackFailureFrontier {
+	state: 'UNSEEN' | 'ATTEMPTING' | 'RESOLVED' | 'BLOCKED';
+	primary?: { cause: unknown };
+	observation?: { cause: unknown };
+	secondary?: true;
+}
+interface FeedbackDebtTable {
+	readonly table: string;
+	readonly columns: readonly string[];
+	readonly keys: readonly string[];
+	readonly scope: string;
+	readonly parameters: readonly FeedbackNativeScalar[];
+	readonly pending: boolean;
+	readonly original: readonly FeedbackNativeRow[];
+	readonly observed: Map<string, FeedbackNativeRow>;
+}
+interface FeedbackDebtBaseline {
+	tables: readonly FeedbackDebtTable[];
+	readonly metadataCurrent: () => boolean;
+	barriers: Map<object, number | null>;
+	witnesses: Map<string, FeedbackNativeRow | null>;
+	// Negative bookkeeping identity only: never a claims/command authority generation.
+	revision: object;
+}
+interface FeedbackDebtProjection {
+	readonly original: FeedbackDebtBaseline;
+	readonly candidate: FeedbackDebtBaseline;
+	readonly revision: object;
+	readonly frontier: FeedbackFailureFrontier['state'];
+	readonly primary: FeedbackFailureFrontier['primary'];
+	readonly observation: FeedbackFailureFrontier['observation'];
+}
+interface RuntimeFeedbackEpisode {
+	readonly lifecycle: object;
+	readonly controllerId: string;
+	readonly external: number;
+	readonly failure: FeedbackFailureFrontier;
+	readonly clockDebt: WeakSet<ClimateAutomationRuntimeDebt | ClimateAutomationNotificationReceipt>;
+	checkpoint: ClimateAutomationRuntimeCheckpoint | null;
+	context?: ControllerContext;
+	baseline?: FeedbackDebtBaseline;
+	baselineUnavailable?: { cause: unknown };
+	retired: boolean;
+}
+interface RuntimeEvaluationCompletion {
+	readonly identity: object;
+	readonly lifecycle: object;
+	readonly episode: RuntimeFeedbackEpisode;
+	context?: ControllerContext;
+	status: 'OPEN' | 'COMPLETE' | 'FAILED' | 'ABANDONED';
+	publicationEnded: boolean;
+	failure?: { cause: unknown };
+}
+interface RuntimeOffJob {
+	readonly context: ControllerContext;
+	readonly command: VirtualThermostatCommandEntity;
+	readonly evaluation: RuntimeEvaluationCompletion;
+	operation?: Promise<void>;
+	child?: RuntimeFeedbackChild;
+	result?: 'accepted' | 'refused' | 'unknown';
+	outputSaved: boolean;
+	terminal: boolean;
+	failure?: { cause: unknown };
+}
+interface RuntimeFeedbackChild {
+	readonly purpose: 'RECONCILIATION_OFF' | 'GUARDED_OFF_DISPATCH' | 'OFF_COMMAND_COMPLETION';
+	readonly evaluation: RuntimeEvaluationCompletion;
+	readonly job?: RuntimeOffJob;
+	sampleSeen?: boolean;
+	readonly episode: RuntimeFeedbackEpisode;
+	readonly context: ControllerContext;
+	readonly work?: RuntimeReconciliationWork | RuntimeOffDispatchWork;
+	readonly baseline?: FeedbackDebtBaseline;
+	readonly baselineUnavailable?: { cause: unknown };
+	state: 'OPEN' | 'SUCCESS' | 'OFF_REPORTED' | 'FAILED' | 'CLOSED';
+	queued: boolean;
+}
+type FeedbackNegativeResult =
+	| Readonly<{ kind: 'SAME_OLD_DEBT'; projection?: FeedbackDebtProjection }>
+	| Readonly<{ kind: 'NEW_SAFETY'; witness: string; projection?: FeedbackDebtProjection }>
+	| Readonly<{ kind: 'UNPROVABLE'; cause: unknown }>
+	| Readonly<{ kind: 'RETIRED' }>;
+
+type FeedbackNativeReadResult =
+	| FeedbackDebtBaseline
+	| Extract<FeedbackNegativeResult, { kind: 'SAME_OLD_DEBT' | 'NEW_SAFETY' }>;
 
 const unresolved = (command: VirtualThermostatCommandEntity) => !['confirmed', 'cancelled'].includes(command.status);
 /** Stable journal ordering also covers commands prepared in the same millisecond. */
@@ -212,6 +314,47 @@ interface ControllerContext {
 	epoch: number;
 }
 
+type RuntimeIntent = Awaited<ReturnType<VirtualThermostatComfortService['readIntentInManager']>>;
+interface RuntimeBookkeepingHealth {
+	current: boolean;
+	factsCurrent: () => boolean;
+	close: () => void;
+}
+/** Owns one ORIGINAL native capture; decision retirement is not factual invalidation. */
+interface RuntimeDrainFactOwner {
+	readonly lifecycle: object;
+	readonly controllerId: string;
+	readonly decision: RuntimeIntent;
+	readonly current: () => boolean;
+	readonly graphCurrent: () => boolean;
+	readonly membershipCurrent: () => boolean;
+	readonly retain: (certificate: RuntimeDrainCertificate) => boolean;
+	readonly release: (certificate: RuntimeDrainCertificate) => void;
+	readonly invalidate: () => void;
+}
+interface RuntimeDrainCertificate {
+	/** Original settled fact gate; graph-withheld history never implies a usable certificate. */
+	readonly factsCurrent: () => boolean;
+	readonly current: () => boolean;
+	readonly close: () => void;
+}
+interface RuntimeReconciledRecord {
+	/** Authentic original native capture, including its private slot/controller incarnation. */
+	readonly origin: RuntimeDrainFactOwner;
+	readonly controllerId: string;
+	readonly claimId: string;
+	readonly claimRevision: number;
+	readonly physicalIdentity: string;
+	readonly qualificationGeneration: string | null;
+	readonly lifecycle: object;
+	readonly qualification: ThermostatInstalledQualification;
+	readonly sourceIsCurrent: () => boolean;
+	readonly observedAt: number;
+	readonly scope: string;
+	readonly scopeIsCurrent: () => boolean;
+	readonly close: () => void;
+}
+
 type RuntimeBookkeepingPurpose =
 	| 'decision-state'
 	| 'decision-branches'
@@ -278,10 +421,9 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 
 	private readonly bookkeepingOrigin = new AsyncLocalStorage<RuntimeBookkeepingOrigin>();
 	private readonly bookkeepingCaptures = new WeakMap<ControllerContext, PropertyCommandAdmissionSnapshot>();
-	private readonly bookkeepingHealth = new WeakMap<
-		ControllerContext,
-		{ current: boolean; factsCurrent: () => boolean; close: () => void }
-	>();
+	private readonly bookkeepingHealth = new WeakMap<ControllerContext, RuntimeBookkeepingHealth>();
+	private readonly drainFactOwners = new WeakMap<ControllerContext, RuntimeDrainFactOwner>();
+	private readonly liveDrainFactOwners = new Set<RuntimeDrainFactOwner>();
 	private readonly bookkeepingRunners = new Map<QueryRunner, RuntimeRunnerObservation>();
 	private readonly bookkeepingScopes = new Set<RuntimeBookkeepingScope>();
 	private lifecycle?: object;
@@ -358,19 +500,59 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private readonly queues = new Map<string, Promise<void>>();
 	private readonly epochs = new Map<string, number>();
 	private readonly contexts = new Map<string, ControllerContext>();
+	private runtimeSettlementConsumer?: ClimateAutomationRuntimeConsumer;
+	private runtimeFeedbackConsumer?: RuntimeFeedbackConsumer;
+	private runtimeFeedbackMethods?: OriginalFunctions<
+		Pick<
+			VirtualThermostatTransportService,
+			| 'registerRuntimeFeedbackConsumer'
+			| 'closeRuntimeFeedbackConsumer'
+			| 'openRuntimeOffDispatchWork'
+			| 'closeRuntimeOffDispatchWork'
+			| 'openRuntimeReconciliationWork'
+			| 'closeRuntimeReconciliationWork'
+			| 'captureRuntimeFeedbackDelivery'
+		>
+	>;
+	private runtimeComfortMethods?: OriginalFunctions<
+		Pick<
+			VirtualThermostatComfortService,
+			| 'openRuntimeSettlementConsumer'
+			| 'closeRuntimeSettlementConsumer'
+			| 'settleForRuntime'
+			| 'assessRuntimeFeedback'
+			| 'closeRuntimeSettlement'
+		>
+	>;
+	private feedbackMethodsCurrent(): boolean {
+		return (
+			!!this.runtimeFeedbackMethods &&
+			!!this.runtimeComfortMethods &&
+			Object.entries(this.runtimeFeedbackMethods).every(([key, method]) =>
+				creationMethodCurrent(this.transport, key, method),
+			) &&
+			Object.entries(this.runtimeComfortMethods).every(([key, method]) =>
+				creationMethodCurrent(this.comfort, key, method),
+			)
+		);
+	}
+
+	private readonly feedbackEpisodes = new Map<string, RuntimeFeedbackEpisode>();
+	private readonly feedbackContexts = new WeakMap<ControllerContext, RuntimeFeedbackEpisode>();
+	private readonly feedbackChildren = new Map<
+		RuntimeReconciliationWork | RuntimeOffDispatchWork,
+		RuntimeFeedbackChild
+	>();
+	private readonly evaluationCompletions = new WeakMap<ControllerContext, RuntimeEvaluationCompletion>();
+	private readonly offJobs = new WeakMap<VirtualThermostatCommandEntity, RuntimeOffJob>();
+	private readonly externalFrontiers = new Map<string, number>();
+	private readonly feedbackReadClosers = new Set<() => void>();
+	private readonly feedbackOriginalCommands = new WeakSet<VirtualThermostatCommandEntity>();
+
 	private readonly diagnostics = new Map<string, ThermostatRuntimeDiagnostic>();
 	/** Settlement failures fence every loaded context until this exact member generation is qualified OFF/drained. */
 	private readonly memberFaults = new Map<string, string>();
-	private readonly reconciled = new Map<
-		string,
-		{
-			qualification: ThermostatInstalledQualification;
-			sourceIsCurrent: () => boolean;
-			observedAt: number;
-			scope: string;
-			scopeIsCurrent: () => boolean;
-		}
-	>();
+	private readonly reconciled = new Map<string, RuntimeReconciledRecord>();
 	private readonly diagnosticGuards = new Map<string, () => boolean>();
 	/** A stored release barrier is usable only while its exact installed qualification and source lease stay live. */
 	private isReconciled(claim: VirtualThermostatActuatorClaimEntity): boolean {
@@ -392,6 +574,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	private listener = (payload?: { propertyId?: string; id?: string; device?: { id: string } }) => {
 		if (payload?.id && this.outputs.has(payload.id)) return;
 		const propertyId = payload?.propertyId ?? payload?.id;
+		const owned =
+			payload && this.runtimeFeedbackMethods && this.feedbackMethodsCurrent()
+				? this.runtimeFeedbackMethods.captureRuntimeFeedbackDelivery.call(this.transport, payload)
+				: null;
+		const ownedChild = owned ? this.feedbackChildren.get(owned) : undefined;
 		for (const [id, context] of this.contexts)
 			if (
 				!propertyId ||
@@ -405,13 +592,17 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				// Observe invalid/degraded producer intervals synchronously, even if a later report
 				// reaches the queue before the scheduled evaluation can load its new context.
 				this.memberProtection.read(context.memberBindings, Date.now());
-				this.request(id);
+				if (ownedChild && this.ownsFeedbackDelivery(ownedChild, context)) {
+					ownedChild.sampleSeen = true;
+					// Dispatch is notified only by its terminal operation finalizer, outside the controller queue.
+					if (ownedChild.purpose !== 'GUARDED_OFF_DISPATCH') this.requestFeedback(ownedChild);
+				} else this.request(id);
 			}
 	};
 	private reset = () => {
 		this.memberProtection.reset();
 		this.coolingService?.reset();
-		this.reconciled.clear();
+		this.clearReconciled();
 		this.contacts.clear();
 		for (const [id, trend] of this.trends)
 			this.trends.set(id, {
@@ -470,6 +661,35 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 	private async bootstrapLifecycle(lifecycle: object): Promise<void> {
 		try {
+			const transportMethods: NonNullable<VirtualThermostatRuntimeService['runtimeFeedbackMethods']> = this.transport;
+			const comfortMethods: NonNullable<VirtualThermostatRuntimeService['runtimeComfortMethods']> = this.comfort;
+			this.runtimeFeedbackMethods = Object.freeze({
+				registerRuntimeFeedbackConsumer: transportMethods.registerRuntimeFeedbackConsumer,
+				closeRuntimeFeedbackConsumer: transportMethods.closeRuntimeFeedbackConsumer,
+				openRuntimeOffDispatchWork: transportMethods.openRuntimeOffDispatchWork,
+				closeRuntimeOffDispatchWork: transportMethods.closeRuntimeOffDispatchWork,
+				openRuntimeReconciliationWork: transportMethods.openRuntimeReconciliationWork,
+				closeRuntimeReconciliationWork: transportMethods.closeRuntimeReconciliationWork,
+				captureRuntimeFeedbackDelivery: transportMethods.captureRuntimeFeedbackDelivery,
+			});
+			this.runtimeComfortMethods = Object.freeze({
+				openRuntimeSettlementConsumer: comfortMethods.openRuntimeSettlementConsumer,
+				closeRuntimeSettlementConsumer: comfortMethods.closeRuntimeSettlementConsumer,
+				settleForRuntime: comfortMethods.settleForRuntime,
+				assessRuntimeFeedback: comfortMethods.assessRuntimeFeedback,
+				closeRuntimeSettlement: comfortMethods.closeRuntimeSettlement,
+			});
+			if (!this.feedbackMethodsCurrent()) throw new Error('Original runtime feedback ports unavailable');
+			this.runtimeSettlementConsumer = this.runtimeComfortMethods.openRuntimeSettlementConsumer.call(
+				this.comfort,
+				this,
+				lifecycle,
+			);
+			this.runtimeFeedbackConsumer = this.runtimeFeedbackMethods.registerRuntimeFeedbackConsumer.call(
+				this.transport,
+				this,
+			);
+
 			const originalClaims: Readonly<{
 				refresh: { call: (receiver: VirtualThermostatClaimsService) => Promise<void> };
 			}> = this.claims;
@@ -591,11 +811,55 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		let failure: { cause: unknown } | undefined;
 		this.active = false;
 		this.lifecycle = undefined;
+		const settlementConsumer = this.runtimeSettlementConsumer,
+			feedbackConsumer = this.runtimeFeedbackConsumer;
+		this.runtimeSettlementConsumer = undefined;
+		this.runtimeFeedbackConsumer = undefined;
+		if (settlementConsumer) {
+			try {
+				this.runtimeComfortMethods?.closeRuntimeSettlementConsumer.call(this.comfort, settlementConsumer);
+			} catch {
+				/* Private read cleanup cannot skip original teardown. */
+			}
+		}
+		if (feedbackConsumer) {
+			try {
+				this.runtimeFeedbackMethods?.closeRuntimeFeedbackConsumer.call(this.transport, feedbackConsumer);
+			} catch {
+				/* Private provenance cleanup cannot skip original teardown. */
+			}
+		}
+		for (const episode of this.feedbackEpisodes.values()) {
+			episode.retired = true;
+			try {
+				if (episode.checkpoint)
+					this.runtimeComfortMethods?.closeRuntimeSettlement.call(this.comfort, episode.checkpoint);
+			} catch {
+				/* Exact read owner only; preserve original cleanup. */
+			}
+		}
+		this.feedbackEpisodes.clear();
+		this.feedbackChildren.clear();
+		this.externalFrontiers.clear();
+		for (const close of [...this.feedbackReadClosers]) {
+			try {
+				close();
+			} catch {
+				/* No private read cleanup replaces original P. */
+			}
+		}
+
 		this.bootstrapAttempt = undefined;
 		this.bookkeepingEngineCurrent = undefined;
 		// Old queue finalizers check exact promise identity; B must not wait for detached A loads.
 		this.queues.clear();
-		for (const scope of this.bookkeepingScopes) this.closeBookkeeping(scope);
+		for (const scope of this.bookkeepingScopes) {
+			try {
+				this.closeBookkeeping(scope);
+			} catch (cause) {
+				failure ??= { cause };
+			}
+		}
 		this.bookkeepingScopes.clear();
 		for (const observation of this.bookkeepingRunners.values()) {
 			try {
@@ -637,10 +901,16 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		}
 		this.outputs.clear();
 		this.diagnosticGuards.clear();
-		for (const context of this.contexts.values()) {
-			this.closeBookkeepingContext(context);
+		for (const owner of [...this.liveDrainFactOwners]) {
 			try {
-				context.intent?.close();
+				owner.invalidate();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+		}
+		for (const context of this.contexts.values()) {
+			try {
+				this.closeBookkeepingContext(context);
 			} catch (cause) {
 				failure ??= { cause };
 			}
@@ -648,7 +918,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		this.contexts.clear();
 		this.contacts.clear();
 		this.trends.clear();
-		this.reconciled.clear();
+		try {
+			this.clearReconciled();
+		} catch (cause) {
+			failure ??= { cause };
+		}
 		this.memberFaults.clear();
 		try {
 			this.memberProtection.reset();
@@ -713,6 +987,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 	}
 	request(controllerId: string, revoke = true): void {
 		if (!this.active || !this.lifecycle) return;
+		this.externalFrontiers.set(controllerId, (this.externalFrontiers.get(controllerId) ?? 0) + 1);
+
 		if (revoke) this.epochs.set(controllerId, (this.epochs.get(controllerId) ?? 0) + 1);
 		const lifecycle = this.lifecycle;
 		const previous = this.queues.get(controllerId) ?? Promise.resolve();
@@ -777,14 +1053,303 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (!this.contextLifecycleCurrent(context)) throw new Error('Original runtime context lifecycle ended');
 	}
 
+	/** Normal replacement closes command admission immediately, but not an already-owned settled certificate. */
+	private retireDecision(context: ControllerContext | undefined): void {
+		if (!context) return;
+		for (const child of this.feedbackChildren.values())
+			if (child.context === context) this.closeFeedbackDelivery(child);
+		const health = this.bookkeepingHealth.get(context);
+		if (health) health.current = false;
+		this.bookkeepingCaptures.delete(context);
+		context.intent?.close();
+	}
+	/** Every unsupported/failed old native effect also revokes that ORIGINAL owner's certificates. */
+	private invalidateDecisionFacts(context: ControllerContext): void {
+		const health = this.bookkeepingHealth.get(context);
+		if (health) health.current = false;
+		this.drainFactOwners.get(context)?.invalidate();
+	}
 	private closeBookkeepingContext(context: ControllerContext | undefined): void {
 		if (!context) return;
-		const health = this.bookkeepingHealth.get(context);
-		if (health) {
-			health.current = false;
-			health.close();
+		let failure: { cause: unknown } | undefined;
+		try {
+			this.invalidateDecisionFacts(context);
+		} catch (cause) {
+			failure = { cause };
 		}
-		this.bookkeepingCaptures.delete(context);
+		try {
+			this.retireDecision(context);
+		} catch (cause) {
+			failure ??= { cause };
+		}
+		if (failure) throw failure.cause;
+	}
+	private createDrainFactOwner(
+		context: ControllerContext,
+		raw: RuntimeIntent,
+		health: RuntimeBookkeepingHealth,
+		snapshot: PropertyCommandAdmissionSnapshot,
+		lifecycle: object,
+	): RuntimeDrainFactOwner {
+		const originalRaw: OriginalFunctions<RuntimeIntent> = raw;
+		const originalSnapshot: OriginalFunctions<PropertyCommandAdmissionSnapshot> = snapshot;
+		const check = originalRaw.isCurrent,
+			clock = originalRaw.isOverrideCurrent,
+			close = originalRaw.close;
+		const membership = originalSnapshot.isCurrent;
+		const originalContext: OriginalFunctions<ControllerContext> = context;
+		const graph = originalContext.publishGuard;
+		let valid = true,
+			decisionOpen = true,
+			closed = false,
+			references = 1;
+		const certificates = new Set<RuntimeDrainCertificate>();
+		const dispose = (): void => {
+			if (closed || references !== 0) return;
+			closed = true;
+			this.liveDrainFactOwners.delete(owner);
+			let failure: { cause: unknown } | undefined;
+			try {
+				close.call(raw);
+			} catch (cause) {
+				failure = { cause };
+			}
+			try {
+				health.close();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			if (failure) throw failure.cause;
+		};
+		const invalidate = (): void => {
+			valid = false;
+			health.current = false;
+			let failure: { cause: unknown } | undefined;
+			for (const certificate of [...certificates]) {
+				try {
+					certificate.close();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			}
+			if (failure) throw failure.cause;
+		};
+		const membershipCurrent = (): boolean => {
+			if (!valid || closed) return false;
+			let result: boolean;
+			try {
+				result = creationMethodCurrent(snapshot, 'isCurrent', membership) && membership.call(snapshot);
+			} catch (error) {
+				try {
+					invalidate();
+				} catch {
+					/* Original membership error remains primary. */
+				}
+				throw error;
+			}
+			if (!result) invalidate();
+			return result;
+		};
+		const current = (): boolean => {
+			if (!valid || closed) return false;
+			let result: boolean;
+			try {
+				result =
+					this.lifecycleCurrent(lifecycle) &&
+					creationMethodCurrent(raw, 'isCurrent', check) &&
+					creationMethodCurrent(raw, 'isOverrideCurrent', clock) &&
+					creationMethodCurrent(raw, 'close', close) &&
+					health.factsCurrent() &&
+					membershipCurrent() &&
+					check.call(raw);
+			} catch (error) {
+				try {
+					invalidate();
+				} catch {
+					/* Preserve the original currentness error. */
+				}
+				throw error;
+			}
+			if (!result) invalidate();
+			return result;
+		};
+		const rawMethodsCurrent = (): boolean =>
+			creationMethodCurrent(raw, 'isCurrent', check) &&
+			creationMethodCurrent(raw, 'isOverrideCurrent', clock) &&
+			creationMethodCurrent(raw, 'close', close);
+		const decisionCurrent = (): boolean => {
+			if (!decisionOpen || !valid) return false;
+			let result: boolean;
+			try {
+				result = rawMethodsCurrent() && check.call(raw);
+			} catch (error) {
+				try {
+					invalidate();
+				} catch {
+					/* Original native intent error remains primary. */
+				}
+				throw error;
+			}
+			if (!result) invalidate();
+			return result;
+		};
+		const decision = Object.freeze({
+			projection: raw.projection,
+			isCurrent: decisionCurrent,
+			isOverrideCurrent: (): boolean => {
+				if (!decisionOpen || !valid) return false;
+				if (!rawMethodsCurrent()) {
+					invalidate();
+					return false;
+				}
+				return clock.call(raw); // expiry policy remains the original TIME guard, not a new fact capture
+			},
+			close: (): void => {
+				if (!decisionOpen) return;
+				decisionOpen = false;
+				health.current = false;
+				references--;
+				dispose();
+			},
+		});
+		const owner: RuntimeDrainFactOwner = Object.freeze({
+			lifecycle,
+			controllerId: context.config.controllerId,
+			decision,
+			current,
+			graphCurrent: (): boolean => creationMethodCurrent(context, 'publishGuard', graph) && graph.call(context),
+			membershipCurrent,
+			retain: (certificate: RuntimeDrainCertificate): boolean => {
+				if (!decisionOpen || !health.current || certificates.has(certificate) || !current()) return false;
+				certificates.add(certificate);
+				references++;
+				return true;
+			},
+			release: (certificate: RuntimeDrainCertificate): void => {
+				if (!certificates.delete(certificate)) return;
+				references--;
+				dispose();
+			},
+			invalidate,
+		});
+		this.drainFactOwners.set(context, owner);
+		this.liveDrainFactOwners.add(owner);
+		return owner;
+	}
+	private retainDrainCertificate(
+		context: ControllerContext,
+		claim: VirtualThermostatActuatorClaimEntity,
+		qualification: ThermostatInstalledQualification,
+		proof: ThermostatReleaseOrderingEvidence,
+	): RuntimeDrainCertificate | null {
+		const owner = this.drainFactOwners.get(context);
+		const claims = this.claims;
+		const originalClaims: OriginalFunctions<VirtualThermostatClaimsService> = claims;
+		const qualify = originalClaims.qualification;
+		const originalProof: OriginalFunctions<ThermostatReleaseOrderingEvidence> = proof;
+		const source = originalProof.sourceIsCurrent;
+		const opposed = thermostatHasOpposedBranches(context.claims);
+		const factsCurrent = (): boolean =>
+			!!owner &&
+			owner.current() &&
+			this.claims === claims &&
+			creationMethodCurrent(claims, 'qualification', qualify) &&
+			creationMethodCurrent(proof, 'sourceIsCurrent', source) &&
+			qualify.call(claims, claim, opposed) === qualification &&
+			source.call(proof);
+		let open = true,
+			retained = false;
+		const certificate: RuntimeDrainCertificate = Object.freeze({
+			factsCurrent,
+			current: (): boolean => {
+				if (!open || !retained || !owner) return false;
+				let result: boolean;
+				try {
+					result = factsCurrent() && owner.graphCurrent();
+				} catch (error) {
+					try {
+						certificate.close();
+					} catch {
+						/* Original guard failure remains primary. */
+					}
+					throw error;
+				}
+				if (!result) certificate.close();
+				return result;
+			},
+			close: (): void => {
+				if (!open) return;
+				open = false;
+				if (retained) owner?.release(certificate);
+			},
+		});
+		if (
+			!owner ||
+			!this.contextLifecycleCurrent(context) ||
+			this.contexts.get(context.config.controllerId) !== context ||
+			!factsCurrent()
+		)
+			return null;
+		try {
+			if (!owner.graphCurrent()) {
+				// Genuine committed OFF history, but NO admitted graph certificate or native-owner reference.
+				open = false;
+				return certificate;
+			}
+			if (!owner.retain(certificate)) return null;
+			retained = true;
+			if (!factsCurrent()) {
+				certificate.close();
+				return null;
+			}
+			return certificate;
+		} catch (error) {
+			try {
+				certificate.close();
+			} catch {
+				/* Preserve the original admission error. */
+			}
+			throw error;
+		}
+	}
+	private clearReconciled(): void {
+		let failure: { cause: unknown } | undefined;
+		for (const [key, record] of [...this.reconciled]) {
+			if (this.reconciled.get(key) !== record) continue;
+			this.reconciled.delete(key);
+			try {
+				record.close();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+		}
+		if (failure) throw failure.cause;
+	}
+	private pruneReconciled(
+		controllerId: string,
+		previous: ControllerContext | undefined,
+		next: ControllerContext | null,
+		lifecycle: object,
+	): void {
+		if (!this.lifecycleCurrent(lifecycle) || this.contexts.get(controllerId) !== previous) return;
+		for (const [key, record] of [...this.reconciled]) {
+			if (record.controllerId !== controllerId || record.lifecycle !== lifecycle || this.reconciled.get(key) !== record)
+				continue;
+			if (
+				next?.claims.some(
+					(claim) =>
+						claim.controllerId === record.controllerId &&
+						claim.id === record.claimId &&
+						claim.revision === record.claimRevision &&
+						claim.physicalIdentity === record.physicalIdentity &&
+						claim.qualificationGeneration === record.qualificationGeneration,
+				)
+			)
+				continue;
+			if (this.reconciled.get(key) !== record) continue;
+			this.reconciled.delete(key);
+			record.close();
+		}
 	}
 	private captureBookkeepingEngine(): () => boolean {
 		const source = this.dataSource,
@@ -1169,7 +1734,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				fields.every((current) => current()) &&
 				!!observation?.current(),
 		};
-		if (!supported && health) health.current = false;
+		if (!supported) this.invalidateDecisionFacts(context);
 		this.bookkeepingScopes.add(scope);
 		return scope;
 	}
@@ -1177,8 +1742,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		if (scope.closed) return;
 		scope.closed = true;
 		const lose = (): void => {
-			const health = this.bookkeepingHealth.get(scope.context);
-			if (health) health.current = false;
+			this.invalidateDecisionFacts(scope.context);
 		};
 		try {
 			if (!scope.current()) lose();
@@ -1215,13 +1779,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			try {
 				this.closeBookkeeping(scope);
 			} catch {
-				const health = this.bookkeepingHealth.get(context);
-				if (health) health.current = false;
+				this.invalidateDecisionFacts(context);
 			}
 		};
 		void promise.then(close, () => {
-			const health = this.bookkeepingHealth.get(context);
-			if (health) health.current = false;
+			this.invalidateDecisionFacts(context);
 			close();
 		});
 		return promise;
@@ -1749,10 +2311,790 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			});
 		});
 		publishOutcome();
+		if (entity instanceof VirtualThermostatCommandEntity) this.recordFeedbackCommandAck(context, entity);
 	}
-	private async load(controllerId: string, lifecycle: object): Promise<ControllerContext | null> {
+	private recordFeedbackCommandAck(context: ControllerContext, command: VirtualThermostatCommandEntity): void {
+		if (command.action !== 'off' || !this.feedbackOriginalCommands.has(command)) return;
+		const episode = this.feedbackContexts.get(context);
+		const baselines = new Set<FeedbackDebtBaseline>();
+		if (episode?.baseline) baselines.add(episode.baseline);
+		for (const child of this.feedbackChildren.values())
+			if (child.context === context && child.baseline) baselines.add(child.baseline);
+		for (const baseline of baselines) {
+			try {
+				if (!baseline.metadataCurrent()) continue;
+				const table = baseline.tables.find((item) => item.pending);
+				const meta = this.dataSource.entityMetadatas.find((item) => item.tableName === table?.table);
+				if (!table || !meta) continue;
+				const row: Record<string, unknown> = {};
+				for (const column of meta.columns) {
+					const value: unknown = this.dataSource.driver.preparePersistentValue(column.getEntityValue(command), column);
+					if (
+						!(
+							value === null ||
+							typeof value === 'string' ||
+							typeof value === 'boolean' ||
+							(typeof value === 'number' && Number.isFinite(value))
+						)
+					)
+						throw new Error('Native OFF outcome projection unavailable');
+					row[column.databaseName] = value;
+				}
+				if (!baseline.metadataCurrent()) continue;
+				if (unresolved(command)) table.observed.set(this.feedbackRowKey(table, row), Object.freeze(row));
+				else table.observed.delete(this.feedbackRowKey(table, row));
+				baseline.revision = {}; // A pending probe may not overwrite this original OFF ACK.
+			} catch {
+				/* Negative scheduling only. Never change the acknowledged original result. */
+			}
+		}
+	}
+	private feedbackReadOwner(context: ControllerContext, episode: RuntimeFeedbackEpisode): boolean {
+		return (
+			!episode.retired &&
+			this.lifecycleCurrent(episode.lifecycle) &&
+			this.feedbackMethodsCurrent() &&
+			this.feedbackEpisodes.get(episode.controllerId) === episode &&
+			this.contexts.get(episode.controllerId) === context &&
+			this.feedbackContexts.get(context) === episode
+		);
+	}
+	private feedbackRowKey(table: FeedbackDebtTable, row: FeedbackNativeRow): string {
+		return JSON.stringify(table.keys.map((key) => row[key]));
+	}
+	private feedbackRowSignature(table: FeedbackDebtTable, row: FeedbackNativeRow): string {
+		return JSON.stringify(table.columns.map((key) => row[key]));
+	}
+	private async readFeedbackNative(
+		context: ControllerContext,
+		episode: RuntimeFeedbackEpisode,
+		mode: 'BASELINE' | 'PROBE',
+		originalBaseline?: FeedbackDebtBaseline,
+	): Promise<FeedbackNativeReadResult> {
+		if (!this.feedbackReadOwner(context, episode)) throw new Error('Original feedback read owner retired');
+		const source = this.dataSource,
+			driver = source.driver,
+			metadata = source.entityMetadatas,
+			subscribers = source.subscribers,
+			originalManager = source.manager;
+		const originalTransactions: Readonly<{
+			transaction: {
+				readonly call: <T>(receiver: DataSource, work: (manager: EntityManager) => Promise<T>) => Promise<T>;
+			};
+		}> = source;
+		const transaction = originalTransactions.transaction;
+		const connection = Object.getOwnPropertyDescriptor(driver, 'databaseConnection');
+		if (!connection || connection.get || connection.set)
+			throw new Error('Original native feedback connection unavailable');
+		const outerCurrent = (): boolean =>
+			this.feedbackReadOwner(context, episode) &&
+			source === this.dataSource &&
+			source.driver === driver &&
+			source.entityMetadatas === metadata &&
+			source.subscribers === subscribers &&
+			source.manager === originalManager &&
+			creationMethodCurrent(source, 'transaction', transaction) &&
+			Object.getOwnPropertyDescriptor(driver, 'databaseConnection')?.value === connection.value;
+		const ids = context.claims.map((claim) => claim.id);
+		const inIds = ids.length ? `"claimId" IN (${ids.map(() => '?').join(',')})` : '0';
+		const active =
+			'"claimId" IN (SELECT "id" FROM "devices_virtual_thermostat_actuator_claims" WHERE "controllerId" = ?)';
+		const scopes = [
+			{
+				table: 'devices_virtual_thermostat_configs',
+				scope: '"controllerId" = ?',
+				parameters: [episode.controllerId],
+				entities: [context.config],
+			},
+			{
+				table: 'devices_virtual_thermostat_actuator_claims',
+				scope: `("controllerId" = ? AND "state" != 'released') OR ${ids.length ? `"id" IN (${ids.map(() => '?').join(',')})` : '0'}`,
+				parameters: [episode.controllerId, ...ids],
+				entities: context.claims,
+			},
+			{
+				table: 'devices_virtual_thermostat_sources',
+				scope: '"controllerId" = ?',
+				parameters: [episode.controllerId],
+				entities: context.bindings.map((row) => row.binding),
+			},
+			{
+				table: 'devices_virtual_thermostat_member_protection',
+				scope: `${active} OR ${inIds}`,
+				parameters: [episode.controllerId, ...ids],
+				entities: context.memberBindings.flatMap((row) => (row.binding ? [row.binding] : [])),
+			},
+			{
+				table: 'devices_virtual_thermostat_cooling_dependencies',
+				scope: `${active} OR ${inIds}`,
+				parameters: [episode.controllerId, ...ids],
+				entities: context.coolingBindings.flatMap((row) => (row.dependency ? [row.dependency] : [])),
+			},
+			{
+				table: 'devices_virtual_thermostat_command_journal',
+				scope: `("controllerId" = ? OR ${inIds}) AND "status" NOT IN ('confirmed','cancelled')`,
+				parameters: [episode.controllerId, ...ids],
+				entities: undefined,
+			},
+		];
+		const originalDriver: OriginalFunctions<typeof driver> = driver;
+		const metas = metadata,
+			prepare = originalDriver.preparePersistentValue;
+		const pins = scopes.map((scope) => {
+			const meta = metas.find((row) => row.tableName === scope.table);
+			if (!meta) throw new Error('Complete native feedback metadata required');
+			let originalColumn: OriginalFunctions<(typeof meta.columns)[number]>;
+			const columns = meta.columns.map((column) => ({
+				column,
+				name: column.databaseName,
+				type: column.type,
+				read: ((originalColumn = column), originalColumn.getEntityValue),
+				transformer: column.transformer,
+				primary: column.isPrimary,
+			}));
+			if (columns.some((column) => !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(column.name) || column.transformer !== undefined))
+				throw new Error('Unsupported native feedback metadata');
+			return { scope, meta, target: meta.target, primary: meta.primaryColumns, columns };
+		});
+		let originalMember: OriginalFunctions<ThermostatMemberProtectionService>;
+		let originalCooling: OriginalFunctions<ThermostatCoolingDependencyService>;
+		const member = ((originalMember = this.memberProtection), originalMember.requiredReleaseAfter),
+			cooling = ((originalCooling = this.coolingDependencies), originalCooling.requiredReleaseAfter);
+		const originalNativeMethods = [
+			{ key: 'readFeedbackNative', method: nativeFieldEvidence.get(this, 'readFeedbackNative') },
+			{ key: 'probeOriginalFeedbackDebt', method: nativeFieldEvidence.get(this, 'probeOriginalFeedbackDebt') },
+			{ key: 'captureOriginalFeedbackDebt', method: nativeFieldEvidence.get(this, 'captureOriginalFeedbackDebt') },
+			{ key: 'serviceFeedback', method: nativeFieldEvidence.get(this, 'serviceFeedback') },
+		];
+		const metadataCurrent = (): boolean =>
+			originalNativeMethods.every((pin) => creationMethodCurrent(this, pin.key, pin.method)) &&
+			source === this.dataSource &&
+			source.driver === driver &&
+			source.entityMetadatas === metas &&
+			creationMethodCurrent(driver, 'preparePersistentValue', prepare) &&
+			creationMethodCurrent(this.memberProtection, 'requiredReleaseAfter', member) &&
+			creationMethodCurrent(this.coolingDependencies, 'requiredReleaseAfter', cooling) &&
+			pins.every(
+				({ scope, meta, target, primary, columns }) =>
+					metas.includes(meta) &&
+					meta.target === target &&
+					meta.primaryColumns === primary &&
+					meta.tableName === scope.table &&
+					meta.columns.length === columns.length &&
+					columns.every(
+						(pin, index) =>
+							meta.columns[index] === pin.column &&
+							pin.column.databaseName === pin.name &&
+							pin.column.type === pin.type &&
+							pin.column.isPrimary === pin.primary &&
+							pin.column.transformer === pin.transformer &&
+							creationMethodCurrent(pin.column, 'getEntityValue', pin.read),
+					),
+			);
+		// All candidate maps are private until native completion AND scheduling admission.
+		const projection: FeedbackDebtProjection | undefined = originalBaseline
+			? {
+					original: originalBaseline,
+					revision: originalBaseline.revision,
+					frontier: episode.failure.state,
+					primary: episode.failure.primary,
+					observation: episode.failure.observation,
+					candidate: {
+						...originalBaseline,
+						revision: {},
+						tables: originalBaseline.tables.map((table) => ({ ...table, observed: new Map(table.observed) })),
+						witnesses: new Map(originalBaseline.witnesses),
+						barriers: new Map(originalBaseline.barriers),
+					},
+				}
+			: undefined;
+		const projectionCurrent = (): boolean =>
+			!projection ||
+			(projection.original.revision === projection.revision &&
+				episode.failure.state === projection.frontier &&
+				episode.failure.primary === projection.primary &&
+				episode.failure.observation === projection.observation);
+		const originalShared: Readonly<{
+			runShared: { readonly call: <T>(receiver: DeviceStructureLockService, work: () => Promise<T>) => Promise<T> };
+		}> = this.structure;
+		const shared = originalShared.runShared;
+		if (!creationMethodCurrent(this.structure, 'runShared', shared))
+			throw new Error('Original shared read unavailable');
+		let dirty = false,
+			readClosed = false;
+		const observer: OriginalFunctions<EntitySubscriberInterface> = Object.freeze({
+			beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
+				if (
+					event.query.includes(';') ||
+					!/^(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|(?:SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT) [a-zA-Z][a-zA-Z0-9_]*$)/i.test(
+						event.query.trim(),
+					)
+				)
+					dirty = true;
+			},
+		});
+		const beforeQuery = observer.beforeQuery,
+			observerPrototype: object | null = nativePrototypeEvidence.getPrototypeOf(observer);
+		const observerCurrent = (): boolean =>
+			nativePrototypeEvidence.getPrototypeOf(observer) === observerPrototype &&
+			creationMethodCurrent(observer, 'beforeQuery', beforeQuery);
+		const closeRead = (): void => {
+			if (readClosed) return;
+			readClosed = true;
+			const index = source.subscribers.indexOf(observer);
+			if (index >= 0) source.subscribers.splice(index, 1);
+			this.feedbackReadClosers.delete(closeRead);
+		};
+		try {
+			const result: FeedbackNativeReadResult = await shared.call(this.structure, () =>
+				transaction.call(source, async (manager: EntityManager): Promise<FeedbackNativeReadResult> => {
+					const originalManagerMethods: OriginalFunctions<EntityManager> = manager;
+					let originalRunnerMethods: OriginalFunctions<QueryRunner>;
+					const runner = manager.queryRunner,
+						query = originalManagerMethods.query,
+						runnerQuery = ((originalRunnerMethods = runner), originalRunnerMethods?.query);
+					if (!outerCurrent() || readClosed || !observerCurrent() || !projectionCurrent())
+						throw new Error('Original feedback native admission lost');
+					// Admission belongs to this acquired shared/native transaction, never its wait queue.
+					source.subscribers.push(observer);
+					this.feedbackReadClosers.add(closeRead);
+					const current = (): boolean =>
+						outerCurrent() &&
+						metadataCurrent() &&
+						observerCurrent() &&
+						projectionCurrent() &&
+						(mode === 'BASELINE' || !!originalBaseline?.metadataCurrent()) &&
+						!readClosed &&
+						!dirty &&
+						!!runner &&
+						manager.connection === source &&
+						manager.queryRunner === runner &&
+						runner.connection === source &&
+						creationMethodCurrent(manager, 'query', query) &&
+						creationMethodCurrent(runner, 'query', runnerQuery) &&
+						hasCurrentSqliteConnectionLease(source) &&
+						source.subscribers.includes(observer) &&
+						creationMethodCurrent(this.structure, 'runShared', shared);
+					{
+						const read = async (sql: string, parameters: readonly unknown[]): Promise<readonly FeedbackNativeRow[]> => {
+							if (!current()) throw new Error('Original feedback native read lost');
+							const values: unknown = await query.call(manager, sql, [...parameters]);
+							if (!current() || !Array.isArray(values)) throw new Error('Complete feedback projection unavailable');
+							const from = sql.indexOf(' FROM '),
+								projection = sql.slice(7, from).split(',');
+							if (from < 0 || projection.some((name) => !/^"[a-zA-Z][a-zA-Z0-9_]*"$/.test(name)))
+								throw new Error('Closed native projection required');
+							const names = projection.map((name) => name.slice(1, -1));
+							return values.map((value: unknown) => {
+								if (!value || typeof value !== 'object' || Array.isArray(value))
+									throw new Error('Native feedback row required');
+								const row: Record<string, unknown> = {};
+								for (const key of Object.keys(value)) {
+									const descriptor = Object.getOwnPropertyDescriptor(value, key),
+										cell: unknown = descriptor?.value;
+									if (
+										!descriptor ||
+										descriptor.get ||
+										descriptor.set ||
+										!(
+											cell === null ||
+											typeof cell === 'string' ||
+											typeof cell === 'boolean' ||
+											(typeof cell === 'number' && Number.isFinite(cell))
+										)
+									)
+										throw new Error('Native feedback scalar required');
+									row[key] = cell;
+								}
+								if (Object.keys(row).length !== names.length || names.some((name) => !Object.hasOwn(row, name)))
+									throw new Error('Complete native feedback columns required');
+								if (
+									sql.includes('FROM "devices_virtual_thermostat_command_journal"') &&
+									(row.controllerId !== episode.controllerId ||
+										typeof row.id !== 'string' ||
+										!row.id ||
+										typeof row.claimId !== 'string' ||
+										!row.claimId ||
+										!['claimRevision', 'configurationRevision', 'decisionRevision'].every(
+											(key) => typeof row[key] === 'number' && Number.isSafeInteger(row[key]) && row[key] >= 0,
+										) ||
+										!['on', 'off'].includes(typeof row.action === 'string' ? row.action : '') ||
+										!['prepared', 'dispatching', 'accepted', 'unknown', 'cancelled', 'confirmed'].includes(
+											typeof row.status === 'string' ? row.status : '',
+										))
+								)
+									throw new Error('Native command ownership/risk unavailable');
+								return Object.freeze(row);
+							});
+						};
+						if (!current()) throw new Error('Original feedback read admission unavailable');
+						const supplemental = async (
+							tables: readonly FeedbackDebtTable[],
+							witnesses: Map<string, FeedbackNativeRow | null>,
+							initial: boolean,
+						): Promise<Extract<FeedbackNegativeResult, { kind: 'NEW_SAFETY' }> | null> => {
+							const journal = tables.find((table) => table.pending);
+							if (!journal) throw new Error('Complete native journal projection required');
+							const pending = `"status" NOT IN ('confirmed','cancelled')`;
+							const filters = [
+								{
+									filter: `"action" = 'on' AND "status" <> 'cancelled'`,
+									order: ' ORDER BY "preparedAt" DESC,"decisionRevision" DESC,"id" DESC',
+								},
+								{ filter: `${pending} AND "action" = 'on'`, order: '' },
+								{ filter: `${pending} AND "action" = 'off'`, order: '' },
+								{ filter: `${pending} AND "action" = 'on' AND "status" = 'unknown'`, order: '' },
+								{
+									filter: `${pending} AND "action" = 'on' AND "dispatchedAt" IS NOT NULL`,
+									order: ' ORDER BY "dispatchedAt" DESC,"id" DESC',
+								},
+								{ filter: `${pending} AND "fault" IS NOT NULL AND "fault" <> ''`, order: '' },
+							];
+							for (const claim of context.claims)
+								for (const [offset, selector] of filters.entries()) {
+									const key = claim.id + ':' + offset;
+									const rows = await read(
+										`SELECT ${journal.columns.map((name) => `"${name}"`).join(',')} FROM "${journal.table}" WHERE "controllerId" = ? AND "claimId" = ? AND (${selector.filter})${selector.order} LIMIT 1`,
+										[episode.controllerId, claim.id],
+									);
+									const row = rows[0] ?? null,
+										old = witnesses.get(key) ?? null;
+									witnesses.set(key, row);
+									if (
+										!initial &&
+										row &&
+										row.action === 'on' &&
+										(!old ||
+											this.feedbackRowKey(journal, row) !== this.feedbackRowKey(journal, old) ||
+											(row.status !== 'confirmed' &&
+												this.feedbackRowSignature(journal, row) !== this.feedbackRowSignature(journal, old)))
+									)
+										return {
+											kind: 'NEW_SAFETY',
+											witness: 'journal-witness:' + key + ':' + this.feedbackRowSignature(journal, row),
+										};
+								}
+							return null;
+						};
+						if (mode === 'BASELINE') {
+							if (!metadataCurrent()) throw new Error('Original feedback metadata lost');
+							const tables: FeedbackDebtTable[] = [];
+							for (const { scope, columns } of pins) {
+								const names = columns.map((column) => column.name),
+									keys = columns.filter((column) => column.primary).map((column) => column.name);
+								if (!keys.length) throw new Error('Native feedback primary identity required');
+								const rows = await read(
+									`SELECT ${names.map((name) => `"${name}"`).join(',')} FROM "${scope.table}" WHERE ${scope.scope}`,
+									scope.parameters,
+								);
+								if (!metadataCurrent()) throw new Error('Original feedback metadata lost');
+								if (scope.entities) {
+									const expected = scope.entities
+										.map((entity: object) => {
+											const row: Record<string, unknown> = {};
+											for (const pin of columns) {
+												const value: unknown = prepare.call(driver, pin.read.call(pin.column, entity), pin.column);
+												if (
+													!(
+														value === null ||
+														typeof value === 'string' ||
+														typeof value === 'boolean' ||
+														(typeof value === 'number' && Number.isFinite(value))
+													)
+												)
+													throw new Error('Original feedback entity scalar unavailable');
+												row[pin.name] = value;
+											}
+											return JSON.stringify(names.map((name) => row[name]));
+										})
+										.sort();
+									if (
+										JSON.stringify(expected) !==
+										JSON.stringify(
+											rows
+												.filter(
+													(row) =>
+														![
+															'devices_virtual_thermostat_member_protection',
+															'devices_virtual_thermostat_cooling_dependencies',
+														].includes(scope.table) ||
+														(typeof row.claimId === 'string' && ids.includes(row.claimId)),
+												)
+												.map((row) => JSON.stringify(names.map((name) => row[name])))
+												.sort(),
+										)
+									)
+										throw new Error('Original native feedback baseline disagrees');
+								}
+								const table: FeedbackDebtTable = {
+									table: scope.table,
+									columns: names,
+									keys,
+									scope: scope.scope,
+									parameters: scope.parameters,
+									pending: scope.entities === undefined,
+									original: rows,
+									observed: new Map(),
+								};
+								for (const row of rows) table.observed.set(this.feedbackRowKey(table, row), row);
+								tables.push(table);
+							}
+							if (!current()) throw new Error('Original feedback read completion unavailable');
+							const witnesses = new Map<string, FeedbackNativeRow | null>();
+							await supplemental(tables, witnesses, true);
+							return {
+								tables: Object.freeze(tables),
+								metadataCurrent,
+								barriers: new Map(this.feedbackBarriers(context)),
+								witnesses,
+								revision: {},
+							};
+						}
+						const baseline = projection?.candidate;
+						if (!baseline || !baseline.metadataCurrent())
+							throw new Error('Original negative debt baseline unavailable');
+
+						for (const table of baseline.tables) {
+							if (!baseline.metadataCurrent()) throw new Error('Original negative debt metadata lost');
+							const parameters: unknown[] = [...table.parameters];
+							const known = [...table.observed.values()].map(
+								(row) =>
+									'(' +
+									table.columns
+										.map((name) => {
+											parameters.push(row[name]);
+											return `"${name}" IS ?`;
+										})
+										.join(' AND ') +
+									')',
+							);
+							const rows = await read(
+								`SELECT ${table.columns.map((name) => `"${name}"`).join(',')} FROM "${table.table}" WHERE (${table.scope}) AND NOT (${known.length ? known.join(' OR ') : '0'}) LIMIT 1`,
+								parameters,
+							);
+							if (!baseline.metadataCurrent()) throw new Error('Original negative debt metadata lost');
+							if (rows.length) {
+								const row = rows[0],
+									key = this.feedbackRowKey(table, row);
+								table.observed.set(key, row);
+								return {
+									kind: 'NEW_SAFETY',
+									witness: table.table + ':' + key + ':' + this.feedbackRowSignature(table, row),
+								};
+							}
+							for (const [key, old] of [...table.observed]) {
+								const values: unknown[] = [...table.parameters],
+									predicate = table.keys
+										.map((name) => {
+											values.push(old[name]);
+											return `"${name}" IS ?`;
+										})
+										.join(' AND ');
+								const current = await read(
+									`SELECT ${table.columns.map((name) => `"${name}"`).join(',')} FROM "${table.table}" WHERE (${table.scope}) AND ${predicate} LIMIT 1`,
+									values,
+								);
+								if (!current.length) {
+									if (table.pending) {
+										const known = await read(
+											`SELECT ${table.columns.map((name) => `"${name}"`).join(',')} FROM "${table.table}" WHERE ${predicate} LIMIT 1`,
+											values.slice(table.parameters.length),
+										);
+										if (known.length && (known[0].status === 'confirmed' || known[0].status === 'cancelled')) {
+											table.observed.delete(key);
+											continue;
+										}
+									}
+									table.observed.delete(key);
+									return { kind: 'NEW_SAFETY', witness: table.table + ':missing:' + key };
+								}
+							}
+						}
+						const witness = await supplemental(baseline.tables, baseline.witnesses, false);
+						if (witness) return witness;
+						const barriers = this.feedbackBarriers(context);
+						for (const [binding, value] of barriers)
+							if (baseline.barriers.get(binding) !== value) {
+								baseline.barriers.set(binding, value);
+								return {
+									kind: 'NEW_SAFETY',
+									witness:
+										'protection:' +
+										[...context.memberBindings, ...context.coolingBindings].findIndex((row) => row === binding) +
+										':' +
+										value,
+								};
+							}
+						if (!context.admission.isCurrent() || !context.intent?.isCurrent())
+							throw new Error('Original failed-feedback facts unavailable');
+						if (!current()) throw new Error('Original feedback read completion unavailable');
+						return { kind: 'SAME_OLD_DEBT' };
+					}
+				}),
+			);
+			if (
+				!outerCurrent() ||
+				!metadataCurrent() ||
+				!observerCurrent() ||
+				!projectionCurrent() ||
+				readClosed ||
+				dirty ||
+				!source.subscribers.includes(observer)
+			)
+				throw new Error('Original native feedback completion lost');
+			return 'kind' in result && projection ? { ...result, projection } : result;
+		} finally {
+			closeRead();
+		}
+	}
+	private publishFeedbackProjection(
+		child: RuntimeFeedbackChild,
+		projection: FeedbackDebtProjection | undefined,
+	): boolean {
+		if (
+			!projection ||
+			!this.feedbackReadOwner(child.context, child.episode) ||
+			child.baseline !== projection.original ||
+			!projection.original.metadataCurrent() ||
+			child.episode.failure.state !== projection.frontier ||
+			child.episode.failure.primary !== projection.primary ||
+			child.episode.failure.observation !== projection.observation ||
+			projection.original.revision !== projection.revision
+		)
+			return false;
+		// Plain reference publication only; no callback/await between the final check and assignments.
+		projection.original.tables = projection.candidate.tables;
+		projection.original.witnesses = projection.candidate.witnesses;
+		projection.original.barriers = projection.candidate.barriers;
+		projection.original.revision = projection.candidate.revision;
+		return true;
+	}
+	private feedbackBarriers(context: ControllerContext): ReadonlyMap<object, number | null> {
+		const result = new Map<object, number | null>();
+		for (const binding of context.memberBindings)
+			result.set(binding, this.memberProtection.requiredReleaseAfter([binding]));
+		for (const binding of context.coolingBindings)
+			result.set(binding, this.coolingDependencies.requiredReleaseAfter([binding]));
+		return result;
+	}
+	private async captureOriginalFeedbackDebt(
+		context: ControllerContext,
+		episode: RuntimeFeedbackEpisode,
+	): Promise<FeedbackDebtBaseline> {
+		const result = await this.readFeedbackNative(context, episode, 'BASELINE');
+		if ('tables' in result) return result;
+		throw new Error('Complete original feedback baseline required');
+	}
+	private async probeOriginalFeedbackDebt(child: RuntimeFeedbackChild): Promise<FeedbackNegativeResult> {
+		const { context, episode } = child;
+		if (!this.feedbackReadOwner(context, episode)) return { kind: 'RETIRED' };
+		try {
+			if (child.baselineUnavailable) throw child.baselineUnavailable.cause;
+			if (!child.baseline?.metadataCurrent()) throw new Error('Original negative observation methods lost');
+			const result = await this.readFeedbackNative(context, episode, 'PROBE', child.baseline);
+			if ('kind' in result) return result;
+			throw new Error('Closed negative feedback result required');
+		} catch (cause) {
+			return this.feedbackReadOwner(context, episode) ? { kind: 'UNPROVABLE', cause } : { kind: 'RETIRED' };
+		}
+	}
+	/** Logical association only: never evaluates a native/claims/clock guard for event ownership. */
+	private ownsFeedbackDelivery(child: RuntimeFeedbackChild, context: ControllerContext): boolean {
+		const episode = child.episode;
+		return (
+			child.state !== 'CLOSED' &&
+			!episode.retired &&
+			this.active &&
+			this.lifecycle === episode.lifecycle &&
+			child.context === context &&
+			this.contexts.get(episode.controllerId) === context &&
+			this.feedbackEpisodes.get(episode.controllerId) === episode &&
+			this.feedbackContexts.get(context) === episode
+		);
+	}
+	private closeFeedbackDelivery(child: RuntimeFeedbackChild): void {
+		if (!child.work) return;
+		if (this.feedbackChildren.get(child.work) === child) this.feedbackChildren.delete(child.work);
+		try {
+			if (child.work instanceof RuntimeOffDispatchWork)
+				this.runtimeFeedbackMethods?.closeRuntimeOffDispatchWork.call(this.transport, child.work);
+			else this.runtimeFeedbackMethods?.closeRuntimeReconciliationWork.call(this.transport, child.work);
+		} catch {
+			/* Exact private closure cannot replace native P or close a successor. */
+		}
+	}
+	private requestFeedback(child: RuntimeFeedbackChild): void {
+		if (child.queued || child.episode.retired || !this.lifecycleCurrent(child.episode.lifecycle)) return;
+		child.queued = true;
+		const id = child.episode.controllerId,
+			previous = this.queues.get(id) ?? Promise.resolve();
+		const originalServiceLookup: Readonly<{
+			get: (
+				receiver: VirtualThermostatRuntimeService,
+				key: 'serviceFeedback',
+			) => OriginalFunction<VirtualThermostatRuntimeService, VirtualThermostatRuntimeService['serviceFeedback']>;
+		}> = Reflect;
+		const originalService = originalServiceLookup.get(this, 'serviceFeedback');
+		const next = previous
+			.catch(() => undefined)
+			.then(() => {
+				if (!creationMethodCurrent(this, 'serviceFeedback', originalService))
+					throw new Error('Original feedback service lost');
+				return originalService.call(this, child);
+			})
+			.catch((cause: unknown) => {
+				if (child.episode.failure.primary) {
+					if (child.episode.failure.primary.cause !== cause) child.episode.failure.secondary = true;
+				} else child.episode.failure.observation ??= { cause }; // Queue-level private refusal is never an original native P.
+				const diagnostic = this.diagnostics.get(id);
+				if (diagnostic && this.feedbackReadOwner(child.context, child.episode))
+					this.diagnostics.set(id, {
+						...diagnostic,
+						readiness: 'unavailable',
+						comfort_demand: 'off',
+						branches: diagnostic.branches.map((branch) => copyBranchDiagnostic(branch, true)),
+					});
+			});
+		this.queues.set(id, next);
+		void next.finally(() => {
+			this.closeFeedbackDelivery(child);
+			if (this.queues.get(id) === next) this.queues.delete(id);
+		});
+	}
+	private async serviceFeedback(child: RuntimeFeedbackChild): Promise<void> {
+		const { episode, context } = child;
+		if (child.job?.operation !== undefined) {
+			// The native operation never joins this queue; listener and dispatch finalizer do not await service.
+			try {
+				await child.job.operation;
+			} catch (cause) {
+				if (episode.failure.primary) {
+					if (!Object.is(episode.failure.primary.cause, cause)) episode.failure.secondary = true;
+				} else episode.failure.primary = { cause };
+				if (episode.failure.observation) episode.failure.secondary = true;
+			}
+		}
+		if (!this.feedbackReadOwner(context, episode)) return;
+		const completedSuccess =
+			child.evaluation.status === 'COMPLETE' && (child.state === 'SUCCESS' || child.state === 'OFF_REPORTED');
+		const assessment: ClimateAutomationRuntimeAssessment =
+			episode.checkpoint && this.runtimeComfortMethods && this.feedbackMethodsCurrent()
+				? this.runtimeComfortMethods.assessRuntimeFeedback.call(this.comfort, episode.controllerId, episode.checkpoint)
+				: { kind: 'closed' };
+		if (episode.checkpoint && assessment.kind === 'closed') {
+			episode.retired = true;
+			for (const owned of this.feedbackChildren.values())
+				if (owned.episode === episode) this.closeFeedbackDelivery(owned);
+			this.runtimeComfortMethods?.closeRuntimeSettlement.call(this.comfort, episode.checkpoint);
+			return;
+		}
+		const external = (this.externalFrontiers.get(episode.controllerId) ?? 0) !== episode.external;
+		const clockDebt = assessment.kind === 'settle' && !episode.clockDebt.has(assessment.debt);
+		if (assessment.kind === 'settle') episode.clockDebt.add(assessment.debt);
+		const ordinary = async (): Promise<void> => {
+			try {
+				await this.evaluate(
+					episode.controllerId,
+					episode.lifecycle,
+					(this.externalFrontiers.get(episode.controllerId) ?? 0) === episode.external ? episode : undefined,
+				);
+				if (episode.failure.state === 'ATTEMPTING') episode.failure.state = 'RESOLVED';
+			} catch (cause) {
+				if (episode.failure.primary) {
+					if (episode.failure.primary.cause !== cause) episode.failure.secondary = true;
+				} else episode.failure.primary = { cause };
+				if (episode.failure.observation) episode.failure.secondary = true;
+				episode.failure.state = 'BLOCKED';
+				throw episode.failure.primary.cause;
+			}
+		};
+		if (external || clockDebt) {
+			await ordinary();
+			return;
+		}
+		if (completedSuccess && !episode.checkpoint) {
+			await ordinary();
+			return;
+		}
+		if (completedSuccess && assessment.kind === 'reuse') {
+			try {
+				await this.evaluate(episode.controllerId, episode.lifecycle, episode, true);
+			} catch (cause) {
+				episode.failure.primary ??= { cause };
+				if (episode.failure.observation) episode.failure.secondary = true;
+				throw episode.failure.primary.cause;
+			}
+			return;
+		}
+		let negative = await this.probeOriginalFeedbackDebt(child);
+		if (!this.feedbackReadOwner(context, episode) || negative.kind === 'RETIRED') return;
+		if ((this.externalFrontiers.get(episode.controllerId) ?? 0) !== episode.external) {
+			await ordinary();
+			return;
+		}
+		if (negative.kind === 'NEW_SAFETY') {
+			if (this.publishFeedbackProjection(child, negative.projection)) {
+				// The genuine ordinary attempt is admitted in this same synchronous turn.
+				await ordinary();
+				return;
+			}
+			negative = { kind: 'UNPROVABLE', cause: new Error('Original negative projection superseded') };
+		}
+		if (negative.kind === 'UNPROVABLE') {
+			if (episode.failure.state === 'UNSEEN') {
+				episode.failure.state = 'ATTEMPTING';
+				episode.failure.observation ??= { cause: negative.cause };
+				if (episode.failure.primary) episode.failure.secondary = true;
+				await ordinary();
+				return;
+			}
+			if (episode.failure.primary && episode.failure.primary.cause !== negative.cause) episode.failure.secondary = true;
+			throw episode.failure.primary
+				? episode.failure.primary.cause
+				: episode.failure.observation
+					? episode.failure.observation.cause
+					: negative.cause;
+		}
+		// Limited C: observe only the still-original frame/protection and retain debt; no root/native/output work.
+		if (!context.admission.isCurrent() || !context.intent?.isCurrent())
+			throw new Error('Original failed-feedback context unavailable');
+		const now = Date.now(),
+			frame = this.inputs.read(context.bindings, now);
+		const decision = this.decide(context, frame, now, false);
+		if (!this.feedbackReadOwner(context, episode) || !context.admission.isCurrent() || !context.intent?.isCurrent())
+			return;
+		const barriers = this.feedbackBarriers(context);
+		if ([...barriers].some(([binding, value]) => negative.projection?.candidate.barriers.get(binding) !== value)) {
+			await ordinary();
+			return;
+		}
+		if (!this.publishFeedbackProjection(child, negative.projection))
+			throw new Error('Original negative projection superseded');
+		context.decision = { ...decision, desiredHeating: false, desiredCooling: false, comfortDemand: 'off' };
+		const diagnostic = this.diagnostics.get(episode.controllerId);
+		if (diagnostic)
+			this.diagnostics.set(episode.controllerId, {
+				...diagnostic,
+				readiness: 'unavailable',
+				comfort_demand: 'off',
+				branches: diagnostic.branches.map((branch) => copyBranchDiagnostic(branch, true)),
+			});
+	}
+	private async load(
+		controllerId: string,
+		lifecycle: object,
+		skipSettlement = false,
+	): Promise<ControllerContext | null> {
 		if (!this.lifecycleCurrent(lifecycle)) return null;
-		await this.comfort.settle(controllerId);
+		const episode = this.feedbackEpisodes.get(controllerId);
+		if (!episode || episode.lifecycle !== lifecycle) return null;
+		if (!skipSettlement) {
+			const consumer = this.runtimeSettlementConsumer;
+			if (!consumer) throw new Error('Original runtime settlement consumer unavailable');
+			if (!this.runtimeComfortMethods || !this.feedbackMethodsCurrent())
+				throw new Error('Original settlement port lost');
+			episode.checkpoint = await this.runtimeComfortMethods.settleForRuntime.call(this.comfort, controllerId, consumer);
+		}
 		if (!this.active || this.lifecycle !== lifecycle) return null;
 		return this.structure.runShared(async () => {
 			if (!this.lifecycleCurrent(lifecycle)) return null;
@@ -1761,6 +3103,14 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			const config = await this.dataSource.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
 			if (!config || !this.lifecycleCurrent(lifecycle)) return null;
 			const intent = await this.comfort.readIntentInManager(this.dataSource.manager, config);
+			let candidateOwner: RuntimeDrainFactOwner | undefined;
+			let rawClosed = false;
+			const closeUnownedIntent = (): void => {
+				if (rawClosed) return;
+				rawClosed = true;
+				intent.close();
+			};
+			const unownedFactCloses: (() => void)[] = [];
 			try {
 				this.assertLifecycle(lifecycle);
 				const owner = config.ownerDeviceId
@@ -1823,23 +3173,48 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 					}
 				}
 				if (!this.lifecycleCurrent(lifecycle) || !intent.isCurrent()) {
-					intent.close();
+					closeUnownedIntent();
 					return null;
 				}
 				const originalAdmission = admission;
-				const claimFacts = captureDiagnosticTree(claims),
-					configFacts = captureDiagnosticTree(config),
-					originalEpoch = this.epochs.get(controllerId) ?? 0;
+				const claimFacts = captureDiagnosticTree(claims);
+				unownedFactCloses.push(() => closeDiagnosticTree(claimFacts));
+				const configFacts = captureDiagnosticTree(config);
+				unownedFactCloses.push(() => closeDiagnosticTree(configFacts));
+				const originalEpoch = this.epochs.get(controllerId) ?? 0;
+				let factsClosed = false,
+					factsValid = true;
 				const health = {
 					current: true,
-					factsCurrent: (): boolean =>
-						diagnosticTreeCurrent(claimFacts) &&
-						diagnosticTreeCurrent(configFacts) &&
-						context.config === config &&
-						context.claims === claims &&
-						context.state === state &&
-						context.epoch === originalEpoch,
+					factsCurrent: (): boolean => {
+						if (!factsValid) return false;
+						let current: boolean;
+						try {
+							current =
+								diagnosticTreeCurrent(claimFacts) &&
+								diagnosticTreeCurrent(configFacts) &&
+								context.config === config &&
+								context.claims === claims &&
+								context.state === state &&
+								context.epoch === originalEpoch;
+						} catch (error) {
+							factsValid = false;
+							try {
+								this.invalidateDecisionFacts(context);
+							} catch {
+								/* Preserve original fact error. */
+							}
+							throw error;
+						}
+						if (!current) {
+							factsValid = false;
+							this.invalidateDecisionFacts(context);
+						}
+						return current;
+					},
 					close: (): void => {
+						if (factsClosed) return;
+						factsClosed = true;
 						closeDiagnosticTree(claimFacts);
 						closeDiagnosticTree(configFacts);
 					},
@@ -1852,8 +3227,8 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 							health.factsCurrent() &&
 							this.active &&
 							this.lifecycle === lifecycle &&
-							originalAdmission.isCurrent() &&
-							intent.isCurrent(),
+							this.drainFactOwners.get(context)?.membershipCurrent() === true &&
+							context.intent?.isCurrent() === true,
 					},
 					publishGuard,
 					config,
@@ -1877,12 +3252,39 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						reasons: [],
 					},
 				};
+				candidateOwner = this.createDrainFactOwner(context, intent, health, originalAdmission, lifecycle);
+				unownedFactCloses.length = 0;
+				context.intent = candidateOwner.decision;
 				this.contextLifecycles.set(context, lifecycle);
 				this.bookkeepingCaptures.set(context, originalAdmission);
 				this.bookkeepingHealth.set(context, health);
 				return context;
 			} catch (error) {
-				intent.close();
+				if (candidateOwner) {
+					try {
+						candidateOwner.invalidate();
+					} catch {
+						/* Preserve the failed load's original error. */
+					}
+					try {
+						candidateOwner.decision.close();
+					} catch {
+						/* Preserve the failed load's original error. */
+					}
+				} else {
+					try {
+						closeUnownedIntent();
+					} catch {
+						/* Preserve the failed load's original error. */
+					}
+					for (const close of unownedFactCloses) {
+						try {
+							close();
+						} catch {
+							/* Preserve the failed load's original error. */
+						}
+					}
+				}
 				throw error;
 			}
 		});
@@ -2154,86 +3556,169 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		const fresh = this.decide(current, this.inputs.read(current.bindings), Date.now(), false);
 		return claim.role === 'heating' ? fresh.desiredHeating : fresh.desiredCooling;
 	}
-	private async evaluate(controllerId: string, lifecycle: object): Promise<void> {
+	private async evaluate(
+		controllerId: string,
+		lifecycle: object,
+		inherited?: RuntimeFeedbackEpisode,
+		skipSettlement = false,
+	): Promise<void> {
 		if (!this.lifecycleCurrent(lifecycle)) return;
-		const context = await this.load(controllerId, lifecycle);
-		if (!this.lifecycleCurrent(lifecycle)) {
-			this.closeBookkeepingContext(context ?? undefined);
-			context?.intent?.close();
-			return;
-		}
-		if (!context) {
-			this.closeBookkeepingContext(this.contexts.get(controllerId));
-			this.contexts.get(controllerId)?.intent?.close();
-			this.contexts.delete(controllerId);
-			return;
-		}
-		this.closeBookkeepingContext(this.contexts.get(controllerId));
-		this.contexts.get(controllerId)?.intent?.close();
-		this.contexts.set(controllerId, context);
-		const now = Date.now(),
-			frame = this.inputs.read(context.bindings, now);
-		context.decision = this.decide(context, frame, now, true);
-		// Fence feedback revokes the previous decision like every other relay event. Consume settled
-		// all-leaf proof only in this freshly loaded scope, before issuing any further proof I/O.
-		this.acknowledgeMemberRelease(context);
-		this.acknowledgeCoolingRelease(context);
-		context.state.decisionRevision++;
-		context.state.configurationRevision = context.config.revision;
-		context.state.floorLatched = context.decision.floorOverheatLatched;
-		context.state.previousDemand = context.decision.comfortDemand;
-		context.state.reasons = context.decision.reasons;
-		context.state.evaluatedAt = new Date(now);
-		const trend = this.trends.get(controllerId);
-		context.state.heuristicHold =
-			trend?.pausedAt !== null && trend?.pausedUntil !== null && trend
-				? { pausedAt: trend.pausedAt, pausedUntil: trend.pausedUntil, cooldownUntil: trend.cooldownUntil }
-				: null;
-		await this.structure.runExclusive(() => {
-			this.assertContextLifecycle(context);
-			return this.dataSource.transaction(async (manager) => {
+		const prior = this.feedbackEpisodes.get(controllerId);
+		const episode: RuntimeFeedbackEpisode =
+			skipSettlement && inherited
+				? inherited
+				: {
+						controllerId,
+						lifecycle,
+						external: this.externalFrontiers.get(controllerId) ?? 0,
+						failure: inherited?.failure ?? { state: 'UNSEEN' },
+						clockDebt: inherited?.clockDebt ?? new WeakSet(),
+						checkpoint: null,
+						retired: false,
+					};
+		const originalFailure = episode.failure;
+		const completion: RuntimeEvaluationCompletion = {
+			identity: Object.freeze({}),
+			lifecycle,
+			episode,
+			status: 'OPEN',
+			publicationEnded: false,
+		};
+		try {
+			if (prior && prior !== episode) {
+				prior.retired = true;
+				for (const child of this.feedbackChildren.values())
+					if (child.episode === prior) this.closeFeedbackDelivery(child);
+				if (prior.checkpoint) this.runtimeComfortMethods?.closeRuntimeSettlement.call(this.comfort, prior.checkpoint);
+			}
+			this.feedbackEpisodes.set(controllerId, episode);
+			const context = await this.load(controllerId, lifecycle, skipSettlement);
+			if (!this.lifecycleCurrent(lifecycle)) {
+				this.closeBookkeepingContext(context ?? undefined);
+				context?.intent?.close();
+				return;
+			}
+			const previous = this.contexts.get(controllerId);
+			if (!context) {
+				this.pruneReconciled(controllerId, previous, null, lifecycle);
+				this.closeBookkeepingContext(previous);
+				if (this.lifecycleCurrent(lifecycle) && this.contexts.get(controllerId) === previous)
+					this.contexts.delete(controllerId);
+				return;
+			}
+			try {
+				this.pruneReconciled(controllerId, previous, context, lifecycle);
+				this.retireDecision(previous);
+				if (!this.lifecycleCurrent(lifecycle) || this.contexts.get(controllerId) !== previous) {
+					this.closeBookkeepingContext(context);
+					return;
+				}
+				this.contexts.set(controllerId, context);
+			} catch (error) {
+				try {
+					this.closeBookkeepingContext(context);
+				} catch {
+					/* Keep original replacement/cleanup failure primary. */
+				}
+				throw error;
+			}
+			episode.context = context;
+			completion.context = context;
+			this.evaluationCompletions.set(context, completion);
+			this.feedbackContexts.set(context, episode);
+			try {
+				const baseline = await this.captureOriginalFeedbackDebt(context, episode);
+				if (!this.feedbackReadOwner(context, episode)) throw new Error('Original completed baseline owner retired');
+				episode.baseline = baseline;
+				episode.baselineUnavailable = undefined;
+			} catch (cause) {
+				// Optional future-feedback evidence cannot veto ordinary mandatory safety work.
+				episode.baselineUnavailable = { cause };
+				episode.failure.observation ??= { cause };
+				if (episode.failure.primary) episode.failure.secondary = true;
+			}
+			const now = Date.now(),
+				frame = this.inputs.read(context.bindings, now);
+			context.decision = this.decide(context, frame, now, true);
+			// Fence feedback revokes the previous decision like every other relay event. Consume settled
+			// all-leaf proof only in this freshly loaded scope, before issuing any further proof I/O.
+			this.acknowledgeMemberRelease(context);
+			this.acknowledgeCoolingRelease(context);
+			context.state.decisionRevision++;
+			context.state.configurationRevision = context.config.revision;
+			context.state.floorLatched = context.decision.floorOverheatLatched;
+			context.state.previousDemand = context.decision.comfortDemand;
+			context.state.reasons = context.decision.reasons;
+			context.state.evaluatedAt = new Date(now);
+			const trend = this.trends.get(controllerId);
+			context.state.heuristicHold =
+				trend?.pausedAt !== null && trend?.pausedUntil !== null && trend
+					? { pausedAt: trend.pausedAt, pausedUntil: trend.pausedUntil, cooldownUntil: trend.cooldownUntil }
+					: null;
+			await this.structure.runExclusive(() => {
 				this.assertContextLifecycle(context);
-				await this.saveBookkeeping(manager, context, 'decision-state', context.state);
-				this.assertContextLifecycle(context);
-				await this.saveBookkeeping(manager, context, 'decision-branches', [...context.branches.values()]);
-				this.assertContextLifecycle(context);
+				return this.dataSource.transaction(async (manager) => {
+					this.assertContextLifecycle(context);
+					await this.saveBookkeeping(manager, context, 'decision-state', context.state);
+					this.assertContextLifecycle(context);
+					await this.saveBookkeeping(manager, context, 'decision-branches', [...context.branches.values()]);
+					this.assertContextLifecycle(context);
+				});
 			});
-		});
-		if (!this.contextLifecycleCurrent(context)) return;
-		// Every unwanted/unknown/pending branch gets release before any new energizing is considered.
-		for (const claim of context.claims) {
 			if (!this.contextLifecycleCurrent(context)) return;
-			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
-			const branch = context.branches.get(claim.id);
-			const pending = context.commands.some(
-				(command) => command.claimId === claim.id && command.action === 'on' && unresolved(command),
-			);
-			if (!desired && (branch.activity !== 'off' || pending || !this.isReconciled(claim) || claim.state !== 'reserved'))
-				await this.prepare(context, claim, 'off');
-		}
-		for (const claim of context.claims) {
+			// Every unwanted/unknown/pending branch gets release before any new energizing is considered.
+			for (const claim of context.claims) {
+				if (!this.contextLifecycleCurrent(context)) return;
+				const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
+				const branch = context.branches.get(claim.id);
+				const pending = context.commands.some(
+					(command) => command.claimId === claim.id && command.action === 'on' && unresolved(command),
+				);
+				if (
+					!desired &&
+					(branch.activity !== 'off' || pending || !this.isReconciled(claim) || claim.state !== 'reserved')
+				)
+					await this.prepare(context, claim, 'off');
+			}
+			for (const claim of context.claims) {
+				if (!this.contextLifecycleCurrent(context)) return;
+				await this.reconcile(context, claim);
+			}
 			if (!this.contextLifecycleCurrent(context)) return;
-			await this.reconcile(context, claim);
+			this.acknowledgeMemberRelease(context);
+			this.acknowledgeCoolingRelease(context);
+			for (const claim of context.claims) {
+				if (!this.contextLifecycleCurrent(context)) return;
+				const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
+				const latest = context.commands
+					.filter(
+						(command) => command.claimId === claim.id && command.action === 'on' && command.status !== 'cancelled',
+					)
+					.sort(newestCommandFirst)[0];
+				if (
+					desired &&
+					(!latest ||
+						(latest.status === 'confirmed' && context.branches.get(claim.id).activity === 'off') ||
+						(context.branches.get(claim.id).activity === 'on' &&
+							now - latest.preparedAt.getTime() >= claim.leaseSeconds * 500))
+				)
+					await this.prepare(context, claim, 'on');
+			}
+			await this.publish(context, frame);
+			completion.status = completion.publicationEnded ? 'COMPLETE' : 'ABANDONED';
+		} catch (cause) {
+			completion.status = 'FAILED';
+			completion.failure = { cause };
+			// This exact evaluation's original pipeline P must survive generic request containment.
+			// Retired A records only its captured causal cell, never a successor found by controller ID.
+			if (originalFailure.primary) {
+				if (!Object.is(originalFailure.primary.cause, cause)) originalFailure.secondary = true;
+			} else originalFailure.primary = { cause };
+			if (originalFailure.observation) originalFailure.secondary = true;
+			throw cause; // Preserve this original rejection even when an earlier P is retained privately.
+		} finally {
+			if (completion.status === 'OPEN') completion.status = 'ABANDONED';
 		}
-		if (!this.contextLifecycleCurrent(context)) return;
-		this.acknowledgeMemberRelease(context);
-		this.acknowledgeCoolingRelease(context);
-		for (const claim of context.claims) {
-			if (!this.contextLifecycleCurrent(context)) return;
-			const desired = claim.role === 'heating' ? context.decision.desiredHeating : context.decision.desiredCooling;
-			const latest = context.commands
-				.filter((command) => command.claimId === claim.id && command.action === 'on' && command.status !== 'cancelled')
-				.sort(newestCommandFirst)[0];
-			if (
-				desired &&
-				(!latest ||
-					(latest.status === 'confirmed' && context.branches.get(claim.id).activity === 'off') ||
-					(context.branches.get(claim.id).activity === 'on' &&
-						now - latest.preparedAt.getTime() >= claim.leaseSeconds * 500))
-			)
-				await this.prepare(context, claim, 'on');
-		}
-		await this.publish(context, frame);
 	}
 	/** OFF/drain proof is reusable only for this exact topology, bindings and live graph/ownership leases. */
 	private releaseScope(context: ControllerContext): string {
@@ -2355,6 +3840,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			proofId: null,
 			fault: null,
 		});
+		this.feedbackOriginalCommands.add(command);
 		if (action === 'off') {
 			branch.releaseAttempts++;
 			branch.nextReleaseAt = new Date(
@@ -2371,8 +3857,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 						scope.insert.call(manager, VirtualThermostatCommandEntity, command),
 					);
 				} catch (error) {
-					const health = this.bookkeepingHealth.get(context);
-					if (health) health.current = false;
+					this.invalidateDecisionFacts(context);
 					throw error;
 				} finally {
 					this.closeBookkeeping(scope);
@@ -2383,12 +3868,40 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			});
 		});
 		if (!this.contextLifecycleCurrent(context)) return;
+		this.recordFeedbackCommandAck(context, command);
 		context.commands.push(command);
 		this.inFlightCommands.set(command.id, command);
+		const evaluation = this.evaluationCompletions.get(context);
+		const job: RuntimeOffJob | undefined =
+			action === 'off' && evaluation
+				? { context, command, evaluation, outputSaved: false, terminal: false }
+				: undefined;
+		if (job) this.offJobs.set(command, job);
 		const operation = this.dispatch(context, claim, target, command).finally(() => {
 			this.inFlight.delete(command.id);
 			this.inFlightCommands.delete(command.id);
+			if (job) {
+				job.terminal = true;
+				if (job.child) {
+					job.child.state =
+						!job.failure && job.outputSaved && job.result === 'accepted' && job.child.sampleSeen
+							? 'OFF_REPORTED'
+							: 'FAILED';
+					this.closeFeedbackDelivery(job.child);
+					try {
+						this.requestFeedback(job.child);
+					} catch (cause) {
+						job.child.state = 'FAILED';
+						// Optional notification failure cannot replace the original operation's rejection.
+						const failure = job.child.episode.failure;
+						failure.observation ??= { cause };
+						if (failure.primary) failure.secondary = true;
+					}
+				}
+				if (this.offJobs.get(command) === job) this.offJobs.delete(command);
+			}
 		});
+		if (job) job.operation = operation;
 		this.inFlight.set(command.id, operation);
 		void operation.catch(() => undefined);
 	}
@@ -2437,11 +3950,57 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				return;
 			}
 			enteredTransport = true;
-			const result = await this.transport
-				.get(update, claim)
-				.send(update, claim, this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)), guard, {
-					commandId: command.id,
-				});
+			const adapter = this.transport.get(update, claim);
+			const originalAdapter: OriginalFunctions<NonNullable<typeof adapter>> = adapter;
+			const send = originalAdapter.send;
+			const qualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
+			const packet = Object.freeze({ commandId: command.id });
+			const job = this.offJobs.get(command),
+				episode = this.feedbackContexts.get(context),
+				ports = this.runtimeFeedbackMethods;
+			if (
+				adapter &&
+				job &&
+				episode &&
+				this.runtimeFeedbackConsumer &&
+				ports &&
+				!episode.retired &&
+				this.feedbackMethodsCurrent()
+			) {
+				try {
+					const work = ports.openRuntimeOffDispatchWork.call(
+						this.transport,
+						this.runtimeFeedbackConsumer,
+						adapter,
+						update,
+						claim,
+						qualification,
+						guard,
+						packet,
+					);
+					if (work) {
+						const child: RuntimeFeedbackChild = {
+							purpose: 'GUARDED_OFF_DISPATCH',
+							evaluation: job.evaluation,
+							episode,
+							context,
+							job,
+							work,
+							baseline: episode.baseline,
+							baselineUnavailable: episode.baselineUnavailable,
+							state: 'OPEN',
+							queued: false,
+							sampleSeen: false,
+						};
+						job.child = child;
+						this.feedbackChildren.set(work, child);
+					}
+				} catch {
+					/* Optional provenance cannot replace the original native operation. */
+				}
+			}
+			const result = await send.call(adapter, update, claim, qualification, guard, packet);
+			if (job) job.result = result.outcome;
 			refusedOn = command.action === 'on' && result.outcome === 'refused';
 			command.status = refusedOn ? 'cancelled' : result.outcome === 'accepted' ? 'accepted' : 'unknown';
 			command.settledAt = new Date();
@@ -2456,7 +4015,11 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				if (branch) await this.write(context, branch, 'member-fault');
 			}
 			await this.write(context, command, 'command-outcome');
+			const completedJob = this.offJobs.get(command);
+			if (completedJob) completedJob.outputSaved = true;
 		} catch (error) {
+			const failedJob = this.offJobs.get(command);
+			if (failedJob) failedJob.failure = { cause: error };
 			command.status = enteredTransport && !refusedOn ? 'unknown' : 'cancelled';
 			command.fault = error instanceof Error ? error.message : 'dispatch_error';
 			if (command.action === 'on') this.recordMemberFault(context, claim, command.fault);
@@ -2464,13 +4027,26 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 			if (!enteredTransport) await this.retryOffImmediately(context, command);
 		} finally {
 			// A known-unsent ON waits for the next poll or fresh event instead of immediately repeating the refusal.
-			if (this.contextLifecycleCurrent(context) && !refusedOn)
-				// Settlement is feedback, not a new setting request. Do not revoke sibling sends from this decision.
-				// Their final guards still re-read every member, fault, input, mapping and configuration fence.
-				this.request(
-					claim.controllerId,
-					!context.claims.some((member) => context.claims.filter((other) => other.role === member.role).length > 1),
-				);
+			if (!this.offJobs.get(command)?.child && this.contextLifecycleCurrent(context) && !refusedOn) {
+				const episode = this.feedbackContexts.get(context);
+				const evaluation = this.evaluationCompletions.get(context);
+				if (command.action === 'off' && episode && !episode.retired && evaluation)
+					this.requestFeedback({
+						purpose: 'OFF_COMMAND_COMPLETION',
+						evaluation,
+						episode,
+						context,
+						baseline: episode.baseline,
+						baselineUnavailable: episode.baselineUnavailable,
+						state: 'FAILED',
+						queued: false,
+					});
+				else
+					this.request(
+						claim.controllerId,
+						!context.claims.some((member) => context.claims.filter((other) => other.role === member.role).length > 1),
+					);
+			}
 		}
 	}
 	private async retryOffImmediately(
@@ -2519,209 +4095,305 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		// Graph withholding cannot acknowledge a barrier or send ON. Once physical drainage is
 		// settled, defer a scope-refresh fence until validation returns instead of feeding back forever.
 		if (!pending.length && !context.publishGuard() && this.isReconciled(claim)) return;
-		const startedAt = new Date();
-		const proof = await this.transport.get(target, claim).reconcile(
-			target,
-			pending.map((command) => command.id),
-			off,
-			() => this.canSend(context, claim, 'off'),
-			{
-				controllerId: context.config.controllerId,
-				controllerRevision: context.config.revision,
-				claimId: claim.id,
-				claimRevision: claim.revision,
-				contractFingerprint: claim.contractFingerprint,
-				qualification,
-			},
-		);
-		if (!this.contextLifecycleCurrent(context)) return;
-		const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
-		const endedAt = new Date();
-		const covered = new Set(proof?.coveredCommandIds ?? []);
-		if (
-			!proof ||
-			!acceptedOff ||
-			acceptedOff.value !== false ||
-			acceptedOff.provenance !== 'live' ||
-			acceptedOff.quality !== 'good' ||
-			!proof.isCurrent?.() ||
-			!proof.sourceIsCurrent?.() ||
-			this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) !== qualification ||
-			proof.scope?.controllerId !== context.config.controllerId ||
-			proof.scope.controllerRevision !== context.config.revision ||
-			proof.scope.claimId !== claim.id ||
-			proof.scope.claimRevision !== claim.revision ||
-			proof.scope.contractFingerprint !== claim.contractFingerprint ||
-			!Number.isFinite(proof.observedAt?.getTime()) ||
-			proof.observedAt.getTime() < startedAt.getTime() ||
-			proof.observedAt.getTime() > endedAt.getTime() ||
-			!this.canSend(context, claim, 'off') ||
-			!proof.proofId ||
-			!proof.connectionIdentity ||
-			proof.physicalIdentity !== claim.physicalIdentity ||
-			!proof.externalWriterBarrier ||
-			pending.some((command) => !covered.has(command.id)) ||
-			proof.offSample.propertyId !== target.property.id ||
-			proof.offSample.value !== false ||
-			proof.offSample.provenance !== 'live' ||
-			proof.offSample.quality !== 'good' ||
-			proof.offSample.sampledAt.getTime() < proof.observedAt.getTime() ||
-			proof.offSample.receivedAt.getTime() > endedAt.getTime() ||
-			proof.offSample.sampledAt.getTime() !== acceptedOff.sampledAt.getTime() ||
-			proof.offSample.receivedAt.getTime() !== acceptedOff.receivedAt.getTime() ||
-			proof.offSample.revision !== acceptedOff.revision
-		)
-			return;
-		// This exact proof binding must survive every awaited write, including reservation release.
-		const isProofCurrent = (): boolean => {
-			const currentOff = this.values.readQualifiedSample(target.property, 30_000);
-			return (
-				this.contextLifecycleCurrent(context) &&
-				this.canSend(context, claim, 'off') &&
-				proof.isCurrent() &&
-				proof.sourceIsCurrent() &&
-				this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) === qualification &&
-				this.contexts.get(claim.controllerId)?.config.revision === proof.scope.controllerRevision &&
-				!!currentOff &&
-				currentOff.value === false &&
-				currentOff.provenance === 'live' &&
-				currentOff.quality === 'good' &&
-				currentOff.sampledAt.getTime() === proof.offSample.sampledAt.getTime() &&
-				currentOff.receivedAt.getTime() === proof.offSample.receivedAt.getTime() &&
-				currentOff.revision === proof.offSample.revision &&
-				!!this.transport.get(target, claim)?.canReconcile(target, qualification)
-			);
-		};
-		const branch = context.branches.get(claim.id);
-		const staleProof = new Error('Qualified release proof expired during journal settlement');
-		type JournalSettlement = {
-			branch: VirtualThermostatBranchRuntimeEntity;
-			currentIds: Set<string>;
-			settledAt: Date;
-		};
-		const settled = await this.structure.runExclusive(() => {
-			this.assertContextLifecycle(context);
-			return this.dataSource
-				.transaction<JournalSettlement | null>(async (manager) => {
-					this.assertContextLifecycle(context);
-					// Re-read under the write lock: a proof cannot settle an unseen command added during I/O.
-					const current = await this.loadUnresolvedCommands(claim.controllerId, claim.id, manager);
-					this.assertContextLifecycle(context);
-					const currentConfig = await manager.findOneBy(VirtualThermostatConfigEntity, {
-						controllerId: claim.controllerId,
-					});
-					this.assertContextLifecycle(context);
-					const currentClaim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claim.id });
-					const currentQualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
-					const currentOff = this.values.readQualifiedSample(target.property, 30_000);
-					if (
-						!this.contextLifecycleCurrent(context) ||
-						!this.canSend(context, claim, 'off') ||
-						!proof.isCurrent?.() ||
-						!proof.sourceIsCurrent?.() ||
-						currentConfig?.revision !== proof.scope.controllerRevision ||
-						!currentClaim ||
-						currentClaim.state === 'released' ||
-						currentClaim.revision !== proof.scope.claimRevision ||
-						currentClaim.contractFingerprint !== proof.scope.contractFingerprint ||
-						currentClaim.sourcePropertyId !== target.property.id ||
-						currentClaim.physicalIdentity !== proof.physicalIdentity ||
-						currentQualification !== qualification ||
-						!currentOff ||
-						currentOff.value !== false ||
-						currentOff.provenance !== 'live' ||
-						currentOff.quality !== 'good' ||
-						currentOff.sampledAt.getTime() !== proof.offSample.sampledAt.getTime() ||
-						currentOff.receivedAt.getTime() !== proof.offSample.receivedAt.getTime() ||
-						currentOff.revision !== proof.offSample.revision ||
-						!this.transport.get(target, claim)?.canReconcile(target, currentQualification) ||
-						current.some((command) => this.inFlight.has(command.id) || !covered.has(command.id))
-					)
-						return null;
-					const settledBranch = manager.create(VirtualThermostatBranchRuntimeEntity, {
-						...branch,
-						releaseProofId: proof.proofId,
-						activity: 'off',
-						lastVerifiedOffAt:
-							!branch.lastVerifiedOffAt || current.some((command) => command.action === 'on')
-								? proof.offSample.receivedAt
-								: branch.lastVerifiedOffAt,
-						releaseAttempts: 0,
-						nextReleaseAt: null,
-						fault: null,
-					});
-					const settledAt = new Date();
-					for (let offset = 0; offset < current.length; offset += 500) {
-						this.assertContextLifecycle(context);
-						const scope = this.openBookkeeping(manager, context, 'settle-drain', current.slice(offset, offset + 500), {
-							proofId: proof.proofId,
-							settledAt,
-						});
-						try {
-							await this.bookkeepingOrigin.run({ role: 'ORM', scope }, () =>
-								manager
-									.createQueryBuilder()
-									.update(VirtualThermostatCommandEntity)
-									.set({ status: 'confirmed', proofId: proof.proofId, settledAt })
-									.where('id IN (:...ids)', { ids: current.slice(offset, offset + 500).map((command) => command.id) })
-									.execute(),
-							);
-						} catch (error) {
-							const health = this.bookkeepingHealth.get(context);
-							if (health) health.current = false;
-							throw error;
-						} finally {
-							this.closeBookkeeping(scope);
-						}
-					}
-					this.assertContextLifecycle(context);
-					await this.saveBookkeeping(manager, context, 'settle-branch', settledBranch);
-					if (!isProofCurrent()) throw staleProof;
-					return { branch: settledBranch, currentIds: new Set(current.map((command) => command.id)), settledAt };
-				})
-				.catch((error: unknown): JournalSettlement | null => {
-					if (error === staleProof) return null;
-					throw error;
-				});
-		});
-		if (!settled) return;
-		// The transaction has acknowledged these exact IDs as confirmed. Later authority or
-		// reservation-release failure must not retain already committed provider metadata.
-		try {
-			proof.retireConfirmedCommandIds?.([...settled.currentIds]);
-		} catch {
-			// Optional provider bookkeeping cannot change the committed primary outcome.
-		}
-		Object.assign(branch, settled.branch);
-		for (const command of context.commands)
-			if (settled.currentIds.has(command.id) && unresolved(command)) {
-				command.status = 'confirmed';
-				command.proofId = proof.proofId;
-				command.settledAt = settled.settledAt;
-			}
-		if (!isProofCurrent()) return;
-		this.memberFaults.delete(`${claim.id}:${claim.revision}`);
-		if (claim.state === 'releasing') {
-			const authority = this.claims.mintAuthority(claim.id, 'off');
-			await this.claims.completeRelease(
-				this.claims.recordQualifiedRelease(authority, {
-					outputConfirmedOff: true,
-					pendingOnDrained: true,
-					evidenceId: proof.proofId,
-					qualification,
-					isCurrent: isProofCurrent,
-					controllerRevision: proof.scope.controllerRevision,
-				}),
-			);
-		}
-		if (!this.contextLifecycleCurrent(context)) return;
-		this.reconciled.set(`${claim.id}:${claim.revision}`, {
+		const episode = this.feedbackContexts.get(context),
+			consumer = this.runtimeFeedbackConsumer;
+		if (!episode || !consumer || episode.retired || !this.feedbackReadOwner(context, episode)) return;
+		const adapter = this.transport.get(target, claim);
+		if (!adapter) return;
+		const originalCanSendLookup: Readonly<{
+			get: (
+				receiver: VirtualThermostatRuntimeService,
+				key: 'canSend',
+			) => OriginalFunction<VirtualThermostatRuntimeService, VirtualThermostatRuntimeService['canSend']>;
+		}> = Reflect;
+		const canSend = originalCanSendLookup.get(this, 'canSend');
+		const guard = () => creationMethodCurrent(this, 'canSend', canSend) && canSend.call(this, context, claim, 'off');
+		const scope = Object.freeze({
+			controllerId: context.config.controllerId,
+			controllerRevision: context.config.revision,
+			claimId: claim.id,
+			claimRevision: claim.revision,
+			contractFingerprint: claim.contractFingerprint,
 			qualification,
-			sourceIsCurrent: proof.sourceIsCurrent,
-			observedAt: proof.offSample.receivedAt.getTime(),
-			scope: this.releaseScope(context),
-			scopeIsCurrent: () => context.admission.isCurrent() && context.publishGuard(),
 		});
+		const ports = this.runtimeFeedbackMethods;
+		if (!ports || !this.feedbackMethodsCurrent()) return;
+		const evaluation = this.evaluationCompletions.get(context);
+		if (!evaluation) return;
+		const work = ports.openRuntimeReconciliationWork.call(this.transport, consumer, scope, adapter, guard);
+		const child: RuntimeFeedbackChild = {
+			purpose: 'RECONCILIATION_OFF',
+			evaluation,
+			episode,
+			context,
+			work,
+			baseline: episode.baseline,
+			baselineUnavailable: episode.baselineUnavailable,
+			state: 'OPEN',
+			queued: false,
+		};
+		this.feedbackChildren.set(work, child);
+		try {
+			const startedAt = new Date();
+			const proof = await adapter.reconcile(
+				target,
+				pending.map((command) => command.id),
+				off,
+				guard,
+				scope,
+			);
+			if (!this.contextLifecycleCurrent(context)) return;
+			const acceptedOff = this.values.readQualifiedSample(target.property, 30_000);
+			const endedAt = new Date();
+			const covered = new Set(proof?.coveredCommandIds ?? []);
+			if (
+				!proof ||
+				!acceptedOff ||
+				acceptedOff.value !== false ||
+				acceptedOff.provenance !== 'live' ||
+				acceptedOff.quality !== 'good' ||
+				!proof.isCurrent?.() ||
+				!proof.sourceIsCurrent?.() ||
+				this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) !== qualification ||
+				proof.scope?.controllerId !== context.config.controllerId ||
+				proof.scope.controllerRevision !== context.config.revision ||
+				proof.scope.claimId !== claim.id ||
+				proof.scope.claimRevision !== claim.revision ||
+				proof.scope.contractFingerprint !== claim.contractFingerprint ||
+				!Number.isFinite(proof.observedAt?.getTime()) ||
+				proof.observedAt.getTime() < startedAt.getTime() ||
+				proof.observedAt.getTime() > endedAt.getTime() ||
+				!this.canSend(context, claim, 'off') ||
+				!proof.proofId ||
+				!proof.connectionIdentity ||
+				proof.physicalIdentity !== claim.physicalIdentity ||
+				!proof.externalWriterBarrier ||
+				pending.some((command) => !covered.has(command.id)) ||
+				proof.offSample.propertyId !== target.property.id ||
+				proof.offSample.value !== false ||
+				proof.offSample.provenance !== 'live' ||
+				proof.offSample.quality !== 'good' ||
+				proof.offSample.sampledAt.getTime() < proof.observedAt.getTime() ||
+				proof.offSample.receivedAt.getTime() > endedAt.getTime() ||
+				proof.offSample.sampledAt.getTime() !== acceptedOff.sampledAt.getTime() ||
+				proof.offSample.receivedAt.getTime() !== acceptedOff.receivedAt.getTime() ||
+				proof.offSample.revision !== acceptedOff.revision
+			)
+				return;
+			// This exact proof binding must survive every awaited write, including reservation release.
+			const isProofCurrent = (): boolean => {
+				const currentOff = this.values.readQualifiedSample(target.property, 30_000);
+				return (
+					this.contextLifecycleCurrent(context) &&
+					this.canSend(context, claim, 'off') &&
+					proof.isCurrent() &&
+					proof.sourceIsCurrent() &&
+					this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims)) === qualification &&
+					this.contexts.get(claim.controllerId)?.config.revision === proof.scope.controllerRevision &&
+					!!currentOff &&
+					currentOff.value === false &&
+					currentOff.provenance === 'live' &&
+					currentOff.quality === 'good' &&
+					currentOff.sampledAt.getTime() === proof.offSample.sampledAt.getTime() &&
+					currentOff.receivedAt.getTime() === proof.offSample.receivedAt.getTime() &&
+					currentOff.revision === proof.offSample.revision &&
+					!!this.transport.get(target, claim)?.canReconcile(target, qualification)
+				);
+			};
+			const branch = context.branches.get(claim.id);
+			const staleProof = new Error('Qualified release proof expired during journal settlement');
+			type JournalSettlement = {
+				branch: VirtualThermostatBranchRuntimeEntity;
+				currentIds: Set<string>;
+				settledAt: Date;
+			};
+			const settled = await this.structure.runExclusive(() => {
+				this.assertContextLifecycle(context);
+				return this.dataSource
+					.transaction<JournalSettlement | null>(async (manager) => {
+						this.assertContextLifecycle(context);
+						// Re-read under the write lock: a proof cannot settle an unseen command added during I/O.
+						const current = await this.loadUnresolvedCommands(claim.controllerId, claim.id, manager);
+						this.assertContextLifecycle(context);
+						const currentConfig = await manager.findOneBy(VirtualThermostatConfigEntity, {
+							controllerId: claim.controllerId,
+						});
+						this.assertContextLifecycle(context);
+						const currentClaim = await manager.findOneBy(VirtualThermostatActuatorClaimEntity, { id: claim.id });
+						const currentQualification = this.claims.qualification(claim, thermostatHasOpposedBranches(context.claims));
+						const currentOff = this.values.readQualifiedSample(target.property, 30_000);
+						if (
+							!this.contextLifecycleCurrent(context) ||
+							!this.canSend(context, claim, 'off') ||
+							!proof.isCurrent?.() ||
+							!proof.sourceIsCurrent?.() ||
+							currentConfig?.revision !== proof.scope.controllerRevision ||
+							!currentClaim ||
+							currentClaim.state === 'released' ||
+							currentClaim.revision !== proof.scope.claimRevision ||
+							currentClaim.contractFingerprint !== proof.scope.contractFingerprint ||
+							currentClaim.sourcePropertyId !== target.property.id ||
+							currentClaim.physicalIdentity !== proof.physicalIdentity ||
+							currentQualification !== qualification ||
+							!currentOff ||
+							currentOff.value !== false ||
+							currentOff.provenance !== 'live' ||
+							currentOff.quality !== 'good' ||
+							currentOff.sampledAt.getTime() !== proof.offSample.sampledAt.getTime() ||
+							currentOff.receivedAt.getTime() !== proof.offSample.receivedAt.getTime() ||
+							currentOff.revision !== proof.offSample.revision ||
+							!this.transport.get(target, claim)?.canReconcile(target, currentQualification) ||
+							current.some((command) => this.inFlight.has(command.id) || !covered.has(command.id))
+						)
+							return null;
+						const settledBranch = manager.create(VirtualThermostatBranchRuntimeEntity, {
+							...branch,
+							releaseProofId: proof.proofId,
+							activity: 'off',
+							lastVerifiedOffAt:
+								!branch.lastVerifiedOffAt || current.some((command) => command.action === 'on')
+									? proof.offSample.receivedAt
+									: branch.lastVerifiedOffAt,
+							releaseAttempts: 0,
+							nextReleaseAt: null,
+							fault: null,
+						});
+						const settledAt = new Date();
+						for (let offset = 0; offset < current.length; offset += 500) {
+							this.assertContextLifecycle(context);
+							const scope = this.openBookkeeping(
+								manager,
+								context,
+								'settle-drain',
+								current.slice(offset, offset + 500),
+								{
+									proofId: proof.proofId,
+									settledAt,
+								},
+							);
+							try {
+								await this.bookkeepingOrigin.run({ role: 'ORM', scope }, () =>
+									manager
+										.createQueryBuilder()
+										.update(VirtualThermostatCommandEntity)
+										.set({ status: 'confirmed', proofId: proof.proofId, settledAt })
+										.where('id IN (:...ids)', { ids: current.slice(offset, offset + 500).map((command) => command.id) })
+										.execute(),
+								);
+							} catch (error) {
+								this.invalidateDecisionFacts(context);
+								throw error;
+							} finally {
+								this.closeBookkeeping(scope);
+							}
+						}
+						this.assertContextLifecycle(context);
+						await this.saveBookkeeping(manager, context, 'settle-branch', settledBranch);
+						if (!isProofCurrent()) throw staleProof;
+						return { branch: settledBranch, currentIds: new Set(current.map((command) => command.id)), settledAt };
+					})
+					.catch((error: unknown): JournalSettlement | null => {
+						if (error === staleProof) return null;
+						throw error;
+					});
+			});
+			if (!settled) return;
+			// The transaction has acknowledged these exact IDs as confirmed. Later authority or
+			// reservation-release failure must not retain already committed provider metadata.
+			try {
+				proof.retireConfirmedCommandIds?.([...settled.currentIds]);
+			} catch {
+				// Optional provider bookkeeping cannot change the committed primary outcome.
+			}
+			Object.assign(branch, settled.branch);
+			for (const command of context.commands)
+				if (settled.currentIds.has(command.id) && unresolved(command)) {
+					command.status = 'confirmed';
+					command.proofId = proof.proofId;
+					command.settledAt = settled.settledAt;
+					this.recordFeedbackCommandAck(context, command);
+				}
+			if (!isProofCurrent()) return;
+			this.memberFaults.delete(`${claim.id}:${claim.revision}`);
+			if (claim.state === 'releasing') {
+				const authority = this.claims.mintAuthority(claim.id, 'off');
+				await this.claims.completeRelease(
+					this.claims.recordQualifiedRelease(authority, {
+						outputConfirmedOff: true,
+						pendingOnDrained: true,
+						evidenceId: proof.proofId,
+						qualification,
+						isCurrent: isProofCurrent,
+						controllerRevision: proof.scope.controllerRevision,
+					}),
+				);
+			}
+			// No refreshed claims generation or successor context may repair original post-release authority.
+			if (!isProofCurrent()) return;
+			const certificate = this.retainDrainCertificate(context, claim, qualification, proof);
+			if (!certificate) return;
+			const lifecycle = this.contextLifecycles.get(context);
+			const origin = this.drainFactOwners.get(context);
+			if (!lifecycle || !origin || origin.lifecycle !== lifecycle) {
+				certificate.close();
+				return;
+			}
+			const key = `${claim.id}:${claim.revision}`;
+			const previous = this.reconciled.get(key);
+			try {
+				if (!isProofCurrent() || !certificate.factsCurrent()) {
+					certificate.close();
+					return;
+				}
+				const originalProof: OriginalFunctions<ThermostatReleaseOrderingEvidence> = proof;
+				const source = originalProof.sourceIsCurrent;
+				const record: RuntimeReconciledRecord = Object.freeze({
+					origin,
+					controllerId: context.config.controllerId,
+					claimId: claim.id,
+					claimRevision: claim.revision,
+					physicalIdentity: claim.physicalIdentity,
+					qualificationGeneration: claim.qualificationGeneration,
+					lifecycle,
+					qualification,
+					// Committed OFF history remains distinct from a usable certificate during graph withholding.
+					sourceIsCurrent: (): boolean => creationMethodCurrent(proof, 'sourceIsCurrent', source) && source.call(proof),
+					observedAt: proof.offSample.receivedAt.getTime(),
+					scope: this.releaseScope(context),
+					scopeIsCurrent: certificate.current,
+					close: certificate.close,
+				});
+				// Closing only the graph certificate must not erase independently truthful committed OFF history.
+				const usableCertificate = certificate.current();
+				if (!isProofCurrent() || !certificate.factsCurrent() || this.reconciled.get(key) !== previous) {
+					certificate.close();
+					return;
+				}
+				this.reconciled.set(key, record);
+				if (usableCertificate) child.state = 'SUCCESS';
+			} catch (error) {
+				try {
+					certificate.close();
+				} catch {
+					/* Preserve original post-ACK error. */
+				}
+				throw error;
+			}
+			previous?.close();
+		} catch (cause) {
+			child.state = 'FAILED';
+			episode.failure.primary ??= { cause };
+			if (episode.failure.observation) episode.failure.secondary = true;
+			throw cause;
+		} finally {
+			if (child.state === 'OPEN') child.state = 'FAILED';
+			try {
+				ports.closeRuntimeReconciliationWork.call(this.transport, work);
+			} catch {
+				/* Private cleanup cannot mask original P. */
+			}
+			this.feedbackChildren.delete(work);
+		}
 	}
 	/** Detached display evidence only: never enters policy, release proof, journaling or transport admission. */
 	private branchObservation(
@@ -2803,6 +4475,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 		};
 	}
 	private async publish(context: ControllerContext, frame: ThermostatInputFrame): Promise<void> {
+		const completion = this.evaluationCompletions.get(context);
 		if (!this.contextLifecycleCurrent(context) || !context.publishGuard()) return;
 		const observedAt = new Date();
 		const branches = context.claims.map((claim) => {
@@ -2981,6 +4654,7 @@ export class VirtualThermostatRuntimeService implements OnApplicationBootstrap, 
 				expiresAt: new Date(Math.min(sampledAt.getTime() + 30000, Date.now() + 1000)),
 			});
 		}
+		if (completion && this.evaluationCompletions.get(context) === completion) completion.publicationEnded = true;
 	}
 }
 

@@ -2477,6 +2477,59 @@ describe('finite readonly existing-controller diagnostic observations', () => {
 			counts: () => ({ queries, writes }),
 		};
 	};
+
+	// BEGIN R21 additive source-only drafts (UNRUN)
+	it('R21 origin capture is data-only and clone/late events cannot become an owned physical delivery', async () => {
+		const f = await fixture();
+		const neverCurrent = (): boolean => {
+			throw new Error('Data provenance must not probe source authority');
+		};
+		const evidence: import('../models/property-sample.model').PropertySampleEvidence = {
+			sampledAt: new Date(1000),
+			receivedAt: new Date(1000),
+			provenance: 'live',
+			sourceIsCurrent: neverCurrent,
+		};
+		const origin = f.values.openOwnedSampleOrigin(evidence, f.property.id);
+		try {
+			expect(origin).not.toBeNull();
+			f.values.forwardOwnedReportEvidence({ ...evidence }, Object.freeze({ ...evidence }));
+			expect(f.values.captureOwnedFeedbackDelivery(Object.freeze({ propertyId: f.property.id }))).toBeNull();
+			expect(JSON.stringify(origin)).toBe('{}');
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+			if (origin) {
+				f.values.closeOwnedSampleOrigin(origin);
+				f.values.closeOwnedSampleOrigin(origin);
+			}
+			expect(f.values.captureOwnedFeedbackDelivery(Object.freeze({}))).toBeNull();
+		} finally {
+			if (origin) f.values.closeOwnedSampleOrigin(origin);
+			await f.module.close();
+		}
+	});
+	it('R21 accessor evidence cannot mint an origin and registration never invokes its getter', async () => {
+		const f = await fixture();
+		let getters = 0;
+		try {
+			const evidence: import('../models/property-sample.model').PropertySampleEvidence = {
+				get sampledAt() {
+					getters++;
+					return new Date(1000);
+				},
+				receivedAt: new Date(1000),
+				provenance: 'live',
+				sourceIsCurrent: () => {
+					throw new Error('No authority probe expected');
+				},
+			};
+			expect(f.values.openOwnedSampleOrigin(evidence, f.property.id)).toBeNull();
+			expect(getters).toBe(0);
+			expect(f.counts()).toEqual({ queries: 0, writes: 0 });
+		} finally {
+			await f.module.close();
+		}
+	});
+	// END R21 additive source-only drafts
 	it('keeps an initially absent original sample unavailable without history, writes or producer correction', async () => {
 		const f = await fixture();
 		const capture = f.values.captureDiagnosticSamples([f.property]);

@@ -438,7 +438,7 @@ export function creationMethodCurrent(receiver: object, key: string, original: u
 		if (descriptor)
 			return descriptor.get === undefined && descriptor.set === undefined && descriptor.value === original;
 		const parent: unknown = nativePrototypeEvidence.getPrototypeOf(object);
-		object = typeof parent === 'object' && parent !== null ? parent : null;
+		object = (typeof parent === 'object' || typeof parent === 'function') && parent !== null ? parent : null;
 	}
 	return false;
 }

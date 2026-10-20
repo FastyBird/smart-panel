@@ -54,6 +54,10 @@ import {
 	PropertyValueSourceRegistryService,
 } from './property-value-source.registry.service';
 
+const originalSampleDatePrototype: Readonly<{
+	getTime: (...args: Parameters<Date['getTime']>) => ReturnType<Date['getTime']>;
+}> = Date.prototype;
+const originalSampleDateValue = originalSampleDatePrototype.getTime;
 const nativePrototypeEvidence: Readonly<{ getPrototypeOf: (receiver: object) => object | null }> = Object;
 const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
 
@@ -279,8 +283,105 @@ interface DiagnosticSampleRecord {
 	finished: boolean;
 }
 
+/** Original report provenance only; not sample, command, claims or source authority. */
+export class OwnedSampleOrigin {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+interface OwnedSampleOriginRecord {
+	readonly token: OwnedSampleOrigin;
+	readonly original: PropertySampleEvidence;
+	readonly propertyId: string;
+	readonly fields: readonly Readonly<{ key: string; value: unknown }>[];
+	readonly methods: readonly Readonly<{ key: string; value: unknown }>[];
+	captured?: PropertySampleEvidence;
+	closed: boolean;
+	delivered: boolean;
+}
 @Injectable()
 export class PropertyValueService {
+	private readonly ownedSampleOrigins = new Map<OwnedSampleOrigin, OwnedSampleOriginRecord>();
+	private readonly ownedEvidence = new WeakMap<PropertySampleEvidence, OwnedSampleOriginRecord>();
+	private readonly ownedDeliveries = new WeakMap<object, OwnedSampleOriginRecord>();
+	openOwnedSampleOrigin(evidence: PropertySampleEvidence, propertyId: string): OwnedSampleOrigin | null {
+		if (!evidence || typeof evidence !== 'object' || !propertyId || this.ownedEvidence.has(evidence)) return null;
+		const fields: { key: string; value: unknown }[] = [];
+		for (const key of Object.keys(evidence)) {
+			const descriptor = Object.getOwnPropertyDescriptor(evidence, key);
+			if (!descriptor || descriptor.get || descriptor.set) return null;
+			fields.push({ key, value: descriptor.value });
+		}
+		if (!fields.some((field) => field.key === 'sourceIsCurrent' && typeof field.value === 'function')) return null;
+		const methods = [
+			'openOwnedSampleOrigin',
+			'forwardOwnedReportEvidence',
+			'captureOwnedFeedbackDelivery',
+			'closeOwnedSampleOrigin',
+		].map((key) => ({ key, value: nativeFieldEvidence.get(this, key) }));
+		const token = Object.freeze(new OwnedSampleOrigin());
+		const record: OwnedSampleOriginRecord = {
+			token,
+			original: evidence,
+			propertyId,
+			fields: Object.freeze(fields),
+			methods: Object.freeze(methods),
+			closed: false,
+			delivered: false,
+		};
+		this.ownedSampleOrigins.set(token, record);
+		this.ownedEvidence.set(evidence, record);
+		return token;
+	}
+	private ownedSampleOriginCurrent(record: OwnedSampleOriginRecord): boolean {
+		return (
+			!record.closed &&
+			creationMethodCurrent(Date.prototype, 'getTime', originalSampleDateValue) &&
+			this.ownedSampleOrigins.get(record.token) === record &&
+			record.methods.every((pin) => creationMethodCurrent(this, pin.key, pin.value)) &&
+			Object.keys(record.original).length === record.fields.length &&
+			record.fields.every((field) => {
+				const descriptor = Object.getOwnPropertyDescriptor(record.original, field.key);
+				return !!descriptor && !descriptor.get && !descriptor.set && descriptor.value === field.value;
+			})
+		);
+	}
+	forwardOwnedReportEvidence(original: PropertySampleEvidence, captured: PropertySampleEvidence): void {
+		const record = this.ownedEvidence.get(original);
+		if (!record || record.original !== original || record.captured || !this.ownedSampleOriginCurrent(record)) return;
+		for (const field of record.fields) {
+			const descriptor = Object.getOwnPropertyDescriptor(captured, field.key);
+			if (!descriptor || descriptor.get || descriptor.set) {
+				this.closeOwnedSampleOrigin(record.token);
+				return;
+			}
+			const value: unknown = descriptor.value;
+			if (field.value instanceof Date && value instanceof Date) {
+				if (originalSampleDateValue.call(field.value) !== originalSampleDateValue.call(value)) {
+					this.closeOwnedSampleOrigin(record.token);
+					return;
+				}
+			} else if (field.value !== value) {
+				this.closeOwnedSampleOrigin(record.token);
+				return;
+			}
+		}
+		record.captured = captured;
+		this.ownedEvidence.set(captured, record);
+	}
+	captureOwnedFeedbackDelivery(event: object): OwnedSampleOrigin | null {
+		const record = this.ownedDeliveries.get(event);
+		return record && this.ownedSampleOriginCurrent(record) ? record.token : null;
+	}
+	closeOwnedSampleOrigin(token: OwnedSampleOrigin): void {
+		const record = this.ownedSampleOrigins.get(token);
+		if (!record) return;
+		record.closed = true;
+		this.ownedEvidence.delete(record.original);
+		if (record.captured) this.ownedEvidence.delete(record.captured);
+		this.ownedSampleOrigins.delete(token);
+	}
+
 	private readonly diagnosticSamples = new WeakMap<DiagnosticSamples, DiagnosticSampleRecord>();
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
 
@@ -951,10 +1052,28 @@ export class PropertyValueService {
 						property,
 					);
 					snapshot.value = clonePropertyValueState(result.state);
-					this.events?.emit(
-						EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED,
-						Object.freeze({ propertyId: key, property: snapshot, sample: this.cloneSample(sample, false) }),
-					);
+					const payload = Object.freeze({
+						propertyId: key,
+						property: snapshot,
+						sample: this.cloneSample(sample, false),
+					});
+					const origin = this.ownedEvidence.get(evidence);
+					if (
+						sample.value === false &&
+						origin &&
+						origin.captured === evidence &&
+						origin.propertyId === key &&
+						!origin.delivered &&
+						this.ownedSampleOriginCurrent(origin)
+					) {
+						origin.delivered = true;
+						this.ownedDeliveries.set(payload, origin);
+					}
+					try {
+						this.events?.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, payload);
+					} finally {
+						this.ownedDeliveries.delete(payload);
+					}
 				}
 				return result;
 			},

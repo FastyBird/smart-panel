@@ -27,6 +27,7 @@ import { VirtualThermostatActuatorClaimEntity } from '../entities/virtual-thermo
 
 import { ThermostatInstalledQualification } from './virtual-thermostat-claims.service';
 import { thermostatActuatorIdentity, thermostatPropertyContract } from './virtual-thermostat-contract.utils';
+import { RuntimeFeedbackConsumer } from './virtual-thermostat-transport.service';
 import { ThermostatActuationAdapter, VirtualThermostatTransportService } from './virtual-thermostat-transport.service';
 
 describe('thermostat qualified guard bridge and core sample acceptance', () => {
@@ -386,6 +387,85 @@ describe('captured thermostat transport readiness continuity', () => {
 		};
 	};
 
+	// BEGIN R21 additive source-only drafts (UNRUN)
+	it('R21 refuses an unregistered feedback consumer before invoking an existing adapter or evidence read', async () => {
+		const f = await fixture(),
+			supplied = f.custom();
+		try {
+			const scope = Object.freeze({
+				controllerId: f.claim.controllerId,
+				controllerRevision: 1,
+				claimId: f.claim.id,
+				claimRevision: f.claim.revision,
+				contractFingerprint: f.claim.contractFingerprint,
+				qualification: f.qualification,
+			});
+			const neverGuard = (): boolean => {
+				throw new Error('A negative origin check must not execute command admission');
+			};
+			expect(() =>
+				f.transport.openRuntimeReconciliationWork(new RuntimeFeedbackConsumer(), scope, supplied.adapter, neverGuard),
+			).toThrow();
+			expect(supplied.reconcile).not.toHaveBeenCalled();
+			expect(supplied.send).not.toHaveBeenCalled();
+			expect(f.readSample).not.toHaveBeenCalled();
+			expect(f.transport.captureRuntimeFeedbackDelivery(Object.freeze({}))).toBeNull();
+			f.transport.closeRuntimeFeedbackConsumer(new RuntimeFeedbackConsumer());
+		} finally {
+			await f.module.close();
+		}
+	});
+	// BEGIN R31 negative-only transport contract drafts (UNRUN; no synthetic positive origin)
+	it.each(['builtin', 'custom', 'on', 'missing-qualification', 'accessor-packet'] satisfies readonly string[])(
+		'R31 refuses %s dispatch work from an unregistered consumer without guard/session/sample calls',
+		async (kind) => {
+			const f = await fixture(),
+				native = await f.builtin(),
+				custom = f.custom();
+			let guards = 0,
+				getters = 0;
+			const guard = (): boolean => {
+				guards++;
+				throw new Error('A refused origin must not call a guard');
+			};
+			const packet =
+				kind === 'accessor-packet'
+					? Object.freeze({
+							get commandId(): string {
+								getters++;
+								return 'forged';
+							},
+						})
+					: Object.freeze({ commandId: 'forged' });
+			try {
+				const adapter = kind === 'custom' ? custom.adapter : f.transport.get(f.target, f.claim);
+				if (!adapter) throw new Error('Builtin negative fixture missing');
+				expect(
+					f.transport.openRuntimeOffDispatchWork(
+						new RuntimeFeedbackConsumer(),
+						adapter,
+						kind === 'on' ? { ...f.target, value: true } : f.target,
+						f.claim,
+						kind === 'missing-qualification' ? null : f.qualification,
+						guard,
+						packet,
+					),
+				).toBeNull();
+				expect(guards).toBe(0);
+				expect(getters).toBe(0);
+				expect(native.prepare).not.toHaveBeenCalled();
+				expect(native.fence).not.toHaveBeenCalled();
+				expect(custom.send).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+				expect(f.transport.captureRuntimeFeedbackDelivery(Object.freeze({}))).toBeNull();
+			} finally {
+				await native.cleanup();
+				await f.module.close();
+			}
+		},
+	);
+	// END R31 negative-only transport contract drafts
+	// END R21 additive source-only drafts
 	it('returns only frozen read-only evidence for a trusted optional capture and never sends, reconciles or reads samples', async () => {
 		const f = await fixture();
 		try {
@@ -722,4 +802,103 @@ describe('captured thermostat transport readiness continuity', () => {
 			await f.module.close();
 		}
 	});
+	// BEGIN R24 unknown-result additive drafts (UNRUN)
+	// Transport-boundary fixture only: the held session readback and admission sink are inert;
+	// this exercises the actual builtin adapter/platform pins, not RPC or storage qualification.
+	it.each(['prepareGuardRpcSession', 'admitGuardFenceSample', 'matching-owner'])(
+		'keeps the held original fence result conservative for %s',
+		async (method) => {
+			const f = await fixture(),
+				b = await f.builtin();
+			const originalPrepare = jest.spyOn(b.platform, 'prepareGuardRpcSession');
+			const originalAdmit = jest.spyOn(b.platform, 'admitGuardFenceSample').mockResolvedValue(undefined);
+			const protective = jest.spyOn(b.platform, 'processProtectiveCommand');
+			const fenceGate: { release?: (value: ShellyGuardFenceReadback | null) => void } = {};
+			const entryGate: { entered?: () => void } = {};
+			const heldFence = new Promise<ShellyGuardFenceReadback | null>((resolve) => {
+				fenceGate.release = resolve;
+			});
+			const entered = new Promise<void>((resolve) => {
+				entryGate.entered = resolve;
+			});
+			b.fence.mockImplementationOnce(() => {
+				if (!entryGate.entered) throw new Error('Expected original fence entry gate');
+				entryGate.entered();
+				return heldFence;
+			});
+			try {
+				const adapter = f.transport.get(f.target, f.claim);
+				if (!adapter) throw new Error('Expected actual builtin adapter');
+				const admitted = (): boolean => b.originalSession.isCurrent();
+				const sending = adapter.send(f.target, f.claim, f.qualification, admitted);
+				await entered;
+				expect(originalPrepare).toHaveBeenCalledTimes(1);
+				expect(originalPrepare).toHaveBeenCalledWith(f.target, f.qualification.profile);
+				expect(b.prepare).toHaveBeenCalledTimes(1);
+				expect(b.fence).toHaveBeenCalledTimes(1);
+				expect(b.fence).toHaveBeenCalledWith(1000, admitted);
+				let replacementPrepare: typeof originalPrepare | undefined;
+				let replacementAdmit: typeof originalAdmit | undefined;
+				if (method === 'prepareGuardRpcSession') {
+					originalPrepare.mockRestore();
+					replacementPrepare = jest.spyOn(b.platform, 'prepareGuardRpcSession');
+				} else if (method === 'admitGuardFenceSample') {
+					originalAdmit.mockRestore();
+					replacementAdmit = jest.spyOn(b.platform, 'admitGuardFenceSample');
+				}
+				const now = new Date();
+				const readback: ShellyGuardFenceReadback = {
+					proofId: 'synthetic-held-fence',
+					connectionIdentity: b.originalSession.connectionIdentity,
+					output: false,
+					wasOn: true,
+					epoch: 11,
+					isCurrent: admitted,
+					evidence: {
+						sampledAt: now,
+						receivedAt: now,
+						observedAt: now,
+						provenance: 'live',
+						isCurrent: admitted,
+						sourceIsCurrent: admitted,
+					},
+				};
+				if (!fenceGate.release) throw new Error('Expected original fence release gate');
+				fenceGate.release(readback);
+				if (method === 'matching-owner') {
+					await expect(sending).resolves.toEqual({
+						outcome: 'accepted',
+						wasOn: true,
+						outputConfirmed: false,
+						pendingOnDrained: false,
+					});
+					expect(originalAdmit).toHaveBeenCalledTimes(1);
+					expect(originalAdmit).toHaveBeenCalledWith(f.target, readback);
+				} else {
+					await expect(sending).resolves.toEqual({
+						outcome: 'unknown',
+						reasons: ['original_guard_platform_lost'],
+						outputConfirmed: false,
+						pendingOnDrained: false,
+					});
+					expect(originalAdmit).not.toHaveBeenCalled();
+				}
+				if (replacementPrepare) expect(replacementPrepare).not.toHaveBeenCalled();
+				if (replacementAdmit) expect(replacementAdmit).not.toHaveBeenCalled();
+				expect(b.prepare).toHaveBeenCalledTimes(1);
+				expect(b.fence).toHaveBeenCalledTimes(1);
+				expect(protective).not.toHaveBeenCalled();
+				expect(b.on).not.toHaveBeenCalled();
+				expect(b.request).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+			} finally {
+				fenceGate.release?.(null);
+				b.owner.dispose();
+				jest.restoreAllMocks();
+				await b.cleanup();
+				await f.module.close();
+			}
+		},
+	);
+	// END R24 unknown-result additive drafts (UNRUN)
 });

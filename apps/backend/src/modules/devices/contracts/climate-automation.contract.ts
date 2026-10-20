@@ -747,6 +747,41 @@ export interface ClimateAutomationExistingPlan {
 	readonly response: ClimateAutomationJson;
 	readonly mirrors: readonly { readonly propertyId: string; readonly value: number | boolean | string | null }[];
 }
+/** Private in-process scheduling/cleanup identities. They never grant SQL, claims or transport authority. */
+export class ClimateAutomationRuntimeConsumer {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export class ClimateAutomationRuntimeCapture {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export class ClimateAutomationRuntimeCheckpoint {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export class ClimateAutomationRuntimeDebt {
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
+}
+export interface ClimateAutomationRuntimeConsumerBinding {
+	readonly owner: object;
+	readonly lifecycle: object;
+	readonly comfort: object;
+	readonly providerKey: string;
+}
+export type ClimateAutomationRuntimeAssessment =
+	| Readonly<{ kind: 'reuse' }>
+	| Readonly<{ kind: 'closed' }>
+	| Readonly<{ kind: 'settle'; debt: ClimateAutomationRuntimeDebt | ClimateAutomationNotificationReceipt }>;
+export interface ClimateAutomationSettlementContinuity {
+	readonly isCurrent: () => boolean;
+	readonly close: () => void;
+}
 export interface ClimateAutomationExistingCapability {
 	readonly version: 1;
 	readonly codec: 'virtual-thermostat-existing:v1';
@@ -754,6 +789,7 @@ export interface ClimateAutomationExistingCapability {
 	readonly snapshotInput: (kind: ClimateAutomationExistingKind, input: unknown) => ClimateAutomationJson;
 	readonly holdAtEntry: () => Readonly<{ prepare: () => Promise<void>; release: () => void }>;
 	readonly captureEnvironment: () => Readonly<{
+		readonly settlementContinuity?: ClimateAutomationSettlementContinuity;
 		destinations: import('../../storage/services/storage.service').CreationStorageDestinations;
 		/** Fixed materialized LOCAL properties only: one finite veto observation, never a callback or write permit. */
 		observeProperties: (properties: readonly import('../entities/devices.entity').ChannelPropertyEntity[]) => void;
