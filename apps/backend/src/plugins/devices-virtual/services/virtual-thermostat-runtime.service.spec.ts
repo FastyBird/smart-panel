@@ -110,6 +110,7 @@ type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunctio
 jest.setTimeout(30_000);
 
 describe('virtual thermostat durable runtime', () => {
+	const completionObserverBackstops = new Set<Readonly<{ retire: () => void; cleanup: () => void }>>();
 	let directory: string;
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
@@ -619,6 +620,17 @@ describe('virtual thermostat durable runtime', () => {
 			if (database?.isInitialized) await database.destroy();
 			await rm(directory, { recursive: true, force: true });
 		}
+	});
+	afterEach(() => {
+		let failure: { cause: unknown } | undefined;
+		for (const observer of [...completionObserverBackstops]) {
+			try {
+				observer.cleanup();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+		}
+		if (failure) throw failure.cause;
 	});
 	const waitForOnJournal = async (): Promise<VirtualThermostatCommandEntity> => {
 		for (let attempt = 0; attempt < 6; attempt++) {
@@ -3648,6 +3660,7 @@ describe('virtual thermostat durable runtime', () => {
 			if (cleanup) throw cleanup.cause;
 		};
 		afterEach(() => {
+			for (const observer of completionObserverBackstops) observer.retire();
 			runtime.onModuleDestroy();
 			actualClaims?.onModuleDestroy();
 			fixture?.revoke();
@@ -3776,7 +3789,233 @@ describe('virtual thermostat durable runtime', () => {
 					'R21-original',
 				);
 			};
-			const startWithCeiling = async (maximum: number): Promise<void> => {
+			// BEGIN R42 exact original dispatch service completion observer (SOURCE ONLY)
+			type OriginalCompletionBoundary = Readonly<{
+				promise: Promise<void>;
+				flush: () => Promise<void>;
+				assertOpen: () => void;
+			}>;
+			const observeOriginalOffCompletion = () => {
+				const setupFixtures = realGuardFixtures,
+					setupFixtureCount = setupFixtures.length;
+				const transportPrototype = VirtualThermostatTransportService.prototype,
+					runtimePrototype = VirtualThermostatRuntimeService.prototype;
+				const originalTransport: OriginalFunctions<VirtualThermostatTransportService> = transportPrototype;
+				const originalOpen = originalTransport.openRuntimeOffDispatchWork;
+				const originalServiceLookup: Readonly<{
+					get: (
+						owner: object,
+						key: 'serviceFeedback',
+					) => OriginalFunction<VirtualThermostatRuntimeService, (typeof runtime)['serviceFeedback']>;
+				}> = Reflect;
+				const originalService = originalServiceLookup.get(runtimePrototype, 'serviceFeedback');
+				const descriptors: Readonly<{
+					getOwnPropertyDescriptor: (
+						owner: object,
+						key: PropertyKey,
+					) => (Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
+				}> = Object;
+				const openDescriptor = descriptors.getOwnPropertyDescriptor(transportPrototype, 'openRuntimeOffDispatchWork'),
+					serviceDescriptor = descriptors.getOwnPropertyDescriptor(runtimePrototype, 'serviceFeedback');
+				if (
+					!openDescriptor ||
+					openDescriptor.get ||
+					openDescriptor.set ||
+					openDescriptor.value !== originalOpen ||
+					!serviceDescriptor ||
+					serviceDescriptor.get ||
+					serviceDescriptor.set ||
+					serviceDescriptor.value !== originalService
+				)
+					throw new Error('Original completion observation descriptors unavailable');
+				const settlement: { resolve?: () => void; reject?: (cause: unknown) => void } = {};
+				const promise = new Promise<void>((resolve, reject) => {
+					settlement.resolve = resolve;
+					settlement.reject = reject;
+				});
+				// This receipt is test-owned; an early original rejection must not become an unhandled side Promise.
+				void promise.catch(() => undefined);
+				let closed = false,
+					matched = false,
+					restored = false,
+					openInstalled = false,
+					serviceInstalled = false;
+				let owner:
+					| Readonly<{
+							runtime: VirtualThermostatRuntimeService;
+							fixture: NonNullable<typeof fixture>;
+							flush: OriginalFunction<VirtualThermostatRuntimeService, VirtualThermostatRuntimeService['flush']>;
+					  }>
+					| undefined;
+				let observerCleanup: (() => void) | undefined;
+				let work: RuntimeOffDispatchWork | undefined, observationFailure: { cause: unknown } | undefined;
+				const observationFailed = (cause: unknown): void => {
+					try {
+						observationFailure ??= { cause };
+						if (!closed) settlement.reject?.(cause);
+					} catch {
+						// Never throw from a side handler into the original service or its native caller.
+					}
+				};
+				const opening = function (
+					this: VirtualThermostatTransportService,
+					...args: Parameters<typeof originalOpen>
+				): ReturnType<typeof originalOpen> {
+					const result = originalOpen.call(this, ...args);
+					if (!closed && owner && this === owner.fixture.transport && work === undefined && result) work = result;
+					return result;
+				};
+				const servicing = function (
+					this: VirtualThermostatRuntimeService,
+					...args: Parameters<typeof originalService>
+				): ReturnType<typeof originalService> {
+					const result = originalService.call(this, ...args);
+					if (
+						!closed &&
+						!matched &&
+						owner &&
+						this === owner.runtime &&
+						work !== undefined &&
+						args[0].work === work &&
+						args[0].purpose === 'GUARDED_OFF_DISPATCH'
+					) {
+						matched = true;
+						try {
+							const side = result.then(
+								() => {
+									try {
+										if (!closed) {
+											if (observationFailure) settlement.reject?.(observationFailure.cause);
+											else settlement.resolve?.();
+										}
+									} catch (cause) {
+										observationFailed(cause);
+									}
+								},
+								(cause: unknown) => {
+									try {
+										if (!closed) settlement.reject?.(cause);
+									} catch (failure) {
+										observationFailed(failure);
+									}
+								},
+							);
+							void side.catch(observationFailed);
+						} catch (cause) {
+							observationFailed(cause);
+						}
+					}
+					return result; // SAME original application Promise, including every rejection value.
+				};
+				const retire = (): void => {
+					closed = true;
+				};
+				const cleanup = (afterOwnedTeardown = false): void => {
+					closed = true;
+					if (restored) return;
+					// Setup failure before bind is restored only by the post-fixture afterEach backstop.
+					if (!owner && !afterOwnedTeardown) return;
+					let failure: { cause: unknown } | undefined;
+					if (owner) {
+						try {
+							owner.runtime.onModuleDestroy();
+						} catch (cause) {
+							failure = { cause };
+						}
+						try {
+							owner.fixture.revoke();
+						} catch (cause) {
+							failure ??= { cause };
+						}
+					} else {
+						// This is the original case array, never a later test's current fixture or runtime.
+						for (const owned of setupFixtures.slice(setupFixtureCount)) {
+							try {
+								owned.revoke();
+							} catch (cause) {
+								failure ??= { cause };
+							}
+						}
+					}
+					const stopObservation = observerCleanup;
+					observerCleanup = undefined;
+					try {
+						stopObservation?.();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					const restore = (target: object, key: string, original: PropertyDescriptor, expected: unknown): void => {
+						const current = descriptors.getOwnPropertyDescriptor(target, key);
+						if (
+							!current ||
+							current.get ||
+							current.set ||
+							current.value !== expected ||
+							current.configurable !== original.configurable ||
+							current.enumerable !== original.enumerable ||
+							current.writable !== original.writable
+						)
+							throw new Error('Completion observer descriptor replaced by another owner');
+						Object.defineProperty(target, key, original);
+					};
+					try {
+						if (serviceInstalled) restore(runtimePrototype, 'serviceFeedback', serviceDescriptor, servicing);
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					try {
+						if (openInstalled) restore(transportPrototype, 'openRuntimeOffDispatchWork', openDescriptor, opening);
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					restored = true;
+					completionObserverBackstops.delete(backstop);
+					if (failure) throw failure.cause;
+				};
+				const backstop = { retire, cleanup: (): void => cleanup(true) };
+				completionObserverBackstops.add(backstop);
+				try {
+					Object.defineProperty(transportPrototype, 'openRuntimeOffDispatchWork', {
+						...openDescriptor,
+						value: opening,
+					});
+					openInstalled = true;
+					Object.defineProperty(runtimePrototype, 'serviceFeedback', { ...serviceDescriptor, value: servicing });
+					serviceInstalled = true;
+				} catch (cause) {
+					// Retain the original setup failure; the teardown backstop restores any installed owned descriptor.
+					closed = true;
+					throw cause;
+				}
+				const assertOpen = (): void => {
+					if (closed || !owner) throw new Error('Original completion case owner retired');
+				};
+				return {
+					bind: (current: VirtualThermostatRuntimeService, owned: NonNullable<typeof fixture>): void => {
+						if (closed || owner) throw new Error('Original completion case owner cannot be rebound');
+						const originalRuntime: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'flush'>> = current;
+						owner = Object.freeze({ runtime: current, fixture: owned, flush: originalRuntime.flush });
+					},
+					observeCleanup: (stop: () => void): void => {
+						assertOpen();
+						if (observerCleanup) throw new Error('Original completion observation cleanup already owned');
+						observerCleanup = stop;
+					},
+					boundary: {
+						promise,
+						assertOpen,
+						flush: (): Promise<void> => {
+							assertOpen();
+							if (!owner) throw new Error('Original completion case owner missing');
+							return owner.flush.call(owner.runtime);
+						},
+					} satisfies OriginalCompletionBoundary,
+					cleanup,
+				};
+			};
+			// END R42 exact original dispatch service completion observer
+
+			const startWithCeiling = async (maximum: number, completion?: OriginalCompletionBoundary): Promise<void> => {
 				if (!fixture) throw new Error('Actual managed native fixture missing');
 				const owned = fixture,
 					excess = gate(),
@@ -3790,19 +4029,31 @@ describe('virtual thermostat durable runtime', () => {
 					}
 					return Promise.resolve();
 				};
+				const completionOwner = completion === undefined ? undefined : runtime;
 				const starting = runtime.onApplicationBootstrap();
 				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
 				try {
-					expect(await Promise.race([starting.then(() => 'complete'), excess.promise.then(() => 'excess')])).toBe(
-						'complete',
-					);
+					expect(
+						await Promise.race([
+							completion === undefined
+								? starting.then(() => 'complete')
+								: starting.then(async () => {
+										await completion.promise;
+										await completion.flush();
+										completion.assertOpen();
+										return 'complete';
+									}),
+							excess.promise.then(() => 'excess'),
+						]),
+					).toBe('complete');
 					expect(calls).toBeLessThanOrEqual(maximum);
 				} catch (cause) {
 					primary = { cause };
 				} finally {
 					if (primary) {
 						try {
-							runtime.onModuleDestroy();
+							if (completionOwner === undefined) runtime.onModuleDestroy();
+							else completionOwner.onModuleDestroy();
 							owned.revoke();
 						} catch (cause) {
 							cleanup = { cause };
@@ -3820,31 +4071,55 @@ describe('virtual thermostat durable runtime', () => {
 				if (cleanup) throw cleanup.cause;
 			};
 			it('shares an actual active-C settlement across its native OFF report and closes event provenance after emit', async () => {
-				await active();
-				if (!fixture) throw new Error('Managed fixture missing');
-				const originalDelivery: OriginalFunctions<
-					Pick<VirtualThermostatTransportService, 'captureRuntimeFeedbackDelivery'>
-				> = fixture.transport;
-				const delivery = originalDelivery.captureRuntimeFeedbackDelivery;
-				const works: (RuntimeOffDispatchWork | RuntimeReconciliationWork)[] = [];
-				const deliverySpy = jest
-					.spyOn(fixture.transport, 'captureRuntimeFeedbackDelivery')
-					.mockImplementation((event) => {
-						const work = delivery.call(fixture.transport, event);
-						if (work) works.push(work);
-						return work;
-					});
-				let tagged = 0;
-				const delivered: object[] = [];
-				const observe = (event: object): void => {
-					if (values.captureOwnedFeedbackDelivery(event)) {
-						tagged++;
-						delivered.push(event);
-					}
-				};
-				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+				const completion = observeOriginalOffCompletion();
+				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
 				try {
-					await startWithCeiling(2);
+					await active();
+					if (!fixture) throw new Error('Managed fixture missing');
+					completion.bind(runtime, fixture);
+					const originalDelivery: OriginalFunctions<
+						Pick<VirtualThermostatTransportService, 'captureRuntimeFeedbackDelivery'>
+					> = fixture.transport;
+					const delivery = originalDelivery.captureRuntimeFeedbackDelivery;
+					const works: (RuntimeOffDispatchWork | RuntimeReconciliationWork)[] = [];
+					const originalDeliveryDescriptor = Object.getOwnPropertyDescriptor(
+						fixture.transport,
+						'captureRuntimeFeedbackDelivery',
+					);
+					const observedTransport = fixture.transport,
+						observedEvents = events;
+					const deliverySpy = jest
+						.spyOn(fixture.transport, 'captureRuntimeFeedbackDelivery')
+						.mockImplementation((event) => {
+							const work = delivery.call(fixture.transport, event);
+							if (work) works.push(work);
+							return work;
+						});
+					let tagged = 0;
+					const delivered: object[] = [];
+					const observe = (event: object): void => {
+						if (values.captureOwnedFeedbackDelivery(event)) {
+							tagged++;
+							delivered.push(event);
+						}
+					};
+					const stopObserving = (): void => {
+						observedEvents.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+						const current = Object.getOwnPropertyDescriptor(observedTransport, 'captureRuntimeFeedbackDelivery');
+						if (current?.value === deliverySpy && !current.get && !current.set) deliverySpy.mockRestore();
+						else if (
+							current?.value !== originalDeliveryDescriptor?.value ||
+							current?.get !== originalDeliveryDescriptor?.get ||
+							current?.set !== originalDeliveryDescriptor?.set ||
+							current?.configurable !== originalDeliveryDescriptor?.configurable ||
+							current?.enumerable !== originalDeliveryDescriptor?.enumerable ||
+							current?.writable !== originalDeliveryDescriptor?.writable
+						)
+							throw new Error('Original C delivery observation replaced by another owner');
+					};
+					completion.observeCleanup(stopObserving);
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+					await startWithCeiling(2, completion.boundary);
 					expect(fixture.controls.fences).toHaveLength(2);
 					expect(tagged).toBe(2);
 					expect(works).toHaveLength(2);
@@ -3854,10 +4129,17 @@ describe('virtual thermostat durable runtime', () => {
 					for (const event of delivered) expect(values.captureOwnedFeedbackDelivery(event)).toBeNull();
 					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
 					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) {
+					primary = { cause };
 				} finally {
-					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
-					deliverySpy.mockRestore();
+					try {
+						completion.cleanup();
+					} catch (cause) {
+						cleanup = { cause };
+					}
 				}
+				if (primary) throw primary.cause;
+				if (cleanup) throw cleanup.cause;
 			});
 			it('a genuine later poll retains ordinary entry fencing instead of being labeled an owned report', async () => {
 				await active();
