@@ -802,6 +802,109 @@ describe('captured thermostat transport readiness continuity', () => {
 			await f.module.close();
 		}
 	});
+	// BEGIN R37 trusted getter metadata drafts (UNRUN; no native acceptance authority)
+	// This existing inert provider fixture proves optional metadata eligibility/negative callbacks only.
+	it.each(['canonical', 'unshadowed-intermediate'] satisfies readonly string[])(
+		'R37 pins the original %s Shelly type chain without guard, session or sample work',
+		async (shape) => {
+			const f = await fixture(), b = await f.builtin();
+			const prototype: object | null = Object.getPrototypeOf(f.target.device);
+			const consumer = f.transport.registerRuntimeFeedbackConsumer({
+				reconcile: () => undefined,
+				dispatch: () => undefined,
+				onModuleDestroy: () => undefined,
+			});
+			let guards = 0;
+			const guard = (): boolean => { guards++; throw new Error('Metadata must not invoke guard'); };
+			try {
+				if (shape === 'unshadowed-intermediate') Object.setPrototypeOf(f.target.device, Object.create(prototype));
+				expect(Object.getOwnPropertyDescriptor(f.target.device, 'type')).toBeUndefined();
+				const adapter = f.transport.get(f.target, f.claim);
+				if (!adapter) throw new Error('Expected builtin metadata adapter');
+				const work = f.transport.openRuntimeOffDispatchWork(
+					consumer, adapter, f.target, f.claim, f.qualification,
+					guard, Object.freeze({ commandId: randomUUID() }),
+				);
+				expect(work).not.toBeNull();
+				if (work) f.transport.closeRuntimeOffDispatchWork(work);
+				expect(guards).toBe(0);
+				expect(b.prepare).not.toHaveBeenCalled();
+				expect(b.fence).not.toHaveBeenCalled();
+				expect(b.on).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+			} finally {
+				Object.setPrototypeOf(f.target.device, prototype);
+				f.transport.closeRuntimeFeedbackConsumer(consumer);
+				await b.cleanup();
+				await f.module.close();
+			}
+		},
+	);
+	it.each([
+		'own-data', 'own-getter', 'nearer-getter', 'canonical-getter', 'canonical-setter',
+		'canonical-flags', 'other-getter', 'inherited-data',
+	] satisfies readonly string[])(
+		'R37 refuses %s without invoking its accessor or borrowing native authority',
+		async (shape) => {
+			const f = await fixture(), b = await f.builtin();
+			const adapter = f.transport.get(f.target, f.claim);
+			if (!adapter) throw new Error('Expected builtin metadata adapter');
+			const canonical = Object.getOwnPropertyDescriptor(ShellyNgDeviceEntity.prototype, 'type');
+			if (!canonical) throw new Error('Original Shelly getter missing');
+			const devicePrototype: object | null = Object.getPrototypeOf(f.target.device),
+				propertyPrototype: object | null = Object.getPrototypeOf(f.target.property),
+				enabled = Object.getOwnPropertyDescriptor(f.target.device, 'enabled'),
+				unit = Object.getOwnPropertyDescriptor(f.target.property, 'unit');
+			const consumer = f.transport.registerRuntimeFeedbackConsumer({
+				reconcile: () => undefined, dispatch: () => undefined, onModuleDestroy: () => undefined,
+			});
+			let getters = 0, guards = 0;
+			const getter = (): string => { getters++; return 'devices-shelly-ng'; };
+			try {
+				if (shape === 'own-data') Object.defineProperty(f.target.device, 'type', { value: 'devices-shelly-ng', configurable: true });
+				else if (shape === 'own-getter') Object.defineProperty(f.target.device, 'type', { get: getter, configurable: true });
+				else if (shape === 'nearer-getter') {
+					const nearer: object = Object.create(devicePrototype);
+					Object.defineProperty(nearer, 'type', { get: getter, configurable: true });
+					Object.setPrototypeOf(f.target.device, nearer);
+				} else if (shape === 'canonical-getter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
+				else if (shape === 'canonical-setter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
+				else if (shape === 'canonical-flags') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, enumerable: !canonical.enumerable });
+				else if (shape === 'other-getter') Object.defineProperty(f.target.device, 'enabled', { get: () => { getters++; return true; }, configurable: true });
+				else {
+					Reflect.deleteProperty(f.target.property, 'unit');
+					const nearer: object = Object.create(propertyPrototype);
+					Object.defineProperty(nearer, 'unit', { value: null, configurable: true });
+					Object.setPrototypeOf(f.target.property, nearer);
+				}
+				expect(f.transport.openRuntimeOffDispatchWork(
+					consumer, adapter, f.target, f.claim, f.qualification,
+					() => { guards++; throw new Error('Refused metadata must not call guard'); },
+					Object.freeze({ commandId: randomUUID() }),
+				)).toBeNull();
+				expect(getters).toBe(0);
+				expect(guards).toBe(0);
+				expect(b.prepare).not.toHaveBeenCalled();
+				expect(b.fence).not.toHaveBeenCalled();
+				expect(b.on).not.toHaveBeenCalled();
+				expect(f.readSample).not.toHaveBeenCalled();
+			} finally {
+				Reflect.deleteProperty(f.target.device, 'type');
+				Object.setPrototypeOf(f.target.device, devicePrototype);
+				Object.setPrototypeOf(f.target.property, propertyPrototype);
+				Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', canonical);
+				if (enabled) Object.defineProperty(f.target.device, 'enabled', enabled);
+				else Reflect.deleteProperty(f.target.device, 'enabled');
+				if (unit) Object.defineProperty(f.target.property, 'unit', unit);
+				else Reflect.deleteProperty(f.target.property, 'unit');
+				f.transport.closeRuntimeFeedbackConsumer(consumer);
+				await b.cleanup();
+				await f.module.close();
+			}
+		},
+	);
+	// END R37 trusted getter metadata drafts
+
 	// BEGIN R24 unknown-result additive drafts (UNRUN)
 	// Transport-boundary fixture only: the held session readback and admission sink are inert;
 	// this exercises the actual builtin adapter/platform pins, not RPC or storage qualification.

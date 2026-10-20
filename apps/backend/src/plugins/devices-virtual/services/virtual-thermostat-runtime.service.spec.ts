@@ -5488,6 +5488,114 @@ describe('virtual thermostat durable runtime', () => {
 			// END R31 inherited-primary recovery drafts
 			// END R31 same-evaluation post-certificate publication drafts
 
+			// BEGIN R37 genuine getter-chain provenance drafts (UNRUN)
+			it('R37 owns the unshadowed hydrated Shelly getter through genuine native OFF and retained release proof', async () => {
+				const originalView: OriginalFunctions<VirtualThermostatTransportService> = VirtualThermostatTransportService.prototype;
+				const original = originalView.openRuntimeOffDispatchWork;
+				const devices: object[] = [], works: RuntimeOffDispatchWork[] = [];
+				// Original callthrough installed before active() constructs the platform/transport and runtime pins.
+				const opening = jest.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
+					.mockImplementation(function (this: VirtualThermostatTransportService, ...args: Parameters<typeof original>): ReturnType<typeof original> {
+						const work = original.call(this, ...args);
+						if (work) { devices.push(args[2].device); works.push(work); }
+						return work;
+					});
+				try {
+					await active();
+					if (!fixture) throw new Error('Managed native fixture missing');
+					await startWithCeiling(2);
+					expect(devices).toHaveLength(1);
+					expect(works[0]).toBeInstanceOf(RuntimeOffDispatchWork);
+					expect(devices[0]).toBeInstanceOf(ShellyNgDeviceEntity);
+					expect(Object.getPrototypeOf(devices[0])).toBe(ShellyNgDeviceEntity.prototype);
+					expect(Object.getOwnPropertyDescriptor(devices[0], 'type')).toBeUndefined();
+					expect(fixture.controls.fences).toHaveLength(2);
+					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					try { runtime.onModuleDestroy(); } finally { opening.mockRestore(); }
+				}
+			}, 30000);
+
+			it.each(['own-shadow', 'nearer-getter', 'canonical-getter', 'canonical-setter', 'canonical-flags', 'chain-link'] satisfies readonly string[])(
+				'R37 keeps original native dispatch provenance closed after observed %s restoration during its actual emit',
+				async (change) => {
+					const originalView: OriginalFunctions<VirtualThermostatTransportService> = VirtualThermostatTransportService.prototype;
+					const original = originalView.openRuntimeOffDispatchWork;
+					const captured: { device?: object; work?: RuntimeOffDispatchWork } = {};
+					const opening = jest.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
+						.mockImplementation(function (this: VirtualThermostatTransportService, ...args: Parameters<typeof original>): ReturnType<typeof original> {
+							const work = original.call(this, ...args);
+							if (work && !captured.work) { captured.device = args[2].device; captured.work = work; }
+							return work;
+						});
+					let selected = 0, getters = 0;
+					const observations: { first?: RuntimeOffDispatchWork | RuntimeReconciliationWork | null; restored?: RuntimeOffDispatchWork | RuntimeReconciliationWork | null; error?: { cause: unknown }; stopped?: { cause: unknown } } = {};
+					let starting: Promise<void> | undefined;
+					const canonical = Object.getOwnPropertyDescriptor(ShellyNgDeviceEntity.prototype, 'type');
+					if (!canonical) throw new Error('Original Shelly getter missing');
+					let restoreDevice: (() => void) | undefined;
+					const mutate = (event: object): void => {
+						if (selected || !captured.device || !fixture || !values.captureOwnedFeedbackDelivery(event)) return;
+						selected++;
+						const device = captured.device, prototype: object | null = Object.getPrototypeOf(device);
+						const getter = (): string => { getters++; return 'devices-shelly-ng'; };
+						restoreDevice = () => {
+							Reflect.deleteProperty(device, 'type');
+							Object.setPrototypeOf(device, prototype);
+							Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', canonical);
+						};
+						try {
+							if (change === 'own-shadow') Object.defineProperty(device, 'type', { value: 'devices-shelly-ng', configurable: true });
+							else if (change === 'nearer-getter' || change === 'chain-link') {
+								const nearer: object = Object.create(prototype);
+								if (change === 'nearer-getter') Object.defineProperty(nearer, 'type', { get: getter, configurable: true });
+								Object.setPrototypeOf(device, nearer);
+							} else if (change === 'canonical-getter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
+							else if (change === 'canonical-setter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
+							else Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, enumerable: !canonical.enumerable });
+							// Same actual PVS-owned event, still inside emit: both calls are original public delivery checks.
+							observations.first = fixture.transport.captureRuntimeFeedbackDelivery(event);
+							restoreDevice();
+							observations.restored = fixture.transport.captureRuntimeFeedbackDelivery(event);
+						} catch (cause) { observations.error = { cause }; }
+						finally { try { restoreDevice(); } catch (cause) { observations.error ??= { cause }; } }
+					};
+					const stop = (): void => {
+						if (!selected) return;
+						// Only this new negative test stops after the real sample; no completion/drain PASS is claimed.
+						try { runtime.onModuleDestroy(); } catch (cause) { observations.stopped = { cause }; }
+					};
+					try {
+						await active();
+						if (!fixture) throw new Error('Managed native fixture missing');
+						events.prependListener(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, mutate);
+						starting = runtime.onApplicationBootstrap(); // Registers its original listener synchronously before its first await.
+						events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, stop); // After the original listener, outside assertion callbacks.
+						await starting;
+						await fixture.flushTelemetry();
+						if (observations.error) throw observations.error.cause;
+						if (observations.stopped) throw observations.stopped.cause;
+						expect(captured.work).toBeInstanceOf(RuntimeOffDispatchWork);
+						expect(selected).toBe(1);
+						expect(observations.first).toBeNull();
+						expect(observations.restored).toBeNull();
+						expect(getters).toBe(0);
+						expect(fixture.controls.fences).toHaveLength(1);
+						expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+					} finally {
+						restoreDevice?.();
+						try { runtime.onModuleDestroy(); } finally {
+							events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, mutate);
+							events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, stop);
+							if (starting !== undefined) { try { await starting; } catch { /* Already recorded above; cleanup must settle it. */ } }
+							opening.mockRestore();
+						}
+					}
+				}, 30000,
+			);
+			// END R37 genuine getter-chain provenance drafts
+
 			// BEGIN R32 held-after-native-admission B-progress draft (UNRUN)
 			it('R32 allows public ordinary B progress while original A is held after real sample admission and retires only A at completion', async () => {
 				const entered = gate(),

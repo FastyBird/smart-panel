@@ -41,6 +41,54 @@ const dispatchObjects: Readonly<{
 	getPrototypeOf: (owner: object) => object | null;
 }> = Object;
 
+// The builtin discriminator is a trusted inherited getter, never arbitrary runtime accessor data.
+const originalShellyTypePrototype = ShellyNgDeviceEntity.prototype;
+const originalShellyTypeParent = dispatchObjects.getPrototypeOf(originalShellyTypePrototype);
+const originalShellyTypeDescriptor: Readonly<{
+	get?: unknown;
+	set?: unknown;
+	enumerable?: boolean;
+	configurable?: boolean;
+}> | undefined = dispatchObjects.getOwnPropertyDescriptor(originalShellyTypePrototype, 'type');
+const originalShellyType = Object.freeze({
+	get: originalShellyTypeDescriptor?.get,
+	set: originalShellyTypeDescriptor?.set,
+	enumerable: originalShellyTypeDescriptor?.enumerable,
+	configurable: originalShellyTypeDescriptor?.configurable,
+});
+/** Negative metadata only: never invokes the discriminator or adopts a nearer declaration. */
+function captureOriginalShellyDispatchType(device: object): (() => boolean) | null {
+	if (typeof originalShellyType.get !== 'function' || originalShellyType.set !== undefined) return null;
+	const canonicalCurrent = (): boolean => {
+		const descriptor = dispatchObjects.getOwnPropertyDescriptor(originalShellyTypePrototype, 'type');
+		return (
+			dispatchObjects.getPrototypeOf(originalShellyTypePrototype) === originalShellyTypeParent &&
+			!!descriptor &&
+			descriptor.get === originalShellyType.get &&
+			descriptor.set === undefined &&
+			descriptor.enumerable === originalShellyType.enumerable &&
+			descriptor.configurable === originalShellyType.configurable
+		);
+	};
+	const chain: { owner: object; prototype: object | null }[] = [];
+	for (let owner: object | null = device; owner !== null; ) {
+		if (owner === originalShellyTypePrototype) {
+			if (!canonicalCurrent()) return null;
+			return (): boolean =>
+				chain.every(
+					(pin) =>
+						dispatchObjects.getPrototypeOf(pin.owner) === pin.prototype &&
+						dispatchObjects.getOwnPropertyDescriptor(pin.owner, 'type') === undefined,
+				) && canonicalCurrent();
+		}
+		if (dispatchObjects.getOwnPropertyDescriptor(owner, 'type') !== undefined) return null;
+		const prototype = dispatchObjects.getPrototypeOf(owner);
+		chain.push({ owner, prototype });
+		owner = prototype;
+	}
+	return null;
+}
+
 export type ThermostatReconciliationScope = ProviderReconciliationScope<ThermostatInstalledQualification>;
 export type ThermostatReleaseOrderingEvidence = ProviderReleaseOrderingEvidence<ThermostatInstalledQualification>;
 export type ThermostatActuationAdapter = ProviderActuationAdapter<ThermostatInstalledQualification>;
@@ -287,7 +335,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 			}[] = [];
 			for (const [owner, keys] of [
 				{ owner: target, keys: ['device', 'channel', 'property', 'value'] },
-				{ owner: target.device, keys: ['id', 'type', 'canonicalMac', 'identifier', 'enabled'] },
+				{ owner: target.device, keys: ['id', 'canonicalMac', 'identifier', 'enabled'] },
 				{ owner: target.channel, keys: ['id', 'device', 'identifier', 'category'] },
 				{
 					owner: target.property,
@@ -332,6 +380,8 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 					pins.push({ owner, key, prototype: dispatchObjects.getPrototypeOf(owner), descriptor });
 				}
 			}
+			const typeCurrent = captureOriginalShellyDispatchType(target.device);
+			if (!typeCurrent) return null;
 			const tree = captureDiagnosticTree({
 				qualification,
 				permissions: target.property.permissions,
@@ -368,6 +418,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 						this.feedbackConsumerCurrent(consumer) &&
 						diagnosticTreeCurrent(tree) &&
 						creationMethodCurrent(adapter, 'send', method) &&
+						typeCurrent() &&
 						pins.every(({ owner, key, prototype, descriptor }) => {
 							if (dispatchObjects.getPrototypeOf(owner) !== prototype) return false;
 							const now = dispatchObjects.getOwnPropertyDescriptor(owner, key);
