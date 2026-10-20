@@ -849,7 +849,7 @@ describe('virtual thermostat durable runtime', () => {
 			| { ticket: object; lifecycle: object; claimId: string; resolve: () => void; reject: (cause: unknown) => void }
 			| undefined;
 		const nativeObserver = {
-			afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
 				const entry = scope.getStore();
 				if (
 					entry &&
