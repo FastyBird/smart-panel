@@ -4174,19 +4174,40 @@ describe('virtual thermostat durable runtime', () => {
 			it('R50 a real scheduled poll retires its original runtime admission and publishes a replacement without ON', async () => {
 				await active();
 				if (!fixture) throw new Error('Managed native poll fixture missing');
-				const owner = runtime, owned = fixture, ownedClaims = actualClaims, tick = gate();
+				const owner = runtime,
+					owned = fixture,
+					ownedClaims = actualClaims,
+					tick = gate();
 				const originalMethods: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = owner;
 				const originalRequest = originalMethods.request;
 				const descriptors: Readonly<{
-					getOwnPropertyDescriptor: (target: object, key: PropertyKey) => (Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
+					getOwnPropertyDescriptor: (
+						target: object,
+						key: PropertyKey,
+					) => (Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
 				}> = Object;
 				const originalDescriptor = descriptors.getOwnPropertyDescriptor(owner, 'request');
-				let armed = false, retired = false, matched = false, installed = false, cleaned = false;
+				let armed = false,
+					retired = false,
+					matched = false,
+					installed = false,
+					cleaned = false;
 				let lifecycle: (typeof owner)['lifecycle'];
 				let primary: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
-				const observing = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof originalRequest>): ReturnType<typeof originalRequest> {
+				const observing = function (
+					this: VirtualThermostatRuntimeService,
+					...args: Parameters<typeof originalRequest>
+				): ReturnType<typeof originalRequest> {
 					const result = originalRequest.call(this, ...args);
-					if (armed && !retired && !matched && this === owner && owner['lifecycle'] === lifecycle && args[0] === controllerId && args[1] === false) {
+					if (
+						armed &&
+						!retired &&
+						!matched &&
+						this === owner &&
+						owner['lifecycle'] === lifecycle &&
+						args[0] === controllerId &&
+						args[1] === false
+					) {
 						matched = true;
 						armed = false;
 						tick.open(); // Only AFTER the original void call has genuinely enqueued its ordinary work.
@@ -4202,18 +4223,41 @@ describe('virtual thermostat durable runtime', () => {
 					retire();
 					if (cleaned) return;
 					let failure: { cause: unknown } | undefined;
-					try { owner.onModuleDestroy(); } catch (cause) { failure ??= { cause }; }
-					try { ownedClaims.onModuleDestroy(); } catch (cause) { failure ??= { cause }; }
-					try { owned.revoke(); } catch (cause) { failure ??= { cause }; }
+					try {
+						owner.onModuleDestroy();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					try {
+						ownedClaims.onModuleDestroy();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					try {
+						owned.revoke();
+					} catch (cause) {
+						failure ??= { cause };
+					}
 					try {
 						if (installed) {
 							const current = descriptors.getOwnPropertyDescriptor(owner, 'request');
-							if (!current || current.value !== observing || current.get !== undefined || current.set !== undefined || current.configurable !== true || current.enumerable !== false || current.writable !== true)
+							if (
+								!current ||
+								current.value !== observing ||
+								current.get !== undefined ||
+								current.set !== undefined ||
+								current.configurable !== true ||
+								current.enumerable !== false ||
+								current.writable !== true
+							)
 								throw new Error('Natural poll request descriptor replaced by another owner');
 							if (originalDescriptor) Object.defineProperty(owner, 'request', originalDescriptor);
-							else if (!Reflect.deleteProperty(owner, 'request')) throw new Error('Natural poll request descriptor could not be removed');
+							else if (!Reflect.deleteProperty(owner, 'request'))
+								throw new Error('Natural poll request descriptor could not be removed');
 						}
-					} catch (cause) { failure ??= { cause }; }
+					} catch (cause) {
+						failure ??= { cause };
+					}
 					cleaned = true;
 					completionObserverBackstops.delete(backstop);
 					if (failure) throw failure.cause;
@@ -4221,25 +4265,35 @@ describe('virtual thermostat durable runtime', () => {
 				const backstop = { retire, cleanup };
 				completionObserverBackstops.add(backstop);
 				try {
-					Object.defineProperty(owner, 'request', { configurable: true, enumerable: false, writable: true, value: observing });
+					Object.defineProperty(owner, 'request', {
+						configurable: true,
+						enumerable: false,
+						writable: true,
+						value: observing,
+					});
 					installed = true;
 					await startWithCeiling(2);
 					if (retired) throw new Error('Natural poll observer retired during startup');
 					lifecycle = owner['lifecycle'];
-					const timer = owner['timer'], before = owner['contexts'].get(controllerId);
-					if (lifecycle === undefined || timer === undefined || !before) throw new Error('Natural poll original timer/context missing');
+					const timer = owner['timer'],
+						before = owner['contexts'].get(controllerId);
+					if (lifecycle === undefined || timer === undefined || !before)
+						throw new Error('Natural poll original timer/context missing');
 					// One original heating claim makes detached dispatch fallback true; this case never calls inspect/request(false).
 					expect(before.claims).toHaveLength(1);
 					expect(before.claims[0].role).toBe('heating');
 					const admission = before.admission;
-					const originalAdmission: Readonly<{ isCurrent: OriginalFunction<typeof admission, (typeof admission)['isCurrent']> }> = admission;
+					const originalAdmission: Readonly<{
+						isCurrent: OriginalFunction<typeof admission, (typeof admission)['isCurrent']>;
+					}> = admission;
 					const isCurrent = originalAdmission.isCurrent;
 					expect(isCurrent.call(admission)).toBe(true);
 					const sequence = owner.readDiagnostics(controllerId)?.sequence;
 					if (sequence === undefined) throw new Error('Natural poll initial diagnostic missing');
 					armed = true;
 					await tick.promise;
-					if (retired || !matched || owner['lifecycle'] !== lifecycle) throw new Error('Natural poll observation retired or absent');
+					if (retired || !matched || owner['lifecycle'] !== lifecycle)
+						throw new Error('Natural poll observation retired or absent');
 					await owner.flush();
 					if (retired || owner['lifecycle'] !== lifecycle) throw new Error('Natural poll owner retired while flushing');
 					expect(isCurrent.call(admission)).toBe(false);
@@ -4249,9 +4303,14 @@ describe('virtual thermostat durable runtime', () => {
 					expect(owner.readDiagnostics(controllerId)?.sequence).toBeGreaterThan(sequence);
 					expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBeGreaterThan(0);
 					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
-				} catch (cause) { primary = { cause }; }
-				finally {
-					try { cleanup(); } catch (cause) { cleanupFailure = { cause }; }
+				} catch (cause) {
+					primary = { cause };
+				} finally {
+					try {
+						cleanup();
+					} catch (cause) {
+						cleanupFailure = { cause };
+					}
 				}
 				if (primary) throw primary.cause;
 				if (cleanupFailure) throw cleanupFailure.cause;
@@ -6498,159 +6557,168 @@ describe('virtual thermostat durable runtime', () => {
 					observerCleanupFailure: { cause: unknown } | undefined;
 				let pollBackstop: Readonly<{ retire: () => void; cleanup: () => void }> | undefined;
 				try {
-				const entered = gate(),
-					release = gate();
-				let armed = false,
-					held = false,
-					samplesSeen = 0,
-					nativeAdmissionsReturned = 0;
-				const originalPlatform: Readonly<{
-					admitGuardFenceSample: OriginalFunction<
-						ShellyNgDevicePlatform,
-						ShellyNgDevicePlatform['admitGuardFenceSample']
-					>;
-				}> = ShellyNgDevicePlatform.prototype;
-				const original: OriginalFunction<ShellyNgDevicePlatform, ShellyNgDevicePlatform['admitGuardFenceSample']> =
-					originalPlatform.admitGuardFenceSample;
-				// Installed before active() creates/registers the real platform and the transport pins its method.
-				// This test-only async wrapper delays return; it does not preserve the original Promise identity.
-				const admission = jest
-					.spyOn(ShellyNgDevicePlatform.prototype, 'admitGuardFenceSample')
-					.mockImplementation(async function (
-						this: ShellyNgDevicePlatform,
-						...args: Parameters<typeof original>
-					): Promise<void> {
-						await original.call(this, ...args);
-						if (armed && !held) {
-							nativeAdmissionsReturned++;
-							held = true;
-							entered.open();
-							await release.promise;
-						}
-					});
-				const sample = (event: object): void => {
-					if (armed && values.captureOwnedFeedbackDelivery(event)) samplesSeen++;
-				};
-				let starting: Promise<void> | undefined;
-				try {
-					await active();
-					if (!fixture) throw new Error('Managed native fixture missing');
-					const owned = fixture,
-						owner = runtime;
-					const request = jest.spyOn(owner, 'request');
-					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
-					try {
-						armed = true;
-						starting = owner.onApplicationBootstrap();
-						const originalLifecycle = owner['lifecycle'];
-						let retired = false;
-						// Native S reactions run before the next timer phase; no await inside this reaction.
-						const stopped = starting.then(
-							() => {
-								try {
-									if (retired || originalLifecycle === undefined || owner['lifecycle'] !== originalLifecycle || !owner['active'])
-										throw new Error('Original B bootstrap timer owner retired');
-									const timer = owner['timer'];
-									if (timer === undefined) throw new Error('Original B bootstrap native interval missing');
-									clearInterval(timer); // Exact original owner handle; leave the stored field unchanged.
-								} catch (cause) {
-									observerFailure ??= { cause };
-								}
-							},
-							(cause: unknown) => {
-								bootstrapFailure ??= { cause };
-							},
-						);
-						const retire = (): void => { retired = true; };
-						const backstop = {
-							retire,
-							cleanup: (): void => {
-								retire();
-								completionObserverBackstops.delete(backstop);
-							},
-						};
-						pollBackstop = backstop;
-						completionObserverBackstops.add(backstop);
-						await entered.promise;
-						expect(nativeAdmissionsReturned).toBe(1);
-						const heldAContext = owner['contexts'].get(controllerId),
-							heldAEpisode = owner['feedbackEpisodes'].get(controllerId);
-						if (!heldAContext || !heldAEpisode || heldAEpisode.context !== heldAContext)
-							throw new Error('Original held A context and episode unavailable');
-						expect(heldAEpisode.retired).toBe(false);
-						expect(samplesSeen).toBe(1);
-						expect(owned.controls.fences).toHaveLength(1);
-						// The real admission has returned: no held native query/transaction/value commit is this gate.
-						const originalA = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
-							controllerId,
-							action: 'off',
-							status: 'dispatching',
+					const entered = gate(),
+						release = gate();
+					let armed = false,
+						held = false,
+						samplesSeen = 0,
+						nativeAdmissionsReturned = 0;
+					const originalPlatform: Readonly<{
+						admitGuardFenceSample: OriginalFunction<
+							ShellyNgDevicePlatform,
+							ShellyNgDevicePlatform['admitGuardFenceSample']
+						>;
+					}> = ShellyNgDevicePlatform.prototype;
+					const original: OriginalFunction<ShellyNgDevicePlatform, ShellyNgDevicePlatform['admitGuardFenceSample']> =
+						originalPlatform.admitGuardFenceSample;
+					// Installed before active() creates/registers the real platform and the transport pins its method.
+					// This test-only async wrapper delays return; it does not preserve the original Promise identity.
+					const admission = jest
+						.spyOn(ShellyNgDevicePlatform.prototype, 'admitGuardFenceSample')
+						.mockImplementation(async function (
+							this: ShellyNgDevicePlatform,
+							...args: Parameters<typeof original>
+						): Promise<void> {
+							await original.call(this, ...args);
+							if (armed && !held) {
+								nativeAdmissionsReturned++;
+								held = true;
+								entered.open();
+								await release.promise;
+							}
 						});
-						const originalAOperation = owner['inFlight'].get(originalA.id);
-						if (originalAOperation === undefined) throw new Error('Original held A operation unavailable');
-						await starting;
-						await stopped;
-						if (observerFailure) throw observerFailure.cause;
-						if (retired) throw new Error('Original B timer observation retired before public B');
-						await owner.flush();
-						expect(owner['contexts'].get(controllerId)).toBe(heldAContext);
-						expect(owner['feedbackEpisodes'].get(controllerId)).toBe(heldAEpisode);
-						expect(heldAEpisode.retired).toBe(false);
-						const sequenceBeforeB = owner.readDiagnostics(controllerId)?.sequence ?? 0;
-						// Public inspect creates a genuine ordinary request and waits for its actual evaluation, not A's send.
-						const b = await owner.inspect(controllerId);
-						expect(heldAEpisode.retired).toBe(true);
-						const replacementContext = owner['contexts'].get(controllerId),
-							replacementEpisode = owner['feedbackEpisodes'].get(controllerId);
-						if (!replacementContext || !replacementEpisode) throw new Error('Public B replacement unavailable');
-						expect(replacementContext).not.toBe(heldAContext);
-						expect(replacementEpisode).not.toBe(heldAEpisode);
-						expect(b?.configuration_revision).toBeGreaterThan(0);
-						expect(b?.sequence).toBeGreaterThan(sequenceBeforeB);
-						expect(b?.branches[0].release_proven).toBe(false);
-						expect(held).toBe(true);
-						expect(nativeAdmissionsReturned).toBe(1);
-						expect(
-							(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: originalA.id })).status,
-						).toBe('dispatching');
-						const requestsAtB = request.mock.calls.length;
-						release.open();
-						await originalAOperation;
-						await starting;
-						await owned.flushTelemetry();
-						await owner.flush();
-						expect(request.mock.calls.length).toBe(requestsAtB);
-						expect(owner.readDiagnostics(controllerId)?.sequence).toBe(b?.sequence);
-						expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBe(b?.configuration_revision);
-						expect(owner.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
-						const lateA = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: originalA.id });
-						expect(['accepted', 'unknown']).toContain(lateA.status);
-						expect(lateA.settledAt).not.toBeNull();
-						expect(lateA.proofId).toBeNull();
-						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					const sample = (event: object): void => {
+						if (armed && values.captureOwnedFeedbackDelivery(event)) samplesSeen++;
+					};
+					let starting: Promise<void> | undefined;
+					try {
+						await active();
+						if (!fixture) throw new Error('Managed native fixture missing');
+						const owned = fixture,
+							owner = runtime;
+						const request = jest.spyOn(owner, 'request');
+						events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+						try {
+							armed = true;
+							starting = owner.onApplicationBootstrap();
+							const originalLifecycle = owner['lifecycle'];
+							let retired = false;
+							// Native S reactions run before the next timer phase; no await inside this reaction.
+							const stopped = starting.then(
+								() => {
+									try {
+										if (
+											retired ||
+											originalLifecycle === undefined ||
+											owner['lifecycle'] !== originalLifecycle ||
+											!owner['active']
+										)
+											throw new Error('Original B bootstrap timer owner retired');
+										const timer = owner['timer'];
+										if (timer === undefined) throw new Error('Original B bootstrap native interval missing');
+										clearInterval(timer); // Exact original owner handle; leave the stored field unchanged.
+									} catch (cause) {
+										observerFailure ??= { cause };
+									}
+								},
+								(cause: unknown) => {
+									bootstrapFailure ??= { cause };
+								},
+							);
+							const retire = (): void => {
+								retired = true;
+							};
+							const backstop = {
+								retire,
+								cleanup: (): void => {
+									retire();
+									completionObserverBackstops.delete(backstop);
+								},
+							};
+							pollBackstop = backstop;
+							completionObserverBackstops.add(backstop);
+							await entered.promise;
+							expect(nativeAdmissionsReturned).toBe(1);
+							const heldAContext = owner['contexts'].get(controllerId),
+								heldAEpisode = owner['feedbackEpisodes'].get(controllerId);
+							if (!heldAContext || !heldAEpisode || heldAEpisode.context !== heldAContext)
+								throw new Error('Original held A context and episode unavailable');
+							expect(heldAEpisode.retired).toBe(false);
+							expect(samplesSeen).toBe(1);
+							expect(owned.controls.fences).toHaveLength(1);
+							// The real admission has returned: no held native query/transaction/value commit is this gate.
+							const originalA = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+								controllerId,
+								action: 'off',
+								status: 'dispatching',
+							});
+							const originalAOperation = owner['inFlight'].get(originalA.id);
+							if (originalAOperation === undefined) throw new Error('Original held A operation unavailable');
+							await starting;
+							await stopped;
+							if (observerFailure) throw observerFailure.cause;
+							if (retired) throw new Error('Original B timer observation retired before public B');
+							await owner.flush();
+							expect(owner['contexts'].get(controllerId)).toBe(heldAContext);
+							expect(owner['feedbackEpisodes'].get(controllerId)).toBe(heldAEpisode);
+							expect(heldAEpisode.retired).toBe(false);
+							const sequenceBeforeB = owner.readDiagnostics(controllerId)?.sequence ?? 0;
+							// Public inspect creates a genuine ordinary request and waits for its actual evaluation, not A's send.
+							const b = await owner.inspect(controllerId);
+							expect(heldAEpisode.retired).toBe(true);
+							const replacementContext = owner['contexts'].get(controllerId),
+								replacementEpisode = owner['feedbackEpisodes'].get(controllerId);
+							if (!replacementContext || !replacementEpisode) throw new Error('Public B replacement unavailable');
+							expect(replacementContext).not.toBe(heldAContext);
+							expect(replacementEpisode).not.toBe(heldAEpisode);
+							expect(b?.configuration_revision).toBeGreaterThan(0);
+							expect(b?.sequence).toBeGreaterThan(sequenceBeforeB);
+							expect(b?.branches[0].release_proven).toBe(false);
+							expect(held).toBe(true);
+							expect(nativeAdmissionsReturned).toBe(1);
+							expect(
+								(await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: originalA.id })).status,
+							).toBe('dispatching');
+							const requestsAtB = request.mock.calls.length;
+							release.open();
+							await originalAOperation;
+							await starting;
+							await owned.flushTelemetry();
+							await owner.flush();
+							expect(request.mock.calls.length).toBe(requestsAtB);
+							expect(owner.readDiagnostics(controllerId)?.sequence).toBe(b?.sequence);
+							expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBe(b?.configuration_revision);
+							expect(owner.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
+							const lateA = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+								id: originalA.id,
+							});
+							expect(['accepted', 'unknown']).toContain(lateA.status);
+							expect(lateA.settledAt).not.toBeNull();
+							expect(lateA.proofId).toBeNull();
+							expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+						} catch (cause) {
+							bodyFailure ??= { cause };
+							throw cause;
+						} finally {
+							try {
+								owner.onModuleDestroy();
+							} finally {
+								release.open();
+								try {
+									if (starting !== undefined) await starting;
+								} finally {
+									events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+									request.mockRestore();
+								}
+							}
+						}
 					} catch (cause) {
 						bodyFailure ??= { cause };
 						throw cause;
 					} finally {
-						try {
-							owner.onModuleDestroy();
-						} finally {
-							release.open();
-							try {
-								if (starting !== undefined) await starting;
-							} finally {
-								events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
-								request.mockRestore();
-							}
-						}
+						release.open();
+						admission.mockRestore();
 					}
-				} catch (cause) {
-					bodyFailure ??= { cause };
-					throw cause;
-				} finally {
-					release.open();
-					admission.mockRestore();
-				}
 				} catch (cause) {
 					bodyFailure ??= { cause };
 				} finally {
