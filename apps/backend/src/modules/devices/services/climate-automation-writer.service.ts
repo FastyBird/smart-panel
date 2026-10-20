@@ -261,6 +261,9 @@ interface ExistingClockOwner {
 	readonly terminal: 'expired' | 'clock_uncertain' | null;
 	readonly current: () => boolean;
 	readonly close: () => void;
+	/** Negative-only original GLOBAL native engine; no participant/read/clock admission. */
+	readonly nativeCurrent: () => boolean;
+	readonly vetoNativeLoss: () => void;
 	readonly wall: Readonly<{ call: (receiver: DateConstructor) => number }>;
 	readonly mono: Readonly<{ call: (receiver: typeof performance) => number }>;
 	readonly token: ClimateAutomationOverrideLease;
@@ -336,6 +339,7 @@ interface ExistingRecord {
 	readonly graphReady: () => boolean;
 	readonly baseCurrent: () => boolean;
 	readonly clockOwnerCurrent: () => boolean;
+	readonly nativeClockCurrent: () => boolean;
 	readonly admitClockObservation: () => void;
 	readonly closeClockObservation: () => void;
 	readonly wall: ExistingClockOwner['wall'];
@@ -486,6 +490,7 @@ export class ClimateAutomationWriterService {
 			nativeConfig: ClimateAutomationJson;
 			current: () => boolean;
 			close: () => void;
+			readonly nativeClockOwner?: ExistingClockOwner;
 		}>
 	>();
 	private readonly runtimeConsumers = new Map<ClimateAutomationRuntimeConsumer, RuntimeConsumerRecord>();
@@ -3300,6 +3305,7 @@ export class ClimateAutomationWriterService {
 								environment: owned.environment,
 								baseCurrent: retainedCurrent,
 								clockOwnerCurrent,
+								nativeClockCurrent,
 								admitClockObservation,
 								closeClockObservation,
 								wall: owned.wall,
@@ -4080,6 +4086,8 @@ export class ClimateAutomationWriterService {
 		const id: unknown = identity.getEntityValue(config);
 		if (typeof id !== 'string') throw new Conflict('invalid');
 		const originalId = uuid(id);
+		// Candidate A is captured BEFORE the read await; a later B is never selected by a failed A read.
+		const originalClock = this.existingClockLeases.get(originalId);
 
 		let originalMemberView10: OriginalFunctions<typeof driver>;
 		const driver = this.dataSource.driver,
@@ -4183,7 +4191,19 @@ export class ClimateAutomationWriterService {
 			const nativeConfig = this.ownedJson(
 				Object.fromEntries(fields.map((field) => [field.name, rows[0][`config_${field.name}`]])),
 			);
-			this.intentViews.set(token, Object.freeze({ controllerId: originalId, slot, nativeConfig, current, close }));
+			// Associate only the original installed lifetime whose immutable facts match this genuine native JOIN.
+			// Watermark/terminal clones keep the same token and private callbacks; no map cell is adopted here.
+			const nativeClockOwner =
+				originalClock &&
+				originalClock.incarnation === slot.controllerIncarnation &&
+				same(originalClock.slot, slot) &&
+				same(originalClock.nativeConfig, nativeConfig)
+					? originalClock
+					: undefined;
+			this.intentViews.set(
+				token,
+				Object.freeze({ controllerId: originalId, slot, nativeConfig, current, close, nativeClockOwner }),
+			);
 			return token;
 		} catch (error) {
 			close();
@@ -4230,7 +4250,13 @@ export class ClimateAutomationWriterService {
 	/** Only a genuine same-manager JOIN can select an installed original lifetime; public rows cannot mint one. */
 	isExistingOverrideCurrent(token: ClimateAutomationIntentView): boolean {
 		const intent = this.intentViews.get(token);
-		if (!intent?.current()) return false;
+		if (!intent?.current()) {
+			const original = intent?.nativeClockOwner;
+			// Only observed GLOBAL native-engine loss vetoes A. Read/tree/participant/ordinary rotation
+			// failure alone cannot close TIME. This never calls broad owner.current or looks up latest B.
+			if (original && !original.nativeCurrent()) original.vetoNativeLoss();
+			return false;
+		}
 		const config = this.existingJsonField(intent.nativeConfig, 'comfort');
 		let value: ClimateAutomationJson;
 		try {
@@ -4460,6 +4486,8 @@ export class ClimateAutomationWriterService {
 					: null,
 			current: record.clockOwnerCurrent,
 			close: record.closeClockObservation,
+			nativeCurrent: record.nativeClockCurrent,
+			vetoNativeLoss: record.closeClockObservation,
 			wall: record.wall,
 			mono: record.mono,
 			token,

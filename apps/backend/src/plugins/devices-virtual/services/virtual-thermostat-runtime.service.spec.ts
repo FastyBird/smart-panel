@@ -579,57 +579,39 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
-		// Close runtime and original managed authority before awaiting resources or restoring protocol mocks.
-		const ordinaryOwner = ordinaryTransportOwner;
+		// Snapshot exact case owners before any await; a late timed-out A cannot select next fixture B.
+		const owned = {
+			runtime, ordinary: ordinaryTransportOwner, provider: mutationProvider, comfort,
+			claims: mutationClaims, registry: mutationRegistry, fixtures: [...realGuardFixtures],
+			pipeline: mutationPipeline, database, directory, observers: [...completionObserverBackstops],
+		};
 		ordinaryTransportOwner = undefined;
-		let originalTeardownFailure: { cause: unknown } | undefined;
-		try {
-			runtime?.onModuleDestroy();
-		} catch (cause) {
-			originalTeardownFailure = { cause };
-		}
-		let ordinaryCleanupFailure: { cause: unknown } | undefined;
-		try {
-			ordinaryOwner?.dispose();
-		} catch (cause) {
-			ordinaryCleanupFailure = { cause };
-		}
-		try {
-			ordinaryOwner?.transport.onModuleDestroy();
-		} catch (cause) {
-			ordinaryCleanupFailure ??= { cause };
-		}
-		try {
-			ordinaryOwner?.platforms.onModuleDestroy();
-		} catch (cause) {
-			ordinaryCleanupFailure ??= { cause };
-		}
-		if (originalTeardownFailure) throw originalTeardownFailure.cause;
-		if (ordinaryCleanupFailure) throw ordinaryCleanupFailure.cause;
-		mutationProvider?.onModuleDestroy();
-		comfort?.onModuleDestroy();
-		mutationClaims?.onModuleDestroy();
-		mutationRegistry?.onModuleDestroy();
-		for (const fixture of realGuardFixtures) fixture.revoke();
-		try {
-			await Promise.all(realGuardFixtures.map((fixture) => fixture.close()));
-		} finally {
-			await mutationPipeline?.close();
-			jest.restoreAllMocks();
-			jest.useRealTimers();
-			if (database?.isInitialized) await database.destroy();
-			await rm(directory, { recursive: true, force: true });
-		}
-	});
-	afterEach(() => {
 		let failure: { cause: unknown } | undefined;
-		for (const observer of [...completionObserverBackstops]) {
-			try {
-				observer.cleanup();
-			} catch (cause) {
-				failure ??= { cause };
-			}
-		}
+		const attempt = (action: () => void): void => {
+			try { action(); } catch (cause) { failure ??= { cause }; }
+		};
+		const attemptAsync = async (action: () => Promise<unknown>): Promise<void> => {
+			try { await action(); } catch (cause) { failure ??= { cause }; }
+		};
+		for (const observer of owned.observers) attempt(() => observer.retire());
+		attempt(() => owned.runtime?.onModuleDestroy());
+		attempt(() => owned.ordinary?.dispose());
+		attempt(() => owned.ordinary?.transport.onModuleDestroy());
+		attempt(() => owned.ordinary?.platforms.onModuleDestroy());
+		attempt(() => owned.provider?.onModuleDestroy());
+		attempt(() => owned.comfort?.onModuleDestroy());
+		attempt(() => owned.claims?.onModuleDestroy());
+		attempt(() => owned.registry?.onModuleDestroy());
+		for (const fixture of owned.fixtures) attempt(() => fixture.revoke());
+		// Remove exact owned H/S descriptors before Jest's framework restoration, even after earlier cleanup P.
+		for (const observer of owned.observers) attempt(() => observer.cleanup());
+		for (const fixture of owned.fixtures) await attemptAsync(() => fixture.close());
+		const pipeline = owned.pipeline;
+		if (pipeline) await attemptAsync(() => pipeline.close());
+		attempt(() => jest.restoreAllMocks());
+		attempt(() => jest.useRealTimers());
+		if (owned.database?.isInitialized) await attemptAsync(() => owned.database.destroy());
+		await attemptAsync(() => rm(owned.directory, { recursive: true, force: true }));
 		if (failure) throw failure.cause;
 	});
 	const waitForOnJournal = async (): Promise<VirtualThermostatCommandEntity> => {
@@ -672,6 +654,392 @@ describe('virtual thermostat durable runtime', () => {
 			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		}
 		await runtime.flush();
+	};
+
+	// R53: observers record ONLY original methods invoked by a genuine public evaluation.
+	const originalEntryDescriptors: Readonly<{
+		getOwnPropertyDescriptor: (owner: object, key: PropertyKey) =>
+			(Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
+	}> = Object;
+	const restoreOriginalEntry = (
+		owner: object, key: string, installed: PropertyDescriptor, original: PropertyDescriptor | undefined,
+	): void => {
+		const current = originalEntryDescriptors.getOwnPropertyDescriptor(owner, key);
+		if (!current || current.value !== installed.value || current.get !== installed.get || current.set !== installed.set ||
+			current.configurable !== installed.configurable || current.enumerable !== installed.enumerable ||
+			current.writable !== installed.writable) throw new Error('Original entry observer replaced by foreign owner');
+		if (original) Object.defineProperty(owner, key, original);
+		else if (!Reflect.deleteProperty(owner, key)) throw new Error('Original entry observer could not be removed');
+	};
+	const observeOriginalDecisionLoads = (owner: VirtualThermostatRuntimeService) => {
+		const original: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['loadDecisionCommands']> =
+			owner['loadDecisionCommands'];
+		const before = Object.getOwnPropertyDescriptor(owner, 'loadDecisionCommands');
+		const calls: { args: Parameters<typeof original>; pending: ReturnType<typeof original> }[] = [];
+		let retired = false, restored = false;
+		const loading = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof original>) {
+			const pending = original.call(this, ...args);
+			if (!retired && this === owner) {
+				calls.push({ args, pending });
+				void pending.then(() => undefined, () => undefined);
+			}
+			return pending;
+		};
+		const installed = { configurable: true, enumerable: before?.enumerable ?? false, writable: true, value: loading };
+		const backstop = {
+			retire: (): void => { retired = true; },
+			cleanup: (): void => {
+				retired = true;
+				if (restored) return;
+				restored = true;
+				completionObserverBackstops.delete(backstop);
+				restoreOriginalEntry(owner, 'loadDecisionCommands', installed, before);
+			},
+		};
+		completionObserverBackstops.add(backstop);
+		Object.defineProperty(owner, 'loadDecisionCommands', installed);
+		const last = (): ReturnType<typeof original> => {
+			const call = calls[calls.length - 1];
+			if (retired || !call) throw new Error('Genuine original decision loader not reached');
+			return call.pending;
+		};
+		return {
+			last,
+			read: async (): ReturnType<typeof original> => {
+				const count = calls.length;
+				await owner.inspect(controllerId);
+				if (calls.length === count) throw new Error('Public evaluation did not enter its original loader');
+				return last();
+			},
+		};
+	};
+	const observeOriginalReconciliation = (owner: VirtualThermostatRuntimeService) => {
+		const source = database;
+		const original: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['reconcile']> = owner['reconcile'];
+		const before = Object.getOwnPropertyDescriptor(owner, 'reconcile');
+		const publicEntry = new AsyncLocalStorage<object>();
+		type Entry = { context: Parameters<typeof original>[0]; claim: Parameters<typeof original>[1];
+			ticket: object | undefined; nativeRead: boolean };
+		const scope = new AsyncLocalStorage<Entry>();
+		let retired = false, restored = false;
+		let waiting: { ticket: object; claimId: string; resolve: () => void; reject: (cause: unknown) => void } | undefined;
+		const nativeObserver = {
+			afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+				const entry = scope.getStore();
+				if (entry && event.query.startsWith('SELECT') &&
+					event.query.includes('devices_virtual_thermostat_command_journal')) entry.nativeRead = true;
+			},
+		};
+		const reconciling = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof original>) {
+			if (retired || this !== owner) return original.call(this, ...args);
+			const entry = { context: args[0], claim: args[1], ticket: publicEntry.getStore(), nativeRead: false };
+			const pending = scope.run(entry, () => original.call(this, ...args));
+			const complete = (outcome: { fulfilled: true } | { fulfilled: false; cause: unknown }): void => {
+				const target = waiting;
+				if (retired || !entry.nativeRead || !target || entry.ticket !== target.ticket ||
+					entry.claim.id !== target.claimId) return;
+				waiting = undefined;
+				if (outcome.fulfilled) target.resolve(); else target.reject(outcome.cause);
+			};
+			void pending.then(() => complete({ fulfilled: true }), (cause: unknown) => complete({ fulfilled: false, cause }));
+			return pending; // SAME original application Promise, not the observer receipt below.
+		};
+		const installed = { configurable: true, enumerable: before?.enumerable ?? false, writable: true, value: reconciling };
+		const retire = (): void => {
+			retired = true;
+			const target = waiting; waiting = undefined;
+			target?.reject(new Error('Original public reconciliation observer retired before native entry'));
+		};
+		const backstop = {
+			retire,
+			cleanup: (): void => {
+				retire();
+				if (restored) return;
+				restored = true;
+				completionObserverBackstops.delete(backstop);
+				const index = source.subscribers.indexOf(nativeObserver);
+				if (index >= 0) source.subscribers.splice(index, 1);
+				restoreOriginalEntry(owner, 'reconcile', installed, before);
+			},
+		};
+		completionObserverBackstops.add(backstop);
+		source.subscribers.push(nativeObserver);
+		Object.defineProperty(owner, 'reconcile', installed);
+		return {
+			scope,
+			start: (claim: VirtualThermostatActuatorClaimEntity): Promise<void> => {
+				if (retired || waiting) throw new Error('Original public reconciliation observation unavailable');
+				const ticket = Object.freeze({});
+				const observation = new Promise<void>((resolve, reject) => {
+					waiting = { ticket, claimId: claim.id, resolve, reject };
+				});
+				void observation.then(() => undefined, () => undefined);
+				try {
+					const inspection = publicEntry.run(ticket, () => owner.inspect(controllerId));
+					void inspection.then(() => undefined, (cause: unknown) => {
+						if (waiting?.ticket === ticket) { const target = waiting; waiting = undefined; target.reject(cause); }
+					});
+				} catch (cause) {
+					if (waiting?.ticket === ticket) { const target = waiting; waiting = undefined; target.reject(cause); }
+				}
+				return observation;
+			},
+		};
+	};
+
+	const observeHydrationReplacement = (driver: DataSource['driver']) => {
+		const methods: OriginalFunctions<Pick<DataSource['driver'], 'prepareHydratedValue'>> = driver;
+		const original = methods.prepareHydratedValue;
+		const before = Object.getOwnPropertyDescriptor(driver, 'prepareHydratedValue');
+		const mock = jest.fn<unknown, Parameters<typeof original>>((...args) => original.call(driver, ...args));
+		const installed = { configurable: true, enumerable: before?.enumerable ?? true, writable: true, value: mock };
+		let attempted = false, failure: { cause: unknown } | undefined;
+		const restore = (): void => {
+			if (attempted) return;
+			attempted = true;
+			try {
+				restoreOriginalEntry(driver, 'prepareHydratedValue', installed, before);
+				completionObserverBackstops.delete(backstop);
+			} catch (cause) { failure = { cause }; }
+		};
+		const assertRestored = (): void => { if (failure) throw failure.cause; };
+		const backstop = {
+			retire: (): void => undefined,
+			cleanup: (): void => { restore(); completionObserverBackstops.delete(backstop); assertRestored(); },
+		};
+		completionObserverBackstops.add(backstop);
+		Object.defineProperty(driver, 'prepareHydratedValue', installed);
+		return { mock, restore, assertRestored };
+	};
+	// R53 terminal receipts are separate from the unchanged, narrow R42 helper/default callers.
+	type R53ManagedFixture = Awaited<ReturnType<typeof realThermostatGuardFixture>>;
+	type R53Outcome = { fulfilled: true } | { fulfilled: false; cause: unknown };
+	type R53OffReceipt = Readonly<{
+		operation: R53Outcome; service: R53Outcome; work: RuntimeOffDispatchWork;
+		terminal: boolean; outputSaved: boolean; childState: string; failure?: { cause: unknown };
+	}>;
+	type R53OffBoundary = Readonly<{
+		promise: Promise<R53OffReceipt>; flush: () => Promise<void>; assertOpen: () => void;
+	}>;
+	const observeR53OffTerminal = () => {
+		const setupFixtures = realGuardFixtures,
+			setupFixtureCount = setupFixtures.length;
+		const transportPrototype = VirtualThermostatTransportService.prototype,
+			runtimePrototype = VirtualThermostatRuntimeService.prototype;
+		const originalTransport: OriginalFunctions<VirtualThermostatTransportService> = transportPrototype;
+		const originalOpen = originalTransport.openRuntimeOffDispatchWork;
+		const originalServiceLookup: Readonly<{
+			get: (
+				owner: object,
+				key: 'serviceFeedback',
+			) => OriginalFunction<VirtualThermostatRuntimeService, (typeof runtime)['serviceFeedback']>;
+		}> = Reflect;
+		const originalService = originalServiceLookup.get(runtimePrototype, 'serviceFeedback');
+		const descriptors: Readonly<{
+			getOwnPropertyDescriptor: (
+				owner: object,
+				key: PropertyKey,
+			) => (Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
+		}> = Object;
+		const openDescriptor = descriptors.getOwnPropertyDescriptor(transportPrototype, 'openRuntimeOffDispatchWork'),
+			serviceDescriptor = descriptors.getOwnPropertyDescriptor(runtimePrototype, 'serviceFeedback');
+		if (
+			!openDescriptor ||
+			openDescriptor.get ||
+			openDescriptor.set ||
+			openDescriptor.value !== originalOpen ||
+			!serviceDescriptor ||
+			serviceDescriptor.get ||
+			serviceDescriptor.set ||
+			serviceDescriptor.value !== originalService
+		)
+			throw new Error('Original completion observation descriptors unavailable');
+		const settlement: { resolve?: (receipt: R53OffReceipt) => void; reject?: (cause: unknown) => void } = {};
+		const promise = new Promise<R53OffReceipt>((resolve, reject) => {
+			settlement.resolve = resolve;
+			settlement.reject = reject;
+		});
+		// This receipt is test-owned; an early original rejection must not become an unhandled side Promise.
+		void promise.catch(() => undefined);
+		let closed = false,
+			matched = false,
+			restored = false,
+			openInstalled = false,
+			serviceInstalled = false;
+		let owner:
+			| Readonly<{
+					runtime: VirtualThermostatRuntimeService;
+					fixture: R53ManagedFixture;
+					flush: OriginalFunction<VirtualThermostatRuntimeService, VirtualThermostatRuntimeService['flush']>;
+			  }>
+			| undefined;
+		let observerCleanup: (() => void) | undefined;
+		let work: RuntimeOffDispatchWork | undefined, observationFailure: { cause: unknown } | undefined;
+		const observationFailed = (cause: unknown): void => {
+			try {
+				observationFailure ??= { cause };
+				if (!closed) settlement.reject?.(cause);
+			} catch {
+				// Never throw from a side handler into the original service or its native caller.
+			}
+		};
+		const opening = function (
+			this: VirtualThermostatTransportService,
+			...args: Parameters<typeof originalOpen>
+		): ReturnType<typeof originalOpen> {
+			const result = originalOpen.call(this, ...args);
+			if (!closed && owner && this === owner.fixture.transport && work === undefined && result) work = result;
+			return result;
+		};
+		const servicing = function (
+			this: VirtualThermostatRuntimeService,
+			...args: Parameters<typeof originalService>
+		): ReturnType<typeof originalService> {
+			const result = originalService.call(this, ...args);
+			if (
+				!closed &&
+				!matched &&
+				owner &&
+				this === owner.runtime &&
+				work !== undefined &&
+				args[0].work === work &&
+				args[0].purpose === 'GUARDED_OFF_DISPATCH'
+			) {
+				matched = true;
+				try {
+					const child = args[0], job = child.job, operation = job?.operation;
+					if (!job || operation === undefined) {
+						observationFailed(new Error('Exact original OFF terminal operation unavailable'));
+					} else {
+						const selectedWork = work;
+						const operationOutcome = operation.then<R53Outcome, R53Outcome>(
+							() => ({ fulfilled: true }), (cause: unknown) => ({ fulfilled: false, cause }),
+						);
+						const serviceOutcome = result.then<R53Outcome, R53Outcome>(
+							() => ({ fulfilled: true }), (cause: unknown) => ({ fulfilled: false, cause }),
+						);
+						const side = Promise.all([operationOutcome, serviceOutcome]).then(([operationResult, serviceResult]) => {
+							if (!closed) {
+								if (observationFailure) settlement.reject?.(observationFailure.cause);
+								else settlement.resolve?.({
+									operation: operationResult, service: serviceResult, work: selectedWork,
+									terminal: job.terminal, outputSaved: job.outputSaved, childState: child.state,
+									failure: job.failure === undefined ? undefined : { cause: job.failure.cause },
+								});
+							}
+						});
+						void side.catch(observationFailed);
+					}
+				} catch (cause) { observationFailed(cause); }
+			}
+			return result; // SAME original application Promise, including every rejection value.
+		};
+		const retire = (): void => {
+			closed = true;
+			settlement.reject?.(new Error('Original R53 terminal observer retired'));
+		};
+		const cleanup = (afterOwnedTeardown = false): void => {
+			closed = true;
+			if (restored) return;
+			// Setup failure before bind is restored only by the post-fixture afterEach backstop.
+			if (!owner && !afterOwnedTeardown) return;
+			let failure: { cause: unknown } | undefined;
+			if (owner) {
+				try {
+					owner.runtime.onModuleDestroy();
+				} catch (cause) {
+					failure = { cause };
+				}
+				try {
+					owner.fixture.revoke();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			} else {
+				// This is the original case array, never a later test's current fixture or runtime.
+				for (const owned of setupFixtures.slice(setupFixtureCount)) {
+					try {
+						owned.revoke();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+				}
+			}
+			const stopObservation = observerCleanup;
+			observerCleanup = undefined;
+			try {
+				stopObservation?.();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			const restore = (target: object, key: string, original: PropertyDescriptor, expected: unknown): void => {
+				const current = descriptors.getOwnPropertyDescriptor(target, key);
+				if (
+					!current ||
+					current.get ||
+					current.set ||
+					current.value !== expected ||
+					current.configurable !== original.configurable ||
+					current.enumerable !== original.enumerable ||
+					current.writable !== original.writable
+				)
+					throw new Error('Completion observer descriptor replaced by another owner');
+				Object.defineProperty(target, key, original);
+			};
+			try {
+				if (serviceInstalled) restore(runtimePrototype, 'serviceFeedback', serviceDescriptor, servicing);
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			try {
+				if (openInstalled) restore(transportPrototype, 'openRuntimeOffDispatchWork', openDescriptor, opening);
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			restored = true;
+			completionObserverBackstops.delete(backstop);
+			if (failure) throw failure.cause;
+		};
+		const backstop = { retire, cleanup: (): void => cleanup(true) };
+		completionObserverBackstops.add(backstop);
+		try {
+			Object.defineProperty(transportPrototype, 'openRuntimeOffDispatchWork', {
+				...openDescriptor,
+				value: opening,
+			});
+			openInstalled = true;
+			Object.defineProperty(runtimePrototype, 'serviceFeedback', { ...serviceDescriptor, value: servicing });
+			serviceInstalled = true;
+		} catch (cause) {
+			// Retain the original setup failure; the teardown backstop restores any installed owned descriptor.
+			closed = true;
+			throw cause;
+		}
+		const assertOpen = (): void => {
+			if (closed || !owner) throw new Error('Original completion case owner retired');
+		};
+		return {
+			bind: (current: VirtualThermostatRuntimeService, owned: R53ManagedFixture): void => {
+				if (closed || owner) throw new Error('Original completion case owner cannot be rebound');
+				const originalRuntime: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'flush'>> = current;
+				owner = Object.freeze({ runtime: current, fixture: owned, flush: originalRuntime.flush });
+			},
+			observeCleanup: (stop: () => void): void => {
+				assertOpen();
+				if (observerCleanup) throw new Error('Original completion observation cleanup already owned');
+				observerCleanup = stop;
+			},
+			boundary: {
+				promise,
+				assertOpen,
+				flush: (): Promise<void> => {
+					assertOpen();
+					if (!owner) throw new Error('Original completion case owner missing');
+					return owner.flush.call(owner.runtime);
+				},
+			} satisfies R53OffBoundary,
+			cleanup,
+		};
 	};
 
 	const comfortFence = async () => {
@@ -1123,13 +1491,12 @@ describe('virtual thermostat durable runtime', () => {
 		otherLatest.claimId = otherClaim.id;
 		await database.manager.insert(VirtualThermostatCommandEntity, [latest, tied, cancelled, otherLatest, ...pending]);
 		const loader = runtime as unknown as {
-			loadDecisionCommands(
-				controllerId: string,
-				claims: VirtualThermostatActuatorClaimEntity[],
-			): Promise<VirtualThermostatCommandEntity[]>;
 			loadUnresolvedCommands(controllerId: string, claimId: string): Promise<VirtualThermostatCommandEntity[]>;
 		};
-		const loaded = await loader.loadDecisionCommands(controllerId, [claim, otherClaim]);
+		const entry = observeOriginalDecisionLoads(runtime);
+		// The existing negative proof setting applies before the public read entry, preserving pending identities.
+		proofAllowed = () => false;
+		const loaded = await entry.read();
 		expect(loaded).toHaveLength(4);
 		expect(loaded.map((row) => row.id)).toEqual(
 			expect.arrayContaining([latest.id, otherLatest.id, pending[1].id, pending[2].id]),
@@ -1143,7 +1510,6 @@ describe('virtual thermostat durable runtime', () => {
 		expect((await loader.loadUnresolvedCommands(controllerId, retiredClaim.id)).map((row) => row.id)).toEqual([
 			pending[3].id,
 		]);
-		proofAllowed = () => false;
 		await runtime.inspect(controllerId);
 		expect(runtime.readDiagnostics(controllerId)?.branches.find((branch) => branch.claim === claim.id)).toMatchObject({
 			pending_on: true,
@@ -1200,13 +1566,10 @@ describe('virtual thermostat durable runtime', () => {
 		for (let offset = 0; offset < accepted.length; offset += 50)
 			await database.manager.insert(VirtualThermostatCommandEntity, accepted.slice(offset, offset + 50));
 		const internals = runtime as unknown as {
-			loadDecisionCommands(
-				controllerId: string,
-				claims: VirtualThermostatActuatorClaimEntity[],
-			): Promise<VirtualThermostatCommandEntity[]>;
 			loadUnresolvedCommands(controllerId: string, claimId: string): Promise<VirtualThermostatCommandEntity[]>;
 		};
 		const fullLoad = jest.spyOn(internals, 'loadUnresolvedCommands');
+		const entry = observeOriginalDecisionLoads(runtime);
 		await database.manager.update(
 			VirtualThermostatCommandEntity,
 			{ id: accepted[4999].id },
@@ -1216,7 +1579,7 @@ describe('virtual thermostat durable runtime', () => {
 		sample(relayId, true);
 		await runtime.inspect(controllerId);
 		expect(fullLoad).not.toHaveBeenCalled();
-		expect((await internals.loadDecisionCommands(controllerId, [claim])).length).toBeLessThanOrEqual(3);
+		expect((await entry.last()).length).toBeLessThanOrEqual(3);
 		expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId, status: 'accepted' })).toBe(
 			5000,
 		);
@@ -1250,13 +1613,13 @@ describe('virtual thermostat durable runtime', () => {
 		const lastDispatched = command('accepted');
 		lastDispatched.dispatchedAt = new Date(Date.now() + 60_000);
 		await database.manager.insert(VirtualThermostatCommandEntity, [unknown, pendingOff, newest, lastDispatched]);
-		const witnesses = await internals.loadDecisionCommands(controllerId, [claim]);
+		let releaseOff: () => void;
+		offGate = new Promise<void>((resolve) => (releaseOff = resolve));
+		const witnesses = await entry.read();
 		expect(witnesses.length).toBeLessThanOrEqual(6);
 		expect(witnesses.map((row) => row.id)).toEqual(
 			expect.arrayContaining([unknown.id, pendingOff.id, newest.id, lastDispatched.id]),
 		);
-		let releaseOff: () => void;
-		offGate = new Promise<void>((resolve) => (releaseOff = resolve));
 		await runtime.inspect(controllerId);
 		expect(fullLoad).not.toHaveBeenCalled();
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('heating_unresolved_on');
@@ -1294,7 +1657,6 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('rejects drainage proof that omits a command added while proof I/O is pending', async () => {
 		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const row = (id: string) =>
 			database.manager.create(VirtualThermostatCommandEntity, {
@@ -1315,15 +1677,11 @@ describe('virtual thermostat durable runtime', () => {
 		const first = row(uuid()),
 			unseen = row(uuid());
 		await database.manager.insert(VirtualThermostatCommandEntity, first);
-		const internals = runtime as unknown as {
-			load(controllerId: string): Promise<unknown>;
-			reconcile(context: unknown, claim: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
-		const context = await internals.load(controllerId);
+		const entry = observeOriginalReconciliation(runtime);
 		beforeProof = async () => {
 			await database.manager.insert(VirtualThermostatCommandEntity, unseen);
 		};
-		await internals.reconcile(context, claim);
+		await entry.start(claim);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: first.id })).status).toBe(
 			'accepted',
 		);
@@ -1331,7 +1689,7 @@ describe('virtual thermostat durable runtime', () => {
 			'accepted',
 		);
 		beforeProof = null;
-		await internals.reconcile(context, claim);
+		await entry.start(claim);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: first.id })).status).toBe(
 			'confirmed',
 		);
@@ -1453,26 +1811,90 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('rejects a pending output publication captured before a failed graph validation and retry', async () => {
-		const originalRequest = runtime.request.bind(runtime) as VirtualThermostatRuntimeService['request'];
-		const request = jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
-		await runtime.flush();
-		const outputId = await createTemperatureOutput();
-		request.mockImplementationOnce(originalRequest);
-		let release: () => void;
-		publicationGate = new Promise<void>((resolve) => (release = resolve));
-		const inspection = runtime.inspect(controllerId);
-		while (!producers.owns(outputId)) await new Promise<void>((resolve) => setImmediate(resolve));
-		graphValidated = false;
-		graphGeneration++;
-		graphValidated = true;
-		release();
-		await inspection;
-		expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
-		expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
-		publicationGate = null;
-		request.mockRestore();
-		await runtime.inspect(controllerId);
-		expect(producers.read(outputId)?.producer.quality).toBe('good');
+		const owner = runtime, registry = producers;
+		const originalRequest: OriginalFunction<VirtualThermostatRuntimeService, typeof owner.request> = owner.request;
+		const descriptors: Readonly<{
+			getOwnPropertyDescriptor: (owner: object, key: PropertyKey) =>
+				(Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
+		}> = Object;
+		const originalDescriptor = descriptors.getOwnPropertyDescriptor(owner, 'request');
+		let nextOriginal = false;
+		const requesting = (...args: Parameters<typeof originalRequest>): void => {
+			if (nextOriginal) {
+				nextOriginal = false;
+				return originalRequest.call(owner, ...args);
+			}
+		};
+		// Equivalent old one-shot request suppression, but not registered in Jest's global restore list.
+		const installed: Omit<PropertyDescriptor, 'value'> & { value: typeof requesting } = {
+			configurable: true, enumerable: originalDescriptor?.enumerable ?? true, writable: true, value: requesting,
+		};
+		Object.defineProperty(owner, 'request', installed);
+		let release: () => void = () => { throw new Error('Original publication gate not installed'); };
+		let retired = false, restored = false;
+		let originalGate: Promise<void> | undefined;
+		let primary: { cause: unknown } | undefined;
+		const retire = (): void => {
+			retired = true;
+			if (originalGate !== undefined) release();
+		};
+		const restoreRequest = (): void => {
+			if (restored) return;
+			const current = descriptors.getOwnPropertyDescriptor(owner, 'request');
+			if (!current || current.value !== installed.value || current.get !== installed.get ||
+				current.set !== installed.set || current.writable !== installed.writable ||
+				current.enumerable !== installed.enumerable || current.configurable !== installed.configurable)
+				throw new Error('Publication request observer belongs to another owner');
+			if (originalDescriptor) Object.defineProperty(owner, 'request', originalDescriptor);
+			else if (!Reflect.deleteProperty(owner, 'request')) throw new Error('Original request observer cannot be removed');
+			restored = true;
+		};
+		const cleanup = (): void => {
+			retire();
+			if (publicationGate === originalGate) publicationGate = null;
+			completionObserverBackstops.delete(backstop);
+			restoreRequest();
+		};
+		const backstop = { retire, cleanup };
+		completionObserverBackstops.add(backstop);
+		const assertLive = (): void => {
+			if (retired) throw new Error('Original pending publication observer retired');
+		};
+		try {
+			await owner.flush();
+			assertLive();
+			const outputId = await createTemperatureOutput();
+			assertLive();
+			nextOriginal = true;
+			originalGate = new Promise<void>((resolve) => { release = resolve; });
+			publicationGate = originalGate;
+			const inspection = owner.inspect(controllerId);
+			// Observe both outcomes immediately; no unhandled side Promise if timeout retires this wait first.
+			void inspection.then(() => undefined, (cause: unknown) => { primary ??= { cause }; });
+			while (!registry.owns(outputId)) {
+				assertLive();
+				await new Promise<void>((resolve) => setImmediate(resolve));
+			}
+			assertLive();
+			graphValidated = false;
+			graphGeneration++;
+			graphValidated = true;
+			release();
+			await inspection;
+			assertLive();
+			expect(registry.read(outputId)?.producer.quality).toBe('unavailable');
+			expect(owner.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
+			if (publicationGate === originalGate) publicationGate = null;
+			restoreRequest();
+			await owner.inspect(controllerId);
+			assertLive();
+			expect(registry.read(outputId)?.producer.quality).toBe('good');
+		} catch (cause) {
+			primary ??= { cause };
+		} finally {
+			try { cleanup(); } catch (cause) { primary ??= { cause }; }
+		}
+		if (primary) throw primary.cause;
 	});
 
 	it('refuses thermostat energizing while graph validation is unavailable', async () => {
@@ -3659,6 +4081,61 @@ describe('virtual thermostat durable runtime', () => {
 			if (primary) throw primary.cause;
 			if (cleanup) throw cleanup.cause;
 		};
+		const startR53Bounded = async (completion: R53OffBoundary): Promise<void> => {
+			if (!fixture) throw new Error('Actual managed fixture required');
+			const owned = fixture;
+			const thirdEntered = gate(),
+				thirdResume = gate();
+			let entered = 0;
+			owned.controls.beforeFence = () => {
+				entered++;
+				if (entered >= 3) {
+					thirdEntered.open();
+					return thirdResume.promise;
+				}
+				return Promise.resolve();
+			};
+			const starting = runtime.onApplicationBootstrap();
+			const ready: Promise<'ready'> = starting.then(async (): Promise<'ready'> => {
+				const receipt = await completion.promise;
+				await completion.flush();
+				completion.assertOpen();
+				if (!receipt.operation.fulfilled) throw receipt.operation.cause;
+				if (!receipt.service.fulfilled) throw receipt.service.cause;
+				return 'ready';
+			});
+			const extra: Promise<'third-fence'> = thirdEntered.promise.then((): 'third-fence' => 'third-fence');
+			let primary: { cause: unknown } | undefined;
+			let cleanup: { cause: unknown } | undefined;
+			try {
+				expect(await Promise.race([ready, extra])).toBe('ready');
+				expect(owned.controls.fences).toHaveLength(2); // original mandatory OFF plus first qualified reconciliation
+			} catch (cause) {
+				primary = { cause };
+			} finally {
+				if (primary || entered >= 3) {
+					try {
+						runtime.onModuleDestroy();
+					} catch (cause) {
+						cleanup = { cause };
+					}
+					try {
+						owned.revoke();
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+				}
+				thirdResume.open();
+				owned.controls.beforeFence = null;
+				try {
+					await starting;
+				} catch (cause) {
+					cleanup ??= { cause };
+				}
+			}
+			if (primary) throw primary.cause;
+			if (cleanup) throw cleanup.cause;
+		};
 		afterEach(() => {
 			const observers = [...completionObserverBackstops];
 			let failure: { cause: unknown } | undefined;
@@ -3698,7 +4175,9 @@ describe('virtual thermostat durable runtime', () => {
 			await prepare();
 			if (!fixture) throw new Error('Actual managed fixture required');
 			const before = database.subscribers.length;
-			await startBounded();
+			const completion = observeR53OffTerminal();
+			completion.bind(runtime, fixture);
+			await startR53Bounded(completion.boundary);
 			const fences = fixture.controls.fences.length;
 			for (let rotation = 0; rotation < 3; rotation++) {
 				runtime.request(controllerId, false);
@@ -3718,7 +4197,9 @@ describe('virtual thermostat durable runtime', () => {
 			async (target) => {
 				await prepare();
 				if (!fixture) throw new Error('Actual managed fixture required');
-				await startBounded();
+				const completion = observeR53OffTerminal();
+				completion.bind(runtime, fixture);
+				await startR53Bounded(completion.boundary);
 				const fences = fixture.controls.fences.length;
 				if (target === 'config')
 					await database.query(
@@ -3742,7 +4223,9 @@ describe('virtual thermostat durable runtime', () => {
 		it('keeps saved evidence closed across actual installed qualification loss and permits only a fresh qualified drain', async () => {
 			await prepare();
 			if (!fixture) throw new Error('Actual managed fixture required');
-			await startBounded();
+			const completion = observeR53OffTerminal();
+			completion.bind(runtime, fixture);
+			await startR53Bounded(completion.boundary);
 			const fences = fixture.controls.fences.length;
 			actualClaims.revokeAllQualifications();
 			runtime.request(controllerId, false);
@@ -4098,6 +4581,61 @@ describe('virtual thermostat durable runtime', () => {
 				}
 				if (primary) throw primary.cause;
 				if (cleanup) throw cleanup.cause;
+			};
+			const startR53WithCeiling = async (maximum: number, completion: R53OffBoundary): Promise<R53OffReceipt> => {
+				if (!fixture) throw new Error('Actual managed native fixture missing');
+				const owned = fixture,
+					excess = gate(),
+					resume = gate();
+				let calls = 0;
+				owned.controls.beforeFence = () => {
+					calls++;
+					if (calls > maximum) {
+						excess.open();
+						return resume.promise;
+					}
+					return Promise.resolve();
+				};
+				const completionOwner = runtime;
+				let receipt: R53OffReceipt | undefined;
+				const starting = runtime.onApplicationBootstrap();
+				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+				try {
+					expect(
+						await Promise.race([
+							starting.then(async () => {
+								receipt = await completion.promise;
+								await completion.flush();
+								completion.assertOpen();
+								return 'complete';
+							}),
+							excess.promise.then(() => 'excess'),
+						]),
+					).toBe('complete');
+					expect(calls).toBeLessThanOrEqual(maximum);
+				} catch (cause) {
+					primary = { cause };
+				} finally {
+					if (primary) {
+						try {
+							completionOwner.onModuleDestroy();
+							owned.revoke();
+						} catch (cause) {
+							cleanup = { cause };
+						}
+					}
+					resume.open();
+					owned.controls.beforeFence = null;
+					try {
+						await starting;
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+				}
+				if (primary) throw primary.cause;
+				if (cleanup) throw cleanup.cause;
+				if (!receipt) throw new Error('Original OFF terminal receipt missing');
+				return receipt;
 			};
 			it('shares an actual active-C settlement across its native OFF report and closes event provenance after emit', async () => {
 				const completion = observeOriginalOffCompletion();
@@ -6739,9 +7277,13 @@ describe('virtual thermostat durable runtime', () => {
 			it('R31 joins only the original detached OFF operation while its actual outcome SAVE is held and schedules one ticket', async () => {
 				await active();
 				if (!fixture) throw new Error('Managed native fixture missing');
+				const completion = observeR53OffTerminal();
+				completion.bind(runtime, fixture);
 				const owned = fixture,
 					entered = gate(),
 					release = gate();
+				const caseEvents = events, caseDatabase = database, caseValues = values;
+				let bodyFailure: { cause: unknown } | undefined;
 				let holds = 0,
 					samplesSeen = 0;
 				const served: object[] = [];
@@ -6757,8 +7299,10 @@ describe('virtual thermostat durable runtime', () => {
 						return originalService.call(owner, child);
 					},
 				});
+				const serviceInstalled = Object.getOwnPropertyDescriptor(owner, 'serviceFeedback');
+				if (!serviceInstalled) throw new Error('Original service observer not installed');
 				const sample = (event: object): void => {
-					if (values.captureOwnedFeedbackDelivery(event)) samplesSeen++;
+					if (caseValues.captureOwnedFeedbackDelivery(event)) samplesSeen++;
 				};
 				const observer = {
 					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
@@ -6773,16 +7317,27 @@ describe('virtual thermostat durable runtime', () => {
 						}
 					},
 				};
-				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
-				database.subscribers.push(observer);
-				const starting = startWithCeiling(2);
+				completion.observeCleanup(() => {
+					let failure: { cause: unknown } | undefined;
+					try { caseEvents.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample); } catch (cause) { failure = { cause }; }
+					try {
+						const index = caseDatabase.subscribers.indexOf(observer);
+						if (index >= 0) caseDatabase.subscribers.splice(index, 1);
+					} catch (cause) { failure ??= { cause }; }
+					try { restoreOriginalEntry(owner, 'serviceFeedback', serviceInstalled, serviceDescriptor); }
+					catch (cause) { failure ??= { cause }; }
+					if (failure) throw failure.cause;
+				});
+				caseEvents.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
+				caseDatabase.subscribers.push(observer);
+				const starting = startR53WithCeiling(2, completion.boundary);
 				try {
 					await entered.promise;
 					expect(samplesSeen).toBe(1);
 					expect(owned.controls.fences).toHaveLength(1);
 					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
 					release.open();
-					await starting;
+					const receipt = await starting;
 					expect(holds).toBe(1);
 					expect(served).toHaveLength(1);
 					expect(owned.controls.fences).toHaveLength(2);
@@ -6792,45 +7347,66 @@ describe('virtual thermostat durable runtime', () => {
 						).every((row) => row.status === 'confirmed'),
 					).toBe(true);
 					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+					expect(receipt.operation).toEqual({ fulfilled: true });
+					expect(receipt.service).toEqual({ fulfilled: true });
+					expect(receipt.terminal && receipt.outputSaved).toBe(true);
+				} catch (cause) {
+					bodyFailure = { cause };
 				} finally {
 					release.open();
-					await starting;
-					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, sample);
-					const index = database.subscribers.indexOf(observer);
-					if (index >= 0) database.subscribers.splice(index, 1);
-					if (serviceDescriptor) Object.defineProperty(owner, 'serviceFeedback', serviceDescriptor);
-					else Reflect.deleteProperty(owner, 'serviceFeedback');
+					try { await starting; } catch (cause) { bodyFailure ??= { cause }; }
+					// Exact captured listeners/descriptors retire via the owner backstop before framework restoration.
 				}
+				if (bodyFailure) throw bodyFailure.cause;
 			});
 
 			it('R31 routes the original accepted A payload ordinarily after genuine same-controller B replacement and after-emit closure', async () => {
 				await active();
 				if (!fixture) throw new Error('Managed fixture missing');
-				const owner = runtime;
+				const completion = observeR53OffTerminal();
+				completion.bind(runtime, fixture);
+				const owner = runtime, caseEvents = events, caseValues = values, ownedFixture = fixture;
 				const payloads: object[] = [];
 				const observed = (event: object): void => {
-					if (values.captureOwnedFeedbackDelivery(event)) payloads.push(event);
+					if (caseValues.captureOwnedFeedbackDelivery(event)) payloads.push(event);
 				};
-				const request = jest.spyOn(owner, 'request');
-				events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observed);
+				const originalRequest: OriginalFunction<VirtualThermostatRuntimeService, typeof owner.request> = owner.request;
+				const requestBefore = Object.getOwnPropertyDescriptor(owner, 'request');
+				const request = jest.fn<ReturnType<typeof originalRequest>, Parameters<typeof originalRequest>>(
+					(...args) => originalRequest.call(owner, ...args),
+				);
+				const requestInstalled = { configurable: true, enumerable: requestBefore?.enumerable ?? true,
+					writable: true, value: request };
+				Object.defineProperty(owner, 'request', requestInstalled);
+				completion.observeCleanup(() => {
+					let failure: { cause: unknown } | undefined;
+					try { caseEvents.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observed); } catch (cause) { failure = { cause }; }
+					try { restoreOriginalEntry(owner, 'request', requestInstalled, requestBefore); }
+					catch (cause) { failure ??= { cause }; }
+					if (failure) throw failure.cause;
+				});
+				caseEvents.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observed);
 				try {
-					await startWithCeiling(2);
+					const receipt = await startR53WithCeiling(2, completion.boundary);
 					expect(payloads).toHaveLength(2);
 					const originalA = payloads[0];
-					expect(values.captureOwnedFeedbackDelivery(originalA)).toBeNull();
+					expect(caseValues.captureOwnedFeedbackDelivery(originalA)).toBeNull();
 					owner.request(controllerId, false); // genuine ordinary B, not an adopted A context
 					await owner.flush();
+					completion.boundary.assertOpen();
 					const before = request.mock.calls.length;
 					// Delayed/replayed original native A payload, not a new accepted sample or manufactured origin.
-					events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, originalA);
+					caseEvents.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, originalA);
 					expect(request.mock.calls.length).toBe(before + 1);
 					expect(request.mock.calls[before][0]).toBe(controllerId);
 					await owner.flush();
-					expect(values.captureOwnedFeedbackDelivery(originalA)).toBeNull();
-					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+					completion.boundary.assertOpen();
+					expect(caseValues.captureOwnedFeedbackDelivery(originalA)).toBeNull();
+					expect(ownedFixture.controls.sends.filter((send) => send.on)).toEqual([]);
+					expect(receipt.operation).toEqual({ fulfilled: true });
+					expect(receipt.service).toEqual({ fulfilled: true });
 				} finally {
-					events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observed);
-					request.mockRestore();
+					// Captured DATA observers restore only after original owner retirement in the backstop.
 				}
 			});
 
@@ -6943,6 +7519,9 @@ describe('virtual thermostat durable runtime', () => {
 			it('R31 keeps a real failed outcome SAVE out of OFF_REPORTED without discarding native history', async () => {
 				await active();
 				if (!fixture) throw new Error('Managed fixture missing');
+				const completion = observeR53OffTerminal();
+				completion.bind(runtime, fixture);
+				const caseDatabase = database;
 				const primary = new Error('R31 native accepted-outcome SAVE P'),
 					owned = fixture;
 				let faults = 0;
@@ -6958,9 +7537,9 @@ describe('virtual thermostat durable runtime', () => {
 						}
 					},
 				};
-				database.subscribers.push(observer);
+				caseDatabase.subscribers.push(observer);
 				try {
-					await startWithCeiling(3);
+					const receipt = await startR53WithCeiling(3, completion.boundary);
 					expect(faults).toBe(1);
 					const commands = await database.manager.find(VirtualThermostatCommandEntity, {
 						where: { controllerId, action: 'off' },
@@ -6971,9 +7550,13 @@ describe('virtual thermostat durable runtime', () => {
 						if (command.status === 'confirmed') expect(command.proofId).not.toBeNull();
 					}
 					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					expect(receipt.failure).toEqual({ cause: primary });
+					expect(receipt.childState).not.toBe('OFF_REPORTED');
+					if (!receipt.operation.fulfilled) expect(receipt.operation.cause).toBe(primary);
+					if (!receipt.service.fulfilled) expect(receipt.service.cause).toBe(primary);
 				} finally {
-					const index = database.subscribers.indexOf(observer);
-					if (index >= 0) database.subscribers.splice(index, 1);
+					const index = caseDatabase.subscribers.indexOf(observer);
+					if (index >= 0) caseDatabase.subscribers.splice(index, 1);
 				}
 			});
 
@@ -7985,6 +8568,157 @@ describe('virtual thermostat durable runtime', () => {
 				fresh.close();
 			}
 		});
+		// R53 additive source-native clock counterexamples. UNEXECUTED; no private state is mutated.
+		it('R53 keeps original TIME through read close, same-token watermark clones and genuine ordinary neutral recovery', async () => {
+			const caseDatabase = database, caseComfort = comfort, caseGraph = actualGraph,
+				caseClaims = actualClaims, caseRuntime = runtime, caseFixture = fixture, caseWriter = mutationWriter;
+			let retired = false;
+			const reads: { close: () => void }[] = [];
+			const readBackstop = {
+				retire: (): void => { retired = true; },
+				cleanup: (): void => {
+					retired = true;
+					let failure: { cause: unknown } | undefined;
+					for (const view of reads) { try { view.close(); } catch (cause) { failure ??= { cause }; } }
+					completionObserverBackstops.delete(readBackstop);
+					if (failure) throw failure.cause;
+				},
+			};
+			completionObserverBackstops.add(readBackstop);
+			const track = <View extends { close: () => void }>(view: View): View => {
+				reads.push(view);
+				if (retired) { view.close(); throw new Error('Original clock read observer retired'); }
+				return view;
+			};
+			const before = await caseDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			await caseComfort.override(
+				controllerId,
+				{ expected_revision: before.revision, expected_graph_revision: await caseGraph.revision() },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+				'R53-read-and-native-neutral',
+			);
+			await caseRuntime.flush();
+			const row = await caseDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const first = track(await caseComfort.readIntentInManager(caseDatabase.manager, row));
+			const original = caseWriter['existingClockLeases'].get(controllerId);
+			if (!original) throw new Error('Genuine installed original TIME missing');
+			const originalOverride = row.comfort?.temporary_override;
+			expect(first.isOverrideCurrent()).toBe(true);
+			first.close();
+			await caseClaims.refresh();
+			const fresh = track(await caseComfort.readIntentInManager(caseDatabase.manager, row));
+			try {
+				expect(fresh.isOverrideCurrent()).toBe(true);
+				const beforeClone = caseWriter['existingClockLeases'].get(controllerId);
+				if (!beforeClone) throw new Error('Original TIME disappeared before monotone read');
+				// Existing caseFixture already owns this logical packet clock; advance only one ms, never renew budget.
+				jest.setSystemTime(Date.now() + 1);
+				expect(fresh.isOverrideCurrent()).toBe(true);
+				const clone = caseWriter['existingClockLeases'].get(controllerId);
+				if (!clone) throw new Error('Monotone original TIME missing');
+				expect(clone).not.toBe(beforeClone);
+				expect(clone.token).toBe(beforeClone.token);
+				expect(clone.nativeCurrent).toBe(beforeClone.nativeCurrent);
+				expect(clone.vetoNativeLoss).toBe(beforeClone.vetoNativeLoss);
+				expect(clone.watermark).toBeGreaterThan(beforeClone.watermark);
+				expect(clone.deadline).toBe(original.deadline);
+			} finally { fresh.close(); }
+			caseRuntime.request(controllerId, false); // genuine ordinary ENTRY and native caseRuntime/branch/journal effects
+			await caseRuntime.flush();
+			const after = await caseDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const retained = caseWriter['existingClockLeases'].get(controllerId);
+			if (!retained) throw new Error('Original lifetime unavailable after genuine recovery');
+			expect(retained.id).toBe(original.id);
+			expect(retained.incarnation).toBe(original.incarnation);
+			expect(retained.deadline).toBe(original.deadline);
+			expect(retained.slot).toEqual(original.slot);
+			expect(after.comfort?.temporary_override?.id).toBe(originalOverride?.id);
+			expect(after.comfort?.temporary_override?.expires_at).toBe(originalOverride?.expires_at);
+			expect(after.comfort?.temporary_override?.original_duration_ms).toBe(originalOverride?.original_duration_ms);
+			const joined = track(await caseComfort.readIntentInManager(caseDatabase.manager, after));
+			try { expect(joined.isOverrideCurrent()).toBe(true); } finally { joined.close(); }
+			expect(caseFixture.controls.sends.filter((send) => send.on)).toEqual([]);
+		});
+		it('R53 latches only observed original native A loss and never lets delayed A observation or close veto genuine B', async () => {
+			const caseDatabase = database, caseComfort = comfort, caseGraph = actualGraph,
+				caseRuntime = runtime, caseFixture = fixture, caseWriter = mutationWriter;
+			let retired = false;
+			const reads: { close: () => void }[] = [];
+			const readBackstop = {
+				retire: (): void => { retired = true; },
+				cleanup: (): void => {
+					retired = true;
+					let failure: { cause: unknown } | undefined;
+					for (const view of reads) { try { view.close(); } catch (cause) { failure ??= { cause }; } }
+					completionObserverBackstops.delete(readBackstop);
+					if (failure) throw failure.cause;
+				},
+			};
+			completionObserverBackstops.add(readBackstop);
+			const track = <View extends { close: () => void }>(view: View): View => {
+				reads.push(view);
+				if (retired) { view.close(); throw new Error('Original clock read observer retired'); }
+				return view;
+			};
+			const before = await caseDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			await caseComfort.override(
+				controllerId,
+				{ expected_revision: before.revision, expected_graph_revision: await caseGraph.revision() },
+				{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+				'R53-original-native-A',
+			);
+			await caseRuntime.flush();
+			const row = await caseDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+			const intentA = track(await caseComfort.readIntentInManager(caseDatabase.manager, row));
+			const ownerA = caseWriter['existingClockLeases'].get(controllerId);
+			if (!ownerA) throw new Error('Original A TIME missing');
+			const replace = () => observeHydrationReplacement(caseDatabase.driver);
+			try {
+				const unseen = replace();
+				expect(unseen.mock).not.toHaveBeenCalled();
+				unseen.restore(); // no observation inside the interval: no ABA detection is claimed
+				unseen.assertRestored();
+				expect(intentA.isOverrideCurrent()).toBe(true);
+				const observed = replace();
+				try {
+					expect(intentA.isOverrideCurrent()).toBe(false);
+					expect(observed.mock).not.toHaveBeenCalled();
+				} finally { observed.restore(); }
+				observed.assertRestored();
+				const restored = track(await caseComfort.readIntentInManager(caseDatabase.manager, row));
+				try { expect(restored.isOverrideCurrent()).toBe(false); } finally { restored.close(); }
+				await caseComfort.override(
+					controllerId,
+					{ expected_revision: row.revision, expected_graph_revision: await caseGraph.revision() },
+					{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 30_000).toISOString() },
+					'R53-genuine-new-B',
+				);
+				const bRow = await caseDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+				const intentB = track(await caseComfort.readIntentInManager(caseDatabase.manager, bRow));
+				const ownerB = caseWriter['existingClockLeases'].get(controllerId);
+				if (!ownerB) throw new Error('Genuine original B TIME missing');
+				try {
+					expect(ownerB.token).not.toBe(ownerA.token);
+					expect(intentB.isOverrideCurrent()).toBe(true);
+					const late = replace();
+					try {
+						// Only old A observes this interval. B is never evaluated under the replacement.
+						expect(intentA.isOverrideCurrent()).toBe(false);
+						expect(late.mock).not.toHaveBeenCalled();
+					} finally { late.restore(); }
+					late.assertRestored();
+					intentA.close();
+					expect(intentB.isOverrideCurrent()).toBe(true);
+					const stillB = caseWriter['existingClockLeases'].get(controllerId);
+					expect(stillB?.token).toBe(ownerB.token);
+					expect(stillB?.nativeCurrent).toBe(ownerB.nativeCurrent);
+					expect(stillB?.vetoNativeLoss).toBe(ownerB.vetoNativeLoss);
+					expect(stillB?.deadline).toBe(ownerB.deadline);
+				} finally { intentB.close(); }
+			} finally { intentA.close(); }
+			expect(caseFixture.controls.sends.filter((send) => send.on)).toEqual([]);
+		});
+		// END R53 additive clock counterexamples
 		it('denies original command claims after a foreign actual claim revision mutation even with matching source and unchanged journal', async () => {
 			const entered = barrier(),
 				resume = barrier();
@@ -8874,7 +9608,6 @@ describe('virtual thermostat durable runtime', () => {
 	// END real claims comfort pending-ON regressions
 	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
 		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
@@ -8905,18 +9638,14 @@ describe('virtual thermostat durable runtime', () => {
 			},
 		};
 		database.subscribers.push(subscriber);
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
+		const entry = observeOriginalReconciliation(runtime);
 		try {
-			const context = await internal.load(controllerId);
-			await expect(internal.reconcile(context, claim)).rejects.toThrow('fixture settlement rollback');
+			await expect(entry.start(claim)).rejects.toThrow('fixture settlement rollback');
 			expect(retire).not.toHaveBeenCalled();
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'accepted',
 			);
-			await internal.reconcile(context, claim);
+			await entry.start(claim);
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 				'confirmed',
 			);
@@ -8928,7 +9657,6 @@ describe('virtual thermostat durable runtime', () => {
 	});
 	it('does not let optional retirement failure alter committed journal confirmation', async () => {
 		await settle();
-		jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
@@ -8950,11 +9678,8 @@ describe('virtual thermostat durable runtime', () => {
 			throw new Error('optional metadata only');
 		});
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
-		const internal = runtime as unknown as {
-			load(id: string): Promise<unknown>;
-			reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
-		};
-		await internal.reconcile(await internal.load(controllerId), claim);
+		const entry = observeOriginalReconciliation(runtime);
+		await entry.start(claim);
 		expect(retire).toHaveBeenCalledWith([command.id]);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 			'confirmed',
@@ -9027,7 +9752,9 @@ describe('virtual thermostat durable runtime', () => {
 		'waits for a known SQLite commit acknowledgement before retirement: %s',
 		async (mode) => {
 			await settle();
-			jest.spyOn(runtime, 'request').mockImplementation(() => undefined);
+			const caseDatabase = database;
+			let retired = false, completed = false;
+			let primary: { cause: unknown } | undefined;
 			const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 			const command = database.manager.create(VirtualThermostatCommandEntity, {
 				id: uuid(),
@@ -9058,10 +9785,19 @@ describe('virtual thermostat durable runtime', () => {
 			const held = new Promise<void>((resolve) => {
 				release = resolve;
 			});
+			const entry = observeOriginalReconciliation(runtime);
+			const nativeRunners = new WeakSet<object>();
 			let once = true;
 			const subscriber = {
+				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+					const original = entry.scope.getStore();
+					if (original?.claim.id === claim.id && original.context.config.controllerId === controllerId &&
+						event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+						event.parameters?.includes('confirmed') && event.parameters.includes(command.id))
+						nativeRunners.add(event.queryRunner);
+				},
 				afterTransactionCommit: async (event: TransactionCommitEvent) => {
-					if (!once) return;
+					if (!once || !nativeRunners.has(event.queryRunner) || entry.scope.getStore()?.claim.id !== claim.id) return;
 					once = false;
 					try {
 						committedStatus = (
@@ -9076,23 +9812,36 @@ describe('virtual thermostat durable runtime', () => {
 					if (mode === 'unknown acknowledgement') throw new Error('fixture lost commit acknowledgement');
 				},
 			};
-			database.subscribers.push(subscriber);
-			const internal = runtime as unknown as {
-				load(id: string): Promise<unknown>;
-				reconcile(context: unknown, member: VirtualThermostatActuatorClaimEntity): Promise<void>;
+			caseDatabase.subscribers.push(subscriber);
+			const retireAckObserver = (): void => {
+				retired = true;
+				if (!completed) rejectObservation(new Error('Original native commit observation retired'));
+				release(); // only this test's original held acknowledgement gate
 			};
+			const backstop = {
+				retire: retireAckObserver,
+				cleanup: (): void => {
+					retireAckObserver();
+					const index = caseDatabase.subscribers.indexOf(subscriber);
+					if (index >= 0) caseDatabase.subscribers.splice(index, 1);
+					completionObserverBackstops.delete(backstop);
+				},
+			};
+			completionObserverBackstops.add(backstop);
 			try {
-				const pending = internal.reconcile(await internal.load(controllerId), claim);
+				const pending = entry.start(claim);
 				// Attach both outcomes before releasing the controlled commit gate.
 				const outcome: Promise<unknown> = pending.then<unknown, unknown>(
 					() => null,
 					(error: unknown) => error,
 				);
 				await entered;
+				if (retired) throw new Error('Original ACK owner retired');
 				expect(retire).not.toHaveBeenCalled();
 				expect(committedStatus).toBe('confirmed');
 				release();
 				const error = await outcome;
+				if (retired) throw new Error('Original ACK owner retired');
 				if (mode === 'held acknowledgement') {
 					expect(error).toBeNull();
 					expect(retire).toHaveBeenCalledWith([command.id]);
@@ -9100,10 +9849,13 @@ describe('virtual thermostat durable runtime', () => {
 					expect(error).toEqual(new Error('fixture lost commit acknowledgement'));
 					expect(retire).not.toHaveBeenCalled();
 				}
+			} catch (cause) {
+				primary = { cause };
 			} finally {
-				release();
-				database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+				completed = true;
+				try { backstop.cleanup(); } catch (cause) { primary ??= { cause }; }
 			}
+			if (primary) throw primary.cause;
 		},
 	);
 });
