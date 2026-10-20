@@ -718,11 +718,11 @@ describe('virtual thermostat durable runtime', () => {
 		};
 	};
 	const observeOriginalReconciliation = (owner: VirtualThermostatRuntimeService) => {
-		const source = database;
+		const source = database, originalControllerId = controllerId;
 		const original: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['reconcile']> = owner['reconcile'];
 		const before = Object.getOwnPropertyDescriptor(owner, 'reconcile');
 		const publicEntry = new AsyncLocalStorage<object>();
-		type Entry = { context: Parameters<typeof original>[0]; claim: Parameters<typeof original>[1];
+		type Entry = { owner: VirtualThermostatRuntimeService; context: Parameters<typeof original>[0]; claim: Parameters<typeof original>[1];
 			ticket: object | undefined; nativeRead: boolean };
 		const scope = new AsyncLocalStorage<Entry>();
 		let retired = false, restored = false;
@@ -736,7 +736,7 @@ describe('virtual thermostat durable runtime', () => {
 		};
 		const reconciling = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof original>) {
 			if (retired || this !== owner) return original.call(this, ...args);
-			const entry = { context: args[0], claim: args[1], ticket: publicEntry.getStore(), nativeRead: false };
+			const entry = { owner: this, context: args[0], claim: args[1], ticket: publicEntry.getStore(), nativeRead: false };
 			const pending = scope.run(entry, () => original.call(this, ...args));
 			const complete = (outcome: { fulfilled: true } | { fulfilled: false; cause: unknown }): void => {
 				const target = waiting;
@@ -771,6 +771,13 @@ describe('virtual thermostat durable runtime', () => {
 		Object.defineProperty(owner, 'reconcile', installed);
 		return {
 			scope,
+			isWaitingEntry: (entry: Entry | undefined): boolean => {
+				const target = waiting;
+				return !retired && target !== undefined && entry !== undefined && entry === scope.getStore() &&
+					entry.owner === owner && entry.ticket === target.ticket && entry.claim.id === target.claimId &&
+					entry.claim.controllerId === originalControllerId &&
+					entry.context.config.controllerId === originalControllerId && entry.nativeRead;
+			},
 			start: (claim: VirtualThermostatActuatorClaimEntity): Promise<void> => {
 				if (retired || waiting) throw new Error('Original public reconciliation observation unavailable');
 				const ticket = Object.freeze({});
@@ -9792,18 +9799,24 @@ describe('virtual thermostat durable runtime', () => {
 				release = resolve;
 			});
 			const entry = observeOriginalReconciliation(runtime);
-			const nativeRunners = new WeakSet<object>();
+			const nativeRunners = new Map<object, NonNullable<ReturnType<typeof entry.scope.getStore>>>();
 			let once = true;
 			const subscriber = {
 				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
 					const original = entry.scope.getStore();
-					if (original?.claim.id === claim.id && original.context.config.controllerId === controllerId &&
+					if (!retired && original && entry.isWaitingEntry(original) && original.claim.id === claim.id && original.context.config.controllerId === controllerId &&
 						event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
 						event.parameters?.includes('confirmed') && event.parameters.includes(command.id))
-						nativeRunners.add(event.queryRunner);
+						nativeRunners.set(event.queryRunner, original);
+				},
+				afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => {
+					nativeRunners.delete(event.queryRunner);
 				},
 				afterTransactionCommit: async (event: TransactionCommitEvent) => {
-					if (!once || !nativeRunners.has(event.queryRunner) || entry.scope.getStore()?.claim.id !== claim.id) return;
+					const original = entry.scope.getStore();
+					if (retired || !once || original === undefined || nativeRunners.get(event.queryRunner) !== original ||
+						!entry.isWaitingEntry(original) || original.claim.id !== claim.id) return;
+					nativeRunners.delete(event.queryRunner);
 					once = false;
 					try {
 						committedStatus = (
@@ -9821,6 +9834,7 @@ describe('virtual thermostat durable runtime', () => {
 			caseDatabase.subscribers.push(subscriber);
 			const retireAckObserver = (): void => {
 				retired = true;
+				nativeRunners.clear();
 				if (!completed) rejectObservation(new Error('Original native commit observation retired'));
 				release(); // only this test's original held acknowledgement gate
 			};
