@@ -625,17 +625,21 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		throw new Error('ON did not reach the durable dispatch journal');
 	};
-	const createTemperatureOutput = async (): Promise<string> => {
+	const createTemperatureOutput = async (
+		owned?: Readonly<{ database: SqliteDataSource; controllerId: string; assertLive: () => void }>,
+	): Promise<string> => {
 		const channelId = uuid(),
 			propertyId = uuid();
-		await database.manager.insert(VirtualChannelEntity, {
+		owned?.assertLive();
+		await (owned === undefined ? database : owned.database).manager.insert(VirtualChannelEntity, {
 			id: channelId,
-			device: controllerId,
+			device: owned === undefined ? controllerId : owned.controllerId,
 			name: 'Current temperature',
 			identifier: 'temperature',
 			category: ChannelCategory.TEMPERATURE,
 		} as never);
-		await database.manager.insert(VirtualChannelPropertyEntity, {
+		owned?.assertLive();
+		await (owned === undefined ? database : owned.database).manager.insert(VirtualChannelPropertyEntity, {
 			id: propertyId,
 			channel: channelId,
 			identifier: 'temperature',
@@ -1811,7 +1815,7 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('rejects a pending output publication captured before a failed graph validation and retry', async () => {
-		const owner = runtime, registry = producers;
+		const owner = runtime, registry = producers, originalDatabase = database, originalControllerId = controllerId;
 		const originalRequest: OriginalFunction<VirtualThermostatRuntimeService, typeof owner.request> = owner.request;
 		const descriptors: Readonly<{
 			getOwnPropertyDescriptor: (owner: object, key: PropertyKey) =>
@@ -1863,7 +1867,9 @@ describe('virtual thermostat durable runtime', () => {
 		try {
 			await owner.flush();
 			assertLive();
-			const outputId = await createTemperatureOutput();
+			const outputId = await createTemperatureOutput(Object.freeze({
+				database: originalDatabase, controllerId: originalControllerId, assertLive,
+			}));
 			assertLive();
 			nextOriginal = true;
 			originalGate = new Promise<void>((resolve) => { release = resolve; });
