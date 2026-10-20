@@ -6235,6 +6235,8 @@ describe('virtual thermostat durable runtime', () => {
 							action: 'off',
 							status: 'dispatching',
 						});
+						const originalAOperation = owner['inFlight'].get(originalA.id);
+						if (originalAOperation === undefined) throw new Error('Original held A operation unavailable');
 						await starting;
 						const sequenceBeforeB = owner.readDiagnostics(controllerId)?.sequence ?? 0;
 						// Public inspect creates a genuine ordinary request and waits for its actual evaluation, not A's send.
@@ -6249,6 +6251,7 @@ describe('virtual thermostat durable runtime', () => {
 						).toBe('dispatching');
 						const requestsAtB = request.mock.calls.length;
 						release.open();
+						await originalAOperation;
 						await starting;
 						await owned.flushTelemetry();
 						await owner.flush();
