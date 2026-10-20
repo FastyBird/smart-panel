@@ -10182,9 +10182,7 @@ describe('virtual thermostat durable runtime', () => {
 					.map((row) => ({ id: row.id, claimId: row.claimId, action: row.action, status: row.status }))
 					.sort((left, right) => left.id.localeCompare(right.id)),
 			).toEqual(
-				baseline
-					.map((row) => ({ ...row, status: 'confirmed' }))
-					.sort((left, right) => left.id.localeCompare(right.id)),
+				baseline.map((row) => ({ ...row, status: 'confirmed' })).sort((left, right) => left.id.localeCompare(right.id)),
 			);
 			expect(settledBaseline.filter((row) => row.status !== 'confirmed' && row.status !== 'cancelled')).toEqual([]);
 		}
