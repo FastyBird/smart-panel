@@ -947,13 +947,15 @@ describe('virtual thermostat durable runtime', () => {
 				const observation = new Promise<void>((resolve, reject) => {
 					waiting = { ticket, lifecycle, claimId: claim.id, resolve, reject };
 				});
-				void observation.then(
-					() => undefined,
-					() => undefined,
+				type Outcome = { fulfilled: true; cause?: never } | { fulfilled: false; cause: unknown };
+				const nativeOutcome = observation.then<Outcome, Outcome>(
+					() => ({ fulfilled: true }),
+					(cause: unknown) => ({ fulfilled: false, cause }),
 				);
+				let inspectionOutcome: Promise<Outcome>;
 				try {
 					const inspection = publicEntry.run(ticket, () => owner.inspect(originalControllerId));
-					void inspection.then(
+					inspectionOutcome = inspection.then<Outcome, Outcome>(
 						() => {
 							if (waiting?.ticket === ticket) {
 								const target = waiting;
@@ -962,6 +964,7 @@ describe('virtual thermostat durable runtime', () => {
 									new Error('Original public inspection completed without its required native reconciliation entry'),
 								);
 							}
+							return { fulfilled: true };
 						},
 						(cause: unknown) => {
 							if (waiting?.ticket === ticket) {
@@ -969,6 +972,7 @@ describe('virtual thermostat durable runtime', () => {
 								waiting = undefined;
 								target.reject(cause);
 							}
+							return { fulfilled: false, cause };
 						},
 					);
 				} catch (cause) {
@@ -977,8 +981,17 @@ describe('virtual thermostat durable runtime', () => {
 						waiting = undefined;
 						target.reject(cause);
 					}
+					inspectionOutcome = Promise.resolve<Outcome>({ fulfilled: false, cause });
 				}
-				return observation;
+				const completion = Promise.all([nativeOutcome, inspectionOutcome]).then(([native, inspected]) => {
+					if (!native.fulfilled) throw native.cause;
+					if (!inspected.fulfilled) throw inspected.cause;
+				});
+				void completion.then(
+					() => undefined,
+					() => undefined,
+				);
+				return completion;
 			},
 		};
 		return {
