@@ -3660,10 +3660,39 @@ describe('virtual thermostat durable runtime', () => {
 			if (cleanup) throw cleanup.cause;
 		};
 		afterEach(() => {
-			for (const observer of completionObserverBackstops) observer.retire();
-			runtime.onModuleDestroy();
-			actualClaims?.onModuleDestroy();
-			fixture?.revoke();
+			const observers = [...completionObserverBackstops];
+			let failure: { cause: unknown } | undefined;
+			for (const observer of observers) {
+				try {
+					observer.retire();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			}
+			try {
+				runtime.onModuleDestroy();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			try {
+				actualClaims?.onModuleDestroy();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			try {
+				fixture?.revoke();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			// Remove H before the outer resource hook asks Jest to restore the underlying owned spy S.
+			for (const observer of observers) {
+				try {
+					observer.cleanup();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			}
+			if (failure) throw failure.cause;
 		});
 		it('finishes genuine OFF bootstrap within two fences and retains settled facts through natural decision rotations', async () => {
 			await prepare();
@@ -5776,6 +5805,14 @@ describe('virtual thermostat durable runtime', () => {
 					VirtualThermostatTransportService.prototype;
 				const open = originalView.openRuntimeOffDispatchWork,
 					delivery = originalView.captureRuntimeFeedbackDelivery;
+				const openingDescriptor = Object.getOwnPropertyDescriptor(
+						VirtualThermostatTransportService.prototype,
+						'openRuntimeOffDispatchWork',
+					),
+					deliveryDescriptor = Object.getOwnPropertyDescriptor(
+						VirtualThermostatTransportService.prototype,
+						'captureRuntimeFeedbackDelivery',
+					);
 				const captures: {
 					claim: VirtualThermostatActuatorClaimEntity;
 					qualification: ThermostatInstalledQualification | null;
@@ -5807,9 +5844,35 @@ describe('virtual thermostat durable runtime', () => {
 				const observe = (event: object): void => {
 					if (values.captureOwnedFeedbackDelivery(event)) eventsSeen.push(event);
 				};
+				const installedOpeningDescriptor = Object.getOwnPropertyDescriptor(
+					VirtualThermostatTransportService.prototype,
+					'openRuntimeOffDispatchWork',
+				);
+				const installedDeliveryDescriptor = Object.getOwnPropertyDescriptor(
+					VirtualThermostatTransportService.prototype,
+					'captureRuntimeFeedbackDelivery',
+				);
+				const setupFixtures = realGuardFixtures,
+					previousCompletionObservers = new Set(completionObserverBackstops),
+					observedEvents = events;
+				const ownedCompletionObservers: Readonly<{ retire: () => void; cleanup: () => void }>[] = [];
+				let completion: ReturnType<typeof observeOriginalOffCompletion> | undefined;
+				let activeStarted = false,
+					bound = false;
+				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
 				try {
+					try {
+						completion = observeOriginalOffCompletion();
+					} finally {
+						// Capture ONLY this synchronous installation before active() can await or a later case can exist.
+						for (const observer of completionObserverBackstops)
+							if (!previousCompletionObservers.has(observer)) ownedCompletionObservers.push(observer);
+					}
+					activeStarted = true;
 					await active();
 					if (!fixture) throw new Error('Managed native fixture missing');
+					completion.bind(runtime, fixture);
+					bound = true;
 					const stored = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 					expect(stored.qualificationGeneration).toBeNull();
 					expect(
@@ -5819,7 +5882,7 @@ describe('virtual thermostat durable runtime', () => {
 						),
 					).toEqual([{ qualificationGeneration: null }]);
 					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
-					await startWithCeiling(2);
+					await startWithCeiling(2, completion.boundary);
 					expect(captures).toHaveLength(1);
 					expect(captures[0].claim.id).toBe(stored.id);
 					expect(captures[0].claim.qualificationGeneration).toBeNull();
@@ -5840,15 +5903,99 @@ describe('virtual thermostat durable runtime', () => {
 					expect(fixture.controls.fences).toHaveLength(2);
 					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
 					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) {
+					primary = { cause };
 				} finally {
+					// A partial active() failure has no bound helper owner. Never stop a later test's runtime.
+					if (!bound && activeStarted && realGuardFixtures === setupFixtures) {
+						try {
+							runtime.onModuleDestroy();
+						} catch (cause) {
+							cleanup = { cause };
+						}
+					}
 					try {
-						runtime.onModuleDestroy();
-					} finally {
-						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
-						delivering.mockRestore();
-						opening.mockRestore();
+						completion?.cleanup(true);
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					// Synchronous helper setup can install one wrapper before throwing/returning no helper.
+					// Its existing backstop must restore that wrapper to our spy BEFORE our spy is restored.
+					for (const observer of ownedCompletionObservers) {
+						try {
+							observer.cleanup();
+						} catch (cause) {
+							cleanup ??= { cause };
+						}
+					}
+					try {
+						observedEvents.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					try {
+						const current = Object.getOwnPropertyDescriptor(
+							VirtualThermostatTransportService.prototype,
+							'captureRuntimeFeedbackDelivery',
+						);
+						if (
+							current?.value === delivering &&
+							current?.value === installedDeliveryDescriptor?.value &&
+							current?.get === installedDeliveryDescriptor?.get &&
+							current?.set === installedDeliveryDescriptor?.set &&
+							current?.configurable === installedDeliveryDescriptor?.configurable &&
+							current?.enumerable === installedDeliveryDescriptor?.enumerable &&
+							current?.writable === installedDeliveryDescriptor?.writable
+						)
+							delivering.mockRestore();
+						else if (
+							current?.value !== deliveryDescriptor?.value ||
+							current?.get !== deliveryDescriptor?.get ||
+							current?.set !== deliveryDescriptor?.set ||
+							current?.configurable !== deliveryDescriptor?.configurable ||
+							current?.enumerable !== deliveryDescriptor?.enumerable ||
+							current?.writable !== deliveryDescriptor?.writable
+						) {
+							const cause = new Error(
+								'Original R40 captureRuntimeFeedbackDelivery observation replaced by another owner',
+							);
+							cleanup ??= { cause };
+						}
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					try {
+						const current = Object.getOwnPropertyDescriptor(
+							VirtualThermostatTransportService.prototype,
+							'openRuntimeOffDispatchWork',
+						);
+						if (
+							current?.value === opening &&
+							current?.value === installedOpeningDescriptor?.value &&
+							current?.get === installedOpeningDescriptor?.get &&
+							current?.set === installedOpeningDescriptor?.set &&
+							current?.configurable === installedOpeningDescriptor?.configurable &&
+							current?.enumerable === installedOpeningDescriptor?.enumerable &&
+							current?.writable === installedOpeningDescriptor?.writable
+						)
+							opening.mockRestore();
+						else if (
+							current?.value !== openingDescriptor?.value ||
+							current?.get !== openingDescriptor?.get ||
+							current?.set !== openingDescriptor?.set ||
+							current?.configurable !== openingDescriptor?.configurable ||
+							current?.enumerable !== openingDescriptor?.enumerable ||
+							current?.writable !== openingDescriptor?.writable
+						) {
+							const cause = new Error('Original R40 openRuntimeOffDispatchWork observation replaced by another owner');
+							cleanup ??= { cause };
+						}
+					} catch (cause) {
+						cleanup ??= { cause };
 					}
 				}
+				if (primary) throw primary.cause;
+				if (cleanup) throw cleanup.cause;
 			}, 30000);
 			// END R40 genuine SQL absence lineage draft
 
@@ -6010,6 +6157,10 @@ describe('virtual thermostat durable runtime', () => {
 				const originalView: OriginalFunctions<VirtualThermostatTransportService> =
 					VirtualThermostatTransportService.prototype;
 				const original = originalView.openRuntimeOffDispatchWork;
+				const openingDescriptor = Object.getOwnPropertyDescriptor(
+					VirtualThermostatTransportService.prototype,
+					'openRuntimeOffDispatchWork',
+				);
 				const devices: object[] = [],
 					works: RuntimeOffDispatchWork[] = [];
 				// Original callthrough installed before active() constructs the platform/transport and runtime pins.
@@ -6026,10 +6177,31 @@ describe('virtual thermostat durable runtime', () => {
 						}
 						return work;
 					});
+				const installedOpeningDescriptor = Object.getOwnPropertyDescriptor(
+					VirtualThermostatTransportService.prototype,
+					'openRuntimeOffDispatchWork',
+				);
+				const setupFixtures = realGuardFixtures,
+					previousCompletionObservers = new Set(completionObserverBackstops);
+				const ownedCompletionObservers: Readonly<{ retire: () => void; cleanup: () => void }>[] = [];
+				let completion: ReturnType<typeof observeOriginalOffCompletion> | undefined;
+				let activeStarted = false,
+					bound = false;
+				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
 				try {
+					try {
+						completion = observeOriginalOffCompletion();
+					} finally {
+						// Capture ONLY this synchronous installation before active() can await or a later case can exist.
+						for (const observer of completionObserverBackstops)
+							if (!previousCompletionObservers.has(observer)) ownedCompletionObservers.push(observer);
+					}
+					activeStarted = true;
 					await active();
 					if (!fixture) throw new Error('Managed native fixture missing');
-					await startWithCeiling(2);
+					completion.bind(runtime, fixture);
+					bound = true;
+					await startWithCeiling(2, completion.boundary);
 					expect(devices).toHaveLength(1);
 					expect(works[0]).toBeInstanceOf(RuntimeOffDispatchWork);
 					expect(devices[0]).toBeInstanceOf(ShellyNgDeviceEntity);
@@ -6038,13 +6210,63 @@ describe('virtual thermostat durable runtime', () => {
 					expect(fixture.controls.fences).toHaveLength(2);
 					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
 					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) {
+					primary = { cause };
 				} finally {
+					// A partial active() failure has no bound helper owner. Never stop a later test's runtime.
+					if (!bound && activeStarted && realGuardFixtures === setupFixtures) {
+						try {
+							runtime.onModuleDestroy();
+						} catch (cause) {
+							cleanup = { cause };
+						}
+					}
 					try {
-						runtime.onModuleDestroy();
-					} finally {
-						opening.mockRestore();
+						completion?.cleanup(true);
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					// Synchronous helper setup can install one wrapper before throwing/returning no helper.
+					// Its existing backstop must restore that wrapper to our spy BEFORE our spy is restored.
+					for (const observer of ownedCompletionObservers) {
+						try {
+							observer.cleanup();
+						} catch (cause) {
+							cleanup ??= { cause };
+						}
+					}
+					try {
+						const current = Object.getOwnPropertyDescriptor(
+							VirtualThermostatTransportService.prototype,
+							'openRuntimeOffDispatchWork',
+						);
+						if (
+							current?.value === opening &&
+							current?.value === installedOpeningDescriptor?.value &&
+							current?.get === installedOpeningDescriptor?.get &&
+							current?.set === installedOpeningDescriptor?.set &&
+							current?.configurable === installedOpeningDescriptor?.configurable &&
+							current?.enumerable === installedOpeningDescriptor?.enumerable &&
+							current?.writable === installedOpeningDescriptor?.writable
+						)
+							opening.mockRestore();
+						else if (
+							current?.value !== openingDescriptor?.value ||
+							current?.get !== openingDescriptor?.get ||
+							current?.set !== openingDescriptor?.set ||
+							current?.configurable !== openingDescriptor?.configurable ||
+							current?.enumerable !== openingDescriptor?.enumerable ||
+							current?.writable !== openingDescriptor?.writable
+						) {
+							const cause = new Error('Original R37 openRuntimeOffDispatchWork observation replaced by another owner');
+							cleanup ??= { cause };
+						}
+					} catch (cause) {
+						cleanup ??= { cause };
 					}
 				}
+				if (primary) throw primary.cause;
+				if (cleanup) throw cleanup.cause;
 			}, 30000);
 
 			it.each([
