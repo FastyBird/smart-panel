@@ -576,6 +576,7 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService(),
 			);
 		runtime = makeRuntime();
+		installInitialRuntimeObservers(runtime, database, controllerId);
 		await runtime.onApplicationBootstrap();
 	});
 	afterEach(async () => {
@@ -703,58 +704,93 @@ describe('virtual thermostat durable runtime', () => {
 		if (original) Object.defineProperty(owner, key, original);
 		else if (!Reflect.deleteProperty(owner, key)) throw new Error('Original entry observer could not be removed');
 	};
-	const observeOriginalDecisionLoads = (owner: VirtualThermostatRuntimeService) => {
+	const installOriginalDecisionLoads = (owner: VirtualThermostatRuntimeService, originalControllerId: string) => {
 		const original: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['loadDecisionCommands']> =
 			owner['loadDecisionCommands'];
+		let installedOwned = false;
 		const before = Object.getOwnPropertyDescriptor(owner, 'loadDecisionCommands');
-		const calls: { args: Parameters<typeof original>; pending: ReturnType<typeof original> }[] = [];
-		let retired = false,
-			restored = false;
+		const publicEntry = new AsyncLocalStorage<object>();
+		let armed = false, retired = false, restored = false;
+		type Snapshot = readonly VirtualThermostatCommandEntity[];
+		let lastSnapshot: Promise<Snapshot> | undefined;
+		let waiting: { ticket: object; lifecycle: object; entered: boolean; resolve: (rows: Snapshot) => void; reject: (cause: unknown) => void } | undefined;
 		const loading = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof original>) {
 			const pending = original.call(this, ...args);
-			if (!retired && this === owner) {
-				calls.push({ args, pending });
+			const target = waiting;
+			if (armed && !retired && this === owner && target && !target.entered && publicEntry.getStore() === target.ticket &&
+				owner['lifecycle'] === target.lifecycle && args[0] === originalControllerId) {
+				target.entered = true; // Exactly the first loader of this original public invocation.
 				void pending.then(
-					() => undefined,
-					() => undefined,
+					(rows) => {
+						try {
+							if (retired || owner['lifecycle'] !== target.lifecycle) throw new Error('Original decision loader owner retired');
+							if (waiting === target) waiting = undefined;
+							target.resolve(Object.freeze([...rows])); // Own membership, never freeze/mutate the application's array.
+						} catch (cause) { if (waiting === target) waiting = undefined; target.reject(cause); }
+					},
+					(cause: unknown) => { if (waiting === target) waiting = undefined; target.reject(cause); },
 				);
 			}
-			return pending;
+			return pending; // SAME original application Promise.
 		};
 		const installed = { configurable: true, enumerable: before?.enumerable ?? false, writable: true, value: loading };
+		const retire = (): void => {
+			retired = true;
+			const target = waiting;
+			waiting = undefined;
+			target?.reject(new Error('Original decision loader observer retired'));
+		};
 		const backstop = {
-			retire: (): void => {
-				retired = true;
-			},
+			retire,
 			cleanup: (): void => {
-				retired = true;
+				retire();
 				if (restored) return;
+				if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Decision loader owner not retired');
+				if (installedOwned) restoreOriginalEntry(owner, 'loadDecisionCommands', installed, before);
 				restored = true;
 				completionObserverBackstops.delete(backstop);
-				restoreOriginalEntry(owner, 'loadDecisionCommands', installed, before);
 			},
 		};
 		completionObserverBackstops.add(backstop);
 		Object.defineProperty(owner, 'loadDecisionCommands', installed);
-		const last = (): ReturnType<typeof original> => {
-			const call = calls[calls.length - 1];
-			if (retired || !call) throw new Error('Genuine original decision loader not reached');
-			return call.pending;
-		};
-		return {
-			last,
-			read: async (): ReturnType<typeof original> => {
-				const count = calls.length;
-				await owner.inspect(controllerId);
-				if (calls.length === count) throw new Error('Public evaluation did not enter its original loader');
-				return last();
-			},
-		};
+		installedOwned = true;
+		return { arm: () => {
+			if (retired || armed) throw new Error('Original decision loader observation unavailable');
+			armed = true;
+			return {
+				last: (): Promise<Snapshot> => {
+					if (retired || lastSnapshot === undefined) throw new Error('Genuine original decision loader not reached');
+					return lastSnapshot;
+				},
+				read: async (): Promise<Snapshot> => {
+					const lifecycle = owner['lifecycle'];
+					if (retired || waiting || lifecycle === undefined) throw new Error('Original public loader entry unavailable');
+					const ticket = Object.freeze({});
+					const observation = new Promise<Snapshot>((resolve, reject) => { waiting = { ticket, lifecycle, entered: false, resolve, reject }; });
+					lastSnapshot = observation;
+					void observation.then(() => undefined, () => undefined);
+					const finishWithoutLoader = (cause: unknown): void => {
+						if (waiting?.ticket !== ticket) return;
+						const target = waiting;
+						waiting = undefined;
+						target.reject(cause);
+					};
+					try {
+						const inspection = publicEntry.run(ticket, () => owner.inspect(originalControllerId));
+						void inspection.then(
+							() => finishWithoutLoader(new Error('Public evaluation did not enter its original loader')),
+							(cause: unknown) => finishWithoutLoader(cause),
+						);
+						await inspection; // Preserve the existing public-evaluation completion boundary.
+					} catch (cause) { finishWithoutLoader(cause); throw cause; }
+					return observation;
+				},
+			};
+		} };
 	};
-	const observeOriginalReconciliation = (owner: VirtualThermostatRuntimeService) => {
-		const source = database,
-			originalControllerId = controllerId;
+	const installOriginalReconciliation = (owner: VirtualThermostatRuntimeService, source: SqliteDataSource, originalControllerId: string) => {
 		const original: OriginalFunction<VirtualThermostatRuntimeService, (typeof owner)['reconcile']> = owner['reconcile'];
+		let installedOwned = false;
 		const before = Object.getOwnPropertyDescriptor(owner, 'reconcile');
 		const publicEntry = new AsyncLocalStorage<object>();
 		type Entry = {
@@ -762,12 +798,13 @@ describe('virtual thermostat durable runtime', () => {
 			context: Parameters<typeof original>[0];
 			claim: Parameters<typeof original>[1];
 			ticket: object | undefined;
+			lifecycle: object | undefined;
 			nativeRead: boolean;
 		};
 		const scope = new AsyncLocalStorage<Entry>();
-		let retired = false,
+		let armed = false, retired = false,
 			restored = false;
-		let waiting: { ticket: object; claimId: string; resolve: () => void; reject: (cause: unknown) => void } | undefined;
+		let waiting: { ticket: object; lifecycle: object; claimId: string; resolve: () => void; reject: (cause: unknown) => void } | undefined;
 		const nativeObserver = {
 			afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
 				const entry = scope.getStore();
@@ -780,12 +817,13 @@ describe('virtual thermostat durable runtime', () => {
 			},
 		};
 		const reconciling = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof original>) {
-			if (retired || this !== owner) return original.call(this, ...args);
+			if (!armed || retired || this !== owner) return original.call(this, ...args);
 			const entry = {
 				owner: this,
 				context: args[0],
 				claim: args[1],
 				ticket: publicEntry.getStore(),
+				lifecycle: owner['lifecycle'],
 				nativeRead: false,
 			};
 			const pending = scope.run(entry, () => original.call(this, ...args));
@@ -793,8 +831,10 @@ describe('virtual thermostat durable runtime', () => {
 				const target = waiting;
 				if (
 					retired ||
-					!entry.nativeRead ||
+					(outcome.fulfilled && !entry.nativeRead) ||
 					!target ||
+					entry.lifecycle !== target.lifecycle ||
+					owner['lifecycle'] !== target.lifecycle ||
 					entry.ticket !== target.ticket ||
 					entry.claim.id !== target.claimId
 				)
@@ -826,17 +866,18 @@ describe('virtual thermostat durable runtime', () => {
 			cleanup: (): void => {
 				retire();
 				if (restored) return;
-				restored = true;
-				completionObserverBackstops.delete(backstop);
+				if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Reconciliation owner not retired');
 				const index = source.subscribers.indexOf(nativeObserver);
 				if (index >= 0) source.subscribers.splice(index, 1);
-				restoreOriginalEntry(owner, 'reconcile', installed, before);
+				if (installedOwned) restoreOriginalEntry(owner, 'reconcile', installed, before);
+				restored = true;
+				completionObserverBackstops.delete(backstop);
 			},
 		};
 		completionObserverBackstops.add(backstop);
-		source.subscribers.push(nativeObserver);
 		Object.defineProperty(owner, 'reconcile', installed);
-		return {
+		installedOwned = true;
+		const observation = {
 			scope,
 			isWaitingEntry: (entry: Entry | undefined): boolean => {
 				const target = waiting;
@@ -846,6 +887,8 @@ describe('virtual thermostat durable runtime', () => {
 					entry !== undefined &&
 					entry === scope.getStore() &&
 					entry.owner === owner &&
+					entry.lifecycle === target.lifecycle &&
+					owner['lifecycle'] === target.lifecycle &&
 					entry.ticket === target.ticket &&
 					entry.claim.id === target.claimId &&
 					entry.claim.controllerId === originalControllerId &&
@@ -854,19 +897,26 @@ describe('virtual thermostat durable runtime', () => {
 				);
 			},
 			start: (claim: VirtualThermostatActuatorClaimEntity): Promise<void> => {
-				if (retired || waiting) throw new Error('Original public reconciliation observation unavailable');
+				const lifecycle = owner['lifecycle'];
+				if (retired || waiting || lifecycle === undefined) throw new Error('Original public reconciliation observation unavailable');
 				const ticket = Object.freeze({});
 				const observation = new Promise<void>((resolve, reject) => {
-					waiting = { ticket, claimId: claim.id, resolve, reject };
+					waiting = { ticket, lifecycle, claimId: claim.id, resolve, reject };
 				});
 				void observation.then(
 					() => undefined,
 					() => undefined,
 				);
 				try {
-					const inspection = publicEntry.run(ticket, () => owner.inspect(controllerId));
+					const inspection = publicEntry.run(ticket, () => owner.inspect(originalControllerId));
 					void inspection.then(
-						() => undefined,
+						() => {
+							if (waiting?.ticket === ticket) {
+								const target = waiting;
+								waiting = undefined;
+								target.reject(new Error('Original public inspection completed without its required native reconciliation entry'));
+							}
+						},
 						(cause: unknown) => {
 							if (waiting?.ticket === ticket) {
 								const target = waiting;
@@ -885,7 +935,119 @@ describe('virtual thermostat durable runtime', () => {
 				return observation;
 			},
 		};
+		return { arm: () => {
+			if (retired || armed) throw new Error('Original reconciliation observation unavailable');
+			armed = true;
+			source.subscribers.push(nativeObserver);
+			return observation;
+		} };
 	};
+
+	const installOriginalRequest = (owner: VirtualThermostatRuntimeService) => {
+		const methods: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = owner;
+		const original = methods.request;
+		let installedOwned = false;
+		const before = Object.getOwnPropertyDescriptor(owner, 'request');
+		let suppress = false, nextOriginal = false, retired = false, restored = false;
+		const requesting = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof original>): void {
+			if (this !== owner || !suppress || retired) return original.call(this, ...args);
+			if (nextOriginal) {
+				nextOriginal = false;
+				return original.call(this, ...args);
+			}
+		};
+		const installed = { configurable: true, enumerable: before?.enumerable ?? false, writable: true, value: requesting };
+		const backstop = {
+			retire: (): void => { retired = true; suppress = false; nextOriginal = false; },
+			cleanup: (): void => {
+				backstop.retire();
+				if (restored) return;
+				if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Request owner not retired');
+				if (installedOwned) restoreOriginalEntry(owner, 'request', installed, before);
+				restored = true;
+				completionObserverBackstops.delete(backstop);
+			},
+		};
+		completionObserverBackstops.add(backstop);
+		Object.defineProperty(owner, 'request', installed);
+		installedOwned = true;
+		return { arm: () => {
+			if (retired || suppress) throw new Error('Original request suppression unavailable');
+			suppress = true;
+			return {
+				allowNext: (): void => {
+					if (retired || !suppress) throw new Error('Original request suppression retired');
+					nextOriginal = true;
+				},
+				passThrough: (): void => { suppress = false; nextOriginal = false; },
+			};
+		} };
+	};
+	const initialRuntimeObservers = new WeakMap<VirtualThermostatRuntimeService, Readonly<{
+		owner: VirtualThermostatRuntimeService;
+		source: SqliteDataSource;
+		id: string;
+		settle: () => Promise<void>;
+		assertLive: () => void;
+		loads: ReturnType<typeof installOriginalDecisionLoads>;
+		reconciliation: ReturnType<typeof installOriginalReconciliation>;
+		request: ReturnType<typeof installOriginalRequest>;
+	}>>();
+	const installInitialRuntimeObservers = (owner: VirtualThermostatRuntimeService, source: SqliteDataSource, id: string): void => {
+		const methods: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'onModuleDestroy'>> = owner;
+		const destroy = methods.onModuleDestroy;
+		const retirement = {
+			retire: (): void => undefined,
+			cleanup: (): void => {
+				try {
+					if (owner['active'] || owner['lifecycle'] !== undefined) destroy.call(owner);
+				} finally {
+					initialRuntimeObservers.delete(owner);
+					completionObserverBackstops.delete(retirement);
+				}
+			},
+		};
+		// First cleanup member: retire THIS initial owner even if a later case installed a different runtime.
+		completionObserverBackstops.add(retirement);
+		const lifecycleAtEntry = (): object => {
+			const lifecycle = owner['lifecycle'];
+			if (!owner['active'] || lifecycle === undefined) throw new Error('Original initial fixture owner retired');
+			return lifecycle;
+		};
+		initialRuntimeObservers.set(owner, {
+			owner,
+			source,
+			id,
+			assertLive: (): void => { lifecycleAtEntry(); },
+			// Same existing five-cycle settle recipe; captured receiver/source, no late outer-fixture selection.
+			settle: async (): Promise<void> => {
+				const lifecycle = lifecycleAtEntry();
+				const assertSame = (): void => {
+					if (owner['lifecycle'] !== lifecycle || !owner['active']) throw new Error('Original settle owner retired');
+				};
+				for (let attempt = 0; attempt < 5; attempt++) {
+					assertSame();
+					await owner.flush();
+					assertSame();
+					await Promise.all([...owner['inFlight'].values()]);
+				}
+				assertSame();
+				await owner.flush();
+				assertSame();
+			},
+			loads: installOriginalDecisionLoads(owner, id),
+			reconciliation: installOriginalReconciliation(owner, source, id),
+			request: installOriginalRequest(owner),
+		});
+	};
+	const originalObservers = (owner: VirtualThermostatRuntimeService) => {
+		const observers = initialRuntimeObservers.get(owner);
+		if (!observers) throw new Error('Only the original pre-bootstrap fixture owner can be observed');
+		return observers;
+	};
+	const initialFixtureOwner = () => originalObservers(runtime);
+	const observeOriginalDecisionLoads = (owner: VirtualThermostatRuntimeService) => originalObservers(owner).loads.arm();
+	const observeOriginalReconciliation = (owner: VirtualThermostatRuntimeService) => originalObservers(owner).reconciliation.arm();
 
 	const observeHydrationReplacement = (driver: DataSource['driver']) => {
 		const methods: OriginalFunctions<Pick<DataSource['driver'], 'prepareHydratedValue'>> = driver;
@@ -1562,6 +1724,9 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('loads bounded settled-history witnesses and retains all unresolved identities for lazy drainage', async () => {
+		const owned = initialFixtureOwner();
+		const { owner: runtime, source: database, id: controllerId, settle } = owned;
+		const entry = observeOriginalDecisionLoads(runtime);
 		await settle();
 		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
@@ -1620,7 +1785,6 @@ describe('virtual thermostat durable runtime', () => {
 		const loader = runtime as unknown as {
 			loadUnresolvedCommands(controllerId: string, claimId: string): Promise<VirtualThermostatCommandEntity[]>;
 		};
-		const entry = observeOriginalDecisionLoads(runtime);
 		// The existing negative proof setting applies before the public read entry, preserving pending identities.
 		proofAllowed = () => false;
 		const loaded = await entry.read();
@@ -1669,6 +1833,9 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('bounds continuous accepted ON history and drains every identity only on qualified OFF', async () => {
+		const owned = initialFixtureOwner();
+		const { owner: runtime, source: database, id: controllerId, settle } = owned;
+		const entry = observeOriginalDecisionLoads(runtime);
 		await settle();
 		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
@@ -1696,7 +1863,6 @@ describe('virtual thermostat durable runtime', () => {
 			loadUnresolvedCommands(controllerId: string, claimId: string): Promise<VirtualThermostatCommandEntity[]>;
 		};
 		const fullLoad = jest.spyOn(internals, 'loadUnresolvedCommands');
-		const entry = observeOriginalDecisionLoads(runtime);
 		await database.manager.update(
 			VirtualThermostatCommandEntity,
 			{ id: accepted[4999].id },
@@ -1704,7 +1870,7 @@ describe('virtual thermostat durable runtime', () => {
 		);
 		sample(sensorId, 18);
 		sample(relayId, true);
-		await runtime.inspect(controllerId);
+		await entry.read();
 		expect(fullLoad).not.toHaveBeenCalled();
 		expect((await entry.last()).length).toBeLessThanOrEqual(3);
 		expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId, status: 'accepted' })).toBe(
@@ -1783,6 +1949,9 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('rejects drainage proof that omits a command added while proof I/O is pending', async () => {
+		const owned = initialFixtureOwner();
+		const { owner: runtime, source: database, id: controllerId, settle } = owned;
+		const entry = observeOriginalReconciliation(runtime);
 		await settle();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const row = (id: string) =>
@@ -1804,7 +1973,7 @@ describe('virtual thermostat durable runtime', () => {
 		const first = row(uuid()),
 			unseen = row(uuid());
 		await database.manager.insert(VirtualThermostatCommandEntity, first);
-		const entry = observeOriginalReconciliation(runtime);
+		owned.assertLive();
 		beforeProof = async () => {
 			await database.manager.insert(VirtualThermostatCommandEntity, unseen);
 		};
@@ -1942,59 +2111,19 @@ describe('virtual thermostat durable runtime', () => {
 			registry = producers,
 			originalDatabase = database,
 			originalControllerId = controllerId;
-		const requestMethods: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = owner;
-		const originalRequest = requestMethods.request;
-		const descriptors: Readonly<{
-			getOwnPropertyDescriptor: (
-				owner: object,
-				key: PropertyKey,
-			) => (Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
-		}> = Object;
-		const originalDescriptor = descriptors.getOwnPropertyDescriptor(owner, 'request');
-		let nextOriginal = false;
-		const requesting = (...args: Parameters<typeof originalRequest>): void => {
-			if (nextOriginal) {
-				nextOriginal = false;
-				return originalRequest.call(owner, ...args);
-			}
-		};
-		// Equivalent old one-shot request suppression, but not registered in Jest's global restore list.
-		const installed: Omit<PropertyDescriptor, 'value'> & { value: typeof requesting } = {
-			configurable: true,
-			enumerable: originalDescriptor?.enumerable ?? true,
-			writable: true,
-			value: requesting,
-		};
-		Object.defineProperty(owner, 'request', installed);
+		const requestObservation = originalObservers(owner).request.arm();
 		let release: () => void = () => {
 			throw new Error('Original publication gate not installed');
 		};
-		let retired = false,
-			restored = false;
+		let retired = false;
 		let originalGate: Promise<void> | undefined;
 		let primary: { cause: unknown } | undefined;
 		const retire = (): void => {
 			retired = true;
 			if (originalGate !== undefined) release();
 		};
-		const restoreRequest = (): void => {
-			if (restored) return;
-			const current = descriptors.getOwnPropertyDescriptor(owner, 'request');
-			if (
-				!current ||
-				current.value !== installed.value ||
-				current.get !== installed.get ||
-				current.set !== installed.set ||
-				current.writable !== installed.writable ||
-				current.enumerable !== installed.enumerable ||
-				current.configurable !== installed.configurable
-			)
-				throw new Error('Publication request observer belongs to another owner');
-			if (originalDescriptor) Object.defineProperty(owner, 'request', originalDescriptor);
-			else if (!Reflect.deleteProperty(owner, 'request'))
-				throw new Error('Original request observer cannot be removed');
-			restored = true;
-		};
+		// Logical disarm only. The pinned descriptor remains until this original owner retires.
+		const restoreRequest = (): void => requestObservation.passThrough();
 		const cleanup = (): void => {
 			retire();
 			if (publicationGate === originalGate) publicationGate = null;
@@ -2017,12 +2146,12 @@ describe('virtual thermostat durable runtime', () => {
 				}),
 			);
 			assertLive();
-			nextOriginal = true;
+			requestObservation.allowNext();
 			originalGate = new Promise<void>((resolve) => {
 				release = resolve;
 			});
 			publicationGate = originalGate;
-			const inspection = owner.inspect(controllerId);
+			const inspection = owner.inspect(originalControllerId);
 			// Observe both outcomes immediately; no unhandled side Promise if timeout retires this wait first.
 			void inspection.then(
 				() => undefined,
@@ -2045,7 +2174,7 @@ describe('virtual thermostat durable runtime', () => {
 			expect(owner.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
 			if (publicationGate === originalGate) publicationGate = null;
 			restoreRequest();
-			await owner.inspect(controllerId);
+			await owner.inspect(originalControllerId);
 			assertLive();
 			expect(registry.read(outputId)?.producer.quality).toBe('good');
 		} catch (cause) {
@@ -9849,6 +9978,9 @@ describe('virtual thermostat durable runtime', () => {
 	});
 	// END real claims comfort pending-ON regressions
 	it('retires only committed journal identities and retains the same pending identity after a real SQLite rollback', async () => {
+		const owned = initialFixtureOwner();
+		const { owner: runtime, source: database, id: controllerId, settle } = owned;
+		const entry = observeOriginalReconciliation(runtime);
 		await settle();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
@@ -9868,19 +10000,42 @@ describe('virtual thermostat durable runtime', () => {
 		});
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
 		const retire = jest.fn<void, [readonly string[]]>();
+		owned.assertLive();
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
-		let rollback = true;
+		const nativeRunners = new Map<object, NonNullable<ReturnType<typeof entry.scope.getStore>>>();
+		let rollback = true, retired = false;
+		let primary: { cause: unknown } | undefined;
 		const subscriber = {
 			listenTo: () => VirtualThermostatBranchRuntimeEntity,
-			afterUpdate: () => {
-				if (rollback) {
+			afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+				const original = entry.scope.getStore();
+				if (!retired && original && entry.isWaitingEntry(original) && original.claim.id === claim.id &&
+					event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+					event.parameters?.includes('confirmed') && event.parameters.includes(command.id))
+					nativeRunners.set(event.queryRunner, original);
+			},
+			afterTransactionRollback: (event: import('typeorm').TransactionRollbackEvent): void => { nativeRunners.delete(event.queryRunner); },
+			afterTransactionCommit: (event: TransactionCommitEvent): void => { nativeRunners.delete(event.queryRunner); },
+			afterUpdate: (event: import('typeorm').UpdateEvent<VirtualThermostatBranchRuntimeEntity>): void => {
+				const original = entry.scope.getStore();
+				if (!retired && rollback && original && nativeRunners.get(event.queryRunner) === original && entry.isWaitingEntry(original)) {
+					nativeRunners.delete(event.queryRunner);
 					rollback = false;
 					throw new Error('fixture settlement rollback');
 				}
 			},
 		};
+		const backstop = {
+			retire: (): void => { retired = true; nativeRunners.clear(); },
+			cleanup: (): void => {
+				backstop.retire();
+				const index = database.subscribers.indexOf(subscriber);
+				if (index >= 0) database.subscribers.splice(index, 1);
+				completionObserverBackstops.delete(backstop);
+			},
+		};
+		completionObserverBackstops.add(backstop);
 		database.subscribers.push(subscriber);
-		const entry = observeOriginalReconciliation(runtime);
 		try {
 			await expect(entry.start(claim)).rejects.toThrow('fixture settlement rollback');
 			expect(retire).not.toHaveBeenCalled();
@@ -9893,11 +10048,17 @@ describe('virtual thermostat durable runtime', () => {
 			);
 			expect(retire).toHaveBeenCalledWith([command.id]);
 			expect(reconciledCommandIds.slice(-2)).toEqual([[command.id], [command.id]]);
+		} catch (cause) {
+			primary = { cause };
 		} finally {
-			database.subscribers.splice(database.subscribers.indexOf(subscriber), 1);
+			try { backstop.cleanup(); } catch (cause) { primary ??= { cause }; }
 		}
+		if (primary) throw primary.cause;
 	});
 	it('does not let optional retirement failure alter committed journal confirmation', async () => {
+		const owned = initialFixtureOwner();
+		const { owner: runtime, source: database, id: controllerId, settle } = owned;
+		const entry = observeOriginalReconciliation(runtime);
 		await settle();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
@@ -9919,8 +10080,8 @@ describe('virtual thermostat durable runtime', () => {
 		const retire = jest.fn(() => {
 			throw new Error('optional metadata only');
 		});
+		owned.assertLive();
 		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
-		const entry = observeOriginalReconciliation(runtime);
 		await entry.start(claim);
 		expect(retire).toHaveBeenCalledWith([command.id]);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
@@ -9993,6 +10154,9 @@ describe('virtual thermostat durable runtime', () => {
 	it.each(['held acknowledgement', 'unknown acknowledgement'] as const)(
 		'waits for a known SQLite commit acknowledgement before retirement: %s',
 		async (mode) => {
+			const owned = initialFixtureOwner();
+			const { owner: runtime, source: database, id: controllerId, settle } = owned;
+			const entry = observeOriginalReconciliation(runtime);
 			await settle();
 			const caseDatabase = database;
 			let retired = false,
@@ -10016,6 +10180,7 @@ describe('virtual thermostat durable runtime', () => {
 			});
 			await database.manager.insert(VirtualThermostatCommandEntity, command);
 			const retire = jest.fn<void, [readonly string[]]>();
+			owned.assertLive();
 			proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 			let enter: () => void = () => undefined;
 			let rejectObservation: (error: unknown) => void = () => undefined;
@@ -10028,7 +10193,6 @@ describe('virtual thermostat durable runtime', () => {
 			const held = new Promise<void>((resolve) => {
 				release = resolve;
 			});
-			const entry = observeOriginalReconciliation(runtime);
 			const nativeRunners = new Map<object, NonNullable<ReturnType<typeof entry.scope.getStore>>>();
 			let once = true;
 			const subscriber = {
