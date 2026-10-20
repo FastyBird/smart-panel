@@ -803,27 +803,41 @@ describe('captured thermostat transport readiness continuity', () => {
 		}
 	});
 	// BEGIN R37 trusted getter metadata drafts (UNRUN; no native acceptance authority)
+	const r37ObjectMethods: Readonly<{
+		getPrototypeOf: (owner: object) => object | null;
+		create: (prototype: object | null) => object;
+	}> = Object;
 	// This existing inert provider fixture proves optional metadata eligibility/negative callbacks only.
 	it.each(['canonical', 'unshadowed-intermediate'] satisfies readonly string[])(
 		'R37 pins the original %s Shelly type chain without guard, session or sample work',
 		async (shape) => {
-			const f = await fixture(), b = await f.builtin();
-			const prototype: object | null = Object.getPrototypeOf(f.target.device);
+			const f = await fixture(),
+				b = await f.builtin();
+			const prototype: object | null = r37ObjectMethods.getPrototypeOf(f.target.device);
 			const consumer = f.transport.registerRuntimeFeedbackConsumer({
 				reconcile: () => undefined,
 				dispatch: () => undefined,
 				onModuleDestroy: () => undefined,
 			});
 			let guards = 0;
-			const guard = (): boolean => { guards++; throw new Error('Metadata must not invoke guard'); };
+			const guard = (): boolean => {
+				guards++;
+				throw new Error('Metadata must not invoke guard');
+			};
 			try {
-				if (shape === 'unshadowed-intermediate') Object.setPrototypeOf(f.target.device, Object.create(prototype));
+				if (shape === 'unshadowed-intermediate')
+					Object.setPrototypeOf(f.target.device, r37ObjectMethods.create(prototype));
 				expect(Object.getOwnPropertyDescriptor(f.target.device, 'type')).toBeUndefined();
 				const adapter = f.transport.get(f.target, f.claim);
 				if (!adapter) throw new Error('Expected builtin metadata adapter');
 				const work = f.transport.openRuntimeOffDispatchWork(
-					consumer, adapter, f.target, f.claim, f.qualification,
-					guard, Object.freeze({ commandId: randomUUID() }),
+					consumer,
+					adapter,
+					f.target,
+					f.claim,
+					f.qualification,
+					guard,
+					Object.freeze({ commandId: randomUUID() }),
 				);
 				expect(work).not.toBeNull();
 				if (work) f.transport.closeRuntimeOffDispatchWork(work);
@@ -841,47 +855,84 @@ describe('captured thermostat transport readiness continuity', () => {
 		},
 	);
 	it.each([
-		'own-data', 'own-getter', 'nearer-getter', 'canonical-getter', 'canonical-setter',
-		'canonical-flags', 'other-getter', 'inherited-data',
+		'own-data',
+		'own-getter',
+		'nearer-getter',
+		'canonical-getter',
+		'canonical-setter',
+		'canonical-flags',
+		'other-getter',
+		'inherited-data',
 	] satisfies readonly string[])(
 		'R37 refuses %s without invoking its accessor or borrowing native authority',
 		async (shape) => {
-			const f = await fixture(), b = await f.builtin();
+			const f = await fixture(),
+				b = await f.builtin();
 			const adapter = f.transport.get(f.target, f.claim);
 			if (!adapter) throw new Error('Expected builtin metadata adapter');
 			const canonical = Object.getOwnPropertyDescriptor(ShellyNgDeviceEntity.prototype, 'type');
 			if (!canonical) throw new Error('Original Shelly getter missing');
-			const devicePrototype: object | null = Object.getPrototypeOf(f.target.device),
-				propertyPrototype: object | null = Object.getPrototypeOf(f.target.property),
+			const devicePrototype: object | null = r37ObjectMethods.getPrototypeOf(f.target.device),
+				propertyPrototype: object | null = r37ObjectMethods.getPrototypeOf(f.target.property),
 				enabled = Object.getOwnPropertyDescriptor(f.target.device, 'enabled'),
 				unit = Object.getOwnPropertyDescriptor(f.target.property, 'unit');
 			const consumer = f.transport.registerRuntimeFeedbackConsumer({
-				reconcile: () => undefined, dispatch: () => undefined, onModuleDestroy: () => undefined,
+				reconcile: () => undefined,
+				dispatch: () => undefined,
+				onModuleDestroy: () => undefined,
 			});
-			let getters = 0, guards = 0;
-			const getter = (): string => { getters++; return 'devices-shelly-ng'; };
+			let getters = 0,
+				guards = 0;
+			const getter = (): string => {
+				getters++;
+				return 'devices-shelly-ng';
+			};
 			try {
-				if (shape === 'own-data') Object.defineProperty(f.target.device, 'type', { value: 'devices-shelly-ng', configurable: true });
-				else if (shape === 'own-getter') Object.defineProperty(f.target.device, 'type', { get: getter, configurable: true });
+				if (shape === 'own-data')
+					Object.defineProperty(f.target.device, 'type', { value: 'devices-shelly-ng', configurable: true });
+				else if (shape === 'own-getter')
+					Object.defineProperty(f.target.device, 'type', { get: getter, configurable: true });
 				else if (shape === 'nearer-getter') {
-					const nearer: object = Object.create(devicePrototype);
+					const nearer: object = r37ObjectMethods.create(devicePrototype);
 					Object.defineProperty(nearer, 'type', { get: getter, configurable: true });
 					Object.setPrototypeOf(f.target.device, nearer);
-				} else if (shape === 'canonical-getter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
-				else if (shape === 'canonical-setter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
-				else if (shape === 'canonical-flags') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, enumerable: !canonical.enumerable });
-				else if (shape === 'other-getter') Object.defineProperty(f.target.device, 'enabled', { get: () => { getters++; return true; }, configurable: true });
+				} else if (shape === 'canonical-getter')
+					Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
+				else if (shape === 'canonical-setter')
+					Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
+				else if (shape === 'canonical-flags')
+					Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', {
+						...canonical,
+						enumerable: !canonical.enumerable,
+					});
+				else if (shape === 'other-getter')
+					Object.defineProperty(f.target.device, 'enabled', {
+						get: () => {
+							getters++;
+							return true;
+						},
+						configurable: true,
+					});
 				else {
 					Reflect.deleteProperty(f.target.property, 'unit');
-					const nearer: object = Object.create(propertyPrototype);
+					const nearer: object = r37ObjectMethods.create(propertyPrototype);
 					Object.defineProperty(nearer, 'unit', { value: null, configurable: true });
 					Object.setPrototypeOf(f.target.property, nearer);
 				}
-				expect(f.transport.openRuntimeOffDispatchWork(
-					consumer, adapter, f.target, f.claim, f.qualification,
-					() => { guards++; throw new Error('Refused metadata must not call guard'); },
-					Object.freeze({ commandId: randomUUID() }),
-				)).toBeNull();
+				expect(
+					f.transport.openRuntimeOffDispatchWork(
+						consumer,
+						adapter,
+						f.target,
+						f.claim,
+						f.qualification,
+						() => {
+							guards++;
+							throw new Error('Refused metadata must not call guard');
+						},
+						Object.freeze({ commandId: randomUUID() }),
+					),
+				).toBeNull();
 				expect(getters).toBe(0);
 				expect(guards).toBe(0);
 				expect(b.prepare).not.toHaveBeenCalled();
@@ -1004,4 +1055,132 @@ describe('captured thermostat transport readiness continuity', () => {
 		},
 	);
 	// END R24 unknown-result additive drafts (UNRUN)
+	// BEGIN R40 legacy generation metadata drafts (UNRUN; no native authority)
+	const r40GenerationRows: readonly {
+		name: string;
+		claim: string | null;
+		evidence: string | undefined;
+		opens: boolean;
+	}[] = [
+		{ name: 'SQL-null claim and omitted evidence', claim: null, evidence: undefined, opens: true },
+		{
+			name: 'matching original generation',
+			claim: 'synthetic-existing-generation',
+			evidence: 'synthetic-existing-generation',
+			opens: true,
+		},
+		{
+			name: 'different installed generation',
+			claim: 'synthetic-existing-generation',
+			evidence: 'different-generation',
+			opens: false,
+		},
+		{
+			name: 'generated claim without evidence generation',
+			claim: 'synthetic-existing-generation',
+			evidence: undefined,
+			opens: false,
+		},
+		{
+			name: 'absent claim with generated evidence',
+			claim: null,
+			evidence: 'synthetic-existing-generation',
+			opens: false,
+		},
+	];
+	it.each(r40GenerationRows)('R40 preserves the original OFF metadata generation boundary: $name', async (row) => {
+		const f = await fixture(),
+			b = await f.builtin();
+		f.claim.qualificationGeneration = row.claim;
+		if (row.evidence === undefined) Reflect.deleteProperty(f.qualification, 'qualificationGeneration');
+		else
+			Object.defineProperty(f.qualification, 'qualificationGeneration', {
+				value: row.evidence,
+				configurable: true,
+				writable: true,
+			});
+		const consumer = f.transport.registerRuntimeFeedbackConsumer({
+			reconcile: () => undefined,
+			dispatch: () => undefined,
+			onModuleDestroy: () => undefined,
+		});
+		let guards = 0;
+		const guard = (): boolean => {
+			guards++;
+			throw new Error('Optional metadata must not invoke native admission');
+		};
+		try {
+			const adapter = f.transport.get(f.target, f.claim);
+			if (!adapter) throw new Error('Original builtin metadata adapter missing');
+			const work = f.transport.openRuntimeOffDispatchWork(
+				consumer,
+				adapter,
+				f.target,
+				f.claim,
+				f.qualification,
+				guard,
+				Object.freeze({ commandId: randomUUID() }),
+			);
+			if (row.opens) expect(work).not.toBeNull();
+			else expect(work).toBeNull();
+			if (work) f.transport.closeRuntimeOffDispatchWork(work);
+			expect(guards).toBe(0);
+			expect(b.prepare).not.toHaveBeenCalled();
+			expect(b.fence).not.toHaveBeenCalled();
+			expect(b.on).not.toHaveBeenCalled();
+			expect(b.request).not.toHaveBeenCalled();
+			expect(f.readSample).not.toHaveBeenCalled();
+		} finally {
+			f.transport.closeRuntimeFeedbackConsumer(consumer);
+			await b.cleanup();
+			await f.module.close();
+		}
+	});
+	it('R40 refuses malformed explicit-null evidence rather than treating it as valid omitted generation', async () => {
+		const f = await fixture(),
+			b = await f.builtin();
+		f.claim.qualificationGeneration = null;
+		// Deliberately malformed runtime metadata, NOT a valid ThermostatInstalledQualification.
+		Object.defineProperty(f.qualification, 'qualificationGeneration', {
+			value: null,
+			configurable: true,
+			writable: true,
+		});
+		const consumer = f.transport.registerRuntimeFeedbackConsumer({
+			reconcile: () => undefined,
+			dispatch: () => undefined,
+			onModuleDestroy: () => undefined,
+		});
+		let guards = 0;
+		const guard = (): boolean => {
+			guards++;
+			throw new Error('Malformed metadata must not invoke native admission');
+		};
+		try {
+			const adapter = f.transport.get(f.target, f.claim);
+			if (!adapter) throw new Error('Original builtin metadata adapter missing');
+			expect(
+				f.transport.openRuntimeOffDispatchWork(
+					consumer,
+					adapter,
+					f.target,
+					f.claim,
+					f.qualification,
+					guard,
+					Object.freeze({ commandId: randomUUID() }),
+				),
+			).toBeNull();
+			expect(guards).toBe(0);
+			expect(b.prepare).not.toHaveBeenCalled();
+			expect(b.fence).not.toHaveBeenCalled();
+			expect(b.on).not.toHaveBeenCalled();
+			expect(b.request).not.toHaveBeenCalled();
+			expect(f.readSample).not.toHaveBeenCalled();
+		} finally {
+			f.transport.closeRuntimeFeedbackConsumer(consumer);
+			await b.cleanup();
+			await f.module.close();
+		}
+	});
+	// END R40 legacy generation metadata drafts
 });

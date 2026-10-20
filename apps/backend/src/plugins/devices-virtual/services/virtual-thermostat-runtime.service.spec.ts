@@ -5488,16 +5488,260 @@ describe('virtual thermostat durable runtime', () => {
 			// END R31 inherited-primary recovery drafts
 			// END R31 same-evaluation post-certificate publication drafts
 
+			// BEGIN R40 genuine SQL absence lineage draft (UNRUN; synthetic installed evidence only)
+			it('R40 joins the actual SQL-null claim and omitted installed generation through original managed OFF provenance', async () => {
+				const originalView: OriginalFunctions<VirtualThermostatTransportService> =
+					VirtualThermostatTransportService.prototype;
+				const open = originalView.openRuntimeOffDispatchWork,
+					delivery = originalView.captureRuntimeFeedbackDelivery;
+				const captures: {
+					claim: VirtualThermostatActuatorClaimEntity;
+					qualification: ThermostatInstalledQualification | null;
+					work: RuntimeOffDispatchWork | null;
+				}[] = [];
+				const works: (RuntimeOffDispatchWork | RuntimeReconciliationWork)[] = [],
+					eventsSeen: object[] = [];
+				// Original functions/receivers/arguments/results retained; installed BEFORE legitimate runtime pins.
+				const opening = jest
+					.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
+					.mockImplementation(function (
+						this: VirtualThermostatTransportService,
+						...args: Parameters<typeof open>
+					): ReturnType<typeof open> {
+						const work = open.call(this, ...args);
+						captures.push({ claim: args[3], qualification: args[4], work });
+						return work;
+					});
+				const delivering = jest
+					.spyOn(VirtualThermostatTransportService.prototype, 'captureRuntimeFeedbackDelivery')
+					.mockImplementation(function (
+						this: VirtualThermostatTransportService,
+						...args: Parameters<typeof delivery>
+					): ReturnType<typeof delivery> {
+						const work = delivery.call(this, ...args);
+						if (work) works.push(work);
+						return work;
+					});
+				const observe = (event: object): void => {
+					if (values.captureOwnedFeedbackDelivery(event)) eventsSeen.push(event);
+				};
+				try {
+					await active();
+					if (!fixture) throw new Error('Managed native fixture missing');
+					const stored = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
+					expect(stored.qualificationGeneration).toBeNull();
+					expect(
+						await database.query(
+							'SELECT "qualificationGeneration" FROM "devices_virtual_thermostat_actuator_claims" WHERE "id" = ?',
+							[stored.id],
+						),
+					).toEqual([{ qualificationGeneration: null }]);
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+					await startWithCeiling(2);
+					expect(captures).toHaveLength(1);
+					expect(captures[0].claim.id).toBe(stored.id);
+					expect(captures[0].claim.qualificationGeneration).toBeNull();
+					expect(captures[0].qualification).not.toBeNull();
+					if (!captures[0].qualification) throw new Error('Original installed qualification missing');
+					expect(Object.getOwnPropertyDescriptor(captures[0].qualification, 'qualificationGeneration')).toBeUndefined();
+					expect(captures[0].qualification.qualificationGeneration).toBeUndefined();
+					expect(captures[0].work).toBeInstanceOf(RuntimeOffDispatchWork);
+					expect(works).toHaveLength(2);
+					expect(works[0]).toBe(captures[0].work);
+					expect(works[1]).toBeInstanceOf(RuntimeReconciliationWork);
+					expect(works[0]).not.toBe(works[1]);
+					expect(eventsSeen).toHaveLength(2);
+					for (const event of eventsSeen) expect(values.captureOwnedFeedbackDelivery(event)).toBeNull();
+					const commands = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
+					expect(commands.some((command) => command.action === 'off' && command.status === 'confirmed')).toBe(true);
+					expect(commands.filter((command) => command.action === 'off' && command.status !== 'confirmed')).toEqual([]);
+					expect(fixture.controls.fences).toHaveLength(2);
+					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					try {
+						runtime.onModuleDestroy();
+					} finally {
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, observe);
+						delivering.mockRestore();
+						opening.mockRestore();
+					}
+				}
+			}, 30000);
+			// END R40 genuine SQL absence lineage draft
+
+			// BEGIN R40 original raw generation sticky negative (UNRUN)
+			it('R40 keeps original SQL-null dispatch work closed after a live raw generation mutation and restoration', async () => {
+				const originalView: OriginalFunctions<VirtualThermostatTransportService> =
+					VirtualThermostatTransportService.prototype;
+				const open = originalView.openRuntimeOffDispatchWork,
+					delivery = originalView.captureRuntimeFeedbackDelivery;
+				const captured: {
+					claim?: VirtualThermostatActuatorClaimEntity;
+					work?: RuntimeOffDispatchWork;
+					generation?: string | null;
+				} = {};
+				const opening = jest
+					.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
+					.mockImplementation(function (
+						this: VirtualThermostatTransportService,
+						...args: Parameters<typeof open>
+					): ReturnType<typeof open> {
+						const work = open.call(this, ...args);
+						if (work && captured.work === undefined) {
+							captured.claim = args[3];
+							captured.work = work;
+							captured.generation = args[3].qualificationGeneration;
+						}
+						return work;
+					});
+				let selected = 0;
+				const observations: {
+					first?: ReturnType<typeof delivery>;
+					restored?: ReturnType<typeof delivery>;
+					liveBefore?: boolean;
+					liveAfterFirst?: boolean;
+					liveAfterRestore?: boolean;
+					error?: { cause: unknown };
+					stopError?: { cause: unknown };
+				} = {};
+				let restoreRaw: (() => void) | undefined, starting: Promise<void> | undefined;
+				const mutate = (event: object): void => {
+					if (
+						selected !== 0 ||
+						!captured.claim ||
+						!captured.work ||
+						!fixture ||
+						!values.captureOwnedFeedbackDelivery(event)
+					)
+						return;
+					selected++;
+					const claim = captured.claim,
+						generation = claim.qualificationGeneration;
+					restoreRaw = (): void => {
+						claim.qualificationGeneration = generation;
+					};
+					try {
+						if (generation !== null) throw new Error('Original hydrated SQL-null generation required');
+						observations.liveBefore = values.captureOwnedFeedbackDelivery(event) !== null;
+						claim.qualificationGeneration = 'R40-observed-foreign-generation';
+						// SAME genuine live PVS event, before the original consumer can mark the work delivered.
+						observations.first = delivery.call(fixture.transport, event);
+						observations.liveAfterFirst = values.captureOwnedFeedbackDelivery(event) !== null;
+						restoreRaw();
+						observations.restored = delivery.call(fixture.transport, event);
+						observations.liveAfterRestore = values.captureOwnedFeedbackDelivery(event) !== null;
+					} catch (cause) {
+						observations.error = { cause };
+					} finally {
+						try {
+							restoreRaw();
+						} catch (cause) {
+							observations.error ??= { cause };
+						}
+					}
+				};
+				const stop = (): void => {
+					if (selected === 0) return;
+					// This new negative stops AFTER the original runtime listener, not inside delivery or native admission.
+					try {
+						runtime.onModuleDestroy();
+					} catch (cause) {
+						observations.stopError ??= { cause };
+					}
+				};
+				let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
+				try {
+					await active();
+					if (!fixture) throw new Error('Managed native fixture missing');
+					events.prependListener(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, mutate);
+					starting = runtime.onApplicationBootstrap(); // Original listener registers synchronously before its first await.
+					events.on(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, stop);
+					await starting;
+					await fixture.flushTelemetry();
+					if (observations.error) throw observations.error.cause;
+					if (observations.stopError) throw observations.stopError.cause;
+					expect(captured.work).toBeInstanceOf(RuntimeOffDispatchWork);
+					expect(captured.claim).toBeInstanceOf(VirtualThermostatActuatorClaimEntity);
+					expect(captured.generation).toBeNull();
+					expect(captured.claim?.qualificationGeneration).toBeNull();
+					expect(selected).toBe(1);
+					expect(observations.liveBefore).toBe(true);
+					expect(observations.first).toBeNull();
+					expect(observations.liveAfterFirst).toBe(true);
+					expect(observations.restored).toBeNull();
+					expect(observations.liveAfterRestore).toBe(true);
+					expect(fixture.controls.fences).toHaveLength(1);
+					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) {
+					primary = { cause };
+				} finally {
+					try {
+						restoreRaw?.();
+					} catch (cause) {
+						cleanup = { cause };
+					}
+					try {
+						runtime.onModuleDestroy();
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					try {
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, mutate);
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					try {
+						events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, stop);
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					if (starting !== undefined) {
+						try {
+							await starting;
+						} catch (cause) {
+							cleanup ??= { cause };
+						}
+					}
+					try {
+						await fixture?.flushTelemetry();
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+					try {
+						opening.mockRestore();
+					} catch (cause) {
+						cleanup ??= { cause };
+					}
+				}
+				if (primary) throw primary.cause;
+				if (cleanup) throw cleanup.cause;
+			}, 30000);
+			// END R40 original raw generation sticky negative
+
 			// BEGIN R37 genuine getter-chain provenance drafts (UNRUN)
+			const r37ObjectMethods: Readonly<{
+				getPrototypeOf: (owner: object) => object | null;
+				create: (prototype: object | null) => object;
+			}> = Object;
 			it('R37 owns the unshadowed hydrated Shelly getter through genuine native OFF and retained release proof', async () => {
-				const originalView: OriginalFunctions<VirtualThermostatTransportService> = VirtualThermostatTransportService.prototype;
+				const originalView: OriginalFunctions<VirtualThermostatTransportService> =
+					VirtualThermostatTransportService.prototype;
 				const original = originalView.openRuntimeOffDispatchWork;
-				const devices: object[] = [], works: RuntimeOffDispatchWork[] = [];
+				const devices: object[] = [],
+					works: RuntimeOffDispatchWork[] = [];
 				// Original callthrough installed before active() constructs the platform/transport and runtime pins.
-				const opening = jest.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
-					.mockImplementation(function (this: VirtualThermostatTransportService, ...args: Parameters<typeof original>): ReturnType<typeof original> {
+				const opening = jest
+					.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
+					.mockImplementation(function (
+						this: VirtualThermostatTransportService,
+						...args: Parameters<typeof original>
+					): ReturnType<typeof original> {
 						const work = original.call(this, ...args);
-						if (work) { devices.push(args[2].device); works.push(work); }
+						if (work) {
+							devices.push(args[2].device);
+							works.push(work);
+						}
 						return work;
 					});
 				try {
@@ -5507,30 +5751,55 @@ describe('virtual thermostat durable runtime', () => {
 					expect(devices).toHaveLength(1);
 					expect(works[0]).toBeInstanceOf(RuntimeOffDispatchWork);
 					expect(devices[0]).toBeInstanceOf(ShellyNgDeviceEntity);
-					expect(Object.getPrototypeOf(devices[0])).toBe(ShellyNgDeviceEntity.prototype);
+					expect(r37ObjectMethods.getPrototypeOf(devices[0])).toBe(ShellyNgDeviceEntity.prototype);
 					expect(Object.getOwnPropertyDescriptor(devices[0], 'type')).toBeUndefined();
 					expect(fixture.controls.fences).toHaveLength(2);
 					expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
 					expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
 				} finally {
-					try { runtime.onModuleDestroy(); } finally { opening.mockRestore(); }
+					try {
+						runtime.onModuleDestroy();
+					} finally {
+						opening.mockRestore();
+					}
 				}
 			}, 30000);
 
-			it.each(['own-shadow', 'nearer-getter', 'canonical-getter', 'canonical-setter', 'canonical-flags', 'chain-link'] satisfies readonly string[])(
+			it.each([
+				'own-shadow',
+				'nearer-getter',
+				'canonical-getter',
+				'canonical-setter',
+				'canonical-flags',
+				'chain-link',
+			] satisfies readonly string[])(
 				'R37 keeps original native dispatch provenance closed after observed %s restoration during its actual emit',
 				async (change) => {
-					const originalView: OriginalFunctions<VirtualThermostatTransportService> = VirtualThermostatTransportService.prototype;
+					const originalView: OriginalFunctions<VirtualThermostatTransportService> =
+						VirtualThermostatTransportService.prototype;
 					const original = originalView.openRuntimeOffDispatchWork;
 					const captured: { device?: object; work?: RuntimeOffDispatchWork } = {};
-					const opening = jest.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
-						.mockImplementation(function (this: VirtualThermostatTransportService, ...args: Parameters<typeof original>): ReturnType<typeof original> {
+					const opening = jest
+						.spyOn(VirtualThermostatTransportService.prototype, 'openRuntimeOffDispatchWork')
+						.mockImplementation(function (
+							this: VirtualThermostatTransportService,
+							...args: Parameters<typeof original>
+						): ReturnType<typeof original> {
 							const work = original.call(this, ...args);
-							if (work && !captured.work) { captured.device = args[2].device; captured.work = work; }
+							if (work && !captured.work) {
+								captured.device = args[2].device;
+								captured.work = work;
+							}
 							return work;
 						});
-					let selected = 0, getters = 0;
-					const observations: { first?: RuntimeOffDispatchWork | RuntimeReconciliationWork | null; restored?: RuntimeOffDispatchWork | RuntimeReconciliationWork | null; error?: { cause: unknown }; stopped?: { cause: unknown } } = {};
+					let selected = 0,
+						getters = 0;
+					const observations: {
+						first?: RuntimeOffDispatchWork | RuntimeReconciliationWork | null;
+						restored?: RuntimeOffDispatchWork | RuntimeReconciliationWork | null;
+						error?: { cause: unknown };
+						stopped?: { cause: unknown };
+					} = {};
 					let starting: Promise<void> | undefined;
 					const canonical = Object.getOwnPropertyDescriptor(ShellyNgDeviceEntity.prototype, 'type');
 					if (!canonical) throw new Error('Original Shelly getter missing');
@@ -5538,33 +5807,56 @@ describe('virtual thermostat durable runtime', () => {
 					const mutate = (event: object): void => {
 						if (selected || !captured.device || !fixture || !values.captureOwnedFeedbackDelivery(event)) return;
 						selected++;
-						const device = captured.device, prototype: object | null = Object.getPrototypeOf(device);
-						const getter = (): string => { getters++; return 'devices-shelly-ng'; };
+						const device = captured.device,
+							prototype: object | null = r37ObjectMethods.getPrototypeOf(device);
+						const getter = (): string => {
+							getters++;
+							return 'devices-shelly-ng';
+						};
 						restoreDevice = () => {
 							Reflect.deleteProperty(device, 'type');
 							Object.setPrototypeOf(device, prototype);
 							Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', canonical);
 						};
 						try {
-							if (change === 'own-shadow') Object.defineProperty(device, 'type', { value: 'devices-shelly-ng', configurable: true });
+							if (change === 'own-shadow')
+								Object.defineProperty(device, 'type', { value: 'devices-shelly-ng', configurable: true });
 							else if (change === 'nearer-getter' || change === 'chain-link') {
-								const nearer: object = Object.create(prototype);
-								if (change === 'nearer-getter') Object.defineProperty(nearer, 'type', { get: getter, configurable: true });
+								const nearer: object = r37ObjectMethods.create(prototype);
+								if (change === 'nearer-getter')
+									Object.defineProperty(nearer, 'type', { get: getter, configurable: true });
 								Object.setPrototypeOf(device, nearer);
-							} else if (change === 'canonical-getter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
-							else if (change === 'canonical-setter') Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
-							else Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, enumerable: !canonical.enumerable });
+							} else if (change === 'canonical-getter')
+								Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, get: getter });
+							else if (change === 'canonical-setter')
+								Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', { ...canonical, set: () => undefined });
+							else
+								Object.defineProperty(ShellyNgDeviceEntity.prototype, 'type', {
+									...canonical,
+									enumerable: !canonical.enumerable,
+								});
 							// Same actual PVS-owned event, still inside emit: both calls are original public delivery checks.
 							observations.first = fixture.transport.captureRuntimeFeedbackDelivery(event);
 							restoreDevice();
 							observations.restored = fixture.transport.captureRuntimeFeedbackDelivery(event);
-						} catch (cause) { observations.error = { cause }; }
-						finally { try { restoreDevice(); } catch (cause) { observations.error ??= { cause }; } }
+						} catch (cause) {
+							observations.error = { cause };
+						} finally {
+							try {
+								restoreDevice();
+							} catch (cause) {
+								observations.error ??= { cause };
+							}
+						}
 					};
 					const stop = (): void => {
 						if (!selected) return;
 						// Only this new negative test stops after the real sample; no completion/drain PASS is claimed.
-						try { runtime.onModuleDestroy(); } catch (cause) { observations.stopped = { cause }; }
+						try {
+							runtime.onModuleDestroy();
+						} catch (cause) {
+							observations.stopped = { cause };
+						}
 					};
 					try {
 						await active();
@@ -5585,14 +5877,23 @@ describe('virtual thermostat durable runtime', () => {
 						expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
 					} finally {
 						restoreDevice?.();
-						try { runtime.onModuleDestroy(); } finally {
+						try {
+							runtime.onModuleDestroy();
+						} finally {
 							events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, mutate);
 							events.off(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, stop);
-							if (starting !== undefined) { try { await starting; } catch { /* Already recorded above; cleanup must settle it. */ } }
+							if (starting !== undefined) {
+								try {
+									await starting;
+								} catch {
+									/* Already recorded above; cleanup must settle it. */
+								}
+							}
 							opening.mockRestore();
 						}
 					}
-				}, 30000,
+				},
+				30000,
 			);
 			// END R37 genuine getter-chain provenance drafts
 

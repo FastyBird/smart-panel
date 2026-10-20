@@ -44,12 +44,14 @@ const dispatchObjects: Readonly<{
 // The builtin discriminator is a trusted inherited getter, never arbitrary runtime accessor data.
 const originalShellyTypePrototype = ShellyNgDeviceEntity.prototype;
 const originalShellyTypeParent = dispatchObjects.getPrototypeOf(originalShellyTypePrototype);
-const originalShellyTypeDescriptor: Readonly<{
-	get?: unknown;
-	set?: unknown;
-	enumerable?: boolean;
-	configurable?: boolean;
-}> | undefined = dispatchObjects.getOwnPropertyDescriptor(originalShellyTypePrototype, 'type');
+const originalShellyTypeDescriptor:
+	| Readonly<{
+			get?: unknown;
+			set?: unknown;
+			enumerable?: boolean;
+			configurable?: boolean;
+	  }>
+	| undefined = dispatchObjects.getOwnPropertyDescriptor(originalShellyTypePrototype, 'type');
 const originalShellyType = Object.freeze({
 	get: originalShellyTypeDescriptor?.get,
 	set: originalShellyTypeDescriptor?.set,
@@ -399,7 +401,7 @@ export class VirtualThermostatTransportService implements OnModuleDestroy {
 				!qualification.profile.releaseOrderingQualified ||
 				!qualification.profile.independentProtectionQualified ||
 				qualification.physicalIdentity !== claim.physicalIdentity ||
-				qualification.qualificationGeneration !== claim.qualificationGeneration ||
+				qualification.qualificationGeneration !== (claim.qualificationGeneration ?? undefined) ||
 				qualification.physicalIdentity !== thermostatActuatorIdentity(target.property, target.channel, target.device) ||
 				claim.sourcePropertyId !== target.property.id ||
 				claim.sourceDeviceId !== target.device.id ||
