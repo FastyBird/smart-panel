@@ -4170,6 +4170,94 @@ describe('virtual thermostat durable runtime', () => {
 				if (primary) throw primary.cause;
 				if (cleanup) throw cleanup.cause;
 			});
+			// BEGIN R50 actual natural interval proof draft (UNRUN)
+			it('R50 a real scheduled poll retires its original runtime admission and publishes a replacement without ON', async () => {
+				await active();
+				if (!fixture) throw new Error('Managed native poll fixture missing');
+				const owner = runtime, owned = fixture, ownedClaims = actualClaims, tick = gate();
+				const originalMethods: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'request'>> = owner;
+				const originalRequest = originalMethods.request;
+				const descriptors: Readonly<{
+					getOwnPropertyDescriptor: (target: object, key: PropertyKey) => (Omit<PropertyDescriptor, 'value'> & { value?: unknown }) | undefined;
+				}> = Object;
+				const originalDescriptor = descriptors.getOwnPropertyDescriptor(owner, 'request');
+				let armed = false, retired = false, matched = false, installed = false, cleaned = false;
+				let lifecycle: (typeof owner)['lifecycle'];
+				let primary: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+				const observing = function (this: VirtualThermostatRuntimeService, ...args: Parameters<typeof originalRequest>): ReturnType<typeof originalRequest> {
+					const result = originalRequest.call(this, ...args);
+					if (armed && !retired && !matched && this === owner && owner['lifecycle'] === lifecycle && args[0] === controllerId && args[1] === false) {
+						matched = true;
+						armed = false;
+						tick.open(); // Only AFTER the original void call has genuinely enqueued its ordinary work.
+					}
+					return result;
+				};
+				const retire = (): void => {
+					retired = true;
+					armed = false;
+					tick.open(); // Abort a pending body on timeout; matched remains false, never a successful poll.
+				};
+				const cleanup = (): void => {
+					retire();
+					if (cleaned) return;
+					let failure: { cause: unknown } | undefined;
+					try { owner.onModuleDestroy(); } catch (cause) { failure ??= { cause }; }
+					try { ownedClaims.onModuleDestroy(); } catch (cause) { failure ??= { cause }; }
+					try { owned.revoke(); } catch (cause) { failure ??= { cause }; }
+					try {
+						if (installed) {
+							const current = descriptors.getOwnPropertyDescriptor(owner, 'request');
+							if (!current || current.value !== observing || current.get !== undefined || current.set !== undefined || current.configurable !== true || current.enumerable !== false || current.writable !== true)
+								throw new Error('Natural poll request descriptor replaced by another owner');
+							if (originalDescriptor) Object.defineProperty(owner, 'request', originalDescriptor);
+							else if (!Reflect.deleteProperty(owner, 'request')) throw new Error('Natural poll request descriptor could not be removed');
+						}
+					} catch (cause) { failure ??= { cause }; }
+					cleaned = true;
+					completionObserverBackstops.delete(backstop);
+					if (failure) throw failure.cause;
+				};
+				const backstop = { retire, cleanup };
+				completionObserverBackstops.add(backstop);
+				try {
+					Object.defineProperty(owner, 'request', { configurable: true, enumerable: false, writable: true, value: observing });
+					installed = true;
+					await startWithCeiling(2);
+					if (retired) throw new Error('Natural poll observer retired during startup');
+					lifecycle = owner['lifecycle'];
+					const timer = owner['timer'], before = owner['contexts'].get(controllerId);
+					if (lifecycle === undefined || timer === undefined || !before) throw new Error('Natural poll original timer/context missing');
+					// One original heating claim makes detached dispatch fallback true; this case never calls inspect/request(false).
+					expect(before.claims).toHaveLength(1);
+					expect(before.claims[0].role).toBe('heating');
+					const admission = before.admission;
+					const originalAdmission: Readonly<{ isCurrent: OriginalFunction<typeof admission, (typeof admission)['isCurrent']> }> = admission;
+					const isCurrent = originalAdmission.isCurrent;
+					expect(isCurrent.call(admission)).toBe(true);
+					const sequence = owner.readDiagnostics(controllerId)?.sequence;
+					if (sequence === undefined) throw new Error('Natural poll initial diagnostic missing');
+					armed = true;
+					await tick.promise;
+					if (retired || !matched || owner['lifecycle'] !== lifecycle) throw new Error('Natural poll observation retired or absent');
+					await owner.flush();
+					if (retired || owner['lifecycle'] !== lifecycle) throw new Error('Natural poll owner retired while flushing');
+					expect(isCurrent.call(admission)).toBe(false);
+					const replacement = owner['contexts'].get(controllerId);
+					if (!replacement) throw new Error('Natural poll replacement context missing');
+					expect(replacement).not.toBe(before);
+					expect(owner.readDiagnostics(controllerId)?.sequence).toBeGreaterThan(sequence);
+					expect(owner.readDiagnostics(controllerId)?.configuration_revision).toBeGreaterThan(0);
+					expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+				} catch (cause) { primary = { cause }; }
+				finally {
+					try { cleanup(); } catch (cause) { cleanupFailure = { cause }; }
+				}
+				if (primary) throw primary.cause;
+				if (cleanupFailure) throw cleanupFailure.cause;
+			}, 30000);
+			// END R50 actual natural interval proof draft
+
 			it('a genuine later poll retains ordinary entry fencing instead of being labeled an owned report', async () => {
 				await active();
 				await startWithCeiling(2);
@@ -6403,6 +6491,13 @@ describe('virtual thermostat durable runtime', () => {
 
 			// BEGIN R32 held-after-native-admission B-progress draft (UNRUN)
 			it('R32 allows public ordinary B progress while original A is held after real sample admission and retires only A at completion', async () => {
+				// R50 test-only stimulus isolation; S and detached A operation retain their original identities.
+				let bodyFailure: { cause: unknown } | undefined,
+					bootstrapFailure: { cause: unknown } | undefined,
+					observerFailure: { cause: unknown } | undefined,
+					observerCleanupFailure: { cause: unknown } | undefined;
+				let pollBackstop: Readonly<{ retire: () => void; cleanup: () => void }> | undefined;
+				try {
 				const entered = gate(),
 					release = gate();
 				let armed = false,
@@ -6447,8 +6542,42 @@ describe('virtual thermostat durable runtime', () => {
 					try {
 						armed = true;
 						starting = owner.onApplicationBootstrap();
+						const originalLifecycle = owner['lifecycle'];
+						let retired = false;
+						// Native S reactions run before the next timer phase; no await inside this reaction.
+						const stopped = starting.then(
+							() => {
+								try {
+									if (retired || originalLifecycle === undefined || owner['lifecycle'] !== originalLifecycle || !owner['active'])
+										throw new Error('Original B bootstrap timer owner retired');
+									const timer = owner['timer'];
+									if (timer === undefined) throw new Error('Original B bootstrap native interval missing');
+									clearInterval(timer); // Exact original owner handle; leave the stored field unchanged.
+								} catch (cause) {
+									observerFailure ??= { cause };
+								}
+							},
+							(cause: unknown) => {
+								bootstrapFailure ??= { cause };
+							},
+						);
+						const retire = (): void => { retired = true; };
+						const backstop = {
+							retire,
+							cleanup: (): void => {
+								retire();
+								completionObserverBackstops.delete(backstop);
+							},
+						};
+						pollBackstop = backstop;
+						completionObserverBackstops.add(backstop);
 						await entered.promise;
 						expect(nativeAdmissionsReturned).toBe(1);
+						const heldAContext = owner['contexts'].get(controllerId),
+							heldAEpisode = owner['feedbackEpisodes'].get(controllerId);
+						if (!heldAContext || !heldAEpisode || heldAEpisode.context !== heldAContext)
+							throw new Error('Original held A context and episode unavailable');
+						expect(heldAEpisode.retired).toBe(false);
 						expect(samplesSeen).toBe(1);
 						expect(owned.controls.fences).toHaveLength(1);
 						// The real admission has returned: no held native query/transaction/value commit is this gate.
@@ -6460,9 +6589,22 @@ describe('virtual thermostat durable runtime', () => {
 						const originalAOperation = owner['inFlight'].get(originalA.id);
 						if (originalAOperation === undefined) throw new Error('Original held A operation unavailable');
 						await starting;
+						await stopped;
+						if (observerFailure) throw observerFailure.cause;
+						if (retired) throw new Error('Original B timer observation retired before public B');
+						await owner.flush();
+						expect(owner['contexts'].get(controllerId)).toBe(heldAContext);
+						expect(owner['feedbackEpisodes'].get(controllerId)).toBe(heldAEpisode);
+						expect(heldAEpisode.retired).toBe(false);
 						const sequenceBeforeB = owner.readDiagnostics(controllerId)?.sequence ?? 0;
 						// Public inspect creates a genuine ordinary request and waits for its actual evaluation, not A's send.
 						const b = await owner.inspect(controllerId);
+						expect(heldAEpisode.retired).toBe(true);
+						const replacementContext = owner['contexts'].get(controllerId),
+							replacementEpisode = owner['feedbackEpisodes'].get(controllerId);
+						if (!replacementContext || !replacementEpisode) throw new Error('Public B replacement unavailable');
+						expect(replacementContext).not.toBe(heldAContext);
+						expect(replacementEpisode).not.toBe(heldAEpisode);
 						expect(b?.configuration_revision).toBeGreaterThan(0);
 						expect(b?.sequence).toBeGreaterThan(sequenceBeforeB);
 						expect(b?.branches[0].release_proven).toBe(false);
@@ -6486,6 +6628,9 @@ describe('virtual thermostat durable runtime', () => {
 						expect(lateA.settledAt).not.toBeNull();
 						expect(lateA.proofId).toBeNull();
 						expect(owned.controls.sends.filter((send) => send.on)).toEqual([]);
+					} catch (cause) {
+						bodyFailure ??= { cause };
+						throw cause;
 					} finally {
 						try {
 							owner.onModuleDestroy();
@@ -6499,10 +6644,26 @@ describe('virtual thermostat durable runtime', () => {
 							}
 						}
 					}
+				} catch (cause) {
+					bodyFailure ??= { cause };
+					throw cause;
 				} finally {
 					release.open();
 					admission.mockRestore();
 				}
+				} catch (cause) {
+					bodyFailure ??= { cause };
+				} finally {
+					try {
+						pollBackstop?.cleanup();
+					} catch (cause) {
+						observerCleanupFailure = { cause };
+					}
+				}
+				if (bodyFailure) throw bodyFailure.cause;
+				if (bootstrapFailure) throw bootstrapFailure.cause;
+				if (observerFailure) throw observerFailure.cause;
+				if (observerCleanupFailure) throw observerCleanupFailure.cause;
 			}, 30000);
 			// END R32 held-after-native-admission B-progress draft
 
