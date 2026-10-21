@@ -9410,7 +9410,7 @@ describe('virtual thermostat durable runtime', () => {
 			const httpMethods: OriginalFunctions<typeof http> = http;
 			const implementation = httpMethods.getMockImplementation,
 				installedImplementation = implementation.call(http),
-				httpState = http.mock;
+				httpState: Omit<typeof http.mock, 'contexts'> & Readonly<{ contexts: readonly unknown[] }> = http.mock;
 			const runtimeMethods: OriginalFunctions<Pick<VirtualThermostatRuntimeService, 'onModuleDestroy'>> = owner;
 			const fixtureMethods: OriginalFunctions<Pick<typeof ownedFixture, 'revoke'>> = ownedFixture;
 			const destroy = runtimeMethods.onModuleDestroy,
@@ -9426,27 +9426,43 @@ describe('virtual thermostat durable runtime', () => {
 			const assertOwner = (): void => {
 				const descriptor = Object.getOwnPropertyDescriptor(guardedHttp, 'guardedShellyHttp');
 				if (
-					retired || !lifecycle || !owner['active'] || owner['lifecycle'] !== lifecycle ||
-					owner['dataSource'] !== ownedDatabase || owner['claims'] !== ownedClaims ||
-					owner['transport'] !== ownedFixture.transport || ownedFixture.controls.beforeOn !== installedBeforeOn ||
+					retired ||
+					!lifecycle ||
+					!owner['active'] ||
+					owner['lifecycle'] !== lifecycle ||
+					owner['dataSource'] !== ownedDatabase ||
+					owner['claims'] !== ownedClaims ||
+					owner['transport'] !== ownedFixture.transport ||
+					ownedFixture.controls.beforeOn !== installedBeforeOn ||
 					owner['inFlightCommands'] !== commands ||
-					owner['inFlight'] !== operations || owner['contexts'] !== contexts ||
-					owner['contextLifecycles'] !== contextLifecycles || !jest.isMockFunction(http) ||
-					guardedHttp.guardedShellyHttp !== http || http.mock !== httpState ||
-					http.getMockImplementation !== implementation || implementation.call(http) !== installedImplementation ||
-					!installedImplementation || !httpDescriptor || !descriptor ||
-					descriptor.value !== http || descriptor.value !== httpDescriptor.value ||
-					descriptor.get !== httpDescriptor.get || descriptor.set !== httpDescriptor.set ||
+					owner['inFlight'] !== operations ||
+					owner['contexts'] !== contexts ||
+					owner['contextLifecycles'] !== contextLifecycles ||
+					!jest.isMockFunction(http) ||
+					guardedHttp.guardedShellyHttp !== http ||
+					http.mock !== httpState ||
+					http.getMockImplementation !== implementation ||
+					implementation.call(http) !== installedImplementation ||
+					!installedImplementation ||
+					!httpDescriptor ||
+					!descriptor ||
+					descriptor.value !== http ||
+					descriptor.value !== httpDescriptor.value ||
+					descriptor.get !== httpDescriptor.get ||
+					descriptor.set !== httpDescriptor.set ||
 					descriptor.configurable !== httpDescriptor.configurable ||
-					descriptor.enumerable !== httpDescriptor.enumerable || descriptor.writable !== httpDescriptor.writable
-				) throw new Error('Original F53 runtime/fixture/HTTP owner unavailable');
+					descriptor.enumerable !== httpDescriptor.enumerable ||
+					descriptor.writable !== httpDescriptor.writable
+				)
+					throw new Error('Original F53 runtime/fixture/HTTP owner unavailable');
 				if (selectorFailure) throw selectorFailure.cause;
 			};
 			type Observed<T> = { kind: 'fulfilled'; value: T } | { kind: 'rejected'; cause: unknown };
-			const observe = <T>(promise: Promise<T>): Promise<Observed<T>> => promise.then<Observed<T>, Observed<T>>(
-				(value) => ({ kind: 'fulfilled', value }),
-				(cause: unknown) => ({ kind: 'rejected', cause }),
-			);
+			const observe = <T>(promise: Promise<T>): Promise<Observed<T>> =>
+				promise.then<Observed<T>, Observed<T>>(
+					(value) => ({ kind: 'fulfilled', value }),
+					(cause: unknown) => ({ kind: 'rejected', cause }),
+				);
 			const captureEntry = (propertyId: string, ordinal: 1 | 2, prior?: VirtualThermostatCommandEntity) => {
 				assertOwner();
 				if (propertyId !== ownedPropertyId) throw new Error('Foreign F53 ON property');
@@ -9464,51 +9480,91 @@ describe('virtual thermostat durable runtime', () => {
 					operation = operations.get(command.id),
 					context = contexts.get(ownedControllerId);
 				if (
-					command.controllerId !== ownedControllerId || (prior !== undefined && command.id === prior.id) ||
+					command.controllerId !== ownedControllerId ||
+					(prior !== undefined && command.id === prior.id) ||
 					command.status !== 'dispatching' ||
-					command.dispatchedAt === null || command.settledAt !== null ||
-					commands.get(command.id) !== command || !(operation instanceof Promise) || !context ||
-					contextLifecycles.get(context) !== lifecycle || !context.commands.includes(command) ||
+					command.dispatchedAt === null ||
+					command.settledAt !== null ||
+					commands.get(command.id) !== command ||
+					!(operation instanceof Promise) ||
+					!context ||
+					contextLifecycles.get(context) !== lifecycle ||
+					!context.commands.includes(command) ||
 					context.config.revision !== command.configurationRevision ||
 					context.state.decisionRevision !== command.decisionRevision
-				) throw new Error('Original F53 command/context/operation association lost');
+				)
+					throw new Error('Original F53 command/context/operation association lost');
 				const claims = context.claims.filter((claim) => claim.id === command.claimId);
 				if (claims.length !== 1) throw new Error('Nonunique F53 claim');
-				const claim = claims[0], target = context.targets.get(claim.id);
+				const claim = claims[0],
+					target = context.targets.get(claim.id);
 				if (
-					claim.controllerId !== ownedControllerId || claim.revision !== command.claimRevision ||
-					claim.sourcePropertyId !== propertyId || !target || target.property.id !== propertyId ||
-					claim.sourceDeviceId !== target.device.id || target.property.channel !== target.channel ||
+					claim.controllerId !== ownedControllerId ||
+					claim.revision !== command.claimRevision ||
+					claim.sourcePropertyId !== propertyId ||
+					!target ||
+					target.property.id !== propertyId ||
+					claim.sourceDeviceId !== target.device.id ||
+					target.property.channel !== target.channel ||
 					target.channel.device !== target.device
-				) throw new Error('Original F53 target/claim mismatch');
+				)
+					throw new Error('Original F53 target/claim mismatch');
 				const release = owner['reconciled'].get(`${claim.id}:${claim.revision}`);
 				if (!release) throw new Error('Original qualified F53 release record missing');
 				return Object.freeze({
-					command, operation, operationResult: observe<void>(operation), context, claim, target, native, release, receiver: httpState.contexts[native.index],
+					command,
+					operation,
+					operationResult: observe<void>(operation),
+					context,
+					claim,
+					target,
+					native,
+					release,
+					receiver: httpState.contexts[native.index],
 					resultRecord: httpState.results[native.index],
 					claimFacts: Object.freeze({
-						id: claim.id, controllerId: claim.controllerId, revision: claim.revision,
-						physicalIdentity: claim.physicalIdentity, qualificationGeneration: claim.qualificationGeneration,
-						sourceDeviceId: claim.sourceDeviceId, sourcePropertyId: claim.sourcePropertyId,
-						contractFingerprint: claim.contractFingerprint, leaseSeconds: claim.leaseSeconds,
+						id: claim.id,
+						controllerId: claim.controllerId,
+						revision: claim.revision,
+						physicalIdentity: claim.physicalIdentity,
+						qualificationGeneration: claim.qualificationGeneration,
+						sourceDeviceId: claim.sourceDeviceId,
+						sourcePropertyId: claim.sourcePropertyId,
+						contractFingerprint: claim.contractFingerprint,
+						leaseSeconds: claim.leaseSeconds,
 					}),
 					arguments: Object.freeze({
-						url: native.call[0], href: native.call[0].href, deadline: native.call[1], H: native.call[2],
-						createRequest: native.call[3], onSend: native.call[4], length: native.call.length,
+						url: native.call[0],
+						href: native.call[0].href,
+						deadline: native.call[1],
+						H: native.call[2],
+						createRequest: native.call[3],
+						onSend: native.call[4],
+						length: native.call.length,
 					}),
 				});
 			};
 			type Entry = ReturnType<typeof captureEntry>;
 			const nativeRecord = (entry: Entry) => {
 				assertOwner();
-				const call = httpState.calls[entry.native.index], result = httpState.results[entry.native.index];
+				const call = httpState.calls[entry.native.index],
+					result = httpState.results[entry.native.index];
 				if (
-					call !== entry.native.call || httpState.contexts[entry.native.index] !== entry.receiver ||
-					!result || result !== entry.resultRecord || result.type !== 'return' || !(result.value instanceof Promise) ||
-					call.length !== entry.arguments.length || call[0] !== entry.arguments.url || call[0].href !== entry.arguments.href ||
-					call[1] !== entry.arguments.deadline || call[2] !== entry.arguments.H ||
-					call[3] !== entry.arguments.createRequest || call[4] !== entry.arguments.onSend
-				) throw new Error('Original F53 HTTP invocation metadata changed');
+					call !== entry.native.call ||
+					httpState.contexts[entry.native.index] !== entry.receiver ||
+					!result ||
+					result !== entry.resultRecord ||
+					result.type !== 'return' ||
+					!(result.value instanceof Promise) ||
+					call.length !== entry.arguments.length ||
+					call[0] !== entry.arguments.url ||
+					call[0].href !== entry.arguments.href ||
+					call[1] !== entry.arguments.deadline ||
+					call[2] !== entry.arguments.H ||
+					call[3] !== entry.arguments.createRequest ||
+					call[4] !== entry.arguments.onSend
+				)
+					throw new Error('Original F53 HTTP invocation metadata changed');
 				const native: Promise<unknown> = result.value;
 				return native;
 			};
@@ -9520,7 +9576,11 @@ describe('virtual thermostat durable runtime', () => {
 			};
 			let aEntry: Entry | undefined, bEntry: Entry | undefined;
 			const attemptCleanup = (action: () => void): void => {
-				try { action(); } catch (cause) { cleanupFailure ??= { cause }; }
+				try {
+					action();
+				} catch (cause) {
+					cleanupFailure ??= { cause };
+				}
 			};
 			const retire = (): void => {
 				if (retired) return;
@@ -9541,7 +9601,10 @@ describe('virtual thermostat durable runtime', () => {
 				retire,
 				cleanup: (): void => {
 					retire();
-					if (!cleaned) { cleaned = true; completionObserverBackstops.delete(backstop); }
+					if (!cleaned) {
+						cleaned = true;
+						completionObserverBackstops.delete(backstop);
+					}
 					if (cleanupFailure) throw cleanupFailure.cause;
 				},
 			};
@@ -9557,16 +9620,23 @@ describe('virtual thermostat durable runtime', () => {
 							if (onEntries === 1) aEntry = captureEntry(id, 1);
 							else if (onEntries === 2 && aEntry) bEntry = captureEntry(id, 2, aEntry.command);
 							else throw new Error('Unexpected additional F53 native ON entry');
-						} catch (cause) { selectorFailure ??= { cause }; }
+						} catch (cause) {
+							selectorFailure ??= { cause };
+						}
 						if (onEntries === 1) entered.open();
 						else laterEntered.open();
-						if (selectorFailure) { entered.open(); laterEntered.open(); }
+						if (selectorFailure) {
+							entered.open();
+							laterEntered.open();
+						}
 					}
 					// This test-owned gate never calls or replaces the original H, N, O or onSend.
 					await (onEntries === 1 && !retired ? resume.promise : laterResume.promise);
 				};
 				ownedFixture.controls.beforeOn = installedBeforeOn;
-				const row = await ownedDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ownedControllerId });
+				const row = await ownedDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: ownedControllerId,
+				});
 				assertOwner();
 				const graphRevision = await ownedGraph.revision();
 				assertOwner();
@@ -9584,10 +9654,13 @@ describe('virtual thermostat durable runtime', () => {
 				await entered.promise;
 				assertOwner();
 				if (!aEntry) throw new Error('Original F53 A native entry missing');
-				const a = aEntry, aReceipts = receipts(a);
+				const a = aEntry,
+					aReceipts = receipts(a);
 				await owner.flush();
 				assertOwner();
-				const active = await ownedDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ownedControllerId });
+				const active = await ownedDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: ownedControllerId,
+				});
 				assertOwner();
 				const intent = await ownedComfort.readIntentInManager(ownedDatabase.manager, active);
 				const intentMethods: OriginalFunctions<typeof intent> = intent;
@@ -9608,21 +9681,26 @@ describe('virtual thermostat durable runtime', () => {
 				expect(onEntries).toBe(1);
 				expect(intent.isOverrideCurrent()).toBe(true);
 				expect(original.isCurrent()).toBe(true);
-				await ownedDatabase.query('UPDATE "devices_virtual_thermostat_command_journal" SET "fault" = ? WHERE "id" = ?', [
-					null,
-					command.id,
-				]);
+				await ownedDatabase.query(
+					'UPDATE "devices_virtual_thermostat_command_journal" SET "fault" = ? WHERE "id" = ?',
+					[null, command.id],
+				);
 				assertOwner();
 				expect(original.isCurrent()).toBe(false);
 				expect(intent.isOverrideCurrent()).toBe(true);
 				resume.open();
 				// A-only terminal interval: do NOT call active settleReal or join held B's operation.
-				const aNative = await aReceipts.nativeResult, aOperation = await aReceipts.operationResult;
+				const aNative = await aReceipts.nativeResult,
+					aOperation = await aReceipts.operationResult;
 				if (aOperation.kind === 'rejected') throw aOperation.cause;
-				if (aNative.kind === 'rejected' && (
-					!(aNative.cause instanceof Error) || Object.getPrototypeOf(aNative.cause) !== Error.prototype ||
-					Object.getOwnPropertyDescriptor(aNative.cause, 'message')?.value !== 'revoked before simulated network send'
-				)) throw aNative.cause;
+				if (
+					aNative.kind === 'rejected' &&
+					(!(aNative.cause instanceof Error) ||
+						Object.getPrototypeOf(aNative.cause) !== Error.prototype ||
+						Object.getOwnPropertyDescriptor(aNative.cause, 'message')?.value !==
+							'revoked before simulated network send')
+				)
+					throw aNative.cause;
 				assertOwner();
 				expect(nativeRecord(a)).toBe(aReceipts.native);
 				expect(aNative.kind).toBe('rejected');
@@ -9639,7 +9717,8 @@ describe('virtual thermostat durable runtime', () => {
 				await laterEntered.promise;
 				assertOwner();
 				if (!bEntry) throw new Error('Independent F53 B native entry missing');
-				const b = bEntry, bReceipts = receipts(b);
+				const b = bEntry,
+					bReceipts = receipts(b);
 				expect(onEntries).toBe(2);
 				expect(b.command.id).not.toBe(command.id);
 				expect(b.command.claimId).toBe(command.claimId);
@@ -9683,13 +9762,18 @@ describe('virtual thermostat durable runtime', () => {
 				expect(release.claimRevision).toBe(b.claim.revision);
 				expect(release.physicalIdentity).toBe(b.claim.physicalIdentity);
 				expect(release.qualificationGeneration).toBe(b.claim.qualificationGeneration);
-				expect(b.context.commands.filter((entry) => !['confirmed', 'cancelled'].includes(entry.status)).map((entry) => entry.id)).toEqual([b.command.id]);
+				expect(
+					b.context.commands
+						.filter((entry) => !['confirmed', 'cancelled'].includes(entry.status))
+						.map((entry) => entry.id),
+				).toEqual([b.command.id]);
 				const bAdmission = ownedClaims.capture();
 				expect(bAdmission.isCurrent()).toBe(true);
 				expect(original.isCurrent()).toBe(false);
 				expect(ownedFixture.controls.sends.filter((send) => send.on)).toEqual([]);
 				laterResume.open();
-				const bNative = await bReceipts.nativeResult, bOperation = await bReceipts.operationResult;
+				const bNative = await bReceipts.nativeResult,
+					bOperation = await bReceipts.operationResult;
 				// Exact original operation failure P precedes HTTP Q, then test-selector/cleanup failures.
 				if (bOperation.kind === 'rejected') throw bOperation.cause;
 				if (bNative.kind === 'rejected') throw bNative.cause;
@@ -9700,8 +9784,14 @@ describe('virtual thermostat durable runtime', () => {
 				if (requestedEpoch === null || requestedUntil === null) throw new Error('Original B request bounds missing');
 				expect(Number.isSafeInteger(Number(requestedEpoch))).toBe(true);
 				expect(Number.isSafeInteger(Number(requestedUntil))).toBe(true);
-				expect(bNative.value).toEqual({ accepted: true, epoch: Number(requestedEpoch), untilMs: Number(requestedUntil) });
-				const settledB = await ownedDatabase.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: b.command.id });
+				expect(bNative.value).toEqual({
+					accepted: true,
+					epoch: Number(requestedEpoch),
+					untilMs: Number(requestedUntil),
+				});
+				const settledB = await ownedDatabase.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+					id: b.command.id,
+				});
 				assertOwner();
 				expect(settledB.status).toBe('accepted');
 				expect(settledB.fault).toBeNull();
@@ -9712,8 +9802,9 @@ describe('virtual thermostat durable runtime', () => {
 				expect(settledB.configurationRevision).toBe(b.command.configurationRevision);
 				expect(settledB.decisionRevision).toBe(b.command.decisionRevision);
 				expect(operations.has(settledB.id)).toBe(false);
-				const pending = (await ownedDatabase.manager.findBy(VirtualThermostatCommandEntity, { controllerId: ownedControllerId }))
-					.filter((entry) => !['confirmed', 'cancelled'].includes(entry.status));
+				const pending = (
+					await ownedDatabase.manager.findBy(VirtualThermostatCommandEntity, { controllerId: ownedControllerId })
+				).filter((entry) => !['confirmed', 'cancelled'].includes(entry.status));
 				assertOwner();
 				expect(pending.map((entry) => entry.id)).toEqual([settledB.id]);
 				expect(pending[0].action).toBe('on'); // accepted remains unresolved, never fictional confirmed/drained.
@@ -9721,7 +9812,9 @@ describe('virtual thermostat durable runtime', () => {
 				expect(diagnostic?.configuration_revision).toBe(settledB.configurationRevision);
 				expect(diagnostic?.effective_comfort.override_id).toBe(originalOverride.id);
 				expect(diagnostic?.effective_comfort.expires_at).toBe(originalOverride.expires_at);
-				expect(ownedFixture.controls.sends.filter((send) => send.on)).toEqual([{ property: ownedPropertyId, on: true }]);
+				expect(ownedFixture.controls.sends.filter((send) => send.on)).toEqual([
+					{ property: ownedPropertyId, on: true },
+				]);
 				expect(onEntries).toBe(2);
 				expect(original.isCurrent()).toBe(false);
 			} catch (cause) {
@@ -9736,7 +9829,11 @@ describe('virtual thermostat durable runtime', () => {
 						if (outcome.kind === 'rejected') cleanupFailure ??= { cause: outcome.cause };
 					}
 				}
-				try { backstop.cleanup(); } catch (cause) { cleanupFailure ??= { cause }; }
+				try {
+					backstop.cleanup();
+				} catch (cause) {
+					cleanupFailure ??= { cause };
+				}
 			}
 			if (primary) throw primary.cause;
 			if (cleanupFailure) throw cleanupFailure.cause;
