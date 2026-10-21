@@ -4502,6 +4502,57 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			expect(comfort['publicSettlementFences'].size).toBe(0);
 		});
 		// END R88 original writer entry loss negatives
+		// BEGIN R89 actual inner-root handoff negatives (SOURCE ONLY; UNRUN)
+		it.each(['commitExistingControllerRoot', 'assertExistingRootEntry'] satisfies readonly (
+			'commitExistingControllerRoot' | 'assertExistingRootEntry'
+		)[])(
+			'refuses original %s replacement during the held public read without dispatching it or writing',
+			async (key) => {
+				const owned = own();
+				const { claims, comfort, writer, database } = owned.original;
+				const commit = jest.spyOn(writer, 'commitExistingControllerV1');
+				owned.restore(writer, 'commitExistingControllerV1', () => commit.mockRestore());
+				registerOriginal();
+				const controller = await prepare(owned, 'active');
+				const beforeCommits = commit.mock.calls.length;
+				const old = claims.capture(); expect(old.isCurrent()).toBe(true);
+				let writes = 0;
+				const observer: import('typeorm').EntitySubscriberInterface = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+						if (/^(INSERT|UPDATE|DELETE)\b/.test(event.query)) writes++;
+					},
+				};
+				owned.observers.push(observer); database.subscribers.push(observer);
+				const read = heldRead(owned, controller);
+				const operation = owned.watch(comfort.settle(controller));
+				expect(old.isCurrent()).toBe(false);
+				await read.entered.promise; owned.live();
+				expect(claims['recoveryFences']).toBe(1);
+				const originalOwn = Object.getOwnPropertyDescriptor(writer, key);
+				const forbidden = new Error('R89 replacement entry must not run');
+				const replacement = jest.fn(() => { throw forbidden; });
+				Object.defineProperty(writer, key, {
+					value: replacement, writable: true, configurable: true, enumerable: originalOwn?.enumerable ?? false,
+				});
+				owned.restore(writer, key, () => {
+					if (originalOwn) Object.defineProperty(writer, key, originalOwn);
+					else if (!Reflect.deleteProperty(writer, key)) throw new Error('R89 owned entry shadow could not be removed');
+				});
+				read.resume.open();
+				const result = await operation;
+				expect(result.kind).toBe('rejected');
+				if (result.kind !== 'rejected') throw new Error('R89 replaced inner entry was admitted');
+				expect(result.cause).toBeInstanceOf(DevicesValidationException);
+				expect(replacement).not.toHaveBeenCalled();
+				expect(commit.mock.calls).toHaveLength(beforeCommits);
+				expect(writes).toBe(0);
+				expect(old.isCurrent()).toBe(false);
+				expect(claims.capture().isCurrent()).toBe(false);
+				expect(claims['recoveryFences']).toBe(0);
+				expect(comfort['publicSettlementFences'].size).toBe(0);
+			},
+		);
+		// END R89 actual inner-root handoff negatives
 		it.each(['missing', 'inactive', 'active'] satisfies readonly ('missing' | 'inactive' | 'active')[])(
 			'fences the original snapshot synchronously during the first real %s read and restores only genuine recovery',
 			async (mode) => {

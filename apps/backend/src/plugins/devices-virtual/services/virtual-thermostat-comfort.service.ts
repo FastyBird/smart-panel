@@ -224,6 +224,12 @@ export class VirtualThermostatComfortService {
 		for (const key of ['assertExistingReadEntry', 'commitExistingControllerV1'])
 			if (!creationHasDataMethod(writer, key))
 				throw new DevicesValidationException('Original public settlement writer entry unavailable.');
+		const rootPins = Object.freeze(['commitExistingControllerRoot', 'assertExistingRootEntry'].map((key) => {
+			if (!creationHasDataMethod(writer, key))
+				throw new DevicesValidationException('Original public settlement root entry unavailable.');
+			const method: unknown = nativeFieldEvidence.get(writer, key);
+			return Object.freeze({ key, method });
+		}));
 		const originalWriter: PublicSettlementPorts['writerMethods'] = writer;
 		const writerMethods = Object.freeze({
 			assertExistingReadEntry: originalWriter.assertExistingReadEntry,
@@ -262,6 +268,7 @@ export class VirtualThermostatComfortService {
 				creationMethodCurrent(manager, 'findOneBy', find) &&
 				publicPins.every((pin) => creationMethodCurrent(this, pin.key, pin.method)) &&
 				Object.entries(writerMethods).every(([key, method]) => creationMethodCurrent(writer, key, method)) &&
+				rootPins.every((pin) => creationMethodCurrent(writer, pin.key, pin.method)) &&
 				Object.entries(recovery).every(([key, method]) => creationMethodCurrent(claims, key, method)),
 		});
 		this.existingPins = current;
