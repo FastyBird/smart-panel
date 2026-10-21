@@ -161,60 +161,125 @@ describe('atomic virtual thermostat authoring', () => {
 	const publications: EventType[] = [];
 	let values: PropertyValueService;
 	let owner: Awaited<ReturnType<typeof originalOwnedFixture>> | undefined;
+	interface RetryFixtureSetup {
+		retry: boolean;
+		readonly calls: Promise<void>[];
+		primary?: { cause: unknown };
+		restore?: () => void;
+		retire?: () => void;
+		closeModule?: () => Promise<void>;
+		closeStorage?: () => Promise<void>;
+	}
+	let retryFixtureSetup: RetryFixtureSetup | undefined;
 	beforeEach(async () => {
-		owner = undefined;
-		publications.length = 0;
-		jest.clearAllMocks();
-		database = await new SqliteDataSource({
-			type: 'sqlite',
-			database: ':memory:',
-			synchronize: true,
-			entities: [__dirname + '/../../../**/*.entity.ts'],
-		}).initialize();
-		events = new EventEmitter2();
-		for (const event of [
-			EventType.DEVICE_CREATED,
-			EventType.CHANNEL_CREATED,
-			EventType.CHANNEL_PROPERTY_CREATED,
-			EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
-		])
-			events.on(event, () => publications.push(event));
-		// Instrument the ORIGINAL emitter before its actual singleton registrations/capabilities capture it.
-		// It calls through normally; the old event-failure row later changes only this same spy's implementation.
-		jest.spyOn(events, 'emit');
-		const sensorDevice = uuid(),
-			sensorChannel = uuid();
-		ambientId = uuid();
-		await database
-			.getRepository(DeviceEntity)
-			.insert({ id: sensorDevice, name: 'Sensor', category: DeviceCategory.SENSOR, enabled: true });
-		await database.getRepository(ChannelEntity).insert({
-			id: sensorChannel,
-			device: sensorDevice,
-			name: 'Temperature',
-			category: ChannelCategory.TEMPERATURE,
-		} as never);
-		await database.getRepository(ChannelPropertyEntity).insert({
-			id: ambientId,
-			channel: sensorChannel,
-			identifier: 'temperature',
-			category: PropertyCategory.TEMPERATURE,
-			dataType: DataTypeType.FLOAT,
-			unit: '°C',
-			permissions: [PermissionType.READ_ONLY],
-		} as never);
-		relayId = await actuator();
-		// synchronize creates tables but does not run the existing graph migration's singleton seed.
-		// This TEST baseline models that existing migration row; production readers NEVER ensure it.
-		await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: 0 });
-		owner = await originalOwnedFixture();
-		({ authoring, claims, configs, devices, values } = owner);
-		registry = owner.commandAdmission;
-		// Negative observer only: owned creation never calls the ordinary value-write path.
-		jest.spyOn(values, 'write');
-		publications.length = 0;
+		try {
+			owner = undefined;
+			publications.length = 0;
+			jest.clearAllMocks();
+			database = await new SqliteDataSource({
+				type: 'sqlite',
+				database: ':memory:',
+				synchronize: true,
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+			}).initialize();
+			events = new EventEmitter2();
+			for (const event of [
+				EventType.DEVICE_CREATED,
+				EventType.CHANNEL_CREATED,
+				EventType.CHANNEL_PROPERTY_CREATED,
+				EventType.CHANNEL_PROPERTY_VALUE_STATE_CHANGED,
+			])
+				events.on(event, () => publications.push(event));
+			// Instrument the ORIGINAL emitter before its actual singleton registrations/capabilities capture it.
+			// It calls through normally; the old event-failure row later changes only this same spy's implementation.
+			jest.spyOn(events, 'emit');
+			const sensorDevice = uuid(),
+				sensorChannel = uuid();
+			ambientId = uuid();
+			await database
+				.getRepository(DeviceEntity)
+				.insert({ id: sensorDevice, name: 'Sensor', category: DeviceCategory.SENSOR, enabled: true });
+			await database.getRepository(ChannelEntity).insert({
+				id: sensorChannel,
+				device: sensorDevice,
+				name: 'Temperature',
+				category: ChannelCategory.TEMPERATURE,
+			} as never);
+			await database.getRepository(ChannelPropertyEntity).insert({
+				id: ambientId,
+				channel: sensorChannel,
+				identifier: 'temperature',
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+				unit: '°C',
+				permissions: [PermissionType.READ_ONLY],
+			} as never);
+			relayId = await actuator();
+			// synchronize creates tables but does not run the existing graph migration's singleton seed.
+			// This TEST baseline models that existing migration row; production readers NEVER ensure it.
+			await database.manager.insert(VirtualGraphRevisionEntity, { id: 1, revision: 0 });
+			if (retryFixtureSetup)
+				jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'setInterval', 'clearInterval'] });
+			owner = retryFixtureSetup ? await originalOwnedFixture(false, retryFixtureSetup) : await originalOwnedFixture();
+			({ authoring, claims, configs, devices, values } = owner);
+			registry = owner.commandAdmission;
+			// Negative observer only: owned creation never calls the ordinary value-write path.
+			jest.spyOn(values, 'write');
+			publications.length = 0;
+		} catch (cause) {
+			if (retryFixtureSetup) retryFixtureSetup.primary = { cause };
+			throw cause;
+		}
 	});
 	afterEach(async () => {
+		if (retryFixtureSetup) {
+			const setup = retryFixtureSetup;
+			let failure = setup.primary;
+			try {
+				if (owner) await owner.close();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			if (!owner) {
+				try {
+					setup.retire?.();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				try {
+					await setup.closeModule?.();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				try {
+					await setup.closeStorage?.();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			}
+			try {
+				if (database?.isInitialized) await database.destroy();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			try {
+				setup.restore?.();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			try {
+				jest.useRealTimers();
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			try {
+				useContainer({ get: <T>(type: new () => T) => new type() }, { fallbackOnErrors: true });
+			} catch (cause) {
+				failure ??= { cause };
+			}
+			if (failure) throw failure.cause;
+			return;
+		}
 		if (owner) await owner.close();
 		if (database?.isInitialized) await database.destroy();
 		jest.useRealTimers();
@@ -440,51 +505,64 @@ describe('atomic virtual thermostat authoring', () => {
 		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
 	});
 
-	it('returns the durable creation when commit subscriber reconciliation fails closed', async () => {
-		const subscriber = new VirtualThermostatOwnershipSubscriber(database, claims);
-		await subscriber.onApplicationBootstrap();
-		const commitRefresh = jest.spyOn(subscriber, 'afterTransactionCommit');
-		await claims.refresh();
-		const input = request(relayId);
-		const target = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id: relayId },
-			relations: ['channel', 'channel.device'],
+	describe('case-scoped retained retry inputs', () => {
+		beforeAll(() => {
+			retryFixtureSetup = { retry: false, calls: [] };
 		});
-		const admission = {
-			property: target,
-			channel: target.channel as ChannelEntity,
-			device: (target.channel as ChannelEntity).device as DeviceEntity,
-			value: true,
-		};
-		await claims.assertAllowed(admission);
-		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
-		const originalFind = database.manager.find.bind(database.manager);
-		let failRefresh = true;
-		const refresh = jest.spyOn(database.manager, 'find').mockImplementation(async (...args) => {
-			if (failRefresh && args[0] === VirtualThermostatActuatorClaimEntity)
-				throw new Error('commit reconciliation failed');
-			return (await originalFind(...args)) as Record<string, unknown>[];
+		afterAll(() => {
+			retryFixtureSetup = undefined;
 		});
-		const created = await authoring.create(input);
-		expect(commitRefresh).toHaveBeenCalled();
-		expect(refresh).toHaveBeenCalled();
-		expect(created.device.id).toBe(input.device.id);
-		expect(created.configuration.controller).toBe(input.device.id);
-		expect(created.configuration.actuators).toEqual([
-			expect.objectContaining({ source_property: relayId, state: 'reserved' }),
-		]);
-		expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
-		expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
-		expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
-		expect(() => claims.assertAllowed(admission)).toThrow('reconciling');
-		expect(jest.getTimerCount()).toBe(1);
-		failRefresh = false;
-		const retryRefresh = jest.spyOn(claims, 'refresh');
-		await jest.advanceTimersByTimeAsync(1000);
-		expect(retryRefresh).toHaveBeenCalledTimes(1);
-		await (retryRefresh.mock.results[0].value as Promise<void>);
-		expect(jest.getTimerCount()).toBe(0);
-		expect(() => claims.assertAllowed(admission)).toThrow('reserved');
+		it('returns the durable creation when commit subscriber reconciliation fails closed', async () => {
+			try {
+				const subscriber = new VirtualThermostatOwnershipSubscriber(database, claims);
+				await subscriber.onApplicationBootstrap();
+				const commitRefresh = jest.spyOn(subscriber, 'afterTransactionCommit');
+				await claims.refresh();
+				const input = request(relayId);
+				const target = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+					where: { id: relayId },
+					relations: ['channel', 'channel.device'],
+				});
+				const admission = {
+					property: target,
+					channel: target.channel as ChannelEntity,
+					device: (target.channel as ChannelEntity).device as DeviceEntity,
+					value: true,
+				};
+				await claims.assertAllowed(admission);
+				const originalFind = database.manager.find.bind(database.manager);
+				let failRefresh = true;
+				const refresh = jest.spyOn(database.manager, 'find').mockImplementation(async (...args) => {
+					if (failRefresh && args[0] === VirtualThermostatActuatorClaimEntity)
+						throw new Error('commit reconciliation failed');
+					return (await originalFind(...args)) as Record<string, unknown>[];
+				});
+				const created = await authoring.create(input);
+				expect(commitRefresh).toHaveBeenCalled();
+				expect(refresh).toHaveBeenCalled();
+				expect(created.device.id).toBe(input.device.id);
+				expect(created.configuration.controller).toBe(input.device.id);
+				expect(created.configuration.actuators).toEqual([
+					expect.objectContaining({ source_property: relayId, state: 'reserved' }),
+				]);
+				expect(await database.manager.countBy(DeviceEntity, { id: input.device.id })).toBe(1);
+				expect(await database.manager.count(VirtualThermostatConfigEntity)).toBe(1);
+				expect(await database.manager.count(VirtualThermostatActuatorClaimEntity)).toBe(1);
+				expect(() => claims.assertAllowed(admission)).toThrow('reconciling');
+				expect(jest.getTimerCount()).toBe(1);
+				failRefresh = false;
+				if (!retryFixtureSetup) throw new Error('Original retry fixture setup unavailable');
+				retryFixtureSetup.retry = true;
+				await jest.advanceTimersByTimeAsync(1000);
+				expect(retryFixtureSetup.calls).toHaveLength(1);
+				await retryFixtureSetup.calls[0];
+				expect(jest.getTimerCount()).toBe(0);
+				expect(() => claims.assertAllowed(admission)).toThrow('reserved');
+			} catch (cause) {
+				if (retryFixtureSetup) retryFixtureSetup.primary = { cause };
+				throw cause;
+			}
+		});
 	});
 
 	it('preserves a nontransactional catalog write when reconciliation fails', async () => {
@@ -552,7 +630,7 @@ describe('atomic virtual thermostat authoring', () => {
 	});
 	/** Selected required singleton chain; index/projection are real additional listeners only when explicitly included.
 	 * This fixture is not a full application/bootstrap proof. Storage transport and metadata sink are inert. */
-	async function originalOwnedFixture(includeIndexAndProjection = false) {
+	async function originalOwnedFixture(includeIndexAndProjection = false, retrySetup?: RetryFixtureSetup) {
 		const lock = new DeviceStructureLockService();
 		const core = new ClimateAutomationRegistryService();
 		const writer = new ClimateAutomationWriterService(database, lock, core);
@@ -594,6 +672,14 @@ describe('atomic virtual thermostat authoring', () => {
 		const storageModule = await Test.createTestingModule({
 			providers: [StorageService, { provide: ConfigService, useValue: { getModuleConfig: () => storageConfig } }],
 		}).compile();
+		if (retrySetup) {
+			let closed = false;
+			retrySetup.closeStorage = () => {
+				if (closed) return Promise.resolve();
+				closed = true;
+				return storageModule.close();
+			};
+		}
 		const storage = storageModule.get(StorageService);
 		storage.registerPlugin(transport.name, transport);
 		const valueLock = new PropertyValueLockService(database);
@@ -692,6 +778,68 @@ describe('atomic virtual thermostat authoring', () => {
 		}
 		const commandAdmission = new PropertyCommandAdmissionRegistryService();
 		const claims = new VirtualThermostatClaimsService(database, lock, graph, commandAdmission, events);
+		if (retrySetup) {
+			let retired = false;
+			retrySetup.retire = () => {
+				if (retired) return;
+				retired = true;
+				let failure: { cause: unknown } | undefined;
+				try {
+					claims.onModuleDestroy();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				try {
+					producers.onModuleDestroy();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				if (failure) throw failure.cause;
+			};
+			const originalMethods: {
+				readonly refresh: {
+					readonly call: (receiver: VirtualThermostatClaimsService) => Promise<void>;
+				};
+			} = claims;
+			const originalRefresh = originalMethods.refresh;
+			const before = Object.getOwnPropertyDescriptor(claims, 'refresh');
+			const observer = jest.spyOn(claims, 'refresh').mockImplementation(function (
+				this: VirtualThermostatClaimsService,
+			) {
+				const returned = originalRefresh.call(this);
+				if (retrySetup.retry) retrySetup.calls.push(returned);
+				return returned;
+			});
+			const installed = Object.getOwnPropertyDescriptor(claims, 'refresh');
+			retrySetup.restore = () => {
+				const current = Object.getOwnPropertyDescriptor(claims, 'refresh');
+				if (
+					!installed ||
+					!current ||
+					current.value !== installed.value ||
+					current.get !== installed.get ||
+					current.set !== installed.set ||
+					current.configurable !== installed.configurable ||
+					current.enumerable !== installed.enumerable ||
+					current.writable !== installed.writable
+				)
+					throw new Error('Original retry observer descriptor ownership lost');
+				observer.mockRestore();
+				const restored = Object.getOwnPropertyDescriptor(claims, 'refresh');
+				if (
+					before
+						? !restored ||
+							restored.value !== before.value ||
+							restored.get !== before.get ||
+							restored.set !== before.set ||
+							restored.configurable !== before.configurable ||
+							restored.enumerable !== before.enumerable ||
+							restored.writable !== before.writable
+						: restored !== undefined
+				)
+					throw new Error('Original retry observer descriptor restoration failed');
+			};
+		}
 		const configs = new VirtualThermostatConfigService(database, lock, graph, claims, events, values);
 		const authoring = new VirtualThermostatAuthoringService(
 			database,
@@ -711,6 +859,43 @@ describe('atomic virtual thermostat authoring', () => {
 		const automation = new VirtualThermostatAutomationService(writer, core, graph, new NestConfigService(), authoring);
 		const extraProviders: VirtualThermostatAutomationService[] = [];
 		const producerState = new VirtualProducerStateService(database, producers, graph, events);
+		if (retrySetup) {
+			const retireClaims = retrySetup.retire;
+			let retired = false;
+			retrySetup.retire = () => {
+				if (retired) return;
+				retired = true;
+				let failure: { cause: unknown } | undefined;
+				for (const provider of extraProviders) {
+					try {
+						provider.onModuleDestroy();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+				}
+				try {
+					automation.onModuleDestroy();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				try {
+					info.onModuleDestroy();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				try {
+					producerState.onModuleDestroy();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				try {
+					retireClaims?.();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+				if (failure) throw failure.cause;
+			};
+		}
 		const platformRegistry = new PlatformRegistryService();
 		const module = await Test.createTestingModule({
 			imports: [EventEmitterModule.forRoot()],
@@ -762,6 +947,14 @@ describe('atomic virtual thermostat authoring', () => {
 			.overrideProvider(EventEmitter2)
 			.useValue(events)
 			.compile();
+		if (retrySetup) {
+			let closed = false;
+			retrySetup.closeModule = () => {
+				if (closed) return Promise.resolve();
+				closed = true;
+				return module.close();
+			};
+		}
 		useContainer(module, { fallbackOnErrors: true });
 		new DeviceEntitySubscriber(state, database);
 		new ChannelEntitySubscriber(database);
@@ -771,6 +964,24 @@ describe('atomic virtual thermostat authoring', () => {
 		try {
 			await module.init();
 		} catch (cause) {
+			if (retrySetup) {
+				try {
+					retrySetup.retire?.();
+				} catch {
+					/* Original initialization P, including falsy, stays primary. */
+				}
+				try {
+					await retrySetup.closeModule?.();
+				} catch {
+					/* Same original P. */
+				}
+				try {
+					await retrySetup.closeStorage?.();
+				} catch {
+					/* Same original P. */
+				}
+				throw cause;
+			}
 			automation.onModuleDestroy();
 			info.onModuleDestroy();
 			producerState.onModuleDestroy();
@@ -825,6 +1036,31 @@ describe('atomic virtual thermostat authoring', () => {
 			propertyMapper,
 			lock,
 			close: async () => {
+				if (retrySetup) {
+					let failure: { cause: unknown } | undefined;
+					try {
+						retrySetup.retire?.();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					try {
+						await Promise.all(indexJobs);
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					try {
+						await retrySetup.closeModule?.();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					try {
+						await retrySetup.closeStorage?.();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+					if (failure) throw failure.cause;
+					return;
+				}
 				// Close original authority synchronously before any await or restoration of test spies.
 				for (const provider of extraProviders) provider.onModuleDestroy();
 				automation.onModuleDestroy();
@@ -860,24 +1096,42 @@ describe('atomic virtual thermostat authoring', () => {
 		});
 
 		describe('R95 genuine deferred authoring binding', () => {
-			interface OwnedDescriptor extends Omit<PropertyDescriptor, 'value'> { readonly value?: unknown }
-			const descriptors: Readonly<{ getOwnPropertyDescriptor: (receiver: object, key: PropertyKey) => OwnedDescriptor | undefined }> = Object;
+			const immediate = (body: () => void): Promise<void> =>
+				new Promise<void>((resolve) => {
+					body();
+					resolve();
+				});
+			interface OwnedDescriptor extends Omit<PropertyDescriptor, 'value'> {
+				readonly value?: unknown;
+			}
+			const descriptors: Readonly<{
+				getOwnPropertyDescriptor: (receiver: object, key: PropertyKey) => OwnedDescriptor | undefined;
+			}> = Object;
 			const backstops = new Set<() => Promise<void>>();
-			const within = async (body: (tools: {
-				readonly fixture: typeof fixture;
-				readonly database: SqliteDataSource;
-				readonly events: EventEmitter2;
-				assertLive: () => void;
-				own: (provider: VirtualThermostatAutomationService) => VirtualThermostatAutomationService;
-				observe: (receiver: object, key: string, restore: () => void) => () => void;
-				shadow: (receiver: object, key: string, descriptor: PropertyDescriptor) => () => void;
-				track: <T>(start: () => Promise<T>) => Promise<T>;
-			}) => Promise<void>): Promise<void> => {
-				const originalFixture = fixture, originalDatabase = database, originalEvents = events;
+			const within = async (
+				body: (tools: {
+					readonly fixture: typeof fixture;
+					readonly database: SqliteDataSource;
+					readonly events: EventEmitter2;
+					assertLive: () => void;
+					own: (provider: VirtualThermostatAutomationService) => VirtualThermostatAutomationService;
+					observe: (receiver: object, key: string, restore: () => void) => () => void;
+					shadow: (receiver: object, key: string, descriptor: PropertyDescriptor) => () => void;
+					track: <T>(start: () => Promise<T>) => Promise<T>;
+				}) => Promise<void>,
+			): Promise<void> => {
+				const originalFixture = fixture,
+					originalDatabase = database,
+					originalEvents = events;
 				const revoke = originalFixture.close;
 				let retired = false;
-				const assertLive = (): void => { if (retired) throw new Error('R95 authoring test owner retired'); };
-				const providers: Readonly<{ provider: VirtualThermostatAutomationService; call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }> }>[] = [];
+				const assertLive = (): void => {
+					if (retired) throw new Error('R95 authoring test owner retired');
+				};
+				const providers: Readonly<{
+					provider: VirtualThermostatAutomationService;
+					call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }>;
+				}>[] = [];
 				const pending: Promise<unknown>[] = [];
 				const restores: (() => void)[] = [];
 				let closing: Promise<void> | undefined;
@@ -888,24 +1142,52 @@ describe('atomic virtual thermostat authoring', () => {
 					const undo = (): void => {
 						if (!active) return;
 						const current = descriptors.getOwnPropertyDescriptor(receiver, key);
-						if (!current || !['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every((field) => Reflect.get(current, field) === Reflect.get(installed, field))) throw new Error('Foreign authoring descriptor left intact');
+						if (
+							!current ||
+							!['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every(
+								(field) => Reflect.get(current, field) === Reflect.get(installed, field),
+							)
+						)
+							throw new Error('Foreign authoring descriptor left intact');
 						active = false;
 						restore();
 					};
-					restores.push(undo); return undo;
+					restores.push(undo);
+					return undo;
 				};
 				const cleanup = (): Promise<void> => {
 					if (closing !== undefined) return closing;
 					retired = true;
 					closing = (async () => {
 						const failure: { present: boolean; cause?: unknown } = { present: false };
-						const retain = (cause: unknown): void => { if (!failure.present) { failure.present = true; failure.cause = cause; } };
-						for (const provider of providers) { try { provider.call.call(provider.provider); } catch (cause: unknown) { retain(cause); } }
+						const retain = (cause: unknown): void => {
+							if (!failure.present) {
+								failure.present = true;
+								failure.cause = cause;
+							}
+						};
+						for (const provider of providers) {
+							try {
+								provider.call.call(provider.provider);
+							} catch (cause: unknown) {
+								retain(cause);
+							}
+						}
 						// Retire/revoke this exact original fixture before draining and restoring method descriptors.
 						if (owner === originalFixture) owner = undefined;
-						try { await revoke(); } catch (cause: unknown) { retain(cause); }
+						try {
+							await revoke();
+						} catch (cause: unknown) {
+							retain(cause);
+						}
 						await Promise.allSettled(pending);
-						for (const restore of restores.reverse()) { try { restore(); } catch (cause: unknown) { retain(cause); } }
+						for (const restore of restores.reverse()) {
+							try {
+								restore();
+							} catch (cause: unknown) {
+								retain(cause);
+							}
+						}
 						backstops.delete(cleanup);
 						if (failure.present) throw failure.cause;
 					})();
@@ -915,145 +1197,341 @@ describe('atomic virtual thermostat authoring', () => {
 				const primary: { present: boolean; cause?: unknown } = { present: false };
 				try {
 					await body({
-						fixture: originalFixture, database: originalDatabase, events: originalEvents, assertLive,
+						fixture: originalFixture,
+						database: originalDatabase,
+						events: originalEvents,
+						assertLive,
 						own: (provider) => {
 							const original: Readonly<{ onModuleDestroy: () => void }> = provider;
-							const call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }> = original.onModuleDestroy;
-							if (retired) { try { call.call(provider); } finally { assertLive(); } }
-							providers.push(Object.freeze({ provider, call })); return provider;
-						}, observe,
+							const call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }> =
+								original.onModuleDestroy;
+							if (retired) {
+								try {
+									call.call(provider);
+								} finally {
+									assertLive();
+								}
+							}
+							providers.push(Object.freeze({ provider, call }));
+							return provider;
+						},
+						observe,
 						shadow: (receiver, key, descriptor) => {
 							assertLive();
 							const previous = Object.getOwnPropertyDescriptor(receiver, key);
 							Object.defineProperty(receiver, key, descriptor);
-							return observe(receiver, key, () => { if (previous) Object.defineProperty(receiver, key, previous); else Reflect.deleteProperty(receiver, key); });
+							return observe(receiver, key, () => {
+								if (previous) Object.defineProperty(receiver, key, previous);
+								else Reflect.deleteProperty(receiver, key);
+							});
 						},
-						track: <T>(start: () => Promise<T>): Promise<T> => { assertLive(); const work = start(); pending.push(work); return work; },
+						track: <T>(start: () => Promise<T>): Promise<T> => {
+							assertLive();
+							const work = start();
+							pending.push(work);
+							return work;
+						},
 					});
-				} catch (cause: unknown) { primary.present = true; primary.cause = cause; }
-				try { await cleanup(); } catch (cause: unknown) { if (!primary.present) { primary.present = true; primary.cause = cause; } }
+				} catch (cause: unknown) {
+					primary.present = true;
+					primary.cause = cause;
+				}
+				try {
+					await cleanup();
+				} catch (cause: unknown) {
+					if (!primary.present) {
+						primary.present = true;
+						primary.cause = cause;
+					}
+				}
 				if (primary.present) throw primary.cause;
 			};
 			afterEach(async () => {
 				const primary: { present: boolean; cause?: unknown } = { present: false };
-				for (const cleanup of [...backstops]) { try { await cleanup(); } catch (cause: unknown) { if (!primary.present) { primary.present = true; primary.cause = cause; } } }
+				for (const cleanup of [...backstops]) {
+					try {
+						await cleanup();
+					} catch (cause: unknown) {
+						if (!primary.present) {
+							primary.present = true;
+							primary.cause = cause;
+						}
+					}
+				}
 				if (primary.present) throw primary.cause;
 			});
 			const causeOf = (call: () => void): Readonly<{ thrown: boolean; cause?: unknown }> => {
-				try { call(); return { thrown: false }; } catch (cause: unknown) { return { thrown: true, cause }; }
+				try {
+					call();
+					return { thrown: false };
+				} catch (cause: unknown) {
+					return { thrown: true, cause };
+				}
 			};
 
-			it('binds genuine authoring only at init and creates through original validators, native ACK and publication', async () => within(async (tools) => {
-				const { fixture, database, events } = tools;
-				fixture.automation.onModuleDestroy();
-				const originalCapture: Readonly<{ captureCreationMethodPins: () => () => boolean }> = fixture.authoring;
-				const captureCall: Readonly<{ call: (receiver: VirtualThermostatAuthoringService) => () => boolean }> = originalCapture.captureCreationMethodPins;
-				const capture = jest.spyOn(fixture.authoring, 'captureCreationMethodPins').mockImplementation(function (this: VirtualThermostatAuthoringService) { return captureCall.call(this); });
-				tools.observe(fixture.authoring, 'captureCreationMethodPins', () => capture.mockRestore());
-				const snapshot = jest.spyOn(fixture.authoring, 'snapshotCreationInput'); tools.observe(fixture.authoring, 'snapshotCreationInput', () => snapshot.mockRestore());
-				const prepare = jest.spyOn(fixture.configs, 'prepare'); tools.observe(fixture.configs, 'prepare', () => prepare.mockRestore());
-				const exists = jest.spyOn(fixture.module.get(DeviceExistsConstraintValidator), 'validate'); tools.observe(fixture.module.get(DeviceExistsConstraintValidator), 'validate', () => exists.mockRestore());
-				const containment = jest.spyOn(fixture.module.get(DeviceIsVirtualConstraintValidator), 'validate'); tools.observe(fixture.module.get(DeviceIsVirtualConstraintValidator), 'validate', () => containment.mockRestore());
-				let nativeAcks = 0;
-				const atPublication: number[] = [];
-				const subscriber = { afterQuery: (event: AfterQueryEvent<unknown>) => { if (event.query === 'COMMIT' && event.success) nativeAcks++; } };
-				database.subscribers.push(subscriber);
-				const published = (): void => { atPublication.push(nativeAcks); };
-				events.on(EventType.DEVICE_CREATED, published);
-				const provider = tools.own(new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring));
-				const input = request(relayId);
-				try {
-					expect(capture).not.toHaveBeenCalled();
-					expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
+			it('binds genuine authoring only at init and creates through original validators, native ACK and publication', async () =>
+				within(async (tools) => {
+					const { fixture, database, events } = tools;
+					fixture.automation.onModuleDestroy();
+					const originalCapture: Readonly<{ captureCreationMethodPins: () => () => boolean }> = fixture.authoring;
+					const captureCall: Readonly<{ call: (receiver: VirtualThermostatAuthoringService) => () => boolean }> =
+						originalCapture.captureCreationMethodPins;
+					const capture = jest.spyOn(fixture.authoring, 'captureCreationMethodPins').mockImplementation(function (
+						this: VirtualThermostatAuthoringService,
+					) {
+						return captureCall.call(this);
+					});
+					tools.observe(fixture.authoring, 'captureCreationMethodPins', () => capture.mockRestore());
+					const snapshot = jest.spyOn(fixture.authoring, 'snapshotCreationInput');
+					tools.observe(fixture.authoring, 'snapshotCreationInput', () => snapshot.mockRestore());
+					const prepare = jest.spyOn(fixture.configs, 'prepare');
+					tools.observe(fixture.configs, 'prepare', () => prepare.mockRestore());
+					const exists = jest.spyOn(fixture.module.get(DeviceExistsConstraintValidator), 'validate');
+					tools.observe(fixture.module.get(DeviceExistsConstraintValidator), 'validate', () => exists.mockRestore());
+					const containment = jest.spyOn(fixture.module.get(DeviceIsVirtualConstraintValidator), 'validate');
+					tools.observe(fixture.module.get(DeviceIsVirtualConstraintValidator), 'validate', () =>
+						containment.mockRestore(),
+					);
+					let nativeAcks = 0;
+					const atPublication: number[] = [];
+					const subscriber = {
+						afterQuery: (event: AfterQueryEvent<unknown>) => {
+							if (event.query === 'COMMIT' && event.success) nativeAcks++;
+						},
+					};
+					database.subscribers.push(subscriber);
+					const published = (): void => {
+						atPublication.push(nativeAcks);
+					};
+					events.on(EventType.DEVICE_CREATED, published);
+					const provider = tools.own(
+						new VirtualThermostatAutomationService(
+							fixture.writer,
+							fixture.core,
+							fixture.graph,
+							new NestConfigService(),
+							fixture.authoring,
+						),
+					);
+					const input = request(relayId);
+					try {
+						expect(capture).not.toHaveBeenCalled();
+						expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
+						let inspected = 0;
+						await expect(
+							tools.track(() =>
+								fixture.writer.createVirtualThermostatV1({
+									kind: 'create-virtual-thermostat:v1',
+									get device() {
+										inspected++;
+										return input.device;
+									},
+									get configuration() {
+										inspected++;
+										return input.configuration;
+									},
+								}),
+							),
+						).rejects.toMatchObject({ commitOutcome: 'not_started' });
+						expect(inspected).toBe(0);
+						tools.assertLive();
+						provider.onModuleInit();
+						provider.onModuleInit();
+						expect(capture.mock.contexts).toEqual([fixture.authoring]);
+						expect(capture.mock.calls).toEqual([[]]);
+						const registered = fixture.core.captureProvider('virtual-thermostat:v1');
+						expect(registered?.implementation.creationV1?.isCurrent()).toBe(true);
+						const before = await tools.track(() => fixture.graph.revision());
+						const result = await tools.track(() => fixture.authoring.create(input));
+						expect(result.device.id).toBe(input.device.id);
+						expect(result.configuration.revision).toBe(1);
+						expect(snapshot).toHaveBeenCalledTimes(1);
+						expect(snapshot.mock.contexts).toEqual([fixture.authoring]);
+						expect(snapshot.mock.calls[0]).toEqual([input.device, input.configuration]);
+						expect(prepare).toHaveBeenCalledTimes(1);
+						expect(exists.mock.calls.filter(([id]) => id === input.device.id).length).toBeGreaterThanOrEqual(2);
+						expect(containment.mock.calls.filter(([id]) => id === input.device.id).length).toBeGreaterThanOrEqual(2);
+						expect(nativeAcks).toBeGreaterThan(0);
+						expect(atPublication).toHaveLength(1);
+						expect(atPublication[0]).toBeGreaterThan(0);
+						expect(publications).toContain(EventType.DEVICE_CREATED);
+						expect(await tools.track(() => fixture.graph.revision())).toBe(before + 1);
+						expect(
+							await tools.track(() =>
+								database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: input.device.id }),
+							),
+						).toMatchObject({ revision: 1 });
+						const slots = await tools.track(() =>
+							database.query<unknown[]>(
+								'SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?',
+								[input.device.id],
+							),
+						);
+						expect(slots).toHaveLength(1);
+						expect(slots[0]).toMatchObject({ manualHold: 0, state: 'EMPTY' });
+						expect(JSON.stringify(result)).not.toMatch(
+							/manualGeneration|slotIncarnation|ownerToken|publicationLease|creationTurn/,
+						);
+					} finally {
+						events.off(EventType.DEVICE_CREATED, published);
+						const index = database.subscribers.indexOf(subscriber);
+						if (index >= 0) database.subscribers.splice(index, 1);
+					}
+				}));
+
+			it('keeps genuine authoring capture inactive in a CLI owner through repeated initialization', async () =>
+				within((tools) =>
+					immediate(() => {
+						const { fixture, database } = tools;
+						fixture.automation.onModuleDestroy();
+						const capture = jest.spyOn(fixture.authoring, 'captureCreationMethodPins');
+						tools.observe(fixture.authoring, 'captureCreationMethodPins', () => capture.mockRestore());
+						const query = jest.spyOn(database.manager, 'query');
+						tools.observe(database.manager, 'query', () => query.mockRestore());
+						const register = jest.spyOn(fixture.core, 'registerProviderOwned');
+						tools.observe(fixture.core, 'registerProviderOwned', () => register.mockRestore());
+						const provider = tools.own(
+							new VirtualThermostatAutomationService(
+								fixture.writer,
+								fixture.core,
+								fixture.graph,
+								new NestConfigService({ FB_CLI: 'on' }),
+								fixture.authoring,
+							),
+						);
+						provider.onModuleInit();
+						provider.onModuleInit();
+						expect(capture).not.toHaveBeenCalled();
+						expect(register).not.toHaveBeenCalled();
+						expect(query).not.toHaveBeenCalled();
+						expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
+						expect(publications).toEqual([]);
+					}),
+				));
+
+			it.each(['captureCreationMethodPins', 'snapshotCreationInput', 'creationCatalog', 'holdCreationAtEntry'])(
+				'does not canonize a replaced original authoring %s before init',
+				async (key) =>
+					within(async (tools) => {
+						const { fixture } = tools;
+						fixture.automation.onModuleDestroy();
+						const a = tools.own(
+							new VirtualThermostatAutomationService(
+								fixture.writer,
+								fixture.core,
+								fixture.graph,
+								new NestConfigService(),
+								fixture.authoring,
+							),
+						);
+						const substitute = jest.fn(() => {
+							throw new Error('Foreign authoring function must not run');
+						});
+						const restore = tools.shadow(fixture.authoring, key, {
+							configurable: true,
+							writable: true,
+							value: substitute,
+						});
+						const first = causeOf(() => a.onModuleInit());
+						expect(first.thrown).toBe(true);
+						const repeated = causeOf(() => a.onModuleInit());
+						expect(repeated.thrown).toBe(true);
+						expect(repeated.cause).toBe(first.cause);
+						expect(substitute).not.toHaveBeenCalled();
+						expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
+						// Restore only after this owner has observed permanent loss, not by rebinding it.
+						a.onModuleDestroy();
+						restore();
+						expect(() => a.onModuleInit()).toThrow('destroyed');
+						const b = tools.own(
+							new VirtualThermostatAutomationService(
+								fixture.writer,
+								fixture.core,
+								fixture.graph,
+								new NestConfigService(),
+								fixture.authoring,
+							),
+						);
+						b.onModuleInit();
+						const capture = fixture.core.captureProvider('virtual-thermostat:v1');
+						expect(capture?.implementation.creationV1?.isCurrent()).toBe(true);
+						const input = request(relayId),
+							result = await tools.track(() => fixture.authoring.create(input));
+						expect(result.device.id).toBe(input.device.id);
+						expect(result.configuration.revision).toBe(1);
+						a.onModuleDestroy();
+						expect(capture?.isCurrent()).toBe(true);
+					}),
+			);
+
+			it('rejects a pre-init authoring accessor without evaluating it or inspecting request data', async () =>
+				within(async (tools) => {
+					const { fixture } = tools;
+					fixture.automation.onModuleDestroy();
+					const a = tools.own(
+						new VirtualThermostatAutomationService(
+							fixture.writer,
+							fixture.core,
+							fixture.graph,
+							new NestConfigService(),
+							fixture.authoring,
+						),
+					);
+					const getter = jest.fn(() => {
+						throw new Error('Foreign capture getter must not run');
+					});
+					tools.shadow(fixture.authoring, 'captureCreationMethodPins', { configurable: true, get: getter });
+					expect(causeOf(() => a.onModuleInit()).thrown).toBe(true);
+					expect(getter).not.toHaveBeenCalled();
 					let inspected = 0;
-					await expect(tools.track(() => fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', get device() { inspected++; return input.device; }, get configuration() { inspected++; return input.configuration; } }))).rejects.toMatchObject({ commitOutcome: 'not_started' });
+					await expect(
+						tools.track(() =>
+							fixture.writer.createVirtualThermostatV1({
+								kind: 'create-virtual-thermostat:v1',
+								get device() {
+									inspected++;
+									return {};
+								},
+								get configuration() {
+									inspected++;
+									return {};
+								},
+							}),
+						),
+					).rejects.toMatchObject({ commitOutcome: 'not_started' });
 					expect(inspected).toBe(0);
-					tools.assertLive();
-					provider.onModuleInit(); provider.onModuleInit();
-					expect(capture.mock.contexts).toEqual([fixture.authoring]); expect(capture.mock.calls).toEqual([[]]);
-					const registered = fixture.core.captureProvider('virtual-thermostat:v1');
-					expect(registered?.implementation.creationV1?.isCurrent()).toBe(true);
-					const before = await tools.track(() => fixture.graph.revision());
-					const result = await tools.track(() => fixture.authoring.create(input));
-					expect(result.device.id).toBe(input.device.id); expect(result.configuration.revision).toBe(1);
-					expect(snapshot).toHaveBeenCalledTimes(1); expect(snapshot.mock.contexts).toEqual([fixture.authoring]);
-					expect(snapshot.mock.calls[0]).toEqual([input.device, input.configuration]);
-					expect(prepare).toHaveBeenCalledTimes(1);
-					expect(exists.mock.calls.filter(([id]) => id === input.device.id).length).toBeGreaterThanOrEqual(2);
-					expect(containment.mock.calls.filter(([id]) => id === input.device.id).length).toBeGreaterThanOrEqual(2);
-					expect(nativeAcks).toBeGreaterThan(0); expect(atPublication).toHaveLength(1); expect(atPublication[0]).toBeGreaterThan(0);
-					expect(publications).toContain(EventType.DEVICE_CREATED);
-					expect(await tools.track(() => fixture.graph.revision())).toBe(before + 1);
-					expect(await tools.track(() => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: input.device.id }))).toMatchObject({ revision: 1 });
-					const slots = await tools.track(() => database.query<unknown[]>('SELECT * FROM devices_module_climate_automation_slots WHERE controllerId = ?', [input.device.id]));
-					expect(slots).toHaveLength(1); expect(slots[0]).toMatchObject({ manualHold: 0, state: 'EMPTY' });
-					expect(JSON.stringify(result)).not.toMatch(/manualGeneration|slotIncarnation|ownerToken|publicationLease|creationTurn/);
-				} finally {
-					events.off(EventType.DEVICE_CREATED, published);
-					const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1);
-				}
-			}));
+					expect(publications).toEqual([]);
+				}));
 
-			it('keeps genuine authoring capture inactive in a CLI owner through repeated initialization', async () => within(async (tools) => {
-				const { fixture, database } = tools;
-				fixture.automation.onModuleDestroy();
-				const capture = jest.spyOn(fixture.authoring, 'captureCreationMethodPins');
-				tools.observe(fixture.authoring, 'captureCreationMethodPins', () => capture.mockRestore());
-				const query = jest.spyOn(database.manager, 'query');
-				tools.observe(database.manager, 'query', () => query.mockRestore());
-				const register = jest.spyOn(fixture.core, 'registerProviderOwned');
-				tools.observe(fixture.core, 'registerProviderOwned', () => register.mockRestore());
-				const provider = tools.own(new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService({ FB_CLI: 'on' }), fixture.authoring));
-				provider.onModuleInit(); provider.onModuleInit();
-				expect(capture).not.toHaveBeenCalled(); expect(register).not.toHaveBeenCalled(); expect(query).not.toHaveBeenCalled();
-				expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull(); expect(publications).toEqual([]);
-			}));
-
-			it.each(['captureCreationMethodPins', 'snapshotCreationInput', 'creationCatalog', 'holdCreationAtEntry'])('does not canonize a replaced original authoring %s before init', async (key) => within(async (tools) => {
-				const { fixture } = tools;
-				fixture.automation.onModuleDestroy();
-				const a = tools.own(new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring));
-				const substitute = jest.fn(() => { throw new Error('Foreign authoring function must not run'); });
-				const restore = tools.shadow(fixture.authoring, key, { configurable: true, writable: true, value: substitute });
-				const first = causeOf(() => a.onModuleInit());
-				expect(first.thrown).toBe(true);
-				const repeated = causeOf(() => a.onModuleInit()); expect(repeated.thrown).toBe(true); expect(repeated.cause).toBe(first.cause);
-				expect(substitute).not.toHaveBeenCalled(); expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
-				// Restore only after this owner has observed permanent loss, not by rebinding it.
-				a.onModuleDestroy(); restore();
-				expect(() => a.onModuleInit()).toThrow('destroyed');
-				const b = tools.own(new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring));
-				b.onModuleInit();
-				const capture = fixture.core.captureProvider('virtual-thermostat:v1');
-				expect(capture?.implementation.creationV1?.isCurrent()).toBe(true);
-				const input = request(relayId), result = await tools.track(() => fixture.authoring.create(input));
-				expect(result.device.id).toBe(input.device.id); expect(result.configuration.revision).toBe(1);
-				a.onModuleDestroy(); expect(capture?.isCurrent()).toBe(true);
-			}));
-
-			it('rejects a pre-init authoring accessor without evaluating it or inspecting request data', async () => within(async (tools) => {
-				const { fixture } = tools;
-				fixture.automation.onModuleDestroy();
-				const a = tools.own(new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring));
-				const getter = jest.fn(() => { throw new Error('Foreign capture getter must not run'); });
-				tools.shadow(fixture.authoring, 'captureCreationMethodPins', { configurable: true, get: getter });
-				expect(causeOf(() => a.onModuleInit()).thrown).toBe(true); expect(getter).not.toHaveBeenCalled();
-				let inspected = 0;
-				await expect(tools.track(() => fixture.writer.createVirtualThermostatV1({ kind: 'create-virtual-thermostat:v1', get device() { inspected++; return {}; }, get configuration() { inspected++; return {}; } }))).rejects.toMatchObject({ commitOutcome: 'not_started' });
-				expect(inspected).toBe(0); expect(publications).toEqual([]);
-			}));
-
-			it.each([VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity])('keeps actual catalog getter lineage mandatory at deferred binding for %p', async (type) => within(async (tools) => {
-				const { fixture } = tools;
-				fixture.automation.onModuleDestroy();
-				const a = tools.own(new VirtualThermostatAutomationService(fixture.writer, fixture.core, fixture.graph, new NestConfigService(), fixture.authoring));
-				const replacement = jest.spyOn(type.prototype, 'type', 'get').mockReturnValue('foreign-before-init');
-				tools.observe(type.prototype, 'type', () => replacement.mockRestore());
-				const first = causeOf(() => a.onModuleInit()), second = causeOf(() => a.onModuleInit());
-				expect(first.thrown).toBe(true); expect(second.thrown).toBe(true); expect(second.cause).toBe(first.cause);
-				expect(replacement).not.toHaveBeenCalled(); expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
-				expect(publications).toEqual([]);
-			}));
+			it.each([VirtualDeviceEntity, VirtualChannelEntity, VirtualChannelPropertyEntity])(
+				'keeps actual catalog getter lineage mandatory at deferred binding for %p',
+				async (type) =>
+					within((tools) =>
+						immediate(() => {
+							const { fixture } = tools;
+							fixture.automation.onModuleDestroy();
+							const a = tools.own(
+								new VirtualThermostatAutomationService(
+									fixture.writer,
+									fixture.core,
+									fixture.graph,
+									new NestConfigService(),
+									fixture.authoring,
+								),
+							);
+							const replacement = jest.spyOn(type.prototype, 'type', 'get').mockReturnValue('foreign-before-init');
+							tools.observe(type.prototype, 'type', () => replacement.mockRestore());
+							const first = causeOf(() => a.onModuleInit()),
+								second = causeOf(() => a.onModuleInit());
+							expect(first.thrown).toBe(true);
+							expect(second.thrown).toBe(true);
+							expect(second.cause).toBe(first.cause);
+							expect(replacement).not.toHaveBeenCalled();
+							expect(fixture.core.captureProvider('virtual-thermostat:v1')).toBeNull();
+							expect(publications).toEqual([]);
+						}),
+					),
+			);
 		});
 
 		it('uses both real validators, one retained prepare, actual catalog hooks and fixed A response after native release', async () => {

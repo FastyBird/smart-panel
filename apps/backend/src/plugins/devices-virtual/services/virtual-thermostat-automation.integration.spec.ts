@@ -2635,17 +2635,39 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 	});
 	// R95 additive lifecycle coverage; the original C1b bodies and fixture remain unchanged.
 	describe('R95 original deferred provider lifecycle', () => {
-		interface OwnedDescriptor extends Omit<PropertyDescriptor, 'value'> { readonly value?: unknown }
-		const descriptors: Readonly<{ getOwnPropertyDescriptor: (owner: object, key: PropertyKey) => OwnedDescriptor | undefined }> = Object;
+		const immediate = (body: () => void): Promise<void> =>
+			new Promise<void>((resolve) => {
+				body();
+				resolve();
+			});
+		const rethrowOriginalCause = (cause: unknown): never => {
+			throw cause;
+		};
+		interface OwnedDescriptor extends Omit<PropertyDescriptor, 'value'> {
+			readonly value?: unknown;
+		}
+		const descriptors: Readonly<{
+			getOwnPropertyDescriptor: (owner: object, key: PropertyKey) => OwnedDescriptor | undefined;
+		}> = Object;
 		const cleanups = new Set<() => Promise<void>>();
 		const causeOf = (call: () => void): Readonly<{ thrown: boolean; cause?: unknown }> => {
-			try { call(); return { thrown: false }; } catch (cause: unknown) { return { thrown: true, cause }; }
+			try {
+				call();
+				return { thrown: false };
+			} catch (cause: unknown) {
+				return { thrown: true, cause };
+			}
 		};
 		const owned = () => {
 			const environment = Object.freeze({ database, registry, writer, graph, service });
 			let retired = false;
-			const assertLive = (): void => { if (retired) throw new Error('R95 test owner retired'); };
-			const owners: Readonly<{ owner: VirtualThermostatAutomationService; call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }> }>[] = [];
+			const assertLive = (): void => {
+				if (retired) throw new Error('R95 test owner retired');
+			};
+			const owners: Readonly<{
+				owner: VirtualThermostatAutomationService;
+				call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }>;
+			}>[] = [];
 			const modules: { close: () => Promise<void> }[] = [];
 			const work: Promise<unknown>[] = [];
 			const restorations: (() => void)[] = [];
@@ -2657,7 +2679,12 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 				const undo = (): void => {
 					if (!active) return;
 					const current = descriptors.getOwnPropertyDescriptor(receiver, key);
-					if (!current || !['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every((field) => Reflect.get(current, field) === Reflect.get(installed, field)))
+					if (
+						!current ||
+						!['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every(
+							(field) => Reflect.get(current, field) === Reflect.get(installed, field),
+						)
+					)
 						throw new Error('R95 foreign descriptor left intact');
 					active = false;
 					restore();
@@ -2670,11 +2697,34 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 				retired = true;
 				closing = (async () => {
 					const failure: { present: boolean; cause?: unknown } = { present: false };
-					const retain = (cause: unknown): void => { if (!failure.present) { failure.present = true; failure.cause = cause; } };
-					for (const owner of owners) { try { owner.call.call(owner.owner); } catch (cause: unknown) { retain(cause); } }
+					const retain = (cause: unknown): void => {
+						if (!failure.present) {
+							failure.present = true;
+							failure.cause = cause;
+						}
+					};
+					for (const owner of owners) {
+						try {
+							owner.call.call(owner.owner);
+						} catch (cause: unknown) {
+							retain(cause);
+						}
+					}
 					await Promise.allSettled(work);
-					for (const module of modules) { try { await module.close(); } catch (cause: unknown) { retain(cause); } }
-					for (const restore of restorations.reverse()) { try { restore(); } catch (cause: unknown) { retain(cause); } }
+					for (const module of modules) {
+						try {
+							await module.close();
+						} catch (cause: unknown) {
+							retain(cause);
+						}
+					}
+					for (const restore of restorations.reverse()) {
+						try {
+							restore();
+						} catch (cause: unknown) {
+							retain(cause);
+						}
+					}
 					cleanups.delete(close);
 					if (failure.present) throw failure.cause;
 				})();
@@ -2682,20 +2732,38 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 			};
 			cleanups.add(close);
 			return {
-				modules, observe, environment, assertLive,
+				modules,
+				observe,
+				environment,
+				assertLive,
 				own: (owner: VirtualThermostatAutomationService): void => {
 					const original: Readonly<{ onModuleDestroy: () => void }> = owner;
-					const call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }> = original.onModuleDestroy;
-					if (retired) { try { call.call(owner); } finally { assertLive(); } }
+					const call: Readonly<{ call: (receiver: VirtualThermostatAutomationService) => void }> =
+						original.onModuleDestroy;
+					if (retired) {
+						try {
+							call.call(owner);
+						} finally {
+							assertLive();
+						}
+					}
 					owners.push(Object.freeze({ owner, call }));
 				},
 				live: () => !retired,
-				track: <T>(start: () => Promise<T>): Promise<T> => { assertLive(); const pending = start(); work.push(pending); return pending; },
+				track: <T>(start: () => Promise<T>): Promise<T> => {
+					assertLive();
+					const pending = start();
+					work.push(pending);
+					return pending;
+				},
 				shadow: (receiver: object, key: string, descriptor: PropertyDescriptor): (() => void) => {
 					assertLive();
 					const previous = Object.getOwnPropertyDescriptor(receiver, key);
 					Object.defineProperty(receiver, key, descriptor);
-					return observe(receiver, key, () => { if (previous) Object.defineProperty(receiver, key, previous); else Reflect.deleteProperty(receiver, key); });
+					return observe(receiver, key, () => {
+						if (previous) Object.defineProperty(receiver, key, previous);
+						else Reflect.deleteProperty(receiver, key);
+					});
 				},
 				close,
 			};
@@ -2704,23 +2772,55 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 		const within = async (body: (ownership: Ownership) => Promise<void>): Promise<void> => {
 			const ownership = owned();
 			const primary: { present: boolean; cause?: unknown } = { present: false };
-			try { await body(ownership); } catch (cause: unknown) { primary.present = true; primary.cause = cause; }
-			try { await ownership.close(); } catch (cause: unknown) { if (!primary.present) { primary.present = true; primary.cause = cause; } }
+			try {
+				await body(ownership);
+			} catch (cause: unknown) {
+				primary.present = true;
+				primary.cause = cause;
+			}
+			try {
+				await ownership.close();
+			} catch (cause: unknown) {
+				if (!primary.present) {
+					primary.present = true;
+					primary.cause = cause;
+				}
+			}
 			if (primary.present) throw primary.cause;
 		};
 		afterEach(async () => {
 			const primary: { present: boolean; cause?: unknown } = { present: false };
-			for (const cleanup of [...cleanups]) { try { await cleanup(); } catch (cause: unknown) { if (!primary.present) { primary.present = true; primary.cause = cause; } } }
+			for (const cleanup of [...cleanups]) {
+				try {
+					await cleanup();
+				} catch (cause: unknown) {
+					if (!primary.present) {
+						primary.present = true;
+						primary.cause = cause;
+					}
+				}
+			}
 			if (primary.present) throw primary.cause;
 		});
-		const engines = async (ownership: Ownership, includeAutomation = false, cli = false, actual: Pick<Ownership['environment'], 'database' | 'registry' | 'writer' | 'graph'> = ownership.environment) => {
+		const engines = async (
+			ownership: Ownership,
+			includeAutomation = false,
+			cli = false,
+			actual: Pick<Ownership['environment'], 'database' | 'registry' | 'writer' | 'graph'> = ownership.environment,
+		) => {
 			ownership.assertLive();
 			const module = await Test.createTestingModule({
 				providers: [
 					...(includeAutomation ? [VirtualThermostatAutomationService] : []),
-					VirtualThermostatConfigService, VirtualThermostatComfortService, VirtualThermostatClaimsService,
-					PropertyValueService, PropertyValueLockService, PropertyProducerRegistryService,
-					PropertyValueSourceRegistryService, PropertyCommandAdmissionRegistryService, StorageService,
+					VirtualThermostatConfigService,
+					VirtualThermostatComfortService,
+					VirtualThermostatClaimsService,
+					PropertyValueService,
+					PropertyValueLockService,
+					PropertyProducerRegistryService,
+					PropertyValueSourceRegistryService,
+					PropertyCommandAdmissionRegistryService,
+					StorageService,
 					{ provide: DataSource, useValue: actual.database },
 					{ provide: EventEmitter2, useValue: new EventEmitter2() },
 					{ provide: ClimateAutomationWriterService, useValue: actual.writer },
@@ -2728,21 +2828,41 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 					{ provide: DeviceStructureLockService, useValue: new DeviceStructureLockService() },
 					{ provide: VirtualDependencyGraphService, useValue: actual.graph },
 					{ provide: ConfigService, useValue: new ConfigService({ FB_CLI: cli ? 'on' : 'off' }) },
-					{ provide: ModuleConfigService, useValue: { getModuleConfig: () => Object.assign(new StorageConfigModel(), { primaryStorage: 'r95-inert' }) } },
+					{
+						provide: ModuleConfigService,
+						useValue: {
+							getModuleConfig: () => Object.assign(new StorageConfigModel(), { primaryStorage: 'r95-inert' }),
+						},
+					},
 				],
 			}).compile();
 			if (!ownership.live()) {
-				try { await module.close(); } finally { throw new Error('R95 module completed after retirement'); }
+				try {
+					await module.close();
+				} catch {
+					// Original retirement P overrides cleanup Q after the exact module close settles.
+				}
+				throw new Error('R95 module completed after retirement');
 			}
 			ownership.modules.push(module);
 			const storage = module.get(StorageService);
 			storage.registerPlugin('r95-inert', {
-				name: 'r95-inert', initialize: () => Promise.resolve(), destroy: () => Promise.resolve(),
-				isAvailable: () => true, writePoints: () => Promise.resolve(), query: <T>() => Promise.resolve<T[]>([]),
-				queryRaw: <T>() => Promise.reject<T>(new Error('No R95 raw history')), registerSchema: () => undefined,
-				dropMeasurement: () => Promise.resolve(), getMeasurements: () => Promise.resolve([]),
+				name: 'r95-inert',
+				initialize: () => Promise.resolve(),
+				destroy: () => Promise.resolve(),
+				isAvailable: () => true,
+				writePoints: () => Promise.resolve(),
+				query: <T>() => Promise.resolve<T[]>([]),
+				queryRaw: <T>() => Promise.reject<T>(new Error('No R95 raw history')),
+				registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(),
+				getMeasurements: () => Promise.resolve([]),
 			});
-			return { module, configurations: module.get(VirtualThermostatConfigService), actualComfort: module.get(VirtualThermostatComfortService) };
+			return {
+				module,
+				configurations: module.get(VirtualThermostatConfigService),
+				actualComfort: module.get(VirtualThermostatComfortService),
+			};
 		};
 		const ownedProvider = (ownership: Ownership) => {
 			ownership.assertLive();
@@ -2750,55 +2870,115 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 			if (!capture) throw new Error('Original R95 provider required');
 			return capture;
 		};
-		const fresh = (ownership: Ownership, configurations?: VirtualThermostatConfigService, actualComfort?: VirtualThermostatComfortService) => {
+		const fresh = (
+			ownership: Ownership,
+			configurations?: VirtualThermostatConfigService,
+			actualComfort?: VirtualThermostatComfortService,
+		) => {
 			ownership.assertLive();
 			const { writer, registry, graph } = ownership.environment;
-			const next = new VirtualThermostatAutomationService(writer, registry, graph, new ConfigService({ FB_CLI: 'off' }), undefined, configurations, actualComfort);
+			const next = new VirtualThermostatAutomationService(
+				writer,
+				registry,
+				graph,
+				new ConfigService({ FB_CLI: 'off' }),
+				undefined,
+				configurations,
+				actualComfort,
+			);
 			ownership.own(next);
 			return next;
 		};
 
-		it('constructs actual Nest engines without binding, then registers once and commits an original setting', async () => within(async (ownership) => {
-			const { database, registry, writer, graph, service } = ownership.environment;
-			service.onModuleDestroy();
-			const originalConfiguration: Readonly<{ captureExistingMethodPins: (writer: ClimateAutomationWriterService) => () => boolean }> = VirtualThermostatConfigService.prototype;
-			const configurationCall: Readonly<{ call: (receiver: VirtualThermostatConfigService, writer: ClimateAutomationWriterService) => () => boolean }> = originalConfiguration.captureExistingMethodPins;
-			const originalComfort: Readonly<{ captureExistingMethodPins: (writer: ClimateAutomationWriterService) => () => boolean }> = VirtualThermostatComfortService.prototype;
-			const comfortCall: Readonly<{ call: (receiver: VirtualThermostatComfortService, writer: ClimateAutomationWriterService) => () => boolean }> = originalComfort.captureExistingMethodPins;
-			const configurationCapture = jest.spyOn(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins').mockImplementation(function (this: VirtualThermostatConfigService, actualWriter) { return configurationCall.call(this, actualWriter); });
-			ownership.observe(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins', () => configurationCapture.mockRestore());
-			const comfortCapture = jest.spyOn(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins').mockImplementation(function (this: VirtualThermostatComfortService, actualWriter) { return comfortCall.call(this, actualWriter); });
-			ownership.observe(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
-			const register = jest.spyOn(registry, 'registerProviderOwned');
-			ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
-			const { module, configurations, actualComfort } = await engines(ownership, true);
-			const next = module.get(VirtualThermostatAutomationService);
-			ownership.own(next);
-			expect(registry.captureProvider(key)).toBeNull();
-			expect(configurationCapture).not.toHaveBeenCalled();
-			expect(comfortCapture).not.toHaveBeenCalled();
-			expect(register).not.toHaveBeenCalled();
-			await ownership.track(() => module.init());
-			expect(configurationCapture.mock.contexts).toEqual([configurations]);
-			expect(configurationCapture.mock.calls).toEqual([[writer]]);
-			expect(comfortCapture.mock.contexts).toEqual([actualComfort]);
-			expect(comfortCapture.mock.calls).toEqual([[writer]]);
-			const capture = ownedProvider(ownership);
-			expect(Object.isFrozen(capture.implementation)).toBe(true);
-			expect(capture.implementation.existingControllerV1?.isCurrent()).toBe(true);
-			next.onModuleInit();
-			expect(register).toHaveBeenCalledTimes(1);
-			expect(configurationCapture).toHaveBeenCalledTimes(1);
-			expect(comfortCapture).toHaveBeenCalledTimes(1);
-			const property = await ownership.track(() => database.manager.createQueryBuilder(ChannelPropertyEntity, 'property').leftJoinAndSelect('property.channel', 'channel').leftJoinAndSelect('channel.device', 'device').where('property.id = :id', { id: properties.heating_setpoint }).callListeners(false).getOneOrFail());
-			const channel = property.channel;
-			if (!channel || typeof channel === 'string' || !channel.device || typeof channel.device === 'string') throw new Error('Actual R95 setting lineage required');
-			const beforeGraph = await ownership.track(() => graph.revision());
-			expect(await ownership.track(() => configurations.command([{ property, channel, device: channel.device, value: 21 }]))).toBe(true);
-			expect((await ownership.track(() => database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ids.controller }))).policy.heatingSetpoint).toBe(21);
-			expect((await ownership.track(() => database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: ids.controller }))).manualHold).toBe(true);
-			expect(await ownership.track(() => graph.revision())).toBe(beforeGraph);
-		}));
+		it('constructs actual Nest engines without binding, then registers once and commits an original setting', async () =>
+			within(async (ownership) => {
+				const { database, registry, writer, graph, service } = ownership.environment;
+				service.onModuleDestroy();
+				const originalConfiguration: Readonly<{
+					captureExistingMethodPins: (writer: ClimateAutomationWriterService) => () => boolean;
+				}> = VirtualThermostatConfigService.prototype;
+				const configurationCall: Readonly<{
+					call: (receiver: VirtualThermostatConfigService, writer: ClimateAutomationWriterService) => () => boolean;
+				}> = originalConfiguration.captureExistingMethodPins;
+				const originalComfort: Readonly<{
+					captureExistingMethodPins: (writer: ClimateAutomationWriterService) => () => boolean;
+				}> = VirtualThermostatComfortService.prototype;
+				const comfortCall: Readonly<{
+					call: (receiver: VirtualThermostatComfortService, writer: ClimateAutomationWriterService) => () => boolean;
+				}> = originalComfort.captureExistingMethodPins;
+				const configurationCapture = jest
+					.spyOn(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins')
+					.mockImplementation(function (this: VirtualThermostatConfigService, actualWriter) {
+						return configurationCall.call(this, actualWriter);
+					});
+				ownership.observe(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins', () =>
+					configurationCapture.mockRestore(),
+				);
+				const comfortCapture = jest
+					.spyOn(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins')
+					.mockImplementation(function (this: VirtualThermostatComfortService, actualWriter) {
+						return comfortCall.call(this, actualWriter);
+					});
+				ownership.observe(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins', () =>
+					comfortCapture.mockRestore(),
+				);
+				const register = jest.spyOn(registry, 'registerProviderOwned');
+				ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
+				const { module, configurations, actualComfort } = await engines(ownership, true);
+				const next = module.get(VirtualThermostatAutomationService);
+				ownership.own(next);
+				expect(registry.captureProvider(key)).toBeNull();
+				expect(configurationCapture).not.toHaveBeenCalled();
+				expect(comfortCapture).not.toHaveBeenCalled();
+				expect(register).not.toHaveBeenCalled();
+				await ownership.track(() => module.init());
+				expect(configurationCapture.mock.contexts).toEqual([configurations]);
+				expect(configurationCapture.mock.calls).toEqual([[writer]]);
+				expect(comfortCapture.mock.contexts).toEqual([actualComfort]);
+				expect(comfortCapture.mock.calls).toEqual([[writer]]);
+				const capture = ownedProvider(ownership);
+				expect(Object.isFrozen(capture.implementation)).toBe(true);
+				expect(capture.implementation.existingControllerV1?.isCurrent()).toBe(true);
+				next.onModuleInit();
+				expect(register).toHaveBeenCalledTimes(1);
+				expect(configurationCapture).toHaveBeenCalledTimes(1);
+				expect(comfortCapture).toHaveBeenCalledTimes(1);
+				const property = await ownership.track(() =>
+					database.manager
+						.createQueryBuilder(ChannelPropertyEntity, 'property')
+						.leftJoinAndSelect('property.channel', 'channel')
+						.leftJoinAndSelect('channel.device', 'device')
+						.where('property.id = :id', { id: properties.heating_setpoint })
+						.callListeners(false)
+						.getOneOrFail(),
+				);
+				const channel = property.channel;
+				if (!channel || typeof channel === 'string' || !channel.device || typeof channel.device === 'string')
+					throw new Error('Actual R95 setting lineage required');
+				const beforeGraph = await ownership.track(() => graph.revision());
+				expect(
+					await ownership.track(() => {
+						const device = channel.device;
+						if (!device || typeof device === 'string') throw new Error('Actual R95 setting lineage required');
+						return configurations.command([{ property, channel, device, value: 21 }]);
+					}),
+				).toBe(true);
+				expect(
+					(
+						await ownership.track(() =>
+							database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: ids.controller }),
+						)
+					).policy.heatingSetpoint,
+				).toBe(21);
+				expect(
+					(
+						await ownership.track(() =>
+							database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: ids.controller }),
+						)
+					).manualHold,
+				).toBe(true);
+				expect(await ownership.track(() => graph.revision())).toBe(beforeGraph);
+			}));
 
 		it.each([
 			{ owner: 'configuration', method: 'captureExistingMethodPins' },
@@ -2808,234 +2988,372 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 			{ owner: 'comfort', method: 'readIntentInManager' },
 			{ owner: 'comfort', method: 'settle' },
 			{ owner: 'comfort', method: 'executeExisting' },
-		])('rejects pre-init $owner.$method loss without calling it or rescuing A on restoration', async ({ owner, method }) => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const { configurations, actualComfort } = await engines(ownership);
-			const a = fresh(ownership, configurations, actualComfort);
-			const target = owner === 'configuration' ? configurations : actualComfort;
-			const substitute = jest.fn(() => { throw new Error('R95 substitute must not run'); });
-			const restore = ownership.shadow(target, method, { configurable: true, enumerable: false, writable: true, value: substitute });
-			const first = causeOf(() => a.onModuleInit());
-			expect(first.thrown).toBe(true);
-			const repeated = causeOf(() => a.onModuleInit());
-			expect(repeated.thrown).toBe(true); expect(repeated.cause).toBe(first.cause);
-			expect(substitute).not.toHaveBeenCalled();
-			expect(registry.captureProvider(key)).toBeNull();
-			a.onModuleDestroy();
-			restore();
-			expect(() => a.onModuleInit()).toThrow('destroyed');
-			const b = fresh(ownership, configurations, actualComfort);
-			b.onModuleInit();
-			const capture = ownedProvider(ownership);
-			expect(capture.implementation.existingControllerV1?.isCurrent()).toBe(true);
-			a.onModuleDestroy();
-			expect(capture.isCurrent()).toBe(true);
-		}));
+		])(
+			'rejects pre-init $owner.$method loss without calling it or rescuing A on restoration',
+			async ({ owner, method }) =>
+				within(async (ownership) => {
+					const { registry, service } = ownership.environment;
+					service.onModuleDestroy();
+					const { configurations, actualComfort } = await engines(ownership);
+					const a = fresh(ownership, configurations, actualComfort);
+					const target = owner === 'configuration' ? configurations : actualComfort;
+					const substitute = jest.fn(() => {
+						throw new Error('R95 substitute must not run');
+					});
+					const restore = ownership.shadow(target, method, {
+						configurable: true,
+						enumerable: false,
+						writable: true,
+						value: substitute,
+					});
+					const first = causeOf(() => a.onModuleInit());
+					expect(first.thrown).toBe(true);
+					const repeated = causeOf(() => a.onModuleInit());
+					expect(repeated.thrown).toBe(true);
+					expect(repeated.cause).toBe(first.cause);
+					expect(substitute).not.toHaveBeenCalled();
+					expect(registry.captureProvider(key)).toBeNull();
+					a.onModuleDestroy();
+					restore();
+					expect(() => a.onModuleInit()).toThrow('destroyed');
+					const b = fresh(ownership, configurations, actualComfort);
+					b.onModuleInit();
+					const capture = ownedProvider(ownership);
+					expect(capture.implementation.existingControllerV1?.isCurrent()).toBe(true);
+					a.onModuleDestroy();
+					expect(capture.isCurrent()).toBe(true);
+				}),
+		);
 
-		it('rejects constructor-time accessor methods and pre-init receiver accessors without evaluating them', async () => within(async (ownership) => {
-			const { registry, graph, service } = ownership.environment;
-			service.onModuleDestroy();
-			const { configurations, actualComfort } = await engines(ownership);
-			const constructorGetter = jest.fn(() => { throw new Error('Constructor must not evaluate a stager accessor'); });
-			ownership.shadow(configurations, 'captureExistingMethodPins', { configurable: true, get: constructorGetter });
-			expect(() => fresh(ownership, configurations, actualComfort)).toThrow();
-			expect(constructorGetter).not.toHaveBeenCalled();
-			// No automation instance was constructed or published; keep the shadow until engine retirement.
-			const a = fresh(ownership);
-			const ownerGetter = jest.fn(() => graph);
-			ownership.shadow(a, 'graph', { configurable: true, get: ownerGetter });
-			expect(causeOf(() => a.onModuleInit()).thrown).toBe(true);
-			expect(ownerGetter).not.toHaveBeenCalled();
-			expect(registry.captureProvider(key)).toBeNull();
-		}));
+		it('rejects constructor-time accessor methods and pre-init receiver accessors without evaluating them', async () =>
+			within(async (ownership) => {
+				const { registry, graph, service } = ownership.environment;
+				service.onModuleDestroy();
+				const { configurations, actualComfort } = await engines(ownership);
+				const constructorGetter = jest.fn(() => {
+					throw new Error('Constructor must not evaluate a stager accessor');
+				});
+				ownership.shadow(configurations, 'captureExistingMethodPins', { configurable: true, get: constructorGetter });
+				expect(() => fresh(ownership, configurations, actualComfort)).toThrow();
+				expect(constructorGetter).not.toHaveBeenCalled();
+				// No automation instance was constructed or published; keep the shadow until engine retirement.
+				const a = fresh(ownership);
+				const ownerGetter = jest.fn(() => graph);
+				ownership.shadow(a, 'graph', { configurable: true, get: ownerGetter });
+				expect(causeOf(() => a.onModuleInit()).thrown).toBe(true);
+				expect(ownerGetter).not.toHaveBeenCalled();
+				expect(registry.captureProvider(key)).toBeNull();
+			}));
 
-		it('does not invoke a pre-init accessor and rejects original builder loss without registry work', async () => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const { configurations, actualComfort } = await engines(ownership);
-			const a = fresh(ownership, configurations, actualComfort);
-			const getter = jest.fn(() => { throw new Error('R95 accessor must not run'); });
-			ownership.shadow(configurations, 'snapshotExistingInput', { configurable: true, get: getter });
-			expect(causeOf(() => a.onModuleInit()).thrown).toBe(true);
-			expect(getter).not.toHaveBeenCalled();
-			const b = fresh(ownership);
-			const substitute = jest.fn(() => { throw new Error('R95 builder substitute must not run'); });
-			ownership.shadow(b, 'buildProvider', { configurable: true, value: substitute });
-			expect(causeOf(() => b.onModuleInit()).thrown).toBe(true);
-			expect(substitute).not.toHaveBeenCalled();
-			expect(registry.captureProvider(key)).toBeNull();
-		}));
+		it('does not invoke a pre-init accessor and rejects original builder loss without registry work', async () =>
+			within(async (ownership) => {
+				const { registry, service } = ownership.environment;
+				service.onModuleDestroy();
+				const { configurations, actualComfort } = await engines(ownership);
+				const a = fresh(ownership, configurations, actualComfort);
+				const getter = jest.fn(() => {
+					throw new Error('R95 accessor must not run');
+				});
+				ownership.shadow(configurations, 'snapshotExistingInput', { configurable: true, get: getter });
+				expect(causeOf(() => a.onModuleInit()).thrown).toBe(true);
+				expect(getter).not.toHaveBeenCalled();
+				const b = fresh(ownership);
+				const substitute = jest.fn(() => {
+					throw new Error('R95 builder substitute must not run');
+				});
+				ownership.shadow(b, 'buildProvider', { configurable: true, value: substitute });
+				expect(causeOf(() => b.onModuleInit()).thrown).toBe(true);
+				expect(substitute).not.toHaveBeenCalled();
+				expect(registry.captureProvider(key)).toBeNull();
+			}));
 
-		it.each([new Error('R95 original stager P'), 'R95 original stager string', undefined, null, false])('preserves terminal stager cause %p without recapture', async (primary) => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const { configurations, actualComfort } = await engines(ownership);
-			const capture = jest.spyOn(configurations, 'captureExistingMethodPins').mockImplementation(() => { throw primary; });
-			ownership.observe(configurations, 'captureExistingMethodPins', () => capture.mockRestore());
-			const comfortCapture = jest.spyOn(actualComfort, 'captureExistingMethodPins');
-			ownership.observe(actualComfort, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
-			const a = fresh(ownership, configurations, actualComfort);
-			for (const call of [() => a.onModuleInit(), () => a.onModuleInit()]) {
-				const result = causeOf(call);
+		it.each([new Error('R95 original stager P'), 'R95 original stager string', undefined, null, false])(
+			'preserves terminal stager cause %p without recapture',
+			async (primary) =>
+				within(async (ownership) => {
+					const { registry, service } = ownership.environment;
+					service.onModuleDestroy();
+					const { configurations, actualComfort } = await engines(ownership);
+					const capture = jest.spyOn(configurations, 'captureExistingMethodPins').mockImplementation((): never => {
+						return rethrowOriginalCause(primary);
+					});
+					ownership.observe(configurations, 'captureExistingMethodPins', () => capture.mockRestore());
+					const comfortCapture = jest.spyOn(actualComfort, 'captureExistingMethodPins');
+					ownership.observe(actualComfort, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
+					const a = fresh(ownership, configurations, actualComfort);
+					for (const call of [() => a.onModuleInit(), () => a.onModuleInit()]) {
+						const result = causeOf(call);
+						expect(result.thrown).toBe(true);
+						expect(result.cause).toBe(primary);
+					}
+					expect(capture).toHaveBeenCalledTimes(1);
+					expect(capture.mock.contexts).toEqual([configurations]);
+					expect(comfortCapture).not.toHaveBeenCalled();
+					expect(registry.captureProvider(key)).toBeNull();
+				}),
+		);
+
+		it.each([new Error('R95 registration P'), 'R95 registration string', undefined, null, false])(
+			'never retries a thrown registration cause %p',
+			async (primary) =>
+				within((ownership) =>
+					immediate(() => {
+						const { registry, service } = ownership.environment;
+						service.onModuleDestroy();
+						const register = jest.spyOn(registry, 'registerProviderOwned').mockImplementation((): never => {
+							return rethrowOriginalCause(primary);
+						});
+						ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
+						const a = fresh(ownership);
+						const first = causeOf(() => a.onModuleInit()),
+							second = causeOf(() => a.onModuleInit());
+						expect(first.thrown).toBe(true);
+						expect(second.thrown).toBe(true);
+						expect(first.cause).toBe(primary);
+						expect(second.cause).toBe(primary);
+						expect(register).toHaveBeenCalledTimes(1);
+						expect(register.mock.contexts).toEqual([registry]);
+						expect(registry.captureProvider(key)).toBeNull();
+					}),
+				),
+		);
+
+		it('retries only duplicate registration with exactly the same built provider and original stagers once', async () =>
+			within(async (ownership) => {
+				const { registry, service } = ownership.environment;
+				const incumbent = ownedProvider(ownership);
+				const { configurations, actualComfort } = await engines(ownership);
+				const configCapture = jest.spyOn(configurations, 'captureExistingMethodPins');
+				ownership.observe(configurations, 'captureExistingMethodPins', () => configCapture.mockRestore());
+				const comfortCapture = jest.spyOn(actualComfort, 'captureExistingMethodPins');
+				ownership.observe(actualComfort, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
+				const register = jest.spyOn(registry, 'registerProviderOwned');
+				ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
+				const a = fresh(ownership, configurations, actualComfort);
+				expect(() => a.onModuleInit()).toThrow('registration unavailable');
+				expect(incumbent.isCurrent()).toBe(true);
+				const firstProvider = register.mock.calls[0]?.[1];
+				if (!firstProvider) throw new Error('Actual first built provider required');
+				service.onModuleDestroy();
+				a.onModuleInit();
+				a.onModuleInit();
+				expect(register).toHaveBeenCalledTimes(2);
+				expect(register.mock.calls[1]?.[1]).toBe(firstProvider);
+				expect(ownedProvider(ownership).implementation).toBe(firstProvider);
+				expect(configCapture).toHaveBeenCalledTimes(1);
+				expect(comfortCapture).toHaveBeenCalledTimes(1);
+			}));
+
+		it.each(['reentry', 'destroy'])(
+			'closes %s inside actual staging without publishing or running the next stager',
+			async (action) =>
+				within(async (ownership) => {
+					const { registry, service } = ownership.environment;
+					service.onModuleDestroy();
+					const { configurations, actualComfort } = await engines(ownership);
+					const original: Readonly<{
+						captureExistingMethodPins: (writer: ClimateAutomationWriterService) => () => boolean;
+					}> = configurations;
+					const call: Readonly<{
+						call: (receiver: VirtualThermostatConfigService, writer: ClimateAutomationWriterService) => () => boolean;
+					}> = original.captureExistingMethodPins;
+					let inner: ReturnType<typeof causeOf> | undefined;
+					const capture = jest.spyOn(configurations, 'captureExistingMethodPins').mockImplementation(function (
+						this: VirtualThermostatConfigService,
+						actualWriter,
+					) {
+						const result = call.call(this, actualWriter);
+						if (!a) throw new Error('Actual R95 owner required');
+						if (action === 'destroy') a.onModuleDestroy();
+						else inner = causeOf(() => a?.onModuleInit());
+						return result;
+					});
+					ownership.observe(configurations, 'captureExistingMethodPins', () => capture.mockRestore());
+					const comfortCapture = jest.spyOn(actualComfort, 'captureExistingMethodPins');
+					ownership.observe(actualComfort, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
+					const a = fresh(ownership, configurations, actualComfort);
+					expect(causeOf(() => a?.onModuleInit()).thrown).toBe(true);
+					if (action === 'reentry') expect(inner?.thrown).toBe(true);
+					expect(capture).toHaveBeenCalledTimes(1);
+					expect(comfortCapture).not.toHaveBeenCalled();
+					expect(registry.captureProvider(key)).toBeNull();
+				}),
+		);
+
+		it.each(['reentry', 'destroy'])(
+			'disposes only the returned native lease after registration %s, preserving primary over cleanup Q',
+			async (action) =>
+				within((ownership) =>
+					immediate(() => {
+						const { registry, service } = ownership.environment;
+						service.onModuleDestroy();
+						const original: Readonly<{
+							registerProviderOwned: (
+								...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>
+							) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']>;
+						}> = registry;
+						const call: Readonly<{
+							call: (
+								receiver: ClimateAutomationRegistryService,
+								...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>
+							) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']>;
+						}> = original.registerProviderOwned;
+						let inner: ReturnType<typeof causeOf> | undefined;
+						let disposals = 0;
+						const cleanupQ = false;
+						const register = jest.spyOn(registry, 'registerProviderOwned').mockImplementation(function (
+							this: ClimateAutomationRegistryService,
+							...args
+						) {
+							const lease = call.call(this, ...args);
+							if (!lease || !a) throw new Error('Actual owned native registration required');
+							if (action === 'destroy') a.onModuleDestroy();
+							else inner = causeOf(() => a?.onModuleInit());
+							return Object.freeze({
+								dispose: () => {
+									disposals++;
+									lease.dispose();
+									rethrowOriginalCause(cleanupQ);
+								},
+							});
+						});
+						const restore = ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
+						const a = fresh(ownership);
+						const result = causeOf(() => a?.onModuleInit());
+						expect(result.thrown).toBe(true);
+						expect(result.cause).not.toBe(cleanupQ);
+						if (action === 'reentry') expect(result.cause).toBe(inner?.cause);
+						expect(disposals).toBe(1);
+						expect(registry.captureProvider(key)).toBeNull();
+						a.onModuleDestroy();
+						a.onModuleDestroy();
+						expect(disposals).toBe(1);
+						restore();
+						const b = fresh(ownership);
+						b.onModuleInit();
+						const current = ownedProvider(ownership);
+						a.onModuleDestroy();
+						expect(current.isCurrent()).toBe(true);
+					}),
+				),
+		);
+
+		it('does not stage or register a destroyed-before-init owner', async () =>
+			within(async (ownership) => {
+				const { registry, service } = ownership.environment;
+				service.onModuleDestroy();
+				const { configurations, actualComfort } = await engines(ownership);
+				const capture = jest.spyOn(configurations, 'captureExistingMethodPins');
+				ownership.observe(configurations, 'captureExistingMethodPins', () => capture.mockRestore());
+				const register = jest.spyOn(registry, 'registerProviderOwned');
+				ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
+				const a = fresh(ownership, configurations, actualComfort);
+				a.onModuleDestroy();
+				expect(() => a.onModuleInit()).toThrow('destroyed');
+				expect(capture).not.toHaveBeenCalled();
+				expect(register).not.toHaveBeenCalled();
+			}));
+		it('keeps genuine CLI compile and repeated init nonregistered on an uninitialized database with real engines', async () =>
+			within(async (ownership) => {
+				const empty = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false, entities: [] });
+				const emptyRegistry = new ClimateAutomationRegistryService(),
+					cli = new ConfigService({ FB_CLI: 'on' });
+				const emptyWriter = new ClimateAutomationWriterService(
+					empty,
+					new DeviceStructureLockService(),
+					emptyRegistry,
+					cli,
+				);
+				const emptyGraph = new VirtualDependencyGraphService(empty, cli, emptyWriter);
+				const configurationCapture = jest.spyOn(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins');
+				ownership.observe(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins', () =>
+					configurationCapture.mockRestore(),
+				);
+				const comfortCapture = jest.spyOn(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins');
+				ownership.observe(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins', () =>
+					comfortCapture.mockRestore(),
+				);
+				const query = jest.spyOn(empty, 'query');
+				ownership.observe(empty, 'query', () => query.mockRestore());
+				const managerQuery = jest.spyOn(empty.manager, 'query');
+				ownership.observe(empty.manager, 'query', () => managerQuery.mockRestore());
+				const register = jest.spyOn(emptyRegistry, 'registerProviderOwned');
+				ownership.observe(emptyRegistry, 'registerProviderOwned', () => register.mockRestore());
+				const { module } = await engines(ownership, true, true, {
+					database: empty,
+					registry: emptyRegistry,
+					writer: emptyWriter,
+					graph: emptyGraph,
+				});
+				const next = module.get(VirtualThermostatAutomationService);
+				ownership.own(next);
+				expect(empty.isInitialized).toBe(false);
+				expect(configurationCapture).not.toHaveBeenCalled();
+				expect(comfortCapture).not.toHaveBeenCalled();
+				await ownership.track(() => module.init());
+				next.onModuleInit();
+				expect(empty.isInitialized).toBe(false);
+				expect(emptyRegistry.captureProvider(key)).toBeNull();
+				expect(configurationCapture).not.toHaveBeenCalled();
+				expect(comfortCapture).not.toHaveBeenCalled();
+				expect(register).not.toHaveBeenCalled();
+				expect(query).not.toHaveBeenCalled();
+				expect(managerQuery).not.toHaveBeenCalled();
+			}));
+
+		it.each([new Error('R95 body P'), 'R95 body string', undefined, null, false])(
+			'preserves body primary %p when real owner retirement also fails',
+			async (primary) => {
+				const originalRegistry = registry;
+				const result: { thrown: boolean; cause?: unknown } = { thrown: false };
+				let cleanupCalls = 0;
+				try {
+					await within((ownership) =>
+						immediate(() => {
+							const { service, registry } = ownership.environment;
+							service.onModuleDestroy();
+							const original: Readonly<{
+								registerProviderOwned: (
+									...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>
+								) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']>;
+							}> = registry;
+							const call: Readonly<{
+								call: (
+									receiver: ClimateAutomationRegistryService,
+									...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>
+								) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']>;
+							}> = original.registerProviderOwned;
+							const register = jest.spyOn(registry, 'registerProviderOwned').mockImplementation(function (
+								this: ClimateAutomationRegistryService,
+								...args
+							) {
+								const lease = call.call(this, ...args);
+								if (!lease) throw new Error('Actual R95 lease required');
+								return Object.freeze({
+									dispose: () => {
+										cleanupCalls++;
+										lease.dispose();
+										throw new Error('R95 cleanup Q');
+									},
+								});
+							});
+							ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
+							const a = fresh(ownership);
+							a.onModuleInit();
+							expect(ownedProvider(ownership).isCurrent()).toBe(true);
+							rethrowOriginalCause(primary);
+						}),
+					);
+				} catch (cause: unknown) {
+					result.thrown = true;
+					result.cause = cause;
+				}
 				expect(result.thrown).toBe(true);
 				expect(result.cause).toBe(primary);
-			}
-			expect(capture).toHaveBeenCalledTimes(1);
-			expect(capture.mock.contexts).toEqual([configurations]);
-			expect(comfortCapture).not.toHaveBeenCalled();
-			expect(registry.captureProvider(key)).toBeNull();
-		}));
-
-		it.each([new Error('R95 registration P'), 'R95 registration string', undefined, null, false])('never retries a thrown registration cause %p', async (primary) => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const register = jest.spyOn(registry, 'registerProviderOwned').mockImplementation(() => { throw primary; });
-			ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
-			const a = fresh(ownership);
-			const first = causeOf(() => a.onModuleInit()), second = causeOf(() => a.onModuleInit());
-			expect(first.thrown).toBe(true); expect(second.thrown).toBe(true);
-			expect(first.cause).toBe(primary); expect(second.cause).toBe(primary);
-			expect(register).toHaveBeenCalledTimes(1);
-			expect(register.mock.contexts).toEqual([registry]);
-			expect(registry.captureProvider(key)).toBeNull();
-		}));
-
-		it('retries only duplicate registration with exactly the same built provider and original stagers once', async () => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			const incumbent = ownedProvider(ownership);
-			const { configurations, actualComfort } = await engines(ownership);
-			const configCapture = jest.spyOn(configurations, 'captureExistingMethodPins');
-			ownership.observe(configurations, 'captureExistingMethodPins', () => configCapture.mockRestore());
-			const comfortCapture = jest.spyOn(actualComfort, 'captureExistingMethodPins');
-			ownership.observe(actualComfort, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
-			const register = jest.spyOn(registry, 'registerProviderOwned');
-			ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
-			const a = fresh(ownership, configurations, actualComfort);
-			expect(() => a.onModuleInit()).toThrow('registration unavailable');
-			expect(incumbent.isCurrent()).toBe(true);
-			const firstProvider = register.mock.calls[0]?.[1];
-			if (!firstProvider) throw new Error('Actual first built provider required');
-			service.onModuleDestroy();
-			a.onModuleInit(); a.onModuleInit();
-			expect(register).toHaveBeenCalledTimes(2);
-			expect(register.mock.calls[1]?.[1]).toBe(firstProvider);
-			expect(ownedProvider(ownership).implementation).toBe(firstProvider);
-			expect(configCapture).toHaveBeenCalledTimes(1); expect(comfortCapture).toHaveBeenCalledTimes(1);
-		}));
-
-		it.each(['reentry', 'destroy'])('closes %s inside actual staging without publishing or running the next stager', async (action) => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const { configurations, actualComfort } = await engines(ownership);
-			const original: Readonly<{ captureExistingMethodPins: (writer: ClimateAutomationWriterService) => () => boolean }> = configurations;
-			const call: Readonly<{ call: (receiver: VirtualThermostatConfigService, writer: ClimateAutomationWriterService) => () => boolean }> = original.captureExistingMethodPins;
-			let a: VirtualThermostatAutomationService | undefined;
-			let inner: ReturnType<typeof causeOf> | undefined;
-			const capture = jest.spyOn(configurations, 'captureExistingMethodPins').mockImplementation(function (this: VirtualThermostatConfigService, actualWriter) {
-				const result = call.call(this, actualWriter);
-				if (!a) throw new Error('Actual R95 owner required');
-				if (action === 'destroy') a.onModuleDestroy(); else inner = causeOf(() => a?.onModuleInit());
-				return result;
-			});
-			ownership.observe(configurations, 'captureExistingMethodPins', () => capture.mockRestore());
-			const comfortCapture = jest.spyOn(actualComfort, 'captureExistingMethodPins');
-			ownership.observe(actualComfort, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
-			a = fresh(ownership, configurations, actualComfort);
-			expect(causeOf(() => a?.onModuleInit()).thrown).toBe(true);
-			if (action === 'reentry') expect(inner?.thrown).toBe(true);
-			expect(capture).toHaveBeenCalledTimes(1); expect(comfortCapture).not.toHaveBeenCalled();
-			expect(registry.captureProvider(key)).toBeNull();
-		}));
-
-		it.each(['reentry', 'destroy'])('disposes only the returned native lease after registration %s, preserving primary over cleanup Q', async (action) => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const original: Readonly<{ registerProviderOwned: (...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']> }> = registry;
-			const call: Readonly<{ call: (receiver: ClimateAutomationRegistryService, ...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']> }> = original.registerProviderOwned;
-			let a: VirtualThermostatAutomationService | undefined;
-			let inner: ReturnType<typeof causeOf> | undefined;
-			let disposals = 0;
-			const cleanupQ = false;
-			const register = jest.spyOn(registry, 'registerProviderOwned').mockImplementation(function (this: ClimateAutomationRegistryService, ...args) {
-				const lease = call.call(this, ...args);
-				if (!lease || !a) throw new Error('Actual owned native registration required');
-				if (action === 'destroy') a.onModuleDestroy(); else inner = causeOf(() => a?.onModuleInit());
-				return Object.freeze({ dispose: () => { disposals++; lease.dispose(); throw cleanupQ; } });
-			});
-			const restore = ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
-			a = fresh(ownership);
-			const result = causeOf(() => a?.onModuleInit());
-			expect(result.thrown).toBe(true);
-			expect(result.cause).not.toBe(cleanupQ);
-			if (action === 'reentry') expect(result.cause).toBe(inner?.cause);
-			expect(disposals).toBe(1); expect(registry.captureProvider(key)).toBeNull();
-			a.onModuleDestroy(); a.onModuleDestroy();
-			expect(disposals).toBe(1);
-			restore();
-			const b = fresh(ownership); b.onModuleInit(); const current = ownedProvider(ownership);
-			a.onModuleDestroy(); expect(current.isCurrent()).toBe(true);
-		}));
-
-		it('does not stage or register a destroyed-before-init owner', async () => within(async (ownership) => {
-			const { registry, service } = ownership.environment;
-			service.onModuleDestroy();
-			const { configurations, actualComfort } = await engines(ownership);
-			const capture = jest.spyOn(configurations, 'captureExistingMethodPins');
-			ownership.observe(configurations, 'captureExistingMethodPins', () => capture.mockRestore());
-			const register = jest.spyOn(registry, 'registerProviderOwned');
-			ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
-			const a = fresh(ownership, configurations, actualComfort); a.onModuleDestroy();
-			expect(() => a.onModuleInit()).toThrow('destroyed');
-			expect(capture).not.toHaveBeenCalled(); expect(register).not.toHaveBeenCalled();
-		}));
-		it('keeps genuine CLI compile and repeated init nonregistered on an uninitialized database with real engines', async () => within(async (ownership) => {
-						const empty = new SqliteDataSource({ type: 'sqlite', database: ':memory:', synchronize: false, entities: [] });
-			const emptyRegistry = new ClimateAutomationRegistryService(), cli = new ConfigService({ FB_CLI: 'on' });
-			const emptyWriter = new ClimateAutomationWriterService(empty, new DeviceStructureLockService(), emptyRegistry, cli);
-			const emptyGraph = new VirtualDependencyGraphService(empty, cli, emptyWriter);
-			const configurationCapture = jest.spyOn(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins');
-			ownership.observe(VirtualThermostatConfigService.prototype, 'captureExistingMethodPins', () => configurationCapture.mockRestore());
-			const comfortCapture = jest.spyOn(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins');
-			ownership.observe(VirtualThermostatComfortService.prototype, 'captureExistingMethodPins', () => comfortCapture.mockRestore());
-			const query = jest.spyOn(empty, 'query'); ownership.observe(empty, 'query', () => query.mockRestore());
-			const managerQuery = jest.spyOn(empty.manager, 'query'); ownership.observe(empty.manager, 'query', () => managerQuery.mockRestore());
-			const register = jest.spyOn(emptyRegistry, 'registerProviderOwned'); ownership.observe(emptyRegistry, 'registerProviderOwned', () => register.mockRestore());
-			const { module } = await engines(ownership, true, true, { database: empty, registry: emptyRegistry, writer: emptyWriter, graph: emptyGraph });
-			const next = module.get(VirtualThermostatAutomationService); ownership.own(next);
-			expect(empty.isInitialized).toBe(false);
-			expect(configurationCapture).not.toHaveBeenCalled(); expect(comfortCapture).not.toHaveBeenCalled();
-			await ownership.track(() => module.init()); next.onModuleInit();
-			expect(empty.isInitialized).toBe(false); expect(emptyRegistry.captureProvider(key)).toBeNull();
-			expect(configurationCapture).not.toHaveBeenCalled(); expect(comfortCapture).not.toHaveBeenCalled();
-			expect(register).not.toHaveBeenCalled(); expect(query).not.toHaveBeenCalled(); expect(managerQuery).not.toHaveBeenCalled();
-		}));
-
-		it.each([new Error('R95 body P'), 'R95 body string', undefined, null, false])('preserves body primary %p when real owner retirement also fails', async (primary) => {
-			const originalRegistry = registry;
-			const result: { thrown: boolean; cause?: unknown } = { thrown: false };
-			let cleanupCalls = 0;
-			try {
-				await within(async (ownership) => {
-					const { service, registry } = ownership.environment;
-					service.onModuleDestroy();
-					const original: Readonly<{ registerProviderOwned: (...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']> }> = registry;
-					const call: Readonly<{ call: (receiver: ClimateAutomationRegistryService, ...args: Parameters<ClimateAutomationRegistryService['registerProviderOwned']>) => ReturnType<ClimateAutomationRegistryService['registerProviderOwned']> }> = original.registerProviderOwned;
-					const register = jest.spyOn(registry, 'registerProviderOwned').mockImplementation(function (this: ClimateAutomationRegistryService, ...args) {
-						const lease = call.call(this, ...args);
-						if (!lease) throw new Error('Actual R95 lease required');
-						return Object.freeze({ dispose: () => { cleanupCalls++; lease.dispose(); throw new Error('R95 cleanup Q'); } });
-					});
-					ownership.observe(registry, 'registerProviderOwned', () => register.mockRestore());
-					const a = fresh(ownership); a.onModuleInit();
-					expect(ownedProvider(ownership).isCurrent()).toBe(true);
-					throw primary;
-				});
-			} catch (cause: unknown) { result.thrown = true; result.cause = cause; }
-			expect(result.thrown).toBe(true); expect(result.cause).toBe(primary);
-			expect(cleanupCalls).toBe(1);
-			expect(originalRegistry.captureProvider(key)).toBeNull();
-		});
+				expect(cleanupCalls).toBe(1);
+				expect(originalRegistry.captureProvider(key)).toBeNull();
+			},
+		);
 
 		it('reports a foreign same-function descriptor flag rewrite without restoring over it', async () => {
 			const ownership = owned();
@@ -3043,19 +3361,34 @@ describe('C1b R0 real provider registration and manual-only persistence', () => 
 			service.onModuleDestroy();
 			const a = fresh(ownership);
 			const before = Object.getOwnPropertyDescriptor(a, 'readInManager');
-			const original: Readonly<{ readInManager: (...args: Parameters<VirtualThermostatAutomationService['readInManager']>) => ReturnType<VirtualThermostatAutomationService['readInManager']> }> = a;
+			const original: Readonly<{
+				readInManager: (
+					...args: Parameters<VirtualThermostatAutomationService['readInManager']>
+				) => ReturnType<VirtualThermostatAutomationService['readInManager']>;
+			}> = a;
 			const installed = { configurable: true, enumerable: false, writable: true, value: original.readInManager };
 			ownership.shadow(a, 'readInManager', installed);
 			const foreign = { ...installed, enumerable: true };
 			Object.defineProperty(a, 'readInManager', foreign);
+			const bodyFailure: { present: boolean; cause?: unknown } = { present: false };
 			try {
 				await expect(ownership.close()).rejects.toThrow('foreign descriptor left intact');
 				expect(Object.getOwnPropertyDescriptor(a, 'readInManager')).toEqual(foreign);
-			} finally {
-				const current = Object.getOwnPropertyDescriptor(a, 'readInManager');
-				if (!current || !['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every((field) => Reflect.get(current, field) === Reflect.get(foreign, field))) throw new Error('Foreign R95 owner changed again');
-				if (before) Object.defineProperty(a, 'readInManager', before); else Reflect.deleteProperty(a, 'readInManager');
+			} catch (cause: unknown) {
+				bodyFailure.present = true;
+				bodyFailure.cause = cause;
 			}
+			const current = Object.getOwnPropertyDescriptor(a, 'readInManager');
+			if (
+				!current ||
+				!['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every(
+					(field) => Reflect.get(current, field) === Reflect.get(foreign, field),
+				)
+			)
+				throw new Error('Foreign R95 owner changed again');
+			if (before) Object.defineProperty(a, 'readInManager', before);
+			else Reflect.deleteProperty(a, 'readInManager');
+			if (bodyFailure.present) throw bodyFailure.cause;
 		});
 	});
 

@@ -33,7 +33,11 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
-import { creationHasDataMethod, creationMethodCurrent, ownDiagnosticData } from '../../../modules/devices/services/device-creation-context';
+import {
+	creationHasDataMethod,
+	creationMethodCurrent,
+	ownDiagnosticData,
+} from '../../../modules/devices/services/device-creation-context';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import {
 	VirtualChannelPropertyEntity,
@@ -70,7 +74,10 @@ import { thermostatPropertyContract } from './virtual-thermostat-contract.utils'
 import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
 
 const nativeObjectEvidence: Readonly<{
-	getOwnPropertyDescriptor: (receiver: object, key: PropertyKey) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+	getOwnPropertyDescriptor: (
+		receiver: object,
+		key: PropertyKey,
+	) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
 }> = Object;
 const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
 const nativeJsonEvidence: Readonly<{ parse: (text: string) => unknown }> = JSON;
@@ -1195,8 +1202,7 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		let phase: 'unbuilt' | 'building' | 'built' | 'failed' | 'destroyed' = 'unbuilt';
 		let invoking = false,
 			valid = true;
-		let provider: ClimateAutomationProvider | undefined,
-			registration: ClimateAutomationOwnedRegistration | undefined;
+		let provider: ClimateAutomationProvider | undefined, registration: ClimateAutomationOwnedRegistration | undefined;
 		const primary: { present: boolean; cause?: unknown } = { present: false };
 		const unavailable = (): never => {
 			throw new ClimateAutomationParticipantConflict('unavailable');
@@ -1209,7 +1215,10 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 				pins.push(Object.freeze({ receiver, key, method: nativeFieldEvidence.get(receiver, key) }));
 			}
 		};
-		const retainMethod = <Owner extends object, Key extends keyof Owner & string>(receiver: Owner, key: Key): Owner[Key] => {
+		const retainMethod = <Owner extends object, Key extends keyof Owner & string>(
+			receiver: Owner,
+			key: Key,
+		): Owner[Key] => {
 			if (!creationHasDataMethod(receiver, key)) unavailable();
 			const method = receiver[key];
 			pins.push(Object.freeze({ receiver, key, method }));
@@ -1219,17 +1228,22 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 			originalRegistry;
 		const register = retainMethod(originalRegistration, 'registerProviderOwned');
 		const originalConfigReader: Readonly<{ get: (key: string) => unknown }> = originalConfig;
-		const configGet: AutomationReceiverCall<NestConfigService, [string], unknown> = retainMethod(originalConfigReader, 'get');
-		const ownerPins = Object.freeze([
-			{ key: 'writer', value: originalWriter },
-			{ key: 'registry', value: originalRegistry },
-			{ key: 'graph', value: originalGraph },
-			{ key: 'configService', value: originalConfig },
-			{ key: 'authoring', value: originalAuthoring },
-			{ key: 'configurations', value: originalConfigurations },
-			{ key: 'comfort', value: originalComfort },
-			{ key: 'initialization', value: this.initialization },
-		].map((pin) => Object.freeze(pin)));
+		const configGet: AutomationReceiverCall<NestConfigService, [string], unknown> = retainMethod(
+			originalConfigReader,
+			'get',
+		);
+		const ownerPins = Object.freeze(
+			[
+				{ key: 'writer', value: originalWriter },
+				{ key: 'registry', value: originalRegistry },
+				{ key: 'graph', value: originalGraph },
+				{ key: 'configService', value: originalConfig },
+				{ key: 'authoring', value: originalAuthoring },
+				{ key: 'configurations', value: originalConfigurations },
+				{ key: 'comfort', value: originalComfort },
+				{ key: 'initialization', value: this.initialization },
+			].map((pin) => Object.freeze(pin)),
+		);
 		let lifecycleReceiver: VirtualThermostatAutomationService | undefined;
 		const pinsCurrent = (): boolean => {
 			const receiver = lifecycleReceiver;
@@ -1239,8 +1253,9 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 				pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method)) &&
 				(receiver === undefined ||
 					(ownerPins.every((pin) => creationMethodCurrent(receiver, pin.key, pin.value)) &&
-						pins.filter((pin) => pin.receiver === this).every((pin) =>
-							creationMethodCurrent(receiver, pin.key, pin.method))))
+						pins
+							.filter((pin) => pin.receiver === this)
+							.every((pin) => creationMethodCurrent(receiver, pin.key, pin.method))))
 			)
 				return true;
 			valid = false;
@@ -1319,7 +1334,8 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		});
 		let creationBuilder: (() => ClimateAutomationCreationCapability) | undefined;
 		if (originalAuthoring) {
-			const originalCapture: OriginalFunctions<Pick<VirtualThermostatAuthoringService, 'captureCreationMethodPins'>> = originalAuthoring;
+			const originalCapture: OriginalFunctions<Pick<VirtualThermostatAuthoringService, 'captureCreationMethodPins'>> =
+				originalAuthoring;
 			const capture = retainMethod(originalCapture, 'captureCreationMethodPins');
 			const environmentOriginalMethods: Readonly<{
 				snapshotCreationInput: typeof originalAuthoring.snapshotCreationInput;
@@ -1399,11 +1415,14 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		}
 		let existingBuilder: (() => ClimateAutomationExistingCapability) | undefined;
 		if (configurations && comfort) {
-			const originalConfigurationCapture: OriginalFunctions<Pick<VirtualThermostatConfigService, 'captureExistingMethodPins'>> = configurations;
+			const originalConfigurationCapture: OriginalFunctions<
+				Pick<VirtualThermostatConfigService, 'captureExistingMethodPins'>
+			> = configurations;
 			const captureConfiguration = retainMethod(originalConfigurationCapture, 'captureExistingMethodPins');
-			const originalComfortCapture: OriginalFunctions<Pick<VirtualThermostatComfortService, 'captureExistingMethodPins'>> = comfort;
+			const originalComfortCapture: OriginalFunctions<
+				Pick<VirtualThermostatComfortService, 'captureExistingMethodPins'>
+			> = comfort;
 			const captureComfort = retainMethod(originalComfortCapture, 'captureExistingMethodPins');
-
 
 			const methods: OriginalFunctions<
 				Pick<
@@ -1437,7 +1456,8 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 						configurationCurrent() &&
 						comfortCurrent() &&
 						creationMethodCurrent(this, 'readRowsInManager', originalRows)
-					) return true;
+					)
+						return true;
 					valid = false;
 					return false;
 				};
@@ -1577,7 +1597,8 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 			initialize: (receiver: VirtualThermostatAutomationService): void => {
 				if (phase === 'destroyed') throw new Error('Thermostat automation provider is destroyed');
 				if (primary.present) throw primary.cause;
-				if (lifecycleReceiver !== undefined && lifecycleReceiver !== receiver) return fail(new ClimateAutomationParticipantConflict('unavailable'));
+				if (lifecycleReceiver !== undefined && lifecycleReceiver !== receiver)
+					return fail(new ClimateAutomationParticipantConflict('unavailable'));
 				lifecycleReceiver = receiver;
 				if (invoking) return fail(new ClimateAutomationParticipantConflict('unavailable'));
 				let duplicate = false;
@@ -1635,19 +1656,26 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 
 	onModuleInit(): void {
 		const retained = automationInitializations.get(this);
-		if (retained) { retained.initialize(this); return; }
+		if (retained) {
+			retained.initialize(this);
+			return;
+		}
 		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(this, 'initialization');
 		const key = descriptor?.value;
-		const initialization = descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null
-			? automationInitializations.get(key)
-			: undefined;
+		const initialization =
+			descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null
+				? automationInitializations.get(key)
+				: undefined;
 		if (!initialization) throw new ClimateAutomationParticipantConflict('unavailable');
 		initialization.initialize(this);
 	}
 
 	onModuleDestroy(): void {
 		const retained = automationInitializations.get(this);
-		if (retained) { retained.destroy(); return; }
+		if (retained) {
+			retained.destroy();
+			return;
+		}
 		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(this, 'initialization');
 		const key = descriptor?.value;
 		if (descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null)
