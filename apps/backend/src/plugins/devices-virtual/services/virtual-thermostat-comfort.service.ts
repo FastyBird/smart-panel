@@ -86,6 +86,14 @@ interface RuntimeWriterPorts {
 	readonly writer: ClimateAutomationWriterService;
 	readonly methods: RuntimeWriterMethods;
 }
+interface PublicSettlementPorts {
+	readonly claims: VirtualThermostatClaimsService;
+	readonly methods: OriginalFunctions<
+		Pick<VirtualThermostatClaimsService, 'holdRecoveryFence' | 'prepareExistingRecovery' | 'finishExistingRecovery'>
+	>;
+	readonly shared: OriginalFunction<DeviceStructureLockService, (read: () => Promise<boolean>) => Promise<boolean>>;
+	readonly current: () => boolean;
+}
 interface ExistingComfortResponse {
 	readonly controller: string;
 	readonly revision: number;
@@ -116,6 +124,8 @@ export class VirtualThermostatComfortService {
 	}
 	private readonly clockOwners = new Map<string, ClimateAutomationOverrideLease>();
 	private existingPins: (() => boolean) | undefined;
+	private publicSettlementPorts: PublicSettlementPorts | undefined;
+	private readonly publicSettlementFences = new Set<Readonly<{ retire: () => void }>>();
 	private readonly existingOperations = new WeakMap<
 		ClimateAutomationParticipantTurn,
 		{
@@ -198,7 +208,49 @@ export class VirtualThermostatComfortService {
 			!this.destroyed &&
 			writer === this.writer &&
 			methods.every((pin) => creationMethodCurrent(this, pin.key, pin.method));
+		// Public preflight fences belong to this exact binding; reinstallation cannot inherit an old fence.
+		for (const fence of [...this.publicSettlementFences]) fence.retire();
+		const claims = this.claims,
+			database = this.database,
+			manager = database.manager,
+			structure = this.structure;
+		for (const key of ['holdRecoveryFence', 'prepareExistingRecovery', 'finishExistingRecovery'])
+			if (!creationHasDataMethod(claims, key))
+				throw new DevicesValidationException('Original public settlement recovery unavailable.');
+		const original: PublicSettlementPorts['methods'] = claims;
+		const recovery = Object.freeze({
+			holdRecoveryFence: original.holdRecoveryFence,
+			prepareExistingRecovery: original.prepareExistingRecovery,
+			finishExistingRecovery: original.finishExistingRecovery,
+		});
+		const publicPins = ['settle', 'executeExisting'].map((key) => {
+			if (!creationHasDataMethod(this, key))
+				throw new DevicesValidationException('Original public settlement entry unavailable.');
+			return Object.freeze({ key, method: nativeFieldEvidence.get(this, key) });
+		});
+		if (!creationHasDataMethod(structure, 'runShared') || !creationHasDataMethod(manager, 'findOneBy'))
+			throw new DevicesValidationException('Original public settlement reader unavailable.');
+		const shared: PublicSettlementPorts['shared'] = structure.runShared,
+			find = nativeFieldEvidence.get(manager, 'findOneBy');
+		const ports: PublicSettlementPorts = Object.freeze({
+			claims,
+			methods: recovery,
+			shared,
+			current: () =>
+				this.publicSettlementPorts === ports &&
+				this.existingPins === current &&
+				current() &&
+				this.claims === claims &&
+				this.database === database &&
+				database.manager === manager &&
+				this.structure === structure &&
+				creationMethodCurrent(structure, 'runShared', shared) &&
+				creationMethodCurrent(manager, 'findOneBy', find) &&
+				publicPins.every((pin) => creationMethodCurrent(this, pin.key, pin.method)) &&
+				Object.entries(recovery).every(([key, method]) => creationMethodCurrent(claims, key, method)),
+		});
 		this.existingPins = current;
+		this.publicSettlementPorts = ports;
 		return current;
 	}
 	snapshotExistingInput(kind: ClimateAutomationExistingKind, input: unknown): ClimateAutomationJson {
@@ -709,6 +761,8 @@ export class VirtualThermostatComfortService {
 
 	onModuleDestroy(): void {
 		this.destroyed = true;
+		this.publicSettlementPorts = undefined;
+		for (const fence of [...this.publicSettlementFences]) fence.retire();
 		for (const consumer of this.runtimeConsumers) {
 			const ports = this.runtimeWriterPorts.get(consumer);
 			try {
@@ -880,12 +934,81 @@ export class VirtualThermostatComfortService {
 	/** Only committed settlement makes expiry durable. A sync dispatch refusal cannot promise crash durability. */
 	async settle(controllerId: string): Promise<void> {
 		if (!this.writer) throw new DevicesValidationException('Reserved comfort writer unavailable.');
+		// Reject ambient/private reentry BEFORE any new negative fence or native read.
 		this.writer.assertExistingReadEntry();
-		const needed = await this.structure.runShared(async () => {
-			const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
-			return row?.comfort?.temporary_override?.status === 'active' || this.pendingNotifications.has(controllerId);
+		const ports = this.publicSettlementPorts;
+		if (!ports?.current()) throw new DevicesValidationException('Original public settlement owner unavailable.');
+		const release = ports.methods.holdRecoveryFence.call(ports.claims);
+		let released = false,
+			retired = false,
+			preparationAttempted = false;
+		let preparation: Awaited<ReturnType<VirtualThermostatClaimsService['prepareExistingRecovery']>> | undefined;
+		let primary: { cause: unknown } | undefined,
+			cleanup: { cause: unknown } | undefined;
+		const releaseOnce = (): void => {
+			if (released) return;
+			released = true;
+			this.publicSettlementFences.delete(fence);
+			try {
+				release();
+			} catch (cause) {
+				cleanup ??= { cause };
+			}
+		};
+		const fence = Object.freeze({
+			retire: (): void => {
+				retired = true;
+				releaseOnce(); // Original closure is negative-only, even after method/binding loss.
+			},
 		});
-		if (needed) await this.executeExisting('settle-override:v1', controllerId, {});
+		this.publicSettlementFences.add(fence);
+		const requireOwner = (): void => {
+			if (retired || !ports.current())
+				throw new DevicesValidationException('Original public settlement owner changed.');
+		};
+		const prepare = (): ReturnType<VirtualThermostatClaimsService['prepareExistingRecovery']> => {
+			preparationAttempted = true;
+			return ports.methods.prepareExistingRecovery.call(ports.claims);
+		};
+		try {
+			requireOwner();
+			const needed = await ports.shared.call(this.structure, async () => {
+				requireOwner();
+				const row = await this.database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId });
+				requireOwner();
+				return row?.comfort?.temporary_override?.status === 'active' || this.pendingNotifications.has(controllerId);
+			});
+			requireOwner();
+			// Native recovery is outside the structural read and BEFORE any possible successful B5.
+			preparation = await prepare();
+			requireOwner();
+			if (needed) {
+				// Release cannot open ready. The same existing root acquires its genuine hold synchronously.
+				releaseOnce();
+				if (cleanup) throw cleanup.cause;
+				await this.executeExisting('settle-override:v1', controllerId, {});
+			}
+		} catch (cause) {
+			primary = { cause };
+		} finally {
+			// Read failure still gets one real recovery attempt; method/owner loss never adopts a replacement.
+			if (!preparationAttempted && !released) {
+				try {
+					if (!retired && ports.current()) preparation = await prepare();
+				} catch (cause) {
+					cleanup ??= { cause };
+				}
+			}
+			releaseOnce();
+			try {
+				if (preparation && !retired && ports.current())
+					ports.methods.finishExistingRecovery.call(ports.claims, preparation);
+			} catch (cause) {
+				cleanup ??= { cause };
+			}
+		}
+		if (primary) throw primary.cause;
+		if (cleanup) throw cleanup.cause;
 	}
 
 	async get(controllerId: string) {

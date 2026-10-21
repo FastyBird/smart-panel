@@ -4321,6 +4321,339 @@ describe('thermostat persistent ownership and draft configuration', () => {
 	});
 	// END original native intent INSERT delimiter regression drafts
 
+	// BEGIN R87 public settle entry lifecycle drafts (SOURCE ONLY; UNRUN)
+	describe('R87 original public settle preflight fences', () => {
+		type Settled = Readonly<{ kind: 'fulfilled' }> | Readonly<{ kind: 'rejected'; cause: unknown }>;
+		const cleanups = new Set<() => Promise<void>>();
+		const gate = () => {
+			let open: () => void = () => { throw new Error('R87 gate not initialized'); };
+			const promise = new Promise<void>((resolve) => { open = resolve; });
+			return { promise, open: () => open() };
+		};
+		const own = () => {
+			const original = { database, claims, comfort, structure, writer, configs, graph };
+			let retired = false, cleaned = false;
+			const resumes: (() => void)[] = [], observers: import('typeorm').EntitySubscriberInterface[] = [],
+				restores: (() => void)[] = [], pending: Promise<Settled>[] = [], setupPending: Promise<void>[] = [];
+			const live = (): void => {
+				if (retired || database !== original.database || comfort !== original.comfort)
+					throw new Error('R87 fixture owner retired');
+			};
+			const watch = (operation: Promise<void>): Promise<Settled> => {
+				const observed = operation.then<Settled, Settled>(
+					() => ({ kind: 'fulfilled' }), (cause: unknown) => ({ kind: 'rejected', cause }),
+				);
+				pending.push(observed);
+				return observed;
+			};
+			const restore = (receiver: object, key: string, undo: () => void): void => {
+				const installed = Object.getOwnPropertyDescriptor(receiver, key);
+				if (!installed) throw new Error('R87 installed descriptor missing');
+				restores.push(() => {
+					const actual = Object.getOwnPropertyDescriptor(receiver, key);
+					if (!actual || ['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].some(
+						(field) => nativeObjectEvidence.getOwnPropertyDescriptor(actual, field)?.value !==
+							nativeObjectEvidence.getOwnPropertyDescriptor(installed, field)?.value,
+					)) throw new Error('R87 foreign descriptor retained');
+					undo();
+				});
+			};
+			const cleanup = async (): Promise<void> => {
+				if (cleaned) return;
+				cleaned = true; retired = true;
+				let failure: { cause: unknown } | undefined;
+				const attempt = (action: () => void): void => {
+					try { action(); } catch (cause) { failure ??= { cause }; }
+				};
+				attempt(() => original.comfort.onModuleDestroy());
+				for (const resume of resumes) attempt(resume);
+				for (const observer of observers) attempt(() => {
+					const index = original.database.subscribers.indexOf(observer);
+					if (index >= 0) original.database.subscribers.splice(index, 1);
+				});
+				for (const operation of setupPending) await operation;
+				for (const operation of pending) await operation; // boxed outcomes never replace the body primary
+				for (const undo of restores.reverse()) attempt(undo);
+				cleanups.delete(cleanup);
+				if (failure) throw failure.cause;
+			};
+			cleanups.add(cleanup);
+			const step = async <T>(start: () => Promise<T>): Promise<T> => {
+				live();
+				const started = start();
+				setupPending.push(started.then(() => undefined, () => undefined));
+				const result = await started; live(); return result;
+			};
+			return { original, live, step, watch, restore, resumes, observers, cleanup };
+		};
+		afterEach(async () => {
+			let failure: { cause: unknown } | undefined;
+			for (const cleanup of [...cleanups]) {
+				try { await cleanup(); } catch (cause) { failure ??= { cause }; }
+			}
+			if (failure) throw failure.cause;
+		});
+		const prepare = async (owned: ReturnType<typeof own>, mode: 'missing' | 'inactive' | 'active') => {
+			const { database: source, configs: configuration, comfort: originalComfort,
+				claims: originalClaims } = owned.original;
+			const controller = uuid();
+			if (mode !== 'missing') {
+				const device = source.manager.create(VirtualDeviceEntity, { id: controller, name: 'R87 controller',
+					category: DeviceCategory.THERMOSTAT, enabled: true, mode: VirtualDeviceMode.CLIMATE_CONTROLLER });
+				const sensorDevice = source.manager.create(DeviceEntity, { id: uuid(), name: 'R87 sensor', category: DeviceCategory.SENSOR, enabled: true });
+				const sensorChannel = source.manager.create(ChannelEntity, { id: uuid(), device: sensorDevice,
+					name: 'R87 temperature', identifier: 'temperature', category: ChannelCategory.TEMPERATURE });
+				const sensor = source.manager.create(ChannelPropertyEntity, { id: uuid(), channel: sensorChannel,
+					identifier: 'temperature', category: PropertyCategory.TEMPERATURE,
+					permissions: [PermissionType.READ_ONLY], dataType: DataTypeType.FLOAT });
+				const relayDevice = source.manager.create(ShellyNgDeviceEntity, { id: uuid(), name: 'R87 relay',
+					identifier: 'shellyplus1pm-a8032abe5084', category: DeviceCategory.SWITCHER, enabled: true, canonicalMac: 'A8032ABE5084' });
+				const relayChannel = source.manager.create(ShellyNgChannelEntity, { id: uuid(), device: relayDevice,
+					name: 'R87 switch', identifier: 'switch:0', category: ChannelCategory.SWITCHER });
+				const relay = source.manager.create(ShellyNgChannelPropertyEntity, { id: uuid(), channel: relayChannel,
+					identifier: 'output', category: PropertyCategory.ON, dataType: DataTypeType.BOOL, permissions: [PermissionType.READ_WRITE] });
+				await owned.step(() => source.manager.insert(VirtualDeviceEntity, device));
+				await owned.step(() => source.manager.insert(DeviceEntity, sensorDevice));
+				await owned.step(() => source.manager.insert(ChannelEntity, sensorChannel));
+				await owned.step(() => source.manager.insert(ChannelPropertyEntity, sensor));
+				await owned.step(() => source.manager.insert(ShellyNgDeviceEntity, relayDevice));
+				await owned.step(() => source.manager.insert(ShellyNgChannelEntity, relayChannel));
+				await owned.step(() => source.manager.insert(ShellyNgChannelPropertyEntity, relay));
+				const first = await owned.step(() => configuration.configure(controller, dto(sensor.id, relay.id)));
+				if (mode === 'active') {
+					const definition = await owned.step(() => originalComfort.configure(controller,
+						{ expected_revision: first.revision, expected_graph_revision: first.graph_revision },
+						{ heating_range: { minimum: 10, maximum: 30 }, cooling_range: null,
+							presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }] }));
+					await owned.step(() => originalComfort.override(controller,
+						{ expected_revision: definition.revision, expected_graph_revision: definition.graph_revision },
+						{ preset: 'eco', setpoints: null, expires_at: new Date(Date.now() + 60_000).toISOString() }, 'R87-public-entry'));
+				}
+			}
+			await owned.step(() => originalClaims.refresh());
+			expect(originalClaims.capture().isCurrent()).toBe(true);
+			return controller;
+		};
+		const heldRead = (owned: ReturnType<typeof own>, controller: string) => {
+			const entered = gate(), resume = gate(); let armed = true;
+			const observer: import('typeorm').EntitySubscriberInterface = {
+				beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> => {
+					if (!armed || !event.query.startsWith('SELECT') ||
+						!event.query.includes('devices_virtual_thermostat_configs') || !event.parameters?.includes(controller)) return;
+					armed = false; entered.open(); await resume.promise;
+				},
+			};
+			owned.resumes.push(resume.open); owned.observers.push(observer);
+			owned.original.database.subscribers.push(observer);
+			return { entered, resume };
+		};
+		it.each(['missing', 'inactive', 'active'] satisfies readonly ('missing' | 'inactive' | 'active')[])(
+			'fences the original snapshot synchronously during the first real %s read and restores only genuine recovery',
+			async (mode) => {
+				const owned = own();
+			const { claims, comfort, database, writer } = owned.original;
+				const commit = jest.spyOn(writer, 'commitExistingControllerV1');
+				owned.restore(writer, 'commitExistingControllerV1', () => commit.mockRestore());
+				registerOriginal();
+				const controller = await prepare(owned, mode);
+				const original = claims.capture(), before = await database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: controller });
+				const read = heldRead(owned, controller);
+				expect(original.isCurrent()).toBe(true);
+				const beforeCalls = commit.mock.calls.length;
+				const operation = owned.watch(comfort.settle(controller));
+				expect(original.isCurrent()).toBe(false);
+				await read.entered.promise; owned.live();
+				expect(claims.capture().isCurrent()).toBe(false);
+				read.resume.open();
+				expect(await operation).toEqual({ kind: 'fulfilled' });
+				expect(commit.mock.calls.length - beforeCalls).toBe(mode === 'active' ? 1 : 0);
+				expect(original.isCurrent()).toBe(false);
+				expect(claims.capture().isCurrent()).toBe(true);
+				expect(writer['runtimeCaptures'].size).toBe(0);
+				expect(writer['runtimeCheckpoints'].size).toBe(0);
+				const after = await database.manager.findOneBy(VirtualThermostatConfigEntity, { controllerId: controller });
+				if (mode !== 'active') expect(after).toEqual(before);
+				else {
+					expect(after?.comfort?.temporary_override?.id).toBe(before?.comfort?.temporary_override?.id);
+					expect(after?.comfort?.temporary_override?.expires_at).toBe(before?.comfort?.temporary_override?.expires_at);
+					expect(after?.comfort?.temporary_override?.original_duration_ms).toBe(before?.comfort?.temporary_override?.original_duration_ms);
+				}
+			},
+		);
+		const primaryRows: readonly Readonly<{ name: string; cause: unknown }>[] = [
+			{ name: 'Error', cause: new Error('R87 read primary') }, { name: 'string', cause: 'R87 read primary' },
+			{ name: 'undefined', cause: undefined }, { name: 'null', cause: null }, { name: 'false', cause: false },
+		];
+		it.each(primaryRows)('retains a real first-read $name primary ahead of failed recovery cleanup', async ({ cause }) => {
+			const owned = own();
+			const { claims, comfort, database } = owned.original;
+			const original: OriginalFunctions<Pick<VirtualThermostatClaimsService, 'prepareExistingRecovery'>> = claims;
+			const prepareRecovery = original.prepareExistingRecovery, secondary = new Error('R87 cleanup Q');
+			let armed = false;
+			const recovery = jest.spyOn(claims, 'prepareExistingRecovery').mockImplementation(async () => {
+				const token = await prepareRecovery.call(owned.original.claims);
+				if (armed) throw secondary;
+				return token;
+			});
+			owned.restore(claims, 'prepareExistingRecovery', () => recovery.mockRestore());
+			registerOriginal();
+			const controller = await prepare(owned, 'inactive');
+			let fail = true;
+			const observer: import('typeorm').EntitySubscriberInterface = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+					if (!fail || !event.query.startsWith('SELECT') || !event.query.includes('devices_virtual_thermostat_configs') ||
+						!event.parameters?.includes(controller)) return;
+					fail = false; throw cause;
+				},
+			};
+			owned.observers.push(observer); database.subscribers.push(observer); armed = true;
+			const old = claims.capture(), result = await owned.watch(comfort.settle(controller));
+			expect(result).toEqual({ kind: 'rejected', cause });
+			expect(fail).toBe(false);
+			expect(old.isCurrent()).toBe(false);
+			expect(claims['recoveryFences']).toBe(0);
+			expect(comfort['publicSettlementFences'].size).toBe(0);
+		});
+		it('reports an undefined recovery failure by presence and still releases its original negative hold', async () => {
+			const owned = own();
+			const { claims, comfort } = owned.original;
+			const original: OriginalFunctions<Pick<VirtualThermostatClaimsService, 'prepareExistingRecovery'>> = claims;
+			const prepareRecovery = original.prepareExistingRecovery; let armed = false;
+			const failure: Readonly<{ cause: unknown }> = { cause: undefined };
+			const recovery = jest.spyOn(claims, 'prepareExistingRecovery').mockImplementation(async () => {
+				const token = await prepareRecovery.call(owned.original.claims);
+				if (armed) throw failure.cause;
+				return token;
+			});
+			owned.restore(claims, 'prepareExistingRecovery', () => recovery.mockRestore()); registerOriginal();
+			const controller = await prepare(owned, 'inactive'); armed = true;
+			expect(await owned.watch(comfort.settle(controller))).toEqual({ kind: 'rejected', cause: undefined });
+			expect(claims['recoveryFences']).toBe(0);
+		});
+		it('attempts genuine token finish after an undefined original-release cleanup failure', async () => {
+			const owned = own();
+			const { claims, comfort } = owned.original;
+			const original: OriginalFunctions<Pick<VirtualThermostatClaimsService, 'holdRecoveryFence' | 'finishExistingRecovery'>> = claims;
+			const holdRecovery = original.holdRecoveryFence, finishRecovery = original.finishExistingRecovery;
+			let armed = false, finished = 0;
+			const failure: Readonly<{ cause: unknown }> = { cause: undefined };
+			const hold = jest.spyOn(claims, 'holdRecoveryFence').mockImplementation(() => {
+				const release = holdRecovery.call(owned.original.claims);
+				return () => { release(); if (armed) throw failure.cause; };
+			});
+			const finish = jest.spyOn(claims, 'finishExistingRecovery').mockImplementation((token) => {
+				finished++; return finishRecovery.call(owned.original.claims, token);
+			});
+			owned.restore(claims, 'holdRecoveryFence', () => hold.mockRestore());
+			owned.restore(claims, 'finishExistingRecovery', () => finish.mockRestore()); registerOriginal();
+			const controller = await prepare(owned, 'inactive'), before = finished; armed = true;
+			expect(await owned.watch(comfort.settle(controller))).toEqual({ kind: 'rejected', cause: undefined });
+			expect(finished).toBe(before + 1);
+			expect(claims['recoveryFences']).toBe(0);
+		});
+		it('rejects actual ambient writer reentry before acquiring any public fence or native configuration read', async () => {
+			const owned = own();
+			const { claims, comfort, writer } = owned.original;
+			const hold = jest.spyOn(claims, 'holdRecoveryFence');
+			owned.restore(claims, 'holdRecoveryFence', () => hold.mockRestore()); registerOriginal();
+			const controller = await prepare(owned, 'inactive');
+			const before = hold.mock.calls.length; let observed: Settled | undefined;
+			const root = writer.runReserved(async () => {
+				observed = await owned.watch(comfort.settle(controller));
+				throw new Error('R87 ambient root cannot commit');
+			});
+			await root.then(() => { throw new Error('R87 ambient root unexpectedly committed'); }, () => undefined);
+			expect(observed?.kind).toBe('rejected');
+			expect(hold.mock.calls).toHaveLength(before);
+			expect(comfort['publicSettlementFences'].size).toBe(0);
+		});
+		it('keeps a genuine root pre-entry refusal primary and releases only its public preflight fence', async () => {
+			const owned = own();
+			const { comfort, claims, database, structure } = owned.original;
+			const controller = await prepare(owned, 'active');
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
+			const old = claims.capture(); expect(old.isCurrent()).toBe(true);
+			const result = await structure.runShared(() => owned.watch(comfort.settle(controller)));
+			expect(result.kind).toBe('rejected');
+			if (result.kind !== 'rejected') throw new Error('R87 independent root was incorrectly admitted');
+			expect(result.cause).toMatchObject({ commitOutcome: 'not_started' });
+			expect(claims['recoveryFences']).toBe(0);
+			expect(comfort['publicSettlementFences'].size).toBe(0);
+			expect(old.isCurrent()).toBe(false);
+			expect(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).toEqual(before);
+		});
+		it('does not call a replacement finish method or reopen readiness after original method loss during the read', async () => {
+			const owned = own();
+			const { claims, comfort } = owned.original;
+			const controller = await prepare(owned, 'inactive'), read = heldRead(owned, controller);
+			const operation = owned.watch(comfort.settle(controller)); await read.entered.promise; owned.live();
+			const replacement = jest.spyOn(claims, 'finishExistingRecovery');
+			owned.restore(claims, 'finishExistingRecovery', () => replacement.mockRestore());
+			read.resume.open();
+			expect((await operation).kind).toBe('rejected');
+			expect(replacement).not.toHaveBeenCalled();
+			expect(claims.capture().isCurrent()).toBe(false);
+			expect(claims['recoveryFences']).toBe(0);
+		});
+		it.each(['destroy', 'rebind'] satisfies readonly ('destroy' | 'rebind')[])(
+			'never finishes a late original token after %s while the genuine preparation continuation was held', async (change) => {
+				const owned = own(), entered = gate(), resume = gate(); owned.resumes.push(resume.open);
+			const { claims, comfort } = owned.original;
+				const original: OriginalFunctions<Pick<VirtualThermostatClaimsService, 'prepareExistingRecovery' | 'finishExistingRecovery'>> = claims;
+				const prepareRecovery = original.prepareExistingRecovery, finishRecovery = original.finishExistingRecovery;
+				let armed = false, held = false;
+				let oldToken: Awaited<ReturnType<VirtualThermostatClaimsService['prepareExistingRecovery']>> | undefined;
+				const finished: Parameters<VirtualThermostatClaimsService['finishExistingRecovery']>[0][] = [];
+				const recovery = jest.spyOn(claims, 'prepareExistingRecovery').mockImplementation(async () => {
+					const token = await prepareRecovery.call(owned.original.claims);
+					if (armed && !held) { held = true; oldToken = token; entered.open(); await resume.promise; }
+					return token;
+				});
+				const finishing = jest.spyOn(claims, 'finishExistingRecovery').mockImplementation((token) => {
+					finished.push(token); return finishRecovery.call(owned.original.claims, token);
+				});
+				owned.restore(claims, 'prepareExistingRecovery', () => recovery.mockRestore());
+				owned.restore(claims, 'finishExistingRecovery', () => finishing.mockRestore()); registerOriginal();
+				const controller = await prepare(owned, 'inactive'); armed = true;
+				const operation = owned.watch(comfort.settle(controller)); await entered.promise; owned.live();
+				if (change === 'destroy') comfort.onModuleDestroy();
+				else {
+					registerOriginal();
+					expect(await owned.watch(comfort.settle(controller))).toEqual({ kind: 'fulfilled' });
+					expect(claims.capture().isCurrent()).toBe(true);
+				}
+				const before = finished.length; resume.open();
+				expect((await operation).kind).toBe('rejected');
+				expect(finished).toHaveLength(before);
+				expect(finished).not.toContain(oldToken);
+				expect(claims['recoveryFences']).toBe(0);
+				if (change === 'rebind') expect(claims.capture().isCurrent()).toBe(true);
+			},
+		);
+		it('lets a second no-op complete while the first genuine preparation is held without releasing its fence', async () => {
+			const owned = own(), entered = gate(), resume = gate(); owned.resumes.push(resume.open);
+			const { claims, comfort } = owned.original;
+			const original: OriginalFunctions<Pick<VirtualThermostatClaimsService, 'prepareExistingRecovery'>> = claims;
+			const prepareRecovery = original.prepareExistingRecovery; let armed = false, held = false;
+			const recovery = jest.spyOn(claims, 'prepareExistingRecovery').mockImplementation(async () => {
+				const token = await prepareRecovery.call(owned.original.claims);
+				if (armed && !held) { held = true; entered.open(); await resume.promise; }
+				return token;
+			});
+			owned.restore(claims, 'prepareExistingRecovery', () => recovery.mockRestore()); registerOriginal();
+			const controller = await prepare(owned, 'inactive'), old = claims.capture(); armed = true;
+			const first = owned.watch(comfort.settle(controller)); await entered.promise; owned.live();
+			expect(await owned.watch(comfort.settle(controller))).toEqual({ kind: 'fulfilled' });
+			expect(claims.capture().isCurrent()).toBe(false);
+			expect(claims['recoveryFences']).toBe(1);
+			resume.open(); expect(await first).toEqual({ kind: 'fulfilled' });
+			expect(claims['recoveryFences']).toBe(0);
+			expect(claims.capture().isCurrent()).toBe(true);
+			expect(old.isCurrent()).toBe(false);
+		});
+	});
+	// END R87 public settle entry lifecycle drafts
+
 	// BEGIN R21 additive actual core capture and original-clock drafts (UNRUN)
 	describe('R21 exact private capture ownership on the real closed settle root', () => {
 		const prepareCapture = async () => {

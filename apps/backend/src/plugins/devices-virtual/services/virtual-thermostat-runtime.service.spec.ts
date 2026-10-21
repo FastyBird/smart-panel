@@ -9178,8 +9178,12 @@ describe('virtual thermostat durable runtime', () => {
 				await onEntered.promise;
 				const originalClaims = actualClaims.capture(),
 					originalGraph = actualGraph.capturePublishGuard();
-				const originalConfig = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
-				const originalIntent = await comfort.readIntentInManager(database.manager, originalConfig);
+				const originalDatabase = database, originalComfort = comfort;
+				const { originalConfig, originalIntent } = await actualStructure.runShared(async () => {
+					const originalConfig = await originalDatabase.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
+					const originalIntent = await originalComfort.readIntentInManager(originalDatabase.manager, originalConfig);
+					return { originalConfig, originalIntent };
+				});
 				const slot = await database.query<Record<string, unknown>[]>(
 					'SELECT * FROM "devices_module_climate_automation_slots" WHERE "controllerId" = ?',
 					[controllerId],
@@ -10882,6 +10886,131 @@ describe('virtual thermostat durable runtime', () => {
 				actualClaims.closeDiagnosticQualifications(capture);
 			}
 		});
+		// BEGIN R87 real managed public-settle native outcome drafts (UNRUN)
+		it.each(['before-send', 'after-send'] satisfies readonly ('before-send' | 'after-send')[])(
+			'R87 public settle fences a held first read and preserves actual managed %s native outcome without a response recapture',
+			async (boundary) => {
+				const owner = runtime, originalComfort = comfort, source = database, claims = actualClaims, managed = fixture;
+				const ownedControllerId = controllerId, ownedRelayId = relayId, ownedSensorId = sensorId;
+				const onEntered = barrier(), onResume = barrier(), observed = barrier(), readEntered = barrier(), readResume = barrier();
+				let retired = false, cleaned = false, armed = true;
+				let primary: { cause: unknown } | undefined, cleanupFailure: { cause: unknown } | undefined;
+				let prelude: Promise<void> | undefined, settlement: Promise<void> | undefined, operation: Promise<void> | undefined;
+				const results: Awaited<ReturnType<ThermostatActuationAdapter['send']>>[] = [];
+				const original: OriginalFunctions<Pick<VirtualThermostatTransportService, 'get'>> = managed.transport;
+				const get = original.get;
+				const getSpy = jest.spyOn(managed.transport, 'get').mockImplementation((...args) => {
+					const adapter = get.call(managed.transport, ...args);
+					if (!adapter) return null;
+					const methods: OriginalFunctions<ThermostatActuationAdapter> = adapter, send = methods.send;
+					return { ...adapter, send: async (...sendArgs: Parameters<ThermostatActuationAdapter['send']>): ReturnType<ThermostatActuationAdapter['send']> => {
+						const result = await send.call(adapter, ...sendArgs);
+						if (sendArgs[0].property.id === ownedRelayId && sendArgs[0].value === true) {
+							results.push(result); observed.open();
+						}
+						return result;
+					} };
+				});
+				const installed = Object.getOwnPropertyDescriptor(managed.transport, 'get');
+				const previousGate = managed.controls[boundary === 'before-send' ? 'beforeOn' : 'afterOn'];
+				const nativeGate = async (id: string): Promise<void> => {
+					if (id !== ownedRelayId) return;
+					onEntered.open(); await onResume.promise;
+				};
+				managed.controls[boundary === 'before-send' ? 'beforeOn' : 'afterOn'] = nativeGate;
+				const reader: import('typeorm').EntitySubscriberInterface = {
+					beforeQuery: async (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> => {
+						if (!armed || !event.query.startsWith('SELECT') ||
+							!event.query.includes('devices_virtual_thermostat_configs') || !event.parameters?.includes(ownedControllerId)) return;
+						armed = false; readEntered.open(); await readResume.promise;
+					},
+				};
+				const attempt = (action: () => void): void => {
+					try { action(); } catch (cause) { cleanupFailure ??= { cause }; }
+				};
+				const backstop = {
+					retire: (): void => { retired = true; },
+					cleanup: (): void => {
+						if (cleaned) return;
+						cleaned = true; retired = true;
+						attempt(() => owner.onModuleDestroy());
+						attempt(() => managed.revoke());
+						onResume.open(); readResume.open();
+						const index = source.subscribers.indexOf(reader);
+						if (index >= 0) source.subscribers.splice(index, 1);
+						attempt(() => {
+							const key = boundary === 'before-send' ? 'beforeOn' : 'afterOn';
+							if (managed.controls[key] !== nativeGate) throw new Error('R87 foreign native gate retained');
+							managed.controls[key] = previousGate;
+						});
+						attempt(() => {
+							const actual = Object.getOwnPropertyDescriptor(managed.transport, 'get');
+							if (!installed || !actual || actual.value !== installed.value || actual.get !== installed.get ||
+								actual.set !== installed.set || actual.writable !== installed.writable ||
+								actual.enumerable !== installed.enumerable || actual.configurable !== installed.configurable)
+								throw new Error('R87 foreign transport descriptor retained');
+							getSpy.mockRestore();
+						});
+						completionObserverBackstops.delete(backstop);
+						if (cleanupFailure) throw cleanupFailure.cause;
+					},
+				};
+				completionObserverBackstops.add(backstop);
+				const live = (): void => {
+					if (retired || runtime !== owner || database !== source || fixture !== managed)
+						throw new Error('R87 managed original owner retired');
+				};
+				try {
+					prelude = managed.report(ownedSensorId, 18);
+					await prelude; live();
+					await onEntered.promise; live();
+					const command = await source.manager.findOneByOrFail(VirtualThermostatCommandEntity,
+						{ controllerId: ownedControllerId, action: 'on', status: 'dispatching' }); live();
+					operation = owner['inFlight'].get(command.id);
+					if (!operation) throw new Error('R87 genuine original ON operation missing');
+					const capture = claims.capture(); expect(capture.isCurrent()).toBe(true);
+					const fences = managed.controls.fences.length;
+					source.subscribers.push(reader);
+					settlement = originalComfort.settle(ownedControllerId);
+					void settlement.catch(() => undefined); // original Promise remains the caller's rejection root
+					expect(capture.isCurrent()).toBe(false);
+					await readEntered.promise; live();
+					expect(claims.capture().isCurrent()).toBe(false);
+					onResume.open();
+					await observed.promise; live();
+					expect(results).toHaveLength(1);
+					if (boundary === 'before-send') {
+						expect(results[0]).toMatchObject({ outcome: 'refused' });
+						expect(managed.controls.sends.filter((send) => send.property === ownedRelayId)).toHaveLength(0);
+					} else {
+						expect(results[0]).toEqual({ outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false });
+						expect(managed.controls.sends.filter((send) => send.property === ownedRelayId)).toHaveLength(1);
+					}
+					expect(managed.controls.fences).toHaveLength(fences);
+					owner.onModuleDestroy(); // native refused/UNKNOWN above precedes retirement
+					readResume.open();
+					await settlement;
+					await operation; // only after releasing the first native read; never join O under its DB lease
+					const journal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: ownedControllerId, action: 'on' });
+					expect(journal).toHaveLength(1);
+					expect(journal[0].id).toBe(command.id);
+					expect(journal[0].status).toBe(boundary === 'before-send' ? 'cancelled' : 'unknown');
+					expect(capture.isCurrent()).toBe(false);
+					expect(managed.controls.errors).toEqual([]);
+				} catch (cause) { primary = { cause }; }
+				finally {
+					attempt(() => backstop.retire());
+					attempt(() => backstop.cleanup());
+					for (const pending of [prelude, settlement, operation]) if (pending) {
+						try { await pending; } catch (cause) { cleanupFailure ??= { cause }; }
+					}
+				}
+				if (primary) throw primary.cause;
+				if (cleanupFailure) throw cleanupFailure.cause;
+			},
+		);
+		// END R87 real managed public-settle native outcome drafts
+
 		it.each(['before-send', 'after-send'] as const)(
 			'keeps original actual SDK %s outcome truthful when comfort entry waits on its first real read',
 			async (boundary) => {
