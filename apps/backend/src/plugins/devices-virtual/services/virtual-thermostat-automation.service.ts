@@ -3,7 +3,6 @@ import { EntityManager, EntityTarget, ObjectLiteral } from 'typeorm';
 import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional, forwardRef } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
-import { getEnvValue } from '../../../common/utils/config.utils';
 import {
 	ClimateAutomationControllerFacts,
 	ClimateAutomationCreationCapability,
@@ -34,7 +33,7 @@ import {
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ClimateAutomationWriterService } from '../../../modules/devices/services/climate-automation-writer.service';
 import { ClimateAutomationRegistryService } from '../../../modules/devices/services/climate-automation.registry.service';
-import { creationMethodCurrent, ownDiagnosticData } from '../../../modules/devices/services/device-creation-context';
+import { creationHasDataMethod, creationMethodCurrent, ownDiagnosticData } from '../../../modules/devices/services/device-creation-context';
 import { resolvePropertyUnit } from '../../../modules/devices/utils/property-metadata.utils';
 import {
 	VirtualChannelPropertyEntity,
@@ -70,6 +69,9 @@ import { VirtualThermostatConfigService } from './virtual-thermostat-config.serv
 import { thermostatPropertyContract } from './virtual-thermostat-contract.utils';
 import { VirtualThermostatPolicy, validateVirtualThermostatPolicy } from './virtual-thermostat-policy.utils';
 
+const nativeObjectEvidence: Readonly<{
+	getOwnPropertyDescriptor: (receiver: object, key: PropertyKey) => (Omit<PropertyDescriptor, 'value'> & { readonly value?: unknown }) | undefined;
+}> = Object;
 const nativeFieldEvidence: Readonly<{ get: (receiver: object, key: PropertyKey) => unknown }> = Reflect;
 const nativeJsonEvidence: Readonly<{ parse: (text: string) => unknown }> = JSON;
 
@@ -1157,11 +1159,17 @@ export function planThermostatAutomationGraph(before: unknown, next: unknown): C
 }
 
 /** Manual-only internal provider. Registration grants no creation, source, graph or physical authority. */
+/** Lifecycle bookkeeping only; no exported provider or command authority. */
+const automationInitializations = new WeakMap<
+	object,
+	Readonly<{ initialize: (receiver: VirtualThermostatAutomationService) => void; destroy: () => void }>
+>();
+
 @Injectable()
 export class VirtualThermostatAutomationService implements OnModuleInit, OnModuleDestroy {
-	private readonly provider: ClimateAutomationProvider;
-	private registration?: ClimateAutomationOwnedRegistration;
-	private destroyed = false;
+	private readonly buildProvider: () => ClimateAutomationProvider;
+	// Nest forwards a constructor's own data fields onto its retained prototype instance.
+	private readonly initialization = Object.freeze({});
 
 	constructor(
 		private readonly writer: ClimateAutomationWriterService,
@@ -1176,36 +1184,123 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 		@Inject(forwardRef(() => VirtualThermostatComfortService))
 		private readonly comfort?: VirtualThermostatComfortService,
 	) {
+		// No stateful stager may run here: Nest can still hold a forward-reference prototype.
+		const originalWriter = writer,
+			originalRegistry = registry,
+			originalGraph = graph,
+			originalConfig = configService,
+			originalAuthoring = authoring,
+			originalConfigurations = configurations,
+			originalComfort = comfort;
+		let phase: 'unbuilt' | 'building' | 'built' | 'failed' | 'destroyed' = 'unbuilt';
+		let invoking = false,
+			valid = true;
+		let provider: ClimateAutomationProvider | undefined,
+			registration: ClimateAutomationOwnedRegistration | undefined;
+		const primary: { present: boolean; cause?: unknown } = { present: false };
+		const unavailable = (): never => {
+			throw new ClimateAutomationParticipantConflict('unavailable');
+		};
+		const pins: Readonly<{ receiver: object; key: string; method: unknown }>[] = [];
+		const retain = (receiver: object, keys: readonly string[]): void => {
+			for (const key of keys) {
+				if (pins.some((pin) => pin.receiver === receiver && pin.key === key)) continue;
+				if (!creationHasDataMethod(receiver, key)) unavailable();
+				pins.push(Object.freeze({ receiver, key, method: nativeFieldEvidence.get(receiver, key) }));
+			}
+		};
+		const retainMethod = <Owner extends object, Key extends keyof Owner & string>(receiver: Owner, key: Key): Owner[Key] => {
+			if (!creationHasDataMethod(receiver, key)) unavailable();
+			const method = receiver[key];
+			pins.push(Object.freeze({ receiver, key, method }));
+			return method;
+		};
+		const originalRegistration: OriginalFunctions<Pick<ClimateAutomationRegistryService, 'registerProviderOwned'>> =
+			originalRegistry;
+		const register = retainMethod(originalRegistration, 'registerProviderOwned');
+		const originalConfigReader: Readonly<{ get: (key: string) => unknown }> = originalConfig;
+		const configGet: AutomationReceiverCall<NestConfigService, [string], unknown> = retainMethod(originalConfigReader, 'get');
+		const ownerPins = Object.freeze([
+			{ key: 'writer', value: originalWriter },
+			{ key: 'registry', value: originalRegistry },
+			{ key: 'graph', value: originalGraph },
+			{ key: 'configService', value: originalConfig },
+			{ key: 'authoring', value: originalAuthoring },
+			{ key: 'configurations', value: originalConfigurations },
+			{ key: 'comfort', value: originalComfort },
+			{ key: 'initialization', value: this.initialization },
+		].map((pin) => Object.freeze(pin)));
+		let lifecycleReceiver: VirtualThermostatAutomationService | undefined;
+		const pinsCurrent = (): boolean => {
+			const receiver = lifecycleReceiver;
+			if (
+				valid &&
+				ownerPins.every((pin) => creationMethodCurrent(this, pin.key, pin.value)) &&
+				pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method)) &&
+				(receiver === undefined ||
+					(ownerPins.every((pin) => creationMethodCurrent(receiver, pin.key, pin.value)) &&
+						pins.filter((pin) => pin.receiver === this).every((pin) =>
+							creationMethodCurrent(receiver, pin.key, pin.method))))
+			)
+				return true;
+			valid = false;
+			return false;
+		};
+		const bindingCurrent = (): boolean => phase !== 'destroyed' && phase !== 'failed' && pinsCurrent();
+		const check = (): void => {
+			if (primary.present) throw primary.cause;
+			if (phase === 'destroyed') throw new Error('Thermostat automation provider is destroyed');
+			if (!pinsCurrent()) unavailable();
+		};
+		const fail = (cause: unknown): never => {
+			if (!primary.present) {
+				primary.present = true;
+				primary.cause = cause;
+			}
+			valid = false;
+			if (phase !== 'destroyed') phase = 'failed';
+			throw primary.cause;
+		};
 		// Published closures retain these exact original functions and receiver; never look up a newer alias.
 		const methods: AutomationMethodReferences = this satisfies AutomationMethodReferences;
 		const read: AutomationReceiverCall<
 				VirtualThermostatAutomationService,
 				Parameters<VirtualThermostatAutomationService['readInManager']>,
 				ReturnType<VirtualThermostatAutomationService['readInManager']>
-			> = methods.readInManager,
+			> = retainMethod(methods, 'readInManager'),
 			facts: AutomationReceiverCall<
 				VirtualThermostatAutomationService,
 				Parameters<VirtualThermostatAutomationService['readControllerFactsInManager']>,
 				ReturnType<VirtualThermostatAutomationService['readControllerFactsInManager']>
-			> = methods.readControllerFactsInManager,
+			> = retainMethod(methods, 'readControllerFactsInManager'),
 			validate: AutomationReceiverCall<
 				VirtualThermostatAutomationService,
 				Parameters<VirtualThermostatAutomationService['validateManualIntentInManager']>,
 				ReturnType<VirtualThermostatAutomationService['validateManualIntentInManager']>
-			> = methods.validateManualIntentInManager,
+			> = retainMethod(methods, 'validateManualIntentInManager'),
 			history: AutomationReceiverCall<
 				VirtualThermostatAutomationService,
 				Parameters<VirtualThermostatAutomationService['readRetainedHistoryInManager']>,
 				ReturnType<VirtualThermostatAutomationService['readRetainedHistoryInManager']>
-			> = methods.readRetainedHistoryInManager,
+			> = retainMethod(methods, 'readRetainedHistoryInManager'),
 			apply: AutomationReceiverCall<
 				VirtualThermostatAutomationService,
 				Parameters<VirtualThermostatAutomationService['applyManualIntentInManager']>,
 				ReturnType<VirtualThermostatAutomationService['applyManualIntentInManager']>
-			> = methods.applyManualIntentInManager;
-		const unavailable = (): never => {
-			throw new ClimateAutomationParticipantConflict('unavailable');
-		};
+			> = retainMethod(methods, 'applyManualIntentInManager');
+		const originalMemberView1: Readonly<{
+			get: (
+				receiver: VirtualThermostatAutomationService,
+				key: 'readRowsInManager',
+			) => OriginalFunction<
+				VirtualThermostatAutomationService,
+				VirtualThermostatAutomationService['readRowsInManager']
+			>;
+		}> = Reflect;
+		if (!creationHasDataMethod(this, 'readRowsInManager')) unavailable();
+		const originalRows = originalMemberView1.get(this, 'readRowsInManager'),
+			ownRows = ownDiagnosticData;
+		pins.push(Object.freeze({ receiver: this, key: 'readRowsInManager', method: originalRows }));
 		const manual = Object.freeze<ClimateAutomationManualCapability>({
 			version: 1,
 			codec: 'virtual-thermostat-c0:v1',
@@ -1222,10 +1317,10 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 			applyInManager: (manager, turn, before, next) => apply.call(this, manager, turn, before, next),
 			manualIntentV1: manual,
 		});
-		const originalAuthoring = authoring;
-		let creation: ClimateAutomationCreationCapability | undefined;
+		let creationBuilder: (() => ClimateAutomationCreationCapability) | undefined;
 		if (originalAuthoring) {
-			const current = originalAuthoring.captureCreationMethodPins();
+			const originalCapture: OriginalFunctions<Pick<VirtualThermostatAuthoringService, 'captureCreationMethodPins'>> = originalAuthoring;
+			const capture = retainMethod(originalCapture, 'captureCreationMethodPins');
 			const environmentOriginalMethods: Readonly<{
 				snapshotCreationInput: typeof originalAuthoring.snapshotCreationInput;
 				captureCreationEnvironment: typeof originalAuthoring.captureCreationEnvironment;
@@ -1234,14 +1329,12 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 				prepareCreation: typeof originalAuthoring.prepareCreation;
 				applyCreation: typeof originalAuthoring.applyCreation;
 			}> = originalAuthoring;
-			const {
-				snapshotCreationInput: snapshotInput,
-				captureCreationEnvironment: environment,
-				holdCreationAtEntry: hold,
-				readCreationFacts: readCreation,
-				prepareCreation: prepare,
-				applyCreation,
-			} = environmentOriginalMethods;
+			const snapshotInput = retainMethod(environmentOriginalMethods, 'snapshotCreationInput'),
+				environment = retainMethod(environmentOriginalMethods, 'captureCreationEnvironment'),
+				hold = retainMethod(environmentOriginalMethods, 'holdCreationAtEntry'),
+				readCreation = retainMethod(environmentOriginalMethods, 'readCreationFacts'),
+				prepare = retainMethod(environmentOriginalMethods, 'prepareCreation'),
+				applyCreation = retainMethod(environmentOriginalMethods, 'applyCreation');
 			const snapshotCall: AutomationReceiverCall<
 				VirtualThermostatAuthoringService,
 				Parameters<VirtualThermostatAuthoringService['snapshotCreationInput']>,
@@ -1272,50 +1365,46 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 				Parameters<VirtualThermostatAuthoringService['applyCreation']>,
 				ReturnType<VirtualThermostatAuthoringService['applyCreation']>
 			> = applyCreation;
-			creation = Object.freeze<ClimateAutomationCreationCapability>({
-				version: 1,
-				graph: this.graph,
-				isCurrent: current,
-				snapshotInput: (device, configuration) => {
-					if (!current()) unavailable();
-					return snapshotCall.call(originalAuthoring, device, configuration);
-				},
-				captureEnvironment: () => {
-					if (!current()) unavailable();
-					return environmentCall.call(originalAuthoring);
-				},
-				holdAtEntry: () => {
-					if (!current()) unavailable();
-					return holdCall.call(originalAuthoring);
-				},
-				readFactsInManager: (manager, turn) => readCall.call(originalAuthoring, manager, turn),
-				prepareInManager: (manager, turn, request, before, revision) =>
-					prepareCall.call(originalAuthoring, manager, turn, request, before, revision),
-				applyInManager: (manager, turn, plan, context) =>
-					applyCall.call(originalAuthoring, manager, turn, plan, context),
-			});
+			creationBuilder = () => {
+				const originalCurrent = capture.call(originalAuthoring);
+				check();
+				const current = (): boolean => {
+					if (bindingCurrent() && originalCurrent()) return true;
+					valid = false;
+					return false;
+				};
+				return Object.freeze<ClimateAutomationCreationCapability>({
+					version: 1,
+					graph: this.graph,
+					isCurrent: current,
+					snapshotInput: (device, configuration) => {
+						if (!current()) unavailable();
+						return snapshotCall.call(originalAuthoring, device, configuration);
+					},
+					captureEnvironment: () => {
+						if (!current()) unavailable();
+						return environmentCall.call(originalAuthoring);
+					},
+					holdAtEntry: () => {
+						if (!current()) unavailable();
+						return holdCall.call(originalAuthoring);
+					},
+					readFactsInManager: (manager, turn) => readCall.call(originalAuthoring, manager, turn),
+					prepareInManager: (manager, turn, request, before, revision) =>
+						prepareCall.call(originalAuthoring, manager, turn, request, before, revision),
+					applyInManager: (manager, turn, plan, context) =>
+						applyCall.call(originalAuthoring, manager, turn, plan, context),
+				});
+			};
 		}
-		let existing: ClimateAutomationExistingCapability | undefined;
+		let existingBuilder: (() => ClimateAutomationExistingCapability) | undefined;
 		if (configurations && comfort) {
-			const configurationCurrent = configurations.captureExistingMethodPins(this.writer);
-			const comfortCurrent = comfort.captureExistingMethodPins(this.writer);
+			const originalConfigurationCapture: OriginalFunctions<Pick<VirtualThermostatConfigService, 'captureExistingMethodPins'>> = configurations;
+			const captureConfiguration = retainMethod(originalConfigurationCapture, 'captureExistingMethodPins');
+			const originalComfortCapture: OriginalFunctions<Pick<VirtualThermostatComfortService, 'captureExistingMethodPins'>> = comfort;
+			const captureComfort = retainMethod(originalComfortCapture, 'captureExistingMethodPins');
 
-			const originalMemberView1: Readonly<{
-				get: (
-					receiver: VirtualThermostatAutomationService,
-					key: 'readRowsInManager',
-				) => OriginalFunction<
-					VirtualThermostatAutomationService,
-					VirtualThermostatAutomationService['readRowsInManager']
-				>;
-			}> = Reflect;
-			const originalRows = originalMemberView1.get(this, 'readRowsInManager'),
-				ownRows = ownDiagnosticData;
-			const current = (): boolean =>
-				!this.destroyed &&
-				configurationCurrent() &&
-				comfortCurrent() &&
-				creationMethodCurrent(this, 'readRowsInManager', originalRows);
+
 			const methods: OriginalFunctions<
 				Pick<
 					VirtualThermostatConfigService,
@@ -1329,73 +1418,240 @@ export class VirtualThermostatAutomationService implements OnModuleInit, OnModul
 					| 'completeExistingAcknowledged'
 				>
 			> = configurations;
-			const {
-				snapshotExistingInput,
-				captureExistingEnvironment,
-				holdExistingAtEntry,
-				readExistingFactsInManager,
-				normalizeExistingInManager,
-				materializeExistingInManager,
-				applyExistingInManager,
-				completeExistingAcknowledged,
-			} = methods;
-			existing = Object.freeze<ClimateAutomationExistingCapability>({
-				version: 1,
-				codec: 'virtual-thermostat-existing:v1',
-				isCurrent: current,
-				snapshotInput: (kind, input) => snapshotExistingInput.call(configurations, kind, input, comfort),
-				captureEnvironment: () => captureExistingEnvironment.call(configurations),
-				holdAtEntry: () => holdExistingAtEntry.call(configurations),
-				readFactsInManager: async (manager, turn, controllerId) => {
-					this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
-					if (!current()) unavailable();
-					const rows = await originalRows.call(this, manager, controllerId, true, turn);
-					this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
-					if (!current() || !rows) return unavailable();
-					const ownedRows = ownRows(rows);
-					return readExistingFactsInManager.call(configurations, manager, turn, controllerId, ownedRows);
-				},
-				normalizeInManager: (manager, turn, input, before) =>
-					normalizeExistingInManager.call(configurations, manager, turn, input, before, comfort),
-				materializeInManager: (manager, turn, input, before, normalized, revision) =>
-					materializeExistingInManager.call(
-						configurations,
-						manager,
-						turn,
-						input,
-						before,
-						normalized,
-						revision,
-						comfort,
-					),
-				applyInManager: (manager, turn, before, plan) =>
-					applyExistingInManager.call(configurations, manager, turn, before, plan),
-				completeAcknowledged: (input, plan, slot, publication) =>
-					completeExistingAcknowledged.call(configurations, input, plan, slot, publication, comfort),
-			});
+			const snapshotExistingInput = retainMethod(methods, 'snapshotExistingInput'),
+				captureExistingEnvironment = retainMethod(methods, 'captureExistingEnvironment'),
+				holdExistingAtEntry = retainMethod(methods, 'holdExistingAtEntry'),
+				readExistingFactsInManager = retainMethod(methods, 'readExistingFactsInManager'),
+				normalizeExistingInManager = retainMethod(methods, 'normalizeExistingInManager'),
+				materializeExistingInManager = retainMethod(methods, 'materializeExistingInManager'),
+				applyExistingInManager = retainMethod(methods, 'applyExistingInManager'),
+				completeExistingAcknowledged = retainMethod(methods, 'completeExistingAcknowledged');
+			existingBuilder = () => {
+				const configurationCurrent = captureConfiguration.call(configurations, originalWriter);
+				check();
+				const comfortCurrent = captureComfort.call(comfort, originalWriter);
+				check();
+				const current = (): boolean => {
+					if (
+						bindingCurrent() &&
+						configurationCurrent() &&
+						comfortCurrent() &&
+						creationMethodCurrent(this, 'readRowsInManager', originalRows)
+					) return true;
+					valid = false;
+					return false;
+				};
+				return Object.freeze<ClimateAutomationExistingCapability>({
+					version: 1,
+					codec: 'virtual-thermostat-existing:v1',
+					isCurrent: current,
+					snapshotInput: (kind, input) => snapshotExistingInput.call(configurations, kind, input, comfort),
+					captureEnvironment: () => captureExistingEnvironment.call(configurations),
+					holdAtEntry: () => holdExistingAtEntry.call(configurations),
+					readFactsInManager: async (manager, turn, controllerId) => {
+						this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+						if (!current()) unavailable();
+						const rows = await originalRows.call(this, manager, controllerId, true, turn);
+						this.writer.assertParticipantTurn(manager, turn, ['READ_BEFORE', 'READ_AFTER', 'FINAL_READ']);
+						if (!current() || !rows) return unavailable();
+						const ownedRows = ownRows(rows);
+						return readExistingFactsInManager.call(configurations, manager, turn, controllerId, ownedRows);
+					},
+					normalizeInManager: (manager, turn, input, before) =>
+						normalizeExistingInManager.call(configurations, manager, turn, input, before, comfort),
+					materializeInManager: (manager, turn, input, before, normalized, revision) =>
+						materializeExistingInManager.call(
+							configurations,
+							manager,
+							turn,
+							input,
+							before,
+							normalized,
+							revision,
+							comfort,
+						),
+					applyInManager: (manager, turn, before, plan) =>
+						applyExistingInManager.call(configurations, manager, turn, before, plan),
+					completeAcknowledged: (input, plan, slot, publication) =>
+						completeExistingAcknowledged.call(configurations, input, plan, slot, publication, comfort),
+				});
+			};
 		}
-		this.provider = Object.freeze<ClimateAutomationProvider>({
-			creationV1: creation,
-			existingControllerV1: existing,
-			participantV1: participant,
-			readControllerInManager: (manager, controllerId) => facts.call(this, manager, controllerId),
-			validateSelectionInManager: unavailable,
-			createControllerInManager: unavailable,
+		retain(this, [
+			'readInManager',
+			'readControllerFactsInManager',
+			'validateManualIntentInManager',
+			'readRetainedHistoryInManager',
+			'applyManualIntentInManager',
+			'readRowsInManager',
+		]);
+		retain(originalRegistry, ['registerProviderOwned']);
+		retain(originalConfig, ['get']);
+		if (originalAuthoring)
+			retain(originalAuthoring, [
+				'captureCreationMethodPins',
+				'draft',
+				'snapshotCreationInput',
+				'captureCreationEnvironment',
+				'readCreationFacts',
+				'prepareCreation',
+				'applyCreation',
+				'creationRawRow',
+				'creationCatalog',
+				'assertCreationCatalogProjection',
+				'holdCreationAtEntry',
+			]);
+		if (originalConfigurations && originalComfort) {
+			retain(originalConfigurations, [
+				'captureExistingMethodPins',
+				'snapshotExistingInput',
+				'captureExistingEnvironment',
+				'holdExistingAtEntry',
+				'readExistingFactsInManager',
+				'normalizeExistingInManager',
+				'materializeExistingInManager',
+				'applyExistingInManager',
+				'completeExistingAcknowledged',
+				'prepareExistingInManager',
+				'validate',
+				'property',
+				'settingContract',
+				'validatePolicy',
+				'formatExistingResponse',
+				'publishExistingAcknowledged',
+				'readExistingNativeRows',
+				'existingNativeRow',
+				'existingPreparedSemantic',
+				'existingCoolingBindings',
+				'existingExpectedReferences',
+				'existingPrepared',
+				'existingHydrated',
+				'existingMirrors',
+				'prepareExistingRecovery',
+				'coolingDependencies',
+				'validateExistingProjection',
+			]);
+			retain(originalComfort, [
+				'captureExistingMethodPins',
+				'isCurrent',
+				'readIntentInManager',
+				'snapshotExistingInput',
+				'prepareExistingInManager',
+				'isExistingWatermarkOnly',
+				'existingSemanticIntent',
+				'checkExistingMaterializationCounters',
+				'materializeExistingInManager',
+				'synchronizeExistingClock',
+				'materializeExistingClock',
+				'completeExistingLocalState',
+				'retainExistingResponse',
+				'isExistingResponsePrepared',
+				'commitExistingResponse',
+				'discardExistingResponse',
+				'reconcileExistingAcknowledged',
+				'notifyExistingAcknowledged',
+				'settle',
+				'executeExisting',
+			]);
+		}
+		const build = (): ClimateAutomationProvider => {
+			check();
+			const creation = creationBuilder?.();
+			check();
+			const existing = existingBuilder?.();
+			check();
+			return Object.freeze<ClimateAutomationProvider>({
+				creationV1: creation,
+				existingControllerV1: existing,
+				participantV1: participant,
+				readControllerInManager: (manager, controllerId) => facts.call(this, manager, controllerId),
+				validateSelectionInManager: unavailable,
+				createControllerInManager: unavailable,
+			});
+		};
+		this.buildProvider = build;
+		if (!creationMethodCurrent(this, 'buildProvider', build)) unavailable();
+		pins.push(Object.freeze({ receiver: this, key: 'buildProvider', method: build }));
+		Object.freeze(pins);
+		const initialization = Object.freeze({
+			initialize: (receiver: VirtualThermostatAutomationService): void => {
+				if (phase === 'destroyed') throw new Error('Thermostat automation provider is destroyed');
+				if (primary.present) throw primary.cause;
+				if (lifecycleReceiver !== undefined && lifecycleReceiver !== receiver) return fail(new ClimateAutomationParticipantConflict('unavailable'));
+				lifecycleReceiver = receiver;
+				if (invoking) return fail(new ClimateAutomationParticipantConflict('unavailable'));
+				let duplicate = false;
+				invoking = true;
+				try {
+					check();
+					// Retain the genuine Nest hook receiver for cleanup even after later data-method loss.
+					automationInitializations.set(receiver, initialization);
+					if (registration) return;
+					const cli = configGet.call(originalConfig, 'FB_CLI');
+					check();
+					if (cli === 'on') return;
+					if (!provider) {
+						phase = 'building';
+						const completed = build();
+						check();
+						provider = completed;
+						phase = 'built';
+					}
+					const returned = register.call(originalRegistry, 'virtual-thermostat:v1', provider);
+					// Reentry/destroy can happen inside an observed original call. Own only its returned lease.
+					try {
+						check();
+					} catch (cause: unknown) {
+						try {
+							returned?.dispose();
+						} catch {
+							// Cleanup was attempted; the original primary cause wins even when falsy.
+						}
+						return fail(cause);
+					}
+					if (returned === null) {
+						duplicate = true;
+						throw new Error('Thermostat automation provider registration unavailable');
+					}
+					registration = returned;
+				} catch (cause: unknown) {
+					if (duplicate) throw cause; // Only null permits an explicit same-provider registration retry.
+					return fail(cause);
+				} finally {
+					invoking = false;
+				}
+			},
+			destroy: (): void => {
+				phase = 'destroyed';
+				valid = false;
+				const owned = registration;
+				registration = undefined;
+				owned?.dispose();
+			},
 		});
+		automationInitializations.set(this, initialization);
+		automationInitializations.set(this.initialization, initialization);
 	}
 
 	onModuleInit(): void {
-		if (this.destroyed) throw new Error('Thermostat automation provider is destroyed');
-		if (this.registration || getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on') return;
-		const registration = this.registry.registerProviderOwned('virtual-thermostat:v1', this.provider);
-		if (!registration) throw new Error('Thermostat automation provider registration unavailable');
-		this.registration = registration;
+		const retained = automationInitializations.get(this);
+		if (retained) { retained.initialize(this); return; }
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(this, 'initialization');
+		const key = descriptor?.value;
+		const initialization = descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null
+			? automationInitializations.get(key)
+			: undefined;
+		if (!initialization) throw new ClimateAutomationParticipantConflict('unavailable');
+		initialization.initialize(this);
 	}
 
 	onModuleDestroy(): void {
-		this.destroyed = true;
-		this.registration?.dispose();
-		this.registration = undefined;
+		const retained = automationInitializations.get(this);
+		if (retained) { retained.destroy(); return; }
+		const descriptor = nativeObjectEvidence.getOwnPropertyDescriptor(this, 'initialization');
+		const key = descriptor?.value;
+		if (descriptor && !descriptor.get && !descriptor.set && typeof key === 'object' && key !== null)
+			automationInitializations.get(key)?.destroy();
 	}
 
 	async readInManager(
