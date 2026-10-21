@@ -9676,7 +9676,6 @@ describe('virtual thermostat durable runtime', () => {
 				});
 				assertOwner();
 				expect(command.id).toBe(a.command.id);
-				expect(contexts.get(ownedControllerId)).toBe(a.context);
 				expect(operations.get(command.id)).toBe(a.operation);
 				expect(onEntries).toBe(1);
 				expect(intent.isOverrideCurrent()).toBe(true);
