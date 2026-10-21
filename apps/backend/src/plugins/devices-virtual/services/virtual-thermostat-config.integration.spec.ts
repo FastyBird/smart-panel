@@ -385,51 +385,97 @@ describe('thermostat persistent ownership and draft configuration', () => {
 
 	// BEGIN R132 empty-set policy/CAS/currentness drafts — UNRUN
 	it('R132 empty predecessor path preserves genuine no-op identities and original manual/OFF policy', async () => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator();
+		const controller = await owner(),
+			sensor = await ambient(),
+			heat = await actuator();
 		const input = dto(sensor, heat);
 		const first = await configs.configure(controller, input);
 		const before = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
 		const again = await configs.configure(controller, { ...input, expectedRevision: first.revision });
 		expect(again.revision).toBe(first.revision);
-		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(before);
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(
+			before,
+		);
 		expect(before.manualHold).toBe(true);
 		await expect(configs.configure(controller, { ...input, expectedRevision: first.revision - 1 })).rejects.toThrow();
-		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(before);
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(
+			before,
+		);
 	});
 	it('R132 original public preflight rejects actual same-SQLite-owner reentry instead of joining a predecessor', async () => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator();
+		const controller = await owner(),
+			sensor = await ambient(),
+			heat = await actuator();
 		const input = dto(sensor, heat);
 		await configs.configure(controller, input);
 		const before = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
 		await database.transaction(async () => {
 			await expect(comfort.settle(controller)).rejects.toMatchObject({ commitOutcome: 'not_started' });
 		});
-		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(before);
+		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(
+			before,
+		);
 	});
-	it.each([{ preset: null, clear: false }, { preset: null, clear: true }, { preset: 'eco', clear: false }, { preset: 'eco', clear: true }])('R132 empty P retains manual/OFF policy for $preset/$clear with exact unchanged slot identity', async ({ preset, clear }) => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator();
-		await configs.configure(controller, dto(sensor, heat));
-		await comfort.configure(controller, { expected_revision: 1, expected_graph_revision: await graph.revision() }, {
-			heating_range: { minimum: 10, maximum: 30 }, cooling_range: null,
-			presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
-		});
-		const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller });
-		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
-		const exactPreset = preset === 'eco' ? 'eco' : null;
-		const result = await comfort.select(controller, { expected_revision: before.revision, expected_graph_revision: await graph.revision() }, exactPreset, clear);
-		expect(result.configuration.selected_preset).toBe(exactPreset);
-		expect(result.configuration.user_off).toBe(!clear);
-		expect((await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller })).requestedMode).toBe('off');
-		const after = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
-		expect(after.generationId).toBe(slot.generationId);
-		expect(after.manualHold).toBe(exactPreset === null);
-	});
+	it.each([
+		{ preset: null, clear: false },
+		{ preset: null, clear: true },
+		{ preset: 'eco', clear: false },
+		{ preset: 'eco', clear: true },
+	])(
+		'R132 empty P retains manual/OFF policy for $preset/$clear with exact unchanged slot identity',
+		async ({ preset, clear }) => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			await configs.configure(controller, dto(sensor, heat));
+			await comfort.configure(
+				controller,
+				{ expected_revision: 1, expected_graph_revision: await graph.revision() },
+				{
+					heating_range: { minimum: 10, maximum: 30 },
+					cooling_range: null,
+					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
+				},
+			);
+			const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+				controllerId: controller,
+			});
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
+			const exactPreset = preset === 'eco' ? 'eco' : null;
+			const result = await comfort.select(
+				controller,
+				{ expected_revision: before.revision, expected_graph_revision: await graph.revision() },
+				exactPreset,
+				clear,
+			);
+			expect(result.configuration.selected_preset).toBe(exactPreset);
+			expect(result.configuration.user_off).toBe(!clear);
+			expect(
+				(await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: controller }))
+					.requestedMode,
+			).toBe('off');
+			const after = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
+			expect(after.generationId).toBe(slot.generationId);
+			expect(after.manualHold).toBe(exactPreset === null);
+		},
+	);
 	it('R132 concurrent real public mutations retain original CAS instead of adopting the later winner', async () => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator(), input = dto(sensor, heat);
+		const controller = await owner(),
+			sensor = await ambient(),
+			heat = await actuator(),
+			input = dto(sensor, heat);
 		const initial = await configs.configure(controller, input);
 		const outcomes = await Promise.allSettled([
-			configs.configure(controller, { ...input, expectedRevision: initial.revision, policy: { ...input.policy, heatingSetpoint: 22 } }),
-			configs.configure(controller, { ...input, expectedRevision: initial.revision, policy: { ...input.policy, heatingSetpoint: 23 } }),
+			configs.configure(controller, {
+				...input,
+				expectedRevision: initial.revision,
+				policy: { ...input.policy, heatingSetpoint: 22 },
+			}),
+			configs.configure(controller, {
+				...input,
+				expectedRevision: initial.revision,
+				policy: { ...input.policy, heatingSetpoint: 23 },
+			}),
 		]);
 		expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
 		expect(outcomes.filter((result) => result.status === 'rejected')).toHaveLength(1);
@@ -437,27 +483,93 @@ describe('thermostat persistent ownership and draft configuration', () => {
 		expect(row.revision).toBe(initial.revision + 1);
 		expect([22, 23]).toContain(row.policy.heatingSetpoint);
 	});
-	it('R132 rejects an actual public nine-member request without truncating or creating a source generation', async () => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator(), input = dto(sensor, heat);
-		const properties = [heat];
-		for (let i = 1; i < 9; i++) properties.push(await actuator(`A8032ABE50${90 + i}`));
-		const before = await whole();
-		await expect(configs.configure(controller, { ...input, actuators: properties.map((sourcePropertyId): ConfigureVirtualThermostatDto['actuators'][number] => ({ sourcePropertyId, role: 'heating', leaseSeconds: 30 })) })).rejects.toThrow();
-		expect(await whole()).toEqual(before);
-		expect(await database.manager.countBy(ClimateAutomationSlotEntity, { controllerId: controller })).toBe(0);
-	});
-	it('R132 empty P preserves the genuine RESET generation and complete no-op image without a second intent', async () => {
-		const controller = await owner(), sensor = await ambient(), heat = await actuator();
-		const first = await configs.configure(controller, dto(sensor, heat));
-		const definition = { heating_range: { minimum: 10, maximum: 30 }, cooling_range: null, automation_enabled: true, presets: [] };
-		const result = await comfort.configure(controller, { expected_revision: first.revision, expected_graph_revision: first.graph_revision }, definition);
-		const before = await whole();
-		const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
-		expect(slot.manualHold).toBe(false);
-		expect(slot.manualCounter).toBe(2);
-		await comfort.configure(controller, { expected_revision: result.revision, expected_graph_revision: result.graph_revision }, definition);
-		expect(await whole()).toEqual(before);
-		expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(slot);
+	describe('R132 complete readonly caller snapshots', () => {
+		const r132WholeSnapshot = async (source = database) => {
+			const result: Record<string, unknown[]> = {};
+			for (const table of [
+				'devices_virtual_thermostat_configs',
+				'devices_virtual_thermostat_sources',
+				'devices_virtual_thermostat_actuator_claims',
+				'devices_virtual_thermostat_settings',
+				'devices_virtual_thermostat_member_protection',
+				'devices_virtual_thermostat_cooling_dependencies',
+				'devices_virtual_thermostat_recoveries',
+				'devices_virtual_thermostat_command_journal',
+				'devices_virtual_thermostat_runtime',
+				'devices_virtual_thermostat_branch_runtime',
+				'devices_virtual_thermostat_installations',
+				'devices_virtual_thermostat_installation_audit',
+				'devices_module_devices',
+				'devices_module_channels',
+				'devices_module_channels_properties',
+				'devices_shelly_ng_sample_sources',
+				'devices_virtual_dew_point_configs',
+				'devices_virtual_dew_point_sources',
+				'devices_virtual_transform_configs',
+				'devices_virtual_transform_sources',
+				'devices_virtual_aggregate_configs',
+				'devices_virtual_aggregate_inputs',
+				'devices_virtual_light_group_configs',
+				'devices_virtual_light_group_members',
+				'devices_virtual_light_group_bindings',
+				'devices_module_climate_automation_slots',
+				'devices_module_climate_automation_sources',
+				'devices_virtual_graph_revision',
+			])
+				result[table] = await source.query<unknown[]>(`SELECT * FROM "${table}" ORDER BY rowid`);
+			return result;
+		};
+		it('R132 rejects an actual public nine-member request without truncating or creating a source generation', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator(),
+				input = dto(sensor, heat);
+			const properties = [heat];
+			for (let i = 1; i < 9; i++) properties.push(await actuator(`A8032ABE50${90 + i}`));
+			const before = await r132WholeSnapshot();
+			await expect(
+				configs.configure(controller, {
+					...input,
+					actuators: properties.map((sourcePropertyId): ConfigureVirtualThermostatDto['actuators'][number] => ({
+						sourcePropertyId,
+						role: 'heating',
+						leaseSeconds: 30,
+					})),
+				}),
+			).rejects.toThrow();
+			expect(await r132WholeSnapshot()).toEqual(before);
+			expect(await database.manager.countBy(ClimateAutomationSlotEntity, { controllerId: controller })).toBe(0);
+		});
+		it('R132 empty P preserves the genuine RESET generation and complete no-op image without a second intent', async () => {
+			const controller = await owner(),
+				sensor = await ambient(),
+				heat = await actuator();
+			const first = await configs.configure(controller, dto(sensor, heat));
+			const definition = {
+				heating_range: { minimum: 10, maximum: 30 },
+				cooling_range: null,
+				automation_enabled: true,
+				presets: [],
+			};
+			const result = await comfort.configure(
+				controller,
+				{ expected_revision: first.revision, expected_graph_revision: first.graph_revision },
+				definition,
+			);
+			const before = await r132WholeSnapshot();
+			const slot = await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller });
+			expect(slot.manualHold).toBe(false);
+			expect(slot.manualCounter).toBe(2);
+			await comfort.configure(
+				controller,
+				{ expected_revision: result.revision, expected_graph_revision: result.graph_revision },
+				definition,
+			);
+			expect(await r132WholeSnapshot()).toEqual(before);
+			expect(await database.manager.findOneByOrFail(ClimateAutomationSlotEntity, { controllerId: controller })).toEqual(
+				slot,
+			);
+		});
 	});
 	// END R132 empty-set policy/CAS/currentness drafts
 

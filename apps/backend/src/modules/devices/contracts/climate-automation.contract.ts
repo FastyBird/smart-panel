@@ -771,22 +771,30 @@ export class ClimateAutomationRuntimeDebt {
 /** Inert original history, not native, claim, publication or response authority. */
 export class ClimateAutomationPredecessors {
 	constructor(readonly projections: readonly object[]) {}
-	toJSON(): Readonly<Record<string, never>> { return {}; }
+	toJSON(): Readonly<Record<string, never>> {
+		return {};
+	}
 }
 export interface ClimateAutomationPredecessorTransition {
 	readonly projection: object;
 	readonly before: Readonly<Record<string, string | number | boolean | null>>;
 	readonly after: Readonly<Record<string, string | number | boolean | null>>;
 }
-export type ClimateAutomationPredecessorMethod<Args extends unknown[], Result> =
-	((...args: Args) => Result) & Readonly<{ call: (receiver: object, ...args: Args) => Result }>;
+export type ClimateAutomationPredecessorMethod<Args extends unknown[], Result> = ((...args: Args) => Result) &
+	Readonly<{ call: (receiver: object, ...args: Args) => Result }>;
 export interface ClimateAutomationPredecessorPorts {
 	readonly owner: object;
 	readonly capture: ClimateAutomationPredecessorMethod<[controllerId: string], ClimateAutomationPredecessors>;
 	readonly size: ClimateAutomationPredecessorMethod<[capture: ClimateAutomationPredecessors], number>;
 	/** Pure, single-use recognition of an ORIGINAL synchronous native invocation; never SQL permission. */
-	readonly recognize: ClimateAutomationPredecessorMethod<[capture: ClimateAutomationPredecessors, event: import('typeorm').BeforeQueryEvent<unknown>], boolean>;
-	readonly join: ClimateAutomationPredecessorMethod<[capture: ClimateAutomationPredecessors], Promise<readonly ClimateAutomationPredecessorTransition[]>>;
+	readonly recognize: ClimateAutomationPredecessorMethod<
+		[capture: ClimateAutomationPredecessors, event: import('typeorm').BeforeQueryEvent<unknown>],
+		boolean
+	>;
+	readonly join: ClimateAutomationPredecessorMethod<
+		[capture: ClimateAutomationPredecessors],
+		Promise<readonly ClimateAutomationPredecessorTransition[]>
+	>;
 	readonly close: ClimateAutomationPredecessorMethod<[capture: ClimateAutomationPredecessors], void>;
 }
 export interface ClimateAutomationRuntimeConsumerBinding {

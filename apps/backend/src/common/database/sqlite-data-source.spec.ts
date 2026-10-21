@@ -22,9 +22,9 @@ import {
 	createSqliteDataSource,
 	hasCurrentSqliteConnectionLease,
 	isSqliteTransactionActive,
+	observeSqliteOuterOutcome,
 	outsideSqliteTransaction,
 	registerSqliteCommitGuard,
-	observeSqliteOuterOutcome,
 } from './sqlite-data-source';
 
 @Entity()
@@ -112,63 +112,106 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 		};
 
 		// BEGIN R132 real native ACK observation drafts — UNRUN
-		it.each([false, true])('observes the real held outer native ACK without changing guarded=%s SQL or receiver', async (guarded) => {
-			const native = nativeConnection(), invoke = captureNativeAll(native), entered = deferred(), resume = deferred();
-			let receipt: SqliteCommitGuardReceipt | undefined, guardCalls = 0, completed = false;
-			const calls: { query: string; parameters: unknown[] }[] = [];
-			const spy = jest.spyOn(native, 'all').mockImplementation((query, parameters, callback) => {
-				calls.push({ query, parameters });
-				if (query !== 'COMMIT') return invoke(query, parameters, callback);
-				return invoke(query, parameters, function (error, rows) {
-					entered.resolve();
-					void resume.promise.then(() => callback.call(this, error, rows));
+		it.each([false, true])(
+			'observes the real held outer native ACK without changing guarded=%s SQL or receiver',
+			async (guarded) => {
+				const native = nativeConnection(),
+					invoke = captureNativeAll(native),
+					entered = deferred(),
+					resume = deferred();
+				let receipt: SqliteCommitGuardReceipt | undefined,
+					guardCalls = 0,
+					completed = false;
+				const calls: { query: string; parameters: unknown[] }[] = [];
+				const spy = jest.spyOn(native, 'all').mockImplementation((query, parameters, callback) => {
+					calls.push({ query, parameters });
+					if (query !== 'COMMIT') return invoke(query, parameters, callback);
+					return invoke(query, parameters, function (error, rows) {
+						entered.resolve();
+						const originalCallback: Readonly<{
+							call: (receiver: unknown, error: Error | null, rows?: unknown[]) => void;
+						}> = callback;
+						void resume.promise.then(() => originalCallback.call(this, error, rows));
+					});
 				});
-			});
-			const operation = database.transaction(async (manager) => {
-				receipt = observeSqliteOuterOutcome(manager);
-				if (guarded) registerSqliteCommitGuard(manager, () => { guardCalls++; return manager.queryRunner?.isTransactionActive === true; });
-				await manager.insert(TransactionRecord, { name: 'actual monitored record' });
-			});
-			void operation.then(() => { completed = true; }, () => undefined);
-			try {
-				await entered.promise;
-				expect(receipt?.outcome).toBe('unknown');
-				expect(completed).toBe(false);
-				expect(calls.filter((call) => call.query === 'COMMIT')).toHaveLength(1);
-				expect(spy.mock.contexts.every((receiver) => receiver === native)).toBe(true);
-				resume.resolve(); await operation;
-				expect(receipt?.outcome).toBe('committed');
-				expect(guardCalls).toBe(guarded ? 1 : 0);
-				expect(await names()).toContain('actual monitored record');
-			} finally { resume.resolve(); await operation.catch(() => undefined); spy.mockRestore(); }
-		});
+				const operation = database.transaction(async (manager) => {
+					receipt = observeSqliteOuterOutcome(manager);
+					if (guarded)
+						registerSqliteCommitGuard(manager, () => {
+							guardCalls++;
+							return manager.queryRunner?.isTransactionActive === true;
+						});
+					await manager.insert(TransactionRecord, { name: 'actual monitored record' });
+				});
+				void operation.then(
+					() => {
+						completed = true;
+					},
+					() => undefined,
+				);
+				try {
+					await entered.promise;
+					expect(receipt?.outcome).toBe('unknown');
+					expect(completed).toBe(false);
+					expect(calls.filter((call) => call.query === 'COMMIT')).toHaveLength(1);
+					expect(spy.mock.contexts.every((receiver) => receiver === native)).toBe(true);
+					resume.resolve();
+					await operation;
+					expect(receipt?.outcome).toBe('committed');
+					expect(guardCalls).toBe(guarded ? 1 : 0);
+					expect(await names()).toContain('actual monitored record');
+				} finally {
+					resume.resolve();
+					await operation.catch(() => undefined);
+					spy.mockRestore();
+				}
+			},
+		);
 		it('does not turn a native callback failure into committed evidence by reading persisted rows', async () => {
-			const native = nativeConnection(), invoke = captureNativeAll(native), primary = new Error('native ACK unavailable');
+			const native = nativeConnection(),
+				invoke = captureNativeAll(native),
+				primary = new Error('native ACK unavailable');
 			let receipt: SqliteCommitGuardReceipt | undefined;
 			const spy = jest.spyOn(native, 'all').mockImplementation((query, parameters, callback) =>
-				invoke(query, parameters, query !== 'COMMIT' ? callback : function (error, rows) {
-					callback.call(this, error ?? primary, rows);
-				}));
+				invoke(
+					query,
+					parameters,
+					query !== 'COMMIT'
+						? callback
+						: function (error, rows) {
+								callback.call(this, error ?? primary, rows);
+							},
+				),
+			);
 			try {
-				await expect(database.transaction(async (manager) => {
-					receipt = observeSqliteOuterOutcome(manager);
-					await manager.insert(TransactionRecord, { name: 'committed without delivered ACK' });
-				})).rejects.toThrow();
+				await expect(
+					database.transaction(async (manager) => {
+						receipt = observeSqliteOuterOutcome(manager);
+						await manager.insert(TransactionRecord, { name: 'committed without delivered ACK' });
+					}),
+				).rejects.toThrow();
 				expect(receipt?.outcome).toBe('unknown');
 				expect(await names()).toContain('committed without delivered ACK');
 				expect(receipt?.outcome).toBe('unknown');
-			} finally { spy.mockRestore(); }
+			} finally {
+				spy.mockRestore();
+			}
 		});
-		it.each([undefined, null, false, 'native body P', new Error('native body P')])('keeps actual rollback and exact primary %p with no committed observation', async (primary) => {
-			let receipt: SqliteCommitGuardReceipt | undefined;
-			await expect(database.transaction(async (manager) => {
-				receipt = observeSqliteOuterOutcome(manager);
-				await manager.insert(TransactionRecord, { name: 'must rollback' });
-				throw primary;
-			})).rejects.toBe(primary);
-			expect(receipt?.outcome).toBe('rolled_back');
-			expect(await names()).not.toContain('must rollback');
-		});
+		it.each([undefined, null, false, 'native body P', new Error('native body P')])(
+			'keeps actual rollback and exact primary %p with no committed observation',
+			async (primary: unknown) => {
+				let receipt: SqliteCommitGuardReceipt | undefined;
+				await expect(
+					database.transaction(async (manager) => {
+						receipt = observeSqliteOuterOutcome(manager);
+						await manager.insert(TransactionRecord, { name: 'must rollback' });
+						throw primary;
+					}),
+				).rejects.toBe(primary);
+				expect(receipt?.outcome).toBe('rolled_back');
+				expect(await names()).not.toContain('must rollback');
+			},
+		);
 		it('cannot borrow an outer receipt through a nested SAVEPOINT or an ordinary manager', async () => {
 			expect(() => observeSqliteOuterOutcome(database.manager)).toThrow();
 			let receipt: SqliteCommitGuardReceipt | undefined;
@@ -183,36 +226,58 @@ describe('SQLite connection transaction coordination (real sqlite3 / TypeORM)', 
 			expect(receipt?.outcome).toBe('committed');
 			expect(await names()).toContain('nested actual row');
 		});
-		it.each([undefined, null, false, 'late ACK P', new Error('late ACK P')])('keeps real committed history and exact late subscriber primary %p', async (primary) => {
-			let receipt: SqliteCommitGuardReceipt | undefined;
-			const subscriber: EntitySubscriberInterface = { afterTransactionCommit: () => { throw primary; } };
-			database.subscribers.push(subscriber);
-			try {
-				await expect(database.transaction(async (manager) => {
-					receipt = observeSqliteOuterOutcome(manager);
-					await manager.insert(TransactionRecord, { name: 'native ACK before subscriber P' });
-				})).rejects.toBe(primary);
-				expect(receipt?.outcome).toBe('committed');
-				expect(await names()).toContain('native ACK before subscriber P');
-			} finally { const index = database.subscribers.indexOf(subscriber); if (index >= 0) database.subscribers.splice(index, 1); }
-		});
-		it.each([undefined, null, false, 'release P', new Error('release P')])('keeps historical actual ACK while original owned release rejects with %p', async (primary) => {
-			let receipt: SqliteCommitGuardReceipt | undefined, restore: (() => void) | undefined;
-			try {
-				await expect(database.transaction(async (manager) => {
-					const runner = manager.queryRunner;
-					if (!runner) throw new Error('Missing genuine scoped runner');
-					const original: Readonly<{ release: QueryRunner['release'] }> = runner;
-					const release = original.release;
-					const installed = jest.spyOn(runner, 'release').mockImplementation(async () => { await release.call(runner); throw primary; });
-					restore = () => installed.mockRestore();
-					receipt = observeSqliteOuterOutcome(manager);
-					await manager.insert(TransactionRecord, { name: 'native ACK then release P' });
-				})).rejects.toBe(primary);
-				expect(receipt?.outcome).toBe('committed');
-				expect(await names()).toContain('native ACK then release P');
-			} finally { restore?.(); }
-		});
+		it.each([undefined, null, false, 'late ACK P', new Error('late ACK P')])(
+			'keeps real committed history and exact late subscriber primary %p',
+			async (primary: unknown) => {
+				let receipt: SqliteCommitGuardReceipt | undefined;
+				const subscriber: EntitySubscriberInterface = {
+					afterTransactionCommit: () => {
+						throw primary;
+					},
+				};
+				database.subscribers.push(subscriber);
+				try {
+					await expect(
+						database.transaction(async (manager) => {
+							receipt = observeSqliteOuterOutcome(manager);
+							await manager.insert(TransactionRecord, { name: 'native ACK before subscriber P' });
+						}),
+					).rejects.toBe(primary);
+					expect(receipt?.outcome).toBe('committed');
+					expect(await names()).toContain('native ACK before subscriber P');
+				} finally {
+					const index = database.subscribers.indexOf(subscriber);
+					if (index >= 0) database.subscribers.splice(index, 1);
+				}
+			},
+		);
+		it.each([undefined, null, false, 'release P', new Error('release P')])(
+			'keeps historical actual ACK while original owned release rejects with %p',
+			async (primary: unknown) => {
+				let receipt: SqliteCommitGuardReceipt | undefined, restore: (() => void) | undefined;
+				try {
+					await expect(
+						database.transaction(async (manager) => {
+							const runner = manager.queryRunner;
+							if (!runner) throw new Error('Missing genuine scoped runner');
+							const original: Readonly<{ release: QueryRunner['release'] }> = runner;
+							const release = original.release;
+							const installed = jest.spyOn(runner, 'release').mockImplementation(async () => {
+								await release.call(runner);
+								throw primary;
+							});
+							restore = () => installed.mockRestore();
+							receipt = observeSqliteOuterOutcome(manager);
+							await manager.insert(TransactionRecord, { name: 'native ACK then release P' });
+						}),
+					).rejects.toBe(primary);
+					expect(receipt?.outcome).toBe('committed');
+					expect(await names()).toContain('native ACK then release P');
+				} finally {
+					restore?.();
+				}
+			},
+		);
 		// END R132 real native ACK observation drafts
 
 		it('composes same-manager nested guards on outer COMMIT without self-wait or admitting another lease', async () => {

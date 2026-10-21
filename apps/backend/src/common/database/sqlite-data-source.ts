@@ -524,12 +524,22 @@ class CoordinatedSqliteQueryRunner extends SqliteQueryRunner {
 	/** Inert evidence for this OWN outer transaction. No guard, SQL, drain or permission is added. */
 	observeOuterOutcome(manager: EntityManager): SqliteCommitGuardReceipt {
 		const scope = this.guardedCommit;
-		if (manager !== this.manager || manager.queryRunner !== this || !scope || !this.isTransactionActive ||
-			this.transactionDepth !== 1 || scope.phase !== 'open') {
+		if (
+			manager !== this.manager ||
+			manager.queryRunner !== this ||
+			!scope ||
+			!this.isTransactionActive ||
+			this.transactionDepth !== 1 ||
+			scope.phase !== 'open'
+		) {
 			throw new Error('Native outcome observation requires its exact open outer manager');
 		}
 		scope.observed = true;
-		return Object.freeze({ get outcome() { return scope.outcome; } });
+		return Object.freeze({
+			get outcome() {
+				return scope.outcome;
+			},
+		});
 	}
 
 	registerCommitGuard(manager: EntityManager, guard: () => boolean): SqliteCommitGuardReceipt {

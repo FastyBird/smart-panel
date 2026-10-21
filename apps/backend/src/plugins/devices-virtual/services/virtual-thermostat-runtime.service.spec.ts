@@ -9987,55 +9987,118 @@ describe('virtual thermostat durable runtime', () => {
 
 		// BEGIN R132 closed predecessor real managed drafts — UNRUN; old bodies below are untouched.
 		type R132Held = Readonly<{
-			owner: VirtualThermostatRuntimeService; source: SqliteDataSource; id: string; real: typeof fixture; comfort: VirtualThermostatComfortService; assertLive: () => void;
-			command: VirtualThermostatCommandEntity; operation: Promise<void>;
+			owner: VirtualThermostatRuntimeService;
+			source: SqliteDataSource;
+			id: string;
+			real: typeof fixture;
+			comfort: VirtualThermostatComfortService;
+			assertLive: () => void;
+			command: VirtualThermostatCommandEntity;
+			operation: Promise<void>;
 			mutation: ReturnType<VirtualThermostatComfortService['select']>;
-			readEntered: ReturnType<typeof barrier>; readResume: ReturnType<typeof barrier>;
-			nativeResume: ReturnType<typeof barrier>; resultObserved: ReturnType<typeof barrier>;
+			readEntered: ReturnType<typeof barrier>;
+			readResume: ReturnType<typeof barrier>;
+			nativeResume: ReturnType<typeof barrier>;
+			resultObserved: ReturnType<typeof barrier>;
 			nativeResult: () => Awaited<ReturnType<ThermostatActuationAdapter['send']>>;
 		}>;
-		const withR132Held = async (body: (held: R132Held) => Promise<void>,
-			beforeEntry?: (owner: VirtualThermostatRuntimeService, id: string, real: typeof fixture) => void, boundary: 'beforeOn' | 'afterOn' = 'beforeOn'): Promise<void> => {
-			const setup = requireFixtureSetup(), owner = runtime, source = database, real = fixture,
-				id = controllerId, relay = relayId, sensor = sensorId, publicComfort = comfort;
-			const nativeEntered = barrier(), nativeResume = barrier(), resultObserved = barrier(),
-				readEntered = barrier(), readResume = barrier(), request = new AsyncLocalStorage<boolean>();
-			let retired = false, cleaned = false, first = true, firstRead = true;
+		const withR132Held = async (
+			body: (held: R132Held) => Promise<void>,
+			beforeEntry?: (owner: VirtualThermostatRuntimeService, id: string, real: typeof fixture) => void,
+			boundary: 'beforeOn' | 'afterOn' = 'beforeOn',
+		): Promise<void> => {
+			const setup = requireFixtureSetup(),
+				owner = runtime,
+				source = database,
+				real = fixture,
+				id = controllerId,
+				relay = relayId,
+				sensor = sensorId,
+				publicComfort = comfort;
+			const nativeEntered = barrier(),
+				nativeResume = barrier(),
+				resultObserved = barrier(),
+				readEntered = barrier(),
+				readResume = barrier(),
+				request = new AsyncLocalStorage<boolean>();
+			let retired = false,
+				cleaned = false,
+				first = true,
+				firstRead = true;
 			let packet: Parameters<ThermostatActuationAdapter['send']>[4];
 			let nativeResult: Awaited<ReturnType<ThermostatActuationAdapter['send']>> | undefined;
 			let nativeFailure: { cause: unknown } | undefined, primary: { cause: unknown } | undefined;
-			let mutation: ReturnType<VirtualThermostatComfortService['select']> | undefined, operation: Promise<void> | undefined;
+			let mutation: ReturnType<VirtualThermostatComfortService['select']> | undefined,
+				operation: Promise<void> | undefined;
 			const oldHook = Object.getOwnPropertyDescriptor(real.controls, boundary);
 			const hook = async (property: string): Promise<void> => {
 				if (retired || property !== relay || !first) return;
-				first = false; nativeEntered.open(); await nativeResume.promise;
+				first = false;
+				nativeEntered.open();
+				await nativeResume.promise;
 			};
 			const same = (a: PropertyDescriptor | undefined, b: PropertyDescriptor | undefined): boolean =>
-				!!a && !!b && a.value === b.value && a.get === b.get && a.set === b.set &&
-				a.configurable === b.configurable && a.enumerable === b.enumerable && a.writable === b.writable;
-			const subscriber: import('typeorm').EntitySubscriberInterface = { beforeQuery: async (event) => {
-				if (retired || !request.getStore() || !firstRead || !event.query.startsWith('SELECT') ||
-					!event.query.includes('devices_virtual_thermostat_configs')) return;
-				firstRead = false; readEntered.open(); await readResume.promise;
-			} };
+				!!a &&
+				!!b &&
+				a.value === b.value &&
+				a.get === b.get &&
+				a.set === b.set &&
+				a.configurable === b.configurable &&
+				a.enumerable === b.enumerable &&
+				a.writable === b.writable;
+			const subscriber: import('typeorm').EntitySubscriberInterface = {
+				beforeQuery: async (event) => {
+					if (
+						retired ||
+						!request.getStore() ||
+						!firstRead ||
+						!event.query.startsWith('SELECT') ||
+						!event.query.includes('devices_virtual_thermostat_configs')
+					)
+						return;
+					firstRead = false;
+					readEntered.open();
+					await readResume.promise;
+				},
+			};
 			const installedCleanups: (() => void | Promise<void>)[] = [];
 			const backstop = {
 				retire: (): void => {
 					retired = true;
 					let failure: { cause: unknown } | undefined;
-					for (const close of [() => owner.onModuleDestroy(), () => real.revoke(), () => readResume.open(), () => nativeResume.open()]) {
-						try { close(); } catch (cause) { failure ??= { cause }; }
+					for (const close of [
+						() => owner.onModuleDestroy(),
+						() => real.revoke(),
+						() => readResume.open(),
+						() => nativeResume.open(),
+					]) {
+						try {
+							close();
+						} catch (cause) {
+							failure ??= { cause };
+						}
 					}
 					if (failure) throw failure.cause;
 				},
 				cleanup: async (): Promise<void> => {
-					if (cleaned) return; cleaned = true;
+					if (cleaned) return;
+					cleaned = true;
 					let failure: { cause: unknown } | undefined;
-					for (const cleanup of [() => backstop.retire(),
-						async () => { if (mutation !== undefined) await mutation.catch(() => undefined); },
-						async () => { if (operation !== undefined) await operation.catch(() => undefined); },
-						...installedCleanups]) {
-						try { await cleanup(); } catch (cause) { failure ??= { cause }; }
+					for (const cleanup of [
+						() => backstop.retire(),
+						async () => {
+							if (mutation !== undefined) await mutation.catch(() => undefined);
+						},
+						async () => {
+							if (operation !== undefined) await operation.catch(() => undefined);
+						},
+						...installedCleanups,
+					]) {
+						try {
+							await cleanup();
+						} catch (cause) {
+							failure ??= { cause };
+						}
 					}
 					unregisterCompletionObserver(backstop);
 					if (failure) throw failure.cause;
@@ -10046,271 +10109,527 @@ describe('virtual thermostat durable runtime', () => {
 				real.controls[boundary] = hook;
 				const installedHook = Object.getOwnPropertyDescriptor(real.controls, boundary);
 				installedCleanups.push(() => {
-					if (!same(Object.getOwnPropertyDescriptor(real.controls, boundary), installedHook)) throw new Error('Foreign R132 gate descriptor retained');
-					if (oldHook) Object.defineProperty(real.controls, boundary, oldHook); else Reflect.deleteProperty(real.controls, boundary);
+					if (!same(Object.getOwnPropertyDescriptor(real.controls, boundary), installedHook))
+						throw new Error('Foreign R132 gate descriptor retained');
+					if (oldHook) Object.defineProperty(real.controls, boundary, oldHook);
+					else Reflect.deleteProperty(real.controls, boundary);
 				});
-				const original: Readonly<{ get: OriginalFunction<VirtualThermostatTransportService, VirtualThermostatTransportService['get']> }> = real.transport;
+				const original: Readonly<{
+					get: OriginalFunction<VirtualThermostatTransportService, VirtualThermostatTransportService['get']>;
+				}> = real.transport;
 				const get = original.get;
 				const spy = jest.spyOn(real.transport, 'get').mockImplementation((...args) => {
 					const adapter = get.call(real.transport, ...args);
 					if (!adapter) return null;
-					const methods: Readonly<{ send: OriginalFunction<ThermostatActuationAdapter, ThermostatActuationAdapter['send']> }> = adapter;
+					const methods: Readonly<{
+						send: OriginalFunction<ThermostatActuationAdapter, ThermostatActuationAdapter['send']>;
+					}> = adapter;
 					const send = methods.send;
-					return { ...adapter, send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
-						if (!retired && packet === undefined && sendArgs[0].property.id === relay && sendArgs[0].value === true) packet = sendArgs[4];
-						const pending = send.call(adapter, ...sendArgs);
-						void pending.then((result) => { if (packet && sendArgs[4] === packet) { nativeResult = result; resultObserved.open(); } },
-							(cause: unknown) => { if (packet && sendArgs[4] === packet) { nativeFailure = { cause }; resultObserved.open(); } });
-						return pending; // SAME original native Promise, not a timing wrapper.
-					} };
+					return {
+						...adapter,
+						send: (...sendArgs: Parameters<ThermostatActuationAdapter['send']>) => {
+							if (!retired && packet === undefined && sendArgs[0].property.id === relay && sendArgs[0].value === true)
+								packet = sendArgs[4];
+							const pending = send.call(adapter, ...sendArgs);
+							void pending.then(
+								(result) => {
+									if (packet && sendArgs[4] === packet) {
+										nativeResult = result;
+										resultObserved.open();
+									}
+								},
+								(cause: unknown) => {
+									if (packet && sendArgs[4] === packet) {
+										nativeFailure = { cause };
+										resultObserved.open();
+									}
+								},
+							);
+							return pending; // SAME original native Promise, not a timing wrapper.
+						},
+					};
 				});
 				const installedGet = Object.getOwnPropertyDescriptor(real.transport, 'get');
 				installedCleanups.unshift(() => {
-					if (!same(Object.getOwnPropertyDescriptor(real.transport, 'get'), installedGet)) throw new Error('Foreign R132 get descriptor retained');
+					if (!same(Object.getOwnPropertyDescriptor(real.transport, 'get'), installedGet))
+						throw new Error('Foreign R132 get descriptor retained');
 					spy.mockRestore();
 				});
 				source.subscribers.push(subscriber);
-				installedCleanups.unshift(() => { const index = source.subscribers.indexOf(subscriber); if (index >= 0) source.subscribers.splice(index, 1); });
-				const current = await publicComfort.get(id); setup.assertLive();
+				installedCleanups.unshift(() => {
+					const index = source.subscribers.indexOf(subscriber);
+					if (index >= 0) source.subscribers.splice(index, 1);
+				});
+				const current = await publicComfort.get(id);
+				setup.assertLive();
 				const expected = { expected_revision: current.revision, expected_graph_revision: current.graph_revision };
-				await real.report(sensor, 18); setup.assertLive();
-				await nativeEntered.promise; setup.assertLive();
-				const selected = [...owner['inFlightCommands'].values()].filter((command) => command.controllerId === id && command.action === 'on');
+				await real.report(sensor, 18);
+				setup.assertLive();
+				await nativeEntered.promise;
+				setup.assertLive();
+				const selected = [...owner['inFlightCommands'].values()].filter(
+					(command) => command.controllerId === id && command.action === 'on',
+				);
 				expect(selected).toHaveLength(1);
 				const command = selected[0];
 				if (!packet || packet.commandId !== command.id) throw new Error('Nonunique original native packet');
 				operation = owner['inFlight'].get(command.id);
-				if (!operation) throw new Error('Missing original intrinsic O');
+				if (operation === undefined) throw new Error('Missing original intrinsic O');
 				beforeEntry?.(owner, id, real);
 				mutation = request.run(true, () => publicComfort.select(id, expected, 'eco', false));
 				void mutation.catch(() => undefined);
-				await body({ owner, source, id, real, comfort: publicComfort, assertLive: () => setup.assertLive(), command, operation, mutation, readEntered, readResume, nativeResume, resultObserved,
-					nativeResult: () => { if (nativeFailure) throw nativeFailure.cause; if (!nativeResult) throw new Error('Missing native result'); return nativeResult; } });
-			} catch (cause) { primary = { cause }; }
-			try { await backstop.cleanup(); } catch (cause) { if (!primary) primary = { cause }; }
+				await body({
+					owner,
+					source,
+					id,
+					real,
+					comfort: publicComfort,
+					assertLive: () => setup.assertLive(),
+					command,
+					operation,
+					mutation,
+					readEntered,
+					readResume,
+					nativeResume,
+					resultObserved,
+					nativeResult: () => {
+						if (nativeFailure) throw nativeFailure.cause;
+						if (!nativeResult) throw new Error('Missing native result');
+						return nativeResult;
+					},
+				});
+			} catch (cause) {
+				primary = { cause };
+			}
+			try {
+				await backstop.cleanup();
+			} catch (cause) {
+				if (!primary) primary = { cause };
+			}
 			if (primary) throw primary.cause;
 		};
-		it.each(['beforeOn', 'afterOn'] satisfies readonly ('beforeOn' | 'afterOn')[])('R132 reaches the original first read before O and admits only its real %s acknowledged postimage', async (boundary) => {
-			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
-				expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
-				held.nativeResume.open(); await held.resultObserved.promise;
-				expect(held.nativeResult()).toMatchObject(boundary === 'beforeOn' ? { outcome: 'refused' } : { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false });
-				held.owner.onModuleDestroy(); held.readResume.open();
-				await held.mutation; await held.operation;
-				expect((await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).status).toBe(boundary === 'beforeOn' ? 'cancelled' : 'unknown');
-				expect(held.real.controls.sends.filter((send) => send.on)).toHaveLength(boundary === 'beforeOn' ? 0 : 1);
-			}, undefined, boundary);
-		}, 30_000);
-		it.each([undefined, null, false, 'first native save P', new Error('first native save P')])('R132 keeps first outcome-save %p primary even if original catch saves and O fulfills', async (primary) => {
-			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
-				let injected = false;
-				const subscriber: import('typeorm').EntitySubscriberInterface = { beforeQuery: (event) => {
-					if (!injected && event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
-						event.parameters?.includes(held.command.id) && event.parameters.includes('cancelled')) {
-						injected = true; throw primary;
+		it.each(['beforeOn', 'afterOn'] satisfies readonly ('beforeOn' | 'afterOn')[])(
+			'R132 reaches the original first read before O and admits only its real %s acknowledged postimage',
+			async (boundary) => {
+				await withR132Held(
+					async (held) => {
+						await held.readEntered.promise;
+						held.assertLive();
+						expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
+						held.nativeResume.open();
+						await held.resultObserved.promise;
+						expect(held.nativeResult()).toMatchObject(
+							boundary === 'beforeOn'
+								? { outcome: 'refused' }
+								: { outcome: 'unknown', outputConfirmed: false, pendingOnDrained: false },
+						);
+						held.owner.onModuleDestroy();
+						held.readResume.open();
+						await held.mutation;
+						await held.operation;
+						expect(
+							(await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id }))
+								.status,
+						).toBe(boundary === 'beforeOn' ? 'cancelled' : 'unknown');
+						expect(held.real.controls.sends.filter((send) => send.on)).toHaveLength(boundary === 'beforeOn' ? 0 : 1);
+					},
+					undefined,
+					boundary,
+				);
+			},
+			30_000,
+		);
+		it.each([undefined, null, false, 'first native save P', new Error('first native save P')])(
+			'R132 keeps first outcome-save %p primary even if original catch saves and O fulfills',
+			async (primary: unknown) => {
+				await withR132Held(async (held) => {
+					await held.readEntered.promise;
+					held.assertLive();
+					let injected = false;
+					const subscriber: import('typeorm').EntitySubscriberInterface = {
+						beforeQuery: (event) => {
+							if (
+								!injected &&
+								event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+								event.parameters?.includes(held.command.id) &&
+								event.parameters.includes('cancelled')
+							) {
+								injected = true;
+								throw primary;
+							}
+						},
+					};
+					held.source.subscribers.push(subscriber);
+					try {
+						held.nativeResume.open();
+						await held.resultObserved.promise;
+						held.owner.onModuleDestroy();
+						held.readResume.open();
+						await expect(held.mutation).rejects.toBe(primary);
+						await held.operation;
+						expect(injected).toBe(true);
+						expect(
+							(await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id }))
+								.status,
+						).toBe('cancelled');
+					} finally {
+						const index = held.source.subscribers.indexOf(subscriber);
+						if (index >= 0) held.source.subscribers.splice(index, 1);
 					}
-				} };
-				held.source.subscribers.push(subscriber);
-				try {
-					held.nativeResume.open(); await held.resultObserved.promise;
-					held.owner.onModuleDestroy(); held.readResume.open();
-					await expect(held.mutation).rejects.toBe(primary);
-					await held.operation; expect(injected).toBe(true);
-					expect((await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).status).toBe('cancelled');
-				} finally { const index = held.source.subscribers.indexOf(subscriber); if (index >= 0) held.source.subscribers.splice(index, 1); }
-			});
-		}, 30_000);
-		it.each(['journal-same-value', 'slot-same-value', 'config-same-value', 'claim-same-value', 'graph', 'missing-row', 'foreign-fault'])('R132 rejects genuine %s during the released seed gap without filtering full facts', async (effect) => {
-			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
-				const statements: Readonly<Record<string, readonly [string, readonly unknown[]]>> = {
-					'journal-same-value': ['UPDATE "devices_virtual_thermostat_command_journal" SET "status" = "status" WHERE "id" = ?', [held.command.id]],
-					'slot-same-value': ['UPDATE "devices_module_climate_automation_slots" SET "manualCounter" = "manualCounter" WHERE "controllerId" = ?', [held.id]],
-					'config-same-value': ['UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?', [held.id]],
-					'claim-same-value': ['UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" WHERE "id" = ?', [held.command.claimId]],
-					graph: ['UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1', []],
-					'missing-row': ['DELETE FROM "devices_virtual_thermostat_command_journal" WHERE "id" = ?', [held.command.id]],
-					'foreign-fault': ['UPDATE "devices_virtual_thermostat_command_journal" SET "fault" = ? WHERE "id" = ?', ['foreign outcome', held.command.id]],
-				};
-				const [sql, bindings] = statements[effect];
-				const foreign = held.source.manager.query(sql, [...bindings]);
-				void foreign.catch(() => undefined);
-				held.readResume.open(); await foreign;
-				held.nativeResume.open(); await held.resultObserved.promise;
-				held.owner.onModuleDestroy();
-				await expect(held.mutation).rejects.toBeDefined(); await held.operation;
-				expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
-			});
-		}, 30_000);
+				});
+			},
+			30_000,
+		);
+		it.each([
+			'journal-same-value',
+			'slot-same-value',
+			'config-same-value',
+			'claim-same-value',
+			'graph',
+			'missing-row',
+			'foreign-fault',
+		])(
+			'R132 rejects genuine %s during the released seed gap without filtering full facts',
+			async (effect) => {
+				await withR132Held(async (held) => {
+					await held.readEntered.promise;
+					held.assertLive();
+					const statements: Readonly<Record<string, readonly [string, readonly unknown[]]>> = {
+						'journal-same-value': [
+							'UPDATE "devices_virtual_thermostat_command_journal" SET "status" = "status" WHERE "id" = ?',
+							[held.command.id],
+						],
+						'slot-same-value': [
+							'UPDATE "devices_module_climate_automation_slots" SET "manualCounter" = "manualCounter" WHERE "controllerId" = ?',
+							[held.id],
+						],
+						'config-same-value': [
+							'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" WHERE "controllerId" = ?',
+							[held.id],
+						],
+						'claim-same-value': [
+							'UPDATE "devices_virtual_thermostat_actuator_claims" SET "revision" = "revision" WHERE "id" = ?',
+							[held.command.claimId],
+						],
+						graph: ['UPDATE "devices_virtual_graph_revision" SET "revision" = "revision" + 1 WHERE "id" = 1', []],
+						'missing-row': [
+							'DELETE FROM "devices_virtual_thermostat_command_journal" WHERE "id" = ?',
+							[held.command.id],
+						],
+						'foreign-fault': [
+							'UPDATE "devices_virtual_thermostat_command_journal" SET "fault" = ? WHERE "id" = ?',
+							['foreign outcome', held.command.id],
+						],
+					};
+					const [sql, bindings] = statements[effect];
+					const foreign = held.source.manager.query(sql, [...bindings]);
+					void foreign.catch(() => undefined);
+					held.readResume.open();
+					await foreign;
+					held.nativeResume.open();
+					await held.resultObserved.promise;
+					held.owner.onModuleDestroy();
+					await expect(held.mutation).rejects.toBeDefined();
+					await held.operation;
+					expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
+				});
+			},
+			30_000,
+		);
 		it('R132 rejects actual same-runner replay of the identical original UPDATE despite identical final bytes', async () => {
 			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
+				await held.readEntered.promise;
+				held.assertLive();
 				let replayed = false;
-				const subscriber: import('typeorm').EntitySubscriberInterface = { beforeQuery: async (event) => {
-					if (!replayed && event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
-						event.parameters?.includes(held.command.id) && event.parameters.includes('cancelled')) {
-						replayed = true; await event.queryRunner.query(event.query, event.parameters);
-					}
-				} };
+				const subscriber: import('typeorm').EntitySubscriberInterface = {
+					beforeQuery: async (event) => {
+						if (
+							!replayed &&
+							event.query.startsWith('UPDATE "devices_virtual_thermostat_command_journal"') &&
+							event.parameters?.includes(held.command.id) &&
+							event.parameters.includes('cancelled')
+						) {
+							replayed = true;
+							await event.queryRunner.query(event.query, event.parameters);
+						}
+					},
+				};
 				held.source.subscribers.push(subscriber);
 				try {
-					held.nativeResume.open(); await held.resultObserved.promise;
-					held.owner.onModuleDestroy(); held.readResume.open();
-					await expect(held.mutation).rejects.toBeDefined(); await held.operation;
-					expect(replayed).toBe(true);
-					expect((await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).status).toBe('cancelled');
-				} finally { const index = held.source.subscribers.indexOf(subscriber); if (index >= 0) held.source.subscribers.splice(index, 1); }
-			});
-		}, 30_000);
-		it.each(['fresh-instance', 'same-instance'])('R132 cannot use A history as %s B admission or wait on B while native A is held', async (restart) => {
-			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive(); held.owner.onModuleDestroy(); held.readResume.open();
-				held.assertLive();
-				const b = restart === 'same-instance' ? held.owner : makeActualRuntime();
-				try {
-					const fences = held.real.controls.fences.length;
-					await b.onApplicationBootstrap();
-					expect(b['lifecycle']).toBeDefined();
-					expect(held.real.controls.fences.length).toBeGreaterThan(fences);
-					expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
-					const bContext = b['contexts'].get(held.id);
-					held.nativeResume.open(); await held.resultObserved.promise; await held.operation;
+					held.nativeResume.open();
+					await held.resultObserved.promise;
+					held.owner.onModuleDestroy();
+					held.readResume.open();
 					await expect(held.mutation).rejects.toBeDefined();
-					expect(b['contexts'].get(held.id)).toBe(bContext);
-				} finally { b.onModuleDestroy(); }
+					await held.operation;
+					expect(replayed).toBe(true);
+					expect(
+						(await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).status,
+					).toBe('cancelled');
+				} finally {
+					const index = held.source.subscribers.indexOf(subscriber);
+					if (index >= 0) held.source.subscribers.splice(index, 1);
+				}
 			});
 		}, 30_000);
+		it.each(['fresh-instance', 'same-instance'])(
+			'R132 cannot use A history as %s B admission or wait on B while native A is held',
+			async (restart) => {
+				await withR132Held(async (held) => {
+					await held.readEntered.promise;
+					held.assertLive();
+					held.owner.onModuleDestroy();
+					held.readResume.open();
+					held.assertLive();
+					const b = restart === 'same-instance' ? held.owner : makeActualRuntime();
+					try {
+						const fences = held.real.controls.fences.length;
+						await b.onApplicationBootstrap();
+						expect(b['lifecycle']).toBeDefined();
+						expect(held.real.controls.fences.length).toBeGreaterThan(fences);
+						expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
+						const bContext = b['contexts'].get(held.id);
+						held.nativeResume.open();
+						await held.resultObserved.promise;
+						await held.operation;
+						await expect(held.mutation).rejects.toBeDefined();
+						expect(b['contexts'].get(held.id)).toBe(bContext);
+					} finally {
+						b.onModuleDestroy();
+					}
+				});
+			},
+			30_000,
+		);
 		it('R132 rejects an observed original transport method loss and cannot resurrect it by restoring the function', async () => {
 			let old: PropertyDescriptor | undefined;
-			await withR132Held(async (held) => {
-				await expect(held.mutation).rejects.toBeDefined();
-				if (!old) throw new Error('Missing original descriptor');
-				Object.defineProperty(held.real.transport, 'get', old);
-				held.owner.onModuleDestroy(); held.nativeResume.open(); await held.operation;
-				expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
-			}, (_owner, _id, real) => {
-				old = Object.getOwnPropertyDescriptor(real.transport, 'get');
-				Object.defineProperty(real.transport, 'get', { configurable: true, writable: true, value: () => null });
-			});
+			await withR132Held(
+				async (held) => {
+					await expect(held.mutation).rejects.toBeDefined();
+					if (!old) throw new Error('Missing original descriptor');
+					Object.defineProperty(held.real.transport, 'get', old);
+					held.owner.onModuleDestroy();
+					held.nativeResume.open();
+					await held.operation;
+					expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
+				},
+				(_owner, _id, real) => {
+					old = Object.getOwnPropertyDescriptor(real.transport, 'get');
+					Object.defineProperty(real.transport, 'get', { configurable: true, writable: true, value: () => null });
+				},
+			);
 		}, 30_000);
 		it('R132 rejects forged oversized or cloned capture identities with zero native/database calls', async () => {
-			const real = fixture, owner = runtime, source = database;
+			const real = fixture,
+				owner = runtime,
+				source = database;
 			const queries = jest.spyOn(source, 'query');
-			const forged = Object.freeze(new ClimateAutomationPredecessors(Object.freeze(Array.from({ length: 9 }, () => Object.freeze({})))));
+			const forged = Object.freeze(
+				new ClimateAutomationPredecessors(Object.freeze(Array.from({ length: 9 }, () => Object.freeze({})))),
+			);
 			await expect(owner['joinOriginalPredecessors'](forged)).rejects.toThrow('closed');
 			expect(() => owner['originalPredecessorSize'](forged)).toThrow('closed');
 			expect(queries).not.toHaveBeenCalled();
 			expect(real.controls.sends.filter((send) => send.on)).toEqual([]);
 		});
-		it.each([undefined, null, false, 'seed read P', new Error('seed read P')])('R132 releases a failed genuine seed without joining held N and retains primary %p through cleanup Q', async (primary) => {
-			const source = database, real = fixture;
-			let foreignHook: PropertyDescriptor | undefined, originalHook: PropertyDescriptor | undefined;
-			try {
-				await expect(withR132Held(async (held) => {
-					await held.readEntered.promise; held.assertLive();
-					const observer: import('typeorm').EntitySubscriberInterface = { beforeQuery: (event) => {
-						if (event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_configs')) throw primary;
-					} };
-					held.source.subscribers.push(observer);
-					try {
-						held.readResume.open();
-						await expect(held.mutation).rejects.toBe(primary);
-						expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
-						expect(real.controls.sends.filter((send) => send.on)).toEqual([]);
-						// Independent SQL completes while N is STILL held: no SQLite owner was retained by the failed seed.
-						expect(await source.manager.countBy(VirtualThermostatCommandEntity, { id: held.command.id })).toBe(1);
-						originalHook = Object.getOwnPropertyDescriptor(real.controls, 'beforeOn');
-						if (!originalHook) throw new Error('Missing exact owned hook');
-						Object.defineProperty(real.controls, 'beforeOn', { ...originalHook, enumerable: !originalHook.enumerable });
-						foreignHook = Object.getOwnPropertyDescriptor(real.controls, 'beforeOn');
-						throw primary; // Body P must survive the helper's real foreign-descriptor cleanup Q, including falsy P.
-					} finally { const i = source.subscribers.indexOf(observer); if (i >= 0) source.subscribers.splice(i, 1); }
-				})).rejects.toBe(primary);
-				expect(real.controls.beforeOn).toBe(foreignHook?.value);
-				expect(real.controls.sends.filter((send) => send.on)).toEqual([]);
-			} finally {
-				const actual = Object.getOwnPropertyDescriptor(real.controls, 'beforeOn');
-				if (originalHook && foreignHook && actual?.value === foreignHook.value && actual?.enumerable === foreignHook.enumerable &&
-					actual?.configurable === foreignHook.configurable && actual?.writable === foreignHook.writable && actual?.get === foreignHook.get && actual?.set === foreignHook.set)
-					Object.defineProperty(real.controls, 'beforeOn', originalHook);
-			}
-		}, 30_000);
+		it.each([undefined, null, false, 'seed read P', new Error('seed read P')])(
+			'R132 releases a failed genuine seed without joining held N and retains primary %p through cleanup Q',
+			async (primary: unknown) => {
+				const source = database,
+					real = fixture;
+				let foreignHook: PropertyDescriptor | undefined, originalHook: PropertyDescriptor | undefined;
+				try {
+					await expect(
+						withR132Held(async (held) => {
+							await held.readEntered.promise;
+							held.assertLive();
+							const observer: import('typeorm').EntitySubscriberInterface = {
+								beforeQuery: (event) => {
+									if (event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_configs'))
+										throw primary;
+								},
+							};
+							held.source.subscribers.push(observer);
+							try {
+								held.readResume.open();
+								await expect(held.mutation).rejects.toBe(primary);
+								expect(held.owner['inFlight'].get(held.command.id)).toBe(held.operation);
+								expect(real.controls.sends.filter((send) => send.on)).toEqual([]);
+								// Independent SQL completes while N is STILL held: no SQLite owner was retained by the failed seed.
+								expect(await source.manager.countBy(VirtualThermostatCommandEntity, { id: held.command.id })).toBe(1);
+								originalHook = Object.getOwnPropertyDescriptor(real.controls, 'beforeOn');
+								if (!originalHook) throw new Error('Missing exact owned hook');
+								Object.defineProperty(real.controls, 'beforeOn', {
+									...originalHook,
+									enumerable: !originalHook.enumerable,
+								});
+								foreignHook = Object.getOwnPropertyDescriptor(real.controls, 'beforeOn');
+								throw primary; // Body P must survive the helper's real foreign-descriptor cleanup Q, including falsy P.
+							} finally {
+								const i = source.subscribers.indexOf(observer);
+								if (i >= 0) source.subscribers.splice(i, 1);
+							}
+						}),
+					).rejects.toBe(primary);
+					expect(real.controls.beforeOn).toBe(foreignHook?.value);
+					expect(real.controls.sends.filter((send) => send.on)).toEqual([]);
+				} finally {
+					const actual = Object.getOwnPropertyDescriptor(real.controls, 'beforeOn');
+					if (
+						originalHook &&
+						foreignHook &&
+						actual?.value === foreignHook.value &&
+						actual?.enumerable === foreignHook.enumerable &&
+						actual?.configurable === foreignHook.configurable &&
+						actual?.writable === foreignHook.writable &&
+						actual?.get === foreignHook.get &&
+						actual?.set === foreignHook.set
+					)
+						Object.defineProperty(real.controls, 'beforeOn', originalHook);
+				}
+			},
+			30_000,
+		);
 		it('R132 rejects a real extra native journal INSERT rather than adopting it into the captured fixed set', async () => {
 			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
-				const extra = Object.assign(new VirtualThermostatCommandEntity(), held.command, { id: uuid(), status: 'pending' });
-				const inserted = held.source.manager.insert(VirtualThermostatCommandEntity, extra); void inserted.catch(() => undefined);
-				held.readResume.open(); await inserted;
-				held.nativeResume.open(); await held.resultObserved.promise; held.owner.onModuleDestroy();
-				await expect(held.mutation).rejects.toBeDefined(); await held.operation;
+				await held.readEntered.promise;
+				held.assertLive();
+				const extra = Object.assign(new VirtualThermostatCommandEntity(), held.command, {
+					id: uuid(),
+					status: 'pending',
+				});
+				const inserted = held.source.manager.insert(VirtualThermostatCommandEntity, extra);
+				void inserted.catch(() => undefined);
+				held.readResume.open();
+				await inserted;
+				held.nativeResume.open();
+				await held.resultObserved.promise;
+				held.owner.onModuleDestroy();
+				await expect(held.mutation).rejects.toBeDefined();
+				await held.operation;
 				expect(await held.source.manager.countBy(VirtualThermostatCommandEntity, { id: extra.id })).toBe(1);
 				expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
 			});
 		}, 30_000);
 		it('R132 rejects an arbitrary later O descendant instead of lending it the closed native invocation', async () => {
 			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
+				await held.readEntered.promise;
+				held.assertLive();
 				// Registered before seed release: this is an independent descendant of O, not the original T invocation.
-				const late = held.operation.then(() => held.source.manager.query(
-					'UPDATE "devices_virtual_thermostat_command_journal" SET "status" = "status" WHERE "id" = ?', [held.command.id]));
+				const late = held.operation.then(() =>
+					held.source.manager.query(
+						'UPDATE "devices_virtual_thermostat_command_journal" SET "status" = "status" WHERE "id" = ?',
+						[held.command.id],
+					),
+				);
 				void late.catch(() => undefined);
-				held.nativeResume.open(); await held.resultObserved.promise; held.owner.onModuleDestroy(); held.readResume.open();
-				await late; await held.operation;
+				held.nativeResume.open();
+				await held.resultObserved.promise;
+				held.owner.onModuleDestroy();
+				held.readResume.open();
+				await late;
+				await held.operation;
 				await expect(held.mutation).rejects.toBeDefined();
-				expect((await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).status).toBe('cancelled');
+				expect(
+					(await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).status,
+				).toBe('cancelled');
 				expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
 			});
 		}, 30_000);
-		it.each(['slot', 'native-configuration'])('R132 vetoes an actually rolled-back %s write although complete row bytes are restored', async (target) => {
-			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive();
-				const primary = new Error('foreign transaction rollback');
-				const foreign = held.source.transaction(async (manager) => {
-					await manager.query(target === 'slot' ? 'UPDATE "devices_module_climate_automation_slots" SET "manualCounter" = "manualCounter" + 1 WHERE "controllerId" = ?' : 'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" + 1 WHERE "controllerId" = ?', [held.id]);
-					throw primary;
+		it.each(['slot', 'native-configuration'])(
+			'R132 vetoes an actually rolled-back %s write although complete row bytes are restored',
+			async (target) => {
+				await withR132Held(async (held) => {
+					await held.readEntered.promise;
+					held.assertLive();
+					const primary = new Error('foreign transaction rollback');
+					const foreign = held.source.transaction(async (manager) => {
+						await manager.query(
+							target === 'slot'
+								? 'UPDATE "devices_module_climate_automation_slots" SET "manualCounter" = "manualCounter" + 1 WHERE "controllerId" = ?'
+								: 'UPDATE "devices_virtual_thermostat_configs" SET "revision" = "revision" + 1 WHERE "controllerId" = ?',
+							[held.id],
+						);
+						throw primary;
+					});
+					void foreign.catch(() => undefined);
+					held.readResume.open();
+					await expect(foreign).rejects.toBe(primary);
+					held.nativeResume.open();
+					await held.resultObserved.promise;
+					held.owner.onModuleDestroy();
+					await expect(held.mutation).rejects.toBeDefined();
+					await held.operation;
+					expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
 				});
-				void foreign.catch(() => undefined);
-				held.readResume.open(); await expect(foreign).rejects.toBe(primary);
-				held.nativeResume.open(); await held.resultObserved.promise; held.owner.onModuleDestroy();
-				await expect(held.mutation).rejects.toBeDefined(); await held.operation;
-				expect(held.real.controls.sends.filter((send) => send.on)).toEqual([]);
-			});
-		}, 30_000);
+			},
+			30_000,
+		);
 		it('R132 does not reuse a completed A command as a live predecessor of a genuine fresh empty-set B no-op', async () => {
 			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive(); held.nativeResume.open(); await held.resultObserved.promise;
-				held.owner.onModuleDestroy(); held.readResume.open(); await held.mutation; await held.operation;
+				await held.readEntered.promise;
+				held.assertLive();
+				held.nativeResume.open();
+				await held.resultObserved.promise;
+				held.owner.onModuleDestroy();
+				held.readResume.open();
+				await held.mutation;
+				await held.operation;
 				held.assertLive();
 				const b = makeActualRuntime();
 				try {
 					await b.onApplicationBootstrap();
 					const capture = b['captureOriginalPredecessors'](held.id);
-					try { expect(b['originalPredecessorSize'](capture)).toBe(0); }
-					finally { b['closeOriginalPredecessors'](capture); }
-					const before = await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id });
-					const current = await held.comfort.get(held.id); held.assertLive();
-					await held.comfort.select(held.id, { expected_revision: current.revision, expected_graph_revision: current.graph_revision }, 'eco', false);
-					expect(await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id })).toEqual(before);
-				} finally { b.onModuleDestroy(); }
+					try {
+						expect(b['originalPredecessorSize'](capture)).toBe(0);
+					} finally {
+						b['closeOriginalPredecessors'](capture);
+					}
+					const before = await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, {
+						id: held.command.id,
+					});
+					const current = await held.comfort.get(held.id);
+					held.assertLive();
+					await held.comfort.select(
+						held.id,
+						{ expected_revision: current.revision, expected_graph_revision: current.graph_revision },
+						'eco',
+						false,
+					);
+					expect(
+						await held.source.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: held.command.id }),
+					).toEqual(before);
+				} finally {
+					b.onModuleDestroy();
+				}
 			});
 		}, 30_000);
 		it('R132 rejects a clone of a genuine captured capability without borrowing its original packet or O', async () => {
 			let checked = false;
-			await withR132Held(async (held) => {
-				await held.readEntered.promise; held.assertLive(); expect(checked).toBe(true);
-				held.nativeResume.open(); await held.resultObserved.promise; held.owner.onModuleDestroy(); held.readResume.open();
-				await held.mutation; await held.operation;
-			}, (owner, id) => {
-				const original = owner['captureOriginalPredecessors'](id);
-				try {
-					expect(owner['originalPredecessorSize'](original)).toBe(1);
-					const clone = Object.freeze(new ClimateAutomationPredecessors(original.projections));
-					expect(() => owner['originalPredecessorSize'](clone)).toThrow('closed');
-					checked = true;
-				} finally { owner['closeOriginalPredecessors'](original); }
-			});
+			await withR132Held(
+				async (held) => {
+					await held.readEntered.promise;
+					held.assertLive();
+					expect(checked).toBe(true);
+					held.nativeResume.open();
+					await held.resultObserved.promise;
+					held.owner.onModuleDestroy();
+					held.readResume.open();
+					await held.mutation;
+					await held.operation;
+				},
+				(owner, id) => {
+					const original = owner['captureOriginalPredecessors'](id);
+					try {
+						expect(owner['originalPredecessorSize'](original)).toBe(1);
+						const clone = Object.freeze(new ClimateAutomationPredecessors(original.projections));
+						expect(() => owner['originalPredecessorSize'](clone)).toThrow('closed');
+						checked = true;
+					} finally {
+						owner['closeOriginalPredecessors'](original);
+					}
+				},
+			);
 		}, 30_000);
 		// END R132 closed predecessor real managed drafts
 

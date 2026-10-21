@@ -52,6 +52,9 @@ import {
 	ClimateAutomationParticipantImage,
 	ClimateAutomationParticipantPhase,
 	ClimateAutomationParticipantTurn,
+	ClimateAutomationPredecessorPorts,
+	ClimateAutomationPredecessorTransition,
+	ClimateAutomationPredecessors,
 	ClimateAutomationProducer,
 	ClimateAutomationProvider,
 	ClimateAutomationReplacement,
@@ -62,9 +65,6 @@ import {
 	ClimateAutomationRuntimeConsumer,
 	ClimateAutomationRuntimeConsumerBinding,
 	ClimateAutomationRuntimeDebt,
-	ClimateAutomationPredecessors,
-	ClimateAutomationPredecessorPorts,
-	ClimateAutomationPredecessorTransition,
 	ClimateAutomationScope,
 	ClimateAutomationSelection,
 	ClimateAutomationSettlementContinuity,
@@ -127,6 +127,16 @@ type OriginalFunction<Owner, Method> = Method extends (...args: infer Args) => i
 	? ((...args: Args) => Result) & Readonly<{ call: (receiver: Owner, ...args: Args) => Result }>
 	: Method;
 type OriginalFunctions<Owner> = { readonly [Key in keyof Owner]: OriginalFunction<Owner, Owner[Key]> };
+
+// Same prototype object at each original lookup; only the function-valued view is different.
+let originalPredecessorWriterMethods: {
+	readonly [Key in
+		| 'captureExistingPredecessorGap'
+		| 'readExistingPredecessorSeed'
+		| 'expectedPredecessorFacts'
+		| 'predecessorJsonObject'
+		| 'deriveExistingClock']: OriginalFunction<ClimateAutomationWriterService, ClimateAutomationWriterService[Key]>;
+};
 
 // Unasserted native Reflect views; initializer lookups return the SAME original function objects.
 let originalPublicationProbeLookup: Readonly<{
@@ -260,7 +270,10 @@ interface ExistingSeedOwner {
 	readonly wall: Readonly<{ call: (receiver: DateConstructor) => number }>;
 	readonly mono: Readonly<{ call: (receiver: typeof performance) => number }>;
 	readonly clockCurrent: () => boolean;
-	readonly graphCapture: OriginalFunction<ClimateAutomationGraphParticipant, NonNullable<ClimateAutomationGraphParticipant['captureOwnedPublicationLifecycle']>>;
+	readonly graphCapture: OriginalFunction<
+		ClimateAutomationGraphParticipant,
+		NonNullable<ClimateAutomationGraphParticipant['captureOwnedPublicationLifecycle']>
+	>;
 }
 interface ExistingPredecessorSeed {
 	readonly facts: ClimateAutomationExistingFacts;
@@ -496,11 +509,11 @@ const increment = (value: number) => {
 @Injectable()
 export class ClimateAutomationWriterService {
 	private static readonly predecessorMethods = Object.freeze([
-		['captureExistingPredecessorGap', ClimateAutomationWriterService.prototype.captureExistingPredecessorGap],
-		['readExistingPredecessorSeed', ClimateAutomationWriterService.prototype.readExistingPredecessorSeed],
-		['expectedPredecessorFacts', ClimateAutomationWriterService.prototype.expectedPredecessorFacts],
-		['predecessorJsonObject', ClimateAutomationWriterService.prototype.predecessorJsonObject],
-		['deriveExistingClock', ClimateAutomationWriterService.prototype.deriveExistingClock],
+		['captureExistingPredecessorGap', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.captureExistingPredecessorGap)],
+		['readExistingPredecessorSeed', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.readExistingPredecessorSeed)],
+		['expectedPredecessorFacts', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.expectedPredecessorFacts)],
+		['predecessorJsonObject', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.predecessorJsonObject)],
+		['deriveExistingClock', ((originalPredecessorWriterMethods = ClimateAutomationWriterService.prototype), originalPredecessorWriterMethods.deriveExistingClock)],
 	] satisfies readonly (readonly [string, unknown])[]);
 	private readonly context = new AsyncLocalStorage<Context>();
 	private readonly creations = new WeakMap<object, CreationRecord>();
@@ -528,9 +541,14 @@ export class ClimateAutomationWriterService {
 			readonly nativeClockOwner?: ExistingClockOwner;
 		}>
 	>();
-	private readonly predecessorIntentProjections = new WeakMap<object, Readonly<{
-		controllerId: string; slot: ClimateAutomationSlotFacts; nativeConfig: ClimateAutomationJson;
-	}>>();
+	private readonly predecessorIntentProjections = new WeakMap<
+		object,
+		Readonly<{
+			controllerId: string;
+			slot: ClimateAutomationSlotFacts;
+			nativeConfig: ClimateAutomationJson;
+		}>
+	>();
 	private readonly runtimeConsumers = new Map<ClimateAutomationRuntimeConsumer, RuntimeConsumerRecord>();
 	private readonly runtimeCaptures = new Map<ClimateAutomationRuntimeCapture, RuntimeCaptureRecord>();
 	private readonly runtimeCheckpoints = new Map<ClimateAutomationRuntimeCheckpoint, RuntimeCheckpointRecord>();
@@ -2400,8 +2418,10 @@ export class ClimateAutomationWriterService {
 			pins.push({ receiver: ports, key, method: nativeFieldEvidence.get(ports, key) });
 		}
 		for (const [key, originalKey] of [
-			['capture', 'captureOriginalPredecessors'], ['size', 'originalPredecessorSize'],
-			['recognize', 'recognizeOriginalPredecessor'], ['join', 'joinOriginalPredecessors'],
+			['capture', 'captureOriginalPredecessors'],
+			['size', 'originalPredecessorSize'],
+			['recognize', 'recognizeOriginalPredecessor'],
+			['join', 'joinOriginalPredecessors'],
 			['close', 'closeOriginalPredecessors'],
 		]) {
 			const method = nativeFieldEvidence.get(ports, key);
@@ -2841,47 +2861,86 @@ export class ClimateAutomationWriterService {
 		return this.commitExistingControllerRoot(request);
 	}
 	private captureExistingPredecessorGap(input: ClimateAutomationExistingInput): ExistingPredecessorGap | undefined {
-		const consumers = [...this.runtimeConsumers.values()].filter((record) => record.binding.providerKey === input.providerKey);
+		const consumers = [...this.runtimeConsumers.values()].filter(
+			(record) => record.binding.providerKey === input.providerKey,
+		);
 		if (!consumers.length) return undefined;
 		if (consumers.length !== 1 || !this.runtimeConsumerCurrent(consumers[0])) throw new Conflict('unavailable');
-		const original = consumers[0], ports: ClimateAutomationPredecessorPorts = original.binding.predecessors;
+		const original = consumers[0],
+			ports: ClimateAutomationPredecessorPorts = original.binding.predecessors;
 		const capture = ports.capture.call(ports.owner, input.controllerId);
 		let size: number;
 		try {
 			size = ports.size.call(ports.owner, capture);
-			if (capture.projections.length !== size || capture.projections.some((projection) =>
-				this.predecessorIntentProjections.get(projection)?.controllerId !== input.controllerId)) throw new Conflict('unavailable');
+			if (
+				capture.projections.length !== size ||
+				capture.projections.some(
+					(projection) => this.predecessorIntentProjections.get(projection)?.controllerId !== input.controllerId,
+				)
+			)
+				throw new Conflict('unavailable');
 		} catch (cause) {
-			try { ports.close.call(ports.owner, capture); } catch { /* Original validation P remains primary. */ }
+			try {
+				ports.close.call(ports.owner, capture);
+			} catch {
+				/* Original validation P remains primary. */
+			}
 			throw cause;
 		}
 		if (size === 0) {
 			ports.close.call(ports.owner, capture);
 			return undefined;
 		}
-		let dirty = false, closed = false, observing = true;
+		let dirty = false,
+			closed = false,
+			observing = true;
 		const pins = Object.freeze(Object.entries(ports).filter(([key]) => key !== 'owner'));
 		const current = (): boolean => {
-			if (closed || dirty || !ClimateAutomationWriterService.predecessorMethods.every(([key, method]) => creationMethodCurrent(this, key, method)) || ports.owner !== original.binding.owner ||
-				(!pins.every(([key, method]) => creationMethodCurrent(ports, key, method)) ||
-				!original.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method)))) dirty = true;
+			if (
+				closed ||
+				dirty ||
+				!ClimateAutomationWriterService.predecessorMethods.every(([key, method]) =>
+					creationMethodCurrent(this, key, method),
+				) ||
+				ports.owner !== original.binding.owner ||
+				!pins.every(([key, method]) => creationMethodCurrent(ports, key, method)) ||
+				!original.pins.every((pin) => creationMethodCurrent(pin.receiver, pin.key, pin.method))
+			)
+				dirty = true;
 			return !closed && !dirty;
 		};
 		const observer: EntitySubscriberInterface = {
 			beforeQuery: (event: BeforeQueryEvent<unknown>): void => {
 				if (!observing) return;
 				try {
-				if (!current()) return;
-				if (/^\s*(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(event.query)) return;
-				// R130 preserves this exact zero-row reservation; ordinary same-value row UPDATEs still veto.
-				if (event.query === `UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0` && !event.parameters?.length) return;
-				try { if (ports.recognize.call(ports.owner, capture, event)) return; }
-				catch { /* Negative evidence cannot replace native execution or its error. */ }
-				dirty = true;
-				} catch { dirty = true; /* Optional observation never replaces the original native callback or error. */ }
+					if (!current()) return;
+					if (
+						/^\s*(?:SELECT\b(?![^;]*;\s*\S)|BEGIN(?: TRANSACTION)?$|COMMIT$|ROLLBACK$|SAVEPOINT\b|RELEASE SAVEPOINT\b|ROLLBACK TO SAVEPOINT\b)/i.test(
+							event.query,
+						)
+					)
+						return;
+					// R130 preserves this exact zero-row reservation; ordinary same-value row UPDATEs still veto.
+					if (
+						event.query === `UPDATE "${CLIMATE_SLOT_TABLE}" SET "slotRevision" = "slotRevision" WHERE 0` &&
+						!event.parameters?.length
+					)
+						return;
+					try {
+						if (ports.recognize.call(ports.owner, capture, event)) return;
+					} catch {
+						/* Negative evidence cannot replace native execution or its error. */
+					}
+					dirty = true;
+				} catch {
+					dirty = true; /* Optional observation never replaces the original native callback or error. */
+				}
 			},
 		};
-		const beforeQuery = observer.beforeQuery, subscribers = this.dataSource.subscribers, observerPrototype = nativePrototypeEvidence.getPrototypeOf(observer);
+		const originalObserver: OriginalFunctions<Pick<EntitySubscriberInterface, 'beforeQuery'>> = observer;
+		const beforeQuery = originalObserver.beforeQuery,
+			subscribers = this.dataSource.subscribers,
+			observerPrototype = nativePrototypeEvidence.getPrototypeOf(observer);
 		subscribers.push(observer);
 		const closeObservation = (): void => {
 			if (!observing) return;
@@ -2889,78 +2948,166 @@ export class ClimateAutomationWriterService {
 			const index = subscribers.indexOf(observer);
 			if (index >= 0) subscribers.splice(index, 1);
 		};
-		return Object.freeze({ capture, ports,
-			current: () => current() && (!observing || (this.dataSource.subscribers === subscribers && subscribers.includes(observer) &&
-				nativePrototypeEvidence.getPrototypeOf(observer) === observerPrototype && creationMethodCurrent(observer, 'beforeQuery', beforeQuery))),
+		return Object.freeze({
+			capture,
+			ports,
+			current: () =>
+				current() &&
+				(!observing ||
+					(this.dataSource.subscribers === subscribers &&
+						subscribers.includes(observer) &&
+						nativePrototypeEvidence.getPrototypeOf(observer) === observerPrototype &&
+						creationMethodCurrent(observer, 'beforeQuery', beforeQuery))),
 			closeObservation,
-			close: () => { if (closed) return; closed = true; closeObservation(); ports.close.call(ports.owner, capture); },
+			close: () => {
+				if (closed) return;
+				closed = true;
+				closeObservation();
+				ports.close.call(ports.owner, capture);
+			},
 		});
 	}
-	private async readExistingPredecessorSeed(owned: ExistingSeedOwner, gap: ExistingPredecessorGap): Promise<ExistingPredecessorSeed> {
+	private async readExistingPredecessorSeed(
+		owned: ExistingSeedOwner,
+		gap: ExistingPredecessorGap,
+	): Promise<ExistingPredecessorSeed> {
 		this.assertExistingRootEntry();
 		const originalClock = Object.freeze({ owner: this.existingClockLeases.get(owned.input.controllerId) });
 		const graph = this.existingGraphLifecycle(owned.pinned.participant.graph, owned.graphCapture);
-		const admitted = (): boolean => gap.current() && owned.pinned.current() && owned.environment.isCurrent() && owned.clockCurrent() && graph.current();
+		const admitted = (): boolean =>
+			gap.current() &&
+			owned.pinned.current() &&
+			owned.environment.isCurrent() &&
+			owned.clockCurrent() &&
+			graph.current();
 		if (!admitted()) throw new Conflict('unavailable');
 		// runExclusiveReleased settles AFTER all structural ownership, including failure. No O wait inside.
 		return this.structureLock.runExclusiveReleased(async () => {
 			const operation: Operation = {
-				phase: 'BODY_OPEN', settlement: { jobs: Object.freeze<ValidationJob[]>([]) }, scope: shell(),
-				pending: 0, callbacks: [], mandatory: new Map(), jobs: new Map(), issued: new Set(),
-				guards: [admitted], tail: Promise.resolve(), mutationEpoch: 0, frozenEpoch: 0, sequence: 0,
+				phase: 'BODY_OPEN',
+				settlement: { jobs: Object.freeze<ValidationJob[]>([]) },
+				scope: shell(),
+				pending: 0,
+				callbacks: [],
+				mandatory: new Map(),
+				jobs: new Map(),
+				issued: new Set(),
+				guards: [admitted],
+				tail: Promise.resolve(),
+				mutationEpoch: 0,
+				frozenEpoch: 0,
+				sequence: 0,
 				existingReadonlyProbe: true,
 			};
-			let failure: { cause: unknown } | undefined;
+			let completion:
+				| { readonly ok: true; readonly value: ExistingPredecessorSeed }
+				| { readonly ok: false; readonly cause: unknown };
 			try {
-				return await this.context.run({ operation, internal: true }, () => this.dataSource.transaction(async (manager) => {
-					operation.manager = manager; operation.runner = manager.queryRunner;
-					operation.existingQueryFence = this.installExistingQueryFence(operation, admitted);
-					return this.inParticipantTurn(operation, async (turn, phase) => {
-						phase.existingCurrent = admitted;
-						const facts = this.existingFacts(await owned.pinned.methods.readFactsInManager.call(
-							owned.pinned.capability, manager, turn, owned.input.controllerId));
-						if (!admitted()) throw new Conflict('unavailable');
-						const slot = await this.slot(manager, owned.input.controllerId);
-						const referenceRow = slot?.generationId ? await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: slot.generationId }) : null;
-						const reference = referenceRow ? this.sourceFacts(referenceRow) : null;
-						if (slot?.generationId && !reference) throw new Conflict('stale');
-						const source = reference ? Object.freeze({ key: { producerKey: reference.producerKey, subjectId: reference.subjectId },
-							value: await this.source(manager, reference.producerKey, reference.subjectId) }) : undefined;
-						const needsClock = owned.input.kind === 'override-create:v1' || owned.input.kind === 'override-cancel:v1' ||
-							this.existingJsonField(this.existingJsonField(facts.image?.comfort ?? null, 'configuration'), 'temporary_override') !== null;
-						const clock = this.deriveExistingClock(owned.input.controllerId, facts, slot,
-							needsClock ? owned.wall.call(Date) : NaN, needsClock ? owned.mono.call(performance) : NaN, originalClock);
-						if (!admitted()) throw new Conflict('unavailable');
-						// COMMIT is outside the READ_BEFORE turn. No guard/reservation/mutation is installed.
-						operation.phase = 'READY_TO_COMMIT';
-						return Object.freeze({ facts, slot, reference, source, clock,
-							previousClock: originalClock.owner, graphCurrent: graph.current });
-					});
-				}));
+				const value = await this.context.run({ operation, internal: true }, () =>
+					this.dataSource.transaction(async (manager) => {
+						operation.manager = manager;
+						operation.runner = manager.queryRunner;
+						operation.existingQueryFence = this.installExistingQueryFence(operation, admitted);
+						return this.inParticipantTurn(operation, async (turn, phase) => {
+							phase.existingCurrent = admitted;
+							const facts = this.existingFacts(
+								await owned.pinned.methods.readFactsInManager.call(
+									owned.pinned.capability,
+									manager,
+									turn,
+									owned.input.controllerId,
+								),
+							);
+							if (!admitted()) throw new Conflict('unavailable');
+							const slot = await this.slot(manager, owned.input.controllerId);
+							const referenceRow = slot?.generationId
+								? await manager.findOneBy(ClimateAutomationSourceEntity, { generationId: slot.generationId })
+								: null;
+							const reference = referenceRow ? this.sourceFacts(referenceRow) : null;
+							if (slot?.generationId && !reference) throw new Conflict('stale');
+							const source = reference
+								? Object.freeze({
+										key: { producerKey: reference.producerKey, subjectId: reference.subjectId },
+										value: await this.source(manager, reference.producerKey, reference.subjectId),
+									})
+								: undefined;
+							const needsClock =
+								owned.input.kind === 'override-create:v1' ||
+								owned.input.kind === 'override-cancel:v1' ||
+								this.existingJsonField(
+									this.existingJsonField(facts.image?.comfort ?? null, 'configuration'),
+									'temporary_override',
+								) !== null;
+							const clock = this.deriveExistingClock(
+								owned.input.controllerId,
+								facts,
+								slot,
+								needsClock ? owned.wall.call(Date) : NaN,
+								needsClock ? owned.mono.call(performance) : NaN,
+								originalClock,
+							);
+							if (!admitted()) throw new Conflict('unavailable');
+							// COMMIT is outside the READ_BEFORE turn. No guard/reservation/mutation is installed.
+							operation.phase = 'READY_TO_COMMIT';
+							return Object.freeze({
+								facts,
+								slot,
+								reference,
+								source,
+								clock,
+								previousClock: originalClock.owner,
+								graphCurrent: graph.current,
+							});
+						});
+					}),
+				);
+				completion = { ok: true, value };
 			} catch (cause) {
-				failure = { cause }; throw cause;
-			} finally {
-				try { operation.existingQueryFence?.(); }
-				catch (cause) { if (!failure) throw cause; }
-				finally { operation.phase = 'SETTLED'; }
+				completion = { ok: false, cause };
 			}
+			try {
+				operation.existingQueryFence?.();
+			} catch (cause) {
+				if (completion.ok) completion = { ok: false, cause };
+			} finally {
+				operation.phase = 'SETTLED';
+			}
+			if (completion.ok === false) throw completion.cause;
+			return completion.value;
 		});
 	}
-	private expectedPredecessorFacts(seed: ExistingPredecessorSeed, transitions: readonly ClimateAutomationPredecessorTransition[]): ClimateAutomationExistingFacts {
+	private expectedPredecessorFacts(
+		seed: ExistingPredecessorSeed,
+		transitions: readonly ClimateAutomationPredecessorTransition[],
+	): ClimateAutomationExistingFacts {
 		if (!seed.slot || !transitions.length || transitions.length > 8) throw new Conflict('unavailable');
 		const replacements = new Map<string, ClimateAutomationPredecessorTransition>();
 		for (const transition of transitions) {
 			const original = this.predecessorIntentProjections.get(transition.projection);
 			const id = transition.before.id;
-			if (!original || original.controllerId !== seed.facts.controllerId ||
-				!same(original.slot, seed.slot) || !same(original.nativeConfig, seed.facts.rows.configurations[0]) ||
-				typeof id !== 'string' || replacements.has(id) || transition.after.id !== id ||
-				transition.before.action !== 'on' || transition.after.action !== 'on' ||
-				!['cancelled', 'accepted', 'unknown'].includes(String(transition.after.status))) throw new Conflict('stale');
+			if (
+				!original ||
+				original.controllerId !== seed.facts.controllerId ||
+				!same(original.slot, seed.slot) ||
+				!same(original.nativeConfig, seed.facts.rows.configurations[0]) ||
+				typeof id !== 'string' ||
+				replacements.has(id) ||
+				transition.after.id !== id ||
+				transition.before.action !== 'on' ||
+				transition.after.action !== 'on' ||
+				!['cancelled', 'accepted', 'unknown'].includes(String(transition.after.status))
+			)
+				throw new Conflict('stale');
 			const allowed = new Set(['status', 'settledAt', 'fault']);
-			if (Object.keys(transition.before).length !== Object.keys(transition.after).length ||
-				!Object.keys(transition.before).every((key) => Object.hasOwn(transition.after, key) &&
-					(allowed.has(key) || Object.is(transition.before[key], transition.after[key])))) throw new Conflict('stale');
+			if (
+				Object.keys(transition.before).length !== Object.keys(transition.after).length ||
+				!Object.keys(transition.before).every(
+					(key) =>
+						Object.hasOwn(transition.after, key) &&
+						(allowed.has(key) || Object.is(transition.before[key], transition.after[key])),
+				)
+			)
+				throw new Conflict('stale');
 			replacements.set(id, transition);
 		}
 		const consumed = new Set<string>();
@@ -2968,16 +3115,31 @@ export class ClimateAutomationWriterService {
 			const raw = this.predecessorJsonObject(descriptor);
 			const rows = this.existingJsonField(raw, 'rows');
 			if (!Array.isArray(rows)) throw new Conflict('invalid');
-			return Object.freeze({ ...raw, rows: Object.freeze(rows.map((row) => {
-				const object = this.predecessorJsonObject(row), id = this.existingJsonField(object, 'id');
-				const transition = typeof id === 'string' ? replacements.get(id) : undefined;
-				if (!transition) return row;
-				if (typeof id !== 'string' || consumed.has(id) || (!same(row, transition.before) && !same(row, transition.after))) throw new Conflict('stale');
-				consumed.add(id); return transition.after;
-			})) });
+			const originalRows: readonly ClimateAutomationJson[] = rows;
+			return Object.freeze({
+				...raw,
+				rows: Object.freeze(
+					originalRows.map((row) => {
+						const object = this.predecessorJsonObject(row),
+							id = this.existingJsonField(object, 'id');
+						const transition = typeof id === 'string' ? replacements.get(id) : undefined;
+						if (!transition) return row;
+						if (
+							typeof id !== 'string' ||
+							consumed.has(id) ||
+							(!same(row, transition.before) && !same(row, transition.after))
+						)
+							throw new Conflict('stale');
+						consumed.add(id);
+						return transition.after;
+					}),
+				),
+			});
 		});
 		if (consumed.size !== replacements.size) throw new Conflict('stale');
-		return this.existingFacts(Object.freeze({ ...seed.facts, rows: Object.freeze({ ...seed.facts.rows, commands: Object.freeze(commands) }) }));
+		return this.existingFacts(
+			Object.freeze({ ...seed.facts, rows: Object.freeze({ ...seed.facts.rows, commands: Object.freeze(commands) }) }),
+		);
 	}
 
 	private predecessorJsonObject(value: ClimateAutomationJson): Readonly<Record<string, ClimateAutomationJson>> {
@@ -2992,7 +3154,11 @@ export class ClimateAutomationWriterService {
 		runtimeCapture?: RuntimeCaptureRecord,
 	): Promise<ClimateAutomationExistingOutcome> {
 		this.assertExistingRootEntry();
-		if (!ClimateAutomationWriterService.predecessorMethods.every(([key, method]) => creationMethodCurrent(this, key, method)))
+		if (
+			!ClimateAutomationWriterService.predecessorMethods.every(([key, method]) =>
+				creationMethodCurrent(this, key, method),
+			)
+		)
 			throw new ClimateAutomationWriteError('not_started', new Error('Original predecessor protocol unavailable'));
 		if (!creationHasDataMethod(this.structureLock, 'runExclusiveReleased'))
 			throw new ClimateAutomationWriteError('not_started', new Error('Original released writer unavailable'));
@@ -3012,6 +3178,9 @@ export class ClimateAutomationWriterService {
 		let predecessorSeed: ExistingPredecessorSeed | undefined;
 		let predecessorExpected: ClimateAutomationExistingFacts | undefined;
 		let originalRootFailure: { cause: unknown } | undefined;
+		let completion:
+			| { readonly ok: true; readonly value: ClimateAutomationExistingOutcome }
+			| { readonly ok: false; readonly cause: unknown };
 		try {
 			const owned = this.manualSnapshots.run(snapshot, () => {
 				const providerKey = request.providerKey;
@@ -3225,10 +3394,16 @@ export class ClimateAutomationWriterService {
 								: undefined;
 							requireCurrent();
 							if (predecessorSeed && predecessorGap && predecessorExpected) {
-								if (!predecessorGap.current() || !predecessorSeed.graphCurrent() ||
-									!same(before, predecessorExpected) || !same(oldSlot, predecessorSeed.slot) ||
-									!same(reference, predecessorSeed.reference) || !same(source, predecessorSeed.source) ||
-									(predecessorSeed.previousClock && !predecessorSeed.previousClock.current())) throw new Conflict('stale');
+								if (
+									!predecessorGap.current() ||
+									!predecessorSeed.graphCurrent() ||
+									!same(before, predecessorExpected) ||
+									!same(oldSlot, predecessorSeed.slot) ||
+									!same(reference, predecessorSeed.reference) ||
+									!same(source, predecessorSeed.source) ||
+									(predecessorSeed.previousClock && !predecessorSeed.previousClock.current())
+								)
+									throw new Conflict('stale');
 								// Still inside the new owner; following original read-after/final reads guard APPLY.
 								predecessorGap.closeObservation();
 							}
@@ -3251,12 +3426,28 @@ export class ClimateAutomationWriterService {
 							);
 							const seedClock = predecessorSeed?.clock;
 							if (seedClock && seedClock.overrideId !== null && seedClock.overrideId === observedClock.overrideId) {
-								const deadline = seedClock.deadline === null ? observedClock.deadline : observedClock.deadline === null ? seedClock.deadline : Math.min(seedClock.deadline, observedClock.deadline);
-								const watermark = seedClock.watermark === null ? observedClock.watermark : observedClock.watermark === null ? seedClock.watermark : Math.max(seedClock.watermark, observedClock.watermark);
-								const status = seedClock.status !== 'active' ? seedClock.status :
-									!Number.isFinite(observedClock.wallMs) || !Number.isFinite(observedClock.monoMs) ||
-									(seedClock.watermark !== null && observedClock.wallMs < seedClock.watermark) ? 'clock_uncertain' :
-									deadline !== null && observedClock.monoMs >= deadline ? 'expired' : observedClock.status;
+								const deadline =
+									seedClock.deadline === null
+										? observedClock.deadline
+										: observedClock.deadline === null
+											? seedClock.deadline
+											: Math.min(seedClock.deadline, observedClock.deadline);
+								const watermark =
+									seedClock.watermark === null
+										? observedClock.watermark
+										: observedClock.watermark === null
+											? seedClock.watermark
+											: Math.max(seedClock.watermark, observedClock.watermark);
+								const status =
+									seedClock.status !== 'active'
+										? seedClock.status
+										: !Number.isFinite(observedClock.wallMs) ||
+											  !Number.isFinite(observedClock.monoMs) ||
+											  (seedClock.watermark !== null && observedClock.wallMs < seedClock.watermark)
+											? 'clock_uncertain'
+											: deadline !== null && observedClock.monoMs >= deadline
+												? 'expired'
+												: observedClock.status;
 								phase.existingClock = Object.freeze({ ...observedClock, deadline, watermark, status });
 							} else phase.existingClock = observedClock;
 							phase.phase = 'NORMALIZE';
@@ -3629,7 +3820,7 @@ export class ClimateAutomationWriterService {
 				runtimeCapture.outcome = record.outcomeCandidate;
 				runtimeCapture.state = 'TRANSFER_READY';
 			}
-			return record.outcomeCandidate;
+			completion = { ok: true, value: record.outcomeCandidate };
 		} catch (cause) {
 			originalRootFailure = { cause };
 			if (record) record.completionOpen = false;
@@ -3651,7 +3842,7 @@ export class ClimateAutomationWriterService {
 					: cause;
 			if (error instanceof ClimateAutomationWriteError && report)
 				this.existingReports.set(error, Object.freeze({ ...report }));
-			throw error;
+			completion = { ok: false, cause: error };
 		} finally {
 			try {
 				if (record?.publication) closeControllerMutationPublication(record.publication);
@@ -3698,12 +3889,21 @@ export class ClimateAutomationWriterService {
 						/* Read handle cannot replace P or fixed A. */
 					}
 			}
-			try { predecessorGap?.close(); }
-			catch (cause) {
-				if (!originalRootFailure) throw new ClimateAutomationWriteError(
-					record?.operation.settlement.receipt?.outcome === 'committed' ? 'committed' : 'not_started', cause);
+			try {
+				predecessorGap?.close();
+			} catch (cause) {
+				if (originalRootFailure === undefined)
+					completion = {
+						ok: false,
+						cause: new ClimateAutomationWriteError(
+							record?.operation.settlement.receipt?.outcome === 'committed' ? 'committed' : 'not_started',
+							cause,
+						),
+					};
 			}
 		}
+		if (completion.ok === false) throw completion.cause;
+		return completion.value;
 	}
 
 	async prepareExistingRecoveryForPlan(descriptor: ClimateAutomationScope): Promise<void> {
@@ -4453,10 +4653,18 @@ export class ClimateAutomationWriterService {
 	existingIntentProjection(token: ClimateAutomationIntentView): Readonly<{ available: true; manualHold: boolean }> {
 		const record = this.intentViews.get(token);
 		if (!record?.current()) throw new Conflict('unavailable');
-		const projection: Readonly<{ available: true; manualHold: boolean }> = Object.freeze({ available: true, manualHold: record.slot.manualHold });
-		this.predecessorIntentProjections.set(projection, Object.freeze({
-			controllerId: record.controllerId, slot: record.slot, nativeConfig: record.nativeConfig,
-		}));
+		const projection: Readonly<{ available: true; manualHold: boolean }> = Object.freeze({
+			available: true,
+			manualHold: record.slot.manualHold,
+		});
+		this.predecessorIntentProjections.set(
+			projection,
+			Object.freeze({
+				controllerId: record.controllerId,
+				slot: record.slot,
+				nativeConfig: record.nativeConfig,
+			}),
+		);
 		return projection;
 	}
 	isExistingIntentCurrent(token: ClimateAutomationIntentView): boolean {
