@@ -156,6 +156,15 @@ describe('virtual thermostat durable runtime', () => {
 	let offOutcome: 'accepted' | 'refused' | 'unknown';
 	let onGate: Promise<void> | null;
 	let offGate: Promise<void> | null;
+	type HeldOffSendObserver = Readonly<{
+		observe: (
+			target: Parameters<ThermostatActuationAdapter['send']>[0],
+			claim: Parameters<ThermostatActuationAdapter['send']>[1],
+			packet: Parameters<ThermostatActuationAdapter['send']>[4],
+		) => void;
+		fail: (cause: unknown) => void;
+	}>;
+	let heldOffSendObserver: HeldOffSendObserver | null;
 	let beforeProof: (() => Promise<void>) | null;
 	const reconciledCommandIds: string[][] = [];
 	let afterOnGate: Promise<void> | null;
@@ -210,6 +219,7 @@ describe('virtual thermostat durable runtime', () => {
 		onSent = null;
 		onQueued = null;
 		offGate = null;
+		heldOffSendObserver = null;
 		beforeProof = null;
 		reconciledCommandIds.length = 0;
 		afterOnGate = null;
@@ -417,13 +427,20 @@ describe('virtual thermostat durable runtime', () => {
 			contractVersion: 1,
 			providerProfile: { id: 'shelly-ng.guarded-switch', version: 1 },
 			canReconcile: () => true,
-			send: async (target, _claim, _qualification, isAdmitted) => {
+			send: async (target, _claim, _qualification, isAdmitted, packet) => {
 				actuationAttempts.push(target.value === true);
 				if (target.property.id === relayId && target.value === true && onGate !== null) {
 					onQueued?.();
 					await onGate;
 				}
-				if (target.value === false && offGate !== null) await offGate;
+				if (target.value === false && offGate !== null) {
+					const observer = heldOffSendObserver;
+					try { observer?.observe(target, _claim, packet); }
+					catch (cause) {
+						try { observer?.fail(cause); } catch { /* Optional observation never replaces the original send outcome. */ }
+					}
+					await offGate;
+				}
 				if (!isAdmitted() && !(target.value === true && allowLateOn))
 					return { outcome: 'refused' as const, reasons: ['revoked'] };
 				const outcome = target.value === true ? onOutcome : offOutcome;
@@ -10900,22 +10917,96 @@ describe('virtual thermostat durable runtime', () => {
 			proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 			return { owned, entry, claim, command, retire, baselineIds, P0 };
 		};
+		// Only the two existing held rows opt in. This observes send entry; it does not authorize native work.
+		const observeHeldOffSend = (
+			owned: ReturnType<typeof initialFixtureOwner>,
+			entry: ReturnType<typeof observeOriginalReconciliation>,
+			claim: VirtualThermostatActuatorClaimEntity,
+			seed: VirtualThermostatCommandEntity,
+		) => {
+			const owner = owned.owner, lifecycle = owner['lifecycle'];
+			if (heldOffSendObserver !== null || lifecycle === undefined || !owner['active'])
+				throw new Error('Original held OFF send observation unavailable');
+			let closed = false, observed = false, restored = false;
+			let observationFailure: { cause: unknown } | undefined;
+			let resolveEntry: () => void = () => undefined;
+			let rejectEntry: (cause: unknown) => void = () => undefined;
+			const entered = new Promise<void>((resolve, reject) => { resolveEntry = resolve; rejectEntry = reject; });
+			void entered.then(() => undefined, () => undefined); // Partial setup/timeout never leaves an unhandled side rejection.
+			const fail = (cause: unknown): void => { observationFailure ??= { cause }; rejectEntry(cause); };
+			const observer: HeldOffSendObserver = Object.freeze({
+				fail,
+				observe: (
+					target: Parameters<ThermostatActuationAdapter['send']>[0],
+					member: Parameters<ThermostatActuationAdapter['send']>[1],
+					packet: Parameters<ThermostatActuationAdapter['send']>[4],
+				): void => {
+					try {
+						const K = entry.namedIds(seed); // Already frozen at actual original O insertion, independently of send/proof callbacks.
+						const command = owner['inFlightCommands'].get(K[1]);
+						const job = command === undefined ? undefined : owner['offJobs'].get(command);
+						const originalTarget = job?.context.targets.get(claim.id);
+						if (closed || observed || heldOffSendObserver !== observer || owner['lifecycle'] !== lifecycle ||
+							!owner['active'] || owner['dataSource'] !== owned.source || packet?.commandId !== K[1] ||
+							command === undefined || job === undefined || job.command !== command ||
+							job.operation !== owner['inFlight'].get(K[1]) || command.action !== 'off' ||
+							command.controllerId !== owned.id || command.claimId !== claim.id || command.claimRevision !== claim.revision ||
+							member !== job.context.claims.find((candidate) => candidate.id === claim.id) ||
+							originalTarget === undefined || target.device !== originalTarget.device ||
+							target.channel !== originalTarget.channel || target.property !== originalTarget.property)
+							throw new Error('Held OFF send entry was foreign, closed or ambiguous');
+						observed = true;
+						resolveEntry();
+					} catch (cause) { fail(cause); }
+				},
+			});
+			heldOffSendObserver = observer;
+			const retire = (): void => {
+				if (closed) return;
+				closed = true;
+				rejectEntry(new Error('Original held OFF send observation retired'));
+			};
+			const backstop = {
+				entered,
+				retire,
+				cleanup: (): void => {
+					retire();
+					if (restored) return;
+					if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Held OFF send owner not retired');
+					if (heldOffSendObserver !== observer) throw new Error('Held OFF send observer replaced by foreign owner');
+					heldOffSendObserver = null;
+					restored = true;
+					completionObserverBackstops.delete(backstop);
+					if (observationFailure !== undefined) throw observationFailure.cause;
+				},
+			};
+			completionObserverBackstops.add(backstop); // Covers partial case setup before its gate backstop exists.
+			return backstop;
+		};
 		it('holds the actual named OFF before confirmation and retires the complete K only after known ACK', async () => {
 			const { owned, entry, claim, command, retire, baselineIds, P0 } = await prepareCase();
 			const { owner, source, id } = owned;
 			let release: () => void = () => undefined;
 			const held = new Promise<void>((resolve) => { release = resolve; });
+			const sendEntry = observeHeldOffSend(owned, entry, claim, command);
 			offGate = held;
 			const attemptsBefore = Object.freeze([...actuationAttempts]);
 			let primary: { cause: unknown } | undefined;
 			const backstop = {
-				retire: (): void => { try { owner.onModuleDestroy(); } finally { release(); } },
-				cleanup: (): void => { try { backstop.retire(); } finally { completionObserverBackstops.delete(backstop); } },
+				retire: (): void => { sendEntry.retire(); try { owner.onModuleDestroy(); } finally { release(); } },
+				cleanup: (): void => {
+					let failure: { cause: unknown } | undefined;
+					try { backstop.retire(); } catch (cause) { failure = { cause }; }
+					try { sendEntry.cleanup(); } catch (cause) { failure ??= { cause }; }
+					completionObserverBackstops.delete(backstop);
+					if (failure !== undefined) throw failure.cause;
+				},
 			};
 			completionObserverBackstops.add(backstop);
 			try {
 				const pending = entry.startAfterOriginalOff(claim, command);
 				const K = await entry.namedOpening();
+				await sendEntry.entered;
 				const heldJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 				expect(actuationAttempts).toEqual([...attemptsBefore, false]); // Real send has entered the existing OFF gate.
 				expect(heldJournal.map((row) => row.id).sort()).toEqual([...baselineIds, ...K].sort());
@@ -10941,23 +11032,58 @@ describe('virtual thermostat durable runtime', () => {
 			if (primary !== undefined) throw primary.cause;
 		});
 		const failedOffOutcomes: readonly ('refused' | 'unknown')[] = ['refused', 'unknown'];
-		it.each(failedOffOutcomes)('does not grant S1 or retirement after the actual OFF is %s', async (outcome) => {
+		it.each(failedOffOutcomes)('rejects the test receipt without S1 while preserving exact native effects after the actual OFF is %s', async (outcome) => {
 			const { owned, entry, claim, command, retire, baselineIds, P0 } = await prepareCase();
+			// Predeclare BOTH complete native-effect grammars; neither K nor a branch choice comes from a callback.
+			type NativeEffects = Readonly<{
+				proof: readonly (readonly string[])[];
+				retirement: readonly (readonly (readonly string[])[])[];
+				journal: readonly Readonly<{ id: string; claimId: string; action: string; status: string }>[];
+			}>;
+			const expectedEffects = (K: readonly string[]): Readonly<{ noSettlement: NativeEffects; knownAcknowledgement: NativeEffects }> => Object.freeze({
+				noSettlement: Object.freeze({
+					proof: P0,
+					retirement: Object.freeze([]),
+					journal: [
+						...baselineIds.map((id) => ({ id, claimId: claim.id, action: 'off', status: 'confirmed' })),
+						{ id: command.id, claimId: claim.id, action: 'on', status: 'accepted' },
+						{ id: K[1], claimId: claim.id, action: 'off', status: 'unknown' },
+					],
+				}),
+				knownAcknowledgement: Object.freeze({
+					proof: Object.freeze([...P0, K]),
+					retirement: Object.freeze([Object.freeze([K])]),
+					journal: [
+						...baselineIds.map((id) => ({ id, claimId: claim.id, action: 'off', status: 'confirmed' })),
+						{ id: command.id, claimId: claim.id, action: 'on', status: 'confirmed' },
+						{ id: K[1], claimId: claim.id, action: 'off', status: 'confirmed' },
+					],
+				}),
+			});
 			offOutcome = outcome;
 			await expect(entry.startAfterOriginalOff(claim, command)).rejects.toThrow('Named OFF did not finish an accepted saved native outcome');
 			const K = entry.namedIds(command);
+			expect(new Set(K).size).toBe(2);
 			expect(entry.namedInspectionCount()).toBe(1);
-			expect(retire).not.toHaveBeenCalled();
-			expect(reconciledCommandIds).toEqual(P0);
 			const journal = await owned.source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: owned.id });
+			const originalOn = journal.find((row) => row.id === command.id);
+			const grammars = expectedEffects(K);
+			const grammar = originalOn?.status === 'accepted' ? grammars.noSettlement :
+				originalOn?.status === 'confirmed' ? grammars.knownAcknowledgement : undefined;
+			if (grammar === undefined) throw new Error('Failed OFF had an undeclared native journal result');
 			expect(journal.map((row) => row.id).sort()).toEqual([...baselineIds, ...K].sort());
-			expect(journal.filter((row) => K.includes(row.id)).map((row) => ({ id: row.id, action: row.action, status: row.status })).sort((a, b) => a.id.localeCompare(b.id))).toEqual(
-				[{ id: command.id, action: 'on', status: 'accepted' }, { id: K[1], action: 'off', status: 'unknown' }].sort((a, b) => a.id.localeCompare(b.id)));
+			expect(journal.map((row) => ({ id: row.id, claimId: row.claimId, action: row.action, status: row.status })).sort((a, b) => a.id.localeCompare(b.id))).toEqual(
+				[...grammar.journal].sort((a, b) => a.id.localeCompare(b.id)));
+			for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
+			expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(grammar.proof.map((ids) => [...ids].sort()));
+			expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual(
+				grammar.retirement.map((call) => call.map((ids) => [...ids].sort())));
 			expect(actuationAttempts.every((on) => !on)).toBe(true);
 		});
 		it('cannot let a retired A completion settle B or restore a foreign descriptor', async () => {
 			const { owned, entry, claim, command, retire } = await prepareCase();
 			const A = owned.owner;
+			const sendEntry = observeHeldOffSend(owned, entry, claim, command);
 			const attemptsBeforeA = Object.freeze([...actuationAttempts]);
 			let releaseA: () => void = () => undefined, releaseB: () => void = () => undefined;
 			let enterB: () => void = () => undefined;
@@ -10974,13 +11100,20 @@ describe('virtual thermostat durable runtime', () => {
 			const backstop = {
 				retire: (): void => {
 					let failure: { cause: unknown } | undefined;
+					sendEntry.retire();
 					try { A.onModuleDestroy(); } catch (cause) { failure = { cause }; }
 					try { B?.onModuleDestroy(); } catch (cause) { failure ??= { cause }; }
 					releaseA(); releaseB();
 					if (beforeProof === beforeB) beforeProof = null;
 					if (failure !== undefined) throw failure.cause;
 				},
-				cleanup: (): void => { try { backstop.retire(); } finally { completionObserverBackstops.delete(backstop); } },
+				cleanup: (): void => {
+					let failure: { cause: unknown } | undefined;
+					try { backstop.retire(); } catch (cause) { failure = { cause }; }
+					try { sendEntry.cleanup(); } catch (cause) { failure ??= { cause }; }
+					completionObserverBackstops.delete(backstop);
+					if (failure !== undefined) throw failure.cause;
+				},
 			};
 			completionObserverBackstops.add(backstop);
 			try {
@@ -10988,11 +11121,14 @@ describe('virtual thermostat durable runtime', () => {
 				const pendingA = entry.startAfterOriginalOff(claim, command);
 				const outcomeA = pendingA.then(() => ({ fulfilled: true, cause: undefined }), (cause: unknown) => ({ fulfilled: false, cause }));
 				const originalAK = await entry.namedOpening();
+				await sendEntry.entered;
 				const heldJournalA = await owned.source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: owned.id });
 				expect(heldJournalA.find((row) => row.id === command.id)?.status).toBe('accepted');
 				expect(actuationAttempts).toEqual([...attemptsBeforeA, false]);
 				expect(heldJournalA.find((row) => row.id === entry.namedIds(command)[1])?.status).toBe('dispatching');
+				sendEntry.retire();
 				A.onModuleDestroy(); // Genuine old lifecycle retirement, not a currentness mock.
+				sendEntry.cleanup();
 				offGate = null; // A already awaits heldA; B uses its actual unheld native path.
 				beforeB = async (): Promise<void> => { enterB(); await heldB; };
 				beforeProof = beforeB;
