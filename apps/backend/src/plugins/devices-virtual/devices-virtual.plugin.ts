@@ -2,7 +2,7 @@ import { EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Module } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
+import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -170,6 +170,7 @@ import { SourceNotVirtualConstraintValidator } from './validators/source-not-vir
 		]),
 		DevicesModule,
 		ConfigModule,
+		NestConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
 		// For the energy claim registry alone: a projected meter is billed to the virtual device that

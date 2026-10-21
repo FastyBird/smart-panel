@@ -224,12 +224,14 @@ export class VirtualThermostatComfortService {
 		for (const key of ['assertExistingReadEntry', 'commitExistingControllerV1'])
 			if (!creationHasDataMethod(writer, key))
 				throw new DevicesValidationException('Original public settlement writer entry unavailable.');
-		const rootPins = Object.freeze(['commitExistingControllerRoot', 'assertExistingRootEntry'].map((key) => {
-			if (!creationHasDataMethod(writer, key))
-				throw new DevicesValidationException('Original public settlement root entry unavailable.');
-			const method: unknown = nativeFieldEvidence.get(writer, key);
-			return Object.freeze({ key, method });
-		}));
+		const rootPins = Object.freeze(
+			['commitExistingControllerRoot', 'assertExistingRootEntry'].map((key) => {
+				if (!creationHasDataMethod(writer, key))
+					throw new DevicesValidationException('Original public settlement root entry unavailable.');
+				const method: unknown = nativeFieldEvidence.get(writer, key);
+				return Object.freeze({ key, method });
+			}),
+		);
 		const originalWriter: PublicSettlementPorts['writerMethods'] = writer;
 		const writerMethods = Object.freeze({
 			assertExistingReadEntry: originalWriter.assertExistingReadEntry,
@@ -248,7 +250,8 @@ export class VirtualThermostatComfortService {
 		});
 		if (!creationHasDataMethod(structure, 'runShared') || !creationHasDataMethod(manager, 'findOneBy'))
 			throw new DevicesValidationException('Original public settlement reader unavailable.');
-		const shared: PublicSettlementPorts['shared'] = structure.runShared,
+		const originalReader: { readonly runShared: PublicSettlementPorts['shared'] } = structure;
+		const shared: PublicSettlementPorts['shared'] = originalReader.runShared,
 			find = nativeFieldEvidence.get(manager, 'findOneBy');
 		const ports: PublicSettlementPorts = Object.freeze({
 			writer,
@@ -965,8 +968,7 @@ export class VirtualThermostatComfortService {
 			retired = false,
 			preparationAttempted = false;
 		let preparation: Awaited<ReturnType<VirtualThermostatClaimsService['prepareExistingRecovery']>> | undefined;
-		let primary: { cause: unknown } | undefined,
-			cleanup: { cause: unknown } | undefined;
+		let primary: { cause: unknown } | undefined, cleanup: { cause: unknown } | undefined;
 		const releaseOnce = (): void => {
 			if (released) return;
 			released = true;
