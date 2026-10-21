@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -112,6 +112,98 @@ jest.setTimeout(30_000);
 
 describe('virtual thermostat durable runtime', () => {
 	const completionObserverBackstops = new Set<Readonly<{ retire: () => void; cleanup: () => void }>>();
+	type FixtureBackstop = Readonly<{ retire: () => void; cleanup: () => void }>;
+	type FixtureCaseLease = {
+		retired: boolean;
+		setup?: FixtureSetupLease;
+		observers: Set<FixtureBackstop>;
+	};
+	type FixtureSetupLease = {
+		caseOwner: FixtureCaseLease;
+		retired: boolean;
+		completed: boolean;
+		cleanupAttempted: boolean;
+		cleanupFailure?: { cause: unknown };
+		adopted?: RuntimeFixtureOwner;
+		failure?: { cause: unknown };
+		observers: Set<FixtureBackstop>;
+		assertLive: () => void;
+	};
+	let currentFixtureCase: FixtureCaseLease | undefined;
+	const completionObserverOwners = new WeakMap<
+		FixtureBackstop,
+		Readonly<{ caseOwner: FixtureCaseLease; setup?: FixtureSetupLease }>
+	>();
+	const assertFixtureCaseLive = (owner: FixtureCaseLease): void => {
+		if (owner.retired || currentFixtureCase !== owner) throw new Error('Fixture case retired');
+	};
+	const requireFixtureSetup = (): FixtureSetupLease => {
+		const owner = currentFixtureCase;
+		if (owner === undefined) throw new Error('Fixture case missing');
+		assertFixtureCaseLive(owner);
+		const setup = owner.setup;
+		if (setup === undefined) throw new Error('Fixture setup missing');
+		setup.assertLive();
+		return setup;
+	};
+	const registerCaseBackstop = (owner: FixtureCaseLease, observer: FixtureBackstop): void => {
+		assertFixtureCaseLive(owner);
+		owner.observers.add(observer);
+		completionObserverOwners.set(observer, { caseOwner: owner });
+		completionObserverBackstops.add(observer);
+	};
+	const registerCompletionObserver = (observer: FixtureBackstop): void => {
+		const setup = requireFixtureSetup();
+		setup.observers.add(observer);
+		setup.caseOwner.observers.add(observer);
+		completionObserverOwners.set(observer, { caseOwner: setup.caseOwner, setup });
+		completionObserverBackstops.add(observer);
+	};
+	const unregisterCompletionObserver = (observer: FixtureBackstop): void => {
+		const owner = completionObserverOwners.get(observer);
+		owner?.setup?.observers.delete(observer);
+		owner?.caseOwner.observers.delete(observer);
+		completionObserverOwners.delete(observer);
+		completionObserverBackstops.delete(observer);
+	};
+	const beginFixtureCase = (): FixtureCaseLease => {
+		if (currentFixtureCase !== undefined && !currentFixtureCase.retired)
+			throw new Error('Previous fixture case still live');
+		const owner: FixtureCaseLease = { retired: false, observers: new Set() };
+		currentFixtureCase = owner;
+		return owner;
+	};
+	const beginFixtureSetup = (owner: FixtureCaseLease): FixtureSetupLease => {
+		assertFixtureCaseLive(owner);
+		if (owner.setup !== undefined && !owner.setup.retired) throw new Error('Previous fixture setup still live');
+		const setup: FixtureSetupLease = {
+			caseOwner: owner,
+			retired: false,
+			completed: false,
+			cleanupAttempted: false,
+			observers: new Set(),
+			assertLive: (): void => {
+				assertFixtureCaseLive(owner);
+				if (setup.retired || owner.setup !== setup) throw new Error('Fixture setup retired');
+			},
+		};
+		owner.setup = setup;
+		const backstop = {
+			retire: (): void => {
+				setup.retired = true;
+			},
+			cleanup: (): void => {
+				setup.retired = true;
+				unregisterCompletionObserver(backstop);
+			},
+		};
+		registerCompletionObserver(backstop); // Registered synchronously before the factory's first await.
+		return setup;
+	};
+	type FixtureSetupObservation = Readonly<{
+		install: (source: SqliteDataSource) => void;
+		issued: (pending: Promise<unknown>) => void;
+	}>;
 	let directory: string;
 	let database: SqliteDataSource;
 	let runtime: VirtualThermostatRuntimeService;
@@ -125,8 +217,6 @@ describe('virtual thermostat durable runtime', () => {
 	let realGuardFixtures: Awaited<ReturnType<typeof realThermostatGuardFixture>>[];
 	let comfort: VirtualThermostatComfortService;
 	let configs: VirtualThermostatConfigService;
-	let onSent: ((propertyId: string) => void) | null;
-	let onQueued: (() => void) | null;
 	let controllerId: string;
 	let sensorId: string;
 	let relayId: string;
@@ -143,20 +233,6 @@ describe('virtual thermostat durable runtime', () => {
 		mutationClaims: VirtualThermostatClaimsService;
 	let mutationRegistry: ClimateAutomationRegistryService, mutationWriter: ClimateAutomationWriterService;
 	let mutationProvider: VirtualThermostatAutomationService;
-	let mutationGraph: VirtualDependencyGraphService;
-	let mutationStructure: DeviceStructureLockService;
-	let graphValidated: boolean;
-	let graphGeneration: number;
-	let publicationGate: Promise<void> | null;
-	const samples = new Map<string, QualifiedPropertySample>();
-	const unavailableMembers = new Set<string>();
-	const sends: boolean[] = [];
-	const sentTargets: { propertyId: string; on: boolean }[] = [];
-	const actuationAttempts: boolean[] = [];
-	let onOutcome: 'accepted' | 'refused' | 'unknown';
-	let offOutcome: 'accepted' | 'refused' | 'unknown';
-	let onGate: Promise<void> | null;
-	let offGate: Promise<void> | null;
 	type HeldOffSendObserver = Readonly<{
 		observe: (
 			target: Parameters<ThermostatActuationAdapter['send']>[0],
@@ -165,24 +241,74 @@ describe('virtual thermostat durable runtime', () => {
 		) => void;
 		fail: (cause: unknown) => void;
 	}>;
-	let heldOffSendObserver: HeldOffSendObserver | null;
-	let beforeProof: (() => Promise<void>) | null;
-	const reconciledCommandIds: string[][] = [];
-	let afterOnGate: Promise<void> | null;
-	let allowLateOn: boolean;
-	let acceptedWithoutFeedback: string | null;
-	let proofAllowed: (propertyId: string) => boolean;
-	let proofCalls: number;
-	let installedQualifications: Map<string, ThermostatInstalledQualification>;
-	let providerCurrent: boolean;
-	let proofMutation: (proof: ThermostatReleaseOrderingEvidence) => ThermostatReleaseOrderingEvidence;
-	const protectionProbes = new Set<string>();
-	let packetTick: (() => void) | null;
+	type FixtureState = {
+		onSent: ((propertyId: string) => void) | null;
+		onQueued: (() => void) | null;
+		graphValidated: boolean;
+		graphGeneration: number;
+		publicationGate: Promise<void> | null;
+		samples: Map<string, QualifiedPropertySample>;
+		unavailableMembers: Set<string>;
+		sends: boolean[];
+		sentTargets: { propertyId: string; on: boolean }[];
+		actuationAttempts: boolean[];
+		onOutcome: 'accepted' | 'refused' | 'unknown';
+		offOutcome: 'accepted' | 'refused' | 'unknown';
+		onGate: Promise<void> | null;
+		offGate: Promise<void> | null;
+		heldOffSendObserver: HeldOffSendObserver | null;
+		beforeProof: (() => Promise<void>) | null;
+		reconciledCommandIds: string[][];
+		afterOnGate: Promise<void> | null;
+		allowLateOn: boolean;
+		acceptedWithoutFeedback: string | null;
+		proofAllowed: (propertyId: string) => boolean;
+		proofCalls: number;
+		installedQualifications: Map<string, ThermostatInstalledQualification>;
+		providerCurrent: boolean;
+		proofMutation: (proof: ThermostatReleaseOrderingEvidence) => ThermostatReleaseOrderingEvidence;
+		protectionProbes: Set<string>;
+		packetTick: (() => void) | null;
+		retired: boolean;
+		cleanupCauses: unknown[];
+	};
+	const createFixtureState = (): FixtureState => ({
+		onSent: null,
+		onQueued: null,
+		graphValidated: true,
+		graphGeneration: 0,
+		publicationGate: null,
+		samples: new Map(),
+		unavailableMembers: new Set(),
+		sends: [],
+		sentTargets: [],
+		actuationAttempts: [],
+		onOutcome: 'accepted',
+		offOutcome: 'accepted',
+		onGate: null,
+		offGate: null,
+		heldOffSendObserver: null,
+		beforeProof: null,
+		reconciledCommandIds: [],
+		afterOnGate: null,
+		allowLateOn: false,
+		acceptedWithoutFeedback: null,
+		proofAllowed: () => true,
+		proofCalls: 0,
+		installedQualifications: new Map(),
+		providerCurrent: true,
+		proofMutation: (proof) => proof,
+		protectionProbes: new Set(),
+		packetTick: null,
+		retired: false,
+		cleanupCauses: [],
+	});
+	let fixtureState: FixtureState;
 	const sample = (id: string, value: number | boolean): void => {
-		packetTick?.();
+		fixtureState.packetTick?.();
 		const at = new Date();
-		if (id === sensorId) for (const probe of protectionProbes) sample(probe, 20);
-		samples.set(id, {
+		if (id === sensorId) for (const probe of fixtureState.protectionProbes) sample(probe, 20);
+		fixtureState.samples.set(id, {
 			propertyId: id,
 			value,
 			sampledAt: at,
@@ -192,437 +318,619 @@ describe('virtual thermostat durable runtime', () => {
 			reasons: [],
 		});
 	};
-	beforeEach(async () => {
+	const createRuntimeFixture = async (assertSetupLive?: () => void, observation?: FixtureSetupObservation) => {
+		const ownedState = createFixtureState();
+		const observers: Readonly<{ retire: () => void; cleanup: () => void }>[] = [];
+		assertSetupLive?.();
+		let directory: string;
+		let database: SqliteDataSource;
+		let runtime: VirtualThermostatRuntimeService;
+		let ordinaryTransportOwner:
+			| Readonly<{
+					platforms: PlatformRegistryService;
+					transport: VirtualThermostatTransportService;
+					dispose: () => void;
+			  }>
+			| undefined;
+		let comfort: VirtualThermostatComfortService;
+		let configs: VirtualThermostatConfigService;
+		let controllerId: string;
+		let sensorId: string;
+		let relayId: string;
+		let makeRuntime: (
+			graph?: VirtualDependencyGraphService,
+			aggregate?: VirtualAggregateRuntimeService,
+			transport?: VirtualThermostatTransportService,
+		) => VirtualThermostatRuntimeService;
+		let events: EventEmitter2;
+		let producers: PropertyProducerRegistryService;
+		let values: PropertyValueService;
+		let mutationPipeline: TestingModule,
+			mutationValues: PropertyValueService,
+			mutationClaims: VirtualThermostatClaimsService;
+		let mutationRegistry: ClimateAutomationRegistryService, mutationWriter: ClimateAutomationWriterService;
+		let mutationProvider: VirtualThermostatAutomationService;
+		let mutationGraph: VirtualDependencyGraphService;
+		let mutationStructure: DeviceStructureLockService;
+		const sample = (id: string, value: number | boolean): void => {
+			if (!ownedState.retired) ownedState.packetTick?.();
+			const at = new Date();
+			if (id === sensorId) for (const probe of ownedState.protectionProbes) sample(probe, 20);
+			ownedState.samples.set(id, {
+				propertyId: id,
+				value,
+				sampledAt: at,
+				receivedAt: at,
+				provenance: 'live',
+				quality: 'good',
+				reasons: [],
+			});
+		};
 		ordinaryTransportOwner = undefined;
-		realGuardFixtures = [];
-		directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-runtime-'));
-		database = await new SqliteDataSource({
-			type: 'sqlite',
-			database: join(directory, 'runtime.sqlite'),
-			entities: [__dirname + '/../../../**/*.entity.ts'],
-			synchronize: true,
-		}).initialize();
-		// Synchronized test schemas omit migration27's installed graph singleton seed.
-		await database.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
-		expect(await database.query('SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"')).toEqual(
-			[{ id: 1, revision: 0 }],
-		);
-		samples.clear();
-		protectionProbes.clear();
-		packetTick = null;
-		unavailableMembers.clear();
-		sends.length = 0;
-		sentTargets.length = 0;
-		actuationAttempts.length = 0;
-		onOutcome = 'accepted';
-		offOutcome = 'accepted';
-		onGate = null;
-		onSent = null;
-		onQueued = null;
-		offGate = null;
-		heldOffSendObserver = null;
-		beforeProof = null;
-		reconciledCommandIds.length = 0;
-		afterOnGate = null;
-		allowLateOn = false;
-		acceptedWithoutFeedback = null;
-		proofAllowed = () => true;
-		proofMutation = (proof) => proof;
-		proofCalls = 0;
-		installedQualifications = new Map();
-		providerCurrent = true;
-		graphValidated = true;
-		graphGeneration = 0;
-		publicationGate = null;
-		events = new EventEmitter2();
-		controllerId = uuid();
-		sensorId = uuid();
-		relayId = uuid();
-		const sensorDeviceId = uuid(),
-			sensorChannelId = uuid(),
-			relayDeviceId = uuid(),
-			relayChannelId = uuid();
-		await database.manager.insert(VirtualDeviceEntity, {
-			id: controllerId,
-			name: 'Thermostat',
-			category: DeviceCategory.THERMOSTAT,
-			enabled: true,
-			mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
-		});
-		await database.manager.insert(DeviceEntity, {
-			id: sensorDeviceId,
-			name: 'Ambient',
-			category: DeviceCategory.SENSOR,
-			enabled: true,
-		});
-		await database.manager.insert(ChannelEntity, {
-			id: sensorChannelId,
-			device: sensorDeviceId,
-			name: 'Temperature',
-			identifier: 'temperature',
-			category: ChannelCategory.TEMPERATURE,
-		} as never);
-		await database.manager.insert(ChannelPropertyEntity, {
-			id: sensorId,
-			channel: sensorChannelId,
-			identifier: 'temperature',
-			category: PropertyCategory.TEMPERATURE,
-			dataType: DataTypeType.FLOAT,
-			permissions: [PermissionType.READ_ONLY],
-			unit: '°C',
-		} as never);
-		await database.manager.insert(ShellyNgDeviceEntity, {
-			id: relayDeviceId,
-			name: '1PM',
-			identifier: 'shellyplus1pm-a8032abe5084',
-			category: DeviceCategory.SWITCHER,
-			enabled: true,
-			canonicalMac: 'A8032ABE5084',
-		});
-		await database.manager.insert(ShellyNgChannelEntity, {
-			id: relayChannelId,
-			device: relayDeviceId,
-			name: 'Switch',
-			identifier: 'switch:0',
-			category: ChannelCategory.SWITCHER,
-		} as never);
-		await database.manager.insert(ShellyNgChannelPropertyEntity, {
-			id: relayId,
-			channel: relayChannelId,
-			identifier: 'output',
-			category: PropertyCategory.ON,
-			dataType: DataTypeType.BOOL,
-			permissions: [PermissionType.READ_WRITE],
-		} as never);
-		const sensor = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id: sensorId },
-			relations: ['channel', 'channel.device'],
-		});
-		const relay = await database.manager.findOneOrFail(ChannelPropertyEntity, {
-			where: { id: relayId },
-			relations: ['channel', 'channel.device'],
-		});
-		const sensorChannel = sensor.channel as ChannelEntity,
-			relayChannel = relay.channel as ChannelEntity;
-		await database.manager.insert(VirtualThermostatConfigEntity, {
-			controllerId,
-			ownerDeviceId: controllerId,
-			schemaVersion: 1,
-			revision: 1,
-			requestedMode: 'heat',
-			locked: false,
-			policy: {
-				heatingSetpoint: 20,
-				coolingSetpoint: null,
-				coldTolerance: 0.5,
-				hotTolerance: 0.5,
-				neutralMargin: 1,
-				minimumOffMs: 0,
-				changeoverMs: 0,
-				floor: null,
-			},
-			heuristic: null,
-			contactOpeningMs: 0,
-			contactClosingMs: 0,
-			configuredAt: new Date(),
-			releaseRequestedAt: null,
-		});
-		await database.manager.insert(VirtualThermostatSourceEntity, {
-			id: uuid(),
-			controllerId,
-			role: 'ambient',
-			sourcePropertyId: sensorId,
-			sourcePropertyIdentity: sensorId,
-			physicalIdentity: `property:${sensorId}`,
-			contractFingerprint: thermostatPropertyContract(sensor, sensorChannel, sensorChannel.device as DeviceEntity),
-			maximumAgeSeconds: 300,
-			openValue: null,
-			closedValue: null,
-		});
-		await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
-			id: uuid(),
-			controllerId,
-			role: 'heating',
-			physicalIdentity: thermostatActuatorIdentity(relay, relayChannel, relayChannel.device as DeviceEntity),
-			sourcePropertyId: relayId,
-			sourcePropertyIdentity: relayId,
-			sourceDeviceId: relayDeviceId,
-			sourceDeviceIdentity: relayDeviceId,
-			contractFingerprint: thermostatPropertyContract(relay, relayChannel, relayChannel.device as DeviceEntity),
-			revision: 1,
-			state: 'reserved',
-			leaseSeconds: 30,
-			reason: null,
-			releaseRequestedAt: null,
-			releasedAt: null,
-			releaseEvidence: null,
-		});
-		sample(sensorId, 21);
-		sample(relayId, false);
-		producers = new PropertyProducerRegistryService(events);
-		values = {
-			write: jest.fn((property: ChannelPropertyEntity, value: number | boolean) => {
-				sample(property.id, value);
-				return Promise.resolve();
-			}),
-			readLatest: jest.fn((property: ChannelPropertyEntity) =>
-				Promise.resolve(Object.assign(new PropertyValueState(), { value: samples.get(property.id)?.value })),
-			),
-			captureSampleSourceGuard: () => () => providerCurrent,
-			readQualifiedSample: jest.fn((property: ChannelPropertyEntity) =>
-				unavailableMembers.has(property.id) ? null : (samples.get(property.id) ?? null),
-			),
-			readQualifiedSampleSnapshot: jest.fn((property: ChannelPropertyEntity, maxAgeMs: number, now: Date) => {
-				const sample = samples.get(property.id);
-				return !providerCurrent ||
-					unavailableMembers.has(property.id) ||
-					!sample ||
-					now.getTime() - sample.sampledAt.getTime() > maxAgeMs
-					? null
-					: sample;
-			}),
-			readSampleFreshness: jest.fn((property: ChannelPropertyEntity) => {
-				const sample = samples.get(property.id);
-				return {
-					status: sample ? 'fresh' : 'unavailable',
-					quality: sample?.quality ?? 'unavailable',
-					sampled_at: sample?.sampledAt.toISOString() ?? null,
-					age_seconds: sample ? 0 : null,
-					expires_at: null,
-					reasons: [],
-				};
-			}),
-			publishDerived: jest.fn(
-				async (...[property, lease, value, publication]: Parameters<PropertyValueService['publishDerived']>) => {
-					const epoch = producers.version(lease);
-					if (publicationGate !== null) await publicationGate;
-					const changed = producers.commit(
-						lease,
-						Object.assign(new PropertyValueState(), { value }),
-						publication,
-						epoch,
-					);
-					return { changed, state: producers.read(property.id) };
-				},
-			),
-		} as unknown as PropertyValueService;
-		const claims = {
-			holdRecoveryFence: jest.fn(() => () => undefined),
-			capture: () => ({ isCurrent: () => true }),
-			registerRuntimeAdmission: () => () => undefined,
-			invalidate: jest.fn(),
-			refresh: jest.fn().mockResolvedValue(undefined),
-			isQualifiedReleaseWrite: () => false,
-			qualification: (claim: VirtualThermostatActuatorClaimEntity) => {
-				if (!installedQualifications.has(claim.physicalIdentity))
-					installedQualifications.set(
-						claim.physicalIdentity,
-						Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
-					);
-				return installedQualifications.get(claim.physicalIdentity);
-			},
-			mintAuthority: () => ({}),
-			isAuthorized: () => true,
-		} as unknown as VirtualThermostatClaimsService;
-		const adapter: ThermostatActuationAdapter = {
-			contractVersion: 1,
-			providerProfile: { id: 'shelly-ng.guarded-switch', version: 1 },
-			canReconcile: () => true,
-			send: async (target, _claim, _qualification, isAdmitted, packet) => {
-				actuationAttempts.push(target.value === true);
-				if (target.property.id === relayId && target.value === true && onGate !== null) {
-					onQueued?.();
-					await onGate;
-				}
-				if (target.value === false && offGate !== null) {
-					const observer = heldOffSendObserver;
-					try {
-						observer?.observe(target, _claim, packet);
-					} catch (cause) {
-						try {
-							observer?.fail(cause);
-						} catch {
-							/* Optional observation never replaces the original send outcome. */
-						}
-					}
-					await offGate;
-				}
-				if (!isAdmitted() && !(target.value === true && allowLateOn))
-					return { outcome: 'refused' as const, reasons: ['revoked'] };
-				const outcome = target.value === true ? onOutcome : offOutcome;
-				if (outcome === 'refused') return { outcome, reasons: ['known_no_send'] };
-				const wasOn = samples.get(target.property.id)?.value === true;
-				sends.push(target.value as boolean);
-				sentTargets.push({ propertyId: target.property.id, on: target.value as boolean });
-				if (target.value !== true || target.property.id !== acceptedWithoutFeedback)
-					sample(target.property.id, target.value as boolean);
-				if (target.value === true) onSent?.(target.property.id);
-				if (target.property.id === relayId && target.value === true && afterOnGate !== null) await afterOnGate;
-				if (outcome === 'unknown') return { outcome, outputConfirmed: false, pendingOnDrained: false };
-				return {
-					outcome: 'accepted' as const,
-					wasOn,
-					outputConfirmed: false as const,
-					pendingOnDrained: false as const,
-				};
-			},
-			reconcile: async (target, ids, _off, isCurrent, scope) => {
-				proofCalls++;
-				reconciledCommandIds.push([...ids]);
-				await beforeProof?.();
-				const observedAt = new Date();
-				if (isCurrent() && proofAllowed(target.property.id)) sample(target.property.id, false);
-				return isCurrent() && proofAllowed(target.property.id)
-					? proofMutation({
-							proofId: uuid(),
-							scope,
-							observedAt,
-							isCurrent,
-							sourceIsCurrent: () => providerCurrent,
-							physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device) ?? '',
-							connectionIdentity: 'ordered-fake-connection',
-							coveredCommandIds: ids,
-							externalWriterBarrier: true,
-							offSample: samples.get(target.property.id),
-						})
-					: null;
-			},
-		};
-		const platforms = new PlatformRegistryService();
-		const transport = new VirtualThermostatTransportService(platforms, values);
-		const dispose = transport.register(DEVICES_SHELLY_NG_TYPE, adapter);
-		ordinaryTransportOwner = Object.freeze({ platforms, transport, dispose });
-		const graph = {
-			isValidated: () => graphValidated,
-			capturePublishGuard: () => {
-				const generation = graphGeneration;
-				return () => graphValidated && generation === graphGeneration;
-			},
-		} as unknown as VirtualDependencyGraphService;
-		// The old isolated runtime sample/delegate fixture above remains synthetic and is not route authority evidence.
-		// Mutation routes use a separate real core/registry/claims/value pipeline and the SAME actual owned SQLite database.
-		mutationStructure = new DeviceStructureLockService();
-		mutationRegistry = new ClimateAutomationRegistryService();
-		mutationWriter = new ClimateAutomationWriterService(
-			database,
-			mutationStructure,
-			mutationRegistry,
-			new ConfigService({ FB_CLI: 'off' }),
-		);
-		mutationGraph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), mutationWriter);
-		mutationClaims = new VirtualThermostatClaimsService(
-			database,
-			mutationStructure,
-			mutationGraph,
-			new PropertyCommandAdmissionRegistryService(),
-			events,
-		);
-		mutationPipeline = await Test.createTestingModule({
-			providers: [
-				PropertyValueService,
-				PropertyValueLockService,
-				PropertyValueSourceRegistryService,
-				{ provide: PropertyProducerRegistryService, useValue: producers },
-				StorageService,
-				{ provide: DataSource, useValue: database },
-				{ provide: EventEmitter2, useValue: events },
-				{ provide: ConfigService, useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
-				{
-					provide: ModuleConfigService,
-					useValue: {
-						getModuleConfig: () =>
-							Object.assign(new StorageConfigModel(), { primaryStorage: 'runtime-mutation-fixture' }),
-					},
-				},
-			],
-		}).compile();
-		const storage = mutationPipeline.get(StorageService);
-		const plugin: StoragePlugin = {
-			name: 'runtime-mutation-fixture',
-			initialize: () => Promise.resolve(),
-			destroy: () => Promise.resolve(),
-			isAvailable: () => true,
-			writePoints: () => Promise.resolve(),
-			query: <T>() => Promise.resolve<T[]>([]),
-			queryRaw: <T>() => Promise.reject<T>(new Error('No raw mutation fixture history')),
-			registerSchema: () => undefined,
-			dropMeasurement: () => Promise.resolve(),
-			getMeasurements: () => Promise.resolve([]),
-		};
-		storage.registerPlugin(plugin.name, plugin);
-		mutationValues = mutationPipeline.get(PropertyValueService);
-		configs = new VirtualThermostatConfigService(
-			database,
-			mutationStructure,
-			mutationGraph,
-			mutationClaims,
-			events,
-			mutationValues,
-			undefined,
-			mutationWriter,
-		);
-		comfort = new VirtualThermostatComfortService(
-			database,
-			mutationStructure,
-			mutationGraph,
-			mutationClaims,
-			events,
-			mutationWriter,
-		);
-		mutationProvider = new VirtualThermostatAutomationService(
-			mutationWriter,
-			mutationRegistry,
-			mutationGraph,
-			new ConfigService({ FB_CLI: 'off' }),
-			undefined,
-			configs,
-			comfort,
-		);
-		mutationProvider.onModuleInit();
-		await mutationGraph.onApplicationBootstrap();
-		await mutationClaims.onApplicationBootstrap();
-		await database.query('DROP TABLE "devices_module_climate_automation_slots"');
-		await database.query('DROP TABLE "devices_module_climate_automation_sources"');
-		await new AddClimateAutomationOwnership1000000000047().up(database.createQueryRunner());
-		makeRuntime = (runtimeGraph = graph, aggregate, runtimeTransport = transport) =>
-			new VirtualThermostatRuntimeService(
-				database,
-				new DeviceStructureLockService(),
-				claims,
-				new VirtualThermostatInputsService(database, values, aggregate),
-				runtimeTransport,
-				values,
-				producers,
-				events,
-				runtimeGraph,
-				comfort,
-				new ConfigService(),
+		const realGuardFixtures: Awaited<ReturnType<typeof realThermostatGuardFixture>>[] = [];
+		try {
+			directory = await mkdtemp(join(tmpdir(), 'vd2-thermostat-runtime-'));
+			database = await new SqliteDataSource({
+				type: 'sqlite',
+				database: join(directory, 'runtime.sqlite'),
+				entities: [__dirname + '/../../../**/*.entity.ts'],
+				synchronize: true,
+			}).initialize();
+			// Synchronized test schemas omit migration27's installed graph singleton seed.
+			await database.query('INSERT INTO "devices_virtual_graph_revision" ("id", "revision") VALUES (1, 0)');
+			let observationFailure: { cause: unknown } | undefined;
+			try {
+				observation?.install(database);
+			} catch (cause) {
+				observationFailure = { cause };
+			}
+			const initialGraphRead: Promise<unknown> = database.query(
+				'SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"',
 			);
-		runtime = makeRuntime();
-		installInitialRuntimeObservers(runtime, database, controllerId);
-		await runtime.onApplicationBootstrap();
-	});
-	afterEach(async () => {
-		// Snapshot exact case owners before any await; a late timed-out A cannot select next fixture B.
-		const owned = {
-			runtime,
-			ordinary: ordinaryTransportOwner,
-			provider: mutationProvider,
-			comfort,
-			claims: mutationClaims,
-			registry: mutationRegistry,
-			fixtures: [...realGuardFixtures],
-			pipeline: mutationPipeline,
-			database,
-			directory,
-			observers: [...completionObserverBackstops],
-		};
-		ordinaryTransportOwner = undefined;
+			try {
+				observation?.issued(initialGraphRead);
+			} catch (cause) {
+				observationFailure ??= { cause };
+			}
+			const initialGraphRows = await initialGraphRead; // Original native P wins over optional observation Q.
+			if (observationFailure !== undefined) throw observationFailure.cause;
+			assertSetupLive?.();
+			expect(initialGraphRows).toEqual([{ id: 1, revision: 0 }]);
+			events = new EventEmitter2();
+			controllerId = uuid();
+			sensorId = uuid();
+			relayId = uuid();
+			const sensorDeviceId = uuid(),
+				sensorChannelId = uuid(),
+				relayDeviceId = uuid(),
+				relayChannelId = uuid();
+			await database.manager.insert(VirtualDeviceEntity, {
+				id: controllerId,
+				name: 'Thermostat',
+				category: DeviceCategory.THERMOSTAT,
+				enabled: true,
+				mode: VirtualDeviceMode.CLIMATE_CONTROLLER,
+			});
+			await database.manager.insert(DeviceEntity, {
+				id: sensorDeviceId,
+				name: 'Ambient',
+				category: DeviceCategory.SENSOR,
+				enabled: true,
+			});
+			await database.manager.insert(ChannelEntity, {
+				id: sensorChannelId,
+				device: sensorDeviceId,
+				name: 'Temperature',
+				identifier: 'temperature',
+				category: ChannelCategory.TEMPERATURE,
+			} as never);
+			await database.manager.insert(ChannelPropertyEntity, {
+				id: sensorId,
+				channel: sensorChannelId,
+				identifier: 'temperature',
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: '°C',
+			} as never);
+			await database.manager.insert(ShellyNgDeviceEntity, {
+				id: relayDeviceId,
+				name: '1PM',
+				identifier: 'shellyplus1pm-a8032abe5084',
+				category: DeviceCategory.SWITCHER,
+				enabled: true,
+				canonicalMac: 'A8032ABE5084',
+			});
+			await database.manager.insert(ShellyNgChannelEntity, {
+				id: relayChannelId,
+				device: relayDeviceId,
+				name: 'Switch',
+				identifier: 'switch:0',
+				category: ChannelCategory.SWITCHER,
+			} as never);
+			await database.manager.insert(ShellyNgChannelPropertyEntity, {
+				id: relayId,
+				channel: relayChannelId,
+				identifier: 'output',
+				category: PropertyCategory.ON,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			} as never);
+			const sensor = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: sensorId },
+				relations: ['channel', 'channel.device'],
+			});
+			const relay = await database.manager.findOneOrFail(ChannelPropertyEntity, {
+				where: { id: relayId },
+				relations: ['channel', 'channel.device'],
+			});
+			const sensorChannel = sensor.channel as ChannelEntity,
+				relayChannel = relay.channel as ChannelEntity;
+			await database.manager.insert(VirtualThermostatConfigEntity, {
+				controllerId,
+				ownerDeviceId: controllerId,
+				schemaVersion: 1,
+				revision: 1,
+				requestedMode: 'heat',
+				locked: false,
+				policy: {
+					heatingSetpoint: 20,
+					coolingSetpoint: null,
+					coldTolerance: 0.5,
+					hotTolerance: 0.5,
+					neutralMargin: 1,
+					minimumOffMs: 0,
+					changeoverMs: 0,
+					floor: null,
+				},
+				heuristic: null,
+				contactOpeningMs: 0,
+				contactClosingMs: 0,
+				configuredAt: new Date(),
+				releaseRequestedAt: null,
+			});
+			await database.manager.insert(VirtualThermostatSourceEntity, {
+				id: uuid(),
+				controllerId,
+				role: 'ambient',
+				sourcePropertyId: sensorId,
+				sourcePropertyIdentity: sensorId,
+				physicalIdentity: `property:${sensorId}`,
+				contractFingerprint: thermostatPropertyContract(sensor, sensorChannel, sensorChannel.device as DeviceEntity),
+				maximumAgeSeconds: 300,
+				openValue: null,
+				closedValue: null,
+			});
+			await database.manager.insert(VirtualThermostatActuatorClaimEntity, {
+				id: uuid(),
+				controllerId,
+				role: 'heating',
+				physicalIdentity: thermostatActuatorIdentity(relay, relayChannel, relayChannel.device as DeviceEntity),
+				sourcePropertyId: relayId,
+				sourcePropertyIdentity: relayId,
+				sourceDeviceId: relayDeviceId,
+				sourceDeviceIdentity: relayDeviceId,
+				contractFingerprint: thermostatPropertyContract(relay, relayChannel, relayChannel.device as DeviceEntity),
+				revision: 1,
+				state: 'reserved',
+				leaseSeconds: 30,
+				reason: null,
+				releaseRequestedAt: null,
+				releasedAt: null,
+				releaseEvidence: null,
+			});
+			sample(sensorId, 21);
+			sample(relayId, false);
+			producers = new PropertyProducerRegistryService(events);
+			values = {
+				write: jest.fn((property: ChannelPropertyEntity, value: number | boolean) => {
+					sample(property.id, value);
+					return Promise.resolve();
+				}),
+				readLatest: jest.fn((property: ChannelPropertyEntity) =>
+					Promise.resolve(
+						Object.assign(new PropertyValueState(), { value: ownedState.samples.get(property.id)?.value }),
+					),
+				),
+				captureSampleSourceGuard: () => () => ownedState.providerCurrent,
+				readQualifiedSample: jest.fn((property: ChannelPropertyEntity) =>
+					ownedState.unavailableMembers.has(property.id) ? null : (ownedState.samples.get(property.id) ?? null),
+				),
+				readQualifiedSampleSnapshot: jest.fn((property: ChannelPropertyEntity, maxAgeMs: number, now: Date) => {
+					const sample = ownedState.samples.get(property.id);
+					return !ownedState.providerCurrent ||
+						ownedState.unavailableMembers.has(property.id) ||
+						!sample ||
+						now.getTime() - sample.sampledAt.getTime() > maxAgeMs
+						? null
+						: sample;
+				}),
+				readSampleFreshness: jest.fn((property: ChannelPropertyEntity) => {
+					const sample = ownedState.samples.get(property.id);
+					return {
+						status: sample ? 'fresh' : 'unavailable',
+						quality: sample?.quality ?? 'unavailable',
+						sampled_at: sample?.sampledAt.toISOString() ?? null,
+						age_seconds: sample ? 0 : null,
+						expires_at: null,
+						reasons: [],
+					};
+				}),
+				publishDerived: jest.fn(
+					async (...[property, lease, value, publication]: Parameters<PropertyValueService['publishDerived']>) => {
+						const epoch = producers.version(lease);
+						if (ownedState.publicationGate !== null) await ownedState.publicationGate;
+						const changed = producers.commit(
+							lease,
+							Object.assign(new PropertyValueState(), { value }),
+							publication,
+							epoch,
+						);
+						return { changed, state: producers.read(property.id) };
+					},
+				),
+			} as unknown as PropertyValueService;
+			const claims = {
+				holdRecoveryFence: jest.fn(() => () => undefined),
+				capture: () => ({ isCurrent: () => true }),
+				registerRuntimeAdmission: () => () => undefined,
+				invalidate: jest.fn(),
+				refresh: jest.fn().mockResolvedValue(undefined),
+				isQualifiedReleaseWrite: () => false,
+				qualification: (claim: VirtualThermostatActuatorClaimEntity) => {
+					if (!ownedState.installedQualifications.has(claim.physicalIdentity))
+						ownedState.installedQualifications.set(
+							claim.physicalIdentity,
+							Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
+						);
+					return ownedState.installedQualifications.get(claim.physicalIdentity);
+				},
+				mintAuthority: () => ({}),
+				isAuthorized: () => true,
+			} as unknown as VirtualThermostatClaimsService;
+			const adapter: ThermostatActuationAdapter = {
+				contractVersion: 1,
+				providerProfile: { id: 'shelly-ng.guarded-switch', version: 1 },
+				canReconcile: () => true,
+				send: async (target, _claim, _qualification, isAdmitted, packet) => {
+					ownedState.actuationAttempts.push(target.value === true);
+					if (target.property.id === relayId && target.value === true && ownedState.onGate !== null) {
+						if (!ownedState.retired) ownedState.onQueued?.();
+						await ownedState.onGate;
+					}
+					if (target.value === false && ownedState.offGate !== null) {
+						const observer = ownedState.retired ? null : ownedState.heldOffSendObserver;
+						try {
+							observer?.observe(target, _claim, packet);
+						} catch (cause) {
+							try {
+								observer?.fail(cause);
+							} catch {
+								/* Optional observation never replaces the original send outcome. */
+							}
+						}
+						await ownedState.offGate;
+					}
+					if (!isAdmitted() && !(target.value === true && ownedState.allowLateOn))
+						return { outcome: 'refused' as const, reasons: ['revoked'] };
+					const outcome = target.value === true ? ownedState.onOutcome : ownedState.offOutcome;
+					if (outcome === 'refused') return { outcome, reasons: ['known_no_send'] };
+					const wasOn = ownedState.samples.get(target.property.id)?.value === true;
+					ownedState.sends.push(target.value as boolean);
+					ownedState.sentTargets.push({ propertyId: target.property.id, on: target.value as boolean });
+					if (target.value !== true || target.property.id !== ownedState.acceptedWithoutFeedback)
+						sample(target.property.id, target.value as boolean);
+					if (!ownedState.retired && target.value === true) ownedState.onSent?.(target.property.id);
+					if (target.property.id === relayId && target.value === true && ownedState.afterOnGate !== null)
+						await ownedState.afterOnGate;
+					if (outcome === 'unknown') return { outcome, outputConfirmed: false, pendingOnDrained: false };
+					return {
+						outcome: 'accepted' as const,
+						wasOn,
+						outputConfirmed: false as const,
+						pendingOnDrained: false as const,
+					};
+				},
+				reconcile: async (target, ids, _off, isCurrent, scope) => {
+					ownedState.proofCalls++;
+					ownedState.reconciledCommandIds.push([...ids]);
+					if (!ownedState.retired) await ownedState.beforeProof?.();
+					if (ownedState.retired) return null; // Synthetic proof callbacks have no authority after their fixture closes.
+					const observedAt = new Date();
+					if (isCurrent() && ownedState.proofAllowed(target.property.id)) sample(target.property.id, false);
+					return isCurrent() && ownedState.proofAllowed(target.property.id)
+						? ownedState.proofMutation({
+								proofId: uuid(),
+								scope,
+								observedAt,
+								isCurrent,
+								sourceIsCurrent: () => ownedState.providerCurrent,
+								physicalIdentity: thermostatActuatorIdentity(target.property, target.channel, target.device) ?? '',
+								connectionIdentity: 'ordered-fake-connection',
+								coveredCommandIds: ids,
+								externalWriterBarrier: true,
+								offSample: ownedState.samples.get(target.property.id),
+							})
+						: null;
+				},
+			};
+			const platforms = new PlatformRegistryService();
+			const transport = new VirtualThermostatTransportService(platforms, values);
+			const dispose = transport.register(DEVICES_SHELLY_NG_TYPE, adapter);
+			ordinaryTransportOwner = Object.freeze({ platforms, transport, dispose });
+			const graph = {
+				isValidated: () => ownedState.graphValidated,
+				capturePublishGuard: () => {
+					const generation = ownedState.graphGeneration;
+					return () => ownedState.graphValidated && generation === ownedState.graphGeneration;
+				},
+			} as unknown as VirtualDependencyGraphService;
+			// The old isolated runtime sample/delegate fixture above remains synthetic and is not route authority evidence.
+			// Mutation routes use a separate real core/registry/claims/value pipeline and the SAME actual owned SQLite database.
+			mutationStructure = new DeviceStructureLockService();
+			mutationRegistry = new ClimateAutomationRegistryService();
+			mutationWriter = new ClimateAutomationWriterService(
+				database,
+				mutationStructure,
+				mutationRegistry,
+				new ConfigService({ FB_CLI: 'off' }),
+			);
+			mutationGraph = new VirtualDependencyGraphService(database, new ConfigService({ FB_CLI: 'off' }), mutationWriter);
+			mutationClaims = new VirtualThermostatClaimsService(
+				database,
+				mutationStructure,
+				mutationGraph,
+				new PropertyCommandAdmissionRegistryService(),
+				events,
+			);
+			mutationPipeline = await Test.createTestingModule({
+				providers: [
+					PropertyValueService,
+					PropertyValueLockService,
+					PropertyValueSourceRegistryService,
+					{ provide: PropertyProducerRegistryService, useValue: producers },
+					StorageService,
+					{ provide: DataSource, useValue: database },
+					{ provide: EventEmitter2, useValue: events },
+					{ provide: ConfigService, useValue: new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }) },
+					{
+						provide: ModuleConfigService,
+						useValue: {
+							getModuleConfig: () =>
+								Object.assign(new StorageConfigModel(), { primaryStorage: 'runtime-mutation-fixture' }),
+						},
+					},
+				],
+			}).compile();
+			const storage = mutationPipeline.get(StorageService);
+			const plugin: StoragePlugin = {
+				name: 'runtime-mutation-fixture',
+				initialize: () => Promise.resolve(),
+				destroy: () => Promise.resolve(),
+				isAvailable: () => true,
+				writePoints: () => Promise.resolve(),
+				query: <T>() => Promise.resolve<T[]>([]),
+				queryRaw: <T>() => Promise.reject<T>(new Error('No raw mutation fixture history')),
+				registerSchema: () => undefined,
+				dropMeasurement: () => Promise.resolve(),
+				getMeasurements: () => Promise.resolve([]),
+			};
+			storage.registerPlugin(plugin.name, plugin);
+			mutationValues = mutationPipeline.get(PropertyValueService);
+			configs = new VirtualThermostatConfigService(
+				database,
+				mutationStructure,
+				mutationGraph,
+				mutationClaims,
+				events,
+				mutationValues,
+				undefined,
+				mutationWriter,
+			);
+			comfort = new VirtualThermostatComfortService(
+				database,
+				mutationStructure,
+				mutationGraph,
+				mutationClaims,
+				events,
+				mutationWriter,
+			);
+			mutationProvider = new VirtualThermostatAutomationService(
+				mutationWriter,
+				mutationRegistry,
+				mutationGraph,
+				new ConfigService({ FB_CLI: 'off' }),
+				undefined,
+				configs,
+				comfort,
+			);
+			mutationProvider.onModuleInit();
+			await mutationGraph.onApplicationBootstrap();
+			await mutationClaims.onApplicationBootstrap();
+			await database.query('DROP TABLE "devices_module_climate_automation_slots"');
+			await database.query('DROP TABLE "devices_module_climate_automation_sources"');
+			await new AddClimateAutomationOwnership1000000000047().up(database.createQueryRunner());
+			const runtimePorts = { values, comfort };
+			makeRuntime = (runtimeGraph = graph, aggregate, runtimeTransport = transport) =>
+				new VirtualThermostatRuntimeService(
+					database,
+					new DeviceStructureLockService(),
+					claims,
+					new VirtualThermostatInputsService(database, runtimePorts.values, aggregate),
+					runtimeTransport,
+					runtimePorts.values,
+					producers,
+					events,
+					runtimeGraph,
+					runtimePorts.comfort,
+					new ConfigService(),
+				);
+			runtime = makeRuntime();
+			assertSetupLive?.();
+			const previousObservers = new Set(completionObserverBackstops);
+			try {
+				installInitialRuntimeObservers(runtime, database, controllerId);
+			} finally {
+				observers.push(...[...completionObserverBackstops].filter((observer) => !previousObservers.has(observer)));
+			}
+			await runtime.onApplicationBootstrap();
+			assertSetupLive?.();
+			return {
+				directory,
+				database,
+				runtime,
+				ordinaryTransportOwner,
+				realGuardFixtures,
+				comfort,
+				configs,
+				controllerId,
+				sensorId,
+				relayId,
+				makeRuntime,
+				events,
+				producers,
+				values,
+				mutationPipeline,
+				mutationValues,
+				mutationClaims,
+				mutationRegistry,
+				mutationWriter,
+				mutationProvider,
+				mutationGraph,
+				mutationStructure,
+				state: ownedState,
+				sample,
+				runtimePorts,
+				observers,
+			};
+		} catch (cause) {
+			ownedState.retired = true;
+			// These optional references are local to THIS construction, never an earlier/later suite owner.
+			const attempt = (action: () => void): void => {
+				try {
+					action();
+				} catch (cause) {
+					ownedState.cleanupCauses.push(cause); /* Original setup P is retained. */
+				}
+			};
+			const attemptAsync = async (action: () => Promise<unknown>): Promise<void> => {
+				try {
+					await action();
+				} catch (cause) {
+					ownedState.cleanupCauses.push(cause); /* Original setup P is retained. */
+				}
+			};
+			for (const observer of observers) attempt(() => observer.retire());
+			attempt(() => runtime?.onModuleDestroy());
+			attempt(() => ordinaryTransportOwner?.dispose());
+			attempt(() => ordinaryTransportOwner?.transport.onModuleDestroy());
+			attempt(() => ordinaryTransportOwner?.platforms.onModuleDestroy());
+			attempt(() => mutationProvider?.onModuleDestroy());
+			attempt(() => comfort?.onModuleDestroy());
+			attempt(() => mutationClaims?.onModuleDestroy());
+			attempt(() => mutationRegistry?.onModuleDestroy());
+			for (const fixture of realGuardFixtures) attempt(() => fixture.revoke());
+			for (const observer of observers) attempt(() => observer.cleanup());
+			for (const fixture of realGuardFixtures) await attemptAsync(() => fixture.close());
+			await attemptAsync(async () => {
+				if (mutationPipeline) await mutationPipeline.close();
+			});
+			attempt(() => producers?.onModuleDestroy());
+			await attemptAsync(async () => {
+				if (database?.isInitialized) await database.destroy();
+			});
+			await attemptAsync(async () => {
+				if (directory !== undefined) await rm(directory, { recursive: true, force: true });
+			});
+			throw cause;
+		}
+	};
+	type RuntimeFixtureOwner = Awaited<ReturnType<typeof createRuntimeFixture>>;
+	let fixtureOwner: RuntimeFixtureOwner;
+	const adoptRuntimeFixture = (setup: FixtureSetupLease, owner: RuntimeFixtureOwner): void => {
+		setup.assertLive();
+		setup.adopted = owner;
+		fixtureOwner = owner;
+		fixtureState = owner.state;
+		directory = owner.directory;
+		database = owner.database;
+		runtime = owner.runtime;
+		ordinaryTransportOwner = owner.ordinaryTransportOwner;
+		realGuardFixtures = owner.realGuardFixtures;
+		comfort = owner.comfort;
+		configs = owner.configs;
+		controllerId = owner.controllerId;
+		sensorId = owner.sensorId;
+		relayId = owner.relayId;
+		makeRuntime = owner.makeRuntime;
+		events = owner.events;
+		producers = owner.producers;
+		values = owner.values;
+		mutationPipeline = owner.mutationPipeline;
+		mutationValues = owner.mutationValues;
+		mutationClaims = owner.mutationClaims;
+		mutationRegistry = owner.mutationRegistry;
+		mutationWriter = owner.mutationWriter;
+		mutationProvider = owner.mutationProvider;
+	};
+	const completeFixtureSetup = async (
+		setup: FixtureSetupLease,
+		observation?: FixtureSetupObservation,
+	): Promise<RuntimeFixtureOwner> => {
+		let owned: RuntimeFixtureOwner | undefined;
 		let failure: { cause: unknown } | undefined;
+		try {
+			setup.assertLive();
+			owned = await createRuntimeFixture(setup.assertLive, observation);
+			adoptRuntimeFixture(setup, owned);
+		} catch (cause) {
+			failure = { cause };
+			setup.failure = failure;
+		} finally {
+			setup.completed = true; // Only THIS setup's state, even if a later B has already adopted.
+			if (owned !== undefined && setup.adopted !== owned) {
+				try {
+					await closeRuntimeFixture(owned);
+				} catch (cause) {
+					failure ??= { cause };
+					setup.failure ??= { cause };
+				}
+			}
+		}
+		if (failure !== undefined) throw failure.cause;
+		if (owned === undefined) throw new Error('Completed fixture setup has no owner');
+		return owned;
+	};
+	const teardownFixtureSetup = async (setup: FixtureSetupLease, finishCase = false): Promise<void> => {
+		// Exact lease captured by the caller; retirement precedes every await and framework restoration.
+		setup.retired = true;
+		const caseOwner = setup.caseOwner;
+		const adopted = setup.cleanupAttempted ? undefined : setup.adopted;
+		const owned =
+			adopted === undefined
+				? undefined
+				: {
+						state: adopted.state,
+						runtime: adopted.runtime,
+						ordinary: adopted.ordinaryTransportOwner,
+						provider: adopted.mutationProvider,
+						comfort: adopted.comfort,
+						claims: adopted.mutationClaims,
+						registry: adopted.mutationRegistry,
+						fixtures: [...adopted.realGuardFixtures],
+						pipeline: adopted.mutationPipeline,
+						database: adopted.database,
+						directory: adopted.directory,
+					};
+		const observers = [...(finishCase ? caseOwner.observers : setup.observers)];
+		if (owned !== undefined) owned.state.retired = true;
+		let failure = setup.failure ?? setup.cleanupFailure;
+		let cleanupFailure = setup.cleanupFailure;
 		const attempt = (action: () => void): void => {
 			try {
 				action();
 			} catch (cause) {
+				cleanupFailure ??= { cause };
 				failure ??= { cause };
 			}
 		};
@@ -630,30 +938,54 @@ describe('virtual thermostat durable runtime', () => {
 			try {
 				await action();
 			} catch (cause) {
+				cleanupFailure ??= { cause };
 				failure ??= { cause };
 			}
 		};
-		for (const observer of owned.observers) attempt(() => observer.retire());
-		attempt(() => owned.runtime?.onModuleDestroy());
-		attempt(() => owned.ordinary?.dispose());
-		attempt(() => owned.ordinary?.transport.onModuleDestroy());
-		attempt(() => owned.ordinary?.platforms.onModuleDestroy());
-		attempt(() => owned.provider?.onModuleDestroy());
-		attempt(() => owned.comfort?.onModuleDestroy());
-		attempt(() => owned.claims?.onModuleDestroy());
-		attempt(() => owned.registry?.onModuleDestroy());
-		for (const fixture of owned.fixtures) attempt(() => fixture.revoke());
-		// Remove exact owned H/S descriptors before Jest's framework restoration, even after earlier cleanup P.
-		for (const observer of owned.observers) attempt(() => observer.cleanup());
-		for (const fixture of owned.fixtures) await attemptAsync(() => fixture.close());
-		const pipeline = owned.pipeline;
-		if (pipeline) await attemptAsync(() => pipeline.close());
-		attempt(() => jest.restoreAllMocks());
-		attempt(() => jest.useRealTimers());
-		if (owned.database?.isInitialized) await attemptAsync(() => owned.database.destroy());
-		await attemptAsync(() => rm(owned.directory, { recursive: true, force: true }));
-		if (failure) throw failure.cause;
+		for (const observer of observers) attempt(() => observer.retire());
+		attempt(() => owned?.runtime.onModuleDestroy());
+		attempt(() => owned?.ordinary?.dispose());
+		attempt(() => owned?.ordinary?.transport.onModuleDestroy());
+		attempt(() => owned?.ordinary?.platforms.onModuleDestroy());
+		attempt(() => owned?.provider.onModuleDestroy());
+		attempt(() => owned?.comfort.onModuleDestroy());
+		attempt(() => owned?.claims.onModuleDestroy());
+		attempt(() => owned?.registry.onModuleDestroy());
+		for (const fixture of owned?.fixtures ?? []) attempt(() => fixture.revoke());
+		for (const observer of observers) attempt(() => observer.cleanup());
+		for (const fixture of owned?.fixtures ?? []) await attemptAsync(() => fixture.close());
+		if (owned !== undefined) await attemptAsync(() => owned.pipeline.close());
+		// A late A teardown cannot restore the framework mocks/timers of B.
+		if (currentFixtureCase === caseOwner && caseOwner.setup === setup) {
+			attempt(() => jest.restoreAllMocks());
+			attempt(() => jest.useRealTimers());
+			if (owned !== undefined && ordinaryTransportOwner === owned.ordinary) ordinaryTransportOwner = undefined;
+		}
+		if (owned !== undefined) {
+			if (owned.database.isInitialized) await attemptAsync(() => owned.database.destroy());
+			await attemptAsync(() => rm(owned.directory, { recursive: true, force: true }));
+		}
+		setup.cleanupAttempted = true;
+		// Keep the retired case/setup tombstone; old completion/finally never clears a later slot.
+		setup.cleanupFailure ??= cleanupFailure;
+		if (failure !== undefined) throw failure.cause;
+	};
+	const teardownFixtureCase = (owner: FixtureCaseLease): Promise<void> => {
+		owner.retired = true;
+		const setup = owner.setup;
+		if (setup === undefined) throw new Error('Fixture case has no setup lease');
+		return teardownFixtureSetup(setup, true);
+	};
+	beforeEach(async () => {
+		const owner = beginFixtureCase();
+		const setup = beginFixtureSetup(owner);
+		await completeFixtureSetup(setup);
 	});
+	afterEach(async () => {
+		const owner = currentFixtureCase;
+		if (owner !== undefined) await teardownFixtureCase(owner);
+	});
+
 	const waitForOnJournal = async (): Promise<VirtualThermostatCommandEntity> => {
 		for (let attempt = 0; attempt < 6; attempt++) {
 			await runtime.inspect(controllerId);
@@ -692,12 +1024,115 @@ describe('virtual thermostat durable runtime', () => {
 		return propertyId;
 	};
 
-	const settle = async (): Promise<void> => {
+	// A body lease is a negative test-lifetime check, never native admission/currentness authority.
+	const captureFixtureBodyOwner = (fixture: RuntimeFixtureOwner) => {
+		const lifecycle = fixture.runtime['lifecycle'];
+		let retired = false;
+		const assertLive = (): void => {
+			if (retired || fixture.state.retired || !fixture.runtime['active'] || fixture.runtime['lifecycle'] !== lifecycle)
+				throw new Error('Original fixture body retired');
+		};
+		const backstop = {
+			retire: (): void => {
+				retired = true;
+			},
+			cleanup: (): void => {
+				retired = true;
+				unregisterCompletionObserver(backstop);
+			},
+		};
+		assertLive();
+		registerCompletionObserver(backstop);
+		return Object.freeze({
+			fixture,
+			runtime: fixture.runtime,
+			comfort: fixture.comfort,
+			database: fixture.database,
+			controllerId: fixture.controllerId,
+			sensorId: fixture.sensorId,
+			state: fixture.state,
+			assertLive,
+			retire: backstop.retire,
+			cleanup: backstop.cleanup,
+			sample: (id: string, value: number | boolean): void => {
+				assertLive();
+				fixture.sample(id, value);
+			},
+		});
+	};
+	type FixtureBodyOwner = ReturnType<typeof captureFixtureBodyOwner>;
+	const settle = async (owned?: FixtureBodyOwner): Promise<void> => {
+		if (owned !== undefined) {
+			for (let attempt = 0; attempt < 5; attempt++) {
+				owned.assertLive();
+				await owned.runtime.flush();
+				owned.assertLive();
+				await Promise.all([...owned.runtime['inFlight'].values()]);
+				owned.assertLive();
+			}
+			owned.assertLive();
+			await owned.runtime.flush();
+			owned.assertLive();
+			return;
+		}
 		for (let attempt = 0; attempt < 5; attempt++) {
 			await runtime.flush();
 			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		}
 		await runtime.flush();
+	};
+
+	// Used only by the ownership negatives for an additional real fixture in the SAME case.
+	// No framework mock/timer restoration: those global resources belong to the enclosing current case.
+	const retireRuntimeFixture = (owned: RuntimeFixtureOwner): void => {
+		owned.state.retired = true;
+		let failure: { cause: unknown } | undefined;
+		const attempt = (action: () => void): void => {
+			try {
+				action();
+			} catch (cause) {
+				owned.state.cleanupCauses.push(cause);
+				failure ??= { cause };
+			}
+		};
+		for (const observer of owned.observers) attempt(() => observer.retire());
+		attempt(() => owned.runtime.onModuleDestroy());
+		attempt(() => owned.ordinaryTransportOwner?.dispose());
+		attempt(() => owned.ordinaryTransportOwner?.transport.onModuleDestroy());
+		attempt(() => owned.ordinaryTransportOwner?.platforms.onModuleDestroy());
+		attempt(() => owned.mutationProvider.onModuleDestroy());
+		attempt(() => owned.comfort.onModuleDestroy());
+		attempt(() => owned.mutationClaims.onModuleDestroy());
+		attempt(() => owned.mutationRegistry.onModuleDestroy());
+		for (const fixture of owned.realGuardFixtures) attempt(() => fixture.revoke());
+		if (failure !== undefined) throw failure.cause;
+	};
+	const closeRuntimeFixture = async (owned: RuntimeFixtureOwner): Promise<void> => {
+		let failure: { cause: unknown } | undefined;
+		const attempt = (action: () => void): void => {
+			try {
+				action();
+			} catch (cause) {
+				owned.state.cleanupCauses.push(cause);
+				failure ??= { cause };
+			}
+		};
+		const attemptAsync = async (action: () => Promise<unknown>): Promise<void> => {
+			try {
+				await action();
+			} catch (cause) {
+				owned.state.cleanupCauses.push(cause);
+				failure ??= { cause };
+			}
+		};
+		attempt(() => retireRuntimeFixture(owned));
+		for (const observer of owned.observers) attempt(() => observer.cleanup());
+		for (const fixture of owned.realGuardFixtures) await attemptAsync(() => fixture.close());
+		await attemptAsync(() => owned.mutationPipeline.close());
+		attempt(() => owned.producers.onModuleDestroy());
+		if (owned.database.isInitialized) await attemptAsync(() => owned.database.destroy());
+		await attemptAsync(() => rm(owned.directory, { recursive: true, force: true }));
+		if (failure !== undefined) throw failure.cause;
 	};
 
 	// R53: observers record ONLY original methods invoked by a genuine public evaluation.
@@ -796,10 +1231,10 @@ describe('virtual thermostat durable runtime', () => {
 				if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Decision loader owner not retired');
 				if (installedOwned) restoreOriginalEntry(owner, 'loadDecisionCommands', installed, before);
 				restored = true;
-				completionObserverBackstops.delete(backstop);
+				unregisterCompletionObserver(backstop);
 			},
 		};
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		Object.defineProperty(owner, 'loadDecisionCommands', installed);
 		installedOwned = true;
 		return {
@@ -1271,10 +1706,10 @@ describe('virtual thermostat durable runtime', () => {
 					});
 				if (failure !== undefined) throw failure.cause;
 				restored = true;
-				completionObserverBackstops.delete(backstop);
+				unregisterCompletionObserver(backstop);
 			},
 		};
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		Object.defineProperty(owner, 'reconcile', installed);
 		installedOwned = true;
 		Object.defineProperty(inFlight, 'set', setInstalled);
@@ -1571,10 +2006,10 @@ describe('virtual thermostat durable runtime', () => {
 				if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Request owner not retired');
 				if (installedOwned) restoreOriginalEntry(owner, 'request', installed, before);
 				restored = true;
-				completionObserverBackstops.delete(backstop);
+				unregisterCompletionObserver(backstop);
 			},
 		};
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		Object.defineProperty(owner, 'request', installed);
 		installedOwned = true;
 		return {
@@ -1621,12 +2056,12 @@ describe('virtual thermostat durable runtime', () => {
 					if (owner['active'] || owner['lifecycle'] !== undefined) destroy.call(owner);
 				} finally {
 					initialRuntimeObservers.delete(owner);
-					completionObserverBackstops.delete(retirement);
+					unregisterCompletionObserver(retirement);
 				}
 			},
 		};
 		// First cleanup member: retire THIS initial owner even if a later case installed a different runtime.
-		completionObserverBackstops.add(retirement);
+		registerCompletionObserver(retirement);
 		const lifecycleAtEntry = (): object => {
 			const lifecycle = owner['lifecycle'];
 			if (!owner['active'] || lifecycle === undefined) throw new Error('Original initial fixture owner retired');
@@ -1683,7 +2118,7 @@ describe('virtual thermostat durable runtime', () => {
 			attempted = true;
 			try {
 				restoreOriginalEntry(driver, 'prepareHydratedValue', installed, before);
-				completionObserverBackstops.delete(backstop);
+				unregisterCompletionObserver(backstop);
 			} catch (cause) {
 				failure = { cause };
 			}
@@ -1695,11 +2130,11 @@ describe('virtual thermostat durable runtime', () => {
 			retire: (): void => undefined,
 			cleanup: (): void => {
 				restore();
-				completionObserverBackstops.delete(backstop);
+				unregisterCompletionObserver(backstop);
 				assertRestored();
 			},
 		};
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		Object.defineProperty(driver, 'prepareHydratedValue', installed);
 		return { mock, restore, assertRestored };
 	};
@@ -1907,11 +2342,11 @@ describe('virtual thermostat durable runtime', () => {
 				failure ??= { cause };
 			}
 			restored = true;
-			completionObserverBackstops.delete(backstop);
+			unregisterCompletionObserver(backstop);
 			if (failure) throw failure.cause;
 		};
 		const backstop = { retire, cleanup: (): void => cleanup(true) };
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		try {
 			Object.defineProperty(transportPrototype, 'openRuntimeOffDispatchWork', {
 				...openDescriptor,
@@ -1952,24 +2387,782 @@ describe('virtual thermostat durable runtime', () => {
 		};
 	};
 
-	const comfortFence = async () => {
-		const current = await comfort.get(controllerId);
+	const comfortFence = async (owned?: FixtureBodyOwner) => {
+		owned?.assertLive();
+		const current = await (owned === undefined ? comfort : owned.comfort).get(
+			owned === undefined ? controllerId : owned.controllerId,
+		);
+		owned?.assertLive();
 		return { expected_revision: current.revision, expected_graph_revision: current.graph_revision };
 	};
-	const configureComfort = async () =>
-		comfort.configure(controllerId, await comfortFence(), {
+	const configureComfort = async (owned?: FixtureBodyOwner) => {
+		if (owned === undefined)
+			return comfort.configure(controllerId, await comfortFence(), {
+				heating_range: { minimum: 10, maximum: 30 },
+				cooling_range: null,
+				presets: [{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } }],
+			});
+		owned.assertLive();
+		const originalComfort: OriginalFunctions<Pick<VirtualThermostatComfortService, 'configure'>> = owned.comfort;
+		const configure = originalComfort.configure;
+		const fence = await comfortFence(owned);
+		owned.assertLive();
+		return configure.call(owned.comfort, owned.controllerId, fence, {
 			heating_range: { minimum: 10, maximum: 30 },
 			cooling_range: null,
 			presets: [{ preset: 'comfort', setpoints: { heating_setpoint: 24, cooling_setpoint: null } }],
 		});
+	};
+
+	const captureFixtureCaseLifetime = () => {
+		let retired = false;
+		const backstop = {
+			retire: (): void => {
+				retired = true;
+			},
+			cleanup: (): void => {
+				retired = true;
+				unregisterCompletionObserver(backstop);
+			},
+		};
+		registerCompletionObserver(backstop);
+		return {
+			assertLive: (): void => {
+				if (retired) throw new Error('Fixture ownership case retired');
+			},
+			cleanup: backstop.cleanup,
+		};
+	};
+	// R117: real independent SQLite fixtures; these are isolation negatives, not native authority positives.
+	const fixtureGate = () => {
+		let open: () => void = () => undefined;
+		const promise = new Promise<void>((resolve) => {
+			open = resolve;
+		});
+		return { promise, open };
+	};
+	type FixtureOutcome<T> = { fulfilled: true; value: T; cause?: never } | { fulfilled: false; cause: unknown };
+	const fixtureOutcome = <T>(promise: Promise<T>): Promise<FixtureOutcome<T>> =>
+		promise.then<FixtureOutcome<T>, FixtureOutcome<T>>(
+			(value) => ({ fulfilled: true, value }),
+			(cause: unknown) => ({ fulfilled: false, cause }),
+		);
+
+	describe('original case fixture ownership after retirement', () => {
+		it('retires a genuinely held unadopted setup A before B adopts and never lets late A completion reclaim or close B', async () => {
+			const caseOwner = currentFixtureCase;
+			if (caseOwner === undefined || caseOwner.setup === undefined) throw new Error('Original case setup missing');
+			assertFixtureCaseLive(caseOwner);
+			const initialSetup = caseOwner.setup;
+			let rowRetired = false;
+			const assertRowLive = (): void => {
+				assertFixtureCaseLive(caseOwner);
+				if (rowRetired) throw new Error('Setup turnover row retired');
+			};
+			const enteredA = fixtureGate(),
+				releaseA = fixtureGate(),
+				enteredB = fixtureGate(),
+				releaseB = fixtureGate();
+			const selectedRead = 'SELECT "id", "revision" FROM "devices_virtual_graph_revision" ORDER BY "id"';
+			const a: { source?: SqliteDataSource; query?: Promise<FixtureOutcome<unknown>> } = {};
+			let aSetup: FixtureSetupLease | undefined, bSetup: FixtureSetupLease | undefined;
+			let pendingA: Promise<FixtureOutcome<RuntimeFixtureOwner>> | undefined;
+			let b: RuntimeFixtureOwner | undefined;
+			let bInspection:
+				| Promise<FixtureOutcome<Awaited<ReturnType<VirtualThermostatRuntimeService['inspect']>>>>
+				| undefined;
+			let bObserver:
+				| { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => Promise<void> | void }
+				| undefined;
+			let bSentinel: { note: () => void } | undefined;
+			let sentinelOriginal: PropertyDescriptor | undefined, sentinelInstalled: PropertyDescriptor | undefined;
+			let heldA = false;
+			const aObserver = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+					if (event.query === selectedRead) {
+						if (heldA) throw new Error('Setup A initial query was not unique');
+						heldA = true;
+						enteredA.open();
+						return releaseA.promise;
+					}
+				},
+			};
+			const observation: FixtureSetupObservation = {
+				install: (source): void => {
+					a.source = source;
+					source.subscribers.push(aObserver);
+				},
+				issued: (pending): void => {
+					a.query = fixtureOutcome(pending);
+				},
+			};
+			let rowCleaned = false;
+			const retireRow = (): void => {
+				rowRetired = true;
+				releaseA.open();
+				releaseB.open();
+			};
+			const rowBackstop = {
+				retire: retireRow,
+				cleanup: (): void => {
+					retireRow();
+					if (rowCleaned) return;
+					rowCleaned = true;
+					let failure: { cause: unknown } | undefined;
+					const attempt = (action: () => void): void => {
+						try {
+							action();
+						} catch (cause) {
+							failure ??= { cause };
+						}
+					};
+					if (a.source !== undefined) {
+						const source = a.source;
+						attempt(() => {
+							const index = source.subscribers.indexOf(aObserver);
+							if (index >= 0) source.subscribers.splice(index, 1);
+						});
+					}
+					if (b !== undefined && bObserver !== undefined) {
+						const source = b.database,
+							observer = bObserver;
+						attempt(() => {
+							const index = source.subscribers.indexOf(observer);
+							if (index >= 0) source.subscribers.splice(index, 1);
+						});
+					}
+					if (bSentinel !== undefined && sentinelInstalled !== undefined) {
+						const receiver = bSentinel,
+							installed = sentinelInstalled,
+							original = sentinelOriginal;
+						attempt(() => restoreOriginalEntry(receiver, 'note', installed, original));
+					}
+					attempt(() => unregisterCompletionObserver(rowBackstop));
+					if (failure !== undefined) throw failure.cause;
+				},
+			};
+			// Case-owned, not owned by the initial/A setup deliberately retired within this row.
+			// Actual afterEach retirement releases only this row's held gates before closing storage.
+			registerCaseBackstop(caseOwner, rowBackstop);
+			let failure: { cause: unknown } | undefined;
+			const attempt = (action: () => void): void => {
+				try {
+					action();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			};
+			const attemptAsync = async (action: () => Promise<unknown>): Promise<void> => {
+				try {
+					await action();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			};
+			try {
+				await teardownFixtureSetup(initialSetup);
+				assertRowLive();
+				aSetup = beginFixtureSetup(caseOwner);
+				pendingA = fixtureOutcome(completeFixtureSetup(aSetup, observation));
+				await enteredA.promise;
+				assertRowLive();
+				const sourceA = a.source,
+					nativeQuery = a.query;
+				if (sourceA === undefined || nativeQuery === undefined) throw new Error('Actual held setup A read missing');
+				expect(aSetup.adopted).toBeUndefined();
+				expect(aSetup.completed).toBe(false);
+				expect(sourceA.isInitialized).toBe(true);
+				// SAME exact teardown helper used by afterEach, without waiting for pending A SQL/factory.
+				await teardownFixtureSetup(aSetup);
+				assertRowLive();
+				expect(aSetup.retired).toBe(true);
+				expect(aSetup.completed).toBe(false);
+				expect(sourceA.isInitialized).toBe(true); // Issued SQL was not cancelled/closed to manufacture retirement.
+				bSetup = beginFixtureSetup(caseOwner);
+				b = await completeFixtureSetup(bSetup);
+				assertRowLive();
+				await originalObservers(b.runtime).settle();
+				assertRowLive();
+				const configBefore = await b.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: b.controllerId,
+				});
+				assertRowLive();
+				const lane = new AsyncLocalStorage<object>(),
+					ticket = Object.freeze({});
+				let deliveredQueries = 0,
+					heldB = false;
+				bObserver = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+						deliveredQueries++;
+						if (!heldB && lane.getStore() === ticket && event.query.startsWith('SELECT')) {
+							heldB = true;
+							enteredB.open();
+							return releaseB.promise;
+						}
+					},
+				};
+				b.database.subscribers.push(bObserver);
+				const currentB = b;
+				bInspection = fixtureOutcome(lane.run(ticket, () => currentB.runtime.inspect(currentB.controllerId)));
+				await enteredB.promise;
+				assertRowLive();
+				// A test-owned sentinel detects an illicit global restoreAllMocks without replacing a pinned app method.
+				bSentinel = { note: (): void => undefined };
+				sentinelOriginal = Object.getOwnPropertyDescriptor(bSentinel, 'note');
+				jest.spyOn(bSentinel, 'note');
+				sentinelInstalled = Object.getOwnPropertyDescriptor(bSentinel, 'note');
+				const before = {
+					queries: deliveredQueries,
+					bytes: await readFile(join(b.directory, 'runtime.sqlite')),
+					samples: [...b.state.samples],
+					sends: [...b.state.sends],
+					targets: [...b.state.sentTargets],
+					attempts: [...b.state.actuationAttempts],
+					timer: b.runtime['timer'],
+					timeout: setTimeout,
+					date: Date,
+					load: Object.getOwnPropertyDescriptor(b.runtime, 'loadDecisionCommands'),
+					reconcile: Object.getOwnPropertyDescriptor(b.runtime, 'reconcile'),
+				};
+				assertRowLive();
+				releaseA.open();
+				expect(await nativeQuery).toEqual({ fulfilled: true, value: [{ id: 1, revision: 0 }] });
+				const completedA = await pendingA;
+				assertRowLive();
+				expect(completedA.fulfilled).toBe(false);
+				if (completedA.fulfilled) throw new Error('Retired setup A unexpectedly adopted');
+				expect(completedA.cause).toEqual(new Error('Fixture setup retired'));
+				expect(aSetup.failure?.cause).toBe(completedA.cause);
+				expect(aSetup.completed).toBe(true);
+				expect(aSetup.adopted).toBeUndefined();
+				expect(sourceA.isInitialized).toBe(false); // Late factory cleanup closed only its own A database.
+				// Repeated A teardown truthfully retains its already-observed original setup P, without touching B.
+				const lateATeardown = await fixtureOutcome(teardownFixtureSetup(aSetup));
+				assertRowLive();
+				expect(lateATeardown.fulfilled).toBe(false);
+				if (lateATeardown.fulfilled) throw new Error('Original setup A primary was lost');
+				expect(lateATeardown.cause).toBe(completedA.cause);
+				expect(currentFixtureCase).toBe(caseOwner);
+				expect(caseOwner.setup).toBe(bSetup);
+				expect(bSetup.adopted).toBe(b);
+				expect(bSetup.retired).toBe(false);
+				expect(fixtureOwner).toBe(b);
+				expect(runtime).toBe(b.runtime);
+				expect(database).toBe(b.database);
+				expect(fixtureState).toBe(b.state);
+				expect(b.database.isInitialized).toBe(true);
+				expect(Object.getOwnPropertyDescriptor(bSentinel, 'note')).toEqual(sentinelInstalled);
+				expect(await readFile(join(b.directory, 'runtime.sqlite'))).toEqual(before.bytes);
+				assertRowLive();
+				expect(deliveredQueries).toBe(before.queries);
+				expect([...b.state.samples]).toEqual(before.samples);
+				expect(b.state.sends).toEqual(before.sends);
+				expect(b.state.sentTargets).toEqual(before.targets);
+				expect(b.state.actuationAttempts).toEqual(before.attempts);
+				expect(b.runtime['timer']).toBe(before.timer);
+				expect(setTimeout).toBe(before.timeout);
+				expect(Date).toBe(before.date);
+				expect(Object.getOwnPropertyDescriptor(b.runtime, 'loadDecisionCommands')).toEqual(before.load);
+				expect(Object.getOwnPropertyDescriptor(b.runtime, 'reconcile')).toEqual(before.reconcile);
+				releaseB.open();
+				const progressed = await bInspection;
+				assertRowLive();
+				expect(progressed.fulfilled).toBe(true);
+				if (!progressed.fulfilled) throw progressed.cause;
+				expect(
+					await b.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: b.controllerId }),
+				).toEqual(configBefore);
+				assertRowLive();
+				expect(b.runtime.readDiagnostics(b.controllerId)?.configuration_revision).toBeGreaterThan(0);
+				expect(b.state.sends).not.toContain(true);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				releaseA.open();
+				releaseB.open();
+				if (a.query !== undefined) {
+					const pending = a.query;
+					await attemptAsync(() => pending);
+				}
+				if (pendingA !== undefined) {
+					const pending = pendingA;
+					await attemptAsync(() => pending);
+				}
+				if (bInspection !== undefined) {
+					const pending = bInspection;
+					await attemptAsync(() => pending);
+				}
+				if (aSetup !== undefined && !aSetup.cleanupAttempted) {
+					const setup = aSetup;
+					await attemptAsync(() => teardownFixtureSetup(setup));
+				}
+				attempt(() => rowBackstop.cleanup());
+				// The genuine current B setup remains owned by the SAME normal afterEach helper, never a latest-alias close here.
+			}
+			if (failure !== undefined) throw failure.cause;
+		});
+		it('keeps an issued A read and publication on A while its resumed body cannot change a genuine held B inspection', async () => {
+			const caseSetup = requireFixtureSetup();
+			const caseLifetime = captureFixtureCaseLifetime();
+			const a = fixtureOwner,
+				body = captureFixtureBodyOwner(a);
+			const readEntered = fixtureGate(),
+				readRelease = fixtureGate(),
+				publicationRelease = fixtureGate();
+			const bEntered = fixtureGate(),
+				bRelease = fixtureGate(),
+				onEntered = fixtureGate(),
+				onRelease = fixtureGate();
+			const parameters = [a.controllerId];
+			const query = 'SELECT "id" FROM "devices_module_devices" WHERE "id" = ?';
+			const aObserver = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+					if (event.query === query && event.parameters === parameters) {
+						readEntered.open();
+						return readRelease.promise;
+					}
+				},
+			};
+			let b: RuntimeFixtureOwner | undefined;
+			let bAdopted = false;
+			let bObserver:
+				| { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => Promise<void> | void }
+				| undefined;
+			let read: Promise<FixtureOutcome<unknown>> | undefined;
+			let publication: Promise<FixtureOutcome<Awaited<ReturnType<PropertyValueService['publishDerived']>>>> | undefined;
+			let resumed: Promise<FixtureOutcome<void>> | undefined;
+			let nativeCompletion: Promise<FixtureOutcome<void>> | undefined;
+			let inspection:
+				| Promise<FixtureOutcome<Awaited<ReturnType<VirtualThermostatRuntimeService['inspect']>>>>
+				| undefined;
+			let failure: { cause: unknown } | undefined;
+			const attempt = (action: () => void): void => {
+				try {
+					action();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			};
+			const attemptAsync = async (action: () => Promise<unknown>): Promise<void> => {
+				try {
+					await action();
+				} catch (cause) {
+					failure ??= { cause };
+				}
+			};
+			try {
+				await settle(body);
+				caseLifetime.assertLive();
+				a.state.afterOnGate = onRelease.promise;
+				a.state.onSent = (id) => {
+					if (id === a.relayId) onEntered.open();
+				};
+				a.sample(a.sensorId, 18);
+				a.runtime.request(a.controllerId);
+				await onEntered.promise; // Actual original guard and sample/send branch, BEFORE its existing afterOnGate await.
+				caseLifetime.assertLive();
+				const onRows = await a.database.manager.findBy(VirtualThermostatCommandEntity, {
+					controllerId: a.controllerId,
+					action: 'on',
+				});
+				caseLifetime.assertLive();
+				expect(onRows).toHaveLength(1);
+				const command = onRows[0];
+				if (!command) throw new Error('Actual A ON journal missing');
+				expect(command.status).toBe('dispatching');
+				const operation = a.runtime['inFlight'].get(command.id);
+				if (operation === undefined) throw new Error('Exact original A detached operation missing');
+				nativeCompletion = fixtureOutcome(operation); // Observe SAME existing application Promise, never replace it.
+				a.state.onOutcome = 'refused'; // Later slot changes cannot relabel the already-selected accepted native result.
+				const property = await a.database.manager.findOneByOrFail(ChannelPropertyEntity, { id: a.relayId });
+				const lease = a.producers.register(property, 1);
+				const at = new Date();
+				a.state.publicationGate = publicationRelease.promise;
+				// Original beforeEach-created callback enters NOW and waits on its original A gate.
+				publication = fixtureOutcome(
+					a.values.publishDerived(property, lease, false, {
+						quality: 'good',
+						reasons: [],
+						sampledAt: at,
+						evaluatedAt: at,
+						expiresAt: new Date(at.getTime() + 60_000),
+					}),
+				);
+				a.database.subscribers.push(aObserver);
+				const originalRead: Promise<unknown> = a.database.query(query, parameters);
+				read = fixtureOutcome(originalRead);
+				resumed = fixtureOutcome(
+					(async (): Promise<void> => {
+						await originalRead; // Keep the original SQL result/error; retirement is checked only afterwards.
+						body.assertLive();
+						body.sample(a.sensorId, 18);
+						await configureComfort(body);
+					})(),
+				);
+				await readEntered.promise;
+				caseLifetime.assertLive();
+				body.retire();
+				retireRuntimeFixture(a);
+				b = await createRuntimeFixture(caseLifetime.assertLive);
+				caseLifetime.assertLive();
+				adoptRuntimeFixture(caseSetup, b);
+				bAdopted = true;
+				await originalObservers(b.runtime).settle();
+				caseLifetime.assertLive();
+				const bConfig = await b.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+					controllerId: b.controllerId,
+				});
+				caseLifetime.assertLive();
+				const lane = new AsyncLocalStorage<object>(),
+					ticket = Object.freeze({});
+				let deliveredQueries = 0,
+					held = false;
+				bObserver = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+						deliveredQueries++;
+						if (!held && lane.getStore() === ticket && event.query.startsWith('SELECT')) {
+							held = true;
+							bEntered.open();
+							return bRelease.promise;
+						}
+					},
+				};
+				b.database.subscribers.push(bObserver);
+				const currentB = b;
+				inspection = fixtureOutcome(lane.run(ticket, () => currentB.runtime.inspect(currentB.controllerId)));
+				await bEntered.promise;
+				caseLifetime.assertLive();
+				const before = {
+					queries: deliveredQueries,
+					samples: [...b.state.samples],
+					sends: [...b.state.sends],
+					databaseBytes: await readFile(join(b.directory, 'runtime.sqlite')),
+					targets: [...b.state.sentTargets],
+					attempts: [...b.state.actuationAttempts],
+					timer: b.runtime['timer'],
+					timerFunction: setTimeout,
+					load: Object.getOwnPropertyDescriptor(b.runtime, 'loadDecisionCommands'),
+					reconcile: Object.getOwnPropertyDescriptor(b.runtime, 'reconcile'),
+				};
+				caseLifetime.assertLive();
+				expect(before.timer).toBeDefined();
+				let retiredTicks = 0;
+				a.state.packetTick = () => {
+					retiredTicks++;
+				};
+				readRelease.open();
+				publicationRelease.open();
+				onRelease.open();
+				expect(await read).toEqual({ fulfilled: true, value: [{ id: a.controllerId }] });
+				const stopped = await resumed;
+				caseLifetime.assertLive();
+				expect(stopped.fulfilled).toBe(false);
+				if (stopped.fulfilled) throw new Error('Retired A body unexpectedly continued');
+				expect(stopped.cause).toEqual(new Error('Original fixture body retired'));
+				const published = await publication;
+				caseLifetime.assertLive();
+				expect(published.fulfilled).toBe(true);
+				if (!published.fulfilled) throw published.cause;
+				expect(published.value.changed).toBe(true);
+				expect(published.value.state?.value).toBe(false);
+				expect(a.producers.read(a.relayId)?.value).toBe(false);
+				expect(await nativeCompletion).toEqual({ fulfilled: true, value: undefined });
+				caseLifetime.assertLive();
+				const persisted = await a.database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id });
+				caseLifetime.assertLive();
+				expect(persisted.status).toBe('accepted');
+				expect(persisted.fault).toBeNull();
+				expect(a.state.sends).toContain(true);
+				expect(b.producers.read(a.relayId)).toBeNull();
+				// Even a late A data callback cannot invoke its old global-clock effect.
+				a.sample(a.sensorId, 18);
+				expect(retiredTicks).toBe(0);
+				expect(await readFile(join(b.directory, 'runtime.sqlite'))).toEqual(before.databaseBytes);
+				caseLifetime.assertLive();
+				expect(deliveredQueries).toBe(before.queries);
+				expect([...b.state.samples]).toEqual(before.samples);
+				expect(b.state.sends).toEqual(before.sends);
+				expect(b.state.sentTargets).toEqual(before.targets);
+				expect(b.state.actuationAttempts).toEqual(before.attempts);
+				expect(b.runtime['timer']).toBe(before.timer);
+				expect(setTimeout).toBe(before.timerFunction);
+				expect(Object.getOwnPropertyDescriptor(b.runtime, 'loadDecisionCommands')).toEqual(before.load);
+				expect(Object.getOwnPropertyDescriptor(b.runtime, 'reconcile')).toEqual(before.reconcile);
+				bRelease.open();
+				const progressed = await inspection;
+				caseLifetime.assertLive();
+				expect(progressed.fulfilled).toBe(true);
+				if (!progressed.fulfilled) throw progressed.cause;
+				expect(
+					await b.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: b.controllerId }),
+				).toEqual(bConfig);
+				expect(b.runtime.readDiagnostics(b.controllerId)?.configuration_revision).toBeGreaterThan(0);
+				expect(b.state.sends).not.toContain(true);
+			} catch (cause) {
+				failure = { cause };
+			} finally {
+				readRelease.open();
+				publicationRelease.open();
+				bRelease.open();
+				onRelease.open();
+				if (read !== undefined) {
+					const pending = read;
+					await attemptAsync(() => pending);
+				}
+				if (publication !== undefined) {
+					const pending = publication;
+					await attemptAsync(() => pending);
+				}
+				if (resumed !== undefined) {
+					const pending = resumed;
+					await attemptAsync(() => pending);
+				}
+				if (nativeCompletion !== undefined) {
+					const pending = nativeCompletion;
+					await attemptAsync(() => pending);
+				}
+				if (inspection !== undefined) {
+					const pending = inspection;
+					await attemptAsync(() => pending);
+				}
+				attempt(() => body.cleanup());
+				attempt(() => caseLifetime.cleanup());
+				attempt(() => {
+					const index = a.database.subscribers.indexOf(aObserver);
+					if (index >= 0) a.database.subscribers.splice(index, 1);
+				});
+				if (b !== undefined && bObserver !== undefined) {
+					const source = b.database,
+						observer = bObserver;
+					attempt(() => {
+						const index = source.subscribers.indexOf(observer);
+						if (index >= 0) source.subscribers.splice(index, 1);
+					});
+				}
+				await attemptAsync(() => closeRuntimeFixture(a));
+				if (b !== undefined && !bAdopted) {
+					const unadopted = b;
+					await attemptAsync(() => closeRuntimeFixture(unadopted));
+				}
+			}
+			if (failure !== undefined) throw failure.cause;
+		});
+
+		it.each([undefined, null, false, 'native A primary', new Error('native A primary')])(
+			'preserves issued A SQL primary %p before cleanup Q and leaves a foreign A descriptor and fresh B intact',
+			async (primary: unknown) => {
+				const caseSetup = requireFixtureSetup();
+				const caseLifetime = captureFixtureCaseLifetime();
+				const a = fixtureOwner,
+					body = captureFixtureBodyOwner(a);
+				const entered = fixtureGate(),
+					release = fixtureGate(),
+					bEntered = fixtureGate(),
+					bRelease = fixtureGate();
+				const parameters = [a.controllerId],
+					query = 'SELECT "id" FROM "devices_module_devices" WHERE "id" = ?';
+				const observer = {
+					beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+						if (event.query === query && event.parameters === parameters) {
+							entered.open();
+							return release.promise.then(() => {
+								throw primary;
+							});
+						}
+					},
+				};
+				let read: Promise<FixtureOutcome<unknown>> | undefined, resumed: Promise<FixtureOutcome<void>> | undefined;
+				let b: RuntimeFixtureOwner | undefined;
+				let bAdopted = false;
+				let bObserver:
+					| { beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>) => Promise<void> | void }
+					| undefined;
+				let inspection:
+					| Promise<FixtureOutcome<Awaited<ReturnType<VirtualThermostatRuntimeService['inspect']>>>>
+					| undefined;
+				let originalDescriptor: PropertyDescriptor | undefined, foreignDescriptor: PropertyDescriptor | undefined;
+				const cleanupState: { failure?: { cause: unknown } } = {};
+				let failure: { cause: unknown } | undefined;
+				const attempt = (action: () => void): void => {
+					try {
+						action();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+				};
+				const attemptAsync = async (action: () => Promise<unknown>): Promise<void> => {
+					try {
+						await action();
+					} catch (cause) {
+						failure ??= { cause };
+					}
+				};
+				try {
+					await settle(body);
+					a.database.subscribers.push(observer);
+					const originalRead: Promise<unknown> = a.database.query(query, parameters);
+					read = fixtureOutcome(originalRead);
+					resumed = fixtureOutcome(
+						(async (): Promise<void> => {
+							let primaryFailure: { cause: unknown } | undefined;
+							try {
+								await originalRead;
+								body.assertLive();
+								body.sample(a.sensorId, 18);
+							} catch (cause) {
+								primaryFailure = { cause };
+							} finally {
+								try {
+									await closeRuntimeFixture(a);
+								} catch (cause) {
+									cleanupState.failure = { cause };
+									primaryFailure ??= { cause };
+								}
+							}
+							if (primaryFailure !== undefined) throw primaryFailure.cause;
+						})(),
+					);
+					await entered.promise;
+					caseLifetime.assertLive();
+					body.retire();
+					retireRuntimeFixture(a);
+					originalDescriptor = Object.getOwnPropertyDescriptor(a.runtime, 'loadDecisionCommands');
+					if (!originalDescriptor) throw new Error('Original owned loader descriptor missing');
+					foreignDescriptor = { ...originalDescriptor, enumerable: !originalDescriptor.enumerable };
+					Object.defineProperty(a.runtime, 'loadDecisionCommands', foreignDescriptor);
+					b = await createRuntimeFixture(caseLifetime.assertLive);
+					caseLifetime.assertLive();
+					adoptRuntimeFixture(caseSetup, b);
+					bAdopted = true;
+					await originalObservers(b.runtime).settle();
+					caseLifetime.assertLive();
+					const configBefore = await b.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, {
+						controllerId: b.controllerId,
+					});
+					caseLifetime.assertLive();
+					const lane = new AsyncLocalStorage<object>(),
+						ticket = Object.freeze({});
+					let deliveredQueries = 0,
+						held = false;
+					bObserver = {
+						beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): Promise<void> | void => {
+							deliveredQueries++;
+							if (!held && lane.getStore() === ticket && event.query.startsWith('SELECT')) {
+								held = true;
+								bEntered.open();
+								return bRelease.promise;
+							}
+						},
+					};
+					b.database.subscribers.push(bObserver);
+					const currentB = b;
+					inspection = fixtureOutcome(lane.run(ticket, () => currentB.runtime.inspect(currentB.controllerId)));
+					await bEntered.promise;
+					caseLifetime.assertLive();
+					const before = {
+						config: configBefore,
+						queries: deliveredQueries,
+						databaseBytes: await readFile(join(b.directory, 'runtime.sqlite')),
+						samples: [...b.state.samples],
+						sends: [...b.state.sends],
+						timer: b.runtime['timer'],
+						timerFunction: setTimeout,
+						load: Object.getOwnPropertyDescriptor(b.runtime, 'loadDecisionCommands'),
+					};
+					caseLifetime.assertLive();
+					release.open();
+					const native = await read,
+						stopped = await resumed;
+					caseLifetime.assertLive();
+					expect(native.fulfilled).toBe(false);
+					if (native.fulfilled) throw new Error('Injected original A SQL primary missing');
+					expect(native.cause).toBe(primary);
+					expect(stopped.fulfilled).toBe(false);
+					if (stopped.fulfilled) throw new Error('A body unexpectedly resumed after SQL failure');
+					expect(stopped.cause).toBe(primary);
+					const cleanupCause = cleanupState.failure;
+					expect(cleanupCause).toBeDefined();
+					if (cleanupCause === undefined) throw new Error('Foreign descriptor cleanup Q missing');
+					expect(cleanupCause.cause).toEqual(new Error('Original entry observer replaced by foreign owner'));
+					expect(a.state.cleanupCauses).toContain(cleanupCause.cause);
+					// The actual resumed body's finally already attempted cleanup; its result retained P by presence.
+					expect(stopped.cause).toBe(primary);
+					expect(Object.getOwnPropertyDescriptor(a.runtime, 'loadDecisionCommands')).toEqual(foreignDescriptor);
+					expect(a.database.isInitialized).toBe(false); // Storage cleanup was attempted despite Q.
+					expect([...b.state.samples]).toEqual(before.samples);
+					expect(b.state.sends).toEqual(before.sends);
+					expect(b.runtime['timer']).toBe(before.timer);
+					expect(setTimeout).toBe(before.timerFunction);
+					expect(Object.getOwnPropertyDescriptor(b.runtime, 'loadDecisionCommands')).toEqual(before.load);
+					expect(await readFile(join(b.directory, 'runtime.sqlite'))).toEqual(before.databaseBytes);
+					caseLifetime.assertLive();
+					expect(deliveredQueries).toBe(before.queries);
+					bRelease.open();
+					const progressed = await inspection;
+					caseLifetime.assertLive();
+					expect(progressed.fulfilled).toBe(true);
+					if (!progressed.fulfilled) throw progressed.cause;
+					expect(
+						await b.database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId: b.controllerId }),
+					).toEqual(before.config);
+					caseLifetime.assertLive();
+					expect(b.runtime.readDiagnostics(b.controllerId)?.configuration_revision).toBeGreaterThan(0);
+				} catch (cause) {
+					failure = { cause };
+				} finally {
+					release.open();
+					bRelease.open();
+					if (inspection !== undefined) {
+						const pending = inspection;
+						await attemptAsync(() => pending);
+					}
+					if (read !== undefined) {
+						const pending = read;
+						await attemptAsync(() => pending);
+					}
+					if (resumed !== undefined) {
+						const pending = resumed;
+						await attemptAsync(() => pending);
+					}
+					attempt(() => body.cleanup());
+					attempt(() => caseLifetime.cleanup());
+					attempt(() => {
+						const index = a.database.subscribers.indexOf(observer);
+						if (index >= 0) a.database.subscribers.splice(index, 1);
+					});
+					// This row owns the deliberate foreign descriptor; undo ONLY that exact descriptor after proving Q left it intact.
+					if (originalDescriptor !== undefined && foreignDescriptor !== undefined) {
+						const installed = originalDescriptor,
+							foreign = foreignDescriptor;
+						attempt(() => restoreOriginalEntry(a.runtime, 'loadDecisionCommands', foreign, installed));
+					}
+					if (b !== undefined && bObserver !== undefined) {
+						const source = b.database,
+							ownedObserver = bObserver;
+						attempt(() => {
+							const index = source.subscribers.indexOf(ownedObserver);
+							if (index >= 0) source.subscribers.splice(index, 1);
+						});
+					}
+					for (const backstop of a.observers) attempt(() => backstop.cleanup());
+					if (a.database.isInitialized) await attemptAsync(() => closeRuntimeFixture(a));
+					if (b !== undefined && !bAdopted) {
+						const unadopted = b;
+						await attemptAsync(() => closeRuntimeFixture(unadopted));
+					}
+				}
+				if (failure !== undefined) throw failure.cause;
+			},
+		);
+	});
 
 	describe('read-only member observation diagnostics', () => {
 		it('uses the original physical boolean sample and withdraws it at expiry without evaluation or renewed evidence', async () => {
 			await settle();
 			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
-			const physical = samples.get(relayId),
+			const physical = fixtureState.samples.get(relayId),
 				original = physical.sampledAt.toISOString(),
-				sent = sends.length;
+				sent = fixtureState.sends.length;
 			const liveRead = jest.spyOn(values, 'readQualifiedSample');
 			const liveReads = liveRead.mock.calls.length;
 			jest.useFakeTimers();
@@ -1987,24 +3180,24 @@ describe('virtual thermostat durable runtime', () => {
 				activity_sampled_at: null,
 				activity_expires_at: null,
 			});
-			expect(samples.get(relayId)).toBe(physical);
-			expect(sends).toHaveLength(sent);
+			expect(fixtureState.samples.get(relayId)).toBe(physical);
+			expect(fixtureState.sends).toHaveLength(sent);
 			expect(liveRead).toHaveBeenCalledTimes(liveReads);
 			jest.useRealTimers();
 		});
 		it('withdraws qualification and activity when target source lease or graph scope is revoked', async () => {
 			await settle();
 			expect(runtime.readDiagnostics(controllerId).branches[0].qualification_ready).toBe(true);
-			providerCurrent = false;
+			fixtureState.providerCurrent = false;
 			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
 				qualification_ready: null,
 				activity: 'unknown',
 				activity_sampled_at: null,
 				activity_expires_at: null,
 			});
-			providerCurrent = true;
-			graphValidated = false;
-			graphGeneration++;
+			fixtureState.providerCurrent = true;
+			fixtureState.graphValidated = false;
+			fixtureState.graphGeneration++;
 			expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
 				qualification_ready: null,
 				activity: 'unknown',
@@ -2030,15 +3223,18 @@ describe('virtual thermostat durable runtime', () => {
 			'never promotes %s physical feedback to current activity',
 			async (fault) => {
 				await settle();
-				const physical = samples.get(relayId);
-				if (fault === 'quality') samples.set(relayId, { ...physical, quality: 'degraded' });
-				if (fault === 'type') samples.set(relayId, { ...physical, value: 'false' });
-				if (fault === 'identity') samples.set(relayId, { ...physical, propertyId: sensorId });
-				if (fault === 'missing') samples.delete(relayId);
+				const physical = fixtureState.samples.get(relayId);
+				if (fault === 'quality') fixtureState.samples.set(relayId, { ...physical, quality: 'degraded' });
+				if (fault === 'type') fixtureState.samples.set(relayId, { ...physical, value: 'false' });
+				if (fault === 'identity') fixtureState.samples.set(relayId, { ...physical, propertyId: sensorId });
+				if (fault === 'missing') fixtureState.samples.delete(relayId);
 				if (fault === 'cached')
-					samples.set(relayId, { ...physical, provenance: 'cached' } as unknown as QualifiedPropertySample);
+					fixtureState.samples.set(relayId, {
+						...physical,
+						provenance: 'cached',
+					} as unknown as QualifiedPropertySample);
 				if (fault === 'future')
-					samples.set(relayId, {
+					fixtureState.samples.set(relayId, {
 						...physical,
 						sampledAt: new Date(Date.now() + 1000),
 						receivedAt: new Date(Date.now() + 1000),
@@ -2054,7 +3250,7 @@ describe('virtual thermostat durable runtime', () => {
 			'withholds older OFF feedback after newer %s ON dispatch until actual newer physical feedback',
 			async (storage) => {
 				await settle();
-				const physical = samples.get(relayId);
+				const physical = fixtureState.samples.get(relayId);
 				const contexts = (
 					runtime as unknown as { contexts: Map<string, { commands: VirtualThermostatCommandEntity[] }> }
 				).contexts;
@@ -2076,7 +3272,7 @@ describe('virtual thermostat durable runtime', () => {
 					activity_expires_at: null,
 				});
 				const at = new Date(Math.max(Date.now(), command.dispatchedAt.getTime()));
-				samples.set(relayId, { ...physical, value: true, sampledAt: at, receivedAt: at });
+				fixtureState.samples.set(relayId, { ...physical, value: true, sampledAt: at, receivedAt: at });
 				jest.useFakeTimers();
 				jest.setSystemTime(at);
 				expect(runtime.readDiagnostics(controllerId).branches[0]).toMatchObject({
@@ -2107,45 +3303,62 @@ describe('virtual thermostat durable runtime', () => {
 			effective_comfort: { source: 'preset', heating_setpoint: 24 },
 		});
 		expect((await comfort.get(controllerId)).revision).toBe(committedRevision);
-		expect(sends).toContain(true);
+		expect(fixtureState.sends).toContain(true);
 	});
 
 	it('inhibits a lower-demand override on observable rollback instead of resuming a higher baseline', async () => {
-		await settle();
-		packetTick = useThermostatPacketClock();
-		await configureComfort();
-		await settle();
-		const wall = Date.now();
-		jest.setSystemTime(wall);
-		await comfort.override(
-			controllerId,
-			await comfortFence(),
-			{
-				preset: null,
-				setpoints: { heating_setpoint: 17, cooling_setpoint: null },
-				expires_at: new Date(wall + 60_000).toISOString(),
-			},
-			'operator',
-		);
-		sample(sensorId, 18);
-		runtime.request(controllerId);
-		await settle();
-		expect(sends).not.toContain(true);
-		jest.setSystemTime(wall - 1);
-		runtime.request(controllerId);
-		await settle();
-		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
-			effective_comfort: { source: 'override', heating_setpoint: 17 },
-		});
-		expect(runtime.readDiagnostics(controllerId).reasons).toContain('comfort_clock_uncertain');
-		expect(sends).not.toContain(true);
+		const owned = captureFixtureBodyOwner(fixtureOwner);
+		try {
+			await settle(owned);
+			owned.assertLive();
+			owned.state.packetTick = useThermostatPacketClock();
+			await configureComfort(owned);
+			await settle(owned);
+			owned.assertLive();
+			const wall = Date.now();
+			owned.assertLive();
+			jest.setSystemTime(wall);
+			owned.assertLive();
+			const originalComfort: OriginalFunctions<Pick<VirtualThermostatComfortService, 'override'>> = owned.comfort;
+			const override = originalComfort.override;
+			const fence = await comfortFence(owned);
+			owned.assertLive();
+			await override.call(
+				owned.comfort,
+				owned.controllerId,
+				fence,
+				{
+					preset: null,
+					setpoints: { heating_setpoint: 17, cooling_setpoint: null },
+					expires_at: new Date(wall + 60_000).toISOString(),
+				},
+				'operator',
+			);
+			owned.sample(owned.sensorId, 18);
+			owned.assertLive();
+			owned.runtime.request(owned.controllerId);
+			await settle(owned);
+			expect(owned.state.sends).not.toContain(true);
+			owned.assertLive();
+			jest.setSystemTime(wall - 1);
+			owned.assertLive();
+			owned.runtime.request(owned.controllerId);
+			await settle(owned);
+			expect(owned.runtime.readDiagnostics(owned.controllerId)).toMatchObject({
+				effective_comfort: { source: 'override', heating_setpoint: 17 },
+			});
+			expect(owned.runtime.readDiagnostics(owned.controllerId).reasons).toContain('comfort_clock_uncertain');
+			expect(owned.state.sends).not.toContain(true);
+		} finally {
+			owned.cleanup();
+		}
 	});
 
 	it('uses effective preset demand without changing requested settings or bypassing a final ambient guard', async () => {
 		await settle();
 		await configureComfort();
 		let releaseOn: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			releaseOn = resolve;
 		});
 		await comfort.select(controllerId, await comfortFence(), 'comfort', false);
@@ -2155,10 +3368,10 @@ describe('virtual thermostat durable runtime', () => {
 			heating_setpoint: 20,
 			effective_comfort: { source: 'preset', preset: 'comfort', heating_setpoint: 24 },
 		});
-		samples.delete(sensorId);
+		fixtureState.samples.delete(sensorId);
 		releaseOn();
 		await settle();
-		expect(sends).not.toContain(true);
+		expect(fixtureState.sends).not.toContain(true);
 		runtime.request(controllerId);
 		await settle();
 		expect(runtime.readDiagnostics(controllerId).reasons).toContain('ambient_unavailable');
@@ -2168,7 +3381,7 @@ describe('virtual thermostat durable runtime', () => {
 		await settle();
 		await configureComfort();
 		let releaseOn: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			releaseOn = resolve;
 		});
 		const now = Date.now();
@@ -2187,7 +3400,7 @@ describe('virtual thermostat durable runtime', () => {
 		jest.spyOn(Date, 'now').mockReturnValue(now + 1000);
 		releaseOn();
 		await settle();
-		expect(sends).not.toContain(true);
+		expect(fixtureState.sends).not.toContain(true);
 		expect((await comfort.get(controllerId)).configuration.temporary_override.status).toBe('expired');
 		runtime.request(controllerId);
 		await settle();
@@ -2201,7 +3414,7 @@ describe('virtual thermostat durable runtime', () => {
 		await settle();
 		await configureComfort();
 		let releaseOn: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			releaseOn = resolve;
 		});
 		await comfort.select(controllerId, await comfortFence(), 'comfort', false);
@@ -2214,7 +3427,7 @@ describe('virtual thermostat durable runtime', () => {
 		events.emit('devices-virtual.thermostat.config.changed', controllerId);
 		releaseOn();
 		await settle();
-		expect(sends).not.toContain(true);
+		expect(fixtureState.sends).not.toContain(true);
 		expect(runtime.readDiagnostics(controllerId)).toMatchObject({
 			requested_mode: 'off',
 			effective_comfort: { source: 'user_off' },
@@ -2262,16 +3475,16 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.onModuleDestroy();
 		jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'clearImmediate'] });
 		try {
-			runtime = makeRuntime();
+			fixtureOwner.runtime = runtime = makeRuntime();
 			await runtime.onApplicationBootstrap();
 			await settle();
-			onOutcome = 'refused';
+			fixtureState.onOutcome = 'refused';
 			sample(sensorId, 18);
 			runtime.request(controllerId);
 			await settle();
 			const onCommands = () => database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(await onCommands()).toEqual([expect.objectContaining({ status: 'cancelled', fault: 'known_no_send' })]);
-			expect(sends).not.toContain(true);
+			expect(fixtureState.sends).not.toContain(true);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('heating_unresolved_on');
 			await settle();
 			expect(await onCommands()).toHaveLength(1);
@@ -2282,14 +3495,14 @@ describe('virtual thermostat durable runtime', () => {
 			await settle();
 			expect(await onCommands()).toHaveLength(2);
 			expect((await onCommands()).every((command) => command.status === 'cancelled')).toBe(true);
-			expect(actuationAttempts.filter(Boolean)).toHaveLength(2);
-			onOutcome = 'accepted';
+			expect(fixtureState.actuationAttempts.filter(Boolean)).toHaveLength(2);
+			fixtureState.onOutcome = 'accepted';
 			sample(sensorId, 18);
 			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: sensorId });
 			await settle();
 			expect(await onCommands()).toHaveLength(3);
 			expect((await onCommands()).filter((command) => command.status === 'accepted')).toHaveLength(1);
-			expect(sends.filter(Boolean)).toEqual([true]);
+			expect(fixtureState.sends.filter(Boolean)).toEqual([true]);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('heating_unresolved_on');
 			expect(runtime.readDiagnostics(controllerId)?.branches[0].activity).toBe('on');
 		} finally {
@@ -2301,15 +3514,15 @@ describe('virtual thermostat durable runtime', () => {
 	it('retains a potentially sent ON as unknown and immediately attempts mandatory OFF', async () => {
 		await settle();
 		clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
-		onOutcome = 'unknown';
-		proofAllowed = () => false;
+		fixtureState.onOutcome = 'unknown';
+		fixtureState.proofAllowed = () => false;
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await settle();
 		expect(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' })).toEqual([
 			expect.objectContaining({ status: 'unknown', fault: 'command_execution_unknown' }),
 		]);
-		expect(sends).toEqual([false, true, false]);
+		expect(fixtureState.sends).toEqual([false, true, false]);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('heating_unresolved_on');
 		expect(runtime.readDiagnostics(controllerId)?.branches[0]).toMatchObject({
 			pending_on: true,
@@ -2323,9 +3536,9 @@ describe('virtual thermostat durable runtime', () => {
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await settle();
-		expect(samples.get(relayId)?.value).toBe(true);
-		offOutcome = 'refused';
-		proofAllowed = () => false;
+		expect(fixtureState.samples.get(relayId)?.value).toBe(true);
+		fixtureState.offOutcome = 'refused';
+		fixtureState.proofAllowed = () => false;
 		await database.manager.update(VirtualThermostatActuatorClaimEntity, { controllerId }, { state: 'releasing' });
 		await database.manager.update(VirtualThermostatConfigEntity, { controllerId }, { requestedMode: 'off' });
 		runtime.request(controllerId);
@@ -2336,12 +3549,12 @@ describe('virtual thermostat durable runtime', () => {
 		expect((await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId })).state).toBe(
 			'releasing',
 		);
-		expect(samples.get(relayId)?.value).toBe(true);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 		expect(runtime.readDiagnostics(controllerId)?.branches[0]).toMatchObject({
 			release_pending: true,
 			release_proven: false,
 		});
-		expect(actuationAttempts).toEqual([false, true, false]);
+		expect(fixtureState.actuationAttempts).toEqual([false, true, false]);
 	});
 
 	it('loads bounded settled-history witnesses and retains all unresolved identities for lazy drainage', async () => {
@@ -2407,7 +3620,7 @@ describe('virtual thermostat durable runtime', () => {
 			loadUnresolvedCommands(controllerId: string, claimId: string): Promise<VirtualThermostatCommandEntity[]>;
 		};
 		// The existing negative proof setting applies before the public read entry, preserving pending identities.
-		proofAllowed = () => false;
+		fixtureState.proofAllowed = () => false;
 		const loaded = await entry.read();
 		expect(loaded).toHaveLength(4);
 		expect(loaded.map((row) => row.id)).toEqual(
@@ -2528,7 +3741,7 @@ describe('virtual thermostat durable runtime', () => {
 		lastDispatched.dispatchedAt = new Date(Date.now() + 60_000);
 		await database.manager.insert(VirtualThermostatCommandEntity, [unknown, pendingOff, newest, lastDispatched]);
 		let releaseOff: () => void;
-		offGate = new Promise<void>((resolve) => (releaseOff = resolve));
+		fixtureState.offGate = new Promise<void>((resolve) => (releaseOff = resolve));
 		const witnesses = await entry.read();
 		expect(witnesses.length).toBeLessThanOrEqual(6);
 		expect(witnesses.map((row) => row.id)).toEqual(
@@ -2554,10 +3767,10 @@ describe('virtual thermostat durable runtime', () => {
 		).toBe(1);
 		sample(sensorId, 21);
 		releaseOff();
-		offGate = null;
+		fixtureState.offGate = null;
 		await settle();
 		expect(fullLoad).toHaveBeenCalled();
-		const drained = new Set(reconciledCommandIds.flat());
+		const drained = new Set(fixtureState.reconciledCommandIds.flat());
 		expect(accepted.every((row) => drained.has(row.id))).toBe(true);
 		expect([unknown, pendingOff, newest, lastDispatched].every((row) => drained.has(row.id))).toBe(true);
 		expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId, status: 'accepted' })).toBe(
@@ -2595,7 +3808,7 @@ describe('virtual thermostat durable runtime', () => {
 			unseen = row(uuid());
 		await database.manager.insert(VirtualThermostatCommandEntity, first);
 		owned.assertLive();
-		beforeProof = async () => {
+		fixtureState.beforeProof = async () => {
 			await database.manager.insert(VirtualThermostatCommandEntity, unseen);
 		};
 		await entry.start(claim);
@@ -2605,7 +3818,7 @@ describe('virtual thermostat durable runtime', () => {
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: unseen.id })).status).toBe(
 			'accepted',
 		);
-		beforeProof = null;
+		fixtureState.beforeProof = null;
 		await entry.start(claim);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: first.id })).status).toBe(
 			'confirmed',
@@ -2640,11 +3853,11 @@ describe('virtual thermostat durable runtime', () => {
 			sample(relayId, true);
 			await runtime.inspect(controllerId);
 			await settle();
-			expect(sends.filter(Boolean)).toHaveLength(0);
+			expect(fixtureState.sends.filter(Boolean)).toHaveLength(0);
 			now++;
 			await runtime.inspect(controllerId);
 			await settle();
-			expect(sends.filter(Boolean)).toHaveLength(1);
+			expect(fixtureState.sends.filter(Boolean)).toHaveLength(1);
 		} finally {
 			clock.mockRestore();
 		}
@@ -2677,7 +3890,7 @@ describe('virtual thermostat durable runtime', () => {
 		expect(journal.some((row) => row.id !== cancelledId && row.action === 'on' && row.status === 'accepted')).toBe(
 			true,
 		);
-		expect(sends.filter(Boolean)).toHaveLength(1);
+		expect(fixtureState.sends.filter(Boolean)).toHaveLength(1);
 	});
 
 	it('ignores a newer cancelled ON after restart while retaining the earlier confirmed ON', async () => {
@@ -2703,11 +3916,11 @@ describe('virtual thermostat durable runtime', () => {
 		);
 		runtime.onModuleDestroy();
 		sample(sensorId, 18);
-		runtime = makeRuntime();
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		await runtime.inspect(controllerId);
 		await settle();
-		expect(sends.filter(Boolean)).toHaveLength(1);
+		expect(fixtureState.sends.filter(Boolean)).toHaveLength(1);
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].activity).toBe('on');
 	});
 
@@ -2715,11 +3928,11 @@ describe('virtual thermostat durable runtime', () => {
 		const outputId = await createTemperatureOutput();
 		await runtime.inspect(controllerId);
 		expect(producers.read(outputId)?.value).toBe(21);
-		graphValidated = false;
-		graphGeneration++;
+		fixtureState.graphValidated = false;
+		fixtureState.graphGeneration++;
 		expect(producers.read(outputId)?.producer.reasons).toEqual(['graph_validation_pending']);
 		expect(runtime.readDiagnostics(controllerId)?.current_temperature).toBeNull();
-		graphValidated = true;
+		fixtureState.graphValidated = true;
 		expect(producers.read(outputId)?.producer.quality).toBe('unavailable');
 		expect(runtime.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
 		await runtime.inspect(controllerId);
@@ -2747,12 +3960,12 @@ describe('virtual thermostat durable runtime', () => {
 		const restoreRequest = (): void => requestObservation.passThrough();
 		const cleanup = (): void => {
 			retire();
-			if (publicationGate === originalGate) publicationGate = null;
-			completionObserverBackstops.delete(backstop);
+			if (fixtureState.publicationGate === originalGate) fixtureState.publicationGate = null;
+			unregisterCompletionObserver(backstop);
 			restoreRequest();
 		};
 		const backstop = { retire, cleanup };
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		const assertLive = (): void => {
 			if (retired) throw new Error('Original pending publication observer retired');
 		};
@@ -2771,7 +3984,7 @@ describe('virtual thermostat durable runtime', () => {
 			originalGate = new Promise<void>((resolve) => {
 				release = resolve;
 			});
-			publicationGate = originalGate;
+			fixtureState.publicationGate = originalGate;
 			const inspection = owner.inspect(originalControllerId);
 			// Observe both outcomes immediately; no unhandled side Promise if timeout retires this wait first.
 			void inspection.then(
@@ -2785,15 +3998,15 @@ describe('virtual thermostat durable runtime', () => {
 				await new Promise<void>((resolve) => setImmediate(resolve));
 			}
 			assertLive();
-			graphValidated = false;
-			graphGeneration++;
-			graphValidated = true;
+			fixtureState.graphValidated = false;
+			fixtureState.graphGeneration++;
+			fixtureState.graphValidated = true;
 			release();
 			await inspection;
 			assertLive();
 			expect(registry.read(outputId)?.producer.quality).toBe('unavailable');
 			expect(owner.readDiagnostics(controllerId)?.readiness).toBe('unavailable');
-			if (publicationGate === originalGate) publicationGate = null;
+			if (fixtureState.publicationGate === originalGate) fixtureState.publicationGate = null;
 			restoreRequest();
 			await owner.inspect(originalControllerId);
 			assertLive();
@@ -2811,12 +4024,12 @@ describe('virtual thermostat durable runtime', () => {
 	});
 
 	it('refuses thermostat energizing while graph validation is unavailable', async () => {
-		graphValidated = false;
-		graphGeneration++;
+		fixtureState.graphValidated = false;
+		fixtureState.graphGeneration++;
 		sample(sensorId, 18);
 		await runtime.inspect(controllerId);
 		await runtime.inspect(controllerId);
-		expect(sentTargets.some((target) => target.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((target) => target.on)).toBe(false);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toEqual(['graph_validation_pending']);
 	});
 
@@ -2832,62 +4045,62 @@ describe('virtual thermostat durable runtime', () => {
 		await finishRestartReconciliation();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
-		installedQualifications.set(
+		fixtureState.installedQualifications.set(
 			claim.physicalIdentity,
 			Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
 		);
-		proofAllowed = () => false;
+		fixtureState.proofAllowed = () => false;
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await finishRestartReconciliation();
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
-		expect(sentTargets.some((send) => send.on)).toBe(false);
-		proofAllowed = () => true;
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
+		fixtureState.proofAllowed = () => true;
 		await finishRestartReconciliation();
-		expect(sentTargets.some((send) => send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(true);
 	});
 	it('revokes a queued ON after qualification replacement and retains its reservation', async () => {
 		let resume: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resume = resolve;
 		});
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await waitForOnJournal();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
-		installedQualifications.set(
+		fixtureState.installedQualifications.set(
 			claim.physicalIdentity,
 			Object.freeze({ physicalIdentity: claim.physicalIdentity }) as ThermostatInstalledQualification,
 		);
-		proofAllowed = () => false;
+		fixtureState.proofAllowed = () => false;
 		resume();
 		await finishRestartReconciliation();
-		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		expect(
 			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
 		).toBe(1);
 	});
 	it('revokes the stored release barrier when its stable provider connection lease changes', async () => {
 		await finishRestartReconciliation();
-		providerCurrent = false;
-		proofAllowed = () => false;
+		fixtureState.providerCurrent = false;
+		fixtureState.proofAllowed = () => false;
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await finishRestartReconciliation();
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
-		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 	});
 
 	it('accepts a newly admitted provider OFF sample instead of reusing pre-reconciliation timestamps', async () => {
 		runtime.onModuleDestroy();
-		const old = samples.get(relayId);
+		const old = fixtureState.samples.get(relayId);
 		const at = new Date(Date.now() - 5000);
-		samples.set(relayId, { ...old, sampledAt: at, receivedAt: at });
-		runtime = makeRuntime();
+		fixtureState.samples.set(relayId, { ...old, sampledAt: at, receivedAt: at });
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		await finishRestartReconciliation();
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(true);
-		expect(samples.get(relayId).receivedAt.getTime()).toBeGreaterThan(at.getTime());
+		expect(fixtureState.samples.get(relayId).receivedAt.getTime()).toBeGreaterThan(at.getTime());
 	});
 	it.each(['source', 'qualification', 'off_sample', 'config_revision', 'claim_revision'])(
 		'rechecks %s evidence at the exclusive journal settlement boundary',
@@ -2906,22 +4119,22 @@ describe('virtual thermostat durable runtime', () => {
 				preparedAt: new Date(),
 			});
 			await database.manager.insert(VirtualThermostatCommandEntity, command);
-			runtime = makeRuntime();
+			fixtureOwner.runtime = runtime = makeRuntime();
 			const structure = (runtime as unknown as { structure: DeviceStructureLockService }).structure;
 			const exclusive = structure.runExclusive.bind(structure) as DeviceStructureLockService['runExclusive'];
 			let proofReady = false;
-			proofMutation = (proof) => {
+			fixtureState.proofMutation = (proof) => {
 				proofReady = true;
 				return proof;
 			};
 			jest.spyOn(structure, 'runExclusive').mockImplementation(async (operation) => {
 				if (proofReady) {
 					proofReady = false;
-					proofAllowed = () => false;
-					if (mode === 'source') providerCurrent = false;
+					fixtureState.proofAllowed = () => false;
+					if (mode === 'source') fixtureState.providerCurrent = false;
 					else if (mode === 'qualification')
-						installedQualifications.set(claim.physicalIdentity, {
-							...installedQualifications.get(claim.physicalIdentity),
+						fixtureState.installedQualifications.set(claim.physicalIdentity, {
+							...fixtureState.installedQualifications.get(claim.physicalIdentity),
 						});
 					else if (mode === 'off_sample') sample(relayId, true);
 					else if (mode === 'config_revision')
@@ -2936,7 +4149,7 @@ describe('virtual thermostat durable runtime', () => {
 				'accepted',
 			);
 			expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
-			expect(sentTargets.some((send) => send.on)).toBe(false);
+			expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		},
 	);
 	it.each([
@@ -2953,7 +4166,7 @@ describe('virtual thermostat durable runtime', () => {
 		const oldBranch = await database.manager.findOneByOrFail(VirtualThermostatBranchRuntimeEntity, {
 			claimId: claim.id,
 		});
-		const qualification = installedQualifications.get(claim.physicalIdentity);
+		const qualification = fixtureState.installedQualifications.get(claim.physicalIdentity);
 		const command = database.manager.create(VirtualThermostatCommandEntity, {
 			id: uuid(),
 			controllerId,
@@ -2970,7 +4183,7 @@ describe('virtual thermostat durable runtime', () => {
 		const watched = new WeakSet<object>();
 		let invalidated = false;
 		let settlingProofId: string | null = null;
-		proofMutation = (proof) => {
+		fixtureState.proofMutation = (proof) => {
 			settlingProofId = proof.proofId;
 			return proof;
 		};
@@ -2995,10 +4208,10 @@ describe('virtual thermostat durable runtime', () => {
 							: args[1]?.includes('confirmed'))
 					) {
 						invalidated = true;
-						proofAllowed = () => false;
-						if (mode === 'source') providerCurrent = false;
+						fixtureState.proofAllowed = () => false;
+						if (mode === 'source') fixtureState.providerCurrent = false;
 						else if (mode === 'qualification')
-							installedQualifications.set(claim.physicalIdentity, { ...qualification });
+							fixtureState.installedQualifications.set(claim.physicalIdentity, { ...qualification });
 						else sample(relayId, true);
 					}
 					return result;
@@ -3007,7 +4220,7 @@ describe('virtual thermostat durable runtime', () => {
 			return runner;
 		});
 		try {
-			runtime = makeRuntime();
+			fixtureOwner.runtime = runtime = makeRuntime();
 			await runtime.onApplicationBootstrap();
 			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
 			await settle();
@@ -3024,10 +4237,10 @@ describe('virtual thermostat durable runtime', () => {
 		} finally {
 			hook.mockRestore();
 		}
-		providerCurrent = true;
-		installedQualifications.set(claim.physicalIdentity, qualification);
+		fixtureState.providerCurrent = true;
+		fixtureState.installedQualifications.set(claim.physicalIdentity, qualification);
 		sample(relayId, false);
-		proofAllowed = () => true;
+		fixtureState.proofAllowed = () => true;
 		runtime.request(controllerId);
 		await settle();
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
@@ -3039,8 +4252,8 @@ describe('virtual thermostat durable runtime', () => {
 		'rejects %s provider proof and retains the actuator reservation',
 		async (mode) => {
 			runtime.onModuleDestroy();
-			proofCalls = 0;
-			proofMutation = (proof) => {
+			fixtureState.proofCalls = 0;
+			fixtureState.proofMutation = (proof) => {
 				if (mode === 'cached' || mode === 'retained')
 					return {
 						...proof,
@@ -3058,46 +4271,46 @@ describe('virtual thermostat durable runtime', () => {
 					offSample: { ...proof.offSample, receivedAt: new Date(proof.offSample.receivedAt.getTime() - 1) },
 				};
 			};
-			runtime = makeRuntime();
+			fixtureOwner.runtime = runtime = makeRuntime();
 			await runtime.onApplicationBootstrap();
 			await finishRestartReconciliation();
-			expect(proofCalls).toBeGreaterThan(0);
+			expect(fixtureState.proofCalls).toBeGreaterThan(0);
 			expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
 			expect(
 				await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
 			).toBe(1);
-			expect(sentTargets.some((send) => send.on)).toBe(false);
+			expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		},
 	);
 
 	it('restarts a prepared ON before transport as unresolved and refuses energizing without drainage proof', async () => {
-		onGate = new Promise<void>(() => undefined);
+		fixtureState.onGate = new Promise<void>(() => undefined);
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		const pending = await waitForOnJournal();
-		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		runtime.onModuleDestroy();
-		proofAllowed = () => false;
-		runtime = makeRuntime();
+		fixtureState.proofAllowed = () => false;
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		const restored = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: pending.id });
 		expect(restored.status).toBe('unknown');
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].pending_on).toBe(true);
-		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		expect(
 			await database.manager.countBy(VirtualThermostatActuatorClaimEntity, { controllerId, state: 'reserved' }),
 		).toBe(1);
 	});
 
 	it('restarts after physical ON acceptance but before journal settlement without treating OFF as drainage', async () => {
-		afterOnGate = new Promise<void>(() => undefined);
+		fixtureState.afterOnGate = new Promise<void>(() => undefined);
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		const pending = await waitForOnJournal();
-		expect(samples.get(relayId)?.value).toBe(true);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 		runtime.onModuleDestroy();
-		proofAllowed = () => false;
-		runtime = makeRuntime();
+		fixtureState.proofAllowed = () => false;
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		const restored = await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: pending.id });
 		expect(restored.status).toBe('unknown');
@@ -3107,19 +4320,19 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('revokes a queued ON when its ambient source disappears during transport authentication', async () => {
 		let resumeOn: () => void = () => undefined;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resumeOn = resolve;
 		});
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await waitForOnJournal();
-		samples.delete(sensorId);
+		fixtureState.samples.delete(sensorId);
 		runtime.request(controllerId);
 		await runtime.flush();
 		resumeOn();
 		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		await runtime.flush();
-		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
 	});
 
@@ -3190,7 +4403,7 @@ describe('virtual thermostat durable runtime', () => {
 					probe.sourceId,
 					member.physicalIdentity,
 				);
-				protectionProbes.add(probe.sourceId);
+				fixtureState.protectionProbes.add(probe.sourceId);
 				await database.manager.insert(ThermostatMemberProtectionEntity, {
 					claimId: member.id,
 					schemaVersion: 1,
@@ -3230,7 +4443,7 @@ describe('virtual thermostat durable runtime', () => {
 			const protection = (runtime as unknown as { memberProtection: ThermostatMemberProtectionService })
 				.memberProtection;
 			protection.read(await protection.load(config, members), Date.now() - 1);
-			for (const probe of protectionProbes) sample(probe, 20);
+			for (const probe of fixtureState.protectionProbes) sample(probe, 20);
 		}
 		return propertyId;
 	};
@@ -3264,11 +4477,11 @@ describe('virtual thermostat durable runtime', () => {
 	};
 	const useRealGuard = async () => {
 		runtime.onModuleDestroy();
-		const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications);
+		const fixture = await realThermostatGuardFixture(database, events, producers, fixtureState.installedQualifications);
 		realGuardFixtures.push(fixture);
-		for (const [id, sample] of samples) await fixture.report(id, sample.value as number | boolean);
-		values = fixture.values;
-		runtime = makeRuntime(undefined, undefined, fixture.transport);
+		for (const [id, sample] of fixtureState.samples) await fixture.report(id, sample.value as number | boolean);
+		fixtureOwner.runtimePorts.values = values = fixture.values;
+		fixtureOwner.runtime = runtime = makeRuntime(undefined, undefined, fixture.transport);
 		await runtime.onApplicationBootstrap();
 		return fixture;
 	};
@@ -3277,7 +4490,13 @@ describe('virtual thermostat durable runtime', () => {
 		'keeps actual %s delegate sessions closed without an original managed runtime admission',
 		async (mode) => {
 			runtime.onModuleDestroy();
-			const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, mode);
+			const fixture = await realThermostatGuardFixture(
+				database,
+				events,
+				producers,
+				fixtureState.installedQualifications,
+				mode,
+			);
 			realGuardFixtures.push(fixture);
 			expect(fixture.captureSession(relayId)).toBeNull();
 			expect(fixture.controls.fences).toEqual([]);
@@ -3288,7 +4507,13 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('requires an actual stopped-to-managed start and permanently revokes its original session at stop entry', async () => {
 		runtime.onModuleDestroy();
-		const fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'unmanaged');
+		const fixture = await realThermostatGuardFixture(
+			database,
+			events,
+			producers,
+			fixtureState.installedQualifications,
+			'unmanaged',
+		);
 		realGuardFixtures.push(fixture);
 		expect(fixture.captureSession(relayId)).toBeNull();
 		expect(await fixture.startManaged()).toBe(false); // A managed call cannot rescue an already unmanaged start.
@@ -3329,11 +4554,11 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settleReal(fixture);
 		expect(fixture.controls.fences).toHaveLength(settledFences); // No self-sustaining unchanged-OFF loop.
-		for (const probe of protectionProbes) await fixture.report(probe, 20);
+		for (const probe of fixtureState.protectionProbes) await fixture.report(probe, 20);
 		await fixture.report(sensorId, 18);
 		await settleReal(fixture);
 		expectAllMembersOn();
-		const [probe] = [...protectionProbes];
+		const [probe] = [...fixtureState.protectionProbes];
 		const beforeTrip = fixture.controls.fences.length;
 		await fixture.report(probe, 30);
 		await fixture.report(probe, 20);
@@ -3341,7 +4566,7 @@ describe('virtual thermostat durable runtime', () => {
 		expect(fixture.controls.fences.length).toBeGreaterThan(beforeTrip);
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches.some((branch) => branch.protection.latched)).toBe(true);
-		for (const source of protectionProbes) await fixture.report(source, 20);
+		for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 		await settleReal(fixture);
 		expectAllMembersOn();
 		const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
@@ -3349,11 +4574,11 @@ describe('virtual thermostat durable runtime', () => {
 		// Restart cannot use historical clear latches or ordinary OFF feedback as drainage proof.
 		await fixture.report(relayId, false);
 		await fixture.report(sibling, false);
-		runtime = makeRuntime(undefined, undefined, fixture.transport);
+		fixtureOwner.runtime = runtime = makeRuntime(undefined, undefined, fixture.transport);
 		await runtime.onApplicationBootstrap();
 		await settleReal(fixture);
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
-		for (const source of protectionProbes) await fixture.report(source, 20);
+		for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 		await settleReal(fixture);
 		expectAllMembersOn();
 		const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
@@ -3365,23 +4590,23 @@ describe('virtual thermostat durable runtime', () => {
 		await addMandatoryMember();
 		const fixture = await useRealGuard();
 		await settleReal(fixture);
-		for (const source of protectionProbes) await fixture.report(source, 20);
+		for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 		await settleReal(fixture);
 		const before = fixture.controls.fences.length;
-		graphGeneration++;
-		graphValidated = false;
+		fixtureState.graphGeneration++;
+		fixtureState.graphValidated = false;
 		runtime.request(controllerId);
-		await fixture.report([...protectionProbes][0], 30);
+		await fixture.report([...fixtureState.protectionProbes][0], 30);
 		await settleReal(fixture);
 		expect(fixture.controls.fences).toHaveLength(before);
 		expect(fixture.controls.sends).toHaveLength(0);
 		expect(runtime.readDiagnostics(controllerId).readiness).toBe('unavailable');
-		graphValidated = true;
+		fixtureState.graphValidated = true;
 		runtime.request(controllerId);
 		await settleReal(fixture);
 		expect(fixture.controls.fences.length).toBeGreaterThan(before);
 		expect(fixture.controls.sends).toHaveLength(0);
-		for (const source of protectionProbes) await fixture.report(source, 20);
+		for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 		await fixture.report(sensorId, 18);
 		await settleReal(fixture);
 		expectAllMembersOn();
@@ -3402,12 +4627,12 @@ describe('virtual thermostat durable runtime', () => {
 				entered();
 				await gate;
 			};
-			for (const source of protectionProbes) await fixture.report(source, 20);
+			for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 			await fixture.report(sensorId, 18);
 			await started;
 			await runtime.flush();
 			const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
-			const [probe] = [...protectionProbes];
+			const [probe] = [...fixtureState.protectionProbes];
 			await fixture.report(probe, 30);
 			await fixture.report(probe, 20);
 			await runtime.flush();
@@ -3441,7 +4666,7 @@ describe('virtual thermostat durable runtime', () => {
 			else expect(fixture.controls.sends.some((send) => send.property === relayId)).toBe(true);
 			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(original.every((command) => retained.some((row) => row.id === command.id))).toBe(true);
-			for (const source of protectionProbes) await fixture.report(source, 20);
+			for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 			await settleReal(fixture);
 			expectAllMembersOn();
 			fixture.reports.onModuleDestroy();
@@ -3454,7 +4679,7 @@ describe('virtual thermostat durable runtime', () => {
 			await addMandatoryMember();
 			const fixture = await useRealGuard();
 			await settleReal(fixture);
-			for (const source of protectionProbes) await fixture.report(source, 20);
+			for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 			await settleReal(fixture);
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.protection.ready)).toBe(true);
 			let release!: () => void, entered!: () => void;
@@ -3467,7 +4692,7 @@ describe('virtual thermostat durable runtime', () => {
 				entered();
 				await gate;
 			};
-			const [probe] = [...protectionProbes];
+			const [probe] = [...fixtureState.protectionProbes];
 			await fixture.report(probe, 30);
 			await started;
 			if (mutation === 'temperature') {
@@ -3485,11 +4710,11 @@ describe('virtual thermostat durable runtime', () => {
 				);
 				events.emit(THERMOSTAT_CONFIG_CHANGED, controllerId);
 			} else {
-				graphGeneration++;
-				graphValidated = false;
+				fixtureState.graphGeneration++;
+				fixtureState.graphValidated = false;
 				runtime.request(controllerId);
 			}
-			for (const source of protectionProbes) await fixture.report(source, 20);
+			for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 			release();
 			await settleReal(fixture);
 			expect(fixture.controls.sends).toHaveLength(0);
@@ -3503,11 +4728,11 @@ describe('virtual thermostat durable runtime', () => {
 				).toBe(true);
 			// Current-scope proof is still obtainable after the deliberate fault is repaired.
 			fixture.controls.beforeFence = null;
-			graphValidated = true;
+			fixtureState.graphValidated = true;
 			runtime.request(controllerId);
 			await settleReal(fixture);
 			expect(fixture.controls.sends).toHaveLength(0); // Pre-proof safe reports never authorize recovery.
-			for (const source of protectionProbes) await fixture.report(source, 20);
+			for (const source of fixtureState.protectionProbes) await fixture.report(source, 20);
 			await fixture.report(sensorId, 18);
 			await settleReal(fixture);
 			expectAllMembersOn();
@@ -3524,12 +4749,12 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settle();
 		expect(
-			sentTargets
+			fixtureState.sentTargets
 				.filter((send) => send.on)
 				.map((send) => send.propertyId)
 				.sort(),
 		).toEqual([relayId, sibling].sort());
-		const [probe] = [...protectionProbes];
+		const [probe] = [...fixtureState.protectionProbes];
 		sample(probe, 30);
 		runtime.request(controllerId);
 		await settle();
@@ -3545,14 +4770,14 @@ describe('virtual thermostat durable runtime', () => {
 		).toBe(2);
 	});
 	it('retains a synchronous input fault across rapid recovery inside hysteresis before evaluation', async () => {
-		packetTick = useThermostatPacketClock();
+		fixtureState.packetTick = useThermostatPacketClock();
 		await addMandatoryMember();
 		runtime.request(controllerId);
 		await settle();
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await settle();
-		const [probe] = [...protectionProbes];
+		const [probe] = [...fixtureState.protectionProbes];
 		events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_INVALIDATED, { propertyId: probe });
 		sample(probe, 29); // No above-cutoff report is needed to re-arm after the observation fault.
 		await settle();
@@ -3571,23 +4796,23 @@ describe('virtual thermostat durable runtime', () => {
 	it.each(['trip', 'source-gap', 'reconfiguration'] as const)(
 		'retains the whole-branch trip barrier across immediate recovery and %s with an energized sibling and queued ON',
 		async (interruption) => {
-			packetTick = useThermostatPacketClock();
+			fixtureState.packetTick = useThermostatPacketClock();
 			const sibling = await addMandatoryMember();
 			runtime.request(controllerId);
 			await settle();
 			let resumeOn!: () => void;
-			onGate = new Promise<void>((resolve) => (resumeOn = resolve));
+			fixtureState.onGate = new Promise<void>((resolve) => (resumeOn = resolve));
 			sample(sensorId, 18);
 			runtime.request(controllerId);
 			await waitForOnJournal();
 			await runtime.flush();
-			expect(sentTargets.some((send) => send.propertyId === sibling && send.on)).toBe(true);
-			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === sibling && send.on)).toBe(true);
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
 			const original = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(original).toHaveLength(2);
-			const boundary = sentTargets.length;
-			proofAllowed = (id) => id !== sibling;
-			const [probe] = [...protectionProbes];
+			const boundary = fixtureState.sentTargets.length;
+			fixtureState.proofAllowed = (id) => id !== sibling;
+			const [probe] = [...fixtureState.protectionProbes];
 			// Both reports arrive synchronously before the queued evaluation gets any opportunity to run.
 			sample(probe, 30);
 			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: probe });
@@ -3598,8 +4823,8 @@ describe('virtual thermostat durable runtime', () => {
 			events.emit(EventType.CHANNEL_PROPERTY_SAMPLE_ACCEPTED, { propertyId: probe });
 			resumeOn();
 			await settle();
-			expect(sentTargets.slice(boundary)).toContainEqual({ propertyId: sibling, on: false });
-			expect(sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
+			expect(fixtureState.sentTargets.slice(boundary)).toContainEqual({ propertyId: sibling, on: false });
+			expect(fixtureState.sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
 			expect(
 				runtime
 					.readDiagnostics(controllerId)
@@ -3609,16 +4834,16 @@ describe('virtual thermostat durable runtime', () => {
 			expect(original.every((command) => retained.some((row) => row.id === command.id))).toBe(true);
 			expect(retained.some((command) => command.status !== 'confirmed' && command.status !== 'cancelled')).toBe(true);
 			// One leaf's proof cannot discharge the barrier for the whole branch.
-			proofAllowed = () => true;
+			fixtureState.proofAllowed = () => true;
 			runtime.request(controllerId);
 			await settle();
 			runtime.request(controllerId);
 			await settle();
-			expect(sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
+			expect(fixtureState.sentTargets.slice(boundary).some((send) => send.on)).toBe(false);
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
 			// Pre-drain recovery reports remain unusable. Only a new post-drain report clears the latch.
 			await afterMemberDrain();
-			for (const source of protectionProbes) sample(source, 20);
+			for (const source of fixtureState.protectionProbes) sample(source, 20);
 			runtime.request(controllerId);
 			await settle();
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'on')).toBe(true);
@@ -3632,19 +4857,19 @@ describe('virtual thermostat durable runtime', () => {
 			runtime.request(controllerId);
 			await settle();
 			let resume: () => void = () => undefined;
-			onGate = new Promise<void>((resolve) => {
+			fixtureState.onGate = new Promise<void>((resolve) => {
 				resume = resolve;
 			});
 			sample(sensorId, 18);
 			runtime.request(controllerId);
 			await waitForOnJournal();
-			const [probe] = [...protectionProbes];
+			const [probe] = [...fixtureState.protectionProbes];
 			if (failure === 'trip') sample(probe, 30);
-			else if (failure === 'missing') samples.delete(probe);
-			else samples.set(probe, { ...samples.get(probe), quality: 'degraded' });
+			else if (failure === 'missing') fixtureState.samples.delete(probe);
+			else fixtureState.samples.set(probe, { ...fixtureState.samples.get(probe), quality: 'degraded' });
 			resume();
 			await settle();
-			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
 			expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
 			expect(runtime.readDiagnostics(controllerId).branches.some((branch) => !branch.protection.ready)).toBe(true);
 		},
@@ -3658,7 +4883,7 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settle();
 		expect(
-			sentTargets
+			fixtureState.sentTargets
 				.filter((send) => send.on)
 				.map((send) => send.propertyId)
 				.sort(),
@@ -3679,7 +4904,7 @@ describe('virtual thermostat durable runtime', () => {
 			sample(sensorId, 18);
 			runtime.request(controllerId);
 			await settle();
-			if (failure === 'offline') unavailableMembers.add(sibling);
+			if (failure === 'offline') fixtureState.unavailableMembers.add(sibling);
 			else
 				await database.manager.update(
 					VirtualThermostatActuatorClaimEntity,
@@ -3688,7 +4913,7 @@ describe('virtual thermostat durable runtime', () => {
 				);
 			runtime.request(controllerId);
 			await settle();
-			expect(sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
 			expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
 			expect(runtime.readDiagnostics(controllerId).reasons).toContain(
 				failure === 'missing' ? 'startup_unreconciled' : 'heating_not_ready',
@@ -3733,7 +4958,7 @@ describe('virtual thermostat durable runtime', () => {
 		'fences a queued parallel leaf and drains every journal after %s',
 		async (change) => {
 			const sibling = await addMandatoryMember();
-			packetTick = useThermostatPacketClock();
+			fixtureState.packetTick = useThermostatPacketClock();
 			// Every evaluation boundary below is explicit. A real poll during SQLite I/O can drain the
 			// energized sibling before the mutation whose queued-ON fence this fixture is testing.
 			clearInterval((runtime as unknown as { timer: NodeJS.Timeout }).timer);
@@ -3746,14 +4971,14 @@ describe('virtual thermostat durable runtime', () => {
 			await configureComfort();
 			sample(sensorId, 22);
 			let resumeOn!: () => void;
-			onGate = new Promise<void>((resolve) => {
+			fixtureState.onGate = new Promise<void>((resolve) => {
 				resumeOn = resolve;
 			});
 			const relayQueued = new Promise<void>((resolve) => {
-				onQueued = resolve;
+				fixtureState.onQueued = resolve;
 			});
 			const siblingEnergized = new Promise<void>((resolve) => {
-				onSent = (propertyId) => {
+				fixtureState.onSent = (propertyId) => {
 					if (propertyId === sibling) resolve();
 				};
 			});
@@ -3780,7 +5005,7 @@ describe('virtual thermostat durable runtime', () => {
 					.readDiagnostics(controllerId)
 					.branches.every((branch) => branch.release_proven && !branch.pending_on && branch.activity === 'off'),
 			).toBe(true);
-			for (const probe of protectionProbes) sample(probe, 20);
+			for (const probe of fixtureState.protectionProbes) sample(probe, 20);
 			runtime.request(controllerId);
 			await waitForOnJournal();
 			await Promise.all([relayQueued, siblingEnergized]);
@@ -3797,13 +5022,13 @@ describe('virtual thermostat durable runtime', () => {
 			expect(
 				await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: siblingJournal.id }),
 			).toMatchObject({ status: 'accepted', proofId: null });
-			expect(samples.get(sibling)?.value).toBe(true);
-			expect(sentTargets.filter((send) => send.propertyId === sibling).at(-1)).toEqual({
+			expect(fixtureState.samples.get(sibling)?.value).toBe(true);
+			expect(fixtureState.sentTargets.filter((send) => send.propertyId === sibling).at(-1)).toEqual({
 				propertyId: sibling,
 				on: true,
 			});
-			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
-			const mutationBoundary = sentTargets.length;
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			const mutationBoundary = fixtureState.sentTargets.length;
 			if (change === 'override expiry') {
 				jest.setSystemTime(now + 1000);
 			} else {
@@ -3822,13 +5047,13 @@ describe('virtual thermostat durable runtime', () => {
 				}
 			}
 			resumeOn();
-			onGate = null;
+			fixtureState.onGate = null;
 			await settle();
 			// Expiry persists a new configuration revision; poll again for release proof bound to that revision.
 			runtime.request(controllerId);
 			await settle();
-			expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
-			expect(sentTargets.slice(mutationBoundary)).toContainEqual({ propertyId: sibling, on: false });
+			expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+			expect(fixtureState.sentTargets.slice(mutationBoundary)).toContainEqual({ propertyId: sibling, on: false });
 			const retained = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 			expect(retained.map((command) => command.id).sort()).toEqual(prepared.map((command) => command.id).sort());
 			expect(retained.find((command) => command.claimId === queuedClaim.id).status).toBe('cancelled');
@@ -3849,27 +5074,27 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settle();
 		let resumeOn!: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resumeOn = resolve;
 		});
-		allowLateOn = true;
+		fixtureState.allowLateOn = true;
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await waitForOnJournal();
 		await runtime.flush();
-		proofAllowed = (id) => id !== relayId;
-		samples.delete(sibling);
+		fixtureState.proofAllowed = (id) => id !== relayId;
+		fixtureState.samples.delete(sibling);
 		runtime.request(controllerId);
 		await runtime.flush();
 		resumeOn();
-		onGate = null;
+		fixtureState.onGate = null;
 		await settle();
 		const pending = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
 		expect(pending.some((command) => command.status !== 'cancelled' && command.status !== 'confirmed')).toBe(true);
 		const diagnostics = runtime.readDiagnostics(controllerId);
 		expect(diagnostics.branches).toHaveLength(2);
 		expect(diagnostics.branches.some((branch) => branch.pending_on)).toBe(true);
-		expect(sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
 	});
 
 	it('waits for every opposed member to drain and measures changeover from the last qualified OFF', async () => {
@@ -3882,7 +5107,7 @@ describe('virtual thermostat durable runtime', () => {
 		await database.manager.save(config);
 		runtime.request(controllerId);
 		await settle();
-		proofAllowed = (id) => id !== sibling;
+		fixtureState.proofAllowed = (id) => id !== sibling;
 		// An earlier ON on the second heating leaf must be covered independently.
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, {
 			sourcePropertyId: sibling,
@@ -3902,13 +5127,13 @@ describe('virtual thermostat durable runtime', () => {
 		sample(sensorId, 26);
 		runtime.request(controllerId);
 		await settle();
-		expect(sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(false);
-		proofAllowed = () => true;
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(false);
+		fixtureState.proofAllowed = () => true;
 		for (let phase = 0; phase < 3; phase++) {
 			runtime.request(controllerId, false);
 			await settle();
 		}
-		expect(sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(false);
 		expect(runtime.readDiagnostics(controllerId).reasons).toContain('cooling_changeover_wait');
 		const rows = await database.manager.find(VirtualThermostatBranchRuntimeEntity);
 		for (const row of rows) {
@@ -3917,7 +5142,7 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		runtime.request(controllerId);
 		await settle();
-		expect(sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === cooling && send.on)).toBe(true);
 	});
 
 	it('retains each parallel pending ON across restart and drains siblings independently before resuming', async () => {
@@ -3932,8 +5157,8 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.onModuleDestroy();
 		sample(relayId, false);
 		sample(sibling, false);
-		proofAllowed = (id) => id !== sibling;
-		runtime = makeRuntime();
+		fixtureState.proofAllowed = (id) => id !== sibling;
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		await settle();
 		const pending = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId, action: 'on' });
@@ -3941,9 +5166,9 @@ describe('virtual thermostat durable runtime', () => {
 		expect(pending.some((command) => command.status === 'confirmed')).toBe(true);
 		expect(pending.some((command) => command.status !== 'confirmed' && command.status !== 'cancelled')).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches).toHaveLength(2);
-		proofAllowed = () => true;
+		fixtureState.proofAllowed = () => true;
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.protection.latched)).toBe(true);
-		for (const probe of protectionProbes) sample(probe, 20);
+		for (const probe of fixtureState.protectionProbes) sample(probe, 20);
 		for (let phase = 0; phase < 3; phase++) {
 			runtime.request(controllerId, false);
 			await settle();
@@ -3951,7 +5176,7 @@ describe('virtual thermostat durable runtime', () => {
 		expect(original.every((command) => pending.some((row) => row.id === command.id))).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'off')).toBe(true);
 		await afterMemberDrain();
-		for (const probe of protectionProbes) sample(probe, 20);
+		for (const probe of fixtureState.protectionProbes) sample(probe, 20);
 		runtime.request(controllerId);
 		await settle();
 		expect(runtime.readDiagnostics(controllerId).branches.every((branch) => branch.activity === 'on')).toBe(true);
@@ -3962,7 +5187,7 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settle();
 		let resumeOn!: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resumeOn = resolve;
 		});
 		sample(sensorId, 18);
@@ -3977,9 +5202,9 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await runtime.flush();
 		resumeOn();
-		onGate = null;
+		fixtureState.onGate = null;
 		await settle();
-		expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(false);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 			'cancelled',
 		);
@@ -3990,13 +5215,13 @@ describe('virtual thermostat durable runtime', () => {
 		const sibling = await addMandatoryMember();
 		runtime.request(controllerId);
 		await settle();
-		acceptedWithoutFeedback = sibling;
-		proofAllowed = (id) => id !== sibling;
+		fixtureState.acceptedWithoutFeedback = sibling;
+		fixtureState.proofAllowed = (id) => id !== sibling;
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await settle();
-		expect(sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(true);
-		expect(sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === relayId && !send.on)).toBe(true);
 		const diagnostics = runtime.readDiagnostics(controllerId);
 		expect(diagnostics.branches.find((branch) => branch.pending_on)).toBeDefined();
 		expect(diagnostics.reasons).toContain('heating_not_ready');
@@ -4007,7 +5232,7 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await settle();
 		let resumeOn!: () => void;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resumeOn = resolve;
 		});
 		sample(sensorId, 18);
@@ -4016,17 +5241,17 @@ describe('virtual thermostat durable runtime', () => {
 		await runtime.flush();
 		const inFlight = (runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight;
 		await Promise.all([...inFlight].filter(([id]) => id !== blocked.id).map(([, operation]) => operation));
-		expect(sentTargets.some((send) => send.propertyId === sibling && send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === sibling && send.on)).toBe(true);
 		await runtime.inspect(controllerId);
-		onOutcome = 'refused';
-		proofAllowed = (id) => id !== relayId;
+		fixtureState.onOutcome = 'refused';
+		fixtureState.proofAllowed = (id) => id !== relayId;
 		resumeOn();
-		onGate = null;
+		fixtureState.onGate = null;
 		await settle();
 		runtime.request(controllerId, false);
 		await settle();
-		expect(sentTargets.filter((send) => send.on)).toEqual([{ propertyId: sibling, on: true }]);
-		expect(sentTargets.some((send) => send.propertyId === sibling && !send.on)).toBe(true);
+		expect(fixtureState.sentTargets.filter((send) => send.on)).toEqual([{ propertyId: sibling, on: true }]);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === sibling && !send.on)).toBe(true);
 		expect(runtime.readDiagnostics(controllerId).branches.some((branch) => branch.fault === 'known_no_send')).toBe(
 			true,
 		);
@@ -4089,33 +5314,33 @@ describe('virtual thermostat durable runtime', () => {
 		config.revision++;
 		await database.manager.save(config);
 		sample(coolingPropertyId, false);
-		runtime = makeRuntime();
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 
-		afterOnGate = new Promise<void>(() => undefined);
+		fixtureState.afterOnGate = new Promise<void>(() => undefined);
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		await waitForOnJournal();
-		expect(samples.get(relayId)?.value).toBe(true);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 		runtime.onModuleDestroy();
-		proofAllowed = (id) => id !== relayId;
+		fixtureState.proofAllowed = (id) => id !== relayId;
 		sample(sensorId, 27);
-		runtime = makeRuntime();
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		await runtime.inspect(controllerId);
 		expect(
 			runtime.readDiagnostics(controllerId)?.branches.find((branch) => branch.role === 'heating')?.pending_on,
 		).toBe(true);
-		expect(sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)).toBe(false);
 
-		proofAllowed = () => true;
+		fixtureState.proofAllowed = () => true;
 		for (let attempt = 0; attempt < 5; attempt++) {
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
-			if (sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)) break;
+			if (fixtureState.sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)) break;
 		}
-		expect(sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)).toBe(true);
+		expect(fixtureState.sentTargets.some((send) => send.propertyId === coolingPropertyId && send.on)).toBe(true);
 	});
 
 	it('retains a disabled controller claim and its pending ON until qualified release evidence exists', async () => {
@@ -4126,10 +5351,10 @@ describe('virtual thermostat durable runtime', () => {
 			await runtime.flush();
 			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		}
-		expect(samples.get(relayId)?.value).toBe(true);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 		const claims = (runtime as unknown as { claims: VirtualThermostatClaimsService }).claims;
 		await new VirtualThermostatOwnershipSubscriber(database, claims).onApplicationBootstrap();
-		proofAllowed = () => false;
+		fixtureState.proofAllowed = () => false;
 		await database.manager.update(DeviceEntity, { id: controllerId }, { enabled: false });
 		runtime.request(controllerId);
 		await runtime.flush();
@@ -4139,7 +5364,7 @@ describe('virtual thermostat durable runtime', () => {
 		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 		expect(claim.state).toBe('releasing');
 		expect(config.requestedMode).toBe('off');
-		expect(samples.get(relayId)?.value).toBe(false);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
 		expect(
 			await database.manager.countBy(VirtualThermostatCommandEntity, {
@@ -4157,23 +5382,23 @@ describe('virtual thermostat durable runtime', () => {
 			await runtime.inspect(controllerId);
 			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		}
-		expect(sentTargets.filter((send) => send.on)).toHaveLength(1);
-		proofAllowed = () => false;
+		expect(fixtureState.sentTargets.filter((send) => send.on)).toHaveLength(1);
+		fixtureState.proofAllowed = () => false;
 		events.emit(EventType.DEVICE_CONNECTION_CHANGED, { device: { id: controllerId } });
 		await runtime.flush();
 		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		await runtime.flush();
-		expect(sentTargets.filter((send) => send.on)).toHaveLength(1);
+		expect(fixtureState.sentTargets.filter((send) => send.on)).toHaveLength(1);
 		expect(runtime.readDiagnostics(controllerId)?.branches[0].release_proven).toBe(false);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('release_ordering_unreconciled');
-		proofAllowed = () => true;
+		fixtureState.proofAllowed = () => true;
 		for (let attempt = 0; attempt < 5; attempt++) {
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
-			if (sentTargets.filter((send) => send.on).length > 1) break;
+			if (fixtureState.sentTargets.filter((send) => send.on).length > 1) break;
 		}
-		expect(sentTargets.filter((send) => send.on)).toHaveLength(2);
+		expect(fixtureState.sentTargets.filter((send) => send.on)).toHaveLength(2);
 	});
 
 	it('persists release and ON before transport, then releases at the comfort boundary', async () => {
@@ -4192,7 +5417,7 @@ describe('virtual thermostat durable runtime', () => {
 		const energized = runtime.readDiagnostics(controllerId);
 		expect(energized?.readiness).toBe('ready');
 		expect(energized?.branches[0].activity).toBe('on');
-		expect(sends).toEqual([false, true]);
+		expect(fixtureState.sends).toEqual([false, true]);
 		const journal = await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId });
 		expect(journal.map((command) => command.action)).toEqual(['off', 'on']);
 		expect(journal[0].status).toBe('confirmed');
@@ -4204,7 +5429,7 @@ describe('virtual thermostat durable runtime', () => {
 		const released = runtime.readDiagnostics(controllerId);
 		expect(released?.branches[0].activity).toBe('off');
 		expect(released?.branches[0].release_proven).toBe(true);
-		expect(sends).toEqual([false, true, false]);
+		expect(fixtureState.sends).toEqual([false, true, false]);
 		expect(
 			(await database.manager.findBy(VirtualThermostatCommandEntity, { controllerId })).every(
 				(command) => command.status === 'confirmed',
@@ -4214,10 +5439,10 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('retains pending ON and withholds release proof when a delayed ON arrives after OFF', async () => {
 		let resumeOn: () => void = () => undefined;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resumeOn = resolve;
 		});
-		allowLateOn = true;
+		fixtureState.allowLateOn = true;
 		sample(sensorId, 18);
 		runtime.request(controllerId);
 		let beforeRelease: VirtualThermostatCommandEntity[] = [];
@@ -4236,7 +5461,7 @@ describe('virtual thermostat durable runtime', () => {
 		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		await runtime.flush();
 		const late = runtime.readDiagnostics(controllerId);
-		expect(samples.get(relayId)?.value).toBe(true);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 		expect(late?.branches[0].pending_on).toBe(true);
 		expect(late?.branches[0].release_proven).toBe(false);
 	});
@@ -4412,10 +5637,12 @@ describe('virtual thermostat durable runtime', () => {
 			jest
 				.spyOn(realValues, 'readQualifiedSample')
 				.mockImplementation((property, maximumAgeMs, now) =>
-					property.id === relayId ? (samples.get(relayId) ?? null) : readQualifiedSample(property, maximumAgeMs, now),
+					property.id === relayId
+						? (fixtureState.samples.get(relayId) ?? null)
+						: readQualifiedSample(property, maximumAgeMs, now),
 				);
-			values = realValues;
-			runtime = makeRuntime(graph, aggregate);
+			fixtureOwner.runtimePorts.values = values = realValues;
+			fixtureOwner.runtime = runtime = makeRuntime(graph, aggregate);
 			await runtime.onApplicationBootstrap();
 			const report = async (property: ChannelPropertyEntity, value: number | null) => {
 				// Every new physical report has a newer watermark; SQL and proof writes keep that fixed sample clock.
@@ -4442,45 +5669,45 @@ describe('virtual thermostat durable runtime', () => {
 			await settle();
 			expect(producers.read(output.id).value).toBe(18);
 			expect(runtime.readDiagnostics(controllerId)?.current_temperature).toBe(18);
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 			await report(sources[1], null);
 			await settle();
 			expect(producers.read(output.id).producer.quality).toBe('unavailable');
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
 			await report(sources[1], 18);
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 			await report(floor, 28);
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 			expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
 			await report(floor, 27);
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 			await report(floor, 26.9);
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 			jest.setSystemTime(startedAt + 11_000);
 			for (const [index, property] of sources.entries()) await report(property, 17 + index);
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('floor_unavailable');
 			await report(floor, 26);
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 			jest.setSystemTime(startedAt + 22_000);
 			await report(floor, 26.9);
 			await settle();
 			expect(realValues.readQualifiedSample(floor, 10_000)?.value).toBe(26.9);
 			expect(realValues.readQualifiedSample(output, 10_000)).toBeNull();
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('ambient_unavailable');
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 			for (const [index, property] of sources.entries()) await report(property, 17 + index);
 			await settle();
 			expect(producers.read(output.id).value).toBe(18);
 			expect(runtime.readDiagnostics(controllerId)?.current_temperature).toBe(18);
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 		} finally {
 			jest.useRealTimers();
 			jest.restoreAllMocks();
@@ -4542,13 +5769,13 @@ describe('virtual thermostat durable runtime', () => {
 		runtime.request(controllerId);
 		await runtime.inspect(controllerId);
 		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
-		expect(sends).not.toContain(true);
+		expect(fixtureState.sends).not.toContain(true);
 
 		sample(floorPropertyId, 27);
 		runtime.request(controllerId);
 		await runtime.flush();
 		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
-		expect(sends).not.toContain(true);
+		expect(fixtureState.sends).not.toContain(true);
 
 		sample(floorPropertyId, 26.9);
 		runtime.request(controllerId);
@@ -4556,7 +5783,7 @@ describe('virtual thermostat durable runtime', () => {
 		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		await runtime.flush();
 		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(false);
-		expect(sends).toContain(true);
+		expect(fixtureState.sends).toContain(true);
 	});
 
 	it('revokes a queued ON when the floor reaches its boundary during transport authentication', async () => {
@@ -4607,7 +5834,7 @@ describe('virtual thermostat durable runtime', () => {
 		config.revision++;
 		await database.manager.save(config);
 		let resumeOn: () => void = () => undefined;
-		onGate = new Promise<void>((resolve) => {
+		fixtureState.onGate = new Promise<void>((resolve) => {
 			resumeOn = resolve;
 		});
 		sample(sensorId, 18);
@@ -4620,7 +5847,7 @@ describe('virtual thermostat durable runtime', () => {
 		resumeOn();
 		await Promise.all([...(runtime as unknown as { inFlight: Map<string, Promise<void>> }).inFlight.values()]);
 		await runtime.flush();
-		expect(sentTargets.some((send) => send.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((send) => send.on)).toBe(false);
 		expect(runtime.readDiagnostics(controllerId)?.floor_latched).toBe(true);
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('floor_overheat');
 	});
@@ -4696,20 +5923,20 @@ describe('virtual thermostat durable runtime', () => {
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
-			expect(sends).not.toContain(true);
+			expect(fixtureState.sends).not.toContain(true);
 
 			jest.setSystemTime(startedAt + 99);
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
-			expect(sends).not.toContain(true);
+			expect(fixtureState.sends).not.toContain(true);
 
 			jest.setSystemTime(startedAt + 100);
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			await settle();
-			expect(sends).toContain(true);
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.sends).toContain(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 
 			config.contactClosingMs = 250;
 			config.revision++;
@@ -4718,21 +5945,21 @@ describe('virtual thermostat durable runtime', () => {
 			await runtime.inspect(controllerId);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 
 			jest.setSystemTime(startedAt + 349);
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			await settle();
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 
 			jest.setSystemTime(startedAt + 350);
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			await settle();
 			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('contact_unknown');
-			expect(samples.get(relayId)?.value).toBe(true);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(true);
 
 			jest.setSystemTime(startedAt + 351);
 			sample(contactPropertyId, false);
@@ -4740,15 +5967,15 @@ describe('virtual thermostat durable runtime', () => {
 			await runtime.inspect(controllerId);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('window_open');
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 
 			jest.setSystemTime(startedAt + 352);
-			samples.delete(contactPropertyId);
+			fixtureState.samples.delete(contactPropertyId);
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
 			await settle();
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 
 			config.requestedMode = 'off';
 			config.policy.heatingSetpoint = 22;
@@ -4761,7 +5988,7 @@ describe('virtual thermostat durable runtime', () => {
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('contact_unknown');
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 			jest.setSystemTime(startedAt + 602);
 			runtime.request(controllerId);
 			await runtime.inspect(controllerId);
@@ -4770,7 +5997,7 @@ describe('virtual thermostat durable runtime', () => {
 			expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
 			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('window_open');
 			expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('contact_unknown');
-			expect(samples.get(relayId)?.value).toBe(false);
+			expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 		} finally {
 			jest.useRealTimers();
 		}
@@ -4800,9 +6027,9 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('suspected_window_open');
 		const held = await database.manager.findOneByOrFail(VirtualThermostatRuntimeEntity, { controllerId });
 		expect(held.heuristicHold?.pausedUntil).toBeGreaterThan(Date.now());
-		const degraded = samples.get(sensorId);
+		const degraded = fixtureState.samples.get(sensorId);
 		if (!degraded) throw new Error('Missing ambient sample');
-		samples.set(sensorId, { ...degraded, quality: 'degraded' });
+		fixtureState.samples.set(sensorId, { ...degraded, quality: 'degraded' });
 		runtime.request(controllerId);
 		await runtime.inspect(controllerId);
 		const trendAfterQuality = (runtime as unknown as { trends: Map<string, { frames: unknown[] }> }).trends.get(
@@ -4826,7 +6053,7 @@ describe('virtual thermostat durable runtime', () => {
 		);
 		expect(trendAfterConfig?.frames).toHaveLength(0);
 		runtime.onModuleDestroy();
-		runtime = makeRuntime();
+		fixtureOwner.runtime = runtime = makeRuntime();
 		await runtime.onApplicationBootstrap();
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toEqual(
 			expect.arrayContaining(['user_off', 'suspected_window_open']),
@@ -4837,7 +6064,7 @@ describe('virtual thermostat durable runtime', () => {
 		expect(runtime.readDiagnostics(controllerId)?.reasons).not.toContain('suspected_window_open');
 		expect(runtime.readDiagnostics(controllerId)?.reasons).toContain('user_off');
 		expect(runtime.readDiagnostics(controllerId)?.heating_setpoint).toBe(22);
-		expect(samples.get(relayId)?.value).toBe(false);
+		expect(fixtureState.samples.get(relayId)?.value).toBe(false);
 	});
 	// BEGIN R14 drain-certificate lifetime drafts (UNRUN; real SQLite/managed SDK, offline qualification only)
 	describe('original settled drain facts across disposable command decisions', () => {
@@ -4861,8 +6088,8 @@ describe('virtual thermostat durable runtime', () => {
 			comfort.onModuleDestroy();
 			mutationClaims.onModuleDestroy();
 			mutationRegistry.onModuleDestroy();
-			mutationRegistry = new ClimateAutomationRegistryService();
-			mutationWriter = new ClimateAutomationWriterService(
+			fixtureOwner.mutationRegistry = mutationRegistry = new ClimateAutomationRegistryService();
+			fixtureOwner.mutationWriter = mutationWriter = new ClimateAutomationWriterService(
 				database,
 				actualStructure,
 				mutationRegistry,
@@ -4879,23 +6106,33 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 			);
 			await actualClaims.onApplicationBootstrap();
-			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'managed', {
-				values: mutationValues,
-				sources: mutationPipeline.get(PropertyValueSourceRegistryService),
-			});
+			fixture = await realThermostatGuardFixture(
+				database,
+				events,
+				producers,
+				fixtureState.installedQualifications,
+				'managed',
+				{
+					values: mutationValues,
+					sources: mutationPipeline.get(PropertyValueSourceRegistryService),
+				},
+			);
 			realGuardFixtures.push(fixture);
 			// Reuse ONLY the helper's existing explicitly synthetic qualification boundary. No new fields or private map forcing.
-			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
-			values = fixture.values;
-			comfort = new VirtualThermostatComfortService(
-				database,
-				actualStructure,
-				actualGraph,
-				actualClaims,
-				events,
-				mutationWriter,
-			);
-			configs = new VirtualThermostatConfigService(
+			for (const evidence of fixtureState.installedQualifications.values()) actualClaims.recordQualification(evidence);
+			fixtureOwner.runtimePorts.values = values = fixture.values;
+			fixtureOwner.comfort =
+				fixtureOwner.runtimePorts.comfort =
+				comfort =
+					new VirtualThermostatComfortService(
+						database,
+						actualStructure,
+						actualGraph,
+						actualClaims,
+						events,
+						mutationWriter,
+					);
+			fixtureOwner.configs = configs = new VirtualThermostatConfigService(
 				database,
 				actualStructure,
 				actualGraph,
@@ -4905,7 +6142,7 @@ describe('virtual thermostat durable runtime', () => {
 				undefined,
 				mutationWriter,
 			);
-			mutationProvider = new VirtualThermostatAutomationService(
+			fixtureOwner.mutationProvider = mutationProvider = new VirtualThermostatAutomationService(
 				mutationWriter,
 				mutationRegistry,
 				actualGraph,
@@ -4925,13 +6162,13 @@ describe('virtual thermostat durable runtime', () => {
 					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
 				},
 			);
-			for (const [id, sample] of samples) {
+			for (const [id, sample] of fixtureState.samples) {
 				if (typeof sample.value !== 'number' && typeof sample.value !== 'boolean')
 					throw new Error('Unexpected synthetic sample');
 				await fixture.report(id, sample.value);
 			}
 			await actualClaims.refresh();
-			runtime = new VirtualThermostatRuntimeService(
+			fixtureOwner.runtime = runtime = new VirtualThermostatRuntimeService(
 				database,
 				actualStructure,
 				actualClaims,
@@ -5145,7 +6382,7 @@ describe('virtual thermostat durable runtime', () => {
 			await runtime.flush();
 			expect(fixture.controls.fences).toHaveLength(fences);
 			expect(fixture.controls.sends.filter((send) => send.on)).toEqual([]);
-			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+			for (const evidence of fixtureState.installedQualifications.values()) actualClaims.recordQualification(evidence);
 			await actualClaims.refresh();
 			runtime.request(controllerId, false);
 			await runtime.flush();
@@ -5394,11 +6631,11 @@ describe('virtual thermostat durable runtime', () => {
 						failure ??= { cause };
 					}
 					restored = true;
-					completionObserverBackstops.delete(backstop);
+					unregisterCompletionObserver(backstop);
 					if (failure) throw failure.cause;
 				};
 				const backstop = { retire, cleanup: (): void => cleanup(true) };
-				completionObserverBackstops.add(backstop);
+				registerCompletionObserver(backstop);
 				try {
 					Object.defineProperty(transportPrototype, 'openRuntimeOffDispatchWork', {
 						...openDescriptor,
@@ -5710,11 +6947,11 @@ describe('virtual thermostat durable runtime', () => {
 						failure ??= { cause };
 					}
 					cleaned = true;
-					completionObserverBackstops.delete(backstop);
+					unregisterCompletionObserver(backstop);
 					if (failure) throw failure.cause;
 				};
 				const backstop = { retire, cleanup };
-				completionObserverBackstops.add(backstop);
+				registerCompletionObserver(backstop);
 				try {
 					Object.defineProperty(owner, 'request', {
 						configurable: true,
@@ -6137,12 +7374,12 @@ describe('virtual thermostat durable runtime', () => {
 					second = bindings[1],
 					sourceId = second.binding?.sourcePropertyId;
 				if (!sourceId) throw new Error('Actual second-member floor source missing');
-				for (const probe of protectionProbes) await owned.report(probe, 20);
+				for (const probe of fixtureState.protectionProbes) await owned.report(probe, 20);
 				// A conservative, future-dated observation creates unavailable A debt; it grants no authority and changes no clock/timeout.
 				protection.read([first], Date.now() + 10_000);
 				protection.read([second], Date.now());
 				runtime.onModuleDestroy();
-				runtime = new VirtualThermostatRuntimeService(
+				fixtureOwner.runtime = runtime = new VirtualThermostatRuntimeService(
 					database,
 					actualStructure,
 					actualClaims,
@@ -6574,7 +7811,7 @@ describe('virtual thermostat durable runtime', () => {
 					second = bindings[1],
 					sourceId = second.binding?.sourcePropertyId;
 				if (!sourceId) throw new Error('Actual second-member floor source missing');
-				for (const probe of protectionProbes) await owned.report(probe, 20);
+				for (const probe of fixtureState.protectionProbes) await owned.report(probe, 20);
 				// A conservative, future-dated observation creates unavailable A debt; it grants no authority and changes no clock/timeout.
 				protection.read([first], Date.now() + 10_000);
 				protection.read([second], Date.now());
@@ -6588,7 +7825,7 @@ describe('virtual thermostat durable runtime', () => {
 					return result;
 				});
 				runtime.onModuleDestroy();
-				runtime = new VirtualThermostatRuntimeService(
+				fixtureOwner.runtime = runtime = new VirtualThermostatRuntimeService(
 					database,
 					actualStructure,
 					actualClaims,
@@ -8083,11 +9320,11 @@ describe('virtual thermostat durable runtime', () => {
 								retire,
 								cleanup: (): void => {
 									retire();
-									completionObserverBackstops.delete(backstop);
+									unregisterCompletionObserver(backstop);
 								},
 							};
 							pollBackstop = backstop;
-							completionObserverBackstops.add(backstop);
+							registerCompletionObserver(backstop);
 							await entered.promise;
 							expect(nativeAdmissionsReturned).toBe(1);
 							const heldAContext = owner['contexts'].get(controllerId),
@@ -8641,8 +9878,8 @@ describe('virtual thermostat durable runtime', () => {
 			comfort.onModuleDestroy();
 			mutationClaims.onModuleDestroy();
 			mutationRegistry.onModuleDestroy();
-			mutationRegistry = new ClimateAutomationRegistryService();
-			mutationWriter = new ClimateAutomationWriterService(
+			fixtureOwner.mutationRegistry = mutationRegistry = new ClimateAutomationRegistryService();
+			fixtureOwner.mutationWriter = mutationWriter = new ClimateAutomationWriterService(
 				database,
 				actualStructure,
 				mutationRegistry,
@@ -8659,23 +9896,33 @@ describe('virtual thermostat durable runtime', () => {
 				new ConfigService({ FB_CLI: 'off' }),
 			);
 			await actualClaims.onApplicationBootstrap();
-			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'managed', {
-				values: mutationValues,
-				sources: mutationPipeline.get(PropertyValueSourceRegistryService),
-			});
+			fixture = await realThermostatGuardFixture(
+				database,
+				events,
+				producers,
+				fixtureState.installedQualifications,
+				'managed',
+				{
+					values: mutationValues,
+					sources: mutationPipeline.get(PropertyValueSourceRegistryService),
+				},
+			);
 			realGuardFixtures.push(fixture);
 			// Reuse ONLY the helper's existing explicitly synthetic qualification boundary. No new fields or private map forcing.
-			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
-			values = fixture.values;
-			comfort = new VirtualThermostatComfortService(
-				database,
-				actualStructure,
-				actualGraph,
-				actualClaims,
-				events,
-				mutationWriter,
-			);
-			configs = new VirtualThermostatConfigService(
+			for (const evidence of fixtureState.installedQualifications.values()) actualClaims.recordQualification(evidence);
+			fixtureOwner.runtimePorts.values = values = fixture.values;
+			fixtureOwner.comfort =
+				fixtureOwner.runtimePorts.comfort =
+				comfort =
+					new VirtualThermostatComfortService(
+						database,
+						actualStructure,
+						actualGraph,
+						actualClaims,
+						events,
+						mutationWriter,
+					);
+			fixtureOwner.configs = configs = new VirtualThermostatConfigService(
 				database,
 				actualStructure,
 				actualGraph,
@@ -8685,7 +9932,7 @@ describe('virtual thermostat durable runtime', () => {
 				undefined,
 				mutationWriter,
 			);
-			mutationProvider = new VirtualThermostatAutomationService(
+			fixtureOwner.mutationProvider = mutationProvider = new VirtualThermostatAutomationService(
 				mutationWriter,
 				mutationRegistry,
 				actualGraph,
@@ -8705,13 +9952,13 @@ describe('virtual thermostat durable runtime', () => {
 					presets: [{ preset: 'eco', setpoints: { heating_setpoint: 17, cooling_setpoint: null } }],
 				},
 			);
-			for (const [id, sample] of samples) {
+			for (const [id, sample] of fixtureState.samples) {
 				if (typeof sample.value !== 'number' && typeof sample.value !== 'boolean')
 					throw new Error('Unexpected synthetic sample');
 				await fixture.report(id, sample.value);
 			}
 			await actualClaims.refresh();
-			runtime = new VirtualThermostatRuntimeService(
+			fixtureOwner.runtime = runtime = new VirtualThermostatRuntimeService(
 				database,
 				actualStructure,
 				actualClaims,
@@ -8847,24 +10094,34 @@ describe('virtual thermostat durable runtime', () => {
 				getMeasurements: () => Promise.resolve([]),
 			};
 			storage.registerPlugin(backend.name, backend);
-			values = pipeline.get(PropertyValueService);
-			fixture = await realThermostatGuardFixture(database, events, producers, installedQualifications, 'managed', {
-				values,
-				sources: pipeline.get(PropertyValueSourceRegistryService),
-			});
+			fixtureOwner.runtimePorts.values = values = pipeline.get(PropertyValueService);
+			fixture = await realThermostatGuardFixture(
+				database,
+				events,
+				producers,
+				fixtureState.installedQualifications,
+				'managed',
+				{
+					values,
+					sources: pipeline.get(PropertyValueSourceRegistryService),
+				},
+			);
 			realGuardFixtures.push(fixture);
-			for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+			for (const evidence of fixtureState.installedQualifications.values()) actualClaims.recordQualification(evidence);
 			mutationProvider.onModuleDestroy();
 			comfort.onModuleDestroy();
-			comfort = new VirtualThermostatComfortService(
-				database,
-				actualStructure,
-				actualGraph,
-				actualClaims,
-				events,
-				mutationWriter,
-			);
-			configs = new VirtualThermostatConfigService(
+			fixtureOwner.comfort =
+				fixtureOwner.runtimePorts.comfort =
+				comfort =
+					new VirtualThermostatComfortService(
+						database,
+						actualStructure,
+						actualGraph,
+						actualClaims,
+						events,
+						mutationWriter,
+					);
+			fixtureOwner.configs = configs = new VirtualThermostatConfigService(
 				database,
 				actualStructure,
 				actualGraph,
@@ -8874,7 +10131,7 @@ describe('virtual thermostat durable runtime', () => {
 				undefined,
 				mutationWriter,
 			);
-			mutationProvider = new VirtualThermostatAutomationService(
+			fixtureOwner.mutationProvider = mutationProvider = new VirtualThermostatAutomationService(
 				mutationWriter,
 				mutationRegistry,
 				actualGraph,
@@ -8884,7 +10141,7 @@ describe('virtual thermostat durable runtime', () => {
 				comfort,
 			);
 			mutationProvider.onModuleInit();
-			for (const [id, sample] of samples)
+			for (const [id, sample] of fixtureState.samples)
 				if (typeof sample.value === 'number' || typeof sample.value === 'boolean')
 					await fixture.report(id, sample.value);
 			return pipeline;
@@ -8901,7 +10158,7 @@ describe('virtual thermostat durable runtime', () => {
 			};
 			database.subscribers.push(observer);
 			try {
-				runtime = makeActualRuntime();
+				fixtureOwner.runtime = runtime = makeActualRuntime();
 				await runtime.onApplicationBootstrap();
 				await settleReal(fixture);
 				const before = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
@@ -9063,7 +10320,7 @@ describe('virtual thermostat durable runtime', () => {
 				trace.push('released-refresh');
 				return refresh.call(actualClaims);
 			});
-			runtime = makeActualRuntime();
+			fixtureOwner.runtime = runtime = makeActualRuntime();
 			try {
 				await expect(runtime.onApplicationBootstrap()).rejects.toBe(failure);
 				expect(trace).toEqual(['recovery']);
@@ -9073,7 +10330,7 @@ describe('virtual thermostat durable runtime', () => {
 				expect(actualClaims.capture().isCurrent()).toBe(true);
 				const a = runtime;
 				a.onModuleDestroy();
-				runtime = makeActualRuntime();
+				fixtureOwner.runtime = runtime = makeActualRuntime();
 				await runtime.onApplicationBootstrap();
 				await settleReal(fixture);
 				const b = actualClaims.capture();
@@ -9155,7 +10412,7 @@ describe('virtual thermostat durable runtime', () => {
 			};
 			database.subscribers.push(observer);
 			try {
-				runtime = makeActualRuntime();
+				fixtureOwner.runtime = runtime = makeActualRuntime();
 				await runtime.onApplicationBootstrap();
 				await settleReal(fixture);
 				fixture.controls.beforeOn = async (id) => {
@@ -9305,7 +10562,7 @@ describe('virtual thermostat durable runtime', () => {
 				};
 				database.subscribers.push(observer);
 				try {
-					runtime = makeActualRuntime();
+					fixtureOwner.runtime = runtime = makeActualRuntime();
 					await runtime.onApplicationBootstrap();
 					await settleReal(fixture);
 					locks.length = 0;
@@ -9381,7 +10638,7 @@ describe('virtual thermostat durable runtime', () => {
 						},
 					};
 				database.subscribers.push(observer);
-				runtime = makeActualRuntime();
+				fixtureOwner.runtime = runtime = makeActualRuntime();
 				try {
 					await expect(runtime.onApplicationBootstrap()).rejects.toBe(failure);
 					expect(
@@ -9610,12 +10867,12 @@ describe('virtual thermostat durable runtime', () => {
 					retire();
 					if (!cleaned) {
 						cleaned = true;
-						completionObserverBackstops.delete(backstop);
+						unregisterCompletionObserver(backstop);
 					}
 					if (cleanupFailure) throw cleanupFailure.cause;
 				},
 			};
-			completionObserverBackstops.add(backstop);
+			registerCompletionObserver(backstop);
 			let primary: { cause: unknown } | undefined;
 			try {
 				assertOwner();
@@ -9941,11 +11198,11 @@ describe('virtual thermostat durable runtime', () => {
 							failure ??= { cause };
 						}
 					}
-					completionObserverBackstops.delete(readBackstop);
+					unregisterCompletionObserver(readBackstop);
 					if (failure) throw failure.cause;
 				},
 			};
-			completionObserverBackstops.add(readBackstop);
+			registerCompletionObserver(readBackstop);
 			const track = <View extends { close: () => void }>(view: View): View => {
 				reads.push(view);
 				if (retired) {
@@ -10032,11 +11289,11 @@ describe('virtual thermostat durable runtime', () => {
 							failure ??= { cause };
 						}
 					}
-					completionObserverBackstops.delete(readBackstop);
+					unregisterCompletionObserver(readBackstop);
 					if (failure) throw failure.cause;
 				},
 			};
-			completionObserverBackstops.add(readBackstop);
+			registerCompletionObserver(readBackstop);
 			const track = <View extends { close: () => void }>(view: View): View => {
 				reads.push(view);
 				if (retired) {
@@ -10339,7 +11596,7 @@ describe('virtual thermostat durable runtime', () => {
 				};
 				try {
 					mutationProvider.onModuleDestroy();
-					mutationProvider = new VirtualThermostatAutomationService(
+					fixtureOwner.mutationProvider = mutationProvider = new VirtualThermostatAutomationService(
 						mutationWriter,
 						mutationRegistry,
 						actualGraph,
@@ -10466,7 +11723,7 @@ describe('virtual thermostat durable runtime', () => {
 				expect(previousProvider?.isCurrent()).toBe(true);
 				mutationProvider.onModuleDestroy();
 				expect(previousProvider?.isCurrent()).toBe(false);
-				mutationProvider = new VirtualThermostatAutomationService(
+				fixtureOwner.mutationProvider = mutationProvider = new VirtualThermostatAutomationService(
 					mutationWriter,
 					mutationRegistry,
 					actualGraph,
@@ -10882,7 +12139,8 @@ describe('virtual thermostat durable runtime', () => {
 				const clock = Object.freeze({ wallMs: Date.now(), monoMs: performance.now() });
 				for (const row of rows)
 					expect(actualClaims.evaluateDiagnosticQualification(capture, row.id, false, clock)).toBeNull();
-				for (const evidence of installedQualifications.values()) actualClaims.recordQualification(evidence);
+				for (const evidence of fixtureState.installedQualifications.values())
+					actualClaims.recordQualification(evidence);
 				actualClaims.revokeAllQualifications();
 				expect(actualClaims.diagnosticQualificationsCurrent(capture)).toBe(false);
 			} finally {
@@ -10998,11 +12256,11 @@ describe('virtual thermostat durable runtime', () => {
 								throw new Error('R87 foreign transport descriptor retained');
 							getSpy.mockRestore();
 						});
-						completionObserverBackstops.delete(backstop);
+						unregisterCompletionObserver(backstop);
 						if (cleanupFailure) throw cleanupFailure.cause;
 					},
 				};
-				completionObserverBackstops.add(backstop);
+				registerCompletionObserver(backstop);
 				const live = (): void => {
 					if (retired || runtime !== owner || database !== source || fixture !== managed)
 						throw new Error('R87 managed original owner retired');
@@ -11226,7 +12484,7 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		// END R63 explicit original OFF journal baseline.
 		// P0 is the ENTIRE completed baseline transcript, including empty calls and original order/multiplicity.
-		const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+		const P0 = Object.freeze(fixtureState.reconciledCommandIds.map((ids) => Object.freeze([...ids])));
 		for (const ids of P0) {
 			expect(new Set(ids).size).toBe(ids.length);
 			expect(ids.every((id) => baselineIds.includes(id))).toBe(true);
@@ -11250,7 +12508,7 @@ describe('virtual thermostat durable runtime', () => {
 		await database.manager.insert(VirtualThermostatCommandEntity, command);
 		const retire = jest.fn<void, [readonly string[]]>();
 		owned.assertLive();
-		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+		fixtureState.proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 		const nativeRunners = new Map<object, NonNullable<ReturnType<typeof entry.scope.getStore>>>();
 		let rollback = true,
 			retired = false;
@@ -11300,10 +12558,10 @@ describe('virtual thermostat durable runtime', () => {
 				backstop.retire();
 				const index = database.subscribers.indexOf(subscriber);
 				if (index >= 0) database.subscribers.splice(index, 1);
-				completionObserverBackstops.delete(backstop);
+				unregisterCompletionObserver(backstop);
 			},
 		};
-		completionObserverBackstops.add(backstop);
+		registerCompletionObserver(backstop);
 		database.subscribers.push(subscriber);
 		try {
 			await expect(entry.startAfterOriginalOff(claim, command)).rejects.toThrow('fixture settlement rollback');
@@ -11319,8 +12577,8 @@ describe('virtual thermostat durable runtime', () => {
 			).toEqual(
 				rollbackK.map((id) => ({ id, status: 'accepted' })).sort((left, right) => left.id.localeCompare(right.id)),
 			);
-			for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
-			expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+			for (const [index, ids] of P0.entries()) expect(fixtureState.reconciledCommandIds[index]).toEqual(ids);
+			expect(fixtureState.reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
 				[...P0, rollbackK].map((ids) => [...ids].sort()),
 			);
 			expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
@@ -11348,8 +12606,10 @@ describe('virtual thermostat durable runtime', () => {
 			expect(journal.filter((row) => row.status !== 'confirmed' && row.status !== 'cancelled')).toEqual([]);
 			expect(K).toBe(rollbackK);
 			expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual([[[...K].sort()]]);
-			for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
-			expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual([...P0, K, K].map((ids) => [...ids].sort()));
+			for (const [index, ids] of P0.entries()) expect(fixtureState.reconciledCommandIds[index]).toEqual(ids);
+			expect(fixtureState.reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+				[...P0, K, K].map((ids) => [...ids].sort()),
+			);
 		} catch (cause) {
 			primary = { cause };
 		} finally {
@@ -11397,7 +12657,7 @@ describe('virtual thermostat durable runtime', () => {
 		}
 		// END R63 explicit original OFF journal baseline.
 		// P0 is the ENTIRE completed baseline transcript, including empty calls and original order/multiplicity.
-		const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+		const P0 = Object.freeze(fixtureState.reconciledCommandIds.map((ids) => Object.freeze([...ids])));
 		for (const ids of P0) {
 			expect(new Set(ids).size).toBe(ids.length);
 			expect(ids.every((id) => baselineIds.includes(id))).toBe(true);
@@ -11423,7 +12683,7 @@ describe('virtual thermostat durable runtime', () => {
 			throw new Error('optional metadata only');
 		});
 		owned.assertLive();
-		proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+		fixtureState.proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 		await entry.startAfterOriginalOff(claim, command);
 
 		const K = entry.namedIds(command);
@@ -11443,8 +12703,10 @@ describe('virtual thermostat durable runtime', () => {
 		);
 		expect(journal.filter((row) => row.status !== 'confirmed' && row.status !== 'cancelled')).toEqual([]);
 		expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual([[[...K].sort()]]);
-		for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
-		expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual([...P0, K].map((ids) => [...ids].sort()));
+		for (const [index, ids] of P0.entries()) expect(fixtureState.reconciledCommandIds[index]).toEqual(ids);
+		expect(fixtureState.reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+			[...P0, K].map((ids) => [...ids].sort()),
+		);
 		expect((await database.manager.findOneByOrFail(VirtualThermostatCommandEntity, { id: command.id })).status).toBe(
 			'confirmed',
 		);
@@ -11481,7 +12743,7 @@ describe('virtual thermostat durable runtime', () => {
 
 	it('takes a new qualified fence for an idle OFF cooling claim after a later cooling trip barrier', async () => {
 		await settle();
-		packetTick = useThermostatPacketClock();
+		fixtureState.packetTick = useThermostatPacketClock();
 		const claim = await database.manager.findOneByOrFail(VirtualThermostatActuatorClaimEntity, { controllerId });
 		const config = await database.manager.findOneByOrFail(VirtualThermostatConfigEntity, { controllerId });
 		await database.manager.update(VirtualThermostatActuatorClaimEntity, claim.id, { role: 'cooling' });
@@ -11499,17 +12761,17 @@ describe('virtual thermostat durable runtime', () => {
 		await settle();
 		const oldProof = internal.reconciled.get(`${claim.id}:${claim.revision}`);
 		expect(oldProof).toBeDefined();
-		const before = proofCalls;
+		const before = fixtureState.proofCalls;
 		after = oldProof.observedAt;
 		expect(await database.manager.countBy(VirtualThermostatCommandEntity, { controllerId, status: 'accepted' })).toBe(
 			0,
 		);
-		packetTick();
+		fixtureState.packetTick();
 		runtime.request(controllerId);
 		await settle();
-		expect(proofCalls).toBe(before + 1);
+		expect(fixtureState.proofCalls).toBe(before + 1);
 		expect(internal.reconciled.get(`${claim.id}:${claim.revision}`).observedAt).toBeGreaterThan(after);
-		expect(sentTargets.some((entry) => entry.on)).toBe(false);
+		expect(fixtureState.sentTargets.some((entry) => entry.on)).toBe(false);
 	});
 
 	it.each(['held acknowledgement', 'unknown acknowledgement'] as const)(
@@ -11556,7 +12818,7 @@ describe('virtual thermostat durable runtime', () => {
 			}
 			// END R63 explicit original OFF journal baseline.
 			// P0 is the ENTIRE completed baseline transcript, including empty calls and original order/multiplicity.
-			const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+			const P0 = Object.freeze(fixtureState.reconciledCommandIds.map((ids) => Object.freeze([...ids])));
 			for (const ids of P0) {
 				expect(new Set(ids).size).toBe(ids.length);
 				expect(ids.every((id) => baselineIds.includes(id))).toBe(true);
@@ -11579,7 +12841,7 @@ describe('virtual thermostat durable runtime', () => {
 			await database.manager.insert(VirtualThermostatCommandEntity, command);
 			const retire = jest.fn<void, [readonly string[]]>();
 			owned.assertLive();
-			proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+			fixtureState.proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 			let enter: () => void = () => undefined;
 			let rejectObservation: (error: unknown) => void = () => undefined;
 			let committedStatus: VirtualThermostatCommandEntity['status'] | undefined;
@@ -11658,10 +12920,10 @@ describe('virtual thermostat durable runtime', () => {
 					retireAckObserver();
 					const index = caseDatabase.subscribers.indexOf(subscriber);
 					if (index >= 0) caseDatabase.subscribers.splice(index, 1);
-					completionObserverBackstops.delete(backstop);
+					unregisterCompletionObserver(backstop);
 				},
 			};
-			completionObserverBackstops.add(backstop);
+			registerCompletionObserver(backstop);
 			try {
 				const pending = entry.startAfterOriginalOff(claim, command);
 				// Attach both outcomes before releasing the controlled commit gate.
@@ -11689,8 +12951,10 @@ describe('virtual thermostat durable runtime', () => {
 					].sort((left, right) => left.id.localeCompare(right.id)),
 				);
 				expect(committedJournal.filter((row) => row.status !== 'confirmed' && row.status !== 'cancelled')).toEqual([]);
-				for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
-				expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual([...P0, K].map((ids) => [...ids].sort()));
+				for (const [index, ids] of P0.entries()) expect(fixtureState.reconciledCommandIds[index]).toEqual(ids);
+				expect(fixtureState.reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+					[...P0, K].map((ids) => [...ids].sort()),
+				);
 				release();
 				const error = await outcome;
 				if (retired) throw new Error('Original ACK owner retired');
@@ -11744,7 +13008,7 @@ describe('virtual thermostat durable runtime', () => {
 			).toEqual(baseline.map((row) => ({ ...row, status: 'confirmed' })).sort((a, b) => a.id.localeCompare(b.id)));
 			expect(settled.filter((row) => row.status !== 'confirmed' && row.status !== 'cancelled')).toEqual([]);
 			const baselineIds = Object.freeze(baseline.map((row) => row.id));
-			const P0 = Object.freeze(reconciledCommandIds.map((ids) => Object.freeze([...ids])));
+			const P0 = Object.freeze(fixtureState.reconciledCommandIds.map((ids) => Object.freeze([...ids])));
 			for (const ids of P0) {
 				expect(new Set(ids).size).toBe(ids.length);
 				expect(ids.every((key) => baselineIds.includes(key))).toBe(true);
@@ -11767,7 +13031,7 @@ describe('virtual thermostat durable runtime', () => {
 			await source.manager.insert(VirtualThermostatCommandEntity, command);
 			const retire = jest.fn<void, [readonly string[]]>();
 			owned.assertLive();
-			proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
+			fixtureState.proofMutation = (proof) => ({ ...proof, retireConfirmedCommandIds: retire });
 			return { owned, entry, claim, command, retire, baselineIds, P0 };
 		};
 		// Only the two existing held rows opt in. This observes send entry; it does not authorize native work.
@@ -11779,7 +13043,7 @@ describe('virtual thermostat durable runtime', () => {
 		) => {
 			const owner = owned.owner,
 				lifecycle = owner['lifecycle'];
-			if (heldOffSendObserver !== null || lifecycle === undefined || !owner['active'])
+			if (fixtureState.heldOffSendObserver !== null || lifecycle === undefined || !owner['active'])
 				throw new Error('Original held OFF send observation unavailable');
 			let closed = false,
 				observed = false,
@@ -11814,7 +13078,7 @@ describe('virtual thermostat durable runtime', () => {
 						if (
 							closed ||
 							observed ||
-							heldOffSendObserver !== observer ||
+							fixtureState.heldOffSendObserver !== observer ||
 							owner['lifecycle'] !== lifecycle ||
 							!owner['active'] ||
 							owner['dataSource'] !== owned.source ||
@@ -11841,7 +13105,7 @@ describe('virtual thermostat durable runtime', () => {
 					}
 				},
 			});
-			heldOffSendObserver = observer;
+			fixtureState.heldOffSendObserver = observer;
 			const retire = (): void => {
 				if (closed) return;
 				closed = true;
@@ -11854,14 +13118,15 @@ describe('virtual thermostat durable runtime', () => {
 					retire();
 					if (restored) return;
 					if (owner['active'] || owner['lifecycle'] !== undefined) throw new Error('Held OFF send owner not retired');
-					if (heldOffSendObserver !== observer) throw new Error('Held OFF send observer replaced by foreign owner');
-					heldOffSendObserver = null;
+					if (fixtureState.heldOffSendObserver !== observer)
+						throw new Error('Held OFF send observer replaced by foreign owner');
+					fixtureState.heldOffSendObserver = null;
 					restored = true;
-					completionObserverBackstops.delete(backstop);
+					unregisterCompletionObserver(backstop);
 					if (observationFailure !== undefined) throw observationFailure.cause;
 				},
 			};
-			completionObserverBackstops.add(backstop); // Covers partial case setup before its gate backstop exists.
+			registerCompletionObserver(backstop); // Covers partial case setup before its gate backstop exists.
 			return backstop;
 		};
 		it('holds the actual named OFF before confirmation and retires the complete K only after known ACK', async () => {
@@ -11872,8 +13137,8 @@ describe('virtual thermostat durable runtime', () => {
 				release = resolve;
 			});
 			const sendEntry = observeHeldOffSend(owned, entry, claim, command);
-			offGate = held;
-			const attemptsBefore = Object.freeze([...actuationAttempts]);
+			fixtureState.offGate = held;
+			const attemptsBefore = Object.freeze([...fixtureState.actuationAttempts]);
 			let primary: { cause: unknown } | undefined;
 			const backstop = {
 				retire: (): void => {
@@ -11896,17 +13161,17 @@ describe('virtual thermostat durable runtime', () => {
 					} catch (cause) {
 						failure ??= { cause };
 					}
-					completionObserverBackstops.delete(backstop);
+					unregisterCompletionObserver(backstop);
 					if (failure !== undefined) throw failure.cause;
 				},
 			};
-			completionObserverBackstops.add(backstop);
+			registerCompletionObserver(backstop);
 			try {
 				const pending = entry.startAfterOriginalOff(claim, command);
 				const K = await entry.namedOpening();
 				await sendEntry.entered;
 				const heldJournal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
-				expect(actuationAttempts).toEqual([...attemptsBefore, false]); // Real send has entered the existing OFF gate.
+				expect(fixtureState.actuationAttempts).toEqual([...attemptsBefore, false]); // Real send has entered the existing OFF gate.
 				expect(heldJournal.map((row) => row.id).sort()).toEqual([...baselineIds, ...K].sort());
 				expect(
 					heldJournal
@@ -11920,20 +13185,22 @@ describe('virtual thermostat durable runtime', () => {
 					].sort((a, b) => a.id.localeCompare(b.id)),
 				);
 				expect(retire).not.toHaveBeenCalled();
-				expect(reconciledCommandIds).toEqual(P0);
+				expect(fixtureState.reconciledCommandIds).toEqual(P0);
 				release();
 				await pending;
 				expect(entry.namedInspectionCount()).toBeLessThanOrEqual(2);
 				expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual([[[...K].sort()]]);
-				for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
-				expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual([...P0, K].map((ids) => [...ids].sort()));
+				for (const [index, ids] of P0.entries()) expect(fixtureState.reconciledCommandIds[index]).toEqual(ids);
+				expect(fixtureState.reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+					[...P0, K].map((ids) => [...ids].sort()),
+				);
 				const journal = await source.manager.findBy(VirtualThermostatCommandEntity, { controllerId: id });
 				expect(journal.map((row) => row.id).sort()).toEqual([...baselineIds, ...K].sort());
 				expect(journal.filter((row) => K.includes(row.id)).map((row) => row.status)).toEqual([
 					'confirmed',
 					'confirmed',
 				]);
-				expect(actuationAttempts.every((on) => !on)).toBe(true);
+				expect(fixtureState.actuationAttempts.every((on) => !on)).toBe(true);
 			} catch (cause) {
 				primary = { cause };
 			} finally {
@@ -11942,7 +13209,7 @@ describe('virtual thermostat durable runtime', () => {
 				} catch (cause) {
 					primary ??= { cause };
 				}
-				if (offGate === held) offGate = null;
+				if (fixtureState.offGate === held) fixtureState.offGate = null;
 			}
 			if (primary !== undefined) throw primary.cause;
 		});
@@ -11980,7 +13247,7 @@ describe('virtual thermostat durable runtime', () => {
 							],
 						}),
 					});
-				offOutcome = outcome;
+				fixtureState.offOutcome = outcome;
 				await expect(entry.startAfterOriginalOff(claim, command)).rejects.toThrow(
 					'Named OFF did not finish an accepted saved native outcome',
 				);
@@ -12003,19 +13270,21 @@ describe('virtual thermostat durable runtime', () => {
 						.map((row) => ({ id: row.id, claimId: row.claimId, action: row.action, status: row.status }))
 						.sort((a, b) => a.id.localeCompare(b.id)),
 				).toEqual([...grammar.journal].sort((a, b) => a.id.localeCompare(b.id)));
-				for (const [index, ids] of P0.entries()) expect(reconciledCommandIds[index]).toEqual(ids);
-				expect(reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(grammar.proof.map((ids) => [...ids].sort()));
+				for (const [index, ids] of P0.entries()) expect(fixtureState.reconciledCommandIds[index]).toEqual(ids);
+				expect(fixtureState.reconciledCommandIds.map((ids) => [...ids].sort())).toEqual(
+					grammar.proof.map((ids) => [...ids].sort()),
+				);
 				expect(retire.mock.calls.map((call) => call.map((ids) => [...ids].sort()))).toEqual(
 					grammar.retirement.map((call) => call.map((ids) => [...ids].sort())),
 				);
-				expect(actuationAttempts.every((on) => !on)).toBe(true);
+				expect(fixtureState.actuationAttempts.every((on) => !on)).toBe(true);
 			},
 		);
 		it('cannot let a retired A completion settle B or restore a foreign descriptor', async () => {
 			const { owned, entry, claim, command, retire } = await prepareCase();
 			const A = owned.owner;
 			const sendEntry = observeHeldOffSend(owned, entry, claim, command);
-			const attemptsBeforeA = Object.freeze([...actuationAttempts]);
+			const attemptsBeforeA = Object.freeze([...fixtureState.actuationAttempts]);
 			let releaseA: () => void = () => undefined,
 				releaseB: () => void = () => undefined;
 			let enterB: () => void = () => undefined;
@@ -12051,7 +13320,7 @@ describe('virtual thermostat durable runtime', () => {
 					}
 					releaseA();
 					releaseB();
-					if (beforeProof === beforeB) beforeProof = null;
+					if (fixtureState.beforeProof === beforeB) fixtureState.beforeProof = null;
 					if (failure !== undefined) throw failure.cause;
 				},
 				cleanup: (): void => {
@@ -12066,13 +13335,13 @@ describe('virtual thermostat durable runtime', () => {
 					} catch (cause) {
 						failure ??= { cause };
 					}
-					completionObserverBackstops.delete(backstop);
+					unregisterCompletionObserver(backstop);
 					if (failure !== undefined) throw failure.cause;
 				},
 			};
-			completionObserverBackstops.add(backstop);
+			registerCompletionObserver(backstop);
 			try {
-				offGate = heldA;
+				fixtureState.offGate = heldA;
 				const pendingA = entry.startAfterOriginalOff(claim, command);
 				const outcomeA = pendingA.then(
 					() => ({ fulfilled: true, cause: undefined }),
@@ -12084,20 +13353,20 @@ describe('virtual thermostat durable runtime', () => {
 					controllerId: owned.id,
 				});
 				expect(heldJournalA.find((row) => row.id === command.id)?.status).toBe('accepted');
-				expect(actuationAttempts).toEqual([...attemptsBeforeA, false]);
+				expect(fixtureState.actuationAttempts).toEqual([...attemptsBeforeA, false]);
 				expect(heldJournalA.find((row) => row.id === entry.namedIds(command)[1])?.status).toBe('dispatching');
 				sendEntry.retire();
 				A.onModuleDestroy(); // Genuine old lifecycle retirement, not a currentness mock.
 				sendEntry.cleanup();
-				offGate = null; // A already awaits heldA; B uses its actual unheld native path.
+				fixtureState.offGate = null; // A already awaits heldA; B uses its actual unheld native path.
 				beforeB = async (): Promise<void> => {
 					enterB();
 					await heldB;
 				};
-				beforeProof = beforeB;
+				fixtureState.beforeProof = beforeB;
 				B = makeRuntime();
 				installInitialRuntimeObservers(B, owned.source, owned.id);
-				runtime = B;
+				fixtureOwner.runtime = runtime = B;
 				const startingB = B.onApplicationBootstrap();
 				void startingB.then(
 					() => undefined,
@@ -12136,7 +13405,7 @@ describe('virtual thermostat durable runtime', () => {
 				releaseB();
 				await startingB;
 				await publicB;
-				expect(actuationAttempts.every((on) => !on)).toBe(true);
+				expect(fixtureState.actuationAttempts.every((on) => !on)).toBe(true);
 			} catch (cause) {
 				primary = { cause };
 			} finally {
@@ -12145,7 +13414,7 @@ describe('virtual thermostat durable runtime', () => {
 				} catch (cause) {
 					primary ??= { cause };
 				}
-				if (offGate === heldA) offGate = null;
+				if (fixtureState.offGate === heldA) fixtureState.offGate = null;
 				try {
 					const current = Object.getOwnPropertyDescriptor(map, 'set');
 					if (
