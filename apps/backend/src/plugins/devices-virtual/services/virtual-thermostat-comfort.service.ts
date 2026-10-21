@@ -87,6 +87,10 @@ interface RuntimeWriterPorts {
 	readonly methods: RuntimeWriterMethods;
 }
 interface PublicSettlementPorts {
+	readonly writer: ClimateAutomationWriterService;
+	readonly writerMethods: OriginalFunctions<
+		Pick<ClimateAutomationWriterService, 'assertExistingReadEntry' | 'commitExistingControllerV1'>
+	>;
 	readonly claims: VirtualThermostatClaimsService;
 	readonly methods: OriginalFunctions<
 		Pick<VirtualThermostatClaimsService, 'holdRecoveryFence' | 'prepareExistingRecovery' | 'finishExistingRecovery'>
@@ -217,6 +221,14 @@ export class VirtualThermostatComfortService {
 		for (const key of ['holdRecoveryFence', 'prepareExistingRecovery', 'finishExistingRecovery'])
 			if (!creationHasDataMethod(claims, key))
 				throw new DevicesValidationException('Original public settlement recovery unavailable.');
+		for (const key of ['assertExistingReadEntry', 'commitExistingControllerV1'])
+			if (!creationHasDataMethod(writer, key))
+				throw new DevicesValidationException('Original public settlement writer entry unavailable.');
+		const originalWriter: PublicSettlementPorts['writerMethods'] = writer;
+		const writerMethods = Object.freeze({
+			assertExistingReadEntry: originalWriter.assertExistingReadEntry,
+			commitExistingControllerV1: originalWriter.commitExistingControllerV1,
+		});
 		const original: PublicSettlementPorts['methods'] = claims;
 		const recovery = Object.freeze({
 			holdRecoveryFence: original.holdRecoveryFence,
@@ -233,6 +245,8 @@ export class VirtualThermostatComfortService {
 		const shared: PublicSettlementPorts['shared'] = structure.runShared,
 			find = nativeFieldEvidence.get(manager, 'findOneBy');
 		const ports: PublicSettlementPorts = Object.freeze({
+			writer,
+			writerMethods,
 			claims,
 			methods: recovery,
 			shared,
@@ -247,6 +261,7 @@ export class VirtualThermostatComfortService {
 				creationMethodCurrent(structure, 'runShared', shared) &&
 				creationMethodCurrent(manager, 'findOneBy', find) &&
 				publicPins.every((pin) => creationMethodCurrent(this, pin.key, pin.method)) &&
+				Object.entries(writerMethods).every(([key, method]) => creationMethodCurrent(writer, key, method)) &&
 				Object.entries(recovery).every(([key, method]) => creationMethodCurrent(claims, key, method)),
 		});
 		this.existingPins = current;
@@ -934,10 +949,10 @@ export class VirtualThermostatComfortService {
 	/** Only committed settlement makes expiry durable. A sync dispatch refusal cannot promise crash durability. */
 	async settle(controllerId: string): Promise<void> {
 		if (!this.writer) throw new DevicesValidationException('Reserved comfort writer unavailable.');
-		// Reject ambient/private reentry BEFORE any new negative fence or native read.
-		this.writer.assertExistingReadEntry();
 		const ports = this.publicSettlementPorts;
 		if (!ports?.current()) throw new DevicesValidationException('Original public settlement owner unavailable.');
+		// Reject ambient/private reentry through the captured original BEFORE any negative fence or native read.
+		ports.writerMethods.assertExistingReadEntry.call(ports.writer);
 		const release = ports.methods.holdRecoveryFence.call(ports.claims);
 		let released = false,
 			retired = false,
@@ -986,6 +1001,7 @@ export class VirtualThermostatComfortService {
 				// Release cannot open ready. The same existing root acquires its genuine hold synchronously.
 				releaseOnce();
 				if (cleanup) throw cleanup.cause;
+				requireOwner(); // Recheck the original root pin after release, with no callback/await before its call.
 				await this.executeExisting('settle-override:v1', controllerId, {});
 			}
 		} catch (cause) {

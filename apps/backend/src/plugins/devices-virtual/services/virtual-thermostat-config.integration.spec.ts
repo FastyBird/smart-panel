@@ -4447,6 +4447,61 @@ describe('thermostat persistent ownership and draft configuration', () => {
 			owned.original.database.subscribers.push(observer);
 			return { entered, resume };
 		};
+		// BEGIN R88 original writer entry loss negatives (SOURCE ONLY; UNRUN)
+		it('rejects a replaced original writer preflight before any public fence or native read', async () => {
+			const owned = own();
+			const { claims, comfort, database, writer } = owned.original;
+			const hold = jest.spyOn(claims, 'holdRecoveryFence');
+			owned.restore(claims, 'holdRecoveryFence', () => hold.mockRestore());
+			registerOriginal();
+			const controller = await prepare(owned, 'inactive');
+			const beforeHolds = hold.mock.calls.length;
+			let reads = 0;
+			const observer: import('typeorm').EntitySubscriberInterface = {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
+					if (event.query.startsWith('SELECT') && event.query.includes('devices_virtual_thermostat_configs') &&
+						event.parameters?.includes(controller)) reads++;
+				},
+			};
+			owned.observers.push(observer); database.subscribers.push(observer);
+			const forbidden = new Error('R88 replacement preflight must not run');
+			const replacement = jest.spyOn(writer, 'assertExistingReadEntry').mockImplementation(() => { throw forbidden; });
+			owned.restore(writer, 'assertExistingReadEntry', () => replacement.mockRestore());
+			const result = await owned.watch(comfort.settle(controller));
+			expect(result.kind).toBe('rejected');
+			if (result.kind !== 'rejected') throw new Error('R88 replaced preflight was admitted');
+			expect(result.cause).toBeInstanceOf(DevicesValidationException);
+			expect(replacement).not.toHaveBeenCalled();
+			expect(hold.mock.calls).toHaveLength(beforeHolds);
+			expect(reads).toBe(0);
+			expect(claims['recoveryFences']).toBe(0);
+			expect(comfort['publicSettlementFences'].size).toBe(0);
+		});
+		it('rejects a replaced original writer root during the held first read without dispatching it or reopening the old snapshot', async () => {
+			const owned = own();
+			const { claims, comfort, writer } = owned.original;
+			const controller = await prepare(owned, 'active');
+			const old = claims.capture(); expect(old.isCurrent()).toBe(true);
+			const read = heldRead(owned, controller);
+			const operation = owned.watch(comfort.settle(controller));
+			expect(old.isCurrent()).toBe(false);
+			await read.entered.promise; owned.live();
+			expect(claims['recoveryFences']).toBe(1);
+			const forbidden = new Error('R88 replacement root must not run');
+			const replacement = jest.spyOn(writer, 'commitExistingControllerV1').mockImplementation(() => { throw forbidden; });
+			owned.restore(writer, 'commitExistingControllerV1', () => replacement.mockRestore());
+			read.resume.open();
+			const result = await operation;
+			expect(result.kind).toBe('rejected');
+			if (result.kind !== 'rejected') throw new Error('R88 replaced root was admitted');
+			expect(result.cause).toBeInstanceOf(DevicesValidationException);
+			expect(replacement).not.toHaveBeenCalled();
+			expect(old.isCurrent()).toBe(false);
+			expect(claims.capture().isCurrent()).toBe(false);
+			expect(claims['recoveryFences']).toBe(0);
+			expect(comfort['publicSettlementFences'].size).toBe(0);
+		});
+		// END R88 original writer entry loss negatives
 		it.each(['missing', 'inactive', 'active'] satisfies readonly ('missing' | 'inactive' | 'active')[])(
 			'fences the original snapshot synchronously during the first real %s read and restores only genuine recovery',
 			async (mode) => {

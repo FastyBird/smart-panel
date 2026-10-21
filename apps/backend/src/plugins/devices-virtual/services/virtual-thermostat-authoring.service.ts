@@ -2,7 +2,7 @@ import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DataSource, EntityManager, EntityTarget } from 'typeorm';
 
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -451,6 +451,7 @@ export class VirtualThermostatAuthoringService {
 		private readonly graph: VirtualDependencyGraphService,
 		private readonly devices: DevicesService,
 		private readonly validation: DeviceValidationService,
+		@Inject(forwardRef(() => VirtualThermostatConfigService))
 		private readonly configurations: VirtualThermostatConfigService,
 		@Optional() private readonly writer?: ClimateAutomationWriterService,
 		@Optional() private readonly deviceMappings?: DevicesTypeMapperService,
