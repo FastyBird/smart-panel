@@ -10664,7 +10664,7 @@ describe('virtual thermostat durable runtime', () => {
 		let primary: { cause: unknown } | undefined;
 		const subscriber = {
 			listenTo: () => VirtualThermostatBranchRuntimeEntity,
-			afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+			beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
 				const original = entry.scope.getStore();
 				if (
 					!retired &&
