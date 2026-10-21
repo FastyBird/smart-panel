@@ -11004,7 +11004,7 @@ describe('virtual thermostat durable runtime', () => {
 			const nativeRunners = new Map<object, NonNullable<ReturnType<typeof entry.scope.getStore>>>();
 			let once = true;
 			const subscriber = {
-				afterQuery: (event: import('typeorm').AfterQueryEvent<unknown>): void => {
+				beforeQuery: (event: import('typeorm').BeforeQueryEvent<unknown>): void => {
 					const original = entry.scope.getStore();
 					if (
 						!retired &&
